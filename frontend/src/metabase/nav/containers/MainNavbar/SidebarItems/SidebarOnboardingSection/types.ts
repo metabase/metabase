@@ -1,6 +1,8 @@
+import type { CollectionTreeItem } from "metabase/entities/collections/utils";
 import type { IconName } from "metabase/ui";
 
 export type SidebarOnboardingProps = {
+  collections: CollectionTreeItem[];
   hasOwnDatabase: boolean;
   isAdmin: boolean;
 };

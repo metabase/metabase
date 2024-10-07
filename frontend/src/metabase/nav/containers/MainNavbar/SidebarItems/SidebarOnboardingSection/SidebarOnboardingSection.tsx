@@ -4,6 +4,7 @@ import { type ChangeEvent, useCallback, useRef, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { skipToken, useGetDatabaseQuery } from "metabase/api";
 import { UploadInfoModal } from "metabase/collections/components/CollectionHeader/CollectionUploadInfoModal";
 import {
   type CollectionOrTableIdProps,
@@ -33,6 +34,7 @@ import { trackAddDataViaCSV, trackAddDataViaDatabase } from "./analytics";
 import type { OnboaringMenuItemProps, SidebarOnboardingProps } from "./types";
 
 export function SidebarOnboardingSection({
+  collections,
   hasOwnDatabase,
   isAdmin,
 }: SidebarOnboardingProps) {
@@ -51,6 +53,10 @@ export function SidebarOnboardingSection({
     state => getSetting(state, "uploads-settings")?.db_id,
   );
   const isUploadEnabled = !!uploadDbId;
+
+  const { data: database } = useGetDatabaseQuery(
+    uploadDbId ? { id: uploadDbId } : skipToken,
+  );
 
   const uploadInputRef = useRef<HTMLInputElement>(null);
 
@@ -94,6 +100,19 @@ export function SidebarOnboardingSection({
 
   const isMobileSafe = useMediaQuery(`(min-width: ${breakpoints.sm})`);
 
+  const canAddDatabase = isAdmin;
+
+  /**
+   * the collection needs to be root
+   * the user must have "write" permissions for the root collection
+   * the user must have permissions to upload to the database on which file uploads are enabled
+   */
+  const rootCollection = collections.find(
+    c => c.id === "root" || c.id === null,
+  );
+  const canCurateRootCollection = rootCollection?.can_write;
+  const canUploadToDatabase = database?.can_upload;
+  const canUpload = canCurateRootCollection && canUploadToDatabase;
   return (
     <Box
       m={0}
@@ -111,7 +130,7 @@ export function SidebarOnboardingSection({
           </PaddedSidebarLink>
         </ExternalLink>
       </Box>
-      {isAdmin && (
+      {canAddDatabase || canUpload ? (
         <Box px="xl" pb="md" className={cx({ [CS.borderTop]: initialState })}>
           {initialState && (
             <Text
@@ -159,7 +178,7 @@ export function SidebarOnboardingSection({
             </Menu.Dropdown>
           </Menu>
         </Box>
-      )}
+      ) : null}
       {showInfoModal && (
         <UploadInfoModal
           isAdmin={isAdmin}

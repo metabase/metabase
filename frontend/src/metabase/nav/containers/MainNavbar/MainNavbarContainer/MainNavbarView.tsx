@@ -183,6 +183,7 @@ export function MainNavbarView({
         </div>
         <WhatsNewNotification />
         <SidebarOnboardingSection
+          collections={collections}
           hasOwnDatabase={hasOwnDatabase}
           isAdmin={isAdmin}
         />
