@@ -12,7 +12,7 @@ import {
   getVersionFromReleaseBranch,
   getVersionType,
   isEnterpriseVersion,
-  isRCVersion,
+  isPreReleaseVersion,
   isValidVersionString,
   versionSort,
 } from "./version-helpers";
@@ -22,16 +22,20 @@ describe("version-helpers", () => {
     const validCases = [
       "v0.75.2.3",
       "v1.75.2.3",
-      "v0.75.0-RC1",
-      "v1.75.0-RC2",
-      "v0.45.0-rc99",
-      "v1.45.0-RC99",
-      "v0.75.0-rc0",
+      "v0.75.0-RC",
+      "v1.75.0-RC",
+      "v0.45.0-rc",
+      "v1.45.0-RC",
+      "v0.75.0-rc",
+      "v1.75.0-beta",
+      "v0.75.0-alpha",
       "v0.75.2",
       "v1.11.0",
       "v1.75.0",
       "v1.75.2",
       "v1.9.0",
+      "v1.25.2.3-rc4", // legacy RC format
+      "v0.11.0-RC7", // legacy RC format
     ];
 
     validCases.forEach(input => {
@@ -53,7 +57,6 @@ describe("version-helpers", () => {
       "v2.75.2.3",
       "v0.25.foo",
       "v0.25.2-mrc2",
-      "v0.25.2-rc",
       "v1.2.3.-rc4.56",
       "v0.12.0-test",
       "v0.12.0-migration",
@@ -61,6 +64,7 @@ describe("version-helpers", () => {
       "v20150601-alpha",
       "v1.9", // require .0 for major releases
       "v0.11",
+      "v0.11-RC7",
     ];
 
     invalidCases.forEach(input => {
@@ -70,7 +74,7 @@ describe("version-helpers", () => {
     });
 
     it("should recognize RC versions as valid", () => {
-      const cases = ["v0.75.0-RC1", "v1.75.0-RC2", "v0.3.4-rc3"];
+      const cases = ["v0.75.0-RC", "v0.75.0-rc", "v1.75.0-beta", "v0.3.4-alpha"];
 
       cases.forEach(input => {
         expect(isValidVersionString(input)).toEqual(true);
@@ -129,22 +133,34 @@ describe("version-helpers", () => {
     });
   });
 
-  describe("isRCVersion", () => {
+  describe("isPreReleaseVersion", () => {
     it("should correctly identify RC version numbers", () => {
-      ["v0.75.0-RC1", "v1.75.0-RC2", "v0.75.2.9.7-rc3"].forEach(input => {
-        expect(isRCVersion(input)).toEqual(true);
+      ["v0.75.0-RC", "v1.75.0-RC", "v0.75.2.9.7-rc"].forEach(input => {
+        expect(isPreReleaseVersion(input)).toEqual(true);
+      });
+    });
+
+    it("should correctly identify alpha version numbers", () => {
+      ["v0.75.0-alpha", "v1.75.0-alpha", "v0.75.2.9.7-alpha"].forEach(input => {
+        expect(isPreReleaseVersion(input)).toEqual(true);
+      });
+    });
+
+    it("should correctly identify beta version numbers", () => {
+      ["v0.75.0-beta", "v1.75.0-beta", "v0.75.2.9.7-beta"].forEach(input => {
+        expect(isPreReleaseVersion(input)).toEqual(true);
       });
     });
 
     it("should correctly identify non-RC version numbers", () => {
       ["v0.75", "v1.2"].forEach(input => {
-        expect(isRCVersion(input)).toEqual(false);
+        expect(isPreReleaseVersion(input)).toEqual(false);
       });
     });
 
     it("should return false for invalid versions", () => {
       ["123", "foo", "rc", "parc", "v9.9-rc2"].forEach(input => {
-        expect(isRCVersion(input)).toEqual(false);
+        expect(isPreReleaseVersion(input)).toEqual(false);
       });
     });
   });
@@ -156,8 +172,11 @@ describe("version-helpers", () => {
       ["v0.25.2", "minor"],
       ["v1.25.2.3", "patch"],
       ["v1.25.0.3", "patch"],
-      ["v0.75.0-rc1", "rc"],
-      ["v1.75.0-RC2", "rc"],
+      ["v0.75.0-rc1", "major"],
+      ["v1.75.0-RC2", "major"],
+      ["v1.75.0-beta", "major"],
+      ["v1.75.2-alpha", "minor"],
+      ["v1.75.0.1-alpha", "patch"],
     ];
 
     cases.forEach(([input, expected]) => {
@@ -368,6 +387,9 @@ describe("version-helpers", () => {
       ["v1.50.0", "0.50"],
       ["v1.50.0-rc1", "0.50"],
       ["v1.50.0-RC1", "0.50"],
+      ["v1.50.0-beta", "0.50"],
+      ["v1.50.0-alpha", "0.50"],
+      ["v1.50.1.1-alpha", "0.50.1"],
       ["v0.50.1", "0.50.1"],
       ["v1.50.1", "0.50.1"],
     ])("%s -> %s", (input, expected) => {
@@ -404,9 +426,9 @@ describe("version-helpers", () => {
         { ref: 'refs/tags/v0.11.2' },
         { ref: 'refs/tags/v0.12.2' },
         { ref: 'refs/tags/v0.12.1' },
-        { ref: 'refs/tags/v0.12.2.0' },
+        { ref: 'refs/tags/v0.12.2.1' },
         { ref: 'refs/tags/v0.12.2.3' },
-        { ref: 'refs/tags/v0.12.2.2' },
+        { ref: 'refs/tags/v0.12.3.2-beta' },
       ] as Tag[], ignorePatches: true });
       expect(latest).toBe('v0.12.2');
     });
@@ -420,11 +442,12 @@ describe("version-helpers", () => {
       expect(latest).toBe('v0.13.0');
     });
 
-    it('should ignore release candidates', () => {
+    it('should not ignore pre releases', () => {
       const latest = getLastReleaseFromTags({ tags: [
         { ref: 'refs/tags/v0.12.0' },
-        { ref: 'refs/tags/v0.12.2-RC99' },
         { ref: 'refs/tags/v0.12.1' },
+        { ref: 'refs/tags/v0.12.2-RC99' },
+        { ref: 'refs/tags/v0.12.1-beta' },
       ] as Tag[]});
       expect(latest).toBe('v0.12.1');
     });
@@ -509,6 +532,10 @@ describe("version-helpers", () => {
       ["v1.50.1.2", "v0.50.1.3"],
       ["v1.50.9.21", "v0.50.9.22"],
       ["v1.50.9.99", "v0.50.9.100"],
+      ["v1.50.2-beta", "v0.50.2.1-beta"],
+      ["v1.50.0-beta", "v0.50.0.1-beta"],
+      ["v1.50.9.99-alpha", "v0.50.9.100-alpha"],
+      ["v1.50.1.3-RC", "v0.50.1.4-RC"],
     ])("%s -> %s", (input, expected) => {
       expect(findNextPatchVersion(input)).toBe(expected);
     });
@@ -516,11 +543,11 @@ describe("version-helpers", () => {
     it("should throw an error for invalid versions", () => {
       expect(() => findNextPatchVersion("foo")).toThrow();
       expect(() => findNextPatchVersion("v2.75")).toThrow();
-    });
-
-    it("should throw an error for RC versions", () => {
-      expect(() => findNextPatchVersion("v0.75-RC2")).toThrow();
-      expect(() => findNextPatchVersion("v1.75.0-RC1")).toThrow();
+      expect(() => findNextPatchVersion("v0.75.0-gamma")).toThrow();
+      expect(() => findNextPatchVersion("v0.75")).toThrow();
+      expect(() => findNextPatchVersion("v0.75.f")).toThrow();
+      expect(() => findNextPatchVersion("v0.75.1.f")).toThrow();
+      expect(() => findNextPatchVersion("v0.75.1.2.f")).toThrow();
     });
   });
 });

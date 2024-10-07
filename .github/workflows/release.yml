@@ -773,12 +773,12 @@ jobs:
       uses: actions/github-script@v7
       with:
         script: | # js
-          const { closeMilestone, openNextMilestones, isRCVersion } = require('${{ github.workspace }}/release/dist/index.cjs');
+          const { closeMilestone, openNextMilestones, isPreReleaseVersion } = require('${{ github.workspace }}/release/dist/index.cjs');
 
           const version = '${{ inputs.version }}';
 
-          if (isRCVersion(version)) {
-            console.log("This is a release candidate, skipping milestone management");
+          if (isPreReleaseVersion(version)) {
+            console.log("This is a prerelease version, skipping milestone management");
             return;
           }
 
