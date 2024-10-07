@@ -10,14 +10,14 @@ export const PlanDisplay = ({ plan }) => {
             <p><strong>Description:</strong> {plan.description}</p>
             <p><strong>Expected Insight:</strong> {plan.expectedInsight}</p>
             
-            {/* <div style={styles.section}>
-              <h4>Columns:</h4>
+            <div style={styles.section}>
+              <h4>Data Requirements:</h4>
               <ul>
-                {plan.columns && plan.columns.map((col, idx) => (
-                  <li key={idx}>{col}</li>
+                {plan.dataRequirements && plan.dataRequirements.map((data, idx) => (
+                  <li key={idx}>{data}</li>
                 ))}
               </ul>
-            </div> */}
+            </div>
   
             <div style={styles.section}>
               <h4>Transformations:</h4>
