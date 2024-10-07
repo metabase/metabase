@@ -151,6 +151,7 @@ Metabase's reference documentation.
   - [SAML with Google](./people-and-groups/saml-google.md)
   - [SAML with Keycloak](./people-and-groups/saml-keycloak.md)
   - [SAML with Okta](./people-and-groups/saml-okta.md)
+- [User provisioning with SCIM](./people-and-groups/user-provisioning.md)
 
 ### Permissions
 
