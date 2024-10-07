@@ -185,11 +185,11 @@ describe("series", () => {
           columnIndex: breakoutColumns.metric.index,
           dataKey: "2:count:type1",
           legacySeriesSettingsObjectKey: {
-            card: { _seriesKey: "formatted: type1" },
+            card: { _seriesKey: "type1" },
           },
-          name: "formatted: type1",
+          name: "type1",
           tooltipName: breakoutColumns.metric.column.display_name,
-          vizSettingsKey: "formatted: type1",
+          vizSettingsKey: "type1",
         });
         expect(result[1]).toMatchObject({
           cardId: breakoutSeries.card.id,
@@ -197,11 +197,11 @@ describe("series", () => {
           columnIndex: breakoutColumns.metric.index,
           dataKey: "2:count:type2",
           legacySeriesSettingsObjectKey: {
-            card: { _seriesKey: "formatted: type2" },
+            card: { _seriesKey: "type2" },
           },
-          name: "formatted: type2",
+          name: "type2",
           tooltipName: breakoutColumns.metric.column.display_name,
-          vizSettingsKey: "formatted: type2",
+          vizSettingsKey: "type2",
         });
       });
 
@@ -215,7 +215,7 @@ describe("series", () => {
           [],
           createMockComputedVisualizationSettings({
             series_settings: {
-              "formatted: type2": {
+              type2: {
                 title: "foo",
               },
             },
@@ -225,7 +225,7 @@ describe("series", () => {
         expect(result).toHaveLength(2);
         expect(result[0]).toMatchObject({
           dataKey: "2:count:type1",
-          name: "formatted: type1",
+          name: "type1",
           tooltipName: breakoutColumns.metric.column.display_name,
         });
         expect(result[1]).toMatchObject({
@@ -302,11 +302,11 @@ describe("series", () => {
           columnIndex: breakoutColumns.metric.index,
           dataKey: "2:count:type1",
           legacySeriesSettingsObjectKey: {
-            card: { _seriesKey: "breakout card: formatted: type1" },
+            card: { _seriesKey: "breakout card: type1" },
           },
-          name: "breakout card: formatted: type1",
+          name: "breakout card: type1",
           tooltipName: breakoutColumns.metric.column.display_name,
-          vizSettingsKey: "breakout card: formatted: type1",
+          vizSettingsKey: "breakout card: type1",
         });
         expect(result[2]).toMatchObject({
           cardId: breakoutSeries.card.id,
@@ -314,11 +314,11 @@ describe("series", () => {
           columnIndex: breakoutColumns.metric.index,
           dataKey: "2:count:type2",
           legacySeriesSettingsObjectKey: {
-            card: { _seriesKey: "breakout card: formatted: type2" },
+            card: { _seriesKey: "breakout card: type2" },
           },
-          name: "breakout card: formatted: type2",
+          name: "breakout card: type2",
           tooltipName: breakoutColumns.metric.column.display_name,
-          vizSettingsKey: "breakout card: formatted: type2",
+          vizSettingsKey: "breakout card: type2",
         });
       });
 
@@ -332,7 +332,7 @@ describe("series", () => {
               [metricColumns.metrics[0].column.name]: {
                 title: "foo",
               },
-              "breakout card: formatted: type2": {
+              "breakout card: type2": {
                 title: "bar",
               },
             },
@@ -347,7 +347,7 @@ describe("series", () => {
         });
         expect(result[1]).toMatchObject({
           dataKey: "2:count:type1",
-          name: "breakout card: formatted: type1",
+          name: "breakout card: type1",
           tooltipName: breakoutColumns.metric.column.display_name,
         });
         expect(result[2]).toMatchObject({
