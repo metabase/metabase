@@ -547,7 +547,6 @@ describe("AddToDashSelectDashModal", () => {
         typedText,
       );
 
-      await userEvent.click(await screen.findByText("Everywhere"));
       await waitForLoaderToBeRemoved();
       await screen.findAllByTestId("result-item");
 
@@ -578,7 +577,6 @@ describe("AddToDashSelectDashModal", () => {
         typedText,
       );
 
-      await userEvent.click(await screen.findByText("Everywhere"));
       await waitForLoaderToBeRemoved();
       await screen.findAllByTestId("result-item");
 
