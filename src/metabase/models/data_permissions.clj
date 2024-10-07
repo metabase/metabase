@@ -453,8 +453,10 @@
       (or (coalesce perm-type perm-values)
           (least-permissive-value perm-type)))))
 
-(mu/defn native-download-permission-for-user :- PermissionValue
-  "Returns the effective download permission value for a given user and database ID, for native queries on the database.
+(mu/defn fallback-native-download-permission-for-user :- PermissionValue
+  "Returns the download permission value to use for native queries, if we don't have information available about the
+  tables referenced by the native query.
+
   For each group, the native download permission for a database is equal to the lowest permission level of any table in
   the database."
   [user-id database-id]

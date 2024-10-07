@@ -287,7 +287,7 @@
       {:perms/create-queries {1 :query-builder}})
   => {:perms/create-queries :query-builder-and-native}
 
-  WARNING: This technically returns an incorrect result if the *database* perm is less restrictive than the *table* perm:
+  WARNING: This technically returns an incorrect result if the *database* perm is more restrictive than the *table* perm:
 
   => (merge-perms
       {:perms/create-queries :query-builder}
