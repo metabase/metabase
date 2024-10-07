@@ -159,12 +159,11 @@ module.exports = env => {
               .filter(
                 module =>
                   module.type !== "hidden modules" &&
-                  module.moduleType !== "runtime",
+                  module.moduleType !== "runtime" &&
+                  module.nameForCondition != null,
               )
-              .map(
-                module =>
-                  module?.nameForCondition?.replace(`${__dirname}/`, "") ??
-                  null,
+              .map(module =>
+                module.nameForCondition.replace(`${__dirname}/`, ""),
               ),
           }),
       }),
