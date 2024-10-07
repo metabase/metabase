@@ -69,6 +69,8 @@ export const DEFAULT_RECENTS_CONTEXT: RecentContexts[] = [
   "views",
 ];
 
+const DEFAULT_SEARCH_RESULT_FILTER = (results: SearchResult[]) => results;
+
 export interface EntityPickerModalProps<
   Id extends SearchResultId,
   Model extends string,
@@ -108,7 +110,7 @@ export function EntityPickerModal<
   tabs: passedTabs,
   options,
   actionButtons = [],
-  searchResultFilter,
+  searchResultFilter = DEFAULT_SEARCH_RESULT_FILTER,
   recentFilter,
   trapFocus = true,
   searchParams,
@@ -180,14 +182,12 @@ export function EntityPickerModal<
       if (!scopedSearchResults) {
         return null;
       }
-      return searchResultFilter
-        ? searchResultFilter(scopedSearchResults as SearchResult[])
-        : scopedSearchResults;
+      return searchResultFilter(scopedSearchResults as SearchResult[]);
     } else {
       if (isFetching || !data) {
         return null;
       }
-      return searchResultFilter ? searchResultFilter(data.data) : data.data;
+      return searchResultFilter(data.data);
     }
   }, [searchScope, scopedSearchResults, isFetching, data, searchResultFilter]);
 
