@@ -1196,7 +1196,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
         it.skip("1st stage implicit join (joined data source)", () => {
           setup1stStageImplicitJoinFromJoinFilter();
 
-          // TODO: add assertions once the issue is fixed (for all cards)
+          // TODO: add assertions once the issue is fixed (for 2 dashcards)
           getDashboardCard(0)
             .findByTestId("cell-data")
             .should("have.text", "4,292");
@@ -1214,7 +1214,15 @@ describe("scenarios > dashboard > filters > query stages", () => {
             .should("have.text", "688");
           getDashboardCard(0).findByTestId("legend-caption-title").click();
           cy.wait("@dataset");
+          cy.findAllByTestId("cell-data").last().should("have.text", "688");
 
+          goBackToDashboard();
+
+          getDashboardCard(1)
+            .findByTestId("cell-data")
+            .should("have.text", "688");
+          getDashboardCard(1).findByTestId("legend-caption-title").click();
+          cy.wait("@dataset");
           cy.findAllByTestId("cell-data").last().should("have.text", "688");
         });
 
@@ -1226,11 +1234,20 @@ describe("scenarios > dashboard > filters > query stages", () => {
             .should("have.text", "3");
           getDashboardCard(0).findByTestId("legend-caption-title").click();
           cy.wait("@dataset");
+          cy.findAllByTestId("cell-data").last().should("have.text", "3");
 
+          goBackToDashboard();
+
+          getDashboardCard(1)
+            .findByTestId("cell-data")
+            .should("have.text", "3");
+          getDashboardCard(1).findByTestId("legend-caption-title").click();
+          cy.wait("@dataset");
           cy.findAllByTestId("cell-data").last().should("have.text", "3");
         });
 
-        it("1st stage breakout", () => {
+        // TODO: https://github.com/metabase/metabase/issues/46774
+        it.skip("1st stage breakout", () => {
           setup1stStageBreakoutFilter();
 
           getDashboardCard(0)
@@ -1238,7 +1255,15 @@ describe("scenarios > dashboard > filters > query stages", () => {
             .should("have.text", "1,077");
           getDashboardCard(0).findByTestId("legend-caption-title").click();
           cy.wait("@dataset");
+          cy.findAllByTestId("cell-data").last().should("have.text", "1,077");
 
+          goBackToDashboard();
+
+          getDashboardCard(1)
+            .findByTestId("cell-data")
+            .should("have.text", "1,077");
+          getDashboardCard(1).findByTestId("legend-caption-title").click();
+          cy.wait("@dataset");
           cy.findAllByTestId("cell-data").last().should("have.text", "1,077");
         });
 
@@ -1250,7 +1275,15 @@ describe("scenarios > dashboard > filters > query stages", () => {
             .should("have.text", "4");
           getDashboardCard(0).findByTestId("legend-caption-title").click();
           cy.wait("@dataset");
+          cy.findAllByTestId("cell-data").last().should("have.text", "4");
 
+          goBackToDashboard();
+
+          getDashboardCard(1)
+            .findByTestId("cell-data")
+            .should("have.text", "4");
+          getDashboardCard(1).findByTestId("legend-caption-title").click();
+          cy.wait("@dataset");
           cy.findAllByTestId("cell-data").last().should("have.text", "4");
         });
 
@@ -1262,7 +1295,15 @@ describe("scenarios > dashboard > filters > query stages", () => {
             .should("have.text", "31");
           getDashboardCard(0).findByTestId("legend-caption-title").click();
           cy.wait("@dataset");
+          cy.findAllByTestId("cell-data").last().should("have.text", "31");
 
+          goBackToDashboard();
+
+          getDashboardCard(1)
+            .findByTestId("cell-data")
+            .should("have.text", "31");
+          getDashboardCard(1).findByTestId("legend-caption-title").click();
+          cy.wait("@dataset");
           cy.findAllByTestId("cell-data").last().should("have.text", "31");
         });
 
@@ -1274,7 +1315,15 @@ describe("scenarios > dashboard > filters > query stages", () => {
             .should("have.text", "6");
           getDashboardCard(0).findByTestId("legend-caption-title").click();
           cy.wait("@dataset");
+          cy.findAllByTestId("cell-data").last().should("have.text", "6");
 
+          goBackToDashboard();
+
+          getDashboardCard(1)
+            .findByTestId("cell-data")
+            .should("have.text", "6");
+          getDashboardCard(1).findByTestId("legend-caption-title").click();
+          cy.wait("@dataset");
           cy.findAllByTestId("cell-data").last().should("have.text", "6");
         });
 
@@ -1286,7 +1335,15 @@ describe("scenarios > dashboard > filters > query stages", () => {
             .should("have.text", "1,077");
           getDashboardCard(0).findByTestId("legend-caption-title").click();
           cy.wait("@dataset");
+          cy.findAllByTestId("cell-data").last().should("have.text", "1,077");
 
+          goBackToDashboard();
+
+          getDashboardCard(1)
+            .findByTestId("cell-data")
+            .should("have.text", "1,077");
+          getDashboardCard(1).findByTestId("legend-caption-title").click();
+          cy.wait("@dataset");
           cy.findAllByTestId("cell-data").last().should("have.text", "1,077");
         });
 
@@ -1695,6 +1752,11 @@ function setup1stStageCustomColumnFilter() {
     getPopoverItem("Net").click();
   });
 
+  getDashboardCard(1).findByText("Select…").click();
+  popover().within(() => {
+    getPopoverItem("Net").click();
+  });
+
   cy.button("Save").click();
   cy.wait("@updateDashboard");
 
@@ -1715,6 +1777,12 @@ function setup1stStageAggregationFilter() {
   popover().findByText("Between").click();
 
   getDashboardCard(0).findByText("Select…").click();
+  popover().within(() => {
+    getPopoverList().scrollTo("bottom");
+    getPopoverItem("Count").click();
+  });
+
+  getDashboardCard(1).findByText("Select…").click();
   popover().within(() => {
     getPopoverList().scrollTo("bottom");
     getPopoverItem("Count").click();
@@ -1743,6 +1811,12 @@ function setup1stStageBreakoutFilter() {
     getPopoverItem("Category", 1).click();
   });
 
+  getDashboardCard(1).findByText("Select…").click();
+  popover().within(() => {
+    getPopoverList().scrollTo("bottom");
+    getPopoverItem("Category", 1).click();
+  });
+
   cy.button("Save").click();
   cy.wait("@updateDashboard");
 
@@ -1760,6 +1834,11 @@ function setup2ndStageExplicitJoinFilter() {
   getFilter("Text").click();
 
   getDashboardCard(0).findByText("Select…").click();
+  popover().within(() => {
+    getPopoverItem("Reviewer", 1).click();
+  });
+
+  getDashboardCard(1).findByText("Select…").click();
   popover().within(() => {
     getPopoverItem("Reviewer", 1).click();
   });
@@ -1783,6 +1862,12 @@ function setup2ndStageCustomColumnFilter() {
   popover().findByText("Between").click();
 
   getDashboardCard(0).findByText("Select…").click();
+  popover().within(() => {
+    getPopoverList().scrollTo("bottom");
+    getPopoverItem("5 * Count").click();
+  });
+
+  getDashboardCard(1).findByText("Select…").click();
   popover().within(() => {
     getPopoverList().scrollTo("bottom");
     getPopoverItem("5 * Count").click();
@@ -1813,6 +1898,12 @@ function setup2ndStageAggregationFilter() {
     getPopoverItem("Count", 1).click();
   });
 
+  getDashboardCard(1).findByText("Select…").click();
+  popover().within(() => {
+    getPopoverList().scrollTo("bottom");
+    getPopoverItem("Count", 1).click();
+  });
+
   cy.button("Save").click();
   cy.wait("@updateDashboard");
 
@@ -1831,6 +1922,12 @@ function setup2ndStageBreakoutFilter() {
   getFilter("Text").click();
 
   getDashboardCard(0).findByText("Select…").click();
+  popover().within(() => {
+    getPopoverList().scrollTo("bottom");
+    getPopoverItem("Category", 2).click();
+  });
+
+  getDashboardCard(1).findByText("Select…").click();
   popover().within(() => {
     getPopoverList().scrollTo("bottom");
     getPopoverItem("Category", 2).click();
