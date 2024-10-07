@@ -1,3 +1,4 @@
+import fetchMock from "fetch-mock";
 import { Route } from "react-router";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
@@ -12,7 +13,7 @@ import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
 import { getMetadata } from "metabase/selectors/metadata";
-import type { Card, Settings } from "metabase-types/api";
+import type { Card, Settings, User } from "metabase-types/api";
 import {
   createMockCard,
   createMockSettings,
@@ -27,18 +28,25 @@ export interface SetupOpts {
   card?: Card;
   settings?: Settings;
   hasEnterprisePlugins?: boolean;
+  user?: Partial<User>;
 }
 
 export const setup = async ({
   card = createMockCard(),
   settings = createMockSettings(),
+  user,
   hasEnterprisePlugins,
 }: SetupOpts) => {
-  const currentUser = createMockUser();
+  const currentUser = createMockUser(user);
   setupCardEndpoints(card);
   setupUsersEndpoints([currentUser]);
   setupRevisionsEndpoints([]);
   setupPerformanceEndpoints([]);
+
+  fetchMock.get("path:/api/ee/audit-app/user/audit-info", {
+    dashboard_overview: 201,
+    question_overview: 202,
+  });
 
   const state = createMockState({
     currentUser,
