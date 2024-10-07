@@ -1633,3 +1633,27 @@
        :template_id     template-id
        :recipients      [{:type    "notification-recipient/template"
                           :details (json/generate-string {:pattern "{{event-info.user.email}}"})}]}])))
+
+(define-migration CreateSystemNotificationSlackTokenError
+  (let [template-id (t2/insert-returning-pk!
+                     :channel_template
+                     {:name         "Slack Token Error Email template"
+                      :channel_type "channel/email"
+                      :details      (json/generate-string {:type           "email/resource"
+                                                           :subject        "Your Slack connection stopped working"
+                                                           :path           "metabase/email/slack_token_error.mustache"
+                                                           :recipient-type :cc})
+                      :created_at   :%now
+                      :updated_at   :%now})]
+    (create-notification!
+     {:payload_type "notification/system-event"}
+     [{:type            "notification-subscription/system-event"
+       :event_name      "event/slack-token-invalid"}]
+     [{:channel_type    "channel/email"
+       :channel_id      nil
+       :template_id     template-id
+       :recipients      [{:type    "notification-recipient/template"
+                          :details (json/generate-string {:pattern     "{{context.admin-email}}"
+                                                          :is_optional true})}
+                         {:type                 "notification-recipient/group"
+                          :permissions_group_id (t2/select-one-pk :permissions_group :name "Administrators")}]}])))

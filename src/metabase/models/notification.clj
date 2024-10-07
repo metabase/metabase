@@ -183,7 +183,8 @@
     [:notification-recipient/template
      [:map
       [:details                               [:map {:closed true}
-                                               [:pattern :string]]]
+                                               [:pattern                      :string]
+                                               [:is_optional {:optional true} :boolean]]]
       [:user_id              {:optional true} [:fn nil?]]
       [:permissions_group_id {:optional true} [:fn nil?]]]]]])
 

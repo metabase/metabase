@@ -31,8 +31,8 @@
 
 (defn do-with-captured-channel-send!
   [thunk]
-  (let [channel-messages (atom {})]
-    (with-send-notification-sync!
+  (with-send-notification-sync!
+    (let [channel-messages (atom {})]
       (with-redefs
         [channel/send! (fn [channel message]
                          (swap! channel-messages update (:type channel) u/conjv message))]

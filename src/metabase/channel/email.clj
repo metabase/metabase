@@ -122,16 +122,18 @@
 (defn- notification-recipients->emails
   [recipients payload]
   (into [] cat (for [recipient recipients
-                     :let [emails (case (:type recipient)
+                     :let [details (:details recipient)
+                           emails (case (:type recipient)
                                     :notification-recipient/user
                                     [(-> recipient :user :email)]
                                     :notification-recipient/group
                                     (->> recipient :permissions_group :members (map :email))
                                     :notification-recipient/external-email
-                                    [(-> recipient :details :email)]
+                                    [(:email details)]
                                     :notification-recipient/template
-                                    [(-> recipient :details :pattern (channel.params/substitute-params payload))]
+                                    [(not-empty (channel.params/substitute-params (:pattern details) payload :ignore-missing? (:is_optional details)))]
                                     nil)]
+                     :let  [emails (filter some? emails)]
                      :when (seq emails)]
                  emails)))
 
