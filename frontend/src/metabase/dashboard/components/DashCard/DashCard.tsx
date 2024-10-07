@@ -21,6 +21,7 @@ import { isJWT } from "metabase/lib/utils";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { getIsEmbeddingSdk } from "metabase/selectors/embed";
+import { getVisualizationRaw } from "metabase/visualizations";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
 import type { QueryClickActionsMode } from "metabase/visualizations/types";
@@ -260,8 +261,14 @@ function DashCardInner({
     }
   }, [dashcard, dashboard.collection_authority_level]);
 
+  const { supportPreviewing } = getVisualizationRaw(series) ?? {};
+  const isEditingCardContent = supportPreviewing && !isPreviewingCard;
+
   const isEditingDashboardLayout =
-    isEditing && !clickBehaviorSidebarDashcard && !isEditingParameter;
+    isEditing &&
+    !clickBehaviorSidebarDashcard &&
+    !isEditingParameter &&
+    !isEditingCardContent;
 
   const isClickBehaviorSidebarOpen = !!clickBehaviorSidebarDashcard;
   const isEditingDashCardClickBehavior =
