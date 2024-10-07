@@ -41,7 +41,7 @@ if (hasPremiumFeature("official_collections")) {
     if (isRegularCollection(collection)) {
       return [
         {
-          title: t`Make collection official`,
+          title: t`Make official`,
           icon: OFFICIAL_COLLECTION.icon,
           action: () =>
             onUpdate(collection, {

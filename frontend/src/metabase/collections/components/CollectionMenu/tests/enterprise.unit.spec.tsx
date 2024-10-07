@@ -27,8 +27,6 @@ describe("CollectionMenu", () => {
     });
 
     await userEvent.click(getIcon("ellipsis"));
-    expect(
-      screen.queryByText("Make collection official"),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText("Make official")).not.toBeInTheDocument();
   });
 });

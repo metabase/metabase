@@ -107,10 +107,8 @@ describe("QuestionInfoSidebar", () => {
       });
       setup({ card });
 
-      expect(screen.getByText("Our analytics")).toHaveAttribute(
-        "href",
-        "/collection/root",
-      );
+      const link = screen.getByRole("link", { name: "Our analytics" });
+      expect(link).toHaveAttribute("href", "/collection/root");
     });
 
     it("should show source information", () => {

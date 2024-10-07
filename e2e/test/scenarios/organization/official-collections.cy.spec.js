@@ -115,7 +115,7 @@ describeEE("official collections", () => {
         cy.icon("ellipsis").click();
       });
 
-      popover().findByText("Make collection official").should("exist");
+      popover().findByText("Make official").should("exist");
 
       openNewCollectionItemFlowFor("collection");
       cy.findByTestId("new-collection-modal").then(modal => {
@@ -132,7 +132,7 @@ describeEE("official collections", () => {
         cy.icon("ellipsis").should("exist");
         cy.icon("ellipsis").click();
       });
-      popover().findByText("Make collection official").should("exist");
+      popover().findByText("Make official").should("exist");
 
       openNewCollectionItemFlowFor("collection");
       cy.findByTestId("new-collection-modal").then(modal => {
@@ -260,7 +260,7 @@ function changeCollectionTypeTo(type) {
   openCollectionMenu();
   popover().within(() => {
     if (type === "official") {
-      cy.findByText("Make collection official").click();
+      cy.findByText("Make official").click();
     } else {
       cy.findByText("Remove Official badge").click();
     }
@@ -280,7 +280,7 @@ function assertHasCollectionTypeInput() {
 }
 
 function assertNoCollectionTypeOption() {
-  cy.findByText("Make collection official").should("not.exist");
+  cy.findByText("Make official").should("not.exist");
   cy.findByText("Remove Official badge").should("not.exist");
 }
 

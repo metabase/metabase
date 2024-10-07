@@ -146,7 +146,7 @@ describeEE("issue 30235", () => {
       openCollectionMenu();
 
       popover().within(() => {
-        cy.findByText("Make collection official").should("be.visible");
+        cy.findByText("Make official").should("be.visible");
         cy.findByText("Edit permissions").should("be.visible");
       });
     });

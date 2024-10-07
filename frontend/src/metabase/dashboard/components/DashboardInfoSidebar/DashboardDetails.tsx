@@ -3,12 +3,14 @@ import { useState } from "react";
 import { c, t } from "ttag";
 
 import { skipToken, useGetUserQuery } from "metabase/api";
+import { getCollectionName } from "metabase/collections/utils";
 import { SidesheetCardSection } from "metabase/common/components/Sidesheet";
 import DateTime from "metabase/components/DateTime";
 import Link from "metabase/core/components/Link";
 import Styles from "metabase/css/core/index.css";
-import { collection as collectionUrl } from "metabase/lib/urls";
+import * as Urls from "metabase/lib/urls";
 import { getUserName } from "metabase/lib/user";
+import { PLUGIN_COLLECTION_COMPONENTS } from "metabase/plugins";
 import { DashboardPublicLinkPopover } from "metabase/sharing/components/PublicLinkPopover";
 import { Box, FixedSizeIcon, Flex, Text } from "metabase/ui";
 import type { Dashboard } from "metabase-types/api";
@@ -62,15 +64,18 @@ export const DashboardDetails = ({ dashboard }: { dashboard: Dashboard }) => {
           ).t`Saved in`}
         >
           <Flex gap="sm" align="top">
-            <FixedSizeIcon
-              name="folder"
+            <PLUGIN_COLLECTION_COMPONENTS.CollectionAuthorityLevelIcon
+              collection={dashboard.collection}
               className={SidebarStyles.IconMargin}
-              color="var(--mb-color-brand)"
+              showIconForRegularCollection
             />
             <div>
               <Text>
-                <Link to={collectionUrl(dashboard.collection)} variant="brand">
-                  {dashboard.collection?.name}
+                <Link
+                  to={Urls.collection(dashboard.collection)}
+                  variant="brand"
+                >
+                  {getCollectionName(dashboard.collection)}
                 </Link>
               </Text>
             </div>

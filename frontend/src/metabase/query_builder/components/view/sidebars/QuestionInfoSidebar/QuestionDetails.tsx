@@ -11,6 +11,7 @@ import Styles from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { getUserName } from "metabase/lib/user";
+import { PLUGIN_COLLECTION_COMPONENTS } from "metabase/plugins";
 import { getMetadata } from "metabase/selectors/metadata";
 import { QuestionPublicLinkPopover } from "metabase/sharing/components/PublicLinkPopover";
 import { Box, Flex, FixedSizeIcon as Icon, Text } from "metabase/ui";
@@ -24,6 +25,10 @@ export const QuestionDetails = ({ question }: { question: Question }) => {
   const createdBy = question.getCreator();
   const createdAt = question.getCreatedAt();
   const collection = question.collection();
+
+  const collectionSectionTitle = c(
+    "This is a heading that appears above the name of a collection - a collection that a dashboard is saved in. Feel free to translate this heading as though it said 'Saved in collection', if you think that would make more sense in your language.",
+  ).t`Saved in`;
 
   return (
     <>
@@ -56,23 +61,25 @@ export const QuestionDetails = ({ question }: { question: Question }) => {
           </Flex>
         )}
       </SidesheetCardSection>
-      <SidesheetCardSection title={t`Saved in`}>
-        <Flex gap="sm" align="top" color="var(--mb-color-brand)">
-          <Icon
-            name="folder"
-            color="var(--mb-color-brand)"
-            className={SidebarStyles.IconMargin}
-          />
-          <Text>
-            <Link to={Urls.collection(collection)} variant="brand">
-              {
-                // We need to use getCollectionName or the name of the root collection will not be displayed
-                getCollectionName(collection)
-              }
-            </Link>
-          </Text>
-        </Flex>
-      </SidesheetCardSection>
+      {collection && (
+        <SidesheetCardSection title={collectionSectionTitle}>
+          <Flex gap="sm" align="top" color="var(--mb-color-brand)">
+            <PLUGIN_COLLECTION_COMPONENTS.CollectionAuthorityLevelIcon
+              collection={collection}
+              className={SidebarStyles.IconMargin}
+              showIconForRegularCollection
+            />
+            <Text>
+              <Link to={Urls.collection(collection)} variant="brand">
+                {
+                  // We need to use getCollectionName or the name of the root collection will not be displayed
+                  getCollectionName(collection)
+                }
+              </Link>
+            </Text>
+          </Flex>
+        </SidesheetCardSection>
+      )}
       <SharingDisplay question={question} />
       <SourceDisplay question={question} />
     </>

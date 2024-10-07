@@ -1,7 +1,8 @@
-import { screen } from "__support__/ui";
+import { screen, within } from "__support__/ui";
 import type { Card } from "metabase-types/api";
 import {
   createMockCard,
+  createMockCollection,
   createMockModerationReview,
 } from "metabase-types/api/mocks";
 
@@ -38,5 +39,23 @@ describe("QuestionInfoSidebar > enterprise", () => {
       expect(screen.queryByText("Entity ID")).not.toBeInTheDocument();
       expect(screen.queryByText("jenny8675309")).not.toBeInTheDocument();
     });
+  });
+
+  it("should show collection without icon even if collection is official", async () => {
+    const card = createMockCard({
+      collection: createMockCollection({
+        name: "My little collection",
+        authority_level: "official",
+      }),
+    });
+    await setupEnterprise({ card });
+
+    const collectionSection = await screen.findByLabelText("Saved in");
+    expect(
+      within(collectionSection).getByText("My little collection"),
+    ).toBeInTheDocument();
+    expect(
+      within(collectionSection).queryByTestId("official-collection-marker"),
+    ).not.toBeInTheDocument();
   });
 });

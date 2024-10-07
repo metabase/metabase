@@ -1,4 +1,4 @@
-import { screen } from "__support__/ui";
+import { screen, within } from "__support__/ui";
 import type { Card } from "metabase-types/api";
 import {
   createMockCard,
@@ -11,7 +11,7 @@ import {
 import type { SetupOpts } from "./setup";
 import { setup } from "./setup";
 
-const setupEnterprise = (opts: SetupOpts) => {
+const setupPremium = (opts: SetupOpts) => {
   return setup({
     ...opts,
     settings: createMockSettings({
@@ -20,6 +20,7 @@ const setupEnterprise = (opts: SetupOpts) => {
         cache_granular_controls: true,
         serialization: true,
         audit_app: true,
+        official_collections: true,
       }),
     }),
     hasEnterprisePlugins: true,
@@ -34,20 +35,20 @@ describe("QuestionInfoSidebar > premium", () => {
           createMockModerationReview({ status: "verified" }),
         ],
       });
-      await setupEnterprise({ card });
+      await setupPremium({ card });
       expect(screen.getByText(/verified this/)).toBeInTheDocument();
     });
 
     it("should not show the verification badge for unverified content", async () => {
       const card = createMockCard();
-      await setupEnterprise({ card });
+      await setupPremium({ card });
       expect(screen.queryByText(/verified this/)).not.toBeInTheDocument();
     });
   });
 
   describe("analytics content", () => {
     it("should show the history section for non analytics content", async () => {
-      await setupEnterprise({
+      await setupPremium({
         card: createMockCard({
           collection: createMockCollection(),
         }),
@@ -62,7 +63,7 @@ describe("QuestionInfoSidebar > premium", () => {
       const card = createMockCard({
         entity_id: "jenny8675309" as Card["entity_id"],
       });
-      await setupEnterprise({ card });
+      await setup({ card });
 
       expect(screen.getByText("Entity ID")).toBeInTheDocument();
       expect(screen.getByText("jenny8675309")).toBeInTheDocument();
@@ -70,12 +71,30 @@ describe("QuestionInfoSidebar > premium", () => {
   });
 
   it("should not show the history section for instance analytics question", async () => {
-    await setupEnterprise({
+    await setupPremium({
       card: createMockCard({
         collection: createMockCollection({ type: "instance-analytics" }),
       }),
     });
 
     expect(screen.queryByText("History")).not.toBeInTheDocument();
+  });
+
+  it("should show collection with icon if collection is official", async () => {
+    const card = createMockCard({
+      collection: createMockCollection({
+        name: "My little collection",
+        authority_level: "official",
+      }),
+    });
+    await setupPremium({ card });
+
+    const collectionSection = await screen.findByLabelText("Saved in");
+    expect(
+      within(collectionSection).getByText("My little collection"),
+    ).toBeInTheDocument();
+    expect(
+      within(collectionSection).getByTestId("official-collection-marker"),
+    ).toBeInTheDocument();
   });
 });
