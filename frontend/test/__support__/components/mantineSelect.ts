@@ -2,8 +2,8 @@ import userEvent from "@testing-library/user-event";
 
 import { screen, within } from "__support__/ui";
 
-/** Get the options of a Mantine <Select> component */
-export const getMantineSelectOptions = async ({
+/** Click a Mantine <Select> component, view its options, and return info about them */
+export const viewMantineSelectOptions = async ({
   within: withinElement,
 }: {
   within?: HTMLElement;
@@ -19,8 +19,6 @@ export const getMantineSelectOptions = async ({
 
   await userEvent.click(displayedOption);
 
-  // After the displayed option is clicked, a listbox should appear containing
-  // all - and only - the expected options
   const listbox = await screen.findByRole("listbox");
   const optionElements = await within(listbox).findAllByRole("option");
   const optionTextContents = optionElements.map(option => option.textContent);
