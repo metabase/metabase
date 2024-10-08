@@ -112,6 +112,8 @@ export interface VersionInfoRecord {
 }
 
 export interface VersionInfo {
+  nightly?: VersionInfoRecord;
+  beta?: VersionInfoRecord;
   latest?: VersionInfoRecord;
   older?: VersionInfoRecord[];
 }
@@ -162,6 +164,7 @@ export const tokenFeatures = [
   "sso_saml",
   "session_timeout_config",
   "whitelabel",
+  "serialization",
   "dashboard_subscription_filters",
   "snippet_collections",
   "email_allow_list",
@@ -187,7 +190,10 @@ export interface SettingDefinition<Key extends SettingKey = SettingKey> {
   is_env_setting?: boolean;
   value?: SettingValue<Key>;
   default?: SettingValue<Key>;
+  description?: string;
 }
+
+export type UpdateChannel = "latest" | "beta" | "nightly";
 
 export interface OpenAiModel {
   id: string;
@@ -263,7 +269,6 @@ interface AdminSettings {
   "setup-license-active-at-setup": boolean;
   "store-url": string;
 }
-
 interface SettingsManagerSettings {
   "bcc-enabled?": boolean;
   "ee-openai-api-key"?: string;
@@ -287,6 +292,7 @@ interface PublicSettings {
   "application-name": string;
   "available-fonts": string[];
   "available-locales": LocaleData[] | null;
+  "check-for-updates": boolean;
   "cloud-gateway-ips": string[] | null;
   "custom-formatting": FormattingSettings;
   "custom-homepage": boolean;
@@ -329,6 +335,7 @@ interface PublicSettings {
   "snowplow-url": string;
   "start-of-week": DayOfWeekId;
   "token-features": TokenFeatures;
+  "update-channel": UpdateChannel;
   version: Version;
   "version-info-last-checked": string | null;
 }

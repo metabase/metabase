@@ -1,4 +1,4 @@
-(ns metabase.driver.bigquery-cloud-sdk-test
+(ns ^:mb/driver-tests metabase.driver.bigquery-cloud-sdk-test
   (:require
    [cheshire.core :as json]
    [clojure.core.async :as a]

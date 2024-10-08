@@ -12,7 +12,7 @@ const DEFAULT_DATE = new Date("2024-09-27");
 
 const user = userEvent.setup({ delay: null });
 
-const setup = ({ versionTag = "v0.51.0-RC" } = {}) => {
+const setup = ({ versionTag = "v0.51.0-beta" } = {}) => {
   renderWithProviders(<SwagButton />, {
     storeInitialState: {
       currentUser: createMockUser({
@@ -27,7 +27,7 @@ const setup = ({ versionTag = "v0.51.0-RC" } = {}) => {
   });
 };
 
-it("should render a button when date is below threshold and version includes RC", () => {
+it("should render a button when date is below threshold and version includes beta", () => {
   jest.useFakeTimers({
     now: DEFAULT_DATE,
   });

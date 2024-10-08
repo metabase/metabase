@@ -3,16 +3,19 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   assertEChartsTooltip,
   chartPathWithFillColor,
+  createQuestionAndDashboard,
   echartsContainer,
   getDraggableElements,
   getNotebookStep,
   leftSidebar,
+  main,
   moveDnDKitElement,
   openNotebook,
   pieSlices,
   popover,
   restore,
   tableHeaderClick,
+  visitDashboard,
   visitQuestionAdhoc,
   visualize,
 } from "e2e/support/helpers";
@@ -359,7 +362,7 @@ describe("scenarios > visualizations > pie chart", () => {
     );
   });
 
-  it("should handle hover and click actions correctly", () => {
+  it("should handle hover and drill throughs correctly", () => {
     visitQuestionAdhoc({
       dataset_query: twoRingQuery,
       display: "pie",
@@ -392,36 +395,43 @@ describe("scenarios > visualizations > pie chart", () => {
           color: "#51528D",
           name: "Saturday",
           value: "2,747",
+          secondaryValue: "14.64 %",
         },
         {
           color: "#ED8535",
           name: "Thursday",
           value: "2,698",
+          secondaryValue: "14.38 %",
         },
         {
           color: "#E75454",
           name: "Tuesday",
           value: "2,695",
+          secondaryValue: "14.37 %",
         },
         {
           color: "#689636",
           name: "Sunday",
           value: "2,671",
+          secondaryValue: "14.24 %",
         },
         {
           color: "#8A5EB0",
           name: "Monday",
           value: "2,664",
+          secondaryValue: "14.20 %",
         },
         {
           color: "#69C8C8",
           name: "Friday",
           value: "2,662",
+          secondaryValue: "14.19 %",
         },
         {
           color: "#F7C41F",
           name: "Wednesday",
           value: "2,623",
+          secondaryValue: "13.98 %",
         },
       ],
     });
@@ -464,18 +474,22 @@ describe("scenarios > visualizations > pie chart", () => {
         {
           name: "Doohickey",
           value: "606",
+          secondaryValue: "22.06 %",
         },
         {
           name: "Gadget",
           value: "740",
+          secondaryValue: "26.94 %",
         },
         {
           name: "Gizmo",
           value: "640",
+          secondaryValue: "23.30 %",
         },
         {
           name: "Widget",
           value: "761",
+          secondaryValue: "27.70 %",
         },
       ],
     });
@@ -489,6 +503,36 @@ describe("scenarios > visualizations > pie chart", () => {
     cy.findByTestId("qb-filters-panel").within(() => {
       cy.findByText("Count is equal to 606").should("be.visible");
     });
+  });
+
+  it("should handle click behavior correctly", () => {
+    createQuestionAndDashboard({
+      questionDetails: {
+        query: threeRingQuery.query,
+        display: "pie",
+        visualization_settings: {
+          click_behavior: {
+            type: "link",
+            linkType: "url",
+            linkTemplate: "question/{{count}}",
+          },
+        },
+      },
+      cardDetails: {
+        size_x: 30,
+        size_y: 15,
+      },
+    }).then(({ body: { dashboard_id } }) => {
+      visitDashboard(dashboard_id);
+    });
+
+    confirmSliceClickBehavior("2025", 6578);
+    confirmSliceClickBehavior("Affiliate", 1270, 0);
+    confirmSliceClickBehavior("Doohickey", 282, 0);
+
+    confirmSliceClickBehavior("2024", 5834);
+    confirmSliceClickBehavior("Organic", 1180, 1);
+    confirmSliceClickBehavior("Gizmo", 354, 8);
   });
 });
 
@@ -545,4 +589,20 @@ function changeRowLimit(from, to) {
   });
 
   visualize();
+}
+
+function confirmSliceClickBehavior(sliceLabel, value, elementIndex) {
+  echartsContainer().within(() => {
+    if (elementIndex == null) {
+      cy.findByText(sliceLabel).click({ force: true });
+    } else {
+      cy.findAllByText(sliceLabel).eq(elementIndex).click({ force: true });
+    }
+  });
+
+  cy.location("pathname").should("eq", `/question/${value}`);
+  main().within(() => {
+    cy.findByText("We're a little lost...");
+  });
+  cy.go("back");
 }

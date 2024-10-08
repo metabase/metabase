@@ -28,7 +28,7 @@ import {
   StaticEmbeddingSettings,
 } from "../components/EmbeddingSettings";
 import SettingsLicense from "../components/SettingsLicense";
-import SettingsUpdatesForm from "../components/SettingsUpdatesForm/SettingsUpdatesForm";
+import { SettingsUpdatesForm } from "../components/SettingsUpdatesForm/SettingsUpdatesForm";
 import { UploadSettings } from "../components/UploadSettings";
 import CustomGeoJSONWidget from "../components/widgets/CustomGeoJSONWidget";
 import FormattingWidget from "../components/widgets/FormattingWidget";
@@ -557,7 +557,8 @@ export const getCurrentVersion = createSelector(
 export const getLatestVersion = createSelector(
   getDerivedSettingValues,
   settings => {
-    return settings["version-info"]?.latest?.version;
+    const updateChannel = settings["update-channel"] ?? "latest";
+    return settings["version-info"]?.[updateChannel]?.version;
   },
 );
 

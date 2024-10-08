@@ -1,4 +1,4 @@
-(ns metabase.query-processor.persistence-test
+(ns ^:mb/driver-tests metabase.query-processor.persistence-test
   (:require
    [clojure.core.async :as a]
    [clojure.string :as str]

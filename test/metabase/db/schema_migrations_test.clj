@@ -1,4 +1,4 @@
-(ns metabase.db.schema-migrations-test
+(ns ^:mb/driver-tests metabase.db.schema-migrations-test
   "Tests for the schema migrations defined in the Liquibase YAML files. The basic idea is:
 
   1. Create a temporary H2/Postgres/MySQL/MariaDB database
