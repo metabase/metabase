@@ -1,0 +1,21 @@
+.root {
+  color: var(--mb-color-text-dark);
+}
+
+.title {
+  font-size: var(--mantine-font-size-xl);
+  font-weight: var(--mantine-heading-font-weight);
+}
+
+.overlay {
+  background-color: color-mix(
+    in hsl,
+    var(--mb-color-bg-black),
+    transparent 40%
+  );
+  padding: 11px;
+}
+
+.content {
+  background-color: var(--mb-color-background);
+}
