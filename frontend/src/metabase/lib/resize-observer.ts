@@ -1,9 +1,13 @@
-import { ResizeObserver } from "@juggle/resize-observer";
+import { ResizeObserver as JuggleResizeObserver } from "@juggle/resize-observer";
 
 type ResizeObserverCallback = (
   entry: ResizeObserverEntry,
   observer: ResizeObserver,
 ) => void;
+
+const ResizeObserver = process.env.IS_EMBEDDING_SDK
+  ? JuggleResizeObserver
+  : window.ResizeObserver;
 
 function createResizeObserver() {
   const callbacksMap: Map<unknown, ResizeObserverCallback[]> = new Map();
