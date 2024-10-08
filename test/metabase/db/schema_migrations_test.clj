@@ -61,7 +61,7 @@
 
 (deftest rollback-after-47-test
   (testing "Migrating to latest version, rolling back to v44, and then migrating up again"
-    (let [changesets-per-filename #(try (->> (jdbc/query (get-conn) ["SELECT FILENAME FROM DATABASECHANGELOG"])
+    (let [changesets-per-filename #(try (->> (jdbc/query (get-conn) ["SELECT filename FROM DATABASECHANGELOG"])
                                              (map :filename)
                                              frequencies)
                                         ;; The table might not exist yet.
