@@ -9506,7 +9506,7 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: v51.2024-09-11T09:06:54
+      id: v52.2024-10-08T09:49:40
       author: johnswanson
       comment: Make `report_card.dashboard_id` a foreign key
       preConditions:
@@ -9524,7 +9524,7 @@ databaseChangeLog:
             onDelete: CASCADE
 
   - changeSet:
-      id: v51.2024-09-11T12:34:05
+      id: v52.2024-10-08T10:12:46
       author: johnswanson
       comment: Add an index for `report_card.dashboard_id`
       rollback: # will be removed with the column
