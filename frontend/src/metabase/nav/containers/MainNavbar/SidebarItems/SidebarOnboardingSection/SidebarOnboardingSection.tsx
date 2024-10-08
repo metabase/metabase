@@ -22,7 +22,7 @@ import {
   type UploadFileProps,
   uploadFile as uploadFileAction,
 } from "metabase/redux/uploads";
-import { getHasDataAccess, getHasOwnDatabase } from "metabase/selectors/data";
+import { getHasOwnDatabase } from "metabase/selectors/data";
 import { getLearnUrl, getSetting } from "metabase/selectors/settings";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Box, Button, Icon, Menu, Stack, Text, Title } from "metabase/ui";
@@ -36,6 +36,7 @@ import type { OnboaringMenuItemProps, SidebarOnboardingProps } from "./types";
 export function SidebarOnboardingSection({
   collections,
   databases,
+  hasDataAccess,
   isAdmin,
 }: SidebarOnboardingProps) {
   const isDatabaseAdded = getHasOwnDatabase(databases);
@@ -110,7 +111,6 @@ export function SidebarOnboardingSection({
     c => c.id === "root" || c.id === null,
   );
   const canCurateRootCollection = rootCollection?.can_write;
-  const hasDataAccess = getHasDataAccess(databases);
   const canUploadToDatabase = databases
     ?.find(db => db.id === uploadDbId)
     ?.canUpload();

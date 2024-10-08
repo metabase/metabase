@@ -186,6 +186,7 @@ export function MainNavbarView({
         <SidebarOnboardingSection
           collections={collections}
           databases={databases}
+          hasDataAccess={hasDataAccess}
           isAdmin={isAdmin}
         />
       </SidebarContentRoot>
