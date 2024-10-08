@@ -23,7 +23,7 @@ const updateChannelSetting = {
     { name: c("describes a software version").t`Beta`, value: "beta" },
     { name: c("describes a software version").t`Nightly`, value: "nightly" },
   ],
-};
+} as const;
 
 export function SettingsUpdatesForm({
   elements,

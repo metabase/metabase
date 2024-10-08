@@ -36,8 +36,6 @@ export function StaticEmbeddingSettings({
 
   function handleToggleStaticEmbedding(value: boolean) {
     updateSetting({ key: "enable-embedding-static" }, value);
-    // TODO: remove before merging integration branch
-    updateSetting({ key: "enable-embedding" }, value);
   }
 
   return (
