@@ -7,10 +7,10 @@ import {
 } from "metabase-types/api/mocks";
 
 import type { SetupOpts } from "./setup";
-import { setup } from "./setup";
+import { setup as baseSetup } from "./setup";
 
-const setupEnterprise = (opts: SetupOpts) => {
-  return setup({
+const setup = (opts: SetupOpts) => {
+  return baseSetup({
     ...opts,
     hasEnterprisePlugins: true,
   });
@@ -24,7 +24,7 @@ describe("QuestionInfoSidebar > enterprise", () => {
           createMockModerationReview({ status: "verified" }),
         ],
       });
-      await setupEnterprise({ card });
+      await setup({ card });
       expect(screen.queryByText(/verified this/)).not.toBeInTheDocument();
     });
   });
@@ -34,7 +34,7 @@ describe("QuestionInfoSidebar > enterprise", () => {
       const card = createMockCard({
         entity_id: "jenny8675309" as Card["entity_id"],
       });
-      await setupEnterprise({ card });
+      await setup({ card });
 
       expect(screen.queryByText("Entity ID")).not.toBeInTheDocument();
       expect(screen.queryByText("jenny8675309")).not.toBeInTheDocument();
@@ -48,7 +48,7 @@ describe("QuestionInfoSidebar > enterprise", () => {
         authority_level: "official",
       }),
     });
-    await setupEnterprise({ card });
+    await setup({ card });
 
     const collectionSection = await screen.findByLabelText("Saved in");
     expect(

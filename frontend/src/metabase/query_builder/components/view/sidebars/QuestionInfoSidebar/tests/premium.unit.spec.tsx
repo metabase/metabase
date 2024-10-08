@@ -9,10 +9,10 @@ import {
 } from "metabase-types/api/mocks";
 
 import type { SetupOpts } from "./setup";
-import { setup } from "./setup";
+import { setup as baseSetup } from "./setup";
 
-const setupPremium = (opts: SetupOpts) => {
-  return setup({
+const setup = (opts: SetupOpts) => {
+  return baseSetup({
     ...opts,
     settings: createMockSettings({
       "token-features": createMockTokenFeatures({
@@ -35,20 +35,20 @@ describe("QuestionInfoSidebar > premium", () => {
           createMockModerationReview({ status: "verified" }),
         ],
       });
-      await setupPremium({ card });
+      await setup({ card });
       expect(screen.getByText(/verified this/)).toBeInTheDocument();
     });
 
     it("should not show the verification badge for unverified content", async () => {
       const card = createMockCard();
-      await setupPremium({ card });
+      await setup({ card });
       expect(screen.queryByText(/verified this/)).not.toBeInTheDocument();
     });
   });
 
   describe("analytics content", () => {
     it("should show the history section for non analytics content", async () => {
-      await setupPremium({
+      await setup({
         card: createMockCard({
           collection: createMockCollection(),
         }),
@@ -71,7 +71,7 @@ describe("QuestionInfoSidebar > premium", () => {
   });
 
   it("should not show the history section for instance analytics question", async () => {
-    await setupPremium({
+    await setup({
       card: createMockCard({
         collection: createMockCollection({ type: "instance-analytics" }),
       }),
@@ -87,7 +87,7 @@ describe("QuestionInfoSidebar > premium", () => {
         authority_level: "official",
       }),
     });
-    await setupPremium({ card });
+    await setup({ card });
 
     const collectionSection = await screen.findByLabelText("Saved in");
     expect(
