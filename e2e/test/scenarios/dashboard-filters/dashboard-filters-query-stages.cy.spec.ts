@@ -796,6 +796,145 @@ describe("scenarios > dashboard > filters > query stages", () => {
           ]);
         }
       });
+
+      describe("applies filter to the the dashcard and allows to drill via dashcard header", () => {
+        it("1st stage explicit join", () => {
+          setup1stStageExplicitJoinFilter();
+
+          verifyDashcardCellValues({
+            dashcardIndex: 0,
+            values: ["1,813", "7,218"],
+          });
+
+          goBackToDashboard();
+
+          verifyDashcardCellValues({
+            dashcardIndex: 1,
+            values: ["1,813", "7,218"],
+          });
+        });
+
+        it("1st stage implicit join (data source)", () => {
+          setup1stStageImplicitJoinFromSourceFilter();
+
+          verifyDashcardCellValues({
+            dashcardIndex: 0,
+            values: ["2,071", "8,252"],
+          });
+
+          goBackToDashboard();
+
+          verifyDashcardCellValues({
+            dashcardIndex: 1,
+            values: ["2,071", "8,252"],
+          });
+        });
+
+        // TODO: https://github.com/metabase/metabase/issues/46774
+        it.skip("1st stage implicit join (joined data source)", () => {
+          setup1stStageImplicitJoinFromJoinFilter();
+
+          verifyDashcardCellValues({
+            dashcardIndex: 0,
+            values: ["4,449", "17,722"],
+          });
+
+          goBackToDashboard();
+
+          verifyDashcardCellValues({
+            dashcardIndex: 1,
+            values: ["4,449", "17,722"],
+          });
+        });
+
+        it("1st stage custom column", () => {
+          setup1stStageCustomColumnFilter();
+
+          verifyDashcardCellValues({
+            dashcardIndex: 0,
+            values: ["971", "3,900"],
+          });
+
+          goBackToDashboard();
+
+          verifyDashcardCellValues({
+            dashcardIndex: 1,
+            values: ["971", "3,900"],
+          });
+        });
+
+        it("1st stage aggregation", () => {
+          setup1stStageAggregationFilter();
+
+          verifyDashcardCellValues({
+            dashcardIndex: 0,
+            values: ["3", "13"],
+          });
+
+          goBackToDashboard();
+
+          verifyDashcardCellValues({
+            dashcardIndex: 1,
+            values: ["3", "13"],
+          });
+        });
+
+        // TODO: https://github.com/metabase/metabase/issues/46774
+        it.skip("1st stage breakout", () => {
+          setup1stStageBreakoutFilter();
+
+          verifyDashcardCellValues({
+            dashcardIndex: 0,
+            values: ["4,449", "17,722"],
+          });
+
+          goBackToDashboard();
+
+          verifyDashcardCellValues({
+            dashcardIndex: 1,
+            values: ["4,449", "17,722"],
+          });
+        });
+
+        it("2nd stage explicit join", () => {
+          setup2ndStageExplicitJoinFilter();
+
+          verifyDashcardCellValues({
+            dashcardIndex: 0,
+            values: ["16", "80"],
+          });
+
+          goBackToDashboard();
+
+          verifyDashcardCellValues({
+            dashcardIndex: 1,
+            values: ["16", "80"],
+          });
+        });
+
+        it("2nd stage custom column", () => {
+          setup2ndStageCustomColumnFilter();
+
+          verifyDashcardCellValues({
+            dashcardIndex: 0,
+            values: ["31", "114"],
+          });
+
+          goBackToDashboard();
+
+          verifyDashcardCellValues({
+            dashcardIndex: 1,
+            values: ["31", "114"],
+          });
+        });
+
+        // TODO: https://github.com/metabase/metabase/issues/48339
+        it.skip("2nd stage aggregation", () => {
+          setup2ndStageAggregationFilter();
+
+          // add assertions
+        });
+      });
     });
 
     describe("Q7 - Q4 + 2nd stage with join, custom column, no aggregations, 2 breakouts", () => {
@@ -1048,7 +1187,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
           });
         });
 
-        // TODO: https://github.com/metabase/metabase/issues/46774
+        // TODO: zhttps://github.com/metabase/metabase/issues/46774
         it.skip("1st stage implicit join (joined data source)", () => {
           setup1stStageImplicitJoinFromJoinFilter();
 
@@ -1258,32 +1397,32 @@ describe("scenarios > dashboard > filters > query stages", () => {
         it("1st stage explicit join", () => {
           setup1stStageExplicitJoinFilter();
 
-          verifyDashcardCellValue({
+          verifyDashcardCellValues({
             dashcardIndex: 0,
-            value: "953",
+            values: ["953"],
           });
 
           goBackToDashboard();
 
-          verifyDashcardCellValue({
+          verifyDashcardCellValues({
             dashcardIndex: 1,
-            value: "953",
+            values: ["953"],
           });
         });
 
         it("1st stage implicit join (data source)", () => {
           setup1stStageImplicitJoinFromSourceFilter();
 
-          verifyDashcardCellValue({
+          verifyDashcardCellValues({
             dashcardIndex: 0,
-            value: "1,044",
+            values: ["1,044"],
           });
 
           goBackToDashboard();
 
-          verifyDashcardCellValue({
+          verifyDashcardCellValues({
             dashcardIndex: 1,
-            value: "1,044",
+            values: ["1,044"],
           });
         });
 
@@ -1291,48 +1430,48 @@ describe("scenarios > dashboard > filters > query stages", () => {
         it.skip("1st stage implicit join (joined data source)", () => {
           setup1stStageImplicitJoinFromJoinFilter();
 
-          verifyDashcardCellValue({
+          verifyDashcardCellValues({
             dashcardIndex: 0,
-            value: "1,077",
+            values: ["1,077"],
           });
 
           goBackToDashboard();
 
-          verifyDashcardCellValue({
+          verifyDashcardCellValues({
             dashcardIndex: 1,
-            value: "1,077",
+            values: ["1,077"],
           });
         });
 
         it("1st stage custom column", () => {
           setup1stStageCustomColumnFilter();
 
-          verifyDashcardCellValue({
+          verifyDashcardCellValues({
             dashcardIndex: 0,
-            value: "688",
+            values: ["688"],
           });
 
           goBackToDashboard();
 
-          verifyDashcardCellValue({
+          verifyDashcardCellValues({
             dashcardIndex: 1,
-            value: "688",
+            values: ["688"],
           });
         });
 
         it("1st stage aggregation", () => {
           setup1stStageAggregationFilter();
 
-          verifyDashcardCellValue({
+          verifyDashcardCellValues({
             dashcardIndex: 0,
-            value: "3",
+            values: ["3"],
           });
 
           goBackToDashboard();
 
-          verifyDashcardCellValue({
+          verifyDashcardCellValues({
             dashcardIndex: 1,
-            value: "3",
+            values: ["3"],
           });
         });
 
@@ -1340,80 +1479,80 @@ describe("scenarios > dashboard > filters > query stages", () => {
         it.skip("1st stage breakout", () => {
           setup1stStageBreakoutFilter();
 
-          verifyDashcardCellValue({
+          verifyDashcardCellValues({
             dashcardIndex: 0,
-            value: "1,077",
+            values: ["1,077"],
           });
 
           goBackToDashboard();
 
-          verifyDashcardCellValue({
+          verifyDashcardCellValues({
             dashcardIndex: 1,
-            value: "1,077",
+            values: ["1,077"],
           });
         });
 
         it("2nd stage explicit join", () => {
           setup2ndStageExplicitJoinFilter();
 
-          verifyDashcardCellValue({
+          verifyDashcardCellValues({
             dashcardIndex: 0,
-            value: "4",
+            values: ["4"],
           });
 
           goBackToDashboard();
 
-          verifyDashcardCellValue({
+          verifyDashcardCellValues({
             dashcardIndex: 1,
-            value: "4",
+            values: ["4"],
           });
         });
 
         it("2nd stage custom column", () => {
           setup2ndStageCustomColumnFilter();
 
-          verifyDashcardCellValue({
+          verifyDashcardCellValues({
             dashcardIndex: 0,
-            value: "31",
+            values: ["31"],
           });
 
           goBackToDashboard();
 
-          verifyDashcardCellValue({
+          verifyDashcardCellValues({
             dashcardIndex: 1,
-            value: "31",
+            values: ["31"],
           });
         });
 
         it("2nd stage aggregation", () => {
           setup2ndStageAggregationFilter();
 
-          verifyDashcardCellValue({
+          verifyDashcardCellValues({
             dashcardIndex: 0,
-            value: "6",
+            values: ["6"],
           });
 
           goBackToDashboard();
 
-          verifyDashcardCellValue({
+          verifyDashcardCellValues({
             dashcardIndex: 1,
-            value: "6",
+            values: ["6"],
           });
         });
 
         it("2nd stage breakout", () => {
           setup2ndStageBreakoutFilter();
 
-          verifyDashcardCellValue({
+          verifyDashcardCellValues({
             dashcardIndex: 0,
-            value: "1,077",
+            values: ["1,077"],
           });
 
           goBackToDashboard();
 
-          verifyDashcardCellValue({
+          verifyDashcardCellValues({
             dashcardIndex: 1,
-            value: "1,077",
+            values: ["1,077"],
           });
         });
 
@@ -2159,17 +2298,30 @@ function verifyDashcardRowsCount({
   cy.findByTestId("question-row-count").should("have.text", queryBuilderCount);
 }
 
-function verifyDashcardCellValue({
+function verifyDashcardCellValues({
   dashcardIndex,
-  value,
+  values,
 }: {
   dashcardIndex: number;
-  value: string;
+  values: string[];
 }) {
-  getDashboardCard(dashcardIndex)
-    .findByTestId("cell-data")
-    .should("have.text", value);
+  for (let valueIndex = 0; valueIndex < values.length; ++valueIndex) {
+    const value = values[valueIndex];
+
+    getDashboardCard(dashcardIndex)
+      .findByTestId("table-row")
+      .findAllByTestId("cell-data")
+      .eq(valueIndex)
+      .should("have.text", value);
+  }
+
   getDashboardCard(dashcardIndex).findByTestId("legend-caption-title").click();
   cy.wait("@dataset");
-  cy.findAllByTestId("cell-data").last().should("have.text", value);
+
+  for (let valueIndex = 0; valueIndex < values.length; ++valueIndex) {
+    const value = values[valueIndex];
+    const cellIndex = valueIndex + values.length; // values.length to skip header row
+
+    cy.findAllByTestId("cell-data").eq(cellIndex).should("have.text", value);
+  }
 }
