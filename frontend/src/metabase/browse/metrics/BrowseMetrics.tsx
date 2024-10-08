@@ -6,9 +6,20 @@ import { skipToken } from "metabase/api";
 import { useFetchMetrics } from "metabase/common/hooks/use-fetch-metrics";
 import EmptyState from "metabase/components/EmptyState";
 import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
+import Link from "metabase/core/components/Link";
 import { useSelector } from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
 import { PLUGIN_CONTENT_VERIFICATION } from "metabase/plugins";
-import { Box, Flex, Group, Icon, Stack, Text, Title } from "metabase/ui";
+import {
+  Box,
+  Button,
+  Flex,
+  Group,
+  Icon,
+  Stack,
+  Text,
+  Title,
+} from "metabase/ui";
 
 import {
   BrowseContainer,
@@ -86,15 +97,29 @@ export function BrowseMetrics() {
 }
 
 function MetricsEmptyState() {
+  const newMetricLink = Urls.newQuestion({
+    mode: "query",
+    cardType: "metric",
+  });
+
   return (
     <Flex align="center" justify="center" mih="70vh">
       <Box maw="25rem">
         <EmptyState
           title={t`Metrics help you summarize and analyze your data effortlessly.`}
           message={
-            <Text mt="sm" maw="25rem">
-              {t`Metrics are like pre-defined calculations: create your aggregations once, save them as metrics, and use them whenever you need to analyze your data.`}
-            </Text>
+            <Box>
+              <Text mt="sm" maw="25rem">
+                {t`Metrics are like pre-defined calculations: create your aggregations once, save them as metrics, and use them whenever you need to analyze your data.`}
+              </Text>
+              <Box pt="md">
+                <Button
+                  component={Link}
+                  to={newMetricLink}
+                  variant="filled"
+                >{t`Create metric`}</Button>
+              </Box>
+            </Box>
           }
           illustrationElement={<img src={NoResults} />}
         />

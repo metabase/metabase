@@ -240,6 +240,7 @@ describe("BrowseMetrics", () => {
         "Metrics help you summarize and analyze your data effortlessly.",
       ),
     ).toBeInTheDocument();
+    expect(await screen.findByText("Create metric")).toBeInTheDocument();
   });
 
   it("displays the Our Analytics collection if it has a metric", async () => {
