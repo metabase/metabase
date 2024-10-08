@@ -8,10 +8,10 @@ title: User provisioning with SCIM
 
 Metabase supports user provisioning via the System for Cross-domain Identity Management (SCIM) protocol. In addition to Single Sign-on (SSO), you can set up user provisioning in Metabase with SCIM to:
 
-- **Decouple authentication from provisioning**. Even though anyone could authenticate with SSO, you may only want some groups to be able to create an account in Metabase.
+- **Decouple authentication from provisioning**. Even though anyone could authenticate with SSO, you may only want some people to be able to create an account in Metabase.
 - **Support deprovisioning user accounts**. If you deactivate someone from your SSO, SCIM can let Metabase know to deactivate their Metabase account as well.
 
-> For now, Metabase supports SCIM for [Okta](https://developer.okta.com/docs/concepts/scim/) and [Microsoft Entra ID](https://learn.microsoft.com/en-us/entra/architecture/sync-scim).
+> For now, Metabase supports SCIM for [Okta](https://developer.okta.com/docs/concepts/scim/) and [Microsoft Entra ID](https://learn.microsoft.com/en-us/entra/architecture/sync-scim). With Okta, Metabase supports user and group provisioning; Okta groups will be created and populated in Metabase. With Entra, Metabase only supports user provisioning (groups aren't created or populated).
 
 ## Setting up user provisioning
 
@@ -21,9 +21,9 @@ Click on the **User provisioning** tab.
 
 ## User provisioning via SCIM
 
-To set up user provisioning with SCIM, hit the toggle to enable it. Metabase will tell you the SCIM endpoint URL and SCIM token to share with your identity provider
+To set up user provisioning with SCIM, hit the toggle to enable it. Metabase will tell you the SCIM endpoint URL and SCIM token to share with your identity provider.
 
-> If you've previously set up user provisioning with SAML, you must turn that off, otherwise Metabase will continue to create accounts for anyone who authenticates via SAML.
+> If you've previously set up user provisioning with SAML, Metabase will turn that setting off and use the SCIM setup instead.
 
 ### SCIM endpoint URL
 
