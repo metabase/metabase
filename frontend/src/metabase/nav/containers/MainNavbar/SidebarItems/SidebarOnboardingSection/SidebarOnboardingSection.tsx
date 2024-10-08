@@ -38,7 +38,8 @@ export function SidebarOnboardingSection({
   databases,
   isAdmin,
 }: SidebarOnboardingProps) {
-  const initialState = !getHasOwnDatabase(databases);
+  const isDatabaseAdded = getHasOwnDatabase(databases);
+  const collapseCTASection = isDatabaseAdded;
 
   const [
     isModelUploadModalOpen,
@@ -164,7 +165,7 @@ export function SidebarOnboardingSection({
       bottom={0}
       pos="sticky"
       bg="bg-white"
-      className={cx({ [CS.borderTop]: !initialState })}
+      className={cx({ [CS.borderTop]: collapseCTASection })}
     >
       <Box px="md" py="md">
         {/*eslint-disable-next-line no-unconditional-metabase-links-render -- This link is only temporary. It will be replaced with an internal link to a page. */}
@@ -176,8 +177,12 @@ export function SidebarOnboardingSection({
         </ExternalLink>
       </Box>
       {canAddDatabase || canUpload ? (
-        <Box px="xl" pb="md" className={cx({ [CS.borderTop]: initialState })}>
-          {initialState && (
+        <Box
+          px="xl"
+          pb="md"
+          className={cx({ [CS.borderTop]: !collapseCTASection })}
+        >
+          {!collapseCTASection && (
             <Text
               fz="sm"
               my="md"
