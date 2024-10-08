@@ -17,6 +17,12 @@ const ordersQuestionDetails: NativeQuestionDetails = {
   },
 };
 
+const peopleQuestionDetails: NativeQuestionDetails = {
+  native: {
+    query: "SELECT ID, EMAIL, CREATED_AT FROM PEOPLE ORDER BY ID LIMIT 10",
+  },
+};
+
 describe("scenarios > question > native query drill", () => {
   beforeEach(() => {
     restore();
@@ -25,7 +31,7 @@ describe("scenarios > question > native query drill", () => {
 
   describe("drills", () => {
     it("column-extract drill", () => {
-      cy.log("by column header");
+      cy.log("from column header");
       createNativeQuestion(ordersQuestionDetails, {
         visitQuestion: true,
         wrapId: true,
@@ -43,7 +49,7 @@ describe("scenarios > question > native query drill", () => {
         ],
       });
 
-      cy.log("by plus button");
+      cy.log("from plus button");
       visitQuestion("@questionId");
       tableInteractive().button("Add column").click();
       popover().within(() => {
@@ -56,6 +62,45 @@ describe("scenarios > question > native query drill", () => {
         firstRows: [
           ["1", "February 11, 2025, 9:40 PM", "2", "Q1"],
           ["2", "May 15, 2024, 8:04 AM", "3", "Q2"],
+        ],
+      });
+    });
+
+    it("combine-columns drill", () => {
+      cy.log("from column header");
+      createNativeQuestion(peopleQuestionDetails, {
+        visitQuestion: true,
+        wrapId: true,
+      });
+      tableHeaderClick("EMAIL");
+      popover().findByText("Combine columns").click();
+      popover().button("Done").click();
+      assertTableData({
+        columns: ["ID", "EMAIL", "CREATED_AT", "Combined EMAIL, ID"],
+        firstRows: [
+          [
+            "1",
+            "borer-hudson@yahoo.com",
+            "October 7, 2023, 1:34 AM",
+            "borer-hudson@yahoo.com 1",
+          ],
+        ],
+      });
+
+      cy.log("from plus button");
+      visitQuestion("@questionId");
+      tableInteractive().button("Add column").click();
+      popover().findByText("Combine columns").click();
+      popover().button("Done").click();
+      assertTableData({
+        columns: ["ID", "EMAIL", "CREATED_AT", "Combined ID, EMAIL"],
+        firstRows: [
+          [
+            "1",
+            "borer-hudson@yahoo.com",
+            "October 7, 2023, 1:34 AM",
+            "1 borer-hudson@yahoo.com",
+          ],
         ],
       });
     });
