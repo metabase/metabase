@@ -1,4 +1,4 @@
-(ns metabase.query-processor-test.time-field-test
+(ns ^:mb/driver-tests metabase.query-processor-test.time-field-test
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
