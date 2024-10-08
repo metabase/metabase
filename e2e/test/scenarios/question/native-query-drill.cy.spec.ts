@@ -31,13 +31,24 @@ const peopleTableQuestionDetails: NativeQuestionDetails = {
   },
 };
 
-const timeseriesQuestionDetails: NativeQuestionDetails = {
+const dateChartQuestionDetails: NativeQuestionDetails = {
   display: "line",
   native: {
     query: "SELECT ID, CREATED_AT, QUANTITY FROM ORDERS ORDER BY ID LIMIT 10",
   },
   visualization_settings: {
     "graph.dimensions": ["CREATED_AT"],
+    "graph.metrics": ["QUANTITY"],
+  },
+};
+
+const numericChartQuestionDetails: NativeQuestionDetails = {
+  display: "line",
+  native: {
+    query: "SELECT ID, CREATED_AT, QUANTITY FROM ORDERS ORDER BY ID LIMIT 10",
+  },
+  visualization_settings: {
+    "graph.dimensions": ["ID"],
     "graph.metrics": ["QUANTITY"],
   },
 };
@@ -191,7 +202,7 @@ describe("scenarios > question > native query drill", () => {
     });
 
     it("quick-filter drill", () => {
-      createNativeQuestion(timeseriesQuestionDetails, { visitQuestion: true });
+      createNativeQuestion(dateChartQuestionDetails, { visitQuestion: true });
       assertQueryBuilderRowCount(10);
       cartesianChartCircle().eq(0).click();
       popover().within(() => {
@@ -278,7 +289,7 @@ describe("scenarios > question > native query drill", () => {
     });
 
     it("unsupported drills", () => {
-      createNativeQuestion(timeseriesQuestionDetails, { visitQuestion: true });
+      createNativeQuestion(dateChartQuestionDetails, { visitQuestion: true });
       assertQueryBuilderRowCount(10);
       cartesianChartCircle().eq(0).click();
       popover().within(() => {
@@ -290,11 +301,23 @@ describe("scenarios > question > native query drill", () => {
   });
 
   describe("query builder brush filters", () => {
-    it("timeseries filter", () => {});
+    it("timeseries filter", () => {
+      createNativeQuestion(dateChartQuestionDetails, { visitQuestion: true });
+      assertQueryBuilderRowCount(10);
+      applyBrushFilter(200, 800);
+      cy.wait("@dataset");
+      assertQueryBuilderRowCount(3);
+    });
 
-    it("numeric filter", () => {});
-
-    it("coordinates filter", () => {});
+    it("numeric filter", () => {
+      createNativeQuestion(numericChartQuestionDetails, {
+        visitQuestion: true,
+      });
+      assertQueryBuilderRowCount(10);
+      applyBrushFilter(200, 800);
+      cy.wait("@dataset");
+      assertQueryBuilderRowCount(5);
+    });
   });
 
   describe("dashboard drills", () => {
@@ -313,7 +336,7 @@ describe("scenarios > question > native query drill", () => {
 
       cy.log("from a chart dot");
       cy.createDashboardWithQuestions({
-        questions: [timeseriesQuestionDetails],
+        questions: [dateChartQuestionDetails],
       }).then(({ dashboard }) => visitDashboard(dashboard.id));
       getDashboardCard().within(() => cartesianChartCircle().eq(0).click());
       popover().within(() => {
@@ -329,7 +352,12 @@ describe("scenarios > question > native query drill", () => {
     it("timeseries filter", () => {});
 
     it("numeric filter", () => {});
-
-    it("coordinates filter", () => {});
   });
 });
+
+function applyBrushFilter(fromX: number, toX: number) {
+  echartsContainer()
+    .trigger("mousedown", fromX, 200)
+    .trigger("mousemove", fromX, 200)
+    .trigger("mouseup", toX, 200);
+}
