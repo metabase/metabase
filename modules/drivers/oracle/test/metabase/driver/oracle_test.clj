@@ -23,6 +23,7 @@
    [metabase.sync :as sync]
    [metabase.sync.util :as sync-util]
    [metabase.test :as mt]
+   [metabase.test.data.dataset-definitions :as defs]
    [metabase.test.data.env :as te]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.oracle :as oracle.tx]
@@ -282,7 +283,12 @@
             execute! (fn [format-string & args]
                        (jdbc/execute! spec (apply format format-string args)))
             pk-type  (sql.tx/pk-sql-type :oracle)]
-        (mt/with-temp [:model/Database db (dissoc (mt/db) :id :features)]
+        (mt/with-temp [:model/Database db {:engine  :oracle
+                                           :name    "clobs-test-db"
+                                           :details (tx/dbdef->connection-details
+                                                     :oracle
+                                                     :server
+                                                     (tx/get-dataset-definition defs/test-data))}]
           (mt/with-db db
             (with-temp-user [username]
               (execute! "CREATE TABLE \"%s\".\"messages\" (\"id\" %s, \"message\" CLOB)"            username pk-type)
@@ -325,7 +331,7 @@
 
 ;; let's make sure we're actually attempting to generate the correctl HoneySQL for joins and source queries so we
 ;; don't sit around scratching our heads wondering why the queries themselves aren't working
-(deftest honeysql-test
+(deftest ^:parallel honeysql-test
   (mt/test-driver :oracle
     (testing "Correct HoneySQL form should be generated"
       (mt/with-metadata-provider (mt/id)
@@ -479,8 +485,8 @@
           (mt/with-temporary-setting-values [report-timezone report-tz]
             (mt/with-native-query-testing-context query
               (testing "The value should come back from driver with original zone info, regardless of report timezone"
-                (= (t/offset-date-time (u.date/parse test-date) "US/Eastern")
-                   (ffirst (mt/rows (qp/process-query query))))))))))))
+                (is (= (t/offset-date-time (u.date/parse test-date) "US/Eastern")
+                       (ffirst (mt/rows (qp/process-query query)))))))))))))
 
 (deftest read-timestamp-with-local-tz-test
   (mt/test-driver :oracle
