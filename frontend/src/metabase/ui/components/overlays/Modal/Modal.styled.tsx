@@ -1,32 +1,26 @@
-import type { MantineThemeOverride } from "@mantine/core";
+import { Modal } from "@mantine/core";
 import { t } from "ttag";
 
 // See `zIndex` prop at https://v6.mantine.dev/core/modal/?t=props
 export const DEFAULT_MODAL_Z_INDEX = 200;
 const DEFAULT_MODAL_SPACING = "lg";
 
-export const getModalOverrides = (): MantineThemeOverride["components"] => ({
-  Modal: {
+import Styles from "./Modal.module.css";
+
+export const modalOverrides = {
+  Modal: Modal.extend({
     defaultProps: {
       padding: DEFAULT_MODAL_SPACING,
     },
-    styles: theme => ({
-      root: {
-        color: "var(--mb-color-text-dark)",
-      },
-      title: {
-        fontSize: theme.fontSizes.xl,
-        fontWeight: 700,
-      },
-      overlay: {
-        backgroundColor: theme.fn.rgba(theme.fn.themeColor("bg-black"), 0.6),
-      },
-      content: {
-        backgroundColor: "var(--mb-color-background)",
-      },
-    }),
-  },
-  ModalRoot: {
+    classNames: {
+      root: Styles.root,
+      title: Styles.title,
+      overlay: Styles.overlay,
+      content: Styles.content,
+    },
+  }),
+
+  ModalRoot: Modal.Root.extend({
     defaultProps: {
       centered: true,
       size: "lg",
@@ -34,15 +28,17 @@ export const getModalOverrides = (): MantineThemeOverride["components"] => ({
       radius: "sm",
       withinPortal: true,
     },
-  },
-  ModalHeader: {
+  }),
+
+  ModalHeader: Modal.Header.extend({
     defaultProps: {
       pb: "sm",
     },
-  },
-  ModalCloseButton: {
+  }),
+
+  ModalCloseButton: Modal.CloseButton.extend({
     defaultProps: {
       "aria-label": t`Close`,
     },
-  },
-});
+  }),
+};
