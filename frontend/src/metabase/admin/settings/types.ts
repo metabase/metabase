@@ -1,4 +1,4 @@
-import type { ComponentType, ReactNode } from "react";
+import type { ComponentType } from "react";
 
 import type {
   SettingDefinition,
@@ -12,7 +12,6 @@ export type SettingElement<Key extends SettingKey = SettingKey> =
     tab?: string;
     display_name?: string;
     type?: string;
-    description?: string | ReactNode | null;
     note?: string;
     searchProp?: string;
     placeholder?: string;

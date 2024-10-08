@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 export interface FormattingSettings {
   "type/Temporal"?: DateFormattingSettings;
   "type/Number"?: NumberFormattingSettings;
@@ -190,7 +192,7 @@ export interface SettingDefinition<Key extends SettingKey = SettingKey> {
   is_env_setting?: boolean;
   value?: SettingValue<Key>;
   default?: SettingValue<Key>;
-  description?: string;
+  description?: string | ReactNode | null;
 }
 
 export type UpdateChannel = "latest" | "beta" | "nightly";
