@@ -1,4 +1,4 @@
-(ns metabase.query-processor-test.expression-aggregations-test
+(ns ^:mb/driver-tests metabase.query-processor-test.expression-aggregations-test
   "Tests for expression aggregations and for named aggregations."
   (:require
    [clojure.test :refer :all]

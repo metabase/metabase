@@ -1,4 +1,4 @@
-(ns metabase.api.card-test
+(ns ^:mb/driver-tests metabase.api.card-test
   "Tests for /api/card endpoints."
   (:require
    [cheshire.core :as json]

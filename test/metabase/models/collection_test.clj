@@ -7,15 +7,7 @@
    [clojure.test :refer :all]
    [clojure.walk :as walk]
    [metabase.audit :as audit]
-   [metabase.models
-    :refer [Card
-            Collection
-            Dashboard
-            NativeQuerySnippet
-            Permissions
-            PermissionsGroup
-            Pulse
-            User]]
+   [metabase.models :refer [Card Collection Dashboard NativeQuerySnippet Permissions PermissionsGroup Pulse User]]
    [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
@@ -53,7 +45,7 @@
                                                                                       :site)))
              (var-get #'collection/collection-slug-max-length))))))
 
-(deftest create-collection-test
+(deftest ^:parallel create-collection-test
   (testing "test that we can create a new Collection with valid inputs"
     (t2.with-temp/with-temp [Collection collection {:name "My Favorite Cards"}]
       (is (partial= (merge
@@ -66,12 +58,12 @@
                       :personal_owner_id nil})
                     collection)))))
 
-(deftest with-temp-defaults-test
+(deftest ^:parallel with-temp-defaults-test
   (testing "double-check that `with-temp-defaults` are working correctly for Collection"
     (t2.with-temp/with-temp [Collection collection]
       (is (some? collection)))))
 
-(deftest duplicate-names-test
+(deftest ^:parallel duplicate-names-test
   (testing "test that duplicate names ARE allowed"
     (t2.with-temp/with-temp [Collection c1 {:name "My Favorite Cards"}
                              Collection c2 {:name "My Favorite Cards"}]
@@ -84,8 +76,9 @@
                  (:slug c1))))
         (testing "Collection 2"
           (is (= "my_favorite_cards"
-                 (:slug c2)))))))
+                 (:slug c2))))))))
 
+(deftest ^:parallel duplicate-names-test-2
   (testing "things with different names that would cause the same slug SHOULD be allowed"
     (t2.with-temp/with-temp [Collection c1 {:name "My Favorite Cards"}
                              Collection c2 {:name "my_favorite Cards"}]
@@ -172,7 +165,7 @@
   [[collections-binding options] & body]
   `(do-with-collection-hierarchy! ~options (fn [~collections-binding] ~@body)))
 
-(defn do-with-current-user-perms-for-collections*!
+(defn- do-with-current-user-perms-for-collections*!
   [collections-or-ids collections-or-ids-to-discard body-fn]
   (if (seq collections-or-ids-to-discard)
     (mt/with-discarded-collections-perms-changes (first collections-or-ids-to-discard)
@@ -187,11 +180,11 @@
       (mt/with-test-user :rasta
         (body-fn)))))
 
-(defn do-with-current-user-perms-for-collections!
+(defn- do-with-current-user-perms-for-collections!
   [collections-or-ids body-fn]
   (do-with-current-user-perms-for-collections*! collections-or-ids collections-or-ids body-fn))
 
-(defmacro with-current-user-perms-for-collections!
+(defmacro ^:private with-current-user-perms-for-collections!
   "Run `body` with the current User permissions for `collections-or-ids`.
 
      (with-current-user-perms-for-collections [a b c]
@@ -328,38 +321,41 @@
                  :model/Collection {c2 :id} {:archived true :archive_operation_id "1234"}
                  :model/Collection {c3 :id} {:archived true :archive_operation_id "1234"}
                  :model/Collection {c4 :id} {:archived true :archive_operation_id "5678"}]
-    (let [visible-collection-ids (fn [c] (set/intersection (collection/visible-collection-ids c)
-                                                           #{c1 c2 c3 c4 (collection/trash-collection-id) "root"}))]
-      (with-current-user-perms-for-collections! [c1 c2 c3 c4]
+    (letfn [(visible-collection-ids [config]
+              (into #{}
+                    (keep {c1 'c1, c2 'c2, c3 'c3, c4 'c4, (collection/trash-collection-id) 'trash, "root" 'root})
+                    (collection/visible-collection-ids config)))]
+      (with-current-user-perms-for-collections! [c1 c2 c3 c4 (collection/trash-collection-id)]
         (testing "Archived"
           (testing "Default"
-            (is (= #{"root" c1} (visible-collection-ids {}))))
+            (is (= '#{root c1}
+                   (visible-collection-ids {}))))
           (testing "Only"
-            (is (= #{c2 c3 c4} (visible-collection-ids {:include-archived-items :only}))))
+            (is (= '#{c2 c3 c4} (visible-collection-ids {:include-archived-items :only}))))
           (testing "Exclude"
-            (is (= #{"root" c1} (visible-collection-ids {:include-archived-items :exclude}))))
+            (is (= '#{root c1} (visible-collection-ids {:include-archived-items :exclude}))))
           (testing "All"
-            (is (= #{c1 c2 c3 c4 "root"}
+            (is (= '#{c1 c2 c3 c4 root}
                    (visible-collection-ids {:include-archived-items :all})))))
         (testing "Include trash?"
           (testing "true"
-            (is (= #{c1 "root" (collection/trash-collection-id)}
+            (is (= '#{c1 root trash}
                    (visible-collection-ids {:include-trash-collection? true}))))
           (testing "false"
-            (is (= #{c1 "root"}
+            (is (= '#{c1 root}
                    (visible-collection-ids {:include-trash-collection? false})
                    ;; default
                    (visible-collection-ids {})))))
         (testing "archive operation id"
           (testing "can filter down to a particular archive operation id"
-            (is (= #{c2 c3}
+            (is (= '#{c2 c3}
                    (visible-collection-ids {:archive-operation-id "1234"
                                             :include-archived-items :all})))
-            (is (= #{c4}
+            (is (= '#{c4}
                    (visible-collection-ids {:archive-operation-id "5678"
                                             :include-archived-items :all}))))
           (testing "can get the trash in the same call"
-            (is (= #{c2 c3 (collection/trash-collection-id)}
+            (is (= '#{c2 c3 trash}
                    (visible-collection-ids {:archive-operation-id "1234"
                                             :include-archived-items :all
                                             :include-trash-collection? true})))))))))
