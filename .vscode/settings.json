@@ -5,6 +5,11 @@
   "gulp.autoDetect": "off",
   "npm.autoDetect": "off",
   "eslint.options": {
-    "rulePaths": ["frontend/lint/eslint-rules/"]
+    "rulePaths": [
+      "frontend/lint/eslint-rules/"
+    ]
+  },
+  "search.exclude": {
+    ".loki": true
   }
 }
