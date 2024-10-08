@@ -22,6 +22,7 @@ import {
   type UploadFileProps,
   uploadFile as uploadFileAction,
 } from "metabase/redux/uploads";
+import { getHasDataAccess } from "metabase/selectors/data";
 import { getLearnUrl, getSetting } from "metabase/selectors/settings";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Box, Button, Icon, Menu, Stack, Text, Title } from "metabase/ui";
@@ -98,18 +99,24 @@ export function SidebarOnboardingSection({
   const canAddDatabase = isAdmin;
 
   /**
-   * the collection needs to be root
-   * the user must have "write" permissions for the root collection
-   * the user must have permissions to upload to the database on which file uploads are enabled
+   * the user must have:
+   *   - "write" permissions for the root collection AND
+   *   - either:
+   *       a) !uploadsEnabled => data access to any of the databases OR
+   *       b) uploadsEnabled => "upload" permissions for the database for which uploads are enabled
    */
+  const isUploadEnabled = !!uploadDbId;
   const rootCollection = collections.find(
     c => c.id === "root" || c.id === null,
   );
   const canCurateRootCollection = rootCollection?.can_write;
+  const hasDataAccess = getHasDataAccess(databases);
   const canUploadToDatabase = databases
     ?.find(db => db.id === uploadDbId)
     ?.canUpload();
-  const canUpload = canCurateRootCollection && canUploadToDatabase;
+  const canUpload =
+    canCurateRootCollection &&
+    (isUploadEnabled ? canUploadToDatabase : hasDataAccess);
 
   function AddDatabaseButton() {
     return (
@@ -124,9 +131,11 @@ export function SidebarOnboardingSection({
     );
   }
 
-  function UploadSpreadsheetButton() {
-    const isUploadEnabled = !!uploadDbId;
-
+  function UploadSpreadsheetButton({
+    isUploadEnabled,
+  }: {
+    isUploadEnabled: boolean;
+  }) {
     const icon = "table2";
     const title = t`Upload a spreadsheet`;
     const subtitle = t`${UPLOAD_DATA_FILE_TYPES.join(
@@ -186,7 +195,9 @@ export function SidebarOnboardingSection({
             </Menu.Target>
             <Menu.Dropdown>
               {canAddDatabase && <AddDatabaseButton />}
-              {canUpload && <UploadSpreadsheetButton />}
+              {canUpload && (
+                <UploadSpreadsheetButton isUploadEnabled={isUploadEnabled} />
+              )}
             </Menu.Dropdown>
           </Menu>
         </Box>
