@@ -932,7 +932,13 @@ describe("scenarios > dashboard > filters > query stages", () => {
         it.skip("2nd stage aggregation", () => {
           setup2ndStageAggregationFilter();
 
-          // add assertions
+          // TODO: add assertions for the first 2 dashcards
+
+          verifyDashcardNoResults({ dashcardIndex: 2 });
+
+          goBackToDashboard();
+
+          verifyDashcardNoResults({ dashcardIndex: 3 });
         });
       });
     });
@@ -2324,4 +2330,16 @@ function verifyDashcardCellValues({
 
     cy.findAllByTestId("cell-data").eq(cellIndex).should("have.text", value);
   }
+}
+
+function verifyDashcardNoResults({ dashcardIndex }: { dashcardIndex: number }) {
+  getDashboardCard(dashcardIndex).should("have.text", "No results!");
+
+  getDashboardCard(dashcardIndex).findByTestId("legend-caption-title").click();
+  cy.wait("@dataset");
+
+  cy.findByTestId("query-visualization-root").should(
+    "have.text",
+    "No results!",
+  );
 }
