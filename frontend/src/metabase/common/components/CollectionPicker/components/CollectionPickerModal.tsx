@@ -3,14 +3,15 @@ import { t } from "ttag";
 
 import { useToggle } from "metabase/hooks/use-toggle";
 import { Button, Icon } from "metabase/ui";
-import type { RecentItem, SearchModel, SearchResult } from "metabase-types/api";
+import type { RecentItem, SearchResult } from "metabase-types/api";
 
-import type { EntityTab } from "../../EntityPicker";
+import type { EntityPickerTab } from "../../EntityPicker";
 import { EntityPickerModal, defaultOptions } from "../../EntityPicker";
 import { useLogRecentItem } from "../../EntityPicker/hooks/use-log-recent-item";
 import type {
   CollectionPickerItem,
   CollectionPickerOptions,
+  CollectionPickerStatePath,
   CollectionPickerValueItem,
 } from "../types";
 
@@ -74,6 +75,10 @@ export const CollectionPickerModal = ({
     onNewCollection: (item: CollectionPickerItem) => void;
   }>();
 
+  const handleInit = useCallback((item: CollectionPickerItem) => {
+    setSelectedItem(current => current ?? item);
+  }, []);
+
   const handleItemSelect = useCallback(
     async (item: CollectionPickerItem) => {
       if (options.hasConfirmButtons) {
@@ -105,18 +110,30 @@ export const CollectionPickerModal = ({
       ]
     : [];
 
-  const tabs: [EntityTab<SearchModel>] = [
+  const [collectionsPath, setCollectionsPath] =
+    useState<CollectionPickerStatePath>();
+
+  const tabs: EntityPickerTab<
+    CollectionPickerItem["id"],
+    CollectionPickerItem["model"],
+    CollectionPickerItem
+  >[] = [
     {
+      id: "collections-tab",
       displayName: t`Collections`,
-      model: "collection",
+      model: "collection" as const,
+      folderModels: ["collection" as const],
       icon: "folder",
-      element: (
+      render: ({ onItemSelect }) => (
         <CollectionPicker
-          onItemSelect={handleItemSelect}
-          shouldDisableItem={shouldDisableItem}
           initialValue={value}
           options={options}
+          path={collectionsPath}
           ref={pickerRef}
+          shouldDisableItem={shouldDisableItem}
+          onInit={handleInit}
+          onItemSelect={onItemSelect}
+          onPathChange={setCollectionsPath}
         />
       ),
     },
