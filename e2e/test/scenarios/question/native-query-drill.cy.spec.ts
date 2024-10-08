@@ -23,12 +23,8 @@ describe("scenarios > question > native query drill", () => {
   });
 
   describe("drills", () => {
-    beforeEach(() => {
-      createNativeQuestion(ordersQuestionDetails, { wrapId: true });
-    });
-
     it("column-filter drill", () => {
-      visitQuestion("@questionId");
+      createNativeQuestion(ordersQuestionDetails, { visitQuestion: true });
       assertQueryBuilderRowCount(10);
       tableHeaderClick("QUANTITY");
       popover().findByText("Filter by this column").click();
@@ -41,7 +37,7 @@ describe("scenarios > question > native query drill", () => {
     });
 
     it("distribution drill", () => {
-      visitQuestion("@questionId");
+      createNativeQuestion(ordersQuestionDetails, { visitQuestion: true });
       tableHeaderClick("QUANTITY");
       popover().findByText("Distribution").click();
       echartsContainer().within(() => {
@@ -53,7 +49,10 @@ describe("scenarios > question > native query drill", () => {
 
     it("sort drill", () => {
       cy.log("ascending");
-      visitQuestion("@questionId");
+      createNativeQuestion(ordersQuestionDetails, {
+        visitQuestion: true,
+        wrapId: true,
+      });
       tableHeaderClick("QUANTITY");
       popover().icon("arrow_up").click();
       assertTableData({
@@ -73,7 +72,10 @@ describe("scenarios > question > native query drill", () => {
 
     it("summarize drill", () => {
       cy.log("distinct values");
-      visitQuestion("@questionId");
+      createNativeQuestion(ordersQuestionDetails, {
+        visitQuestion: true,
+        wrapId: true,
+      });
       tableHeaderClick("QUANTITY");
       popover().findByText("Distinct values").click();
       assertTableData({
@@ -101,7 +103,7 @@ describe("scenarios > question > native query drill", () => {
     });
 
     it("summarize-column-by-time drill", () => {
-      visitQuestion("@questionId");
+      createNativeQuestion(ordersQuestionDetails, { visitQuestion: true });
       tableHeaderClick("QUANTITY");
       popover().findByText("Sum over time").click();
       assertTableData({
