@@ -7,6 +7,7 @@
    [metabase.events :as events]
    [metabase.events.schema :as events.schema]
    [metabase.models.notification :as models.notification]
+   [metabase.models.task-history :as task-history]
    [metabase.models.user :as user]
    [metabase.notification.core :as notification]
    [metabase.public-settings :as public-settings]
@@ -113,11 +114,13 @@
   [topic event-info]
   (when-not *skip-sending-notification?*
     (when-let [notifications (notifications-for-topic topic)]
-      (let [event-info (enriched-event-info topic event-info)]
-        (log/infof "Found %d %s for event: %s"
-                   (count notifications) (u/format-plural (count notifications) "notification" "notifications") topic)
-        (doseq [notification notifications]
-          (notification/send-notification! (assoc notification :payload event-info)))))))
+      (task-history/with-task-history {:task         "notification-triggered"
+                                       :task_details {:something true}}
+        (let [event-info (enriched-event-info topic event-info)]
+          (log/infof "Found %d %s for event: %s"
+                     (count notifications) (u/format-plural (count notifications) "notification") topic)
+          (doseq [notification notifications]
+            (notification/send-notification! (assoc notification :payload event-info))))))))
 
 (methodical/defmethod events/publish-event! ::notification
   [topic event-info]
