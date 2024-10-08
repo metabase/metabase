@@ -1,19 +1,15 @@
-import type { MantineThemeOverride, PaperStylesParams } from "@mantine/core";
+import { type MantineThemeOverride, Paper } from "@mantine/core";
 
-export const getPaperOverrides = (): MantineThemeOverride["components"] => ({
-  Paper: {
+import PaperStyles from "./Paper.module.css";
+
+export const paperOverrides: MantineThemeOverride["components"] = {
+  Paper: Paper.extend({
     defaultProps: {
       radius: "md",
       shadow: "md",
     },
-    styles: (theme, _params: PaperStylesParams) => ({
-      root: {
-        color: theme.fn.themeColor("text-dark"),
-        backgroundColor: theme.white,
-        "&[data-with-border]": {
-          borderColor: theme.fn.themeColor("border"),
-        },
-      },
-    }),
-  },
-});
+    classNames: {
+      root: PaperStyles.root,
+    },
+  }),
+};
