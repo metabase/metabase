@@ -1,4 +1,4 @@
-(ns metabase.query-processor-test.date-bucketing-test
+(ns ^:mb/driver-tests metabase.query-processor-test.date-bucketing-test
   "The below tests cover the various date bucketing/grouping scenarios that we support. There are are always two
   timezones in play when querying using these date bucketing features. The most visible is how timestamps are returned
   to the user. With no report timezone specified, the JVM's timezone is used to represent the timestamps regardless of

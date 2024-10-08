@@ -90,7 +90,9 @@ function setup({
 
 async function setOperator(operator: string) {
   await userEvent.click(screen.getByLabelText("Filter operator"));
-  await userEvent.click(await screen.findByText(operator));
+  await userEvent.click(
+    await screen.findByRole("menuitem", { name: operator }),
+  );
 }
 
 describe("StringFilterPicker", () => {
@@ -99,7 +101,7 @@ describe("StringFilterPicker", () => {
       setup();
 
       expect(screen.getByText("Product → Description")).toBeInTheDocument();
-      expect(screen.getByDisplayValue("Contains")).toBeInTheDocument();
+      expect(screen.getByText("Contains")).toBeInTheDocument();
       expect(screen.getByPlaceholderText("Enter some text")).toHaveValue("");
       expect(screen.getByRole("button", { name: "Add filter" })).toBeDisabled();
     });
@@ -108,12 +110,12 @@ describe("StringFilterPicker", () => {
       setup();
 
       await userEvent.click(screen.getByLabelText("Filter operator"));
-      const listbox = await screen.findByRole("listbox");
-      const options = within(listbox).getAllByRole("option");
+      const menu = await screen.findByRole("menu");
+      const menuItems = within(menu).getAllByRole("menuitem");
 
-      expect(options).toHaveLength(EXPECTED_OPERATORS.length);
+      expect(menuItems).toHaveLength(EXPECTED_OPERATORS.length);
       EXPECTED_OPERATORS.forEach(operatorName =>
-        expect(within(listbox).getByText(operatorName)).toBeInTheDocument(),
+        expect(within(menu).getByText(operatorName)).toBeInTheDocument(),
       );
     });
 
@@ -159,7 +161,7 @@ describe("StringFilterPicker", () => {
       });
       await waitForLoaderToBeRemoved();
 
-      await userEvent.click(screen.getByDisplayValue("Contains"));
+      await userEvent.click(screen.getByText("Contains"));
       await userEvent.click(screen.getByText("Is"));
       await userEvent.type(screen.getByPlaceholderText("Search by Email"), "t");
       await userEvent.click(await screen.findByText("test@metabase.test"));
@@ -352,7 +354,7 @@ describe("StringFilterPicker", () => {
         setup(opts);
 
         expect(screen.getByText("Product → Description")).toBeInTheDocument();
-        expect(screen.getByDisplayValue("Contains")).toBeInTheDocument();
+        expect(screen.getByText("Contains")).toBeInTheDocument();
         expect(screen.getByDisplayValue("abc")).toBeInTheDocument();
         expect(screen.getByLabelText("Case sensitive")).not.toBeChecked();
         expect(
@@ -397,7 +399,7 @@ describe("StringFilterPicker", () => {
         await waitForLoaderToBeRemoved();
 
         expect(screen.getByText("Product → Category")).toBeInTheDocument();
-        expect(screen.getByDisplayValue("Is")).toBeInTheDocument();
+        expect(screen.getByText("Is")).toBeInTheDocument();
         expect(screen.getByLabelText("Gadget")).toBeChecked();
         expect(screen.getByLabelText("Gizmo")).toBeChecked();
         expect(
@@ -434,7 +436,7 @@ describe("StringFilterPicker", () => {
         setup(opts);
 
         expect(screen.getByText("Product → Description")).toBeInTheDocument();
-        expect(screen.getByDisplayValue("Is empty")).toBeInTheDocument();
+        expect(screen.getByText("Is empty")).toBeInTheDocument();
         expect(
           screen.getByRole("button", { name: "Update filter" }),
         ).toBeEnabled();
@@ -461,12 +463,12 @@ describe("StringFilterPicker", () => {
       setup(createQueryWithStringFilter());
 
       await userEvent.click(screen.getByLabelText("Filter operator"));
-      const listbox = await screen.findByRole("listbox");
-      const options = within(listbox).getAllByRole("option");
+      const menu = await screen.findByRole("menu");
+      const menuItems = within(menu).getAllByRole("menuitem");
 
-      expect(options).toHaveLength(EXPECTED_OPERATORS.length);
+      expect(menuItems).toHaveLength(EXPECTED_OPERATORS.length);
       EXPECTED_OPERATORS.forEach(operatorName =>
-        expect(within(listbox).getByText(operatorName)).toBeInTheDocument(),
+        expect(within(menu).getByText(operatorName)).toBeInTheDocument(),
       );
     });
 

@@ -1,4 +1,4 @@
-(ns metabase.query-processor-test.expressions-test
+(ns ^:mb/driver-tests metabase.query-processor-test.expressions-test
   "Tests for expressions (calculated columns)."
   (:require
    [clojure.test :refer :all]

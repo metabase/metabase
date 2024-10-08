@@ -4,7 +4,6 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
-   [metabase.auth-provider :as auth-provider]
    [metabase.config :as config]
    [metabase.connection-pool :as connection-pool]
    [metabase.db.spec :as mdb.spec]
@@ -26,10 +25,10 @@
 (defn- renew-azure-managed-identity-password
   [client-id]
   (let [{:keys [access_token expires_in]}
-        (auth-provider/fetch-auth :azure-managed-identity nil {:azure-managed-identity-client-id client-id})]
+        ((requiring-resolve 'metabase.auth-provider/fetch-auth) :azure-managed-identity nil {:azure-managed-identity-client-id client-id})]
     {:password access_token
      :expiry (+ (*current-millis*) (* (- (parse-long expires_in)
-                                         auth-provider/azure-auth-token-renew-slack-seconds)
+                                         @(requiring-resolve 'metabase.auth-provider/azure-auth-token-renew-slack-seconds))
                                       1000))}))
 
 (defn- ensure-azure-managed-identity-password
