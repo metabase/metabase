@@ -93,6 +93,7 @@ describe("scenarios > question > native query drill", () => {
       popover().within(() => {
         cy.findByText("Extract day, month…").click();
         cy.findByText("Quarter of year").click();
+        cy.wait("@dataset");
       });
       assertTableData({
         columns: ["ID", "CREATED_AT", "QUANTITY", "Quarter of year"],
@@ -109,6 +110,7 @@ describe("scenarios > question > native query drill", () => {
         cy.findByText("Extract part of column").click();
         cy.findByText("CREATED_AT").click();
         cy.findByText("Quarter of year").click();
+        cy.wait("@dataset");
       });
       assertTableData({
         columns: ["ID", "CREATED_AT", "QUANTITY", "Quarter of year"],
@@ -128,6 +130,7 @@ describe("scenarios > question > native query drill", () => {
       tableHeaderClick("EMAIL");
       popover().findByText("Combine columns").click();
       popover().button("Done").click();
+      cy.wait("@dataset");
       assertTableData({
         columns: ["ID", "EMAIL", "CREATED_AT", "Combined EMAIL, ID"],
         firstRows: [
@@ -145,6 +148,7 @@ describe("scenarios > question > native query drill", () => {
       tableInteractive().button("Add column").click();
       popover().findByText("Combine columns").click();
       popover().button("Done").click();
+      cy.wait("@dataset");
       assertTableData({
         columns: ["ID", "EMAIL", "CREATED_AT", "Combined ID, EMAIL"],
         firstRows: [
@@ -167,6 +171,7 @@ describe("scenarios > question > native query drill", () => {
         cy.findByPlaceholderText("Min").type("2");
         cy.findByPlaceholderText("Max").type("5");
         cy.button("Add filter").click();
+        cy.wait("@dataset");
       });
       assertQueryBuilderRowCount(8);
     });
@@ -175,6 +180,7 @@ describe("scenarios > question > native query drill", () => {
       createNativeQuestion(ordersTableQuestionDetails, { visitQuestion: true });
       tableHeaderClick("QUANTITY");
       popover().findByText("Distribution").click();
+      cy.wait("@dataset");
       echartsContainer().within(() => {
         cy.findByText("Count").should("be.visible");
         cy.findByText("QUANTITY").should("be.visible");
@@ -189,6 +195,7 @@ describe("scenarios > question > native query drill", () => {
       popover().within(() => {
         cy.findByText("Filter by this value").should("be.visible");
         cy.findByText("=").click();
+        cy.wait("@dataset");
       });
       assertQueryBuilderRowCount(3);
     });
@@ -201,6 +208,7 @@ describe("scenarios > question > native query drill", () => {
       });
       tableHeaderClick("QUANTITY");
       popover().icon("arrow_up").click();
+      cy.wait("@dataset");
       assertTableData({
         columns: ["ID", "CREATED_AT", "QUANTITY"],
         firstRows: [["1", "February 11, 2025, 9:40 PM", "2"]],
@@ -210,6 +218,7 @@ describe("scenarios > question > native query drill", () => {
       visitQuestion("@questionId");
       tableHeaderClick("QUANTITY");
       popover().icon("arrow_down").click();
+      cy.wait("@dataset");
       assertTableData({
         columns: ["ID", "CREATED_AT", "QUANTITY"],
         firstRows: [["8", "June 17, 2025, 2:37 AM", "7"]],
@@ -224,6 +233,7 @@ describe("scenarios > question > native query drill", () => {
       });
       tableHeaderClick("QUANTITY");
       popover().findByText("Distinct values").click();
+      cy.wait("@dataset");
       assertTableData({
         columns: ["Distinct values of QUANTITY"],
         firstRows: [["5"]],
@@ -233,6 +243,7 @@ describe("scenarios > question > native query drill", () => {
       visitQuestion("@questionId");
       tableHeaderClick("QUANTITY");
       popover().findByText("Sum").click();
+      cy.wait("@dataset");
       assertTableData({
         columns: ["Sum of QUANTITY"],
         firstRows: [["38"]],
@@ -242,6 +253,7 @@ describe("scenarios > question > native query drill", () => {
       visitQuestion("@questionId");
       tableHeaderClick("QUANTITY");
       popover().findByText("Avg").click();
+      cy.wait("@dataset");
       assertTableData({
         columns: ["Average of QUANTITY"],
         firstRows: [["3.8"]],
@@ -252,6 +264,7 @@ describe("scenarios > question > native query drill", () => {
       createNativeQuestion(ordersTableQuestionDetails, { visitQuestion: true });
       tableHeaderClick("QUANTITY");
       popover().findByText("Sum over time").click();
+      cy.wait("@dataset");
       assertTableData({
         columns: ["CREATED_AT: Month", "Sum of QUANTITY"],
         firstRows: [
@@ -292,6 +305,7 @@ describe("scenarios > question > native query drill", () => {
       popover().within(() => {
         cy.findByText("Filter by this date").should("be.visible");
         cy.findByText("On").click();
+        cy.wait("@dataset");
       });
       assertQueryBuilderRowCount(1);
 
@@ -303,6 +317,7 @@ describe("scenarios > question > native query drill", () => {
       popover().within(() => {
         cy.findByText("Filter by this value").should("be.visible");
         cy.findByText("=").click();
+        cy.wait("@dataset");
       });
       assertQueryBuilderRowCount(3);
     });
