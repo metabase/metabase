@@ -4600,16 +4600,17 @@
                             {:id (mt/id :orders :user_id)}
                             {:id (mt/id :people :source)}
                             {:id (mt/id :people :name)}])
-          :tables (sort-by (comp str :id)
-                           [{:id (mt/id :categories)}
-                            {:id (mt/id :users)}
-                            {:id (mt/id :checkins)}
-                            {:id (mt/id :reviews)}
-                            {:id (mt/id :products)
-                             :fields sequential?}
-                            {:id (mt/id :venues)}
-                            {:id (str "card__" card-id-2)
-                             :fields sequential?}])
+          :tables (concat (sort-by :id
+                                   [{:id (mt/id :categories)}
+                                    {:id (mt/id :users)}
+                                    {:id (mt/id :checkins)}
+                                    {:id (mt/id :reviews)}
+                                    {:id (mt/id :products)
+                                     :fields sequential?}
+                                    {:id (mt/id :venues)}])
+                          (sort-by :id
+                                   [{:id (str "card__" card-id-2)
+                                     :fields sequential?}]))
           :cards [{:id link-card}]
           :databases [{:id (mt/id) :engine string?}]
           :dashboards [{:id link-dash}]}
