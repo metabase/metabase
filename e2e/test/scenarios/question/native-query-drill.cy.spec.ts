@@ -5,6 +5,7 @@ import {
   popover,
   restore,
   tableHeaderClick,
+  visitQuestion,
 } from "e2e/support/helpers";
 
 const ordersQuestionDetails: NativeQuestionDetails = {
@@ -20,9 +21,13 @@ describe("scenarios > question > native query drill", () => {
   });
 
   describe("drills", () => {
+    beforeEach(() => {
+      createNativeQuestion(ordersQuestionDetails, { wrapId: true });
+    });
+
     it("sort drill", () => {
       cy.log("ascending");
-      createNativeQuestion(ordersQuestionDetails, { visitQuestion: true });
+      visitQuestion("@questionId");
       tableHeaderClick("QUANTITY");
       popover().icon("arrow_up").click();
       assertTableData({
@@ -31,12 +36,26 @@ describe("scenarios > question > native query drill", () => {
       });
 
       cy.log("descending");
-      createNativeQuestion(ordersQuestionDetails, { visitQuestion: true });
+      visitQuestion("@questionId");
       tableHeaderClick("QUANTITY");
       popover().icon("arrow_down").click();
       assertTableData({
         columns: ["ID", "CREATED_AT", "QUANTITY"],
         firstRows: [["8", "June 17, 2025, 2:37 AM", "7"]],
+      });
+    });
+
+    it("summarize-column-by-time drill", () => {
+      visitQuestion("@questionId");
+      tableHeaderClick("QUANTITY");
+      popover().findByText("Sum over time").click();
+      assertTableData({
+        columns: ["CREATED_AT: Month", "Sum of QUANTITY"],
+        firstRows: [
+          ["May 2023", "3"],
+          ["May 2024", "3"],
+          ["September 2024", "5"],
+        ],
       });
     });
   });
