@@ -10,8 +10,7 @@
 ;;; --------------------------------------------------- defclause ----------------------------------------------------
 
 (defn mbql-clause?
-  "True if `x` is an MBQL clause (a sequence with a keyword as its first arg). (Since this is used by the code in
-  `normalize` this handles pre-normalized clauses as well.)"
+  "True if `x` is an MBQL clause (a sequence with a keyword as its first arg)."
   [x]
   (and (sequential? x)
        (not (map-entry? x))
