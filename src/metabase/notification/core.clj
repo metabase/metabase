@@ -79,7 +79,7 @@
           retry-errors (volatile! [])
           retry-report (fn []
                          {:attempted_retries (count @retry-errors)
-                          :retry-errors       @retry-errors})
+                          :retry_errors       @retry-errors})
           channel     (or (:channel handler)
                           {:type (:channel_type handler)})
           send!        (fn []

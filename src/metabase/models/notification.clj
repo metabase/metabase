@@ -218,10 +218,6 @@
                           [:= :ns.event_name (u/qualified-name event-name)]
                           [:= :ns.type (u/qualified-name :notification-subscription/system-event)]]}))
 
-(notifications-for-event :event/user-invited)
-
-(t2/select :model/NotificationSubscription)
-
 (defn create-notification!
   "Create a new notification with `subsciptions`.
   Return the created notification."
