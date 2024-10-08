@@ -356,7 +356,8 @@
 (defn- add-total [counter]
   (merge counter {:total (apply + (vals counter))}))
 
-(defn get-and-clear-translation-count!
+(mu/defn get-and-clear-translation-count!
+  :- [:map [:ok :int] [:not-found :int] [:invalid-format :int] [:total :int]]
   "Get and clear the entity-id translation counter. This is meant to be called during the daily stats collection process."
   []
   (u/prog1 (add-total (entity-id-translation-counter))
