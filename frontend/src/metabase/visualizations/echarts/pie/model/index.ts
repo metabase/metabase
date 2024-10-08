@@ -371,16 +371,11 @@ export function getPieChartModel(
     const formatMiddleDimensionValue = getDimensionFormatter(
       settings,
       colDescs.middleDimensionDesc.column,
-      renderingContext.formatValue,
     );
 
     const formatOuterDimensionValue =
       colDescs.outerDimensionDesc?.column != null
-        ? getDimensionFormatter(
-            settings,
-            colDescs.outerDimensionDesc.column,
-            renderingContext.formatValue,
-          )
+        ? getDimensionFormatter(settings, colDescs.outerDimensionDesc.column)
         : undefined;
 
     dataRows.forEach((row, index) => {

@@ -80,6 +80,17 @@ export const trackCardCreated = (type: CardTypes, dashboardId: DashboardId) => {
   }
 };
 
+export const trackIFrameDashcardsSaved = (
+  dashboardId: DashboardId,
+  domainName: string | null,
+) => {
+  trackSchemaEvent("dashboard", {
+    event: "new_iframe_card_created",
+    dashboard_id: getDashboardId(dashboardId),
+    domain_name: domainName,
+  });
+};
+
 export const trackSectionAdded = (
   dashboardId: DashboardId,
   sectionId: SectionId,
