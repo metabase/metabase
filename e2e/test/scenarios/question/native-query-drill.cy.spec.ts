@@ -9,7 +9,7 @@ import {
 
 const ordersQuestionDetails: NativeQuestionDetails = {
   native: {
-    query: "SELECT ID, QUANTITY FROM ORDERS ORDER BY ID LIMIT 10",
+    query: "SELECT ID, CREATED_AT, QUANTITY FROM ORDERS ORDER BY ID LIMIT 10",
   },
 };
 
@@ -26,8 +26,8 @@ describe("scenarios > question > native query drill", () => {
       tableHeaderClick("QUANTITY");
       popover().icon("arrow_up").click();
       assertTableData({
-        columns: ["ID", "QUANTITY"],
-        firstRows: [["1", "1"]],
+        columns: ["ID", "CREATED_AT", "QUANTITY"],
+        firstRows: [["1", "February 11, 2025, 9:40 PM", "2"]],
       });
 
       cy.log("descending");
@@ -35,8 +35,8 @@ describe("scenarios > question > native query drill", () => {
       tableHeaderClick("QUANTITY");
       popover().icon("arrow_down").click();
       assertTableData({
-        columns: ["ID", "QUANTITY"],
-        firstRows: [["8", "7"]],
+        columns: ["ID", "CREATED_AT", "QUANTITY"],
+        firstRows: [["8", "June 17, 2025, 2:37 AM", "7"]],
       });
     });
   });
