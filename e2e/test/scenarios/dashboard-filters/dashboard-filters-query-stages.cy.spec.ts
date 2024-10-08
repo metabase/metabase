@@ -1240,196 +1240,163 @@ describe("scenarios > dashboard > filters > query stages", () => {
         it("1st stage explicit join", () => {
           setup1stStageExplicitJoinFilter();
 
-          getDashboardCard(0)
-            .findByTestId("cell-data")
-            .should("have.text", "953");
-          getDashboardCard(0).findByTestId("legend-caption-title").click();
-          cy.wait("@dataset");
-          cy.findAllByTestId("cell-data").last().should("have.text", "953");
+          verifyDashcardCellValue({
+            dashcardIndex: 0,
+            value: "953",
+          });
 
           goBackToDashboard();
 
-          getDashboardCard(1)
-            .findByTestId("cell-data")
-            .should("have.text", "953");
-          getDashboardCard(1).findByTestId("legend-caption-title").click();
-          cy.wait("@dataset");
-          cy.findAllByTestId("cell-data").last().should("have.text", "953");
+          verifyDashcardCellValue({
+            dashcardIndex: 1,
+            value: "953",
+          });
         });
 
         it("1st stage implicit join (data source)", () => {
           setup1stStageImplicitJoinFromSourceFilter();
 
-          getDashboardCard(0)
-            .findByTestId("cell-data")
-            .should("have.text", "1,044");
-          getDashboardCard(0).findByTestId("legend-caption-title").click();
-          cy.wait("@dataset");
-          cy.findAllByTestId("cell-data").last().should("have.text", "1,044");
+          verifyDashcardCellValue({
+            dashcardIndex: 0,
+            value: "1,044",
+          });
 
           goBackToDashboard();
 
-          getDashboardCard(1)
-            .findByTestId("cell-data")
-            .should("have.text", "1,044");
-          getDashboardCard(1).findByTestId("legend-caption-title").click();
-          cy.wait("@dataset");
-          cy.findAllByTestId("cell-data").last().should("have.text", "1,044");
+          verifyDashcardCellValue({
+            dashcardIndex: 1,
+            value: "1,044",
+          });
         });
 
         // TODO: https://github.com/metabase/metabase/issues/46774
         it.skip("1st stage implicit join (joined data source)", () => {
           setup1stStageImplicitJoinFromJoinFilter();
 
-          // TODO: add assertions once the issue is fixed (for 2 dashcards)
-          getDashboardCard(0)
-            .findByTestId("cell-data")
-            .should("have.text", "4,292");
-          getDashboardCard(0).findByTestId("legend-caption-title").click();
-          cy.wait("@dataset");
+          verifyDashcardCellValue({
+            dashcardIndex: 0,
+            value: "1,077",
+          });
 
-          cy.findAllByTestId("cell-data").last().should("have.text", "4,292");
+          goBackToDashboard();
+
+          verifyDashcardCellValue({
+            dashcardIndex: 1,
+            value: "1,077",
+          });
         });
 
         it("1st stage custom column", () => {
           setup1stStageCustomColumnFilter();
 
-          getDashboardCard(0)
-            .findByTestId("cell-data")
-            .should("have.text", "688");
-          getDashboardCard(0).findByTestId("legend-caption-title").click();
-          cy.wait("@dataset");
-          cy.findAllByTestId("cell-data").last().should("have.text", "688");
+          verifyDashcardCellValue({
+            dashcardIndex: 0,
+            value: "688",
+          });
 
           goBackToDashboard();
 
-          getDashboardCard(1)
-            .findByTestId("cell-data")
-            .should("have.text", "688");
-          getDashboardCard(1).findByTestId("legend-caption-title").click();
-          cy.wait("@dataset");
-          cy.findAllByTestId("cell-data").last().should("have.text", "688");
+          verifyDashcardCellValue({
+            dashcardIndex: 1,
+            value: "688",
+          });
         });
 
         it("1st stage aggregation", () => {
           setup1stStageAggregationFilter();
 
-          getDashboardCard(0)
-            .findByTestId("cell-data")
-            .should("have.text", "3");
-          getDashboardCard(0).findByTestId("legend-caption-title").click();
-          cy.wait("@dataset");
-          cy.findAllByTestId("cell-data").last().should("have.text", "3");
+          verifyDashcardCellValue({
+            dashcardIndex: 0,
+            value: "3",
+          });
 
           goBackToDashboard();
 
-          getDashboardCard(1)
-            .findByTestId("cell-data")
-            .should("have.text", "3");
-          getDashboardCard(1).findByTestId("legend-caption-title").click();
-          cy.wait("@dataset");
-          cy.findAllByTestId("cell-data").last().should("have.text", "3");
+          verifyDashcardCellValue({
+            dashcardIndex: 1,
+            value: "3",
+          });
         });
 
         // TODO: https://github.com/metabase/metabase/issues/46774
         it.skip("1st stage breakout", () => {
           setup1stStageBreakoutFilter();
 
-          getDashboardCard(0)
-            .findByTestId("cell-data")
-            .should("have.text", "1,077");
-          getDashboardCard(0).findByTestId("legend-caption-title").click();
-          cy.wait("@dataset");
-          cy.findAllByTestId("cell-data").last().should("have.text", "1,077");
+          verifyDashcardCellValue({
+            dashcardIndex: 0,
+            value: "1,077",
+          });
 
           goBackToDashboard();
 
-          getDashboardCard(1)
-            .findByTestId("cell-data")
-            .should("have.text", "1,077");
-          getDashboardCard(1).findByTestId("legend-caption-title").click();
-          cy.wait("@dataset");
-          cy.findAllByTestId("cell-data").last().should("have.text", "1,077");
+          verifyDashcardCellValue({
+            dashcardIndex: 1,
+            value: "1,077",
+          });
         });
 
         it("2nd stage explicit join", () => {
           setup2ndStageExplicitJoinFilter();
 
-          getDashboardCard(0)
-            .findByTestId("cell-data")
-            .should("have.text", "4");
-          getDashboardCard(0).findByTestId("legend-caption-title").click();
-          cy.wait("@dataset");
-          cy.findAllByTestId("cell-data").last().should("have.text", "4");
+          verifyDashcardCellValue({
+            dashcardIndex: 0,
+            value: "4",
+          });
 
           goBackToDashboard();
 
-          getDashboardCard(1)
-            .findByTestId("cell-data")
-            .should("have.text", "4");
-          getDashboardCard(1).findByTestId("legend-caption-title").click();
-          cy.wait("@dataset");
-          cy.findAllByTestId("cell-data").last().should("have.text", "4");
+          verifyDashcardCellValue({
+            dashcardIndex: 1,
+            value: "4",
+          });
         });
 
         it("2nd stage custom column", () => {
           setup2ndStageCustomColumnFilter();
 
-          getDashboardCard(0)
-            .findByTestId("cell-data")
-            .should("have.text", "31");
-          getDashboardCard(0).findByTestId("legend-caption-title").click();
-          cy.wait("@dataset");
-          cy.findAllByTestId("cell-data").last().should("have.text", "31");
+          verifyDashcardCellValue({
+            dashcardIndex: 0,
+            value: "31",
+          });
 
           goBackToDashboard();
 
-          getDashboardCard(1)
-            .findByTestId("cell-data")
-            .should("have.text", "31");
-          getDashboardCard(1).findByTestId("legend-caption-title").click();
-          cy.wait("@dataset");
-          cy.findAllByTestId("cell-data").last().should("have.text", "31");
+          verifyDashcardCellValue({
+            dashcardIndex: 1,
+            value: "31",
+          });
         });
 
         it("2nd stage aggregation", () => {
           setup2ndStageAggregationFilter();
 
-          getDashboardCard(0)
-            .findByTestId("cell-data")
-            .should("have.text", "6");
-          getDashboardCard(0).findByTestId("legend-caption-title").click();
-          cy.wait("@dataset");
-          cy.findAllByTestId("cell-data").last().should("have.text", "6");
+          verifyDashcardCellValue({
+            dashcardIndex: 0,
+            value: "6",
+          });
 
           goBackToDashboard();
 
-          getDashboardCard(1)
-            .findByTestId("cell-data")
-            .should("have.text", "6");
-          getDashboardCard(1).findByTestId("legend-caption-title").click();
-          cy.wait("@dataset");
-          cy.findAllByTestId("cell-data").last().should("have.text", "6");
+          verifyDashcardCellValue({
+            dashcardIndex: 1,
+            value: "6",
+          });
         });
 
         it("2nd stage breakout", () => {
           setup2ndStageBreakoutFilter();
 
-          getDashboardCard(0)
-            .findByTestId("cell-data")
-            .should("have.text", "1,077");
-          getDashboardCard(0).findByTestId("legend-caption-title").click();
-          cy.wait("@dataset");
-          cy.findAllByTestId("cell-data").last().should("have.text", "1,077");
+          verifyDashcardCellValue({
+            dashcardIndex: 0,
+            value: "1,077",
+          });
 
           goBackToDashboard();
 
-          getDashboardCard(1)
-            .findByTestId("cell-data")
-            .should("have.text", "1,077");
-          getDashboardCard(1).findByTestId("legend-caption-title").click();
-          cy.wait("@dataset");
-          cy.findAllByTestId("cell-data").last().should("have.text", "1,077");
+          verifyDashcardCellValue({
+            dashcardIndex: 1,
+            value: "1,077",
+          });
         });
 
         // TODO: https://github.com/metabase/metabase/issues/48339
@@ -1441,7 +1408,22 @@ describe("scenarios > dashboard > filters > query stages", () => {
             .should("have.text", "0"); // https://github.com/metabase/metabase/issues/48339#issuecomment-2393449924
           getDashboardCard(0).findByTestId("legend-caption-title").click();
           cy.wait("@dataset");
+          cy.findByTestId("query-visualization-root").should(
+            "contain.text",
+            "No results!",
+          );
+          cy.findByTestId("question-row-count").should(
+            "have.text",
+            "Showing 0 rows",
+          );
 
+          goBackToDashboard();
+
+          getDashboardCard(1)
+            .findByTestId("cell-data")
+            .should("have.text", "0"); // https://github.com/metabase/metabase/issues/48339#issuecomment-2393449924
+          getDashboardCard(1).findByTestId("legend-caption-title").click();
+          cy.wait("@dataset");
           cy.findByTestId("query-visualization-root").should(
             "contain.text",
             "No results!",
@@ -2157,4 +2139,19 @@ function verifyDashcardRowsCount({
   getDashboardCard(dashcardIndex).findByTestId("legend-caption-title").click();
   cy.wait("@dataset");
   cy.findByTestId("question-row-count").should("have.text", queryBuilderCount);
+}
+
+function verifyDashcardCellValue({
+  dashcardIndex,
+  value,
+}: {
+  dashcardIndex: number;
+  value: string;
+}) {
+  getDashboardCard(dashcardIndex)
+    .findByTestId("cell-data")
+    .should("have.text", value);
+  getDashboardCard(dashcardIndex).findByTestId("legend-caption-title").click();
+  cy.wait("@dataset");
+  cy.findAllByTestId("cell-data").last().should("have.text", value);
 }
