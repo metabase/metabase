@@ -11,7 +11,7 @@ import { printEmptyLines, printWithPadding } from "../utils/print";
 import { propagateErrorResponse } from "../utils/propagate-error-response";
 
 const trialUrl = `https://store.metabase.com/checkout?plan=pro&deployment=self-hosted`;
-const trialUrlWithUtm = `${trialUrl}&utm_source=product&utm_medium=checkout&utm_campaign=embedding-sdk&utm_content=embedding-sdk-cli`;
+const trialUrlWithUtm = `${trialUrl}&utm_source=product&utm_medium=checkout&utm_campaign=embedding_sdk&utm_content=embedding_sdk_cli`;
 
 const VISIT_STORE_MESSAGE = `Please visit ${chalk.blue(
   trialUrl,
