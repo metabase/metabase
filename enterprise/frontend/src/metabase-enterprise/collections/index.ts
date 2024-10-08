@@ -52,7 +52,7 @@ if (hasPremiumFeature("official_collections")) {
     } else {
       return [
         {
-          title: t`Remove Official badge`,
+          title: t`Remove official status`,
           icon: "close",
           action: () =>
             onUpdate(collection, {

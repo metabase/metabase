@@ -45,7 +45,7 @@ describe("CollectionMenu", () => {
     });
 
     await userEvent.click(getIcon("ellipsis"));
-    await userEvent.click(await screen.findByText("Remove Official badge"));
+    await userEvent.click(await screen.findByText("Remove official status"));
     expect(onUpdateCollection).toHaveBeenCalledWith(collection, {
       authority_level: null,
     });

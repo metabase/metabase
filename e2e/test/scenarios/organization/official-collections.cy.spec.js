@@ -262,7 +262,7 @@ function changeCollectionTypeTo(type) {
     if (type === "official") {
       cy.findByText("Make official").click();
     } else {
-      cy.findByText("Remove Official badge").click();
+      cy.findByText("Remove official status").click();
     }
   });
 }
@@ -281,7 +281,7 @@ function assertHasCollectionTypeInput() {
 
 function assertNoCollectionTypeOption() {
   cy.findByText("Make official").should("not.exist");
-  cy.findByText("Remove Official badge").should("not.exist");
+  cy.findByText("Remove official status").should("not.exist");
 }
 
 function assertSidebarIcon(collectionName, expectedIcon) {
