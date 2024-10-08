@@ -1,4 +1,4 @@
-(ns metabase.api.embed-test
+(ns ^:mb/driver-tests metabase.api.embed-test
   "Tests for /api/embed endpoints."
   (:require
    [buddy.sign.jwt :as jwt]

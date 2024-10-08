@@ -1,4 +1,5 @@
 import { screen } from "__support__/ui";
+import type { Card } from "metabase-types/api";
 import {
   createMockCard,
   createMockCollection,
@@ -17,6 +18,7 @@ const setupEnterprise = (opts: SetupOpts) => {
       "token-features": createMockTokenFeatures({
         content_verification: true,
         cache_granular_controls: true,
+        serialization: true,
         audit_app: true,
       }),
     }),
@@ -52,6 +54,18 @@ describe("QuestionInfoSidebar > premium", () => {
       });
 
       expect(await screen.findByText("History")).toBeInTheDocument();
+    });
+  });
+
+  describe("entity id display", () => {
+    it("should show entity ids only with serialization feature", async () => {
+      const card = createMockCard({
+        entity_id: "jenny8675309" as Card["entity_id"],
+      });
+      await setupEnterprise({ card });
+
+      expect(screen.getByText("Entity ID")).toBeInTheDocument();
+      expect(screen.getByText("jenny8675309")).toBeInTheDocument();
     });
   });
 

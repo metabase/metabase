@@ -1,4 +1,4 @@
-(ns metabase.query-processor-test.breakout-test
+(ns ^:mb/driver-tests metabase.query-processor-test.breakout-test
   "Tests for the `:breakout` clause."
   (:require
    [clojure.test :refer :all]

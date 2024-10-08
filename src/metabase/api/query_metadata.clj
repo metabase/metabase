@@ -3,9 +3,11 @@
    [metabase.api.field :as api.field]
    [metabase.api.table :as api.table]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util :as lib.util]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
+   [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
 (defn- get-databases
@@ -62,7 +64,16 @@
     {;; TODO: This is naive and issues multiple queries currently. That's probably okay for most dashboards,
      ;; since they tend to query only a handful of databases at most.
      :databases (sort-by :id (get-databases database-ids))
-     :tables    (sort-by (comp str :id) tables)
+     ;; apparently some of these tables come back with normal integer IDs and some come back with string IDs... not sure
+     ;; what the hecc is going on but I guess maybe some of them in 2024 are still using that old `card__<id>` hack or
+     ;; something. Idk. Anyways let's just sort the ones with numeric IDs first and the ones with string IDs last. We're
+     ;; sorting these in a sane order because lots of tests expect them to be sorted by numeric ID and break if you sort
+     ;; by something like `(str (:id %))`. -- Cam
+     :tables    (sort-by (fn [{:keys [id]}]
+                           (if (integer? id)
+                             [id ""]
+                             [Integer/MAX_VALUE (str id)]))
+                         tables)
      :fields    (sort-by :id (api.field/get-fields template-tag-field-ids))}))
 
 (defn batch-fetch-query-metadata
@@ -92,8 +103,10 @@
       {:type link-type
        :id   targetId})))
 
-(defn- get-cards
-  [ids]
+(mu/defn- get-cards :- [:maybe [:sequential [:map [:id ::lib.schema.id/card]]]]
+  [ids :- [:maybe [:or
+                   [:sequential ::lib.schema.id/card]
+                   [:set ::lib.schema.id/card]]]]
   (when (seq ids)
     (let [cards (into [] (filter mi/can-read?)
                       (t2/select :model/Card :id [:in ids]))]
@@ -125,7 +138,7 @@
         dashboards (->> (:dashboard links)
                         (into #{} (map :id))
                         batch-fetch-linked-dashboards)]
-    {:cards      (sort-by (comp str :id) link-cards)
+    {:cards      (sort-by :id link-cards)
      :dashboards (sort-by :id dashboards)}))
 
 (defn batch-fetch-dashboard-metadata

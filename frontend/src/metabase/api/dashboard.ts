@@ -140,19 +140,17 @@ export const dashboardApi = Api.injectEndpoints({
       GetPublicOrEmbeddableDashboard,
       Pick<Dashboard, "id">
     >({
-      query: ({ id, ...params }) => ({
+      query: ({ id }) => ({
         method: "POST",
         url: `/api/dashboard/${id}/public_link`,
-        params,
       }),
       invalidatesTags: (_, error) =>
         invalidateTags(error, [listTag("public-dashboard")]),
     }),
     deleteDashboardPublicLink: builder.mutation<void, Pick<Dashboard, "id">>({
-      query: ({ id, ...params }) => ({
+      query: ({ id }) => ({
         method: "DELETE",
         url: `/api/dashboard/${id}/public_link`,
-        params,
       }),
       invalidatesTags: (_, error, { id }) =>
         invalidateTags(error, [

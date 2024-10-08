@@ -1,4 +1,4 @@
-(ns metabase.query-processor-test.implicit-joins-test
+(ns ^:mb/driver-tests metabase.query-processor-test.implicit-joins-test
   "Tests for joins that are created automatically when an `:fk->` column is present."
   (:require
    [clj-time.core :as time]

@@ -1,4 +1,4 @@
-(ns metabase.sync.sync-metadata.indexes-test
+(ns ^:mb/driver-tests metabase.sync.sync-metadata.indexes-test
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]

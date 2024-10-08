@@ -424,6 +424,18 @@ ThreeRingsNoLabels.args = {
   renderingContext,
 };
 
+export const ThreeRingsPercentagesAndLabels = Template.bind({});
+ThreeRingsPercentagesAndLabels.args = {
+  rawSeries: data.threeRingsPercentagesAndLabels as any,
+  renderingContext,
+};
+
+export const ThreeRingsPercentagesOnChart = Template.bind({});
+ThreeRingsPercentagesOnChart.args = {
+  rawSeries: data.threeRingsPercentagesOnChart as any,
+  renderingContext,
+};
+
 export const ThreeRingsOtherSlices = Template.bind({});
 ThreeRingsOtherSlices.args = {
   rawSeries: data.threeRingsOtherSlices as any,
