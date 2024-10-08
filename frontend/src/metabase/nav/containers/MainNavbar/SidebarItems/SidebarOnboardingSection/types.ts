@@ -5,7 +5,6 @@ import type Database from "metabase-lib/v1/metadata/Database";
 export type SidebarOnboardingProps = {
   collections: CollectionTreeItem[];
   databases: Database[];
-  hasOwnDatabase: boolean;
   isAdmin: boolean;
 };
 

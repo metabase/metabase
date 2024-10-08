@@ -22,7 +22,7 @@ import {
   type UploadFileProps,
   uploadFile as uploadFileAction,
 } from "metabase/redux/uploads";
-import { getHasDataAccess } from "metabase/selectors/data";
+import { getHasDataAccess, getHasOwnDatabase } from "metabase/selectors/data";
 import { getLearnUrl, getSetting } from "metabase/selectors/settings";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Box, Button, Icon, Menu, Stack, Text, Title } from "metabase/ui";
@@ -36,10 +36,9 @@ import type { OnboaringMenuItemProps, SidebarOnboardingProps } from "./types";
 export function SidebarOnboardingSection({
   collections,
   databases,
-  hasOwnDatabase,
   isAdmin,
 }: SidebarOnboardingProps) {
-  const initialState = !hasOwnDatabase;
+  const initialState = !getHasOwnDatabase(databases);
 
   const [
     isModelUploadModalOpen,

@@ -47,7 +47,6 @@ type Props = {
   currentUser: User;
   bookmarks: Bookmark[];
   hasDataAccess: boolean;
-  hasOwnDatabase: boolean;
   collections: CollectionTreeItem[];
   databases: Database[];
   selectedItems: SelectedItem[];
@@ -70,7 +69,6 @@ export function MainNavbarView({
   bookmarks,
   collections,
   databases,
-  hasOwnDatabase,
   selectedItems,
   hasDataAccess,
   reorderBookmarks,
@@ -188,7 +186,6 @@ export function MainNavbarView({
         <SidebarOnboardingSection
           collections={collections}
           databases={databases}
-          hasOwnDatabase={hasOwnDatabase}
           isAdmin={isAdmin}
         />
       </SidebarContentRoot>
