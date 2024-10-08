@@ -11,7 +11,11 @@ import type {
 import type { DashboardSidebarName } from "metabase-types/store/dashboard";
 
 import {
+  CANCEL_FETCH_CARD_DATA,
   CLOSE_SIDEBAR,
+  FETCH_CARD_DATA,
+  FETCH_CARD_DATA_PENDING,
+  FETCH_DASHBOARD_CARD_DATA,
   HIDE_ADD_PARAMETER_POPOVER,
   INITIALIZE,
   REMOVE_PARAMETER,
@@ -231,5 +235,79 @@ export const parameterValues = createReducer(
         delete state[id];
       },
     );
+  },
+);
+
+export const loadingDashCards = createReducer(
+  INITIAL_DASHBOARD_STATE.loadingDashCards,
+  builder => {
+    builder
+      .addCase(INITIALIZE, state => {
+        state.loadingStatus = "idle";
+      })
+      .addCase<
+        string,
+        {
+          type: string;
+          payload: {
+            currentTime: number;
+            loadingIds: DashCardId[];
+          };
+        }
+      >(FETCH_DASHBOARD_CARD_DATA, (state, action) => {
+        const { currentTime, loadingIds } = action.payload;
+        state.loadingIds = loadingIds;
+        state.loadingStatus = loadingIds.length > 0 ? "running" : "idle";
+        state.startTime = loadingIds.length > 0 ? currentTime : null;
+      })
+      .addCase<
+        string,
+        {
+          type: string;
+          payload: {
+            dashcard_id: DashCardId;
+          };
+        }
+      >(FETCH_CARD_DATA_PENDING, (state, action) => {
+        const { dashcard_id } = action.payload;
+        if (!state.loadingIds.includes(dashcard_id)) {
+          state.loadingIds.push(dashcard_id);
+        }
+      })
+      .addCase<
+        string,
+        {
+          type: string;
+          payload: {
+            currentTime: number;
+            dashcard_id: DashCardId;
+          };
+        }
+      >(FETCH_CARD_DATA, (state, action) => {
+        const { dashcard_id, currentTime } = action.payload;
+        state.loadingIds = state.loadingIds.filter(id => id !== dashcard_id);
+        if (state.loadingIds.length === 0) {
+          state.endTime = currentTime;
+          state.loadingStatus = "complete";
+        }
+      })
+      .addCase<
+        string,
+        {
+          type: string;
+          payload: {
+            dashcard_id: DashCardId;
+          };
+        }
+      >(CANCEL_FETCH_CARD_DATA, (state, action) => {
+        const { dashcard_id } = action.payload;
+        state.loadingIds = state.loadingIds.filter(id => id !== dashcard_id);
+        if (state.loadingIds.length === 0) {
+          state.startTime = null;
+        }
+      })
+      .addCase(RESET, state => {
+        state.loadingStatus = "idle";
+      });
   },
 );

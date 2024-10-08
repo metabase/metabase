@@ -120,7 +120,6 @@ export const fetchCardData = createThunkAction(
         type: FETCH_CARD_DATA_PENDING,
         payload: {
           dashcard_id: dashcard.id,
-          card_id: card.id,
         },
       });
 
