@@ -243,12 +243,12 @@
 (mu/defn test-returns-drill :- [:maybe ::lib.schema.drill-thru/drill-thru]
   "Test that a certain drill gets returned. Returns the drill."
   [{:keys [drill-type query-table column-name click-type query-type query-kinds expected drill-query-native]
-    :or   {query-table "ORDERS"
-           query-kinds (cond-> [:mbql]
-                         (not (unsupported-on-native drill-type)) (conj :native))}
+    :or   {query-table "ORDERS"}
     :as   test-case} :- ReturnsDrillTestCase]
   (last
-   (for [query-kind query-kinds]
+   (for [query-kind (or query-kinds
+                        (cond-> [:mbql]
+                          (not (unsupported-on-native drill-type)) (conj :native)))]
      (let [selected (query-and-row-for-test-case test-case)
            query    (get selected query-kind)
            context  (test-case-context selected query-kind test-case)]
@@ -310,11 +310,11 @@
 (mu/defn test-drill-application
   "Test that a certain drill gets returned, AND when applied to a query returns the expected query."
   [{:keys [drill-type expected-query expected-native drill-args query-kinds]
-    :or   {query-kinds (cond-> [:mbql]
-                         (not (unsupported-on-native drill-type)) (conj :native))}
     :as test-case} :- DrillApplicationTestCase]
   (let [selected (query-and-row-for-test-case test-case)]
-    (doseq [query-kind query-kinds
+    (doseq [query-kind (or query-kinds
+                           (cond-> [:mbql]
+                             (not (unsupported-on-native drill-type)) (conj :native)))
             :let [query (get selected query-kind)]]
       (when-let [drill (test-returns-drill (assoc test-case :query-kinds [query-kind]))]
         (testing (str "Should return expected " (name query-kind) " query when applying the drill"
