@@ -207,7 +207,7 @@ describe("AggregationPicker", () => {
     it("should list basic operators", () => {
       setup();
 
-      expect(screen.getByText("Basic Metrics")).toBeInTheDocument();
+      expect(screen.getByText("Summaries")).toBeInTheDocument();
 
       [
         "Count of rows",
