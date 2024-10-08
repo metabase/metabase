@@ -614,15 +614,15 @@
         :first_time_only_alerts        (get-in stats [:stats :alert :first_time_only])
         :metabase_fields               (get-in stats [:stats :field :fields])
         :metrics                       (get-in stats [:stats :metric :metrics])
-        :native_questions              (get-in stats [:stats :question :questions])
+        :native_questions              (get-in stats [:stats :question :questions]) ;;?
         :permission_groups             (get-in stats [:stats :group :groups])
         :public_dashboards             (get-in stats [:stats :dashboard :public])
-        :public_dashboards_with_params (get-in stats [:stats :dashboard :public])
+        :public_dashboards_with_params (get-in stats [:stats :dashboard :public]) ;;?
         :public_questions              (get-in stats [:stats :question :public])
-        :public_questions_with_params  (get-in stats [:stats :question :public])
-        :query_builder_questions       (get-in stats [:stats :question :questions])
+        :public_questions_with_params  (get-in stats [:stats :question :public]) ;;?
+        :query_builder_questions       (get-in stats [:stats :question :questions]) ;; ?
         :questions                     (get-in stats [:stats :question :questions])
-        :questions_with_params         (get-in stats [:stats :question :questions])
+        :questions_with_params         (get-in stats [:stats :question :questions]) ;; ?
         :segments                      (get-in stats [:stats :segment :segments])
         :tables                        (get-in stats [:stats :table :tables])
         :users                         (get-in stats [:stats :user :users :total])
