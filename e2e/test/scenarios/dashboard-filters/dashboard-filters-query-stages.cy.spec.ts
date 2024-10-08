@@ -1767,7 +1767,7 @@ function setup1stStageExplicitJoinFilter() {
     cy.findByPlaceholderText("Search by Reviewer").type("abe.gorczany");
     cy.button("Add filter").click();
   });
-  cy.wait("@dashboardData");
+  cy.wait(["@dashboardData", "@dashboardData"]);
 }
 
 function setup1stStageImplicitJoinFromSourceFilter() {
@@ -1796,7 +1796,7 @@ function setup1stStageImplicitJoinFromSourceFilter() {
     cy.findAllByPlaceholderText("Enter a number").eq(1).type("16");
     cy.button("Add filter").click();
   });
-  cy.wait("@dashboardData");
+  cy.wait(["@dashboardData", "@dashboardData"]);
 }
 
 function setup1stStageImplicitJoinFromJoinFilter() {
@@ -1822,7 +1822,7 @@ function setup1stStageImplicitJoinFromJoinFilter() {
     cy.findByLabelText("Gadget").click();
     cy.button("Add filter").click();
   });
-  cy.wait("@dashboardData");
+  cy.wait(["@dashboardData", "@dashboardData"]);
 }
 
 function setup1stStageCustomColumnFilter() {
@@ -1851,7 +1851,7 @@ function setup1stStageCustomColumnFilter() {
     cy.findAllByPlaceholderText("Enter a number").eq(1).type("20");
     cy.button("Add filter").click();
   });
-  cy.wait("@dashboardData");
+  cy.wait(["@dashboardData", "@dashboardData"]);
 }
 
 function setup1stStageAggregationFilter() {
@@ -1882,7 +1882,7 @@ function setup1stStageAggregationFilter() {
     cy.findAllByPlaceholderText("Enter a number").eq(1).type("2");
     cy.button("Add filter").click();
   });
-  cy.wait("@dashboardData");
+  cy.wait(["@dashboardData", "@dashboardData"]);
 }
 
 function setup1stStageBreakoutFilter() {
@@ -1910,7 +1910,7 @@ function setup1stStageBreakoutFilter() {
     cy.findByLabelText("Gadget").click();
     cy.button("Add filter").click();
   });
-  cy.wait("@dashboardData");
+  cy.wait(["@dashboardData", "@dashboardData"]);
 }
 
 function setup2ndStageExplicitJoinFilter() {
@@ -1936,7 +1936,7 @@ function setup2ndStageExplicitJoinFilter() {
     cy.findByPlaceholderText("Search by Reviewer").type("abe.gorczany");
     cy.button("Add filter").click();
   });
-  cy.wait("@dashboardData");
+  cy.wait(["@dashboardData", "@dashboardData"]);
 }
 
 function setup2ndStageCustomColumnFilter() {
@@ -1967,7 +1967,7 @@ function setup2ndStageCustomColumnFilter() {
     cy.findAllByPlaceholderText("Enter a number").eq(1).type("20");
     cy.button("Add filter").click();
   });
-  cy.wait("@dashboardData");
+  cy.wait(["@dashboardData", "@dashboardData"]);
 }
 
 function setup2ndStageAggregationFilter() {
@@ -1998,7 +1998,7 @@ function setup2ndStageAggregationFilter() {
     cy.findAllByPlaceholderText("Enter a number").eq(1).type("2");
     cy.button("Add filter").click();
   });
-  cy.wait("@dashboardData");
+  cy.wait(["@dashboardData", "@dashboardData"]);
 }
 
 function setup2ndStageBreakoutFilter() {
@@ -2026,7 +2026,7 @@ function setup2ndStageBreakoutFilter() {
     cy.findByLabelText("Gadget").click();
     cy.button("Add filter").click();
   });
-  cy.wait("@dashboardData");
+  cy.wait(["@dashboardData", "@dashboardData"]);
 }
 
 function setup3rdStageAggregationFilter() {
@@ -2051,7 +2051,7 @@ function setup3rdStageAggregationFilter() {
     cy.findAllByPlaceholderText("Enter a number").eq(1).type("2");
     cy.button("Add filter").click();
   });
-  cy.wait("@dashboardData");
+  cy.wait(["@dashboardData", "@dashboardData"]);
 }
 
 function getFilter(name: string) {
