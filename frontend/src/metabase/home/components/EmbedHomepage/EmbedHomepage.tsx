@@ -17,7 +17,6 @@ import { dismissEmbeddingHomepage } from "./actions";
 export const EmbedHomepage = () => {
   const [feedbackModalOpened, setFeedbackModalOpened] = useState(false);
   const dispatch = useDispatch();
-  const embeddingAutoEnabled = useSetting("setup-embedding-autoenabled");
   const licenseActiveAtSetup = useSetting("setup-license-active-at-setup");
   const exampleDashboardId = useSetting("example-dashboard-id");
   const [sendProductFeedback] = useSendProductFeedbackMutation();
@@ -93,7 +92,6 @@ export const EmbedHomepage = () => {
       <EmbedHomepageView
         onDismiss={onDismiss}
         exampleDashboardId={exampleDashboardId}
-        embeddingAutoEnabled={embeddingAutoEnabled}
         licenseActiveAtSetup={licenseActiveAtSetup}
         initialTab={initialTab}
         interactiveEmbeddingQuickstartUrl={
