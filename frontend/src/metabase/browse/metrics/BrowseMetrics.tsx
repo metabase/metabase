@@ -3,6 +3,7 @@ import { t } from "ttag";
 
 import NoResults from "assets/img/metrics_bot.svg";
 import { skipToken } from "metabase/api";
+import { useDocsUrl } from "metabase/common/hooks";
 import { useFetchMetrics } from "metabase/common/hooks/use-fetch-metrics";
 import EmptyState from "metabase/components/EmptyState";
 import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
@@ -102,6 +103,10 @@ function MetricsEmptyState() {
     cardType: "metric",
   });
 
+  const { url: metricsDocsLink, showMetabaseLinks } = useDocsUrl(
+    "data-modeling/metrics",
+  );
+
   return (
     <Flex align="center" justify="center" mih="70vh">
       <Box maw="25rem">
@@ -112,13 +117,20 @@ function MetricsEmptyState() {
               <Text mt="sm" maw="25rem">
                 {t`Metrics are like pre-defined calculations: create your aggregations once, save them as metrics, and use them whenever you need to analyze your data.`}
               </Text>
-              <Box pt="md">
+              <Flex pt="md" align="center" justify="center" gap="md">
+                {showMetabaseLinks && (
+                  <Link
+                    target="_blank"
+                    to={metricsDocsLink}
+                    variant="brandBold"
+                  >{t`Read the docs`}</Link>
+                )}
                 <Button
                   component={Link}
                   to={newMetricLink}
                   variant="filled"
                 >{t`Create metric`}</Button>
-              </Box>
+              </Flex>
             </Box>
           }
           illustrationElement={<img src={NoResults} />}
