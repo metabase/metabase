@@ -1,9 +1,9 @@
 import { render, screen } from "__support__/ui";
 import { Select } from "metabase/ui";
 
-import { getMantineSelectOptions } from "./mantineSelect";
+import { viewMantineSelectOptions } from "./mantineSelect";
 
-describe("getMantineSelectOptions", () => {
+describe("viewMantineSelectOptions", () => {
   it("fetches options from the <Select> component", async () => {
     render(
       <Select
@@ -16,7 +16,7 @@ describe("getMantineSelectOptions", () => {
       />,
     );
     const { optionElements, optionTextContents, displayedOption } =
-      await getMantineSelectOptions();
+      await viewMantineSelectOptions();
 
     expect(optionElements.length).toBe(3);
     expect(optionElements[0]).toHaveTextContent("Option 1");
@@ -62,7 +62,7 @@ describe("getMantineSelectOptions", () => {
       "second-select-container",
     );
     const { optionElements, optionTextContents, displayedOption } =
-      await getMantineSelectOptions({
+      await viewMantineSelectOptions({
         within: secondSelectContainer,
       });
 
@@ -74,7 +74,7 @@ describe("getMantineSelectOptions", () => {
   });
 
   it("throws an error if the <Select> is not found", async () => {
-    await expect(getMantineSelectOptions()).rejects.toThrow(
+    await expect(viewMantineSelectOptions()).rejects.toThrow(
       /Unable to find.*role="combobox"/,
     );
   });

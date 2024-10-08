@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 
 import { screen, within } from "__support__/ui";
 
-/** Click a Mantine <Select> component, view its options, and return info about them */
+/** Clicks a Mantine <Select> component, views its options, and returns info about them */
 export const viewMantineSelectOptions = async ({
   within: withinElement,
 }: {
