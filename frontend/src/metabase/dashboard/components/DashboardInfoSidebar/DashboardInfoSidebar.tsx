@@ -169,7 +169,7 @@ const OverviewTab = ({
           </Text>
         )}
       </SidesheetCard>
-      <SidesheetCard>
+      <SidesheetCard stackProps={{ spacing: "lg" }}>
         <DashboardDetails dashboard={dashboard} />
       </SidesheetCard>
       <EntityIdCard entityId={dashboard.entity_id} />
