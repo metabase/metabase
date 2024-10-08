@@ -20,12 +20,16 @@ const updateChannelSetting = {
   defaultValue: "latest",
   options: [
     {
-      name: c("describes a software version").t`Stable releases`,
+      name: c("describes a set of software version releases")
+        .t`Stable releases`,
       value: "latest",
     },
-    { name: c("describes a software version").t`Beta releases`, value: "beta" },
     {
-      name: c("describes a software version").t`Nightly builds`,
+      name: c("describes a set of software version releases").t`Beta releases`,
+      value: "beta",
+    },
+    {
+      name: c("describes a set of software version releases").t`Nightly builds`,
       value: "nightly",
     },
   ],
