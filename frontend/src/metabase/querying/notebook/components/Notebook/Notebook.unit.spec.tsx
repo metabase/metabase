@@ -386,7 +386,7 @@ describe("Notebook", () => {
 
           if (entityType !== "table") {
             // nested items so we want to go to the next nesting
-            await userEvent.click(screen.getByText("Our analytics"));
+            await userEvent.click(await screen.findByText("Our analytics"));
           }
 
           assertDataInPickerColumn({
