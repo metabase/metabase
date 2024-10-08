@@ -1,6 +1,7 @@
 (ns metabase.query-processor.streaming.xlsx
   (:require
    [cheshire.core :as json]
+   [clojure.java.io :as io]
    [clojure.string :as str]
    [dk.ative.docjure.spreadsheet :as spreadsheet]
    [java-time.api :as t]
@@ -616,6 +617,11 @@
 
 (defmethod qp.si/streaming-results-writer :xlsx
   [_ ^OutputStream os]
+  ;; working around a bug #41919. Will be fixed when we can get a release of apache poi 5.3.1. See
+  ;; https://bz.apache.org/bugzilla/show_bug.cgi?id=69323
+  (let [f (io/file (str (System/getProperty "java.io.tmpdir") "/poifiles"))]
+    (when-not (.exists f)
+      (.mkdirs f)))
   (let [workbook           (SXSSFWorkbook.)
         sheet              (spreadsheet/add-sheet! workbook (tru "Query result"))
         _                  (set-no-style-custom-helper sheet)
