@@ -115,7 +115,8 @@
   (when-not *skip-sending-notification?*
     (when-let [notifications (notifications-for-topic topic)]
       (task-history/with-task-history {:task         "notification-triggered"
-                                       :task_details {:something true}}
+                                       :task_details {:event_topic      topic
+                                                      :notification_ids (map :id notifications)}}
         (let [event-info (enriched-event-info topic event-info)]
           (log/infof "Found %d %s for event: %s"
                      (count notifications) (u/format-plural (count notifications) "notification") topic)

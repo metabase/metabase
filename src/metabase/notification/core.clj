@@ -103,7 +103,7 @@
                                                          :notifcation_id notification-id
                                                          :recipient_ids  (map :id (:recipients handler))}}
         ((retry/decorate send! (retry/random-exponential-backoff-retry (str (random-uuid)) retry-config)))
-        (log/debugf "[Notification %d] Sent to channel %s with %d retries" notification-id (handler->channel-name channel) (count @retry-errors))))
+        (log/debugf "[Notification %d] Sent to channel %s with %d retries" notification-id (handler->channel-name handler) (count @retry-errors))))
     (catch Throwable e
       (log/errorf e "[Notification %d] Error sending notification!" (:notification_id handler)))))
 
