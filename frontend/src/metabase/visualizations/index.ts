@@ -3,6 +3,7 @@ import _ from "underscore";
 
 import type {
   DatasetData,
+  RawSeries,
   Series,
   TransformedSeries,
   VisualizationDisplay,
@@ -65,7 +66,9 @@ export function getVisualizationRaw(series: SeriesLike) {
   return visualizations.get(series[0].card.display);
 }
 
-export function getVisualizationTransformed(series: TransformedSeries) {
+export function getVisualizationTransformed(
+  series: RawSeries | TransformedSeries,
+) {
   // don't transform if we don't have the data
   if (
     _.any(series, s => s.data == null) ||
