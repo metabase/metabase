@@ -150,6 +150,7 @@
               :druid
               :druid-jdbc
               :googleanalytics
+              :hive-like
               :mongo
               :oracle
               :presto-jdbc
