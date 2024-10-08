@@ -50,36 +50,38 @@ describe("scenarios > question > native query drill", () => {
     cy.intercept("POST", "/api/card").as("saveCard");
   });
 
-  it("should allow to save an ad-hoc native query when attempting to drill", () => {
-    visitQuestionAdhoc({
-      display: "table",
-      dataset_query: {
-        database: SAMPLE_DB_ID,
-        type: "native",
-        native: peopleTableQuestionDetails.native,
-      },
-    });
-    cy.wait("@dataset");
+  describe("query builder metadata", () => {
+    it("should allow to save an ad-hoc native query when attempting to drill", () => {
+      visitQuestionAdhoc({
+        display: "table",
+        dataset_query: {
+          database: SAMPLE_DB_ID,
+          type: "native",
+          native: peopleTableQuestionDetails.native,
+        },
+      });
+      cy.wait("@dataset");
 
-    tableInteractive().findByText("October 7, 2023, 1:34 AM").click();
-    popover().within(() => {
-      cy.findByText("Filter by this date").should("not.exist");
-      cy.button("Save").click();
-    });
-    modal().within(() => {
-      cy.findByLabelText("Name").type("SQL");
-      cy.button("Save").click();
-      cy.wait("@saveCard");
-    });
-    modal().findByText("Not now").click();
+      tableInteractive().findByText("October 7, 2023, 1:34 AM").click();
+      popover().within(() => {
+        cy.findByText("Filter by this date").should("not.exist");
+        cy.button("Save").click();
+      });
+      modal().within(() => {
+        cy.findByLabelText("Name").type("SQL");
+        cy.button("Save").click();
+        cy.wait("@saveCard");
+      });
+      modal().findByText("Not now").click();
 
-    tableInteractive().findByText("October 7, 2023, 1:34 AM").click();
-    popover().within(() => {
-      cy.findByText("Filter by this date").should("be.visible");
-      cy.findByText("On").click();
+      tableInteractive().findByText("October 7, 2023, 1:34 AM").click();
+      popover().within(() => {
+        cy.findByText("Filter by this date").should("be.visible");
+        cy.findByText("On").click();
+      });
+      cy.wait("@dataset");
+      assertQueryBuilderRowCount(1);
     });
-    cy.wait("@dataset");
-    assertQueryBuilderRowCount(1);
   });
 
   describe("query builder drills", () => {
