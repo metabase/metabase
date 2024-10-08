@@ -31,7 +31,7 @@ const peopleTableQuestionDetails: NativeQuestionDetails = {
   },
 };
 
-const dateChartQuestionDetails: NativeQuestionDetails = {
+const dateLineQuestionDetails: NativeQuestionDetails = {
   display: "line",
   native: {
     query: "SELECT ID, CREATED_AT, QUANTITY FROM ORDERS ORDER BY ID LIMIT 10",
@@ -42,7 +42,7 @@ const dateChartQuestionDetails: NativeQuestionDetails = {
   },
 };
 
-const numericChartQuestionDetails: NativeQuestionDetails = {
+const numericLineQuestionDetails: NativeQuestionDetails = {
   display: "line",
   native: {
     query: "SELECT ID, CREATED_AT, QUANTITY FROM ORDERS ORDER BY ID LIMIT 10",
@@ -202,7 +202,7 @@ describe("scenarios > question > native query drill", () => {
     });
 
     it("quick-filter drill", () => {
-      createNativeQuestion(dateChartQuestionDetails, { visitQuestion: true });
+      createNativeQuestion(dateLineQuestionDetails, { visitQuestion: true });
       assertQueryBuilderRowCount(10);
       cartesianChartCircle().eq(0).click();
       popover().within(() => {
@@ -289,7 +289,7 @@ describe("scenarios > question > native query drill", () => {
     });
 
     it("unsupported drills", () => {
-      createNativeQuestion(dateChartQuestionDetails, { visitQuestion: true });
+      createNativeQuestion(dateLineQuestionDetails, { visitQuestion: true });
       assertQueryBuilderRowCount(10);
       cartesianChartCircle().eq(0).click();
       popover().within(() => {
@@ -302,7 +302,7 @@ describe("scenarios > question > native query drill", () => {
 
   describe("query builder brush filters", () => {
     it("timeseries filter", () => {
-      createNativeQuestion(dateChartQuestionDetails, { visitQuestion: true });
+      createNativeQuestion(dateLineQuestionDetails, { visitQuestion: true });
       assertQueryBuilderRowCount(10);
       applyBrushFilter(200, 800);
       cy.wait("@dataset");
@@ -310,7 +310,7 @@ describe("scenarios > question > native query drill", () => {
     });
 
     it("numeric filter", () => {
-      createNativeQuestion(numericChartQuestionDetails, {
+      createNativeQuestion(numericLineQuestionDetails, {
         visitQuestion: true,
       });
       assertQueryBuilderRowCount(10);
@@ -336,7 +336,7 @@ describe("scenarios > question > native query drill", () => {
 
       cy.log("from a chart dot");
       cy.createDashboardWithQuestions({
-        questions: [dateChartQuestionDetails],
+        questions: [dateLineQuestionDetails],
       }).then(({ dashboard }) => visitDashboard(dashboard.id));
       getDashboardCard().within(() => cartesianChartCircle().eq(0).click());
       popover().within(() => {
