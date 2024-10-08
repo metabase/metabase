@@ -23,6 +23,20 @@ describe("scenarios > question > native query drill", () => {
   });
 
   describe("drills", () => {
+    it("column-extract drill", () => {
+      createNativeQuestion(ordersQuestionDetails, { visitQuestion: true });
+      tableHeaderClick("CREATED_AT");
+      popover().findByText("Extract day, month…").click();
+      popover().findByText("Quarter of year").click();
+      assertTableData({
+        columns: ["ID", "CREATED_AT", "QUANTITY", "Quarter of year"],
+        firstRows: [
+          ["1", "February 11, 2025, 9:40 PM", "2", "Q1"],
+          ["2", "May 15, 2024, 8:04 AM", "3", "Q2"],
+        ],
+      });
+    });
+
     it("column-filter drill", () => {
       createNativeQuestion(ordersQuestionDetails, { visitQuestion: true });
       assertQueryBuilderRowCount(10);
