@@ -37,23 +37,49 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 
+(defn- get-max-id []
+  (let [{:keys [^javax.sql.DataSource data-source]} mdb.connection/*application-db*]
+    (-> {:connection (.getConnection data-source)}
+        (jdbc/query ["SELECT MAX(id) FROM DATABASECHANGELOG"])
+        ffirst
+        val)))
+
+(defn- get-last-id []
+  (let [{:keys [^javax.sql.DataSource data-source]} mdb.connection/*application-db*]
+    (-> {:connection (.getConnection data-source)}
+        (jdbc/query ["SELECT id FROM DATABASECHANGELOG ORDER BY ORDEREXECUTED DESC LIMIT 1"])
+        ffirst
+        val)))
+
 (deftest rollback-test
   (testing "Migrating to latest version, rolling back to v44, and then migrating up again"
-    ;; using test-migrations to excercise all drivers
+    ;; using test-migrations to exercise all drivers
     (impl/test-migrations ["v46.00-001" "v46.00-002"] [migrate!]
-      (let [{:keys [^javax.sql.DataSource data-source]} mdb.connection/*application-db*
-            get-last-id (fn []
-                          (-> {:connection (.getConnection data-source)}
-                              (jdbc/query ["SELECT id FROM DATABASECHANGELOG ORDER BY ORDEREXECUTED DESC LIMIT 1"])
-                              first
-                              :id))]
+      (migrate!)
+      (let [latest-id (get-max-id)]
+        (migrate! :down 45)
+        ;; will always be the last v45 migration
+        (is (= "v45.00-057" (get-max-id)))
         (migrate!)
+        (is (= latest-id (get-max-id)))))))
+
+(deftest rollback-after-47-test
+  (testing "Migrating to latest version, rolling back to v44, and then migrating up again"
+    (let [changesets-per-filename #(frequencies (t2/select-fn-vec :filename [:databasechangelog :filename]))]
+      ;; Initialize at 48.00-001, i.e. 48.00-002 is next.
+      (impl/test-migrations ["v48.00-002" "v48.00-003"] [migrate!]
+        (is (= ["migrations/001_update_migrations.yaml"] (keys (changesets-per-filename))))
+        (migrate!)
+        (is (= ["migrations/001_update_migrations.yaml"] (keys (changesets-per-filename))))
         (let [latest-id (get-last-id)]
           (migrate! :down 45)
-          ;; will always be the last v44 migration
-          (is (= "v45.00-057" (get-last-id)))
-          (migrate!)
-          (is (= latest-id (get-last-id))))))))
+          (is (= "v45.00-057" (get-max-id)))
+          (testing "\nThe legacy changesets have been backfilled"
+            (is (= 465 (get (changesets-per-filename) "migrations/000_migrations.yaml")))
+            (is (= "v44.00-044" (get-last-id))))
+          (testing "\nWe are able to migrate back up again"
+            (migrate!)
+            (is (= latest-id (get-last-id)))))))))
 
 (defn- create-raw-user!
   "create a user but skip pre and post insert steps"
