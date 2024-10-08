@@ -6,7 +6,7 @@ import { DEFAULT_METABASE_COMPONENT_THEME } from "embedding-sdk/lib/theme";
 import {
   //   getAccordionOverrides,
   //   getActionIconOverrides,
-  //   getAlertOverrides,
+  alertOverrides,
   //   getAnchorOverrides,
   //   getAutocompleteOverrides,
   //   getButtonOverrides,
@@ -117,7 +117,7 @@ export const getThemeOverrides = (): MantineThemeProviderProps["theme"] => ({
   components: {
     // ...getAccordionOverrides(),
     // ...getActionIconOverrides(),
-    // ...getAlertOverrides(),
+    ...alertOverrides,
     // ...getAnchorOverrides(),
     // ...getAutocompleteOverrides(),
     // ...getButtonOverrides(),
