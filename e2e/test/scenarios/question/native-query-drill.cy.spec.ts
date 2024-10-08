@@ -10,6 +10,8 @@ import {
   tableHeaderClick,
   tableInteractive,
   visitQuestion,
+  getDashboardCard,
+  visitDashboard,
 } from "e2e/support/helpers";
 
 const ordersTableQuestionDetails: NativeQuestionDetails = {
@@ -43,7 +45,7 @@ describe("scenarios > question > native query drill", () => {
     cy.signInAsNormalUser();
   });
 
-  describe("drills", () => {
+  describe("query builder drills", () => {
     it("column-extract drill", () => {
       cy.log("from column header");
       createNativeQuestion(ordersTableQuestionDetails, {
@@ -221,6 +223,32 @@ describe("scenarios > question > native query drill", () => {
           ["September 2024", "5"],
         ],
       });
+    });
+  });
+
+  describe("dashboard drills", () => {
+    it("quick-filter drill", () => {
+      cy.log("from a cell");
+      cy.createDashboardWithQuestions({
+        questions: [ordersTableQuestionDetails],
+      }).then(({ dashboard }) => visitDashboard(dashboard.id));
+      getDashboardCard().findByText("May 15, 2024, 8:04 AM").click();
+      popover().within(() => {
+        cy.findByText("Filter by this date").should("be.visible");
+        cy.findByText("On").click();
+      });
+      assertQueryBuilderRowCount(1);
+
+      cy.log("from a chart dot");
+      cy.createDashboardWithQuestions({
+        questions: [ordersLineQuestionDetails],
+      }).then(({ dashboard }) => visitDashboard(dashboard.id));
+      getDashboardCard().within(() => cartesianChartCircle().eq(0).click());
+      popover().within(() => {
+        cy.findByText("Filter by this value").should("be.visible");
+        cy.findByText("=").click();
+      });
+      assertQueryBuilderRowCount(3);
     });
   });
 });
