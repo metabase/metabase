@@ -37,19 +37,15 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 
-(defn- get-max-id []
+(defn- get-conn []
   (let [{:keys [^javax.sql.DataSource data-source]} mdb.connection/*application-db*]
-    (-> {:connection (.getConnection data-source)}
-        (jdbc/query ["SELECT MAX(id) FROM DATABASECHANGELOG"])
-        ffirst
-        val)))
+    {:connection (.getConnection data-source)}))
+
+(defn- get-max-id []
+  (-> (jdbc/query (get-conn) ["SELECT MAX(id) FROM DATABASECHANGELOG"]) ffirst val))
 
 (defn- get-last-id []
-  (let [{:keys [^javax.sql.DataSource data-source]} mdb.connection/*application-db*]
-    (-> {:connection (.getConnection data-source)}
-        (jdbc/query ["SELECT id FROM DATABASECHANGELOG ORDER BY ORDEREXECUTED DESC LIMIT 1"])
-        ffirst
-        val)))
+  (-> (jdbc/query (get-conn) ["SELECT id FROM DATABASECHANGELOG ORDER BY ORDEREXECUTED DESC LIMIT 1"]) ffirst val))
 
 (deftest rollback-test
   (testing "Migrating to latest version, rolling back to v44, and then migrating up again"
@@ -65,10 +61,11 @@
 
 (deftest rollback-after-47-test
   (testing "Migrating to latest version, rolling back to v44, and then migrating up again"
-    (let [changesets-per-filename #(try (frequencies (t2/select-fn-vec :filename [:databasechangelog :filename]))
-                                        (catch Exception _
-                                          ;; The table might not exist yet.
-                                          {}))]
+    (let [changesets-per-filename #(try (->> (jdbc/query (get-conn) ["SELECT FILENAME FROM DATABASECHANGELOG"])
+                                             (map :filename)
+                                             frequencies)
+                                        ;; The table might not exist yet.
+                                        (catch Exception _ {}))]
       ;; Initialize at 48.00-001, i.e. 48.00-002 is next.
       (impl/test-migrations ["v48.00-002" "v48.00-003"] [migrate!]
         (is (= ["migrations/001_update_migrations.yaml"] (keys (changesets-per-filename))))
