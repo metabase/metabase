@@ -34,7 +34,7 @@ const peopleTableQuestionDetails: NativeQuestionDetails = {
 const timeseriesLineQuestionDetails: NativeQuestionDetails = {
   display: "line",
   native: {
-    query: "SELECT ID, CREATED_AT, QUANTITY FROM ORDERS ORDER BY ID LIMIT 10",
+    query: "SELECT CREATED_AT, QUANTITY FROM ORDERS ORDER BY ID LIMIT 10",
   },
   visualization_settings: {
     "graph.dimensions": ["CREATED_AT"],
@@ -45,7 +45,7 @@ const timeseriesLineQuestionDetails: NativeQuestionDetails = {
 const numericLineQuestionDetails: NativeQuestionDetails = {
   display: "line",
   native: {
-    query: "SELECT ID, CREATED_AT, QUANTITY FROM ORDERS ORDER BY ID LIMIT 10",
+    query: "SELECT ID, QUANTITY FROM ORDERS ORDER BY ID LIMIT 10",
   },
   visualization_settings: {
     "graph.dimensions": ["ID"],
