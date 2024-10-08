@@ -597,7 +597,7 @@
   (setting/set-value-of-type! :json eid-translation/default-counter))
 
 (defn- ->snowplow-metric-info
-  "Collects Snowplow metrics data that is not in the legacy stats format."
+  "Collects Snowplow metrics data that is not in the legacy stats format. Also clears entity id translation count."
   []
   (let [one-day-ago (t/minus (t/offset-date-time) (t/days 1))
         total-translation-count (:total (get-translation-count!))
