@@ -16,7 +16,7 @@ const TEXT = {
   ).t`Clean things up!`,
   GET_RID_OF_UNUSED_CONTENT: c(
     "This is the heading of a banner that invites the user to clean up a collection.",
-  ).t`Get rid of unused content`,
+  ).t`Get rid of unused content in this collection`,
 };
 
 export const CollectionCleanupAlert = ({
