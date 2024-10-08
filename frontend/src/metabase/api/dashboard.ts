@@ -6,6 +6,7 @@ import type {
   DashboardQueryMetadata,
   GetDashboardQueryMetadataRequest,
   GetDashboardRequest,
+  GetEmbeddableDashboard,
   GetPublicDashboard,
   ListDashboardsRequest,
   ListDashboardsResponse,
@@ -109,7 +110,7 @@ export const dashboardApi = Api.injectEndpoints({
       invalidatesTags: (_, error) =>
         invalidateTags(error, [listTag("dashboard")]),
     }),
-    listEmbeddableDashboards: builder.query<GetPublicDashboard[], void>({
+    listEmbeddableDashboards: builder.query<GetEmbeddableDashboard[], void>({
       query: params => ({
         method: "GET",
         url: "/api/dashboard/embeddable",
