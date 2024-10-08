@@ -1,3 +1,5 @@
+import userEvent from "@testing-library/user-event";
+
 import { viewMantineSelectOptions } from "__support__/components/mantineSelect";
 import { type RenderWithProvidersOptions, screen } from "__support__/ui";
 import type { BaseEntityId, Dashboard } from "metabase-types/api";
@@ -53,12 +55,12 @@ describe("DashboardEntityIdCard (EE with token)", () => {
     ]);
     expect(await screen.findByText("tab-1-entity-id")).toBeInTheDocument();
 
-    firstClickOnSelect.optionElements[1].click();
+    await userEvent.click(firstClickOnSelect.optionElements[1]);
     expect(await screen.findByText("tab-2-entity-id")).toBeInTheDocument();
 
     const secondClickOnSelect = await viewMantineSelectOptions();
     expect(secondClickOnSelect.displayedOption.value).toBe("Tab 2");
-    firstClickOnSelect.optionElements[2].click();
+    await userEvent.click(secondClickOnSelect.optionElements[2]);
     expect(await screen.findByText("tab-3-entity-id")).toBeInTheDocument();
   });
 
