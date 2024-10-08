@@ -23,28 +23,53 @@ import {
   ScalarTitleContent,
   ScalarValueWrapper,
 } from "./ScalarValue.styled";
+import { findSize, getMaxFontSize } from "./utils";
 
 export const ScalarWrapper = ({ children }) => (
-  <ScalarRoot className={DashboardS.ScalarValueContainer}>
-    {children}
-  </ScalarRoot>
+  <ScalarRoot>{children}</ScalarRoot>
 );
 
-const ScalarValue = ({ value }) => {
+const ScalarValue = ({
+  value,
+  height,
+  width,
+  gridSize,
+  totalNumGridCols,
+  fontFamily,
+}) => {
   const {
     other: { number: numberTheme },
   } = useMantineTheme();
 
-  const fontSize = useMemo(
-    () => numberTheme?.value?.fontSize,
-    [numberTheme?.value?.fontSize],
-  );
+  const fontSize = useMemo(() => {
+    if (numberTheme?.value?.fontSize) {
+      return numberTheme.value?.fontSize;
+    }
+
+    return findSize({
+      text: value,
+      targetHeight: height,
+      targetWidth: width,
+      fontFamily: fontFamily ?? "Lato",
+      fontWeight: 700,
+      unit: "rem",
+      step: 0.2,
+      min: 1,
+      max: gridSize ? getMaxFontSize(gridSize.width, totalNumGridCols) : 4,
+    });
+  }, [
+    fontFamily,
+    gridSize,
+    height,
+    totalNumGridCols,
+    value,
+    width,
+    numberTheme?.value?.fontSize,
+  ]);
 
   return (
     <ScalarValueWrapper
-      className={cx(DashboardS.ScalarValue, QueryBuilderS.ScalarValue, {
-        [DashboardS.ScalarValueElement]: !fontSize,
-      })}
+      className={cx(DashboardS.ScalarValue, QueryBuilderS.ScalarValue)}
       fontSize={fontSize}
       lineHeight={numberTheme?.value?.lineHeight}
       data-testid="scalar-value"
