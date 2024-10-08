@@ -133,7 +133,7 @@ export const dashboardApi = Api.injectEndpoints({
       ],
     }),
     createDashboardPublicLink: builder.mutation<
-      { uuid: Dashboard["public_uuid"] },
+      Pick<Dashboard, "id"> & { uuid: Dashboard["public_uuid"] },
       Pick<Dashboard, "id">
     >({
       query: ({ id }) => ({
@@ -142,8 +142,15 @@ export const dashboardApi = Api.injectEndpoints({
       }),
       invalidatesTags: (_, error) =>
         invalidateTags(error, [listTag("public-dashboard")]),
+      transformResponse: ({ uuid }, _meta, { id }) => ({
+        id,
+        uuid,
+      }),
     }),
-    deleteDashboardPublicLink: builder.mutation<void, Pick<Dashboard, "id">>({
+    deleteDashboardPublicLink: builder.mutation<
+      Pick<Dashboard, "id">,
+      Pick<Dashboard, "id">
+    >({
       query: ({ id }) => ({
         method: "DELETE",
         url: `/api/dashboard/${id}/public_link`,
@@ -153,6 +160,7 @@ export const dashboardApi = Api.injectEndpoints({
           listTag("public-dashboard"),
           idTag("public-dashboard", id),
         ]),
+      transformResponse: (_baseQueryReturnValue, _meta, { id }) => ({ id }),
     }),
   }),
 });
@@ -169,5 +177,6 @@ export const {
   useListEmbeddableDashboardsQuery,
   useListPublicDashboardsQuery,
   useDeleteDashboardPublicLinkMutation,
+  useCreateDashboardPublicLinkMutation,
   endpoints: { deleteDashboardPublicLink, createDashboardPublicLink },
 } = dashboardApi;
