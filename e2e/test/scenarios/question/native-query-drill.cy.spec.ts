@@ -5,13 +5,13 @@ import {
   cartesianChartCircle,
   createNativeQuestion,
   echartsContainer,
+  getDashboardCard,
   popover,
   restore,
   tableHeaderClick,
   tableInteractive,
-  visitQuestion,
-  getDashboardCard,
   visitDashboard,
+  visitQuestion,
 } from "e2e/support/helpers";
 
 const ordersTableQuestionDetails: NativeQuestionDetails = {
@@ -222,6 +222,17 @@ describe("scenarios > question > native query drill", () => {
           ["May 2024", "3"],
           ["September 2024", "5"],
         ],
+      });
+    });
+
+    it("unsupported drills", () => {
+      createNativeQuestion(ordersLineQuestionDetails, { visitQuestion: true });
+      assertQueryBuilderRowCount(10);
+      cartesianChartCircle().eq(0).click();
+      popover().within(() => {
+        cy.findByText(/See these/).should("not.exist");
+        cy.findByText(/Breakout by/).should("not.exist");
+        cy.findByText(/Automatic insights/).should("not.exist");
       });
     });
   });
