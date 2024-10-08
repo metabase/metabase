@@ -33,12 +33,11 @@ const PopoverDropdown = function PopoverDropdown(
     <MantinePopoverDropdown {...props} data-element-id="mantine-popover" />
   );
 };
-PopoverDropdown.displayName = MantinePopoverDropdown.displayName;
-MantinePopover.Dropdown = PopoverDropdown;
 
-const Popover: typeof MantinePopover & {
-  Dropdown: typeof PopoverDropdown;
-} = MantinePopover;
+PopoverDropdown.displayName = MantinePopoverDropdown.displayName;
+MantinePopover.Dropdown = PopoverDropdown as typeof MantinePopover.Dropdown;
+
+const Popover = MantinePopover;
 
 export { Popover };
 export { DEFAULT_POPOVER_Z_INDEX } from "./Popover.config";
