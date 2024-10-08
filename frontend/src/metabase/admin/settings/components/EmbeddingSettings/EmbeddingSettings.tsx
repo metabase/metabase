@@ -17,8 +17,6 @@ export function EmbeddingSettings({
 }: AdminSettingComponentProps) {
   function handleToggleStaticEmbedding(value: boolean) {
     updateSetting({ key: "enable-embedding-static" }, value);
-    // TODO: remove before merging integration branch
-    updateSetting({ key: "enable-embedding" }, value);
   }
 
   function handleToggleEmbeddingSdk(value: boolean) {
