@@ -3,14 +3,13 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { SMTPConnectionForm } from "metabase/admin/settings/components/Email/SMTPConnectionForm";
-import Breadcrumbs from "metabase/components/Breadcrumbs";
 import { DashboardSelector } from "metabase/components/DashboardSelector";
 import MetabaseSettings from "metabase/lib/settings";
 import { newVersionAvailable } from "metabase/lib/utils";
 import {
+  PLUGIN_ADMIN_SETTINGS,
   PLUGIN_ADMIN_SETTINGS_AUTH_TABS,
   PLUGIN_ADMIN_SETTINGS_UPDATES,
-  PLUGIN_EMBEDDING,
   PLUGIN_LLM_AUTODESCRIPTION,
 } from "metabase/plugins";
 import { refreshCurrentUser } from "metabase/redux/user";
@@ -19,35 +18,37 @@ import { getUserIsAdmin } from "metabase/selectors/user";
 import {
   trackCustomHomepageDashboardEnabled,
   trackTrackingPermissionChanged,
-} from "./analytics";
-import { CloudPanel } from "./components/CloudPanel";
-import { BccToggleWidget } from "./components/Email/BccToggleWidget";
-import { SettingsEmailForm } from "./components/Email/SettingsEmailForm";
-import SettingsLicense from "./components/SettingsLicense";
-import { SettingsUpdatesForm } from "./components/SettingsUpdatesForm/SettingsUpdatesForm";
-import { UploadSettings } from "./components/UploadSettings";
-import CustomGeoJSONWidget from "./components/widgets/CustomGeoJSONWidget";
+} from "../analytics";
+import { CloudPanel } from "../components/CloudPanel";
+import { BccToggleWidget } from "../components/Email/BccToggleWidget";
+import { SettingsEmailForm } from "../components/Email/SettingsEmailForm";
 import {
-  InteractiveEmbeddingOptionCard,
-  StaticEmbeddingOptionCard,
-} from "./components/widgets/EmbeddingOption";
-import { EmbeddingSwitchWidget } from "./components/widgets/EmbeddingSwitchWidget";
-import FormattingWidget from "./components/widgets/FormattingWidget";
-import HttpsOnlyWidget from "./components/widgets/HttpsOnlyWidget";
+  EmbeddingSdkSettings,
+  EmbeddingSettings,
+  StaticEmbeddingSettings,
+} from "../components/EmbeddingSettings";
+import SettingsLicense from "../components/SettingsLicense";
+import { SettingsUpdatesForm } from "../components/SettingsUpdatesForm/SettingsUpdatesForm";
+import { UploadSettings } from "../components/UploadSettings";
+import CustomGeoJSONWidget from "../components/widgets/CustomGeoJSONWidget";
+import FormattingWidget from "../components/widgets/FormattingWidget";
+import HttpsOnlyWidget from "../components/widgets/HttpsOnlyWidget";
 import {
-  EmbeddedResources,
   PublicLinksActionListing,
   PublicLinksDashboardListing,
   PublicLinksQuestionListing,
-} from "./components/widgets/PublicLinksListing";
-import RedirectWidget from "./components/widgets/RedirectWidget";
-import SecretKeyWidget from "./components/widgets/SecretKeyWidget";
-import SettingCommaDelimitedInput from "./components/widgets/SettingCommaDelimitedInput";
-import SiteUrlWidget from "./components/widgets/SiteUrlWidget";
-import { NotificationSettings } from "./notifications/NotificationSettings";
-import { updateSetting } from "./settings";
-import SetupCheckList from "./setup/components/SetupCheckList";
-import SlackSettings from "./slack/containers/SlackSettings";
+} from "../components/widgets/PublicLinksListing";
+import SettingCommaDelimitedInput from "../components/widgets/SettingCommaDelimitedInput";
+import SiteUrlWidget from "../components/widgets/SiteUrlWidget";
+import { NotificationSettings } from "../notifications/NotificationSettings";
+import { updateSetting } from "../settings";
+import SetupCheckList from "../setup/components/SetupCheckList";
+import SlackSettings from "../slack/containers/SlackSettings";
+
+import {
+  getAdminSettingDefinitions,
+  getAdminSettingWarnings,
+} from "./typed-selectors";
 
 // This allows plugins to update the settings sections
 function updateSectionsWithPlugins(sections) {
@@ -428,100 +429,25 @@ export const ADMIN_SETTINGS_SECTIONS = {
     key: "enable-embedding",
     name: t`Embedding`,
     order: 100,
-    settings: [
-      {
-        key: "enable-embedding",
-        display_name: t`Embedding`,
-        description: null,
-        widget: EmbeddingSwitchWidget,
-      },
-      {
-        key: "-static-embedding",
-        widget: StaticEmbeddingOptionCard,
-      },
-      {
-        key: "-interactive-embedding",
-        widget: InteractiveEmbeddingOptionCard,
-      },
-    ],
+    component: EmbeddingSettings,
+    settings: [],
   },
   "embedding-in-other-applications/standalone": {
-    settings: [
-      {
-        key: "-breadcrumb",
-        widget: () => {
-          return (
-            <Breadcrumbs
-              size="large"
-              crumbs={[
-                [
-                  t`Embedding`,
-                  "/admin/settings/embedding-in-other-applications",
-                ],
-                [t`Static embedding`],
-              ]}
-            />
-          );
-        },
-      },
-      {
-        key: "embedding-secret-key",
-        display_name: t`Embedding secret key`,
-        description: t`Standalone Embed Secret Key used to sign JSON Web Tokens for requests to /api/embed endpoints. This lets you create a secure environment limited to specific users or organizations.`,
-        widget: SecretKeyWidget,
-        getHidden: (_, derivedSettings) => !derivedSettings["enable-embedding"],
-        props: {
-          confirmation: {
-            header: t`Regenerate embedding key?`,
-            dialog: t`This will cause existing embeds to stop working until they are updated with the new key.`,
-          },
-        },
-      },
-
-      {
-        key: "-embedded-resources",
-        display_name: t`Manage embeds`,
-
-        widget: EmbeddedResources,
-        getHidden: (_, derivedSettings) => !derivedSettings["enable-embedding"],
-      },
-      {
-        key: "-redirect-widget",
-        widget: () => (
-          <RedirectWidget to="/admin/settings/embedding-in-other-applications" />
-        ),
-        getHidden: (_, derivedSettings) => derivedSettings["enable-embedding"],
-      },
-    ],
+    component: StaticEmbeddingSettings,
+    settings: [],
+  },
+  "embedding-in-other-applications/sdk": {
+    component: EmbeddingSdkSettings,
+    settings: [],
   },
   "embedding-in-other-applications/full-app": {
-    settings: [
-      {
-        key: "-breadcrumbs",
-        widget: () => {
-          return (
-            <Breadcrumbs
-              size="large"
-              crumbs={[
-                [
-                  t`Embedding`,
-                  "/admin/settings/embedding-in-other-applications",
-                ],
-                [t`Interactive embedding`],
-              ]}
-            />
-          );
-        },
-      },
-      {
-        key: "-redirect-widget",
-        widget: () => (
-          <RedirectWidget to="/admin/settings/embedding-in-other-applications" />
-        ),
-        getHidden: (_, derivedSettings) =>
-          PLUGIN_EMBEDDING.isEnabled() && derivedSettings["enable-embedding"],
-      },
-    ],
+    // We need to do this because EE plugins would load after this file in unit tests
+    component: ({ updateSetting }) => (
+      <PLUGIN_ADMIN_SETTINGS.InteractiveEmbeddingSettings
+        updateSetting={updateSetting}
+      />
+    ),
+    settings: [],
   },
   license: {
     name: t`License`,
@@ -598,8 +524,8 @@ export const getSectionsWithPlugins = _.once(() =>
 );
 
 export const getSettings = createSelector(
-  state => state.admin.settings.settings,
-  state => state.admin.settings.warnings,
+  getAdminSettingDefinitions,
+  getAdminSettingWarnings,
   (settings, warnings) =>
     settings.map(setting =>
       warnings[setting.key]

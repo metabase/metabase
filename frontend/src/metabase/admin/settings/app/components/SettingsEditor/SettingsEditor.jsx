@@ -88,7 +88,7 @@ class SettingsEditor extends Component {
    * @param {function} [options.onChanged] - callback fired after the setting has been updated
    * @param {function} [options.onError] - callback fired after the setting has failed to update
    */
-  updateSetting = async (setting, newValue, options) => {
+  handleUpdateSetting = async (setting, newValue, options) => {
     const { settingValues, updateSetting, reloadSettings, dispatch } =
       this.props;
 
@@ -181,7 +181,7 @@ class SettingsEditor extends Component {
           elements={activeSection.settings}
           settingValues={settingValues}
           derivedSettingValues={derivedSettingValues}
-          updateSetting={this.updateSetting.bind(this)}
+          updateSetting={this.handleUpdateSetting.bind(this)}
           onChangeSetting={this.handleChangeSetting.bind(this)}
           reloadSettings={this.props.reloadSettings}
         />
@@ -193,7 +193,7 @@ class SettingsEditor extends Component {
         settingElements={activeSection.settings}
         settingValues={settingValues}
         derivedSettingValues={derivedSettingValues}
-        updateSetting={this.updateSetting.bind(this)}
+        updateSetting={this.handleUpdateSetting.bind(this)}
         onChangeSetting={this.handleChangeSetting.bind(this)}
         reloadSettings={this.props.reloadSettings}
       />
