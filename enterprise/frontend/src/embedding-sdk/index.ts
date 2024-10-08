@@ -1,5 +1,6 @@
 // polyfills useSyncExternalStore for React 17
-import "./lib/polyfill-use-sync-external-store";
+import "./lib/polyfill/use-sync-external-store";
+import "./lib/polyfill/use-juggle-resize-observer";
 
 import "metabase/lib/dayjs";
 
