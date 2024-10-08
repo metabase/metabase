@@ -1,16 +1,25 @@
 import { t } from "ttag";
 
-import { isNumber } from "metabase/lib/types";
+import { checkNumber, isNumber } from "metabase/lib/types";
 import { SERIES_SETTING_KEY } from "metabase/visualizations/shared/settings/series";
 import type {
   ComputedVisualizationSettings,
   RenderingContext,
 } from "metabase/visualizations/types";
-import type { DatasetColumn, RowValue } from "metabase-types/api";
+import type {
+  AggregationType,
+  DatasetColumn,
+  RowValue,
+} from "metabase-types/api";
 
 import { OTHER_DATA_KEY } from "../constants/dataset";
 
-import type { ChartDataset, RegularSeriesModel, SeriesModel } from "./types";
+import type {
+  ChartDataset,
+  Datum,
+  RegularSeriesModel,
+  SeriesModel,
+} from "./types";
 
 function getRowValueForSorting(value: RowValue) {
   if (isNumber(value)) {
@@ -95,4 +104,82 @@ export const createOtherGroupSeriesModel = (
     },
     tooltipName: name,
   };
+};
+
+export const getAggregatedOtherSeriesValue = (
+  seriesModels: SeriesModel[],
+  datum: Datum,
+): number => {
+  const [{ column }] = seriesModels;
+  const aggregationType = column.aggregation_type ?? "sum";
+  const aggregation = AGGREGATION_FN_MAP[aggregationType];
+  const values = seriesModels.map(model =>
+    checkNumber(datum[model.dataKey] ?? 0),
+  );
+  return aggregation.fn(values);
+};
+
+export const getOtherSeriesAggregationLabel = (seriesModels: SeriesModel[]) => {
+  const [{ column }] = seriesModels;
+  const aggregationType = column.aggregation_type ?? "sum";
+  return AGGREGATION_FN_MAP[aggregationType].label;
+};
+
+const sum = (values: number[]) => values.reduce((sum, value) => sum + value, 0);
+
+const AGGREGATION_FN_MAP: Record<
+  AggregationType,
+  { fn: (values: number[]) => number; label: string }
+> = {
+  count: {
+    label: t`Total`,
+    fn: sum,
+  },
+  sum: {
+    label: t`Total`,
+    fn: sum,
+  },
+  "cum-sum": {
+    label: t`Total`,
+    fn: sum,
+  },
+  "cum-count": {
+    label: t`Total`,
+    fn: sum,
+  },
+  avg: {
+    label: t`Average`,
+    fn: values => sum(values) / values.length,
+  },
+  distinct: {
+    label: t`Distinct values`,
+    fn: values => new Set(values).size,
+  },
+  min: {
+    label: t`Min`,
+    fn: values => Math.min(...values),
+  },
+  max: {
+    label: t`Max`,
+    fn: values => Math.max(...values),
+  },
+  median: {
+    label: t`Median`,
+    fn: values => {
+      const sortedValues = values.sort((a, b) => a - b);
+      const middleIndex = Math.floor(sortedValues.length / 2);
+      return sortedValues.length % 2
+        ? sortedValues[middleIndex]
+        : (sortedValues[middleIndex - 1] + sortedValues[middleIndex]) / 2;
+    },
+  },
+  stddev: {
+    label: t`Standard deviation`,
+    fn: values => {
+      const mean = sum(values) / values.length;
+      const squaredDifferences = values.map(v => (v - mean) ** 2);
+      const variance = sum(squaredDifferences) / values.length;
+      return Math.sqrt(variance);
+    },
+  },
 };

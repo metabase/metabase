@@ -37,7 +37,6 @@ import {
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import { isMetric } from "metabase-lib/v1/types/utils/isa";
 import type {
-  AggregationType,
   DatasetColumn,
   RawSeries,
   RowValue,
@@ -49,6 +48,7 @@ import type { ShowWarning } from "../../types";
 import { tryGetDate } from "../utils/timeseries";
 
 import { isCategoryAxis, isNumericAxis, isTimeSeriesAxis } from "./guards";
+import { getAggregatedOtherSeriesValue } from "./other-series";
 import { getBarSeriesDataLabelKey, getColumnScaling } from "./util";
 
 /**
@@ -341,49 +341,15 @@ function getOtherSeriesTransform(
 ): ConditionalTransform {
   return {
     condition: groupedSeriesModels.length > 0,
-    fn: datum => {
-      const [{ column }] = groupedSeriesModels;
-      const aggregationType = column.aggregation_type ?? "sum";
-      const aggregate = AGGREGATION_FN_MAP[aggregationType];
-      const values = groupedSeriesModels.map(model =>
-        checkNumber(datum[model.dataKey] ?? 0),
-      );
-      return {
-        ...datum,
-        [OTHER_DATA_KEY]: aggregate(values),
-      };
-    },
+    fn: datum => ({
+      ...datum,
+      [OTHER_DATA_KEY]: getAggregatedOtherSeriesValue(
+        groupedSeriesModels,
+        datum,
+      ),
+    }),
   };
 }
-
-const sum = (values: number[]) => values.reduce((sum, value) => sum + value, 0);
-
-const AGGREGATION_FN_MAP: Record<
-  AggregationType,
-  (values: number[]) => number
-> = {
-  count: sum,
-  sum: sum,
-  "cum-sum": sum,
-  "cum-count": sum,
-  avg: values => sum(values) / values.length,
-  distinct: values => new Set(values).size,
-  min: values => Math.min(...values),
-  max: values => Math.max(...values),
-  median: values => {
-    const sortedValues = values.sort((a, b) => a - b);
-    const middleIndex = Math.floor(sortedValues.length / 2);
-    return sortedValues.length % 2
-      ? sortedValues[middleIndex]
-      : (sortedValues[middleIndex - 1] + sortedValues[middleIndex]) / 2;
-  },
-  stddev: values => {
-    const mean = sum(values) / values.length;
-    const squaredDifferences = values.map(v => (v - mean) ** 2);
-    const variance = sum(squaredDifferences) / values.length;
-    return Math.sqrt(variance);
-  },
-};
 
 function getStackedValueTransformFunction(
   seriesDataKeys: DataKey[],

@@ -30,6 +30,10 @@ import {
   isQuarterInterval,
   isTimeSeriesAxis,
 } from "metabase/visualizations/echarts/cartesian/model/guards";
+import {
+  getAggregatedOtherSeriesValue,
+  getOtherSeriesAggregationLabel,
+} from "metabase/visualizations/echarts/cartesian/model/other-series";
 import type {
   BaseCartesianChartModel,
   BaseSeriesModel,
@@ -481,7 +485,10 @@ export const getSeriesOnlyTooltipModel = (
 
       const value =
         seriesModel.dataKey === OTHER_DATA_KEY
-          ? getGroupedSeriesTotal(chartModel.groupedSeriesModels ?? [], datum)
+          ? getAggregatedOtherSeriesValue(
+              chartModel.groupedSeriesModels ?? [],
+              datum,
+            )
           : datum[seriesModel.dataKey];
 
       const prevValue =
@@ -562,8 +569,12 @@ export const getStackedTooltipModel = (
       const datum = chartModel.dataset[dataIndex];
       const value =
         seriesModel.dataKey === OTHER_DATA_KEY
-          ? getGroupedSeriesTotal(chartModel.groupedSeriesModels ?? [], datum)
+          ? getAggregatedOtherSeriesValue(
+              chartModel.groupedSeriesModels ?? [],
+              datum,
+            )
           : datum[seriesModel.dataKey];
+
       return {
         isFocused: seriesModel.dataKey === seriesDataKey,
         name: seriesModel.name,
@@ -689,12 +700,12 @@ export const getOtherSeriesTooltipModel = (
     ),
     rows,
     footer: {
-      name: t`Total`,
+      name: getOtherSeriesAggregationLabel(groupedSeriesModels),
       values: [
         String(
           formatValueForTooltip({
             isAlreadyScaled: true,
-            value: getGroupedSeriesTotal(groupedSeriesModels, datum),
+            value: getAggregatedOtherSeriesValue(groupedSeriesModels, datum),
             settings,
             column:
               chartModel.leftAxisModel?.column ??
@@ -704,17 +715,6 @@ export const getOtherSeriesTooltipModel = (
       ],
     },
   };
-};
-
-const getGroupedSeriesTotal = (
-  groupedSeriesModels: SeriesModel[],
-  datum: Datum,
-) => {
-  return groupedSeriesModels.reduce((sum, seriesModel) => {
-    const rowValue = datum[seriesModel.dataKey];
-    const value = typeof rowValue === "number" ? rowValue : 0;
-    return sum + value;
-  }, 0);
 };
 
 export const getTimelineEventsForEvent = (
