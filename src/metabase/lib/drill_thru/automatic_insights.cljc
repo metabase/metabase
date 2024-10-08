@@ -22,8 +22,7 @@
    stage-number                                 :- :int
    {:keys [column column-ref dimensions value]} :- ::lib.schema.drill-thru/context]
   (when (and (lib.drill-thru.common/mbql-stage? query stage-number)
-             ;; An aggregation or a breakout is required
-             (lib.underlying/has-summary-clause? query)
+             (lib.underlying/has-aggregation-or-breakout-clause? query)
              ;; Column with no value is not allowed - that's a column header click. Other combinations are allowed.
              (or (not column) (some? value))
              (lib.metadata/setting query :enable-xrays)

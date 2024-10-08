@@ -72,8 +72,7 @@
   ;; - value is nil
   ;; - dimensions holds only the legend's column, eg. Products.CATEGORY.
   (when (and (lib.drill-thru.common/mbql-stage? query stage-number)
-             ;; An aggregation or a breakout is required
-             (lib.underlying/has-summary-clause? query)
+             (lib.underlying/has-aggregation-or-breakout-clause? query)
              ;; Either we clicked the aggregation, or there are dimensions.
              (or (= (:lib/source column) :source/aggregations)
                  (not-empty dimensions))
