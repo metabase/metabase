@@ -16,6 +16,7 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.malli.fn :as mu.fn]
+   [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
    (clojure.lang ExceptionInfo)))
@@ -378,6 +379,16 @@
       (mt/with-no-data-perms-for-all-users!
         (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/create-queries :no)
         (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+        (testing "Sanity check: Rasta should only be in All Users"
+          (is (= #{"All Users"}
+                 (into #{}
+                       (map :name)
+                       (t2/reducible-query
+                        {:select    [:pg/name]
+                         :from      [[(t2/table-name :model/PermissionsGroupMembership) :pgm]]
+                         :left-join [[(t2/table-name :model/PermissionsGroup) :pg]
+                                     [:= :pgm.group_id :pg.id]]
+                         :where     [:= :user_id (mt/user->id :rasta)]})))))
         (testing "Sanity check: should not be able to run this query the normal way"
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
