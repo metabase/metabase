@@ -135,7 +135,7 @@ describe("scenarios > visualizations > table", () => {
 
     openPeopleTable({ mode: "notebook", limit: 2 });
 
-    cy.icon("add_data").click();
+    cy.findByLabelText("Custom column").click();
 
     expressionEditorWidget().within(() => {
       enterCustomColumnDetails({

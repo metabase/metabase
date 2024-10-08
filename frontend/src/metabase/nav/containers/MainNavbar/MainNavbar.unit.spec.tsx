@@ -1,3 +1,4 @@
+import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import { Route } from "react-router";
 
@@ -260,38 +261,6 @@ describe("nav > containers > MainNavbar", () => {
     });
   });
 
-  describe("setup database link", () => {
-    it("should render when there are no databases connected", async () => {
-      await setup({
-        hasOwnDatabase: false,
-        user: createMockUser({ is_superuser: true }),
-      });
-      const link = screen.getByRole("link", { name: /Add your own data/i });
-      expect(link).toBeInTheDocument();
-      expect(link).toHaveAttribute("href", "/admin/databases/create");
-    });
-
-    it("should not render when there is a database connected", async () => {
-      await setup({
-        hasOwnDatabase: true,
-        user: createMockUser({ is_superuser: true }),
-      });
-      expect(
-        screen.queryByRole("link", { name: /Add your own data/i }),
-      ).not.toBeInTheDocument();
-    });
-
-    it("should not render to non-admin users", async () => {
-      await setup({
-        hasOwnDatabase: false,
-        user: createMockUser({ is_superuser: false }),
-      });
-      expect(
-        screen.queryByRole("link", { name: /Add your own data/i }),
-      ).not.toBeInTheDocument();
-    });
-  });
-
   describe("collection tree", () => {
     it("should show collections", async () => {
       const {
@@ -460,6 +429,150 @@ describe("nav > containers > MainNavbar", () => {
       expect(
         screen.getByRole("treeitem", { name: /Our analytics/i }),
       ).toHaveAttribute("aria-selected", "false");
+    });
+  });
+
+  describe("better onboarding section", () => {
+    it("should render Metabase learn link to admins", async () => {
+      await setup({ user: createMockUser({ is_superuser: true }) });
+      const link = screen.getByRole("link", { name: /How to use Metabase/i });
+      expect(link).toBeInTheDocument();
+      expect(link).toHaveAttribute("href", "https://www.metabase.com/learn/");
+    });
+
+    it("should render Metabase learn link to regular users", async () => {
+      await setup({ user: createMockUser({ is_superuser: false }) });
+      const link = screen.getByRole("link", { name: /How to use Metabase/i });
+      expect(link).toBeInTheDocument();
+      expect(link).toHaveAttribute("href", "https://www.metabase.com/learn/");
+    });
+
+    it("data section should not render to non-admins", async () => {
+      await setup({ user: createMockUser({ is_superuser: false }) });
+
+      const introCTA = screen.queryByText(
+        "Start by adding your data. Connect to a database or upload a CSV file.",
+      );
+      const addDataButton = screen.queryByRole("button", { name: /Add data/i });
+
+      expect(introCTA).not.toBeInTheDocument();
+      expect(addDataButton).not.toBeInTheDocument();
+    });
+
+    it("intro CTA should not render when there are databases connected", async () => {
+      await setup({
+        hasOwnDatabase: true,
+        user: createMockUser({ is_superuser: true }),
+      });
+
+      const introCTA = screen.queryByText(
+        "Start by adding your data. Connect to a database or upload a CSV file.",
+      );
+      expect(introCTA).not.toBeInTheDocument();
+    });
+
+    it("data section should render for admins", async () => {
+      await setup({
+        hasOwnDatabase: false,
+        user: createMockUser({ is_superuser: true }),
+      });
+
+      const introCTA = screen.getByText(
+        "Start by adding your data. Connect to a database or upload a CSV file.",
+      );
+      const addDataButton = screen.getByRole("button", { name: /Add data/i });
+
+      expect(introCTA).toBeInTheDocument();
+      expect(addDataButton).toBeInTheDocument();
+      await userEvent.click(addDataButton);
+
+      const menu = screen.getByRole("menu");
+      const menuItems = screen.getAllByRole("menuitem");
+
+      expect(menuItems).toHaveLength(2);
+      // eslint-disable-next-line
+      expect(within(menu).getAllByRole("link")).toHaveLength(1);
+    });
+
+    describe("'Add a database' menu option", () => {
+      it("should be wrapped in a link", async () => {
+        await setup({
+          user: createMockUser({ is_superuser: true }),
+        });
+
+        const addDataButton = screen.getByRole("button", { name: /Add data/i });
+        await userEvent.click(addDataButton);
+
+        const menu = screen.getByRole("menu");
+        const [addDatabaseMenuItem] = screen.getAllByRole("menuitem");
+        const linkWrapper = within(menu).getByRole("link");
+
+        expect(linkWrapper).toHaveAttribute("href", "/admin/databases/create");
+        expect(within(linkWrapper).getByRole("menuitem")).toStrictEqual(
+          addDatabaseMenuItem,
+        );
+      });
+
+      it("should render", async () => {
+        await setup({
+          user: createMockUser({ is_superuser: true }),
+        });
+
+        const addDataButton = screen.getByRole("button", { name: /Add data/i });
+        await userEvent.click(addDataButton);
+
+        const [addDatabaseMenuItem] = screen.getAllByRole("menuitem");
+
+        expect(
+          within(addDatabaseMenuItem).getByText("Add a database"),
+        ).toBeInTheDocument();
+        expect(
+          within(addDatabaseMenuItem).getByText(
+            "PostgreSQL, MySQL, Snowflake, ...",
+          ),
+        ).toBeInTheDocument();
+        expect(
+          within(addDatabaseMenuItem).getByLabelText("database icon"),
+        ).toBeInTheDocument();
+      });
+    });
+
+    describe("'Upload a spreadsheet' menu option", () => {
+      it("should render", async () => {
+        await setup({
+          user: createMockUser({ is_superuser: true }),
+        });
+
+        const addDataButton = screen.getByRole("button", { name: /Add data/i });
+        await userEvent.click(addDataButton);
+        const [_, uploadCSVMenuItem] = screen.getAllByRole("menuitem");
+
+        expect(
+          within(uploadCSVMenuItem).getByText("Upload a spreadsheet"),
+        ).toBeInTheDocument();
+        expect(
+          within(uploadCSVMenuItem).getByText(".csv, .tsv (50 MB max)"),
+        ).toBeInTheDocument();
+        expect(
+          within(uploadCSVMenuItem).getByLabelText("table2 icon"),
+        ).toBeInTheDocument();
+      });
+
+      it("clicking on it should open a CSV info modal", async () => {
+        await setup({
+          user: createMockUser({ is_superuser: true }),
+        });
+
+        const addDataButton = screen.getByRole("button", { name: /Add data/i });
+        await userEvent.click(addDataButton);
+
+        const menu = screen.getByRole("menu");
+        const [_, uploadCSVMenuItem] = screen.getAllByRole("menuitem");
+
+        await userEvent.click(uploadCSVMenuItem);
+        expect(menu).not.toBeInTheDocument();
+        expect(screen.getByText("Upload CSVs to Metabase")).toBeInTheDocument();
+      });
     });
   });
 });
