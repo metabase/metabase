@@ -1,7 +1,9 @@
 import {
   type NativeQuestionDetails,
+  assertQueryBuilderRowCount,
   assertTableData,
   createNativeQuestion,
+  echartsContainer,
   popover,
   restore,
   tableHeaderClick,
@@ -45,6 +47,35 @@ describe("scenarios > question > native query drill", () => {
       });
     });
 
+    it("summarize drill", () => {
+      cy.log("distinct values");
+      visitQuestion("@questionId");
+      tableHeaderClick("QUANTITY");
+      popover().findByText("Distinct values").click();
+      assertTableData({
+        columns: ["Distinct values of QUANTITY"],
+        firstRows: [["5"]],
+      });
+
+      cy.log("sum");
+      visitQuestion("@questionId");
+      tableHeaderClick("QUANTITY");
+      popover().findByText("Sum").click();
+      assertTableData({
+        columns: ["Sum of QUANTITY"],
+        firstRows: [["38"]],
+      });
+
+      cy.log("avg");
+      visitQuestion("@questionId");
+      tableHeaderClick("QUANTITY");
+      popover().findByText("Avg").click();
+      assertTableData({
+        columns: ["Average of QUANTITY"],
+        firstRows: [["3.8"]],
+      });
+    });
+
     it("summarize-column-by-time drill", () => {
       visitQuestion("@questionId");
       tableHeaderClick("QUANTITY");
@@ -57,6 +88,17 @@ describe("scenarios > question > native query drill", () => {
           ["September 2024", "5"],
         ],
       });
+    });
+
+    it("distribution drill", () => {
+      visitQuestion("@questionId");
+      tableHeaderClick("QUANTITY");
+      popover().findByText("Distribution").click();
+      echartsContainer().within(() => {
+        cy.findByText("Count").should("be.visible");
+        cy.findByText("QUANTITY").should("be.visible");
+      });
+      assertQueryBuilderRowCount(5);
     });
   });
 });
