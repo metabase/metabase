@@ -578,60 +578,6 @@
           :has_activation_signals_completed (completed-activation-signals?)})]
     (m->kv-vec instance-attributes)))
 
-
-(comment (def sstats
-           {:execution {:executions 0, :by_status {}, :num_per_user {}, :num_by_latency {}},
-            :group {:groups 2},
-            :table {:tables 0, :num_per_database {}, :num_per_schema {}},
-            :system
-            {:java_vm_specification_version "21",
-             :java_runtime_name "OpenJDK Runtime Environment",
-             :processors 10,
-             :user_country "US",
-             :java_version "21",
-             :user_language "en",
-             :os_name "Mac OS X",
-             :user_timezone "UTC",
-             :os_version "14.3",
-             :file_encoding "UTF-8",
-             :max_memory 8192},
-            :question {:questions {}, :public {}, :embedded {}},
-            :dashboard
-            {:dashboards 0,
-             :with_params 0,
-             :num_dashs_per_user {},
-             :num_cards_per_dash {},
-             :num_dashs_per_card {},
-             :public {},
-             :embedded {}},
-            :field {:fields 0, :num_per_table {}},
-            :alert
-            {:alerts 0,
-             :with_table_cards 0,
-             :first_time_only 0,
-             :above_goal 0,
-             :alert_types {},
-             :num_alerts_per_user {},
-             :num_alerts_per_card {},
-             :num_cards_per_alerts {}},
-            :cache {:average_entry_size 0, :num_queries_cached "0"},
-            :segment {:segments 0},
-            :pulse
-            {:pulses 0,
-             :with_table_cards 0,
-             :pulse_types {},
-             :pulse_schedules {},
-             :num_pulses_per_user {},
-             :num_pulses_per_card {},
-             :num_cards_per_pulses {}},
-            :database {:databases {}, :dbms_versions {}},
-            :collection {:collections 0, :cards_in_collections 0, :cards_not_in_collections 0, :num_cards_per_collection {}},
-            :user {:users {:total 3, :active 3, :admin 2, :logged_in 0, :sso 0}},
-            :metric {:metrics 0, :entity-id-translations-last-24h 0}})
-
-         (dissoc stats :stats)
-         (keys (t2/select-one :model/Database)))
-
 (defn- ->snowplow-metric-info
   "Collects Snowplow metrics data that is not in the legacy stats format."
   []
