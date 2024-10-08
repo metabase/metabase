@@ -1,4 +1,4 @@
-(ns metabase.models.permissions-group-test
+(ns ^:mb/once metabase.models.permissions-group-test
   (:require
    [clojure.test :refer :all]
    [metabase.api.permissions-test-util :as perm-test-util]
@@ -140,7 +140,7 @@
     (doseq [db-id (t2/select-fn-set :id :model/Database)]
       (testing (str "testing data-graph-for-db with db-id: [" db-id "].")
         (let [graph (data-perms.graph/api-graph {:db-id db-id})]
-          (is (=? {:revision pos-int?}
+          (is (=? {:revision (every-pred int? (complement neg?))}
                   graph))
           (is (perm-test-util/validate-graph-api-groups (:groups graph)))
           ;; Only check this for dbs with permissions

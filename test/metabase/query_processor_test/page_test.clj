@@ -1,4 +1,4 @@
-(ns metabase.query-processor-test.page-test
+(ns ^:mb/driver-tests metabase.query-processor-test.page-test
   "Tests for the `:page` clause."
   (:require
    [clojure.test :refer :all]

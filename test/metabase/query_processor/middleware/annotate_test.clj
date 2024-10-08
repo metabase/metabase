@@ -1,4 +1,4 @@
-(ns metabase.query-processor.middleware.annotate-test
+(ns ^:mb/driver-tests metabase.query-processor.middleware.annotate-test
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]

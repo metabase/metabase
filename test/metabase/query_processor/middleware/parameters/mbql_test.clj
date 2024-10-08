@@ -1,4 +1,4 @@
-(ns metabase.query-processor.middleware.parameters.mbql-test
+(ns ^:mb/driver-tests metabase.query-processor.middleware.parameters.mbql-test
   "Tests for *MBQL* parameter substitution."
   (:require
    [clojure.string :as str]

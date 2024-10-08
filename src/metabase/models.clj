@@ -157,6 +157,9 @@
  [user User]
  [view-log ViewLog])
 
+;;; TODO -- we should move this stuff into [[metabase.models.interface]] so we can be more certain it's always loaded
+;;; during REPL usage and tests
+
 (defenterprise resolve-enterprise-model
   "OSS version; no-op."
   metabase-enterprise.models

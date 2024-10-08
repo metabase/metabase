@@ -5,6 +5,7 @@
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.test.data :as data]
+   [metabase.test.initialize :as initialize]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -38,11 +39,16 @@
   "Implementation of `with-restored-perms` and related helper functions. Optionally takes `group-ids` to restore only the
   permissions for a set of groups."
   [group-ids thunk]
+  ;; make sure app DB is set up and test users are created
+  (initialize/initialize-if-needed! :db :test-users)
+  ;; make sure at least the normal test-data DB is loaded
+  (data/db)
   (let [select-condition (if-not group-ids
                            true
                            [:in :group_id group-ids])
         original-perms (t2/select :model/DataPermissions {:where select-condition})]
     (try
+      ;; TODO -- should this disabled the cache [[data-perms/*use-perms-cache?*]] ??
       (thunk)
       (finally
         (let [existing-db-ids    (t2/select-pks-set :model/Database)
