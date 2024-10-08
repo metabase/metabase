@@ -91,7 +91,7 @@ it("should create questions", () => {
   // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
   cy.findByText("Pick the metric you want to see").click();
   // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-  cy.findByText("Common Metrics").click();
+  cy.findByText("Metrics").click();
   // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
   cy.findByText("Revenue").click();
 
