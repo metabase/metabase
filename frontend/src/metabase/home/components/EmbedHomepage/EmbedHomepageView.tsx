@@ -1,4 +1,3 @@
-import { Link } from "react-router";
 import { jt, t } from "ttag";
 
 import ExternalLink from "metabase/core/components/ExternalLink";
@@ -36,14 +35,8 @@ export type EmbedHomepageViewProps = {
 };
 
 export const EmbedHomepageView = (props: EmbedHomepageViewProps) => {
-  const {
-    embeddingAutoEnabled,
-    initialTab,
-    embeddingDocsUrl,
-    analyticsDocsUrl,
-    sdkUrl,
-    onDismiss,
-  } = props;
+  const { initialTab, embeddingDocsUrl, analyticsDocsUrl, sdkUrl, onDismiss } =
+    props;
   return (
     <Stack maw={550}>
       <Group position="apart">
@@ -108,28 +101,6 @@ export const EmbedHomepageView = (props: EmbedHomepageViewProps) => {
           </Anchor>
         </Text>
       </Card>
-
-      {embeddingAutoEnabled && (
-        <Card>
-          <Text
-            color="text-dark"
-            fw="bold"
-          >{t`Embedding has been automatically enabled for you`}</Text>
-          <Text color="text-light" size="sm">
-            {/* eslint-disable-next-line no-literal-metabase-strings -- only visible to admins */}
-            {jt`Because you expressed interest in embedding Metabase, we took this step for you so that you can more easily try it out. You can turn it off anytime in ${(
-              <Anchor
-                size="sm"
-                component={Link}
-                to="/admin/settings/embedding-in-other-applications"
-                key="link"
-              >
-                admin/settings/embedding-in-other-applications
-              </Anchor>
-            )}.`}
-          </Text>
-        </Card>
-      )}
 
       <Card>
         <Text color="text-dark" fw="bold">{t`Need more information?`}</Text>
