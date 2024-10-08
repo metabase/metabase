@@ -106,6 +106,7 @@ export const EmbedHomepage = () => {
         }
         learnMoreInteractiveEmbedUrl={learnMoreInteractiveEmbedding + utmTags}
         learnMoreStaticEmbedUrl={learnMoreStaticEmbedding + utmTags}
+        sdkUrl={"https://metaba.se/sdk" + utmTags}
       />
       <FeedbackModal
         opened={feedbackModalOpened}
