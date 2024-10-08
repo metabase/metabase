@@ -2,14 +2,15 @@
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
-   [metabase.driver.sql-jdbc.execute.diagnostic
-    :as sql-jdbc.execute.diagnostic]
+   [metabase.driver.sql-jdbc.execute.diagnostic :as sql-jdbc.execute.diagnostic]
    [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
    [metabase.test :as mt]
    [metabase.util :as u]))
 
 (deftest diagnostic-info-capture-test
   (mt/test-drivers (sql-jdbc.tu/sql-jdbc-drivers)
+    ;; force creation of test data DB if it's not already created
+    (mt/db)
     (testing "DW connection pool diagnostic info should be captured correctly"
       (sql-jdbc.execute.diagnostic/capturing-diagnostic-info [diag-info-fn]
         ;; sanity check
