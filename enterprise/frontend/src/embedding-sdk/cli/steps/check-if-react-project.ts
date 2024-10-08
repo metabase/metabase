@@ -9,7 +9,7 @@ import {
 
 import type { CliStepMethod } from "../types/cli";
 import {
-  getDependenciesFromPackageJson,
+  getPackageVersions,
   hasPackageJson,
 } from "../utils/get-package-version";
 import { showWarningAndAskToContinue } from "../utils/show-warning-prompt";
@@ -22,19 +22,13 @@ export const checkIfReactProject: CliStepMethod = async state => {
 
   if (!(await hasPackageJson())) {
     spinner.fail();
-    return [
-      {
-        type: "error",
-        message: PACKAGE_JSON_NOT_FOUND_MESSAGE,
-      },
-      state,
-    ];
+    return [{ type: "error", message: PACKAGE_JSON_NOT_FOUND_MESSAGE }, state];
   }
 
-  const projectDependencies = await getDependenciesFromPackageJson();
+  const dependencyVersions = await getPackageVersions("react", "react-dom");
 
-  const reactDep = projectDependencies?.["react"];
-  const reactDomDep = projectDependencies?.["react-dom"];
+  const reactDep = dependencyVersions["react"];
+  const reactDomDep = dependencyVersions["react-dom"];
 
   const hasReactDependency = reactDep && reactDomDep;
 
@@ -60,7 +54,7 @@ export const checkIfReactProject: CliStepMethod = async state => {
       return [{ type: "error", message: "Canceled." }, state];
     }
   } else {
-    spinner.succeed(`React v${reactDep} and React DOM v${reactDomDep} found`);
+    spinner.succeed(`React ${reactDep} and React DOM ${reactDomDep} found`);
   }
 
   return [{ type: "success" }, state];
