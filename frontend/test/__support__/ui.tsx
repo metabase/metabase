@@ -393,7 +393,7 @@ export const mockGetBoundingClientRect = (options: Partial<DOMRect> = {}) => {
         right: 0,
         x: 0,
         y: 0,
-        toJSON: () => { },
+        toJSON: () => {},
         ...options,
       };
     });
