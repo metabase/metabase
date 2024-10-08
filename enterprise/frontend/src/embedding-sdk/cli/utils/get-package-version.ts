@@ -11,28 +11,27 @@ export const hasPackageJson = async () => {
   }
 };
 
-export const getPackageVersion = async (packageName: string) => {
-  try {
-    const packagePath = path.join(
-      process.cwd(),
-      "node_modules",
-      packageName,
-      "package.json",
-    );
-    const packageJson = await fs.readFile(packagePath, "utf8");
+type DependencyMap = Record<string, string>;
 
-    const packageInfo = JSON.parse(packageJson);
-    return packageInfo.version || null;
-  } catch (error) {
-    if ((error as { code: string }).code === "ENOENT") {
-      // Package not found
+export const getDependenciesFromPackageJson =
+  async (): Promise<DependencyMap | null> => {
+    try {
+      const packagePath = path.join(process.cwd(), "package.json");
+      const packageJson = await fs.readFile(packagePath, "utf8");
+
+      const packageInfo = JSON.parse(packageJson);
+
+      return packageInfo?.dependencies || null;
+    } catch (error) {
+      if ((error as { code: string }).code === "ENOENT") {
+        // Package not found
+        return null;
+      }
+
+      console.error(
+        `Error accessing package.json: ${(error as { message: string }).message}`,
+      );
+
       return null;
     }
-    console.error(
-      `Error checking package version: ${
-        (error as { message: string }).message
-      }`,
-    );
-    return null;
-  }
-};
+  };
