@@ -5,7 +5,13 @@ import {
   createMockDashboard,
 } from "metabase-types/api/mocks";
 
-import { setupEnterprise as setup } from "./setup";
+import { type SetupOpts, setup as baseSetup } from "./setup";
+const setup = (opts: SetupOpts) => {
+  return baseSetup({
+    ...opts,
+    shouldSetupEnterprisePlugins: true,
+  });
+};
 
 describe("DashboardInfoSidebar (EE without token)", () => {
   it("should show collection without icon even if collection is official", async () => {
