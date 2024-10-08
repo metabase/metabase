@@ -1,4 +1,5 @@
 import { createReducer } from "@reduxjs/toolkit";
+import { assoc, dissoc } from "icepick";
 
 import { handleActions } from "metabase/lib/redux";
 import { NAVIGATE_BACK_TO_DASHBOARD } from "metabase/query_builder/actions";
@@ -311,3 +312,72 @@ export const loadingDashCards = createReducer(
       });
   },
 );
+
+export const draftParameterValues = createReducer({}, builder => {
+  builder
+    .addCase<string, { type: string; payload?: { clearCache?: boolean } }>(
+      INITIALIZE,
+      (state, action) => {
+        const { clearCache = true } = action.payload ?? {};
+        return clearCache ? {} : state;
+      },
+    )
+
+    .addCase(fetchDashboard.fulfilled, (state, action) => {
+      const { dashboard, parameterValues, preserveParameters } = action.payload;
+      return preserveParameters && !dashboard.auto_apply_filters
+        ? state
+        : parameterValues;
+    })
+
+    .addCase<
+      string,
+      {
+        type: string;
+        payload: {
+          id: ParameterId;
+          value: ParameterValueOrArray;
+          isDraft: boolean;
+        };
+      }
+    >(SET_PARAMETER_VALUE, (state, action) => {
+      const { id, value } = action.payload;
+      return assoc(state ?? {}, id, value);
+    })
+
+    .addCase<
+      string,
+      {
+        type: string;
+        payload: Record<ParameterId, ParameterValueOrArray>;
+      }
+    >(SET_PARAMETER_VALUES, (_state, action) => action.payload)
+
+    .addCase<
+      string,
+      {
+        type: string;
+        payload: UiParameter[];
+      }
+    >(RESET_PARAMETERS, (state, action) => {
+      const parameters = action.payload;
+      return parameters.reduce(
+        (result, parameter) => assoc(result, parameter.id, parameter.value),
+        state ?? {},
+      );
+    })
+
+    .addCase<string, { type: string; payload: { id: ParameterId } }>(
+      REMOVE_PARAMETER,
+      (state, action) => {
+        const { id } = action.payload;
+        return dissoc(state, id);
+      },
+    );
+});
+
+// Combined reducer needs to init state for every slice
+export const selectedTabId = (state = INITIAL_DASHBOARD_STATE.selectedTabId) =>
+  state;
+export const tabDeletions = (state = INITIAL_DASHBOARD_STATE.tabDeletions) =>
+  state;

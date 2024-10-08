@@ -1,4 +1,4 @@
-import { assoc, assocIn, chain, dissoc, merge, updateIn } from "icepick";
+import { assocIn, chain, dissoc, merge, updateIn } from "icepick";
 import produce from "immer";
 import reduceReducers from "reduce-reducers";
 import _ from "underscore";
@@ -19,14 +19,10 @@ import {
   INITIALIZE,
   MARK_NEW_CARD_SEEN,
   REMOVE_CARD_FROM_DASH,
-  REMOVE_PARAMETER,
   REPLACE_ALL_DASHCARD_VISUALIZATION_SETTINGS,
-  RESET_PARAMETERS,
   SET_DASHBOARD_ATTRIBUTES,
   SET_DASHCARD_ATTRIBUTES,
   SET_MULTIPLE_DASHCARD_ATTRIBUTES,
-  SET_PARAMETER_VALUE,
-  SET_PARAMETER_VALUES,
   UNDO_REMOVE_CARD_FROM_DASH,
   UPDATE_DASHCARD_VISUALIZATION_SETTINGS,
   UPDATE_DASHCARD_VISUALIZATION_SETTINGS_FOR_COLUMN,
@@ -266,44 +262,6 @@ const dashcardData = handleActions(
   INITIAL_DASHBOARD_STATE.dashcardData,
 );
 
-const draftParameterValues = handleActions(
-  {
-    [INITIALIZE]: {
-      next: (state, { payload: { clearCache = true } = {} }) => {
-        return clearCache ? {} : state;
-      },
-    },
-    [fetchDashboard.fulfilled]: {
-      next: (
-        state,
-        { payload: { dashboard, parameterValues, preserveParameters } },
-      ) =>
-        preserveParameters && !dashboard.auto_apply_filters
-          ? state
-          : parameterValues,
-    },
-    [SET_PARAMETER_VALUE]: {
-      next: (state, { payload: { id, value } }) =>
-        assoc(state ?? {}, id, value),
-    },
-    [SET_PARAMETER_VALUES]: {
-      next: (state, { payload }) => payload,
-    },
-    [RESET_PARAMETERS]: {
-      next: (state, { payload: parameters }) => {
-        return parameters.reduce(
-          (result, parameter) => assoc(result, parameter.id, parameter.value),
-          state ?? {},
-        );
-      },
-    },
-    [REMOVE_PARAMETER]: {
-      next: (state, { payload: { id } }) => dissoc(state, id),
-    },
-  },
-  {},
-);
-
 export const dashboardReducers = reduceReducers(
   INITIAL_DASHBOARD_STATE,
   combineReducers({
@@ -311,10 +269,6 @@ export const dashboardReducers = reduceReducers(
     dashboards,
     dashcards,
     dashcardData,
-    draftParameterValues,
-    // Combined reducer needs to init state for every slice
-    selectedTabId: (state = INITIAL_DASHBOARD_STATE.selectedTabId) => state,
-    tabDeletions: (state = INITIAL_DASHBOARD_STATE.tabDeletions) => state,
   }),
   tabsReducer,
 );
