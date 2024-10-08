@@ -7,6 +7,7 @@ import {
   popover,
   restore,
   tableHeaderClick,
+  tableInteractive,
   visitQuestion,
 } from "e2e/support/helpers";
 
@@ -24,10 +25,32 @@ describe("scenarios > question > native query drill", () => {
 
   describe("drills", () => {
     it("column-extract drill", () => {
-      createNativeQuestion(ordersQuestionDetails, { visitQuestion: true });
+      cy.log("by column header");
+      createNativeQuestion(ordersQuestionDetails, {
+        visitQuestion: true,
+        wrapId: true,
+      });
       tableHeaderClick("CREATED_AT");
-      popover().findByText("Extract day, month…").click();
-      popover().findByText("Quarter of year").click();
+      popover().within(() => {
+        cy.findByText("Extract day, month…").click();
+        cy.findByText("Quarter of year").click();
+      });
+      assertTableData({
+        columns: ["ID", "CREATED_AT", "QUANTITY", "Quarter of year"],
+        firstRows: [
+          ["1", "February 11, 2025, 9:40 PM", "2", "Q1"],
+          ["2", "May 15, 2024, 8:04 AM", "3", "Q2"],
+        ],
+      });
+
+      cy.log("by plus button");
+      visitQuestion("@questionId");
+      tableInteractive().button("Add column").click();
+      popover().within(() => {
+        cy.findByText("Extract part of column").click();
+        cy.findByText("CREATED_AT").click();
+        cy.findByText("Quarter of year").click();
+      });
       assertTableData({
         columns: ["ID", "CREATED_AT", "QUANTITY", "Quarter of year"],
         firstRows: [
