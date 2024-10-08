@@ -1,0 +1,27 @@
+.Skeleton {
+  background-color: rgba(245, 248, 250, 1);
+
+  &::before {
+    background: linear-gradient(
+      100deg,
+      transparent,
+      var(--mb-color-bg-medium),
+      transparent
+    );
+    animation: shimmer 1.4s linear infinite;
+  }
+
+  &::after {
+    display: none;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+
+  100% {
+    transform: translateX(100%);
+  }
+}
