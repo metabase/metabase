@@ -45,7 +45,7 @@ export const DashboardEntityIdCard = ({
                   value: tab.id.toString(),
                   label: tab.name,
                 }))}
-                style={{ flex: 1 }}
+                w="15rem"
               />
               <Flex gap="sm" wrap="nowrap">
                 {tabEntityId}
