@@ -111,11 +111,13 @@ describe("scenarios > browse > metrics", () => {
 
     it("should show the empty metrics page", () => {
       cy.visit("/browse/metrics");
-      main()
-        .findByText(
+      main().within(() => {
+        cy.findByText(
           "Metrics help you summarize and analyze your data effortlessly.",
-        )
-        .should("be.visible");
+        ).should("be.visible");
+        cy.findByText("Create metric").should("be.visible").click();
+      });
+      cy.location("pathname").should("eq", "/metric/query");
     });
   });
 
