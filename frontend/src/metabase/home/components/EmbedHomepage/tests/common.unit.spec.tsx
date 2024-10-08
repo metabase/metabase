@@ -59,7 +59,7 @@ describe("EmbedHomepage (OSS)", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("should prompt to enable embedding", () => {
+  it("should prompt to enable static embedding", () => {
     setup();
 
     expect(

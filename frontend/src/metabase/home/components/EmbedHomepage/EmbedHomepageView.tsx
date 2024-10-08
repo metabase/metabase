@@ -20,7 +20,6 @@ import { StaticTabContent } from "./StaticTabContent";
 import type { EmbeddingHomepageInitialTab } from "./types";
 
 export type EmbedHomepageViewProps = {
-  embeddingAutoEnabled: boolean;
   exampleDashboardId: number | null;
   licenseActiveAtSetup: boolean;
   initialTab: EmbeddingHomepageInitialTab;
