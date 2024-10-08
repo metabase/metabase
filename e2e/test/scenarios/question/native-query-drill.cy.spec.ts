@@ -31,7 +31,7 @@ const peopleTableQuestionDetails: NativeQuestionDetails = {
   },
 };
 
-const dateLineQuestionDetails: NativeQuestionDetails = {
+const timeseriesLineQuestionDetails: NativeQuestionDetails = {
   display: "line",
   native: {
     query: "SELECT ID, CREATED_AT, QUANTITY FROM ORDERS ORDER BY ID LIMIT 10",
@@ -202,7 +202,9 @@ describe("scenarios > question > native query drill", () => {
     });
 
     it("quick-filter drill", () => {
-      createNativeQuestion(dateLineQuestionDetails, { visitQuestion: true });
+      createNativeQuestion(timeseriesLineQuestionDetails, {
+        visitQuestion: true,
+      });
       assertQueryBuilderRowCount(10);
       cartesianChartCircle().eq(0).click();
       popover().within(() => {
@@ -289,7 +291,9 @@ describe("scenarios > question > native query drill", () => {
     });
 
     it("unsupported drills", () => {
-      createNativeQuestion(dateLineQuestionDetails, { visitQuestion: true });
+      createNativeQuestion(timeseriesLineQuestionDetails, {
+        visitQuestion: true,
+      });
       assertQueryBuilderRowCount(10);
       cartesianChartCircle().eq(0).click();
       popover().within(() => {
@@ -302,7 +306,9 @@ describe("scenarios > question > native query drill", () => {
 
   describe("query builder brush filters", () => {
     it("timeseries filter", () => {
-      createNativeQuestion(dateLineQuestionDetails, { visitQuestion: true });
+      createNativeQuestion(timeseriesLineQuestionDetails, {
+        visitQuestion: true,
+      });
       assertQueryBuilderRowCount(10);
       applyBrushFilter(200, 800);
       cy.wait("@dataset");
@@ -336,7 +342,7 @@ describe("scenarios > question > native query drill", () => {
 
       cy.log("from a chart dot");
       cy.createDashboardWithQuestions({
-        questions: [dateLineQuestionDetails],
+        questions: [timeseriesLineQuestionDetails],
       }).then(({ dashboard }) => visitDashboard(dashboard.id));
       getDashboardCard().within(() => cartesianChartCircle().eq(0).click());
       popover().within(() => {
@@ -349,9 +355,23 @@ describe("scenarios > question > native query drill", () => {
   });
 
   describe("dashboard brush filters", () => {
-    it("timeseries filter", () => {});
+    it("timeseries filter", () => {
+      cy.createDashboardWithQuestions({
+        questions: [timeseriesLineQuestionDetails],
+      }).then(({ dashboard }) => visitDashboard(dashboard.id));
+      getDashboardCard().within(() => applyBrushFilter(100, 300));
+      cy.wait("@dataset");
+      assertQueryBuilderRowCount(4);
+    });
 
-    it("numeric filter", () => {});
+    it("numeric filter", () => {
+      cy.createDashboardWithQuestions({
+        questions: [numericLineQuestionDetails],
+      }).then(({ dashboard }) => visitDashboard(dashboard.id));
+      getDashboardCard().within(() => applyBrushFilter(100, 300));
+      cy.wait("@dataset");
+      assertQueryBuilderRowCount(5);
+    });
   });
 });
 
