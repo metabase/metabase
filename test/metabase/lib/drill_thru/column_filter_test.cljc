@@ -311,7 +311,7 @@
                                           {}
                                           [:field {} "ALIAS_CREATED_AT"]
                                           [:relative-datetime {} :current :day]]]}]}
-                (lib/drill-thru query -1 drill "=" (lib/relative-datetime :current :day))))))))
+                (lib/drill-thru query -1 nil drill "=" (lib/relative-datetime :current :day))))))))
 
 (deftest ^:parallel column-filter-join-alias-test
   (testing "an input column with `:source/fields`, `:source-alias` and no `:join-alias` should work properly (#36861)"
