@@ -12,6 +12,7 @@
    [metabase.api.dashboard :as api.dashboard]
    [metabase.api.public :as api.public]
    [metabase.driver.common.parameters.operators :as params.ops]
+   [metabase.eid-translation :as eid-translation]
    [metabase.models.card :as card]
    [metabase.models.params :as params]
    [metabase.models.setting :as setting :refer [defsetting]]
@@ -325,14 +326,7 @@
   "A Malli schema for a map of model names to a sequence of entity ids."
   (mc/schema [:map-of ApiName [:sequential :string]]))
 
-(def ^:private EidTranslationStatus
-  [:enum :ok :not-found :invalid-format])
-
 ;; -------------------- Entity Id Translation Analytics --------------------
-
-(def ^:private
-  default-eid-translation-counter
-  (zipmap (rest EidTranslationStatus) (repeat 0)))
 
 (defsetting entity-id-translation-counter
   (deferred-tru "A counter for tracking the number of entity_id -> id translations. Whenever we call [[model->entity-ids->ids]], we increment this counter by the number of translations.")
@@ -341,33 +335,20 @@
   :export?    false
   :audit      :never
   :type       :json
-  :default    default-eid-translation-counter)
-
-(defn- compute-result [processed-result current-count]
-  (merge-with + processed-result current-count))
+  :default    eid-translation/default-counter)
 
 (mu/defn update-translation-count!
   "Update the entity-id translation counter with the results of a batch of entity-id translations."
-  [results :- [:sequential EidTranslationStatus]]
+  [results :- [:sequential eid-translation/Status]]
   (let [processed-result (frequencies results)]
     (entity-id-translation-counter!
-     (compute-result processed-result (entity-id-translation-counter)))))
-
-(defn- add-total [counter]
-  (merge counter {:total (apply + (vals counter))}))
-
-(mu/defn get-and-clear-translation-count!
-  :- [:map [:ok :int] [:not-found :int] [:invalid-format :int] [:total :int]]
-  "Get and clear the entity-id translation counter. This is meant to be called during the daily stats collection process."
-  []
-  (u/prog1 (add-total (entity-id-translation-counter))
-    (entity-id-translation-counter! default-eid-translation-counter)))
+     (merge-with + processed-result (entity-id-translation-counter)))))
 
 (mu/defn- entity-ids->id-for-model :- [:sequential [:tuple
                                                     ;; We want to pass incorrectly formatted entity-ids through here,
                                                     ;; but this is assumed to be an entity-id:
                                                     :string
-                                                    [:map [:status EidTranslationStatus]]]]
+                                                    [:map [:status eid-translation/Status]]]]
   "Given a model and a sequence of entity ids on that model, return a pairs of entity-id, id."
   [api-name eids]
   (let [model (->model api-name) ;; This lookup is safe because we've already validated the api-names

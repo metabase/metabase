@@ -10,12 +10,11 @@
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.analytics.snowplow :as snowplow]
-   #_:clj-kondo/ignore
-   [metabase.api.embed.common :as embed.common]
    [metabase.config :as config]
    [metabase.db :as db]
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
+   [metabase.eid-translation :as eid-translation]
    [metabase.email :as email]
    [metabase.embed.settings :as embed.settings]
    [metabase.integrations.google :as google]
@@ -578,10 +577,25 @@
           :has_activation_signals_completed (completed-activation-signals?)})]
     (m->kv-vec instance-attributes)))
 
+
+(mu/defn- get-translation-count!
+  :- [:map [:ok :int] [:not-found :int] [:invalid-format :int] [:total :int]]
+  "Get and clear the entity-id translation counter. This is meant to be called during the daily stats collection process."
+  []
+  (let [counter (setting/get-value-of-type :json :entity-id-translation-counter)]
+    (merge counter {:total (apply + (vals counter))})))
+
+(mu/defn- clear-translation-count!
+  "We want to reset the eid translation count on every stat ping, so we do it here."
+  []
+  (setting/set-value-of-type! :json eid-translation/default-counter))
+
 (defn- ->snowplow-metric-info
   "Collects Snowplow metrics data that is not in the legacy stats format."
   []
-  (let [one-day-ago (t/minus (t/offset-date-time) (t/days 1))]
+  (let [one-day-ago (t/minus (t/offset-date-time) (t/days 1))
+        total-translation-count (:total (get-translation-count!))
+        _ (clear-translation-count!)]
     {:models                  (t2/count :model/Card :type :model :archived false)
      :new_embedded_dashboards (t2/count :model/Dashboard
                                         :enable_embedding true
@@ -592,7 +606,7 @@
                                           :date_joined [:>= one-day-ago])
      :pivot_tables              (t2/count :model/Card :display :pivot :archived false)
      :query_executions_last_24h (t2/count :model/QueryExecution :started_at [:>= one-day-ago])
-     :entity_id_translations_last_24h (:total (embed.common/get-and-clear-translation-count!))}))
+     :entity_id_translations_last_24h total-translation-count}))
 
 (mu/defn- snowplow-metrics
   [stats metric-info :- [:map
