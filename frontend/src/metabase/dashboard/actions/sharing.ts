@@ -56,7 +56,9 @@ export const createPublicLink = createAsyncThunk(
   CREATE_PUBLIC_LINK,
   async ({ id }: DashboardIdPayload, { dispatch }) => {
     const { data } = await dispatch(createDashboardPublicLink.initiate({ id }));
-    return { id, uuid: data.uuid };
+    if (data) {
+      return { id, uuid: data.uuid };
+    }
   },
 );
 
