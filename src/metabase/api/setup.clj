@@ -175,7 +175,7 @@
    :hosted?    (premium-features/is-hosted?)
    :embedding  {:interested? (not (= (embed.settings/embedding-homepage) :hidden))
                 :done?       (= (embed.settings/embedding-homepage) :dismissed-done)
-                :app-origin  (boolean (embed.settings/embedding-app-origin))}
+                :app-origin  (boolean (embed.settings/embedding-app-origins-interactive))}
    :configured {:email (email/email-configured?)
                 :slack (slack/slack-configured?)
                 :sso   (google/google-auth-enabled)}

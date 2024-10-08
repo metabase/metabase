@@ -1,4 +1,4 @@
-(ns metabase.query-processor.streaming.csv-test
+(ns ^:mb/driver-tests metabase.query-processor.streaming.csv-test
   (:require
    [cheshire.core :as json]
    [clojure.data.csv :as csv]

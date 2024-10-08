@@ -1,5 +1,6 @@
 (ns ^:mb/once metabase.api.setting-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.api.common.validation :as validation]
    [metabase.driver.h2 :as h2]
@@ -7,7 +8,8 @@
    [metabase.models.setting-test :as models.setting-test]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [metabase.util.i18n :refer [deferred-tru]]))
+   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.log.capture :as log.capture]))
 
 (comment h2/keep-me)
 
@@ -375,3 +377,14 @@
             (mt/user-http-request :crowberto :put 204 "setting" {:test_setting_1 "GHI", :test_setting_2 "JKL"})
             (is (= "GHI" (mt/user-http-request :crowberto :get 200 "setting/test_setting_1")))
             (is (= "JKL" (mt/user-http-request :crowberto :get 200 "setting/test_setting_2")))))))))
+
+(defsetting test-deprecated-setting
+  (deferred-tru "Setting to test deprecation warning.")
+  :deprecated "0.51.0"
+  :encryption :no)
+
+(deftest deprecation-warning-for-deprecated-setting-test
+  (log.capture/with-log-messages-for-level [warnings :warn]
+    (test-deprecated-setting! "hello")
+    (is (re-find #"Setting test-deprecated-setting is deprecated as of Metabase 0.51.0"
+                 (str/join " " (map :message (warnings)))))))

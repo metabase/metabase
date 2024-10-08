@@ -7,7 +7,7 @@ import type {
 import type { PickerState } from "../EntityPicker";
 import type { QuestionPickerItem } from "../QuestionPicker";
 
-import type { CollectionPickerItem } from "./types";
+import type { CollectionPickerItem, CollectionPickerStatePath } from "./types";
 
 export const getCollectionIdPath = (
   collection: Pick<
@@ -54,7 +54,7 @@ export const getStateFromIdPath = ({
 }: {
   idPath: CollectionId[];
   namespace?: "snippets";
-}): PickerState<CollectionPickerItem, ListCollectionItemsRequest> => {
+}): CollectionPickerStatePath => {
   const statePath: PickerState<
     CollectionPickerItem,
     ListCollectionItemsRequest

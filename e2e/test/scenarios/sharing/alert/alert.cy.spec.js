@@ -6,9 +6,12 @@ import {
 import {
   mockSlackConfigured,
   openSharingMenu,
+  popover,
   restore,
+  setupNotificationChannel,
   setupSMTP,
   sharingMenuButton,
+  toggleAlertChannel,
   visitModel,
   visitQuestion,
 } from "e2e/support/helpers";
@@ -89,6 +92,49 @@ describe("scenarios > alert", () => {
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("The wide world of alerts").should("not.exist");
       });
+    });
+  });
+
+  describe("with a webhook", { tags: ["@external"] }, () => {
+    beforeEach(() => {
+      setupNotificationChannel({
+        name: "Foo Hook",
+        description: "This is a hook",
+      });
+      setupNotificationChannel({
+        name: "Bar Hook",
+        description: "This is another hook",
+      });
+      cy.setCookie("metabase.SEEN_ALERT_SPLASH", "true");
+    });
+
+    it("should be able to create and delete alerts with webhooks enabled", () => {
+      visitQuestion(ORDERS_QUESTION_ID);
+      openSharingMenu("Create alert");
+
+      //Disable Email
+      toggleAlertChannel("Email");
+      toggleAlertChannel("Foo Hook");
+      toggleAlertChannel("Bar Hook");
+
+      cy.findByRole("button", { name: "Done" }).click();
+
+      openSharingMenu("Edit alerts");
+
+      popover().within(() => {
+        cy.findByText("You set up an alert").should("be.visible");
+        cy.findByText("Edit").click();
+      });
+
+      cy.findByRole("button", { name: "Delete this alert" }).click();
+
+      cy.log(
+        "Webhooks should render with their given names in delete modal metabase#48428",
+      );
+      cy.findByRole("checkbox", { name: /Channel Foo Hook/ }).click();
+      cy.findByRole("checkbox", { name: /Channel Bar Hook/ }).click();
+
+      cy.findByRole("button", { name: "Delete this alert" }).click();
     });
   });
 

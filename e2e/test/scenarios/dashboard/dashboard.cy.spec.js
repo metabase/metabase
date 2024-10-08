@@ -130,7 +130,10 @@ describe("scenarios > dashboard", () => {
         .click();
 
       entityPickerModal().within(() => {
-        cy.findByPlaceholderText("Search…").type("Pro");
+        cy.findByPlaceholderText("Search this collection or everywhere…").type(
+          "Pro",
+        );
+        cy.findByText("Everywhere").click();
         cy.findByText("Products").click();
       });
 

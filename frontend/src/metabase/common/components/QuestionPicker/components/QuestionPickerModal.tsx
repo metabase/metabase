@@ -1,8 +1,7 @@
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
-import type { CollectionPickerModel } from "../../CollectionPicker";
-import type { EntityTab } from "../../EntityPicker";
+import type { EntityPickerTab } from "../../EntityPicker";
 import {
   EntityPickerModal,
   defaultOptions as defaultEntityPickerOptions,
@@ -12,6 +11,7 @@ import type {
   QuestionPickerItem,
   QuestionPickerModel,
   QuestionPickerOptions,
+  QuestionPickerStatePath,
   QuestionPickerValue,
   QuestionPickerValueItem,
 } from "../types";
@@ -86,43 +86,66 @@ export const QuestionPickerModal = ({
     }
   };
 
-  const tabs: EntityTab<CollectionPickerModel>[] = [
+  const [modelsPath, setModelsPath] = useState<QuestionPickerStatePath>();
+  const [metricsPath, setMetricsPath] = useState<QuestionPickerStatePath>();
+  const [questionsPath, setQuestionsPath] = useState<QuestionPickerStatePath>();
+
+  const tabs: EntityPickerTab<
+    QuestionPickerItem["id"],
+    QuestionPickerItem["model"],
+    QuestionPickerItem
+  >[] = [
     {
+      id: "questions-tab",
       displayName: t`Questions`,
-      model: "card",
+      model: "card" as const,
+      folderModels: ["collection" as const],
       icon: "table",
-      element: (
+      render: ({ onItemSelect }) => (
         <QuestionPicker
-          onItemSelect={handleItemSelect}
           initialValue={value}
-          options={options}
           models={["card"]}
+          options={options}
+          path={questionsPath}
+          onInit={onItemSelect}
+          onItemSelect={onItemSelect}
+          onPathChange={setQuestionsPath}
         />
       ),
     },
     {
+      id: "models-tab",
       displayName: t`Models`,
-      model: "dataset",
+      model: "dataset" as const,
+      folderModels: ["collection" as const],
       icon: "model",
-      element: (
+      render: ({ onItemSelect }) => (
         <QuestionPicker
-          onItemSelect={handleItemSelect}
           initialValue={value}
-          options={options}
           models={["dataset"]}
+          options={options}
+          path={modelsPath}
+          onInit={onItemSelect}
+          onItemSelect={onItemSelect}
+          onPathChange={setModelsPath}
         />
       ),
     },
     {
+      id: "metrics-tab",
       displayName: t`Metrics`,
-      model: "metric",
+      model: "metric" as const,
+      folderModels: ["collection" as const],
       icon: "metric",
-      element: (
+      render: ({ onItemSelect }) => (
         <QuestionPicker
-          onItemSelect={handleItemSelect}
           initialValue={value}
-          options={options}
           models={["metric"]}
+          options={options}
+          path={metricsPath}
+          onInit={onItemSelect}
+          onItemSelect={onItemSelect}
+          onPathChange={setMetricsPath}
         />
       ),
     },

@@ -1,4 +1,4 @@
-(ns metabase.query-processor.middleware.add-implicit-clauses-test
+(ns ^:mb/driver-tests metabase.query-processor.middleware.add-implicit-clauses-test
   (:require
    [clojure.test :refer :all]
    [metabase.legacy-mbql.util :as mbql.u]

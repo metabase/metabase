@@ -184,13 +184,10 @@ export function createChannel(
   channelSpec: ChannelSpec,
   opts?: Partial<Channel>,
 ): Channel {
-  const details = {};
-
   return {
     channel_type: channelSpec.type,
     enabled: true,
     recipients: [],
-    details: details,
     schedule_type: channelSpec.schedules[0],
     schedule_day: "mon",
     schedule_hour: 8,
