@@ -1,4 +1,4 @@
-(ns metabase.upload-test
+(ns ^:mb/driver-tests metabase.upload-test
   (:require
    [clj-bom.core :as bom]
    [clojure.data.csv :as csv]
@@ -558,7 +558,7 @@
                                 ["number" {:base_type :type/Float}]
                                 ["date" {:base_type :type/Date}]
                                 ["datetime" {:base_type :type/DateTime}]]
-                        (driver.u/supports? driver/*driver* :upload-with-auto-pk (mt/db))
+                        (auto-pk-column?)
                         (cons ["_mb_row_id" {:semantic_type     :type/PK
                                              :base_type         :type/BigInteger}]))
                       (->> (t2/select :model/Field :table_id (:id table))
@@ -1238,8 +1238,19 @@
                   ]))
     file))
 
+(defmethod driver/database-supports? [::driver/driver ::create-csv-upload!-failure-test]
+  [_driver _feature _database]
+  true)
+
+;;; TODO -- The test below is currently broken for Redshift. This test was incorrectly marked `^:mb/once` prior to
+;;; #47681; I fixed that, but then Redshift tests started failing. We should fix the test so it can run against
+;;; Redshift.
+(defmethod driver/database-supports? [:redshift ::create-csv-upload!-failure-test]
+  [_driver _feature _database]
+  false)
+
 (deftest ^:mb/once create-csv-upload!-failure-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+  (mt/test-drivers (mt/normal-drivers-with-feature :uploads ::create-csv-upload!-failure-test)
     (mt/with-empty-db
       (testing "Uploads must be enabled"
         (is (thrown-with-msg?
@@ -1337,13 +1348,21 @@
                               (merge (ordered-map/ordered-map
                                       upload/auto-pk-column-keyword ::upload-types/auto-incrementing-int-pk)))
            rows             [["Obi-Wan Kenobi"]]}}]
-  (let [driver driver/*driver*
-        db-id (mt/id)
-        table-name (ddl.i/format-name driver table-name)
-        schema-name (ddl.i/format-name driver schema-name)
+  (let [driver            driver/*driver*
+        db-id             (mt/id)
+        table-name        (ddl.i/format-name driver table-name)
+        schema-name       (ddl.i/format-name driver schema-name)
         schema+table-name (#'upload/table-identifier {:schema schema-name :name table-name})
-        insert-col-names (remove #{upload/auto-pk-column-keyword} (keys col->upload-type))
-        col-definitions (#'upload/column-definitions driver col->upload-type)]
+        ->normalized-col  (comp keyword (partial #'upload/normalize-column-name driver) name)
+        names             (->> (keys col->upload-type)
+                               (map name)
+                               (remove #{upload/auto-pk-column-name}))
+        normal-names      (for [n names] (#'upload/normalize-column-name driver n))
+        display-names     (#'upload/derive-display-names driver names)
+        name->display     (zipmap normal-names display-names)
+        col->upload-type  (update-keys col->upload-type ->normalized-col)
+        insert-col-names  (remove #{upload/auto-pk-column-keyword} (keys col->upload-type))
+        col-definitions   (#'upload/column-definitions driver col->upload-type)]
     (driver/create-table! driver/*driver*
                           db-id
                           schema+table-name
@@ -1357,6 +1376,9 @@
       (t2/update! :model/Field
                   {:table_id (:id table), :name upload/auto-pk-column-name}
                   {:display_name upload/auto-pk-column-name})
+      ;; and preserve the other display names from the CSV
+      (doseq [[nm dn] name->display]
+        (t2/update! :model/Field {:table_id (:id table), :name nm} {:display_name dn}))
       table)))
 
 (defn catch-ex-info* [f]
@@ -1502,7 +1524,7 @@
                               - extra_1")
 
                      ["_mb_row_id,id, extra 2"]
-                     (if (driver.u/supports? driver/*driver* :upload-with-auto-pk (mt/db))
+                     (if (auto-pk-column?)
                        (trim-lines "The CSV file is missing columns that are in the table:
                                    - name
 
@@ -1616,7 +1638,7 @@
 
 (deftest update-mb-row-id-csv-only-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
-    (when (driver.u/supports? driver/*driver* :upload-with-auto-pk (mt/db))
+    (when (auto-pk-column?)
       (doseq [action (actions-to-test driver/*driver*)]
         (testing (action-testing-str action)
           (testing "If the table doesn't have _mb_row_id but the CSV does, ignore the CSV _mb_row_id but create the column anyway"
@@ -1872,7 +1894,7 @@
 
 (deftest update-mb-row-id-csv-and-table-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
-    (when (driver.u/supports? driver/*driver* :upload-with-auto-pk (mt/db))
+    (when (auto-pk-column?)
       (doseq [action (actions-to-test driver/*driver*)]
         (testing (action-testing-str action)
           (testing "Append succeeds if the table has _mb_row_id and the CSV does too"
@@ -1966,7 +1988,8 @@
         (with-uploads-enabled!
           (testing "Append should handle new non-ascii columns being added in the latest CSV"
             (with-upload-table! [table (create-upload-table!)]
-              (column-display-names-for-table table)
+              (is (= (header-with-auto-pk ["Name"])
+                     (column-display-names-for-table table)))
              ;; Reorder as well for good measure
               (let [csv-rows ["α,name"
                               "omega,Everything"]
@@ -1978,6 +2001,32 @@
                   (is (= (set (updated-contents action
                                                 [["Obi-Wan Kenobi" nil]]
                                                 [["Everything" "omega"]]))
+                         (set (rows-for-table table)))))
+                (io/delete-file file)))))))))
+
+(deftest update-new-non-ascii-column-onto-non-ascii-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+    (doseq [action (actions-to-test driver/*driver*)]
+      (testing (action-testing-str action)
+        (with-uploads-enabled!
+          (testing "Append should handle new non-ascii columns being added in the latest CSV"
+            (with-upload-table! [table (create-upload-table!
+                                        :col->upload-type (columns-with-auto-pk {"α" ::upload-types/varchar-255}))]
+             ;; We can't type a literal uppercase Alpha, as our whitespace linter will complain.
+              (is (= (header-with-auto-pk [(u/upper-case-en "α")])
+                     (column-display-names-for-table table)))
+             ;; Reorder as well for good measure
+              (let [csv-rows ["α,ϐ"
+                              "omega,Everything"]
+                    file     (csv-file-with csv-rows)]
+                (testing "The new row is inserted with the values correctly reordered"
+                  (is (= {:row-count 1} (update-csv! action {:file file, :table-id (:id table)})))
+                  ;; It's a historic quirk that added columns don't get humanized display names
+                  (is (= (header-with-auto-pk [(u/upper-case-en "α") "ϐ"])
+                         (column-display-names-for-table table)))
+                  (is (= (set (updated-contents action
+                                                [["Obi-Wan Kenobi" nil]]
+                                                [["omega" "Everything"]]))
                          (set (rows-for-table table)))))
                 (io/delete-file file)))))))))
 
@@ -2106,6 +2155,12 @@
                                (rows-for-table table))))
                       (io/delete-file file))))))))))))
 
+(defn- round-floats
+  "Round all floats to have n digits of precision."
+  [digits-precision rows]
+  (let [round-if-float #(if (float? %) (u/round-to-decimals digits-precision %) %)]
+    (mapv (partial mapv round-if-float) rows)))
+
 (deftest update-type-coercion-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (doseq [action (actions-to-test driver/*driver*)]
@@ -2143,7 +2198,9 @@
                           (is (= {:row-count 1}
                                  (update!))))
                         (is (= (rows-with-auto-pk [[coerced]])
-                               (rows-for-table table))))
+                               ;; Clickhouse uses 32-bit floats, so we must account for that loss in precision.
+                               ;; In this case, 2.1 ⇒ 2.0999999046325684
+                               (round-floats 6 (rows-for-table table)))))
                       (testing (format "\nUploading %s into a column of type %s should fail to coerce"
                                        uncoerced (name upload-type))
                         (is (thrown-with-msg?
@@ -2151,15 +2208,6 @@
                              (re-pattern (str "^" fail-msg "$"))
                              (update!)))))
                     (io/delete-file file)))))))))))
-
-(defn- round-floats
-  "Round all floats to have n digits of precision."
-  [digits-precision rows]
-  (let [factor (Math/pow 10 digits-precision)]
-    (mapv (partial mapv #(if (float? %)
-                           (/ (Math/round (* factor %)) factor)
-                           %))
-          rows)))
 
 (deftest update-promotion-multiple-columns-test
   (mt/test-drivers (disj (mt/normal-drivers-with-feature :uploads) :redshift) ; redshift doesn't support promotion
@@ -2187,8 +2235,8 @@
                         (is (= {:row-count 1}
                                (update!))))
                       (is (= (rows-with-auto-pk [[coerced coerced]])
-                             ;; Clickhouse uses 32bit floats, so we must account for that loss in precision.
-                             ;; In this case 2.1 => 2.0999999046325684
+                             ;; Clickhouse uses 32-bit floats, so we must account for that loss in precision.
+                             ;; In this case, 2.1 ⇒ 2.0999999046325684
                              (round-floats 6 (rows-for-table table)))))))))))))))
 
 (deftest create-from-csv-int-and-float-test
@@ -2217,8 +2265,8 @@
           (testing "Check the data was uploaded into the table correctly"
             (is (= (rows-with-auto-pk [[1.0 1.1]
                                        [1.1 1.0]])
-                   ;; Clickhouse uses 32 bit floats,
-                   ;; so 1.1 is approximated by 1.10000002384185791015625
+                   ;; Clickhouse uses 32-bit floats, so we must account for that loss in precision.
+                   ;; In this case, 1.1 ⇒ 1.10000002384185791015625
                    (round-floats 7 (rows-for-table table))))))))))
 
 (deftest update-from-csv-int-and-float-test
@@ -2389,7 +2437,7 @@
 
 (deftest unique-long-column-names-test
   (let [original ["αbcdεf_αbcdεf"     "αbcdεfg_αbcdεf"   "αbc_2_etc_αbcdεf" "αbc_3_xyz_αbcdεf"]
-        expected [:%CE%B1bcd%  :%_852c229f :%CE%B1bc_2 :%CE%B1bc_3]
+        expected [:%ce%b1bcd%  :%_b59bccce :%ce%b1bc_2 :%ce%b1bc_3]
         displays ["αbcdεf" "αbcdεfg" "αbc 2 etc" "αbc 3 xyz"]]
     (is (= expected (#'upload/derive-column-names ::short-column-test-driver original)))
     (mt/with-dynamic-redefs [upload/max-bytes (constantly 10)]

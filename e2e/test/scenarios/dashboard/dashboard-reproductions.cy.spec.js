@@ -790,7 +790,8 @@ describe("issue 31274", () => {
       editDashboard(dashboard.id);
     });
 
-    cy.icon("link").click();
+    cy.findByLabelText("Add a link or iframe").click();
+    popover().findByText("Link").click();
     cy.findByPlaceholderText("https://example.com").realHover();
 
     cy.log(
@@ -1056,6 +1057,7 @@ describe("should not redirect users to other pages when linking an entity (metab
     });
 
     cy.icon("link").click();
+    popover().findByText("Link").click();
     cy.wait("@recentViews");
 
     cy.findByTestId("recents-list-container").within(() => {
@@ -1086,6 +1088,7 @@ describe("should not redirect users to other pages when linking an entity (metab
     });
 
     cy.icon("link").click();
+    popover().findByText("Link").click();
     cy.findByTestId("custom-edit-text-link").type(TEST_QUESTION_NAME);
     cy.findByTestId("search-results-list").within(() => {
       cy.findByText(TEST_QUESTION_NAME).click();

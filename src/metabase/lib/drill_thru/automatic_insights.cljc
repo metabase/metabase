@@ -21,6 +21,8 @@
    stage-number                                 :- :int
    {:keys [column column-ref dimensions value]} :- ::lib.schema.drill-thru/context]
   (when (and (lib.drill-thru.common/mbql-stage? query stage-number)
+             ;; HACK: This is a not a great way to disable this drill for queries whose source is a native query.
+             (not= (:lib/source column) :source/native)
              ;; Column with no value is not allowed - that's a column header click. Other combinations are allowed.
              (or (not column) (some? value))
              (lib.metadata/setting query :enable-xrays)

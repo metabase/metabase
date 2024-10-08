@@ -9,6 +9,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
+import { SwagButton } from "metabase/admin/settings/components/Swag/SwagButton";
 import { UpsellSSO } from "metabase/admin/upsells";
 import { AdminLayout } from "metabase/components/AdminLayout";
 import { NotFound } from "metabase/components/ErrorPages";
@@ -87,7 +88,7 @@ class SettingsEditor extends Component {
    * @param {function} [options.onChanged] - callback fired after the setting has been updated
    * @param {function} [options.onError] - callback fired after the setting has failed to update
    */
-  updateSetting = async (setting, newValue, options) => {
+  handleUpdateSetting = async (setting, newValue, options) => {
     const { settingValues, updateSetting, reloadSettings, dispatch } =
       this.props;
 
@@ -180,7 +181,7 @@ class SettingsEditor extends Component {
           elements={activeSection.settings}
           settingValues={settingValues}
           derivedSettingValues={derivedSettingValues}
-          updateSetting={this.updateSetting.bind(this)}
+          updateSetting={this.handleUpdateSetting.bind(this)}
           onChangeSetting={this.handleChangeSetting.bind(this)}
           reloadSettings={this.props.reloadSettings}
         />
@@ -192,7 +193,7 @@ class SettingsEditor extends Component {
         settingElements={activeSection.settings}
         settingValues={settingValues}
         derivedSettingValues={derivedSettingValues}
-        updateSetting={this.updateSetting.bind(this)}
+        updateSetting={this.handleUpdateSetting.bind(this)}
         onChangeSetting={this.handleChangeSetting.bind(this)}
         reloadSettings={this.props.reloadSettings}
       />
@@ -254,6 +255,7 @@ class SettingsEditor extends Component {
       <aside className={cx(AdminS.AdminList, CS.flexNoShrink)}>
         <ul className={CS.pt1} data-testid="admin-list-settings-items">
           <ErrorBoundary>{renderedSections}</ErrorBoundary>
+          <SwagButton />
         </ul>
       </aside>
     );

@@ -30,9 +30,7 @@ export default {
   args,
 };
 
-export const Default = {
-  name: "Default",
-};
+export const Default = {};
 
 export const FullWidth = {
   name: "Full width",

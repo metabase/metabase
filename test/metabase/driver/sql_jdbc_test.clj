@@ -1,4 +1,4 @@
-(ns metabase.driver.sql-jdbc-test
+(ns ^:mb/driver-tests metabase.driver.sql-jdbc-test
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]

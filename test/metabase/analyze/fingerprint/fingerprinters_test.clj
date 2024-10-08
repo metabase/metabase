@@ -1,4 +1,4 @@
-(ns metabase.analyze.fingerprint.fingerprinters-test
+(ns ^:mb/driver-tests metabase.analyze.fingerprint.fingerprinters-test
   (:require
    [cheshire.core :as json]
    [clojure.string :as str]

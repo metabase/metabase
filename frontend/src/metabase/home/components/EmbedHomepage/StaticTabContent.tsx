@@ -9,7 +9,6 @@ import type { EmbedHomepageViewProps } from "./EmbedHomepageView";
 import { trackEmbeddingHomepageExampleDashboardClick } from "./analytics";
 
 export const StaticTabContent = ({
-  embeddingAutoEnabled,
   exampleDashboardId,
   learnMoreStaticEmbedUrl,
   initialTab,
@@ -24,15 +23,13 @@ export const StaticTabContent = ({
       <Text fw="bold" mb="md">{t`The TL;DR:`}</Text>
 
       <List type="ordered" mb="lg" size="sm">
-        {embeddingAutoEnabled === false && (
-          <List.Item>
-            <Anchor
-              size="sm"
-              component={Link}
-              to="/admin/settings/embedding-in-other-applications"
-            >{t`Enable embedding in the settings`}</Anchor>
-          </List.Item>
-        )}
+        <List.Item>
+          <Anchor
+            size="sm"
+            component={Link}
+            to="/admin/settings/embedding-in-other-applications"
+          >{t`Enable static embedding in the settings`}</Anchor>
+        </List.Item>
         <List.Item>{jt`${
           isNotNull(exampleDashboardId) ? t`Select` : `Create`
         } a question or dashboard to embed. Then click ${(

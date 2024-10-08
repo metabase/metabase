@@ -228,5 +228,5 @@ export function selectSavedQuestionsToJoin(
 
 export function selectFilterOperator(operatorName: string) {
   cy.findByLabelText("Filter operator").click();
-  cy.findByRole("listbox").findByText(operatorName).click();
+  cy.findByRole("menu").findByText(operatorName).click();
 }

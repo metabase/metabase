@@ -5,18 +5,22 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import type { DragEndEvent } from "metabase/core/components/Sortable";
+import type { AccentColorOptions } from "metabase/lib/colors/types";
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 import { isEmpty } from "metabase/lib/validate";
 import { Button, Select } from "metabase/ui";
 import type { Series } from "metabase-types/api";
 
-import { ChartSettingOrderedItems } from "./ChartSettingOrderedItems";
+import {
+  ChartSettingOrderedItems,
+  type SortableItem as SortableChartSettingOrderedItem,
+} from "./ChartSettingOrderedItems";
 import {
   ChartSettingMessage,
   ChartSettingOrderedSimpleRoot,
 } from "./ChartSettingOrderedSimple.styled";
 
-interface SortableItem {
+export interface SortableItem {
   key: string;
   enabled: boolean;
   name: string;
@@ -27,8 +31,6 @@ interface SortableItem {
 interface ChartSettingSeriesOrderProps {
   onChange: (rows: SortableItem[]) => void;
   value: SortableItem[];
-  addButtonLabel: string;
-  searchPickerPlaceholder: string;
   onShowWidget: (
     widget: { props: { seriesKey: string } },
     ref: HTMLElement | undefined,
@@ -37,6 +39,10 @@ interface ChartSettingSeriesOrderProps {
   hasEditSettings: boolean;
   onChangeSeriesColor: (seriesKey: string, color: string) => void;
   onSortEnd: (newItems: SortableItem[]) => void;
+  accentColorOptions?: AccentColorOptions;
+  getItemColor?: (item: SortableChartSettingOrderedItem) => string | undefined;
+  addButtonLabel?: string;
+  searchPickerPlaceholder?: string;
 }
 
 export const ChartSettingSeriesOrder = ({
@@ -48,6 +54,8 @@ export const ChartSettingSeriesOrder = ({
   hasEditSettings = true,
   onChangeSeriesColor,
   onSortEnd,
+  getItemColor,
+  accentColorOptions,
 }: ChartSettingSeriesOrderProps) => {
   const [isSeriesPickerVisible, setSeriesPickerVisible] = useState(false);
 
@@ -137,6 +145,8 @@ export const ChartSettingSeriesOrder = ({
             onColorChange={handleColorChange}
             getId={getId}
             removeIcon="close"
+            accentColorOptions={accentColorOptions}
+            getItemColor={getItemColor}
           />
           {canAddSeries && !isSeriesPickerVisible && (
             <Button

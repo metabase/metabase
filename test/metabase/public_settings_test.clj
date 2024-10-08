@@ -304,54 +304,55 @@
       (is (= nil (public-settings/help-link-custom-destination))))))
 
 (deftest landing-page-setting-test
-  (testing "should return relative url for valid inputs"
-    (public-settings/landing-page! "")
-    (is (= "" (public-settings/landing-page)))
+  (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+    (testing "should return relative url for valid inputs"
+      (public-settings/landing-page! "")
+      (is (= "" (public-settings/landing-page)))
 
-    (public-settings/landing-page! "/")
-    (is (= "/" (public-settings/landing-page)))
+      (public-settings/landing-page! "/")
+      (is (= "/" (public-settings/landing-page)))
 
-    (public-settings/landing-page! "/one/two/three/")
-    (is (= "/one/two/three/" (public-settings/landing-page)))
+      (public-settings/landing-page! "/one/two/three/")
+      (is (= "/one/two/three/" (public-settings/landing-page)))
 
-    (public-settings/landing-page! "no-leading-slash")
-    (is (= "/no-leading-slash" (public-settings/landing-page)))
+      (public-settings/landing-page! "no-leading-slash")
+      (is (= "/no-leading-slash" (public-settings/landing-page)))
 
-    (public-settings/landing-page! "/pathname?query=param#hash")
-    (is (= "/pathname?query=param#hash" (public-settings/landing-page)))
+      (public-settings/landing-page! "/pathname?query=param#hash")
+      (is (= "/pathname?query=param#hash" (public-settings/landing-page)))
 
-    (public-settings/landing-page! "#hash")
-    (is (= "/#hash" (public-settings/landing-page)))
+      (public-settings/landing-page! "#hash")
+      (is (= "/#hash" (public-settings/landing-page)))
 
-    (with-redefs [public-settings/site-url (constantly "http://localhost")]
-      (public-settings/landing-page! "http://localhost/absolute/same-origin")
-      (is (= "/absolute/same-origin" (public-settings/landing-page)))))
+      (with-redefs [public-settings/site-url (constantly "http://localhost")]
+        (public-settings/landing-page! "http://localhost/absolute/same-origin")
+        (is (= "/absolute/same-origin" (public-settings/landing-page)))))
 
-  (testing "landing-page cannot be set to URLs with external origin"
-    (is (thrown-with-msg?
-         Exception
-         #"This field must be a relative URL."
-         (public-settings/landing-page! "https://google.com")))
+    (testing "landing-page cannot be set to URLs with external origin"
+      (is (thrown-with-msg?
+           Exception
+           #"This field must be a relative URL."
+           (public-settings/landing-page! "https://google.com")))
 
-    (is (thrown-with-msg?
-         Exception
-         #"This field must be a relative URL."
-         (public-settings/landing-page! "sms://?&body=Hello")))
+      (is (thrown-with-msg?
+           Exception
+           #"This field must be a relative URL."
+           (public-settings/landing-page! "sms://?&body=Hello")))
 
-    (is (thrown-with-msg?
-         Exception
-         #"This field must be a relative URL."
-         (public-settings/landing-page! "https://localhost/test")))
+      (is (thrown-with-msg?
+           Exception
+           #"This field must be a relative URL."
+           (public-settings/landing-page! "https://localhost/test")))
 
-    (is (thrown-with-msg?
-         Exception
-         #"This field must be a relative URL."
-         (public-settings/landing-page! "mailto:user@example.com")))
+      (is (thrown-with-msg?
+           Exception
+           #"This field must be a relative URL."
+           (public-settings/landing-page! "mailto:user@example.com")))
 
-    (is (thrown-with-msg?
-         Exception
-         #"This field must be a relative URL."
-         (public-settings/landing-page! "file:///path/to/resource")))))
+      (is (thrown-with-msg?
+           Exception
+           #"This field must be a relative URL."
+           (public-settings/landing-page! "file:///path/to/resource"))))))
 
 (deftest show-metabase-links-test
   (mt/discard-setting-changes [show-metabase-links]
@@ -437,3 +438,14 @@
       (testing "rollout is a decimal"
         (let [modified (update version-info :latest assoc :rollout 0.2)]
           (is (= modified (info modified {:current-major 51 :upgrade-threshold-value 25}))))))))
+
+(deftest update-channel-test
+  (testing "we can set the update channel"
+    (mt/discard-setting-changes [update-channel]
+      (public-settings/update-channel! "nightly")
+      (is (= "nightly" (public-settings/update-channel)))))
+  (testing "we can't set the update channel to an invalid value"
+    (mt/discard-setting-changes [update-channel]
+      (is (thrown?
+           IllegalArgumentException
+           (public-settings/update-channel! "millennially"))))))

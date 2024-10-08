@@ -67,12 +67,10 @@ export default {
 
 export const Default = {
   render: DefaultTemplate,
-  name: "Default",
 };
 
 export const Border = {
   render: DefaultTemplate,
-  name: "Border",
   args: {
     withBorder: true,
   },

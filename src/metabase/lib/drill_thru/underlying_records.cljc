@@ -72,6 +72,8 @@
   ;; - value is nil
   ;; - dimensions holds only the legend's column, eg. Products.CATEGORY.
   (when (and (lib.drill-thru.common/mbql-stage? query stage-number)
+             ;; HACK: This is a not a great way to disable this drill for queries whose source is a native query.
+             (not= (:lib/source column) :source/native)
              ;; Underlying records requires an aggregation. Either we clicked the aggregation, or there are dimensions.
              (or (= (:lib/source column) :source/aggregations)
                  (not-empty dimensions))

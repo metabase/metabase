@@ -1,4 +1,5 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useLatest } from "react-use";
 
 import {
   skipToken,
@@ -12,8 +13,10 @@ import type { DatabaseId, SchemaName, TableId } from "metabase-types/api";
 
 import { AutoScrollBox } from "../../EntityPicker";
 import type {
-  NotebookDataPickerFolderItem,
-  NotebookDataPickerValueItem,
+  DataPickerFolderItem,
+  DataPickerItem,
+  DataPickerValueItem,
+  TablePickerStatePath,
   TablePickerValue,
 } from "../types";
 import { generateKey, getDbItem, getSchemaItem, getTableItem } from "../utils";
@@ -27,24 +30,36 @@ interface Props {
    * Limit selection to a particular database
    */
   databaseId?: DatabaseId;
+  path: TablePickerStatePath | undefined;
   value: TablePickerValue | undefined;
-  onChange: (value: NotebookDataPickerValueItem) => void;
+  onItemSelect: (value: DataPickerItem) => void;
+  onPathChange: (path: TablePickerStatePath) => void;
 }
 
-export const TablePicker = ({ databaseId, value, onChange }: Props) => {
-  const [dbId, setDbId] = useState<DatabaseId | undefined>(
-    databaseId ?? value?.db_id,
-  );
+export const TablePicker = ({
+  databaseId,
+  path,
+  value,
+  onItemSelect,
+  onPathChange,
+}: Props) => {
+  const defaultPath = useMemo<TablePickerStatePath>(() => {
+    return [databaseId ?? value?.db_id, value?.schema, value?.id];
+  }, [databaseId, value]);
+  const [initialDbId, initialSchemaId, initialTableId] = path ?? defaultPath;
+  const [dbId, setDbId] = useState<DatabaseId | undefined>(initialDbId);
   const [schemaName, setSchemaName] = useState<SchemaName | undefined>(
-    value?.schema,
+    initialSchemaId,
   );
-  const [tableId, setTableId] = useState<TableId | undefined>(value?.id);
+  const [tableId, setTableId] = useState<TableId | undefined>(initialTableId);
 
   const {
-    data: databases,
+    data: databasesResponse,
     error: errorDatabases,
     isFetching: isLoadingDatabases,
   } = useListDatabasesQuery({ saved: false });
+
+  const databases = isLoadingDatabases ? undefined : databasesResponse?.data;
 
   const {
     data: schemas,
@@ -63,13 +78,19 @@ export const TablePicker = ({ databaseId, value, onChange }: Props) => {
   );
 
   const selectedDbItem = useMemo(
-    () => getDbItem(databases?.data, dbId),
+    () => getDbItem(databases, dbId),
     [databases, dbId],
   );
 
   const selectedSchemaItem = useMemo(
-    () => getSchemaItem(schemaName),
-    [schemaName],
+    () =>
+      getSchemaItem(
+        dbId,
+        selectedDbItem?.name,
+        schemaName,
+        schemas?.length === 1,
+      ),
+    [dbId, selectedDbItem, schemaName, schemas],
   );
 
   const selectedTableItem = useMemo(
@@ -78,31 +99,142 @@ export const TablePicker = ({ databaseId, value, onChange }: Props) => {
   );
 
   const handleFolderSelect = useCallback(
-    ({ folder }: { folder: NotebookDataPickerFolderItem }) => {
+    (folder: DataPickerFolderItem) => {
       if (folder.model === "database") {
         if (dbId === folder.id) {
-          setSchemaName(schemas?.length === 1 ? schemas[0] : undefined);
+          const newSchemaName =
+            schemas != null && schemas.length > 0 ? schemas[0] : undefined;
+          const newSchemaItem = getSchemaItem(
+            dbId,
+            folder.name,
+            newSchemaName,
+            schemas?.length === 1,
+          );
+          const newPath: TablePickerStatePath = [
+            dbId,
+            newSchemaName,
+            undefined,
+          ];
+          setSchemaName(newSchemaName);
+          onPathChange(newPath);
+          onItemSelect(newSchemaItem ?? folder);
         } else {
+          const newPath: TablePickerStatePath = [
+            folder.id,
+            undefined,
+            undefined,
+          ];
           setDbId(folder.id);
           setSchemaName(undefined);
+          onItemSelect(folder);
+          onPathChange(newPath);
         }
-        setTableId(undefined);
       }
 
       if (folder.model === "schema") {
+        const newPath: TablePickerStatePath = [dbId, folder.id, undefined];
         setSchemaName(folder.id);
-        setTableId(undefined);
+        onItemSelect({
+          ...folder,
+          name:
+            // use database name if there is only 1 schema, as user won't even see the schema in the UI
+            selectedDbItem && schemas?.length === 1
+              ? selectedDbItem.name
+              : folder.name,
+        });
+        onPathChange(newPath);
       }
+
+      setTableId(undefined);
     },
-    [dbId, schemas],
+    [dbId, selectedDbItem, schemas, onItemSelect, onPathChange],
   );
 
-  const handleItemSelect = useCallback(
-    (item: NotebookDataPickerValueItem) => {
+  const handleTableSelect = useCallback(
+    (item: DataPickerValueItem) => {
       setTableId(item.id);
-      onChange(item);
+      onItemSelect(item);
+      onPathChange([dbId, schemaName, item.id]);
     },
-    [setTableId, onChange],
+    [dbId, schemaName, setTableId, onItemSelect, onPathChange],
+  );
+
+  const onItemSelectRef = useLatest(onItemSelect);
+  const handleFolderSelectRef = useLatest(handleFolderSelect);
+
+  useEffect(
+    function ensureDbSelected() {
+      const hasDbs = !isLoadingDatabases && databases && databases.length > 0;
+
+      if (hasDbs && !selectedDbItem) {
+        const firstDatabase = databases[0];
+        const item = getDbItem(databases, firstDatabase.id);
+
+        if (item) {
+          handleFolderSelectRef.current(item);
+        }
+      }
+    },
+    [
+      dbId,
+      isLoadingDatabases,
+      databases,
+      handleFolderSelectRef,
+      selectedDbItem,
+    ],
+  );
+
+  useEffect(
+    function ensureSchemaSelected() {
+      const hasSchemas = !isLoadingSchemas && schemas && schemas.length > 0;
+
+      if (hasSchemas && !selectedSchemaItem) {
+        const firstSchema = schemas[0];
+        const item = getSchemaItem(
+          dbId,
+          selectedDbItem?.name,
+          firstSchema,
+          schemas.length === 1,
+        );
+
+        if (item) {
+          handleFolderSelectRef.current(item);
+        }
+      }
+    },
+    [
+      dbId,
+      selectedDbItem,
+      isLoadingSchemas,
+      schemas,
+      handleFolderSelectRef,
+      selectedSchemaItem,
+    ],
+  );
+
+  useEffect(
+    function ensureFolderSelected() {
+      if (initialDbId != null) {
+        const item = getSchemaItem(
+          initialDbId,
+          selectedDbItem?.name,
+          initialSchemaId,
+          schemas?.length === 1,
+        );
+
+        if (item) {
+          onItemSelectRef.current(item);
+        }
+      }
+    },
+    [
+      databases,
+      schemas,
+      selectedDbItem,
+      onItemSelectRef,
+      initialDbId,
+      initialSchemaId,
+    ],
   );
 
   return (
@@ -117,23 +249,27 @@ export const TablePicker = ({ databaseId, value, onChange }: Props) => {
       <Flex h="100%" w="fit-content">
         {!databaseId && (
           <DatabaseList
-            databases={isLoadingDatabases ? undefined : databases?.data}
+            databases={databases}
             error={errorDatabases}
-            isCurrentLevel={!schemaName || (schemas?.length === 1 && !tableId)}
+            isCurrentLevel={
+              schemaName == null || (schemas?.length === 1 && !tableId)
+            }
             isLoading={isLoadingDatabases}
             selectedItem={selectedDbItem}
-            onClick={folder => handleFolderSelect({ folder })}
+            onClick={handleFolderSelect}
           />
         )}
 
         {isNotNull(dbId) && (
           <SchemaList
+            dbId={dbId}
+            dbName={selectedDbItem?.name}
             error={errorSchemas}
             isCurrentLevel={!tableId}
             isLoading={isLoadingSchemas}
             schemas={isLoadingSchemas ? undefined : schemas}
             selectedItem={selectedSchemaItem}
-            onClick={folder => handleFolderSelect({ folder })}
+            onClick={handleFolderSelect}
           />
         )}
 
@@ -144,7 +280,7 @@ export const TablePicker = ({ databaseId, value, onChange }: Props) => {
             isLoading={isLoadingTables}
             selectedItem={selectedTableItem}
             tables={isLoadingTables ? undefined : tables}
-            onClick={handleItemSelect}
+            onClick={handleTableSelect}
           />
         )}
       </Flex>

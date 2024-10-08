@@ -1,5 +1,6 @@
 import * as ML from "cljs/metabase.lib.js";
 import type {
+  CardId,
   CardType,
   DatabaseId,
   DatasetQuery,
@@ -122,8 +123,9 @@ export function canSave(query: Query, cardType: CardType): boolean {
 export function asReturned(
   query: Query,
   stageIndex: number,
+  cardId: CardId | undefined,
 ): { query: Query; stageIndex: number } {
-  return ML.as_returned(query, stageIndex);
+  return ML.as_returned(query, stageIndex, cardId);
 }
 
 export function previewQuery(
