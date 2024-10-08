@@ -218,12 +218,3 @@
   pointer-events: all;
   user-select: auto;
 }
-
-.ScalarValueContainer {
-  container-type: size;
-  container-name: scalar-value;
-}
-
-.ScalarValueElement {
-  font-size: calc(0.5rem + 10cqmin);
-}
