@@ -1027,7 +1027,7 @@ describe("issue 20656", () => {
     cy.signInAsAdmin();
   });
 
-  it.only("should allow a user to visit a dashboard even without a permission to see the dashboard card (metabase#20656, metabase#24536)", () => {
+  it("should allow a user to visit a dashboard even without a permission to see the dashboard card (metabase#20656, metabase#24536)", () => {
     cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
       ({ body: { id, card_id, dashboard_id } }) => {
         cy.request("PUT", `/api/dashboard/${dashboard_id}`, {

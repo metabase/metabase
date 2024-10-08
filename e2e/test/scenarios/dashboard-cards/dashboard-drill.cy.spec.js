@@ -286,7 +286,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
       });
   });
 
-  it.only("should open the same dashboard when a custom URL click behavior points to the same dashboard (metabase#22702)", () => {
+  it("should open the same dashboard when a custom URL click behavior points to the same dashboard (metabase#22702)", () => {
     createDashboardWithQuestion({}, dashboardId => {
       visitDashboard(dashboardId);
       editDashboard();

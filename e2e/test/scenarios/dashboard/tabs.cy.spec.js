@@ -369,7 +369,7 @@ describe("scenarios > dashboard > tabs", () => {
     },
   );
 
-  it.only("should allow moving dashcard even if we don't have permission on that underlying query", () => {
+  it("should allow moving dashcard even if we don't have permission on that underlying query", () => {
     const questionDetails = {
       native: {
         query: "select 42",
