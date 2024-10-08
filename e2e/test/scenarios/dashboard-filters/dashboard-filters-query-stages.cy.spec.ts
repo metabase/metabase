@@ -932,7 +932,13 @@ describe("scenarios > dashboard > filters > query stages", () => {
         it.skip("2nd stage aggregation", () => {
           setup2ndStageAggregationFilter();
 
-          // TODO: add assertions for the first 2 dashcards
+          verifyDashcardNoResults({ dashcardIndex: 0 });
+
+          goBackToDashboard();
+
+          verifyDashcardNoResults({ dashcardIndex: 1 });
+
+          goBackToDashboard();
 
           verifyDashcardNoResults({ dashcardIndex: 2 });
 
@@ -1041,6 +1047,188 @@ describe("scenarios > dashboard > filters > query stages", () => {
           verifyNoDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX);
           verifyNoDashcardMappingOptions(MODEL_BASED_MODEL_INDEX);
         }
+      });
+
+      describe("applies filter to the the dashcard and allows to drill via dashcard header", () => {
+        it("1st stage explicit join", () => {
+          setup1stStageExplicitJoinFilter();
+
+          verifyDashcardRowsCount({
+            dashcardIndex: 0,
+            dashboardCount: "Rows 1-1 of 953",
+            queryBuilderCount: "Showing 953 rows",
+          });
+
+          goBackToDashboard();
+
+          verifyDashcardRowsCount({
+            dashcardIndex: 1,
+            dashboardCount: "Rows 1-1 of 953",
+            queryBuilderCount: "Showing 953 rows",
+          });
+        });
+
+        it("1st stage implicit join (data source)", () => {
+          setup1stStageImplicitJoinFromSourceFilter();
+
+          verifyDashcardRowsCount({
+            dashcardIndex: 0,
+            dashboardCount: "Rows 1-1 of 1044",
+            queryBuilderCount: "Showing 1,044 rows",
+          });
+
+          goBackToDashboard();
+
+          verifyDashcardRowsCount({
+            dashcardIndex: 1,
+            dashboardCount: "Rows 1-1 of 1044",
+            queryBuilderCount: "Showing 1,044 rows",
+          });
+        });
+
+        // TODO: https://github.com/metabase/metabase/issues/46774
+        it.skip("1st stage implicit join (joined data source)", () => {
+          setup1stStageImplicitJoinFromJoinFilter();
+
+          verifyDashcardRowsCount({
+            dashcardIndex: 0,
+            dashboardCount: "Rows 1-1 of 1077",
+            queryBuilderCount: "Showing 1,077 rows",
+          });
+
+          goBackToDashboard();
+
+          verifyDashcardRowsCount({
+            dashcardIndex: 1,
+            dashboardCount: "Rows 1-1 of 1077",
+            queryBuilderCount: "Showing 1,077 rows",
+          });
+        });
+
+        it("1st stage custom column", () => {
+          setup1stStageCustomColumnFilter();
+
+          verifyDashcardRowsCount({
+            dashcardIndex: 0,
+            dashboardCount: "Rows 1-1 of 688",
+            queryBuilderCount: "Showing 688 rows",
+          });
+
+          goBackToDashboard();
+
+          verifyDashcardRowsCount({
+            dashcardIndex: 1,
+            dashboardCount: "Rows 1-1 of 688",
+            queryBuilderCount: "Showing 688 rows",
+          });
+        });
+
+        it("1st stage aggregation", () => {
+          setup1stStageAggregationFilter();
+
+          verifyDashcardRowsCount({
+            dashcardIndex: 1,
+            dashboardCount: "Rows 1-1 of 3",
+            queryBuilderCount: "Showing 3 rows",
+          });
+
+          goBackToDashboard();
+
+          verifyDashcardRowsCount({
+            dashcardIndex: 1,
+            dashboardCount: "Rows 1-1 of 3",
+            queryBuilderCount: "Showing 3 rows",
+          });
+        });
+
+        // TODO: https://github.com/metabase/metabase/issues/46774
+        it.skip("1st stage breakout", () => {
+          setup1stStageBreakoutFilter();
+
+          verifyDashcardRowsCount({
+            dashcardIndex: 0,
+            dashboardCount: "Rows 1-1 of 1077",
+            queryBuilderCount: "Showing 1,077 rows",
+          });
+
+          goBackToDashboard();
+
+          verifyDashcardRowsCount({
+            dashcardIndex: 1,
+            dashboardCount: "Rows 1-1 of 1077",
+            queryBuilderCount: "Showing 1,077 rows",
+          });
+        });
+
+        it("2nd stage explicit join", () => {
+          setup2ndStageExplicitJoinFilter();
+
+          verifyDashcardRowsCount({
+            dashcardIndex: 0,
+            dashboardCount: "Rows 1-1 of 4",
+            queryBuilderCount: "Showing 4 rows",
+          });
+
+          goBackToDashboard();
+
+          verifyDashcardRowsCount({
+            dashcardIndex: 1,
+            dashboardCount: "Rows 1-1 of 4",
+            queryBuilderCount: "Showing 4 rows",
+          });
+        });
+
+        it("2nd stage custom column", () => {
+          setup2ndStageCustomColumnFilter();
+
+          verifyDashcardRowsCount({
+            dashcardIndex: 0,
+            dashboardCount: "Rows 1-1 of 31",
+            queryBuilderCount: "Showing 31 rows",
+          });
+
+          goBackToDashboard();
+
+          verifyDashcardRowsCount({
+            dashcardIndex: 1,
+            dashboardCount: "Rows 1-1 of 31",
+            queryBuilderCount: "Showing 31 rows",
+          });
+        });
+
+        it("2nd stage breakout", () => {
+          setup2ndStageBreakoutFilter();
+
+          verifyDashcardRowsCount({
+            dashcardIndex: 0,
+            dashboardCount: "Rows 1-1 of 1077",
+            queryBuilderCount: "Showing 1,077 rows",
+          });
+
+          goBackToDashboard();
+
+          verifyDashcardRowsCount({
+            dashcardIndex: 1,
+            dashboardCount: "Rows 1-1 of 1077",
+            queryBuilderCount: "Showing 1,077 rows",
+          });
+
+          goBackToDashboard();
+
+          verifyDashcardRowsCount({
+            dashcardIndex: 2,
+            dashboardCount: "Rows 1-1 of 1077",
+            queryBuilderCount: "Showing 1,077 rows",
+          });
+
+          goBackToDashboard();
+
+          verifyDashcardRowsCount({
+            dashcardIndex: 3,
+            dashboardCount: "Rows 1-1 of 1077",
+            queryBuilderCount: "Showing 1,077 rows",
+          });
+        });
       });
     });
 
@@ -1264,6 +1452,42 @@ describe("scenarios > dashboard > filters > query stages", () => {
             dashcardIndex: 1,
             dashboardCount: "Rows 1-1 of 1077",
             queryBuilderCount: "Showing 1,077 rows",
+          });
+        });
+
+        it("2nd stage explicit join", () => {
+          setup2ndStageExplicitJoinFilter();
+
+          verifyDashcardRowsCount({
+            dashcardIndex: 0,
+            dashboardCount: "Rows 1-1 of 4",
+            queryBuilderCount: "Showing 4 rows",
+          });
+
+          goBackToDashboard();
+
+          verifyDashcardRowsCount({
+            dashcardIndex: 1,
+            dashboardCount: "Rows 1-1 of 4",
+            queryBuilderCount: "Showing 4 rows",
+          });
+        });
+
+        it("2nd stage custom column", () => {
+          setup2ndStageCustomColumnFilter();
+
+          verifyDashcardRowsCount({
+            dashcardIndex: 0,
+            dashboardCount: "Rows 1-1 of 31",
+            queryBuilderCount: "Showing 31 rows",
+          });
+
+          goBackToDashboard();
+
+          verifyDashcardRowsCount({
+            dashcardIndex: 1,
+            dashboardCount: "Rows 1-1 of 31",
+            queryBuilderCount: "Showing 31 rows",
           });
         });
 
@@ -2127,11 +2351,24 @@ function setup2ndStageAggregationFilter() {
     getPopoverList().scrollTo("bottom");
     getPopoverItem("Count", 1).click();
   });
+  dismissToast();
 
   getDashboardCard(1).findByText("Select…").click();
   popover().within(() => {
     getPopoverList().scrollTo("bottom");
     getPopoverItem("Count", 1).click();
+  });
+  dismissToast();
+
+  getDashboardCard(2).findByText("Select…").click();
+  popover().within(() => {
+    getPopoverItem("Count").click();
+  });
+  dismissToast();
+
+  getDashboardCard(3).findByText("Select…").click();
+  popover().within(() => {
+    getPopoverItem("Count").click();
   });
 
   cy.button("Save").click();
@@ -2156,11 +2393,24 @@ function setup2ndStageBreakoutFilter() {
     getPopoverList().scrollTo("bottom");
     getPopoverItem("Category", 2).click();
   });
+  dismissToast();
 
   getDashboardCard(1).findByText("Select…").click();
   popover().within(() => {
     getPopoverList().scrollTo("bottom");
     getPopoverItem("Category", 2).click();
+  });
+  dismissToast();
+
+  getDashboardCard(2).findByText("Select…").click();
+  popover().within(() => {
+    getPopoverItem("Products Via Product ID Category").click();
+  });
+  dismissToast();
+
+  getDashboardCard(3).findByText("Select…").click();
+  popover().within(() => {
+    getPopoverItem("Products Via Product ID Category").click();
   });
 
   cy.button("Save").click();
@@ -2220,6 +2470,12 @@ function getPopoverItem(name: string, index = 0) {
    * place when clicking the item (unclear why).
    */
   return cy.findAllByText(name).eq(index).scrollIntoView();
+}
+
+function dismissToast() {
+  cy.findByTestId("toast-undo")
+    .findByRole("img", { name: /close icon/ })
+    .click();
 }
 
 function clickAway() {
