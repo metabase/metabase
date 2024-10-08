@@ -86,16 +86,16 @@ function CheckboxListPicker({
         value={searchValue}
         placeholder={placeholder}
         autoFocus={autoFocus}
+        icon={<Icon name="search" c="text-light" />}
         onChange={handleInputChange}
       />
       {filteredOptions.length > 0 ? (
         <Stack>
           <Checkbox
             variant="stacked"
-            label={isAll ? `Select none` : t`Select all`}
+            label={getToggleAllLabel(searchValue, isAll)}
             checked={isAll}
             indeterminate={!isAll && !isNone}
-            fw="bold"
             onChange={handleToggleAll}
           />
           <Checkbox.Group value={selectedValues} onChange={onChange}>
@@ -118,6 +118,14 @@ function CheckboxListPicker({
       )}
     </Stack>
   );
+}
+
+function getToggleAllLabel(searchValue: string, isAll: boolean) {
+  if (isAll) {
+    return t`Select none`;
+  } else {
+    return searchValue ? t`Select these` : t`Select all`;
+  }
 }
 
 function CheckboxGridPicker({

@@ -4,6 +4,7 @@
    [clojure.core.memoize :as memoize]
    [clojure.set :as set]
    [clojure.string :as str]
+   [medley.core :as m]
    [metabase.auth-provider :as auth-provider]
    [metabase.config :as config]
    [metabase.db :as mdb]
@@ -27,7 +28,11 @@
    (java.security.cert Certificate CertificateFactory X509Certificate)
    (java.security.spec PKCS8EncodedKeySpec)
    (javax.net SocketFactory)
-   (javax.net.ssl KeyManagerFactory SSLContext TrustManagerFactory X509TrustManager)))
+   (javax.net.ssl
+    KeyManagerFactory
+    SSLContext
+    TrustManagerFactory
+    X509TrustManager)))
 
 (set! *warn-on-reflection* true)
 
@@ -362,6 +367,17 @@
           (assoc :placeholder content)
           (dissoc :getter)))))
 
+(defn- resolve-checked-section-conn-prop
+  "Invokes the check function on a checked-section connection property and if truthy adds it to the connection property map."
+  [{:keys [check] :as conn-prop}]
+  (if (try (check)
+           (catch Throwable e
+             (log/errorf e "Error invoking getter for connection property %s" (:name conn-prop))))
+    [(-> conn-prop
+         (assoc :type "section")
+         (dissoc :check))]
+    []))
+
 (defn- expand-schema-filters-prop [prop]
   (let [prop-name (:name prop)
         disp-name (or (:display-name prop) "")
@@ -406,7 +422,8 @@
   display/editing. For example, a :secret-kind :keystore turns into a bunch of different properties, to encapsulate
   all the different options that might be available on the client side for populating the value.
 
-  This also resolves the :getter function on :type :info properties, if one was provided."
+  This also resolves the :getter function on :type :info properties and the :check function on :type :checked-sections,
+   if one was provided."
   {:added "0.42.0"}
   [driver conn-props]
   (let [res (reduce (fn [acc conn-prop]
@@ -419,6 +436,9 @@
                                              (if-let [conn-prop' (resolve-info-conn-prop conn-prop)]
                                                [conn-prop']
                                                [])
+
+                                             :checked-section
+                                             (resolve-checked-section-conn-prop conn-prop)
 
                                              :schema-filters
                                              (expand-schema-filters-prop conn-prop)
@@ -437,7 +457,13 @@
             (let [v-ifs* (loop [props* [prop]
                                 acc    {}]
                            (if (seq props*)
-                             (let [all-visible-ifs  (apply merge (map :visible-if props*))
+                             (let [all-visible-ifs  (m/filter-kv
+                                                     (fn [prop-name v]
+                                                       (or (contains? props-by-name (->str prop-name))
+                                                            ;; If v is false then this depended on a removed :checked-section
+                                                            ;; and the dependency should be dropped.
+                                                           (not (false? v))))
+                                                     (apply merge (map :visible-if props*)))
                                    transitive-props (map (comp (partial get props-by-name) ->str)
                                                          (keys all-visible-ifs))
                                    next-acc         (merge all-visible-ifs acc)
@@ -453,8 +479,8 @@
                                      throw)))
                              acc))]
               (cond-> prop
-                (seq v-ifs*)
-                (assoc :visible-if v-ifs*))))
+                (seq v-ifs*) (assoc :visible-if v-ifs*)
+                (empty? v-ifs*) (dissoc :visible-if))))
           final-props)))
 
 (def data-url-pattern
