@@ -27,6 +27,30 @@ describe("scenarios > question > native query drill", () => {
       createNativeQuestion(ordersQuestionDetails, { wrapId: true });
     });
 
+    it("column-filter drill", () => {
+      visitQuestion("@questionId");
+      assertQueryBuilderRowCount(10);
+      tableHeaderClick("QUANTITY");
+      popover().findByText("Filter by this column").click();
+      popover().within(() => {
+        cy.findByPlaceholderText("Min").type("2");
+        cy.findByPlaceholderText("Max").type("5");
+        cy.button("Add filter").click();
+      });
+      assertQueryBuilderRowCount(8);
+    });
+
+    it("distribution drill", () => {
+      visitQuestion("@questionId");
+      tableHeaderClick("QUANTITY");
+      popover().findByText("Distribution").click();
+      echartsContainer().within(() => {
+        cy.findByText("Count").should("be.visible");
+        cy.findByText("QUANTITY").should("be.visible");
+      });
+      assertQueryBuilderRowCount(5);
+    });
+
     it("sort drill", () => {
       cy.log("ascending");
       visitQuestion("@questionId");
@@ -88,17 +112,6 @@ describe("scenarios > question > native query drill", () => {
           ["September 2024", "5"],
         ],
       });
-    });
-
-    it("distribution drill", () => {
-      visitQuestion("@questionId");
-      tableHeaderClick("QUANTITY");
-      popover().findByText("Distribution").click();
-      echartsContainer().within(() => {
-        cy.findByText("Count").should("be.visible");
-        cy.findByText("QUANTITY").should("be.visible");
-      });
-      assertQueryBuilderRowCount(5);
     });
   });
 });
