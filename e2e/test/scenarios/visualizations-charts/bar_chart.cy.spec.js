@@ -343,6 +343,41 @@ describe("scenarios > visualizations > bar chart", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Category is Doohickey").should("be.visible");
     });
+
+    it("native question should drill-through correctly when stacking", () => {
+      cy.createNativeQuestion(
+        {
+          name: "native question",
+          native: {
+            query: `
+              SELECT
+                PRODUCTS.CATEGORY AS "Category",
+                DATE_TRUNC('month', PRODUCTS.CREATED_AT) AS "CREATED_AT",
+                COUNT(*) AS "count"
+              FROM
+                PRODUCTS
+              GROUP BY
+                PRODUCTS.CATEGORY,
+                DATE_TRUNC('month', PRODUCTS.CREATED_AT)
+            `,
+          },
+          display: "bar",
+          visualization_settings: { "stackable.stack_type": "stacked" },
+        },
+        { visitQuestion: true },
+      );
+
+      cy.log("open drill menu");
+
+      cy.findAllByTestId("legend-item").findByText("Doohickey").click();
+      popover().findByText("See these native questions").click();
+
+      cy.log("show filter pill");
+      cy.findByTestId("filters-visibility-control").click();
+      cy.findByTestId("filter-pill")
+        .findByText("Category is Doohickey")
+        .should("be.visible");
+    });
   });
 
   it("supports up to 100 series (metabase#28796)", () => {
