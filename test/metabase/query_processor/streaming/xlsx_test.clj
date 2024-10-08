@@ -696,7 +696,18 @@
       (qp.si/begin! results-writer {:data {:ordered-cols []}} {})
       (qp.si/finish! results-writer {:row_count 0})
       ;; No additional files should exist in the temp directory
-      (is (= expected-poifiles-count (count (file-seq poifiles-directory)))))))
+      (is (= expected-poifiles-count (count (file-seq poifiles-directory))))))
+  (testing "if the tempfile directory doesn't exist xlsx downloads still work"
+    (with-open [bos (ByteArrayOutputStream.)
+                os  (BufferedOutputStream. bos)]
+      (doto (io/file (str (System/getProperty "java.io.tmpdir") "/poifiles"))
+        (.delete))
+      (let [results-writer (qp.si/streaming-results-writer :xlsx os)]
+        (qp.si/begin! results-writer {:data {:ordered-cols []}} {})
+        (qp.si/finish! results-writer {:row_count 0})
+        (let [istr (ByteArrayInputStream. (.toByteArray bos))]
+          (is (spreadsheet/workbook? (spreadsheet/load-workbook-from-stream istr))
+              "not a valid workbook"))))))
 
 (deftest dont-format-non-temporal-columns-as-temporal-columns-test
   (testing "Don't format columns with temporal semantic type as datetime unless they're actually datetimes (#18729)"
