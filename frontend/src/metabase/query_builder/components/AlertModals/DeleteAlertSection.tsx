@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import cx from "classnames";
 import { useMemo, useRef } from "react";
 import { jt, msgid, ngettext, t } from "ttag";
