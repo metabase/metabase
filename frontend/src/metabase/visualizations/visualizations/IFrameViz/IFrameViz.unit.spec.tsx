@@ -83,14 +83,14 @@ describe("IFrameViz", () => {
     });
   });
 
-  it("should disable 'Done' button when iframe is empty", () => {
+  it("should not disable 'Done' button when iframe is empty so users can quit editing", () => {
     setup({
       isEditing: true,
       dashcard: emptyIFrameDashcard,
       settings: emptyIFrameDashcard.visualization_settings,
     });
 
-    expect(screen.getByRole("button", { name: "Done" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Done" })).toBeEnabled();
   });
 
   it("should enable 'Done' button when iframe is not empty", () => {

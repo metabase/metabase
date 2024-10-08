@@ -1,10 +1,12 @@
 import { t } from "ttag";
 
 import { SidesheetCard } from "metabase/common/components/Sidesheet";
-import { useDocsUrl } from "metabase/common/hooks";
+import { useDocsUrl, useHasTokenFeature } from "metabase/common/hooks";
 import { CopyButton } from "metabase/components/CopyButton";
 import Link from "metabase/core/components/Link";
 import { Flex, Group, Icon, Paper, Popover, Text } from "metabase/ui";
+
+import Styles from "./EntityIdCard.module.css";
 
 const EntityIdTitle = () => {
   const { url: docsLink, showMetabaseLinks } = useDocsUrl(
@@ -16,11 +18,7 @@ const EntityIdTitle = () => {
       {t`Entity ID`}
       <Popover position="top-start">
         <Popover.Target>
-          <Icon
-            name="info"
-            cursor="pointer"
-            style={{ position: "relative", top: "-1px" }}
-          />
+          <Icon tabIndex={0} name="info" className={Styles.InfoIcon} />
         </Popover.Target>
         <Popover.Dropdown>
           <Paper p="md" maw="13rem">
@@ -46,11 +44,18 @@ const EntityIdTitle = () => {
 };
 
 export function EntityIdCard({ entityId }: { entityId: string }) {
+  const hasSerialization = useHasTokenFeature("serialization");
+
+  // exposing this is useless without serialization, so, let's not.
+  if (!hasSerialization) {
+    return null;
+  }
+
   return (
-    <SidesheetCard title={<EntityIdTitle />}>
-      <Flex gap="sm" align="end">
-        <Text>{entityId}</Text>
-        <CopyButton value={entityId} />
+    <SidesheetCard title={<EntityIdTitle />} pb="1.25rem">
+      <Flex gap="sm">
+        <Text lh="1rem">{entityId}</Text>
+        <CopyButton className={Styles.CopyButton} value={entityId} />
       </Flex>
     </SidesheetCard>
   );

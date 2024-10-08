@@ -1,4 +1,4 @@
-(ns metabase.driver.mongo.parameters-test
+(ns ^:mb/driver-tests metabase.driver.mongo.parameters-test
   (:require
    [cheshire.core :as json]
    [cheshire.generate :as json.generate]
