@@ -5,6 +5,7 @@ import {
   SidesheetCard,
   SidesheetCardTitle,
 } from "metabase/common/components/Sidesheet";
+import { useHasTokenFeature } from "metabase/common/hooks";
 import { CopyButton } from "metabase/components/CopyButton";
 import { EntityIdDisplay } from "metabase/components/EntityIdCard";
 import S from "metabase/components/EntityIdCard/EntityIdCard.module.css";
@@ -21,6 +22,10 @@ export const DashboardEntityIdCard = ({
   const [tabId, setTabId] = useState<string | null>(
     tabs?.length ? tabs[0].id.toString() : null,
   );
+
+  if (!useHasTokenFeature("serialization")) {
+    return null;
+  }
 
   const tabEntityId = tabs?.find(tab => tab.id.toString() === tabId)?.entity_id;
 
