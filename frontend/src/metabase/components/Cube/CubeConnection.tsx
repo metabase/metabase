@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Modal, Flex, Text, Input, Box, Button } from "metabase/ui";
 import { t } from "ttag";
-import { useRegisterCubeDataMutation } from "metabase/api"; // Import the register mutation
+import { useRegisterCubeDataMutation } from "metabase/api";
 
 interface CubeConnectionProps {
   isOpen: boolean;
@@ -20,7 +20,7 @@ export const CubeConnection = ({ isOpen, onClose, onSave }: CubeConnectionProps)
     customGitBuildPath: "",
     apiUrl: "",
     token: "",
-    apiPort: "",
+    port: "",
   });
 
   const [errors, setErrors] = useState({
@@ -28,7 +28,7 @@ export const CubeConnection = ({ isOpen, onClose, onSave }: CubeConnectionProps)
     apiUrl: "",
     projectName: "",
     token: "",
-    apiPort: "",
+    port: "",
   });
 
   const [registerCubeData] = useRegisterCubeDataMutation(); // Initialize the mutation hook
@@ -71,11 +71,10 @@ export const CubeConnection = ({ isOpen, onClose, onSave }: CubeConnectionProps)
         : t`Please enter a valid GitHub URL`,
       apiUrl: isValidUrl(formData.apiUrl) ? "" : t`Please enter a valid URL`,
       token: formData.token ? "" : t`Token is required`,
-      apiPort: formData.apiPort && !isNaN(Number(formData.apiPort))
+      port: formData.port && !isNaN(Number(formData.port))
         ? ""
         : t`Please enter a valid port number`,
     };
-
     setErrors(newErrors);
 
     const hasErrors = Object.values(newErrors).some((error) => error !== "");
@@ -122,6 +121,57 @@ export const CubeConnection = ({ isOpen, onClose, onSave }: CubeConnectionProps)
             )}
           </Flex>
 
+          {/* API Port */}
+          <Flex direction="column">
+            <Text weight="bold">{t`Port`}</Text>
+            <Input
+              name="port"
+              value={formData.port}
+              type="number"
+              onChange={handleInputChange}
+              error={!!errors.port}
+              placeholder={t`Enter the API port number`}
+            />
+            {errors.port && <Text color="red">{errors.port}</Text>}
+          </Flex>
+
+            {/* Custom Git URL */}
+            <Flex direction="column">
+            <Text weight="bold">{t`Git URL`}</Text>
+            <Input
+              name="customGitUrl"
+              value={formData.customGitUrl}
+              onChange={handleInputChange}
+              error={!!errors.customGitUrl}
+              placeholder={t`Enter a valid GitHub URL`}
+            />
+            {errors.customGitUrl && (
+              <Text color="red">{errors.customGitUrl}</Text>
+            )}
+          </Flex>
+
+          {/* Custom Git Branch */}
+          <Flex direction="column">
+            <Text weight="bold">{t`Git Branch`}</Text>
+            <Input
+              name="customGitBranch"
+              value={formData.customGitBranch}
+              onChange={handleInputChange}
+              placeholder={t`Enter the branch name (e.g., dev)`}
+            />
+          </Flex>
+
+          {/* Custom Git Build Path */}
+          <Flex direction="column">
+            <Text weight="bold">{t`Git Build Path`}</Text>
+            <Input
+              name="customGitBuildPath"
+              value={formData.customGitBuildPath}
+              onChange={handleInputChange}
+              placeholder={t`/`}
+            />
+          </Flex>
+
           {/* Dockerfile */}
           <Flex direction="column">
             <Text weight="bold">{t`Dockerfile`}</Text>
@@ -144,56 +194,6 @@ export const CubeConnection = ({ isOpen, onClose, onSave }: CubeConnectionProps)
             />
           </Flex>
 
-          {/* Custom Git URL */}
-          <Flex direction="column">
-            <Text weight="bold">{t`Custom Git URL`}</Text>
-            <Input
-              name="customGitUrl"
-              value={formData.customGitUrl}
-              onChange={handleInputChange}
-              error={!!errors.customGitUrl}
-              placeholder={t`Enter a valid GitHub URL`}
-            />
-            {errors.customGitUrl && (
-              <Text color="red">{errors.customGitUrl}</Text>
-            )}
-          </Flex>
-
-          {/* Custom Git Branch */}
-          <Flex direction="column">
-            <Text weight="bold">{t`Custom Git Branch`}</Text>
-            <Input
-              name="customGitBranch"
-              value={formData.customGitBranch}
-              onChange={handleInputChange}
-              placeholder={t`Enter the branch name (e.g., dev)`}
-            />
-          </Flex>
-
-          {/* Custom Git Build Path */}
-          <Flex direction="column">
-            <Text weight="bold">{t`Custom Git Build Path`}</Text>
-            <Input
-              name="customGitBuildPath"
-              value={formData.customGitBuildPath}
-              onChange={handleInputChange}
-              placeholder={t`/`}
-            />
-          </Flex>
-
-          {/* API URL */}
-          <Flex direction="column">
-            <Text weight="bold">{t`API URL`}</Text>
-            <Input
-              name="apiUrl"
-              value={formData.apiUrl}
-              onChange={handleInputChange}
-              error={!!errors.apiUrl}
-              placeholder={t`Enter the API URL`}
-            />
-            {errors.apiUrl && <Text color="red">{errors.apiUrl}</Text>}
-          </Flex>
-
           {/* Token */}
           <Flex direction="column">
             <Text weight="bold">{t`Token`}</Text>
@@ -205,20 +205,6 @@ export const CubeConnection = ({ isOpen, onClose, onSave }: CubeConnectionProps)
               placeholder={t`Enter the token`}
             />
             {errors.token && <Text color="red">{errors.token}</Text>}
-          </Flex>
-
-          {/* API Port */}
-          <Flex direction="column">
-            <Text weight="bold">{t`API Port`}</Text>
-            <Input
-              name="apiPort"
-              value={formData.apiPort}
-              type="number"
-              onChange={handleInputChange}
-              error={!!errors.apiPort}
-              placeholder={t`Enter the API port number`}
-            />
-            {errors.apiPort && <Text color="red">{errors.apiPort}</Text>}
           </Flex>
 
           {/* Save and Cancel Buttons */}

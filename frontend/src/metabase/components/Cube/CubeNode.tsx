@@ -54,7 +54,7 @@ const CustomNode = ({ id, data, isConnected }: any) => {
         <>
           <div>Definitions:</div>
           <div>
-            {Object.keys(data.cubeInfo.fields).map((key, index) => (
+            {data.cubeInfo.fields.map((field:any, index:number) => (
               <div
                 key={index}
                 style={{
@@ -62,12 +62,11 @@ const CustomNode = ({ id, data, isConnected }: any) => {
                   color: "#587330",
                   position: "relative",
                   paddingLeft: "15px",
-                  paddingRight:
-                    data.cubeInfo.fields[key].type === "source" ? "15px" : "0",
-                  marginBottom: "5px", // Added to give some vertical space between fields
+                  paddingRight: field.type === "source" ? "15px" : "0",
+                  marginBottom: "5px",
                 }}
               >
-                {key}
+                {field.name.split(".")[1]}
               </div>
             ))}
           </div>

@@ -43,7 +43,7 @@ export const BrowseSemanticLayerTable = () => {
     data: cubeData,
     isLoading,
     error,
-  } = useGetCubeDataQuery(companyName ? { companyName } : skipToken);
+  } = useGetCubeDataQuery(companyName ? { projectName: companyName } : skipToken);
 
   const [selectedCube, setSelectedCube] = useState(null);
 
@@ -59,7 +59,7 @@ export const BrowseSemanticLayerTable = () => {
     return <LoadingAndErrorWrapper loading />;
   }
 
-  if (!cubeData?.length) {
+  if (!cubeData?.cubes.length) {
     return (
       <CenteredEmptyState
         title={<Box mb=".5rem">{t`No databases here yet`}</Box>}
@@ -74,6 +74,7 @@ export const BrowseSemanticLayerTable = () => {
 
   return (
     <BrowseContainer>
+   
       <BrowseMain>
         <BrowseSection>
           <div>
@@ -81,7 +82,7 @@ export const BrowseSemanticLayerTable = () => {
               <>
                 <div style={{ display: "flex", flexDirection: "row" }}>
                   <SemanticTable
-                    cubeDataArray={cubeData}
+                    cubeDataArray={cubeData.cubes}
                     onRowClick={handleRowClick}
                   />
                   <div

@@ -2,7 +2,6 @@ import { Button, Box, Flex, Text, Icon, Modal } from "metabase/ui"; // Import ne
 import { useState } from "react";
 import {
   formatAndCleanCubeContent,
-  extractCubeName,
 } from "metabase/components/Cube/utils";
 import { t } from "ttag";
 

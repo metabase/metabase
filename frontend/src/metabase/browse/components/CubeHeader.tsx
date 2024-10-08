@@ -11,16 +11,8 @@ interface SingleCubeProps {
 }
 
 export const CubeHeader: React.FC<SingleCubeProps>  = ({cube}) => {
-      const extractCubeInfo = (content: string) => {
-        const captionMatch = content.match(/title:\s*`([^`]+)`/);
-        const subTitleMatch = content.match(/description:\s*`([^`]+)`/);
-      
-        return {
-          caption: captionMatch ? captionMatch[1] : null,
-          subTitle: subTitleMatch ? subTitleMatch[1] : null
-        };
-      }
-      const { caption, subTitle } = extractCubeInfo(cube.content);
+      const caption = cube.title;
+      const subTitle = cube.description
   return (
     <BrowseHeader>
       <BrowseSection>

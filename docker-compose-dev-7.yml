@@ -1,0 +1,33 @@
+version: "3"
+services:
+  omnibase_dev_7:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    expose:
+      - "3000"
+    environment:
+      - MB_EMAIL_SMTP_PASSWORD=${MB_EMAIL_SMTP_PASSWORD}
+      - MB_EMAIL_SMTP_USERNAME=${MB_EMAIL_SMTP_USERNAME}
+      - MB_EMAIL_SMTP_SECURITY=${MB_EMAIL_SMTP_SECURITY}
+      - MB_EMAIL_SMTP_HOST=${MB_EMAIL_SMTP_HOST}
+      - MB_EMAIL_SMTP_PORT=${MB_EMAIL_SMTP_PORT}
+      - MB_DB_CONNECTION_URI=${MB_DB_CONNECTION_URI}
+      - MB_DB_USER=${MB_DB_USER}
+      - MB_DB_PASS=${MB_DB_PASS}
+      - REACT_APP_SEMANTIC=${REACT_APP_SEMANTIC}
+      - REACT_APP_WEBSOCKET_SERVER=${REACT_APP_WEBSOCKET_SERVER}
+      - VERSION=${VERSION}
+      - HOSTNAME_APP=${HOSTNAME_APP}
+    restart: always
+    networks:
+      - dokploy-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.omnibase_dev_7.rule=Host(`${HOSTNAME_APP}`)"
+      - "traefik.http.routers.omnibase_dev_7.entrypoints=websecure"
+      - "traefik.http.routers.omnibase_dev_7.tls.certResolver=letsencrypt"
+      - "traefik.http.services.omnibase_dev_7.loadbalancer.server.port=3000"
+networks:
+  dokploy-network:
+    external: true
