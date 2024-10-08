@@ -65,7 +65,10 @@
 
 (deftest rollback-after-47-test
   (testing "Migrating to latest version, rolling back to v44, and then migrating up again"
-    (let [changesets-per-filename #(frequencies (t2/select-fn-vec :filename [:databasechangelog :filename]))]
+    (let [changesets-per-filename #(try (frequencies (t2/select-fn-vec :filename [:databasechangelog :filename]))
+                                        (catch Exception _
+                                          ;; The table might not exist yet.
+                                          {}))]
       ;; Initialize at 48.00-001, i.e. 48.00-002 is next.
       (impl/test-migrations ["v48.00-002" "v48.00-003"] [migrate!]
         (is (= ["migrations/001_update_migrations.yaml"] (keys (changesets-per-filename))))
