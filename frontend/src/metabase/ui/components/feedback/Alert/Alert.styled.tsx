@@ -1,22 +1,15 @@
-import type { MantineThemeOverride } from "@mantine/core";
+import { Alert, type MantineThemeOverride } from "@mantine/core";
 
-import { lighten } from "metabase/lib/colors";
+import AlertStyles from "./Alert.module.css";
 
-export const getAlertOverrides = (): MantineThemeOverride["components"] => ({
-  Alert: {
-    styles: (_theme, params) => {
-      return {
-        wrapper: {
-          alignItems: "center",
-        },
-        root: {
-          backgroundColor: params.color ? lighten(params.color, 0.4) : "none",
-        },
-      };
-    },
-
+export const alertOverrides: MantineThemeOverride["components"] = {
+  Alert: Alert.extend({
     defaultProps: {
       variant: "outline",
     },
-  },
-});
+    classNames: {
+      root: AlertStyles.root,
+      wrapper: AlertStyles.wrapper,
+    },
+  }),
+};
