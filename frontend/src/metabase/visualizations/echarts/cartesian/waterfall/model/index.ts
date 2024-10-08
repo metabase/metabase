@@ -51,7 +51,7 @@ export const getWaterfallChartModel = (
     false,
     true,
     settings,
-    renderingContext,
+    renderingContext.formatValue,
   );
 
   const unsortedDataset = getJoinedCardsDataset(

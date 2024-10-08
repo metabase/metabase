@@ -2,11 +2,7 @@ import type {
   BreakoutChartColumns,
   CartesianChartColumns,
 } from "metabase/visualizations/lib/graph/columns";
-import { DEFAULT_VISUALIZATION_THEME } from "metabase/visualizations/shared/utils/theme";
-import type {
-  ComputedVisualizationSettings,
-  RenderingContext,
-} from "metabase/visualizations/types";
+import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type { SingleSeries } from "metabase-types/api";
 import {
   createMockCard,
@@ -26,14 +22,7 @@ const createMockComputedVisualizationSettings = (
   });
 };
 
-const renderingContextMock: RenderingContext = {
-  formatValue: value => `formatted: ${value}`,
-  getColor: colorName => colorName,
-  measureText: () => 0,
-  measureTextHeight: () => 0,
-  fontFamily: "Lato",
-  theme: DEFAULT_VISUALIZATION_THEME,
-};
+const formatterMock = (value: unknown) => `formatted: ${value}`;
 
 describe("series", () => {
   const metricColumns: CartesianChartColumns = {
@@ -120,7 +109,7 @@ describe("series", () => {
           cardsColumns,
           [],
           createMockComputedVisualizationSettings(),
-          renderingContextMock,
+          formatterMock,
         );
 
         expect(result).toHaveLength(1);
@@ -154,7 +143,7 @@ describe("series", () => {
               },
             },
           }),
-          renderingContextMock,
+          formatterMock,
         );
 
         expect(result).toHaveLength(1);
@@ -174,7 +163,7 @@ describe("series", () => {
           cardsColumns,
           ["1:count"],
           createMockComputedVisualizationSettings(),
-          renderingContextMock,
+          formatterMock,
         );
 
         expect(result).toHaveLength(1);
@@ -192,7 +181,7 @@ describe("series", () => {
           cardsColumns,
           [],
           createMockComputedVisualizationSettings(),
-          renderingContextMock,
+          formatterMock,
         );
 
         expect(result).toHaveLength(2);
@@ -237,7 +226,7 @@ describe("series", () => {
               },
             },
           }),
-          renderingContextMock,
+          formatterMock,
         );
 
         expect(result).toHaveLength(2);
@@ -273,7 +262,7 @@ describe("series", () => {
           cardsColumns,
           [],
           createMockComputedVisualizationSettings(),
-          renderingContextMock,
+          formatterMock,
         );
 
         expect(result).toHaveLength(2);
@@ -300,7 +289,7 @@ describe("series", () => {
           cardsColumns,
           [],
           createMockComputedVisualizationSettings(),
-          renderingContextMock,
+          formatterMock,
         );
 
         expect(result).toHaveLength(3);
@@ -357,7 +346,7 @@ describe("series", () => {
               },
             },
           }),
-          renderingContextMock,
+          formatterMock,
         );
 
         expect(result).toHaveLength(3);
