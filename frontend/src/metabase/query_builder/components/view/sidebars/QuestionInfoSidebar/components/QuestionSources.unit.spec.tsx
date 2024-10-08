@@ -69,6 +69,33 @@ const setup = async ({
 };
 
 describe("QuestionSources", () => {
+  it("should show table source information", async () => {
+    const card = createMockCard({
+      name: "Question",
+    });
+    setup({ card });
+    const databaseLink = await screen.findByRole("link", {
+      name: /Sample Database/i,
+    });
+    expect(
+      await within(databaseLink).findByLabelText("table icon"),
+    ).toBeInTheDocument();
+    expect(databaseLink).toHaveAttribute(
+      "href",
+      "/browse/databases/1-sample-database",
+    );
+    expect(screen.getByText("/")).toBeInTheDocument();
+    const tableLink = await screen.findByRole("link", { name: /Products/i });
+    expect(tableLink).toBeInTheDocument();
+    expect(
+      await within(tableLink).findByLabelText(`${modelIconMap["table"]} icon`),
+    ).toBeInTheDocument();
+    expect(tableLink).toHaveAttribute(
+      "href",
+      expect.stringMatching(/^\/question#[a-zA-Z0-9]{20}/),
+    );
+  });
+
   it("should show card source information", async () => {
     const card = createMockCard({
       name: "My Question",
