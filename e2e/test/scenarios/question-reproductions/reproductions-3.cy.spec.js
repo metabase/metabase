@@ -920,7 +920,7 @@ describe("issue 32020", () => {
 
     cy.log("aggregation column from the source question");
     getNotebookStep("summarize")
-      .findByText(/Pick the metric/)
+      .findByText("Pick the summary or metric you want to see")
       .click();
     popover().within(() => {
       cy.findByText("Sum of ...").click();

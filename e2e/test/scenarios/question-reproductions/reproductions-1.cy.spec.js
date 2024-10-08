@@ -95,7 +95,7 @@ describe("issue 4482", () => {
 });
 
 function pickMetric(metric) {
-  cy.contains("Pick the metric").click();
+  cy.contains("Pick the summary or metric").click();
 
   cy.contains(metric).click();
   cy.findByText("Price");
@@ -353,7 +353,7 @@ describe("postgres > question > custom columns", { tags: "@external" }, () => {
 
   it("`Percentile` custom expression function should accept two parameters (metabase#15714)", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Pick the metric you want to see").click();
+    cy.findByText("Pick the summary or metric you want to see").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Custom Expression").click();
     enterCustomColumnDetails({ formula: "Percentile([Subtotal], 0.1)" });

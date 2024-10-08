@@ -66,7 +66,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
     // count orders by user id, filter to the one user with 46 orders
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Pick the metric").click();
+    cy.contains("Pick the summary or metric").click();
     popover().within(() => {
       cy.findByText("Count of rows").click();
     });
@@ -312,7 +312,9 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     it("popover should not cover the button that invoked it (metabase#15502-2)", () => {
       // Initial summarize/metric popover usually renders initially without blocking the button
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Pick the metric you want to see").as("metric").click();
+      cy.findByText("Pick the summary or metric you want to see")
+        .as("metric")
+        .click();
       // Click outside to close this popover
       cy.icon("gear").click();
       // Popover invoked again blocks the button making it impossible to click the button for the third time
@@ -592,7 +594,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     });
 
     getNotebookStep("summarize")
-      .findByText("Pick the metric you want to see")
+      .findByText("Pick the summary or metric you want to see")
       .click();
 
     popover().within(() => {

@@ -324,7 +324,7 @@ describe("scenarios > question > multiple column breakouts", () => {
             cy.findByText(tableName).click();
           });
           getNotebookStep("summarize")
-            .findByText("Pick the metric you want to see")
+            .findByText("Pick the summary or metric you want to see")
             .click();
           popover().findByText("Count of rows").click();
           getNotebookStep("summarize")

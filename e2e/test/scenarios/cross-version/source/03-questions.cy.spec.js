@@ -30,7 +30,7 @@ it("should create questions", () => {
   cy.findByText("Large Purchases").click();
 
   // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-  cy.findByText("Pick the metric you want to see").click();
+  cy.findByText("Pick the summary or metric you want to see").click();
   // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
   cy.findByText(/^Average of/).click();
 
@@ -89,7 +89,7 @@ it("should create questions", () => {
   cy.findByText("Orders").click();
 
   // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-  cy.findByText("Pick the metric you want to see").click();
+  cy.findByText("Pick the summary or metric you want to see").click();
   // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
   cy.findByText("Metrics").click();
   // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

@@ -49,7 +49,7 @@ export function AggregateStep({
   return (
     <ClauseStep
       items={aggregations}
-      initialAddText={t`Pick the metric you want to see`}
+      initialAddText={t`Pick the summary or metric you want to see`}
       readOnly={readOnly}
       color={color}
       isLastOpened={isLastOpened}

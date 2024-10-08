@@ -419,7 +419,7 @@ describe("scenarios > models", () => {
       });
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Pick the metric you want to see").click();
+      cy.findByText("Pick the summary or metric you want to see").click();
       selectFromDropdown("Count of rows");
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

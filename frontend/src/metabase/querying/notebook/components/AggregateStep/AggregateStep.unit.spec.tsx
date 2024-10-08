@@ -75,7 +75,7 @@ describe("AggregateStep", () => {
   it("should render correctly without an aggregation", () => {
     setup();
     expect(
-      screen.getByText("Pick the metric you want to see"),
+      screen.getByText("Pick the summary or metric you want to see"),
     ).toBeInTheDocument();
   });
 
@@ -104,7 +104,9 @@ describe("AggregateStep", () => {
   it("should add an aggregation with a basic operator", async () => {
     const { getRecentAggregationClause } = setup();
 
-    await userEvent.click(screen.getByText("Pick the metric you want to see"));
+    await userEvent.click(
+      screen.getByText("Pick the summary or metric you want to see"),
+    );
     await userEvent.click(screen.getByText("Average of ..."));
     await userEvent.click(screen.getByText("Quantity"));
 
