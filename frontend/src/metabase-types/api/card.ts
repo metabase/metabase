@@ -151,6 +151,13 @@ export type VisualizationSettings = {
   "stackable.stack_type"?: StackType;
   "graph.show_stack_values"?: StackValuesDisplay;
   "graph.max_categories"?: number;
+  "graph.other_series_aggregation_fn"?:
+    | "sum"
+    | "avg"
+    | "min"
+    | "max"
+    | "stddev"
+    | "median";
 
   // Table
   "table.columns"?: TableColumnOrderSetting[];

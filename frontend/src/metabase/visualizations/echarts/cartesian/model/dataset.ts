@@ -338,6 +338,7 @@ const getStackedAreasInterpolateTransform = (
 
 function getOtherSeriesTransform(
   groupedSeriesModels: SeriesModel[],
+  settings: ComputedVisualizationSettings,
 ): ConditionalTransform {
   return {
     condition: groupedSeriesModels.length > 0,
@@ -345,6 +346,7 @@ function getOtherSeriesTransform(
       ...datum,
       [OTHER_DATA_KEY]: getAggregatedOtherSeriesValue(
         groupedSeriesModels,
+        settings["graph.other_series_aggregation_fn"],
         datum,
       ),
     }),
@@ -752,7 +754,7 @@ export const applyVisualizationSettingsDataTransformations = (
 
   return transformDataset(dataset, [
     getNullReplacerTransform(settings, seriesModels),
-    getOtherSeriesTransform(groupedSeriesModels),
+    getOtherSeriesTransform(groupedSeriesModels, settings),
     {
       condition: settings["stackable.stack_type"] === "normalized",
       fn: getNormalizedDatasetTransform(stackModels),

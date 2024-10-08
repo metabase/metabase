@@ -108,10 +108,9 @@ export const createOtherGroupSeriesModel = (
 
 export const getAggregatedOtherSeriesValue = (
   seriesModels: SeriesModel[],
+  aggregationType: AggregationType = "sum",
   datum: Datum,
 ): number => {
-  const [{ column }] = seriesModels;
-  const aggregationType = column.aggregation_type ?? "sum";
   const aggregation = AGGREGATION_FN_MAP[aggregationType];
   const values = seriesModels.map(model =>
     checkNumber(datum[model.dataKey] ?? 0),
@@ -119,11 +118,9 @@ export const getAggregatedOtherSeriesValue = (
   return aggregation.fn(values);
 };
 
-export const getOtherSeriesAggregationLabel = (seriesModels: SeriesModel[]) => {
-  const [{ column }] = seriesModels;
-  const aggregationType = column.aggregation_type ?? "sum";
-  return AGGREGATION_FN_MAP[aggregationType].label;
-};
+export const getOtherSeriesAggregationLabel = (
+  aggregationType: AggregationType = "sum",
+) => AGGREGATION_FN_MAP[aggregationType].label;
 
 const sum = (values: number[]) => values.reduce((sum, value) => sum + value, 0);
 

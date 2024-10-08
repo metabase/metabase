@@ -445,6 +445,28 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS = {
       return isAllBar && series.length < 2;
     },
   },
+  "graph.other_series_aggregation_fn": {
+    section: t`Display`,
+    title: t`"Other" series aggregation function`,
+    widget: "select",
+    getDefault: ([{ data }], settings) => {
+      const [metricName] = settings["graph.metrics"];
+      const metric = data.cols.find(col => col.name === metricName);
+      return metric?.aggregation_type ?? "sum";
+    },
+    getHidden: ([{ card }]) => card.dataset_query.type !== "native",
+    props: {
+      options: [
+        { name: t`Sum`, value: "sum" },
+        { name: t`Average`, value: "avg" },
+        { name: t`Median`, value: "median" },
+        { name: t`Standard deviation`, value: "stddev" },
+        { name: t`Min`, value: "min" },
+        { name: t`Max`, value: "max" },
+      ],
+    },
+    readDependencies: ["graph.metrics"],
+  },
 };
 
 export const GRAPH_COLORS_SETTINGS = {
