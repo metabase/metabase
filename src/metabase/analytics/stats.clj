@@ -581,14 +581,18 @@
 (defn- ->snowplow-metric-info
   "Collects Snowplow metrics data that is not in the legacy stats format."
   []
-  {:models                  (t2/count :model/Card :type :model)
-   :new_embedded_dashboards (t2/count :model/Dashboard
-                                      :enable_embedding true
-                                      :created_at [:>= (t/minus (t/offset-date-time) (t/days 1))])
-   :new_users_last_24h        (t2/count :model/User :date_joined [:>= (t/minus (t/offset-date-time) (t/days 1))])
-   :pivot_tables              (t2/count :model/Card :display :pivot)
-   :query_executions_last_24h (t2/count :model/QueryExecution :started_at [:>= (t/minus (t/offset-date-time) (t/days 1))])
-   :entity_id_translations_last_24h (:total (embed.common/get-and-clear-translation-count!))})
+  (let [one-day-ago (t/minus (t/offset-date-time) (t/days 1))]
+    {:models                  (t2/count :model/Card :type :model :archived false)
+     :new_embedded_dashboards (t2/count :model/Dashboard
+                                        :enable_embedding true
+                                        :archived false
+                                        :created_at [:>= one-day-ago])
+     :new_users_last_24h        (t2/count :model/User
+                                          :is_active true
+                                          :date_joined [:>= one-day-ago])
+     :pivot_tables              (t2/count :model/Card :display :pivot :archived false)
+     :query_executions_last_24h (t2/count :model/QueryExecution :started_at [:>= one-day-ago])
+     :entity_id_translations_last_24h (:total (embed.common/get-and-clear-translation-count!))}))
 
 (mu/defn- snowplow-metrics
   [stats metric-info :- [:map
