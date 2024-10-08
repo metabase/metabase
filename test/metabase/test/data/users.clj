@@ -167,6 +167,7 @@
 
 (defn- user-request
   [the-client user & args]
+  (initialize/initialize-if-needed! :db :test-users :web-server)
   (if (keyword? user)
     (do
       (fetch-user user)
