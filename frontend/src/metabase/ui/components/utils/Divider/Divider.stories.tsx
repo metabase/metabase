@@ -23,7 +23,9 @@ const VerticalTemplate = (args: DividerProps) => (
 
 export default {
   title: "Utils/Divider",
-  component: Divider,
+  render: (args: DividerProps) => (
+    <Divider {...args} label={<p>Search results</p>} />
+  ),
   args,
   argTypes,
 };
