@@ -1,3 +1,4 @@
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import {
   type NativeQuestionDetails,
   assertQueryBuilderRowCount,
@@ -6,29 +7,20 @@ import {
   createNativeQuestion,
   echartsContainer,
   getDashboardCard,
+  modal,
   popover,
   restore,
   tableHeaderClick,
   tableInteractive,
   visitDashboard,
   visitQuestion,
+  visitQuestionAdhoc,
 } from "e2e/support/helpers";
 
 const ordersTableQuestionDetails: NativeQuestionDetails = {
   display: "table",
   native: {
     query: "SELECT ID, CREATED_AT, QUANTITY FROM ORDERS ORDER BY ID LIMIT 10",
-  },
-};
-
-const ordersLineQuestionDetails: NativeQuestionDetails = {
-  display: "line",
-  native: {
-    query: "SELECT ID, CREATED_AT, QUANTITY FROM ORDERS ORDER BY ID LIMIT 10",
-  },
-  visualization_settings: {
-    "graph.dimensions": ["CREATED_AT"],
-    "graph.metrics": ["QUANTITY"],
   },
 };
 
@@ -39,10 +31,55 @@ const peopleTableQuestionDetails: NativeQuestionDetails = {
   },
 };
 
+const timeseriesQuestionDetails: NativeQuestionDetails = {
+  display: "line",
+  native: {
+    query: "SELECT ID, CREATED_AT, QUANTITY FROM ORDERS ORDER BY ID LIMIT 10",
+  },
+  visualization_settings: {
+    "graph.dimensions": ["CREATED_AT"],
+    "graph.metrics": ["QUANTITY"],
+  },
+};
+
 describe("scenarios > question > native query drill", () => {
   beforeEach(() => {
     restore();
     cy.signInAsNormalUser();
+    cy.intercept("POST", "/api/dataset").as("dataset");
+    cy.intercept("POST", "/api/card").as("saveCard");
+  });
+
+  it("should allow to save an ad-hoc native query when attempting to drill", () => {
+    visitQuestionAdhoc({
+      display: "table",
+      dataset_query: {
+        database: SAMPLE_DB_ID,
+        type: "native",
+        native: peopleTableQuestionDetails.native,
+      },
+    });
+    cy.wait("@dataset");
+
+    tableInteractive().findByText("October 7, 2023, 1:34 AM").click();
+    popover().within(() => {
+      cy.findByText("Filter by this date").should("not.exist");
+      cy.button("Save").click();
+    });
+    modal().within(() => {
+      cy.findByLabelText("Name").type("SQL");
+      cy.button("Save").click();
+      cy.wait("@saveCard");
+    });
+    modal().findByText("Not now").click();
+
+    tableInteractive().findByText("October 7, 2023, 1:34 AM").click();
+    popover().within(() => {
+      cy.findByText("Filter by this date").should("be.visible");
+      cy.findByText("On").click();
+    });
+    cy.wait("@dataset");
+    assertQueryBuilderRowCount(1);
   });
 
   describe("query builder drills", () => {
@@ -146,7 +183,7 @@ describe("scenarios > question > native query drill", () => {
     });
 
     it("quick-filter drill", () => {
-      createNativeQuestion(ordersLineQuestionDetails, { visitQuestion: true });
+      createNativeQuestion(timeseriesQuestionDetails, { visitQuestion: true });
       assertQueryBuilderRowCount(10);
       cartesianChartCircle().eq(0).click();
       popover().within(() => {
@@ -226,7 +263,7 @@ describe("scenarios > question > native query drill", () => {
     });
 
     it("unsupported drills", () => {
-      createNativeQuestion(ordersLineQuestionDetails, { visitQuestion: true });
+      createNativeQuestion(timeseriesQuestionDetails, { visitQuestion: true });
       assertQueryBuilderRowCount(10);
       cartesianChartCircle().eq(0).click();
       popover().within(() => {
@@ -235,6 +272,14 @@ describe("scenarios > question > native query drill", () => {
         cy.findByText(/Automatic insights/).should("not.exist");
       });
     });
+  });
+
+  describe("query builder brush filters", () => {
+    it("timeseries filter", () => {});
+
+    it("numeric filter", () => {});
+
+    it("coordinates filter", () => {});
   });
 
   describe("dashboard drills", () => {
@@ -252,7 +297,7 @@ describe("scenarios > question > native query drill", () => {
 
       cy.log("from a chart dot");
       cy.createDashboardWithQuestions({
-        questions: [ordersLineQuestionDetails],
+        questions: [timeseriesQuestionDetails],
       }).then(({ dashboard }) => visitDashboard(dashboard.id));
       getDashboardCard().within(() => cartesianChartCircle().eq(0).click());
       popover().within(() => {
@@ -261,5 +306,13 @@ describe("scenarios > question > native query drill", () => {
       });
       assertQueryBuilderRowCount(3);
     });
+  });
+
+  describe("dashboard brush filters", () => {
+    it("timeseries filter", () => {});
+
+    it("numeric filter", () => {});
+
+    it("coordinates filter", () => {});
   });
 });
