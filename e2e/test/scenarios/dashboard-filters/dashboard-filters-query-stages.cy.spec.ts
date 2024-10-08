@@ -1070,100 +1070,74 @@ describe("scenarios > dashboard > filters > query stages", () => {
         it("1st stage aggregation", () => {
           setup1stStageAggregationFilter();
 
-          getDashboardCard(0).findByText("Rows 1-1 of 3").should("be.visible");
-          getDashboardCard(0).findByTestId("legend-caption-title").click();
-          cy.wait("@dataset");
-          cy.findByTestId("question-row-count").should(
-            "have.text",
-            "Showing 3 rows",
-          );
+          verifyDashcardRowsCount({
+            dashcardIndex: 1,
+            dashboardCount: "Rows 1-1 of 3",
+            queryBuilderCount: "Showing 3 rows",
+          });
 
           goBackToDashboard();
 
-          getDashboardCard(1).findByText("Rows 1-1 of 3").should("be.visible");
-          getDashboardCard(1).findByTestId("legend-caption-title").click();
-          cy.wait("@dataset");
-          cy.findByTestId("question-row-count").should(
-            "have.text",
-            "Showing 3 rows",
-          );
+          verifyDashcardRowsCount({
+            dashcardIndex: 1,
+            dashboardCount: "Rows 1-1 of 3",
+            queryBuilderCount: "Showing 3 rows",
+          });
         });
 
         // TODO: https://github.com/metabase/metabase/issues/46774
         it.skip("1st stage breakout", () => {
           setup1stStageBreakoutFilter();
 
-          getDashboardCard(0)
-            .findByText("Rows 1-1 of 1077")
-            .should("be.visible");
-          getDashboardCard(0).findByTestId("legend-caption-title").click();
-          cy.wait("@dataset");
-          cy.findByTestId("question-row-count").should(
-            "have.text",
-            "Showing 1,077 rows",
-          );
+          verifyDashcardRowsCount({
+            dashcardIndex: 0,
+            dashboardCount: "Rows 1-1 of 1077",
+            queryBuilderCount: "Showing 1,077 rows",
+          });
 
           goBackToDashboard();
 
-          getDashboardCard(1)
-            .findByText("Rows 1-1 of 1077")
-            .should("be.visible");
-          getDashboardCard(1).findByTestId("legend-caption-title").click();
-          cy.wait("@dataset");
-          cy.findByTestId("question-row-count").should(
-            "have.text",
-            "Showing 1,077 rows",
-          );
+          verifyDashcardRowsCount({
+            dashcardIndex: 1,
+            dashboardCount: "Rows 1-1 of 1077",
+            queryBuilderCount: "Showing 1,077 rows",
+          });
         });
 
         it("2nd stage aggregation", () => {
           setup2ndStageAggregationFilter();
 
-          getDashboardCard(0).findByText("Rows 1-1 of 6").should("be.visible");
-          getDashboardCard(0).findByTestId("legend-caption-title").click();
-          cy.wait("@dataset");
-
-          cy.findByTestId("question-row-count").should(
-            "have.text",
-            "Showing 6 rows",
-          );
+          verifyDashcardRowsCount({
+            dashcardIndex: 1,
+            dashboardCount: "Rows 1-1 of 6",
+            queryBuilderCount: "Showing 6 rows",
+          });
 
           goBackToDashboard();
 
-          getDashboardCard(1).findByText("Rows 1-1 of 6").should("be.visible");
-          getDashboardCard(1).findByTestId("legend-caption-title").click();
-          cy.wait("@dataset");
-
-          cy.findByTestId("question-row-count").should(
-            "have.text",
-            "Showing 6 rows",
-          );
+          verifyDashcardRowsCount({
+            dashcardIndex: 1,
+            dashboardCount: "Rows 1-1 of 6",
+            queryBuilderCount: "Showing 6 rows",
+          });
         });
 
         it("2nd stage breakout", () => {
           setup2ndStageBreakoutFilter();
 
-          getDashboardCard(0)
-            .findByText("Rows 1-1 of 1077")
-            .should("be.visible");
-          getDashboardCard(0).findByTestId("legend-caption-title").click();
-          cy.wait("@dataset");
-          cy.findByTestId("question-row-count").should(
-            "have.text",
-            "Showing 1,077 rows",
-          );
+          verifyDashcardRowsCount({
+            dashcardIndex: 0,
+            dashboardCount: "Rows 1-1 of 1077",
+            queryBuilderCount: "Showing 1,077 rows",
+          });
 
           goBackToDashboard();
 
-          getDashboardCard(1)
-            .findByText("Rows 1-1 of 1077")
-            .should("be.visible");
-          getDashboardCard(1).findByTestId("legend-caption-title").click();
-          cy.wait("@dataset");
-          cy.findByTestId("question-row-count").should(
-            "have.text",
-            "Showing 1,077 rows",
-          );
+          verifyDashcardRowsCount({
+            dashcardIndex: 1,
+            dashboardCount: "Rows 1-1 of 1077",
+            queryBuilderCount: "Showing 1,077 rows",
+          });
         });
       });
     });
