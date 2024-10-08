@@ -27,7 +27,8 @@
    [:map
     [:temporal-unit                              {:optional true} [:ref ::temporal-bucketing/unit]]
     [:binning                                    {:optional true} [:ref ::binning/binning]]
-    [:metabase.lib.field/original-effective-type {:optional true} [:ref ::common/base-type]]]])
+    [:metabase.lib.field/original-effective-type {:optional true} [:ref ::common/base-type]]
+    [:metabase.lib.field/original-temporal-unit  {:optional true} [:ref ::temporal-bucketing/unit]]]])
 
 (mr/def ::field.literal.options
   [:merge

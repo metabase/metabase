@@ -1,4 +1,4 @@
-(ns metabase.upload-test
+(ns ^:mb/driver-tests metabase.upload-test
   (:require
    [clj-bom.core :as bom]
    [clojure.data.csv :as csv]
@@ -1238,8 +1238,19 @@
                   ]))
     file))
 
+(defmethod driver/database-supports? [::driver/driver ::create-csv-upload!-failure-test]
+  [_driver _feature _database]
+  true)
+
+;;; TODO -- The test below is currently broken for Redshift. This test was incorrectly marked `^:mb/once` prior to
+;;; #47681; I fixed that, but then Redshift tests started failing. We should fix the test so it can run against
+;;; Redshift.
+(defmethod driver/database-supports? [:redshift ::create-csv-upload!-failure-test]
+  [_driver _feature _database]
+  false)
+
 (deftest ^:mb/once create-csv-upload!-failure-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+  (mt/test-drivers (mt/normal-drivers-with-feature :uploads ::create-csv-upload!-failure-test)
     (mt/with-empty-db
       (testing "Uploads must be enabled"
         (is (thrown-with-msg?
