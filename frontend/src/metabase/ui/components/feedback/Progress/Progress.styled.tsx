@@ -1,16 +1,20 @@
-import type { MantineThemeOverride } from "@mantine/core";
+import { type MantineThemeOverride, Progress } from "@mantine/core";
 
-export const getProgressOverrides = (): MantineThemeOverride["components"] => ({
-  Progress: {
-    styles: (theme, params) => {
-      return {
-        root: {
-          border: `1px solid ${params.color ?? theme.fn.themeColor("brand")}`,
-        },
-      };
+import ProgressStyles from "./ProgressStyles.module.css";
+
+export const progressOverrides: MantineThemeOverride["components"] = {
+  Progress: Progress.extend({
+    classNames: {
+      root: ProgressStyles.root,
     },
     defaultProps: {
       size: 10,
     },
-  },
-});
+    // @ts-expect-error - mantine sets this variable in 'section', which doesn't allow us to use it for setting a border color
+    vars: (theme, props) => ({
+      root: {
+        "--progress-section-color": props.color ?? theme.colors.brand[0],
+      },
+    }),
+  }),
+};
