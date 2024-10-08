@@ -994,6 +994,79 @@ describe("scenarios > dashboard > filters > query stages", () => {
       });
 
       describe("applies filter to the the dashcard and allows to drill via dashcard header", () => {
+        it("1st stage explicit join", () => {
+          setup1stStageExplicitJoinFilter();
+
+          verifyDashcardRowsCount({
+            dashcardIndex: 0,
+            dashboardCount: "Rows 1-1 of 953",
+            queryBuilderCount: "Showing 953 rows",
+          });
+
+          goBackToDashboard();
+
+          verifyDashcardRowsCount({
+            dashcardIndex: 1,
+            dashboardCount: "Rows 1-1 of 953",
+            queryBuilderCount: "Showing 953 rows",
+          });
+        });
+
+        it("1st stage implicit join (data source)", () => {
+          setup1stStageImplicitJoinFromSourceFilter();
+
+          verifyDashcardRowsCount({
+            dashcardIndex: 0,
+            dashboardCount: "Rows 1-1 of 1044",
+            queryBuilderCount: "Showing 1,044 rows",
+          });
+
+          goBackToDashboard();
+
+          verifyDashcardRowsCount({
+            dashcardIndex: 1,
+            dashboardCount: "Rows 1-1 of 1044",
+            queryBuilderCount: "Showing 1,044 rows",
+          });
+        });
+
+        // TODO: https://github.com/metabase/metabase/issues/46774
+        it.skip("1st stage implicit join (joined data source)", () => {
+          setup1stStageImplicitJoinFromJoinFilter();
+
+          verifyDashcardRowsCount({
+            dashcardIndex: 0,
+            dashboardCount: "Rows 1-1 of 1077",
+            queryBuilderCount: "Showing 1,077 rows",
+          });
+
+          goBackToDashboard();
+
+          verifyDashcardRowsCount({
+            dashcardIndex: 1,
+            dashboardCount: "Rows 1-1 of 1077",
+            queryBuilderCount: "Showing 1,077 rows",
+          });
+        });
+
+        it("1st stage custom column", () => {
+          setup1stStageCustomColumnFilter();
+
+          verifyDashcardRowsCount({
+            dashcardIndex: 0,
+            dashboardCount: "Rows 1-1 of 688",
+            queryBuilderCount: "Showing 688 rows",
+          });
+
+          goBackToDashboard();
+
+          verifyDashcardRowsCount({
+            dashcardIndex: 1,
+            dashboardCount: "Rows 1-1 of 688",
+            queryBuilderCount: "Showing 688 rows",
+          });
+        });
+
         it("1st stage aggregation", () => {
           setup1stStageAggregationFilter();
 
@@ -1067,7 +1140,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
           );
         });
 
-        it.only("2nd stage breakout", () => {
+        it("2nd stage breakout", () => {
           setup2ndStageBreakoutFilter();
 
           getDashboardCard(0)
@@ -1215,19 +1288,19 @@ describe("scenarios > dashboard > filters > query stages", () => {
 
           getDashboardCard(0)
             .findByTestId("cell-data")
-            .should("have.text", "4,292");
+            .should("have.text", "1,044");
           getDashboardCard(0).findByTestId("legend-caption-title").click();
           cy.wait("@dataset");
-          cy.findAllByTestId("cell-data").last().should("have.text", "4,292");
+          cy.findAllByTestId("cell-data").last().should("have.text", "1,044");
 
           goBackToDashboard();
 
           getDashboardCard(1)
             .findByTestId("cell-data")
-            .should("have.text", "4,292");
+            .should("have.text", "1,044");
           getDashboardCard(1).findByTestId("legend-caption-title").click();
           cy.wait("@dataset");
-          cy.findAllByTestId("cell-data").last().should("have.text", "4,292");
+          cy.findAllByTestId("cell-data").last().should("have.text", "1,044");
         });
 
         // TODO: https://github.com/metabase/metabase/issues/46774
@@ -1732,12 +1805,12 @@ function setup1stStageImplicitJoinFromSourceFilter() {
 
   getDashboardCard(0).findByText("Select…").click();
   popover().within(() => {
-    getPopoverItem("Rating", 2).click(); // product rating
+    getPopoverItem("Price", 0).click();
   });
 
   getDashboardCard(1).findByText("Select…").click();
   popover().within(() => {
-    getPopoverItem("Rating", 2).click(); // product rating
+    getPopoverItem("Price", 0).click();
   });
 
   cy.button("Save").click();
@@ -1746,7 +1819,7 @@ function setup1stStageImplicitJoinFromSourceFilter() {
   filterWidget().eq(0).click();
   popover().within(() => {
     cy.findAllByPlaceholderText("Enter a number").eq(0).type("0");
-    cy.findAllByPlaceholderText("Enter a number").eq(1).type("2");
+    cy.findAllByPlaceholderText("Enter a number").eq(1).type("16");
     cy.button("Add filter").click();
   });
   cy.wait("@dashboardData");
@@ -2093,4 +2166,21 @@ function verifyPopoverMappingOptions(sections: MappingSection[]) {
       expect($items.length).to.eq(expectedItemsCount);
     });
   });
+}
+
+function verifyDashcardRowsCount({
+  dashcardIndex,
+  dashboardCount,
+  queryBuilderCount,
+}: {
+  dashcardIndex: number;
+  dashboardCount: string;
+  queryBuilderCount: string;
+}) {
+  getDashboardCard(dashcardIndex)
+    .findByText(dashboardCount)
+    .should("be.visible");
+  getDashboardCard(dashcardIndex).findByTestId("legend-caption-title").click();
+  cy.wait("@dataset");
+  cy.findByTestId("question-row-count").should("have.text", queryBuilderCount);
 }
