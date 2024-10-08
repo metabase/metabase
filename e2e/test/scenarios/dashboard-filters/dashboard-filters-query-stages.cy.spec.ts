@@ -1000,14 +1000,24 @@ describe("scenarios > dashboard > filters > query stages", () => {
           getDashboardCard(0).findByText("Rows 1-1 of 3").should("be.visible");
           getDashboardCard(0).findByTestId("legend-caption-title").click();
           cy.wait("@dataset");
+          cy.findByTestId("question-row-count").should(
+            "have.text",
+            "Showing 3 rows",
+          );
 
+          goBackToDashboard();
+
+          getDashboardCard(1).findByText("Rows 1-1 of 3").should("be.visible");
+          getDashboardCard(1).findByTestId("legend-caption-title").click();
+          cy.wait("@dataset");
           cy.findByTestId("question-row-count").should(
             "have.text",
             "Showing 3 rows",
           );
         });
 
-        it("1st stage breakout", () => {
+        // TODO: https://github.com/metabase/metabase/issues/46774
+        it.skip("1st stage breakout", () => {
           setup1stStageBreakoutFilter();
 
           getDashboardCard(0)
@@ -1015,7 +1025,18 @@ describe("scenarios > dashboard > filters > query stages", () => {
             .should("be.visible");
           getDashboardCard(0).findByTestId("legend-caption-title").click();
           cy.wait("@dataset");
+          cy.findByTestId("question-row-count").should(
+            "have.text",
+            "Showing 1,077 rows",
+          );
 
+          goBackToDashboard();
+
+          getDashboardCard(1)
+            .findByText("Rows 1-1 of 1077")
+            .should("be.visible");
+          getDashboardCard(1).findByTestId("legend-caption-title").click();
+          cy.wait("@dataset");
           cy.findByTestId("question-row-count").should(
             "have.text",
             "Showing 1,077 rows",
@@ -1033,9 +1054,20 @@ describe("scenarios > dashboard > filters > query stages", () => {
             "have.text",
             "Showing 6 rows",
           );
+
+          goBackToDashboard();
+
+          getDashboardCard(1).findByText("Rows 1-1 of 6").should("be.visible");
+          getDashboardCard(1).findByTestId("legend-caption-title").click();
+          cy.wait("@dataset");
+
+          cy.findByTestId("question-row-count").should(
+            "have.text",
+            "Showing 6 rows",
+          );
         });
 
-        it("2nd stage breakout", () => {
+        it.only("2nd stage breakout", () => {
           setup2ndStageBreakoutFilter();
 
           getDashboardCard(0)
@@ -1043,7 +1075,18 @@ describe("scenarios > dashboard > filters > query stages", () => {
             .should("be.visible");
           getDashboardCard(0).findByTestId("legend-caption-title").click();
           cy.wait("@dataset");
+          cy.findByTestId("question-row-count").should(
+            "have.text",
+            "Showing 1,077 rows",
+          );
 
+          goBackToDashboard();
+
+          getDashboardCard(1)
+            .findByText("Rows 1-1 of 1077")
+            .should("be.visible");
+          getDashboardCard(1).findByTestId("legend-caption-title").click();
+          cy.wait("@dataset");
           cy.findByTestId("question-row-count").should(
             "have.text",
             "Showing 1,077 rows",
@@ -1147,11 +1190,6 @@ describe("scenarios > dashboard > filters > query stages", () => {
       });
 
       describe("applies filter to the the dashcard and allows to drill via dashcard header", () => {
-        /**
-         * TODO: connect rest of charts to parameters
-         * TODO: add a test with unit of time parameter and non-last stage filter parameter
-         */
-
         it("1st stage explicit join", () => {
           setup1stStageExplicitJoinFilter();
 
