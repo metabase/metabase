@@ -64,7 +64,7 @@
             (when prev-col
               (recur (update query :stages pop) prev-col))))))))
 
-(mu/defn has-summarize-clause?
+(mu/defn has-summary-clause?
   "Whether the `query` has an aggregation or breakout clause in some query stage."
   [query :- ::lib.schema/query]
   (let [top-query (top-level-query query)]
