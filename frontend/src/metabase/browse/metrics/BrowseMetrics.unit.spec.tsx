@@ -237,7 +237,7 @@ describe("BrowseMetrics", () => {
     setup({ metricCount: 0 });
     expect(
       await screen.findByText(
-        "Metrics help you summarize and analyze your data effortlessly.",
+        "Create Metrics to define the official way to calculate important numbers for your team",
       ),
     ).toBeInTheDocument();
   });
