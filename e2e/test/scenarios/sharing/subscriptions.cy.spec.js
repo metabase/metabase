@@ -52,8 +52,8 @@ describe("scenarios > dashboard > subscriptions", () => {
 
     openSharingMenu("Embed");
     getEmbedModalSharingPane().within(() => {
-      cy.findByText("Public embed").should("be.visible");
-      cy.findByText("Static embed").should("be.visible");
+      cy.findByText("public embedding").should("be.visible");
+      cy.findByText("Static embedding").should("be.visible");
     });
   });
 
