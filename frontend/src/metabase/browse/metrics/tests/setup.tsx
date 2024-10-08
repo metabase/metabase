@@ -1,3 +1,4 @@
+import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
   setupCardEndpoints,
   setupCardQueryEndpoints,
@@ -5,59 +6,26 @@ import {
   setupSearchEndpoints,
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen, within } from "__support__/ui";
+import { mockSettings } from "__support__/settings";
+import { renderWithProviders } from "__support__/ui";
+import type { TokenFeatures } from "metabase-types/api";
 import {
   createMockCard,
   createMockCollection,
   createMockDataset,
   createMockSearchResult,
+  createMockTokenFeatures,
 } from "metabase-types/api/mocks";
-import { createMockSetupState } from "metabase-types/store/mocks";
+import {
+  createMockSetupState,
+  createMockState,
+} from "metabase-types/store/mocks";
 
-import { BrowseMetrics } from "./BrowseMetrics";
-import { createMockMetricResult, createMockRecentMetric } from "./test-utils";
-import type { MetricResult, RecentMetric } from "./types";
-
-type SetupOpts = {
-  metricCount?: number;
-  recentMetricCount?: number;
-};
+import { BrowseMetrics } from "../BrowseMetrics";
+import { createMockMetricResult, createMockRecentMetric } from "../test-utils";
+import type { MetricResult, RecentMetric } from "../types";
 
 const TEST_DATASET = createMockDataset();
-
-function setup({
-  metricCount = Infinity,
-  recentMetricCount = 5,
-}: SetupOpts = {}) {
-  const mockMetricResults = mockMetrics.map(createMockMetricResult);
-  const mockRecentMetrics = mockMetrics.map(metric =>
-    createMockRecentMetric(metric as RecentMetric),
-  );
-
-  const metrics = mockMetricResults.slice(0, metricCount);
-  const recentMetrics = mockRecentMetrics.slice(0, recentMetricCount);
-
-  setupSettingsEndpoints([]);
-  setupSearchEndpoints(metrics.map(createMockSearchResult));
-  setupRecentViewsEndpoints(recentMetrics);
-
-  for (const metric of metrics) {
-    const card = createMockCard({
-      id: metric.id,
-    });
-
-    setupCardEndpoints(card);
-    setupCardQueryEndpoints(card, TEST_DATASET);
-  }
-
-  return renderWithProviders(<BrowseMetrics />, {
-    storeInitialState: {
-      setup: createMockSetupState({
-        locale: { name: "English", code: "en" },
-      }),
-    },
-  });
-}
 
 const defaultRootCollection = createMockCollection({
   id: "root",
@@ -232,39 +200,55 @@ const mockMetrics: Partial<MetricResult>[] = [
   ...partialMetric,
 }));
 
-describe("BrowseMetrics", () => {
-  it("displays an empty message when no metrics are found", async () => {
-    setup({ metricCount: 0 });
-    expect(
-      await screen.findByText(
-        "Metrics help you summarize and analyze your data effortlessly.",
-      ),
-    ).toBeInTheDocument();
-    expect(await screen.findByText("Create metric")).toBeInTheDocument();
+export type SetupOpts = {
+  metricCount?: number;
+  recentMetricCount?: number;
+  showMetabaseLinks?: boolean;
+  hasEnterprisePlugins?: boolean;
+  tokenFeatures?: Partial<TokenFeatures>;
+};
+
+export function setup({
+  metricCount = Infinity,
+  recentMetricCount = 5,
+  showMetabaseLinks = true,
+  hasEnterprisePlugins,
+  tokenFeatures = {},
+}: SetupOpts = {}) {
+  const state = createMockState({
+    setup: createMockSetupState({
+      locale: { name: "English", code: "en" },
+    }),
+    settings: mockSettings({
+      "show-metabase-links": showMetabaseLinks,
+      "token-features": createMockTokenFeatures(tokenFeatures),
+    }),
   });
 
-  it("displays the Our Analytics collection if it has a metric", async () => {
-    setup({ metricCount: 25 });
-    const table = await screen.findByRole("table", {
-      name: /Table of metrics/,
-    });
-    expect(table).toBeInTheDocument();
-    expect(
-      within(table).getAllByTestId("path-for-collection: Our analytics"),
-    ).toHaveLength(2);
-    expect(within(table).getByText("Metric 20")).toBeInTheDocument();
-    expect(within(table).getByText("Metric 21")).toBeInTheDocument();
-    expect(within(table).getByText("Metric 22")).toBeInTheDocument();
-  });
+  if (hasEnterprisePlugins) {
+    setupEnterprisePlugins();
+  }
 
-  it("displays collection breadcrumbs", async () => {
-    setup({ metricCount: 5 });
-    const table = await screen.findByRole("table", {
-      name: /Table of metrics/,
+  const mockMetricResults = mockMetrics.map(createMockMetricResult);
+  const mockRecentMetrics = mockMetrics.map(metric =>
+    createMockRecentMetric(metric as RecentMetric),
+  );
+
+  const metrics = mockMetricResults.slice(0, metricCount);
+  const recentMetrics = mockRecentMetrics.slice(0, recentMetricCount);
+
+  setupSettingsEndpoints([]);
+  setupSearchEndpoints(metrics.map(createMockSearchResult));
+  setupRecentViewsEndpoints(recentMetrics);
+
+  for (const metric of metrics) {
+    const card = createMockCard({
+      id: metric.id,
     });
-    expect(within(table).getByText("Metric 1")).toBeInTheDocument();
-    expect(
-      within(table).getAllByTestId("path-for-collection: Alpha"),
-    ).toHaveLength(3);
-  });
-});
+
+    setupCardEndpoints(card);
+    setupCardQueryEndpoints(card, TEST_DATASET);
+  }
+
+  return renderWithProviders(<BrowseMetrics />, { storeInitialState: state });
+}
