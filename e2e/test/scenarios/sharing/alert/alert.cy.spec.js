@@ -95,7 +95,7 @@ describe("scenarios > alert", () => {
     });
   });
 
-  describe("with a webhook", () => {
+  describe("with a webhook", { tags: ["@external"] }, () => {
     beforeEach(() => {
       setupNotificationChannel({
         name: "Foo Hook",
