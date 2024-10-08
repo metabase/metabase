@@ -49,7 +49,7 @@
           },
           "value": {
             "description": "The value of this attribute",
-            "type": ["string", "boolean", "integer", "null", "object"],
+            "type": ["string", "boolean", "integer", "null"],
             "maxLength": 255,
             "minimum": 0,
             "maximum": 2147483647
