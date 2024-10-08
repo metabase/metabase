@@ -1,6 +1,5 @@
 import { createReducer } from "@reduxjs/toolkit";
 import { assocIn } from "icepick";
-import produce from "immer";
 import { omit } from "underscore";
 
 import Dashboards from "metabase/entities/dashboards";
@@ -310,15 +309,13 @@ export const dashboards = createReducer(
         dashboard.enable_embedding = payload.enable_embedding;
         dashboard.initially_published_at = payload.initially_published_at;
       })
-      .addCase(Dashboards.actionTypes.UPDATE, (state, { payload }) =>
-        produce(state, draftState => {
-          const draftDashboard = draftState[payload.dashboard.id];
-          if (draftDashboard) {
-            draftDashboard.collection_id = payload.dashboard.collection_id;
-            draftDashboard.collection = payload.dashboard.collection;
-          }
-        }),
-      )
+      .addCase(Dashboards.actionTypes.UPDATE, (state, { payload }) => {
+        const draftDashboard = state[payload.dashboard.id];
+        if (draftDashboard) {
+          draftDashboard.collection_id = payload.dashboard.collection_id;
+          draftDashboard.collection = payload.dashboard.collection;
+        }
+      })
       .addCase(createPublicLink.fulfilled, (state, { payload }) =>
         assocIn(state, [payload.id, "public_uuid"], payload.uuid),
       )
