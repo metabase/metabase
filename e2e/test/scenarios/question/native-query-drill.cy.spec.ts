@@ -2,6 +2,7 @@ import {
   type NativeQuestionDetails,
   assertQueryBuilderRowCount,
   assertTableData,
+  cartesianChartCircle,
   createNativeQuestion,
   echartsContainer,
   popover,
@@ -11,13 +12,26 @@ import {
   visitQuestion,
 } from "e2e/support/helpers";
 
-const ordersQuestionDetails: NativeQuestionDetails = {
+const ordersTableQuestionDetails: NativeQuestionDetails = {
+  display: "table",
   native: {
     query: "SELECT ID, CREATED_AT, QUANTITY FROM ORDERS ORDER BY ID LIMIT 10",
   },
 };
 
-const peopleQuestionDetails: NativeQuestionDetails = {
+const ordersLineQuestionDetails: NativeQuestionDetails = {
+  display: "line",
+  native: {
+    query: "SELECT ID, CREATED_AT, QUANTITY FROM ORDERS ORDER BY ID LIMIT 10",
+  },
+  visualization_settings: {
+    "graph.dimensions": ["CREATED_AT"],
+    "graph.metrics": ["QUANTITY"],
+  },
+};
+
+const peopleTableQuestionDetails: NativeQuestionDetails = {
+  display: "table",
   native: {
     query: "SELECT ID, EMAIL, CREATED_AT FROM PEOPLE ORDER BY ID LIMIT 10",
   },
@@ -32,7 +46,7 @@ describe("scenarios > question > native query drill", () => {
   describe("drills", () => {
     it("column-extract drill", () => {
       cy.log("from column header");
-      createNativeQuestion(ordersQuestionDetails, {
+      createNativeQuestion(ordersTableQuestionDetails, {
         visitQuestion: true,
         wrapId: true,
       });
@@ -68,7 +82,7 @@ describe("scenarios > question > native query drill", () => {
 
     it("combine-columns drill", () => {
       cy.log("from column header");
-      createNativeQuestion(peopleQuestionDetails, {
+      createNativeQuestion(peopleTableQuestionDetails, {
         visitQuestion: true,
         wrapId: true,
       });
@@ -106,7 +120,7 @@ describe("scenarios > question > native query drill", () => {
     });
 
     it("column-filter drill", () => {
-      createNativeQuestion(ordersQuestionDetails, { visitQuestion: true });
+      createNativeQuestion(ordersTableQuestionDetails, { visitQuestion: true });
       assertQueryBuilderRowCount(10);
       tableHeaderClick("QUANTITY");
       popover().findByText("Filter by this column").click();
@@ -119,7 +133,7 @@ describe("scenarios > question > native query drill", () => {
     });
 
     it("distribution drill", () => {
-      createNativeQuestion(ordersQuestionDetails, { visitQuestion: true });
+      createNativeQuestion(ordersTableQuestionDetails, { visitQuestion: true });
       tableHeaderClick("QUANTITY");
       popover().findByText("Distribution").click();
       echartsContainer().within(() => {
@@ -129,9 +143,20 @@ describe("scenarios > question > native query drill", () => {
       assertQueryBuilderRowCount(5);
     });
 
+    it("quick-filter drill", () => {
+      createNativeQuestion(ordersLineQuestionDetails, { visitQuestion: true });
+      assertQueryBuilderRowCount(10);
+      cartesianChartCircle().eq(0).click();
+      popover().within(() => {
+        cy.findByText("Filter by this value").should("be.visible");
+        cy.findByText("=").click();
+      });
+      assertQueryBuilderRowCount(3);
+    });
+
     it("sort drill", () => {
       cy.log("ascending");
-      createNativeQuestion(ordersQuestionDetails, {
+      createNativeQuestion(ordersTableQuestionDetails, {
         visitQuestion: true,
         wrapId: true,
       });
@@ -154,7 +179,7 @@ describe("scenarios > question > native query drill", () => {
 
     it("summarize drill", () => {
       cy.log("distinct values");
-      createNativeQuestion(ordersQuestionDetails, {
+      createNativeQuestion(ordersTableQuestionDetails, {
         visitQuestion: true,
         wrapId: true,
       });
@@ -185,7 +210,7 @@ describe("scenarios > question > native query drill", () => {
     });
 
     it("summarize-column-by-time drill", () => {
-      createNativeQuestion(ordersQuestionDetails, { visitQuestion: true });
+      createNativeQuestion(ordersTableQuestionDetails, { visitQuestion: true });
       tableHeaderClick("QUANTITY");
       popover().findByText("Sum over time").click();
       assertTableData({
