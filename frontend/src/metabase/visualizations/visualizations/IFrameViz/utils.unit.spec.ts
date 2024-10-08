@@ -134,7 +134,7 @@ describe("getIframeDomainName", () => {
     expect(result).toBe("www.example.com");
   });
 
-  it("should return null for an invalid URLs", () => {
+  it("should return null for invalid URLs", () => {
     expect(getIframeDomainName("not a url")).toBeNull();
     expect(getIframeDomainName("https://example.com:asdf")).toBeNull();
     expect(getIframeDomainName("")).toBeNull();
