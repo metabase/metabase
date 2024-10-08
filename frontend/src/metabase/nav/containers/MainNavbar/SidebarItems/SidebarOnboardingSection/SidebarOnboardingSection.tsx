@@ -181,6 +181,7 @@ export function SidebarOnboardingSection({
           px="xl"
           pb="md"
           className={cx({ [CS.borderTop]: !collapseCTASection })}
+          data-testid="sidebar-add-data-section"
         >
           {!collapseCTASection && (
             <Text
