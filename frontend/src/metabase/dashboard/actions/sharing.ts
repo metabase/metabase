@@ -55,10 +55,10 @@ export const CREATE_PUBLIC_LINK = "metabase/dashboard/CREATE_PUBLIC_LINK";
 export const createPublicLink = createAsyncThunk(
   CREATE_PUBLIC_LINK,
   async ({ id }: DashboardIdPayload, { dispatch }) => {
-    const { data } = await dispatch(createDashboardPublicLink.initiate({ id }));
-    if (data) {
-      return { id, uuid: data.uuid };
-    }
+    const { data = null } = await dispatch(
+      createDashboardPublicLink.initiate({ id }),
+    );
+    return { id, uuid: data?.uuid };
   },
 );
 
