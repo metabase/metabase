@@ -18,6 +18,18 @@ export type BinningMetadata = {
   num_bins?: number;
 };
 
+export type AggregationType =
+  | "count"
+  | "sum"
+  | "cum-sum"
+  | "cum-count"
+  | "distinct"
+  | "min"
+  | "max"
+  | "avg"
+  | "median"
+  | "stddev";
+
 export interface DatasetColumn {
   id?: FieldId;
   name: string;
@@ -25,6 +37,9 @@ export interface DatasetColumn {
   description?: string | null;
   source: string;
   aggregation_index?: number;
+
+  aggregation_type?: AggregationType;
+
   coercion_strategy?: string | null;
   visibility_type?: FieldVisibilityType;
   table_id?: TableId;

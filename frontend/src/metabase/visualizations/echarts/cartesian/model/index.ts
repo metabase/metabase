@@ -132,10 +132,6 @@ export const getCartesianChartModel = (
     );
   }
 
-  const groupedSeriesKeys = groupedSeriesModels.map(
-    seriesModel => seriesModel.dataKey,
-  );
-
   const xAxisModel = getXAxisModel(
     dimensionModel,
     rawSeries,
@@ -155,7 +151,7 @@ export const getCartesianChartModel = (
     stackModels,
     xAxisModel,
     seriesModels,
-    groupedSeriesKeys,
+    groupedSeriesModels,
     yAxisScaleTransforms,
     settings,
     showWarning,
