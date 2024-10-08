@@ -47,10 +47,10 @@
 (deftest ^:parallel do-not-return-fk-filter-for-non-fk-column-test
   (testing "fk-filter should not get returned for non-fk column (#34440)"
     (lib.drill-thru.tu/test-drill-not-returned
-      {:drill-type  :drill-thru/fk-filter
-       :click-type  :cell
-       :query-type  :aggregated
-       :column-name "max"})))
+     {:drill-type  :drill-thru/fk-filter
+      :click-type  :cell
+      :query-type  :aggregated
+      :column-name "max"})))
 
 (deftest ^:parallel do-not-return-fk-filter-for-null-fk-test
   (testing "#13957 if this is an FK column but the value clicked is NULL, don't show the FK filter drill"
@@ -156,7 +156,7 @@
                          :table-name  string?}
         :expected-query {:stages [{:filters [[:= {}
                                               [:field {} (lib.drill-thru.tu/field-key=
-                                                           "USER_ID" (meta/id :orders :user-id))]
+                                                          "USER_ID" (meta/id :orders :user-id))]
                                               (get-in lib.drill-thru.tu/test-queries
                                                       ["ORDERS" :unaggregated :row "USER_ID"])]]}]}}))
     (testing "in a new stage for an aggregated query"

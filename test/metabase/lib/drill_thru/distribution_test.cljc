@@ -77,7 +77,7 @@
                                  :breakout     [[:field
                                                  {:binning (symbol "nil #_\"key is not present.\"")}
                                                  (lib.drill-thru.tu/field-key=
-                                                   "USER_ID" (meta/id :orders :user-id))]]}]}})))
+                                                  "USER_ID" (meta/id :orders :user-id))]]}]}})))
 
 (deftest ^:parallel apply-to-column-types-test
   (testing "distribution drill"
@@ -100,13 +100,13 @@
                                                   :aggregation [[:count {}]]}]}})]
       (testing "on numeric columns uses default binning"
         (lib.drill-thru.tu/test-drill-application
-          (test-case "QUANTITY" [:field {:binning {:strategy :default}}
-                                 (lib.drill-thru.tu/field-key= "QUANTITY" (meta/id :orders :quantity))])))
+         (test-case "QUANTITY" [:field {:binning {:strategy :default}}
+                                (lib.drill-thru.tu/field-key= "QUANTITY" (meta/id :orders :quantity))])))
       (testing "on date columns uses month bucketing"
         (lib.drill-thru.tu/test-drill-application
-          (test-case "CREATED_AT" [:field {:temporal-unit :month}
-                                   (lib.drill-thru.tu/field-key= "CREATED_AT" (meta/id :orders :created-at))])))
+         (test-case "CREATED_AT" [:field {:temporal-unit :month}
+                                  (lib.drill-thru.tu/field-key= "CREATED_AT" (meta/id :orders :created-at))])))
       (testing "on other columns does no extra bucketing"
         (lib.drill-thru.tu/test-drill-application
-          (test-case "PRODUCT_ID" [:field {}
-                                   (lib.drill-thru.tu/field-key= "PRODUCT_ID" (meta/id :orders :product-id))]))))))
+         (test-case "PRODUCT_ID" [:field {}
+                                  (lib.drill-thru.tu/field-key= "PRODUCT_ID" (meta/id :orders :product-id))]))))))

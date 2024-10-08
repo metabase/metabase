@@ -51,19 +51,19 @@
 (deftest ^:parallel apply-column-extract-test-1a-month-of-year
   (testing "column-extract on a regular field without aggregations adds a column in this stage"
     (lib.drill-thru.tu/test-drill-application
-      {:click-type     :header
-       :query-type     :unaggregated
-       :column-name    "CREATED_AT"
-       :drill-type     :drill-thru/column-extract
-       :expected       {:type         :drill-thru/column-extract
-                        :extractions  datetime-extraction-units
+     {:click-type     :header
+      :query-type     :unaggregated
+      :column-name    "CREATED_AT"
+      :drill-type     :drill-thru/column-extract
+      :expected       {:type         :drill-thru/column-extract
+                       :extractions  datetime-extraction-units
                         ;; Query unchanged
-                        :query        (get-in lib.drill-thru.tu/test-queries ["ORDERS" :unaggregated :query])
-                        :stage-number -1}
-       :drill-args     ["month-of-year"]
-       :expected-query {:stages [{:expressions
-                                  [[:month-name {:lib/expression-name "Month of year"}
-                                    [:get-month {} exp-created-at]]]}]}})))
+                       :query        (get-in lib.drill-thru.tu/test-queries ["ORDERS" :unaggregated :query])
+                       :stage-number -1}
+      :drill-args     ["month-of-year"]
+      :expected-query {:stages [{:expressions
+                                 [[:month-name {:lib/expression-name "Month of year"}
+                                   [:get-month {} exp-created-at]]]}]}})))
 
 (deftest ^:parallel apply-column-extract-test-1b-day-of-week
   (testing "column-extract on a regular field without aggregations adds a column in this stage"
@@ -152,27 +152,27 @@
           query (-> (get-in lib.drill-thru.tu/test-queries ["ORDERS" :unaggregated :query])
                     (lib/expression -1 "Day of month" (lib/get-day (meta/field-metadata :orders :created-at))))]
       (lib.drill-thru.tu/test-drill-application
-        {:click-type      :header
-         :query-type      :unaggregated
-         :column-name     "CREATED_AT"
-         :drill-type      :drill-thru/column-extract
-         :custom-query    query
-         :expected        {:type         :drill-thru/column-extract
-                           :extractions  datetime-extraction-units
-                           :query        query
-                           :stage-number -1}
-         :drill-args      ["day-of-month"]
-         :expected-query  {:stages [{:expressions [;; The original
-                                                   [:get-day {:lib/expression-name "Day of month"}
-                                                    exp-created-at]
+       {:click-type      :header
+        :query-type      :unaggregated
+        :column-name     "CREATED_AT"
+        :drill-type      :drill-thru/column-extract
+        :custom-query    query
+        :expected        {:type         :drill-thru/column-extract
+                          :extractions  datetime-extraction-units
+                          :query        query
+                          :stage-number -1}
+        :drill-args      ["day-of-month"]
+        :expected-query  {:stages [{:expressions [;; The original
+                                                  [:get-day {:lib/expression-name "Day of month"}
+                                                   exp-created-at]
                                                    ;; The newly added one
-                                                   [:get-day {:lib/expression-name "Day of month_2"}
-                                                    exp-created-at]]}]}
+                                                  [:get-day {:lib/expression-name "Day of month_2"}
+                                                   exp-created-at]]}]}
          ;; With a native base, the name gets disambiguated, but there's only one expression rather than 2,
          ;; because the original is part of the native query.
-         :expected-native {:stages [{:expressions [;; The newly added one
-                                                   [:get-day {:lib/expression-name "Day of month_2"}
-                                                    exp-created-at]]}]}}))))
+        :expected-native {:stages [{:expressions [;; The newly added one
+                                                  [:get-day {:lib/expression-name "Day of month_2"}
+                                                   exp-created-at]]}]}}))))
 
 (deftest ^:parallel apply-column-extract-test-3-aggregated
   (testing "column-extract on an aggregated query appends a new stage"
@@ -183,23 +183,23 @@
           exprs  {:expressions [[:get-day {:lib/expression-name "Day of month"}
                                  [:field {} "max"]]]}]
       (lib.drill-thru.tu/test-drill-application
-        {:click-type         :header
-         :query-type         :aggregated
-         :column-name        "max"
-         :drill-type         :drill-thru/column-extract
-         :custom-query       query
-         :expected           {:type         :drill-thru/column-extract
-                              :extractions  datetime-extraction-units
-                              :query        (lib/append-stage query)
-                              :stage-number -1}
-         :drill-query-native native
-         :drill-args         ["day-of-month"]
+       {:click-type         :header
+        :query-type         :aggregated
+        :column-name        "max"
+        :drill-type         :drill-thru/column-extract
+        :custom-query       query
+        :expected           {:type         :drill-thru/column-extract
+                             :extractions  datetime-extraction-units
+                             :query        (lib/append-stage query)
+                             :stage-number -1}
+        :drill-query-native native
+        :drill-args         ["day-of-month"]
          ;; Aggregated MBQL queries need a new stage appended.
-         :expected-query     {:stages [(get-in query [:stages 0])
-                                       exprs]}
+        :expected-query     {:stages [(get-in query [:stages 0])
+                                      exprs]}
          ;; Wrapped native queries have the expression on their only stage.
-         :expected-native    {:stages [(merge (get-in native [:stages 0])
-                                              exprs)]}}))))
+        :expected-native    {:stages [(merge (get-in native [:stages 0])
+                                             exprs)]}}))))
 
 (deftest ^:parallel column-extract-relevant-units-test-1-time
   (let [ship-time (assoc (meta/field-metadata :orders :created-at)
@@ -350,7 +350,7 @@
         :drill-args     ["domain"]
         :expected-query {:stages [{:expressions [[:domain {:lib/expression-name "Domain"}
                                                   [:field {} (lib.drill-thru.tu/field-key=
-                                                               "EMAIL" (meta/id :people :email))]]]}]}}))
+                                                              "EMAIL" (meta/id :people :email))]]]}]}}))
     (testing "when the database does not support :regex email extraction is not available"
       (lib.drill-thru.tu/test-drill-not-returned
        {:drill-type     :drill-thru/column-extract

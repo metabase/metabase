@@ -143,40 +143,40 @@
   (testing "quick-filter should use is-empty and not-empty operators for string columns (#41783)"
     (let [field-key (lib.drill-thru.tu/field-key= "TITLE" (meta/id :products :title))]
       (lib.drill-thru.tu/test-returns-drill
-        {:drill-type  :drill-thru/quick-filter
-         :click-type  :cell
-         :query-type  :unaggregated
-         :query-table "PRODUCTS"
-         :column-name "TITLE"
-         :custom-row  (assoc (get-in lib.drill-thru.tu/test-queries ["PRODUCTS" :unaggregated :row])
-                             "TITLE" nil)
-         :expected    {:type      :drill-thru/quick-filter
-                       :value     :null
-                       :operators [{:name "=", :filter [:is-empty {} [:field {} field-key]]}
-                                   {:name "≠", :filter [:not-empty {} [:field {} field-key]]}]}}))))
+       {:drill-type  :drill-thru/quick-filter
+        :click-type  :cell
+        :query-type  :unaggregated
+        :query-table "PRODUCTS"
+        :column-name "TITLE"
+        :custom-row  (assoc (get-in lib.drill-thru.tu/test-queries ["PRODUCTS" :unaggregated :row])
+                            "TITLE" nil)
+        :expected    {:type      :drill-thru/quick-filter
+                      :value     :null
+                      :operators [{:name "=", :filter [:is-empty {} [:field {} field-key]]}
+                                  {:name "≠", :filter [:not-empty {} [:field {} field-key]]}]}}))))
 
 (deftest ^:parallel apply-quick-filter-on-correct-level-test
   (testing "quick-filter on an aggregation should introduce an new stage (#34346)"
     (testing "native query"
       (lib.drill-thru.tu/test-drill-application
-        {:click-type     :cell
-         :query-type     :aggregated
-         :query-kinds    [:mbql]
-         :column-name    "sum"
-         :drill-type     :drill-thru/quick-filter
-         :expected       {:type         :drill-thru/quick-filter
-                          :operators    [{:name "<"}
-                                         {:name ">"}
-                                         {:name "="}
-                                         {:name "≠"}]
-                          :query        {:stages [{} {}]}
-                          :stage-number -1
-                          :value        1}
-         :drill-args     ["="]
-         :expected-query {:stages [{}
-                                   {:filters [[:= {}
-                                               [:field {} "sum"]
-                                               (get-in lib.drill-thru.tu/test-queries ["ORDERS" :aggregated :row "sum"])]]}]}}))))
+       {:click-type     :cell
+        :query-type     :aggregated
+        :query-kinds    [:mbql]
+        :column-name    "sum"
+        :drill-type     :drill-thru/quick-filter
+        :expected       {:type         :drill-thru/quick-filter
+                         :operators    [{:name "<"}
+                                        {:name ">"}
+                                        {:name "="}
+                                        {:name "≠"}]
+                         :query        {:stages [{} {}]}
+                         :stage-number -1
+                         :value        1}
+        :drill-args     ["="]
+        :expected-query {:stages [{}
+                                  {:filters [[:= {}
+                                              [:field {} "sum"]
+                                              (get-in lib.drill-thru.tu/test-queries ["ORDERS" :aggregated :row "sum"])]]}]}}))))
 
 (deftest ^:parallel apply-quick-filter-on-correct-level-test-2
   (testing "quick-filter on a breakout should not introduce a new stage"

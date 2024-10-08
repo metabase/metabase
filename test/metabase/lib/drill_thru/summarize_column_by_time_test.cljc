@@ -69,14 +69,14 @@
   (let [exp-subtotal   [:field {} (lib.drill-thru.tu/field-key= "SUBTOTAL" (meta/id :orders :subtotal))]
         exp-created-at [:field {:temporal-unit :month}
                         (lib.drill-thru.tu/field-key= "CREATED_AT" (meta/id :orders :created-at))]]
-   (lib.drill-thru.tu/test-drill-application
-    {:drill-type  :drill-thru/summarize-column-by-time
-     :click-type  :header
-     :query-type  :unaggregated
-     :column-name "SUBTOTAL"
-     :expected    {:type :drill-thru/summarize-column-by-time}
-     :expected-query {:stages [{:aggregation [[:sum {} exp-subtotal]]
-                                :breakout    [exp-created-at]}]}})))
+    (lib.drill-thru.tu/test-drill-application
+     {:drill-type  :drill-thru/summarize-column-by-time
+      :click-type  :header
+      :query-type  :unaggregated
+      :column-name "SUBTOTAL"
+      :expected    {:type :drill-thru/summarize-column-by-time}
+      :expected-query {:stages [{:aggregation [[:sum {} exp-subtotal]]
+                                 :breakout    [exp-created-at]}]}})))
 
 ;; TODO: Bring the fingerprint-based unit selection logic from
 ;; https://github.com/metabase/metabase/blob/0624d8d0933f577cc70c03948f4b57f73fe13ada/frontend/src/metabase-lib/metadata/Field.ts#L397

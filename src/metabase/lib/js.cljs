@@ -251,20 +251,20 @@
   [a-query stage-number card-id]
   (let [{a-query :query, :keys [stage-number]} (lib.core/wrap-native-query-with-mbql a-query stage-number card-id)]
     (if (and
-       (empty? (lib.core/aggregations a-query stage-number))
-       (empty? (lib.core/breakouts a-query stage-number)))
+         (empty? (lib.core/aggregations a-query stage-number))
+         (empty? (lib.core/breakouts a-query stage-number)))
     ;; No extra stage needed with no aggregations.
-    #js {:query      a-query
-         :stageIndex stage-number}
-    ;; An extra stage is needed, so see if one already exists.
-    (if-let [next-stage (->> (lib.util/canonical-stage-index a-query stage-number)
-                             (lib.util/next-stage-number a-query))]
-      ;; Already an extra stage, so use it.
       #js {:query      a-query
-           :stageIndex next-stage}
+           :stageIndex stage-number}
+    ;; An extra stage is needed, so see if one already exists.
+      (if-let [next-stage (->> (lib.util/canonical-stage-index a-query stage-number)
+                               (lib.util/next-stage-number a-query))]
+      ;; Already an extra stage, so use it.
+        #js {:query      a-query
+             :stageIndex next-stage}
       ;; No new stage, so append one.
-      #js {:query      (lib.core/append-stage a-query)
-           :stageIndex -1}))))
+        #js {:query      (lib.core/append-stage a-query)
+             :stageIndex -1}))))
 
 (defn ^:export orderable-columns
   "Returns a JS Array of *column metadata* values for all columns which can be used to add an `ORDER BY` to `a-query` at

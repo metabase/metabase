@@ -81,11 +81,11 @@
 (deftest ^:parallel do-not-return-fk-filter-for-non-fk-column-test
   (testing "underlying-records should only get shown once for aggregated query (#34439)"
     (lib.drill-thru.tu/test-available-drill-thrus
-      {:click-type  :cell
-       :query-type  :aggregated
-       :query-kinds [:mbql]
-       :column-name "max"
-       :expected    #(->> % (map :type) (filter #{:drill-thru/underlying-records}) count (= 1))})))
+     {:click-type  :cell
+      :query-type  :aggregated
+      :query-kinds [:mbql]
+      :column-name "max"
+      :expected    #(->> % (map :type) (filter #{:drill-thru/underlying-records}) count (= 1))})))
 
 (def ^:private last-month
   #?(:cljs (let [now    (js/Date.)

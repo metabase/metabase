@@ -92,8 +92,8 @@
         original-mp (lib.metadata/->metadata-provider mbql-query)
         base        (lib/native-query original-mp "dummy SQL query")
         new-mp      (lib.tu/metadata-provider-with-card-from-query
-                      original-mp native-card-id base
-                      {:result-metadata cols})]
+                     original-mp native-card-id base
+                     {:result-metadata cols})]
     (lib/native-query new-mp "dummy SQL query")))
 
 (defn ->native-wrapped
@@ -248,31 +248,31 @@
                          (not (unsupported-on-native drill-type)) (conj :native))}
     :as   test-case} :- ReturnsDrillTestCase]
   (last
-    (for [query-kind query-kinds]
-      (let [selected (query-and-row-for-test-case test-case)
-            query    (get selected query-kind)
-            context  (test-case-context selected query-kind test-case)]
-        (testing (str (lib.util/format "should return %s drill for %s.%s %s in %s %s query"
-                                       drill-type
-                                       query-table
-                                       column-name
-                                       (name click-type)
-                                       (name query-type)
-                                       (name query-kind))
-                      "\nQuery =\n"   (u/pprint-to-str query)
-                      "\nContext =\n" (u/pprint-to-str context))
-          (let [drills (lib/available-drill-thrus query -1 context)]
-            (testing (str "\nAvailable Drills =\n" (u/pprint-to-str (into #{} (map :type) drills)))
-              (let [drill (m/find-first (fn [drill]
-                                          (= (:type drill) drill-type))
-                                        drills)]
-                (is (=? (or (and (= query-kind :native)
-                                 (:query expected)
-                                 drill-query-native
-                                 (assoc expected :query (clean-expected-query drill-query-native)))
-                            (m/update-existing expected :query clean-expected-query-on-drill query-kind))
-                        drill))
-                drill))))))))
+   (for [query-kind query-kinds]
+     (let [selected (query-and-row-for-test-case test-case)
+           query    (get selected query-kind)
+           context  (test-case-context selected query-kind test-case)]
+       (testing (str (lib.util/format "should return %s drill for %s.%s %s in %s %s query"
+                                      drill-type
+                                      query-table
+                                      column-name
+                                      (name click-type)
+                                      (name query-type)
+                                      (name query-kind))
+                     "\nQuery =\n"   (u/pprint-to-str query)
+                     "\nContext =\n" (u/pprint-to-str context))
+         (let [drills (lib/available-drill-thrus query -1 context)]
+           (testing (str "\nAvailable Drills =\n" (u/pprint-to-str (into #{} (map :type) drills)))
+             (let [drill (m/find-first (fn [drill]
+                                         (= (:type drill) drill-type))
+                                       drills)]
+               (is (=? (or (and (= query-kind :native)
+                                (:query expected)
+                                drill-query-native
+                                (assoc expected :query (clean-expected-query drill-query-native)))
+                           (m/update-existing expected :query clean-expected-query-on-drill query-kind))
+                       drill))
+               drill))))))))
 
 (mu/defn test-drill-not-returned
   "Test that a drill is NOT returned in a certain situation."

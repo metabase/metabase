@@ -660,16 +660,16 @@
 
 (deftest ^:parallel available-drill-thrus-test-3
   (lib.drill-thru.tu/test-available-drill-thrus
-    {:click-type  :cell
-     :query-type  :unaggregated
-     :column-name "SUBTOTAL"
-     :expected    [{:type      :drill-thru/zoom
-                    :object-id (get-in lib.drill-thru.tu/test-queries ["ORDERS" :unaggregated :row "ID"])
-                    :many-pks? false}
-                   {:type :drill-thru/quick-filter, :operators [{:name "<"}
-                                                                {:name ">"}
-                                                                {:name "="}
-                                                                {:name "≠"}]}]}))
+   {:click-type  :cell
+    :query-type  :unaggregated
+    :column-name "SUBTOTAL"
+    :expected    [{:type      :drill-thru/zoom
+                   :object-id (get-in lib.drill-thru.tu/test-queries ["ORDERS" :unaggregated :row "ID"])
+                   :many-pks? false}
+                  {:type :drill-thru/quick-filter, :operators [{:name "<"}
+                                                               {:name ">"}
+                                                               {:name "="}
+                                                               {:name "≠"}]}]}))
 
 (deftest ^:parallel available-drill-thrus-test-4
   (lib.drill-thru.tu/test-available-drill-thrus
