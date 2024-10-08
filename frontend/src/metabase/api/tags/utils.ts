@@ -37,6 +37,8 @@ import type {
   CardId,
   ModelIndex,
   CubeDataItem,
+  RegisterCubeRequest,
+  DeployCubeRequest,
 } from "metabase-types/api";
 import {
   ACTIVITY_MODELS,
@@ -581,4 +583,22 @@ export function provideCubesRequestTags(
     listTag("cubes_requests"), // Provide list tag
     idTag("cubes_requests", cubes_requests.id), // Provide item-specific tag
   ];
+}
+
+/**
+ * Provides tags for registering cube data (`/register`).
+ */
+export function provideRegisterCubeTags(
+  registerRequest: RegisterCubeRequest,
+): TagDescription<TagType>[] {
+  return [idTag("cube-registration", registerRequest.projectName)]; // Tag by projectName
+}
+
+/**
+ * Provides tags for deploying cube data (`/deploy`).
+ */
+export function provideDeployCubeTags(
+  deployRequest: DeployCubeRequest,
+): TagDescription<TagType>[] {
+  return [idTag("cube-deployment", deployRequest.projectName)]; // Tag by projectName
 }

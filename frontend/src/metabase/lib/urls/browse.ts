@@ -40,3 +40,6 @@ export function browseSemanticLayer(database: DatabaseV1 | Database) {
   const name = database.name
   return appendSlug(`/browse/semantic-layer/${database.id}`, slugg(name));
 }
+export function browseCubeConnection() {
+  return appendSlug(`/browse/cubes/connections`);
+}

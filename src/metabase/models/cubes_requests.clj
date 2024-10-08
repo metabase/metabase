@@ -1,6 +1,6 @@
 (ns metabase.models.cubes_requests
-  "This namespace defines the model for the CubesRequest entity. It includes functions to handle CRUD operations
-   and related business logic for managing cube requests within the application."
+  "This namespace defines the model for the CubesRequest, RegisterCube, and DeployCube entities. It includes functions to handle CRUD operations
+   and related business logic for managing cube requests, registrations, and deployments within the application."
   (:require
    [malli.core :as mc]
    [metabase.models.interface :as mi]
@@ -11,7 +11,7 @@
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
-   [metabase.api.common :as api]))  ;; Added this require
+   [metabase.api.common :as api]))
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
@@ -19,124 +19,93 @@
   "Defines the model name for cube requests using toucan2."
   :model/CubesRequest)
 
+(def RegisterCube
+  "Defines the model name for cube registration using toucan2."
+  :model/RegisterCube)
+
+(def DeployCube
+  "Defines the model name for cube deployment using toucan2."
+  :model/DeployCube)
+
 (methodical/defmethod t2/table-name :model/CubesRequest [_model] :cubes_requests)  ;; Updated table name
-(methodical/defmethod t2/model-for-automagic-hydration [:default :cubes_requests] [_original-model _k] :model/CubesRequest)  ;; Updated table name
+(methodical/defmethod t2/table-name :model/RegisterCube [_model] :cube_connections)  ;; Table for registration data
+(methodical/defmethod t2/table-name :model/DeployCube [_model] :cube_deployments)  ;; Table for deployment data
 
-(doto :model/CubesRequest
-  (derive :metabase/model)
-  (derive :hook/entity-id)
-  (derive ::mi/read-policy.full-perms-for-perms-set))
-
-(t2/deftransforms :model/CubesRequest
-  {:parameters mi/transform-json})
+(methodical/defmethod t2/model-for-automagic-hydration [:default :cubes_requests] [_original-model _k] :model/CubesRequest)
+(methodical/defmethod t2/model-for-automagic-hydration [:default :cube_connections] [_original-model _k] :model/RegisterCube)
+(methodical/defmethod t2/model-for-automagic-hydration [:default :cube_deployments] [_original-model _k] :model/DeployCube)
 
 ;;; ----------------------------------------------- CRUD Operations --------------------------------------------------
 
-(defn- assert-valid-cubes-request [{:keys [description user admin_user verified_status in_semantic_layer requested_fields name type category]}]
-  (when-not (mc/validate ms/NonBlankString description)
-    (throw (ex-info (tru "Description must be a non-blank string.") {:description description})))
-  (when-not (mc/validate ms/NonBlankString user)
-    (throw (ex-info (tru "User must be a non-blank string.") {:user user})))
-  (when-not (mc/validate [:maybe ms/NonBlankString] admin_user)
-    (throw (ex-info (tru "Admin User must be a non-blank string.") {:admin_user admin_user})))
-  (when-not (mc/validate :boolean verified_status)
-    (throw (ex-info (tru "Verified Status must be a boolean.") {:verified_status verified_status})))
-  (when-not (mc/validate :boolean in_semantic_layer)
-    (throw (ex-info (tru "In Semantic Layer must be a boolean.") {:in_semantic_layer in_semantic_layer})))
-  (when-not (mc/validate [:maybe ms/NonBlankString] name)
-    (throw (ex-info (tru "Name must be a non-blank string.") {:name name})))
-  (when-not (mc/validate [:maybe ms/NonBlankString] type)
-    (throw (ex-info (tru "Type must be a non-blank string.") {:type type})))
-  (when-not (mc/validate [:maybe ms/NonBlankString] category)
-    (throw (ex-info (tru "Category must be a non-blank string.") {:category category})))
-  ;; Validate requested_fields if present
-  (when-not (mc/validate [:maybe [:sequential ms/NonBlankString]] requested_fields)
-    (throw (ex-info (tru "Requested Fields must be an array of non-blank strings.") {:requested_fields requested_fields}))))
+(defn- assert-valid-register-cube [{:keys [projectName dockerfile dockerContextPath customGitUrl customGitBranch customGitBuildPath apiUrl token apiPort]}]
+  (when-not (mc/validate ms/NonBlankString projectName)
+    (throw (ex-info (tru "Project Name must be a non-blank string.") {:projectName projectName})))
+  (when-not (mc/validate ms/NonBlankString dockerfile)
+    (throw (ex-info (tru "Dockerfile must be a non-blank string.") {:dockerfile dockerfile})))
+  (when-not (mc/validate ms/NonBlankString customGitUrl)
+    (throw (ex-info (tru "Custom Git URL must be a non-blank string.") {:customGitUrl customGitUrl})))
+  (when-not (mc/validate ms/NonBlankString apiUrl)
+    (throw (ex-info (tru "API URL must be a non-blank string.") {:apiUrl apiUrl})))
+  (when-not (mc/validate ms/NonBlankString token)
+    (throw (ex-info (tru "Token must be a non-blank string.") {:token token})))
+  (when-not (mc/validate ms/PositiveInt apiPort)
+    (throw (ex-info (tru "API Port must be a positive integer.") {:apiPort apiPort}))))
 
-(t2/define-before-insert :model/CubesRequest
-  [cubes_request]
-  (u/prog1 cubes_request
-    (assert-valid-cubes-request cubes_request)))
+(defn- assert-valid-deploy-cube [{:keys [projectName]}]
+  (when-not (mc/validate ms/NonBlankString projectName)
+    (throw (ex-info (tru "Project Name must be a non-blank string.") {:projectName projectName}))))
 
-(t2/define-before-update :model/CubesRequest
-  [cubes_request]
-  (u/prog1 cubes_request
-    (assert-valid-cubes-request cubes_request)))
+(t2/define-before-insert :model/RegisterCube
+  [register_cube]
+  (u/prog1 register_cube
+    (assert-valid-register-cube register_cube)))
 
-(t2/define-before-delete :model/CubesRequest
-  [cubes_request]
-  ;; Add any logic needed before deleting a cube request
-  cubes_request)
-
-;;; ----------------------------------------------- Hydration Methods ------------------------------------------------
-
-(methodical/defmethod t2/batched-hydrate [:default :attributes]
-  [_model k cubes_request]
-  (mi/instances-with-hydrated-data cubes_request k))
-
-;;; --------------------------------------------- Serialization Methods ----------------------------------------------
-
-(defmethod serdes/extract-one "cubes_requests"  ;; Updated table name
-  [_model-name _opts cubes_request]
-  (serdes/extract-one-basics "cubes_requests" cubes_request))  ;; Ensure requested_fields is included
-
-(defmethod serdes/load-xform "cubes_requests" [cubes_request]  ;; Updated table name
-  (serdes/load-xform-basics cubes_request))
-
-(defmethod serdes/dependencies "cubes_requests" [_cubes_request]  ;; Updated table name
-  [])
+(t2/define-before-insert :model/DeployCube
+  [deploy_cube]
+  (u/prog1 deploy_cube
+    (assert-valid-deploy-cube deploy_cube)))
 
 ;;; ----------------------------------------------- Fetch Functions ---------------------------------------------------
 
-(mu/defn retrieve-cubes-requests :- [:sequential (ms/InstanceOf CubesRequest)]
-  "Fetch all Cube Requests."
+(mu/defn retrieve-cube-registrations :- [:sequential (ms/InstanceOf RegisterCube)]
+  "Fetch all Cube Registrations."
   []
-  (t2/select CubesRequest))
+  (t2/select RegisterCube))
 
-(mu/defn retrieve-cubes-request-detail :- [:maybe (ms/InstanceOf CubesRequest)]
-  "Fetch a single Cube Request by `id`."
-  [cubes_request-id]
-  (t2/select-one CubesRequest :id (u/the-id cubes_request-id)))
+(mu/defn retrieve-cube-deployments :- [:sequential (ms/InstanceOf DeployCube)]
+  "Fetch all Cube Deployments."
+  []
+  (t2/select DeployCube))
 
-(mu/defn create-cubes-request-detail :- (ms/InstanceOf CubesRequest)
-  "Create a new Cube Request."
-  [cubes_request_data :- [:map 
-                          [:description ms/NonBlankString]
-                          [:user ms/NonBlankString]
-                          [:admin_user [:maybe ms/NonBlankString]]
-                          [:verified_status :boolean]
-                          [:in_semantic_layer :boolean]
-                          [:requested_fields [:maybe [:sequential ms/NonBlankString]]]
-                          [:name [:maybe ms/NonBlankString]]
-                          [:type [:maybe ms/NonBlankString]]
-                          [:category [:maybe ms/NonBlankString]]]]  ;; New columns added
+(mu/defn create-cube-registration :- (ms/InstanceOf RegisterCube)
+  "Register a new Cube Connection."
+  [register_data :- [:map 
+                     [:projectName ms/NonBlankString]
+                     [:dockerfile ms/NonBlankString]
+                     [:dockerContextPath ms/NonBlankString]
+                     [:customGitUrl ms/NonBlankString]
+                     [:customGitBranch ms/NonBlankString]
+                     [:customGitBuildPath ms/NonBlankString]
+                     [:apiUrl ms/NonBlankString]
+                     [:token ms/NonBlankString]
+                     [:apiPort ms/PositiveInt]]]
   (t2/with-transaction [_conn]
-    (t2/insert-returning-instances! CubesRequest cubes_request_data)))
+    (t2/insert-returning-instances! RegisterCube register_data)))
 
-(mu/defn update-cubes-request-detail :- (ms/InstanceOf CubesRequest)
-  "Update an existing Cube Request."
-  [cubes_request-id :- ms/PositiveInt, cubes_request_data :- [:map 
-                                                             [:description [:maybe ms/NonBlankString]]
-                                                             [:user [:maybe ms/NonBlankString]]
-                                                             [:admin_user [:maybe ms/NonBlankString]]
-                                                             [:verified_status [:maybe :boolean]]
-                                                             [:in_semantic_layer [:maybe :boolean]]
-                                                             [:requested_fields [:maybe [:sequential ms/NonBlankString]]]
-                                                             [:name [:maybe ms/NonBlankString]]
-                                                             [:type [:maybe ms/NonBlankString]]
-                                                             [:category [:maybe ms/NonBlankString]]]]  ;; New columns
+(mu/defn create-cube-deployment :- (ms/InstanceOf DeployCube)
+  "Deploy a Cube by Project Name."
+  [deploy_data :- [:map [:projectName ms/NonBlankString]]]
   (t2/with-transaction [_conn]
-    (t2/update! CubesRequest cubes_request-id cubes_request_data)
-    (retrieve-cubes-request-detail cubes_request-id)))
-
-(mu/defn delete-cubes-request-detail :- (ms/InstanceOf CubesRequest)
-  "Delete a Cube Request by `id`."
-  [cubes_request-id]
-  (t2/delete! CubesRequest :id (u/the-id cubes_request-id)))
+    (t2/insert-returning-instances! DeployCube deploy_data)))
 
 ;;; --------------------------------------------- Permission Checking ------------------------------------------------
 
-(defmethod mi/can-write? :model/CubesRequest
+(defmethod mi/can-write? :model/RegisterCube
+  [_instance]
+  ;; Always return true to allow all users to write
+  true)
+
+(defmethod mi/can-write? :model/DeployCube
   [_instance]
   ;; Always return true to allow all users to write
   true)

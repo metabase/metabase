@@ -74,7 +74,6 @@ export const BrowseSemanticLayerTable = () => {
 
   return (
     <BrowseContainer>
-      <BrowseSemanticHeader />
       <BrowseMain>
         <BrowseSection>
           <div>
