@@ -2,22 +2,33 @@ import { t } from "ttag";
 
 import {
   SidesheetCard,
+  type SidesheetCardProps,
   SidesheetCardTitle,
 } from "metabase/common/components/Sidesheet";
 import { useDocsUrl, useHasTokenFeature } from "metabase/common/hooks";
 import { CopyButton } from "metabase/components/CopyButton";
 import Link from "metabase/core/components/Link";
-import { Flex, Group, Icon, Paper, Popover, Stack, Text } from "metabase/ui";
+import {
+  Flex,
+  Group,
+  Icon,
+  Paper,
+  Popover,
+  Stack,
+  type StackProps,
+  Text,
+  type TitleProps,
+} from "metabase/ui";
 
 import Styles from "./EntityIdCard.module.css";
 
-const EntityIdTitle = () => {
+const EntityIdTitle = (props?: TitleProps) => {
   const { url: docsLink, showMetabaseLinks } = useDocsUrl(
     "installation-and-operation/serialization",
   );
 
   return (
-    <SidesheetCardTitle mb={0}>
+    <SidesheetCardTitle mb={0} {...props}>
       <Group spacing="sm">
         {t`Entity ID`}
         <Popover position="top-start">
@@ -48,9 +59,12 @@ const EntityIdTitle = () => {
   );
 };
 
-export const EntityIdDisplay = ({ entityId }: { entityId: string }) => {
+export const EntityIdDisplay = ({
+  entityId,
+  ...props
+}: { entityId: string } & StackProps) => {
   return (
-    <Stack spacing="md">
+    <Stack spacing="md" {...props}>
       <EntityIdTitle />
       <Flex gap="sm">
         <Text lh="1rem">{entityId}</Text>
@@ -60,7 +74,10 @@ export const EntityIdDisplay = ({ entityId }: { entityId: string }) => {
   );
 };
 
-export function EntityIdCard({ entityId }: { entityId: string }) {
+export function EntityIdCard({
+  entityId,
+  ...props
+}: { entityId: string } & Omit<SidesheetCardProps, "children">) {
   const hasSerialization = useHasTokenFeature("serialization");
 
   // exposing this is useless without serialization, so, let's not.
@@ -69,7 +86,7 @@ export function EntityIdCard({ entityId }: { entityId: string }) {
   }
 
   return (
-    <SidesheetCard pb="1.25rem">
+    <SidesheetCard pb="1.25rem" {...props}>
       <EntityIdDisplay entityId={entityId} />
     </SidesheetCard>
   );

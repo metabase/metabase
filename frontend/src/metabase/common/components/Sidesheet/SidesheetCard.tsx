@@ -10,7 +10,7 @@ import {
   type TitleProps,
 } from "metabase/ui";
 
-type SidesheetCardProps = {
+export type SidesheetCardProps = {
   title?: React.ReactNode;
   children: React.ReactNode;
   stackProps?: StackProps;
