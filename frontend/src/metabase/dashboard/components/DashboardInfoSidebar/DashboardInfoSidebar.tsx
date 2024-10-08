@@ -23,7 +23,7 @@ import { Stack, Tabs, Text } from "metabase/ui";
 import type { Dashboard, Revision, User } from "metabase-types/api";
 
 import { DashboardDetails } from "./DashboardDetails";
-import { DashboardEntityIdCard } from "./components/DashboardEntityIdCard";
+import { DashboardEntityIdCard } from "./DashboardEntityIdCard";
 
 interface DashboardInfoSidebarProps {
   dashboard: Dashboard;
