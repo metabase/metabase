@@ -23,6 +23,14 @@ describe("EmbedHomepage (EE, no token)", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("should prompt to enable interactive embedding", () => {
+    setup();
+
+    expect(
+      screen.getByText("Enable interactive embedding in the settings"),
+    ).toBeInTheDocument();
+  });
+
   it("should prompt to activate the license if it wasn't found at the end of the setup", () => {
     setupEnterprise();
 

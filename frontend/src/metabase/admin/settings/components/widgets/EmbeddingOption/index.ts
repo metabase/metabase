@@ -1,4 +1,3 @@
-export {
-  InteractiveEmbeddingOptionCard,
-  StaticEmbeddingOptionCard,
-} from "./EmbeddingOption";
+export { StaticEmbeddingOptionCard } from "./StaticEmbeddingOptionCard";
+export { EmbeddingSdkOptionCard } from "./EmbeddingSdkOptionCard";
+export { InteractiveEmbeddingOptionCard } from "./InteractiveEmbeddingOptionCard";

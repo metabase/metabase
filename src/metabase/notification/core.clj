@@ -81,6 +81,6 @@
     (.submit ^ExecutorService @pool ^Callable task))
   nil)
 
-(def ^:dynamic send-notification!
+(def ^:dynamic *send-notification!*
   "The function to send a notification. Defaults to `send-notification-async!`."
   send-notification-async!)

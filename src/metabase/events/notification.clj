@@ -68,7 +68,7 @@
     (let [enriched-event-info (enriched-event-info topic event-info)]
       (log/infof "Found %d notifications for event: %s" (count notifications) topic)
       (doseq [notification notifications]
-        (notification/send-notification! (assoc notification :payload enriched-event-info))))))
+        (notification/*send-notification!* (assoc notification :payload enriched-event-info))))))
 
 (methodical/defmethod events/publish-event! ::notification
   [topic event-info]

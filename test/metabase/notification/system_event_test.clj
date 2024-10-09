@@ -9,7 +9,7 @@
 (deftest system-event-e2e-test
   (testing "a system event that sends to an email channel with a custom template to an user recipient"
     (mt/with-model-cleanup [:model/Notification]
-      (binding [notification/send-notification! #'notification/send-notification-sync!]
+      (binding [notification/*send-notification!* #'notification/send-notification-sync!]
         (mt/with-temp [:model/ChannelTemplate tmpl {:channel_type :channel/email
                                                     :details      {:type    :email/mustache
                                                                    :subject "Welcome {{event-info.object.first_name}} to {{settings.site-name}}"
@@ -47,7 +47,7 @@
 (deftest system-event-resouce-template-test
   (testing "a system event that sends to an email channel with a custom template to an user recipient"
     (mt/with-model-cleanup [:model/Notification]
-      (binding [notification/send-notification! #'notification/send-notification-sync!]
+      (binding [notification/*send-notification!* #'notification/send-notification-sync!]
         (mt/with-temp [:model/ChannelTemplate tmpl {:channel_type :channel/email
                                                     :details      {:type    :email/resource
                                                                    :subject "Welcome {{event-info.object.first_name}} to {{settings.site-name}}"

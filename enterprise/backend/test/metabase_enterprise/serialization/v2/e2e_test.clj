@@ -851,12 +851,12 @@
               (testing "doing ingestion"
                 (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
                     "successful")
-               (is (=? {:name    "My HTTP channel"
-                        :type    :channel/http
-                        :details {:url         "http://example.com"
-                                  :auth-method "none"}}
-                       (t2/select-one :model/Channel :name "My HTTP channel")))
-               (is (=? {:name         "My template"
-                        :channel_type :channel/http
-                        :details      {:my-custom-template true}}
-                       (t2/select-one :model/ChannelTemplate :name "My template")))))))))))
+                (is (=? {:name    "My HTTP channel"
+                         :type    :channel/http
+                         :details {:url         "http://example.com"
+                                   :auth-method "none"}}
+                        (t2/select-one :model/Channel :name "My HTTP channel")))
+                (is (=? {:name         "My template"
+                         :channel_type :channel/http
+                         :details      {:my-custom-template true}}
+                        (t2/select-one :model/ChannelTemplate :name "My template")))))))))))

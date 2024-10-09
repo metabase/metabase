@@ -27,11 +27,11 @@
                    (hooks/vector-node (into []
                                             (mapcat (fn [[setting-name v]]
                                                       (concat
-                                                        [(with-meta (hooks/token-node '_) (meta setting-name)) v]
+                                                       [(with-meta (hooks/token-node '_) (meta setting-name)) v]
                                                         ;; if the setting name is namespace-qualified add a `_`
                                                         ;; entry for it too.
-                                                        (when (namespaced-symbol-node? setting-name)
-                                                          [(with-meta (hooks/token-node '_) (meta setting-name)) setting-name]))))
+                                                       (when (namespaced-symbol-node? setting-name)
+                                                         [(with-meta (hooks/token-node '_) (meta setting-name)) setting-name]))))
                                             (partition 2 (:children bindings))))
                    bindings)]
     {:node (-> (list*
