@@ -80,6 +80,8 @@
   "Implementation of `with-no-data-perms-for-all-users`. Sets every data permission for all databases to the
   least permissive value for the All Users permission group for the duration of the test."
   [thunk]
+  ;; force creation of test-data if it is not already created
+  (data/db)
   (with-restored-data-perms-for-group! (u/the-id (perms-group/all-users))
     (doseq [[perm-type _] data-perms/Permissions
             db-id         (t2/select-pks-set :model/Database)]
