@@ -42,6 +42,18 @@ const timeseriesLineQuestionDetails: NativeQuestionDetails = {
   },
 };
 
+const timeseriesWithCategoryLineQuestionDetails: NativeQuestionDetails = {
+  display: "line",
+  native: {
+    query:
+      "SELECT PRICE, CATEGORY, CREATED_AT FROM PRODUCTS ORDER BY ID LIMIT 10",
+  },
+  visualization_settings: {
+    "graph.dimensions": ["CREATED_AT", "CATEGORY"],
+    "graph.metrics": ["PRICE"],
+  },
+};
+
 const numericLineQuestionDetails: NativeQuestionDetails = {
   display: "line",
   native: {
@@ -326,6 +338,13 @@ describe("scenarios > question > native query drill", () => {
         cy.findByText(/Breakout by/).should("not.exist");
         cy.findByText(/Automatic insights/).should("not.exist");
       });
+
+      cy.log("legend item click");
+      createNativeQuestion(timeseriesWithCategoryLineQuestionDetails, {
+        visitQuestion: true,
+      });
+      cy.findByTestId("visualization-root").findByText("Gadget").click();
+      cy.findByRole("tooltip").should("not.exist");
     });
   });
 
