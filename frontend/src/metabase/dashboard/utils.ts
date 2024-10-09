@@ -119,6 +119,12 @@ export function isLinkDashCard(
   return getVirtualCardType(dashcard) === "link";
 }
 
+export function isIFrameDashCard(
+  dashcard: BaseDashboardCard,
+): dashcard is VirtualDashboardCard {
+  return getVirtualCardType(dashcard) === "iframe";
+}
+
 export function isNativeDashCard(dashcard: QuestionDashboardCard) {
   // The `dataset_query` is null for questions on a dashboard the user doesn't have access to
   return dashcard.card.dataset_query?.type === "native";

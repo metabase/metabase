@@ -84,11 +84,12 @@
 (defn batch-fetch-card-metadata
   "Fetch dependent metadata for cards.
 
-  Models and metrics need their definitions walked as well as their own, card-level metadata."
+  Models and native queries need their definitions walked as well as their own, card-level metadata."
   [cards]
   (let [queries (into (vec (keep :dataset_query cards)) ; All the queries on all the cards
-                      ;; Plus the card-level metadata of each model.
-                      (comp (filter (comp #{:model} :type))
+                      ;; Plus the card-level metadata of each model and native query
+                      (comp (filter (fn [card] (or (= :model (:type card))
+                                                   (= :native (-> card :dataset_query :type)))))
                             (map (fn [card] {:query {:source-table (str "card__" (u/the-id card))}})))
                       cards)]
     (batch-fetch-query-metadata queries)))
