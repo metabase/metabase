@@ -8,6 +8,8 @@ import {
   createOrdersIdField,
   createOrdersProductIdField,
   createOrdersTable,
+  createOrdersUserIdField,
+  createPeopleTable,
   createProductsCategoryField,
   createProductsEanField,
   createProductsIdField,
@@ -55,6 +57,7 @@ const METADATA = createMockMetadata({
               base_type: "type/Text",
               effective_type: "type/Text",
             }),
+            createOrdersUserIdField(),
           ],
         }),
         createProductsTable({
@@ -63,10 +66,13 @@ const METADATA = createMockMetadata({
               base_type: "type/Text",
               effective_type: "type/Text",
             }),
-            createProductsCategoryField(),
+            createProductsCategoryField({
+              semantic_type: null,
+            }),
             createProductsEanField(),
           ],
         }),
+        createPeopleTable(),
       ],
     }),
   ],
@@ -269,13 +275,18 @@ describe("useStringFilter", () => {
       expectedOperator: "=",
     },
     {
-      title: "category column",
+      title: "category column with field values",
       column: findColumn("PRODUCTS", "CATEGORY"),
       expectedOperator: "=",
     },
     {
-      title: "regular column",
+      title: "non-category column with field values",
       column: findColumn("PRODUCTS", "EAN"),
+      expectedOperator: "=",
+    },
+    {
+      title: "regular column without field values",
+      column: findColumn("PEOPLE", "PASSWORD"),
       expectedOperator: "contains",
     },
   ])(
