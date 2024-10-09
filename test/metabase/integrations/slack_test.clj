@@ -4,7 +4,6 @@
    [clj-http.fake :as http-fake]
    [clojure.test :refer :all]
    [medley.core :as m]
-   [metabase.email.messages :as messages]
    [metabase.integrations.slack :as slack]
    [metabase.notification.test-util :as notification.tu]
    [metabase.test :as mt]
@@ -282,6 +281,7 @@
 (deftest slack-token-error-test
   (notification.tu/with-send-notification-sync
     (tu/with-temporary-setting-values [slack-app-token    "test-token"
+                                       admin-email         nil
                                        #_:clj-kondo/ignore slack-token-valid? true]
       (mt/with-fake-inbox
         (http-fake/with-fake-routes {#"^https://slack.com/api/chat\.postMessage.*"
