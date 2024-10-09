@@ -181,7 +181,7 @@ Metabase accounts created with an external identity provider login don't have pa
 
 ## Disabling password logins
 
-> **Avoid locking yourself out of your Metabase!** Turning off password logins applies to all Metabase accounts, _including your Metabase admin account_. We recommend that you keep password authentication **enabled**.
+> **Avoid locking yourself out of your Metabase!** Turning off password logins applies to all Metabase accounts, _including your Metabase admin account_. We recommend that you keep password authentication **enabled** until you have verified you can log in with your admin account using SSO.
 
 To _require_ people to log in with SSO, disable password authentication from **Admin settings** > **Authentication**. Turn off the **Enable Password Authentication** toggle.
 
