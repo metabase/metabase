@@ -9787,6 +9787,24 @@ databaseChangeLog:
   - changeSet:
       id: v52.2024-09-05T08:00:08
       author: qnkhuat
+      comment: index on notification_handler.template_id
+      rollback: # not necessary, will be removed with the table
+      preConditions:
+        - not:
+            - indexExists:
+                tableName: notification_handler
+                indexName: idx_notification_handler_template_id
+      changes:
+        - createIndex:
+            tableName: notification_handler
+            columns:
+              - column:
+                  name: template_id
+            indexName: idx_notification_handler_template_id
+
+  - changeSet:
+      id: v52.2024-09-05T08:00:09
+      author: qnkhuat
       comment: Create the notification_recipient table
       preConditions:
         - not:
@@ -9862,7 +9880,7 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: v52.2024-09-05T08:00:09
+      id: v52.2024-09-05T08:00:10
       author: qnkhuat
       comment: index on notification_recipient.notification_handler_id
       rollback: # not necessary, will be removed with the table
@@ -9880,7 +9898,7 @@ databaseChangeLog:
             indexName: idx_notification_recipient_notification_handler_id
 
   - changeSet:
-      id: v52.2024-09-05T08:00:10
+      id: v52.2024-09-05T08:00:11
       author: qnkhuat
       comment: index on notification_recipient.user_id
       rollback: # not necessary, will be removed with the table
@@ -9898,7 +9916,7 @@ databaseChangeLog:
             indexName: idx_notification_recipient_user_id
 
   - changeSet:
-      id: v52.2024-09-05T08:00:11
+      id: v52.2024-09-05T08:00:12
       author: qnkhuat
       comment: index on notification_recipient.permissions_group_id
       rollback: # not necessary, will be removed with the table
