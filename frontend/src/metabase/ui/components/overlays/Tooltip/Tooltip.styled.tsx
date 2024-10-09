@@ -1,9 +1,9 @@
-import type { MantineThemeOverride } from "@mantine/core";
+import { type MantineThemeOverride, Tooltip } from "@mantine/core";
 
 import TooltipStyles from "./Tooltip.module.css";
 
 export const tooltipOverrides: MantineThemeOverride["components"] = {
-  Tooltip: {
+  Tooltip: Tooltip.extend({
     defaultProps: {
       arrowSize: 10,
       withArrow: true,
@@ -21,5 +21,5 @@ export const tooltipOverrides: MantineThemeOverride["components"] = {
     classNames: {
       tooltip: TooltipStyles.tooltip,
     },
-  },
+  }),
 };

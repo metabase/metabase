@@ -20,7 +20,7 @@ import {
   //   getFileInputOverrides,
   hoverCardOverrides,
   //   getInputOverrides,
-  //   getListOverrides,
+  listOverrides,
   //   getMenuOverrides,
   modalOverrides,
   //   getMultiSelectOverrides,
@@ -151,7 +151,7 @@ export const getThemeOverrides = (): MantineThemeProviderProps["theme"] => ({
     // ...getTitleOverrides(),
     ...tooltipOverrides,
     ...hoverCardOverrides,
-    // ...getListOverrides(),
+    ...listOverrides,
   },
   other: DEFAULT_METABASE_COMPONENT_THEME,
 });
