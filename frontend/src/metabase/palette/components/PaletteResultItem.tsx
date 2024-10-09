@@ -1,11 +1,15 @@
-import { Link } from "react-router";
 import { t } from "ttag";
 
-import { color } from "metabase/lib/colors";
+import ExternalLink from "metabase/core/components/ExternalLink";
+import Link from "metabase/core/components/Link";
 import { Box, Flex, Icon, Text } from "metabase/ui";
 
 import type { PaletteActionImpl } from "../types";
-import { getCommandPaletteIcon } from "../utils";
+import {
+  getCommandPaletteIcon,
+  isAbsoluteURL,
+  locationDescriptorToURL,
+} from "../utils";
 
 interface PaletteResultItemProps {
   item: PaletteActionImpl;
@@ -27,13 +31,13 @@ export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
       gap="0.5rem"
       fw={700}
       style={{
-        cursor: item.disabled ? "default" : "cursor",
+        cursor: item.disabled ? "default" : "pointer",
         borderRadius: "0.5rem",
         flexGrow: 1,
         flexBasis: 0,
       }}
-      bg={active ? color("brand") : "none"}
-      c={active ? color("white") : color("text-dark")}
+      bg={active ? "var(--mb-color-brand)" : undefined}
+      c={active ? "var(--mb-color-text-white)" : "var(--mb-color-text-dark)"}
       aria-label={item.name}
       aria-disabled={item.disabled ? true : false}
     >
@@ -69,7 +73,9 @@ export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
           {item.extra?.isVerified && (
             <Icon
               name="verified_filled"
-              color={active ? color("white") : color("brand")}
+              color={
+                active ? "var(--mb-color-text-white)" : "var(--mb-color-brand)"
+              }
               style={{
                 verticalAlign: "sub",
                 marginLeft: "0.25rem",
@@ -80,7 +86,11 @@ export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
             <Text
               component="span"
               ml="0.25rem"
-              c={active ? color("brand-light") : color("text-light")}
+              c={
+                active
+                  ? "var(--mb-color-brand-light)"
+                  : "var(--mb-color-text-light)"
+              }
               fz="0.75rem"
               lh="1rem"
               fw="normal"
@@ -91,7 +101,9 @@ export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
         </Box>
         <Text
           component="span"
-          color={active ? "white" : "text-light"}
+          color={
+            active ? "var(--mb-color-text-white)" : "var(--mb-color-text-light)"
+          }
           fw="normal"
           style={{
             textOverflow: "ellipsis",
@@ -110,13 +122,32 @@ export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
       )}
     </Flex>
   );
-
   if (item.extra?.href) {
-    return (
-      <Box component={Link} to={item.extra.href} w="100%">
-        {content}
-      </Box>
-    );
+    const url = locationDescriptorToURL(item.extra.href);
+    if (isAbsoluteURL(url)) {
+      return (
+        <Box
+          component={
+            // This is needed to make external links work when Metabase is
+            // hosted on a subpath
+            ExternalLink
+          }
+          href={url}
+          target="_blank"
+          role="link"
+          w="100%"
+          lh={1}
+        >
+          {content}
+        </Box>
+      );
+    } else {
+      return (
+        <Box component={Link} to={item.extra.href} role="link" w="100%" lh={1}>
+          {content}
+        </Box>
+      );
+    }
   } else {
     return content;
   }

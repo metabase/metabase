@@ -738,6 +738,12 @@ BarStackedAllLabelsTimeseriesWithGap45717.args = {
   renderingContext,
 };
 
+export const OffsetBasedTimezone47835 = Template.bind({});
+OffsetBasedTimezone47835.args = {
+  rawSeries: data.offsetBasedTimezone47835 as any,
+  renderingContext,
+};
+
 export const Default = Template.bind({});
 Default.args = {
   rawSeries: data.messedUpAxis as any,

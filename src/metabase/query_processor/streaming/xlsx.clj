@@ -1,6 +1,7 @@
 (ns metabase.query-processor.streaming.xlsx
   (:require
    [cheshire.core :as json]
+   [clojure.java.io :as io]
    [clojure.string :as str]
    [dk.ative.docjure.spreadsheet :as spreadsheet]
    [java-time.api :as t]
@@ -627,6 +628,11 @@
 
 (defmethod qp.si/streaming-results-writer :xlsx
   [_ ^OutputStream os]
+  ;; working around a bug #41919. Will be fixed when we can get a release of apache poi 5.3.1. See
+  ;; https://bz.apache.org/bugzilla/show_bug.cgi?id=69323
+  (let [f (io/file (str (System/getProperty "java.io.tmpdir") "/poifiles"))]
+    (when-not (.exists f)
+      (.mkdirs f)))
   (let [workbook-data      (volatile! nil)
         cell-styles        (volatile! nil)
         typed-cell-styles  (volatile! nil)
@@ -637,7 +643,7 @@
         (let [opts               (when (and (public-settings/temp-native-pivot-exports) pivot-export-options)
                                    (pivot-opts->pivot-spec (merge {:pivot-cols []
                                                                    :pivot-rows []}
-                                                    pivot-export-options) ordered-cols))
+                                                                  pivot-export-options) ordered-cols))
               col-names          (common/column-titles ordered-cols (::mb.viz/column-settings viz-settings) format-rows?)
               pivot-grouping-key (qp.pivot.postprocess/pivot-grouping-key col-names)]
           (when pivot-grouping-key (vreset! pivot-grouping-idx pivot-grouping-key))
@@ -680,10 +686,10 @@
       (finish! [_ {:keys [row_count]}]
         (let [{:keys [workbook sheet]} @workbook-data]
           (when (or (nil? row_count) (< row_count *auto-sizing-threshold*))
-                ;; Auto-size columns if we never hit the row threshold, or a final row count was not provided
-                (autosize-columns! sheet))
-              (try
-                (spreadsheet/save-workbook-into-stream! os workbook)
-                (finally
-                  (.dispose ^SXSSFWorkbook workbook)
-                  (.close os))))))))
+            ;; Auto-size columns if we never hit the row threshold, or a final row count was not provided
+            (autosize-columns! sheet))
+          (try
+            (spreadsheet/save-workbook-into-stream! os workbook)
+            (finally
+              (.dispose ^SXSSFWorkbook workbook)
+              (.close os))))))))
