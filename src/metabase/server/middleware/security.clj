@@ -88,6 +88,8 @@
                   :child-src    ["'self'"
                                  "https://accounts.google.com"]
                   :style-src    ["'self'"
+                                  "*"
+                                  "https://assistants-dev-*"
                                  ;; See [[generate-nonce]]
                                  (when nonce
                                    (format "'nonce-%s'" nonce))
@@ -107,8 +109,12 @@
                   :img-src      ["*"
                                  "'self' data:"]
                   :connect-src  ["'self'"
+                                  "*"
                                  ;; Google Identity Services
+                                 "https://assistants-dev-7ca2258c0a7e5ea393441b5aca30fb7c.default.us.langgraph.app"
+
                                  "https://accounts.google.com"
+                                 "https://assistants-dev-*"
                                  ;; MailChimp. So people can sign up for the Metabase mailing list in the sign up process
                                  "metabase.us10.list-manage.com"
                                  ;; Semantic Layer

@@ -3,7 +3,6 @@ import { useDispatch } from "metabase/lib/redux";
 import { Box, Button, Icon } from "metabase/ui";
 import Input from "metabase/core/components/Input";
 import TextArea from "metabase/core/components/TextArea";
-import useWebSocket from "metabase/hooks/useWebSocket";
 import ChatMessageList from "metabase/components/ChatMessageList/ChatMessageList";
 import FeedbackDialog from "metabase/components/FeedbackDialog/FeedbackDialog";
 import CubeRequestDialog from "metabase/components/CubeRequest/CubeRequestDialog";
@@ -16,7 +15,6 @@ import { generateRandomId } from "metabase/lib/utils";
 import {
     adhocQuestionHash
 } from "e2e/support/helpers/e2e-ad-hoc-question-helpers";
-import { clearInitialMessage } from "metabase/redux/initialMessage";
 import { useSelector } from "metabase/lib/redux";
 import { getDBInputValue, getCompanyName, getInsightDBInputValue } from "metabase/redux/initialDb";
 import { getInitialSchema } from "metabase/redux/initialSchema";
@@ -24,6 +22,7 @@ import { useListDatabasesQuery, useGetDatabaseMetadataWithoutParamsQuery, skipTo
 import { SemanticError } from "metabase/components/ErrorPages";
 import { SpinnerIcon } from "metabase/components/LoadingSpinner/LoadingSpinner.styled";
 import { t } from "ttag";
+import { Client } from "@langchain/langgraph-sdk"; 
 
 const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId, chatType, oldCardId, insights, initial_message, setMessages, setInputValue, setThreadId, threadId, inputValue, messages, isChatHistoryOpen, setIsChatHistoryOpen, setShowButton }) => {
     const initialDbName = useSelector(getDBInputValue);
@@ -31,10 +30,13 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
     const initialSchema = useSelector(getInitialSchema);
     const inputRef = useRef(null);
     const dispatch = useDispatch();
-    const assistant_url = process.env.REACT_APP_WEBSOCKET_SERVER;
+    const [client, setClient] = useState(null);  // For managing the Client
+    const [agent, setAgent] = useState(null);    // For managing the Assistant Agent
+    const [thread, setThread] = useState(null);  // To store the created thread
+    const langchain_url = process.env.REACT_APP_LANGCHAING_URL;
+    const langchain_key = process.env.REACT_APP_LANGCHAIN_KEY;
     const [companyName, setCompanyName] = useState("");
     const [card, setCard] = useState(null);
-    const [reasoning, setReasoning] = useState([]);
     const [sources, setSources] = useState([]);
     const [selectedIndex, setSelectedIndex] = useState(null)
     const [result, setResult] = useState([]);
@@ -47,42 +49,23 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
     const [selectedTab, setSelectedTab] = useState("reasoning");
     const [isFeedbackDialogOpen, setIsFeedbackDialogOpen] = useState(false);
     const [isCubeRequestDialogOpen, setIsCbubeRequestDialogOpen] = useState(false);
-    const [insightsList, setInsightsList] = useState([]);
     const [cardHash, setCardHash] = useState([]);
     const [id, setId] = useState(0);
-    const [useTextArea, setUseTextArea] = useState(false);
     const [showError, setShowError] = useState(false);
     const [error, setError] = useState(null);
-    const [toolWaitingResponse, setToolWaitingResponse] = useState(null);
     const [approvalChangeButtons, setApprovalChangeButtons] = useState(false);
     const [visualizationIndex, setVisualizationIndex] = useState(-1);
     const [inisghtPlan, setInisghtPlan] = useState([]);
-    const [insightsText, setInsightsText] = useState([]);
-    const [insightsImg, setInsightsImg] = useState([]);
-    const [insightsCode, setInsightsCode] = useState([]);
-    const [insightsCsv, setInsightsCsv] = useState([]);
-    const [insightFile, setInsightFile] = useState([]);
-    const [insightTables, setInsightTables] = useState([]);
-    const [insightReasoning, setInsightReasoning] = useState([]);
-    const [insightCellCode, setInsightCellCode] = useState([]);
-    const [insightTitle, setInsightTitle] = useState([]);
-    const [insightSummary, setInsightSummary] = useState([]);
-    const [insightSections, setInsightSections] = useState([]);
-    const [insightRecommendations, setInsightRecommendations] = useState([]);
-    const [codeIndex, setCodeIndex] = useState(-1);
-    const [insightTextIndex, setInsightTextIndex] = useState(-1);
     const [runId, setRunId] = useState('');
     const [codeInterpreterThreadId, setCodeInterpreterThreadId] = useState('');
     const [schema, setSchema] = useState([]);
-    const [insightStatus, setInsightStatus] = useState([]);
     const [chatLoading, setChatLoading] = useState(false);
     const { data, isLoading: dbLoading, error: dbError } = useListDatabasesQuery();
     const [selectedHash, setSelectedHash] = useState(null)
     const [showCubeEditButton, setShowCubeEditButton] = useState(false)
     const [requestedFields, setRequestedFields] = useState([]);
-    const [suggestionQuestion, setSuggestionQuestion] = useState(null);
     const [pendingInfoMessage, setPendingInfoMessage] = useState(null);
-
+    
     const databases = data?.data;
     useEffect(() => {
         if (databases) {
@@ -120,6 +103,30 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
             setSchema(schema)
         }
     }, [databaseMetadataData]);
+
+  // Initialize Client and Thread only once when component mounts
+  useEffect(() => {
+    const initializeClientAndThread = async () => {
+      try {
+        const clientInstance = new Client({ apiUrl: langchain_url, apiKey: langchain_key });
+        setClient(clientInstance);
+
+        // Search for assistants
+        const assistants = await clientInstance.assistants.search({ metadata: null, limit: 10, offset: 0 });
+        const selectedAgent = assistants[0];
+        setAgent(selectedAgent);
+
+        // Create a new thread
+        const createdThread = await clientInstance.threads.create();
+        setThread(createdThread);
+      } catch (error) {
+        console.error("Error initializing Client or creating thread:", error.message);
+      }
+    };
+
+    initializeClientAndThread();
+  }, []);
+      
 
     useEffect(() => {
         setMessages([])
@@ -173,12 +180,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
             setCard(null);
             setCardHash([]);
             setResult([])
-            if (chatType == "insights" && insights.length > 0) {
-                setInsightsList([])
-                handleGetInsightsWithCards(insights)
-            } else {
-                handleGetDatasetQueryWithCards(oldCardId)
-            }
+            handleGetDatasetQueryWithCards(oldCardId)
             setMessages(parsedMessages);
         }
     }, [selectedMessages]);
@@ -198,38 +200,6 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
         }
     };
 
-    const { ws, isConnected } = useWebSocket(
-        assistant_url,
-        async e => {
-            if (e.data) {
-                const data = JSON.parse(e.data);
-                switch (data.type) {
-                    case "tool":
-                        await handleFunctionalityMessages(data.functions);
-                        break;
-                    case "result":
-                        await handleResultMessage(data);
-                        break;
-                    case "info":
-                        await handleInfoMessage(data);
-                        break;
-                    case "directResponse":
-                        await handleDirectResponse(data);
-                        break;
-                    case "plan":
-                        await handlePlanMessage(data);
-                        break;
-                    default:
-                        handleDefaultMessage(data);
-                        break;
-                }
-            }
-        },
-        () => console.error("WebSocket error"),
-        () => console.log("WebSocket closed"),
-        () => console.log("WebSocket opened"),
-    );
-
     const openModal = (cardData, cardIndex) => {
         setSelectedHash(cardData.hash)
         setSelectedIndex(cardIndex)
@@ -242,127 +212,82 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
     };
 
 
-    const handleFunctionalityMessages = async functions => {
-        functions.forEach(async func => {
-            const functionName = func.function_name || func.name;
-            switch (functionName) {
-                case "getDatasetQuery":
-                    await handleGetDatasetQuery(func);
-                    break;
-                case "getInsights":
-                    await handleGetInsights(func);
-                    break;
-                case "calculationOptions":
-                    await handleGetCalulationOptions(func);
-                    break;
-                case "approveSemantycLayerChanges":
-                    await handleApproveSLChanges(func);
-                    break;
-                case "processInfo":
-                    await handleProcessInfo(func);
-                    break;
-                case "planReview":
-                    await handlePlanReview(func);
-                    break;
-                case "getImage":
-                    await handleGetImage(func);
-                    break;
-                case "getText":
-                    await handleGetText(func);
-                    break;
-                case "getCode":
-                    await handleGetCode(func);
-                    break;
-                case "getCsv":
-                    await handleGetCsv(func);
-                    break;
-                case "messageRequest":
-                    await handleMessageRequest(func);
-                    break;
-                case "identifyRelevantTables":
-                    await handleInsightTables(func);
-                    break;
-                case "identifyingTablesDone":
-                    await handleInsightTablesDone(func);
-                    break;
-                case "generateCode":
-                    await handleInsightCode(func);
-                    break;
-                case "generatePlan":
-                    await handleInsightPlan(func);
-                    break;
-                case "generateImages":
-                    await handleGenerateImages(func);
-                    break;
-                case "generateReport":
-                    await handleGenerateReport(func);
-                    break;
-                case "generateText":
-                    await handleGenerateText(func);
-                    break;
-                default:
-                    console.log(func);
-                    break;
-            }
-        });
-    };
-
-    const handleGetDatasetQuery = async func => {
-        const { cardId, reasoning, sources } = func.arguments;
-        setSources(prevSources => [...prevSources, sources]);
-        setReasoning(prevReasoning => [...prevReasoning, reasoning]);
-
-        setId(func.arguments.cardId);
+    const handleGetDatasetQuery = async (cardId) => {
         try {
-            const fetchedCard = await CardApi.get({ cardId: cardId });
-            const queryCard = await CardApi.query({ cardId: cardId });
+            // Fetch the card details using the provided cardId
+            const fetchedCard = await CardApi.get({ cardId });
+            const queryCard = await CardApi.query({ cardId });
             const getDatasetQuery = fetchedCard?.dataset_query;
+            if (!getDatasetQuery) {
+                throw new Error("No dataset query found for this card.");
+            }
+    
+            // Create a new question object based on the fetched card's dataset query
             const defaultQuestionTest = Question.create({
-                databaseId: 1,
+                databaseId: getDatasetQuery.database,
                 name: fetchedCard.name,
                 type: "query",
                 display: fetchedCard.display,
                 visualization_settings: {},
                 dataset_query: getDatasetQuery,
             });
-            const itemtohash = {
+    
+            // Create an item hash for tracking this question
+            const itemToHash = {
                 dataset_query: {
                     database: getDatasetQuery.database,
                     type: "query",
-                    query: getDatasetQuery.query
+                    query: getDatasetQuery.query,
                 },
                 display: fetchedCard.display,
                 visualization_settings: {},
-                type: "question"
-            }
+                type: "question",
+            };
+    
+            // Set up the question and add it to the state
             const newQuestion = defaultQuestionTest.setCard(fetchedCard);
-            const hash1 = adhocQuestionHash(itemtohash);
-            setResult(prevResult => Array.isArray(prevResult) ? [...prevResult, queryCard] : [queryCard]);
-            setCodeQuery(prevCodeQuery => {
-                const query = queryCard?.data?.native_form?.query ?? "Sorry for some reason the query was not retrieved properly";
-                if (query) {
-                    return Array.isArray(prevCodeQuery) ? [...prevCodeQuery, query] : [query];
-                }
-                return prevCodeQuery;
+            const hash1 = adhocQuestionHash(itemToHash);
+            setResult((prevResult) =>
+                Array.isArray(prevResult) ? [...prevResult, queryCard] : [queryCard]
+            );
+    
+            setCodeQuery((prevCodeQuery) => {
+                const query =
+                    queryCard?.data?.native_form?.query ??
+                    "Sorry, for some reason the query was not retrieved properly.";
+                return Array.isArray(prevCodeQuery)
+                    ? [...prevCodeQuery, query]
+                    : [query];
             });
-            setDefaultQuestion(prevDefaultQuestion => Array.isArray(prevDefaultQuestion) ? [...prevDefaultQuestion, newQuestion] : [newQuestion]);
-            setCard(prevCard => {
+    
+            setDefaultQuestion((prevDefaultQuestion) =>
+                Array.isArray(prevDefaultQuestion)
+                    ? [...prevDefaultQuestion, newQuestion]
+                    : [newQuestion]
+            );
+    
+            setCard((prevCard) => {
                 const updatedCard = {
                     ...fetchedCard, // Copy all properties from the fetched card
-                    hash: hash1 // Add the hash property
+                    hash: hash1, // Add the hash property
                 };
                 return Array.isArray(prevCard) ? [...prevCard, updatedCard] : [updatedCard];
             });
-            setCardHash(prevCardHash => Array.isArray(prevCardHash) ? [...prevCardHash, hash1] : [hash1]);
+    
+            setCardHash((prevCardHash) =>
+                Array.isArray(prevCardHash) ? [...prevCardHash, hash1] : [hash1]
+            );
+    
         } catch (error) {
             console.error("Error fetching card content:", error);
-            setShowError(true)
+            setShowError(true);
             setError("There was an error fetching the dataset. Please provide feedback if this issue persists.");
         } finally {
             setIsLoading(false);
             removeLoadingMessage();
         }
     };
+    
 
     const handleGetDatasetQueryWithCards = async (cardIds) => {
         setIsLoading(true);
@@ -418,411 +343,6 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
         }
     };
 
-
-    const handleGetInsights = async func => {
-        const { insights } = func.arguments;
-        try {
-            const newInsightsList = [];
-            const processedInsights = [];
-            if (!insights || insights.length < 1) {
-                console.warn('No insights provided.');
-                setShowError(true);
-                return;
-            }
-
-            for (const insight of insights) {
-                try {
-                    const fetchedCard = await CardApi.get({ cardId: insight.cardId });
-                    const queryCard = await CardApi.query({ cardId: insight.cardId });
-                    if (!fetchedCard || !queryCard) {
-                        console.warn(`Skipping card with ID ${insight.cardId} due to missing data.`);
-                        continue;
-                    }
-                    const getDatasetQuery = fetchedCard?.dataset_query;
-                    const defaultQuestionTest = Question.create({
-                        databaseId: 1,
-                        name: fetchedCard.name,
-                        type: "query",
-                        display: fetchedCard.display,
-                        visualization_settings: {},
-                        dataset_query: getDatasetQuery,
-                    });
-                    const newQuestion = defaultQuestionTest.setCard(fetchedCard);
-
-                    processedInsights.push({
-                        insightExplanation: insight.insightExplanation,
-                        card: fetchedCard,
-                        queryCard: queryCard,
-                        defaultQuestion: newQuestion,
-                    });
-                } catch (error) {
-                    console.warn(`Error fetching data for card ID ${insight.cardId}:`, error);
-                    continue;
-                }
-            }
-            if (processedInsights.length > 0) {
-                newInsightsList.push(processedInsights);
-                setInsightsList(prevInsights => [...prevInsights, ...newInsightsList]);
-            } else {
-                setShowError(true)
-            }
-
-        } catch (error) {
-            console.error("Error fetching card content:", error);
-            setError("There was an error fetching the insights. Please provide feedback if this issue persists.");
-        } finally {
-            setIsLoading(false);
-            removeLoadingMessage();
-        }
-    };
-
-    const handleGetInsightsWithCards = async (insightsArray) => {
-        try {
-            const newInsightsList = [];
-
-            for (const insights of insightsArray) {
-                const processedInsights = [];
-                for (const insight of insights) {
-                    const fetchedCard = await CardApi.get({ cardId: insight.cardId });
-                    const queryCard = await CardApi.query({ cardId: insight.cardId });
-                    const getDatasetQuery = fetchedCard?.dataset_query;
-                    const defaultQuestionTest = Question.create({
-                        databaseId: 1,
-                        name: fetchedCard.name,
-                        type: "query",
-                        display: fetchedCard.display,
-                        visualization_settings: {},
-                        dataset_query: getDatasetQuery,
-                    });
-                    const newQuestion = defaultQuestionTest.setCard(fetchedCard);
-                    processedInsights.push({
-                        insightExplanation: insight.insightExplanation,
-                        card: fetchedCard,
-                        queryCard: queryCard,
-                        defaultQuestion: newQuestion,
-                    });
-                }
-                newInsightsList.push(processedInsights);
-            }
-
-            setInsightsList(prevInsights => [...prevInsights, ...newInsightsList]);
-
-        } catch (error) {
-            console.error("Error fetching card content:", error);
-            setShowError(true);
-            setError("There was an error fetching the insights. Please provide feedback if this issue persists.");
-        } finally {
-            setIsLoading(false);
-            removeLoadingMessage();
-        }
-    };
-
-    const handleGetCalulationOptions = async func => {
-        const { calculationOptions } = func.arguments;
-        //Show calculationOptions and send a response from the user
-        addServerMessage(
-            calculationOptions || "Received a message from the server.",
-            "text",
-        );
-        setToolWaitingResponse("calculationOptions");
-    };
-
-    const handleApproveSLChanges = async func => {
-        const { newFields } = func.arguments;
-        //Show newFields and send a response with 'true' or 'false' as string
-        addServerMessage(
-            newFields || "Received a message from the server.",
-            "text",
-        );
-        setToolWaitingResponse("approveSemantycLayerChanges");
-        setApprovalChangeButtons(true);
-    };
-
-    const handleProcessInfo = async func => {
-        const { infoMessage } = func.arguments;
-        //Only print infoMessage
-        addServerMessage(
-            infoMessage || "Received a message from the server.",
-            "text",
-        );
-        setIsLoading(false);
-        removeLoadingMessage();
-    };
-    
-    const removeExistingMessage = (messageContent) => {
-        setMessages(prevMessages =>
-            prevMessages.filter(message => message.text !== messageContent)
-        );
-    };
-
-    const handlePlanReview = async func => {
-        const { planReview, plan } = func.arguments;
-        addServerMessageWithType(
-            planReview || "Received a message from the server.",
-            "text",
-            "planReview"
-        );
-        setIsLoading(false);
-        setToolWaitingResponse("planReview");
-        setInisghtPlan(prevPlan => [...prevPlan, ...plan]);
-        removeLoadingMessage();
-        clearInfoMessage();
-        addServerMessage(
-            "Here is your plan please provide an answer to continue the task",
-            "text",
-        )
-    };
-
-    const handleGetImage = async func => {
-        const { generatedImages, status, runId, codeInterpreterThreadId } = func.arguments;
-        try {
-            if (generatedImages && generatedImages.type === "Buffer" && Array.isArray(generatedImages.data)) {
-                // Recreate the buffer using the data array (which is an array of numbers)
-                const buffer = Buffer.from(generatedImages.data);
-                // Convert the buffer to a Base64 string
-                const base64Image = `data:image/png;base64,${buffer.toString('base64')}`;
-
-                setInsightsImg(prevInsightsImg => [...prevInsightsImg, base64Image]);
-            } else {
-                throw new Error('Invalid image buffer format');
-            }
-            setVisualizationIndex(prevIndex => {
-                const currentIndex = prevIndex + 1;
-                addServerMessageWithType(
-                    `Here is your visualization`,
-                    "text",
-                    "insightImg",
-                    currentIndex
-                );
-                return currentIndex;
-            });
-            setRunId(runId)
-            setCodeInterpreterThreadId(codeInterpreterThreadId)
-            if (status === "completed") {
-                setChatLoading(false);
-                setToolWaitingResponse("continue")
-            }
-        } catch (error) {
-            console.error("Error getting image", error);
-        }
-    }
-
-    const handleGetText = async func => {
-        const { generatedTexts, status, runId } = func.arguments;
-        try {
-            setInsightTextIndex(prevIndex => {
-                const currentIndex = prevIndex + 1;
-                addServerMessageWithType(
-                    status === "completed" ? "Here is your final result:" : "Current Step:",
-                    "text",
-                    "insightText",
-                    currentIndex
-                );
-                return currentIndex;
-            });
-            setInsightsText(prevInsightsText => [...prevInsightsText, generatedTexts.value]);
-            setIsLoading(false);
-            removeLoadingMessage();
-            clearInfoMessage();
-            if (status === "completed") {
-                setChatLoading(false);
-                setToolWaitingResponse("continue")
-            }
-        } catch (error) {
-            console.error("Error getting text", error);
-        }
-    }
-
-    const handleGetCode = async func => {
-        const { generatedCodes, status, runId, codeInterpreterThreadId } = func.arguments;
-        try {
-            setInsightsCode(prevCode => [...prevCode, generatedCodes]);
-            setRunId(runId)
-            setCodeInterpreterThreadId(codeInterpreterThreadId)
-            if (status === "completed") {
-                setChatLoading(false);
-                setToolWaitingResponse("continue")
-            }
-        } catch (error) {
-            console.error("Error getting code", error);
-        }
-    }
-
-    const handleGetCsv = async func => {
-        const { generatedCsv, generatedFiles } = func.arguments;
-        try {
-            setInsightsCsv(prevCsv => [...prevCsv, ...generatedFiles]);
-            setInsightFile(prevFile => [...prevFile, generatedCsv]);
-        } catch (error) {
-            console.error("Error getting csv", error);
-        }
-    }
-
-    const handleMessageRequest = async func => {
-        setToolWaitingResponse("messageRequest");
-        try {
-            addServerMessage(
-                func.text || "Received a message from the server.",
-                "text",
-            );
-        } catch (error) {
-            console.error("Error getting csv", error);
-        }
-    }
-
-    const handleInsightTables = async func => {
-        const { relevantTables, reasoning } = func.args;
-        try {
-            removeLoadingMessage();
-            setToolWaitingResponse("identifyRelevantTables");
-            setInsightTables(relevantTables);
-            setInsightReasoning(reasoning);
-            addServerMessageWithType(
-                `Here ${relevantTables.length > 1 ? "are" : "is"} the relevant table${relevantTables.length > 1 ? "s" : ""} for your insights`,
-                "text",
-                "tableReview"
-            );
-            addServerMessage(
-                `Now we are going to create a plan for your insights. Please wait until we generate the plan...`,
-                "text"
-            );
-        } catch (error) {
-            console.error("Error getting tables", error);
-        }
-    }
-
-    const handleInsightTablesDone = async func => {
-        try {
-            setToolWaitingResponse("identifyingTablesDone")
-        } catch (error) {
-            console.error("Error getting tables", error);
-        }
-    }
-
-    const handleInsightCode = async func => {
-        const { pythonCode, explanation } = func.args;
-        try {
-            removeLoadingMessage();
-            // setToolWaitingResponse("generateCode");
-            setInsightTextIndex(prevIndex => {
-                const currentIndex = prevIndex + 1;
-                addServerMessageWithType(
-                    explanation,
-                    "text",
-                    "insightCellCode",
-                    currentIndex
-                );
-                return currentIndex;
-            });
-            setInsightCellCode(prevCode => [...prevCode, pythonCode]);
-        } catch (error) {
-            console.error("Error getting code", error);
-        }
-    }
-
-    const handleInsightPlan = async func => {
-        const { plan } = func.args;
-    
-        // Check and remove the two messages if they exist
-        removeExistingMessage("Here is a plan how we want to get insights for your task. Have a look at it. We will keep you updated on each step of the plan.");
-        removeExistingMessage("Here is your plan please provide an answer to continue the task");
-        removeExistingMessage("Now we are going to create a plan for your insights. Please wait until we generate the plan...")
-        addServerMessageWithType(
-            "Here is a plan how we want to get insights for your task. Have a look at it. We will keep you updated on each step of the plan." || "Received a message from the server.",
-            "text",
-            "planReview"
-        );
-        setIsLoading(false);
-        setToolWaitingResponse("generatePlan");
-        setInisghtPlan(plan);
-        removeLoadingMessage();
-        clearInfoMessage();
-        addServerMessage(
-            "Here is your plan please provide an answer to continue the task",
-            "text",
-        )
-    }
-
-    const handleGenerateImages = async func => {
-        const { generatedImages } = func.arguments;
-        try {
-            if (generatedImages && typeof generatedImages === "string") {
-                // If you are already getting a Base64 string, you can use it directly
-                const base64Image = `data:image/png;base64,${generatedImages}`;
-        
-                setInsightsImg(prevInsightsImg => [...prevInsightsImg, base64Image]);
-            } else {
-                throw new Error('Invalid image buffer format');
-            }
-            setVisualizationIndex(prevIndex => {
-                const currentIndex = prevIndex + 1;
-                addServerMessageWithType(
-                    `Here is your visualization`,
-                    "text",
-                    "insightImg",
-                    currentIndex
-                );
-                return currentIndex;
-            });
-            setIsLoading(false);
-        } catch (error) {
-            console.error("Error getting image", error);
-        }
-    }
-
-    const handleGenerateReport = async func => {
-        try {
-            const { title, summary, sections, recommendations } = func.args;
-            setInsightTitle(title);
-            setInsightSummary(summary);
-            setInsightSections(sections);
-            setInsightRecommendations(recommendations);
-            setVisualizationIndex(prevIndex => {
-                const currentIndex = prevIndex + 1;
-                addServerMessageWithType(
-                    `Here is your final report`,
-                    "text",
-                    "insightReport",
-                    currentIndex
-                );
-                return currentIndex;
-            });
-        } catch (error) {
-            console.error("Error generating report", error);
-        }
-    }
-
-    const handleGenerateText = async func => {
-        const { generatedTexts } = func.arguments;
-        try {
-            setInsightTextIndex(prevIndex => {
-                const currentIndex = prevIndex + 1;
-                addServerMessageWithType(
-                    "Current Step:",
-                    "text",
-                    "insightText",
-                    currentIndex
-                );
-                return currentIndex;
-            });
-            setInsightsText(prevInsightsText => [...prevInsightsText, generatedTexts]);
-            setIsLoading(false);
-            removeLoadingMessage();
-            clearInfoMessage();
-        } catch (error) {
-            console.error("Error getting text", error);
-        }
-    }
-
-    const handleDefaultMessage = data => {
-        if (data.message) {
-            addServerMessage(
-                data.message || "Received a message from the server.",
-                "text",
-            );
-        }
-    };
-
     useEffect(() => {
         if (pendingInfoMessage && visualizationIndex >= 0) {
             setMessages(prevMessages => {
@@ -844,149 +364,6 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
         }
     }, [pendingInfoMessage, visualizationIndex, setMessages]);
 
-    const handleResultMessage = data => {
-        if (data.message.includes("the semantic layer needs to be updated with the following field") || data.message.includes("The semantic layer requires an update to proceed with the task.")) {
-            setIsLoading(false);
-            setShowCubeEditButton(true);
-            return;
-        }
-        if (data.type === "result" && !data.message.includes("Unable to generate a suitable query after 3 attempts. Here is the feedback message:")) {
-            setVisualizationIndex((prevIndex) => {
-                const currentIndex = prevIndex + 1;
-                addServerMessageWithInfo(
-                    data.message || "Received a message from the server.",
-                    "text",
-                    true,
-                    currentIndex
-                );
-                return currentIndex;
-            });
-        } else {
-            addServerMessage(
-                data.message || "Received a message from the server.",
-                "text",
-            )
-        }
-        setIsLoading(false);
-        removeLoadingMessage();
-        clearPlanMessage();
-        clearQueryMessage();
-    };
-
-    const handleInfoMessage = data => {
-        removeLoadingMessage();
-        clearPlanMessage();
-        removeExistingMessage("Now we are going to create a plan for your insights. Please wait until we generate the plan...")
-        const infoMessage = data.functions.payload.message;
-
-        if(infoMessage.includes("There was an error with the AI models. Please contact with Omniloy support team.")){
-            setChatLoading(false);
-        }
-
-        if (infoMessage.includes('This information may not be accurate')) {
-            setPendingInfoMessage(infoMessage);
-            return;
-        }
-
-        if (data.functions.type === "data" || data.functions.type === "error") {
-            setMessages(prevMessages => {
-                // Remove the last message with `isInsightData: true` or `isInsightError: true`
-                const filteredMessages = [...prevMessages].reverse().filter((message, index, arr) => {
-                    return !(
-                        (message.isInsightData || message.isInsightError) &&
-                        arr.findIndex(m => m.isInsightData || m.isInsightError) === index
-                    );
-                }).reverse(); // Reverse again to maintain original order
-
-                // Prepare the new message
-                const newMessage = {
-                    id: Date.now() + Math.random(),
-                    text: infoMessage,
-                    sender: "server",
-                    type: "text",
-                    info: true,
-                    isInsightData: data.functions.type === "data",
-                    isInsightError: data.functions.type === "error"
-                };
-
-                if (data.functions.type === "error") {
-                    newMessage.typeMessage = "error";
-                } else {
-                    newMessage.typeMessage = "data";
-                }
-
-                // Add error: true only if data.functions.payload.data.finalError exists
-                if (data.functions.payload.data?.finalError) {
-                    newMessage.error = true;
-                }
-
-                // Add the new message
-                return [...filteredMessages, newMessage];
-            });
-
-            // Check for the specific error message format
-            const message = infoMessage;
-            const semanticLayerMessageStart = "To complete this task, the semantic layer needs to be updated with the following field:";
-            const semanticLayerMessageEnd = "Please reach out to support for assistance.";
-            const suggestionKey = "Here is a suggestion related to your original query: ";
-            if (message.startsWith(semanticLayerMessageStart)) {
-                // Extract the part of the message containing the fields
-                const fieldsString = message
-                    .slice(semanticLayerMessageStart.length, message.indexOf(semanticLayerMessageEnd))
-                    .trim();
-
-                // Split the string into an array of field names
-                const SuggestionParts = message.split(suggestionKey);
-                const requestedFields = fieldsString.split(',').map(field => field.trim());
-                const suggestion = SuggestionParts[1].trim();
-                setSuggestionQuestion(suggestion);
-
-                // You can now use or store the `requestedFields` array in your component
-                // For example, set it in the state
-                setRequestedFields(requestedFields); // Assuming you have a state for requestedFields
-            }
-        }
-    };
-
-
-    const handleDirectResponse = data => {
-        if (data.message.includes("We had a problem creating a response for your requests. Please try again or contact support.")) {
-            setMessages(prevMessages => [
-                ...prevMessages,
-                {
-                    id: Date.now() + Math.random(),
-                    text: data.message,
-                    typeMessage: "error",
-                    sender: "server",
-                    type: "text",
-                }
-            ]);
-        } else {
-            addServerMessage(
-                data.message || "Received a message from the server.",
-                "text",
-            );
-        }
-        setIsLoading(false);
-        removeLoadingMessage();
-    }
-
-    const handlePlanMessage = data => {
-        removeLoadingMessage();
-        if (data.message) {
-            setMessages(prevMessages => [
-                ...prevMessages,
-                {
-                    id: Date.now() + Math.random(),
-                    text: data.message,
-                    sender: "server",
-                    type: "text",
-                    plan: true
-                }
-            ]);
-        }
-    }
-
     const redirect = async () => {
         if (selectedHash) {
             dispatch(push(`/question#${selectedHash}`));
@@ -994,208 +371,137 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
         }
     }
 
-    const addServerMessage = (message, type) => {
-        setMessages(prevMessages => [
-            ...prevMessages,
-            {
-                id: Date.now() + Math.random(),
-                text: message,
-                typeMessage: "data",
-                sender: "server",
-                type: type,
-            }
-        ]);
-    };
-
-    const addServerMessageWithInfo = (message, type, showVisualization, visualizationIdx) => {
-        if (message === "The semantic layer requires an update to proceed with the task.") {
-            setShowCubeEditButton(true)
-            return;
-        }
-        console.log("MESSAGE: false ")
-        setMessages(prevMessages => [
-            ...prevMessages,
-            {
-                id: Date.now() + Math.random(),
-                text: message,
-                typeMessage: "data",
-                sender: "server",
-                type: type,
-                showVisualization: showVisualization,
-                visualizationIdx: visualizationIdx
-            }
-        ]);
-    };
-
-    const addServerMessageWithType = (message, type, visualization, visualizationIdx) => {
-        setMessages(prevMessages => [
-            ...prevMessages,
-            {
-                id: Date.now() + Math.random(),
-                text: message,
-                typeMessage: "data",
-                sender: "server",
-                type: type,
-                showType: visualization,
-                visualizationIdx: visualizationIdx
-            }
-        ]);
-    };
-
-    const sendMessage = () => {
-        if (!inputValue.trim()) return;
-
-        if (toolWaitingResponse) {
-            setMessages(prevMessages => [
-                ...prevMessages,
-                {
-                    id: Date.now() + Math.random(),
-                    text: inputValue,
-                    typeMessage: "data",
-                    sender: "user",
-                    type: "text",
-                    thread_id: threadId,
-                }
-            ]);
-            if (toolWaitingResponse === "generatePlan" || toolWaitingResponse === "planReview" || toolWaitingResponse === "messageRequest") {
-                setMessages(prevMessages => [
-                    ...prevMessages,
-                    {
-                        id: Date.now() + Math.random(),
-                        text: "Please wait until we generate the visualization for you....",
-                        typeMessage: "data",
-                        sender: "server",
-                        type: "text",
-                        // thread_id: threadId,
-                    }
-                ]);
-                setIsLoading(true)
-            }
-            if (toolWaitingResponse === "continue") {
-                setMessages(prevMessages => [
-                    ...prevMessages,
-                    {
-                        id: Date.now() + Math.random(),
-                        text: "Please wait until we generate the response....",
-                        typeMessage: "data",
-                        sender: "server",
-                        type: "text"
-                    }
-                ]);
-                setIsLoading(true)
-                setChatLoading(true);
-                const response = {
-                    type: "query",
-                    task: inputValue,
-                    thread_id: threadId,
-                    appType: chatType,
-                };
-                ws && ws.send(JSON.stringify(response));
-            } else {
-                ws.send(
-                    JSON.stringify({
-                        type: "toolResponse",
-                        response: {
-                            function_name: toolWaitingResponse,
-                            response: JSON.stringify(inputValue),
-                        },
-                    })
-                );
-            }
-            setToolWaitingResponse(null);
-            setInputValue("");
-            return;
-        }
-
-
+    const sendMessage = async () => {
+        if (!inputValue.trim() || !client || !agent || !thread) return;
+    
         setIsLoading(true);
-        const dbId = dbInputValue;
-        if (isConnected) {
-            ws.send(
-                JSON.stringify({
-                    type: "configure",
-                    configData: [dbId, companyName],
-                    appType: chatType,
-                    schema: schema
-                }),
-            );
-        }
-        setMessages(prevMessages => [
-            ...prevMessages,
-
-            {
-                id: Date.now() + Math.random(),
-                text: inputValue,
-                typeMessage: "data",
-                sender: "user",
-                type: "text",
-                thread_id: threadId,
-            },
-            {
-                id: Date.now() + Math.random(),
-                text: "Please wait until we generate the response....",
-                typeMessage: "data",
-                sender: "server",
-                type: "text",
-            },
-
-        ]);
-        const response = {
-            type: "query",
-            task: inputValue,
-            thread_id: threadId,
-            appType: chatType,
+        let visualizationIdx = messages.filter(msg => msg.showVisualization).length;
+    
+        // Prepare the user message to be sent
+        let messagesToSend = [{ role: "human", content: inputValue }];
+        const userMessage = {
+            id: Date.now() + Math.random(),
+            sender: "user",
+            text: inputValue,
+            visualizationIdx,
+            showVisualization: false,
+            isLoading: true,
         };
-        if (isConnected) {
-            ws && ws.send(JSON.stringify(response));
-        }
+    
+        setMessages((prev) => [...prev, userMessage]);
+    
+        // Clear input field
         setInputValue("");
-        dispatch(clearInitialMessage())
-    };
-    const handleSuggestion = () => {
-        setMessages(prevMessages => [
-            ...prevMessages,
-            {
-                id: Date.now() + Math.random(),
-                text: suggestionQuestion,
-                typeMessage: "data",
-                sender: "user",
-                type: "text",
-                // thread_id: threadId,
+    
+        try {
+            const streamResponse = client.runs.stream(thread.thread_id, agent.assistant_id, {
+                input: { messages: messagesToSend, company_name: initialCompanyName, database_id: initialDbName, schema: initialSchema.schema },
+                config: { recursion_limit: 25 },
+                streamMode: "messages",
+            });
+    
+            let serverMessageIndex = -1;
+    
+            for await (const chunk of streamResponse) {
+                const { event, data } = chunk;
+    
+                // Process partial message events
+                if (event === "messages/partial" && data.length > 0) {
+                    const { content, type } = data[0];
+    
+                    if (type === "ai") {
+                        setMessages((prev) => {
+                            const updatedMessages = [...prev];
+                            
+                            // Check if the last message is from the server
+                            const lastMessage = updatedMessages[updatedMessages.length - 1];
+                            
+                            if (lastMessage && lastMessage.sender === 'server') {
+                                // If last message was a server message, append new content to it
+                                updatedMessages[updatedMessages.length - 1].text = content;
+                            } else {
+                                // Otherwise, add a new server message
+                                const newServerMessage = {
+                                    id: Date.now() + Math.random(),
+                                    sender: "server",
+                                    text: content,
+                                    showVisualization: false,
+                                    visualizationIdx,
+                                    isLoading: true,
+                                };
+                                updatedMessages.push(newServerMessage);
+                            }
+                            
+                            return updatedMessages;
+                        });
+                    }
+                }
+    
+                // Process complete message events
+                if (event === "messages/complete" && data.length > 0) {
+                    const { content, type } = data[0];
+    
+                    if (type === "tool") {
+                        try {
+                            const parsedContent = JSON.parse(content);
+                            const { card_id } = parsedContent;
+    
+                            if (card_id) {
+                                // Fetch the dataset and show visualization
+                                await handleGetDatasetQuery(card_id);
+    
+                                setMessages((prev) => {
+                                    const visualizationMessage = {
+                                        id: Date.now() + Math.random(),
+                                        sender: "server",
+                                        text: "",
+                                        showVisualization: true,
+                                        visualizationIdx,
+                                        isLoading: false,
+                                    };
+                                    return [...prev, visualizationMessage];
+                                });
+                            }
+                        } catch (error) {
+                            console.error("Error parsing tool message content:", error);
+                        }
+                    }
+                }
             }
-        ]);
-        const response = {
-            type: "query",
-            task: suggestionQuestion,
-            thread_id: threadId,
-            appType: chatType,
-        };
-        ws && ws.send(JSON.stringify(response));
+        } catch (error) {
+            console.error("Error during message processing:", error.message);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+    
+    
+
+    const handleSuggestion = () => {
+        // setMessages(prevMessages => [
+        //     ...prevMessages,
+        //     {
+        //         id: Date.now() + Math.random(),
+        //         text: suggestionQuestion,
+        //         typeMessage: "data",
+        //         sender: "user",
+        //         type: "text",
+        //         // thread_id: threadId,
+        //     }
+        // ]);
+        // const response = {
+        //     type: "query",
+        //     task: suggestionQuestion,
+        //     thread_id: threadId,
+        //     appType: chatType,
+        // };
+        // ws && ws.send(JSON.stringify(response));
     }
     const removeLoadingMessage = () => {
         setMessages(prevMessages => prevMessages.filter(
             message => message.text !== "Please wait until we generate the response...." && message.text !== "Please wait until we generate the visualization for you...."
         ));
     };
-
-    const clearPlanMessage = () => {
-        setMessages(prevMessages => prevMessages.filter(
-            message => !message.plan
-        ));
-    }
-
-    const clearInfoMessage = () => {
-        setMessages(prevMessages => prevMessages.filter(
-            message => !message.info
-        ));
-    }
-
-    const clearQueryMessage = () => {
-        setMessages(prevMessages => prevMessages.filter(
-            message => !message.text.includes("Query executed successfully") &&
-            !message.text.includes("Executing query")
-        ));
-    }
 
     const handleKeyPress = (e) => {
         if (e.key === "Enter" && !e.shiftKey) {
@@ -1214,46 +520,46 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
     };
 
     const handleAccept = () => {
-        ws.send(
-            JSON.stringify({
-                type: "toolResponse",
-                response: {
-                    function_name: toolWaitingResponse,
-                    response: "true",
-                },
-            })
-        );
-        setApprovalChangeButtons(false);
+        // ws.send(
+        //     JSON.stringify({
+        //         type: "toolResponse",
+        //         response: {
+        //             function_name: toolWaitingResponse,
+        //             response: "true",
+        //         },
+        //     })
+        // );
+        // setApprovalChangeButtons(false);
     };
 
     const handleDeny = () => {
-        ws.send(
-            JSON.stringify({
-                type: "toolResponse",
-                response: {
-                    function_name: toolWaitingResponse,
-                    response: "false",
-                },
-            })
-        );
-        setApprovalChangeButtons(false);
+        // ws.send(
+        //     JSON.stringify({
+        //         type: "toolResponse",
+        //         response: {
+        //             function_name: toolWaitingResponse,
+        //             response: "false",
+        //         },
+        //     })
+        // );
+        // setApprovalChangeButtons(false);
     };
 
     const stopStream = async () => {
-        const thread_id = codeInterpreterThreadId;
-        const run_id = runId;
-        ws.send(
-            JSON.stringify({
-                type: "stopStreaming",
-                data: {
-                    codeInterpreterThreadId: thread_id,
-                    runId: run_id,
-                },
-            })
-        );
-        setRunId('');
-        setCodeInterpreterThreadId('');
-        setChatLoading(false);
+        // const thread_id = codeInterpreterThreadId;
+        // const run_id = runId;
+        // ws.send(
+        //     JSON.stringify({
+        //         type: "stopStreaming",
+        //         data: {
+        //             codeInterpreterThreadId: thread_id,
+        //             runId: run_id,
+        //         },
+        //     })
+        // );
+        // setRunId('');
+        // setCodeInterpreterThreadId('');
+        // setChatLoading(false);
     };
 
     const stopMessage = async () => {
@@ -1265,12 +571,12 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
     useEffect(() => {
         if (initial_message.message) {
             setInputValue(initial_message.message);
-
-            if (ws && isConnected) {
+            if (client, agent, thread) {
                 sendMessage();
             }
+         
         }
-    }, [initial_message, ws, isConnected]);
+    }, [initial_message, client, agent, thread]);
 
     useEffect(() => {
         if (initialDbName !== null && initialCompanyName !== '' && initialSchema && initialSchema.schema && initialSchema.schema.length > 0) {
@@ -1282,20 +588,20 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
         }
     }, [initialDbName, initialCompanyName, initialSchema])
 
-    useEffect(() => {
-        if (toolWaitingResponse === "identifyRelevantTables" || toolWaitingResponse === "generateCode" || toolWaitingResponse === "identifyingTablesDone") {
-            ws.send(
-                JSON.stringify({
-                    type: "toolResponse",
-                    response: {
-                        function_name: toolWaitingResponse,
-                        response: "OK",
-                    },
-                })
-            );
-            setToolWaitingResponse(null);
-        }
-    }, [toolWaitingResponse])
+    // useEffect(() => {
+    //     if (toolWaitingResponse === "identifyRelevantTables" || toolWaitingResponse === "generateCode" || toolWaitingResponse === "identifyingTablesDone") {
+    //         ws.send(
+    //             JSON.stringify({
+    //                 type: "toolResponse",
+    //                 response: {
+    //                     function_name: toolWaitingResponse,
+    //                     response: "OK",
+    //                 },
+    //             })
+    //         );
+    //         setToolWaitingResponse(null);
+    //     }
+    // }, [toolWaitingResponse])
 
     return (
         <>
@@ -1337,11 +643,8 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
 
                             <ChatMessageList messages={messages} isLoading={isLoading} onFeedbackClick={handleFeedbackDialogOpen}
                                 approvalChangeButtons={approvalChangeButtons} onApproveClick={handleAccept} onDenyClick={handleDeny}
-                                card={card} defaultQuestion={defaultQuestion} result={result} openModal={openModal} insightsList={insightsList}
-                                showError={showError} insightsPlan={inisghtPlan}
-                                insightsText={insightsText} insightsImg={insightsImg} insightsCode={insightsCode} showCubeEditButton={showCubeEditButton} sendAdminRequest={handleCubeRequestDialogOpen} onSuggestion={handleSuggestion}
-                                insightsCsv={insightsCsv} insightFile={insightFile} insightTables={insightTables} insightReasoning={insightReasoning} insightCellCode={insightCellCode}
-                                insightTitle={insightTitle} insightSummary={insightSummary} insightSections={insightSections} insightRecommendations={insightRecommendations}
+                                card={card} defaultQuestion={defaultQuestion} result={result} openModal={openModal} 
+                                showError={showError} insightsPlan={inisghtPlan} showCubeEditButton={showCubeEditButton} sendAdminRequest={handleCubeRequestDialogOpen} onSuggestion={handleSuggestion}
                             />
                             <div
                                 style={{
@@ -1373,7 +676,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
                                                 ref={inputRef}
                                                 value={inputValue}
                                                 onChange={handleInputChange}
-                                                disabled={!isConnected || chatLoading || schema.length < 1 || selectedThreadId}
+                                                disabled={!client || chatLoading || schema.length < 1 || selectedThreadId}
                                                 onKeyPress={handleKeyPress}
                                                 placeholder={t`Enter a prompt here...`}
                                                 style={{
@@ -1395,7 +698,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
                                             />
                                             <Button
                                                 variant="filled"
-                                                disabled={!isConnected || schema.length < 1 || selectedThreadId}
+                                                disabled={!client || schema.length < 1 || selectedThreadId}
                                                 onClick={chatLoading ? stopMessage : sendMessage}
                                                 style={{
                                                     position: "absolute",
@@ -1406,10 +709,10 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
                                                     height: "30px",
                                                     padding: "0",
                                                     minWidth: "0",
-                                                    backgroundColor: isConnected && schema.length > 0 ? "#8A64DF" : "#F1EBFF",
+                                                    backgroundColor: client && schema.length > 0 ? "#8A64DF" : "#F1EBFF",
                                                     color: "#FFF",
                                                     border: "none",
-                                                    cursor: isConnected && schema.length > 0 ? "pointer" : "not-allowed",
+                                                    cursor: client && schema.length > 0 ? "pointer" : "not-allowed",
                                                     display: "flex",
                                                     justifyContent: "center",
                                                     alignItems: "center",
@@ -1429,7 +732,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
                                     ) : (
                                         <Button
                                             variant="filled"
-                                            disabled={!isConnected}
+                                            disabled={!client}
                                             onClick={newChat}
                                             style={{
                                                 position: "absolute",
@@ -1440,10 +743,10 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
                                                 height: "50px",
                                                 padding: "0",
                                                 minWidth: "0",
-                                                backgroundColor: isConnected ? "#8A64DF" : "#F1EBFF",
+                                                backgroundColor: client ? "#8A64DF" : "#F1EBFF",
                                                 color: "#FFF",
                                                 border: "none",
-                                                cursor: isConnected ? "pointer" : "not-allowed",
+                                                cursor: client ? "pointer" : "not-allowed",
                                                 display: "flex",
                                                 justifyContent: "center",
                                                 alignItems: "center",
@@ -1588,13 +891,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
                                 value="reasoning"
                                 style={{ backgroundColor: "#F8FAFD", padding: "1rem", height: "350px", overflowY: "auto", borderBottomLeftRadius: "12px", borderBottomRightRadius: "12px" }}
                             >
-                                {reasoning[selectedIndex].split("\n").map((point, index) => (
-                                    point.trim() && (
-                                        <p key={index} style={{ marginBottom: "1rem", fontSize: "16px" }}>
-                                            {point}
-                                        </p>
-                                    )
-                                ))}
+                                Reasoning
                             </Tabs.Panel>
 
                             <Tabs.Panel
