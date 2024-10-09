@@ -1,13 +1,12 @@
 import cx from "classnames";
 import debounce from "lodash.debounce";
-import type {
-  CSSProperties,
-  ComponentType,
-  ForwardedRef,
-  PropsWithoutRef,
+import React, {
+  type CSSProperties,
+  Component,
+  type ComponentType,
+  type ForwardedRef,
+  type PropsWithoutRef,
 } from "react";
-import React, { Component } from "react";
-import ReactDOM from "react-dom";
 import _ from "underscore";
 
 import { waitTimeContext } from "metabase/context/wait-time";
@@ -91,10 +90,17 @@ function ExplicitSize<T>({
 
       _getElement() {
         try {
-          let element = ReactDOM.findDOMNode(this);
-          if (selector && element instanceof Element) {
+          let element: HTMLElement | null = null;
+          const { forwardedRef } = this.props;
+
+          if (forwardedRef && typeof forwardedRef === "object") {
+            element = forwardedRef.current as HTMLElement;
+          }
+
+          if (selector && element instanceof HTMLElement) {
             element = element.querySelector(selector) || element;
           }
+
           return element instanceof Element ? element : null;
         } catch (e) {
           console.error(e);
@@ -217,6 +223,7 @@ function ExplicitSize<T>({
       };
       render() {
         const { forwardedRef, ...props } = this.props;
+
         if (wrapped) {
           const { className, style = {}, ...rest } = props;
           const { width, height } = this.state;
