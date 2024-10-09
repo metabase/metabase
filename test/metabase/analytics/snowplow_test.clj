@@ -33,7 +33,6 @@
   "A function that can be used in place of track-event-impl! which pulls and decodes the payload, context and subject ID
   from an event and adds it to the in-memory [[*snowplow-collector*]] queue."
   [collector _tracker ^SelfDescribing event]
-  (def event event)
   (let [payload                            (-> event .getPayload .getMap normalize-map)
         ;; Don't normalize keys in [[properties]] so that we can assert that they are snake-case strings in the test
         ;; cases
@@ -44,7 +43,6 @@
                                              (-> subject .getSubject normalize-map))
         [^SelfDescribingJson context-json] (.getContext event)
         context                            (normalize-map (.getMap context-json))]
-    (def payload payload)
     (swap! collector conj {:properties properties, :subject subject, :context context})))
 
 (defn do-with-fake-snowplow-collector!

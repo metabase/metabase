@@ -169,7 +169,7 @@ export function openStaticEmbeddingModal({
     cy.findByRole("button", { name: "Save" }).click();
   }
 
-  cy.findByTestId("sharing-pane-static-embed-button").click();
+  cy.findByText("Static embedding").click();
 
   if (acceptTerms) {
     cy.findByTestId("accept-legalese-terms-button").click();
@@ -262,6 +262,12 @@ export function createPublicDashboardLink(dashboardId) {
   return cy.request("POST", `/api/dashboard/${dashboardId}/public_link`, {});
 }
 
+/**
+ * @param {Object} options
+ * @param {string} options.url
+ * @param {Object} options.qs
+ * @param {Function} [options.onBeforeLoad]
+ */
 export const visitFullAppEmbeddingUrl = ({ url, qs, onBeforeLoad }) => {
   cy.visit({
     url,

@@ -63,7 +63,7 @@ describe("scenarios > question > custom column", () => {
 
   it("can create a custom column (metabase#13241)", () => {
     openOrdersTable({ mode: "notebook" });
-    cy.icon("add_data").click();
+    cy.findByLabelText("Custom column").click();
 
     enterCustomColumnDetails({ formula: "1 + 1", name: "Math" });
     cy.button("Done").click();
@@ -95,7 +95,7 @@ describe("scenarios > question > custom column", () => {
 
   it("should not show binning for a numeric custom column", () => {
     openOrdersTable({ mode: "notebook" });
-    cy.icon("add_data").click();
+    cy.findByLabelText("Custom column").click();
 
     enterCustomColumnDetails({
       formula: "[Product.Price] / 2",
@@ -123,7 +123,7 @@ describe("scenarios > question > custom column", () => {
 
   it("should show temporal units for a date/time custom column", () => {
     openOrdersTable({ mode: "notebook" });
-    cy.icon("add_data").click();
+    cy.findByLabelText("Custom column").click();
 
     enterCustomColumnDetails({
       formula: "[Product.Created At]",
@@ -146,13 +146,13 @@ describe("scenarios > question > custom column", () => {
       .click();
 
     getNotebookStep("summarize")
-      .findByText("Product Date: Day")
+      .findByText("Product Date: Month")
       .should("be.visible");
   });
 
   it("should not show binning options for a coordinate custom column", () => {
     openPeopleTable({ mode: "notebook" });
-    cy.icon("add_data").click();
+    cy.findByLabelText("Custom column").click();
 
     enterCustomColumnDetails({
       formula: "[Latitude]",
@@ -180,7 +180,7 @@ describe("scenarios > question > custom column", () => {
   // flaky test (#19454)
   it.skip("should show info popovers when hovering over custom column dimensions in the summarize sidebar", () => {
     openOrdersTable({ mode: "notebook" });
-    cy.icon("add_data").click();
+    cy.findByLabelText("Custom column").click();
 
     enterCustomColumnDetails({ formula: "1 + 1", name: "Math" });
     cy.button("Done").click();
@@ -210,7 +210,7 @@ describe("scenarios > question > custom column", () => {
 
     customFormulas.forEach(({ formula, name }) => {
       openOrdersTable({ mode: "notebook" });
-      cy.icon("add_data").click();
+      cy.findByLabelText("Custom column").click();
 
       enterCustomColumnDetails({ formula, name });
       cy.button("Done").click();
@@ -654,7 +654,7 @@ describe("scenarios > question > custom column", () => {
 
   it("should allow switching focus with Tab", () => {
     openOrdersTable({ mode: "notebook" });
-    cy.icon("add_data").click();
+    cy.findByLabelText("Custom column").click();
 
     enterCustomColumnDetails({ formula: "1 + 2" });
 
@@ -672,7 +672,7 @@ describe("scenarios > question > custom column", () => {
 
   it("should allow tabbing away from, then back to editor, while formatting expression and placing caret after reformatted expression", () => {
     openOrdersTable({ mode: "notebook" });
-    cy.icon("add_data").click();
+    cy.findByLabelText("Custom column").click();
 
     enterCustomColumnDetails({ formula: "1+1" });
 
@@ -690,7 +690,7 @@ describe("scenarios > question > custom column", () => {
 
   it("should allow choosing a suggestion with Tab", () => {
     openOrdersTable({ mode: "notebook" });
-    cy.icon("add_data").click();
+    cy.findByLabelText("Custom column").click();
 
     enterCustomColumnDetails({ formula: "[C", blur: false });
 
@@ -719,7 +719,7 @@ describe("scenarios > question > custom column", () => {
   // TODO: fixme!
   it.skip("should render custom expression helper near the custom expression field", () => {
     openOrdersTable({ mode: "notebook" });
-    cy.icon("add_data").click();
+    cy.findByLabelText("Custom column").click();
 
     popover().within(() => {
       enterCustomColumnDetails({ formula: "floor" });

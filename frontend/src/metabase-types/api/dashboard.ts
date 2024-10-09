@@ -12,6 +12,7 @@ import type {
   ParameterId,
   ParameterTarget,
   Table,
+  UserId,
   VirtualCardDisplay,
 } from "metabase-types/api";
 
@@ -38,6 +39,7 @@ export interface Dashboard {
   id: DashboardId;
   entity_id: BaseEntityId;
   created_at: string;
+  creator_id: UserId;
   updated_at: string;
   collection?: Collection | null;
   collection_id: CollectionId | null;
@@ -99,6 +101,7 @@ export type DashboardCardLayoutAttrs = {
 export type DashCardVisualizationSettings = {
   [key: string]: unknown;
   virtual_card?: VirtualCard;
+  iframe?: string;
 };
 
 export type BaseDashboardCard = DashboardCardLayoutAttrs & {
@@ -287,3 +290,8 @@ export type CopyDashboardRequest = {
   collection_position?: number | null;
   is_deep_copy?: boolean | null;
 };
+
+export type GetPublicOrEmbeddableDashboard = Pick<
+  Dashboard,
+  "id" | "name" | "public_uuid"
+>;

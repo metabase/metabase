@@ -634,7 +634,7 @@ describe(
             .click();
 
           cy.findByTestId("string-filter-picker").within(() => {
-            cy.findByLabelText("Filter operator").should("have.value", "Is");
+            cy.findByLabelText("Filter operator").should("have.text", "Is");
             cy.findByPlaceholderText("Search by ID").type(id);
             cy.button("Add filter").click();
           });
@@ -1250,10 +1250,11 @@ describe("issue 43294", () => {
     createQuestion(questionDetails, { visitQuestion: true });
     queryBuilderFooter().findByLabelText("Switch to data").click();
 
-    cy.log("compare action");
-    cy.button("Add column").click();
-    popover().findByText("Compare to the past").click();
-    popover().button("Done").click();
+    // TODO: reenable this test when we reenable the "Compare to the past" components.
+    // cy.log("compare action");
+    // cy.button("Add column").click();
+    // popover().findByText("Compare to the past").click();
+    // popover().button("Done").click();
 
     cy.log("extract action");
     cy.button("Add column").click();

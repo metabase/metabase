@@ -9,7 +9,6 @@ import type { EmbedHomepageViewProps } from "./EmbedHomepageView";
 import { trackEmbeddingHomepageQuickstartClick } from "./analytics";
 
 export const InteractiveTabContent = ({
-  embeddingAutoEnabled,
   interactiveEmbeddingQuickstartUrl,
   exampleDashboardId,
   licenseActiveAtSetup,
@@ -35,15 +34,13 @@ export const InteractiveTabContent = ({
             >{t`Activate your commercial license`}</Anchor>
           </List.Item>
         )}
-        {embeddingAutoEnabled === false && (
-          <List.Item>
-            <Anchor
-              size="sm"
-              component={Link}
-              to="/admin/settings/embedding-in-other-applications"
-            >{t`Enable embedding in the settings`}</Anchor>
-          </List.Item>
-        )}
+        <List.Item>
+          <Anchor
+            size="sm"
+            component={Link}
+            to="/admin/settings/embedding-in-other-applications"
+          >{t`Enable interactive embedding in the settings`}</Anchor>
+        </List.Item>
         {exampleDashboardId === undefined && (
           <List.Item>{t`Create a dashboard to be embedded`}</List.Item>
         )}

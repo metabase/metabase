@@ -49,7 +49,7 @@
   --mb-color-bg-black: #2e353b;
   --mb-color-bg-dark: #93a1ab;
   --mb-color-bg-medium: #edf2f5;
-  --mb-color-bg-light: #f9fbfc;
+  --mb-color-bg-light: var(--mb-base-color-gray-5);
   --mb-color-bg-white: var(--mb-base-color-white);
   --mb-color-bg-error: #ed6e6e55;
   --mb-color-bg-night: #42484e;
@@ -63,9 +63,11 @@
   --mb-color-text-tertiary: var(--mb-color-text-light);
   --mb-color-text-selected: var(--mb-base-color-white);
   --mb-color-text-hover: var(--mb-base-color-brand-40);
+  --mb-color-text-disabled: var(--mb-base-color-gray-50);
   --mb-color-text-brand: var(--mb-base-color-brand-40);
   --mb-color-text-white: var(--mb-base-color-white);
   --mb-color-background: var(--mb-base-color-white);
+  --mb-color-background-info: var(--mb-base-color-gray-5);
   --mb-color-background-selected: var(--mb-base-color-brand-40);
   --mb-color-background-hover: var(--mb-base-color-brand-10);
   --mb-color-background-disabled: var(--mb-base-color-gray-10);
@@ -75,6 +77,8 @@
 
   /**
     * Base colors
+    *
+    * @see https://www.figma.com/design/YxiDXi1DzmXJCTMCuqXaaY/Applying-the-updated-colors?node-id=4001-16486&node-type=FRAME&t=Iwv4nAfH8QF1J5QG-0
     *
     * These are the base colors that should never change and never be used
     * directly in any components or CSS properties. They should only be used
@@ -116,6 +120,11 @@
     var(--mb-color-brand),
     white 45%
   );
+  --mb-base-color-brand-20: color-mix(
+    in srgb,
+    var(--mb-color-brand),
+    white 70%
+  );
   --mb-base-color-brand-10: color-mix(
     in srgb,
     var(--mb-color-brand),
@@ -154,7 +163,8 @@
   color: var(--mb-color-text-dark);
 }
 
-.textBrand {
+.textBrand,
+.textBrandHover:hover {
   color: var(--mb-color-brand);
 }
 

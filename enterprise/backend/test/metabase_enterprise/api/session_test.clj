@@ -15,9 +15,11 @@
                               :content-verification
                               :dashboard-subscription-filters
                               :disable-password-login
+                              :database-auth-providers
                               :email-allow-list
                               :email-restrict-recipients
                               :embedding
+                              :embedding-sdk
                               :hosting
                               :llm-autodescription
                               :no-upsell
@@ -43,15 +45,18 @@
             :content_verification           true
             :dashboard_subscription_filters true
             :disable_password_login         true
+            :database_auth_providers        true
             :email_allow_list               true
             :email_restrict_recipients      true
             :embedding                      true
+            :embedding_sdk                  true
             :hosting                        true
             :llm_autodescription            true
             :official_collections           true
             :query_reference_validation     true
             :sandboxes                      true
             :scim                           true
+            :serialization                  true
             :session_timeout_config         true
             :snippet_collections            true
             :sso_google                     true

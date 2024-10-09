@@ -1,0 +1,29 @@
+.CopyButton {
+  cursor: pointer;
+  position: relative;
+  top: -1px;
+  color: var(--mb-color-text-light);
+  line-height: 1rem;
+
+  &:hover {
+    color: var(--mb-color-brand);
+  }
+}
+
+.InfoIcon {
+  color: var(--mb-color-text-light);
+
+  &:hover {
+    background-color: var(--mb-color-brand-lighter);
+    color: var(--mb-color-brand);
+  }
+
+  background-color: var(--mb-color-border);
+  border-radius: 100%;
+  padding: 2px;
+  cursor: pointer;
+
+  &:focus {
+    outline: 2px solid var(--mb-color-focus);
+  }
+}

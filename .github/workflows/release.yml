@@ -230,38 +230,10 @@ jobs:
 
           console.log("The download path for this", edition, "edition is", version_path);
           return version_path;
-    - name: Determine if this is a latest version
-      uses: actions/github-script@v7
-      id: latest_path
-      with:
-        result-encoding: string
-        script: | # js
-          const { isLatestRelease, getCanonicalVersion } = require('${{ github.workspace }}/release/dist/index.cjs');
-
-          const version = '${{ inputs.version }}';
-          const edition = '${{ matrix.edition }}';
-
-          const canonical_version = getCanonicalVersion(version, edition);
-
-          const isLatest = await isLatestRelease({
-            github,
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            version: canonical_version,
-          });
-
-          console.log("Latest version?", isLatest);
-
-          if (isLatest) {
-            return edition === 'ee' ? 'enterprise/latest' : 'latest';
-          }
-          return "false";
 
     - name: Upload to S3
       run: aws s3 cp ./metabase.jar s3://${{ vars.AWS_S3_DOWNLOADS_BUCKET }}/${{ steps.version_path.outputs.result }}/metabase.jar
-    - name: Upload to s3 latest path
-      if: ${{ !inputs.auto && steps.latest_path.outputs.result != 'false' }}
-      run: aws s3 cp ./metabase.jar s3://${{ vars.AWS_S3_DOWNLOADS_BUCKET }}/${{ steps.latest_path.outputs.result }}/metabase.jar
+
     - name: Create cloudfront invalidation
       run: |
         aws cloudfront create-invalidation \
@@ -287,7 +259,7 @@ jobs:
       id: version_path
       with:
         result-encoding: string
-        script: |
+        script: | # js
           const version = '${{ inputs.version }}';
           const edition = '${{ matrix.edition }}';
 
@@ -338,23 +310,6 @@ jobs:
           console.log("The canonical version of this Metabase", edition, "edition is", canonical_version);
 
           return canonical_version;
-    - name: Check if the container image should be tagged as latest
-      uses: actions/github-script@v7
-      id: latest_version_check
-      with:
-        result-encoding: string
-        script: |
-          const { execSync } = require("child_process");
-          const { isLatestVersion } = require('${{ github.workspace }}/release/dist/index.cjs');
-
-          const currentTag = '${{ inputs.version }}';
-          const allTags = execSync("git tag -l").toString("utf-8").split("\n");
-
-          const isLatest = isLatestVersion(currentTag, allTags);
-
-          console.log("Latest version?", isLatest);
-
-          return isLatest ? "latest" : "not-latest";
     - uses: actions/download-artifact@v4
       name: Retrieve previously downloaded Uberjar
       with:
@@ -403,14 +358,6 @@ jobs:
         echo "Pushing ${{ steps.canonical_version.outputs.result }} to ${{ env.DOCKERHUB_REPO }} ..."
         docker tag localhost:5000/local-metabase:${{ steps.canonical_version.outputs.result }} ${{ env.DOCKERHUB_REPO }}:${{ steps.canonical_version.outputs.result }}
         docker push ${{ env.DOCKERHUB_REPO }}:${{ steps.canonical_version.outputs.result }}
-        echo "Finished!"
-
-    - name: Tag the container image as latest
-      if: ${{ !inputs.auto && steps.latest_version_check.outputs.result == 'latest' }}
-      run: |
-        echo "Pushing ${{ env.DOCKERHUB_REPO }}:latest ..."
-        docker tag localhost:5000/local-metabase:${{ steps.canonical_version.outputs.result }} ${{ env.DOCKERHUB_REPO }}:latest
-        docker push ${{ env.DOCKERHUB_REPO }}:latest
         echo "Finished!"
 
   verify-docker-pull:
@@ -704,12 +651,12 @@ jobs:
         sparse-checkout: release
     - name: Prepare build scripts
       run: cd ${{ github.workspace }}/release && yarn && yarn build
-    - name: Publish release notes
+    - name: Publish version info
       uses: actions/github-script@v7
       id: new_version_info
       with:
         result-encoding: string
-        script: |
+        script: | # js
           const { getVersionInfo } = require('${{ github.workspace }}/release/dist/index.cjs');
           const fs = require('fs');
 
@@ -739,6 +686,18 @@ jobs:
         aws cloudfront create-invalidation \
         --distribution-id ${{ vars.AWS_CLOUDFRONT_STATIC_ID }} \
         --paths "/version-info.json" "/version-info-ee.json"
+
+  tag-nightly:
+    if: ${{ inputs.auto }}
+    needs: [push-tags, verify-docker-pull, verify-s3-download]
+    uses: ./.github/workflows/release-tag.yml
+    secrets: inherit
+    with:
+      version: ${{ inputs.version }}
+      tag_name: nightly
+      tag_rollout: 100
+      tag_ee: true
+      tag_oss: true
 
   publish-complete-message:
     if: ${{ !inputs.auto }}
@@ -772,7 +731,7 @@ jobs:
   auto-publish-complete-message:
     if: ${{ inputs.auto }}
     runs-on: ubuntu-22.04
-    needs: [push-tags, verify-docker-pull, verify-s3-download]
+    needs: tag-nightly
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
@@ -814,12 +773,12 @@ jobs:
       uses: actions/github-script@v7
       with:
         script: | # js
-          const { closeMilestone, openNextMilestones, isRCVersion } = require('${{ github.workspace }}/release/dist/index.cjs');
+          const { closeMilestone, openNextMilestones, isPreReleaseVersion } = require('${{ github.workspace }}/release/dist/index.cjs');
 
           const version = '${{ inputs.version }}';
 
-          if (isRCVersion(version)) {
-            console.log("This is a release candidate, skipping milestone management");
+          if (isPreReleaseVersion(version)) {
+            console.log("This is a prerelease version, skipping milestone management");
             return;
           }
 

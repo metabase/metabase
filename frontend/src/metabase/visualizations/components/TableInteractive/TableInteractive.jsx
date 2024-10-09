@@ -2,13 +2,12 @@
 import cx from "classnames";
 import PropTypes from "prop-types";
 import { Component, createRef, forwardRef } from "react";
-import { findDOMNode } from "react-dom";
 import { connect } from "react-redux";
 import { Grid, ScrollSync } from "react-virtualized";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { EMBEDDING_SDK_ROOT_ELEMENT_ID } from "embedding-sdk/config";
+import { EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID } from "embedding-sdk/config";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import { QueryColumnInfoPopover } from "metabase/components/MetadataInfo/ColumnInfoPopover";
 import Button from "metabase/core/components/Button";
@@ -115,6 +114,8 @@ class TableInteractive extends Component {
     this.headerRefs = [];
     this.detailShortcutRef = createRef();
 
+    this.gridRef = createRef();
+
     window.METABASE_TABLE = this;
   }
 
@@ -180,7 +181,7 @@ class TableInteractive extends Component {
 
     if (this.props.isEmbeddingSdk) {
       const rootElement = document.getElementById(
-        EMBEDDING_SDK_ROOT_ELEMENT_ID,
+        EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID,
       );
 
       if (rootElement) {
@@ -1042,7 +1043,7 @@ class TableInteractive extends Component {
       return;
     }
 
-    const scrollOffset = findDOMNode(this.grid)?.scrollTop || 0;
+    const scrollOffset = this.gridRef.current?.scrollTop || 0;
 
     // infer row index from mouse position when we hover the gutter column
     if (event?.currentTarget?.id === "gutter-column") {
@@ -1309,7 +1310,7 @@ class TableInteractive extends Component {
   }
 
   _benchmark() {
-    const grid = findDOMNode(this.grid);
+    const grid = this.gridRef.current;
     const height = grid.scrollHeight;
     let top = 0;
     let start = Date.now();

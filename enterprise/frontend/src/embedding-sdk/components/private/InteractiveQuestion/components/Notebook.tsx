@@ -18,8 +18,13 @@ export const Notebook = ({ onApply = () => {} }: NotebookProps) => {
   // Loads databases and metadata so we can show notebook steps for the selected data source
   useDatabaseListQuery();
 
-  const { question, originalQuestion, updateQuestion, runQuestion } =
-    useInteractiveQuestionContext();
+  const {
+    question,
+    originalQuestion,
+    updateQuestion,
+    runQuestion,
+    modelsFilterList,
+  } = useInteractiveQuestionContext();
 
   const isDirty = useMemo(() => {
     return isQuestionDirty(question, originalQuestion);
@@ -53,6 +58,7 @@ export const Notebook = ({ onApply = () => {} }: NotebookProps) => {
           }}
           setQueryBuilderMode={() => {}}
           hasVisualizeButton={true}
+          modelsFilterList={modelsFilterList}
         />
       </ScrollArea>
     )

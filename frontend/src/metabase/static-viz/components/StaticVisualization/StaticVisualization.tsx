@@ -1,3 +1,6 @@
+import { registerStaticVisualizations } from "metabase/static-viz/register";
+import { getVisualizationTransformed } from "metabase/visualizations";
+import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import type { StaticVisualizationProps } from "metabase/visualizations/types";
 
 import { ComboChart } from "../ComboChart";
@@ -8,8 +11,22 @@ import { ScatterPlot } from "../ScatterPlot/ScatterPlot";
 import { SmartScalar } from "../SmartScalar";
 import { WaterfallChart } from "../WaterfallChart/WaterfallChart";
 
-export const StaticVisualization = (props: StaticVisualizationProps) => {
-  const display = props.rawSeries[0].card.display;
+registerStaticVisualizations();
+
+export const StaticVisualization = ({
+  rawSeries,
+  renderingContext,
+  isStorybook,
+}: StaticVisualizationProps) => {
+  const display = rawSeries[0].card.display;
+  const transformedSeries = getVisualizationTransformed(rawSeries).series;
+  const settings = getComputedSettingsForSeries(transformedSeries);
+  const props = {
+    rawSeries,
+    settings,
+    renderingContext,
+    isStorybook,
+  };
 
   switch (display) {
     case "line":

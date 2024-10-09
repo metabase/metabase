@@ -1,4 +1,4 @@
-(ns metabase.driver.sql-jdbc.actions-test
+(ns ^:mb/driver-tests metabase.driver.sql-jdbc.actions-test
   "Most of the tests for code in [[metabase.driver.sql-jdbc.actions]] are e2e tests that live
   in [[metabase.api.action-test]]."
   (:require

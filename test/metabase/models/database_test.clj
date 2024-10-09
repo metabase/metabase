@@ -1,4 +1,4 @@
-(ns metabase.models.database-test
+(ns ^:mb/driver-tests metabase.models.database-test
   (:require
    [cheshire.core :refer [decode encode]]
    [clojure.string :as str]

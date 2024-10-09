@@ -3,7 +3,10 @@
   (:require
    [cheshire.core :as json]
    [clj-http.client :as http]
+   [clojure.java.io :as io]
    [clojure.string :as str]
+   [clojure.walk :as walk]
+   [environ.core :as env]
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.analytics.snowplow :as snowplow]
@@ -16,12 +19,15 @@
    [metabase.integrations.google :as google]
    [metabase.integrations.slack :as slack]
    [metabase.models
-    :refer [Card Collection Dashboard DashboardCard Database Field LegacyMetric
-            PermissionsGroup Pulse PulseCard PulseChannel QueryCache Segment
-            Table User]]
+    :refer [Card Collection Dashboard DashboardCard Database Field
+            LegacyMetric PermissionsGroup Pulse PulseCard PulseChannel
+            QueryCache Segment Table User]]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
+   [metabase.models.setting :as setting]
    [metabase.public-settings :as public-settings]
+   [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
+   [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
@@ -115,7 +121,7 @@
   []
   {:version                              (config/mb-version-info :tag)
    :running_on                           (environment-type)
-   :startup_time_millis                  (public-settings/startup-time-millis)
+   :startup_time_millis                  (int (public-settings/startup-time-millis))
    :application_database                 (config/config-str :mb-db-type)
    :check_for_updates                    (public-settings/check-for-updates)
    :report_timezone                      (driver/report-timezone)
@@ -126,8 +132,14 @@
    :sso_configured                       (google/google-auth-enabled)
    :instance_started                     (snowplow/instance-creation)
    :has_sample_data                      (t2/exists? Database, :is_sample true)
-   :enable_embedding                     (embed.settings/enable-embedding)
-   :embedding_app_origin_set             (boolean (embed.settings/embedding-app-origin))
+   :enable_embedding                     #_:clj-kondo/ignore (embed.settings/enable-embedding)
+   :enable_embedding_sdk                 (embed.settings/enable-embedding-sdk)
+   :enable_embedding_interactive         (embed.settings/enable-embedding-interactive)
+   :embedding_app_origin_set             (boolean  (or
+                                                    #_:clj-kondo/ignore (embed.settings/embedding-app-origin)
+                                                    (embed.settings/embedding-app-origins-interactive)
+                                                    (let [sdk-origins (embed.settings/embedding-app-origins-sdk)]
+                                                      (and sdk-origins (not= "localhost:*" sdk-origins)))))
    :appearance_site_name                 (not= (public-settings/site-name) "Metabase")
    :appearance_help_link                 (public-settings/help-link)
    :appearance_logo                      (not= (public-settings/application-logo-url) "app/assets/img/logo.svg")
@@ -348,16 +360,25 @@
 ;;; Execution Metrics
 
 (defn- execution-metrics-sql []
+  ;; Postgres automatically adjusts for daylight saving time when performing time calculations on TIMESTAMP WITH TIME
+  ;; ZONE. This can cause discrepancies when subtracting 30 days if the calculation crosses a DST boundary (e.g., in the
+  ;; Pacific/Auckland timezone). To avoid this, we ensure all date computations are done in UTC on Postgres to prevent
+  ;; any time shifts due to DST. See PR #48204
   (let [thirty-days-ago (case (db/db-type)
-                          :postgres "CURRENT_TIMESTAMP - INTERVAL '30 days'"
+                          :postgres "CURRENT_TIMESTAMP AT TIME ZONE 'UTC' - INTERVAL '30 days'"
                           :h2       "DATEADD('DAY', -30, CURRENT_TIMESTAMP)"
-                          :mysql    "CURRENT_TIMESTAMP - INTERVAL 30 DAY")]
+                          :mysql    "CURRENT_TIMESTAMP - INTERVAL 30 DAY")
+        started-at      (case (db/db-type)
+                          :postgres "started_at AT TIME ZONE 'UTC'"
+                          :h2       "started_at"
+                          :mysql    "started_at")
+        timestamp-where (str started-at " > " thirty-days-ago)]
     (str/join
      "\n"
      ["WITH user_executions AS ("
       "    SELECT executor_id, COUNT(*) AS num_executions"
       "    FROM query_execution"
-      "    WHERE started_at > " thirty-days-ago
+      "    WHERE " timestamp-where
       "    GROUP BY executor_id"
       "),"
       "query_stats_1 AS ("
@@ -374,7 +395,7 @@
       "        COALESCE(SUM(CASE WHEN running_time >= 1000000 AND running_time < 10000000 THEN 1 ELSE 0 END), 0) AS num_by_latency__1001_10000,"
       "        COALESCE(SUM(CASE WHEN running_time >= 10000000 THEN 1 ELSE 0 END), 0) AS num_by_latency__10000_plus"
       "    FROM query_execution"
-      "    WHERE started_at > " thirty-days-ago
+      "    WHERE " timestamp-where
       "),"
       "query_stats_2 AS ("
       "    SELECT"
@@ -448,7 +469,7 @@
 
 ;;; Combined Stats & Logic for sending them in
 
-(defn anonymous-usage-stats
+(defn legacy-anonymous-usage-stats
   "generate a map of the usage stats for this instance"
   []
   (merge (instance-settings)
@@ -470,16 +491,267 @@
                       :table      (table-metrics)
                       :user       (user-metrics)}}))
 
-(defn- send-stats!
-  "send stats to Metabase tracking server"
+(defn- ^:deprecated send-stats-deprecated!
+  "Send stats to Metabase tracking server."
   [stats]
   (try
     (http/post metabase-usage-url {:form-params stats, :content-type :json, :throw-entire-message? true})
     (catch Throwable e
       (log/error e "Sending usage stats FAILED"))))
 
+(defn- in-docker?
+  "Is the current Metabase process running in a Docker container?"
+  []
+  (boolean
+   (or (.exists (io/file "/.dockerenv"))
+       (when (.exists (io/file "/proc/self/cgroup"))
+         (some #(re-find #"docker" %)
+               (line-seq (io/reader "/proc/self/cgroup")))))))
+
+(defn- deployment-model
+  []
+  (case
+   (premium-features/is-hosted?) "cloud"
+   (in-docker?) "docker"
+   :else "jar"))
+
+(def ^:private activation-days 3)
+
+(defn- sufficient-users?
+  "Returns a Boolean indicating whether the number of non-internal users created within `activation-days` is greater
+  than or equal to `num-users`"
+  [num-users]
+  (let [users-in-activation-period
+        (t2/count :model/User {:where [:and
+                                       [:<=
+                                        :date_joined
+                                        (t/plus (t/offset-date-time (setting/get :instance-creation))
+                                                (t/days activation-days))]
+                                       (mi/exclude-internal-content-hsql :model/User)]
+                               :limit (inc num-users)})]
+    (>= users-in-activation-period num-users)))
+
+(defn- sufficient-queries?
+  "Returns a Boolean indicating whether the number of queries recorded over non-sample content is greater than or equal
+  to `num-queries`"
+  [num-queries]
+  (let [sample-db-id (t2/select-one-pk :model/Database :is_sample true)
+        ;; QueryExecution can be large, so let's avoid counting everything
+        queries      (t2/select-fn-set :id :model/QueryExecution
+                                       {:where [:or
+                                                [:not= :database_id sample-db-id]
+                                                [:= :database_id nil]]
+                                        :limit (inc num-queries)})]
+    (>= (count queries) num-queries)))
+
+(defn- completed-activation-signals?
+  "If the current plan is Pro or Starter, returns a Boolean indicating whether the instance should be considered to have
+  completed activation signals. Returns nil for non-Pro or Starter plans."
+  []
+  (let [plan     (premium-features/plan-alias)
+        pro?     (when plan (str/starts-with? plan "pro"))
+        starter? (when plan (str/starts-with? plan "starter"))]
+    (cond
+      pro?
+      (or (sufficient-users? 4) (sufficient-queries? 201))
+
+      starter?
+      (or (sufficient-users? 2) (sufficient-queries? 101))
+
+      :else
+      nil)))
+
+(defn- snowplow-instance-attributes
+  [stats]
+  (let [system-stats (-> stats :stats :system)
+        instance-attributes
+        (merge
+         (dissoc system-stats :user_language)
+         {:metabase_plan                    (premium-features/plan-alias)
+          :metabase_version                 (-> stats :version)
+          :language                         (-> system-stats :user_language)
+          :report_timezone                  (-> stats :report_timezone)
+          :deployment_model                 (deployment-model)
+          :startup_time_millis              (-> stats :startup_time_millis)
+          :has_activation_signals_completed (completed-activation-signals?)})]
+    (mapv
+     (fn [[k v]]
+       {"key"   (name k)
+        "value" v})
+     instance-attributes)))
+
+(defn- whitelabeling-in-use?
+  "Are any whitelabeling settings set to values other than their default?"
+  []
+  (let [whitelabel-settings (filter
+                             (fn [setting] (= (:feature setting) :whitelabel))
+                             (vals @setting/registered-settings))]
+    (boolean
+     (some
+      (fn [setting]
+        (not= ((:getter setting))
+              (:default setting)))
+      whitelabel-settings))))
+
+(def csv-upload-version-availability
+  "Map from driver engines to the first version ([major minor]) which introduced support for CSV uploads"
+  {:postgres   [47 0]
+   :mysql      [47 0]
+   :redshift   [49 6]
+   :clickhouse [50 0]})
+
+(defn- csv-upload-available?
+  "Is CSV upload currently available to be used on this instance?"
+  []
+  (boolean
+   (let [major-version (config/current-major-version)
+         minor-version (config/current-minor-version)
+         engines       (t2/select-fn-set :engine :model/Database
+                                         {:where [:in :engine (map name (keys csv-upload-version-availability))]})]
+     (when (and major-version minor-version)
+       (some
+        (fn [engine]
+          (when-let [[required-major required-minor] (csv-upload-version-availability engine)]
+            (and (>= major-version required-major)
+                 (>= minor-version required-minor))))
+        engines)))))
+
+(defn- ee-snowplow-features-data'
+  []
+  (let [features [:sso-jwt :sso-saml :scim :sandboxes :email-allow-list]]
+    (map
+     (fn [feature]
+       {:name      feature
+        :available false
+        :enabled   false})
+     features)))
+
+(defenterprise ee-snowplow-features-data
+  "OSS values to use for features which require calling EE code to check whether they are available/enabled."
+  metabase-enterprise.stats
+  []
+  (ee-snowplow-features-data'))
+
+(defn- snowplow-features-data
+  []
+  [{:name      :email
+    :available true
+    :enabled   (email/email-configured?)}
+   {:name      :slack
+    :available true
+    :enabled   (slack/slack-configured?)}
+   {:name      :sso-google
+    :available true
+    :enabled   (google/google-auth-configured)}
+   {:name      :sso-ldap
+    :available true
+    :enabled   (public-settings/ldap-enabled?)}
+   {:name      :sample-data
+    :available true
+    :enabled   (t2/exists? Database, :is_sample true)}
+   {:name      :interactive-embedding
+    :available (premium-features/hide-embed-branding?)
+    :enabled   (and
+                (embed.settings/enable-embedding-interactive)
+                (boolean (embed.settings/embedding-app-origins-interactive))
+                (public-settings/sso-enabled?))}
+   {:name      :static-embedding
+    :available true
+    :enabled   (and
+                (embed.settings/enable-embedding-static)
+                (or
+                 (t2/exists? :model/Dashboard :enable_embedding true)
+                 (t2/exists? :model/Card :enable_embedding true)))}
+   {:name      :public-sharing
+    :available true
+    :enabled   (and
+                (public-settings/enable-public-sharing)
+                (or
+                 (t2/exists? :model/Dashboard :public_uuid [:not= nil])
+                 (t2/exists? :model/Card :public_uuid [:not= nil])))}
+   {:name      :whitelabel
+    :available (premium-features/enable-whitelabeling?)
+    :enabled   (whitelabeling-in-use?)}
+   {:name      :csv-upload
+    :available (csv-upload-available?)
+    :enabled   (t2/exists? :model/Database :uploads_enabled true)}
+   {:name      :mb-analytics
+    :available (premium-features/enable-audit-app?)
+    :enabled   (premium-features/enable-audit-app?)}
+   {:name      :advanced-permissions
+    :available (premium-features/enable-advanced-permissions?)
+    :enabled   (premium-features/enable-advanced-permissions?)}
+   {:name      :serialization
+    :available (premium-features/enable-serialization?)
+    :enabled   (premium-features/enable-serialization?)}
+   {:name      :official-collections
+    :available (premium-features/enable-official-collections?)
+    :enabled   (t2/exists? :model/Collection :authority_level "official")}
+   {:name      :cache-granular-controls
+    :available (premium-features/enable-cache-granular-controls?)
+    :enabled   (t2/exists? :model/CacheConfig)}
+   {:name      :attached-dwh
+    :available (premium-features/has-attached-dwh?)
+    :enabled   (premium-features/has-attached-dwh?)}
+   {:name      :database-auth-providers
+    :available (premium-features/enable-database-auth-providers?)
+    :enabled   (premium-features/enable-database-auth-providers?)}
+   {:name      :config-text-file
+    :available (premium-features/enable-config-text-file?)
+    :enabled   (some? (get env/env :mb-config-file-path))}
+   {:name      :content-verification
+    :available (premium-features/enable-content-verification?)
+    :enabled   (t2/exists? :model/ModerationReview)}
+   {:name      :dashboard-subscription-filters
+    :available (premium-features/enable-content-verification?)
+    :enabled   (t2/exists? :model/Pulse {:where [:not= :parameters "[]"]})}
+   {:name      :disable-password-login
+    :available (premium-features/can-disable-password-login?)
+    :enabled   (not (public-settings/enable-password-login))}
+   {:name      :email-restrict-recipients
+    :available (premium-features/enable-email-restrict-recipients?)
+    :enabled   (not= (setting/get-value-of-type :keyword :user-visibility) :all)}
+   {:name      :upload-management
+    :available (premium-features/enable-upload-management?)
+    :enabled   (t2/exists? :model/Table :is_upload true)}
+   {:name      :snippet-collections
+    :available (premium-features/enable-snippet-collections?)
+    :enabled   (t2/exists? :model/Collection :namespace "snippets")}])
+
+(defn- snowplow-features
+  []
+  (let [features (concat (snowplow-features-data) (ee-snowplow-features-data))]
+    (mapv
+     ;; Convert keys and feature names to strings to match expected Snowplow schema
+     (fn [feature]
+       (-> (update feature :name name)
+           (update :name u/->snake_case_en)
+           ;; Ensure that unavailable features are not reported as enabled
+           (update :enabled (fn [enabled?] (if-not (:available feature) false enabled?)))
+           (walk/stringify-keys)))
+     features)))
+
+(defn- snowplow-anonymous-usage-stats
+  "Send stats to Metabase's snowplow collector. Transforms stats into the format required by the Snowplow schema."
+  [stats]
+  (let [instance-attributes (snowplow-instance-attributes stats)
+        features            (snowplow-features)]
+    {:instance-attributes instance-attributes
+     :features            features}))
+
 (defn phone-home-stats!
   "Collect usage stats and phone them home"
   []
   (when (public-settings/anon-tracking-enabled)
-    (send-stats! (anonymous-usage-stats))))
+    (let [start-time-ms  (System/currentTimeMillis)
+          stats          (legacy-anonymous-usage-stats)
+          snowplow-stats (snowplow-anonymous-usage-stats stats)
+          end-time-ms    (System/currentTimeMillis)
+          elapsed-secs   (quot (- end-time-ms start-time-ms) 1000)]
+      #_{:clj-kondo/ignore [:deprecated-var]}
+      (send-stats-deprecated! stats)
+      (snowplow/track-event! ::snowplow/instance_stats
+                             (assoc snowplow-stats
+                                    :metadata
+                                    [{"key"   "stats_export_time_seconds"
+                                      "value" elapsed-secs}])))))

@@ -361,7 +361,9 @@ describe("FilterPicker", () => {
       await userEvent.click(screen.getByLabelText("Back"));
       await userEvent.click(screen.getByText("Time"));
 
-      expect(screen.getByLabelText("Filter operator")).toHaveValue("Before");
+      expect(screen.getByLabelText("Filter operator")).toHaveTextContent(
+        "Before",
+      );
       expect(screen.getByDisplayValue("00:00")).toBeInTheDocument();
 
       await userEvent.click(screen.getByText("Update filter"));
@@ -388,7 +390,7 @@ describe("FilterPicker", () => {
       );
 
       await userEvent.click(screen.getByText("Total"));
-      await userEvent.click(screen.getByDisplayValue("Between"));
+      await userEvent.click(screen.getByText("Between"));
       await userEvent.click(screen.getByText("Equal to"));
       const input = screen.getByPlaceholderText("Enter a number");
       await userEvent.type(input, "100");

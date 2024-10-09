@@ -1,9 +1,10 @@
-(ns metabase.driver.bigquery-cloud-sdk-test
+(ns ^:mb/driver-tests metabase.driver.bigquery-cloud-sdk-test
   (:require
    [cheshire.core :as json]
    [clojure.core.async :as a]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [clojure.walk :as walk]
    [metabase.db.metadata-queries :as metadata-queries]
    [metabase.driver :as driver]
    [metabase.driver.bigquery-cloud-sdk :as bigquery]
@@ -12,6 +13,7 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.pipeline :as qp.pipeline]
+   [metabase.query-processor.store :as qp.store]
    [metabase.sync :as sync]
    [metabase.test :as mt]
    [metabase.test.data.bigquery-cloud-sdk :as bigquery.tx]
@@ -22,7 +24,7 @@
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
-   (com.google.cloud.bigquery BigQuery DatasetId TableResult)))
+   (com.google.cloud.bigquery TableResult)))
 
 (set! *warn-on-reflection* true)
 
@@ -50,8 +52,8 @@
       (testing "can-connect? returns false for bogus credentials"
         (is (false? (driver/can-connect? :bigquery-cloud-sdk (assoc db-details :project-id fake-proj-id)))))
       (testing "can-connect? returns true for a valid dataset-id even with no tables"
-        (with-redefs [bigquery/list-tables (fn [& _]
-                                             [])]
+        (with-redefs [bigquery/describe-database-tables (fn [& _]
+                                                          [])]
           (is (true? (driver/can-connect? :bigquery-cloud-sdk db-details)))))
       (testing "can-connect? returns an appropriate exception message if no datasets are found"
         (is (thrown-with-msg? Exception
@@ -240,14 +242,22 @@
       (is (contains? (:tables (driver/describe-database :bigquery-cloud-sdk (mt/db)))
                      {:schema test-db-name :name view-name :database_require_filter false})
           "`describe-database` should see the view")
-      (is (= {:schema test-db-name
-              :name   view-name
-              :fields #{{:name "id", :database-type "INTEGER" :base-type :type/Integer :database-position 0 :database-partitioned false}
-                        {:name "venue_name", :database-type "STRING" :base-type :type/Text :database-position 1 :database-partitioned false}
-                        {:name "category_name", :database-type "STRING" :base-type :type/Text :database-position 2 :database-partitioned false}}}
-             (driver/describe-table :bigquery-cloud-sdk (mt/db) {:name view-name, :schema test-db-name}))
-          "`describe-tables` should see the fields in the view")
+      (is (= [{:name "id", :database-type "INTEGER" :base-type :type/Integer :database-position 0 :database-partitioned false :table-name view-name :table-schema test-db-name}
+              {:name "venue_name", :database-type "STRING" :base-type :type/Text :database-position 1 :database-partitioned false :table-name view-name :table-schema test-db-name}
+              {:name "category_name", :database-type "STRING" :base-type :type/Text :database-position 2 :database-partitioned false :table-name view-name :table-schema test-db-name}]
+             (driver/describe-fields :bigquery-cloud-sdk (mt/db) {:table-names [view-name], :schema-names [test-db-name]}))
+          "`describe-fields` should see the fields in the view")
       (sync/sync-database! (mt/db) {:scan :schema})
+
+      (testing "describe-database"
+        (qp.store/with-metadata-provider (mt/id)
+          (is (= #{{:schema test-db-name
+                    :name view-name
+                    :database_require_filter false}}
+                 (into #{}
+                       (filter (comp #{view-name} :name))
+                       (:tables (driver/describe-database :bigquery-cloud-sdk (mt/db))))))))
+
       (testing "We should be able to run queries against the view (#3414)"
         (is (= [[1 "Red Medicine" "Asian"]
                 [2 "Stout Burgers & Beers" "Burger"]
@@ -268,6 +278,15 @@
                                (fmt-table-name "orders"))]]
             (bigquery.tx/execute! sql))
           (sync/sync-database! (mt/db) {:scan :schema})
+          (testing "describe-database"
+            (qp.store/with-metadata-provider (mt/id)
+              (is (= #{{:schema test-db-name
+                        :name view-name
+                        :database_require_filter false}}
+                     (into #{}
+                           (filter (comp #{view-name} :name))
+                           (:tables (driver/describe-database :bigquery-cloud-sdk (mt/db))))))))
+
           (testing "We should be able to run queries against the view (#3414)"
             (is (= [[1 93] [2 98] [3 77]]
                    (mt/rows
@@ -302,13 +321,42 @@
     :bigquery-cloud-sdk
     (mt/dataset
       nested-records
-      (is (= {:columns ["r.a" "r.b" "r.rr.aa"]
-              :rows [[1 "a" 10] [2 "b" nil] [3 "c" nil]]}
-             (mt/rows+column-names
-              (mt/run-mbql-query records
-                {:fields [(mt/id :records :r :a)
-                          (mt/id :records :r :b)
-                          (mt/id :records :r :rr :aa)]})))))))
+      (let [database (driver/describe-database :bigquery-cloud-sdk (mt/db))
+            table (first (:tables database))]
+        (is (=? {:name "records"} table))
+        (is (=? [{:name "id"}
+                 {:name "name"}
+                 {:name "r"
+                  :database-type "RECORD",
+                  :base-type :type/Dictionary,
+                  :database-position 2
+                  :nested-fields [{:name "a",
+                                   :database-type "INTEGER",
+                                   :base-type :type/Integer,
+                                   :database-position 2,
+                                   :nfc-path ["r"]}
+                                  {:name "b",
+                                   :database-type "STRING",
+                                   :base-type :type/Text,
+                                   :database-position 2,
+                                   :nfc-path ["r"]}
+                                  {:name "rr",
+                                   :database-type "RECORD",
+                                   :base-type :type/Dictionary,
+                                   :database-position 2,
+                                   :nfc-path ["r"],
+                                   :nested-fields
+                                   [{:name "aa",
+                                     :database-type "INTEGER",
+                                     :base-type :type/Integer,
+                                     :database-position 2,
+                                     :nfc-path ["r" "rr"]}]}]}]
+                (walk/postwalk
+                 (fn [n]
+                   (if (set? n)
+                     (sort-by :name n)
+                     n))
+                 (driver/describe-fields :bigquery-cloud-sdk (mt/db) {:table-names [(:name table)]}))))))))
 
 (deftest query-nested-fields-test
   (mt/test-driver
@@ -354,6 +402,24 @@
                                  (fmt-table-name "not_partitioned"))]]
               (bigquery.tx/execute! sql))
             (sync/sync-database! (mt/db) {:scan :schema})
+
+            (testing "describe-database"
+              (qp.store/with-metadata-provider (mt/id)
+                (is (= #{{:schema test-db-name
+                          :name "partition_by_ingestion_time",
+                          :database_require_filter true}
+                         {:schema test-db-name, :name "partition_by_time", :database_require_filter true}
+                         {:schema test-db-name, :name "partition_by_range", :database_require_filter true}
+                         {:schema test-db-name,
+                          :name "partition_by_range_not_required",
+                          :database_require_filter false}}
+                       (into #{}
+                             (filter (comp #{"partition_by_range"
+                                             "partition_by_time"
+                                             "partition_by_ingestion_time"
+                                             "partition_by_range_not_required"
+                                             "partition_by_ingestion_time_not_required"} :name))
+                             (:tables (driver/describe-database :bigquery-cloud-sdk (mt/db))))))))
 
             (testing "tables that require a filter are correctly identified"
               (is (= table-name->is-filter-required?
@@ -655,30 +721,36 @@
       (is (contains? (:tables (driver/describe-database :bigquery-cloud-sdk (mt/db)))
                      {:schema test-db-name :name tbl-nm :database_require_filter false})
           "`describe-database` should see the table")
-      (is (= {:schema test-db-name
-              :name   tbl-nm
-              :fields #{{:base-type :type/Decimal
-                         :database-partitioned false
-                         :database-position 0
-                         :database-type "NUMERIC"
-                         :name "numeric_col"}
-                        {:base-type :type/Decimal
-                         :database-partitioned false
-                         :database-position 1
-                         :database-type "NUMERIC"
-                         :name "decimal_col"}
-                        {:base-type :type/Decimal
-                         :database-partitioned false
-                         :database-position 2
-                         :database-type "BIGNUMERIC"
-                         :name "bignumeric_col"}
-                        {:base-type :type/Decimal
-                         :database-partitioned false
-                         :database-position 3
-                         :database-type "BIGNUMERIC"
-                         :name "bigdecimal_col"}}}
-             (driver/describe-table :bigquery-cloud-sdk (mt/db) {:name tbl-nm :schema test-db-name}))
-          "`describe-table` should see the fields in the table")
+      (is (= [{:base-type :type/Decimal
+               :table-name tbl-nm
+               :table-schema test-db-name
+               :database-partitioned false
+               :database-position 0
+               :database-type "NUMERIC"
+               :name "numeric_col"}
+              {:base-type :type/Decimal
+               :table-name tbl-nm
+               :table-schema test-db-name
+               :database-partitioned false
+               :database-position 1
+               :database-type "NUMERIC"
+               :name "decimal_col"}
+              {:base-type :type/Decimal
+               :table-name tbl-nm
+               :table-schema test-db-name
+               :database-partitioned false
+               :database-position 2
+               :database-type "BIGNUMERIC"
+               :name "bignumeric_col"}
+              {:base-type :type/Decimal
+               :table-name tbl-nm
+               :table-schema test-db-name
+               :database-partitioned false
+               :database-position 3
+               :database-type "BIGNUMERIC"
+               :name "bigdecimal_col"}]
+             (driver/describe-fields :bigquery-cloud-sdk (mt/db) {:table-names [tbl-nm] :schema-names [test-db-name]}))
+          "`describe-fields` should see the fields in the table")
       (sync/sync-database! (mt/db) {:scan :schema})
       (testing "We should be able to run queries against the table"
         (doseq [[col-nm param-v] [[:numeric_col (bigdec numeric-val)]
@@ -705,12 +777,10 @@
                                     tbl-nm])
                       (fn [tbl-nm] ["DROP TABLE IF EXISTS `%s.%s`" test-db-name tbl-nm])
                       (fn [tbl-nm]
-                        (is (= {:schema test-db-name
-                                :name   tbl-nm
-                                :fields #{{:name "int_col" :database-type "INTEGER" :base-type :type/Integer :database-position 0 :database-partitioned false}
-                                          {:name "array_col" :database-type "INTEGER" :base-type :type/Array :database-position 1 :database-partitioned false}}}
-                               (driver/describe-table :bigquery-cloud-sdk (mt/db) {:name tbl-nm :schema test-db-name}))
-                            "`describe-table` should detect the correct base-type for array type columns")))))
+                        (is (= [{:name "int_col" :database-type "INTEGER" :base-type :type/Integer :database-position 0 :database-partitioned false :table-name tbl-nm :table-schema test-db-name}
+                                {:name "array_col" :database-type "ARRAY" :base-type :type/Array :database-position 1 :database-partitioned false :table-name tbl-nm :table-schema test-db-name}]
+                               (driver/describe-fields :bigquery-cloud-sdk (mt/db) {:table-names [tbl-nm] :schema-names [test-db-name]}))
+                            "`describe-fields` should detect the correct base-type for array type columns")))))
 
 (deftest sync-inactivates-old-duplicate-tables
   (testing "If on the new driver, then downgrade, then upgrade again (#21981)"
@@ -733,12 +803,12 @@
     (let [fake-execute-called (atom false)
           orig-fn             @#'bigquery/execute-bigquery]
       (testing "Retry functionality works as expected"
-        (with-redefs [bigquery/execute-bigquery (fn [^BigQuery client ^String sql parameters _]
+        (with-redefs [bigquery/execute-bigquery (fn [& args]
                                                   (if-not @fake-execute-called
                                                     (do (reset! fake-execute-called true)
                                                         ;; simulate a transient error being thrown
                                                         (throw (ex-info "Transient error" {:retryable? true})))
-                                                    (orig-fn client sql parameters nil)))]
+                                                    (apply orig-fn args)))]
           ;; run any other test that requires a successful query execution
           (table-rows-sample-test)
           ;; make sure that the fake exception was thrown, and thus the query execution was retried
@@ -749,13 +819,12 @@
     (let [fake-execute-called (atom false)
           orig-fn        @#'bigquery/execute-bigquery]
       (testing "Should not retry query on cancellation"
-        (with-redefs [bigquery/execute-bigquery (fn [^BigQuery client ^String sql parameters _]
-                                                  ;; We only want to simulate exception on the query that we're testing and not on possible db setup queries
-                                                  (if (and (re-find #"notRetryCancellationExceptionTest" sql) (not @fake-execute-called))
+        (with-redefs [bigquery/execute-bigquery (fn [& args]
+                                                  (if (not @fake-execute-called)
                                                     (do (reset! fake-execute-called true)
                                                         ;; Simulate a cancellation happening
                                                         (throw (ex-info "Query cancelled" {::bigquery/cancelled? true})))
-                                                    (orig-fn client sql parameters nil)))]
+                                                    (apply orig-fn args)))]
           (try
             (qp/process-query {:native {:query "SELECT CURRENT_TIMESTAMP() AS notRetryCancellationExceptionTest"} :database (mt/id)
                                :type     :native})
@@ -809,7 +878,7 @@
   (mt/test-driver :bigquery-cloud-sdk
     (testing "BigQuery queries which fail on later pages are caught properly"
       (let [page-counter (atom 3)
-            orig-exec    @#'bigquery/execute-bigquery
+            orig-exec    @#'bigquery/reducible-bigquery-results
             wrap-result  (fn wrap-result [^TableResult result]
                            (proxy [TableResult] []
                              (getSchema [] (.getSchema result))
@@ -819,24 +888,24 @@
                                (if (zero? @page-counter)
                                  nil
                                  (wrap-result (.getNextPage result))))))]
-        (with-redefs [bigquery/execute-bigquery (fn [^BigQuery client ^String sql parameters cancel-chan]
-                                                  (wrap-result (orig-exec client sql parameters cancel-chan)))]
-          (binding [bigquery/*page-size*     100 ; small pages so there are several
+        (with-redefs [bigquery/reducible-bigquery-results (fn [page & args]
+                                                            (apply orig-exec (wrap-result page) args))]
+          (binding [bigquery/*page-size*     10 ; small pages so there are several
                     bigquery/*page-callback* (fn []
                                                (let [pages (swap! page-counter #(max (dec %) 0))]
                                                  (log/debugf "*page-callback counting down: %d to go" pages)))]
             (mt/dataset test-data
-                        ;; *page-size* is inexact - should be 300 but give it a wide margin.
-              (is (< 10
-                     (count (mt/rows (mt/process-query (mt/query orders))))
-                     500)))))))))
+              (is (thrown-with-msg?
+                   clojure.lang.ExceptionInfo
+                   #"Cannot get next page from BigQuery"
+                   (mt/process-query (mt/query orders)))))))))))
 
 (deftest later-page-fetch-throws-test
   (mt/test-driver :bigquery-cloud-sdk
     (testing "BigQuery queries which fail on later pages are caught properly"
       (let [count-before (count (future-thread-names))
             page-counter (atom 3)
-            orig-exec    @#'bigquery/execute-bigquery
+            orig-exec    @#'bigquery/reducible-bigquery-results
             wrap-result  (fn wrap-result [^TableResult result]
                            (proxy [TableResult] []
                              (getSchema [] (.getSchema result))
@@ -846,8 +915,8 @@
                                (if (zero? @page-counter)
                                  (throw (ex-info "onoes BigQuery failed to fetch a later page" {}))
                                  (wrap-result (.getNextPage result))))))]
-        (with-redefs [bigquery/execute-bigquery (fn [^BigQuery client ^String sql parameters cancel-chan]
-                                                  (wrap-result (orig-exec client sql parameters cancel-chan)))]
+        (with-redefs [bigquery/reducible-bigquery-results (fn [page & args]
+                                                            (apply orig-exec (wrap-result page) args))]
           (dotimes [_ 10]
             (reset! page-counter 3)
             (binding [bigquery/*page-size*     100 ; small pages so there are several
@@ -872,13 +941,11 @@
                     bigquery/*page-size*     page-size
                     bigquery/*page-callback* (fn [] (a/put! canceled-chan true))]
             (mt/dataset test-data
-              ;; Page size does not guarantee the size of the response but orders table is ~20k rows.
-              (is (< 0
-                     (-> (mt/query orders {:query {:limit max-rows}})
-                         mt/process-query
-                         mt/rows
-                         count)
-                     1000)))))))))
+              (is (thrown-with-msg?
+                   Exception
+                   #"Query cancelled"
+                   (-> (mt/query orders {:query {:limit max-rows}})
+                       mt/process-query))))))))))
 
 (defn- synced-tables [db-attributes]
   (t2.with-temp/with-temp [Database db db-attributes]
@@ -893,11 +960,10 @@
         (mt/db) ;; force the creation of another test dataset
         (let [;; This test is implemented in this way to avoid having to create new datasets, and to avoid
               ;; syncing most of the tables in the test DB.
-              datasets (#'bigquery/list-datasets (-> (mt/db)
-                                                     :details
-                                                     (dissoc :dataset-filters-type
-                                                             :dataset-filters-patterns)))
-              dataset-ids (map #(.getDataset ^DatasetId %) datasets)
+              dataset-ids (#'bigquery/list-datasets (-> (mt/db)
+                                                        :details
+                                                        (dissoc :dataset-filters-type
+                                                                :dataset-filters-patterns)))
               ;; get the first 4 characters of each dataset-id. The first 4 characters are used because the first 3 are
               ;; often used for bigquery dataset names e.g. `v4_test_data`
               prefixes (->> dataset-ids
@@ -1054,3 +1120,27 @@
                  :breakout [[:field %bigthings.bd
                              {:type :type/Decimal
                               :binning {:strategy "default"}}]]})))))))
+
+(deftest bigquery-process-stop-test
+  (mt/test-driver
+    :bigquery-cloud-sdk
+    (sync/sync-database! (mt/db) {:scan :schema})
+    (let [before-names (future-thread-names)]
+      (doseq [:let [callbacks (atom 0)]
+              [stop-tag stopper] [[:exception #(throw (Exception. "My Exception"))]
+                                  [:cancelled #(a/>!! qp.pipeline/*canceled-chan* true)]]
+              [tag callback] [[:initial-query stopper]
+                              [:during-page #(when (>= (swap! callbacks inc) 2)
+                                               (stopper))]]]
+        (testing (format "%s %s" tag stop-tag)
+          (reset! callbacks 0)
+          (binding [bigquery/*page-callback* callback
+                    bigquery/*page-size* 10]
+            (let [query  {:database (mt/id)
+                          :type "native"
+                          :native {:query (format "select * from `%s.orders` limit 100" test-db-name)}}
+                  result (mt/user-http-request :crowberto :post 202 "dataset" query)]
+              (is (= "failed" (:status result)))
+              (is (= (if (= :cancelled stop-tag) "Query cancelled" "My Exception")
+                     (:error result)))))))
+      (is (< (count before-names) (+ (count (future-thread-names)) 5))))))

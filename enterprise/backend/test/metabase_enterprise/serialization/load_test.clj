@@ -1,4 +1,4 @@
-(ns metabase-enterprise.serialization.load-test
+(ns ^:mb/driver-tests metabase-enterprise.serialization.load-test
   (:refer-clojure :exclude [load])
   (:require
    [clojure.data :as data]
@@ -318,6 +318,7 @@
                          ;; same native form on one database, then it's likely they would on any, since that is
                          ;; orthogonal to the issues that serialization has when performing this roundtrip).
                          (disj :oracle    ; no bare table names allowed
+                               :databricks ; table name requires schema prefix with current implementation
                                :redshift  ; bare table name doesn't work; it's test_data_venues instead of venues
                                :snowflake ; bare table name doesn't work; it's test_data_venues instead of venues
                                :sqlserver ; ORDER BY not allowed not allowed in derived tables (subselects)

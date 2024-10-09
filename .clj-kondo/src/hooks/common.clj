@@ -42,7 +42,8 @@
 ;;;; Common hook definitions
 
 (defn do*
-  "This is the same idea as [[clojure.core/do]] but doesn't cause Kondo to complain about redundant dos or unused values."
+  "This is the same idea as [[clojure.core/do]] but doesn't cause Kondo to complain about redundant dos or unused
+  values."
   [{{[_ & args] :children, :as node} :node}]
   (let [node* (-> (hooks/list-node
                    (list*

@@ -1,7 +1,7 @@
 import type { EmbeddingParameters } from "metabase/public/lib/types";
 import type { PieRow } from "metabase/visualizations/echarts/pie/model/types";
 
-import type { Collection, CollectionId } from "./collection";
+import type { Collection, CollectionId, LastEditInfo } from "./collection";
 import type { DashCardId, DashboardId } from "./dashboard";
 import type { Database, DatabaseId } from "./database";
 import type { BaseEntityId } from "./entity-id";
@@ -14,8 +14,12 @@ import type { Table } from "./table";
 import type { UserInfo } from "./user";
 import type { CardDisplayType, VisualizationDisplay } from "./visualization";
 import type { SmartScalarComparison } from "./visualization-settings";
-
 export type CardType = "model" | "question" | "metric";
+
+type CreatorInfo = Pick<
+  UserInfo,
+  "first_name" | "last_name" | "email" | "id" | "common_name"
+>;
 
 export interface Card<Q extends DatasetQuery = DatasetQuery>
   extends UnsavedCard<Q> {
@@ -53,7 +57,8 @@ export interface Card<Q extends DatasetQuery = DatasetQuery>
 
   archived: boolean;
 
-  creator?: UserInfo;
+  creator?: CreatorInfo;
+  "last-edit-info"?: LastEditInfo;
 }
 
 export interface PublicCard {
@@ -209,18 +214,25 @@ export type VisualizationSettings = {
   "scalar.compact_primary_number"?: boolean;
 
   // Pie Settings
-  "pie.dimension"?: string;
+  "pie.dimension"?: string | string[];
+  "pie.middle_dimension"?: string;
+  "pie.outer_dimension"?: string;
   "pie.rows"?: PieRow[];
   "pie.metric"?: string;
   "pie.sort_rows"?: boolean;
   "pie.show_legend"?: boolean;
   "pie.show_total"?: boolean;
+  "pie.show_labels"?: boolean;
   "pie.percent_visibility"?: "off" | "legend" | "inside" | "both";
   "pie.decimal_places"?: number;
   "pie.slice_threshold"?: number;
   "pie.colors"?: Record<string, string>;
 
   [key: string]: any;
+} & EmbedVisualizationSettings;
+
+export type EmbedVisualizationSettings = {
+  iframe?: string;
 };
 
 export interface ModerationReview {
@@ -338,3 +350,8 @@ export type CardQueryRequest = {
   ignore_cache?: boolean;
   parameters?: unknown[];
 };
+
+export type GetPublicOrEmbeddableCard = Pick<
+  Card,
+  "id" | "name" | "public_uuid"
+>;

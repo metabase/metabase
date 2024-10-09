@@ -26,12 +26,14 @@ export const getExtraButtons = ({
   dashboard,
   canEdit,
   pathname,
+  openSettingsSidebar,
 }: DashboardFullscreenControls & {
   canResetFilters: boolean;
   onResetFilters: () => void;
   dashboard: Dashboard;
   canEdit: boolean;
   pathname: string;
+  openSettingsSidebar: () => void;
 }) => {
   const extraButtons = [];
 
@@ -51,6 +53,17 @@ export const getExtraButtons = ({
 
   if (canEdit) {
     extraButtons.push({
+      title: t`Edit settings`,
+      icon: "gear",
+      action: openSettingsSidebar,
+    });
+
+    extraButtons.push({
+      separator: true,
+      key: "separator-after-edit-settings",
+    });
+
+    extraButtons.push({
       title: t`Move`,
       icon: "move",
       link: `${pathname}/move`,
@@ -64,6 +77,11 @@ export const getExtraButtons = ({
   });
 
   if (canEdit) {
+    extraButtons.push({
+      separator: true,
+      key: "separator-before-ee-buttons-and-trash",
+    });
+
     extraButtons.push(...PLUGIN_DASHBOARD_HEADER.extraButtons(dashboard));
 
     extraButtons.push({

@@ -3,11 +3,14 @@ import { type MouseEvent, useCallback, useMemo, useRef, useState } from "react";
 import { useSet } from "react-use";
 
 import { isNotNull } from "metabase/lib/types";
+import { extractRemappings } from "metabase/visualizations";
 import ChartWithLegend from "metabase/visualizations/components/ChartWithLegend";
+import { ResponsiveEChartsRenderer } from "metabase/visualizations/components/EChartsRenderer";
 import { getPieChartFormatters } from "metabase/visualizations/echarts/pie/format";
 import { getPieChartModel } from "metabase/visualizations/echarts/pie/model";
 import { getPieChartOption } from "metabase/visualizations/echarts/pie/option";
 import { getTooltipOption } from "metabase/visualizations/echarts/pie/tooltip";
+import { getArrayFromMapValues } from "metabase/visualizations/echarts/pie/util";
 import {
   useCloseTooltipOnScroll,
   usePieChartValuesColorsClasses,
@@ -15,7 +18,6 @@ import {
 import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-browser-rendering-context";
 import type { VisualizationProps } from "metabase/visualizations/types";
 
-import { ChartRenderer } from "./PieChart.styled";
 import { PIE_CHART_DEFINITION } from "./chart-definition";
 import { useChartEvents } from "./use-chart-events";
 
@@ -31,6 +33,7 @@ export function PieChart(props: VisualizationProps) {
     isFullscreen,
   } = props;
   const hoveredIndex = props.hovered?.index;
+  const hoveredSliceKeyPath = props.hovered?.pieSliceKeyPath;
 
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<EChartsType>();
@@ -50,20 +53,30 @@ export function PieChart(props: VisualizationProps) {
     isDashboard,
     isFullscreen,
   });
+  const rawSeriesWithRemappings = useMemo(
+    () => extractRemappings(rawSeries),
+    [rawSeries],
+  );
   const chartModel = useMemo(
     () =>
       getPieChartModel(
-        rawSeries,
+        rawSeriesWithRemappings,
         settings,
         Array.from(hiddenSlices),
         renderingContext,
         showWarning,
       ),
-    [rawSeries, settings, hiddenSlices, renderingContext, showWarning],
+    [
+      rawSeriesWithRemappings,
+      settings,
+      hiddenSlices,
+      renderingContext,
+      showWarning,
+    ],
   );
   const formatters = useMemo(
-    () => getPieChartFormatters(chartModel, settings, renderingContext),
-    [chartModel, settings, renderingContext],
+    () => getPieChartFormatters(chartModel, settings),
+    [chartModel, settings],
   );
   const option = useMemo(
     () => ({
@@ -74,6 +87,7 @@ export function PieChart(props: VisualizationProps) {
         renderingContext,
         sideLength,
         hoveredIndex,
+        hoveredSliceKeyPath,
       ),
       tooltip: getTooltipOption(chartModel, formatters, containerRef),
     }),
@@ -84,6 +98,7 @@ export function PieChart(props: VisualizationProps) {
       renderingContext,
       sideLength,
       hoveredIndex,
+      hoveredSliceKeyPath,
     ],
   );
 
@@ -100,33 +115,34 @@ export function PieChart(props: VisualizationProps) {
 
   const eventHandlers = useChartEvents(props, chartRef, chartModel);
 
-  const legendTitles = chartModel.slices
-    .filter(s => s.data.includeInLegend)
+  const slices = getArrayFromMapValues(chartModel.sliceTree);
+  const legendTitles = slices
+    .filter(s => s.includeInLegend)
     .map(s => {
-      const label = s.data.name;
+      const label = s.name;
 
       // Hidden slices don't have a percentage
-      if (s.data.normalizedPercentage === 0) {
-        return label;
+      const sliceHidden = s.normalizedPercentage === 0;
+      const percentDisabled =
+        settings["pie.percent_visibility"] !== "legend" &&
+        settings["pie.percent_visibility"] !== "both";
+
+      if (sliceHidden || percentDisabled) {
+        return [label];
       }
 
-      const percent =
-        settings["pie.percent_visibility"] === "legend" ||
-        settings["pie.percent_visibility"] === "both"
-          ? formatters.formatPercent(s.data.normalizedPercentage, "legend")
-          : undefined;
-
-      return [label, percent];
+      return [
+        label,
+        formatters.formatPercent(s.normalizedPercentage, "legend"),
+      ];
     });
 
-  const hiddenSlicesLegendIndices = chartModel.slices
-    .filter(s => s.data.includeInLegend)
-    .map((s, index) => (hiddenSlices.has(s.data.key) ? index : null))
+  const hiddenSlicesLegendIndices = slices
+    .filter(s => s.includeInLegend)
+    .map((s, index) => (hiddenSlices.has(s.key) ? index : null))
     .filter(isNotNull);
 
-  const legendColors = chartModel.slices
-    .filter(s => s.data.includeInLegend)
-    .map(s => s.data.color);
+  const legendColors = slices.filter(s => s.includeInLegend).map(s => s.color);
 
   const showLegend = settings["pie.show_legend"];
 
@@ -134,6 +150,7 @@ export function PieChart(props: VisualizationProps) {
     props.onHoverChange(
       hoverData && {
         ...hoverData,
+        pieLegendHoverIndex: hoverData.index,
       },
     );
 
@@ -141,12 +158,11 @@ export function PieChart(props: VisualizationProps) {
     event: MouseEvent,
     sliceIndex: number,
   ) => {
-    const slice = chartModel.slices[sliceIndex];
-    const willShowSlice = hiddenSlices.has(slice.data.key);
-    const hasMoreVisibleSlices =
-      chartModel.slices.length - hiddenSlices.size > 1;
+    const slice = slices[sliceIndex];
+    const willShowSlice = hiddenSlices.has(slice.key);
+    const hasMoreVisibleSlices = slices.length - hiddenSlices.size > 1;
     if (hasMoreVisibleSlices || willShowSlice) {
-      toggleSliceVisibility(slice.data.key);
+      toggleSliceVisibility(slice.key);
     }
   };
 
@@ -165,7 +181,7 @@ export function PieChart(props: VisualizationProps) {
       isDashboard={isDashboard}
       onToggleSeriesVisibility={handleToggleSeriesVisibility}
     >
-      <ChartRenderer
+      <ResponsiveEChartsRenderer
         ref={containerRef}
         option={option}
         onInit={handleInit}

@@ -5,6 +5,7 @@ import {
   addOrUpdateDashboardCard,
   cartesianChartCircle,
   createNativeQuestion,
+  createSegment,
   editDashboard,
   enterCustomColumnDetails,
   entityPickerModal,
@@ -36,7 +37,6 @@ import {
   visualize,
   withDatabase,
 } from "e2e/support/helpers";
-import { createSegment } from "e2e/support/helpers/e2e-table-metadata-helpers";
 
 const { PRODUCTS, PRODUCTS_ID, ORDERS, ORDERS_ID, REVIEWS, REVIEWS_ID } =
   SAMPLE_DATABASE;
@@ -191,7 +191,7 @@ describe.skip(
 
     it("should not remove regex escape characters (metabase#14517)", () => {
       cy.log("Create custom column using `regexextract()`");
-      cy.icon("add_data").click();
+      cy.findByLabelText("Custom Column").click();
       popover().within(() => {
         cy.get("[contenteditable='true']")
           .type(`regexextract([State], "${ESCAPED_REGEX}")`)
@@ -865,18 +865,23 @@ describe.skip("issue 25189", () => {
 
       resetTestTable({ type: dialect, table: tableName });
       cy.request("POST", `/api/database/${WRITABLE_DB_ID}/sync_schema`);
+      cy.intercept("GET", "/api/search*").as("search");
     });
 
     it("should display all summarize options if the only numeric field is a custom column (metabase#27745)", () => {
       startNewQuestion();
 
       entityPickerModal().within(() => {
-        cy.findByPlaceholderText("Search…").type("colors");
+        cy.findByPlaceholderText("Search this collection or everywhere…").type(
+          "colors",
+        );
+        cy.findByText("Everywhere").click();
+        cy.wait("@search");
         cy.findByTestId("result-item")
           .contains(/colors/i)
           .click();
       });
-      cy.icon("add_data").click();
+      cy.findByLabelText("Custom column").click();
       enterCustomColumnDetails({
         formula: "case([ID] > 1, 25, 5)",
         name: "Numeric",

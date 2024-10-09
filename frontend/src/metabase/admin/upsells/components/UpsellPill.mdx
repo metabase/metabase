@@ -1,0 +1,19 @@
+import { Box } from "metabase/ui";
+import { Canvas, Story, Meta } from "@storybook/blocks";
+import { ReduxProvider } from "__support__/storybook";
+import { _UpsellPill } from "./UpsellPill";
+import * as UpsellPillStories from "./UpsellPill.stories";
+
+<Meta of={UpsellPillStories} />
+
+# Upsell Pill
+
+## Examples
+
+<Canvas>
+  <Story of={UpsellPillStories.Default} />
+</Canvas>
+
+<Canvas>
+  <Story of={UpsellPillStories.Multiline} />
+</Canvas>
