@@ -49,11 +49,11 @@ Once a feature has been defined, typically it will be taken on by a product desi
 
 Once the main UX flows have been dialed in, there will be a hi-fidelity visual design.
 
-Features that are ready for design are tagged [Design Needed](https://github.com/metabase/metabase/labels/.Design%20Needed). Once a feature has had a reasonably complete visual design it should be tagged [Help Wanted](https://github.com/metabase/metabase/labels/.Help%20Wanted).
+Features that are ready for design are tagged [Design Needed](https://github.com/metabase/metabase/labels/.Design%20Needed). Once a feature has had a reasonably complete visual design it should be tagged [good first issue](https://github.com/metabase/metabase/labels/good%20first%20issue).
 
 ### D) Build the feature
 
-Once a feature is tagged [Help Wanted](https://github.com/metabase/metabase/labels/.Help%20Wanted), it is considered ready to be built. A core team member (or you, awesomely helpful person that you are) can start working on it.
+Once a feature is tagged [good first issue](https://github.com/metabase/metabase/labels/good%20first%20issue), it is considered ready to be built. A core team member (or you, awesomely helpful person that you are) can start working on it.
 
 If you're building something that users will see in Metabase, please refer to the Style Guide (found at `https://storybook.metabase.com`) to learn how and when to use various Metabase UI elements.
 
@@ -103,7 +103,7 @@ Some features, eg Database drivers, don't have any user facing pixels. These are
 
 In situations where a design has already been done, we can always use some help. Chime in on a pull request or an issue and offer to help.
 
-Generally speaking, any issue in [Help Wanted](https://github.com/metabase/metabase/labels/.Help%20Wanted) is fair game.
+Generally speaking, any issue in [good first issue](https://github.com/metabase/metabase/labels/good%20first%20issue) is fair game.
 
 ### #YOLO JUST SUBMIT A PR
 
