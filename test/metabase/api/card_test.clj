@@ -3911,8 +3911,10 @@
                  :model/Collection {other-coll-id :id} {}
                  :model/Dashboard {dash-id :id} {:collection_id coll-id}]
     (testing "We can create a dashboard internal card"
-      (mt/user-http-request :crowberto :post 200 "card" (assoc (card-with-name-and-query)
-                                                               :dashboard_id dash-id)))
+      (let [card-id (:id (mt/user-http-request :crowberto :post 200 "card" (assoc (card-with-name-and-query)
+                                                                                  :dashboard_id dash-id)))]
+        (testing "We autoplace a dashboard card for the new question"
+          (t2/exists? :model/DashboardCard :dashboard_id dash-id :card_id card-id))))
     (testing "We can't create a dashboard internal card with a collection_id different that its dashboard's"
       (mt/user-http-request :crowberto :post 400 "card" (assoc (card-with-name-and-query)
                                                                :dashboard_id dash-id

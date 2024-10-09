@@ -673,6 +673,21 @@
 
 ;;; ----------------------------------------------- Creating Cards ----------------------------------------------------
 
+(defn- autoplace-dashcard-for-card! [dashboard-id card]
+  (let [dashboard (t2/hydrate (t2/select-one :model/Dashboard dashboard-id) :dashcards [:tabs :tab-cards])
+        {:keys [dashcards tabs]} dashboard
+        already-on-dashboard? (seq (filter #(= (:id card) (:card_id %)) dashcards))
+        last-card-on-first-tab (or (last (first tabs))
+                                   (last (sort dashboard-card/dashcard-comparator dashcards))
+                                   ;; if we don't have any existing cards, fake it to make the math work out
+                                   {:col 0 :row 0})]
+    (when-not already-on-dashboard?
+      (t2/insert! :model/DashboardCard {:dashboard_id dashboard-id
+                                        :card_id (:id card)
+                                        :size_x 10 :size_y 10
+                                        :row (+ 10 (:row last-card-on-first-tab))
+                                        :col 0}))))
+
 (defn create-card!
   "Create a new Card. Metadata will be fetched off thread. If the metadata takes longer than [[metadata-sync-wait-ms]]
   the card will be saved without metadata and it will be saved to the card in the future when it is ready.
@@ -705,6 +720,8 @@
                                               (t2/insert-returning-instance! Card (cond-> card-data
                                                                                     metadata
                                                                                     (assoc :result_metadata metadata))))]
+     (when-let [dashboard-id (:dashboard_id card)]
+       (autoplace-dashcard-for-card! dashboard-id card))
      (when-not delay-event?
        (events/publish-event! :event/card-create {:object card :user-id (:id creator)}))
      (when metadata-future
@@ -838,21 +855,6 @@
     :database_id
     :query_type ;; these first three may not even be changeable
     :dataset_query})
-
-(defn- autoplace-dashcard-for-card! [dashboard-id card]
-  (let [dashboard (t2/hydrate (t2/select-one :model/Dashboard dashboard-id) :dashcards [:tabs :tab-cards])
-        {:keys [dashcards tabs]} dashboard
-        already-on-dashboard? (seq (filter #(= (:id card) (:card_id %)) dashcards))
-        last-card-on-first-tab (or (last (first tabs))
-                                   (last (sort dashboard-card/dashcard-comparator dashcards))
-                                   ;; if we don't have any existing cards, fake it to make the math work out
-                                   {:col 0 :row 0})]
-    (when-not already-on-dashboard?
-      (t2/insert! :model/DashboardCard {:dashboard_id dashboard-id
-                                        :card_id (:id card)
-                                        :size_x 10 :size_y 10
-                                        :row (+ 10 (:row last-card-on-first-tab))
-                                        :col 0}))))
 
 (defn update-card!
   "Update a Card. Metadata is fetched asynchronously. If it is ready before [[metadata-sync-wait-ms]] elapses it will be
