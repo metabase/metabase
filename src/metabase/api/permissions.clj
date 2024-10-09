@@ -298,8 +298,8 @@
                 :is_group_manager is_group_manager)
     ;; TODO - it's a bit silly to return the entire list of members for the group, just return the newly created one and
     ;; let the frontend add it as appropriate
-    (t2/hydrate (t2/instance :model/PermissionsGroup {:id group_id})
-                :members)))
+    (:members (t2/hydrate (t2/instance :model/PermissionsGroup {:id group_id})
+                        :members))))
 
 (api/defendpoint PUT "/membership/:id"
   "Update a Permission Group membership. Returns the updated record."
