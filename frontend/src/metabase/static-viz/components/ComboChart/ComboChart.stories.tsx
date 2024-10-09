@@ -1,7 +1,6 @@
 import type { StoryFn } from "@storybook/react";
 
 import { color } from "metabase/lib/colors";
-import { formatStaticValue } from "metabase/static-viz/lib/format";
 import {
   measureTextHeight,
   measureTextWidth,
@@ -10,26 +9,25 @@ import { DEFAULT_VISUALIZATION_THEME } from "metabase/visualizations/shared/util
 import type { RenderingContext } from "metabase/visualizations/types";
 
 import type { StaticChartProps } from "../StaticVisualization";
+import { StaticVisualization } from "../StaticVisualization";
 
-import { ComboChart } from "./ComboChart";
 import { data } from "./stories-data";
 
 export default {
   title: "static-viz/ComboChart",
-  component: ComboChart,
+  component: StaticVisualization,
 };
 
 const Template: StoryFn<StaticChartProps> = args => {
   return (
     <div style={{ border: "1px solid black", display: "inline-block" }}>
-      <ComboChart {...args} isStorybook />
+      <StaticVisualization {...args} isStorybook />
     </div>
   );
 };
 
 const renderingContext: RenderingContext = {
   getColor: color,
-  formatValue: formatStaticValue as any,
   measureText: (text, style) =>
     measureTextWidth(text, Number(style.size), Number(style.weight)),
   measureTextHeight: (_, style) => measureTextHeight(Number(style.size)),

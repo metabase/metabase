@@ -23,6 +23,7 @@
    [metabase.lib.util.match :as lib.util.match]
    [metabase.shared.util.i18n :as i18n]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
@@ -387,3 +388,36 @@
     (-> a-query
         (update :stages #(vec (take (inc stage-number) %)))
         (update-in [:stages stage-number] preview-stage clause-type clause-index))))
+
+(mu/defn wrap-native-query-with-mbql :- [:map
+                                         [:query ::lib.schema/query]
+                                         [:stage-number :int]]
+  "Given a query and stage number, return a possibly-updated query and stage number which is guaranteed to be MBQL and
+  so to support drill-thru and similar logic. Such a query must be saved, hence the `card-id`.
+
+  If the provided query is already MBQL, this is transparent.
+
+  Returns `{:query query', :stage-number stage-number'}`.
+
+  You might find it more convenient to call [[with-wrapped-native-query]]."
+  [a-query      :- ::lib.schema/query
+   stage-number :- :int
+   card-id      :- [:maybe ::lib.schema.id/card]]
+  (or (and (lib.util/native-stage? a-query stage-number)
+           card-id
+           (if-let [card (lib.metadata/card a-query card-id)]
+             {:query        (query a-query card)
+              :stage-number -1}
+             (do
+               (log/warn "Failed to wrap native query with MBQL; card not found" {:query   a-query
+                                                                                  :card-id card-id})
+               nil)))
+      {:query        a-query
+       :stage-number stage-number}))
+
+(defn with-wrapped-native-query
+  "Calls [[wrap-native-query-with-mbql]] on the given `a-query`, `stage-number` and `card-id`, then calls
+  `(f a-query' stage-number' args...)` using the query and stage number for the wrapper."
+  [a-query stage-number card-id f & args]
+  (let [{q :query, n :stage-number} (wrap-native-query-with-mbql a-query stage-number card-id)]
+    (apply f q n args)))
