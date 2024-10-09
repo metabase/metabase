@@ -64,7 +64,7 @@ export function EntityPickerSearchInput({
   return (
     <TextInput
       type="search"
-      icon={<Icon name="search" size={16} />}
+      leftSection={<Icon name="search" size={16} />}
       miw={400}
       mr="2rem"
       value={searchQuery}

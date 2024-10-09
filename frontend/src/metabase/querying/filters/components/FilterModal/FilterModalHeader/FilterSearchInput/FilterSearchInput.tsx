@@ -27,7 +27,7 @@ export function FilterSearchInput({
     <TextInput
       type="search"
       value={inputText}
-      icon={<Icon name="search" />}
+      leftSection={<Icon name="search" />}
       placeholder={t`Search for a column…`}
       aria-hidden
       onChange={event => setInputText(event.currentTarget.value)}
