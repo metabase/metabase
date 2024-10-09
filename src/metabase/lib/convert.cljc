@@ -352,17 +352,18 @@
   `:effective-type`, which is not used in options maps in legacy MBQL."
   [m]
   (not-empty
-   (into {}
-         (comp (disqualify)
-               (remove (fn [[k _v]]
-                         (= k :effective-type))))
-         ;; Following construct ensures that transformation mbql -> pmbql -> mbql, does not add base-type where those
-         ;; were not present originally. Base types are adeed in [[metabase.lib.query/add-types-to-fields]].
-         (if (contains? m :metabase.lib.query/transformation-added-base-type)
-           (dissoc m
-                   :metabase.lib.query/transformation-added-base-type
-                   :base-type)
-           m))))
+   (-> (into {}
+             (comp (disqualify)
+                   (remove (fn [[k _v]]
+                             (= k :effective-type))))
+             ;; Following construct ensures that transformation mbql -> pmbql -> mbql, does not add base-type where
+             ;; those were not present originally. Base types are adeed in [[metabase.lib.query/add-types-to-fields]].
+             (if (contains? m :metabase.lib.query/transformation-added-base-type)
+               (dissoc m
+                       :metabase.lib.query/transformation-added-base-type
+                       :base-type)
+               m))
+       (m/assoc-some :original-temporal-unit (:metabase.lib.field/original-temporal-unit m)))))
 
 (defmulti ^:private aggregation->legacy-MBQL
   {:arglists '([aggregation-clause])}

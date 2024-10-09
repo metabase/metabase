@@ -1,7 +1,6 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import { formatValue } from "metabase/lib/formatting/value";
 import {
   getMaxDimensionsSupported,
   getMaxMetricsSupported,
@@ -136,11 +135,7 @@ export const GRAPH_DATA_SETTINGS = {
     marginBottom: "1rem",
     useRawSeries: true,
     getValue: (rawSeries, settings) => {
-      const seriesModels = getSeriesModelsForSettings(
-        rawSeries,
-        settings,
-        formatValue,
-      );
+      const seriesModels = getSeriesModelsForSettings(rawSeries, settings);
 
       const seriesKeys = seriesModels.map(s => s.vizSettingsKey);
       return getSeriesOrderVisibilitySettings(settings, seriesKeys);

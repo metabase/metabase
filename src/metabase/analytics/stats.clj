@@ -132,8 +132,14 @@
    :sso_configured                       (google/google-auth-enabled)
    :instance_started                     (snowplow/instance-creation)
    :has_sample_data                      (t2/exists? Database, :is_sample true)
-   :enable_embedding                     (embed.settings/enable-embedding)
-   :embedding_app_origin_set             (boolean (embed.settings/embedding-app-origin))
+   :enable_embedding                     #_:clj-kondo/ignore (embed.settings/enable-embedding)
+   :enable_embedding_sdk                 (embed.settings/enable-embedding-sdk)
+   :enable_embedding_interactive         (embed.settings/enable-embedding-interactive)
+   :embedding_app_origin_set             (boolean  (or
+                                                    #_:clj-kondo/ignore (embed.settings/embedding-app-origin)
+                                                    (embed.settings/embedding-app-origins-interactive)
+                                                    (let [sdk-origins (embed.settings/embedding-app-origins-sdk)]
+                                                      (and sdk-origins (not= "localhost:*" sdk-origins)))))
    :appearance_site_name                 (not= (public-settings/site-name) "Metabase")
    :appearance_help_link                 (public-settings/help-link)
    :appearance_logo                      (not= (public-settings/application-logo-url) "app/assets/img/logo.svg")
@@ -646,13 +652,13 @@
    {:name      :interactive-embedding
     :available (premium-features/hide-embed-branding?)
     :enabled   (and
-                (embed.settings/enable-embedding)
-                (boolean (embed.settings/embedding-app-origin))
+                (embed.settings/enable-embedding-interactive)
+                (boolean (embed.settings/embedding-app-origins-interactive))
                 (public-settings/sso-enabled?))}
    {:name      :static-embedding
     :available true
     :enabled   (and
-                (embed.settings/enable-embedding)
+                (embed.settings/enable-embedding-static)
                 (or
                  (t2/exists? :model/Dashboard :enable_embedding true)
                  (t2/exists? :model/Card :enable_embedding true)))}
@@ -687,6 +693,9 @@
    {:name      :attached-dwh
     :available (premium-features/has-attached-dwh?)
     :enabled   (premium-features/has-attached-dwh?)}
+   {:name      :database-auth-providers
+    :available (premium-features/enable-database-auth-providers?)
+    :enabled   (premium-features/enable-database-auth-providers?)}
    {:name      :config-text-file
     :available (premium-features/enable-config-text-file?)
     :enabled   (some? (get env/env :mb-config-file-path))}

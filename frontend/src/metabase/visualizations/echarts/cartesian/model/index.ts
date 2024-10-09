@@ -96,7 +96,6 @@ export const getCartesianChartModel = (
     cardsColumns,
     hiddenSeries,
     settings,
-    renderingContext.formatValue,
   );
 
   // We currently ignore sorting and visibility settings on combined cards
@@ -137,7 +136,6 @@ export const getCartesianChartModel = (
     rawSeries,
     scaledDataset,
     settings,
-    renderingContext,
     showWarning,
   );
   const yAxisScaleTransforms = getAxisTransforms(
@@ -161,13 +159,7 @@ export const getCartesianChartModel = (
     seriesLabelsFormatters,
     stackedLabelsFormatters,
     isCompactFormatting,
-  } = getFormatters(
-    seriesModels,
-    stackModels,
-    scaledDataset,
-    settings,
-    renderingContext,
-  );
+  } = getFormatters(seriesModels, stackModels, scaledDataset, settings);
 
   const dataDensity = getComboChartDataDensity(
     seriesModels,
@@ -188,7 +180,6 @@ export const getCartesianChartModel = (
     true,
     stackModels,
     isCompactFormatting,
-    renderingContext,
   );
 
   const trendLinesModel = getTrendLines(

@@ -1,4 +1,4 @@
-(ns metabase.api.action-test
+(ns ^:mb/driver-tests metabase.api.action-test
   (:require
    [cheshire.core :as json]
    [clojure.set :as set]

@@ -60,7 +60,7 @@
               drill))
       (is (=? {:display-name "See this year by quarter"}
               (lib/display-info query -1 drill)))
-      (let [query' (lib/drill-thru query drill)]
+      (let [query' (lib/drill-thru query -1 nil drill)]
         (is (=? {:stages [{:aggregation [[:count {}]]
                            :breakout    [[:field {} (meta/id :products :category)]
                                          [:field {:temporal-unit :quarter} (meta/id :orders :created-at)]]
@@ -92,7 +92,7 @@
                   drill))
           (is (=? {:display-name "See this quarter by month"}
                   (lib/display-info query' -1 drill)))
-          (let [query'' (lib/drill-thru query' drill)]
+          (let [query'' (lib/drill-thru query' -1 nil drill)]
             (is (=? {:stages [{:aggregation [[:count {}]]
                                :breakout    [[:field {} (meta/id :products :category)]
                                              [:field {:temporal-unit :month} (meta/id :orders :created-at)]]
@@ -231,7 +231,7 @@
                                               {}
                                               [:field {:temporal-unit :year} (meta/id :orders :created-at)]
                                               "2022-12-01T00:00:00+02:00"]]}]}
-                    (lib/drill-thru query -1 drill)))))))))
+                    (lib/drill-thru query -1 nil drill)))))))))
 
 (deftest ^:parallel zoom-in-timeseries-unit-tower-test
   (doseq [[unit1 unit2] datetime-unit-pairs]

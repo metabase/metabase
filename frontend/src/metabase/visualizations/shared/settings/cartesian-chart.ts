@@ -16,10 +16,7 @@ import {
   getFriendlyName,
   preserveExistingColumnsOrder,
 } from "metabase/visualizations/lib/utils";
-import type {
-  ComputedVisualizationSettings,
-  Formatter,
-} from "metabase/visualizations/types";
+import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import {
   isAny,
@@ -446,14 +443,7 @@ export function getComputedAdditionalColumnsValue(
 export function getSeriesModelsForSettings(
   rawSeries: RawSeries,
   settings: ComputedVisualizationSettings,
-  formatValue: Formatter,
 ) {
   const cardsColumns = getCardsColumns(rawSeries, settings);
-  return getCardsSeriesModels(
-    rawSeries,
-    cardsColumns,
-    [],
-    settings,
-    formatValue,
-  );
+  return getCardsSeriesModels(rawSeries, cardsColumns, [], settings);
 }

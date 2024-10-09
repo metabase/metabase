@@ -43,10 +43,10 @@
                                  :order-by [[:asc {} [:field {} (meta/id :orders :id)]]]}]}
                       actual)
       (lib/drill-thru query drill)
-      (lib/drill-thru query -1 drill)
-      (lib/drill-thru query -1 drill :asc)
+      (lib/drill-thru query -1 nil drill)
+      (lib/drill-thru query -1 nil drill :asc)
       (mu/disable-enforcement
-        (lib/drill-thru query -1 drill "asc")))
+        (lib/drill-thru query -1 nil drill "asc")))
     (testing "Handle JS input correctly (#34342)"
       (mu/disable-enforcement
         (is (=? {:query {:source-table (meta/id :orders)
@@ -54,10 +54,10 @@
                                          [:field
                                           (meta/id :orders :id)
                                           {:base-type :type/BigInteger}]]]}}
-                (lib.convert/->legacy-MBQL (lib/drill-thru query -1 drill "asc"))))))
+                (lib.convert/->legacy-MBQL (lib/drill-thru query -1 nil drill "asc"))))))
     (is (=? {:stages [{:lib/type :mbql.stage/mbql
                        :order-by [[:desc {} [:field {} (meta/id :orders :id)]]]}]}
-            (lib/drill-thru query -1 drill :desc)))))
+            (lib/drill-thru query -1 nil drill :desc)))))
 
 (deftest ^:parallel aggregate-column-e2e-test
   (testing "Sort drills should be suggested/work for aggregate columns like count (#34185)"
@@ -83,7 +83,7 @@
                              :order-by    [[:desc
                                             {}
                                             [:aggregation {} string?]]]}]}
-                  (lib/drill-thru query -1 drill :desc))))))))
+                  (lib/drill-thru query -1 nil drill :desc))))))))
 
 (deftest ^:parallel remove-existing-sort-test
   (testing "Applying sort to already sorted column should REPLACE original sort (#34497, #37633)"
@@ -109,7 +109,7 @@
       (testing "We should REPLACE the original sort, as opposed to removing it and appending a new one"
         (is (=? {:stages
                  [{:order-by [[:desc {} [:field {} (meta/id :orders :user-id)]]]}]}
-                (lib/drill-thru query -1 drill :desc)))))))
+                (lib/drill-thru query -1 nil drill :desc)))))))
 
 (deftest ^:parallel returns-sort-test-1
   (lib.drill-thru.tu/test-returns-drill
@@ -140,6 +140,7 @@
    {:drill-type   :drill-thru/sort
     :click-type   :header
     :query-type   :unaggregated
+    :query-kinds  [:mbql] ; This test only makes sense on MBQL; for native we don't know it's already sorted.
     :column-name  "TOTAL"
     :custom-query (-> (get-in lib.drill-thru.tu/test-queries ["ORDERS" :unaggregated :query])
                       (lib/order-by (meta/field-metadata :orders :total) :desc))
@@ -158,6 +159,7 @@
    {:drill-type   :drill-thru/sort
     :click-type   :header
     :query-type   :unaggregated
+    :query-kinds  [:mbql] ; This test only makes sense on MBQL; for native we don't know it's already sorted.
     :column-name  "CREATED_AT"
     :custom-query (-> (get-in lib.drill-thru.tu/test-queries ["ORDERS" :aggregated :query])
                       (lib/order-by (meta/field-metadata :orders :created-at) :asc))
@@ -210,6 +212,7 @@
    {:drill-type   :drill-thru/sort
     :click-type   :header
     :query-type   :aggregated
+    :query-kinds  [:mbql] ; This test only makes sense on MBQL; for native we don't know it's already sorted.
     :column-name  "CREATED_AT"
     :custom-query (->
                    (get-in lib.drill-thru.tu/test-queries ["ORDERS" :aggregated :query])
@@ -227,13 +230,15 @@
                        {"CustomColumn" 2
                         "avg"          13.2})]
       (lib.drill-thru.tu/test-drill-application
-       {:column-name    "CustomColumn"
-        :click-type     :header
-        :query-type     :aggregated
-        :custom-query   query
-        :custom-row     row
-        :drill-type     :drill-thru/sort
-        :expected       {:type            :drill-thru/sort
-                         :column          {:name "CustomColumn"}
-                         :sort-directions [:asc :desc]}
-        :expected-query {:stages [{:order-by [[:asc {} [:expression {} "CustomColumn"]]]}]}}))))
+       {:column-name     "CustomColumn"
+        :click-type      :header
+        :query-type      :aggregated
+        :custom-query    query
+        :custom-native   (lib.drill-thru.tu/->native-wrapped query)
+        :custom-row      row
+        :drill-type      :drill-thru/sort
+        :expected        {:type            :drill-thru/sort
+                          :column          {:name "CustomColumn"}
+                          :sort-directions [:asc :desc]}
+        :expected-query  {:stages [{:order-by [[:asc {} [:expression {} "CustomColumn"]]]}]}
+        :expected-native {:stages [{:order-by [[:asc {} [:field {} "CustomColumn"]]]}]}}))))

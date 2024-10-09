@@ -71,7 +71,6 @@ export function getScatterPlotModel(
     cardsColumns,
     hiddenSeries,
     settings,
-    renderingContext.formatValue,
   );
 
   // We currently ignore sorting and visibility settings on combined cards
@@ -92,7 +91,6 @@ export function getScatterPlotModel(
     rawSeries,
     scaledDataset,
     settings,
-    renderingContext,
     showWarning,
   );
   const yAxisScaleTransforms = getAxisTransforms(
@@ -119,7 +117,6 @@ export function getScatterPlotModel(
     false,
     [],
     false,
-    renderingContext,
   );
 
   const trendLinesModel = getTrendLines(

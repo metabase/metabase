@@ -207,6 +207,8 @@ import label_component from "./label.svg?component";
 import label_source from "./label.svg?source";
 import ldap_component from "./ldap.svg?component";
 import ldap_source from "./ldap.svg?source";
+import learn_component from "./learn.svg?component";
+import learn_source from "./learn.svg?source";
 import lightbulb_component from "./lightbulb.svg?component";
 import lightbulb_source from "./lightbulb.svg?source";
 import line_component from "./line.svg?component";
@@ -251,6 +253,8 @@ import notebook_component from "./notebook.svg?component";
 import notebook_source from "./notebook.svg?source";
 import number_component from "./number.svg?component";
 import number_source from "./number.svg?source";
+import official_collection_component from "./official_collection.svg?component";
+import official_collection_source from "./official_collection.svg?source";
 import palette_component from "./palette.svg?component";
 import palette_source from "./palette.svg?source";
 import pause_component from "./pause.svg?component";
@@ -807,6 +811,10 @@ export const Icons = {
     component: ldap_component,
     source: ldap_source,
   },
+  learn: {
+    component: learn_component,
+    source: learn_source,
+  },
   lightbulb: {
     component: lightbulb_component,
     source: lightbulb_source,
@@ -1156,6 +1164,10 @@ export const Icons = {
   verified: {
     component: verified_component,
     source: verified_source,
+  },
+  official_collection: {
+    component: official_collection_component,
+    source: official_collection_source,
   },
   verified_filled: {
     component: verified_filled_component,

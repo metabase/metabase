@@ -75,6 +75,7 @@ import type {
   TimelineEvent,
   TimelineEventId,
 } from "metabase-types/api";
+import { isSavedCard } from "metabase-types/guards";
 
 export const parseDataKey = (dataKey: DataKey) => {
   let cardId: Nullable<CardId> = null;
@@ -279,7 +280,7 @@ export const canBrush = (
     !!onChangeCardAndRun &&
     hasBrushableDimension &&
     !hasCombinedCards &&
-    !isNative(series[0].card) &&
+    (!isNative(series[0].card) || isSavedCard(series[0].card)) &&
     !isRemappedToString(series) &&
     !hasClickBehavior(series)
   );
@@ -857,6 +858,7 @@ export const getBrushData = (
       query,
       stageIndex,
       column,
+      question.id(),
       new Date(start).toISOString(),
       new Date(end).toISOString(),
     );
@@ -873,6 +875,7 @@ export const getBrushData = (
     query,
     stageIndex,
     column,
+    question.id(),
     start,
     end,
   );

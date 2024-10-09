@@ -1,4 +1,4 @@
-(ns ^:mongo-sharded-cluster-tests metabase.driver.mongo.sharded-cluster-test
+(ns ^:mb/driver-tests ^:mongo-sharded-cluster-tests metabase.driver.mongo.sharded-cluster-test
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]

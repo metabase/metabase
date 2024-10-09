@@ -1,8 +1,6 @@
 import type { ReactNode } from "react";
 
-import { PopoverBackButton } from "metabase/ui";
-
-import { FilterHeaderRoot } from "./FilterPickerHeader.styled";
+import { Flex, PopoverBackButton } from "metabase/ui";
 
 interface FilterPickerHeaderProps {
   columnName: string;
@@ -16,13 +14,13 @@ export function FilterPickerHeader({
   onBack,
 }: FilterPickerHeaderProps) {
   return (
-    <FilterHeaderRoot px="md" py="sm" justify="space-between">
+    <Flex px="md" pt="md" justify="space-between">
       {onBack && (
         <PopoverBackButton pr="md" onClick={onBack}>
           {columnName}
         </PopoverBackButton>
       )}
       {children}
-    </FilterHeaderRoot>
+    </Flex>
   );
 }
