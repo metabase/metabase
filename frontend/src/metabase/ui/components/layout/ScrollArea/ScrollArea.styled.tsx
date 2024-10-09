@@ -1,20 +1,11 @@
-import type { MantineThemeOverride } from "@mantine/core";
+import { type MantineThemeOverride, ScrollArea } from "@mantine/core";
 
-export const getScrollAreaOverrides =
-  (): MantineThemeOverride["components"] => ({
-    ScrollArea: {
-      styles: () => ({
-        root: {
-          "& [data-radix-scroll-area-viewport]": {
-            scrollbarWidth: "none",
-            msOverflowStyle: "none",
-            WebkitOverflowScrolling: "touch",
+import ScrollAreaStyles from "./ScrollArea.module.css";
 
-            "&::-webkit-scrollbar": {
-              display: "none",
-            },
-          },
-        },
-      }),
+export const scrollAreaOverrides: MantineThemeOverride["components"] = {
+  ScrollArea: ScrollArea.extend({
+    classNames: {
+      root: ScrollAreaStyles.root,
     },
-  });
+  }),
+};
