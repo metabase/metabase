@@ -115,7 +115,7 @@ describe("scenarios > browse > metrics", () => {
         cy.findByText(
           "Metrics help you summarize and analyze your data effortlessly.",
         ).should("be.visible");
-        cy.findByText("Create metric").should("be.visible").click();
+        cy.button("Create metric").should("be.visible").click();
       });
       cy.location("pathname").should("eq", "/metric/query");
     });
