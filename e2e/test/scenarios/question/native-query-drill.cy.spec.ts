@@ -53,6 +53,30 @@ const numericLineQuestionDetails: NativeQuestionDetails = {
   },
 };
 
+const pinMapQuestionDetails: NativeQuestionDetails = {
+  display: "map",
+  native: {
+    query: "SELECT LATITUDE, LONGITUDE FROM PEOPLE ORDER BY ID LIMIT 10",
+  },
+  visualization_settings: {
+    "map.type": "pin",
+    "map.longitude_column": "LONGITUDE",
+    "map.latitude_column": "LATITUDE",
+  },
+};
+
+const gridMapQuestionDetails: NativeQuestionDetails = {
+  display: "map",
+  native: {
+    query: "SELECT LATITUDE, LONGITUDE FROM PEOPLE ORDER BY ID LIMIT 10",
+  },
+  visualization_settings: {
+    "map.type": "grid",
+    "map.longitude_column": "LONGITUDE",
+    "map.latitude_column": "LATITUDE",
+  },
+};
+
 describe("scenarios > question > native query drill", () => {
   beforeEach(() => {
     restore();
@@ -291,6 +315,7 @@ describe("scenarios > question > native query drill", () => {
     });
 
     it("unsupported drills", () => {
+      cy.log("aggregated cell click");
       createNativeQuestion(timeseriesLineQuestionDetails, {
         visitQuestion: true,
       });
@@ -310,7 +335,7 @@ describe("scenarios > question > native query drill", () => {
         visitQuestion: true,
       });
       assertQueryBuilderRowCount(10);
-      applyBrushFilter(200, 800);
+      applyBrushFilter({ left: 200, right: 800 });
       cy.wait("@dataset");
       assertQueryBuilderRowCount(3);
     });
@@ -320,15 +345,41 @@ describe("scenarios > question > native query drill", () => {
         visitQuestion: true,
       });
       assertQueryBuilderRowCount(10);
-      applyBrushFilter(200, 800);
+      applyBrushFilter({ left: 200, right: 800 });
       cy.wait("@dataset");
       assertQueryBuilderRowCount(5);
+    });
+
+    it("coordinates filter", () => {
+      cy.log("pin map");
+      createNativeQuestion(pinMapQuestionDetails, { visitQuestion: true });
+      cy.findByTestId("visualization-root").realHover();
+      cy.findByTestId("visualization-root").within(() => {
+        cy.findByText("Save as default view").should("be.visible");
+        cy.findByText("Draw box to filter").click();
+      });
+      applyBoxFilter({
+        top: 100,
+        left: 100,
+        right: 500,
+        bottom: 500,
+      });
+      cy.wait("@dataset");
+      assertQueryBuilderRowCount(1);
+
+      cy.log("grid map");
+      createNativeQuestion(gridMapQuestionDetails, { visitQuestion: true });
+      cy.findByTestId("visualization-root").realHover();
+      cy.findByTestId("visualization-root").within(() => {
+        cy.findByText("Save as default view").should("be.visible");
+        cy.findByText("Draw box to filter").should("not.exist");
+      });
     });
   });
 
   describe("dashboard drills", () => {
     it("quick-filter drill", () => {
-      cy.log("from a cell");
+      cy.log("cell click");
       cy.createDashboardWithQuestions({
         questions: [ordersTableQuestionDetails],
       }).then(({ dashboard }) => visitDashboard(dashboard.id));
@@ -340,7 +391,7 @@ describe("scenarios > question > native query drill", () => {
       });
       assertQueryBuilderRowCount(1);
 
-      cy.log("from a chart dot");
+      cy.log("aggregated cell click");
       cy.createDashboardWithQuestions({
         questions: [timeseriesLineQuestionDetails],
       }).then(({ dashboard }) => visitDashboard(dashboard.id));
@@ -375,9 +426,26 @@ describe("scenarios > question > native query drill", () => {
   });
 });
 
-function applyBrushFilter(fromX: number, toX: number) {
+function applyBrushFilter({ left, right }: { left: number; right: number }) {
   echartsContainer()
-    .trigger("mousedown", fromX, 200)
-    .trigger("mousemove", fromX, 200)
-    .trigger("mouseup", toX, 200);
+    .trigger("mousedown", left, 200)
+    .trigger("mousemove", left, 200)
+    .trigger("mouseup", right, 200);
+}
+
+function applyBoxFilter({
+  top,
+  left,
+  right,
+  bottom,
+}: {
+  top: number;
+  left: number;
+  right: number;
+  bottom: number;
+}) {
+  cy.findByTestId("visualization-root")
+    .realMouseDown({ x: left, y: top })
+    .realMouseMove(right - left, bottom - top)
+    .realMouseUp({ x: right, y: bottom });
 }
