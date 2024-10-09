@@ -144,6 +144,7 @@
     "@esbuild-plugins/node-modules-polyfill": "^0.2.2",
     "@inquirer/prompts": "^5.3.8",
     "@loki/create-async-callback": "^0.35.0",
+    "@peculiar/webcrypto": "^1.5.0",
     "@pmmmwh/react-refresh-webpack-plugin": "0.5.10",
     "@rspack/cli": "^1.0.7",
     "@rspack/core": "^1.0.7",
