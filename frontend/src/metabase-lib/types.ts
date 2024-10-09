@@ -580,6 +580,12 @@ export type FilterDrillDetails = {
   column: ColumnMetadata;
 };
 
+export type CombineColumnsDrillDetails = {
+  query: Query;
+  stageIndex: number;
+  column: ColumnMetadata;
+};
+
 export type AggregationDrillDetails = {
   aggregation: AggregationClause;
 };

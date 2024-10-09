@@ -161,11 +161,8 @@ describe("StringFilterPicker", () => {
       });
       await waitForLoaderToBeRemoved();
 
-      await userEvent.click(screen.getByText("Contains"));
-      await userEvent.click(screen.getByText("Is"));
       await userEvent.type(screen.getByPlaceholderText("Search by Email"), "t");
       await userEvent.click(await screen.findByText("test@metabase.test"));
-
       await userEvent.click(screen.getByText("Add filter"));
 
       const filterParts = getNextFilterParts();

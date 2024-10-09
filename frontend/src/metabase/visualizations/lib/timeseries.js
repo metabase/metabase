@@ -13,7 +13,6 @@ const TIMESERIES_UNITS = new Set([
   "year", // https://github.com/metabase/metabase/issues/1992
 ]);
 
-// investigate the response from a dataset query and determine if the dimension is a timeseries
 export function dimensionIsTimeseries({ cols, rows }, i = 0) {
   return (
     dimensionIsExplicitTimeseries({ cols, rows }, i) ||

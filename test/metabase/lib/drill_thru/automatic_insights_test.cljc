@@ -79,7 +79,7 @@
                        :aggregation (symbol "nil #_\"key is not present.\"")
                        :breakout    (symbol "nil #_\"key is not present.\"")
                        :fields      (symbol "nil #_\"key is not present.\"")}]}
-            (lib/drill-thru query -1 drill)))))
+            (lib/drill-thru query -1 nil drill)))))
 
 (deftest ^:parallel automatic-insights-apply-test
   (let [filters [[:= {} [:field {} (meta/id :orders :created-at)] "2023-12-01"]]]
@@ -157,7 +157,7 @@
           auto-insights-drill (m/find-first #(= (:type %) :drill-thru/underlying-records)
                                             available-drills)
           _                   (is (some? auto-insights-drill))
-          query'              (lib/drill-thru query auto-insights-drill)]
+          query'              (lib/drill-thru query -1 nil auto-insights-drill)]
       (is (=? {:stages [{:lib/type :mbql.stage/mbql
                          :filters  [[:>=
                                      {}
