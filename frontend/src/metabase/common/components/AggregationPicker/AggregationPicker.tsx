@@ -146,7 +146,7 @@ export function AggregationPicker({
 
       sections.push({
         key: "operators",
-        name: t`Summaries`,
+        name: t`Basic functions`,
         items: operatorItems,
         icon: "table2",
       });

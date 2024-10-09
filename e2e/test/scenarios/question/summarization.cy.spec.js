@@ -38,7 +38,7 @@ describe("scenarios > question > summarize sidebar", () => {
 
     cy.findByTestId("add-aggregation-button").should(
       "have.text",
-      "Add a summary or metric",
+      "Add a function or metric",
     );
   });
 

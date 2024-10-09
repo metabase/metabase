@@ -270,7 +270,7 @@ describe("scenarios > question > offset", () => {
       openNotebook();
       cy.button("Summarize").click();
       getNotebookStep("summarize")
-        .findByText("Pick the summary or metric you want to see")
+        .findByText("Pick a function or metric")
         .click();
       popover().findByText("Custom Expression").click();
       enterCustomColumnDetails({ formula: prefix, blur: false });
@@ -1302,7 +1302,7 @@ function addCustomAggregation({
   if (!isOpened) {
     if (isFirst) {
       getNotebookStep("summarize")
-        .findByText("Pick the summary or metric you want to see")
+        .findByText("Pick a function or metric")
         .click();
     } else {
       getNotebookStep("summarize").icon("add").first().click();

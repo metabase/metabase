@@ -409,7 +409,7 @@ describe("scenarios > question > nested", () => {
         cy.findByText("15725").click();
       });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Pick the summary metric you want to see").click();
+      cy.findByText("Pick the summary metric").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Count of rows").click();
     });

@@ -172,7 +172,7 @@ describe("scenarios > question > null", () => {
         cy.icon("close").click();
       });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Add a summary or metric").click();
+      cy.findByText("Add a function or metric").click();
       // dropdown immediately opens with the new set of metrics to choose from
       popover().within(() => {
         cy.findByText("Cumulative sum of ...").click();
