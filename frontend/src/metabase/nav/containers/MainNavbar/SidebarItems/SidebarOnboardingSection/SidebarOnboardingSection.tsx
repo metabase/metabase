@@ -11,7 +11,6 @@ import {
 } from "metabase/collections/components/ModelUploadModal";
 import type { OnFileUpload } from "metabase/collections/types";
 import { UploadInput } from "metabase/components/upload";
-import ExternalLink from "metabase/core/components/ExternalLink";
 import Link from "metabase/core/components/Link";
 import CS from "metabase/css/core/index.css";
 import { useToggle } from "metabase/hooks/use-toggle";
@@ -23,12 +22,9 @@ import {
   uploadFile as uploadFileAction,
 } from "metabase/redux/uploads";
 import { getHasOwnDatabase } from "metabase/selectors/data";
-import { getLearnUrl, getSetting } from "metabase/selectors/settings";
-import { getApplicationName } from "metabase/selectors/whitelabel";
+import { getSetting } from "metabase/selectors/settings";
 import { Box, Button, Icon, Menu, Stack, Text, Title } from "metabase/ui";
 import { breakpoints } from "metabase/ui/theme";
-
-import { PaddedSidebarLink } from "../../MainNavbar.styled";
 
 import { trackAddDataViaCSV, trackAddDataViaDatabase } from "./analytics";
 import type { OnboaringMenuItemProps, SidebarOnboardingProps } from "./types";
@@ -40,7 +36,7 @@ export function SidebarOnboardingSection({
   isAdmin,
 }: SidebarOnboardingProps) {
   const isDatabaseAdded = getHasOwnDatabase(databases);
-  const collapseCTASection = isDatabaseAdded;
+  const showCTASection = !isDatabaseAdded;
 
   const [
     isModelUploadModalOpen,
@@ -50,7 +46,6 @@ export function SidebarOnboardingSection({
   const [showInfoModal, setShowInfoModal] = useState(false);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
 
-  const applicationName = useSelector(getApplicationName);
   const uploadDbId = useSelector(
     state => getSetting(state, "uploads-settings")?.db_id,
   );
@@ -165,28 +160,14 @@ export function SidebarOnboardingSection({
       bottom={0}
       pos="sticky"
       bg="bg-white"
-      className={cx({ [CS.borderTop]: collapseCTASection })}
+      className={cx({ [CS.borderTop]: showCTASection })}
     >
-      <Box px="md" py="md">
-        {/*eslint-disable-next-line no-unconditional-metabase-links-render -- This link is only temporary. It will be replaced with an internal link to a page. */}
-        <ExternalLink href={getLearnUrl()} className={CS.noDecoration}>
-          {/* TODO: We currently don't have a `selected` state. Will be added in MS2 when we add the onboarding page. */}
-          <PaddedSidebarLink icon="learn">
-            {t`How to use ${applicationName}`}
-          </PaddedSidebarLink>
-        </ExternalLink>
-      </Box>
       {canAddDatabase || canUpload ? (
-        <Box
-          px="xl"
-          pb="md"
-          className={cx({ [CS.borderTop]: !collapseCTASection })}
-          data-testid="sidebar-add-data-section"
-        >
-          {!collapseCTASection && (
+        <Box px="xl" py="md" data-testid="sidebar-add-data-section">
+          {showCTASection && (
             <Text
               fz="sm"
-              my="md"
+              mb="md"
               lh="1.333"
             >{t`Start by adding your data. Connect to a database or upload a CSV file.`}</Text>
           )}

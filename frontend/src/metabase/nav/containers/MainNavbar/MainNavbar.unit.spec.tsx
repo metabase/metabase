@@ -464,19 +464,6 @@ describe("nav > containers > MainNavbar", () => {
   });
 
   describe("better onboarding section", () => {
-    it.each([
-      { role: "admins", is_superuser: true },
-      { role: "regular users", is_superuser: false },
-    ])(
-      "should render Metabase learn link to $role",
-      async ({ is_superuser }) => {
-        await setup({ user: createMockUser({ is_superuser }) });
-        const link = screen.getByRole("link", { name: /How to use Metabase/i });
-        expect(link).toBeInTheDocument();
-        expect(link).toHaveAttribute("href", "https://www.metabase.com/learn/");
-      },
-    );
-
     describe("add data section", () => {
       it("should render for admins", async () => {
         await setup({
