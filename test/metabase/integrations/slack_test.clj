@@ -7,7 +7,8 @@
    [metabase.integrations.slack :as slack]
    [metabase.notification.test-util :as notification.tu]
    [metabase.test :as mt]
-   [metabase.test.util :as tu])
+   [metabase.test.util :as tu]
+   [toucan2.core :as t2])
   (:import
    (java.nio.charset Charset)
    (org.apache.http NameValuePair)
@@ -292,10 +293,13 @@
               (slack/post-chat-message! "C94712B6X" ":wow:")
               (catch Throwable e
                 (is (= "Invalid token" (ex-message e)))
-                (is (= (mt/email-to :crowberto {:subject "Your Slack connection stopped working"
-                                                :to #{"crowberto@metabase.com"}
-                                                :body [{"Your Slack connection stopped working." true}]})
-                       (mt/summarize-multipart-email #"Your Slack connection stopped working.")))
+                (let [recipient->emails (mt/summarize-multipart-email #"Your Slack connection stopped working.")]
+                  (is (=? (mt/email-to :crowberto {:subject "Your Slack connection stopped working"
+                                                   :to #{"crowberto@metabase.com"}
+                                                   :body [{"Your Slack connection stopped working." true}]})
+                          recipient->emails))
+                  (is (= (t2/select-fn-set :email :model/User :is_superuser true)
+                         (set (keys recipient->emails)))))
                 (is (false? (slack/slack-token-valid?))))))
 
           (testing "If `slack-token-valid?` is already false, no email should be sent"
