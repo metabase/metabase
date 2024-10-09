@@ -623,8 +623,11 @@
                          [:query_executions_last_24h :int]
                          [:entity_id_translations_last_24h :int]]]
   (mapv
-   (fn [[k v tags]] {"key" k "value" v "tags" (-> tags sort vec)})
-   [[:above_goal_alerts               (get-in stats [:stats :alert :above_goal] 0)                    #{}]
+   (fn [[k v tags]]
+     (assert (every? string? tags) "Tags must be strings.")
+     (assert (some? v) "Cannot return a nil value.")
+     {"key" (name k) "value" v "tags" (-> tags sort vec)})
+   [[:above_goal_alerts               (get-in stats [:stats :alert :above_goal] 0)                    #{1}]
     [:alerts                          (get-in stats [:stats :alert :alerts] 0)                        #{}]
     [:all_time_query_executions       (get-in stats [:stats :execution :executions] 0)                #{}]
     [:cache_average_entry_size        (get-in stats [:stats :cache :average_entry_size] 0)            #{}]
