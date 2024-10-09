@@ -3,6 +3,20 @@ import produce from "immer";
 import reduceReducers from "reduce-reducers";
 import _ from "underscore";
 
+import { sidebar } from "e2e/support/helpers";
+import {
+  autoApplyFilters,
+  dashboardId,
+  editingDashboard,
+  isAddParameterPopoverOpen,
+  isNavigatingBackToDashboard,
+  loadingControls,
+  loadingDashCards,
+  missingActionParameters,
+  parameterValues,
+  slowCards,
+  theme,
+} from "metabase/dashboard/reducers-typed";
 import Actions from "metabase/entities/actions";
 import Dashboards from "metabase/entities/dashboards";
 import Questions from "metabase/entities/questions";
@@ -36,7 +50,6 @@ import {
   tabsReducer,
 } from "./actions";
 import { INITIAL_DASHBOARD_STATE } from "./constants";
-import * as typedReducers from "./reducers-typed";
 import {
   calculateDashCardRowAfterUndo,
   syncParametersAndEmbeddingParams,
@@ -307,12 +320,22 @@ const draftParameterValues = handleActions(
 export const dashboardReducers = reduceReducers(
   INITIAL_DASHBOARD_STATE,
   combineReducers({
-    ...typedReducers,
+    dashboardId,
+    missingActionParameters,
+    autoApplyFilters,
+    theme,
+    slowCards,
+    isNavigatingBackToDashboard,
+    isAddParameterPopoverOpen,
+    editingDashboard,
+    loadingControls,
+    sidebar,
+    parameterValues,
+    loadingDashCards,
     dashboards,
     dashcards,
     dashcardData,
-    draftParameterValues,
-    // Combined reducer needs to init state for every slice
+    draftParameterValues, // Combined reducer needs to init state for every slice
     selectedTabId: (state = INITIAL_DASHBOARD_STATE.selectedTabId) => state,
     tabDeletions: (state = INITIAL_DASHBOARD_STATE.tabDeletions) => state,
   }),
