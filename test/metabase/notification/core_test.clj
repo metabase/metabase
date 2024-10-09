@@ -54,6 +54,33 @@
                         :recipients   [{:type :notification-recipient/user :user_id (mt/user->id :rasta)}]}]
                       @renders)))))))))
 
+(deftest send-notification-record-task-history-test
+  (mt/with-temp [:model/Channel chn notification.tu/default-can-connect-channel]
+    (notification.tu/with-notification-testing-setup
+      (let [n (models.notification/create-notification!
+               {:payload_type :notification/testing}
+               nil
+               [{:channel_type notification.tu/test-channel-type
+                 :channel_id   (:id chn)
+                 :recipients   [{:type :notification-recipient/user :user_id (mt/user->id :crowberto)}]}])]
+        (t2/delete! :model/TaskHistory)
+        (notification/send-notification! n)
+        (is (=? [{:task         "send-notification"
+                  :task_details {:notification_id (:id n)
+                                 :notification_handlers [{:id           (mt/malli=? :int)
+                                                          :channel_type "channel/metabase-test"
+                                                          :channel_id   (:id chn)
+                                                          :template_id  nil}]}}
+                 {:task          "channel-send"
+                  :task_details {:retry_config   (mt/malli=? :map)
+                                 :channel_id     (:id chn)
+                                 :channel_type   "channel/metabase-test"
+                                 :template_id    nil
+                                 :notifcation_id (:id n)
+                                 :recipient_ids  (mt/malli=? [:sequential :int])}}]
+                (t2/select [:model/TaskHistory :task :task_details] :task [:in ["channel-send" "send-notification"]]
+                           {:order-by [[:started_at :asc]]})))))))
+
 (deftest notification-send-retrying-test
   (notification.tu/with-notification-testing-setup
     (mt/with-temp [:model/Channel chn notification.tu/default-can-connect-channel]
@@ -78,6 +105,7 @@
                 (notification/send-notification! n))
               (is (some? @send-args))
               (is (=? {:task "channel-send"
-                       :task_details {:retry_config (mt/malli=? :map)
-                                      :retry_errors (mt/malli=? [:sequential :map])}}
+                       :task_details {:attempted_retries 1
+                                      :retry_config      (mt/malli=? :map)
+                                      :retry_errors      (mt/malli=? [:sequential :map])}}
                       (t2/select-one :model/TaskHistory :task "channel-send"))))))))))
