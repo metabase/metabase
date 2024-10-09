@@ -18,7 +18,11 @@ export const SidesheetCardSection = ({
 }: SidesheetCardSectionProps) => {
   return (
     <Box {...styleProps}>
-      {title && <SidesheetCardTitle>{title}</SidesheetCardTitle>}
+      {title && (
+        <Title mb="sm" size="sm" c="text-light">
+          {title}
+        </Title>
+      )}
       <Box className={CS.textMedium}>{children}</Box>
     </Box>
   );
