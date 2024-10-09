@@ -1,0 +1,8 @@
+.root {
+  color: var(--mb-color-text-dark);
+  background-color: var(--mb-color-bg-white);
+}
+
+.root[data-with-border] {
+  border-color: var(--mb-color-border);
+}
