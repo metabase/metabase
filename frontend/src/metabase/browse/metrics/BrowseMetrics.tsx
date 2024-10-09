@@ -117,9 +117,9 @@ function MetricsEmptyState() {
 
   return (
     <Flex align="center" justify="center" mih="70vh">
-      <Box maw="25rem">
+      <Box maw="30rem">
         <EmptyState
-          title={t`Metrics help you summarize and analyze your data effortlessly.`}
+          title={t`Create Metrics to define the official way to calculate important numbers for your team`}
           message={
             <Box>
               <Text mt="sm" maw="25rem">

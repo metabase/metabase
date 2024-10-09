@@ -7,7 +7,7 @@ describe("BrowseMetrics (OSS)", () => {
     setup({ metricCount: 0 });
     expect(
       await screen.findByText(
-        "Metrics help you summarize and analyze your data effortlessly.",
+        "Create Metrics to define the official way to calculate important numbers for your team",
       ),
     ).toBeInTheDocument();
     expect(await screen.findByText("Create metric")).toBeInTheDocument();
@@ -16,7 +16,7 @@ describe("BrowseMetrics (OSS)", () => {
   it("displays a link to the metrics docs", async () => {
     setup({ metricCount: 0 });
     await screen.findByText(
-      "Metrics help you summarize and analyze your data effortlessly.",
+      "Create Metrics to define the official way to calculate important numbers for your team",
     );
     expect(screen.getByText("Read the docs")).toBeInTheDocument();
   });
