@@ -2,11 +2,6 @@
   --divider-color: var(--mb-color-border);
 }
 
-.root:where([data-orientation="vertical"]) {
-  border-left: var(--divider-size) var(--divider-border-style, solid)
-    var(--divider-color);
-}
-
 .label {
   color: var(--mb-text-dark);
 }
