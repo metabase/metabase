@@ -4,10 +4,6 @@ import { getIn } from "icepick";
 import { denormalize, normalize, schema } from "normalizr";
 
 import {
-  CLEAR_CARD_DATA,
-  FETCH_CARD_DATA,
-} from "metabase/dashboard/actions/data-fetching";
-import {
   getDashCardBeforeEditing,
   getDashCardById,
   getDashboardById,
@@ -243,6 +239,7 @@ export const markCardAsSlow = createAction(MARK_CARD_AS_SLOW, (card: Card) => {
 });
 
 export const SET_DOCUMENT_TITLE = "metabase/dashboard/SET_DOCUMENT_TITLE";
+
 export const setDocumentTitle = createAction<string>(SET_DOCUMENT_TITLE);
 
 export const SET_SHOW_LOADING_COMPLETE_FAVICON =
@@ -332,6 +329,8 @@ type FetchCardDataActionReturned = {
     dashboardLoadId?: string;
   };
 };
+
+export const FETCH_CARD_DATA = "metabase/dashboard/FETCH_CARD_DATA";
 
 const fetchCardDataAction = createAsyncThunk<
   FetchCardDataActionArgs,
@@ -546,6 +545,8 @@ export const fetchCardData =
   };
 
 fetchCardData.fulfilled = fetchCardDataAction.fulfilled;
+
+export const CLEAR_CARD_DATA = "metabase/dashboard/CLEAR_CARD_DATA";
 
 export const clearCardData = createAction(
   CLEAR_CARD_DATA,

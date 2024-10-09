@@ -29,10 +29,6 @@ import {
 export const CANCEL_FETCH_DASHBOARD_CARD_DATA =
   "metabase/dashboard/CANCEL_FETCH_DASHBOARD_CARD_DATA";
 
-export const FETCH_CARD_DATA = "metabase/dashboard/FETCH_CARD_DATA";
-
-export const CLEAR_CARD_DATA = "metabase/dashboard/CLEAR_CARD_DATA";
-
 export const SET_LOADING_DASHCARDS_COMPLETE =
   "metabase/dashboard/SET_LOADING_DASHCARDS_COMPLETE";
 

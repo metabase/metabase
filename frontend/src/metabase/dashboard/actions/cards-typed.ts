@@ -1,4 +1,7 @@
-import { cancelFetchCardData } from "metabase/dashboard/actions/data-fetching-typed";
+import {
+  cancelFetchCardData,
+  fetchCardData,
+} from "metabase/dashboard/actions/data-fetching-typed";
 import Questions from "metabase/entities/questions";
 import {
   DEFAULT_CARD_SIZE,
@@ -42,7 +45,6 @@ import {
   UNDO_REMOVE_CARD_FROM_DASH,
   setDashCardAttributes,
 } from "./core";
-import { fetchCardData } from "./data-fetching";
 import { getExistingDashCards } from "./utils";
 
 export type NewDashCardOpts = {
