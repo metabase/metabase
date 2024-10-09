@@ -119,6 +119,17 @@ describe("scenarios > browse > metrics", () => {
       });
       cy.location("pathname").should("eq", "/metric/query");
     });
+
+    it("should not show the create metric button if the user does not have data access", () => {
+      cy.signInAsSandboxedUser();
+      cy.visit("/browse/metrics");
+      main().within(() => {
+        cy.findByText(
+          "Metrics help you summarize and analyze your data effortlessly.",
+        ).should("be.visible");
+        cy.findByText("Create metric").should("not.exist");
+      });
+    });
   });
 
   describe("multiple metrics", () => {
