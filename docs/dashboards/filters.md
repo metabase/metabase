@@ -18,9 +18,9 @@ Instead of creating duplicate dashboards, you can add filter or parameter widget
 
 - Click the **pencil icon** to enter dashboard editing mode.
 - Click the **filter icon** that appears in the top-right to add a filter.
-- Select a [filter type](#filter-types).
-- [Connect your filter](#connecting-a-filter-to-dashboard-cards) to one or more dashboard cards on any or all tabs.
-- [Configure your filter](#editing-a-filter).
+- Select a [filter type](#filter-and-parameter-types)
+- [Connect your filter or parameter widget to dashboard cards](#connecting-a-filter-or-parameter-widget-to-dashboard-cards) to one or more dashboard cards on any or all tabs.
+- [Configure your filter](#editing-a-filter)
 - **Save** your changes.
 
 Metabase will display the filter only if the filter is connected to a card on the current dashboard tab.
@@ -31,7 +31,7 @@ The type of filter or parameter widget you choose will determine how the widget 
 
 ### Filter widgets
 
-- [Date picker](#data-picker-filters)
+- [Date picker](#date-picker-filters)
 - [Location](#location-filters)
 - [ID](#id-filter)
 - [Number](#number-filter)
@@ -39,7 +39,7 @@ The type of filter or parameter widget you choose will determine how the widget 
 
 ### Parameter widgets
 
-- [Time grouping](#time-grouping)
+- [Time grouping](#time-grouping-parameter)
 
 ## Date picker filters
 
