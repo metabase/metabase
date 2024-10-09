@@ -3,6 +3,7 @@ import { rem } from "@mantine/core";
 
 import { DEFAULT_METABASE_COMPONENT_THEME } from "embedding-sdk/lib/theme";
 
+import Styles from "./Theme.module.css";
 import {
   //   getAccordionOverrides,
   //   getActionIconOverrides,
@@ -109,11 +110,7 @@ export const getThemeOverrides = (): MantineThemeProviderProps["theme"] => ({
   },
   fontFamily: "var(--mb-default-font-family), sans-serif",
   fontFamilyMonospace: "Monaco, monospace",
-  // focusClassName: css({
-  //   outline: `0.125rem solid ${color("brand")}`,
-  //   outlineOffset: "0.125rem",
-  // }),
-  focusRing: "auto",
+  focusClassName: Styles.focus,
   components: {
     // ...getAccordionOverrides(),
     // ...getActionIconOverrides(),
