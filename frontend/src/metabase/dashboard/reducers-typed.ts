@@ -2,6 +2,10 @@ import { createReducer } from "@reduxjs/toolkit";
 import { assocIn } from "icepick";
 import { omit } from "underscore";
 
+import {
+  updateDashboardEmbeddingParams,
+  updateDashboardEnableEmbedding,
+} from "metabase/api";
 import Dashboards from "metabase/entities/dashboards";
 import { handleActions } from "metabase/lib/redux";
 import { NAVIGATE_BACK_TO_DASHBOARD } from "metabase/query_builder/actions";
@@ -40,8 +44,6 @@ import {
   setDisplayTheme,
   setDocumentTitle,
   setShowLoadingCompleteFavicon,
-  updateEmbeddingParams,
-  updateEnableEmbedding,
 } from "./actions";
 import { INITIAL_DASHBOARD_STATE } from "./constants";
 import { syncParametersAndEmbeddingParams } from "./utils";
@@ -297,18 +299,6 @@ export const dashboards = createReducer(
           },
         };
       })
-      .addCase(updateEmbeddingParams.fulfilled, (state, { payload }) =>
-        assocIn(
-          state,
-          [payload.id, "embedding_params"],
-          payload.embedding_params,
-        ),
-      )
-      .addCase(updateEnableEmbedding.fulfilled, (state, { payload }) => {
-        const dashboard = state[payload.id];
-        dashboard.enable_embedding = payload.enable_embedding;
-        dashboard.initially_published_at = payload.initially_published_at;
-      })
       .addCase(Dashboards.actionTypes.UPDATE, (state, { payload }) => {
         const draftDashboard = state[payload.dashboard.id];
         if (draftDashboard) {
@@ -321,6 +311,23 @@ export const dashboards = createReducer(
       )
       .addCase(deletePublicLink.fulfilled, (state, { payload }) =>
         assocIn(state, [payload.id, "public_uuid"], null),
+      )
+      .addMatcher(
+        updateDashboardEmbeddingParams.matchFulfilled,
+        (state, { payload }) =>
+          assocIn(
+            state,
+            [payload.id, "embedding_params"],
+            payload.embedding_params,
+          ),
+      )
+      .addMatcher(
+        updateDashboardEnableEmbedding.matchFulfilled,
+        (state, { payload }) => {
+          const dashboard = state[payload.id];
+          dashboard.enable_embedding = payload.enable_embedding;
+          dashboard.initially_published_at = payload.initially_published_at;
+        },
       );
   },
 );

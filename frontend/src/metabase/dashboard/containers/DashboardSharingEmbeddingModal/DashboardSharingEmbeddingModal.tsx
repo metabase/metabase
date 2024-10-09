@@ -1,3 +1,7 @@
+import {
+  useUpdateDashboardEmbeddingParamsMutation,
+  useUpdateDashboardEnableEmbeddingMutation,
+} from "metabase/api";
 import { getParameters } from "metabase/dashboard/selectors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -5,15 +9,9 @@ import {
   EmbedModal,
   EmbedModalContent,
 } from "metabase/public/components/EmbedModal";
-import type { EmbeddingParameters } from "metabase/public/lib/types";
 import type { Dashboard } from "metabase-types/api";
 
-import {
-  createPublicLink,
-  deletePublicLink,
-  updateEmbeddingParams,
-  updateEnableEmbedding,
-} from "../../actions";
+import { createPublicLink, deletePublicLink } from "../../actions";
 
 export type DashboardSharingEmbeddingModalProps = {
   className?: string;
@@ -31,14 +29,13 @@ export const DashboardSharingEmbeddingModal = (
 
   const dispatch = useDispatch();
 
+  const [updateDashboardEmbeddingParams] =
+    useUpdateDashboardEmbeddingParamsMutation();
+  const [updateDashboardEnableEmbedding] =
+    useUpdateDashboardEnableEmbeddingMutation();
+
   const createPublicDashboardLink = () => dispatch(createPublicLink(dashboard));
   const deletePublicDashboardLink = () => dispatch(deletePublicLink(dashboard));
-  const updateDashboardEnableEmbedding = (enable_embedding: boolean) =>
-    dispatch(updateEnableEmbedding({ id: dashboard.id, enable_embedding }));
-
-  const updateDashboardEmbeddingParams = (
-    embedding_params: EmbeddingParameters,
-  ) => dispatch(updateEmbeddingParams({ id: dashboard.id, embedding_params }));
 
   const getPublicUrl = (publicUuid: string) => Urls.publicDashboard(publicUuid);
 
@@ -54,8 +51,18 @@ export const DashboardSharingEmbeddingModal = (
           resourceType="dashboard"
           onCreatePublicLink={createPublicDashboardLink}
           onDeletePublicLink={deletePublicDashboardLink}
-          onUpdateEnableEmbedding={updateDashboardEnableEmbedding}
-          onUpdateEmbeddingParams={updateDashboardEmbeddingParams}
+          onUpdateEnableEmbedding={enable_embedding =>
+            updateDashboardEnableEmbedding({
+              id: dashboard.id,
+              enable_embedding,
+            })
+          }
+          onUpdateEmbeddingParams={embedding_params =>
+            updateDashboardEmbeddingParams({
+              id: dashboard.id,
+              embedding_params,
+            })
+          }
           getPublicUrl={getPublicUrl}
         />
       )}
