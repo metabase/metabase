@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import NoResults from "assets/img/metrics_bot.svg";
 import { skipToken } from "metabase/api";
-import { useDocsUrl } from "metabase/common/hooks";
+import { useDatabaseListQuery, useDocsUrl } from "metabase/common/hooks";
 import { useFetchMetrics } from "metabase/common/hooks/use-fetch-metrics";
 import EmptyState from "metabase/components/EmptyState";
 import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
@@ -11,6 +11,8 @@ import Link from "metabase/core/components/Link";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_CONTENT_VERIFICATION } from "metabase/plugins";
+import { getHasDataAccess } from "metabase/selectors/data";
+import { getUser } from "metabase/setup/selectors";
 import {
   Box,
   Button,
@@ -98,6 +100,12 @@ export function BrowseMetrics() {
 }
 
 function MetricsEmptyState() {
+  const isLoggedIn = useSelector(state => Boolean(getUser(state)));
+  const { data: databases = [] } = useDatabaseListQuery({
+    enabled: isLoggedIn,
+  });
+  const hasDataAccess = getHasDataAccess(databases);
+
   const newMetricLink = Urls.newQuestion({
     mode: "query",
     cardType: "metric",
@@ -125,11 +133,13 @@ function MetricsEmptyState() {
                     variant="brandBold"
                   >{t`Read the docs`}</Link>
                 )}
-                <Button
-                  component={Link}
-                  to={newMetricLink}
-                  variant="filled"
-                >{t`Create metric`}</Button>
+                {hasDataAccess && (
+                  <Button
+                    component={Link}
+                    to={newMetricLink}
+                    variant="filled"
+                  >{t`Create metric`}</Button>
+                )}
               </Flex>
             </Box>
           }
