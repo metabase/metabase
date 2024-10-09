@@ -37,7 +37,7 @@ The type of filter or parameter widget you choose will determine how the widget 
 - [Number](#number-filter)
 - [Text or category](#text-or-category-filter)
 
-### Parameters widget
+### Parameter widgets
 
 - [Time grouping](#time-grouping)
 
@@ -58,9 +58,9 @@ Single Date and Date Range will provide a calendar widget, while the other optio
 
 ![Time grouping](./images/time-grouping.png)
 
-You can add a time grouping widget to a dashboard to change how charts are grouped by time. For example, you may want to look at the time series charts grouped by month by default, but give people the option to filter by other groupings: by week, by quarter, etc.
+You can add a time grouping widget to a dashboard to change how charts are grouped by time. For example, you may want to look at the time series charts grouped by month by default, but give people the option to view the results by other groupings: by week, by quarter, and so on.
 
-This widget doesn't filter data in the charts; it just changes the time granularity for any cards that have a datetime field connected to the widget.
+This widget doesn't filter data in the charts; the widget just changes the time granularity for any cards that have a datetime field connected to the widget.
 
 You can group by:
 
@@ -120,7 +120,7 @@ Here we've wired up a Text filter to the "Event types" card, telling Metabase th
 
 ## Auto-connecting filters to cards
 
-If there are other cards that also have the field you select, Metabase will automatically connect the filter to those cards too (including to relevant cards on other tabs). If you later add a card with the selected field, Metabase will also try to connect that filter to the new card.
+If there are other cards that also have the field you select, Metabase will offer to automatically connect the filter to those cards too (including to relevant cards on other tabs). If you later add a card with the selected field, Metabase will also try to connect that filter to the new card.
 
 To undo this auto-connecting of cards, click on the toast that pops up when Metabase auto-connects the cards, or manually disconnect the cards by clicking on the "X" next to the connected field.
 
@@ -132,7 +132,7 @@ If you're trying to connect a filter to a card with a native/SQL questions, you'
 
 You can even wire up filters to text cards, but only if [the text card includes a variable](./introduction.md#including-variables-in-text-cards).
 
-## Requiring a filter
+## Requiring a filter or parameter
 
 You can tell Metabase to require a filter so that people _must_ filter the dashboard by a certain column on a card. If you require a filter, you'll also need to supply a default value for that filter.
 
