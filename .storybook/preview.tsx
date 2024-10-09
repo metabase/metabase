@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { ThemeProvider } from "metabase/ui";
 
 const isEmbeddingSDK = process.env.IS_EMBEDDING_SDK === "true";
@@ -56,6 +56,10 @@ export const decorators = isEmbeddingSDK
 
 function CssVariables() {
   const theme = useTheme();
+  useEffect(() => {
+    // mantine v7 will not work correctly without this
+    document.body.dir = "ltr";
+  }, []);
   const styles = css`
     ${getMetabaseCssVariables(theme)}
 
