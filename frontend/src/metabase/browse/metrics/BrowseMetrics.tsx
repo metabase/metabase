@@ -88,9 +88,9 @@ export function BrowseMetrics() {
 function MetricsEmptyState() {
   return (
     <Flex align="center" justify="center" mih="70vh">
-      <Box maw="25rem">
+      <Box maw="30rem">
         <EmptyState
-          title={t`Metrics help you summarize and analyze your data effortlessly.`}
+          title={t`Create Metrics to define the official way to calculate important numbers for your team`}
           message={
             <Text mt="sm" maw="25rem">
               {t`Metrics are like pre-defined calculations: create your aggregations once, save them as metrics, and use them whenever you need to analyze your data.`}
