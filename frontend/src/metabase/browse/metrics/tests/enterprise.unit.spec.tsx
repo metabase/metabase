@@ -17,6 +17,7 @@ describe("BrowseMetrics (EE without token)", () => {
     );
     expect(screen.getByText("Read the docs")).toBeInTheDocument();
   });
+
   it("displays a link to the metrics docs when show-metabase-links = false", async () => {
     setup({ metricCount: 0, showMetabaseLinks: false });
     await screen.findByText(
