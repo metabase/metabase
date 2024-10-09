@@ -1,10 +1,9 @@
-import type { MantineThemeOverride } from "@mantine/core";
+import { TextInput } from "@mantine/core";
 
-export const getTextInputOverrides =
-  (): MantineThemeOverride["components"] => ({
-    TextInput: {
-      defaultProps: {
-        size: "md",
-      },
+export const textInputOverrides = {
+  TextInput: TextInput.extend({
+    defaultProps: {
+      size: "md",
     },
-  });
+  }),
+};
