@@ -374,10 +374,10 @@
 
 (deftest e2e-ignore-user-supplied-perms-test
   (testing "You shouldn't be able to bypass security restrictions by passing in `::query-perms/perms` in the query"
-    (binding [api/*current-user-id* (mt/user->id :rasta)]
-      (mt/with-no-data-perms-for-all-users!
-        (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/create-queries :no)
-        (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+    (mt/with-no-data-perms-for-all-users!
+      (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/create-queries :no)
+      (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+      (mt/with-test-user :rasta
         (testing "Sanity check: should not be able to run this query the normal way"
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo

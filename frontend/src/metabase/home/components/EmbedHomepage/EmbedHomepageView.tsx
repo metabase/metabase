@@ -1,4 +1,3 @@
-import { Link } from "react-router";
 import { jt, t } from "ttag";
 
 import ExternalLink from "metabase/core/components/ExternalLink";
@@ -15,12 +14,12 @@ import {
 } from "metabase/ui";
 import type { EmbeddingHomepageDismissReason } from "metabase-types/api";
 
+import { Badge } from "./Badge";
 import { InteractiveTabContent } from "./InteractiveTabContent";
 import { StaticTabContent } from "./StaticTabContent";
 import type { EmbeddingHomepageInitialTab } from "./types";
 
 export type EmbedHomepageViewProps = {
-  embeddingAutoEnabled: boolean;
   exampleDashboardId: number | null;
   licenseActiveAtSetup: boolean;
   initialTab: EmbeddingHomepageInitialTab;
@@ -31,16 +30,12 @@ export type EmbedHomepageViewProps = {
   analyticsDocsUrl: string;
   learnMoreStaticEmbedUrl: string;
   learnMoreInteractiveEmbedUrl: string;
+  sdkUrl: string;
 };
 
 export const EmbedHomepageView = (props: EmbedHomepageViewProps) => {
-  const {
-    embeddingAutoEnabled,
-    initialTab,
-    embeddingDocsUrl,
-    analyticsDocsUrl,
-    onDismiss,
-  } = props;
+  const { initialTab, embeddingDocsUrl, analyticsDocsUrl, sdkUrl, onDismiss } =
+    props;
   return (
     <Stack maw={550}>
       <Group position="apart">
@@ -86,27 +81,25 @@ export const EmbedHomepageView = (props: EmbedHomepageViewProps) => {
         </Tabs>
       </Card>
 
-      {embeddingAutoEnabled && (
-        <Card>
-          <Text
-            color="text-dark"
-            fw="bold"
-          >{t`Embedding has been automatically enabled for you`}</Text>
-          <Text color="text-light" size="sm">
-            {/* eslint-disable-next-line no-literal-metabase-strings -- only visible to admins */}
-            {jt`Because you expressed interest in embedding Metabase, we took this step for you so that you can more easily try it out. You can turn it off anytime in ${(
-              <Anchor
-                size="sm"
-                component={Link}
-                to="/admin/settings/embedding-in-other-applications"
-                key="link"
-              >
-                admin/settings/embedding-in-other-applications
-              </Anchor>
-            )}.`}
-          </Text>
-        </Card>
-      )}
+      <Card>
+        <Text color="text-medium" fw="bold" size="sm">
+          {/* eslint-disable-next-line no-literal-metabase-strings -- only visible to admins */}
+          {t`New in Metabase 0.51`}
+        </Text>
+        <Group spacing="sm">
+          <Text color="text-dark" fw="bold">{t`Embedded analytics SDK`}</Text>
+          <Badge color="brand">{t`PRO & ENTERPRISE`}</Badge>
+          <Badge color="gray">{t`Beta`}</Badge>
+        </Group>
+
+        <Text color="text-light" size="sm">
+          {/* eslint-disable-next-line no-literal-metabase-strings -- only visible to admins */}
+          {t`Interactive embedding with full, granular control. Embed and style individual Metabase components in your app, and tailor the experience to each person. Allows for CSS styling, custom user flows, event subscriptions, and more. Only available with SSO via JWT.`}{" "}
+          <Anchor size="sm" href={sdkUrl}>
+            {t`Read more in the docs.`}
+          </Anchor>
+        </Text>
+      </Card>
 
       <Card>
         <Text color="text-dark" fw="bold">{t`Need more information?`}</Text>

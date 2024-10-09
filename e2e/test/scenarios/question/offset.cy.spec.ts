@@ -570,7 +570,7 @@ describe("scenarios > question > offset", () => {
         table: "Product",
         field: "Category",
       });
-      cy.icon("add_data").last().click();
+      cy.findAllByLabelText("Custom column").last().click();
 
       enterCustomColumnDetails({
         formula: `[${OFFSET_SUM_TOTAL_AGGREGATION_NAME}] * 2`,
@@ -1422,7 +1422,7 @@ function addSorting({
 }
 
 function addCustomColumn({ name, formula }: { name: string; formula: string }) {
-  cy.icon("add_data").last().click();
+  cy.findAllByLabelText("Custom column").last().click();
 
   enterCustomColumnDetails({
     formula,

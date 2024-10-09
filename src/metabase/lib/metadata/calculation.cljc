@@ -574,9 +574,10 @@
 (mu/defn primary-keys :- [:sequential ::lib.schema.metadata/column]
   "Returns a list of primary keys for the source table of this query."
   [query        :- ::lib.schema/query]
-  (if-let [table-id (lib.util/source-table-id query)]
-    (filter lib.types.isa/primary-key? (lib.metadata/fields query table-id))
-    []))
+  (into [] (filter lib.types.isa/primary-key?)
+        (if-let [table-id (lib.util/source-table-id query)]
+          (lib.metadata/fields query table-id)
+          (returned-columns query))))
 
 (defn implicitly-joinable-columns
   "Columns that are implicitly joinable from some other columns in `column-metadatas`. To be joinable, the column has to
