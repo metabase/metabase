@@ -4,6 +4,7 @@ export function getEngineNativeType(engine?: string): "sql" | "json" {
   switch (engine) {
     case "mongo":
     case "druid":
+    case "pinot":
       return "json";
     default:
       return "sql";

@@ -1,0 +1,55 @@
+info:
+  name: Metabase Pinot Driver
+  version: 1.0.0-SNAPSHOT
+  description: Allows Metabase to connect to Pinot databases.
+driver:
+  name: pinot
+  display-name: Pinot
+  lazy-load: true
+  connection-properties:
+    - name: controller-endpoint
+      display-name: Controller endpoint
+      placeholder: http://localhost:9000
+      required: true
+    - name: database-name
+      display-name: Database name
+      placeholder: ""
+      default: ""
+    - cloud-ip-address-info
+    - ssh-tunnel
+    - advanced-options-start
+    - name: auth-enabled
+      display-name: Authentication header
+      default: false
+      type: boolean
+      visible-if:
+        advanced-options: true
+    - name: auth-token-type
+      display-name: Auth Token Type
+      type: string
+      options:
+        - name: Basic
+          value: basic
+        - name: Bearer
+          value: bearer
+      visible-if:
+        auth-enabled: true
+    - name: auth-token-value
+      display-name: Auth Token Value
+      type: secret
+      secret-kind: password
+      visible-if:
+        auth-enabled: true
+    - name: query-options
+      display-name: Query Options
+      type: string
+      default: ""
+      placeholder: "timeoutMs=10000;useMultistageEngine=false;enableNullHandling=false"
+      required: false
+      visible-if:
+        advanced-options: true
+    - default-advanced-options
+
+init:
+  - step: load-namespace
+    namespace: metabase.driver.pinot
