@@ -48,11 +48,11 @@ describe("onboarding sidebar section", () => {
     () => {
       cy.visit("/");
       cy.findByTestId("main-navbar-root")
-        .findByText("Trash")
+        .findByText("Databases")
         .scrollIntoView()
         .click();
 
-      cy.location("pathname").should("eq", "/trash");
+      cy.location("pathname").should("eq", "/browse/databases");
       cy.go("back");
 
       cy.findByTestId("main-navbar-root").findByText("Add data").click();

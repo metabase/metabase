@@ -74,6 +74,7 @@ describe("scenarios > collections > archive", () => {
       .findByText(`${DASHBOARD_NAME}`)
       .realHover()
       .findByLabelText("unarchive icon")
+      .should("be.visible")
       .click();
     cy.wait("@updateDashboard");
     cy.findByTestId(`archive-item-${QUESTION_NAME}`).should("exist");
@@ -245,6 +246,7 @@ describe("scenarios > collections > archive", () => {
       .findByText("Orders")
       .realHover()
       .findByLabelText("unarchive icon")
+      .should("be.visible")
       .click();
 
     navigationSidebar().button("Orders").should("exist");
