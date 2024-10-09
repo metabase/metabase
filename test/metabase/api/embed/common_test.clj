@@ -31,4 +31,4 @@
       (is (= card-id (api.embed.common/->id :model/Card entity-id)))
       (is (= card-id (api.embed.common/->id :card entity-id)))))
   (is (malli= [:map [:ok pos-int?] [:total pos-int?]]
-                  (#'stats/get-translation-count))))
+              (#'stats/get-translation-count))))
