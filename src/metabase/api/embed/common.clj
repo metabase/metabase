@@ -335,7 +335,9 @@
   :export?    false
   :audit      :never
   :type       :json
-  :default    eid-translation/default-counter)
+  :default    eid-translation/default-counter
+  :doc false)
+
 
 (mu/defn update-translation-count!
   "Update the entity-id translation counter with the results of a batch of entity-id translations."
