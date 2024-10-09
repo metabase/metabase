@@ -61,13 +61,13 @@ const ButtonGroupTemplate = (args: ButtonProps) => (
 const GridRow = (args: ButtonProps) => (
   <Group noWrap>
     <Button {...args}>Save</Button>
-    <Button {...args} leftIcon={<Icon name="add" />}>
+    <Button {...args} leftSection={<Icon name="add" />}>
       New
     </Button>
-    <Button {...args} rightIcon={<Icon name="chevrondown" />}>
+    <Button {...args} rightSection={<Icon name="chevrondown" />}>
       Category
     </Button>
-    <Button {...args} leftIcon={<Icon name="play" />} />
+    <Button {...args} leftSection={<Icon name="play" />} />
   </Group>
 );
 

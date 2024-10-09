@@ -1,0 +1,8 @@
+.section {
+  border-top-color: var(--mb-color-border);
+  border-bottom-color: var(--mb-color-border);
+
+  &[data-first-section] {
+    border-bottom-color: var(--mb-color-border);
+  }
+}
