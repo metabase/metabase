@@ -153,13 +153,13 @@ function NumberValueInput({
           value={values[0]}
           placeholder={t`Min`}
           autoFocus
-          onChange={(newValue: number) => onChange([newValue, values[1]])}
+          onChange={(newValue: NumberValue) => onChange([newValue, values[1]])}
         />
         <Text mx="sm">{t`and`}</Text>
         <NumberInput
           value={values[1]}
           placeholder={t`Max`}
-          onChange={(newValue: number) => onChange([values[0], newValue])}
+          onChange={(newValue: NumberValue) => onChange([values[0], newValue])}
         />
       </Flex>
     );
