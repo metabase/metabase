@@ -5,6 +5,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
+   [metabase.lib.underlying :as lib.underlying]
    [metabase.lib.util :as lib.util]
    [metabase.util.malli :as mu]))
 
@@ -21,8 +22,7 @@
    stage-number                                 :- :int
    {:keys [column column-ref dimensions value]} :- ::lib.schema.drill-thru/context]
   (when (and (lib.drill-thru.common/mbql-stage? query stage-number)
-             ;; HACK: This is a not a great way to disable this drill for queries whose source is a native query.
-             (not= (:lib/source column) :source/native)
+             (lib.underlying/has-aggregation-or-breakout? query)
              ;; Column with no value is not allowed - that's a column header click. Other combinations are allowed.
              (or (not column) (some? value))
              (lib.metadata/setting query :enable-xrays)

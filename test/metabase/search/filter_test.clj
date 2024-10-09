@@ -7,13 +7,14 @@
    [metabase.test :as mt]))
 
 (def default-search-ctx
-  {:search-string       nil
-   :archived?           false
-   :models             search.config/all-models
-   :model-ancestors?   false
-   :current-user-id    1
-   :is-superuser?      true
-   :current-user-perms #{"/"}})
+  {:search-string               nil
+   :archived?                   false
+   :models                      search.config/all-models
+   :model-ancestors?            false
+   :current-user-id             1
+   :is-superuser?               true
+   :current-user-perms          #{"/"}
+   :calculate-available-models? false})
 
 (deftest ^:parallel ->applicable-models-test
   (testing "without optional filters"
