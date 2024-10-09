@@ -1,5 +1,9 @@
 import { createReducer } from "@reduxjs/toolkit";
 
+import {
+  updateCardEmbeddingParams,
+  updateCardEnableEmbedding,
+} from "metabase/api";
 import type { Card, DatasetQuery } from "metabase-types/api";
 
 import {
@@ -15,8 +19,6 @@ import {
   SET_CARD_AND_RUN,
   SOFT_RELOAD_CARD,
   UPDATE_QUESTION,
-  updateEmbeddingParams,
-  updateEnableEmbedding,
 } from "./actions";
 
 // the card that is actively being worked on
@@ -140,7 +142,7 @@ export const card = createReducer<Card<DatasetQuery> | null>(null, builder => {
         public_uuid: null,
       };
     })
-    .addCase(updateEnableEmbedding.fulfilled, (state, action) => {
+    .addMatcher(updateCardEnableEmbedding.matchFulfilled, (state, action) => {
       if (!state) {
         return state;
       }
@@ -149,7 +151,7 @@ export const card = createReducer<Card<DatasetQuery> | null>(null, builder => {
         enable_embedding: action.payload.enable_embedding,
       };
     })
-    .addCase(updateEmbeddingParams.fulfilled, (state, action) => {
+    .addMatcher(updateCardEmbeddingParams.matchFulfilled, (state, action) => {
       if (!state) {
         return state;
       }

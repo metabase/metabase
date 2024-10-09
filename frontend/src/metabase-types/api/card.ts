@@ -308,6 +308,9 @@ export interface UpdateCardRequest {
   collection_preview?: boolean;
 }
 
+export type UpdateCardKeyRequest<Key extends keyof UpdateCardRequest> =
+  Required<Pick<UpdateCardRequest, "id" | Key>>;
+
 export type CardError = {
   field?: string;
   table: string;
