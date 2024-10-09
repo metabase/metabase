@@ -79,7 +79,7 @@ export const QuestionInfoSidebar = ({
             <Stack spacing="lg">
               <SidesheetCard pb="md">
                 <Stack spacing="sm">
-                  <Title lh={1} size="sm" color="text-light" pb={0}>
+                  <Title lh={1} size="sm" c="text-light" pb={0}>
                     {t`Description`}
                   </Title>
                   <SidesheetEditableDescription

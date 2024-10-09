@@ -16,7 +16,7 @@ export const SidesheetCard = ({
   return (
     <Paper p="lg" withBorder shadow="none" {...paperProps}>
       {title && (
-        <Title lh={1} mb=".75rem" size="sm" color="text-light" order={4}>
+        <Title lh={1} mb=".75rem" size="sm" c="text-light" order={4}>
           {title}
         </Title>
       )}

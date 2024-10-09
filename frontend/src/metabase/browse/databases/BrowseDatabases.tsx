@@ -63,7 +63,7 @@ export const BrowseDatabases = () => {
                       className={CS.mb3}
                       size={32}
                     />
-                    <Title order={2} size="1rem" lh="1rem" color="inherit">
+                    <Title order={2} size="1rem" lh="1rem" c="inherit">
                       {database.name}
                     </Title>
                   </DatabaseCard>

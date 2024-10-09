@@ -39,7 +39,7 @@ export function AlertMenuItem({
         }
         onClick={onClick}
       >
-        <Title order={4} color="inherit">
+        <Title order={4} c="inherit">
           {hasAlerts ? t`Edit alerts` : t`Create alert`}
         </Title>
       </Menu.Item>
