@@ -1,0 +1,9 @@
+.root {
+  /* to revert "none" from the reset */
+  list-style-type: revert;
+}
+
+.item {
+  line-height: 1.5;
+  color: var(--mb-text-dark);
+}

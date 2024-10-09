@@ -1,18 +1,12 @@
-import type { MantineThemeOverride } from "@mantine/core";
+import { List, type MantineThemeOverride } from "@mantine/core";
 
-export const getListOverrides = (): MantineThemeOverride["components"] => ({
-  List: {
-    styles: theme => {
-      return {
-        root: {
-          // to revert "none" from the reset
-          listStyleType: "revert",
-        },
-        item: {
-          lineHeight: "1.5",
-          color: theme.fn.themeColor("text-dark"),
-        },
-      };
+import ListStyles from "./List.module.css";
+
+export const listOverrides: MantineThemeOverride["components"] = {
+  List: List.extend({
+    classNames: {
+      root: ListStyles.root,
+      item: ListStyles.item,
     },
-  },
-});
+  }),
+};
