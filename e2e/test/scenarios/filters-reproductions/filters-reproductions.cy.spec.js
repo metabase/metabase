@@ -544,7 +544,7 @@ describe("issue 45410", () => {
     filter({ mode: "notebook" });
     popover().within(() => {
       cy.findByText("Email").click();
-      cy.findByPlaceholderText("Enter some text")
+      cy.findByPlaceholderText("Search by Email")
         .type("abc@example.com,abc2@example.com")
         .blur();
       cy.findByText("abc2@example.com")

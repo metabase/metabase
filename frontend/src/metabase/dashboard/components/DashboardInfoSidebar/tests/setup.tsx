@@ -2,6 +2,7 @@ import { Route } from "react-router";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
+  setupAuditEndpoints,
   setupDashboardEndpoints,
   setupPerformanceEndpoints,
   setupRevisionsEndpoints,
@@ -41,6 +42,7 @@ export async function setup({
   setupUsersEndpoints([currentUser]);
   setupRevisionsEndpoints([]);
   setupPerformanceEndpoints([]);
+  setupAuditEndpoints();
 
   const state = createMockState({
     currentUser,

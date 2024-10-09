@@ -134,6 +134,7 @@
                                          startup-time-millis          1234.0
                                          google-auth-enabled          false
                                          enable-embedding             true
+                                         embedding-app-origin         "localhost:8888"
                                          help-link                    :hidden
                                          application-logo-url         "http://example.com/logo.png"
                                          application-favicon-url      "http://example.com/favicon.ico"
