@@ -1,2 +1,2 @@
 export { NumberInput } from "./NumberInput";
-export type { NumberInputProps } from "@mantine/core";
+export type { NumberInputProps } from "./NumberInput";
