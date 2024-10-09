@@ -38,7 +38,7 @@
   {::account        "1-0-1"
    ::browse_data    "1-0-0"
    ::invite         "1-0-1"
-   ::instance_stats "1-0-0"
+   ::instance_stats "1-0-1"
    ::csvupload      "1-0-3"
    ::dashboard      "1-1-4"
    ::database       "1-0-1"

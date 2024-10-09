@@ -583,8 +583,7 @@
           :has_activation_signals_completed (completed-activation-signals?)})]
     (m->kv-vec instance-attributes)))
 
-
-(mu/defn- get-translation-count!
+(mu/defn- get-translation-count
   :- [:map [:ok :int] [:not-found :int] [:invalid-format :int] [:total :int]]
   "Get and clear the entity-id translation counter. This is meant to be called during the daily stats collection process."
   []
@@ -594,13 +593,14 @@
 (mu/defn- clear-translation-count!
   "We want to reset the eid translation count on every stat ping, so we do it here."
   []
-  (setting/set-value-of-type! :json eid-translation/default-counter))
+  (u/prog1 eid-translation/default-counter
+    (setting/set-value-of-type! :json :entity-id-translation-counter <>)))
 
 (defn- ->snowplow-metric-info
   "Collects Snowplow metrics data that is not in the legacy stats format. Also clears entity id translation count."
   []
   (let [one-day-ago (t/minus (t/offset-date-time) (t/days 1))
-        total-translation-count (:total (get-translation-count!))
+        total-translation-count (:total (get-translation-count))
         _ (clear-translation-count!)]
     {:models                  (t2/count :model/Card :type :model :archived false)
      :new_embedded_dashboards (t2/count :model/Dashboard
@@ -622,42 +622,42 @@
                          [:pivot_tables :int]
                          [:query_executions_last_24h :int]
                          [:entity_id_translations_last_24h :int]]]
-  (->> {:above_goal_alerts               (get-in stats [:stats :alert :above_goal] 0)
-        :alerts                          (get-in stats [:stats :alert :alerts] 0)
-        :all_time_query_executions       (get-in stats [:stats :execution :executions] 0)
-        :cache_average_entry_size        (get-in stats [:stats :cache :average_entry_size] 0)
-        :cache_num_queries_cached        (get-in stats [:stats :cache :num_queries_cached] "0")
-        :cards_in_collections            (get-in stats [:stats :collection :cards_in_collections] 0)
-        :cards_not_in_collections        (get-in stats [:stats :collection :cards_not_in_collections] 0)
-        :collections                     (get-in stats [:stats :collection :collections] 0)
-        :connected_databases             (get-in stats [:stats :database :databases :total] 0)
-        :analyzed_databases              (get-in stats [:stats :database :databases :analyzed] 0)
-        :dashboards_with_params          (get-in stats [:stats :dashboard :with_params] 0)
-        :embedded_dashboards             (get-in stats [:stats :dashboard :embedded :total] 0)
-        :embedded_questions              (get-in stats [:stats :question :embedded :total] 0)
-        :first_time_only_alerts          (get-in stats [:stats :alert :first_time_only] 0)
-        :metabase_fields                 (get-in stats [:stats :field :fields] 0)
-        :metrics                         (get-in stats [:stats :metric :metrics] 0)
-        :native_questions                (get-in stats [:stats :question :questions :native] 0)
-        :permission_groups               (get-in stats [:stats :group :groups] 0)
-        :public_dashboards               (get-in stats [:stats :dashboard :public :total] 0)
-        :public_dashboards_with_params   (get-in stats [:stats :dashboard :public :with_params] 0)
-        :public_questions                (get-in stats [:stats :question :public :total] 0)
-        :public_questions_with_params    (get-in stats [:stats :question :public :with_params] 0)
-        :query_builder_questions         (get-in stats [:stats :question :questions :total] 0)
-        :questions                       (get-in stats [:stats :question :questions :total] 0)
-        :questions_with_params           (get-in stats [:stats :question :questions :with_params] 0)
-        :segments                        (get-in stats [:stats :segment :segments] 0)
-        :tables                          (get-in stats [:stats :table :tables] 0)
-        :users                           (get-in stats [:stats :user :users :total] 0)
-        ;; could do a merge of [[metric-info]], but this is more explicit:
-        :models                          (:models metric-info 0)
-        :new_embedded_dashboards         (:new_embedded_dashboards metric-info 0)
-        :new_users_last_24h              (:new_users_last_24h metric-info 0)
-        :pivot_tables                    (:pivot_tables metric-info 0)
-        :query_executions_last_24h       (:query_executions_last_24h metric-info 0)
-        :entity_id_translations_last_24h (:entity_id_translations_last_24h metric-info)}
-       m->kv-vec))
+  (mapv
+   (fn [[k v tags]] {"key" k "value" v "tags" (-> tags sort vec)})
+   [[:above_goal_alerts               (get-in stats [:stats :alert :above_goal] 0)                    #{}]
+    [:alerts                          (get-in stats [:stats :alert :alerts] 0)                        #{}]
+    [:all_time_query_executions       (get-in stats [:stats :execution :executions] 0)                #{}]
+    [:cache_average_entry_size        (get-in stats [:stats :cache :average_entry_size] 0)            #{}]
+    [:cache_num_queries_cached        (get-in stats [:stats :cache :num_queries_cached] "0")          #{}]
+    [:cards_in_collections            (get-in stats [:stats :collection :cards_in_collections] 0)     #{}]
+    [:cards_not_in_collections        (get-in stats [:stats :collection :cards_not_in_collections] 0) #{}]
+    [:collections                     (get-in stats [:stats :collection :collections] 0)              #{}]
+    [:connected_databases             (get-in stats [:stats :database :databases :total] 0)           #{}]
+    [:analyzed_databases              (get-in stats [:stats :database :databases :analyzed] 0)        #{}]
+    [:dashboards_with_params          (get-in stats [:stats :dashboard :with_params] 0)               #{}]
+    [:embedded_dashboards             (get-in stats [:stats :dashboard :embedded :total] 0)           #{}]
+    [:embedded_questions              (get-in stats [:stats :question :embedded :total] 0)            #{}]
+    [:first_time_only_alerts          (get-in stats [:stats :alert :first_time_only] 0)               #{}]
+    [:metabase_fields                 (get-in stats [:stats :field :fields] 0)                        #{}]
+    [:metrics                         (get-in stats [:stats :metric :metrics] 0)                      #{}]
+    [:native_questions                (get-in stats [:stats :question :questions :native] 0)          #{}]
+    [:permission_groups               (get-in stats [:stats :group :groups] 0)                        #{}]
+    [:public_dashboards               (get-in stats [:stats :dashboard :public :total] 0)             #{}]
+    [:public_dashboards_with_params   (get-in stats [:stats :dashboard :public :with_params] 0)       #{}]
+    [:public_questions                (get-in stats [:stats :question :public :total] 0)              #{}]
+    [:public_questions_with_params    (get-in stats [:stats :question :public :with_params] 0)        #{}]
+    [:query_builder_questions         (get-in stats [:stats :question :questions :total] 0)           #{}]
+    [:questions                       (get-in stats [:stats :question :questions :total] 0)           #{}]
+    [:questions_with_params           (get-in stats [:stats :question :questions :with_params] 0)     #{}]
+    [:segments                        (get-in stats [:stats :segment :segments] 0)                    #{}]
+    [:tables                          (get-in stats [:stats :table :tables] 0)                        #{}]
+    [:users                           (get-in stats [:stats :user :users :total] 0)                   #{}]
+    [:models                          (:models metric-info 0)                                         #{}]
+    [:new_embedded_dashboards         (:new_embedded_dashboards metric-info 0)                        #{}]
+    [:new_users_last_24h              (:new_users_last_24h metric-info 0)                             #{}]
+    [:pivot_tables                    (:pivot_tables metric-info 0)                                   #{}]
+    [:query_executions_last_24h       (:query_executions_last_24h metric-info 0)                      #{}]
+    [:entity_id_translations_last_24h (:entity_id_translations_last_24h metric-info 0)                #{}]]))
 
 (defn- whitelabeling-in-use?
   "Are any whitelabeling settings set to values other than their default?"

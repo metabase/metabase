@@ -35,6 +35,40 @@
         ]
       }
     },
+    "metrics": {
+      "description": "Key-value pairs of metrics",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "description": "A single metric attribute",
+        "properties": {
+          "key": {
+            "description": "The key for this attribute",
+            "type": "string",
+            "maxLength": 255
+          },
+          "value": {
+            "description": "The value of this attribute",
+            "type": ["string", "boolean", "integer"],
+            "maxLength": 255,
+            "minimum": 0,
+            "maximum": 2147483647
+          },
+          "tags": {
+            "description": "Tags for this metric",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 255
+            }
+          }
+        },
+        "required": [
+          "key",
+          "value"
+        ]
+      }
+    },
     "features": {
       "description": "Features",
       "type": "array",
