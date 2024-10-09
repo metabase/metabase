@@ -50,7 +50,7 @@ export const CollectionInfoSidebar = ({
         <SidesheetCard pb="md">
           <Stack spacing="md">
             <Stack spacing="xs">
-              <Title lh={1} fz="sm" color="text-light" pb={0}>
+              <Title lh={1} fz="sm" c="text-light" pb={0}>
                 {t`Description`}
               </Title>
               <SidesheetEditableDescription
