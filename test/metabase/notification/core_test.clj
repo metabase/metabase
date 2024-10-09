@@ -5,7 +5,8 @@
    [metabase.models.notification :as models.notification]
    [metabase.notification.core :as notification]
    [metabase.notification.test-util :as notification.tu]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
 
 (deftest send-notification!*-test
   (testing "sending a ntoification will call render on all of its handlers"
@@ -52,3 +53,31 @@
                         :template     nil
                         :recipients   [{:type :notification-recipient/user :user_id (mt/user->id :rasta)}]}]
                       @renders)))))))))
+
+(deftest notification-send-retrying-test
+  (notification.tu/with-notification-testing-setup
+    (mt/with-temp [:model/Channel chn notification.tu/default-can-connect-channel]
+      (let [n (models.notification/create-notification!
+               {:payload_type :notification/testing}
+               nil
+               [{:channel_type notification.tu/test-channel-type
+                 :channel_id   (:id chn)
+                 :recipients   [{:type :notification-recipient/user :user_id (mt/user->id :crowberto)}]}])]
+        (testing "send-notification! retries on failure"
+          (t2/delete! :model/TaskHistory :task "channel-send")
+          (testing "and record exception in task history"
+            (let [retry-count (atom 0)
+                  send-args   (atom nil)
+                  send!       (fn [& args]
+                                (swap! retry-count inc)
+                                ;; failed once then work on the next try
+                                (if (= @retry-count 1)
+                                  (throw (Exception. "test-exception"))
+                                  (reset! send-args args)))]
+              (with-redefs [channel/send! send!]
+                (notification/send-notification! n))
+              (is (some? @send-args))
+              (is (=? {:task "channel-send"
+                       :task_details {:retry_config (mt/malli=? :map)
+                                      :retry_errors (mt/malli=? [:sequential :map])}}
+                      (t2/select-one :model/TaskHistory :task "channel-send"))))))))))

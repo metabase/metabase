@@ -863,10 +863,10 @@
                                      retry-initial-interval 1]
     (mt/with-model-cleanup [:model/TaskHistory]
       (let [pulse-id             (rand-int 10000)
-            default-task-details {:pulse-id     pulse-id
-                                  :channel-type "channel/slack"
-                                  :channel-id   nil
-                                  :retry-config {:max-attempts            4
+            default-task-details {:pulse_id     pulse-id
+                                  :channel_type "channel/slack"
+                                  :channel_id   nil
+                                  :retry_config {:max-attempts            4
                                                  :initial-interval-millis 1
                                                  :multiplier              2.0
                                                  :randomization-factor    0.1
@@ -889,8 +889,8 @@
                      :db_id        nil
                      :status       :success
                      :task_details (merge default-task-details
-                                          {:attempted-retries 2
-                                           :retry-errors      (mt/malli=?
+                                          {:attempted_retries 2
+                                           :retry_errors      (mt/malli=?
                                                                [:sequential {:min 2 :max 2}
                                                                 [:map
                                                                  [:trace :any]
@@ -899,20 +899,20 @@
                     (latest-task-history-entry :channel-send)))))
 
         (testing "retry errors are recorded when the task eventually fails"
-          (with-redefs [channel/send! (tu/works-after 5 (constantly nil))]
-            (send!)
-            (is (=? {:task         "channel-send"
-                     :db_id        nil
-                     :status       :failed
-                     :task_details {:original-info     default-task-details
-                                    :attempted-retries 4
-                                    :retry-errors      (mt/malli=?
-                                                        [:sequential {:min 4 :max 4}
-                                                         [:map
-                                                          [:trace :any]
-                                                          [:cause :any]
-                                                          [:via :any]]])}}
-                    (latest-task-history-entry :channel-send)))))))))
+         (with-redefs [channel/send! (tu/works-after 5 (constantly nil))]
+           (send!)
+           (is (=? {:task         "channel-send"
+                    :db_id        nil
+                    :status       :failed
+                    :task_details {:original-info     default-task-details
+                                   :attempted_retries 4
+                                   :retry_errors      (mt/malli=?
+                                                       [:sequential {:min 4 :max 4}
+                                                        [:map
+                                                         [:trace :any]
+                                                         [:cause :any]
+                                                         [:via :any]]])}}
+                   (latest-task-history-entry :channel-send)))))))))
 
 (deftest alerts-do-not-remove-user-metadata
   (testing "Alerts that exist on a Model shouldn't remove metadata (#35091)."

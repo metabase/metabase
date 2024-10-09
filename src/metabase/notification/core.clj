@@ -35,7 +35,9 @@
                                    ;; TODO: event-info schema for each event type
                                    [:event-topic [:fn #(= "event" (-> % keyword namespace))]]
                                    [:event-info  [:maybe :map]]
-                                   [:context     :map]]]]]]])
+                                   [:context     :map]]]]]]
+   ;; for testing only
+   [:notification/testing       :map]])
 
 (defn- hydrate-notification-handler
   [notification-handlers]
@@ -87,7 +89,8 @@
                            (channel/send! channel message)
                            (catch Exception e
                              (vswap! retry-errors conj e)
-                             (log/warnf e "[Notification %d] Failed to send to channel %s , retrying..." notification-id (handler->channel-name handler)))))]
+                             (log/warnf e "[Notification %d] Failed to send to channel %s , retrying..." notification-id (handler->channel-name handler))
+                             (throw e))))]
       (log/debugf "[Notification %d] Sending a message to channel %s" notification-id (handler->channel-name handler))
       (task-history/with-task-history {:task            "channel-send"
                                        :on-success-info (fn [update-map _result]
@@ -115,9 +118,9 @@
                (:id notification-info) (count noti-handlers) (u/format-plural (count noti-handlers) "handler"))
     (task-history/with-task-history
       {:task          "send-notification"
-       :task_details {:notification_id (:id notification-info)
-                      :handlers        (map #(select-keys % [:id :channel_type :channel_id :template_id])
-                                            noti-handlers)}}
+       :task_details {:notification_id       (:id notification-info)
+                      :notification_handlers (map #(select-keys % [:id :channel_type :channel_id :template_id])
+                                                  noti-handlers)}}
       (doseq [handler noti-handlers]
         (let [channel-type (:channel_type handler)
               messages     (channel/render-notification
