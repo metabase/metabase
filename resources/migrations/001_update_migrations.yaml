@@ -9289,177 +9289,6 @@ databaseChangeLog:
             indexName: idx_collection_type
 
   - changeSet:
-      id: v52.2024-09-05T08:00:00
-      author: qnkhuat
-      comment: Create the notification table
-      preConditions:
-        - not:
-          - tableExists:
-              tableName: notification
-      changes:
-        - createTable:
-            tableName: notification
-            remarks: join table that connect notification subscriptions and notification handlers
-            columns:
-              - column:
-                  name: id
-                  type: int
-                  autoIncrement: true
-                  constraints:
-                    primaryKey: true
-                    nullable: false
-              - column:
-                  name: payload_type
-                  remarks: the type of the payload
-                  type: varchar(64)
-                  constraints:
-                    nullable: false
-              - column:
-                  name: active
-                  remarks: whether the notification is active
-                  type: ${boolean.type}
-                  constraints:
-                    nullable: false
-                  defaultValueBoolean: true
-              - column:
-                  remarks: The timestamp of when the notification was created
-                  name: created_at
-                  type: ${timestamp_type}
-                  constraints:
-                    nullable: false
-              - column:
-                  name: updated_at
-                  remarks: The timestamp of when the notification was updated
-                  type: ${timestamp_type}
-                  constraints:
-                    nullable: false
-
-  - changeSet:
-      id: v52.2024-09-05T08:00:01
-      author: qnkhuat
-      comment: Create the notification_subscription table
-      preConditions:
-        - not:
-          - tableExists:
-              tableName: notification_subscription
-      changes:
-        - createTable:
-            remarks: which type of trigger a notification is subscribed to
-            tableName: notification_subscription
-            columns:
-              - column:
-                  name: id
-                  type: int
-                  autoIncrement: true
-                  constraints:
-                    primaryKey: true
-                    nullable: false
-              - column:
-                  name: notification_id
-                  remarks: the notification that the subscription is connected to
-                  type: int
-                  constraints:
-                    nullable: false
-                    referencedTableName: notification
-                    referencedColumnNames: id
-                    foreignKeyName: fk_notification_subscription_notification_id
-                    deleteCascade: true
-              - column:
-                  name: type
-                  remarks: the type of the subscription
-                  type: varchar(64)
-                  constraints:
-                    nullable: false
-              - column:
-                  name: event_name
-                  remarks: the event name of subscriptions with type :notification-subscription/system-event
-                  type: varchar(64)
-                  constraints:
-                    nullable: true
-              - column:
-                  name: created_at
-                  remarks: The timestamp of when the subscription was created
-                  type: ${timestamp_type}
-                  constraints:
-                    nullable: false
-
-  - changeSet:
-      id: v52.2024-09-05T08:00:02
-      author: qnkhuat
-      comment: index on notification_subscription.notification_id
-      rollback: # no need, will be dropped with the table
-      preConditions:
-        - not:
-            - indexExists:
-                tableName: notification_subscription
-                indexName: idx_notification_subscription_notification_id
-      changes:
-        - createIndex:
-            tableName: notification_subscription
-            columns:
-              - column:
-                  name: notification_id
-            indexName: idx_notification_subscription_notification_id
-
-  - changeSet:
-      id: v52.2024-09-05T08:00:03
-      author: qnkhuat
-      comment: Create the channel_template table
-      preConditions:
-        - not:
-          - tableExists:
-              tableName: channel_template
-      changes:
-        - createTable:
-            tableName: channel_template
-            remarks: custom template for the channel
-            columns:
-              - column:
-                  name: id
-                  type: int
-                  autoIncrement: true
-                  constraints:
-                    primaryKey: true
-                    nullable: false
-              - column:
-                  name: name
-                  type: varchar(64)
-                  remarks: the name of the template
-                  constraints:
-                    nullable: false
-              - column:
-                  name: channel_type
-                  type: varchar(64)
-                  remarks: the channel type of the template
-                  constraints:
-                    nullable: false
-              - column:
-                  name: details
-                  type: ${text.type}
-                  remarks: the details of the template
-                  constraints:
-                    nullable: true
-              - column:
-                  name: entity_id
-                  type: char(21)
-                  remarks: Random NanoID tag for unique identity.
-                  constraints:
-                    nullable: true
-                    unique: true
-              - column:
-                  name: created_at
-                  type: ${timestamp_type}
-                  remarks: The timestamp of when the template was created
-                  constraints:
-                    nullable: false
-              - column:
-                  name: updated_at
-                  type: ${timestamp_type}
-                  remarks: The timestamp of when the template was last updated
-                  constraints:
-                    nullable: false
-
-  - changeSet:
       id: v51.2024-09-26T03:01:00
       author: escherize
       comment: iff enable-embedding is set, copy -> enable-embedding-interactive
@@ -9654,6 +9483,179 @@ databaseChangeLog:
               FROM setting
               WHERE "KEY" = 'embedding-app-origin';
       rollback: # not needed
+
+  - changeSet:
+      id: v52.2024-09-05T08:00:00
+      author: qnkhuat
+      comment: Create the notification table
+      preConditions:
+        - not:
+          - tableExists:
+              tableName: notification
+      changes:
+        - createTable:
+            tableName: notification
+            remarks: join table that connect notification subscriptions and notification handlers
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: payload_type
+                  remarks: the type of the payload
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: active
+                  remarks: whether the notification is active
+                  type: ${boolean.type}
+                  constraints:
+                    nullable: false
+                  defaultValueBoolean: true
+              - column:
+                  remarks: The timestamp of when the notification was created
+                  name: created_at
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  remarks: The timestamp of when the notification was updated
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v52.2024-09-05T08:00:01
+      author: qnkhuat
+      comment: Create the notification_subscription table
+      preConditions:
+        - not:
+          - tableExists:
+              tableName: notification_subscription
+      changes:
+        - createTable:
+            remarks: which type of trigger a notification is subscribed to
+            tableName: notification_subscription
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: notification_id
+                  remarks: the notification that the subscription is connected to
+                  type: int
+                  constraints:
+                    nullable: false
+                    referencedTableName: notification
+                    referencedColumnNames: id
+                    foreignKeyName: fk_notification_subscription_notification_id
+                    deleteCascade: true
+              - column:
+                  name: type
+                  remarks: the type of the subscription
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: event_name
+                  remarks: the event name of subscriptions with type :notification-subscription/system-event
+                  type: varchar(64)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_at
+                  remarks: The timestamp of when the subscription was created
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v52.2024-09-05T08:00:02
+      author: qnkhuat
+      comment: index on notification_subscription.notification_id
+      rollback: # no need, will be dropped with the table
+      preConditions:
+        - not:
+            - indexExists:
+                tableName: notification_subscription
+                indexName: idx_notification_subscription_notification_id
+      changes:
+        - createIndex:
+            tableName: notification_subscription
+            columns:
+              - column:
+                  name: notification_id
+            indexName: idx_notification_subscription_notification_id
+
+  - changeSet:
+      id: v52.2024-09-05T08:00:03
+      author: qnkhuat
+      comment: Create the channel_template table
+      preConditions:
+        - not:
+          - tableExists:
+              tableName: channel_template
+      changes:
+        - createTable:
+            tableName: channel_template
+            remarks: custom template for the channel
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(64)
+                  remarks: the name of the template
+                  constraints:
+                    nullable: false
+              - column:
+                  name: channel_type
+                  type: varchar(64)
+                  remarks: the channel type of the template
+                  constraints:
+                    nullable: false
+              - column:
+                  name: details
+                  type: ${text.type}
+                  remarks: the details of the template
+                  constraints:
+                    nullable: true
+              - column:
+                  name: entity_id
+                  type: char(21)
+                  remarks: Random NanoID tag for unique identity.
+                  constraints:
+                    nullable: true
+                    unique: true
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: The timestamp of when the template was created
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  remarks: The timestamp of when the template was last updated
+                  constraints:
+                    nullable: false
+
+
 
   - changeSet:
       id: v52.2024-09-05T08:00:04
