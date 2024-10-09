@@ -133,13 +133,14 @@ export function buildDimensionTarget(
 
 export function buildColumnTarget(
   query: Lib.Query,
-  nonNegativeStageIndex: number,
+  stageIndex: number,
   column: Lib.ColumnMetadata,
   parameter: Parameter | undefined,
 ): StructuredParameterDimensionTarget {
   // BE works incorrectly with non-negative stage indexes: https://github.com/metabase/metabase/issues/48441
-  const stageIndex = nonNegativeStageIndex - Lib.stageCount(query);
-  const fieldRef = Lib.legacyRef(query, stageIndex, column);
+  const fixedStageIndex =
+    stageIndex >= 0 ? stageIndex - Lib.stageCount(query) : stageIndex;
+  const fieldRef = Lib.legacyRef(query, fixedStageIndex, column);
 
   if (!isConcreteFieldReference(fieldRef)) {
     throw new Error(`Cannot build column target field reference: ${fieldRef}`);
@@ -151,7 +152,7 @@ export function buildColumnTarget(
     return ["dimension", fieldRef];
   }
 
-  return ["dimension", fieldRef, { "stage-number": stageIndex }];
+  return ["dimension", fieldRef, { "stage-number": fixedStageIndex }];
 }
 
 export function buildTemplateTagVariableTarget(
