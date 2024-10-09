@@ -1,6 +1,6 @@
+import { createAction } from "@reduxjs/toolkit";
 import { push } from "react-router-redux";
 
-import { createAction } from "metabase/lib/redux";
 import { getLocation } from "metabase/selectors/routing";
 import type {
   DashCardId,
@@ -12,7 +12,9 @@ import type {
 import type { Dispatch, GetState } from "metabase-types/store";
 
 export const INITIALIZE = "metabase/dashboard/INITIALIZE";
-export const initialize = createAction(INITIALIZE);
+export const initialize = createAction<{
+  clearCache?: boolean;
+}>(INITIALIZE);
 
 export const RESET = "metabase/dashboard/RESET";
 export const reset = createAction(RESET);
@@ -85,8 +87,10 @@ export const onUpdateDashCardVisualizationSettings = createAction(
     id: DashCardId,
     settings: DashCardVisualizationSettings | null | undefined,
   ) => ({
-    id,
-    settings,
+    payload: {
+      id,
+      settings,
+    },
   }),
 );
 
@@ -98,7 +102,7 @@ export const onUpdateDashCardColumnSettings = createAction(
     id: DashCardId,
     column: string,
     settings?: Record<string, unknown> | null,
-  ) => ({ id, column, settings }),
+  ) => ({ payload: { id, column, settings } }),
 );
 
 export const REPLACE_ALL_DASHCARD_VISUALIZATION_SETTINGS =
@@ -109,7 +113,9 @@ export const onReplaceAllDashCardVisualizationSettings = createAction(
     id: DashCardId,
     settings: DashCardVisualizationSettings | null | undefined,
   ) => ({
-    id,
-    settings,
+    payload: {
+      id,
+      settings,
+    },
   }),
 );

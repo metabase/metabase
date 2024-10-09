@@ -1,25 +1,56 @@
 import { createAction } from "@reduxjs/toolkit";
 import type { Query } from "history";
+import { getIn } from "icepick";
 import { denormalize, normalize, schema } from "normalizr";
 
 import {
+  CLEAR_CARD_DATA,
+  FETCH_CARD_DATA,
+} from "metabase/dashboard/actions/data-fetching";
+import {
+  getDashCardBeforeEditing,
   getDashCardById,
   getDashboardById,
   getParameterValues,
 } from "metabase/dashboard/selectors";
 import {
   expandInlineDashboard,
+  fetchDataOrError,
   getDashboardType,
+  isQuestionDashCard,
 } from "metabase/dashboard/utils";
 import Dashboards from "metabase/entities/dashboards";
 import type { Deferred } from "metabase/lib/promise";
 import { defer } from "metabase/lib/promise";
 import { createAsyncThunk } from "metabase/lib/redux";
+import { equals } from "metabase/lib/utils";
 import { uuid } from "metabase/lib/uuid";
 import { addFields, addParamValues } from "metabase/redux/metadata";
-import { AutoApi, DashboardApi, EmbedApi, PublicApi } from "metabase/services";
+import {
+  AutoApi,
+  CardApi,
+  DashboardApi,
+  EmbedApi,
+  MetabaseApi,
+  PublicApi,
+  maybeUsePivotEndpoint,
+} from "metabase/services";
+import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { getParameterValuesByIdFromQueryParams } from "metabase-lib/v1/parameters/utils/parameter-parsing";
-import type { Card, DashboardCard, DashboardId } from "metabase-types/api";
+import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
+import { applyParameters } from "metabase-lib/v1/queries/utils/card";
+import type {
+  Card,
+  DashCardId,
+  DashboardCard,
+  DashboardId,
+  Dataset,
+  DatasetQuery,
+  QuestionDashboardCard,
+} from "metabase-types/api";
+import type { Dispatch } from "metabase-types/store";
+
+import { DASHBOARD_SLOW_TIMEOUT } from "../constants";
 
 // normalizr schemas
 const dashcard = new schema.Entity("dashcard");
@@ -39,7 +70,10 @@ export const fetchDashboard = createAsyncThunk(
     }: {
       dashId: DashboardId;
       queryParams: Query;
-      options?: { preserveParameters?: boolean; clearCache?: boolean };
+      options?: {
+        preserveParameters?: boolean;
+        clearCache?: boolean;
+      };
     },
     { getState, dispatch, rejectWithValue },
   ) => {
@@ -184,7 +218,13 @@ export const fetchDashboard = createAsyncThunk(
         preserveParameters,
       };
     } catch (error) {
-      if (!(error as { isCancelled: boolean }).isCancelled) {
+      if (
+        !(
+          error as {
+            isCancelled: boolean;
+          }
+        ).isCancelled
+      ) {
         console.error(error);
       }
       return rejectWithValue(error);
@@ -210,3 +250,329 @@ export const SET_SHOW_LOADING_COMPLETE_FAVICON =
 export const setShowLoadingCompleteFavicon = createAction<boolean>(
   SET_SHOW_LOADING_COMPLETE_FAVICON,
 );
+
+export const FETCH_DASHBOARD_CARD_DATA =
+  "metabase/dashboard/FETCH_DASHBOARD_CARD_DATA";
+
+export const fetchDashboardCardDataAction = createAction<{
+  currentTime: number;
+  loadingIds: DashCardId[];
+}>(FETCH_DASHBOARD_CARD_DATA);
+
+export const FETCH_CARD_DATA_PENDING =
+  "metabase/dashboard/FETCH_CARD_DATA/pending";
+export const fetchCardDataPending = createAction(
+  FETCH_CARD_DATA_PENDING,
+  (dashcard_id: DashCardId) => ({ payload: { dashcard_id } }),
+);
+
+export const CANCEL_FETCH_CARD_DATA =
+  "metabase/dashboard/CANCEL_FETCH_CARD_DATA";
+
+const cardDataCancelDeferreds: Record<
+  `${DashCardId},${DashboardCard["card_id"]}`,
+  Deferred | null
+> = {};
+
+export function setFetchCardDataCancel(
+  card_id: DashboardCard["card_id"],
+  dashcard_id: DashCardId,
+  deferred: Deferred | null,
+) {
+  cardDataCancelDeferreds[`${dashcard_id},${card_id}`] = deferred;
+}
+
+// machinery to support query cancellation
+export const cancelFetchCardData = createAction(
+  CANCEL_FETCH_CARD_DATA,
+  (card_id: DashboardCard["card_id"], dashcard_id: DashCardId) => {
+    const deferred = cardDataCancelDeferreds[`${dashcard_id},${card_id}`];
+    if (deferred) {
+      deferred.resolve();
+      cardDataCancelDeferreds[`${dashcard_id},${card_id}`] = null;
+    }
+    return { payload: { dashcard_id, card_id } };
+  },
+);
+
+// real dashcard ids are integers >= 1
+function isNewDashcard(dashcard: DashboardCard) {
+  return dashcard.id < 0;
+}
+
+function isNewAdditionalSeriesCard(
+  card: Card,
+  dashcard: QuestionDashboardCard,
+) {
+  return (
+    card.id !== dashcard.card_id &&
+    !dashcard.series?.some(s => s.id === card.id)
+  );
+}
+
+type FetchCardDataActionArgs = {
+  dashcard_id: DashCardId;
+  card_id: DashboardCard["card_id"];
+  result:
+    | Dataset
+    | {
+        error: unknown;
+      }
+    | null;
+  currentTime?: number;
+};
+
+type FetchCardDataActionReturned = {
+  card: Card;
+  dashcard: DashboardCard;
+  options: {
+    reload?: boolean;
+    clearCache?: boolean;
+    ignoreCache?: boolean;
+    dashboardLoadId?: string;
+  };
+};
+
+const fetchCardDataAction = createAsyncThunk<
+  FetchCardDataActionArgs,
+  FetchCardDataActionReturned
+>(
+  FETCH_CARD_DATA,
+  async function (
+    {
+      card,
+      dashcard,
+      options: { reload, clearCache, ignoreCache, dashboardLoadId } = {},
+    },
+    { dispatch, getState },
+  ) {
+    dispatch(fetchCardDataPending(dashcard.id));
+
+    // If the dataset_query was filtered then we don't have permission to view this card, so
+    // shortcircuit and return a fake 403
+    if (!card.dataset_query) {
+      return {
+        dashcard_id: dashcard.id,
+        card_id: card.id,
+        result: { error: { status: 403 } },
+      };
+    }
+
+    const dashboardType = getDashboardType(dashcard.dashboard_id);
+
+    const { dashboardId, dashboards, parameterValues, dashcardData } =
+      getState().dashboard;
+    const dashboard = dashboardId ? dashboards[dashboardId] : null;
+
+    // if we have a parameter, apply it to the card query before we execute
+    const datasetQuery = applyParameters(
+      card,
+      dashboard?.parameters,
+      parameterValues,
+      dashcard?.parameter_mappings ?? undefined,
+    );
+
+    const lastResult = getIn(dashcardData, [dashcard.id, card.id]);
+    if (!reload) {
+      // if reload not set, check to see if the last result has the same query dict and return that
+      if (
+        lastResult &&
+        equals(
+          getDatasetQueryParams(lastResult.json_query),
+          getDatasetQueryParams(datasetQuery),
+        )
+      ) {
+        return {
+          dashcard_id: dashcard.id,
+          card_id: card.id,
+          result: lastResult,
+        };
+      }
+    }
+
+    cancelFetchCardData(card.id, dashcard.id);
+
+    // When dashcard parameters change, we need to clean previous (stale)
+    // state so that the loader spinner shows as expected (#33767)
+    const hasParametersChanged =
+      !lastResult ||
+      !equals(
+        getDatasetQueryParams(lastResult.json_query).parameters,
+        getDatasetQueryParams(datasetQuery).parameters,
+      );
+
+    if (clearCache || hasParametersChanged) {
+      // clears the card data to indicate the card is reloading
+      dispatch(clearCardData(card.id, dashcard.id));
+    }
+
+    let result:
+      | Dataset
+      | {
+          error: unknown;
+        }
+      | null = null;
+
+    // start a timer that will show the expected card duration if the query takes too long
+    const slowCardTimer = setTimeout(() => {
+      if (result === null) {
+        dispatch(markCardAsSlow(card));
+      }
+    }, DASHBOARD_SLOW_TIMEOUT);
+
+    const deferred = defer();
+    setFetchCardDataCancel(card.id, dashcard.id, deferred);
+
+    let cancelled = false;
+    deferred.promise.then(() => {
+      cancelled = true;
+    });
+
+    const queryOptions = {
+      cancelled: deferred.promise,
+    };
+
+    // make the actual request
+    if (datasetQuery.type === "endpoint") {
+      result = await fetchDataOrError(
+        MetabaseApi.datasetEndpoint(
+          {
+            endpoint: datasetQuery.endpoint,
+            parameters: datasetQuery.parameters,
+          },
+          queryOptions,
+        ),
+      );
+    } else if (dashboardType === "public") {
+      result = await fetchDataOrError(
+        maybeUsePivotEndpoint(PublicApi.dashboardCardQuery, card)(
+          {
+            uuid: dashcard.dashboard_id,
+            dashcardId: dashcard.id,
+            cardId: card.id,
+            parameters: datasetQuery.parameters
+              ? JSON.stringify(datasetQuery.parameters)
+              : undefined,
+            ignore_cache: ignoreCache,
+          },
+          queryOptions,
+        ),
+      );
+    } else if (dashboardType === "embed") {
+      result = await fetchDataOrError(
+        maybeUsePivotEndpoint(EmbedApi.dashboardCardQuery, card)(
+          {
+            token: dashcard.dashboard_id,
+            dashcardId: dashcard.id,
+            cardId: card.id,
+            parameters: JSON.stringify(
+              getParameterValuesBySlug(dashboard?.parameters, parameterValues),
+            ),
+            ignore_cache: ignoreCache,
+          },
+          queryOptions,
+        ),
+      );
+    } else if (dashboardType === "transient" || dashboardType === "inline") {
+      result = await fetchDataOrError(
+        maybeUsePivotEndpoint(MetabaseApi.dataset, card)(
+          { ...datasetQuery, ignore_cache: ignoreCache },
+          queryOptions,
+        ),
+      );
+    } else {
+      const dashcardBeforeEditing = getDashCardBeforeEditing(
+        getState(),
+        dashcard.id,
+      );
+      const hasReplacedCard =
+        dashcard.card_id != null &&
+        dashcardBeforeEditing &&
+        dashcardBeforeEditing.card_id !== dashcard.card_id;
+
+      const shouldUseCardQueryEndpoint =
+        isNewDashcard(dashcard) ||
+        (isQuestionDashCard(dashcard) &&
+          isNewAdditionalSeriesCard(card, dashcard)) ||
+        hasReplacedCard;
+
+      // new dashcards and new additional series cards aren't yet saved to the dashboard, so they need to be run using the card query endpoint
+      const endpoint = shouldUseCardQueryEndpoint
+        ? CardApi.query
+        : DashboardApi.cardQuery;
+
+      const requestBody = shouldUseCardQueryEndpoint
+        ? { cardId: card.id, ignore_cache: ignoreCache }
+        : {
+            dashboardId: dashcard.dashboard_id,
+            dashcardId: dashcard.id,
+            cardId: card.id,
+            parameters: datasetQuery.parameters,
+            ignore_cache: ignoreCache,
+            dashboard_id: dashcard.dashboard_id,
+            dashboard_load_id: dashboardLoadId,
+          };
+
+      result = await fetchDataOrError(
+        maybeUsePivotEndpoint(endpoint, card)(requestBody, queryOptions),
+      );
+    }
+
+    setFetchCardDataCancel(card.id, dashcard.id, null);
+    clearTimeout(slowCardTimer);
+
+    return {
+      dashcard_id: dashcard.id,
+      card_id: card.id,
+      result: cancelled ? null : result,
+      currentTime: performance.now(),
+    };
+  },
+);
+
+export const fetchCardData =
+  (
+    card: Card,
+    dashcard: DashboardCard,
+    options: {
+      reload?: boolean;
+      clearCache?: boolean;
+      ignoreCache?: boolean;
+      dashboardLoadId?: string;
+    } = {},
+  ) =>
+  (dispatch: Dispatch) => {
+    dispatch(fetchCardDataAction({ card, dashcard, options }));
+  };
+
+fetchCardData.fulfilled = fetchCardDataAction.fulfilled;
+
+export const clearCardData = createAction(
+  CLEAR_CARD_DATA,
+  (cardId, dashcardId) => ({ payload: { cardId, dashcardId } }),
+);
+
+function getDatasetQueryParams(datasetQuery: DatasetQuery) {
+  const type = datasetQuery.type;
+  if (type === "native") {
+    return {
+      type,
+      native: datasetQuery.native,
+      parameters: datasetQuery.parameters
+        ?.map(parameter => ({
+          ...parameter,
+          value: parameter.value ?? null,
+        }))
+        .sort(sortById),
+    };
+  }
+
+  return {
+    type,
+    query: datasetQuery.query,
+  };
+}
+
+function sortById(a: UiParameter, b: UiParameter) {
+  return a.id.localeCompare(b.id);
+}

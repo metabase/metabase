@@ -29,7 +29,6 @@ import {
   CLEAR_CARD_DATA,
   CREATE_PUBLIC_LINK,
   DELETE_PUBLIC_LINK,
-  FETCH_CARD_DATA,
   INITIALIZE,
   MARK_NEW_CARD_SEEN,
   REMOVE_CARD_FROM_DASH,
@@ -46,6 +45,7 @@ import {
   UPDATE_DASHCARD_VISUALIZATION_SETTINGS_FOR_COLUMN,
   UPDATE_EMBEDDING_PARAMS,
   UPDATE_ENABLE_EMBEDDING,
+  fetchCardData,
   fetchDashboard,
   tabsReducer,
 } from "./actions";
@@ -261,7 +261,7 @@ const dashcardData = handleActions(
       next: (state, { payload: { clearCache = true } = {} }) =>
         clearCache ? {} : state,
     },
-    [FETCH_CARD_DATA]: {
+    [fetchCardData.fulfilled]: {
       next: (state, { payload: { dashcard_id, card_id, result } }) =>
         assocIn(state, [dashcard_id, card_id], result),
     },

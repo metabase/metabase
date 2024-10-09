@@ -11,11 +11,7 @@ import type {
 import type { DashboardSidebarName } from "metabase-types/store/dashboard";
 
 import {
-  CANCEL_FETCH_CARD_DATA,
   CLOSE_SIDEBAR,
-  FETCH_CARD_DATA,
-  FETCH_CARD_DATA_PENDING,
-  FETCH_DASHBOARD_CARD_DATA,
   HIDE_ADD_PARAMETER_POPOVER,
   INITIALIZE,
   REMOVE_PARAMETER,
@@ -27,7 +23,12 @@ import {
   SET_SIDEBAR,
   SHOW_ADD_PARAMETER_POPOVER,
   SHOW_AUTO_APPLY_FILTERS_TOAST,
+  cancelFetchCardData,
+  fetchCardData,
+  fetchCardDataPending,
   fetchDashboard,
+  fetchDashboardCardDataAction,
+  initialize,
   markCardAsSlow,
   setDisplayTheme,
   setDocumentTitle,
@@ -67,7 +68,10 @@ export const autoApplyFilters = createReducer(
       string,
       {
         type: string;
-        payload: { toastId: number | null; dashboardId: number | null };
+        payload: {
+          toastId: number | null;
+          dashboardId: number | null;
+        };
       }
     >(SHOW_AUTO_APPLY_FILTERS_TOAST, (state, { payload }) => {
       const { toastId, dashboardId } = payload;
@@ -166,7 +170,10 @@ export const sidebar = createReducer(
         type: string;
         payload: {
           name: DashboardSidebarName;
-          props?: { dashcardId?: DashCardId; parameterId?: ParameterId };
+          props?: {
+            dashcardId?: DashCardId;
+            parameterId?: ParameterId;
+          };
         };
       }
     >(SET_SIDEBAR, (_state, { payload: { name, props } }) => ({
@@ -179,12 +186,12 @@ export const sidebar = createReducer(
 export const parameterValues = createReducer(
   INITIAL_DASHBOARD_STATE.parameterValues,
   builder => {
-    builder.addCase<
-      string,
-      { type: string; payload: { clearCache?: boolean } }
-    >(INITIALIZE, (state, { payload: { clearCache = true } = {} }) => {
-      return clearCache ? {} : state;
-    });
+    builder.addCase(
+      initialize,
+      (state, { payload: { clearCache = true } = {} }) => {
+        return clearCache ? {} : state;
+      },
+    );
 
     builder.addCase(fetchDashboard.fulfilled, (_state, { payload }) => {
       return payload.parameterValues;
@@ -229,12 +236,17 @@ export const parameterValues = createReducer(
       }
     });
 
-    builder.addCase<string, { type: string; payload: { id: ParameterId } }>(
-      REMOVE_PARAMETER,
-      (state, { payload: { id } }) => {
-        delete state[id];
-      },
-    );
+    builder.addCase<
+      string,
+      {
+        type: string;
+        payload: {
+          id: ParameterId;
+        };
+      }
+    >(REMOVE_PARAMETER, (state, { payload: { id } }) => {
+      delete state[id];
+    });
   },
 );
 
@@ -242,64 +254,30 @@ export const loadingDashCards = createReducer(
   INITIAL_DASHBOARD_STATE.loadingDashCards,
   builder => {
     builder
-      .addCase(INITIALIZE, state => {
+      .addCase(initialize, state => {
         state.loadingStatus = "idle";
       })
-      .addCase<
-        string,
-        {
-          type: string;
-          payload: {
-            currentTime: number;
-            loadingIds: DashCardId[];
-          };
-        }
-      >(FETCH_DASHBOARD_CARD_DATA, (state, action) => {
+      .addCase(fetchDashboardCardDataAction, (state, action) => {
         const { currentTime, loadingIds } = action.payload;
         state.loadingIds = loadingIds;
         state.loadingStatus = loadingIds.length > 0 ? "running" : "idle";
         state.startTime = loadingIds.length > 0 ? currentTime : null;
       })
-      .addCase<
-        string,
-        {
-          type: string;
-          payload: {
-            dashcard_id: DashCardId;
-          };
-        }
-      >(FETCH_CARD_DATA_PENDING, (state, action) => {
+      .addCase(fetchCardDataPending, (state, action) => {
         const { dashcard_id } = action.payload;
         if (!state.loadingIds.includes(dashcard_id)) {
           state.loadingIds.push(dashcard_id);
         }
       })
-      .addCase<
-        string,
-        {
-          type: string;
-          payload: {
-            currentTime: number;
-            dashcard_id: DashCardId;
-          };
-        }
-      >(FETCH_CARD_DATA, (state, action) => {
-        const { dashcard_id, currentTime } = action.payload;
+      .addCase(fetchCardData.fulfilled, (state, action) => {
+        const { dashcard_id, currentTime = null } = action.payload;
         state.loadingIds = state.loadingIds.filter(id => id !== dashcard_id);
         if (state.loadingIds.length === 0) {
           state.endTime = currentTime;
           state.loadingStatus = "complete";
         }
       })
-      .addCase<
-        string,
-        {
-          type: string;
-          payload: {
-            dashcard_id: DashCardId;
-          };
-        }
-      >(CANCEL_FETCH_CARD_DATA, (state, action) => {
+      .addCase(cancelFetchCardData, (state, action) => {
         const { dashcard_id } = action.payload;
         state.loadingIds = state.loadingIds.filter(id => id !== dashcard_id);
         if (state.loadingIds.length === 0) {
