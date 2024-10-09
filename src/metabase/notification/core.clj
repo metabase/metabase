@@ -1,5 +1,6 @@
 (ns metabase.notification.core
   (:require
+   [java-time.api :as t]
    [metabase.channel.core :as channel]
    [metabase.models.notification :as models.notification]
    [metabase.models.setting :as setting]
@@ -81,14 +82,16 @@
           retry-errors (volatile! [])
           retry-report (fn []
                          {:attempted_retries (count @retry-errors)
-                          :retry_errors       @retry-errors})
+                          ;; we want the last retry to be the most recent
+                          :retry_errors       (reverse @retry-errors)})
           channel     (or (:channel handler)
                           {:type (:channel_type handler)})
           send!        (fn []
                          (try
                            (channel/send! channel message)
                            (catch Exception e
-                             (vswap! retry-errors conj e)
+                             (vswap! retry-errors conj {:message   (u/strip-error e)
+                                                        :timestamp (t/offset-date-time)})
                              (log/warnf e "[Notification %d] Failed to send to channel %s , retrying..." notification-id (handler->channel-name handler))
                              (throw e))))]
       (log/debugf "[Notification %d] Sending a message to channel %s" notification-id (handler->channel-name handler))
@@ -117,7 +120,7 @@
     (log/debugf "[Notification %d] Found %d %s"
                (:id notification-info) (count noti-handlers) (u/format-plural (count noti-handlers) "handler"))
     (task-history/with-task-history
-      {:task          "send-notification"
+      {:task          "notification-send"
        :task_details {:notification_id       (:id notification-info)
                       :notification_handlers (map #(select-keys % [:id :channel_type :channel_id :template_id])
                                                   noti-handlers)}}

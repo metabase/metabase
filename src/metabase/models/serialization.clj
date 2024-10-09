@@ -1661,22 +1661,6 @@
    :import-with-context (compose* (maybe-lift outer-xform :import :import-with-context)
                                   (maybe-lift inner-xform :import :import-with-context))})
 
-;;; ## Utilities
-
-(defn strip-error
-  "Transforms the error in a list of strings to log"
-  [e prefix]
-  (->> (for [[e prefix] (map vector
-                             (take-while some? (iterate #(.getCause ^Exception %) e))
-                             (cons prefix (repeat "  caused by")))]
-         (str (when prefix (str prefix ": "))
-              (ex-message e)
-              (when-let [data (-> (ex-data e)
-                                  (dissoc :toucan2/context-trace)
-                                  not-empty)]
-                (str " " (pr-str data)))))
-       (str/join "\n")))
-
 ;;; ## Memoizing appdb lookups
 
 (defmacro with-cache

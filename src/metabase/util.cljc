@@ -88,6 +88,22 @@
                          :clj  'Throwable)
                       ~'_)))
 
+(defn strip-error
+  "Transforms the error in a list of strings to log"
+  ([e]
+   (strip-error e nil))
+  ([e prefix]
+   (->> (for [[e prefix] (map vector
+                              (take-while some? (iterate #(.getCause ^Exception %) e))
+                              (cons prefix (repeat "  caused by")))]
+          (str (when prefix (str prefix ": "))
+               (ex-message e)
+               (when-let [data (-> (ex-data e)
+                                   (dissoc :toucan2/context-trace)
+                                   not-empty)]
+                 (str " " (pr-str data)))))
+        (str/join "\n"))))
+
 (defmacro prog1
   "Execute `first-form`, then any other expressions in `body`, presumably for side-effects; return the result of
   `first-form`.

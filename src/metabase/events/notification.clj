@@ -114,7 +114,7 @@
   [topic event-info]
   (when-not *skip-sending-notification?*
     (when-let [notifications (notifications-for-topic topic)]
-      (task-history/with-task-history {:task         "notification-triggered"
+      (task-history/with-task-history {:task         "notification-trigger"
                                        :task_details {:trigger_type     :notification-subscription/system-event
                                                       :event_name       topic
                                                       :notification_ids (map :id notifications)}}

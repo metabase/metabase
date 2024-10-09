@@ -65,7 +65,7 @@
                  :recipients   [{:type :notification-recipient/user :user_id (mt/user->id :crowberto)}]}])]
         (t2/delete! :model/TaskHistory)
         (notification/send-notification! n)
-        (is (=? [{:task         "send-notification"
+        (is (=? [{:task         "notification-send"
                   :task_details {:notification_id (:id n)
                                  :notification_handlers [{:id           (mt/malli=? :int)
                                                           :channel_type "channel/metabase-test"
@@ -78,7 +78,7 @@
                                  :template_id    nil
                                  :notifcation_id (:id n)
                                  :recipient_ids  (mt/malli=? [:sequential :int])}}]
-                (t2/select [:model/TaskHistory :task :task_details] :task [:in ["channel-send" "send-notification"]]
+                (t2/select [:model/TaskHistory :task :task_details] :task [:in ["channel-send" "notification-send"]]
                            {:order-by [[:started_at :asc]]})))))))
 
 (deftest notification-send-retrying-test
@@ -107,5 +107,7 @@
               (is (=? {:task "channel-send"
                        :task_details {:attempted_retries 1
                                       :retry_config      (mt/malli=? :map)
-                                      :retry_errors      (mt/malli=? [:sequential :map])}}
+                                      :retry_errors      (mt/malli=? [:sequential [:map {:closed true}
+                                                                                   [:timestamp :string]
+                                                                                   [:message :string]]])}}
                       (t2/select-one :model/TaskHistory :task "channel-send"))))))))))
