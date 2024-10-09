@@ -11,7 +11,6 @@ import {
 } from "metabase/collections/components/ModelUploadModal";
 import type { OnFileUpload } from "metabase/collections/types";
 import { UploadInput } from "metabase/components/upload";
-import ExternalLink from "metabase/core/components/ExternalLink";
 import Link from "metabase/core/components/Link";
 import CS from "metabase/css/core/index.css";
 import { useToggle } from "metabase/hooks/use-toggle";
@@ -22,21 +21,22 @@ import {
   type UploadFileProps,
   uploadFile as uploadFileAction,
 } from "metabase/redux/uploads";
-import { getLearnUrl, getSetting } from "metabase/selectors/settings";
-import { getApplicationName } from "metabase/selectors/whitelabel";
+import { getHasOwnDatabase } from "metabase/selectors/data";
+import { getSetting } from "metabase/selectors/settings";
 import { Box, Button, Icon, Menu, Stack, Text, Title } from "metabase/ui";
 import { breakpoints } from "metabase/ui/theme";
-
-import { PaddedSidebarLink } from "../../MainNavbar.styled";
 
 import { trackAddDataViaCSV, trackAddDataViaDatabase } from "./analytics";
 import type { OnboaringMenuItemProps, SidebarOnboardingProps } from "./types";
 
 export function SidebarOnboardingSection({
-  hasOwnDatabase,
+  collections,
+  databases,
+  hasDataAccess,
   isAdmin,
 }: SidebarOnboardingProps) {
-  const initialState = !hasOwnDatabase;
+  const isDatabaseAdded = getHasOwnDatabase(databases);
+  const showCTASection = !isDatabaseAdded;
 
   const [
     isModelUploadModalOpen,
@@ -46,11 +46,9 @@ export function SidebarOnboardingSection({
   const [showInfoModal, setShowInfoModal] = useState(false);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
 
-  const applicationName = useSelector(getApplicationName);
   const uploadDbId = useSelector(
     state => getSetting(state, "uploads-settings")?.db_id,
   );
-  const isUploadEnabled = !!uploadDbId;
 
   const uploadInputRef = useRef<HTMLInputElement>(null);
 
@@ -94,29 +92,45 @@ export function SidebarOnboardingSection({
 
   const isMobileSafe = useMediaQuery(`(min-width: ${breakpoints.sm})`);
 
+  const canAddDatabase = isAdmin;
+
+  /**
+   * the user must have:
+   *   - "write" permissions for the root collection AND
+   *   - either:
+   *       a) !uploadsEnabled => data access to any of the databases OR
+   *       b) uploadsEnabled => "upload" permissions for the database for which uploads are enabled
+   */
+  const isUploadEnabled = !!uploadDbId;
+  const rootCollection = collections.find(
+    c => c.id === "root" || c.id === null,
+  );
+  const canCurateRootCollection = rootCollection?.can_write;
+  const canUploadToDatabase = databases
+    ?.find(db => db.id === uploadDbId)
+    ?.canUpload();
+  const canUpload =
+    canCurateRootCollection &&
+    (isUploadEnabled ? canUploadToDatabase : hasDataAccess);
+
+  const handleSpreadsheetButtonClick = isUploadEnabled
+    ? () => uploadInputRef.current?.click()
+    : () => setShowInfoModal(true);
+
   return (
     <Box
       m={0}
       bottom={0}
       pos="sticky"
       bg="bg-white"
-      className={cx({ [CS.borderTop]: !initialState })}
+      className={cx({ [CS.borderTop]: showCTASection })}
     >
-      <Box px="md" py="md">
-        {/*eslint-disable-next-line no-unconditional-metabase-links-render -- This link is only temporary. It will be replaced with an internal link to a page. */}
-        <ExternalLink href={getLearnUrl()} className={CS.noDecoration}>
-          {/* TODO: We currently don't have a `selected` state. Will be added in MS2 when we add the onboarding page. */}
-          <PaddedSidebarLink icon="learn">
-            {t`How to use ${applicationName}`}
-          </PaddedSidebarLink>
-        </ExternalLink>
-      </Box>
-      {isAdmin && (
-        <Box px="xl" pb="md" className={cx({ [CS.borderTop]: initialState })}>
-          {initialState && (
+      {canAddDatabase || canUpload ? (
+        <Box px="xl" py="md" data-testid="sidebar-add-data-section">
+          {showCTASection && (
             <Text
               fz="sm"
-              my="md"
+              mb="md"
               lh="1.333"
             >{t`Start by adding your data. Connect to a database or upload a CSV file.`}</Text>
           )}
@@ -129,48 +143,29 @@ export function SidebarOnboardingSection({
               >{t`Add data`}</Button>
             </Menu.Target>
             <Menu.Dropdown>
-              <Link to="/admin/databases/create">
-                <SidebarOnboardingMenuItem
-                  icon="database"
-                  title={t`Add a database`}
-                  subtitle={t`PostgreSQL, MySQL, Snowflake, ...`}
-                  onClick={() => trackAddDataViaDatabase()}
-                />
-              </Link>
-              {!isUploadEnabled ? (
-                <SidebarOnboardingMenuItem
-                  icon="table2"
-                  title={t`Upload a spreadsheet`}
-                  subtitle={t`${UPLOAD_DATA_FILE_TYPES.join(
-                    ", ",
-                  )} (${MAX_UPLOAD_STRING} MB max)`}
-                  onClick={() => setShowInfoModal(true)}
-                />
-              ) : (
-                <SidebarOnboardingMenuItem
-                  icon="table2"
-                  title={t`Upload a spreadsheet`}
-                  subtitle={t`${UPLOAD_DATA_FILE_TYPES.join(
-                    ", ",
-                  )} (${MAX_UPLOAD_STRING} MB max)`}
-                  onClick={() => uploadInputRef.current?.click()}
+              {canAddDatabase && <AddDatabaseButton />}
+              {canUpload && (
+                <UploadSpreadsheetButton
+                  onClick={handleSpreadsheetButtonClick}
                 />
               )}
             </Menu.Dropdown>
           </Menu>
         </Box>
-      )}
+      ) : null}
       {showInfoModal && (
         <UploadInfoModal
           isAdmin={isAdmin}
           onClose={() => setShowInfoModal(false)}
         />
       )}
-      <UploadInput
-        id="onboarding-upload-input"
-        ref={uploadInputRef}
-        onChange={handleFileInput}
-      />
+      {canUpload && (
+        <UploadInput
+          id="onboarding-upload-input"
+          ref={uploadInputRef}
+          onChange={handleFileInput}
+        />
+      )}
       <ModelUploadModal
         collectionId="root"
         opened={isModelUploadModalOpen}
@@ -202,5 +197,33 @@ function SidebarOnboardingMenuItem({
         </Text>
       </Stack>
     </Menu.Item>
+  );
+}
+
+function AddDatabaseButton() {
+  return (
+    <Link to="/admin/databases/create">
+      <SidebarOnboardingMenuItem
+        icon="database"
+        title={t`Add a database`}
+        subtitle={t`PostgreSQL, MySQL, Snowflake, ...`}
+        onClick={() => trackAddDataViaDatabase()}
+      />
+    </Link>
+  );
+}
+
+function UploadSpreadsheetButton({ onClick }: { onClick: () => void }) {
+  const subtitle = t`${UPLOAD_DATA_FILE_TYPES.join(
+    ", ",
+  )} (${MAX_UPLOAD_STRING} MB max)`;
+
+  return (
+    <SidebarOnboardingMenuItem
+      icon="table2"
+      title={t`Upload a spreadsheet`}
+      subtitle={subtitle}
+      onClick={onClick}
+    />
   );
 }
