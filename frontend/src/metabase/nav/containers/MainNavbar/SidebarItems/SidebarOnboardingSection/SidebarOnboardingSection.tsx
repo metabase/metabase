@@ -113,46 +113,9 @@ export function SidebarOnboardingSection({
     canCurateRootCollection &&
     (isUploadEnabled ? canUploadToDatabase : hasDataAccess);
 
-  function AddDatabaseButton() {
-    return (
-      <Link to="/admin/databases/create">
-        <SidebarOnboardingMenuItem
-          icon="database"
-          title={t`Add a database`}
-          subtitle={t`PostgreSQL, MySQL, Snowflake, ...`}
-          onClick={() => trackAddDataViaDatabase()}
-        />
-      </Link>
-    );
-  }
-
-  function UploadSpreadsheetButton({
-    isUploadEnabled,
-  }: {
-    isUploadEnabled: boolean;
-  }) {
-    const icon = "table2";
-    const title = t`Upload a spreadsheet`;
-    const subtitle = t`${UPLOAD_DATA_FILE_TYPES.join(
-      ", ",
-    )} (${MAX_UPLOAD_STRING} MB max)`;
-
-    return !isUploadEnabled ? (
-      <SidebarOnboardingMenuItem
-        icon={icon}
-        title={title}
-        subtitle={subtitle}
-        onClick={() => setShowInfoModal(true)}
-      />
-    ) : (
-      <SidebarOnboardingMenuItem
-        icon={icon}
-        title={title}
-        subtitle={subtitle}
-        onClick={() => uploadInputRef.current?.click()}
-      />
-    );
-  }
+  const handleSpreadsheetButtonClick = isUploadEnabled
+    ? () => uploadInputRef.current?.click()
+    : () => setShowInfoModal(true);
 
   return (
     <Box
@@ -182,7 +145,9 @@ export function SidebarOnboardingSection({
             <Menu.Dropdown>
               {canAddDatabase && <AddDatabaseButton />}
               {canUpload && (
-                <UploadSpreadsheetButton isUploadEnabled={isUploadEnabled} />
+                <UploadSpreadsheetButton
+                  onClick={handleSpreadsheetButtonClick}
+                />
               )}
             </Menu.Dropdown>
           </Menu>
@@ -232,5 +197,33 @@ function SidebarOnboardingMenuItem({
         </Text>
       </Stack>
     </Menu.Item>
+  );
+}
+
+function AddDatabaseButton() {
+  return (
+    <Link to="/admin/databases/create">
+      <SidebarOnboardingMenuItem
+        icon="database"
+        title={t`Add a database`}
+        subtitle={t`PostgreSQL, MySQL, Snowflake, ...`}
+        onClick={() => trackAddDataViaDatabase()}
+      />
+    </Link>
+  );
+}
+
+function UploadSpreadsheetButton({ onClick }: { onClick: () => void }) {
+  const subtitle = t`${UPLOAD_DATA_FILE_TYPES.join(
+    ", ",
+  )} (${MAX_UPLOAD_STRING} MB max)`;
+
+  return (
+    <SidebarOnboardingMenuItem
+      icon="table2"
+      title={t`Upload a spreadsheet`}
+      subtitle={subtitle}
+      onClick={onClick}
+    />
   );
 }
