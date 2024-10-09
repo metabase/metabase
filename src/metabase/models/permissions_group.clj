@@ -8,7 +8,6 @@
 
   See documentation in [[metabase.models.permissions]] for more information about the Metabase permissions system."
   (:require
-   [honey.sql.helpers :as sql.helpers]
    [metabase.db :as mdb]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.interface :as mi]
@@ -148,16 +147,16 @@
                                                                     :u.last_name
                                                                     :u.email
                                                                     :pgm.group_id
-                                                                    [:pgm.id :membership_id]]
+                                                                    [:pgm.id :membership_id]
+                                                                    (when (premium-features/enable-advanced-permissions?)
+                                                                      [:pgm.is_group_manager :is_group_manager])]
                                                         :from      [[:core_user :u]]
                                                         :left-join [[:permissions_group_membership :pgm] [:= :u.id :pgm.user_id]]
                                                         :where     [:and
                                                                     [:= :u.is_active true]
                                                                     [:in :pgm.group_id (map :id groups)]]
                                                         :order-by  [[[:lower :u.first_name] :asc]
-                                                                    [[:lower :u.last_name] :asc]]})
-                          (premium-features/enable-advanced-permissions?)
-                          (sql.helpers/select [:pgm.is_group_manager :is_group_manager])))
+                                                                    [[:lower :u.last_name] :asc]]})))
    :id
    {:default []}))
 

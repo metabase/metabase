@@ -183,7 +183,7 @@
                  :model/User                       {user-2-g1 :id}          {:first_name "b"}
                  :model/User                       {user-3-g1-inacitve :id} {:is_active false}
                  :model/User                       {user-1-g2 :id}          {}
-                 :model/PermissionsGroupMembership _                        {:user_id user-1-g1 :group_id group-id-1}
+                 :model/PermissionsGroupMembership _                        {:user_id user-1-g1 :group_id group-id-1 :is_group_manager true}
                  :model/PermissionsGroupMembership _                        {:user_id user-2-g1 :group_id group-id-1}
                  :model/PermissionsGroupMembership _                        {:user_id user-3-g1-inacitve :group_id group-id-1}
                  :model/PermissionsGroupMembership _                        {:user_id user-1-g2 :group_id group-id-2}]
@@ -192,4 +192,12 @@
                 {:id user-2-g1}]
                [{:id user-1-g2}]]
               (map :members (t2/hydrate (t2/select :model/PermissionsGroup :id [:in [group-id-1 group-id-2]])
-                                        :members)))))))
+                                        :members)))))
+
+    (testing "return is_group_manager for each group if premium features are enabled"
+      (mt/with-premium-features #{:advanced-permissions}
+        (is (=? [[{:id user-1-g1 :is_group_manager true}
+                  {:id user-2-g1 :is_group_manager false}]
+                 [{:id user-1-g2 :is_group_manager false}]]
+                (map :members (t2/hydrate (t2/select :model/PermissionsGroup :id [:in [group-id-1 group-id-2]])
+                                          :members))))))))
