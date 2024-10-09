@@ -29,10 +29,7 @@
             "maximum": 2147483647
           }
         },
-        "required": [
-          "key",
-          "value"
-        ]
+        "required": ["key", "value"]
       }
     },
     "metrics": {
@@ -63,10 +60,50 @@
             }
           }
         },
-        "required": [
-          "key",
-          "value"
-        ]
+        "required": ["key", "value"]
+      }
+    },
+    "grouped_metrics": {
+      "description": "Grouped metrics",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "description": "The unique name of the grouped metric",
+            "type": "string",
+            "maxLength": 255
+          },
+          "values": {
+            "description": "Values for the grouped metric",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "group": {
+                  "description": "The group name",
+                  "type": "string",
+                  "maxLength": 255
+                },
+                "value": {
+                  "description": "The value for the group",
+                  "type": "number"
+                }
+              },
+              "required": ["group", "value"],
+              "additionalProperties": false
+            }
+          },
+          "tags": {
+            "description": "Tags that can be used flagging teams / features the metric belongs to",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": ["name", "values"],
+        "additionalProperties": false
       }
     },
     "features": {
@@ -90,11 +127,7 @@
             "type": "boolean"
           }
         },
-        "required": [
-          "name",
-          "available",
-          "enabled"
-        ],
+        "required": ["name", "available", "enabled"],
         "additionalProperties": true
       }
     },
@@ -118,10 +151,7 @@
             "maximum": 2147483647
           }
         },
-        "required": [
-          "key",
-          "value"
-        ]
+        "required": ["key", "value"]
       }
     }
   },
