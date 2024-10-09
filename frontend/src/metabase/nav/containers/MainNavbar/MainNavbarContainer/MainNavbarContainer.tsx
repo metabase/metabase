@@ -20,7 +20,7 @@ import Collections, {
 } from "metabase/entities/collections";
 import Databases from "metabase/entities/databases";
 import * as Urls from "metabase/lib/urls";
-import { getHasDataAccess, getHasOwnDatabase } from "metabase/selectors/data";
+import { getHasDataAccess } from "metabase/selectors/data";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { Bookmark, Collection, User } from "metabase-types/api";
@@ -39,7 +39,6 @@ function mapStateToProps(state: State, { databases = [] }: DatabaseProps) {
     currentUser: getUser(state),
     isAdmin: getUserIsAdmin(state),
     hasDataAccess: getHasDataAccess(databases),
-    hasOwnDatabase: getHasOwnDatabase(databases),
     bookmarks: getOrderedBookmarks(state),
   };
 }
@@ -52,11 +51,11 @@ const mapDispatchToProps = {
 interface Props extends MainNavbarProps {
   isAdmin: boolean;
   currentUser: User;
+  databases: Database[];
   selectedItems: SelectedItem[];
   bookmarks: Bookmark[];
   rootCollection: Collection;
   hasDataAccess: boolean;
-  hasOwnDatabase: boolean;
   allError: boolean;
   allFetched: boolean;
   logout: () => void;
@@ -74,7 +73,6 @@ function MainNavbarContainer({
   selectedItems,
   isOpen,
   currentUser,
-  hasOwnDatabase,
   rootCollection,
   hasDataAccess,
   allError,
@@ -173,7 +171,6 @@ function MainNavbarContainer({
         isOpen={isOpen}
         currentUser={currentUser}
         collections={collectionTree}
-        hasOwnDatabase={hasOwnDatabase}
         selectedItems={selectedItems}
         hasDataAccess={hasDataAccess}
         reorderBookmarks={reorderBookmarks}
