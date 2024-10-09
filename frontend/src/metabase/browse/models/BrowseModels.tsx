@@ -50,7 +50,7 @@ export const BrowseModels = () => {
             justify="space-between"
             align="center"
           >
-            <Title order={1} color="text-dark">
+            <Title order={1} c="text-dark">
               <Group spacing="sm">
                 <Icon
                   size={24}
