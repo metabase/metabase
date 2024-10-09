@@ -1,0 +1,13 @@
+.root {
+  &[data-size="md"] {
+    .input {
+      font-size: var(--mantine-font-size-sm);
+    }
+  }
+
+  &[data-size="xs"] {
+    .input {
+      font-size: var(--mantine-font-size-xs);
+    }
+  }
+}

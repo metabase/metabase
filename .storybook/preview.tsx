@@ -10,6 +10,7 @@ if (!isEmbeddingSDK) {
   require("metabase/lib/dayjs");
 }
 import "@mantine/core/styles.css";
+import "@mantine/dates/styles.css"
 
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 import { getMetabaseCssVariables } from "metabase/styled-components/theme/css-variables";

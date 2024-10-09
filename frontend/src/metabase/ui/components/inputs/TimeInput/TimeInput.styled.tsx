@@ -1,10 +1,15 @@
-import type { MantineThemeOverride } from "@mantine/core";
+import { TimeInput } from "@mantine/dates";
 
-export const getTimeInputOverrides =
-  (): MantineThemeOverride["components"] => ({
-    TimeInput: {
-      defaultProps: {
-        size: "md",
-      },
+import Styles from "./TimeInput.module.css";
+
+export const timeInputOverrides = {
+  TimeInput: TimeInput.extend({
+    defaultProps: {
+      size: "md",
     },
-  });
+    classNames: {
+      root: Styles.root,
+      input: Styles.input,
+    },
+  }),
+};
