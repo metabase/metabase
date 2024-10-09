@@ -1,8 +1,24 @@
-import type { NumberInputProps } from "@mantine/core";
+import type {
+  TextInputProps,
+  NumberInputProps as _NumberInputProps,
+} from "@mantine/core";
 import type { ChangeEvent, FocusEvent, Ref } from "react";
 import { forwardRef, useLayoutEffect, useState } from "react";
 
 import { TextInput } from "../TextInput";
+
+export interface NumberInputProps
+  extends Omit<
+    _NumberInputProps,
+    "vars" | "classNames" | "styles" | "value" | "defaultValue" | "onChange"
+  > {
+  value: number | "";
+  defaultValue?: number | "";
+  onChange?: (value: number | "") => void;
+  vars?: TextInputProps["vars"];
+  classNames?: TextInputProps["classNames"];
+  styles?: TextInputProps["styles"];
+}
 
 export const NumberInput = forwardRef(function NumberInput(
   {
@@ -59,6 +75,6 @@ function parseValue(value: string) {
   return Number.isNaN(number) ? "" : number;
 }
 
-function formatValue(value: number | "") {
+function formatValue(value: number | string | "") {
   return String(value);
 }
