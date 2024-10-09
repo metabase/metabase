@@ -101,6 +101,7 @@ export type DashboardCardLayoutAttrs = {
 export type DashCardVisualizationSettings = {
   [key: string]: unknown;
   virtual_card?: VirtualCard;
+  iframe?: string;
 };
 
 export type BaseDashboardCard = DashboardCardLayoutAttrs & {
@@ -289,3 +290,8 @@ export type CopyDashboardRequest = {
   collection_position?: number | null;
   is_deep_copy?: boolean | null;
 };
+
+export type GetPublicOrEmbeddableDashboard = Pick<
+  Dashboard,
+  "id" | "name" | "public_uuid"
+>;

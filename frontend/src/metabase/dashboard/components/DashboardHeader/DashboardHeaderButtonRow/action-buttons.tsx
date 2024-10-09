@@ -10,7 +10,6 @@ import {
   AddActionElementButton,
   AddFilterParameterButton,
   AddHeadingOrTextButton,
-  AddLinkCardButton,
   AddQuestionButton,
   AddSectionButton,
   CopyAnalyticsDashboardButton,
@@ -22,6 +21,7 @@ import {
   NightModeToggleButton,
   getExtraButtons,
 } from "../buttons";
+import { AddLinkOrEmbedButton } from "../buttons/AddLinkOrEmbedButton";
 
 import type {
   DashboardActionButton,
@@ -64,7 +64,7 @@ export const dashboardActionButtons: Record<
     enabled: ({ isEditing }) => isEditing,
   },
   [DASHBOARD_ACTION.ADD_LINK_CARD]: {
-    component: AddLinkCardButton,
+    component: AddLinkOrEmbedButton,
     enabled: ({ isEditing }) => isEditing,
   },
   [DASHBOARD_ACTION.ADD_SECTION]: {

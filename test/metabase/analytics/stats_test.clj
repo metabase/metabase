@@ -134,6 +134,7 @@
                                          startup-time-millis          1234.0
                                          google-auth-enabled          false
                                          enable-embedding             true
+                                         embedding-app-origin         "localhost:8888"
                                          help-link                    :hidden
                                          application-logo-url         "http://example.com/logo.png"
                                          application-favicon-url      "http://example.com/favicon.ico"
@@ -421,6 +422,21 @@
       (with-redefs [config/current-major-version (constantly nil)
                     config/current-minor-version (constantly nil)]
         (is false? (@#'stats/csv-upload-available?))))))
+
+(deftest no-features-enabled-but-not-available-test
+  (testing "Ensure that a feature cannot be reported as enabled if it is not also available"
+    ;; Clear premium features so (most of) the features are considered unavailable
+    (mt/with-premium-features #{}
+      ;; Temporarily create an official collection so that the stats code detects at least one feature as "enabled"
+      (mt/with-temp [:model/Collection {} {:name "Temp Official Collection" :authority_level "official"}]
+        (let [features (@#'stats/snowplow-features)
+              enabled-not-available (filter
+                                     (fn [feature]
+                                       (and (get feature "enabled")
+                                            (not (get feature "available"))))
+                                     features)]
+          ;; No features should be considered enabled which are not also considered available
+          (is (= [] enabled-not-available)))))))
 
 (def ^:private excluded-features
   "Set of features intentionally excluded from the daily stats ping. If you add a new feature, either add it to the stats ping

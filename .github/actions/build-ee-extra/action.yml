@@ -1,0 +1,126 @@
+name: Build ee-extra
+description: Build Metabase Enterprise Edition with extra features
+
+inputs:
+  iam-role:
+    description: "The IAM role to assume"
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Prepare Java
+      uses: actions/setup-java@v3
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+    - name: Reveal its original version.properties
+      run: jar xf  ./bin/docker/metabase.jar version.properties && cat version.properties
+      shell: bash
+    - name: get major version
+      id: major_version
+      run: echo "major_version=$(cat version.properties | grep 'tag=' | cut -d'.' -f2)" >> $GITHUB_OUTPUT
+      shell: bash
+    - name: get drivers registry
+      run: |
+        curl -OL https://raw.githubusercontent.com/metabase/metabase-registry/main/registry.yaml
+      shell: bash
+    - uses: actions/setup-node@v4
+      with:
+        node-version: lts/Hydrogen # 18.x.x
+    - run: rm package.json && npm install yaml
+      shell: bash
+    - name: parse drivers registry
+      uses: actions/github-script@v7
+      id: drivers_registry
+      with:
+        script: | # js
+          const { parse } = require('yaml');
+          const fs = require('fs');
+          const registry = parse(fs.readFileSync('registry.yaml', 'utf8'));
+
+          const drivers = registry.drivers;
+          const majorVersion = '${{ steps.major_version.outputs.major_version }}';
+
+          const getDriverUrl = (driverName) => {
+            const driver = drivers.find(driver => driver.name === driverName);
+
+            if (!driver) {
+              throw new Error(`Driver ${driverName} not found in the registry`);
+            }
+
+            const driverUrl = driver.versions[majorVersion] ?? driver.versions.default;
+
+            if (!driverUrl) {
+              throw new Error(`Driver ${driverName} version ${majorVersion} not found in the registry`);
+            }
+
+            return driverUrl;
+          };
+
+          const extraDrivers = {
+            firebolt: getDriverUrl('firebolt'),
+            starburst: getDriverUrl('starburst'),
+            exasol: getDriverUrl('exasol'),
+            exasol_jdbc: drivers.find(d => d.name === 'exasol').deps[0],
+            clickhouse: getDriverUrl('clickhouse'),
+            ocient: getDriverUrl('ocient'),
+            materialize: getDriverUrl('materialize'),
+          };
+
+          console.log(extraDrivers);
+
+          return extraDrivers;
+    - name: Download Firebolt driver
+      run: |
+        curl -OL ${{ fromJson(steps.drivers_registry.outputs.result).firebolt }}
+      working-directory: modules
+      shell: bash
+    - name: Download Starburst driver
+      run: |
+        curl -OL ${{ fromJson(steps.drivers_registry.outputs.result).starburst }}
+      shell: bash
+      working-directory: modules
+    - name: Download Exasol driver
+      run: |
+        curl -OL ${{ fromJson(steps.drivers_registry.outputs.result).exasol }}
+        curl -OL ${{ fromJson(steps.drivers_registry.outputs.result).exasol_jdbc }}
+      shell: bash
+      working-directory: modules
+    - name: Download Clickhouse driver
+      run: |
+        curl -OL ${{ fromJson(steps.drivers_registry.outputs.result).clickhouse }}
+      shell: bash
+      working-directory: modules
+    - name: Download Ocient driver
+      run: |
+        curl -OL ${{ fromJson(steps.drivers_registry.outputs.result).ocient }}
+      shell: bash
+      working-directory: modules
+    - name: Download Materialize driver
+      run: |
+        curl -OL ${{ fromJson(steps.drivers_registry.outputs.result).materialize }}
+      shell: bash
+      working-directory: modules
+    - name: Bundle additional drivers into the Uberjar
+      run: jar uf bin/docker/metabase.jar modules/*.jar
+      shell: bash
+    - name: Launch uberjar
+      run: java -jar ./bin/docker/metabase.jar &
+      shell: bash
+    - name: Wait for Metabase to start
+      run: while ! curl 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
+      shell: bash
+    - name: Kill the java process
+      run: pkill -f metabase.jar
+      shell: bash
+    - name: configure aws credentials
+      if: ${{ github.ref_name == 'master' }}
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ inputs.iam-role }}
+        role-session-name: GitHub_to_AWS_via_FederatedOIDC
+        aws-region: us-east-1
+    - name: Login to Amazon ECR
+      if: ${{ github.ref_name == 'master' }}
+      uses: aws-actions/amazon-ecr-login@v2

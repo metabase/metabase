@@ -380,9 +380,9 @@ describe("issue 22230", () => {
 
     popover().within(() => {
       cy.findByText("Max of Name").click();
-      cy.findByDisplayValue("Is").click();
+      cy.findByText("Is").click();
     });
-    cy.findByRole("listbox").findByText("Starts with").click();
+    cy.findByRole("menu").findByText("Starts with").click();
 
     popover().within(() => {
       cy.findByPlaceholderText("Enter some text").type("Zo").blur();
@@ -544,7 +544,7 @@ describe("issue 45410", () => {
     filter({ mode: "notebook" });
     popover().within(() => {
       cy.findByText("Email").click();
-      cy.findByPlaceholderText("Enter some text")
+      cy.findByPlaceholderText("Search by Email")
         .type("abc@example.com,abc2@example.com")
         .blur();
       cy.findByText("abc2@example.com")

@@ -10,7 +10,7 @@ They're pretty useful.
 
 **Line charts** are best for displaying the trend of a number over time, especially when you have lots of x-axis values. For more, check out our [Guide to line charts](https://www.metabase.com/learn/basics/visualizing-data/line-charts.html) and [Time series analysis](https://www.metabase.com/learn/time-series) tutorials.
 
-![Trend lines](../../images/trend-lines.png)
+![Trend lines](../../images/goal-line.png)
 
 ## Bar charts
 

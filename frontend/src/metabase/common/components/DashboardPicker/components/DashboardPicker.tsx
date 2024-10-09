@@ -1,5 +1,5 @@
 import type { Ref } from "react";
-import { forwardRef, useCallback, useImperativeHandle, useState } from "react";
+import { forwardRef, useCallback, useImperativeHandle, useMemo } from "react";
 import { useDeepCompareEffect } from "react-use";
 
 import {
@@ -11,20 +11,16 @@ import { isValidCollectionId } from "metabase/collections/utils";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/lib/redux";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
-import type {
-  CollectionItemModel,
-  Dashboard,
-  ListCollectionItemsRequest,
-} from "metabase-types/api";
+import type { CollectionItemModel, Dashboard } from "metabase-types/api";
 
 import { CollectionItemPickerResolver } from "../../CollectionPicker/components/CollectionItemPickerResolver";
 import { getPathLevelForItem } from "../../CollectionPicker/utils";
-import {
-  LoadingSpinner,
-  NestedItemPicker,
-  type PickerState,
-} from "../../EntityPicker";
-import type { DashboardPickerItem, DashboardPickerOptions } from "../types";
+import { LoadingSpinner, NestedItemPicker } from "../../EntityPicker";
+import type {
+  DashboardPickerItem,
+  DashboardPickerOptions,
+  DashboardPickerStatePath,
+} from "../types";
 import {
   getCollectionId,
   getCollectionIdPath,
@@ -39,11 +35,13 @@ export const defaultOptions: DashboardPickerOptions = {
 };
 
 interface DashboardPickerProps {
-  onItemSelect: (item: DashboardPickerItem) => void;
   initialValue?: Pick<DashboardPickerItem, "model" | "id">;
   options: DashboardPickerOptions;
   models?: CollectionItemModel[];
+  path: DashboardPickerStatePath | undefined;
   shouldDisableItem?: (item: DashboardPickerItem) => boolean;
+  onItemSelect: (item: DashboardPickerItem) => void;
+  onPathChange: (path: DashboardPickerStatePath) => void;
 }
 
 const useGetInitialCollection = (
@@ -87,22 +85,20 @@ const useGetInitialCollection = (
 
 const DashboardPickerInner = (
   {
-    onItemSelect,
     initialValue,
     options,
     models = ["dashboard"],
+    path: pathProp,
     shouldDisableItem,
+    onItemSelect,
+    onPathChange,
   }: DashboardPickerProps,
   ref: Ref<unknown>,
 ) => {
-  const [path, setPath] = useState<
-    PickerState<DashboardPickerItem, ListCollectionItemsRequest>
-  >(() =>
-    getStateFromIdPath({
-      idPath: ["root"],
-      models,
-    }),
-  );
+  const defaultPath = useMemo(() => {
+    return getStateFromIdPath({ idPath: ["root"], models });
+  }, [models]);
+  const path = pathProp ?? defaultPath;
 
   const {
     currentCollection,
@@ -121,10 +117,10 @@ const DashboardPickerInner = (
         idPath,
         models,
       });
-      setPath(newPath);
+      onPathChange(newPath);
       onItemSelect(folder);
     },
-    [setPath, onItemSelect, userPersonalCollectionId, models],
+    [onPathChange, onItemSelect, userPersonalCollectionId, models],
   );
 
   const handleItemSelect = useCallback(
@@ -138,10 +134,10 @@ const DashboardPickerInner = (
 
       const newPath = path.slice(0, pathLevel + 1);
       newPath[newPath.length - 1].selectedItem = item;
-      setPath(newPath);
+      onPathChange(newPath);
       onItemSelect(item);
     },
-    [setPath, onItemSelect, path, userPersonalCollectionId],
+    [onPathChange, onItemSelect, path, userPersonalCollectionId],
   );
 
   const handleNewDashboard = useCallback(
@@ -162,8 +158,8 @@ const DashboardPickerInner = (
         0;
 
       if (!isParentCollectionInPath) {
-        setPath(oldPath => [
-          ...oldPath,
+        onPathChange([
+          ...path,
           {
             query: {
               id: parentCollectionId,
@@ -177,7 +173,13 @@ const DashboardPickerInner = (
       }
       handleItemSelect(newCollectionItem);
     },
-    [path, onItemSelect, userPersonalCollectionId, handleItemSelect],
+    [
+      path,
+      onItemSelect,
+      userPersonalCollectionId,
+      handleItemSelect,
+      onPathChange,
+    ],
   );
 
   // Exposing onNewDashboard so that parent can select newly created
@@ -222,10 +224,10 @@ const DashboardPickerInner = (
               };
         }
 
-        setPath(newPath);
+        onPathChange(newPath);
       }
     },
-    [currentCollection, userPersonalCollectionId],
+    [currentCollection, userPersonalCollectionId, onPathChange],
   );
 
   if (error) {
