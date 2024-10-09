@@ -24,8 +24,12 @@ export const SidesheetCard = ({
 }: SidesheetCardProps) => {
   return (
     <Paper p="lg" withBorder shadow="none" {...paperProps}>
-      {title && <SidesheetCardTitle>{title}</SidesheetCardTitle>}
-      <Stack spacing="md" className={CS.textMedium} {...stackProps}>
+      {title && (
+        <Title lh={1} mb=".75rem" size="sm" c="text-light" order={4}>
+          {title}
+        </Title>
+      )}
+      <Stack gap="md" className={CS.textMedium} {...stackProps}>
         {children}
       </Stack>
     </Paper>
