@@ -1,0 +1,118 @@
+.root {
+  overflow: hidden;
+
+  &:active {
+    transform: none;
+  }
+
+  & [data-position="right"] {
+    margin-left: 0.5rem;
+  }
+
+  & [data-position="left"] {
+    margin-right: 0.5rem;
+  }
+
+  &:has(.mantine-Button-label) {
+    border: 2px solid red !important;
+
+    & [data-position="right"] {
+      margin-left: 0;
+    }
+
+    & [data-position="left"] {
+      margin-right: 0;
+    }
+  }
+
+  &[data-variant="default"] {
+    color: var(--mb-color-text-dark);
+    border-color: var(--mb-color-border);
+    background-color: var(--mb-color-bg-white);
+
+    &:hover {
+      color: var(--mb-color-brand);
+      background-color: var(--mb-color-bg-light);
+    }
+
+    &:disabled {
+      color: var(--mb-color-text-tertiary);
+      border-color: var(--mb-color-border);
+      background-color: var(--mb-color-background-disabled);
+    }
+  }
+
+  &[data-variant="filled"] {
+    color: var(--mb-color-text-white);
+    border-color: var(--mb-color-background-brand);
+    background-color: var(--mb-color-background-brand);
+
+    &:hover {
+      border-color: color-mix(
+        in srgb,
+        var(--mb-color-background-brand) 88%,
+        transparent
+      );
+      background-color: color-mix(
+        in srgb,
+        var(--mb-color-background-brand) 88%,
+        transparent
+      );
+    }
+
+    &:disabled {
+      color: var(--mb-color-text-tertiary);
+      border-color: var(--mb-color-border);
+      background-color: var(--mb-color-background-disabled);
+    }
+  }
+
+  &[data-variant="outline"] {
+    color: var(--mb-color-brand);
+    border-color: var(--mb-color-brand);
+
+    &:hover {
+      color: color-mix(in srgb, var(--mb-color-brand) 88%, transparent);
+      border-color: color-mix(in srgb, var(--mb-color-brand) 88%, transparent);
+      background-color: color-mix(
+        in srgb,
+        var(--mb-color-brand) 10%,
+        transparent
+      );
+    }
+
+    &:disabled {
+      color: var(--mb-color-text-tertiary);
+      border-color: var(--mb-color-border);
+      background-color: var(--mb-color-background-disabled);
+    }
+  }
+
+  &[data-variant="subtle"] {
+    color: var(--mb-color-brand);
+
+    &:hover {
+      color: color-mix(in srgb, var(--mb-color-brand) 88%, transparent);
+      background-color: transparent;
+    }
+
+    &:disabled,
+    &[data-disabled="true"] {
+      color: var(--mb-color-text-light);
+      border-color: transparent;
+      background-color: transparent;
+    }
+  }
+}
+
+.label {
+  text-overflow: ellipsis;
+}
+
+.leftSection {
+  margin-right: 0.5rem;
+}
+
+.rightSection {
+  margin-left: 0.5rem;
+}
