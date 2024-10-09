@@ -9,8 +9,8 @@ import CS from "metabase/css/core/index.css";
 import * as Urls from "metabase/lib/urls";
 import { Stack, Text } from "metabase/ui";
 import type {
+  GetEmbeddableCard,
   GetEmbeddableDashboard,
-  GetPublicOrEmbeddableCard,
 } from "metabase-types/api";
 
 import { PublicLinksListing } from "./PublicLinksListing";
@@ -46,7 +46,7 @@ export const QuestionEmbeddedResources = () => {
         className={cx(CS.bordered, CS.rounded, CS.full)}
         style={{ maxWidth: 820 }}
       >
-        <PublicLinksListing<GetPublicOrEmbeddableCard>
+        <PublicLinksListing<GetEmbeddableCard>
           data-testid="-embedded-questions-setting"
           getUrl={question => Urls.question(question)}
           noLinksMessage={t`No questions have been embedded yet.`}

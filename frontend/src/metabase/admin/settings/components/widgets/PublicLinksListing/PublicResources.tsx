@@ -12,8 +12,8 @@ import { useSetting } from "metabase/common/hooks";
 import * as Urls from "metabase/lib/urls";
 import type {
   GetPublicAction,
+  GetPublicCard,
   GetPublicDashboard,
-  GetPublicOrEmbeddableCard,
 } from "metabase-types/api";
 
 import { PublicLinksListing } from "./PublicLinksListing";
@@ -41,7 +41,7 @@ export const PublicLinksQuestionListing = () => {
   const query = useListPublicCardsQuery();
   const [revoke] = useDeleteCardPublicLinkMutation();
   return (
-    <PublicLinksListing<GetPublicOrEmbeddableCard>
+    <PublicLinksListing<GetPublicCard>
       revoke={revoke}
       getUrl={question => Urls.question(question)}
       getPublicUrl={({ public_uuid }) => {

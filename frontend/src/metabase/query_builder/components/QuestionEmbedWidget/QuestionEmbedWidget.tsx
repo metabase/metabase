@@ -4,11 +4,11 @@ import {
   EmbedModal,
   EmbedModalContent,
 } from "metabase/public/components/EmbedModal";
+import type { EmbeddingParameters } from "metabase/public/lib/types";
 import { getMetadata } from "metabase/selectors/metadata";
 import type { ExportFormatType } from "metabase/sharing/components/PublicLinkPopover/types";
 import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
 import type { Card } from "metabase-types/api";
-import type { EmbedOptions } from "metabase-types/store";
 
 import {
   createPublicLink,
@@ -30,10 +30,22 @@ export const QuestionEmbedWidget = (props: QuestionEmbedWidgetProps) => {
   const dispatch = useDispatch();
   const createPublicQuestionLink = () => dispatch(createPublicLink(card));
   const deletePublicQuestionLink = () => dispatch(deletePublicLink(card));
-  const updateQuestionEnableEmbedding = (enableEmbedding: boolean) =>
-    dispatch(updateEnableEmbedding(card, enableEmbedding));
-  const updateQuestionEmbeddingParams = (embeddingParams: EmbedOptions) =>
-    dispatch(updateEmbeddingParams(card, embeddingParams));
+  const updateQuestionEnableEmbedding = (enable_embedding: boolean) =>
+    dispatch(
+      updateEnableEmbedding({
+        id: card.id,
+        enable_embedding,
+      }),
+    );
+  const updateQuestionEmbeddingParams = (
+    embedding_params: EmbeddingParameters,
+  ) =>
+    dispatch(
+      updateEmbeddingParams({
+        id: card.id,
+        embedding_params,
+      }),
+    );
 
   const getPublicQuestionUrl = (
     publicUuid: string,
