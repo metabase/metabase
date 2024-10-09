@@ -3,7 +3,9 @@ import { Checkbox, getSize, rem } from "@mantine/core";
 import CheckboxStyles from "./Checkbox.module.css";
 import { CheckboxIcon } from "./CheckboxIcon";
 
-const SIZES = {
+const SIZES: Record<string, string> = {
+  xs: rem(16),
+  sm: rem(16),
   md: rem(20),
 };
 
@@ -26,7 +28,7 @@ export const checkboxOverrides = {
       return {
         root: {
           "--checkbox-radius": "0.25rem",
-          "--checkbox-size": getSize({ size, sizes: SIZES }),
+          "--checkbox-size": getSize(SIZES[size || "md"]),
         },
       };
     },
