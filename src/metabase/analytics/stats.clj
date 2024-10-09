@@ -641,10 +641,10 @@
     :available true
     :enabled   (slack/slack-configured?)}
    {:name      :sso-google
-    :available (premium-features/enable-sso-google?)
+    :available true
     :enabled   (google/google-auth-configured)}
    {:name      :sso-ldap
-    :available (premium-features/enable-sso-ldap?)
+    :available true
     :enabled   (public-settings/ldap-enabled?)}
    {:name      :sample-data
     :available true
@@ -677,13 +677,13 @@
     :enabled   (t2/exists? :model/Database :uploads_enabled true)}
    {:name      :mb-analytics
     :available (premium-features/enable-audit-app?)
-    :enabled   true}
+    :enabled   (premium-features/enable-audit-app?)}
    {:name      :advanced-permissions
     :available (premium-features/enable-advanced-permissions?)
-    :enabled   true}
+    :enabled   (premium-features/enable-advanced-permissions?)}
    {:name      :serialization
     :available (premium-features/enable-serialization?)
-    :enabled   true}
+    :enabled   (premium-features/enable-serialization?)}
    {:name      :official-collections
     :available (premium-features/enable-official-collections?)
     :enabled   (t2/exists? :model/Collection :authority_level "official")}
@@ -722,10 +722,12 @@
   []
   (let [features (concat (snowplow-features-data) (ee-snowplow-features-data))]
     (mapv
-     ;; Convert keys and feature names to strings to match expected Snowplow scheml
+     ;; Convert keys and feature names to strings to match expected Snowplow schema
      (fn [feature]
        (-> (update feature :name name)
            (update :name u/->snake_case_en)
+           ;; Ensure that unavailable features are not reported as enabled
+           (update :enabled (fn [enabled?] (if-not (:available feature) false enabled?)))
            (walk/stringify-keys)))
      features)))
 
