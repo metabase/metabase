@@ -695,12 +695,12 @@ export function getTimeSeriesXAxisModel(
       return null;
     }
 
-    const dateInTimezone =
-      offsetMinutes != null
-        ? date.add(offsetMinutes, "minute")
-        : date.tz(timezone);
-
-    return dateInTimezone.format("YYYY-MM-DDTHH:mm:ss[Z]");
+    // Safari doesn't support offset-based timezones (e.g., "+07:00") in the Date object,
+    // which Day.js relies on. To avoid runtime exceptions, we manually adjust the time
+    // when an offset is provided. Otherwise, we use Day.js timezone conversion.
+    return offsetMinutes != null
+      ? date.add(offsetMinutes, "minute").format()
+      : date.tz(timezone).format("YYYY-MM-DDTHH:mm:ss[Z]");
   };
   const fromEChartsAxisValue = (rawValue: number) => {
     return dayjs.utc(rawValue);

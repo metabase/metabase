@@ -6,7 +6,8 @@ import ErrorBoundary from "metabase/ErrorBoundary";
 import { useListRecentsQuery } from "metabase/api";
 import { BULK_ACTIONS_Z_INDEX } from "metabase/components/BulkActionBar";
 import { useModalOpen } from "metabase/hooks/use-modal-open";
-import { Modal } from "metabase/ui";
+import { Box, Flex, Modal, Skeleton } from "metabase/ui";
+import { Repeat } from "metabase/ui/components/feedback/Skeleton/Repeat";
 import type {
   RecentContexts,
   RecentItem,
@@ -70,6 +71,7 @@ export interface EntityPickerModalProps<Model extends string, Item> {
   defaultToRecentTab?: boolean;
   /**recentsContext: Defaults to returning recents based off both views and selections. Can be overridden by props */
   recentsContext?: RecentContexts[];
+  isLoadingTabs?: boolean;
 }
 
 export function EntityPickerModal<
@@ -93,6 +95,7 @@ export function EntityPickerModal<
   searchParams,
   defaultToRecentTab = true,
   recentsContext = ["selections", "views"],
+  isLoadingTabs = false,
 }: EntityPickerModalProps<Model, Item>) {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const { data: recentItems, isLoading: isLoadingRecentItems } =
@@ -215,32 +218,36 @@ export function EntityPickerModal<
           <Modal.CloseButton size={21} pos="relative" top="1px" />
         </Modal.Header>
         <ModalBody p="0">
-          <ErrorBoundary>
-            {hasTabs ? (
-              <TabsView
-                tabs={tabs}
-                onItemSelect={onItemSelect}
-                searchQuery={searchQuery}
-                searchResults={searchResults}
-                selectedItem={selectedItem}
-                initialValue={initialValue}
-                defaultToRecentTab={defaultToRecentTab}
-                setShowActionButtons={setShowActionButtons}
-              />
-            ) : (
-              <SinglePickerView>{tabs[0].element}</SinglePickerView>
-            )}
-            {!!hydratedOptions.hasConfirmButtons && onConfirm && (
-              <ButtonBar
-                onConfirm={onConfirm}
-                onCancel={onClose}
-                canConfirm={canSelectItem}
-                actionButtons={showActionButtons ? actionButtons : []}
-                confirmButtonText={options?.confirmButtonText}
-                cancelButtonText={options?.cancelButtonText}
-              />
-            )}
-          </ErrorBoundary>
+          {!isLoadingTabs && !isLoadingRecentItems ? (
+            <ErrorBoundary>
+              {hasTabs ? (
+                <TabsView
+                  tabs={tabs}
+                  onItemSelect={onItemSelect}
+                  searchQuery={searchQuery}
+                  searchResults={searchResults}
+                  selectedItem={selectedItem}
+                  initialValue={initialValue}
+                  defaultToRecentTab={defaultToRecentTab}
+                  setShowActionButtons={setShowActionButtons}
+                />
+              ) : (
+                <SinglePickerView>{tabs[0].element}</SinglePickerView>
+              )}
+              {!!hydratedOptions.hasConfirmButtons && onConfirm && (
+                <ButtonBar
+                  onConfirm={onConfirm}
+                  onCancel={onClose}
+                  canConfirm={canSelectItem}
+                  actionButtons={showActionButtons ? actionButtons : []}
+                  confirmButtonText={options?.confirmButtonText}
+                  cancelButtonText={options?.cancelButtonText}
+                />
+              )}
+            </ErrorBoundary>
+          ) : (
+            <EntityPickerLoadingSkeleton />
+          )}
         </ModalBody>
       </ModalContent>
     </Modal.Root>
@@ -257,3 +264,23 @@ const assertValidProps = (
     );
   }
 };
+
+const EntityPickerLoadingSkeleton = () => (
+  <Box data-testid="loading-indicator">
+    <Flex px="2rem" gap="1.5rem" mb="3.5rem">
+      <Repeat times={3}>
+        <Skeleton h="2rem" w="5rem" mb="0.5rem" />
+      </Repeat>
+    </Flex>
+    <Flex px="2rem" mb="2.5rem" direction="column">
+      <Repeat times={2}>
+        <Skeleton h="3rem" mb="0.5rem" />
+      </Repeat>
+    </Flex>
+    <Flex px="2rem" direction="column">
+      <Repeat times={3}>
+        <Skeleton h="3rem" mb="0.5rem" />
+      </Repeat>
+    </Flex>
+  </Box>
+);

@@ -1,12 +1,9 @@
 import styled from "@emotion/styled";
 
+import { doNotForwardProps } from "metabase/common/utils/doNotForwardProps";
 import Link from "metabase/core/components/Link";
 import { alpha, color } from "metabase/lib/colors";
 import { breakpointMaxLarge } from "metabase/styled-components/theme";
-
-const doNotForwardProps = (...propNamesToBlock: string[]) => ({
-  shouldForwardProp: (propName: string) => !propNamesToBlock.includes(propName),
-});
 
 interface AdminNavLinkProps {
   to: string;

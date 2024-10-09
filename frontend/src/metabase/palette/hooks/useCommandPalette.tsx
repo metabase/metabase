@@ -98,9 +98,6 @@ export const useCommandPalette = ({
         section: "docs",
         keywords: debouncedSearchText, // Always match the debouncedSearchText string
         icon: "document",
-        perform: () => {
-          window.open(link);
-        },
         extra: {
           href: link,
         },
@@ -127,14 +124,11 @@ export const useCommandPalette = ({
     if (!isSearchTypeaheadEnabled) {
       return [
         {
-          id: `search-disabled`,
+          id: `search-without-typeahead`,
           name: t`View search results for "${debouncedSearchText}"`,
           section: "search",
           keywords: debouncedSearchText,
-          icon: "link" as IconName,
-          perform: () => {
-            dispatch(push(searchLocation));
-          },
+          icon: "link" as const,
           priority: Priority.HIGH,
           extra: {
             href: searchLocation,
@@ -171,7 +165,6 @@ export const useCommandPalette = ({
             icon: "link" as IconName,
             perform: () => {
               trackSearchClick("view_more", 0, "command-palette");
-              dispatch(push(searchLocation));
             },
             priority: Priority.HIGH,
             extra: {
