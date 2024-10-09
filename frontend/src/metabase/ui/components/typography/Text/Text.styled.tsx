@@ -1,31 +1,16 @@
-import type { MantineThemeOverride } from "@mantine/core";
+import { type MantineThemeOverride, Text } from "@mantine/core";
 
-export const getTextOverrides = (): MantineThemeOverride["components"] => ({
-  Text: {
+import TextStyles from "./Text.module.css";
+
+export const textOverrides: MantineThemeOverride["components"] = {
+  Text: Text.extend({
     defaultProps: {
       color: "var(--mb-color-text-primary)",
       size: "md",
-      variant: "default",
+      variant: "monospace",
     },
-    variants: {
-      monospace: theme => ({
-        root: {
-          fontFamily: theme.fontFamilyMonospace,
-          whiteSpace: "pre",
-        },
-      }),
+    classNames: {
+      root: TextStyles.root,
     },
-    sizes: {
-      md: () => ({
-        root: {
-          lineHeight: "1.5rem",
-        },
-      }),
-      lg: () => ({
-        root: {
-          lineHeight: "1.5rem",
-        },
-      }),
-    },
-  },
-});
+  }),
+};
