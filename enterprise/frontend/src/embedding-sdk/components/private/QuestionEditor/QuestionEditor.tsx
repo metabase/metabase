@@ -8,6 +8,8 @@ import { Box, Button, Group, Icon, Tabs } from "metabase/ui";
 import type { InteractiveQuestionProps } from "../../public/InteractiveQuestion";
 import { useInteractiveQuestionContext } from "../InteractiveQuestion/context";
 
+import QuestionEditorS from "./QuestionEditor.module.css";
+
 const QuestionEditorInner = () => {
   const {
     queryResults,
@@ -92,13 +94,13 @@ const QuestionEditorInner = () => {
               <Icon name="eye" />
             </Group>
           </Button>
-          <Box className="Main" w="100%" h="100%">
-            <Box className="ChartTypeSelector">
+          <Box className={QuestionEditorS.Main} w="100%" h="100%">
+            <Box className={QuestionEditorS.ChartTypeSelector}>
               {isVisualizationSelectorOpen && (
                 <InteractiveQuestion.ChartTypeSelector />
               )}
             </Box>
-            <Box className="Content">
+            <Box className={QuestionEditorS.Content}>
               <InteractiveQuestion.QuestionVisualization />
             </Box>
           </Box>
