@@ -357,7 +357,7 @@ describe("scenarios > question > native query drill", () => {
       assertQueryBuilderRowCount(10);
       applyBrushFilter({ left: 200, right: 800 });
       cy.wait("@dataset");
-      assertQueryBuilderRowCount(3);
+      assertQueryBuilderRowCount(4);
     });
 
     it("numeric filter", () => {
@@ -452,9 +452,9 @@ describe("scenarios > question > native query drill", () => {
 
 function applyBrushFilter({ left, right }: { left: number; right: number }) {
   echartsContainer()
-    .trigger("mousedown", left, 200)
-    .trigger("mousemove", left, 200)
-    .trigger("mouseup", right, 200);
+    .trigger("mousedown", left, 100)
+    .trigger("mousemove", left, 100)
+    .trigger("mouseup", right, 100);
 }
 
 function applyBoxFilter({
