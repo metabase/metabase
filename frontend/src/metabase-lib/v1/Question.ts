@@ -48,6 +48,7 @@ import type {
   DatasetQuery,
   Field,
   LastEditInfo,
+  ParameterDimensionTarget,
   ParameterId,
   Parameter as ParameterObject,
   ParameterValues,
@@ -756,10 +757,10 @@ class Question {
 
     const newQuery = this.parameters().reduce((query, parameter) => {
       if (isFilterParameter(parameter)) {
-        const targetStageIndex = isDimensionTarget(parameter.target)
-          ? (parameter.target[2]?.["stage-number"] ?? -1)
+        const stageIndex = isDimensionTarget(parameter.target)
+          ? getParameterDimensionTargetStageIndex(parameter.target)
           : -1;
-        return applyFilterParameter(query, targetStageIndex, parameter);
+        return applyFilterParameter(query, stageIndex, parameter);
       } else if (isTemporalUnitParameter(parameter)) {
         const stageIndex = -1; // temporal unit parameters at different stages are not supported
         return applyTemporalUnitParameter(query, stageIndex, parameter);
@@ -773,6 +774,13 @@ class Question {
 
     const hasQueryBeenAltered = query !== newQuery;
     return hasQueryBeenAltered ? newQuestion.markDirty() : newQuestion;
+
+    function getParameterDimensionTargetStageIndex(
+      target: ParameterDimensionTarget,
+    ) {
+      const [_type, _variableTarget, options] = target;
+      return options?.["stage-number"] ?? -1;
+    }
   }
 
   query(): Query {
