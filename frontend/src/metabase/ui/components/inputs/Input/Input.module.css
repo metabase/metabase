@@ -1,0 +1,71 @@
+.input {
+  color: var(--mb-color-text-dark);
+  border-radius: var(--mantine-radius-xs);
+  background-color: var(--mb-color-bg-white);
+
+  &::placeholder {
+    color: var(--mb-color-text-light);
+  }
+
+  &:disabled {
+    background-color: var(--mb-color-bg-light);
+  }
+
+  &[data-size="xs"] {
+    font-size: var(--mantine-font-size-sm);
+    line-height: var(--mantine-line-height);
+  }
+
+  &[data-size="md"] {
+    font-size: var(--mantine-font-size-md);
+    line-height: 1.5rem;
+  }
+
+  &[data-variant="default"] {
+    border-color: var(--mb-color-border);
+
+    &:focus {
+      border-color: var(--mb-color-brand);
+    }
+
+    &[data-error] {
+      border-color: var(--mb-color-error);
+    }
+  }
+
+  &[data-error] {
+    color: var(--mb-color-error);
+    border-color: var(--mb-color-error);
+
+    &::placeholder {
+      color: var(--mb-color-error);
+    }
+  }
+}
+
+.section {
+  color: var(--mb-color-text-dark);
+}
+
+.label {
+  color: var(--mb-color-text-dark);
+  font-size: var(--mantine-font-size-sm);
+  font-weight: bold;
+  line-height: var(--mantine-line-height);
+}
+
+.description {
+  color: var(--mb-color-text-dark);
+  font-size: var(--mantine-font-size-xs);
+  line-height: var(--mantine-line-height);
+}
+
+.error {
+  color: var(--mb-color-error);
+  font-size: var(--mantine-font-size-xs);
+  line-height: var(--mantine-line-height);
+}
+
+.required {
+  color: var(--mb-color-error);
+}
