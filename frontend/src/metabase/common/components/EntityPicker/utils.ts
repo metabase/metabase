@@ -218,10 +218,13 @@ export const isSchemaItem = <
   return (
     isObject(item) &&
     "dbId" in item &&
+    // @ts-expect-error this code is backported from v51 where we have newer TS version and this is not an issue
     typeof item.dbId === "number" &&
     "dbName" in item &&
+    // @ts-expect-error this code is backported from v51 where we have newer TS version and this is not an issue
     typeof item.dbName === "string" &&
     "isOnlySchema" in item &&
+    // @ts-expect-error this code is backported from v51 where we have newer TS version and this is not an issue
     typeof item.isOnlySchema === "boolean"
   );
 };
