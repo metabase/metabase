@@ -95,6 +95,33 @@ const normalizeUrl = (trimmedUrl: string) => {
   return trimmedUrl;
 };
 
+const isIframeString = (iframeOrUrl: string) =>
+  iframeOrUrl.startsWith("<iframe");
+
+export const getIframeDomainName = (
+  iframeOrUrl: string | undefined,
+): string | null => {
+  if (!iframeOrUrl) {
+    return null;
+  }
+  const trimmedInput = iframeOrUrl.trim();
+
+  try {
+    const url = isIframeString(trimmedInput)
+      ? parseUrlFromIframe(trimmedInput)
+      : normalizeUrl(trimmedInput);
+
+    if (!url) {
+      return null;
+    }
+
+    const urlObject = new URL(url);
+    return urlObject.hostname;
+  } catch {
+    return null;
+  }
+};
+
 export const getIframeUrl = (
   iframeOrUrl: string | undefined,
 ): string | null => {
@@ -104,7 +131,7 @@ export const getIframeUrl = (
 
   const trimmedInput = iframeOrUrl.trim();
 
-  if (trimmedInput.startsWith("<iframe")) {
+  if (isIframeString(trimmedInput)) {
     return parseUrlFromIframe(trimmedInput);
   }
 
