@@ -66,7 +66,7 @@
   [port registry-name]
   (try
     (let [registry   (setup-metrics! registry-name)
-          web-server (start-web-server! port registry)]
+          web-server (when port (start-web-server! port registry))]
       (->PrometheusSystem registry web-server))
     (catch Exception e
       (throw (ex-info (trs "Failed to initialize Prometheus on port {0}" port)
@@ -193,6 +193,14 @@
                        :name      "jetty_stats"}
                       (JettyStatisticsCollector. (.getHandler (server/instance))))]))
 
+(defn- product-collectors
+  []
+  ;; Iapetos will use "default" if we do not provide a namespace, so explicitly set `metabase-email`:
+  [(prometheus/counter :metabase-email/messages
+                       {:description (trs "Number of emails sent.")})
+   (prometheus/counter :metabase-email/message-errors
+                       {:description (trs "Number of errors when sending emails.")})])
+
 (defn- setup-metrics!
   "Instrument the application. Conditionally done when some setting is set. If [[prometheus-server-port]] is not set it
   will throw."
@@ -203,11 +211,7 @@
            (concat (jvm-collectors)
                    (jetty-collectors)
                    [@c3p0-collector]
-                   ; Iapetos will use "default" if we do not provide a namespace, so explicitly set `metabase-email`:
-                   [(prometheus/counter :metabase-email/messages
-                                        {:description (trs "Number of emails sent.")})
-                    (prometheus/counter :metabase-email/message-errors
-                                        {:description (trs "Number of errors when sending emails.")})]))))
+                   (product-collectors)))))
 
 (defn- start-web-server!
   "Start the prometheus web-server. If [[prometheus-server-port]] is not set it will throw."
@@ -229,8 +233,7 @@
   []
   (let [port (prometheus-server-port)]
     (when-not port
-      (throw (ex-info (trs "Attempting to set up prometheus metrics with no web-server port provided")
-                      {})))
+      (log/info "Running prometheus metrics without a webserver."))
     (when-not system
       (locking #'system
         (when-not system
