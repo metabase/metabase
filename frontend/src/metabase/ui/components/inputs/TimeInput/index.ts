@@ -1,2 +1,2 @@
 export * from "./TimeInput";
-export { getTimeInputOverrides } from "./TimeInput.styled";
+export { timeInputOverrides } from "./TimeInput.styled";
