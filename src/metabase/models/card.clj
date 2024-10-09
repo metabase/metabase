@@ -40,6 +40,7 @@
    [metabase.query-analysis :as query-analysis]
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
+   [metabase.util.autoplace :as autoplace]
    [metabase.util.embed :refer [maybe-populate-initially-published-at]]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
@@ -677,16 +678,11 @@
   (let [dashboard (t2/hydrate (t2/select-one :model/Dashboard dashboard-id) :dashcards [:tabs :tab-cards])
         {:keys [dashcards tabs]} dashboard
         already-on-dashboard? (seq (filter #(= (:id card) (:card_id %)) dashcards))
-        last-card-on-first-tab (or (last (first tabs))
-                                   (last (sort dashboard-card/dashcard-comparator dashcards))
-                                   ;; if we don't have any existing cards, fake it to make the math work out
-                                   {:col 0 :row 0})]
+        cards-on-first-tab (or (first tabs)
+                               (sort dashboard-card/dashcard-comparator dashcards))
+        new-spot (autoplace/get-position-for-new-dashcard cards-on-first-tab)]
     (when-not already-on-dashboard?
-      (t2/insert! :model/DashboardCard {:dashboard_id dashboard-id
-                                        :card_id (:id card)
-                                        :size_x 10 :size_y 10
-                                        :row (+ 10 (:row last-card-on-first-tab))
-                                        :col 0}))))
+      (t2/insert! :model/DashboardCard (assoc new-spot :card_id (:id card))))))
 
 (defn create-card!
   "Create a new Card. Metadata will be fetched off thread. If the metadata takes longer than [[metadata-sync-wait-ms]]
