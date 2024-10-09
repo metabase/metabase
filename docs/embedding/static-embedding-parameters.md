@@ -180,28 +180,26 @@ your_embedding_url#theme=night&bordered=false&titled=true
 
 You can preview appearance settings from your question or dashboard's embedded appearance settings.
 
-| Parameter name                | Possible values                               |
-| ----------------------------- | --------------------------------------------- |
-| `bordered`                    | true, false                                   |
-| `titled`                      | true, false                                   |
-| `theme`                       | null, night                      |
-| `refresh` (dashboard only)    | integer (seconds, e.g., `refresh=60`)         |
-| `font`\*                      | [font name](../configuring-metabase/fonts.md) |
-| `download`\* (questions only) | true, false                                   |
+| Parameter name             | Possible values                               |
+| -------------------------- | --------------------------------------------- |
+| `bordered`                 | true, false                                   |
+| `titled`                   | true, false                                   |
+| `theme`                    | null (default), night                         |
+| `refresh` (dashboard only) | integer (seconds, e.g., `refresh=60`)         |
+| `font`\*                   | [font name](../configuring-metabase/fonts.md) |
+| `downloads`\*              | true, false                                   |
 
 \* Available on [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 For global appearance settings, such as the colors and fonts used across your entire Metabase instance, see [Customizing Metabase's appearance](../configuring-metabase/appearance.md).
 
-## Allow people to download the results of an embedded question
+## Allow people to download the results of an embedded question or dashboard
 
 {% include plans-blockquote.html feature="Downloading results" %}
 
-By default, Metabase will include a **Download** button on embedded questions. You can remove the download button by setting `hide_download_button=true` in the embedding URL in the iframe's `src` attribute, see [customizing the appearance of static embeds](./static-embedding.md#customizing-the-appearance-of-static-embeds).
+By default, Metabase will include a **Download** button on embedded questions, and an **Export to PDF** option on embedded dashboards. You can remove the download option by setting `downloads=false` in the embedding URL in the iframe's `src` attribute, see [customizing the appearance of static embeds](./static-embedding.md#customizing-the-appearance-of-static-embeds).
 
-If the download button is missing when you expected it to be available, check that the URL in the `src` attribute for your iframe has the parameter `hide_download_button=false`.
-
-> Downloading results is available only for questions, not dashboards.
+If the download option is missing when you expected it to be available, check that the URL in the `src` attribute for your iframe has the parameter `downloads=true`.
 
 ## Maximum request size
 
