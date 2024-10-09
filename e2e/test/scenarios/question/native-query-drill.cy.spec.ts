@@ -5,6 +5,7 @@ import {
   assertTableData,
   cartesianChartCircle,
   createNativeQuestion,
+  createNativeQuestionAndDashboard,
   echartsContainer,
   getDashboardCard,
   modal,
@@ -399,9 +400,9 @@ describe("scenarios > question > native query drill", () => {
   describe("dashboard drills", () => {
     it("quick-filter drill", () => {
       cy.log("cell click");
-      cy.createDashboardWithQuestions({
-        questions: [ordersTableQuestionDetails],
-      }).then(({ dashboard }) => visitDashboard(dashboard.id));
+      createNativeQuestionAndDashboard({
+        questionDetails: ordersTableQuestionDetails,
+      }).then(({ body }) => visitDashboard(body.dashboard_id));
       getDashboardCard().findByText("May 15, 2024, 8:04 AM").click();
       popover().within(() => {
         cy.findByText("Filter by this date").should("be.visible");
@@ -411,9 +412,9 @@ describe("scenarios > question > native query drill", () => {
       assertQueryBuilderRowCount(1);
 
       cy.log("aggregated cell click");
-      cy.createDashboardWithQuestions({
-        questions: [timeseriesLineQuestionDetails],
-      }).then(({ dashboard }) => visitDashboard(dashboard.id));
+      createNativeQuestionAndDashboard({
+        questionDetails: timeseriesLineQuestionDetails,
+      }).then(({ body }) => visitDashboard(body.dashboard_id));
       getDashboardCard().within(() => cartesianChartCircle().eq(0).click());
       popover().within(() => {
         cy.findByText("Filter by this value").should("be.visible");
@@ -426,19 +427,23 @@ describe("scenarios > question > native query drill", () => {
 
   describe("dashboard brush filters", () => {
     it("timeseries filter", () => {
-      cy.createDashboardWithQuestions({
-        questions: [timeseriesLineQuestionDetails],
-      }).then(({ dashboard }) => visitDashboard(dashboard.id));
-      getDashboardCard().within(() => applyBrushFilter(100, 300));
+      createNativeQuestionAndDashboard({
+        questionDetails: timeseriesLineQuestionDetails,
+      }).then(({ body }) => visitDashboard(body.dashboard_id));
+      getDashboardCard().within(() =>
+        applyBrushFilter({ left: 100, right: 300 }),
+      );
       cy.wait("@dataset");
       assertQueryBuilderRowCount(4);
     });
 
     it("numeric filter", () => {
-      cy.createDashboardWithQuestions({
-        questions: [numericLineQuestionDetails],
-      }).then(({ dashboard }) => visitDashboard(dashboard.id));
-      getDashboardCard().within(() => applyBrushFilter(100, 300));
+      createNativeQuestionAndDashboard({
+        questionDetails: numericLineQuestionDetails,
+      }).then(({ body }) => visitDashboard(body.dashboard_id));
+      getDashboardCard().within(() =>
+        applyBrushFilter({ left: 100, right: 300 }),
+      );
       cy.wait("@dataset");
       assertQueryBuilderRowCount(5);
     });
