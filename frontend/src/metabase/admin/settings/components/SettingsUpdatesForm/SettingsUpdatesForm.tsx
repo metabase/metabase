@@ -13,15 +13,25 @@ import { VersionUpdateNotice } from "./VersionUpdateNotice/VersionUpdateNotice";
 
 const updateChannelSetting = {
   key: "update-channel",
-  display_name: "Update Channel",
+  display_name: "Types of releases to check for",
   type: "select",
   description:
-    "Metabase will notify you when a new release is available for the channel you select.",
+    "We'll notify you here when there's a new version of this type of release.",
   defaultValue: "latest",
   options: [
-    { name: c("describes a software version").t`Stable`, value: "latest" },
-    { name: c("describes a software version").t`Beta`, value: "beta" },
-    { name: c("describes a software version").t`Nightly`, value: "nightly" },
+    {
+      name: c("describes a set of software version releases")
+        .t`Stable releases`,
+      value: "latest",
+    },
+    {
+      name: c("describes a set of software version releases").t`Beta releases`,
+      value: "beta",
+    },
+    {
+      name: c("describes a set of software version releases").t`Nightly builds`,
+      value: "nightly",
+    },
   ],
 } as const;
 

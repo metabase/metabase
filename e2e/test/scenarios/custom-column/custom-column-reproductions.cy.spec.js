@@ -191,7 +191,7 @@ describe.skip(
 
     it("should not remove regex escape characters (metabase#14517)", () => {
       cy.log("Create custom column using `regexextract()`");
-      cy.icon("add_data").click();
+      cy.findByLabelText("Custom Column").click();
       popover().within(() => {
         cy.get("[contenteditable='true']")
           .type(`regexextract([State], "${ESCAPED_REGEX}")`)
@@ -881,7 +881,7 @@ describe.skip("issue 25189", () => {
           .contains(/colors/i)
           .click();
       });
-      cy.icon("add_data").click();
+      cy.findByLabelText("Custom column").click();
       enterCustomColumnDetails({
         formula: "case([ID] > 1, 25, 5)",
         name: "Numeric",
