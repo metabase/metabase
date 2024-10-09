@@ -53,7 +53,7 @@ export const ChartTypeSelector = ({
       nonSensibleVisualizations={nonSensibleVisualizations}
       selectedVisualization={selectedVisualization}
       onSelectVisualization={(display: CardDisplayType) => {
-        onChange(display);
+        onChange?.(display);
         updateQuestionVisualization(display);
       }}
     />
