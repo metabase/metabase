@@ -196,7 +196,7 @@
                                         :members)))))
 
     (testing "return is_group_manager for each group if premium features are enabled"
-      (when (config/ee-available?)
+      (when config/ee-available?
         (mt/with-premium-features #{:advanced-permissions}
           (is (=? [[{:id user-1-g1 :is_group_manager true}
                     {:id user-2-g1 :is_group_manager false}]
