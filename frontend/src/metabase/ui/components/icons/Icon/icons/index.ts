@@ -207,6 +207,8 @@ import label_component from "./label.svg?component";
 import label_source from "./label.svg?source";
 import ldap_component from "./ldap.svg?component";
 import ldap_source from "./ldap.svg?source";
+import learn_component from "./learn.svg?component";
+import learn_source from "./learn.svg?source";
 import lightbulb_component from "./lightbulb.svg?component";
 import lightbulb_source from "./lightbulb.svg?source";
 import line_component from "./line.svg?component";
@@ -808,6 +810,10 @@ export const Icons = {
   ldap: {
     component: ldap_component,
     source: ldap_source,
+  },
+  learn: {
+    component: learn_component,
+    source: learn_source,
   },
   lightbulb: {
     component: lightbulb_component,

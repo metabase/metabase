@@ -121,11 +121,11 @@ SQL snippets can be archived and unarchived. See [Archiving SQL snippets](../que
 
 You won't see archived SQL snippets in Trash. To see archived SQL Snippets, you need to [access them from the Snippet menu](../questions/native-editor/sql-snippets.md#snippet-menu).
 
-## Deleting metrics and segments
+## Deleting segments
 
-Metrics and events can be retired. See [Retiring Metrics and Segments](../data-modeling/segments-and-metrics.md#editing-and-retiring-segments-and-metrics).
+Segments can be retired. See [Retiring Segments](../data-modeling/segments.md#editing-and-retiring-segments).
 
-You won't see retired Metrics and Segments in Trash.
+You won't see retired Segments in Trash.
 
 ## Deleting subscriptions and alerts
 

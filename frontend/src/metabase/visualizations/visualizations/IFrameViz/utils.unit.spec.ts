@@ -1,4 +1,4 @@
-import { getIframeUrl } from "./utils";
+import { getIframeDomainName, getIframeUrl } from "./utils";
 
 describe("getIframeUrl", () => {
   describe("share to embed link transformation", () => {
@@ -119,6 +119,37 @@ describe("getIframeUrl", () => {
   it("should return null for HTML without an iframe", () => {
     const input = "<div>hello world</div>";
     const result = getIframeUrl(input);
+    expect(result).toBeNull();
+  });
+});
+
+describe("getIframeDomainName", () => {
+  it("should return the domain name for a valid URL", () => {
+    const result = getIframeDomainName("https://example.com/path/to/page");
+    expect(result).toBe("example.com");
+  });
+
+  it("should return the domain name for a URL without protocol", () => {
+    const result = getIframeDomainName("www.example.com");
+    expect(result).toBe("www.example.com");
+  });
+
+  it("should return null for invalid URLs", () => {
+    expect(getIframeDomainName("not a url")).toBeNull();
+    expect(getIframeDomainName("https://example.com:asdf")).toBeNull();
+    expect(getIframeDomainName("")).toBeNull();
+    expect(getIframeDomainName(undefined)).toBeNull();
+  });
+
+  it("should extract domain name from iframe src", () => {
+    const input = '<iframe src="https://example.com/embed"></iframe>';
+    const result = getIframeDomainName(input);
+    expect(result).toBe("example.com");
+  });
+
+  it("should return null for iframe without src", () => {
+    const input = "<iframe></iframe>";
+    const result = getIframeDomainName(input);
     expect(result).toBeNull();
   });
 });
