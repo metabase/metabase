@@ -70,8 +70,8 @@
 (defn- handler->channel-name
   [{:keys [channel_type channel_id]}]
   (if channel_id
-    (str (name channel_type) " " channel_id)
-    (name channel_type)))
+    (str (u/qualified-name channel_type) " " channel_id)
+    (u/qualified-name channel_type)))
 
 (defn- channel-send-retrying!
   [handler message]
