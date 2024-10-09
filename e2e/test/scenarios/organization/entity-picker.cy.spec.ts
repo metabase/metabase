@@ -338,7 +338,7 @@ describe("scenarios > organization > entity picker", () => {
     });
 
     describe("cards", () => {
-      const tabs = ["Saved questions", "Models", "Metrics"];
+      const tabs = ["Saved questions", "Models"];
 
       it("should select a card from local search results", () => {
         cy.signInAsAdmin();
@@ -355,11 +355,6 @@ describe("scenarios > organization > entity picker", () => {
             tab: "Models",
             cardName: "Root model 2",
             sourceName: "Root model 2",
-          },
-          {
-            tab: "Metrics",
-            cardName: "Root metric 1",
-            sourceName: "Orders",
           },
         ];
         testCases.forEach(({ tab, cardName, sourceName }) => {
@@ -392,11 +387,6 @@ describe("scenarios > organization > entity picker", () => {
             tab: "Models",
             cardName: "Regular model 2",
             sourceName: "Regular model 2",
-          },
-          {
-            tab: "Metrics",
-            cardName: "Regular metric 1",
-            sourceName: "Orders",
           },
         ];
         testCases.forEach(({ tab, cardName, sourceName }) => {
@@ -450,7 +440,7 @@ describe("scenarios > organization > entity picker", () => {
   });
 
   describe("question picker", () => {
-    const tabs = ["Questions", "Models", "Metrics"];
+    const tabs = ["Questions", "Models"];
 
     it("should select a card from local search results", () => {
       cy.signInAsAdmin();
@@ -460,7 +450,6 @@ describe("scenarios > organization > entity picker", () => {
       const testCases = [
         { tab: "Questions", cardName: "Root question 1" },
         { tab: "Models", cardName: "Root model 2" },
-        { tab: "Metrics", cardName: "Root metric 1" },
       ];
       testCases.forEach(({ tab, cardName }) => {
         selectQuestionFromDashboard();
@@ -484,7 +473,6 @@ describe("scenarios > organization > entity picker", () => {
       const testCases = [
         { tab: "Questions", cardName: "Regular question 1" },
         { tab: "Models", cardName: "Regular model 2" },
-        { tab: "Metrics", cardName: "Regular metric 1" },
       ];
       testCases.forEach(({ tab, cardName }) => {
         selectQuestionFromDashboard();
@@ -932,7 +920,7 @@ describe("scenarios > organization > entity picker", () => {
 });
 
 function createTestCards() {
-  const types = ["question", "model", "metric"] as const;
+  const types = ["question", "model"] as const;
   const suffixes = ["1", "2"];
   const collections = [
     { id: null, name: "Root" },
@@ -1120,7 +1108,7 @@ function testCardSearchForNormalUser({ tabs }: { tabs: string[] }) {
       });
       localSearchTab("Our analytics").should("be.checked");
       assertSearchResults({
-        foundItems: ["Root question 2", "Root model 2", "Root metric 2"],
+        foundItems: ["Root question 2", "Root model 2"],
         notFoundItems: [
           "Root question 1",
           "Regular question 2",
@@ -1140,11 +1128,7 @@ function testCardSearchForNormalUser({ tabs }: { tabs: string[] }) {
       });
       localSearchTab("First collection").should("be.checked");
       assertSearchResults({
-        foundItems: [
-          "Regular question 1",
-          "Regular model 1",
-          "Regular metric 1",
-        ],
+        foundItems: ["Regular question 1", "Regular model 1"],
         notFoundItems: [
           "Root question 1",
           "Regular question 2",
@@ -1164,7 +1148,7 @@ function testCardSearchForNormalUser({ tabs }: { tabs: string[] }) {
       });
       localSearchTab("Our analytics").should("be.checked");
       assertSearchResults({
-        foundItems: ["Root question 2", "Root model 2", "Root metric 2"],
+        foundItems: ["Root question 2", "Root model 2"],
         notFoundItems: [
           "Root model 1",
           "Regular model 2",
@@ -1189,7 +1173,6 @@ function testCardSearchForNormalUser({ tabs }: { tabs: string[] }) {
         foundItems: [
           "Normal personal collection question 1",
           "Normal personal collection model 1",
-          "Normal personal collection metric 1",
         ],
         notFoundItems: [
           "Root metric 1",
@@ -1241,11 +1224,7 @@ function testCardSearchForInaccessibleRootCollection({
       });
       localSearchTab("First collection").should("be.checked");
       assertSearchResults({
-        foundItems: [
-          "Regular question 1",
-          "Regular model 1",
-          "Regular metric 1",
-        ],
+        foundItems: ["Regular question 1", "Regular model 1"],
         notFoundItems: [
           "Root question 1",
           "Regular question 2",
@@ -1291,7 +1270,6 @@ function testCardSearchForInaccessibleRootCollection({
         foundItems: [
           "No collection personal collection question 1",
           "No collection personal collection model 1",
-          "No collection personal collection metric 1",
         ],
         notFoundItems: [
           "Root metric 1",
@@ -1316,7 +1294,7 @@ function testCardSearchForAllPersonalCollections({ tabs }: { tabs: string[] }) {
       globalSearchTab().should("not.exist");
       localSearchTab("All personal collections").should("not.exist");
       assertSearchResults({
-        foundItems: ["Root question 1", "Root model 1", "Root metric 1"],
+        foundItems: ["Root question 1", "Root model 1"],
       });
     });
   });
