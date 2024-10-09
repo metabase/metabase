@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.api.permissions-test-util :as perm-test-util]
+   [metabase.config :as config]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.data-permissions.graph :as data-perms.graph]
    [metabase.models.database :refer [Database]]
@@ -195,9 +196,10 @@
                                         :members)))))
 
     (testing "return is_group_manager for each group if premium features are enabled"
-      (mt/with-premium-features #{:advanced-permissions}
-        (is (=? [[{:id user-1-g1 :is_group_manager true}
-                  {:id user-2-g1 :is_group_manager false}]
-                 [{:id user-1-g2 :is_group_manager false}]]
-                (map :members (t2/hydrate (t2/select :model/PermissionsGroup :id [:in [group-id-1 group-id-2]])
-                                          :members))))))))
+      (when (config/ee-available?)
+        (mt/with-premium-features #{:advanced-permissions}
+          (is (=? [[{:id user-1-g1 :is_group_manager true}
+                    {:id user-2-g1 :is_group_manager false}]
+                   [{:id user-1-g2 :is_group_manager false}]]
+                  (map :members (t2/hydrate (t2/select :model/PermissionsGroup :id [:in [group-id-1 group-id-2]])
+                                            :members)))))))))
