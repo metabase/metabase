@@ -9288,6 +9288,202 @@ databaseChangeLog:
                   name: type
             indexName: idx_collection_type
 
+  - changeSet:
+      id: v51.2024-09-26T03:01:00
+      author: escherize
+      comment: iff enable-embedding is set, copy -> enable-embedding-interactive
+      preConditions:
+        - onFail: MARK_RAN
+        - or:
+            - and:
+                - dbms:
+                    type: postgresql
+                - sqlCheck:
+                    expectedResult: 1
+                    sql: SELECT count(*) FROM setting WHERE key = 'enable-embedding';
+            - and:
+                - dbms:
+                    type: mysql,mariadb
+                - sqlCheck:
+                    expectedResult: 1
+                    sql: SELECT count(*) FROM setting WHERE `key` = 'enable-embedding';
+            - and:
+                - dbms:
+                    type: h2
+                - sqlCheck:
+                    expectedResult: 1
+                    sql: SELECT count(*) FROM setting WHERE "KEY" = 'enable-embedding';
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              INSERT INTO setting (key, value)
+              SELECT 'enable-embedding-interactive', value
+              FROM setting
+              WHERE key = 'enable-embedding';
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              INSERT INTO setting (`key`, `value`)
+              SELECT 'enable-embedding-interactive', value
+              FROM setting
+              WHERE `key` = 'enable-embedding';
+        - sql:
+            dbms: h2
+            sql: >-
+              INSERT INTO setting ("KEY", "VALUE")
+              SELECT 'enable-embedding-interactive', "VALUE"
+              FROM setting
+              WHERE "KEY" = 'enable-embedding';
+      rollback: # not needed
+
+  - changeSet:
+      id: v51.2024-09-26T03:02:00
+      author: escherize
+      comment: iff enable-embedding is set, copy -> enable-embedding-static
+      preConditions:
+        - onFail: MARK_RAN
+        - or:
+            - and:
+                - dbms:
+                    type: postgresql
+                - sqlCheck:
+                    expectedResult: 1
+                    sql: SELECT count(*) FROM setting WHERE key = 'enable-embedding';
+            - and:
+                - dbms:
+                    type: mysql,mariadb
+                - sqlCheck:
+                    expectedResult: 1
+                    sql: SELECT count(*) FROM setting WHERE `key` = 'enable-embedding';
+            - and:
+                - dbms:
+                    type: h2
+                - sqlCheck:
+                    expectedResult: 1
+                    sql: SELECT count(*) FROM setting WHERE "KEY" = 'enable-embedding';
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              INSERT INTO setting (key, value)
+              SELECT 'enable-embedding-static', value
+              FROM setting
+              WHERE key = 'enable-embedding';
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              INSERT INTO setting (`key`, `value`)
+              SELECT 'enable-embedding-static', value
+              FROM setting
+              WHERE `key` = 'enable-embedding';
+        - sql:
+            dbms: h2
+            sql: >-
+              INSERT INTO setting ("KEY", "VALUE")
+              SELECT 'enable-embedding-static', "VALUE"
+              FROM setting
+              WHERE "KEY" = 'enable-embedding';
+      rollback: # not needed
+
+  - changeSet:
+      id: v51.2024-09-26T03:03:00
+      author: escherize
+      comment: iff enable-embedding is set, copy -> enable-embedding-sdk
+      preConditions:
+        - onFail: MARK_RAN
+        - or:
+            - and:
+                - dbms:
+                    type: postgresql
+                - sqlCheck:
+                    expectedResult: 1
+                    sql: SELECT count(*) FROM setting WHERE key = 'enable-embedding';
+            - and:
+                - dbms:
+                    type: mysql,mariadb
+                - sqlCheck:
+                    expectedResult: 1
+                    sql: SELECT count(*) FROM setting WHERE `key` = 'enable-embedding';
+            - and:
+                - dbms:
+                    type: h2
+                - sqlCheck:
+                    expectedResult: 1
+                    sql: SELECT count(*) FROM setting WHERE "KEY" = 'enable-embedding';
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              INSERT INTO setting (key, value)
+              SELECT 'enable-embedding-sdk', value
+              FROM setting
+              WHERE key = 'enable-embedding';
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              INSERT INTO setting (`key`, `value`)
+              SELECT 'enable-embedding-sdk', value
+              FROM setting
+              WHERE `key` = 'enable-embedding';
+        - sql:
+            dbms: h2
+            sql: >-
+              INSERT INTO setting ("KEY", "VALUE")
+              SELECT 'enable-embedding-sdk', "VALUE"
+              FROM setting
+              WHERE "KEY" = 'enable-embedding';
+      rollback: # not needed
+
+  - changeSet:
+      id: v51.2024-09-26T03:04:00
+      author: escherize
+      comment: iff embedding-app-origin is set, copy -> embedding-app-origins-interactive
+      preConditions:
+        - onFail: MARK_RAN
+        - or:
+            - and:
+                - dbms:
+                    type: postgresql
+                - sqlCheck:
+                    expectedResult: 1
+                    sql: SELECT count(*) FROM setting WHERE key = 'embedding-app-origin';
+            - and:
+                - dbms:
+                    type: mysql,mariadb
+                - sqlCheck:
+                    expectedResult: 1
+                    sql: SELECT count(*) FROM setting WHERE `key` = 'embedding-app-origin';
+            - and:
+                - dbms:
+                    type: h2
+                - sqlCheck:
+                    expectedResult: 1
+                    sql: SELECT count(*) FROM setting WHERE "KEY" = 'embedding-app-origin';
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              INSERT INTO setting (key, value)
+              SELECT 'embedding-app-origins-interactive', value
+              FROM setting
+              WHERE key = 'embedding-app-origin';
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              INSERT INTO setting (`key`, `value`)
+              SELECT 'embedding-app-origins-interactive', value
+              FROM setting
+              WHERE `key` = 'embedding-app-origin';
+        - sql:
+            dbms: h2
+            sql: >-
+              INSERT INTO setting ("KEY", "VALUE")
+              SELECT 'embedding-app-origins-interactive', "VALUE"
+              FROM setting
+              WHERE "KEY" = 'embedding-app-origin';
+      rollback: # not needed
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

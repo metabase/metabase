@@ -108,11 +108,12 @@ Metabase's reference documentation.
 - [Data modeling overview](./data-modeling/start.md)
 - [Models](./data-modeling/models.md)
 - [Model persistence](./data-modeling/model-persistence.md)
+- [Metrics](./data-modeling/metrics.md)
 - [Table metadata admin settings](./data-modeling/metadata-editing.md)
 - [Field types](./data-modeling/field-types.md)
 - [Formatting defaults](./data-modeling/formatting.md)
 - [Working with JSON](./data-modeling/json-unfolding.md)
-- [Segments and metrics](./data-modeling/segments-and-metrics.md)
+- [Segments](./data-modeling/segments.md)
 
 ### Actions
 
@@ -127,6 +128,7 @@ Metabase's reference documentation.
 - [Basic exploration](./exploration-and-organization/exploration.md)
 - [Collections](./exploration-and-organization/collections.md)
 - [History](./exploration-and-organization/history.md)
+- [Trash](./exploration-and-organization/delete-and-restore.md)
 - [Data reference](./exploration-and-organization/data-model-reference.md)
 - [Events and timelines](./exploration-and-organization/events-and-timelines.md)
 - [X-rays](./exploration-and-organization/x-rays.md)
@@ -179,6 +181,7 @@ Metabase's reference documentation.
 - [General settings](./configuring-metabase/settings.md)
 - [Email](./configuring-metabase/email.md)
 - [Slack](./configuring-metabase/slack.md)
+- [Webhooks](./configuring-metabase/webhooks.md)
 - [Environment variables](./configuring-metabase/environment-variables.md)
 - [Configuration file](./configuring-metabase/config-file.md)
 - [Metabase log configuration](./configuring-metabase/log-configuration.md)

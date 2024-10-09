@@ -20,10 +20,10 @@ export function MetricEmptyState({
       data-testid="metric-empty-state"
     >
       <Text mb="sm" fw="bold" fz="lg">
-        {t`A metric is one of the key numbers you want to keep track of`}
+        {t`Create Metrics to define the official way to calculate important numbers for your team`}
       </Text>
-      <Text mb="lg" c="text-medium" maw="28.75rem" align="center">
-        {t`To create one, you’ll need to define how its calculated, add any required filters, and optionally pick the main dimension for your metric.`}
+      <Text mb="lg" c="text-medium" maw="30rem" align="center">
+        {t`Metrics are like pre-defined calculations: create your aggregations once, save them as metrics, and use them whenever you need to analyze your data.`}
       </Text>
       {isRunnable && (
         <Button variant="filled" onClick={() => runQuestionQuery()}>

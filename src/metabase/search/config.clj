@@ -101,6 +101,8 @@
 (def SearchContext
   "Map with the various allowed search parameters, used to construct the SQL query."
   [:map {:closed true}
+   ;; display related
+   [:calculate-available-models? {:optional true} :boolean]
    ;;
    ;; required
    ;;
@@ -111,8 +113,8 @@
    [:model-ancestors?   :boolean]
    [:models             [:set SearchableModel]]
    ;; TODO this is optional only for tests, clean those up!
-   [:search-engine       {:optional true} keyword?]
-   [:search-string      [:maybe ms/NonBlankString]]
+   [:search-engine      {:optional true} keyword?]
+   [:search-string      {:optional true} [:maybe ms/NonBlankString]]
    ;;
    ;; optional
    ;;

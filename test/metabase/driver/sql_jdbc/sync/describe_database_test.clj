@@ -1,4 +1,4 @@
-(ns metabase.driver.sql-jdbc.sync.describe-database-test
+(ns ^:mb/driver-tests metabase.driver.sql-jdbc.sync.describe-database-test
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]

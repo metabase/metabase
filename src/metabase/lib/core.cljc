@@ -293,7 +293,9 @@
   stage-count
   uses-metric?
   uses-segment?
-  with-different-table]
+  with-different-table
+  with-wrapped-native-query
+  wrap-native-query-with-mbql]
  [lib.ref
   ref]
  [lib.remove-replace

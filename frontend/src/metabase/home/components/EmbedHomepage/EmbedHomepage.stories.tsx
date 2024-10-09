@@ -33,7 +33,6 @@ export const Default: Story = {
     );
   },
   args: {
-    embeddingAutoEnabled: true,
     hasExampleDashboard: true,
     licenseActiveAtSetup: true,
     initialTab: "interactive",

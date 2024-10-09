@@ -2,7 +2,6 @@
 import cx from "classnames";
 import PropTypes from "prop-types";
 import { Component, createRef, forwardRef } from "react";
-import { findDOMNode } from "react-dom";
 import { connect } from "react-redux";
 import { Grid, ScrollSync } from "react-virtualized";
 import { t } from "ttag";
@@ -114,6 +113,8 @@ class TableInteractive extends Component {
     this.columnHasResized = {};
     this.headerRefs = [];
     this.detailShortcutRef = createRef();
+
+    this.gridRef = createRef();
 
     window.METABASE_TABLE = this;
   }
@@ -1042,7 +1043,7 @@ class TableInteractive extends Component {
       return;
     }
 
-    const scrollOffset = findDOMNode(this.grid)?.scrollTop || 0;
+    const scrollOffset = this.gridRef.current?.scrollTop || 0;
 
     // infer row index from mouse position when we hover the gutter column
     if (event?.currentTarget?.id === "gutter-column") {
@@ -1309,7 +1310,7 @@ class TableInteractive extends Component {
   }
 
   _benchmark() {
-    const grid = findDOMNode(this.grid);
+    const grid = this.gridRef.current;
     const height = grid.scrollHeight;
     let top = 0;
     let start = Date.now();

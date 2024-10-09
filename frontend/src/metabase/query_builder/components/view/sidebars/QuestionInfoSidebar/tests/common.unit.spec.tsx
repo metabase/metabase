@@ -98,6 +98,21 @@ describe("QuestionInfoSidebar", () => {
       expect(screen.getByText("My Big Collection")).toBeInTheDocument();
     });
 
+    it("should show correct link for root collection", () => {
+      const card = createMockCard({
+        name: "Question",
+        // @ts-expect-error - ye olde null root collection bugbear
+        collection: createMockCollection({ id: null, name: "Our analytics" }),
+        collection_id: null,
+      });
+      setup({ card });
+
+      expect(screen.getByText("Our analytics")).toHaveAttribute(
+        "href",
+        "/collection/root",
+      );
+    });
+
     it("should show source information", () => {
       const card = createMockCard({
         name: "Question",
@@ -109,15 +124,14 @@ describe("QuestionInfoSidebar", () => {
       expect(screen.getByText("Products")).toBeInTheDocument();
     });
 
-    it("should show entity id", () => {
+    it("should not show entity id", () => {
       const card = createMockCard({
         name: "Question",
         entity_id: "jenny8675309" as BaseEntityId,
       });
       setup({ card });
 
-      expect(screen.getByText("Entity ID")).toBeInTheDocument();
-      expect(screen.getByText("jenny8675309")).toBeInTheDocument();
+      expect(screen.queryByText("Entity ID")).not.toBeInTheDocument();
     });
 
     it("should show if a public link is enabled", () => {

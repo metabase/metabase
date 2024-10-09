@@ -31,7 +31,7 @@ interface FixedWidthVariant {
 
 type Variants = FullWidthVariant | FixedWidthVariant;
 
-type UpsellCardProps = OwnProps & Variants;
+export type UpsellCardProps = OwnProps & Variants;
 
 export const _UpsellCard: React.FC<UpsellCardProps> = ({
   title,

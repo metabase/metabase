@@ -50,8 +50,7 @@
        :models             (disj search.config/all-models "indexed-entity")
        ;; we want to see everything
        :is-superuser?      true
-       ;; irrelevant, as we're acting as a super user
-       :current-user-id    1
+       :current-user-id    (t2/select-one-pk :model/User :is_superuser true)
        :current-user-perms #{"/"}
        ;; include both achived and non-archived items.
        :archived?          nil
@@ -65,7 +64,6 @@
   "Go over all searchable items and populate the index with them."
   []
   (->> (search-items-reducible)
-        ;; TODO realize and insert in batches
        (eduction
         (comp
          (map t2.realize/realize)

@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { screen } from "__support__/ui";
+import type { Dashboard } from "metabase-types/api";
 import {
   createMockCollection,
   createMockDashboard,
@@ -152,6 +153,25 @@ describe("DashboardInfoSidebar", () => {
     expect(await screen.findByText("My little collection")).toBeInTheDocument();
   });
 
+  it("should show root collection", async () => {
+    await setup({
+      dashboard: createMockDashboard({
+        collection_id: null,
+        collection: createMockCollection({
+          name: "Our analytics",
+          // @ts-expect-error - ye olde null root collection bugbear
+          id: null,
+        }),
+      }),
+    });
+
+    expect(screen.getByText("Saved in")).toBeInTheDocument();
+    expect(await screen.findByText("Our analytics")).toHaveAttribute(
+      "href",
+      "/collection/root",
+    );
+  });
+
   it("should not show Visibility section when not shared publicly", async () => {
     await setup();
     expect(screen.queryByText("Visibility")).not.toBeInTheDocument();
@@ -166,5 +186,19 @@ describe("DashboardInfoSidebar", () => {
     await setup({ dashboard: createMockDashboard({ enable_embedding: true }) });
     expect(screen.getByText("Visibility")).toBeInTheDocument();
     expect(screen.getByText("Embedded")).toBeInTheDocument();
+  });
+
+  describe("DashboardInfoSidebar > enterprise", () => {
+    describe("entity id display", () => {
+      it("should not show entity ids without serialization feature", async () => {
+        const dashboard = createMockDashboard({
+          entity_id: "jenny8675309" as Dashboard["entity_id"],
+        });
+        await setup({ dashboard });
+
+        expect(screen.queryByText("Entity ID")).not.toBeInTheDocument();
+        expect(screen.queryByText("jenny8675309")).not.toBeInTheDocument();
+      });
+    });
   });
 });

@@ -1,9 +1,10 @@
 import { updateIn } from "icepick";
-import { createAction } from "redux-actions";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { createActionPublicLink, deleteActionPublicLink } from "metabase/api";
 import { createEntity, undo } from "metabase/lib/entities";
+import { createThunkAction } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { ActionSchema } from "metabase/schema";
 import { ActionsApi } from "metabase/services";
@@ -124,28 +125,25 @@ const Actions = createEntity({
     "archived",
   ],
   objectActions: {
-    createPublicLink: createAction(
+    createPublicLink: createThunkAction(
       CREATE_PUBLIC_LINK,
-      ({ id }: { id: WritebackActionId }) => {
-        return ActionsApi.createPublicLink({ id }).then(
-          ({ uuid }: { uuid: string }) => {
-            return {
-              id,
-              uuid,
-            };
-          },
-        );
-      },
+      ({ id }: { id: WritebackActionId }) =>
+        async (dispatch: Dispatch) => {
+          const { data } = await (dispatch(
+            createActionPublicLink.initiate({ id }),
+          ) as Promise<{ data: { uuid: string } }>);
+
+          return { id, uuid: data.uuid };
+        },
     ),
-    deletePublicLink: createAction(
+    deletePublicLink: createThunkAction(
       DELETE_PUBLIC_LINK,
-      ({ id }: { id: WritebackActionId }) => {
-        return ActionsApi.deletePublicLink({ id }).then(() => {
-          return {
-            id,
-          };
-        });
-      },
+      ({ id }: { id: WritebackActionId }) =>
+        async (dispatch: Dispatch) => {
+          await dispatch(deleteActionPublicLink.initiate({ id }));
+
+          return { id };
+        },
     ),
     setArchived: ({ id }: WritebackAction, archived: boolean) =>
       Actions.actions.update(

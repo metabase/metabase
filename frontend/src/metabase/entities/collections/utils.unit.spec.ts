@@ -320,7 +320,7 @@ describe("entities > collections > utils", () => {
         const [transformed] = buildCollectionTree([collection]);
         expect(transformed.icon).toEqual({
           color: expect.any(String),
-          name: "badge",
+          name: "official_collection",
           tooltip: "Official collection",
         });
       });
@@ -350,7 +350,7 @@ describe("entities > collections > utils", () => {
         expectedIcon: "person",
       },
       {
-        name: "Metabase Analytics",
+        name: "Usage Analytics",
         collection: createMockCollection({ type: "instance-analytics" }),
         expectedIcon: "audit",
       },
@@ -371,7 +371,7 @@ describe("entities > collections > utils", () => {
       {
         name: "Official collection",
         collection: createMockCollection({ authority_level: "official" }),
-        expectedIcon: "badge",
+        expectedIcon: "official_collection",
       },
     ];
 

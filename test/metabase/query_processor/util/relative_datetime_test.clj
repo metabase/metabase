@@ -1,4 +1,4 @@
-(ns metabase.query-processor.util.relative-datetime-test
+(ns ^:mb/driver-tests metabase.query-processor.util.relative-datetime-test
   (:require
    [clojure.test :refer :all]
    [honey.sql :as sql]

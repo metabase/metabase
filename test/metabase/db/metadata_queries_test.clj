@@ -1,4 +1,4 @@
-(ns metabase.db.metadata-queries-test
+(ns ^:mb/driver-tests metabase.db.metadata-queries-test
   (:require
    [clojure.test :refer :all]
    [metabase.db.metadata-queries :as metadata-queries]

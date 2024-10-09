@@ -1,4 +1,4 @@
-(ns metabase.driver.databricks-test
+(ns ^:mb/driver-tests metabase.driver.databricks-test
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]

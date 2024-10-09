@@ -179,7 +179,9 @@ describe("AggregateStep", () => {
       expect(queryIcon("add")).not.toBeInTheDocument();
     });
 
-    it("should not allow to use temporal comparisons for metrics", async () => {
+    // TODO: unskip this once we enable "Compare to the past" again
+    // eslint-disable-next-line jest/no-disabled-tests
+    it.skip("should not allow to use temporal comparisons for metrics", async () => {
       const query = createQueryWithClauses({
         aggregations: [{ operatorName: "count" }],
       });
@@ -192,7 +194,9 @@ describe("AggregateStep", () => {
       expect(screen.queryByText(/compare/i)).not.toBeInTheDocument();
     });
 
-    it("should allow to use temporal comparisons for non-metrics", async () => {
+    // TODO: unskip this once we enable "Compare to the past" again
+    // eslint-disable-next-line jest/no-disabled-tests
+    it.skip("should allow to use temporal comparisons for non-metrics", async () => {
       const query = createQueryWithClauses({
         aggregations: [{ operatorName: "count" }],
       });
