@@ -74,8 +74,9 @@ describe("scenarios > collections > archive", () => {
       .findByText(`${DASHBOARD_NAME}`)
       .realHover()
       .findByLabelText("unarchive icon")
-      .should("be.visible")
-      .click();
+      .as("unarchiveIcon")
+      .should("be.visible");
+    cy.get("@unarchiveIcon").click();
     cy.wait("@updateDashboard");
     cy.findByTestId(`archive-item-${QUESTION_NAME}`).should("exist");
     cy.findByTestId(`archive-item-${DASHBOARD_NAME}`).should("not.exist");
@@ -117,7 +118,9 @@ describe("scenarios > collections > archive", () => {
       .findByText(`${DASHBOARD_NAME}`)
       .realHover()
       .findByLabelText("trash icon")
-      .click();
+      .as("trashIcon")
+      .should("be.visible");
+    cy.get("@trashIcon").click();
     cy.wait("@deleteDashboard");
     cy.findByTestId(`archive-item-${QUESTION_NAME}`).should("exist");
     cy.findByTestId(`archive-item-${DASHBOARD_NAME}`).should("not.exist");
@@ -246,8 +249,10 @@ describe("scenarios > collections > archive", () => {
       .findByText("Orders")
       .realHover()
       .findByLabelText("unarchive icon")
-      .should("be.visible")
-      .click();
+      .as("unarchiveIcon")
+      .should("be.visible");
+
+    cy.get("@unarchiveIcon").click();
 
     navigationSidebar().button("Orders").should("exist");
   });
