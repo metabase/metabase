@@ -192,7 +192,7 @@ export const useCommandPaletteBasicActions = ({
       name: t`Open error diagnostic modal`,
       section: "basic",
       icon: "info",
-      shortcut: ["Control+f1"],
+      shortcut: ["$mod+f1"],
       perform: () => {
         dispatch(openDiagnostics());
       },
