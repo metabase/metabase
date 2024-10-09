@@ -2,6 +2,7 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import NoResults from "assets/img/metrics_bot.svg";
+import { getCurrentUser } from "metabase/admin/datamodel/selectors";
 import { skipToken } from "metabase/api";
 import { useDatabaseListQuery, useDocsUrl } from "metabase/common/hooks";
 import { useFetchMetrics } from "metabase/common/hooks/use-fetch-metrics";
@@ -12,7 +13,6 @@ import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_CONTENT_VERIFICATION } from "metabase/plugins";
 import { getHasDataAccess } from "metabase/selectors/data";
-import { getUser } from "metabase/setup/selectors";
 import {
   Box,
   Button,
@@ -100,7 +100,7 @@ export function BrowseMetrics() {
 }
 
 function MetricsEmptyState() {
-  const isLoggedIn = useSelector(state => Boolean(getUser(state)));
+  const isLoggedIn = Boolean(useSelector(getCurrentUser));
   const { data: databases = [] } = useDatabaseListQuery({
     enabled: isLoggedIn,
   });

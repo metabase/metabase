@@ -13,6 +13,16 @@ describe("BrowseMetrics (OSS)", () => {
     expect(await screen.findByText("Create metric")).toBeInTheDocument();
   });
 
+  it("displays should not show the Create metric button if the user does not have data access", async () => {
+    setup({ metricCount: 0, databases: [] });
+    expect(
+      await screen.findByText(
+        "Create Metrics to define the official way to calculate important numbers for your team",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Create metric")).not.toBeInTheDocument();
+  });
+
   it("displays a link to the metrics docs", async () => {
     setup({ metricCount: 0 });
     await screen.findByText(
