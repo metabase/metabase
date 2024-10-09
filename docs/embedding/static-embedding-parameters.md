@@ -168,6 +168,8 @@ Because Metabase doesn't display locked parameters as filter widgets, you can us
 
 ## Customizing the appearance of a static embed
 
+![Look and feel: appearance settings on static embed](./images/04-preview.png)
+
 You can change the appearance of an embedded item by adding hash parameters to the end of the URL in your iframe's `src` attribute.
 
 For example, the following embedding URL will display an embedded item in dark mode, without a border, and with its original title:
@@ -176,16 +178,16 @@ For example, the following embedding URL will display an embedded item in dark m
 your_embedding_url#theme=night&bordered=false&titled=true
 ```
 
-You can preview appearance settings from your question or dashboard's [embedded appearance settings](./static-embedding.md#customizing-the-appearance-of-static-embeds).
+You can preview appearance settings from your question or dashboard's embedded appearance settings.
 
-| Parameter name                            | Possible values                               |
-| ----------------------------------------- | --------------------------------------------- |
-| `bordered`                                | true, false                                   |
-| `titled`                                  | true, false                                   |
-| `theme`                                   | null, transparent, night                      |
-| `refresh` (dashboard only)                | integer (seconds, e.g., `refresh=60`)         |
-| `font`\*                                  | [font name](../configuring-metabase/fonts.md) |
-| `hide_download_button`\* (questions only) | true, false                                   |
+| Parameter name                | Possible values                               |
+| ----------------------------- | --------------------------------------------- |
+| `bordered`                    | true, false                                   |
+| `titled`                      | true, false                                   |
+| `theme`                       | null, night                      |
+| `refresh` (dashboard only)    | integer (seconds, e.g., `refresh=60`)         |
+| `font`\*                      | [font name](../configuring-metabase/fonts.md) |
+| `download`\* (questions only) | true, false                                   |
 
 \* Available on [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
