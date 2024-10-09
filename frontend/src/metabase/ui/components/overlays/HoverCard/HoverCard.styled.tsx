@@ -1,9 +1,9 @@
-import type { MantineThemeOverride } from "@mantine/core";
+import { HoverCard, type MantineThemeOverride } from "@mantine/core";
 
 import HoverCardStyles from "./HoverCard.module.css";
 
 export const hoverCardOverrides: MantineThemeOverride["components"] = {
-  HoverCard: {
+  HoverCard: HoverCard.extend({
     defaultProps: {
       radius: "sm",
       shadow: "md",
@@ -13,5 +13,5 @@ export const hoverCardOverrides: MantineThemeOverride["components"] = {
     classNames: {
       dropdown: HoverCardStyles.dropdown,
     },
-  },
+  }),
 };
