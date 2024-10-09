@@ -101,6 +101,7 @@ export type DashboardCardLayoutAttrs = {
 export type DashCardVisualizationSettings = {
   [key: string]: unknown;
   virtual_card?: VirtualCard;
+  iframe?: string;
 };
 
 export type BaseDashboardCard = DashboardCardLayoutAttrs & {
