@@ -1000,7 +1000,9 @@ describe("issue 19341", () => {
       cy.findAllByRole("tab").should("not.exist");
 
       // Ensure the search doesn't list saved questions
-      cy.findByPlaceholderText("Search…").type("Ord");
+      cy.findByPlaceholderText("Search this database or everywhere…").type(
+        "Ord",
+      );
       cy.findByTestId("loading-indicator").should("not.exist");
 
       cy.findAllByTestId("result-item").then($result => {

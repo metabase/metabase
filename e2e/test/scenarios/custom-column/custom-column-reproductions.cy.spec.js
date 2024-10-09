@@ -864,13 +864,18 @@ describe.skip("issue 25189", () => {
 
       resetTestTable({ type: dialect, table: tableName });
       cy.request("POST", `/api/database/${WRITABLE_DB_ID}/sync_schema`);
+      cy.intercept("GET", "/api/search*").as("search");
     });
 
     it("should display all summarize options if the only numeric field is a custom column (metabase#27745)", () => {
       startNewQuestion();
 
       entityPickerModal().within(() => {
-        cy.findByPlaceholderText("Search…").type("colors");
+        cy.findByPlaceholderText("Search this collection or everywhere…").type(
+          "colors",
+        );
+        cy.findByText("Everywhere").click();
+        cy.wait("@search");
         cy.findByTestId("result-item")
           .contains(/colors/i)
           .click();

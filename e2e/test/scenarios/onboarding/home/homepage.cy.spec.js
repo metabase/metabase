@@ -248,6 +248,7 @@ describe("scenarios > home > custom homepage", () => {
     beforeEach(() => {
       restore();
       cy.signInAsAdmin();
+      cy.intercept("GET", "/api/search*").as("search");
     });
 
     it("should give you the option to set a custom home page in settings", () => {
@@ -360,6 +361,7 @@ describe("scenarios > home > custom homepage", () => {
         //Ensure that child dashboards of personal collections do not
         //appear in search
         cy.findByPlaceholderText(/search/i).type("das{enter}");
+        cy.wait("@search");
         cy.findByText("Orders in a dashboard").should("exist");
         cy.findByText("nested dash").should("not.exist");
 
