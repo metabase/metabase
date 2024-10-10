@@ -33,10 +33,10 @@
   TODO: This function includes logic that is normally is done by the annotate middleware, but hasn't been run yet
   at this point in the code. We should eventually refactor this (#17195)"
   [cols]
-  (map (fn [col unique-name]
-         (let [col-with-display-name (if (:display_name col)
-                                       col
-                                       (assoc col :display_name (:name col)))]
+  (mapv (fn [col unique-name]
+          (let [col-with-display-name (if (:display_name col)
+                                        col
+                                        (assoc col :display_name (:name col)))]
            (assoc col-with-display-name :name unique-name)))
        cols
        (mbql.u/uniquify-names (map :name cols))))
@@ -58,63 +58,77 @@
   entry in `cols` by name or id. If a col has been remapped, uses the index of the new column.
 
   The resulting list of indices determines the order of column names and data in exports."
-  [cols table-columns]
-  (let [table-columns'     (or (validate-table-columms table-columns cols)
-                               ;; If table-columns is not provided (e.g. for saved cards), we can construct a fake one
-                               ;; that retains the original column ordering in `cols`
-                               (for [col cols]
-                                 (let [col-name   (:name col)
-                                       id-or-name (or (:id col) col-name)
-                                       field-ref  (:field_ref col)]
-                                   {::mb.viz/table-column-field-ref (or field-ref [:field id-or-name nil])
-                                    ::mb.viz/table-column-enabled true
-                                    ::mb.viz/table-column-name col-name})))
-        enabled-table-cols (filter ::mb.viz/table-column-enabled table-columns')
-        cols-vector        (into [] cols)
-        ;; cols-index is a map from keys representing fields to their indices into `cols`
-        cols-index         (reduce-kv (fn [m i col]
-                                        ;; Always add col-name as a key, so that native queries and remapped fields work correctly
-                                        (let [m' (assoc m (:name col) i)]
-                                          (if-let [field-ref (:field_ref col)]
-                                            ;; Add a map key based on the column's field-ref, if available
-                                            (assoc m' field-ref i)
-                                            m')))
-                                      {}
-                                      cols-vector)]
-    (->> (map
-          (fn [{field-ref ::mb.viz/table-column-field-ref, col-name ::mb.viz/table-column-name}]
-            (let [index              (or (get cols-index field-ref)
-                                         (get cols-index col-name))
-                  col                (get cols-vector index)
-                  remapped-to-name   (:remapped_to col)
-                  remapped-from-name (:remapped_from col)]
-              (cond
-                remapped-to-name
-                (get cols-index remapped-to-name)
+  ([cols table-columns] (export-column-order cols table-columns nil))
+  ([cols table-columns pivot-settings]
+   (let [table-columns'     (or (when pivot-settings
+                                  (for [field-ref (apply concat (map #(get pivot-settings %) [:rows :columns :values]))]
+                                    {::mb.viz/table-column-field-ref (update field-ref 0 keyword)
+                                     ::mb.viz/table-column-enabled true}))
+                                (validate-table-columms table-columns cols)
+                                ;; If table-columns is not provided (e.g. for saved cards), we can construct a fake one
+                                ;; that retains the original column ordering in `cols`
+                                (for [col cols]
+                                  (let [col-name   (:name col)
+                                        id-or-name (or (:id col) col-name)
+                                        field-ref  (:field_ref col)]
+                                    {::mb.viz/table-column-field-ref (or field-ref [:field id-or-name nil])
+                                     ::mb.viz/table-column-enabled true
+                                     ::mb.viz/table-column-name col-name})))
+         enabled-table-cols (filter ::mb.viz/table-column-enabled table-columns')
+         cols-vector        (into [] cols)
+         ;; cols-index is a map from keys representing fields to their indices into `cols`
+         cols-index         (reduce-kv (fn [m i col]
+                                         ;; Always add col-name as a key, so that native queries and remapped fields work correctly
+                                         (let [m' (assoc m (:name col) i)]
+                                           (if-let [field-ref (:field_ref col)]
+                                             ;; Add a map key based on the column's field-ref, if available
+                                             (assoc m' field-ref i)
+                                             m')))
+                                       {}
+                                       cols-vector)]
+     (->> (map
+           (fn [{field-ref ::mb.viz/table-column-field-ref, col-name ::mb.viz/table-column-name}]
+             (let [index              (or (get cols-index field-ref)
+                                          (get cols-index col-name))
+                   col                (get cols-vector index)
+                   remapped-to-name   (:remapped_to col)
+                   remapped-from-name (:remapped_from col)]
+               (cond
+                 remapped-to-name
+                 (get cols-index remapped-to-name)
 
-                (not remapped-from-name)
-                index)))
-          enabled-table-cols)
-         (remove nil?))))
+                 (not remapped-from-name)
+                 index)))
+           enabled-table-cols)
+          (remove nil?)
+          vec))))
 
 (defn order-cols
   "Dedups and orders `cols` based on the contents of table-columns in the provided viz settings. Also
   returns a list of indices which map the new order to the original order, and is used to reorder individual rows."
   [cols viz-settings]
   (let [deduped-cols  (deduplicate-col-names cols)
-        output-order  (export-column-order deduped-cols (::mb.viz/table-columns viz-settings))
+        output-order  (export-column-order deduped-cols (::mb.viz/table-columns viz-settings) (:pivot_table.column_split viz-settings))
         ordered-cols  (if output-order
-                        (let [v (into [] deduped-cols)]
-                          (for [i output-order] (v i)))
+                        (let [v deduped-cols]
+                          (into [] (for [i output-order] (v i))))
                         deduped-cols)]
     [ordered-cols output-order]))
 
 (mu/defn- streaming-rff :- ::qp.schema/rff
   [results-writer :- (lib.schema.common/instance-of-class metabase.query_processor.streaming.interface.StreamingResultsWriter)]
-  (fn [{:keys [cols viz-settings] :as initial-metadata}]
-    (let [[ordered-cols output-order] (order-cols cols viz-settings)
-          viz-settings'               (assoc viz-settings :output-order output-order)
-          row-count                   (volatile! 0)]
+  (fn [{:keys [cols viz-settings pivot-export-options] :as initial-metadata}]
+    (let [deduped-cols  (deduplicate-col-names cols)
+          output-order  (export-column-order deduped-cols
+                                            (::mb.viz/table-columns viz-settings)
+                                            (when pivot-export-options
+                                              (:pivot_table.column_split viz-settings)))
+          ordered-cols  (if output-order
+                          (let [v (into [] deduped-cols)]
+                            (into [] (for [i output-order] (v i))))
+                          deduped-cols)
+          viz-settings' (assoc viz-settings :output-order output-order)
+          row-count     (volatile! 0)]
       (fn
         ([]
          (log/trace "Writing initial metadata to results writer.")
