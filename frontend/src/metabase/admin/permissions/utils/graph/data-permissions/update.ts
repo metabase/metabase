@@ -24,11 +24,7 @@ import type Database from "metabase-lib/v1/metadata/Database";
 import type Table from "metabase-lib/v1/metadata/Table";
 import type { GroupsPermissions } from "metabase-types/api";
 
-import {
-  getFieldsPermission,
-  getPermissionPath,
-  getSchemasPermission,
-} from "./get";
+import { getFieldsPermission, getPermissionPath } from "./get";
 import { isRestrictivePermission } from "./utils";
 
 export function updatePermission(
@@ -205,21 +201,7 @@ export function restrictCreateQueriesPermissionsIfNeeded(
   value: DataPermissionValue,
   database: Database,
 ) {
-  const currDbCreateQueriesPermission = getSchemasPermission(
-    permissions,
-    groupId,
-    { databaseId: entityId.databaseId },
-    DataPermission.CREATE_QUERIES,
-  );
-
-  const isMakingGranularCreateQueriesChange =
-    permission === DataPermission.CREATE_QUERIES &&
-    value !== DataPermissionValue.QUERY_BUILDER_AND_NATIVE &&
-    (entityId.tableId != null || entityId.schemaName != null) &&
-    currDbCreateQueriesPermission ===
-      DataPermissionValue.QUERY_BUILDER_AND_NATIVE;
-
-  const shouldRestrictForSomeReason =
+  const shouldRestrictNative =
     PLUGIN_DATA_PERMISSIONS.shouldRestrictNativeQueryPermissions(
       permissions,
       groupId,
@@ -229,25 +211,15 @@ export function restrictCreateQueriesPermissionsIfNeeded(
       database,
     );
 
-  const shouldRestrictNative =
-    isMakingGranularCreateQueriesChange || shouldRestrictForSomeReason;
-
   if (shouldRestrictNative) {
-    const schemaNames = (database && database.schemaNames()) ?? [null];
-
-    schemaNames.forEach(schemaName => {
-      permissions = updateTablesPermission(
-        permissions,
-        groupId,
-        {
-          databaseId: entityId.databaseId,
-          schemaName,
-        },
-        DataPermissionValue.QUERY_BUILDER,
-        database,
-        DataPermission.CREATE_QUERIES,
-      );
-    });
+    permissions = updateEntityPermission(
+      permissions,
+      groupId,
+      entityId,
+      DataPermissionValue.QUERY_BUILDER,
+      database,
+      DataPermission.CREATE_QUERIES,
+    );
   }
 
   if (

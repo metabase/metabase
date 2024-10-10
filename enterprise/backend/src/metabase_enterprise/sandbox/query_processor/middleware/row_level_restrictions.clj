@@ -276,26 +276,41 @@
        :perms/create-queries (zipmap table-ids (repeat :query-builder))})))
 
 (defn- merge-perms
-  "The shape of permissions maps is a little odd, and using `m/deep-merge` doesn't give us exactly what we want.
-  In particular, if we need query-builder-and-native at the *database* level, but :query-builder at the *table* level,
-  the permissions maps will look like:
+  "In general, we merge conflicting values in two permission maps by taking the more permissive value using
+  (`data-perms/coalesce`).
 
-  - `{:perms/create-queries :query-builder-and-native}`
-  - `{:perms/create-queries {1 :query-builder}}`
+  However, if a permission type is defined at the *database* level in one map and the *table* level in another, we
+  always take the database value:
 
-  Currently, we never require a *lower* level permission at the database level, so it's ok to just say that the
-  db-level permissions always win. If we ever wanted to merge something like `{:perms/create-queries
-  {1 :query-builder-and-native}}` with `{:perms/create-queries :query-builder}`, this would break down and we'd
-  probably want to modify the shape of the permissions-maps themselves."
+  => (merge-perms
+      {:perms/create-queries :query-builder-and-native}
+      {:perms/create-queries {1 :query-builder}})
+  => {:perms/create-queries :query-builder-and-native}
+
+  WARNING: This technically returns an incorrect result if the *database* perm is more restrictive than the *table* perm:
+
+  => (merge-perms
+      {:perms/create-queries :query-builder}
+      {:perms/create-queries {1 :query-builder-and-native}})
+  => {:perms/create-queries :query-builder}
+
+  For the sandboxing use case this is acceptable, because :create-queries should never be :query-builder for the entire
+  database. Perms required for sandboxing are always table-level, unless it is a native question which can't be parsed,
+  in which case database-level :query-builder-and-native is required."
   ([perms-a] perms-a)
   ([perms-a perms-b]
    (reduce (fn [merged [k v]]
              (update merged k (fn [old-v]
                                 (cond
+                                  (and (keyword? old-v) (keyword? v))
+                                  (data-perms/coalesce k [old-v v])
+
                                   (keyword? old-v) old-v
-                                  (keyword? v) v
+                                  (keyword? v)     v
+
                                   (and (map? old-v) (map? v))
-                                  (merge old-v v)
+                                  (merge-with #(data-perms/coalesce k [%1 %2]) old-v v)
+
                                   :else v))))
            (or perms-a {})
            (seq perms-b)))
@@ -360,8 +375,8 @@
       (-> sandboxed-query
           (assoc ::original-metadata (expected-cols original-query))
           (update-in [::query-perms/perms :gtaps]
-                     (fn [required-perms] (merge required-perms
-                                                 (sandboxes->required-perms (vals table-id->gtap)))))))))
+                     (fn [required-perms] (merge-perms required-perms
+                                                       (sandboxes->required-perms (vals table-id->gtap)))))))))
 
 (def ^:private default-recursion-limit 20)
 (def ^:private ^:dynamic *recursion-limit* default-recursion-limit)
@@ -377,7 +392,7 @@
           (let [gtapped-query (gtapped-query query table-id->gtap)]
             (if (not= query gtapped-query)
               ;; Applying GTAPs to the query may have introduced references to tables that are also sandboxed,
-              ;; so we need to recursively appby the middleware until new queries are not returned.
+              ;; so we need to recursively apply the middleware until new queries are not returned.
               (if (= *recursion-limit* 0)
                 (throw (ex-info (trs "Reached recursion limit of {0} in \"apply-sandboxing\" middleware"
                                      default-recursion-limit)

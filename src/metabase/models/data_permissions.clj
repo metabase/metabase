@@ -453,8 +453,10 @@
       (or (coalesce perm-type perm-values)
           (least-permissive-value perm-type)))))
 
-(mu/defn native-download-permission-for-user :- PermissionValue
-  "Returns the effective download permission value for a given user and database ID, for native queries on the database.
+(mu/defn fallback-native-download-permission-for-user :- PermissionValue
+  "Returns the download permission value to use for native queries, if we don't have information available about the
+  tables referenced by the native query.
+
   For each group, the native download permission for a database is equal to the lowest permission level of any table in
   the database."
   [user-id database-id]
@@ -809,11 +811,7 @@
                     other-new-perms (map (fn [table]
                                            {:perm_type   perm-type
                                             :group_id    group-id
-                                            :perm_value  (case existing-db-perm-value
-                                                           ;; If the previous database-level permission can't be set at
-                                                           ;; the table-level, we need to provide a new default
-                                                           :query-builder-and-native :query-builder
-                                                           existing-db-perm-value)
+                                            :perm_value  existing-db-perm-value
                                             :db_id       db-id
                                             :table_id    (:id table)
                                             :schema_name (:schema table)})
