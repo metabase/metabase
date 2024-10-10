@@ -61,7 +61,7 @@ export const AddFilterParameterButton = () => {
         {sections.map(section => (
           <Menu.Item
             key={section.id}
-            icon={<Icon name={getParameterIconName(section.id)} />}
+            leftSection={<Icon name={getParameterIconName(section.id)} />}
             rightSection={
               <Text
                 ref={handleRightSectionRef}

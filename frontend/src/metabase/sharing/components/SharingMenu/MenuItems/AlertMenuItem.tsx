@@ -32,7 +32,7 @@ export function AlertMenuItem({
       <Menu.Item
         data-testid="question-alert-menu-item"
         my="sm"
-        icon={
+        leftSection={
           <Center mr="xs">
             <Icon name={hasAlerts ? "alert_filled" : "alert"} />
           </Center>

@@ -99,12 +99,12 @@ const IconsTemplate = (args: MenuProps) => (
         <Button variant="filled">Toggle menu</Button>
       </Menu.Target>
       <Menu.Dropdown>
-        <Menu.Item icon={<Icon name="insight" />}>Question</Menu.Item>
-        <Menu.Item icon={<Icon name="sql" />}>SQL query</Menu.Item>
-        <Menu.Item icon={<Icon name="dashboard" />}>Dashboard</Menu.Item>
-        <Menu.Item icon={<Icon name="folder" />}>Collection</Menu.Item>
-        <Menu.Item icon={<Icon name="model" />}>Model</Menu.Item>
-        <Menu.Item icon={<Icon name="bolt" />}>Action</Menu.Item>
+        <Menu.Item leftSection={<Icon name="insight" />}>Question</Menu.Item>
+        <Menu.Item leftSection={<Icon name="sql" />}>SQL query</Menu.Item>
+        <Menu.Item leftSection={<Icon name="dashboard" />}>Dashboard</Menu.Item>
+        <Menu.Item leftSection={<Icon name="folder" />}>Collection</Menu.Item>
+        <Menu.Item leftSection={<Icon name="model" />}>Model</Menu.Item>
+        <Menu.Item leftSection={<Icon name="bolt" />}>Action</Menu.Item>
       </Menu.Dropdown>
     </Menu>
   </Flex>
@@ -119,18 +119,18 @@ const LabelsAndDividersTemplate = (args: MenuProps) => (
       <Menu.Dropdown>
         <Menu.Label>Data</Menu.Label>
         <Menu.Item
-          icon={<Icon name="insight" />}
+          leftSection={<Icon name="insight" />}
           rightSection={<Text color="inherit">⌘K</Text>}
         >
           Question
         </Menu.Item>
-        <Menu.Item icon={<Icon name="sql" />}>SQL query</Menu.Item>
-        <Menu.Item icon={<Icon name="model" />}>Model</Menu.Item>
-        <Menu.Item icon={<Icon name="bolt" />}>Action</Menu.Item>
+        <Menu.Item leftSection={<Icon name="sql" />}>SQL query</Menu.Item>
+        <Menu.Item leftSection={<Icon name="model" />}>Model</Menu.Item>
+        <Menu.Item leftSection={<Icon name="bolt" />}>Action</Menu.Item>
         <Menu.Divider />
         <Menu.Label>Other</Menu.Label>
-        <Menu.Item icon={<Icon name="dashboard" />}>Dashboard</Menu.Item>
-        <Menu.Item icon={<Icon name="folder" />}>Collection</Menu.Item>
+        <Menu.Item leftSection={<Icon name="dashboard" />}>Dashboard</Menu.Item>
+        <Menu.Item leftSection={<Icon name="folder" />}>Collection</Menu.Item>
       </Menu.Dropdown>
     </Menu>
   </Flex>

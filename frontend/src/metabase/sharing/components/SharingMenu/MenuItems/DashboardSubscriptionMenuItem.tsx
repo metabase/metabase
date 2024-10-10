@@ -35,7 +35,7 @@ export function DashboardSubscriptionMenuItem({
       <Menu.Item
         data-testid="dashboard-subscription-menu-item"
         my="sm"
-        icon={
+        leftSection={
           <Center mr="xs">
             <Icon name="subscription" />
           </Center>
@@ -57,7 +57,7 @@ export function DashboardSubscriptionMenuItem({
     <Menu.Item
       data-testid="dashboard-subscription-menu-item"
       my="sm"
-      icon={
+      leftSection={
         <Center mr="xs">
           <Icon name="subscription" />
         </Center>
