@@ -1,0 +1,49 @@
+.NavLink {
+  border-radius: 0.5rem;
+
+  &[data-variant="default"] {
+    &:hover {
+      background-color: var(--mb-color-brand-lighter);
+    }
+
+    &[data-active] {
+      color: var(--mb-color-text-white);
+
+      &,
+      &:hover {
+        background-color: var(--mb-color-brand);
+      }
+
+      .NavLinkLabel {
+        color: var(--mb-color-text-white);
+      }
+
+      .NavLinkChevron {
+        color: var(--mb-color-text-white);
+      }
+    }
+  }
+
+  &[data-variant="mb-light"] {
+    &:hover {
+      background-color: var(--mb-color-brand-lighter);
+    }
+
+    &[data-active] {
+      &,
+      .NavLinkLabel {
+        color: var(--mb-color-text-primary);
+      }
+
+      background-color: var(--mb-color-bg-medium);
+    }
+  }
+}
+
+.NavLinkLabel {
+  font-size: 14px;
+}
+
+.NavLinkChevron {
+  color: var(--mb-color-text-dark);
+}
