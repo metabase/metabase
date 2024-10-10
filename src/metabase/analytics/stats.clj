@@ -14,6 +14,7 @@
    [metabase.db :as db]
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
+   [metabase.eid-translation :as eid-translation]
    [metabase.email :as email]
    [metabase.embed.settings :as embed.settings]
    [metabase.integrations.google :as google]
@@ -30,6 +31,7 @@
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -561,6 +563,11 @@
       :else
       nil)))
 
+(defn m->kv-vec
+  "Convert a map to a vector of key-value maps with keys 'key' and 'value' for each key-value pair in the map."
+  [m]
+  (mapv (fn [[k v]] {"key" (name k) "value" v}) m))
+
 (defn- snowplow-instance-attributes
   [stats]
   (let [system-stats (-> stats :stats :system)
@@ -574,11 +581,86 @@
           :deployment_model                 (deployment-model)
           :startup_time_millis              (-> stats :startup_time_millis)
           :has_activation_signals_completed (completed-activation-signals?)})]
-    (mapv
-     (fn [[k v]]
-       {"key"   (name k)
-        "value" v})
-     instance-attributes)))
+    (m->kv-vec instance-attributes)))
+
+(mu/defn- get-translation-count
+  :- [:map [:ok :int] [:not-found :int] [:invalid-format :int] [:total :int]]
+  "Get and clear the entity-id translation counter. This is meant to be called during the daily stats collection process."
+  []
+  (let [counter (setting/get-value-of-type :json :entity-id-translation-counter)]
+    (merge counter {:total (apply + (vals counter))})))
+
+(mu/defn- clear-translation-count!
+  "We want to reset the eid translation count on every stat ping, so we do it here."
+  []
+  (u/prog1 eid-translation/default-counter
+    (setting/set-value-of-type! :json :entity-id-translation-counter <>)))
+
+(defn- ->snowplow-metric-info
+  "Collects Snowplow metrics data that is not in the legacy stats format. Also clears entity id translation count."
+  []
+  (let [one-day-ago (t/minus (t/offset-date-time) (t/days 1))
+        total-translation-count (:total (get-translation-count))
+        _ (clear-translation-count!)]
+    {:models                  (t2/count :model/Card :type :model :archived false)
+     :new_embedded_dashboards (t2/count :model/Dashboard
+                                        :enable_embedding true
+                                        :archived false
+                                        :created_at [:>= one-day-ago])
+     :new_users_last_24h        (t2/count :model/User
+                                          :is_active true
+                                          :date_joined [:>= one-day-ago])
+     :pivot_tables              (t2/count :model/Card :display :pivot :archived false)
+     :query_executions_last_24h (t2/count :model/QueryExecution :started_at [:>= one-day-ago])
+     :entity_id_translations_last_24h total-translation-count}))
+
+(mu/defn- snowplow-metrics
+  [stats metric-info :- [:map
+                         [:models :int]
+                         [:new_embedded_dashboards :int]
+                         [:new_users_last_24h :int]
+                         [:pivot_tables :int]
+                         [:query_executions_last_24h :int]
+                         [:entity_id_translations_last_24h :int]]]
+  (mapv
+   (fn [[k v tags]]
+     (assert (every? string? tags) "Tags must be strings.")
+     (assert (some? v) "Cannot return a nil value.")
+     {"key" (name k) "value" v "tags" (-> tags sort vec)})
+   [[:above_goal_alerts               (get-in stats [:stats :alert :above_goal] 0)                    #{"alerts"}]
+    [:alerts                          (get-in stats [:stats :alert :alerts] 0)                        #{"alerts"}]
+    [:all_time_query_executions       (get-in stats [:stats :execution :executions] 0)                #{"query_executions"}]
+    [:cache_average_entry_size        (get-in stats [:stats :cache :average_entry_size] 0)            #{"cache"}]
+    [:cache_num_queries_cached        (get-in stats [:stats :cache :num_queries_cached] "0")          #{"cache"}]
+    [:cards_in_collections            (get-in stats [:stats :collection :cards_in_collections] 0)     #{"collections"}]
+    [:cards_not_in_collections        (get-in stats [:stats :collection :cards_not_in_collections] 0) #{"collections"}]
+    [:collections                     (get-in stats [:stats :collection :collections] 0)              #{"collections"}]
+    [:connected_databases             (get-in stats [:stats :database :databases :total] 0)           #{"databases"}]
+    [:analyzed_databases              (get-in stats [:stats :database :databases :analyzed] 0)        #{}]
+    [:dashboards_with_params          (get-in stats [:stats :dashboard :with_params] 0)               #{"dashboards"}]
+    [:embedded_dashboards             (get-in stats [:stats :dashboard :embedded :total] 0)           #{"dashboards" "embedding"}]
+    [:embedded_questions              (get-in stats [:stats :question :embedded :total] 0)            #{"questions" "embedding"}]
+    [:first_time_only_alerts          (get-in stats [:stats :alert :first_time_only] 0)               #{"alerts"}]
+    [:metabase_fields                 (get-in stats [:stats :field :fields] 0)                        #{"fields"}]
+    [:metrics                         (get-in stats [:stats :metric :metrics] 0)                      #{"metrics"}]
+    [:native_questions                (get-in stats [:stats :question :questions :native] 0)          #{"questions"}]
+    [:permission_groups               (get-in stats [:stats :group :groups] 0)                        #{"permissions"}]
+    [:public_dashboards               (get-in stats [:stats :dashboard :public :total] 0)             #{"dashboards"}]
+    [:public_dashboards_with_params   (get-in stats [:stats :dashboard :public :with_params] 0)       #{"dashboards"}]
+    [:public_questions                (get-in stats [:stats :question :public :total] 0)              #{"questions"}]
+    [:public_questions_with_params    (get-in stats [:stats :question :public :with_params] 0)        #{"questions"}]
+    [:query_builder_questions         (get-in stats [:stats :question :questions :total] 0)           #{"questions"}]
+    [:questions                       (get-in stats [:stats :question :questions :total] 0)           #{"questions"}]
+    [:questions_with_params           (get-in stats [:stats :question :questions :with_params] 0)     #{"questions"}]
+    [:segments                        (get-in stats [:stats :segment :segments] 0)                    #{"segments"}]
+    [:tables                          (get-in stats [:stats :table :tables] 0)                        #{"tables"}]
+    [:users                           (get-in stats [:stats :user :users :total] 0)                   #{"users"}]
+    [:models                          (:models metric-info 0)                                         #{}]
+    [:new_embedded_dashboards         (:new_embedded_dashboards metric-info 0)                        #{}]
+    [:new_users_last_24h              (:new_users_last_24h metric-info 0)                             #{"users"}]
+    [:pivot_tables                    (:pivot_tables metric-info 0)                                   #{}]
+    [:query_executions_last_24h       (:query_executions_last_24h metric-info 0)                      #{"query_executions"}]
+    [:entity_id_translations_last_24h (:entity_id_translations_last_24h metric-info 0)                #{"embedding"}]]))
 
 (defn- whitelabeling-in-use?
   "Are any whitelabeling settings set to values other than their default?"
@@ -735,19 +817,28 @@
   "Send stats to Metabase's snowplow collector. Transforms stats into the format required by the Snowplow schema."
   [stats]
   (let [instance-attributes (snowplow-instance-attributes stats)
+        metrics             (snowplow-metrics stats (->snowplow-metric-info))
         features            (snowplow-features)]
     {:instance-attributes instance-attributes
+     :metrics             metrics
      :features            features}))
+
+(defn- generate-instance-stats!
+  "Generate stats for this instance as data"
+  []
+  (let [stats (legacy-anonymous-usage-stats)]
+    {:stats stats
+     :snowplow-stats (snowplow-anonymous-usage-stats stats)}))
 
 (defn phone-home-stats!
   "Collect usage stats and phone them home"
   []
   (when (public-settings/anon-tracking-enabled)
-    (let [start-time-ms  (System/currentTimeMillis)
-          stats          (legacy-anonymous-usage-stats)
-          snowplow-stats (snowplow-anonymous-usage-stats stats)
-          end-time-ms    (System/currentTimeMillis)
-          elapsed-secs   (quot (- end-time-ms start-time-ms) 1000)]
+    (let [start-time-ms            (System/currentTimeMillis)
+          {:keys [stats
+                  snowplow-stats]} (generate-instance-stats!)
+          end-time-ms              (System/currentTimeMillis)
+          elapsed-secs             (quot (- end-time-ms start-time-ms) 1000)]
       #_{:clj-kondo/ignore [:deprecated-var]}
       (send-stats-deprecated! stats)
       (snowplow/track-event! ::snowplow/instance_stats
