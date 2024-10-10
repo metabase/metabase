@@ -137,7 +137,7 @@
 ;; admin shouldn't get email saying user joined until they accept the invite (i.e., reset their password)
 
 (deftest new-user-emails-test
-  (notification.tu/with-send-notification-sync!
+  (notification.tu/with-send-notification-sync
     (testing "New user should get an invite email"
       (is (= {"<New User>" ["You're invited to join Metabase's Metabase"]}
              (invite-user-accept-and-check-inboxes! :invitor default-invitor, :accept-invite? false))))

@@ -97,7 +97,7 @@
     (testing "Check that a second admin can be created during setup, and that an invite email is sent successfully and
              a Snowplow analytics event is sent"
       (mt/with-premium-features #{:audit-app}
-        (notification.tu/with-send-notification-sync!
+        (notification.tu/with-send-notification-sync
           (mt/with-fake-inbox
             (snowplow-test/with-fake-snowplow-collector
               (let [email              (mt/random-email)

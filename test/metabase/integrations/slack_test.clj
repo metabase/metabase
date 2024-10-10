@@ -280,7 +280,7 @@
                   (slack/post-chat-message! "C94712B6X" ":wow:"))))))))
 
 (deftest slack-token-error-test
-  (notification.tu/with-send-notification-sync!
+  (notification.tu/with-send-notification-sync
     (tu/with-temporary-setting-values [slack-app-token    "test-token"
                                        admin-email         nil
                                        #_:clj-kondo/ignore slack-token-valid? true]
