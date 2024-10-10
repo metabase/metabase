@@ -12,9 +12,14 @@ You can embed Metabase tables, charts, and dashboards—even Metabase's query bu
 
 There are three ways to embed Metabase in your app:
 
+- [Embedding SDK with React](#embedding-sdk-with-react-beta)
 - [Interactive embedding](#interactive-embedding)
 - [Static embedding](#static-embedding)
 - [Public links and embeds](#public-links-and-embeds)
+
+## Embedding SDK with React (BETA)
+
+With the [Embedding SDK](./embedding-sdk-introduction.md), you can embed individual Metabase components with React (like standalone charts, dashboards, the query builder, and more). You can manage access and interactivity per component, and you have advanced customization for seamless styling.
 
 ## Interactive embedding
 
@@ -36,16 +41,18 @@ If you'd like to share your data with the good people of the internet, admins ca
 
 ## Comparison of embedding types
 
-| Action                                                                                                                          | [Interactive](./interactive-embedding.md) | [Static](./static-embedding.md) | [Public](../questions/sharing/public-links.md) |
-| ------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- | ------------------------------- | ---------------------------------------------- |
-| Display charts and dashboards                                                                                                   | ✅                                        | ✅                              | ✅                                             |
-| Display interactive [filter widgets](https://www.metabase.com/glossary/filter_widget)                                           | ✅                                        | ✅                              | ✅                                             |
-| Restrict data with [locked filters](./static-embedding-parameters.md#restricting-data-in-a-static-embed-with-locked-parameters) | ❌                                        | ✅                              | ❌                                             |
-| Restrict data with [sandboxes](../permissions/data-sandboxes.md)                                                                | ✅                                        | ❌                              | ❌                                             |
-| Use the [drill-through menu](https://www.metabase.com/learn/questions/drill-through)                                            | ✅                                        | ❌                              | ❌                                             |
-| Self-serve via [query builder](https://www.metabase.com/glossary/query_builder)                                                 | ✅                                        | ❌                              | ❌                                             |
-| View usage of embeds with [usage analytics](../usage-and-performance-tools/usage-analytics.md)                                  | ✅                                        | ❌                              | ❌                                             |
-| [Actions on dashboards](../dashboards/actions.md)                                                                               | ✅                                        | ❌                              | ❌                                             |
+| Action                                                                                                                          | [Embedding SDK](./embedding-sdk-introduction.md) | [Interactive](./interactive-embedding.md) | [Static](./static-embedding.md) | [Public](../questions/sharing/public-links.md) |
+| ------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ | ----------------------------------------- | ------------------------------- | ---------------------------------------------- |
+| Display charts and dashboards                                                                                                   | ✅                                               | ✅                                        | ✅                              | ✅                                             |
+| Display interactive [filter widgets](https://www.metabase.com/glossary/filter_widget)                                           | ✅                                               | ✅                                        | ✅                              | ✅                                             |
+| Restrict data with [locked filters](./static-embedding-parameters.md#restricting-data-in-a-static-embed-with-locked-parameters) | ❌                                               | ❌                                        | ✅                              | ❌                                             |
+| Restrict data with [sandboxes](../permissions/data-sandboxes.md)                                                                | ✅                                               | ✅                                        | ❌                              | ❌                                             |
+| Use the [drill-through menu](https://www.metabase.com/learn/questions/drill-through)                                            | ✅                                               | ✅                                        | ❌                              | ❌                                             |
+| Self-serve via [query builder](https://www.metabase.com/glossary/query_builder)                                                 | ✅                                               | ✅                                        | ❌                              | ❌                                             |
+| View usage of embeds with [usage analytics](../usage-and-performance-tools/usage-analytics.md)                                  | ✅                                               | ✅                                        | ❌                              | ❌                                             |
+| [Actions on dashboards](../dashboards/actions.md)                                                                               | ✅                                               | ✅                                        | ❌                              | ❌                                             |
+| Embed individual Metabase components                                                                                            | ✅                                               | ❌                                        | ❌                              | ❌                                             |
+| Manage access and interactivity per component                                                                                   | ✅                                               | ❌                                        | ❌                              | ❌                                             |
 
 ## Switching from static to interactive embedding
 
