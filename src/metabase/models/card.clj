@@ -22,6 +22,7 @@
    [metabase.models.audit-log :as audit-log]
    [metabase.models.card.metadata :as card.metadata]
    [metabase.models.collection :as collection]
+   [metabase.models.dashboard-card :as dashboard-card]
    [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
    [metabase.models.moderation-review :as moderation-review]
@@ -39,6 +40,7 @@
    [metabase.query-analysis :as query-analysis]
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
+   [metabase.util.autoplace :as autoplace]
    [metabase.util.embed :refer [maybe-populate-initially-published-at]]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
@@ -411,22 +413,34 @@
   `(binding [*updating-dashboard* true]
      ~@body))
 
-(defn- was-dashboard-question? [card changes]
-  (or (dashboard-internal-card? card)
-      (and (contains? changes :dashboard_id)
-           (not (:dashboard_id changes)))))
-
 (defn- is-valid-dashboard-internal-card-for-update [card changes]
-  (or (and (not (was-dashboard-question? card changes))
-           (not (contains? changes :dashboard_id)))
+  (let [dq-will-change? (api/column-will-change? :dashboard_id card changes)
+        will-be-dq? (or (and (not dq-will-change?)
+                             (:dashboard_id card))
+                        (and dq-will-change?
+                             (:dashboard_id changes)))]
+    (if-not will-be-dq?
+      true
       (and
-       (was-dashboard-question? card changes)
-       (or *updating-dashboard* (not (contains? changes :collection_id)))
-       (not (contains? changes :collection_position))
-       (or (not (contains? changes :type))
-           (contains? #{:question "question" nil} (:type changes))))))
+       (or *updating-dashboard* (not (api/column-will-change? :collection_id card changes)))
+       (not (api/column-will-change? :collection_position card changes))
+       (not (api/column-will-change? :type card changes))))))
 
 (defn- assert-is-valid-dashboard-internal-update [changes card]
+  (let [dashboard-id->name (dissoc
+                            (t2/select-fn->fn :id :name :model/Dashboard
+                                              {:select [[:dashboard_id :id]
+                                                        [:dashboard.name :name]]
+                                               :from [[:report_dashboard :dashboard]]
+                                               :join [[:report_dashboardcard :dc] [:= :dc.dashboard_id :dashboard.id]]
+                                               :where [:= :dc.card_id (:id card)]
+                                               :group-by [:dashboard_id :dashboard.name]})
+                            (:dashboard_id changes)
+                            (:dashboard_id card))]
+    (when (and (:dashboard_id changes) (seq dashboard-id->name))
+      (throw (ex-info (tru "Cannot convert to dashboard question: appears in other dashboards ({0})" (str/join "," (vals dashboard-id->name)))
+                      {:status-code 400
+                       :other-dashboards dashboard-id->name}))))
   (when-not (is-valid-dashboard-internal-card-for-update card changes)
     (throw (ex-info (tru "Invalid dashboard-internal card")
                     {:status-code 400
@@ -611,9 +625,13 @@
     (parameter-card/upsert-or-delete-from-parameters! "card" (:id card) (:parameters card))
     (query-analysis/analyze! card)))
 
+(defn- apply-dashboard-question-updates [changes]
+  (if (:dashboard_id changes)
+    (assoc changes :collection_id (t2/select-one-fn :collection_id :model/Dashboard :id (:dashboard_id changes)))
+    changes))
+
 (t2/define-before-update :model/Card
   [{:keys [verified-result-metadata?] :as card}]
-  (assert-is-valid-dashboard-internal-update (t2/changes card) card)
   ;; remove all the unchanged keys from the map, except for `:id`, so the functions below can do the right thing since
   ;; they were written pre-Toucan 2 and don't know about [[t2/changes]]...
   ;;
@@ -621,6 +639,7 @@
   ;; https://github.com/camsaul/toucan2/issues/145 .
   ;; TODO: ^ that's been fixed, this could be refactored
   (-> (into {:id (:id card)} (t2/changes (dissoc card :verified-result-metadata?)))
+      (apply-dashboard-question-updates)
 
       maybe-normalize-query
       ;; If we have fresh result_metadata, we don't have to populate it anew. When result_metadata doesn't
@@ -655,6 +674,18 @@
 
 ;;; ----------------------------------------------- Creating Cards ----------------------------------------------------
 
+(defn- autoplace-dashcard-for-card! [dashboard-id card]
+  (let [dashboard (t2/hydrate (t2/select-one :model/Dashboard dashboard-id) :dashcards [:tabs :tab-cards])
+        {:keys [dashcards tabs]} dashboard
+        already-on-dashboard? (seq (filter #(= (:id card) (:card_id %)) dashcards))
+        cards-on-first-tab (or (first tabs)
+                               (sort dashboard-card/dashcard-comparator dashcards))
+        new-spot (autoplace/get-position-for-new-dashcard cards-on-first-tab)]
+    (when-not already-on-dashboard?
+      (t2/insert! :model/DashboardCard (assoc new-spot
+                                              :card_id (:id card)
+                                              :dashboard_id dashboard-id)))))
+
 (defn create-card!
   "Create a new Card. Metadata will be fetched off thread. If the metadata takes longer than [[metadata-sync-wait-ms]]
   the card will be saved without metadata and it will be saved to the card in the future when it is ready.
@@ -687,6 +718,8 @@
                                               (t2/insert-returning-instance! Card (cond-> card-data
                                                                                     metadata
                                                                                     (assoc :result_metadata metadata))))]
+     (when-let [dashboard-id (:dashboard_id card)]
+       (autoplace-dashcard-for-card! dashboard-id card))
      (when-not delay-event?
        (events/publish-event! :event/card-create {:object card :user-id (:id creator)}))
      (when metadata-future
@@ -824,10 +857,28 @@
 (defn update-card!
   "Update a Card. Metadata is fetched asynchronously. If it is ready before [[metadata-sync-wait-ms]] elapses it will be
   included, otherwise the metadata will be saved to the database asynchronously."
-  [{:keys [card-before-update card-updates actor]}]
+  [{:keys [card-before-update card-updates actor delete-old-dashcards?]}]
   ;; don't block our precious core.async thread, run the actual DB updates on a separate thread
   (t2/with-transaction [_conn]
     (api/maybe-reconcile-collection-position! card-before-update card-updates)
+
+    (assert-is-valid-dashboard-internal-update card-updates card-before-update)
+
+    (when (:dashboard_id card-updates)
+      (autoplace-dashcard-for-card! (:dashboard_id card-updates)
+                                    card-before-update))
+
+    (when (or
+           ;; we're moving from one dashboard to another
+           (and (:dashboard_id card-updates)
+                (:dashboard_id card-before-update))
+           ;; we're moving from a dashboard into a collection, AND the user told us they want to remove the old dashcards
+           (and (:dashboard_id card-before-update)
+                (not (:dashboard_id card-updates))
+                delete-old-dashcards?))
+      (t2/delete! :model/DashboardCard
+                  :card_id (:id card-before-update)
+                  :dashboard_id (:dashboard_id card-before-update)))
 
     (when (and (card-is-verified? card-before-update)
                (changed? card-compare-keys card-before-update card-updates))
@@ -843,7 +894,7 @@
                 (u/select-keys-when card-updates
                                     ;; `collection_id` and `description` can be `nil` (in order to unset them).
                                     ;; Other values should only be modified if they're passed in as non-nil
-                                    :present #{:collection_id :collection_position :description :cache_ttl :archived_directly}
+                                    :present #{:collection_id :collection_position :description :cache_ttl :archived_directly :dashboard_id}
                                     :non-nil #{:dataset_query :display :name :visualization_settings :archived
                                                :enable_embedding :type :parameters :parameter_mappings :embedding_params
                                                :result_metadata :collection_preview :verified-result-metadata?})))

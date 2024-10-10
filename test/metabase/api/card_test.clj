@@ -3900,8 +3900,10 @@
                  :model/Collection {other-coll-id :id} {}
                  :model/Dashboard {dash-id :id} {:collection_id coll-id}]
     (testing "We can create a dashboard internal card"
-      (mt/user-http-request :crowberto :post 200 "card" (assoc (card-with-name-and-query)
-                                                               :dashboard_id dash-id)))
+      (let [card-id (:id (mt/user-http-request :crowberto :post 200 "card" (assoc (card-with-name-and-query)
+                                                                                  :dashboard_id dash-id)))]
+        (testing "We autoplace a dashboard card for the new question"
+          (t2/exists? :model/DashboardCard :dashboard_id dash-id :card_id card-id))))
     (testing "We can't create a dashboard internal card with a collection_id different that its dashboard's"
       (mt/user-http-request :crowberto :post 400 "card" (assoc (card-with-name-and-query)
                                                                :dashboard_id dash-id
@@ -3934,14 +3936,81 @@
     (testing "we can update the name"
       (is (mt/user-http-request :crowberto :put 200 (str "card/" card-id) {:name "foo"}))
       (is (= "foo" (t2/select-one-fn :name :model/Card card-id))))
-    (testing "We can't update with `dashboard_id` for a normal card."
-      ;; we get a 200 because the param is ignored
+    (testing "We can update with `dashboard_id` for a normal card."
       (is (mt/user-http-request :crowberto :put 200 (str "card/" other-card-id) {:dashboard_id dash-id}))
-      (is (not (= dash-id (t2/select-one-fn :dashboard_id :model/Card :id other-card-id)))))
-    (testing "We CAN'T update a DQ with a `dashboard_id`"
+      (is (= dash-id (t2/select-one-fn :dashboard_id :model/Card :id other-card-id))))
+    (testing "We can update a DQ with a `dashboard_id`"
       (is (mt/user-http-request :crowberto :put 200 (str "card/" card-id) {:dashboard_id other-dash-id}))
-      (is (= coll-id (t2/select-one-fn :collection_id :model/Card :id card-id))))
+      (is (nil? (t2/select-one-fn :collection_id :model/Card :id card-id))))
     (testing "We can't update the `collection_id`"
       (is (mt/user-http-request :crowberto :put 400 (str "card/" card-id) {:collection_id other-coll-id})))
     (testing "We can't set the `type`"
       (is (mt/user-http-request :crowberto :put 400 (str "card/" card-id) {:type "model"})))))
+
+(deftest moving-dashboard-questions
+  (testing "We can move a dashboard question to a collection"
+    (mt/with-temp [:model/Collection {coll-id :id} {}
+                   :model/Dashboard {dash-id :id} {:collection_id coll-id}
+                   :model/Card {card-id :id} {:dashboard_id dash-id}
+                   :model/DashboardCard _ {:dashboard_id dash-id
+                                           :card_id      card-id}]
+      (is (=? {:collection_id coll-id
+               :dashboard_id  nil}
+              (mt/user-http-request :rasta :put 200 (str "card/" card-id) {:collection_id coll-id
+                                                                           :dashboard_id  nil})))
+      (is (= coll-id (t2/select-one-fn :collection_id :model/Card card-id)))
+      ;; the old dashboardcard is still there (we don't remove the card from the dashboard it was in)
+      (is (t2/exists? :model/DashboardCard :dashboard_id dash-id :card_id card-id))))
+  (testing "We can move a dashboard question to a collection and remove the old reference to it"
+    (mt/with-temp [:model/Collection {coll-id :id} {}
+                   :model/Dashboard {dash-id :id} {:collection_id coll-id}
+                   :model/Card {card-id :id} {:dashboard_id dash-id}
+                   :model/DashboardCard _ {:dashboard_id dash-id
+                                           :card_id      card-id}]
+      (is (=? {:collection_id coll-id
+               :dashboard_id  nil}
+              (mt/user-http-request :rasta :put 200 (str "card/" card-id) {:collection_id coll-id
+                                                                           :dashboard_id  nil
+                                                                           :delete_old_dashcards "true"})))
+      (is (= coll-id (t2/select-one-fn :collection_id :model/Card card-id)))
+      ;; we remove the card from the dashboard it was in
+      (is (not (t2/exists? :model/DashboardCard :dashboard_id dash-id :card_id card-id)))))
+  (testing "We can move a question from a collection to a dashboard it is already in"
+    (mt/with-temp [:model/Collection {coll-id :id} {}
+                   :model/Dashboard {dash-id :id} {:collection_id coll-id}
+                   :model/Card {card-id :id} {}
+                   :model/DashboardCard _ {:dashboard_id dash-id
+                                           :card_id      card-id}]
+      (is (=? {:collection_id coll-id
+               :dashboard_id  dash-id}
+              (mt/user-http-request :rasta :put 200 (str "card/" card-id) {:dashboard_id dash-id})))))
+  (testing "We can move a question from a collection to a dashboard it is NOT already in"
+    (mt/with-temp [:model/Collection {coll-id :id} {}
+                   :model/Dashboard {dash-id :id} {:collection_id coll-id}
+                   :model/Card {card-id :id} {}]
+      (is (=? {:collection_id coll-id
+               :dashboard_id  dash-id}
+              (mt/user-http-request :rasta :put 200 (str "card/" card-id) {:dashboard_id dash-id})))
+      (is (=? {:dashboard_id dash-id :card_id card-id}
+              (t2/select-one :model/DashboardCard :dashboard_id dash-id :card_id card-id)))))
+  (testing "We can move a question from one dashboard to another"
+    (mt/with-temp [:model/Collection {source-coll-id :id} {}
+                   :model/Collection {dest-coll-id :id} {}
+                   :model/Dashboard {source-dash-id :id} {:collection_id source-coll-id}
+                   :model/Dashboard {dest-dash-id :id} {:collection_id dest-coll-id}
+                   :model/Card {card-id :id} {:dashboard_id source-dash-id}
+                   :model/DashboardCard _ {:dashboard_id source-dash-id :card_id card-id}]
+      (is (=? {:collection_id dest-coll-id
+               :dashboard_id  dest-dash-id}
+              (mt/user-http-request :rasta :put 200 (str "card/" card-id) {:dashboard_id dest-dash-id})))
+      (testing "old dashcards are deleted, a new one is created"
+        (is (=? #{dest-dash-id}
+                (set (map :dashboard_id (t2/select :model/DashboardCard :card_id card-id))))))))
+  (testing "We can't move a question from a collection to a dashboard if it's in another dashboard"
+    (mt/with-temp [:model/Collection {coll-id :id} {}
+                   :model/Dashboard {dash-id :id} {:collection_id coll-id}
+                   :model/Dashboard {other-dash-id :id} {}
+                   :model/Card {card-id :id} {}
+                   :model/DashboardCard _ {:dashboard_id other-dash-id
+                                           :card_id      card-id}]
+      (mt/user-http-request :rasta :put 400 (str "card/" card-id) {:dashboard_id dash-id}))))

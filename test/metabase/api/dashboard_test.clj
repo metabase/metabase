@@ -4929,10 +4929,149 @@
                    :model/Card {card-id :id} {:dashboard_id dash-id}]
       (mt/user-http-request :crowberto :put 200 (str "dashboard/" dash-id) {:archived "true"})
       (is (t2/select-one-fn :archived :model/Card card-id))))
+  (testing "It gets unarchived with the dashboard"
+    (mt/with-temp [:model/Dashboard {dash-id :id} {}
+                   :model/Card {card-id :id} {:dashboard_id dash-id}]
+      (mt/user-http-request :crowberto :put 200 (str "dashboard/" dash-id) {:archived "true"})
+      (mt/user-http-request :crowberto :put 200 (str "dashboard/" dash-id) {:archived "false"})
+      (is (not (t2/select-one-fn :archived :model/Card card-id)))))
   (testing "It gets archived with the dashboard if the dashboard is archived from a collection"
     (mt/with-temp [:model/Collection {coll-id :id} {}
                    :model/Dashboard {dash-id :id} {:collection_id coll-id}
                    :model/Card {card-id :id} {:dashboard_id dash-id}]
       (mt/user-http-request :crowberto :put 200 (str "collection/" coll-id) {:archived "true"})
       (is (t2/select-one-fn :archived :model/Dashboard dash-id))
-      (is (t2/select-one-fn :archived :model/Card card-id)))))
+      (is (t2/select-one-fn :archived :model/Card card-id))))
+  (testing "It gets unarchived with the dashboard if the dashboard is unarchived from a collection"
+    (mt/with-temp [:model/Collection {coll-id :id} {}
+                   :model/Dashboard {dash-id :id} {:collection_id coll-id}
+                   :model/Card {card-id :id} {:dashboard_id dash-id}]
+      (mt/user-http-request :crowberto :put 200 (str "collection/" coll-id) {:archived true})
+      (mt/user-http-request :crowberto :put 200 (str "collection/" coll-id) {:archived false})
+      (is (not (t2/select-one-fn :archived :model/Dashboard dash-id)))
+      (is (not (t2/select-one-fn :archived :model/Card card-id))))))
+
+(deftest dashboard-questions-are-archived-when-unused-and-vice-versa
+  (testing "The dashboard question is archived when it's removed from the dashboard"
+    (mt/with-temp [:model/Dashboard {dash-id :id} {}
+                   :model/Card {card-id :id} {:dashboard_id dash-id}
+                   :model/DashboardCard _ {:card_id card-id :dashboard_id dash-id}]
+      (mt/user-http-request :rasta :put 200 (str "dashboard/" dash-id) {:dashcards []})
+      (is (not (t2/exists? :model/DashboardCard :card_id card-id :dashboard_id dash-id)))
+      (is (t2/select-one-fn :archived :model/Card card-id))))
+  (testing "The dashboard question is unarchived when it's re-added to the dashboard"
+    (mt/with-temp [:model/Dashboard {dash-id :id} {}
+                   :model/Card {card-id :id} {:dashboard_id dash-id}]
+      (is (mt/user-http-request :rasta :put 200 (str "dashboard/" dash-id) {:dashcards [{:card_id card-id
+                                                                                         :id -1
+                                                                                         :size_x 10
+                                                                                         :size_y 10
+                                                                                         :col 0 :row 0}]}))
+      (is (t2/exists? :model/DashboardCard :card_id card-id :dashboard_id dash-id))
+      (is (not (t2/select-one-fn :archived :model/Card card-id))))))
+
+(deftest dashboard-items-works
+  (testing "Dashboard items is empty when the dashboard is a normal dashboard w/o DQs"
+    (mt/with-temp [:model/Dashboard {dash-id :id} {}
+                   :model/Card {card-id :id} {}
+                   :model/DashboardCard _ {:card_id card-id :dashboard_id dash-id}]
+      (is (= {:total 0 :data [] :models []}
+             (mt/user-http-request :rasta :get 200 (str "dashboard/" dash-id "/items"))))))
+  (testing "Dashboard items is present when the dashboard has DQs"
+    (mt/with-temp [:model/Dashboard {dash-id :id} {}
+                   :model/Card {card-id :id} {:dashboard_id dash-id}
+                   :model/DashboardCard _ {:card_id card-id :dashboard_id dash-id}]
+      (is (= {:total 1
+              :data [{:id card-id}]
+              :models ["card"]}
+             (update (mt/user-http-request :rasta :get 200 (str "dashboard/" dash-id "/items"))
+                     :data
+                     #(map (fn [card] (select-keys card [:id])) %))))))
+  (testing "DQs don't appear twice even if they appear multiple times in the dashboard"
+    (mt/with-temp [:model/Dashboard {dash-id :id} {}
+                   :model/Card {card-id :id} {:dashboard_id dash-id}
+                   :model/DashboardCard _ {:card_id card-id :dashboard_id dash-id}
+                   :model/DashboardCard _ {:card_id card-id :dashboard_id dash-id}]
+      (is (= {:total 1
+              :data [{:id card-id}]
+              :models ["card"]}
+             (update (mt/user-http-request :rasta :get 200 (str "dashboard/" dash-id "/items"))
+                     :data
+                     #(map (fn [card] (select-keys card [:id])) %)))))))
+
+(defn- get-revisions-http-req [dash-id]
+  (mt/user-http-request :rasta :get 200 (str "dashboard/" dash-id "/revisions")))
+
+(defn- post-revert-http-req [dash-id rev-id]
+  (mt/user-http-request :rasta :post 200 (str "dashboard/" dash-id "/revert")
+                        {:revision_id rev-id}))
+
+(defn- update-dashcards! [dash-id card-ids]
+  (mt/user-http-request :rasta :put 200 (str "dashboard/" dash-id)
+                        {:dashcards (map-indexed (fn [idx card-id]
+                                                   {:id (- (inc idx))
+                                                    :card_id card-id
+                                                    :col 0
+                                                    :row idx
+                                                    :size_x 10
+                                                    :size_y 10})
+                                                 card-ids)}))
+
+(deftest revert-dashboard-behaves-for-dashboard-questions
+  (testing "POST /api/dashboard/:id/revert"
+    (testing "My DQ is moved to another Dashboard"
+      (mt/with-temp [:model/Dashboard {dash-id :id} {}
+                     :model/Dashboard {other-dash-id :id} {}
+                     :model/Card {dq-id :id} {:dashboard_id dash-id}
+                     :model/Card {card-id :id} {}]
+        (update-dashcards! dash-id [card-id dq-id])
+        (update-dashcards! dash-id [])
+        (t2/update! :model/Card dq-id {:dashboard_id other-dash-id})
+        (post-revert-http-req dash-id (:id (second (get-revisions-http-req dash-id))))
+        (is (= #{card-id} (t2/select-fn-set :card_id :model/DashboardCard :dashboard_id dash-id)))
+        (is (= 1 (t2/count :model/DashboardCard :dashboard_id dash-id)))))
+    (testing "My DQ is turned into a regular Question in a collection"
+      (mt/with-temp [:model/Dashboard {dash-id :id} {}
+                     :model/Card {dq-id :id} {:dashboard_id dash-id}
+                     :model/Card {card-id :id} {}]
+        (update-dashcards! dash-id [card-id dq-id])
+        ;; make it a non-DQ before removing it, otherwise it will be auto-archived
+        (t2/update! :model/Card dq-id {:dashboard_id nil})
+        (update-dashcards! dash-id [])
+        (post-revert-http-req dash-id (:id (second (get-revisions-http-req dash-id))))
+        (is (= #{dq-id card-id} (t2/select-fn-set :card_id :model/DashboardCard :dashboard_id dash-id)))
+        (is (= 2 (t2/count :model/DashboardCard :dashboard_id dash-id)))))
+    (testing "A regular card is moved to another Dashboard"
+      (mt/with-temp [:model/Dashboard {dash-id :id} {}
+                     :model/Dashboard {other-dash-id :id} {}
+                     :model/Card {dq-id :id} {:dashboard_id dash-id}
+                     :model/Card {card-id :id} {}]
+        (update-dashcards! dash-id [card-id dq-id])
+        (update-dashcards! dash-id [])
+        (t2/update! :model/Card card-id {:dashboard_id other-dash-id})
+        (post-revert-http-req dash-id (:id (second (get-revisions-http-req dash-id))))
+        (is (= 1 (t2/count :model/DashboardCard :dashboard_id dash-id)))
+        (is (= #{dq-id} (t2/select-fn-set :card_id :model/DashboardCard :dashboard_id dash-id)))))
+    (testing "A card becomes a model"
+      (mt/with-temp [:model/Dashboard {dash-id :id} {}
+                     :model/Card {dq-id :id} {:dashboard_id dash-id
+                                              :name "Total orders per month"
+                                              :display :line
+                                              :visualization_settings
+                                              {:graph.dimensions ["CREATED_AT"]
+                                               :graph.metrics ["sum"]}
+                                              :dataset_query
+                                              (mt/$ids
+                                                {:database (mt/id)
+                                                 :type     :query
+                                                 :query    {:source-table $$orders
+                                                            :aggregation  [[:sum $orders.total]]
+                                                            :breakout     [!month.orders.created_at]}})}]
+        (update-dashcards! dash-id [dq-id])
+        ;; turn it into a model outside the DQ
+        (t2/update! :model/Card dq-id {:dashboard_id nil :type :model})
+        ;; remove it from the dashboard
+        (update-dashcards! dash-id [])
+        (post-revert-http-req dash-id (:id (second (get-revisions-http-req dash-id))))
+        (is (= 1 (t2/count :model/DashboardCard :dashboard_id dash-id)))
+        (is (= #{dq-id} (t2/select-fn-set :card_id :model/DashboardCard :dashboard_id dash-id)))))))

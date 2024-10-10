@@ -85,6 +85,15 @@
                   (assoc :fully_parameterized (api.collection/fully-parameterized-query? card))
                   (dissoc :dataset_query))))))
 
+(defn- annotate-dashboard-with-collection-info
+  "For dashboards, we want `here` and `location` since they can contain cards as children."
+  [dashboards]
+  (for [{parent-coll :collection
+         :as dashboard} (api.collection/annotate-dashboards dashboards)]
+    (assoc dashboard
+           :location (or (some-> parent-coll collection/children-location)
+                         "/"))))
+
 (defmethod present-model-items :model/Dashboard [_ dashboards]
   (->> (t2/hydrate (t2/select [:model/Dashboard
                                :id
@@ -101,6 +110,7 @@
 
                               :id [:in (set (map :id dashboards))])
                    :can_write :can_delete :can_restore [:collection :effective_location])
+       annotate-dashboard-with-collection-info
        present-collections))
 
 (api/defendpoint GET "/:id"

@@ -1103,6 +1103,21 @@
             (testing "when the item has a dashboard, that's reflected in `here` too"
               (is (= #{"collection" "dashboard"} (set (:here (item))))))))))))
 
+(deftest dashboards-include-here
+  (testing "GET /api/collection/:id/items"
+    (mt/with-temp [:model/Collection {coll-id :id} {:name "Collection with items"}
+                   :model/Dashboard {dash-id :id} {:collection_id coll-id}
+                   :model/Card {card-id :id} {:dashboard_id dash-id}
+                   :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
+      (testing "sanity check, only the dashboard is there"
+        (is (= 1 (:total (mt/user-http-request :rasta :get 200 (format "collection/%d/items" coll-id))))))
+      (testing "the dashboard has 'here'"
+        (is (= [{:here ["card"]
+                 :id dash-id}]
+               (->> (mt/user-http-request :rasta :get 200 (format "collection/%d/items" coll-id))
+                    :data
+                    (map #(select-keys % [:here :id])))))))))
+
 (deftest children-sort-clause-test
   ;; we always place "special" collection types (i.e. "Metabase Analytics") last
   (testing "Default sort"
