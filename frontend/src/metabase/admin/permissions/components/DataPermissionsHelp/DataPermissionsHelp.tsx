@@ -223,7 +223,7 @@ export const DataPermissionsHelp = () => {
         </Accordion.Item>
       </Accordion>
 
-      <Text component="footer" align="center" py="1.5rem" weight={600}>
+      <Text component="footer" ta="center" py="1.5rem" fw={600}>
         {jt`${(
           <ExternalLink href={docsUrl}>{t`Learn more`}</ExternalLink>
         )} about data permissions`}

@@ -40,7 +40,7 @@ export const SearchResultsDropdown = ({
         onClick={goToSearchApp}
         isSelected={isSelected}
       >
-        <Text weight={700} size="sm" c="inherit">
+        <Text fw={700} size="sm" c="inherit">
           {resultText}
         </Text>
         <Icon name="arrow_right" size={14} />

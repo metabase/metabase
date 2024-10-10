@@ -38,7 +38,7 @@ export const CollectionPermissionsHelp = () => {
         />
       </Stack>
 
-      <Text component="footer" align="center" py={24} weight={600}>
+      <Text component="footer" ta="center" py={24} fw={600}>
         {jt`${(
           <ExternalLink href={url}>{t`Learn more`}</ExternalLink>
         )} about collection permissions`}

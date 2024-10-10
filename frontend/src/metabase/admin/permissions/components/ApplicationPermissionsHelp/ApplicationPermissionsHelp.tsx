@@ -32,7 +32,7 @@ export const ApplicationPermissionsHelp = () => {
         </Text>
       </Stack>
 
-      <Text component="footer" align="center" py="1rem" weight={600}>
+      <Text component="footer" ta="center" py="1rem" fw={600}>
         {jt`${(
           <ExternalLink href={url}>{t`Learn more`}</ExternalLink>
         )} about application permissions`}

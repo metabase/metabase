@@ -22,7 +22,7 @@ export function MetricEmptyState({
       <Text mb="sm" fw="bold" fz="lg">
         {t`A metric is one of the key numbers you want to keep track of`}
       </Text>
-      <Text mb="lg" c="text-medium" maw="28.75rem" align="center">
+      <Text mb="lg" c="text-medium" maw="28.75rem" ta="center">
         {t`To create one, you’ll need to define how it’s calculated, add any required filters, and optionally pick the main dimension for your metric.`}
       </Text>
       {isRunnable && (
