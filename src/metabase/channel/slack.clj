@@ -96,7 +96,7 @@
 ;; ------------------------------------------------------------------------------------------------;;
 
 (mu/defmethod channel/render-notification [:channel/slack :notification/alert] :- [:sequential SlackMessage]
-  [_channel-type {:keys [payload card]} channel-ids]
+  [_channel-type {:keys [payload card]} _template channel-ids]
   (let [attachments [{:blocks [{:type "header"
                                 :text {:type "plain_text"
                                        :text (str "🔔 " (:name card))
@@ -149,7 +149,7 @@
       attachment)))
 
 (mu/defmethod channel/render-notification [:channel/slack :notification/dashboard-subscription] :- [:sequential SlackMessage]
-  [_channel-type {:keys [payload dashboard pulse]} channel-ids]
+  [_channel-type {:keys [payload dashboard pulse]} _template channel-ids]
   (for [channel-id channel-ids]
     {:channel-id  channel-id
      :attachments (remove nil?

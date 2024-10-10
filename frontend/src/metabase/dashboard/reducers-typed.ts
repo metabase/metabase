@@ -5,6 +5,8 @@ import { omit } from "underscore";
 import {
   updateDashboardEmbeddingParams,
   updateDashboardEnableEmbedding,
+  createDashboardPublicLink,
+  deleteDashboardPublicLink,
 } from "metabase/api";
 import Dashboards from "metabase/entities/dashboards";
 import { handleActions } from "metabase/lib/redux";
@@ -36,8 +38,6 @@ import {
   SHOW_AUTO_APPLY_FILTERS_TOAST,
   addCardToDash,
   addManyCardsToDash,
-  createPublicLink,
-  deletePublicLink,
   fetchDashboard,
   markCardAsSlow,
   setDashboardAttributes,
@@ -306,11 +306,15 @@ export const dashboards = createReducer(
           draftDashboard.collection = payload.dashboard.collection;
         }
       })
-      .addCase(createPublicLink.fulfilled, (state, { payload }) =>
-        assocIn(state, [payload.id, "public_uuid"], payload.uuid),
+      .addMatcher(
+        createDashboardPublicLink.matchFulfilled,
+        (state, { payload }) =>
+          assocIn(state, [payload.id, "public_uuid"], payload.uuid),
       )
-      .addCase(deletePublicLink.fulfilled, (state, { payload }) =>
-        assocIn(state, [payload.id, "public_uuid"], null),
+      .addMatcher(
+        deleteDashboardPublicLink.matchFulfilled,
+        (state, { payload }) =>
+          assocIn(state, [payload.id, "public_uuid"], null),
       )
       .addMatcher(
         updateDashboardEmbeddingParams.matchFulfilled,

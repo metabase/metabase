@@ -29,8 +29,8 @@ export const dashboardApi = Api.injectEndpoints({
   endpoints: builder => {
     const updateDashboardPropertyMutation = <
       Key extends keyof UpdateDashboardRequest,
-    >() => {
-      return builder.mutation<Dashboard, UpdateDashboardPropertyRequest<Key>>({
+    >() =>
+      builder.mutation<Dashboard, UpdateDashboardPropertyRequest<Key>>({
         query: ({ id, ...body }) => ({
           method: "PUT",
           url: `/api/dashboard/${id}`,
@@ -39,7 +39,6 @@ export const dashboardApi = Api.injectEndpoints({
         invalidatesTags: (_, error, { id }) =>
           invalidateTags(error, [listTag("dashboard"), idTag("dashboard", id)]),
       });
-    };
 
     return {
       listDashboards: builder.query<
@@ -141,6 +140,7 @@ export const dashboardApi = Api.injectEndpoints({
         updateDashboardPropertyMutation<"enable_embedding">(),
       updateDashboardEmbeddingParams:
         updateDashboardPropertyMutation<"embedding_params">(),
+
       listPublicDashboards: builder.query<GetPublicDashboard[], void>({
         query: params => ({
           method: "GET",
@@ -153,7 +153,7 @@ export const dashboardApi = Api.injectEndpoints({
         ],
       }),
       createDashboardPublicLink: builder.mutation<
-        { uuid: Dashboard["public_uuid"] },
+        Pick<Dashboard, "id"> & { uuid: Dashboard["public_uuid"] },
         Pick<Dashboard, "id">
       >({
         query: ({ id }) => ({
@@ -162,12 +162,21 @@ export const dashboardApi = Api.injectEndpoints({
         }),
         invalidatesTags: (_, error) =>
           invalidateTags(error, [listTag("public-dashboard")]),
+        transformResponse: ({ uuid }, _meta, { id }) => ({
+          id,
+          uuid,
+        }),
       }),
-      deleteDashboardPublicLink: builder.mutation<void, Pick<Dashboard, "id">>({
+      deleteDashboardPublicLink: builder.mutation<
+        Pick<Dashboard, "id">,
+        Pick<Dashboard, "id">
+      >({
         query: ({ id }) => ({
           method: "DELETE",
           url: `/api/dashboard/${id}/public_link`,
         }),
+        transformResponse: (_baseQueryReturnValue, _meta, { id }) => ({ id }),
+
         invalidatesTags: (_, error, { id }) =>
           invalidateTags(error, [
             listTag("public-dashboard"),
@@ -189,6 +198,7 @@ export const {
   useCopyDashboardMutation,
   useListEmbeddableDashboardsQuery,
   useListPublicDashboardsQuery,
+  useCreateDashboardPublicLinkMutation,
   useDeleteDashboardPublicLinkMutation,
   useUpdateDashboardEnableEmbeddingMutation,
   useUpdateDashboardEmbeddingParamsMutation,
