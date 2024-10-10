@@ -3,7 +3,12 @@ import { updateIn } from "icepick";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { databaseApi, tableApi } from "metabase/api";
+import {
+  databaseApi,
+  tableApi,
+  useGetTableQuery,
+  useGetTableQueryMetadataQuery,
+} from "metabase/api";
 import Fields from "metabase/entities/fields";
 import Questions from "metabase/entities/questions";
 import Segments from "metabase/entities/segments";
@@ -50,6 +55,30 @@ const Tables = createEntity({
   nameOne: "table",
   path: "/api/table",
   schema: TableSchema,
+
+  rtk: {
+    getUseGetQuery: fetchType => {
+      if (fetchType === "fetchMetadata") {
+        return {
+          useGetQuery: useGetTableQueryMetadataQuery,
+        };
+      }
+
+      if (fetchType === "fetchMetadataDeprecated") {
+        return {
+          useGetQuery: useGetTableQueryMetadataQuery,
+        };
+      }
+
+      if (fetchType === "fetchMetadataAndForeignTables") {
+        throw new Error("Deprecated, use 'metabase/api' instead");
+      }
+
+      return {
+        useGetQuery: useGetTableQuery,
+      };
+    },
+  },
 
   api: {
     list: async ({ dbId, schemaName, ...params } = {}, dispatch) => {

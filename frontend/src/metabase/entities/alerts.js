@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { alertApi } from "metabase/api";
+import { alertApi, useGetAlertQuery } from "metabase/api";
 import {
   createEntity,
   entityCompatibleQuery,
@@ -10,6 +10,10 @@ import { addUndo } from "metabase/redux/undo";
 
 export const UNSUBSCRIBE = "metabase/entities/alerts/unsubscribe";
 
+const useGetQuery = ({ id }) => {
+  return useGetAlertQuery(id);
+};
+
 /**
  * @deprecated use "metabase/api" instead
  */
@@ -17,6 +21,12 @@ const Alerts = createEntity({
   name: "alerts",
   nameOne: "alert",
   path: "/api/alert",
+
+  rtk: {
+    getUseGetQuery: () => ({
+      useGetQuery,
+    }),
+  },
 
   api: {
     list: (entityQuery, dispatch) =>
