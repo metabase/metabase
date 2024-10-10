@@ -1,0 +1,185 @@
+.day {
+  width: 40px;
+  height: 40px;
+  color: var(--mb-color-text-dark);
+  font-size: var(--mantine-font-size-md);
+  line-height: 24px;
+  border-radius: var(--mantine-radius-xs);
+  background-color: var(--mb-color-bg-light);
+
+  &:hover {
+    background-color: var(--mb-color-bg-light);
+  }
+
+  &[data-disabled] {
+    color: var(--mb-color-bg-dark);
+  }
+
+  &[data-weekend] {
+    color: var(--mb-color-text-dark);
+  }
+
+  &[data-outside] {
+    color: var(--mb-color-bg-dark);
+  }
+
+  &[data-in-range] {
+    color: var(--mb-color-text-brand);
+    border-radius: 0;
+    background-color: var(--mb-color-background-hover);
+
+    &:hover {
+      background-color: var(--mb-color-background-hover);
+    }
+  }
+
+  &[data-first-in-range] {
+    border-start-start-radius: var(--mantine-radius-xs);
+    border-end-start-radius: var(--mantine-radius-xs);
+  }
+
+  &[data-last-in-range] {
+    border-start-end-radius: var(--mantine-radius-xs);
+    border-end-end-radius: var(--mantine-radius-xs);
+  }
+
+  &[data-selected] {
+    color: var(--mb-color-text-white);
+    background-color: var(--mb-color-background-brand);
+
+    &:hover {
+      background-color: var(--mb-color-background-brand);
+    }
+  }
+}
+
+.weekdaysRow {
+  width: 2.5rem;
+  height: 2rem;
+  color: var(--mb-color-text-light);
+  font-size: var(--mantine-font-size-sm);
+  line-height: var(--mantine-line-height-lg);
+  text-align: center;
+  padding-bottom: 0;
+}
+
+.pickerControl {
+  color: var(--mb-color-text-dark);
+  font-size: var(--mantine-font-size-md);
+  line-height: var(--mantine-line-height-lg);
+  width: 5rem;
+  height: 2rem;
+  border-radius: var(--mantine-radius-xs);
+
+  &:hover {
+    background-color: var(--mb-color-bg-light);
+  }
+
+  &[data-disabled] {
+    color: var(--mb-color-bg-dark);
+  }
+
+  &:where([data-weekend]) {
+    color: var(--mb-color-text-dark);
+  }
+
+  &[data-outside] {
+    color: var(--mb-color-bg-dark);
+  }
+
+  &[data-in-range] {
+    color: var(--mb-color-text-medium);
+    border-radius: 0;
+    background-color: var(--mb-color-brand-lighter);
+
+    &:hover {
+      background-color: var(--mb-color-brand-lighter);
+    }
+  }
+}
+
+.month {
+  --horizontal-padding: 1px;
+  --vertical-padding: 1px;
+
+  .cell {
+    &[data-with-spacing] {
+      padding: 0;
+
+      &:not(:first-of-type) {
+        padding-left: var(--horizontal-padding);
+      }
+
+      &:not(:last-of-type) {
+        padding-right: var(--horizontal-padding);
+      }
+    }
+  }
+
+  .row {
+    &:not(:first-of-type) .cell {
+      padding-top: var(--vertical-padding);
+    }
+
+    &:not(:last-of-type) .cell {
+      padding-bottom: var(--vertical-padding);
+    }
+  }
+}
+
+.monthsList,
+.yearsList {
+  --horizontal-padding: var(--mantine-spacing-sm);
+  --vertical-padding: var(--mantine-spacing-xs);
+
+  .cell {
+    &[data-with-spacing] {
+      padding: 0;
+
+      &:not(:first-of-type) {
+        padding-left: var(--horizontal-padding);
+      }
+
+      &:not(:last-of-type) {
+        padding-right: var(--horizontal-padding);
+      }
+    }
+  }
+
+  .row {
+    &:not(:first-of-type) .cell {
+      padding-top: var(--vertical-padding);
+    }
+
+    &:not(:last-of-type) .cell {
+      padding-bottom: var(--vertical-padding);
+    }
+  }
+}
+
+.calendarHeader {
+  margin-bottom: 0;
+}
+
+.calendarHeaderLevel {
+  height: 2rem;
+  color: var(--mb-color-text-dark);
+  font-size: var(--mantine-font-size-md);
+  font-weight: bold;
+  line-height: var(--mantine-line-height-lg);
+
+  &:hover {
+    background-color: var(--mb-color-bg-light);
+  }
+}
+
+.calendarHeaderControl {
+  width: 2rem;
+  height: 2rem;
+  border-radius: var(--mantine-radius-xs);
+  color: var(--mb-color-bg-dark);
+
+  &:hover {
+    background-color: var(--mb-color-bg-light);
+  }
+}
