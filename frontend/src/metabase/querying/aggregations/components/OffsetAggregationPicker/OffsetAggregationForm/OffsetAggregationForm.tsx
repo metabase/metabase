@@ -1,6 +1,7 @@
 import { useState } from "react";
+import { t } from "ttag";
 
-import { Stack } from "metabase/ui";
+import { Button, Stack } from "metabase/ui";
 
 import { ComparisonTypeInput } from "./ComparisonTypeInput";
 import type { ComparisonType, OffsetOptions } from "./types";
@@ -21,6 +22,7 @@ export function OffsetAggregationForm() {
           value={options.comparisonType}
           onChange={handleComparisonTypeChange}
         />
+        <Button variant="filled" type="submit">{t`Done`}</Button>
       </Stack>
     </form>
   );
