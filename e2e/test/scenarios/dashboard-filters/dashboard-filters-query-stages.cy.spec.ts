@@ -1,11 +1,14 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
+  changeSynchronousBatchUpdateSetting,
   createDashboardWithTabs,
   createQuestion,
   editDashboard,
+  filterWidget,
   getDashboardCard,
   popover,
   restore,
+  sidebar,
   visitDashboard,
 } from "e2e/support/helpers";
 import type {
@@ -111,7 +114,19 @@ describe("scenarios > dashboard > filters > query stages", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    changeSynchronousBatchUpdateSetting(true); // prevent last_used_param_values from breaking test isolation
     createBaseQuestions();
+
+    cy.intercept("POST", "/api/dataset").as("dataset");
+    cy.intercept("GET", "/api/dashboard/**").as("getDashboard");
+    cy.intercept("PUT", "/api/dashboard/**").as("updateDashboard");
+    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
+      "dashboardData",
+    );
+  });
+
+  afterEach(() => {
+    changeSynchronousBatchUpdateSetting(false);
   });
 
   // Sanity checks. If the base queries tests fail then something is very wrong.
@@ -144,58 +159,58 @@ describe("scenarios > dashboard > filters > query stages", () => {
       cy.log("## number columns");
       getFilter("Number").click();
       verifyNumberMappingOptions();
+
+      function verifyDateMappingOptions() {
+        verifyDashcardMappingOptions(ORDERS_QUESTION_INDEX, [
+          ["Orders", ORDERS_DATE_COLUMNS],
+          ["Product", PRODUCTS_DATE_COLUMNS],
+          ["User", PEOPLE_DATE_COLUMNS],
+        ]);
+        verifyDashcardMappingOptions(BASE_QUESTION_INDEX, [
+          ["Q0 Orders", ORDERS_DATE_COLUMNS],
+          ["Product", PRODUCTS_DATE_COLUMNS],
+          ["User", PEOPLE_DATE_COLUMNS],
+        ]);
+        verifyDashcardMappingOptions(BASE_MODEL_INDEX, [
+          ["Base Orders Model", ORDERS_DATE_COLUMNS],
+          ["Product", PRODUCTS_DATE_COLUMNS],
+          ["User", PEOPLE_DATE_COLUMNS],
+        ]);
+      }
+
+      function verifyTextMappingOptions() {
+        verifyDashcardMappingOptions(ORDERS_QUESTION_INDEX, [
+          ["Product", PRODUCTS_TEXT_COLUMNS],
+          ["User", PEOPLE_TEXT_COLUMNS],
+        ]);
+        verifyDashcardMappingOptions(BASE_QUESTION_INDEX, [
+          ["Product", PRODUCTS_TEXT_COLUMNS],
+          ["User", PEOPLE_TEXT_COLUMNS],
+        ]);
+        verifyDashcardMappingOptions(BASE_MODEL_INDEX, [
+          ["Product", PRODUCTS_TEXT_COLUMNS],
+          ["User", PEOPLE_TEXT_COLUMNS],
+        ]);
+      }
+
+      function verifyNumberMappingOptions() {
+        verifyDashcardMappingOptions(ORDERS_QUESTION_INDEX, [
+          ["Orders", ORDERS_NUMBER_COLUMNS],
+          ["Product", PRODUCTS_NUMBER_COLUMNS],
+          ["User", PEOPLE_NUMBER_COLUMNS],
+        ]);
+        verifyDashcardMappingOptions(BASE_QUESTION_INDEX, [
+          ["Q0 Orders", ORDERS_NUMBER_COLUMNS],
+          ["Product", PRODUCTS_NUMBER_COLUMNS],
+          ["User", PEOPLE_NUMBER_COLUMNS],
+        ]);
+        verifyDashcardMappingOptions(BASE_MODEL_INDEX, [
+          ["Base Orders Model", ORDERS_NUMBER_COLUMNS],
+          ["Product", PRODUCTS_NUMBER_COLUMNS],
+          ["User", PEOPLE_NUMBER_COLUMNS],
+        ]);
+      }
     });
-
-    function verifyDateMappingOptions() {
-      verifyDashcardMappingOptions(ORDERS_QUESTION_INDEX, [
-        ["Orders", ORDERS_DATE_COLUMNS],
-        ["Product", PRODUCTS_DATE_COLUMNS],
-        ["User", PEOPLE_DATE_COLUMNS],
-      ]);
-      verifyDashcardMappingOptions(BASE_QUESTION_INDEX, [
-        ["Q0 Orders", ORDERS_DATE_COLUMNS],
-        ["Product", PRODUCTS_DATE_COLUMNS],
-        ["User", PEOPLE_DATE_COLUMNS],
-      ]);
-      verifyDashcardMappingOptions(BASE_MODEL_INDEX, [
-        ["Base Orders Model", ORDERS_DATE_COLUMNS],
-        ["Product", PRODUCTS_DATE_COLUMNS],
-        ["User", PEOPLE_DATE_COLUMNS],
-      ]);
-    }
-
-    function verifyTextMappingOptions() {
-      verifyDashcardMappingOptions(ORDERS_QUESTION_INDEX, [
-        ["Product", PRODUCTS_TEXT_COLUMNS],
-        ["User", PEOPLE_TEXT_COLUMNS],
-      ]);
-      verifyDashcardMappingOptions(BASE_QUESTION_INDEX, [
-        ["Product", PRODUCTS_TEXT_COLUMNS],
-        ["User", PEOPLE_TEXT_COLUMNS],
-      ]);
-      verifyDashcardMappingOptions(BASE_MODEL_INDEX, [
-        ["Product", PRODUCTS_TEXT_COLUMNS],
-        ["User", PEOPLE_TEXT_COLUMNS],
-      ]);
-    }
-
-    function verifyNumberMappingOptions() {
-      verifyDashcardMappingOptions(ORDERS_QUESTION_INDEX, [
-        ["Orders", ORDERS_NUMBER_COLUMNS],
-        ["Product", PRODUCTS_NUMBER_COLUMNS],
-        ["User", PEOPLE_NUMBER_COLUMNS],
-      ]);
-      verifyDashcardMappingOptions(BASE_QUESTION_INDEX, [
-        ["Q0 Orders", ORDERS_NUMBER_COLUMNS],
-        ["Product", PRODUCTS_NUMBER_COLUMNS],
-        ["User", PEOPLE_NUMBER_COLUMNS],
-      ]);
-      verifyDashcardMappingOptions(BASE_MODEL_INDEX, [
-        ["Base Orders Model", ORDERS_NUMBER_COLUMNS],
-        ["Product", PRODUCTS_NUMBER_COLUMNS],
-        ["User", PEOPLE_NUMBER_COLUMNS],
-      ]);
-    }
   });
 
   describe("1-stage queries", () => {
@@ -218,110 +233,110 @@ describe("scenarios > dashboard > filters > query stages", () => {
         cy.log("## number columns");
         getFilter("Number").click();
         verifyNumberMappingOptions();
+
+        function verifyDateMappingOptions() {
+          verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
+            ["Base Orders Question", ORDERS_DATE_COLUMNS],
+            ["Reviews", REVIEWS_DATE_COLUMNS],
+            ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
+            ["User", PEOPLE_DATE_COLUMNS],
+          ]);
+          verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
+            ["Base Orders Model", ORDERS_DATE_COLUMNS],
+            ["Reviews", REVIEWS_DATE_COLUMNS],
+            ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
+            ["User", PEOPLE_DATE_COLUMNS],
+          ]);
+          verifyDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX, [
+            [
+              "Question-based Model",
+              [...ORDERS_DATE_COLUMNS, "Reviews - Product → Created At"],
+            ],
+            ["Product", PRODUCTS_DATE_COLUMNS],
+            ["Reviews - Product → Product", PRODUCTS_DATE_COLUMNS],
+            ["User", PEOPLE_DATE_COLUMNS],
+          ]);
+          verifyDashcardMappingOptions(MODEL_BASED_MODEL_INDEX, [
+            [
+              "Model-based Model",
+              [...ORDERS_DATE_COLUMNS, "Reviews - Product → Created At"],
+            ],
+            ["Product", PRODUCTS_DATE_COLUMNS],
+            ["Reviews - Product → Product", PRODUCTS_DATE_COLUMNS],
+            ["User", PEOPLE_DATE_COLUMNS],
+          ]);
+        }
+
+        function verifyTextMappingOptions() {
+          verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
+            ["Reviews", REVIEWS_TEXT_COLUMNS],
+            ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
+            ["User", PEOPLE_TEXT_COLUMNS],
+          ]);
+          verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
+            ["Reviews", REVIEWS_TEXT_COLUMNS],
+            ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
+            ["User", PEOPLE_TEXT_COLUMNS],
+          ]);
+          verifyDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX, [
+            [
+              "Question-based Model",
+              ["Reviews - Product → Reviewer", "Reviews - Product → Body"],
+            ],
+            ["Product", PRODUCTS_TEXT_COLUMNS],
+            ["Reviews - Product → Product", PRODUCTS_TEXT_COLUMNS],
+            ["User", PEOPLE_TEXT_COLUMNS],
+          ]);
+          verifyDashcardMappingOptions(MODEL_BASED_MODEL_INDEX, [
+            [
+              "Model-based Model",
+              ["Reviews - Product → Reviewer", "Reviews - Product → Body"],
+            ],
+            ["Product", PRODUCTS_TEXT_COLUMNS],
+            ["Reviews - Product → Product", PRODUCTS_TEXT_COLUMNS],
+            ["User", PEOPLE_TEXT_COLUMNS],
+          ]);
+        }
+
+        function verifyNumberMappingOptions() {
+          verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
+            ["Base Orders Question", [...ORDERS_NUMBER_COLUMNS, "Net"]],
+            ["Reviews", REVIEWS_NUMBER_COLUMNS],
+            [
+              "Product",
+              [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS], // TODO: https://github.com/metabase/metabase/issues/46845
+            ],
+            ["User", PEOPLE_NUMBER_COLUMNS],
+          ]);
+          verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
+            ["Base Orders Model", [...ORDERS_NUMBER_COLUMNS, "Net"]],
+            ["Reviews", REVIEWS_NUMBER_COLUMNS],
+            [
+              "Product",
+              [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS], // TODO: https://github.com/metabase/metabase/issues/46845
+            ],
+            ["User", PEOPLE_NUMBER_COLUMNS],
+          ]);
+          verifyDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX, [
+            [
+              "Question-based Model",
+              [...ORDERS_NUMBER_COLUMNS, "Net", "Reviews - Product → Rating"],
+            ],
+            ["Product", PRODUCTS_NUMBER_COLUMNS],
+            ["Reviews - Product → Product", PRODUCTS_NUMBER_COLUMNS],
+            ["User", PEOPLE_NUMBER_COLUMNS],
+          ]);
+          verifyDashcardMappingOptions(MODEL_BASED_MODEL_INDEX, [
+            [
+              "Model-based Model",
+              [...ORDERS_NUMBER_COLUMNS, "Net", "Reviews - Product → Rating"],
+            ],
+            ["Product", PRODUCTS_NUMBER_COLUMNS],
+            ["Reviews - Product → Product", PRODUCTS_NUMBER_COLUMNS],
+            ["User", PEOPLE_NUMBER_COLUMNS],
+          ]);
+        }
       });
-
-      function verifyDateMappingOptions() {
-        verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
-          ["Base Orders Question", ORDERS_DATE_COLUMNS],
-          ["Reviews", REVIEWS_DATE_COLUMNS],
-          ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
-          ["User", PEOPLE_DATE_COLUMNS],
-        ]);
-        verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
-          ["Base Orders Model", ORDERS_DATE_COLUMNS],
-          ["Reviews", REVIEWS_DATE_COLUMNS],
-          ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
-          ["User", PEOPLE_DATE_COLUMNS],
-        ]);
-        verifyDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX, [
-          [
-            "Question-based Model",
-            [...ORDERS_DATE_COLUMNS, "Reviews - Product → Created At"],
-          ],
-          ["Product", PRODUCTS_DATE_COLUMNS],
-          ["Reviews - Product → Product", PRODUCTS_DATE_COLUMNS],
-          ["User", PEOPLE_DATE_COLUMNS],
-        ]);
-        verifyDashcardMappingOptions(MODEL_BASED_MODEL_INDEX, [
-          [
-            "Model-based Model",
-            [...ORDERS_DATE_COLUMNS, "Reviews - Product → Created At"],
-          ],
-          ["Product", PRODUCTS_DATE_COLUMNS],
-          ["Reviews - Product → Product", PRODUCTS_DATE_COLUMNS],
-          ["User", PEOPLE_DATE_COLUMNS],
-        ]);
-      }
-
-      function verifyTextMappingOptions() {
-        verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
-          ["Reviews", REVIEWS_TEXT_COLUMNS],
-          ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
-          ["User", PEOPLE_TEXT_COLUMNS],
-        ]);
-        verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
-          ["Reviews", REVIEWS_TEXT_COLUMNS],
-          ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
-          ["User", PEOPLE_TEXT_COLUMNS],
-        ]);
-        verifyDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX, [
-          [
-            "Question-based Model",
-            ["Reviews - Product → Reviewer", "Reviews - Product → Body"],
-          ],
-          ["Product", PRODUCTS_TEXT_COLUMNS],
-          ["Reviews - Product → Product", PRODUCTS_TEXT_COLUMNS],
-          ["User", PEOPLE_TEXT_COLUMNS],
-        ]);
-        verifyDashcardMappingOptions(MODEL_BASED_MODEL_INDEX, [
-          [
-            "Model-based Model",
-            ["Reviews - Product → Reviewer", "Reviews - Product → Body"],
-          ],
-          ["Product", PRODUCTS_TEXT_COLUMNS],
-          ["Reviews - Product → Product", PRODUCTS_TEXT_COLUMNS],
-          ["User", PEOPLE_TEXT_COLUMNS],
-        ]);
-      }
-
-      function verifyNumberMappingOptions() {
-        verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
-          ["Base Orders Question", [...ORDERS_NUMBER_COLUMNS, "Net"]],
-          ["Reviews", REVIEWS_NUMBER_COLUMNS],
-          [
-            "Product",
-            [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS], // https://github.com/metabase/metabase/issues/46845
-          ],
-          ["User", PEOPLE_NUMBER_COLUMNS],
-        ]);
-        verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
-          ["Base Orders Model", [...ORDERS_NUMBER_COLUMNS, "Net"]],
-          ["Reviews", REVIEWS_NUMBER_COLUMNS],
-          [
-            "Product",
-            [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS], // https://github.com/metabase/metabase/issues/46845
-          ],
-          ["User", PEOPLE_NUMBER_COLUMNS],
-        ]);
-        verifyDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX, [
-          [
-            "Question-based Model",
-            [...ORDERS_NUMBER_COLUMNS, "Net", "Reviews - Product → Rating"],
-          ],
-          ["Product", PRODUCTS_NUMBER_COLUMNS],
-          ["Reviews - Product → Product", PRODUCTS_NUMBER_COLUMNS],
-          ["User", PEOPLE_NUMBER_COLUMNS],
-        ]);
-        verifyDashcardMappingOptions(MODEL_BASED_MODEL_INDEX, [
-          [
-            "Model-based Model",
-            [...ORDERS_NUMBER_COLUMNS, "Net", "Reviews - Product → Rating"],
-          ],
-          ["Product", PRODUCTS_NUMBER_COLUMNS],
-          ["Reviews - Product → Product", PRODUCTS_NUMBER_COLUMNS],
-          ["User", PEOPLE_NUMBER_COLUMNS],
-        ]);
-      }
     });
 
     describe("Q2 - join, custom column, 2 aggregations, no breakouts", () => {
@@ -343,60 +358,68 @@ describe("scenarios > dashboard > filters > query stages", () => {
         cy.log("## number columns");
         getFilter("Number").click();
         verifyNumberMappingOptions();
+
+        function verifyDateMappingOptions() {
+          verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
+            ["Base Orders Question", ORDERS_DATE_COLUMNS],
+            ["Reviews", REVIEWS_DATE_COLUMNS],
+            ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
+            ["User", PEOPLE_DATE_COLUMNS],
+          ]);
+          verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
+            ["Base Orders Model", ORDERS_DATE_COLUMNS],
+            ["Reviews", REVIEWS_DATE_COLUMNS],
+            ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
+            ["User", PEOPLE_DATE_COLUMNS],
+          ]);
+          verifyNoDashcardMappingOptions(2);
+          verifyNoDashcardMappingOptions(3);
+        }
+
+        function verifyTextMappingOptions() {
+          verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
+            ["Reviews", REVIEWS_TEXT_COLUMNS],
+            ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
+            ["User", PEOPLE_TEXT_COLUMNS],
+          ]);
+          verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
+            ["Reviews", REVIEWS_TEXT_COLUMNS],
+            ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
+            ["User", PEOPLE_TEXT_COLUMNS],
+          ]);
+          verifyNoDashcardMappingOptions(2);
+          verifyNoDashcardMappingOptions(3);
+        }
+
+        function verifyNumberMappingOptions() {
+          verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
+            ["Base Orders Question", [...ORDERS_NUMBER_COLUMNS, "Net"]],
+            ["Reviews", REVIEWS_NUMBER_COLUMNS],
+            [
+              "Product",
+              [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS],
+            ], // TODO: https://github.com/metabase/metabase/issues/46845
+            ["User", PEOPLE_NUMBER_COLUMNS],
+            // ["Summaries", ["Count", "Sum of Total"]], // TODO: https://github.com/metabase/metabase/issues/48339
+          ]);
+          verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
+            ["Base Orders Model", [...ORDERS_NUMBER_COLUMNS, "Net"]],
+            ["Reviews", REVIEWS_NUMBER_COLUMNS],
+            [
+              "Product",
+              [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS],
+            ], // TODO: https://github.com/metabase/metabase/issues/46845
+            ["User", PEOPLE_NUMBER_COLUMNS],
+            // ["Summaries", ["Count", "Sum of Total"]], // TODO: https://github.com/metabase/metabase/issues/48339
+          ]);
+          verifyDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX, [
+            [NAMELESS_SECTION, ["Count", "Sum of Total"]],
+          ]);
+          verifyDashcardMappingOptions(MODEL_BASED_MODEL_INDEX, [
+            [NAMELESS_SECTION, ["Count", "Sum of Total"]],
+          ]);
+        }
       });
-
-      function verifyDateMappingOptions() {
-        verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
-          ["Base Orders Question", ORDERS_DATE_COLUMNS],
-          ["Reviews", REVIEWS_DATE_COLUMNS],
-          ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
-          ["User", PEOPLE_DATE_COLUMNS],
-        ]);
-        verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
-          ["Base Orders Model", ORDERS_DATE_COLUMNS],
-          ["Reviews", REVIEWS_DATE_COLUMNS],
-          ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
-          ["User", PEOPLE_DATE_COLUMNS],
-        ]);
-        verifyNoDashcardMappingOptions(2);
-        verifyNoDashcardMappingOptions(3);
-      }
-
-      function verifyTextMappingOptions() {
-        verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
-          ["Reviews", REVIEWS_TEXT_COLUMNS],
-          ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
-          ["User", PEOPLE_TEXT_COLUMNS],
-        ]);
-        verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
-          ["Reviews", REVIEWS_TEXT_COLUMNS],
-          ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
-          ["User", PEOPLE_TEXT_COLUMNS],
-        ]);
-        verifyNoDashcardMappingOptions(2);
-        verifyNoDashcardMappingOptions(3);
-      }
-
-      function verifyNumberMappingOptions() {
-        verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
-          ["Base Orders Question", [...ORDERS_NUMBER_COLUMNS, "Net"]],
-          ["Reviews", REVIEWS_NUMBER_COLUMNS],
-          ["Product", [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
-          ["User", PEOPLE_NUMBER_COLUMNS],
-        ]);
-        verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
-          ["Base Orders Model", [...ORDERS_NUMBER_COLUMNS, "Net"]],
-          ["Reviews", REVIEWS_NUMBER_COLUMNS],
-          ["Product", [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
-          ["User", PEOPLE_NUMBER_COLUMNS],
-        ]);
-        verifyDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX, [
-          [NAMELESS_SECTION, ["Count", "Sum of Total"]],
-        ]);
-        verifyDashcardMappingOptions(MODEL_BASED_MODEL_INDEX, [
-          [NAMELESS_SECTION, ["Count", "Sum of Total"]],
-        ]);
-      }
     });
 
     describe("Q3 - join, custom column, no aggregations, 2 breakouts", () => {
@@ -418,64 +441,74 @@ describe("scenarios > dashboard > filters > query stages", () => {
         cy.log("## number columns");
         getFilter("Number").click();
         verifyNumberMappingOptions();
+
+        function verifyDateMappingOptions() {
+          verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
+            ["Base Orders Question", ORDERS_DATE_COLUMNS],
+            ["Reviews", REVIEWS_DATE_COLUMNS],
+            ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
+            ["User", PEOPLE_DATE_COLUMNS],
+            // ["Summaries", ["Created At: Month", "Created At: Year"]], // TODO: https://github.com/metabase/metabase/issues/48339
+          ]);
+          verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
+            ["Base Orders Model", ORDERS_DATE_COLUMNS],
+            ["Reviews", REVIEWS_DATE_COLUMNS],
+            ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
+            ["User", PEOPLE_DATE_COLUMNS],
+            // ["Summaries", ["Created At: Month", "Created At: Year"]], // TODO: https://github.com/metabase/metabase/issues/48339
+          ]);
+          verifyDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX, [
+            [NAMELESS_SECTION, ["Created At", "User → Created At"]],
+          ]);
+          verifyDashcardMappingOptions(MODEL_BASED_MODEL_INDEX, [
+            [NAMELESS_SECTION, ["Created At", "User → Created At"]],
+          ]);
+        }
+
+        function verifyTextMappingOptions() {
+          verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
+            ["Reviews", REVIEWS_TEXT_COLUMNS],
+            ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
+            ["User", PEOPLE_TEXT_COLUMNS],
+            // ["Summaries", ["Category"]], // TODO: https://github.com/metabase/metabase/issues/48339
+          ]);
+          verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
+            ["Reviews", REVIEWS_TEXT_COLUMNS],
+            ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
+            ["User", PEOPLE_TEXT_COLUMNS],
+            // ["Summaries", ["Category"]], // TODO: https://github.com/metabase/metabase/issues/48339
+          ]);
+          verifyDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX, [
+            [NAMELESS_SECTION, ["Product → Category"]],
+          ]);
+          verifyDashcardMappingOptions(MODEL_BASED_MODEL_INDEX, [
+            [NAMELESS_SECTION, ["Product → Category"]],
+          ]);
+        }
+
+        function verifyNumberMappingOptions() {
+          verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
+            ["Base Orders Question", [...ORDERS_NUMBER_COLUMNS, "Net"]],
+            ["Reviews", REVIEWS_NUMBER_COLUMNS],
+            [
+              "Product",
+              [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS],
+            ], // TODO: https://github.com/metabase/metabase/issues/46845
+            ["User", PEOPLE_NUMBER_COLUMNS],
+          ]);
+          verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
+            ["Base Orders Model", [...ORDERS_NUMBER_COLUMNS, "Net"]],
+            ["Reviews", REVIEWS_NUMBER_COLUMNS],
+            [
+              "Product",
+              [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS],
+            ], // TODO: https://github.com/metabase/metabase/issues/46845
+            ["User", PEOPLE_NUMBER_COLUMNS],
+          ]);
+          verifyNoDashcardMappingOptions(2);
+          verifyNoDashcardMappingOptions(3);
+        }
       });
-
-      function verifyDateMappingOptions() {
-        verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
-          ["Base Orders Question", ORDERS_DATE_COLUMNS],
-          ["Reviews", REVIEWS_DATE_COLUMNS],
-          ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
-          ["User", PEOPLE_DATE_COLUMNS],
-        ]);
-        verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
-          ["Base Orders Model", ORDERS_DATE_COLUMNS],
-          ["Reviews", REVIEWS_DATE_COLUMNS],
-          ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
-          ["User", PEOPLE_DATE_COLUMNS],
-        ]);
-        verifyDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX, [
-          [NAMELESS_SECTION, ["Created At", "User → Created At"]],
-        ]);
-        verifyDashcardMappingOptions(MODEL_BASED_MODEL_INDEX, [
-          [NAMELESS_SECTION, ["Created At", "User → Created At"]],
-        ]);
-      }
-
-      function verifyTextMappingOptions() {
-        verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
-          ["Reviews", REVIEWS_TEXT_COLUMNS],
-          ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
-          ["User", PEOPLE_TEXT_COLUMNS],
-        ]);
-        verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
-          ["Reviews", REVIEWS_TEXT_COLUMNS],
-          ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
-          ["User", PEOPLE_TEXT_COLUMNS],
-        ]);
-        verifyDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX, [
-          [NAMELESS_SECTION, ["Product → Category"]],
-        ]);
-        verifyDashcardMappingOptions(MODEL_BASED_MODEL_INDEX, [
-          [NAMELESS_SECTION, ["Product → Category"]],
-        ]);
-      }
-
-      function verifyNumberMappingOptions() {
-        verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
-          ["Base Orders Question", [...ORDERS_NUMBER_COLUMNS, "Net"]],
-          ["Reviews", REVIEWS_NUMBER_COLUMNS],
-          ["Product", [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
-          ["User", PEOPLE_NUMBER_COLUMNS],
-        ]);
-        verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
-          ["Base Orders Model", [...ORDERS_NUMBER_COLUMNS, "Net"]],
-          ["Reviews", REVIEWS_NUMBER_COLUMNS],
-          ["Product", [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
-          ["User", PEOPLE_NUMBER_COLUMNS],
-        ]);
-        verifyNoDashcardMappingOptions(2);
-        verifyNoDashcardMappingOptions(3);
-      }
     });
 
     describe("Q4 - join, custom column, 2 aggregations, 2 breakouts (metabase#47184)", () => {
@@ -497,79 +530,85 @@ describe("scenarios > dashboard > filters > query stages", () => {
         cy.log("## number columns");
         getFilter("Number").click();
         verifyNumberMappingOptions();
+
+        function verifyDateMappingOptions() {
+          verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
+            ["Base Orders Question", ORDERS_DATE_COLUMNS],
+            ["Reviews", REVIEWS_DATE_COLUMNS],
+            ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
+            ["User", PEOPLE_DATE_COLUMNS],
+            ["Summaries", ["Created At: Month", "Created At: Year"]],
+          ]);
+          verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
+            ["Base Orders Model", ORDERS_DATE_COLUMNS],
+            ["Reviews", REVIEWS_DATE_COLUMNS],
+            ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
+            ["User", PEOPLE_DATE_COLUMNS],
+            ["Summaries", ["Created At: Month", "Created At: Year"]],
+          ]);
+          verifyDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX, [
+            [NAMELESS_SECTION, ["Created At", "User → Created At"]],
+          ]);
+          verifyDashcardMappingOptions(MODEL_BASED_MODEL_INDEX, [
+            [NAMELESS_SECTION, ["Created At", "User → Created At"]],
+          ]);
+        }
+
+        function verifyTextMappingOptions() {
+          verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
+            ["Reviews", REVIEWS_TEXT_COLUMNS],
+            ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
+            ["User", PEOPLE_TEXT_COLUMNS],
+            ["Summaries", ["Category"]],
+          ]);
+          verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
+            ["Reviews", REVIEWS_TEXT_COLUMNS],
+            ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
+            ["User", PEOPLE_TEXT_COLUMNS],
+            ["Summaries", ["Category"]],
+          ]);
+          verifyDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX, [
+            [NAMELESS_SECTION, ["Product → Category"]],
+          ]);
+          verifyDashcardMappingOptions(MODEL_BASED_MODEL_INDEX, [
+            [NAMELESS_SECTION, ["Product → Category"]],
+          ]);
+        }
+
+        function verifyNumberMappingOptions() {
+          verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
+            ["Base Orders Question", [...ORDERS_NUMBER_COLUMNS, "Net"]],
+            ["Reviews", REVIEWS_NUMBER_COLUMNS],
+            [
+              "Product",
+              [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS],
+            ], // TODO: https://github.com/metabase/metabase/issues/46845
+            ["User", PEOPLE_NUMBER_COLUMNS],
+            ["Summaries", ["Count", "Sum of Total"]],
+          ]);
+          verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
+            ["Base Orders Model", [...ORDERS_NUMBER_COLUMNS, "Net"]],
+            ["Reviews", REVIEWS_NUMBER_COLUMNS],
+            [
+              "Product",
+              [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS],
+            ], // TODO: https://github.com/metabase/metabase/issues/46845
+            ["User", PEOPLE_NUMBER_COLUMNS],
+            ["Summaries", ["Count", "Sum of Total"]],
+          ]);
+          verifyDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX, [
+            [NAMELESS_SECTION, ["Count", "Sum of Total"]],
+          ]);
+          verifyDashcardMappingOptions(MODEL_BASED_MODEL_INDEX, [
+            [NAMELESS_SECTION, ["Count", "Sum of Total"]],
+          ]);
+        }
       });
-
-      function verifyDateMappingOptions() {
-        verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
-          ["Base Orders Question", ORDERS_DATE_COLUMNS],
-          ["Reviews", REVIEWS_DATE_COLUMNS],
-          ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
-          ["User", PEOPLE_DATE_COLUMNS],
-          ["Summaries", ["Created At: Month", "Created At: Year"]],
-        ]);
-        verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
-          ["Base Orders Model", ORDERS_DATE_COLUMNS],
-          ["Reviews", REVIEWS_DATE_COLUMNS],
-          ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
-          ["User", PEOPLE_DATE_COLUMNS],
-          ["Summaries", ["Created At: Month", "Created At: Year"]],
-        ]);
-        verifyDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX, [
-          [NAMELESS_SECTION, ["Created At", "User → Created At"]],
-        ]);
-        verifyDashcardMappingOptions(MODEL_BASED_MODEL_INDEX, [
-          [NAMELESS_SECTION, ["Created At", "User → Created At"]],
-        ]);
-      }
-
-      function verifyTextMappingOptions() {
-        verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
-          ["Reviews", REVIEWS_TEXT_COLUMNS],
-          ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
-          ["User", PEOPLE_TEXT_COLUMNS],
-          ["Summaries", ["Category"]],
-        ]);
-        verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
-          ["Reviews", REVIEWS_TEXT_COLUMNS],
-          ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
-          ["User", PEOPLE_TEXT_COLUMNS],
-          ["Summaries", ["Category"]],
-        ]);
-        verifyDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX, [
-          [NAMELESS_SECTION, ["Product → Category"]],
-        ]);
-        verifyDashcardMappingOptions(MODEL_BASED_MODEL_INDEX, [
-          [NAMELESS_SECTION, ["Product → Category"]],
-        ]);
-      }
-
-      function verifyNumberMappingOptions() {
-        verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
-          ["Base Orders Question", [...ORDERS_NUMBER_COLUMNS, "Net"]],
-          ["Reviews", REVIEWS_NUMBER_COLUMNS],
-          ["Product", [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
-          ["User", PEOPLE_NUMBER_COLUMNS],
-          ["Summaries", ["Count", "Sum of Total"]],
-        ]);
-        verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
-          ["Base Orders Model", [...ORDERS_NUMBER_COLUMNS, "Net"]],
-          ["Reviews", REVIEWS_NUMBER_COLUMNS],
-          ["Product", [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
-          ["User", PEOPLE_NUMBER_COLUMNS],
-          ["Summaries", ["Count", "Sum of Total"]],
-        ]);
-        verifyDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX, [
-          [NAMELESS_SECTION, ["Count", "Sum of Total"]],
-        ]);
-        verifyDashcardMappingOptions(MODEL_BASED_MODEL_INDEX, [
-          [NAMELESS_SECTION, ["Count", "Sum of Total"]],
-        ]);
-      }
     });
   });
 
   describe("2-stage queries", () => {
-    describe("Q5 - join, custom column, no aggregations, no breakouts", () => {
+    describe("Q5 - Q4 + 2nd stage with join, custom column, no aggregations, no breakouts", () => {
       beforeEach(() => {
         createAndVisitDashboardWithCardMatrix(createQ5Query);
       });
@@ -588,83 +627,83 @@ describe("scenarios > dashboard > filters > query stages", () => {
         cy.log("## number columns");
         getFilter("Number").click();
         verifyNumberMappingOptions();
+
+        function verifyDateMappingOptions() {
+          verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
+            ["Base Orders Question", ORDERS_DATE_COLUMNS],
+            ["Reviews", [...REVIEWS_DATE_COLUMNS, ...REVIEWS_DATE_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
+            ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
+            ["User", PEOPLE_DATE_COLUMNS],
+            ["Summaries", ["Created At: Month", "Created At: Year"]],
+          ]);
+          verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
+            ["Base Orders Model", ORDERS_DATE_COLUMNS],
+            ["Reviews", [...REVIEWS_DATE_COLUMNS, ...REVIEWS_DATE_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
+            ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
+            ["User", PEOPLE_DATE_COLUMNS],
+            ["Summaries", ["Created At: Month", "Created At: Year"]],
+          ]);
+          verifyDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX, [
+            [NAMELESS_SECTION, [...ORDERS_DATE_COLUMNS, "User → Created At"]],
+          ]);
+          verifyDashcardMappingOptions(MODEL_BASED_MODEL_INDEX, [
+            [NAMELESS_SECTION, [...ORDERS_DATE_COLUMNS, "User → Created At"]],
+          ]);
+        }
+
+        function verifyTextMappingOptions() {
+          verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
+            ["Reviews", [...REVIEWS_TEXT_COLUMNS, ...REVIEWS_TEXT_COLUMNS]],
+            ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
+            ["User", PEOPLE_TEXT_COLUMNS],
+            ["Summaries", ["Category"]],
+          ]);
+          verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
+            ["Reviews", [...REVIEWS_TEXT_COLUMNS, ...REVIEWS_TEXT_COLUMNS]],
+            ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
+            ["User", PEOPLE_TEXT_COLUMNS],
+            ["Summaries", ["Category"]],
+          ]);
+          verifyDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX, [
+            [NAMELESS_SECTION, ["Product → Category"]],
+          ]);
+          verifyDashcardMappingOptions(MODEL_BASED_MODEL_INDEX, [
+            [NAMELESS_SECTION, ["Product → Category"]],
+          ]);
+        }
+
+        function verifyNumberMappingOptions() {
+          verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
+            ["Base Orders Question", [...ORDERS_NUMBER_COLUMNS, "Net"]],
+            ["Reviews", [...REVIEWS_NUMBER_COLUMNS, ...REVIEWS_NUMBER_COLUMNS]],
+            [
+              "Product",
+              [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS], // TODO: https://github.com/metabase/metabase/issues/46845
+            ],
+            ["User", PEOPLE_NUMBER_COLUMNS],
+            ["Summaries", ["Count", "Sum of Total", "5 * Count"]],
+          ]);
+          verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
+            ["Base Orders Model", [...ORDERS_NUMBER_COLUMNS, "Net"]],
+            ["Reviews", [...REVIEWS_NUMBER_COLUMNS, ...REVIEWS_NUMBER_COLUMNS]],
+            [
+              "Product",
+              [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS], // TODO: https://github.com/metabase/metabase/issues/46845
+            ],
+            ["User", PEOPLE_NUMBER_COLUMNS],
+            ["Summaries", ["Count", "Sum of Total", "5 * Count"]],
+          ]);
+          verifyDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX, [
+            [NAMELESS_SECTION, ["Count", "Sum of Total", "5 * Count"]],
+          ]);
+          verifyDashcardMappingOptions(MODEL_BASED_MODEL_INDEX, [
+            [NAMELESS_SECTION, ["Count", "Sum of Total", "5 * Count"]],
+          ]);
+        }
       });
-
-      function verifyDateMappingOptions() {
-        verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
-          ["Base Orders Question", ORDERS_DATE_COLUMNS],
-          ["Reviews", [...REVIEWS_DATE_COLUMNS, ...REVIEWS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
-          ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
-          ["User", PEOPLE_DATE_COLUMNS],
-          ["Summaries", ["Created At: Month", "Created At: Year"]],
-        ]);
-        verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
-          ["Base Orders Model", ORDERS_DATE_COLUMNS],
-          ["Reviews", [...REVIEWS_DATE_COLUMNS, ...REVIEWS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
-          ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
-          ["User", PEOPLE_DATE_COLUMNS],
-          ["Summaries", ["Created At: Month", "Created At: Year"]],
-        ]);
-        verifyDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX, [
-          [NAMELESS_SECTION, [...ORDERS_DATE_COLUMNS, "User → Created At"]],
-        ]);
-        verifyDashcardMappingOptions(MODEL_BASED_MODEL_INDEX, [
-          [NAMELESS_SECTION, [...ORDERS_DATE_COLUMNS, "User → Created At"]],
-        ]);
-      }
-
-      function verifyTextMappingOptions() {
-        verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
-          ["Reviews", [...REVIEWS_TEXT_COLUMNS, ...REVIEWS_TEXT_COLUMNS]],
-          ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
-          ["User", PEOPLE_TEXT_COLUMNS],
-          ["Summaries", ["Category"]],
-        ]);
-        verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
-          ["Reviews", [...REVIEWS_TEXT_COLUMNS, ...REVIEWS_TEXT_COLUMNS]],
-          ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
-          ["User", PEOPLE_TEXT_COLUMNS],
-          ["Summaries", ["Category"]],
-        ]);
-        verifyDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX, [
-          [NAMELESS_SECTION, ["Product → Category"]],
-        ]);
-        verifyDashcardMappingOptions(MODEL_BASED_MODEL_INDEX, [
-          [NAMELESS_SECTION, ["Product → Category"]],
-        ]);
-      }
-
-      function verifyNumberMappingOptions() {
-        verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
-          ["Base Orders Question", [...ORDERS_NUMBER_COLUMNS, "Net"]],
-          ["Reviews", [...REVIEWS_NUMBER_COLUMNS, ...REVIEWS_NUMBER_COLUMNS]],
-          [
-            "Product",
-            [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS], // https://github.com/metabase/metabase/issues/46845
-          ],
-          ["User", PEOPLE_NUMBER_COLUMNS],
-          ["Summaries", ["Count", "Sum of Total", "5 * Count"]],
-        ]);
-        verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
-          ["Base Orders Model", [...ORDERS_NUMBER_COLUMNS, "Net"]],
-          ["Reviews", [...REVIEWS_NUMBER_COLUMNS, ...REVIEWS_NUMBER_COLUMNS]],
-          [
-            "Product",
-            [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS], // https://github.com/metabase/metabase/issues/46845
-          ],
-          ["User", PEOPLE_NUMBER_COLUMNS],
-          ["Summaries", ["Count", "Sum of Total", "5 * Count"]],
-        ]);
-        verifyDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX, [
-          [NAMELESS_SECTION, ["Count", "Sum of Total", "5 * Count"]],
-        ]);
-        verifyDashcardMappingOptions(MODEL_BASED_MODEL_INDEX, [
-          [NAMELESS_SECTION, ["Count", "Sum of Total", "5 * Count"]],
-        ]);
-      }
     });
 
-    describe("Q6 - join, custom column, 2 aggregations, no breakouts", () => {
+    describe("Q6 - Q4 + 2nd stage with join, custom column, 2 aggregations, no breakouts", () => {
       beforeEach(() => {
         createAndVisitDashboardWithCardMatrix(createQ6Query);
       });
@@ -683,81 +722,234 @@ describe("scenarios > dashboard > filters > query stages", () => {
         cy.log("## number columns");
         getFilter("Number").click();
         verifyNumberMappingOptions();
+
+        function verifyDateMappingOptions() {
+          verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
+            ["Base Orders Question", ORDERS_DATE_COLUMNS],
+            ["Reviews", [...REVIEWS_DATE_COLUMNS, ...REVIEWS_DATE_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
+            ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
+            ["User", PEOPLE_DATE_COLUMNS],
+            ["Summaries", ["Created At: Month", "Created At: Year"]],
+          ]);
+          verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
+            ["Base Orders Model", ORDERS_DATE_COLUMNS],
+            ["Reviews", [...REVIEWS_DATE_COLUMNS, ...REVIEWS_DATE_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
+            ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
+            ["User", PEOPLE_DATE_COLUMNS],
+            ["Summaries", ["Created At: Month", "Created At: Year"]],
+          ]);
+          verifyNoDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX);
+          verifyNoDashcardMappingOptions(MODEL_BASED_MODEL_INDEX);
+        }
+
+        function verifyTextMappingOptions() {
+          verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
+            ["Reviews", [...REVIEWS_TEXT_COLUMNS, ...REVIEWS_TEXT_COLUMNS]],
+            ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
+            ["User", PEOPLE_TEXT_COLUMNS],
+            ["Summaries", ["Category"]],
+          ]);
+          verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
+            ["Reviews", [...REVIEWS_TEXT_COLUMNS, ...REVIEWS_TEXT_COLUMNS]],
+            ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
+            ["User", PEOPLE_TEXT_COLUMNS],
+            ["Summaries", ["Category"]],
+          ]);
+          verifyNoDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX);
+          verifyNoDashcardMappingOptions(MODEL_BASED_MODEL_INDEX);
+        }
+
+        function verifyNumberMappingOptions() {
+          verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
+            ["Base Orders Question", [...ORDERS_NUMBER_COLUMNS, "Net"]],
+            ["Reviews", [...REVIEWS_NUMBER_COLUMNS, ...REVIEWS_NUMBER_COLUMNS]],
+            [
+              "Product",
+              [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS], // TODO: https://github.com/metabase/metabase/issues/46845
+            ],
+            ["User", PEOPLE_NUMBER_COLUMNS],
+            ["Summaries", ["Count", "Sum of Total", "5 * Count"]],
+            // ["Summaries (2)", ["Count", "Sum of Rating"]], // TODO: https://github.com/metabase/metabase/issues/48339
+          ]);
+          verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
+            ["Base Orders Model", [...ORDERS_NUMBER_COLUMNS, "Net"]],
+            ["Reviews", [...REVIEWS_NUMBER_COLUMNS, ...REVIEWS_NUMBER_COLUMNS]],
+            [
+              "Product",
+              [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS], // TODO: https://github.com/metabase/metabase/issues/46845
+            ],
+            ["User", PEOPLE_NUMBER_COLUMNS],
+            ["Summaries", ["Count", "Sum of Total", "5 * Count"]],
+            // ["Summaries (2)", ["Count", "Sum of Rating"]], // TODO: https://github.com/metabase/metabase/issues/48339
+          ]);
+          verifyDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX, [
+            [
+              NAMELESS_SECTION,
+              ["Count", "Sum of Reviews - Created At: Month → Rating"],
+            ],
+          ]);
+          verifyDashcardMappingOptions(MODEL_BASED_MODEL_INDEX, [
+            [
+              NAMELESS_SECTION,
+              ["Count", "Sum of Reviews - Created At: Month → Rating"],
+            ],
+          ]);
+        }
       });
 
-      function verifyDateMappingOptions() {
-        verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
-          ["Base Orders Question", ORDERS_DATE_COLUMNS],
-          ["Reviews", [...REVIEWS_DATE_COLUMNS, ...REVIEWS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
-          ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
-          ["User", PEOPLE_DATE_COLUMNS],
-          ["Summaries", ["Created At: Month", "Created At: Year"]],
-        ]);
-        verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
-          ["Base Orders Model", ORDERS_DATE_COLUMNS],
-          ["Reviews", [...REVIEWS_DATE_COLUMNS, ...REVIEWS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
-          ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
-          ["User", PEOPLE_DATE_COLUMNS],
-          ["Summaries", ["Created At: Month", "Created At: Year"]],
-        ]);
-        verifyNoDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX);
-        verifyNoDashcardMappingOptions(MODEL_BASED_MODEL_INDEX);
-      }
+      describe("applies filter to the the dashcard and allows to drill via dashcard header", () => {
+        it("1st stage explicit join", () => {
+          setup1stStageExplicitJoinFilter();
 
-      function verifyTextMappingOptions() {
-        verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
-          ["Reviews", [...REVIEWS_TEXT_COLUMNS, ...REVIEWS_TEXT_COLUMNS]],
-          ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
-          ["User", PEOPLE_TEXT_COLUMNS],
-          ["Summaries", ["Category"]],
-        ]);
-        verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
-          ["Reviews", [...REVIEWS_TEXT_COLUMNS, ...REVIEWS_TEXT_COLUMNS]],
-          ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
-          ["User", PEOPLE_TEXT_COLUMNS],
-          ["Summaries", ["Category"]],
-        ]);
-        verifyNoDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX);
-        verifyNoDashcardMappingOptions(MODEL_BASED_MODEL_INDEX);
-      }
+          verifyDashcardCellValues({
+            dashcardIndex: 0,
+            values: ["1,813", "7,218"],
+          });
 
-      function verifyNumberMappingOptions() {
-        verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
-          ["Base Orders Question", [...ORDERS_NUMBER_COLUMNS, "Net"]],
-          ["Reviews", [...REVIEWS_NUMBER_COLUMNS, ...REVIEWS_NUMBER_COLUMNS]],
-          [
-            "Product",
-            [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS], // https://github.com/metabase/metabase/issues/46845
-          ],
-          ["User", PEOPLE_NUMBER_COLUMNS],
-          ["Summaries", ["Count", "Sum of Total", "5 * Count"]],
-        ]);
-        verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
-          ["Base Orders Model", [...ORDERS_NUMBER_COLUMNS, "Net"]],
-          ["Reviews", [...REVIEWS_NUMBER_COLUMNS, ...REVIEWS_NUMBER_COLUMNS]],
-          [
-            "Product",
-            [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS], // https://github.com/metabase/metabase/issues/46845
-          ],
-          ["User", PEOPLE_NUMBER_COLUMNS],
-          ["Summaries", ["Count", "Sum of Total", "5 * Count"]],
-        ]);
-        verifyDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX, [
-          [
-            NAMELESS_SECTION,
-            ["Count", "Sum of Reviews - Created At: Month → Rating"],
-          ],
-        ]);
-        verifyDashcardMappingOptions(MODEL_BASED_MODEL_INDEX, [
-          [
-            NAMELESS_SECTION,
-            ["Count", "Sum of Reviews - Created At: Month → Rating"],
-          ],
-        ]);
-      }
+          goBackToDashboard();
+
+          verifyDashcardCellValues({
+            dashcardIndex: 1,
+            values: ["1,813", "7,218"],
+          });
+        });
+
+        it("1st stage implicit join (data source)", () => {
+          setup1stStageImplicitJoinFromSourceFilter();
+
+          verifyDashcardCellValues({
+            dashcardIndex: 0,
+            values: ["2,071", "8,252"],
+          });
+
+          goBackToDashboard();
+
+          verifyDashcardCellValues({
+            dashcardIndex: 1,
+            values: ["2,071", "8,252"],
+          });
+        });
+
+        // TODO: https://github.com/metabase/metabase/issues/46774
+        it.skip("1st stage implicit join (joined data source)", () => {
+          setup1stStageImplicitJoinFromJoinFilter();
+
+          verifyDashcardCellValues({
+            dashcardIndex: 0,
+            values: ["4,449", "17,722"],
+          });
+
+          goBackToDashboard();
+
+          verifyDashcardCellValues({
+            dashcardIndex: 1,
+            values: ["4,449", "17,722"],
+          });
+        });
+
+        it("1st stage custom column", () => {
+          setup1stStageCustomColumnFilter();
+
+          verifyDashcardCellValues({
+            dashcardIndex: 0,
+            values: ["971", "3,900"],
+          });
+
+          goBackToDashboard();
+
+          verifyDashcardCellValues({
+            dashcardIndex: 1,
+            values: ["971", "3,900"],
+          });
+        });
+
+        it("1st stage aggregation", () => {
+          setup1stStageAggregationFilter();
+
+          verifyDashcardCellValues({
+            dashcardIndex: 0,
+            values: ["3", "13"],
+          });
+
+          goBackToDashboard();
+
+          verifyDashcardCellValues({
+            dashcardIndex: 1,
+            values: ["3", "13"],
+          });
+        });
+
+        // TODO: https://github.com/metabase/metabase/issues/46774
+        it.skip("1st stage breakout", () => {
+          setup1stStageBreakoutFilter();
+
+          verifyDashcardCellValues({
+            dashcardIndex: 0,
+            values: ["4,449", "17,722"],
+          });
+
+          goBackToDashboard();
+
+          verifyDashcardCellValues({
+            dashcardIndex: 1,
+            values: ["4,449", "17,722"],
+          });
+        });
+
+        it("2nd stage explicit join", () => {
+          setup2ndStageExplicitJoinFilter();
+
+          verifyDashcardCellValues({
+            dashcardIndex: 0,
+            values: ["16", "80"],
+          });
+
+          goBackToDashboard();
+
+          verifyDashcardCellValues({
+            dashcardIndex: 1,
+            values: ["16", "80"],
+          });
+        });
+
+        it("2nd stage custom column", () => {
+          setup2ndStageCustomColumnFilter();
+
+          verifyDashcardCellValues({
+            dashcardIndex: 0,
+            values: ["31", "114"],
+          });
+
+          goBackToDashboard();
+
+          verifyDashcardCellValues({
+            dashcardIndex: 1,
+            values: ["31", "114"],
+          });
+        });
+
+        // TODO: https://github.com/metabase/metabase/issues/48339
+        it.skip("2nd stage aggregation", () => {
+          setup2ndStageAggregationFilter();
+
+          verifyDashcardNoResults({ dashcardIndex: 0 });
+
+          goBackToDashboard();
+
+          verifyDashcardNoResults({ dashcardIndex: 1 });
+
+          goBackToDashboard();
+
+          verifyDashcardNoResults({ dashcardIndex: 2 });
+
+          goBackToDashboard();
+
+          verifyDashcardNoResults({ dashcardIndex: 3 });
+        });
+      });
     });
 
-    describe("Q7 - join, custom column, no aggregations, 2 breakouts", () => {
+    describe("Q7 - Q4 + 2nd stage with join, custom column, no aggregations, 2 breakouts", () => {
       beforeEach(() => {
         createAndVisitDashboardWithCardMatrix(createQ7Query);
       });
@@ -776,87 +968,271 @@ describe("scenarios > dashboard > filters > query stages", () => {
         cy.log("## number columns");
         getFilter("Number").click();
         verifyNumberMappingOptions();
+
+        function verifyDateMappingOptions() {
+          verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
+            ["Base Orders Question", ORDERS_DATE_COLUMNS],
+            ["Reviews", [...REVIEWS_DATE_COLUMNS, ...REVIEWS_DATE_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
+            ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
+            ["User", PEOPLE_DATE_COLUMNS],
+            ["Summaries", ["Created At: Month", "Created At: Year"]],
+          ]);
+          verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
+            ["Base Orders Model", ORDERS_DATE_COLUMNS],
+            ["Reviews", [...REVIEWS_DATE_COLUMNS, ...REVIEWS_DATE_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
+            ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
+            ["User", PEOPLE_DATE_COLUMNS],
+            ["Summaries", ["Created At: Month", "Created At: Year"]],
+          ]);
+          verifyNoDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX);
+          verifyNoDashcardMappingOptions(MODEL_BASED_MODEL_INDEX);
+        }
+
+        function verifyTextMappingOptions() {
+          verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
+            ["Reviews", [...REVIEWS_TEXT_COLUMNS, ...REVIEWS_TEXT_COLUMNS]],
+            ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
+            ["User", PEOPLE_TEXT_COLUMNS],
+            ["Summaries", ["Category"]],
+            // ["Summaries (2)", ["Reviewer", "Category"]], // TODO: https://github.com/metabase/metabase/issues/48339
+          ]);
+          verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
+            ["Reviews", [...REVIEWS_TEXT_COLUMNS, ...REVIEWS_TEXT_COLUMNS]],
+            ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
+            ["User", PEOPLE_TEXT_COLUMNS],
+            ["Summaries", ["Category"]],
+            // ["Summaries (2)", ["Reviewer", "Category"]], // TODO: https://github.com/metabase/metabase/issues/48339
+          ]);
+          verifyDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX, [
+            [
+              NAMELESS_SECTION,
+              [
+                "Reviews - Created At: Month → Reviewer",
+                "Products Via Product ID Category",
+              ],
+            ],
+          ]);
+          verifyDashcardMappingOptions(MODEL_BASED_MODEL_INDEX, [
+            [
+              NAMELESS_SECTION,
+              [
+                "Reviews - Created At: Month → Reviewer",
+                "Products Via Product ID Category",
+              ],
+            ],
+          ]);
+        }
+
+        function verifyNumberMappingOptions() {
+          verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
+            ["Base Orders Question", [...ORDERS_NUMBER_COLUMNS, "Net"]],
+            ["Reviews", [...REVIEWS_NUMBER_COLUMNS, ...REVIEWS_NUMBER_COLUMNS]],
+            [
+              "Product",
+              [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS], // TODO: https://github.com/metabase/metabase/issues/46845
+            ],
+            ["User", PEOPLE_NUMBER_COLUMNS],
+            ["Summaries", ["Count", "Sum of Total", "5 * Count"]],
+          ]);
+          verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
+            ["Base Orders Model", [...ORDERS_NUMBER_COLUMNS, "Net"]],
+            ["Reviews", [...REVIEWS_NUMBER_COLUMNS, ...REVIEWS_NUMBER_COLUMNS]],
+            [
+              "Product",
+              [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS], // TODO: https://github.com/metabase/metabase/issues/46845
+            ],
+            ["User", PEOPLE_NUMBER_COLUMNS],
+            ["Summaries", ["Count", "Sum of Total", "5 * Count"]],
+          ]);
+          verifyNoDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX);
+          verifyNoDashcardMappingOptions(MODEL_BASED_MODEL_INDEX);
+        }
       });
 
-      function verifyDateMappingOptions() {
-        verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
-          ["Base Orders Question", ORDERS_DATE_COLUMNS],
-          ["Reviews", [...REVIEWS_DATE_COLUMNS, ...REVIEWS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
-          ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
-          ["User", PEOPLE_DATE_COLUMNS],
-          ["Summaries", ["Created At: Month", "Created At: Year"]],
-        ]);
-        verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
-          ["Base Orders Model", ORDERS_DATE_COLUMNS],
-          ["Reviews", [...REVIEWS_DATE_COLUMNS, ...REVIEWS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
-          ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
-          ["User", PEOPLE_DATE_COLUMNS],
-          ["Summaries", ["Created At: Month", "Created At: Year"]],
-        ]);
-        verifyNoDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX);
-        verifyNoDashcardMappingOptions(MODEL_BASED_MODEL_INDEX);
-      }
+      describe("applies filter to the the dashcard and allows to drill via dashcard header", () => {
+        it("1st stage explicit join", () => {
+          setup1stStageExplicitJoinFilter();
 
-      function verifyTextMappingOptions() {
-        verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
-          ["Reviews", [...REVIEWS_TEXT_COLUMNS, ...REVIEWS_TEXT_COLUMNS]],
-          ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
-          ["User", PEOPLE_TEXT_COLUMNS],
-          ["Summaries", ["Category"]],
-        ]);
-        verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
-          ["Reviews", [...REVIEWS_TEXT_COLUMNS, ...REVIEWS_TEXT_COLUMNS]],
-          ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
-          ["User", PEOPLE_TEXT_COLUMNS],
-          ["Summaries", ["Category"]],
-        ]);
-        verifyDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX, [
-          [
-            NAMELESS_SECTION,
-            [
-              "Reviews - Created At: Month → Reviewer",
-              "Products Via Product ID Category",
-            ],
-          ],
-        ]);
-        verifyDashcardMappingOptions(MODEL_BASED_MODEL_INDEX, [
-          [
-            NAMELESS_SECTION,
-            [
-              "Reviews - Created At: Month → Reviewer",
-              "Products Via Product ID Category",
-            ],
-          ],
-        ]);
-      }
+          verifyDashcardRowsCount({
+            dashcardIndex: 0,
+            dashboardCount: "Rows 1-1 of 953",
+            queryBuilderCount: "Showing 953 rows",
+          });
 
-      function verifyNumberMappingOptions() {
-        verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
-          ["Base Orders Question", [...ORDERS_NUMBER_COLUMNS, "Net"]],
-          ["Reviews", [...REVIEWS_NUMBER_COLUMNS, ...REVIEWS_NUMBER_COLUMNS]],
-          [
-            "Product",
-            [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS], // https://github.com/metabase/metabase/issues/46845
-          ],
-          ["User", PEOPLE_NUMBER_COLUMNS],
-          ["Summaries", ["Count", "Sum of Total", "5 * Count"]],
-        ]);
-        verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
-          ["Base Orders Model", [...ORDERS_NUMBER_COLUMNS, "Net"]],
-          ["Reviews", [...REVIEWS_NUMBER_COLUMNS, ...REVIEWS_NUMBER_COLUMNS]],
-          [
-            "Product",
-            [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS], // https://github.com/metabase/metabase/issues/46845
-          ],
-          ["User", PEOPLE_NUMBER_COLUMNS],
-          ["Summaries", ["Count", "Sum of Total", "5 * Count"]],
-        ]);
-        verifyNoDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX);
-        verifyNoDashcardMappingOptions(MODEL_BASED_MODEL_INDEX);
-      }
+          goBackToDashboard();
+
+          verifyDashcardRowsCount({
+            dashcardIndex: 1,
+            dashboardCount: "Rows 1-1 of 953",
+            queryBuilderCount: "Showing 953 rows",
+          });
+        });
+
+        it("1st stage implicit join (data source)", () => {
+          setup1stStageImplicitJoinFromSourceFilter();
+
+          verifyDashcardRowsCount({
+            dashcardIndex: 0,
+            dashboardCount: "Rows 1-1 of 1044",
+            queryBuilderCount: "Showing 1,044 rows",
+          });
+
+          goBackToDashboard();
+
+          verifyDashcardRowsCount({
+            dashcardIndex: 1,
+            dashboardCount: "Rows 1-1 of 1044",
+            queryBuilderCount: "Showing 1,044 rows",
+          });
+        });
+
+        // TODO: https://github.com/metabase/metabase/issues/46774
+        it.skip("1st stage implicit join (joined data source)", () => {
+          setup1stStageImplicitJoinFromJoinFilter();
+
+          verifyDashcardRowsCount({
+            dashcardIndex: 0,
+            dashboardCount: "Rows 1-1 of 1077",
+            queryBuilderCount: "Showing 1,077 rows",
+          });
+
+          goBackToDashboard();
+
+          verifyDashcardRowsCount({
+            dashcardIndex: 1,
+            dashboardCount: "Rows 1-1 of 1077",
+            queryBuilderCount: "Showing 1,077 rows",
+          });
+        });
+
+        it("1st stage custom column", () => {
+          setup1stStageCustomColumnFilter();
+
+          verifyDashcardRowsCount({
+            dashcardIndex: 0,
+            dashboardCount: "Rows 1-1 of 688",
+            queryBuilderCount: "Showing 688 rows",
+          });
+
+          goBackToDashboard();
+
+          verifyDashcardRowsCount({
+            dashcardIndex: 1,
+            dashboardCount: "Rows 1-1 of 688",
+            queryBuilderCount: "Showing 688 rows",
+          });
+        });
+
+        it("1st stage aggregation", () => {
+          setup1stStageAggregationFilter();
+
+          verifyDashcardRowsCount({
+            dashcardIndex: 1,
+            dashboardCount: "Rows 1-1 of 3",
+            queryBuilderCount: "Showing 3 rows",
+          });
+
+          goBackToDashboard();
+
+          verifyDashcardRowsCount({
+            dashcardIndex: 1,
+            dashboardCount: "Rows 1-1 of 3",
+            queryBuilderCount: "Showing 3 rows",
+          });
+        });
+
+        // TODO: https://github.com/metabase/metabase/issues/46774
+        it.skip("1st stage breakout", () => {
+          setup1stStageBreakoutFilter();
+
+          verifyDashcardRowsCount({
+            dashcardIndex: 0,
+            dashboardCount: "Rows 1-1 of 1077",
+            queryBuilderCount: "Showing 1,077 rows",
+          });
+
+          goBackToDashboard();
+
+          verifyDashcardRowsCount({
+            dashcardIndex: 1,
+            dashboardCount: "Rows 1-1 of 1077",
+            queryBuilderCount: "Showing 1,077 rows",
+          });
+        });
+
+        it("2nd stage explicit join", () => {
+          setup2ndStageExplicitJoinFilter();
+
+          verifyDashcardRowsCount({
+            dashcardIndex: 0,
+            dashboardCount: "Rows 1-1 of 4",
+            queryBuilderCount: "Showing 4 rows",
+          });
+
+          goBackToDashboard();
+
+          verifyDashcardRowsCount({
+            dashcardIndex: 1,
+            dashboardCount: "Rows 1-1 of 4",
+            queryBuilderCount: "Showing 4 rows",
+          });
+        });
+
+        it("2nd stage custom column", () => {
+          setup2ndStageCustomColumnFilter();
+
+          verifyDashcardRowsCount({
+            dashcardIndex: 0,
+            dashboardCount: "Rows 1-1 of 31",
+            queryBuilderCount: "Showing 31 rows",
+          });
+
+          goBackToDashboard();
+
+          verifyDashcardRowsCount({
+            dashcardIndex: 1,
+            dashboardCount: "Rows 1-1 of 31",
+            queryBuilderCount: "Showing 31 rows",
+          });
+        });
+
+        it("2nd stage breakout", () => {
+          setup2ndStageBreakoutFilter();
+
+          verifyDashcardRowsCount({
+            dashcardIndex: 0,
+            dashboardCount: "Rows 1-1 of 1077",
+            queryBuilderCount: "Showing 1,077 rows",
+          });
+
+          goBackToDashboard();
+
+          verifyDashcardRowsCount({
+            dashcardIndex: 1,
+            dashboardCount: "Rows 1-1 of 1077",
+            queryBuilderCount: "Showing 1,077 rows",
+          });
+
+          goBackToDashboard();
+
+          verifyDashcardRowsCount({
+            dashcardIndex: 2,
+            dashboardCount: "Rows 1-1 of 1077",
+            queryBuilderCount: "Showing 1,077 rows",
+          });
+
+          goBackToDashboard();
+
+          verifyDashcardRowsCount({
+            dashcardIndex: 3,
+            dashboardCount: "Rows 1-1 of 1077",
+            queryBuilderCount: "Showing 1,077 rows",
+          });
+        });
+      });
     });
 
-    describe("Q8 - join, custom column, 2 aggregations, 2 breakouts", () => {
+    describe("Q8 - Q4 + 2nd stage with join, custom column, 2 aggregations, 2 breakouts", () => {
       beforeEach(() => {
         createAndVisitDashboardWithCardMatrix(createQ8Query);
       });
@@ -875,97 +1251,287 @@ describe("scenarios > dashboard > filters > query stages", () => {
         cy.log("## number columns");
         getFilter("Number").click();
         verifyNumberMappingOptions();
+
+        function verifyDateMappingOptions() {
+          verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
+            ["Base Orders Question", ORDERS_DATE_COLUMNS],
+            ["Reviews", [...REVIEWS_DATE_COLUMNS, ...REVIEWS_DATE_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
+            ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
+            ["User", PEOPLE_DATE_COLUMNS],
+            ["Summaries", ["Created At: Month", "Created At: Year"]],
+          ]);
+          verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
+            ["Base Orders Model", ORDERS_DATE_COLUMNS],
+            ["Reviews", [...REVIEWS_DATE_COLUMNS, ...REVIEWS_DATE_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
+            ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
+            ["User", PEOPLE_DATE_COLUMNS],
+            ["Summaries", ["Created At: Month", "Created At: Year"]],
+          ]);
+          verifyNoDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX);
+          verifyNoDashcardMappingOptions(MODEL_BASED_MODEL_INDEX);
+        }
+
+        function verifyTextMappingOptions() {
+          verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
+            ["Reviews", [...REVIEWS_TEXT_COLUMNS, ...REVIEWS_TEXT_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
+            ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
+            ["User", PEOPLE_TEXT_COLUMNS],
+            ["Summaries", ["Category"]],
+            ["Summaries (2)", ["Reviewer", "Category"]],
+          ]);
+          verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
+            ["Reviews", [...REVIEWS_TEXT_COLUMNS, ...REVIEWS_TEXT_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
+            ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
+            ["User", PEOPLE_TEXT_COLUMNS],
+            ["Summaries", ["Category"]],
+            ["Summaries (2)", ["Reviewer", "Category"]],
+          ]);
+          verifyDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX, [
+            [
+              NAMELESS_SECTION,
+              [
+                "Reviews - Created At: Month → Reviewer",
+                "Products Via Product ID Category",
+              ],
+            ],
+          ]);
+          verifyDashcardMappingOptions(MODEL_BASED_MODEL_INDEX, [
+            [
+              NAMELESS_SECTION,
+              [
+                "Reviews - Created At: Month → Reviewer",
+                "Products Via Product ID Category",
+              ],
+            ],
+          ]);
+        }
+
+        function verifyNumberMappingOptions() {
+          verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
+            ["Base Orders Question", [...ORDERS_NUMBER_COLUMNS, "Net"]],
+            ["Reviews", [...REVIEWS_NUMBER_COLUMNS, ...REVIEWS_NUMBER_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
+            [
+              "Product",
+              [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS],
+            ], // TODO: https://github.com/metabase/metabase/issues/46845
+            ["User", PEOPLE_NUMBER_COLUMNS],
+            ["Summaries", ["Count", "Sum of Total", "5 * Count"]],
+            ["Summaries (2)", ["Count", "Sum of Rating"]],
+          ]);
+          verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
+            ["Base Orders Model", [...ORDERS_NUMBER_COLUMNS, "Net"]],
+            ["Reviews", [...REVIEWS_NUMBER_COLUMNS, ...REVIEWS_NUMBER_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
+            [
+              "Product",
+              [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS],
+            ], // TODO: https://github.com/metabase/metabase/issues/46845
+            ["User", PEOPLE_NUMBER_COLUMNS],
+            ["Summaries", ["Count", "Sum of Total", "5 * Count"]],
+            ["Summaries (2)", ["Count", "Sum of Rating"]],
+          ]);
+          verifyDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX, [
+            [
+              NAMELESS_SECTION,
+              ["Count", "Sum of Reviews - Created At: Month → Rating"],
+            ],
+          ]);
+          verifyDashcardMappingOptions(MODEL_BASED_MODEL_INDEX, [
+            [
+              NAMELESS_SECTION,
+              ["Count", "Sum of Reviews - Created At: Month → Rating"],
+            ],
+          ]);
+        }
       });
 
-      function verifyDateMappingOptions() {
-        verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
-          ["Base Orders Question", ORDERS_DATE_COLUMNS],
-          ["Reviews", [...REVIEWS_DATE_COLUMNS, ...REVIEWS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
-          ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
-          ["User", PEOPLE_DATE_COLUMNS],
-          ["Summaries", ["Created At: Month", "Created At: Year"]],
-        ]);
-        verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
-          ["Base Orders Model", ORDERS_DATE_COLUMNS],
-          ["Reviews", [...REVIEWS_DATE_COLUMNS, ...REVIEWS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
-          ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
-          ["User", PEOPLE_DATE_COLUMNS],
-          ["Summaries", ["Created At: Month", "Created At: Year"]],
-        ]);
-        verifyNoDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX);
-        verifyNoDashcardMappingOptions(MODEL_BASED_MODEL_INDEX);
-      }
+      describe("applies filter to the the dashcard and allows to drill via dashcard header", () => {
+        it("1st stage explicit join", () => {
+          setup1stStageExplicitJoinFilter();
 
-      function verifyTextMappingOptions() {
-        verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
-          ["Reviews", [...REVIEWS_TEXT_COLUMNS, ...REVIEWS_TEXT_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
-          ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
-          ["User", PEOPLE_TEXT_COLUMNS],
-          ["Summaries", ["Category"]],
-          ["Summaries (2)", ["Reviewer", "Category"]],
-        ]);
-        verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
-          ["Reviews", [...REVIEWS_TEXT_COLUMNS, ...REVIEWS_TEXT_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
-          ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
-          ["User", PEOPLE_TEXT_COLUMNS],
-          ["Summaries", ["Category"]],
-          ["Summaries (2)", ["Reviewer", "Category"]],
-        ]);
-        verifyDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX, [
-          [
-            NAMELESS_SECTION,
-            [
-              "Reviews - Created At: Month → Reviewer",
-              "Products Via Product ID Category",
-            ],
-          ],
-        ]);
-        verifyDashcardMappingOptions(MODEL_BASED_MODEL_INDEX, [
-          [
-            NAMELESS_SECTION,
-            [
-              "Reviews - Created At: Month → Reviewer",
-              "Products Via Product ID Category",
-            ],
-          ],
-        ]);
-      }
+          verifyDashcardRowsCount({
+            dashcardIndex: 0,
+            dashboardCount: "Rows 1-1 of 953",
+            queryBuilderCount: "Showing 953 rows",
+          });
 
-      function verifyNumberMappingOptions() {
-        verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
-          ["Base Orders Question", [...ORDERS_NUMBER_COLUMNS, "Net"]],
-          ["Reviews", [...REVIEWS_NUMBER_COLUMNS, ...REVIEWS_NUMBER_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
-          ["Product", [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
-          ["User", PEOPLE_NUMBER_COLUMNS],
-          ["Summaries", ["Count", "Sum of Total", "5 * Count"]],
-          ["Summaries (2)", ["Count", "Sum of Rating"]],
-        ]);
-        verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
-          ["Base Orders Model", [...ORDERS_NUMBER_COLUMNS, "Net"]],
-          ["Reviews", [...REVIEWS_NUMBER_COLUMNS, ...REVIEWS_NUMBER_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
-          ["Product", [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
-          ["User", PEOPLE_NUMBER_COLUMNS],
-          ["Summaries", ["Count", "Sum of Total", "5 * Count"]],
-          ["Summaries (2)", ["Count", "Sum of Rating"]],
-        ]);
-        verifyDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX, [
-          [
-            NAMELESS_SECTION,
-            ["Count", "Sum of Reviews - Created At: Month → Rating"],
-          ],
-        ]);
-        verifyDashcardMappingOptions(MODEL_BASED_MODEL_INDEX, [
-          [
-            NAMELESS_SECTION,
-            ["Count", "Sum of Reviews - Created At: Month → Rating"],
-          ],
-        ]);
-      }
+          goBackToDashboard();
+
+          verifyDashcardRowsCount({
+            dashcardIndex: 1,
+            dashboardCount: "Rows 1-1 of 953",
+            queryBuilderCount: "Showing 953 rows",
+          });
+        });
+
+        it("1st stage implicit join (data source)", () => {
+          setup1stStageImplicitJoinFromSourceFilter();
+
+          verifyDashcardRowsCount({
+            dashcardIndex: 0,
+            dashboardCount: "Rows 1-1 of 1044",
+            queryBuilderCount: "Showing 1,044 rows",
+          });
+
+          goBackToDashboard();
+
+          verifyDashcardRowsCount({
+            dashcardIndex: 1,
+            dashboardCount: "Rows 1-1 of 1044",
+            queryBuilderCount: "Showing 1,044 rows",
+          });
+        });
+
+        // TODO: zhttps://github.com/metabase/metabase/issues/46774
+        it.skip("1st stage implicit join (joined data source)", () => {
+          setup1stStageImplicitJoinFromJoinFilter();
+
+          verifyDashcardRowsCount({
+            dashcardIndex: 0,
+            dashboardCount: "Rows 1-1 of 1077",
+            queryBuilderCount: "Showing 1,077 rows",
+          });
+
+          goBackToDashboard();
+
+          verifyDashcardRowsCount({
+            dashcardIndex: 1,
+            dashboardCount: "Rows 1-1 of 1077",
+            queryBuilderCount: "Showing 1,077 rows",
+          });
+        });
+
+        it("1st stage custom column", () => {
+          setup1stStageCustomColumnFilter();
+
+          verifyDashcardRowsCount({
+            dashcardIndex: 0,
+            dashboardCount: "Rows 1-1 of 688",
+            queryBuilderCount: "Showing 688 rows",
+          });
+
+          goBackToDashboard();
+
+          verifyDashcardRowsCount({
+            dashcardIndex: 1,
+            dashboardCount: "Rows 1-1 of 688",
+            queryBuilderCount: "Showing 688 rows",
+          });
+        });
+
+        it("1st stage aggregation", () => {
+          setup1stStageAggregationFilter();
+
+          verifyDashcardRowsCount({
+            dashcardIndex: 1,
+            dashboardCount: "Rows 1-1 of 3",
+            queryBuilderCount: "Showing 3 rows",
+          });
+
+          goBackToDashboard();
+
+          verifyDashcardRowsCount({
+            dashcardIndex: 1,
+            dashboardCount: "Rows 1-1 of 3",
+            queryBuilderCount: "Showing 3 rows",
+          });
+        });
+
+        // TODO: https://github.com/metabase/metabase/issues/46774
+        it.skip("1st stage breakout", () => {
+          setup1stStageBreakoutFilter();
+
+          verifyDashcardRowsCount({
+            dashcardIndex: 0,
+            dashboardCount: "Rows 1-1 of 1077",
+            queryBuilderCount: "Showing 1,077 rows",
+          });
+
+          goBackToDashboard();
+
+          verifyDashcardRowsCount({
+            dashcardIndex: 1,
+            dashboardCount: "Rows 1-1 of 1077",
+            queryBuilderCount: "Showing 1,077 rows",
+          });
+        });
+
+        it("2nd stage explicit join", () => {
+          setup2ndStageExplicitJoinFilter();
+
+          verifyDashcardRowsCount({
+            dashcardIndex: 0,
+            dashboardCount: "Rows 1-1 of 4",
+            queryBuilderCount: "Showing 4 rows",
+          });
+
+          goBackToDashboard();
+
+          verifyDashcardRowsCount({
+            dashcardIndex: 1,
+            dashboardCount: "Rows 1-1 of 4",
+            queryBuilderCount: "Showing 4 rows",
+          });
+        });
+
+        it("2nd stage custom column", () => {
+          setup2ndStageCustomColumnFilter();
+
+          verifyDashcardRowsCount({
+            dashcardIndex: 0,
+            dashboardCount: "Rows 1-1 of 31",
+            queryBuilderCount: "Showing 31 rows",
+          });
+
+          goBackToDashboard();
+
+          verifyDashcardRowsCount({
+            dashcardIndex: 1,
+            dashboardCount: "Rows 1-1 of 31",
+            queryBuilderCount: "Showing 31 rows",
+          });
+        });
+
+        it("2nd stage aggregation", () => {
+          setup2ndStageAggregationFilter();
+
+          verifyDashcardRowsCount({
+            dashcardIndex: 1,
+            dashboardCount: "Rows 1-1 of 6",
+            queryBuilderCount: "Showing 6 rows",
+          });
+
+          goBackToDashboard();
+
+          verifyDashcardRowsCount({
+            dashcardIndex: 1,
+            dashboardCount: "Rows 1-1 of 6",
+            queryBuilderCount: "Showing 6 rows",
+          });
+        });
+
+        it("2nd stage breakout", () => {
+          setup2ndStageBreakoutFilter();
+
+          verifyDashcardRowsCount({
+            dashcardIndex: 0,
+            dashboardCount: "Rows 1-1 of 1077",
+            queryBuilderCount: "Showing 1,077 rows",
+          });
+
+          goBackToDashboard();
+
+          verifyDashcardRowsCount({
+            dashcardIndex: 1,
+            dashboardCount: "Rows 1-1 of 1077",
+            queryBuilderCount: "Showing 1,077 rows",
+          });
+        });
+      });
     });
   });
 
   describe("3-stage queries", () => {
-    describe("Q9 - join, custom column, 2 aggregations, 2 breakouts", () => {
+    describe("Q9 - Q8 + 3rd stage with 1 aggregation", () => {
       beforeEach(() => {
         createAndVisitDashboardWithCardMatrix(createQ9Query);
       });
@@ -984,86 +1550,301 @@ describe("scenarios > dashboard > filters > query stages", () => {
         cy.log("## number columns");
         getFilter("Number").click();
         verifyNumberMappingOptions();
+
+        function verifyDateMappingOptions() {
+          verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
+            ["Base Orders Question", ORDERS_DATE_COLUMNS],
+            ["Reviews", [...REVIEWS_DATE_COLUMNS, ...REVIEWS_DATE_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
+            ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
+            ["User", PEOPLE_DATE_COLUMNS],
+            ["Summaries", ["Created At: Month", "Created At: Year"]],
+          ]);
+          verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
+            ["Base Orders Model", ORDERS_DATE_COLUMNS],
+            ["Reviews", [...REVIEWS_DATE_COLUMNS, ...REVIEWS_DATE_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
+            ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
+            ["User", PEOPLE_DATE_COLUMNS],
+            ["Summaries", ["Created At: Month", "Created At: Year"]],
+          ]);
+          verifyNoDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX);
+          verifyNoDashcardMappingOptions(MODEL_BASED_MODEL_INDEX);
+        }
+
+        function verifyTextMappingOptions() {
+          verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
+            ["Reviews", [...REVIEWS_TEXT_COLUMNS, ...REVIEWS_TEXT_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
+            ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
+            ["User", PEOPLE_TEXT_COLUMNS],
+            ["Summaries", ["Category"]],
+            ["Summaries (2)", ["Reviewer", "Category"]],
+          ]);
+          verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
+            ["Reviews", [...REVIEWS_TEXT_COLUMNS, ...REVIEWS_TEXT_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
+            ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
+            ["User", PEOPLE_TEXT_COLUMNS],
+            ["Summaries", ["Category"]],
+            ["Summaries (2)", ["Reviewer", "Category"]],
+          ]);
+          verifyNoDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX);
+          verifyNoDashcardMappingOptions(MODEL_BASED_MODEL_INDEX);
+        }
+
+        function verifyNumberMappingOptions() {
+          verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
+            ["Base Orders Question", [...ORDERS_NUMBER_COLUMNS, "Net"]],
+            ["Reviews", [...REVIEWS_NUMBER_COLUMNS, ...REVIEWS_NUMBER_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
+            [
+              "Product",
+              [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS],
+            ], // TODO: https://github.com/metabase/metabase/issues/46845
+            ["User", PEOPLE_NUMBER_COLUMNS],
+            ["Summaries", ["Count", "Sum of Total", "5 * Count"]],
+            ["Summaries (2)", ["Count", "Sum of Rating"]],
+            // ["Summaries (3)", ["Count"]], // TODO: https://github.com/metabase/metabase/issues/48339
+          ]);
+          verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
+            ["Base Orders Model", [...ORDERS_NUMBER_COLUMNS, "Net"]],
+            ["Reviews", [...REVIEWS_NUMBER_COLUMNS, ...REVIEWS_NUMBER_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
+            [
+              "Product",
+              [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS],
+            ], // TODO: https://github.com/metabase/metabase/issues/46845
+            ["User", PEOPLE_NUMBER_COLUMNS],
+            ["Summaries", ["Count", "Sum of Total", "5 * Count"]],
+            ["Summaries (2)", ["Count", "Sum of Rating"]],
+            // ["Summaries (3)", ["Count"]], // TODO: https://github.com/metabase/metabase/issues/48339
+          ]);
+          verifyDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX, [
+            [NAMELESS_SECTION, ["Count"]],
+          ]);
+          verifyDashcardMappingOptions(MODEL_BASED_MODEL_INDEX, [
+            [NAMELESS_SECTION, ["Count"]],
+          ]);
+        }
       });
 
-      function verifyDateMappingOptions() {
-        verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
-          ["Base Orders Question", ORDERS_DATE_COLUMNS],
-          ["Reviews", [...REVIEWS_DATE_COLUMNS, ...REVIEWS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
-          ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
-          ["User", PEOPLE_DATE_COLUMNS],
-          ["Summaries", ["Created At: Month", "Created At: Year"]],
-        ]);
-        verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
-          ["Base Orders Model", ORDERS_DATE_COLUMNS],
-          ["Reviews", [...REVIEWS_DATE_COLUMNS, ...REVIEWS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
-          ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
-          ["User", PEOPLE_DATE_COLUMNS],
-          ["Summaries", ["Created At: Month", "Created At: Year"]],
-        ]);
-        verifyNoDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX);
-        verifyNoDashcardMappingOptions(MODEL_BASED_MODEL_INDEX);
-      }
+      describe("applies filter to the the dashcard and allows to drill via dashcard header", () => {
+        it("1st stage explicit join", () => {
+          setup1stStageExplicitJoinFilter();
 
-      function verifyTextMappingOptions() {
-        verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
-          ["Reviews", [...REVIEWS_TEXT_COLUMNS, ...REVIEWS_TEXT_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
-          ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
-          ["User", PEOPLE_TEXT_COLUMNS],
-          ["Summaries", ["Category"]],
-          ["Summaries (2)", ["Reviewer", "Category"]],
-        ]);
-        verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
-          ["Reviews", [...REVIEWS_TEXT_COLUMNS, ...REVIEWS_TEXT_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
-          ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
-          ["User", PEOPLE_TEXT_COLUMNS],
-          ["Summaries", ["Category"]],
-          ["Summaries (2)", ["Reviewer", "Category"]],
-        ]);
-        verifyDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX, [
-          [
-            NAMELESS_SECTION,
-            [
-              "Reviews - Created At: Month → Reviewer",
-              "Products Via Product ID Category",
-            ],
-          ],
-        ]);
-        verifyDashcardMappingOptions(MODEL_BASED_MODEL_INDEX, [
-          [
-            NAMELESS_SECTION,
-            [
-              "Reviews - Created At: Month → Reviewer",
-              "Products Via Product ID Category",
-            ],
-          ],
-        ]);
-      }
+          verifyDashcardCellValues({
+            dashcardIndex: 0,
+            values: ["953"],
+          });
 
-      function verifyNumberMappingOptions() {
-        verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
-          ["Base Orders Question", [...ORDERS_NUMBER_COLUMNS, "Net"]],
-          ["Reviews", [...REVIEWS_NUMBER_COLUMNS, ...REVIEWS_NUMBER_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
-          ["Product", [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
-          ["User", PEOPLE_NUMBER_COLUMNS],
-          ["Summaries", ["Count", "Sum of Total", "5 * Count"]],
-          ["Summaries (2)", ["Count"]],
-        ]);
-        verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
-          ["Base Orders Model", [...ORDERS_NUMBER_COLUMNS, "Net"]],
-          ["Reviews", [...REVIEWS_NUMBER_COLUMNS, ...REVIEWS_NUMBER_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
-          ["Product", [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
-          ["User", PEOPLE_NUMBER_COLUMNS],
-          ["Summaries", ["Count", "Sum of Total", "5 * Count"]],
-          ["Summaries (2)", ["Count"]],
-        ]);
-        verifyDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX, [
-          [NAMELESS_SECTION, ["Count"]],
-        ]);
-        verifyDashcardMappingOptions(MODEL_BASED_MODEL_INDEX, [
-          [NAMELESS_SECTION, ["Count"]],
-        ]);
-      }
+          goBackToDashboard();
+
+          verifyDashcardCellValues({
+            dashcardIndex: 1,
+            values: ["953"],
+          });
+        });
+
+        it("1st stage implicit join (data source)", () => {
+          setup1stStageImplicitJoinFromSourceFilter();
+
+          verifyDashcardCellValues({
+            dashcardIndex: 0,
+            values: ["1,044"],
+          });
+
+          goBackToDashboard();
+
+          verifyDashcardCellValues({
+            dashcardIndex: 1,
+            values: ["1,044"],
+          });
+        });
+
+        // TODO: https://github.com/metabase/metabase/issues/46774
+        it.skip("1st stage implicit join (joined data source)", () => {
+          setup1stStageImplicitJoinFromJoinFilter();
+
+          verifyDashcardCellValues({
+            dashcardIndex: 0,
+            values: ["1,077"],
+          });
+
+          goBackToDashboard();
+
+          verifyDashcardCellValues({
+            dashcardIndex: 1,
+            values: ["1,077"],
+          });
+        });
+
+        it("1st stage custom column", () => {
+          setup1stStageCustomColumnFilter();
+
+          verifyDashcardCellValues({
+            dashcardIndex: 0,
+            values: ["688"],
+          });
+
+          goBackToDashboard();
+
+          verifyDashcardCellValues({
+            dashcardIndex: 1,
+            values: ["688"],
+          });
+        });
+
+        it("1st stage aggregation", () => {
+          setup1stStageAggregationFilter();
+
+          verifyDashcardCellValues({
+            dashcardIndex: 0,
+            values: ["3"],
+          });
+
+          goBackToDashboard();
+
+          verifyDashcardCellValues({
+            dashcardIndex: 1,
+            values: ["3"],
+          });
+        });
+
+        // TODO: https://github.com/metabase/metabase/issues/46774
+        it.skip("1st stage breakout", () => {
+          setup1stStageBreakoutFilter();
+
+          verifyDashcardCellValues({
+            dashcardIndex: 0,
+            values: ["1,077"],
+          });
+
+          goBackToDashboard();
+
+          verifyDashcardCellValues({
+            dashcardIndex: 1,
+            values: ["1,077"],
+          });
+        });
+
+        it("2nd stage explicit join", () => {
+          setup2ndStageExplicitJoinFilter();
+
+          verifyDashcardCellValues({
+            dashcardIndex: 0,
+            values: ["4"],
+          });
+
+          goBackToDashboard();
+
+          verifyDashcardCellValues({
+            dashcardIndex: 1,
+            values: ["4"],
+          });
+        });
+
+        it("2nd stage custom column", () => {
+          setup2ndStageCustomColumnFilter();
+
+          verifyDashcardCellValues({
+            dashcardIndex: 0,
+            values: ["31"],
+          });
+
+          goBackToDashboard();
+
+          verifyDashcardCellValues({
+            dashcardIndex: 1,
+            values: ["31"],
+          });
+        });
+
+        it("2nd stage aggregation", () => {
+          setup2ndStageAggregationFilter();
+
+          verifyDashcardCellValues({
+            dashcardIndex: 0,
+            values: ["6"],
+          });
+
+          goBackToDashboard();
+
+          verifyDashcardCellValues({
+            dashcardIndex: 1,
+            values: ["6"],
+          });
+        });
+
+        it("2nd stage breakout", () => {
+          editDashboard();
+
+          getFilter("Text").click();
+
+          getDashboardCard(0).findByText("Select…").click();
+          popover().within(() => {
+            getPopoverList().scrollTo("bottom");
+            getPopoverItem("Category", 2).click();
+          });
+
+          getDashboardCard(1).findByText("Select…").click();
+          popover().within(() => {
+            getPopoverList().scrollTo("bottom");
+            getPopoverItem("Category", 2).click();
+          });
+
+          cy.button("Save").click();
+          cy.wait("@updateDashboard");
+
+          filterWidget().eq(0).click();
+          popover().within(() => {
+            cy.findByLabelText("Gadget").click();
+            cy.button("Add filter").click();
+          });
+          cy.wait(["@dashboardData", "@dashboardData"]);
+
+          verifyDashcardCellValues({
+            dashcardIndex: 0,
+            values: ["1,077"],
+          });
+
+          goBackToDashboard();
+
+          verifyDashcardCellValues({
+            dashcardIndex: 1,
+            values: ["1,077"],
+          });
+        });
+
+        // TODO: https://github.com/metabase/metabase/issues/48339
+        it.skip("3rd stage aggregation", () => {
+          setup3rdStageAggregationFilter();
+
+          getDashboardCard(0)
+            .findByTestId("cell-data")
+            .should("have.text", "0"); // TODO: https://github.com/metabase/metabase/issues/48339#issuecomment-2393449924
+          getDashboardCard(0).findByTestId("legend-caption-title").click();
+          cy.wait("@dataset");
+          cy.findByTestId("query-visualization-root").should(
+            "contain.text",
+            "No results!",
+          );
+          cy.findByTestId("question-row-count").should(
+            "have.text",
+            "Showing 0 rows",
+          );
+
+          goBackToDashboard();
+
+          getDashboardCard(1)
+            .findByTestId("cell-data")
+            .should("have.text", "0"); // TODO: https://github.com/metabase/metabase/issues/48339#issuecomment-2393449924
+          getDashboardCard(1).findByTestId("legend-caption-title").click();
+          cy.wait("@dataset");
+          cy.findByTestId("query-visualization-root").should(
+            "contain.text",
+            "No results!",
+          );
+          cy.findByTestId("question-row-count").should(
+            "have.text",
+            "Showing 0 rows",
+          );
+        });
+      });
     });
   });
 });
@@ -1291,11 +2072,9 @@ function createQ8Query(source: Card): StructuredQuery {
 }
 
 // Q9 - Q8 + 3rd stage with 1 aggregation
-// Sanity check, mainly to verify that columns from the 1st stage are not exposed here
 function createQ9Query(source: Card): StructuredQuery {
   return {
     "source-query": createQ8Query(source),
-    ...createQ8Query(source),
     aggregation: [["count"]],
   };
 }
@@ -1335,7 +2114,6 @@ function createAndVisitDashboardWithCardMatrix(createQuery: CreateQuery) {
   });
 }
 
-// TODO: use createDashboardWithQuestions
 function createAndVisitDashboard(cards: Card[]) {
   let id = 0;
   const getNextId = () => --id;
@@ -1347,25 +2125,390 @@ function createAndVisitDashboard(cards: Card[]) {
         id: getNextId(),
         size_x: CARD_WIDTH,
         size_y: CARD_HEIGHT,
-        row: CARD_HEIGHT * index,
+        row: CARD_HEIGHT * Math.floor(index / 2),
         col: index % 2 === 0 ? 0 : CARD_WIDTH,
         card,
         card_id: card.id,
       })),
     ],
-  }).then(dashboard => visitDashboard(dashboard.id));
+  }).then(dashboard => {
+    visitDashboard(dashboard.id);
+    cy.wait("@getDashboard");
+  });
+}
+
+function setup1stStageExplicitJoinFilter() {
+  editDashboard();
+
+  getFilter("Text").click();
+
+  getDashboardCard(0).findByText("Select…").click();
+  popover().within(() => {
+    getPopoverItem("Reviewer", 0).click();
+  });
+
+  getDashboardCard(1).findByText("Select…").click();
+  popover().within(() => {
+    getPopoverItem("Reviewer", 0).click();
+  });
+
+  cy.button("Save").click();
+  cy.wait("@updateDashboard");
+
+  filterWidget().eq(0).click();
+  popover().within(() => {
+    cy.findByPlaceholderText("Search by Reviewer").type("abe.gorczany");
+    cy.button("Add filter").click();
+  });
+  cy.wait(["@dashboardData", "@dashboardData"]);
+}
+
+function setup1stStageImplicitJoinFromSourceFilter() {
+  editDashboard();
+
+  getFilter("Number").click();
+  sidebar().findByText("Filter operator").next().click();
+  popover().findByText("Between").click();
+
+  getDashboardCard(0).findByText("Select…").click();
+  popover().within(() => {
+    getPopoverItem("Price", 0).click();
+  });
+
+  getDashboardCard(1).findByText("Select…").click();
+  popover().within(() => {
+    getPopoverItem("Price", 0).click();
+  });
+
+  cy.button("Save").click();
+  cy.wait("@updateDashboard");
+
+  filterWidget().eq(0).click();
+  popover().within(() => {
+    cy.findAllByPlaceholderText("Enter a number").eq(0).type("0");
+    cy.findAllByPlaceholderText("Enter a number").eq(1).type("16");
+    cy.button("Add filter").click();
+  });
+  cy.wait(["@dashboardData", "@dashboardData"]);
+}
+
+function setup1stStageImplicitJoinFromJoinFilter() {
+  editDashboard();
+
+  getFilter("Text").click();
+
+  getDashboardCard(0).findByText("Select…").click();
+  popover().within(() => {
+    getPopoverItem("Category", 1).click();
+  });
+
+  getDashboardCard(1).findByText("Select…").click();
+  popover().within(() => {
+    getPopoverItem("Category", 1).click();
+  });
+
+  cy.button("Save").click();
+  cy.wait("@updateDashboard");
+
+  filterWidget().eq(0).click();
+  popover().within(() => {
+    cy.findByLabelText("Gadget").click();
+    cy.button("Add filter").click();
+  });
+  cy.wait(["@dashboardData", "@dashboardData"]);
+}
+
+function setup1stStageCustomColumnFilter() {
+  editDashboard();
+
+  getFilter("Number").click();
+  sidebar().findByText("Filter operator").next().click();
+  popover().findByText("Between").click();
+
+  getDashboardCard(0).findByText("Select…").click();
+  popover().within(() => {
+    getPopoverItem("Net").click();
+  });
+
+  getDashboardCard(1).findByText("Select…").click();
+  popover().within(() => {
+    getPopoverItem("Net").click();
+  });
+
+  cy.button("Save").click();
+  cy.wait("@updateDashboard");
+
+  filterWidget().eq(0).click();
+  popover().within(() => {
+    cy.findAllByPlaceholderText("Enter a number").eq(0).type("0");
+    cy.findAllByPlaceholderText("Enter a number").eq(1).type("20");
+    cy.button("Add filter").click();
+  });
+  cy.wait(["@dashboardData", "@dashboardData"]);
+}
+
+function setup1stStageAggregationFilter() {
+  editDashboard();
+
+  getFilter("Number").click();
+  sidebar().findByText("Filter operator").next().click();
+  popover().findByText("Between").click();
+
+  getDashboardCard(0).findByText("Select…").click();
+  popover().within(() => {
+    getPopoverList().scrollTo("bottom");
+    getPopoverItem("Count").click();
+  });
+
+  getDashboardCard(1).findByText("Select…").click();
+  popover().within(() => {
+    getPopoverList().scrollTo("bottom");
+    getPopoverItem("Count").click();
+  });
+
+  cy.button("Save").click();
+  cy.wait("@updateDashboard");
+
+  filterWidget().eq(0).click();
+  popover().within(() => {
+    cy.findAllByPlaceholderText("Enter a number").eq(0).type("0");
+    cy.findAllByPlaceholderText("Enter a number").eq(1).type("2");
+    cy.button("Add filter").click();
+  });
+  cy.wait(["@dashboardData", "@dashboardData"]);
+}
+
+function setup1stStageBreakoutFilter() {
+  editDashboard();
+
+  getFilter("Text").click();
+
+  getDashboardCard(0).findByText("Select…").click();
+  popover().within(() => {
+    getPopoverList().scrollTo("bottom");
+    getPopoverItem("Category", 1).click();
+  });
+
+  getDashboardCard(1).findByText("Select…").click();
+  popover().within(() => {
+    getPopoverList().scrollTo("bottom");
+    getPopoverItem("Category", 1).click();
+  });
+
+  cy.button("Save").click();
+  cy.wait("@updateDashboard");
+
+  filterWidget().eq(0).click();
+  popover().within(() => {
+    cy.findByLabelText("Gadget").click();
+    cy.button("Add filter").click();
+  });
+  cy.wait(["@dashboardData", "@dashboardData"]);
+}
+
+function setup2ndStageExplicitJoinFilter() {
+  editDashboard();
+
+  getFilter("Text").click();
+
+  getDashboardCard(0).findByText("Select…").click();
+  popover().within(() => {
+    getPopoverItem("Reviewer", 1).click();
+  });
+
+  getDashboardCard(1).findByText("Select…").click();
+  popover().within(() => {
+    getPopoverItem("Reviewer", 1).click();
+  });
+
+  cy.button("Save").click();
+  cy.wait("@updateDashboard");
+
+  filterWidget().eq(0).click();
+  popover().within(() => {
+    cy.findByPlaceholderText("Search by Reviewer").type("abe.gorczany");
+    cy.button("Add filter").click();
+  });
+  cy.wait(["@dashboardData", "@dashboardData"]);
+}
+
+function setup2ndStageCustomColumnFilter() {
+  editDashboard();
+
+  getFilter("Number").click();
+  sidebar().findByText("Filter operator").next().click();
+  popover().findByText("Between").click();
+
+  getDashboardCard(0).findByText("Select…").click();
+  popover().within(() => {
+    getPopoverList().scrollTo("bottom");
+    getPopoverItem("5 * Count").click();
+  });
+
+  getDashboardCard(1).findByText("Select…").click();
+  popover().within(() => {
+    getPopoverList().scrollTo("bottom");
+    getPopoverItem("5 * Count").click();
+  });
+
+  cy.button("Save").click();
+  cy.wait("@updateDashboard");
+
+  filterWidget().eq(0).click();
+  popover().within(() => {
+    cy.findAllByPlaceholderText("Enter a number").eq(0).type("0");
+    cy.findAllByPlaceholderText("Enter a number").eq(1).type("20");
+    cy.button("Add filter").click();
+  });
+  cy.wait(["@dashboardData", "@dashboardData"]);
+}
+
+function setup2ndStageAggregationFilter() {
+  editDashboard();
+
+  getFilter("Number").click();
+  sidebar().findByText("Filter operator").next().click();
+  popover().findByText("Between").click();
+
+  getDashboardCard(0).findByText("Select…").click();
+  popover().within(() => {
+    getPopoverList().scrollTo("bottom");
+    getPopoverItem("Count", 1).click();
+  });
+  dismissToast();
+
+  getDashboardCard(1).findByText("Select…").click();
+  popover().within(() => {
+    getPopoverList().scrollTo("bottom");
+    getPopoverItem("Count", 1).click();
+  });
+  dismissToast();
+
+  getDashboardCard(2).findByText("Select…").click();
+  popover().within(() => {
+    getPopoverItem("Count").click();
+  });
+  dismissToast();
+
+  getDashboardCard(3).findByText("Select…").click();
+  popover().within(() => {
+    getPopoverItem("Count").click();
+  });
+
+  cy.button("Save").click();
+  cy.wait("@updateDashboard");
+
+  filterWidget().eq(0).click();
+  popover().within(() => {
+    cy.findAllByPlaceholderText("Enter a number").eq(0).type("0");
+    cy.findAllByPlaceholderText("Enter a number").eq(1).type("2");
+    cy.button("Add filter").click();
+  });
+  cy.wait(["@dashboardData", "@dashboardData"]);
+}
+
+function setup2ndStageBreakoutFilter() {
+  editDashboard();
+
+  getFilter("Text").click();
+
+  getDashboardCard(0).findByText("Select…").click();
+  popover().within(() => {
+    getPopoverList().scrollTo("bottom");
+    getPopoverItem("Category", 2).click();
+  });
+  dismissToast();
+
+  getDashboardCard(1).findByText("Select…").click();
+  popover().within(() => {
+    getPopoverList().scrollTo("bottom");
+    getPopoverItem("Category", 2).click();
+  });
+  dismissToast();
+
+  getDashboardCard(2).findByText("Select…").click();
+  popover().within(() => {
+    getPopoverItem("Products Via Product ID Category").click();
+  });
+  dismissToast();
+
+  getDashboardCard(3).findByText("Select…").click();
+  popover().within(() => {
+    getPopoverItem("Products Via Product ID Category").click();
+  });
+
+  cy.button("Save").click();
+  cy.wait("@updateDashboard");
+
+  filterWidget().eq(0).click();
+  popover().within(() => {
+    cy.findByLabelText("Gadget").click();
+    cy.button("Add filter").click();
+  });
+  cy.wait(["@dashboardData", "@dashboardData"]);
+}
+
+function setup3rdStageAggregationFilter() {
+  editDashboard();
+
+  getFilter("Number").click();
+  sidebar().findByText("Filter operator").next().click();
+  popover().findByText("Between").click();
+
+  getDashboardCard(0).findByText("Select…").click();
+  popover().within(() => {
+    getPopoverList().scrollTo("bottom");
+    getPopoverItem("Count", 2).click();
+  });
+
+  cy.button("Save").click();
+  cy.wait("@updateDashboard");
+
+  filterWidget().eq(0).click();
+  popover().within(() => {
+    cy.findAllByPlaceholderText("Enter a number").eq(0).type("0");
+    cy.findAllByPlaceholderText("Enter a number").eq(1).type("2");
+    cy.button("Add filter").click();
+  });
+  cy.wait(["@dashboardData", "@dashboardData"]);
 }
 
 function getFilter(name: string) {
   return cy.findByTestId("fixed-width-filters").findByText(name);
 }
 
+function getPopoverList() {
+  return cy.findAllByRole("grid").eq(0);
+}
+
 function getPopoverItems() {
   return cy.get("[data-element-id=list-section]");
 }
 
+/**
+ * @param index if more than 1 item with the same name is visible, specify which one should be used
+ */
+function getPopoverItem(name: string, index = 0) {
+  /**
+   * Without scrollIntoView() the popover may scroll automatically to a different
+   * place when clicking the item (unclear why).
+   */
+  return cy.findAllByText(name).eq(index).scrollIntoView();
+}
+
+function dismissToast() {
+  cy.findByTestId("toast-undo")
+    .findByRole("img", { name: /close icon/ })
+    .click();
+}
+
 function clickAway() {
   cy.get("body").click(0, 0);
+}
+
+function goBackToDashboard() {
+  cy.findByLabelText("Back to Test Dashboard").click();
+  cy.wait("@getDashboard");
 }
 
 function verifyDashcardMappingOptions(
@@ -1407,7 +2550,7 @@ function verifyPopoverMappingOptions(sections: MappingSection[]) {
 
       for (const [sectionName, columnNames] of sections) {
         const item = cy.wrap($items[index]);
-        item.scrollIntoView();
+        item.scrollIntoView(); // the list is virtualized, we need to keep scrolling to see all the items
         item.should("have.text", sectionName);
         ++index;
 
@@ -1422,4 +2565,61 @@ function verifyPopoverMappingOptions(sections: MappingSection[]) {
       expect($items.length).to.eq(expectedItemsCount);
     });
   });
+}
+
+function verifyDashcardRowsCount({
+  dashcardIndex,
+  dashboardCount,
+  queryBuilderCount,
+}: {
+  dashcardIndex: number;
+  dashboardCount: string;
+  queryBuilderCount: string;
+}) {
+  getDashboardCard(dashcardIndex)
+    .findByText(dashboardCount)
+    .should("be.visible");
+  getDashboardCard(dashcardIndex).findByTestId("legend-caption-title").click();
+  cy.wait("@dataset");
+  cy.findByTestId("question-row-count").should("have.text", queryBuilderCount);
+}
+
+function verifyDashcardCellValues({
+  dashcardIndex,
+  values,
+}: {
+  dashcardIndex: number;
+  values: string[];
+}) {
+  for (let valueIndex = 0; valueIndex < values.length; ++valueIndex) {
+    const value = values[valueIndex];
+
+    getDashboardCard(dashcardIndex)
+      .findByTestId("table-row")
+      .findAllByTestId("cell-data")
+      .eq(valueIndex)
+      .should("have.text", value);
+  }
+
+  getDashboardCard(dashcardIndex).findByTestId("legend-caption-title").click();
+  cy.wait("@dataset");
+
+  for (let valueIndex = 0; valueIndex < values.length; ++valueIndex) {
+    const value = values[valueIndex];
+    const cellIndex = valueIndex + values.length; // values.length to skip header row
+
+    cy.findAllByTestId("cell-data").eq(cellIndex).should("have.text", value);
+  }
+}
+
+function verifyDashcardNoResults({ dashcardIndex }: { dashcardIndex: number }) {
+  getDashboardCard(dashcardIndex).should("have.text", "No results!");
+
+  getDashboardCard(dashcardIndex).findByTestId("legend-caption-title").click();
+  cy.wait("@dataset");
+
+  cy.findByTestId("query-visualization-root").should(
+    "have.text",
+    "No results!",
+  );
 }

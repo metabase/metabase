@@ -46,6 +46,7 @@ export function getUrl(
 
 export function getUrlWithParameters(
   question: Question,
+  originalQuestion: Question,
   parameters: ParameterWithTarget[],
   parameterValues: Record<ParameterId, ParameterValueOrArray>,
   { objectId }: { objectId?: string | number } = {},
@@ -71,7 +72,7 @@ export function getUrlWithParameters(
         ._convertParametersToMbql();
 
       return getUrl(questionWithParameters, {
-        originalQuestion: question,
+        originalQuestion,
         includeDisplayIsLocked,
         query: objectId === undefined ? {} : { objectId },
       });
