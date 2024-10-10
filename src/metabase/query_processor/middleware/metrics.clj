@@ -1,6 +1,7 @@
 (ns metabase.query-processor.middleware.metrics
   (:require
    [medley.core :as m]
+   [metabase.analytics.prometheus :as prometheus]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -254,5 +255,6 @@
       (update query :stages #(adjust-metric-stages query nil %))
       (when-let [metric (lib.util.match/match-one <>
                           [:metric _ _] &match)]
+        (prometheus/inc! :metabase-metrics/adjust-errors)
         (log/warn "Failed to replace metric"
                   (pr-str {:metric metric}))))))

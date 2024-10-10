@@ -194,7 +194,7 @@
 
 (defn- product-collectors
   []
-  ;; Iapetos will use "default" if we do not provide a namespace, so explicitly set `metabase-email`:
+  ;; Iapetos will use "default" if we do not provide a namespace, so explicitly set, e.g. `metabase-email`:
   [(prometheus/counter :metabase-email/messages
                        {:description (trs "Number of emails sent.")})
    (prometheus/counter :metabase-email/message-errors
@@ -202,7 +202,9 @@
    (prometheus/counter :metabase-sdk/response-ok
                        {:description (trs "Number of successful SDK requests.")})
    (prometheus/counter :metabase-sdk/response-error
-                       {:description (trs "Number of errors when responding to SDK requests.")})])
+                       {:description (trs "Number of errors when responding to SDK requests.")})
+   (prometheus/counter :metabase-metrics/adjust-errors
+                       {:description (trs "Number of errors when adjusting metrics.")})])
 
 (defn- setup-metrics!
   "Instrument the application. Conditionally done when some setting is set. If [[prometheus-server-port]] is not set it
