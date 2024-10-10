@@ -9,7 +9,7 @@ export const datePickerOverrides = {
     },
     classNames: {
       day: Styles.day,
-      weekdaysRow: Styles.weekdaysRow,
+      weekday: Styles.weekday,
       month: Styles.month,
       monthRow: Styles.row,
       monthCell: Styles.cell,
