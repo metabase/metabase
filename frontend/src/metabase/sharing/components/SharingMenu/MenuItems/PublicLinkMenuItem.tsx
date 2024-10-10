@@ -21,7 +21,7 @@ export function PublicLinkMenuItem({
       <Menu.Item
         data-testid="embed-menu-public-link-item"
         my="sm"
-        icon={
+        leftSection={
           <Center mr="xs">
             <Icon name="link" />
           </Center>
@@ -48,7 +48,7 @@ export function PublicLinkMenuItem({
     <Menu.Item
       data-testid="embed-menu-public-link-item"
       my="sm"
-      icon={
+      leftSection={
         <Center mr="xs">
           <Icon name="link" />
         </Center>
