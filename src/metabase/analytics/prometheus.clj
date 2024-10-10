@@ -5,7 +5,6 @@
 
   Api is quite simple: [[setup!]] and [[shutdown!]]. After that you can retrieve metrics from
   http://localhost:<prometheus-server-port>/metrics."
-  (:refer-clojure :exclude [inc])
   (:require
    [clojure.java.jmx :as jmx]
    [iapetos.collector :as collector]
@@ -253,7 +252,7 @@
              (catch Exception e
                (log/warn e "Error stopping prometheus web-server")))))))
 
-(defn inc
+(defn inc!
   "Call iapetos.core/inc on the metric in the global registry,
    if it has already been initialized and the metric is registered."
   [metric]
