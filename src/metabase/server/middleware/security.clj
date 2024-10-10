@@ -89,6 +89,7 @@
                                  "https://accounts.google.com"]
                   :style-src    ["'self'"
                                   "*"
+                                  "https://*.app.omniloy.com"
                                   "https://assistants-dev-*"
                                  ;; See [[generate-nonce]]
                                  (when nonce
@@ -119,6 +120,7 @@
                                  "metabase.us10.list-manage.com"
                                  ;; Semantic Layer
                                  "https://*.semantic.omniloy.com"
+                                 "https://*.app.omniloy.com"
                                  ;; Semantic Layer Local
                                  "http://*:3001"
                                  ;; Google analytics
