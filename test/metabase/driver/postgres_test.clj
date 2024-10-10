@@ -836,30 +836,37 @@
                 (#'postgres/enum-types :postgres db))))
 
        (testing "check that describe-table properly describes the database & base types of the enum fields"
-         (is (= {:name   "birds"
-                 :fields #{{:name                       "name"
-                            :database-type              "varchar"
-                            :base-type                  :type/Text
-                            :pk?                        true
-                            :database-position          0
-                            :database-required          true
-                            :database-is-auto-increment false
-                            :json-unfolding             false}
-                           {:name                       "status"
-                            :database-type              "bird_status"
-                            :base-type                  :type/PostgresEnum
-                            :database-position          1
-                            :database-required          true
-                            :database-is-auto-increment false
-                            :json-unfolding             false}
-                           {:name                       "type"
-                            :database-type              "bird type"
-                            :base-type                  :type/PostgresEnum
-                            :database-position          2
-                            :database-required          true
-                            :database-is-auto-increment false
-                            :json-unfolding             false}}}
-                (driver/describe-table :postgres db {:name "birds"}))))
+         (is (=? [{:table-schema               "public"
+                   :table-name                 "birds"
+                   :name                       "name"
+                   :database-type              "varchar"
+                   :base-type                  :type/Text
+                   :pk?                        true
+                   :database-position          0
+                   :database-required          true
+                   :database-is-auto-increment false
+                   :json-unfolding             false}
+                  {:table-schema               "public"
+                   :table-name                 "birds"
+                   :name                       "status"
+                   :database-type              "bird_status"
+                   :base-type                  :type/PostgresEnum
+                   :database-position          1
+                   :database-required          true
+                   :database-is-auto-increment false
+                   :json-unfolding             false}
+                  {:table-schema               "public"
+                   :table-name                 "birds"
+                   :name                       "type"
+                   :database-type              "bird type"
+                   :base-type                  :type/PostgresEnum
+                   :database-position          2
+                   :database-required          true
+                   :database-is-auto-increment false
+                   :json-unfolding             false}]
+                 (->> (driver/describe-fields :postgres db {:table-names ["birds"]})
+                      (into #{})
+                      (sort-by :database-position)))))
 
        (testing "check that when syncing the DB the enum types get recorded appropriately"
          (let [table-id (t2/select-one-pk Table :db_id (u/the-id db), :name "birds")]

@@ -7,6 +7,7 @@
    [java-time.api :as t]
    [metabase.config :as config]
    [metabase.driver :as driver]
+   [metabase.driver.postgres :as postgres]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -28,7 +29,12 @@
    [metabase.util.log :as log])
   (:import
    (com.amazon.redshift.util RedshiftInterval)
-   (java.sql Connection PreparedStatement ResultSet ResultSetMetaData Types)))
+   (java.sql
+    Connection
+    PreparedStatement
+    ResultSet
+    ResultSetMetaData
+    Types)))
 
 (set! *warn-on-reflection* true)
 
@@ -47,11 +53,9 @@
 ;;; |                                             metabase.driver impls                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; don't use the Postgres implementation for `describe-table` since it tries to fetch enums which Redshift doesn't
-;; support
-(defmethod driver/describe-table :redshift
-  [& args]
-  (apply (get-method driver/describe-table :sql-jdbc) args))
+(defmethod postgres/enum-types :redshift
+  [_driver _database]
+  nil)
 
 (def ^:private get-tables-sql
   ;; Cal 2024-04-09 This query uses tables that the JDBC redshift driver currently uses.
@@ -126,32 +130,6 @@
       (throw (ex-info (format "Error in %s describe-database: %s" driver (ex-message e))
                       {}
                       e)))))
-
-(defmethod sql-jdbc.sync/describe-fks-sql :redshift
-  [driver & {:keys [schema-names table-names]}]
-  (sql/format {:select (vec
-                        {:fk_ns.nspname       "fk-table-schema"
-                         :fk_table.relname    "fk-table-name"
-                         :fk_column.attname   "fk-column-name"
-                         :pk_ns.nspname       "pk-table-schema"
-                         :pk_table.relname    "pk-table-name"
-                         :pk_column.attname   "pk-column-name"})
-               :from   [[:pg_constraint :c]]
-               :join   [[:pg_class     :fk_table]  [:= :c.conrelid :fk_table.oid]
-                        [:pg_namespace :fk_ns]     [:= :c.connamespace :fk_ns.oid]
-                        [:pg_attribute :fk_column] [:= :c.conrelid :fk_column.attrelid]
-                        [:pg_class     :pk_table]  [:= :c.confrelid :pk_table.oid]
-                        [:pg_namespace :pk_ns]     [:= :pk_table.relnamespace :pk_ns.oid]
-                        [:pg_attribute :pk_column] [:= :c.confrelid :pk_column.attrelid]]
-               :where  [:and
-                        [:raw "fk_ns.nspname !~ '^information_schema|catalog_history|pg_'"]
-                        [:= :c.contype [:raw "'f'::char"]]
-                        [:= :fk_column.attnum [:raw "ANY(c.conkey)"]]
-                        [:= :pk_column.attnum [:raw "ANY(c.confkey)"]]
-                        (when table-names [:in :fk_table.relname table-names])
-                        (when schema-names [:in :fk_ns.nspname schema-names])]
-               :order-by [:fk-table-schema :fk-table-name]}
-              :dialect (sql.qp/quote-style driver)))
 
 (defmethod sql-jdbc.sync/describe-fields-sql :redshift
   ;; The implementation is based on `getColumns` in https://github.com/aws/amazon-redshift-jdbc-driver/blob/master/src/main/java/com/amazon/redshift/jdbc/RedshiftDatabaseMetaData.java
