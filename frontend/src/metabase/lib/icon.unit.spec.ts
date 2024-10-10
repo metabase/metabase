@@ -33,7 +33,7 @@ describe("getIcon", () => {
     expect(getIcon({ model: "dashboard" })).toEqual({ name: "dashboard" });
   });
   it("should return the correct icon for a card without a display type", () => {
-    expect(getIcon({ model: "card" })).toEqual({ name: "table" });
+    expect(getIcon({ model: "card" })).toEqual({ name: "table2" });
   });
   it("should return the default icon for an invalid model", () => {
     // @ts-expect-error testing invalid model
@@ -42,17 +42,18 @@ describe("getIcon", () => {
 
   describe("card display types", () => {
     it("should return the default icon for an invalid display type", () => {
-      // @ts-expect-error testing invalid display type
-      expect(getIcon({ model: "card", display: "pikachu" })).toEqual({
+      expect(
+        getIcon({ model: "card", display: "pikachu" as unknown as null }),
+      ).toEqual({
         name: "table2",
       });
     });
 
     it("should return the default icon for no display type", () => {
-      expect(getIcon({ model: "card" })).toEqual({ name: "table" });
+      expect(getIcon({ model: "card" })).toEqual({ name: "table2" });
     });
 
-    it("should return the correct icon for a card with a table chare", () => {
+    it("should return the correct icon for a card with a table viz", () => {
       expect(getIcon({ model: "card", display: "table" })).toEqual({
         name: "table2",
       });
