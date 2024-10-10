@@ -17,7 +17,6 @@ import {
   type UseChartTypeVisualizationsProps,
   useChartTypeVisualizations,
 } from "metabase/query_builder/components/chart-type-selector";
-import { Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { CardDisplayType } from "metabase-types/api";
@@ -35,12 +34,14 @@ export const ChartTypeSidebar = ({
   const dispatch = useDispatch();
 
   const onUpdateQuestion = (newQuestion: Question) => {
-    dispatch(
-      updateQuestion(newQuestion, {
-        shouldUpdateUrl: Lib.queryDisplayInfo(question.query()).isEditable,
-      }),
-    );
-    dispatch(setUIControls({ isShowingRawTable: false }));
+    if (question) {
+      dispatch(
+        updateQuestion(newQuestion, {
+          shouldUpdateUrl: Lib.queryDisplayInfo(question.query()).isEditable,
+        }),
+      );
+      dispatch(setUIControls({ isShowingRawTable: false }));
+    }
   };
 
   const {
@@ -55,16 +56,16 @@ export const ChartTypeSidebar = ({
   });
 
   const handleSelectVisualization = (display: CardDisplayType) => {
-    if (display === selectedVisualization) {
-      dispatch(
-        onOpenChartSettings({
-          initialChartSettings: { section: t`Data` },
-          showSidebarTitle: true,
-        }),
-      );
-    } else {
-      updateQuestionVisualization(display);
-    }
+    updateQuestionVisualization(display);
+  };
+
+  const onOpenVizSettings = () => {
+    dispatch(
+      onOpenChartSettings({
+        initialChartSettings: { section: t`Data` },
+        showSidebarTitle: true,
+      }),
+    );
   };
 
   return (
@@ -73,14 +74,16 @@ export const ChartTypeSidebar = ({
       onDone={() => dispatch(onCloseChartType())}
       data-testid="chart-type-sidebar"
     >
-      <Stack spacing={0} m="lg">
-        <ChartTypeSettings
-          selectedVisualization={selectedVisualization}
-          onSelectVisualization={handleSelectVisualization}
-          sensibleVisualizations={sensibleVisualizations}
-          nonSensibleVisualizations={nonSensibleVisualizations}
-        />
-      </Stack>
+      <ChartTypeSettings
+        selectedVisualization={selectedVisualization}
+        onSelectVisualization={handleSelectVisualization}
+        sensibleVisualizations={sensibleVisualizations}
+        nonSensibleVisualizations={nonSensibleVisualizations}
+        onOpenSettings={onOpenVizSettings}
+        spacing={0}
+        w="100%"
+        p="lg"
+      />
     </SidebarContent>
   );
 };

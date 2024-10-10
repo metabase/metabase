@@ -22,6 +22,7 @@ import type { MetabaseTheme } from "embedding-sdk/types/theme";
 import { LocaleProvider } from "metabase/public/LocaleProvider";
 import { setOptions } from "metabase/redux/embed";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
+import { Box } from "metabase/ui";
 
 import { SCOPED_CSS_RESET } from "../private/PublicComponentStylesWrapper";
 import { SdkFontsGlobalStyles } from "../private/SdkGlobalFontsStyles";
@@ -92,12 +93,12 @@ export const MetabaseProviderInternal = ({
       <Global styles={SCOPED_CSS_RESET} />
       <SdkThemeProvider theme={theme}>
         <SdkFontsGlobalStyles baseUrl={config.metabaseInstanceUrl} />
-        <div className={className} id={EMBEDDING_SDK_ROOT_ELEMENT_ID}>
+        <Box className={className} id={EMBEDDING_SDK_ROOT_ELEMENT_ID}>
           <LocaleProvider locale={locale}>{children}</LocaleProvider>
           <SdkUsageProblemDisplay config={config} />
           <PortalContainer />
           <FullPagePortalContainer />
-        </div>
+        </Box>
       </SdkThemeProvider>
     </EmotionCacheProvider>
   );

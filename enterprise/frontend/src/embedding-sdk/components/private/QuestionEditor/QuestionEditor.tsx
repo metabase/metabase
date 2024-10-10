@@ -3,10 +3,12 @@ import { useState } from "react";
 
 import { InteractiveQuestion } from "embedding-sdk/components/public/InteractiveQuestion";
 import { SaveQuestionModal } from "metabase/containers/SaveQuestionModal";
-import { Box, Group, Tabs } from "metabase/ui";
+import { Box, Button, Group, Icon, Tabs } from "metabase/ui";
 
 import type { InteractiveQuestionProps } from "../../public/InteractiveQuestion";
 import { useInteractiveQuestionContext } from "../InteractiveQuestion/context";
+
+import QuestionEditorS from "./QuestionEditor.module.css";
 
 const QuestionEditorInner = () => {
   const {
@@ -30,22 +32,29 @@ const QuestionEditorInner = () => {
     await runQuestion();
   };
 
+  const [isVisualizationSelectorOpen, { toggle: toggleVisualizationSelector }] =
+    useDisclosure();
+
   return (
-    <Box w="100%" h="100%">
+    <>
       <Tabs
         value={activeTab}
         onTabChange={setActiveTab}
         defaultValue="notebook"
+        h="100%"
+        display="flex"
+        style={{ flexDirection: "column", overflow: "hidden" }}
       >
         <Group position="apart">
-          <Group>
+          <Tabs.List>
             <Tabs.Tab value="notebook">Notebook</Tabs.Tab>
-            {queryResults ? (
+            {queryResults && (
               <Tabs.Tab value="visualization" onClick={onOpenVisualizationTab}>
                 Visualization
               </Tabs.Tab>
-            ) : null}
-          </Group>
+            )}
+          </Tabs.List>
+
           {!isSaveModalOpen && (
             <Group>
               <InteractiveQuestion.ResetButton
@@ -61,14 +70,40 @@ const QuestionEditorInner = () => {
           )}
         </Group>
 
-        <Tabs.Panel value="notebook">
+        <Tabs.Panel value="notebook" h="100%" style={{ overflow: "auto" }}>
           <InteractiveQuestion.Notebook
             onApply={() => setActiveTab("visualization")}
           />
         </Tabs.Panel>
-
-        <Tabs.Panel value="visualization">
-          <InteractiveQuestion.QuestionVisualization />
+        <Tabs.Panel value="visualization" h="100%">
+          <Button
+            compact={true}
+            radius="xl"
+            py="sm"
+            px="md"
+            variant="filled"
+            color="brand"
+            onClick={toggleVisualizationSelector}
+          >
+            <Group>
+              <Icon
+                name={
+                  isVisualizationSelectorOpen ? "arrow_left" : "arrow_right"
+                }
+              />
+              <Icon name="eye" />
+            </Group>
+          </Button>
+          <Box className={QuestionEditorS.Main} w="100%" h="100%">
+            <Box className={QuestionEditorS.ChartTypeSelector}>
+              {isVisualizationSelectorOpen && (
+                <InteractiveQuestion.ChartTypeSelector />
+              )}
+            </Box>
+            <Box className={QuestionEditorS.Content}>
+              <InteractiveQuestion.QuestionVisualization />
+            </Box>
+          </Box>
         </Tabs.Panel>
       </Tabs>
 
@@ -84,7 +119,7 @@ const QuestionEditorInner = () => {
           onSave={onSave}
         />
       )}
-    </Box>
+    </>
   );
 };
 
