@@ -690,6 +690,8 @@ jobs:
   tag-nightly:
     if: ${{ inputs.auto }}
     needs: [push-tags, verify-docker-pull, verify-s3-download]
+    if: false
+    needs: [push-tags, verify-docker-pull, verify-s3-download, check-version]
     uses: ./.github/workflows/release-tag.yml
     secrets: inherit
     with:
