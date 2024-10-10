@@ -1,12 +1,14 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
+import { checkNotNull } from "metabase/lib/types";
 import { Button, Stack } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import type { TemporalUnit } from "metabase-types/api";
 
 import { ComparisonTypeInput } from "./ComparisonTypeInput";
 import { GroupUnitInput } from "./GroupUnitInput";
+import { OFFSET_UNITS } from "./constants";
 import type { ComparisonType, OffsetOptions } from "./types";
 import { getBreakoutColumn } from "./utils";
 
@@ -26,14 +28,20 @@ export function OffsetAggregationForm({
   const [options, setOptions] = useState<OffsetOptions>({
     comparisonType: "offset",
     groupUnit: "month",
+    offsetUnit: "month",
   });
 
   const handleComparisonTypeChange = (comparisonType: ComparisonType) => {
-    setOptions({ ...options, comparisonType });
+    setOptions(options => ({ ...options, comparisonType }));
   };
 
   const handleGroupUnitChange = (groupUnit: TemporalUnit) => {
-    setOptions({ ...options, groupUnit });
+    const offsetUnits = checkNotNull(OFFSET_UNITS[groupUnit]);
+    setOptions(options => ({
+      ...options,
+      groupUnit,
+      offsetUnit: offsetUnits[0],
+    }));
   };
 
   return (
