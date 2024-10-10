@@ -38,7 +38,6 @@
 ;;   SnowcatCloud in the last step. Make sure to sanity check your schema with SnowcatCloud in the
 ;;   #external-snowcat-cloud channel since there might be some back and forth on the format.
 
-
 (def ^:private schema->version
   "The most recent version for each event schema. This should be updated whenever a new version of a schema is added
   to SnowcatCloud, at the same time that the data sent to the collector is updated."
