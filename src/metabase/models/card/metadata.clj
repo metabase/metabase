@@ -72,8 +72,8 @@ saved later when it is ready."
       {:metadata result})))
 
 (mu/defn maybe-async-result-metadata :- ::maybe-async-result-metadata
-  "Return return result metadata for the passed in `query`. If metadata needs to be recalculated, waits up
-  to [[metadata-sync-wait-ms]] for it to be recalcuated; if not recalculated by then, returns a map with
+  "Return result metadata for the passed in `query`. If metadata needs to be recalculated, waits up to
+  [[metadata-sync-wait-ms]] for it to be recalcuated; if not recalculated by then, returns a map with
   `:metadata-future`. Otherwise returns a map with `:metadata`.
 
   Takes the `original-query` so it can determine if existing `metadata` might still be valid. Takes `dataset?` since
