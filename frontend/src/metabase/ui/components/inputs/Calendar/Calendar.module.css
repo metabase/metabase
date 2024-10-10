@@ -5,7 +5,6 @@
   font-size: var(--mantine-font-size-md);
   line-height: 24px;
   border-radius: var(--mantine-radius-xs);
-  background-color: var(--mb-color-bg-light);
 
   &:hover {
     background-color: var(--mb-color-bg-light);
@@ -53,7 +52,7 @@
   }
 }
 
-.weekdaysRow {
+.weekday {
   width: 2.5rem;
   height: 2rem;
   color: var(--mb-color-text-light);
@@ -182,4 +181,8 @@
   &:hover {
     background-color: var(--mb-color-bg-light);
   }
+}
+
+.popoverWrapper {
+  padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
 }
