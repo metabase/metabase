@@ -148,11 +148,12 @@
 
 (defn- rasta-dashsub-message
   [& [data]]
-  (merge {:subject    "Aviary KPIs"
-          :recipients #{"rasta@metabase.com"}
-          :message-type :attachments,
-          :message    [{"Aviary KPIs" true}
-                       pulse.test-util/png-attachment]}
+  (merge {:subject       "Aviary KPIs"
+          :recipients    #{"rasta@metabase.com"}
+          :message-type  :attachments,
+          :message        [{"Aviary KPIs" true}
+                           pulse.test-util/png-attachment]
+          :recipient-type nil}
          data))
 
 (defn do-with-dashboard-fixture-for-dashboard

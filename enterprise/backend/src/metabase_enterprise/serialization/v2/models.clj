@@ -45,6 +45,7 @@
    "BookmarkOrdering"
    "CacheConfig"
    "CardBookmark"
+   "ChannelTemplate"
    "CloudMigration"
    "CollectionBookmark"
    "CollectionPermissionGraphRevision"

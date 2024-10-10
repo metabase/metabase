@@ -35,7 +35,14 @@
 #?(:clj (set! *warn-on-reflection* true))
 
 (u.ns/import-fns
- [u.format colorize format-bytes format-color format-milliseconds format-nanoseconds format-seconds])
+ [u.format
+  colorize
+  format-bytes
+  format-color
+  format-milliseconds
+  format-nanoseconds
+  format-seconds
+  format-plural])
 
 #?(:clj (p/import-vars [u.jvm
                         all-ex-data

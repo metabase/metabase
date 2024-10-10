@@ -6,7 +6,7 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [medley.core :as m]
-   [metabase.email.messages :as messages]
+   [metabase.events :as events]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
@@ -117,7 +117,8 @@
       ;; Check `slack-token-valid?` before sending emails to avoid sending repeat emails for the same invalid token.
       ;; We should send an email if `slack-token-valid?` is `true` or `nil` (i.e. a pre-existing bot integration is
       ;; being used)
-      (when (slack-token-valid?) (messages/send-slack-token-error-emails!))
+      (when (slack-token-valid?)
+        (events/publish-event! :event/slack-token-invalid {}))
       (slack-token-valid?! false))
     (when invalid-token?
       (log/warn (u/colorize :red (str "🔒 Your Slack authorization token is invalid or has been revoked. Please"

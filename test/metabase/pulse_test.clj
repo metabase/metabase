@@ -34,14 +34,15 @@
 
 (defn- rasta-alert-message
   [& [data]]
-  (merge {:subject      "Alert: Test card has results"
-          :recipients   #{"rasta@metabase.com"}
-          :message-type :attachments,
-          :message      [{pulse.test-util/card-name true}
-                         ;; card static-viz
-                         pulse.test-util/png-attachment
-                         ;; icon
-                         pulse.test-util/png-attachment]}
+  (merge {:subject        "Alert: Test card has results"
+          :recipients     #{"rasta@metabase.com"}
+          :message-type   :attachments
+          :recipient-type nil
+          :message        [{pulse.test-util/card-name true}
+                           ;; card static-viz
+                           pulse.test-util/png-attachment
+                           ;; icon
+                           pulse.test-util/png-attachment]}
          data))
 
 (defn do-with-pulse-for-card
