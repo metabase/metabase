@@ -5,6 +5,10 @@ import { t } from "ttag";
 
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
+import type {
+  FetchCardDataActionArgs,
+  FetchCardDataActionReturned,
+} from "metabase/dashboard/actions";
 import { color } from "metabase/lib/colors";
 import Visualization from "metabase/visualizations/components/Visualization";
 import type {
@@ -27,14 +31,8 @@ export interface Props {
   dashcard: QuestionDashboardCard;
   dashcardData: DashCardDataMap;
   fetchCardData: (
-    card: Card,
-    dashcard: QuestionDashboardCard,
-    options: {
-      clearCache?: boolean;
-      ignoreCache?: boolean;
-      reload?: boolean;
-    },
-  ) => Promise<unknown>;
+    args: FetchCardDataActionArgs,
+  ) => Promise<FetchCardDataActionReturned>;
   setDashCardAttributes: (options: {
     id: DashCardId;
     attributes: Partial<QuestionDashboardCard>;
@@ -74,9 +72,13 @@ export class AddSeriesModal extends Component<Props, State> {
 
     if (getIn(dashcardData, [dashcard.id, card.id]) === undefined) {
       this.setState({ isLoading: true });
-      await this.props.fetchCardData(card, dashcard, {
-        reload: false,
-        clearCache: true,
+      await this.props.fetchCardData({
+        card,
+        dashcard,
+        options: {
+          reload: false,
+          clearCache: true,
+        },
       });
     }
 

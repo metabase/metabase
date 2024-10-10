@@ -44,7 +44,10 @@ import {
   UNDO_REMOVE_CARD_FROM_DASH,
   setDashCardAttributes,
 } from "./core";
-import { cancelFetchCardData, fetchCardData } from "./data-fetching";
+import {
+  cancelFetchCardData,
+  fetchCardData,
+} from "./data-fetching/data-fetching";
 import { getExistingDashCards } from "./utils";
 
 export type NewDashCardOpts = {
@@ -154,9 +157,15 @@ export const addCardToDashboard =
         tabId,
         dashcardOverrides: { id: dashcardId, card, card_id: cardId },
       }),
-    );
+    ) as DashboardCard;
 
-    dispatch(fetchCardData(card, dashcard, { reload: true, clearCache: true }));
+    dispatch(
+      fetchCardData({
+        card,
+        dashcard,
+        options: { reload: true, clearCache: true },
+      }),
+    );
     await dispatch(loadMetadataForCard(card));
     dispatch(showAutoWireToastNewCard({ dashcard_id: dashcardId }));
   };
@@ -240,8 +249,13 @@ export const replaceCard =
     );
 
     const dashcard = getDashCardById(getState(), dashcardId);
-
-    dispatch(fetchCardData(card, dashcard, { reload: true, clearCache: true }));
+    dispatch(
+      fetchCardData({
+        card,
+        dashcard,
+        options: { reload: true, clearCache: true },
+      }),
+    );
     await dispatch(loadMetadataForCard(card));
     dispatch(showAutoWireToastNewCard({ dashcard_id: dashcardId }));
 
@@ -260,7 +274,6 @@ export const removeCardFromDashboard = createThunkAction(
     dispatch => {
       dispatch(closeAddCardAutoWireToasts());
 
-      // @ts-expect-error — data-fetching.js actions must be converted to TypeScript
       dispatch(cancelFetchCardData(cardId, dashcardId));
       return { dashcardId };
     },
@@ -271,10 +284,10 @@ export const undoRemoveCardFromDashboard = createThunkAction(
   ({ dashcardId }) =>
     (dispatch, getState) => {
       const dashcard = getDashCardById(getState(), dashcardId);
-      const card = dashcard.card;
 
       if (!isVirtualDashCard(dashcard)) {
-        dispatch(fetchCardData(card, dashcard));
+        const card = dashcard.card;
+        dispatch(fetchCardData({ card, dashcard }));
       }
 
       return { dashcardId };

@@ -1,9 +1,9 @@
 import { createMockDashboard } from "metabase-types/api/mocks";
 
 import {
+  ADD_TO_DASHCARD_LOADING_IDS,
   CLOSE_SIDEBAR,
   FETCH_CARD_DATA,
-  FETCH_CARD_DATA_PENDING,
   FETCH_DASHBOARD_CARD_DATA,
   INITIALIZE,
   REMOVE_PARAMETER,
@@ -370,7 +370,7 @@ describe("dashboard reducers", () => {
           },
         },
         {
-          type: FETCH_CARD_DATA_PENDING,
+          type: ADD_TO_DASHCARD_LOADING_IDS,
           payload: {
             dashcard_id: 3,
             card_id: 1,

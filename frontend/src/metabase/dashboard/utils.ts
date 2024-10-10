@@ -109,6 +109,12 @@ export function isVirtualDashCard(
   return _.isObject(dashcard?.visualization_settings?.virtual_card);
 }
 
+export function isNotVirtualDashcard(
+  dashcard: BaseDashboardCard,
+): dashcard is Exclude<typeof dashcard, VirtualDashboardCard> {
+  return !isVirtualDashCard(dashcard);
+}
+
 export function getVirtualCardType(dashcard: BaseDashboardCard) {
   return dashcard?.visualization_settings?.virtual_card?.display;
 }
@@ -143,21 +149,31 @@ export function showVirtualDashCardInfoText(
   }
 }
 
-export function getAllDashboardCards(dashboard: Dashboard) {
+export function getAllDashboardCards(dashboard: Dashboard | null): {
+  card: DashboardCard["card"];
+  dashcard: DashboardCard;
+}[] {
   const results = [];
   if (dashboard) {
     for (const dashcard of dashboard.dashcards) {
-      const cards = [dashcard.card].concat((dashcard as any).series || []);
-      results.push(...cards.map(card => ({ card, dashcard })));
+      results.push({ card: dashcard.card, dashcard });
+
+      if (isQuestionDashCard(dashcard) && dashcard.series) {
+        results.push(...dashcard.series.map(card => ({ card, dashcard })));
+      }
     }
   }
+
   return results;
 }
 
 export function getCurrentTabDashboardCards(
-  dashboard: Dashboard,
+  dashboard: Dashboard | null,
   selectedTabId: SelectedTabId,
-) {
+): {
+  card: Card | VirtualCard;
+  dashcard: DashboardCard;
+}[] {
   return getAllDashboardCards(dashboard).filter(
     ({ dashcard }) =>
       (dashcard.dashboard_tab_id == null && selectedTabId == null) ||
