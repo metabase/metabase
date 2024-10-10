@@ -16,6 +16,7 @@ export interface SortableItem {
   color?: string;
   icon?: IconProps["name"];
   isOther?: boolean;
+  hideSettings?: boolean;
 }
 
 interface SortableColumnFunctions<T> {
@@ -71,7 +72,7 @@ export function ChartSettingOrderedItems<T extends SortableItem>({
           <ColumnItem
             title={getItemName(item)}
             onEdit={
-              onEdit
+              onEdit && !item.hideSettings
                 ? (targetElement: HTMLElement) => onEdit(item, targetElement)
                 : undefined
             }

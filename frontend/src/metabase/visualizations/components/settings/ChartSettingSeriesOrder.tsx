@@ -27,6 +27,7 @@ export interface SortableItem {
   name: string;
   color?: string;
   hidden?: boolean;
+  hideSettings?: boolean;
 }
 
 interface ChartSettingSeriesOrderProps {
@@ -74,6 +75,18 @@ export const ChartSettingSeriesOrder = ({
       ),
     [orderedItems],
   );
+  const items = useMemo(() => {
+    return visibleItems.map((item, index) => {
+      if (index < groupedAfterIndex) {
+        return item;
+      }
+      return {
+        ...item,
+        color: undefined,
+        hideSettings: true,
+      };
+    });
+  }, [groupedAfterIndex, visibleItems]);
 
   const canAddSeries = hiddenItems.length > 0;
 
@@ -161,9 +174,9 @@ export const ChartSettingSeriesOrder = ({
       {orderedItems.length > 0 ? (
         <>
           <ChartSettingOrderedItems
-            items={visibleItems}
+            items={items}
             getItemName={getItemTitle}
-            onRemove={visibleItems.length > 1 ? toggleDisplay : undefined}
+            onRemove={items.length > 1 ? toggleDisplay : undefined}
             onEnable={toggleDisplay}
             onSortEnd={handleSortEnd}
             onEdit={hasEditSettings ? handleOnEdit : undefined}
