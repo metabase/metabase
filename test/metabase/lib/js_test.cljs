@@ -683,3 +683,118 @@
                         :keyword "too"
                         :value   nil}]
       (is (js= expected (lib.js/display-info->js input))))))
+
+(deftest ^:synchronized fresh-legacy-query-caching-test
+  (let [conversions (atom 0)
+        original-fn lib.convert/js-legacy-query->pMBQL]
+    (with-redefs [lib.convert/js-legacy-query->pMBQL
+                  (fn [legacy-query]
+                    (swap! conversions inc)
+                    (original-fn legacy-query))]
+      (let [legacy-query #js {:query    #js {:source-table (meta/id :orders)}
+                              :database (meta/id)
+                              :type     :query}
+            exp          {:lib/type     :mbql/query
+                          :lib/metadata some?
+                          :stages       [{:source-table (meta/id :orders)}]}]
+        (testing "passing `identical?` JS objects to `query` is cached"
+          ;; Quick checks to make sure these tests have a firm foundation.
+          (is (identical? legacy-query legacy-query))
+          (is (not (identical? legacy-query (js/Object.assign #js {} legacy-query))))
+          (is (zero? @conversions))
+
+          (dotimes [i 3]
+            (testing (str "Conversion " i)
+              (is (=? exp
+                      (lib.js/query (meta/id) meta/metadata-provider legacy-query)))
+              (is (= 1 @conversions))))
+
+          (testing "unless metadata-provider changes"
+            (is (=? exp
+                    (lib.js/query (meta/id)
+                                  (meta/updated-metadata-provider identity)
+                                  legacy-query)))
+            (is (= 2 @conversions))))
+        (testing "passing `=` but not `identical?` JS objects runs another conversion"
+          (let [count-before @conversions]
+            (is (=? exp
+                    (lib.js/query (meta/id) meta/metadata-provider (js/Object.assign #js {} legacy-query))))
+            (is (= (inc count-before) @conversions))))))))
+
+(deftest ^:synchronized legacy->lib->legacy-round-trip-caching-test
+  (let [legacy->lib   (atom 0)
+        lib->legacy   (atom 0)
+        orig-forward  lib.convert/js-legacy-query->pMBQL
+        orig-backward lib.js/legacy-query*]
+    (with-redefs [lib.convert/js-legacy-query->pMBQL (fn [legacy-query]
+                                                       (swap! legacy->lib inc)
+                                                       (orig-forward legacy-query))
+                  lib.js/legacy-query*               (fn [a-query]
+                                                       (swap! lib->legacy inc)
+                                                       (orig-backward a-query))]
+      (testing "legacy queries converted to MLv2 and back to legacy"
+        (let [legacy-query #js {:query    #js {:source-table (meta/id :orders)}
+                                :database (meta/id)
+                                :type     :query}
+              converted    (lib.js/query (meta/id) meta/metadata-provider legacy-query)
+              exp          {:lib/type     :mbql/query
+                            :lib/metadata some?
+                            :stages       [{:source-table (meta/id :orders)}]}]
+          (testing "skip conversion if unchanged"
+            (is (=? exp converted))
+            (is (= 1 @legacy->lib))
+            (is (= 0 @lib->legacy))
+
+            (is (js= legacy-query (lib.js/legacy-query converted)))
+            (is (= 1 @legacy->lib))
+            (is (= 0 @lib->legacy)))
+
+          (testing "get converted is the query has changed"
+            (is (not (js= legacy-query
+                          (-> converted
+                              (lib/filter (lib/< (meta/field-metadata :orders :subtotal) 100))
+                              lib.js/legacy-query))))
+            (is (= 1 @legacy->lib))
+            (is (= 1 @lib->legacy))))))))
+
+(deftest ^:synchronized lib->legacy->lib-round-trip-caching-test
+  (let [legacy->lib   (atom 0)
+        lib->legacy   (atom 0)
+        orig-forward  lib.convert/js-legacy-query->pMBQL
+        orig-backward lib.js/legacy-query*]
+    (with-redefs [lib.convert/js-legacy-query->pMBQL (fn [legacy-query]
+                                                       (swap! legacy->lib inc)
+                                                       (orig-forward legacy-query))
+                  lib.js/legacy-query*               (fn [a-query]
+                                                       (swap! lib->legacy inc)
+                                                       (orig-backward a-query))]
+      (testing "MLv2 queries converted to legacy and back to MLv2"
+        (let [query     (lib/query meta/metadata-provider (meta/table-metadata :orders))
+              converted (lib.js/legacy-query query)
+              exp       #js {:query    #js {:source-table (meta/id :orders)}
+                             :database (meta/id)
+                             :type     "query"}]
+          (testing "skip conversion if unchanged"
+            (is (js= exp converted))
+            (is (= 0 @legacy->lib))
+            (is (= 1 @lib->legacy))
+
+            (is (=? query (lib.js/query (meta/id) meta/metadata-provider converted)))
+            (is (= 0 @legacy->lib))
+            (is (= 1 @lib->legacy)))
+
+          (testing "get converted properly if the query has changed"
+            (is (=? (assoc-in query [:stages 0 :filters] [[:< {} [:field {} (meta/id :orders :subtotal)] 100]])
+                    (let [inner-query (js/Object.assign #js {}
+                                                        (.-query converted)
+                                                        #js {:filter #js ["<" #js ["field" (meta/id :orders :subtotal) #js {}] 100]})
+                          updated     (js/Object.assign #js {} converted #js {:query inner-query})]
+                      (lib.js/query (meta/id) meta/metadata-provider updated))))
+            (is (= 1 @legacy->lib))
+            (is (= 1 @lib->legacy)))
+
+          (testing "get converted if the metadata-provider is different"
+            (is (=? query
+                    (lib.js/query (meta/id) (meta/updated-metadata-provider identity) converted)))
+            (is (= 2 @legacy->lib))
+            (is (= 1 @lib->legacy))))))))
