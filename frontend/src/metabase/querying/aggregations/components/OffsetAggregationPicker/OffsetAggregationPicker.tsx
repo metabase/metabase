@@ -40,7 +40,7 @@ export function OffsetAggregationPicker({
           {getTitle(query, stageIndex, aggregation)}
         </PopoverBackButton>
         {aggregation ? (
-          <OffsetAggregationForm />
+          <OffsetAggregationForm query={query} stageIndex={stageIndex} />
         ) : (
           <OffsetAggregationList
             query={query}
