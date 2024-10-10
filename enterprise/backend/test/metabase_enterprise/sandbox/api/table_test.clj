@@ -43,7 +43,7 @@
                       :attributes {:cat 50}}
       ;; Fetch the card and manually compute & save the metadata
       (let [card (t2/select-one :model/Card
-                                {:select [#_:c.id :c.dataset_query]
+                                {:select [:c.id :c.dataset_query]
                                  :from   [[:sandboxes :s]]
                                  :join   [[:permissions_group :pg] [:= :s.group_id :pg.id]
                                           [:report_card :c] [:= :c.id :s.card_id]]
