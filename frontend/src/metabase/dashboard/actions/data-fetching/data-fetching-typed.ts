@@ -46,7 +46,7 @@ import type {
 } from "metabase-types/api";
 import type { Dispatch } from "metabase-types/store";
 
-import { DASHBOARD_SLOW_TIMEOUT } from "../constants";
+import { DASHBOARD_SLOW_TIMEOUT } from "../../constants";
 
 // normalizr schemas
 const dashcard = new schema.Entity("dashcard");

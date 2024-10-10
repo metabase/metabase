@@ -1,9 +1,9 @@
+import { createAction } from "@reduxjs/toolkit";
+
 import {
   cancelFetchCardData,
   fetchCardData,
-} from "metabase/dashboard/actions/data-fetching-typed";
-import { createAction } from "@reduxjs/toolkit";
-
+} from "metabase/dashboard/actions/data-fetching";
 import Questions from "metabase/entities/questions";
 import {
   DEFAULT_CARD_SIZE,

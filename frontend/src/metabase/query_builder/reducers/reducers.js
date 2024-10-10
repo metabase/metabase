@@ -63,7 +63,7 @@ import {
   onOpenQuestionInfo,
   onOpenQuestionSettings,
   onOpenTimelines,
-} from "./actions";
+} from "../actions";
 
 const DEFAULT_UI_CONTROLS = {
   dataReferenceStack: null,
@@ -538,5 +538,3 @@ export const selectedTimelineEventIds = handleActions(
   },
   [],
 );
-
-export * from "./reducers-typed";

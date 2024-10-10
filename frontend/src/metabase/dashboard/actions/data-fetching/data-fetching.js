@@ -10,21 +10,54 @@ import {
   getDashboardComplete,
   getLoadingDashCards,
   getSelectedTabId,
-} from "../selectors";
+} from "../../selectors";
 import {
   getAllDashboardCards,
   getCurrentTabDashboardCards,
   isVirtualDashCard,
-} from "../utils";
+} from "../../utils";
 
 import {
+  CANCEL_FETCH_CARD_DATA,
+  CLEAR_CARD_DATA,
+  FETCH_CARD_DATA,
+  FETCH_CARD_DATA_PENDING,
+  FETCH_DASHBOARD_CARD_DATA,
+  MARK_CARD_AS_SLOW,
   SET_DOCUMENT_TITLE,
+  SET_SHOW_LOADING_COMPLETE_FAVICON,
   cancelFetchCardData,
+  clearCardData,
   fetchCardData,
+  fetchCardDataPending,
+  fetchDashboard,
   fetchDashboardCardDataAction,
+  markCardAsSlow,
   setDocumentTitle,
+  setFetchCardDataCancel,
   setShowLoadingCompleteFavicon,
 } from "./data-fetching-typed";
+
+export {
+  fetchDashboard,
+  MARK_CARD_AS_SLOW,
+  markCardAsSlow,
+  SET_DOCUMENT_TITLE,
+  setDocumentTitle,
+  SET_SHOW_LOADING_COMPLETE_FAVICON,
+  setShowLoadingCompleteFavicon,
+  FETCH_DASHBOARD_CARD_DATA,
+  fetchDashboardCardDataAction,
+  FETCH_CARD_DATA_PENDING,
+  fetchCardDataPending,
+  CANCEL_FETCH_CARD_DATA,
+  setFetchCardDataCancel,
+  cancelFetchCardData,
+  FETCH_CARD_DATA,
+  fetchCardData,
+  CLEAR_CARD_DATA,
+  clearCardData,
+};
 
 export const CANCEL_FETCH_DASHBOARD_CARD_DATA =
   "metabase/dashboard/CANCEL_FETCH_DASHBOARD_CARD_DATA";

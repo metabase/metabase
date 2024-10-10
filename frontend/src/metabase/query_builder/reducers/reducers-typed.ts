@@ -16,7 +16,7 @@ import {
   UPDATE_QUESTION,
   updateEmbeddingParams,
   updateEnableEmbedding,
-} from "./actions";
+} from "../actions";
 
 // the card that is actively being worked on
 export const card = createReducer<Card<DatasetQuery> | null>(null, builder => {
