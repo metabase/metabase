@@ -183,16 +183,15 @@
 
 (defn- table-refs-for-query
   "Given the results of query analysis, return references to the corresponding tables and cards."
-  [{table-maps :tables} db-id]
-  (let [tables (map :component table-maps)]
-    (consolidate-tables
-     tables
-     (t2/select :model/QueryTable
-                {:select [[:t.id :table-id] [:t.name :table] [:t.schema :schema]]
-                 :from   [[(t2/table-name :model/Table) :t]]
-                 :where  [:and
-                          [:= :t.db_id db-id]
-                          (into [:or] (map table-query tables))]}))))
+  [tables db-id]
+  (consolidate-tables
+   tables
+   (t2/select :model/QueryTable
+              {:select [[:t.id :table-id] [:t.name :table] [:t.schema :schema]]
+               :from   [[(t2/table-name :model/Table) :t]]
+               :where  [:and
+                        [:= :t.db_id db-id]
+                        (into [:or] (map table-query tables))]})))
 
 (defn- fill-missing-table-ids-hack
   "See if we can qualify the schema and table-id for any explicit field refs which couldn't resolve their field"
@@ -276,7 +275,8 @@
         macaw-opts    (nqa.impl/macaw-options driver)
         sql-string    (:query (nqa.sub/replace-tags query))
         parsed-query  (macaw/query->components (macaw/parsed-query sql-string macaw-opts) macaw-opts)
-        table-refs    (table-refs-for-query parsed-query db-id)
+        tables        (map :component (:tables parsed-query))
+        table-refs    (table-refs-for-query tables db-id)
         explicit-refs (explicit-field-refs-for-query parsed-query db-id table-refs)
         implicit-refs (-> (implicit-references-for-query parsed-query db-id)
                           (set/difference explicit-refs))
@@ -285,6 +285,38 @@
     {:tables (strip-model-refs table-refs)
      :fields (strip-model-refs field-refs)}))
 
+(defn- tables-via-macaw
+  "Returns a set of table identifiers that (may) be referenced in the given card's query.
+  Errs on the side of optimism: i.e., it may return tables that are *not* in the query, and is unlikely to fail
+  to return tables that are in the query."
+  [driver query & {:keys [mode] :or {mode :ast-walker-1}}]
+  (let [db-id        (:database query)
+        macaw-opts   (nqa.impl/macaw-options driver)
+        table-opts   (assoc macaw-opts :mode mode)
+        sql-string   (:query (nqa.sub/replace-tags query))
+        parsed-query (macaw/query->tables sql-string table-opts)]
+    (table-refs-for-query parsed-query db-id)))
+
+;; Keeping this multimethod private for now, need some hammock time on what to expose to drivers.
+(defmulti ^:private tables-for-native*
+  "Returns a set of table identifiers that (may) be referenced in the given card's query.
+  Errs on the side of optimism: i.e., it may return tables that are *not* in the query, and is unlikely to fail
+  to return tables that are in the query.
+
+  If it is unable to analyze the query, it should return an error of the form `:query-analysis.error/...`"
+  (fn [driver _query _opts] driver)
+  :hierarchy #'driver/hierarchy)
+
+(defmethod tables-for-native* :default
+  [_driver _query _opts]
+  :query-analysis.error/driver-not-supported)
+
+(defmethod tables-for-native* :sql
+  [driver query opts]
+  (if (nqa.impl/trusted-for-table-permissions? driver)
+    (tables-via-macaw driver query opts)
+    :query-analysis.error/driver-not-supported))
+
 (defn references-for-native
   "Returns a `{:explicit #{...} :implicit #{...}}` map with field IDs that (may) be referenced in the given card's
   query. Currently only support SQL-based dialects."
@@ -292,5 +324,16 @@
   (let [driver (driver.u/database->driver (:database query))]
     ;; TODO this approach is not extensible, we need to move to multimethods.
     ;; See https://github.com/metabase/metabase/issues/43516 for long term solution.
+    ;; For now we are not restricting this as we are for [[tables-for-native]], yet.
+    ;; As we don't have any hard dependencies on this data, its useful to gather info on which drivers have errors or
+    ;; inaccuracies in practice.
     (when (isa? driver/hierarchy driver :sql)
       (references-for-sql driver query))))
+
+(defn tables-for-native
+  "Returns a set of table identifiers that (may) be referenced in the given card's query.
+  Takes an options :mode option, which determines the complexity of queries it can handle, and what types of false
+  positives it may return."
+  [query & {:as opts}]
+  (let [driver (driver.u/database->driver (:database query))]
+    (tables-for-native* driver query opts)))
