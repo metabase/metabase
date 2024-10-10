@@ -24,32 +24,34 @@
 
 (mu/defn- categorize-request :- [:maybe [:enum :ok :error]]
   [{:keys [status]}]
-  (cond
-    (<= 200 status 299) :ok
-    (<= 400 status 599) :error
-    ;; ignore other status codes
-    :else nil))
+  (when status
+    (cond
+      (<= 200 status 299) :ok
+      (<= 400 status 599) :error
+      ;; ignore other status codes
+      :else nil)))
 
 (defn- track-sdk-response
   "Tabulates the number of ok and erroring requests made by clients of the SDK."
   [category]
   (case category
-    :ok (prometheus/inc :metabase-sdk/response-ok)
-    :error (prometheus/inc :metabase-sdk/response-error)
+    :ok (prometheus/inc! :metabase-sdk/response-ok)
+    :error (prometheus/inc! :metabase-sdk/response-error)
     nil nil))
 
 (defn embedding-mw
   "Reads Metabase Client and Version headers and binds them to *metabase-client{-version}*."
   [handler]
-  (fn bound-embedding
+  (fn embedding-mw-fn
     [request respond raise]
     (let [sdk-client (get-in request [:headers "x-metabase-client"])
           version (get-in request [:headers "x-metabase-client-version"])]
-      (binding [*client* sdk-client *version* version]
+      (binding [*client* sdk-client
+                *version* version]
         (handler request
-                 (fn [response]
+                 (fn responder [response]
                    (when sdk-client (track-sdk-response (categorize-request response)))
                    (respond response))
-                 (fn [response]
+                 (fn raiser [response]
                    (when sdk-client (track-sdk-response :error))
                    (raise response)))))))
