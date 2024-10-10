@@ -1,0 +1,1 @@
+export { DashboardEntityIdCard } from "./DashboardEntityIdCard";
