@@ -5,10 +5,12 @@
   for JDBC drivers that do not support `java.time` classes can be found in
   `metabase.driver.sql-jdbc.execute.legacy-impl`. "
   (:require
+   [better-cond.core :as b]
    [clojure.core.async :as a]
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [java-time.api :as t]
+   [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute.diagnostic :as sql-jdbc.execute.diagnostic]
@@ -17,6 +19,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression.temporal :as lib.schema.expression.temporal]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.setting :refer [defsetting]]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -30,11 +33,12 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.performance :as perf]
-   [potemkin :as p])
+   [potemkin :as p]
+   [toucan2.core :as t2])
   (:import
-   (java.sql Connection JDBCType PreparedStatement ResultSet ResultSetMetaData SQLFeatureNotSupportedException
-             Statement Types)
+   (java.sql Connection DriverManager JDBCType PreparedStatement ResultSet ResultSetMetaData SQLFeatureNotSupportedException Statement Types)
    (java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
    (javax.sql DataSource)))
 
@@ -54,14 +58,14 @@
     [:write? {:optional true} [:maybe :boolean]]]])
 
 (defmulti do-with-connection-with-options
-  "Fetch a [[java.sql.Connection]] from a `driver`/`db-or-id-or-spec`, and invoke
+  "Fetch a [[java.sql.Connection]] from a `driver`/`db-or-id-or-conn-str-or-spec`, and invoke
 
     (f connection)
 
-  If `db-or-id-or-spec` is a Database or Database ID, the default implementation fetches a pooled connection spec for
+  If `db-or-id-or-conn-str-or-spec` is a Database or Database ID, the default implementation fetches a pooled connection spec for
   that Database using [[datasource]].
 
-  If `db-or-id-or-spec` is a `clojure.java.jdbc` spec, it fetches a Connection
+  If `db-or-id-or-conn-str-or-spec` is a `clojure.java.jdbc` spec, it fetches a Connection
   using [[clojure.java..jdbc/get-connection]]. Note that this will not be a pooled connection unless your spec is for
   a pooled DataSource.
 
@@ -76,7 +80,7 @@
 
   The normal 'happy path' is more or less
 
-    (with-open [conn (.getConnection (datasource driver db-or-id-or-spec))]
+    (with-open [conn (.getConnection (datasource driver db-or-id-or-conn-str-or-spec))]
       (set-best-transaction-level! driver conn)
       (set-time-zone-if-supported! driver conn session-timezone)
       (.setReadOnly conn true)
@@ -109,7 +113,7 @@
    Custom implementations should set transaction isolation to the least-locking level supported by the driver, and make
    connections read-only (*after* setting timezone, if needed)."
   {:added    "0.47.0"
-   :arglists '([driver db-or-id-or-spec options f])}
+   :arglists '([driver db-or-id-or-conn-str-or-spec options f])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
@@ -192,10 +196,10 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn datasource
-  "Fetch the connection pool `DataSource` associated with `db-or-id-or-spec`."
+  "Fetch the connection pool `DataSource` associated with `db-or-id-or-conn-str-or-spec`."
   {:added "0.35.0"}
-  ^DataSource [db-or-id-or-spec]
-  (:datasource (sql-jdbc.conn/db->pooled-connection-spec db-or-id-or-spec)))
+  ^DataSource [db-or-id-or-conn-str-or-spec]
+  (:datasource (sql-jdbc.conn/db->pooled-connection-spec db-or-id-or-conn-str-or-spec)))
 
 (defn datasource-with-diagnostic-info!
   "Fetch the connection pool `DataSource` associated with `database`, while also recording diagnostic info for the
@@ -253,51 +257,68 @@
         (seq more)
         (recur more)))))
 
-(def ^:private DbOrIdOrSpec
-  [:and
-   [:or :int :map]
-   [:fn
-    ;; can't wrap a java.sql.Connection here because we're not
-    ;; responsible for its lifecycle and that means you can't use
-    ;; `with-open` on the Connection you'd get from the DataSource
-    {:error/message "Cannot be a JDBC spec wrapping a java.sql.Connection"}
-    (complement :connection)]])
+(mr/def ::db-or-id-or-conn-str-or-spec
+  [:or
+   ::lib.schema.id/database
+   [:schema {:description "JDBC URL connection string"} :string]
+   [:and
+    :map
+    [:fn
+     ;; can't wrap a java.sql.Connection here because we're not
+     ;; responsible for its lifecycle and that means you can't use
+     ;; `with-open` on the Connection you'd get from the DataSource
+     {:error/message "Cannot be a JDBC spec wrapping a java.sql.Connection"}
+     (complement :connection)]]])
+
+;;; TODO FIXME this stuff should be handled by (EE) middleware and bound to some sort of dynamic variable
+
+(mu/defn- user-attribute-key-for-database-override-connection-string :- :string
+  [db-id :- ::lib.schema.id/database]
+  (format "connection-override-database-%d" db-id))
+
+(mu/defn- current-user-database-override-connection-string :- [:maybe :string]
+  ^String [db-id :- ::lib.schema.id/database]
+  (println "api/*current-user-id*:" api/*current-user-id*) ; NOCOMMIT
+  (when api/*current-user-id*
+    (t2/select-one-fn #(get-in % [:login_attributes (user-attribute-key-for-database-override-connection-string db-id)])
+                      [:model/User :login_attributes]
+                      :id api/*current-user-id*)))
+
+(comment
+  (binding [api/*current-user-id* 1]
+    (current-user-database-override-connection-string 1530)))
 
 (mu/defn do-with-resolved-connection-data-source :- (lib.schema.common/instance-of-class DataSource)
   "Part of the default implementation for [[do-with-connection-with-options]]: get an appropriate `java.sql.DataSource`
-  for `db-or-id-or-spec`. Not for use with a JDBC spec wrapping a `java.sql.Connection` (a spec with the key
+  for `db-or-id-or-conn-str-or-spec`. Not for use with a JDBC spec wrapping a `java.sql.Connection` (a spec with the key
   `:connection`), since we do not have control over its lifecycle and would thus not be able to use [[with-open]] with
   Connections provided by this DataSource."
-  {:added "0.47.0", :arglists '(^javax.sql.DataSource [driver db-or-id-or-spec options])}
-  [driver           :- :keyword
-   db-or-id-or-spec :- DbOrIdOrSpec
-   {:keys [^String session-timezone], :as _options} :- ConnectionOptions]
-  (if-not (u/id db-or-id-or-spec)
-    ;; not a Database or Database ID... this is a raw `clojure.java.jdbc` spec, use that
-    ;; directly.
+  {:added "0.47.0", :arglists '(^javax.sql.DataSource [driver db-or-id-or-conn-str-or-spec options])}
+  [driver                       :- :keyword
+   db-or-id-or-conn-str-or-spec :- ::db-or-id-or-conn-str-or-spec
+   _options                     :- ConnectionOptions]
+  (b/cond
+    :let [db-id (u/id db-or-id-or-conn-str-or-spec)]
+
+    ;; not a Database or Database ID... this is a raw `clojure.java.jdbc` spec or connection string, use that directly.
+    (not db-id)
     (reify DataSource
       (getConnection [_this]
         #_{:clj-kondo/ignore [:discouraged-var]}
-        (jdbc/get-connection db-or-id-or-spec)))
+        (jdbc/get-connection db-or-id-or-conn-str-or-spec)))
+
     ;; otherwise this is either a Database or Database ID.
-    (if-let [old-method-impl (get-method
-                              #_{:clj-kondo/ignore [:deprecated-var]} sql-jdbc.execute.old/connection-with-timezone
-                              driver)]
-      ;; use the deprecated impl for `connection-with-timezone` if one exists.
-      (do
-        (log/warnf "%s is deprecated in Metabase 0.47.0. Implement %s instead."
-                   #_{:clj-kondo/ignore [:deprecated-var]}
-                   'connection-with-timezone
-                   'do-with-connection-with-options)
-        ;; for compatibility, make sure we pass it an actual Database instance.
-        (let [database (if (integer? db-or-id-or-spec)
-                         (qp.store/with-metadata-provider db-or-id-or-spec
-                           (lib.metadata/database (qp.store/metadata-provider)))
-                         db-or-id-or-spec)]
-          (reify DataSource
-            (getConnection [_this]
-              (old-method-impl driver database session-timezone)))))
-      (datasource-with-diagnostic-info! driver db-or-id-or-spec))))
+    :let [override-connection-string (current-user-database-override-connection-string db-id)]
+
+    ;; check if we have an override connection string for the current user.
+    override-connection-string
+    (reify DataSource
+      (getConnection [_this]
+        #_{:clj-kondo/ignore [:discouraged-var]}
+        (DriverManager/getConnection override-connection-string)))
+
+    :else
+    (datasource-with-diagnostic-info! driver db-or-id-or-conn-str-or-spec)))
 
 (def ^:private ^:dynamic ^{:added "0.47.0"} *connection-recursion-depth*
   "In recursive calls to [[do-with-connection-with-options]] we don't want to set options AGAIN, because this might
@@ -327,14 +348,14 @@
   Generally does not set any `options`, but may set session-timezone if `driver` implements the
   deprecated [[sql-jdbc.execute.old/connection-with-timezone]] method."
   {:added "0.47.0"}
-  [driver           :- :keyword
-   db-or-id-or-spec :- [:or :int :map]
-   options          :- ConnectionOptions
-   f                :- fn?]
+  [driver                       :- :keyword
+   db-or-id-or-conn-str-or-spec :- [:or ::lib.schema.id/database :string :map]
+   options                      :- ConnectionOptions
+   f                            :- [:=> [:cat (lib.schema.common/instance-of-class Connection)] :any]]
   (binding [*connection-recursion-depth* (inc *connection-recursion-depth*)]
-    (if-let [conn (:connection db-or-id-or-spec)]
+    (if-let [conn (:connection db-or-id-or-conn-str-or-spec)]
       (f conn)
-      (with-open [conn (.getConnection (do-with-resolved-connection-data-source driver db-or-id-or-spec options))]
+      (with-open [conn (.getConnection (do-with-resolved-connection-data-source driver db-or-id-or-conn-str-or-spec options))]
         (f conn)))))
 
 (mu/defn set-default-connection-options!
@@ -342,7 +363,7 @@
   Connection."
   {:added "0.47.0"}
   [driver                                                 :- :keyword
-   db-or-id-or-spec
+   db-or-id-or-conn-str-or-spec                           :- [:or ::lib.schema.id/database :string :map]
    ^Connection conn                                       :- (lib.schema.common/instance-of-class Connection)
    {:keys [^String session-timezone write?], :as options} :- ConnectionOptions]
   (when-not (recursive-connection?)
@@ -351,11 +372,11 @@
     (set-time-zone-if-supported! driver conn session-timezone)
     (when-let [db (cond
                     ;; id?
-                    (integer? db-or-id-or-spec)
-                    (qp.store/with-metadata-provider db-or-id-or-spec
+                    (integer? db-or-id-or-conn-str-or-spec)
+                    (qp.store/with-metadata-provider db-or-id-or-conn-str-or-spec
                       (lib.metadata/database (qp.store/metadata-provider)))
                     ;; db?
-                    (u/id db-or-id-or-spec)     db-or-id-or-spec
+                    (u/id db-or-id-or-conn-str-or-spec)     db-or-id-or-conn-str-or-spec
                     ;; otherwise it's a spec and we can't get the db
                     :else nil)]
       (set-role-if-supported! driver conn db))
@@ -388,13 +409,13 @@
         (log/debug e "Error setting default holdability for connection")))))
 
 (defmethod do-with-connection-with-options :sql-jdbc
-  [driver db-or-id-or-spec options f]
+  [driver db-or-id-or-conn-str-or-spec options f]
   (do-with-resolved-connection
    driver
-   db-or-id-or-spec
+   db-or-id-or-conn-str-or-spec
    options
    (fn [^Connection conn]
-     (set-default-connection-options! driver db-or-id-or-spec conn options)
+     (set-default-connection-options! driver db-or-id-or-conn-str-or-spec conn options)
      (f conn))))
 
 ;; TODO - would a more general method to convert a parameter to the desired class (and maybe JDBC type) be more
@@ -740,9 +761,10 @@
                           (log/warn "Statement cancelation failed."))))))))))))
 
 (defn reducible-query
-  "Returns a reducible collection of rows as maps from `db` and a given SQL query. This is similar to [[jdbc/reducible-query]] but reuses the
-  driver-specific configuration for the Connection and Statement/PreparedStatement. This is slightly different from [[execute-reducible-query]]
-  in that it is not intended to be used as part of middleware. Keywordizes column names. "
+  "Returns a reducible collection of rows as maps from `db` and a given SQL query. This is similar
+  to [[jdbc/reducible-query]] but reuses the driver-specific configuration for the Connection and
+  Statement/PreparedStatement. This is slightly different from [[execute-reducible-query]] in that it is not intended
+  to be used as part of middleware. Keywordizes column names. "
   {:added "0.49.0", :arglists '([db [sql & params]])}
   [db [sql & params]]
   (let [driver (:engine db)]
