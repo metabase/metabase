@@ -6,7 +6,8 @@ import type {
   DashboardQueryMetadata,
   GetDashboardQueryMetadataRequest,
   GetDashboardRequest,
-  GetPublicOrEmbeddableDashboard,
+  GetEmbeddableDashboard,
+  GetPublicDashboard,
   ListDashboardsRequest,
   ListDashboardsResponse,
   SaveDashboardRequest,
@@ -109,10 +110,7 @@ export const dashboardApi = Api.injectEndpoints({
       invalidatesTags: (_, error) =>
         invalidateTags(error, [listTag("dashboard")]),
     }),
-    listEmbeddableDashboards: builder.query<
-      GetPublicOrEmbeddableDashboard[],
-      void
-    >({
+    listEmbeddableDashboards: builder.query<GetEmbeddableDashboard[], void>({
       query: params => ({
         method: "GET",
         url: "/api/dashboard/embeddable",
@@ -123,21 +121,19 @@ export const dashboardApi = Api.injectEndpoints({
         listTag("embed-dashboard"),
       ],
     }),
-    listPublicDashboards: builder.query<GetPublicOrEmbeddableDashboard[], void>(
-      {
-        query: params => ({
-          method: "GET",
-          url: "/api/dashboard/public",
-          params,
-        }),
-        providesTags: (result = []) => [
-          ...result.map(res => idTag("public-dashboard", res.id)),
-          listTag("public-dashboard"),
-        ],
-      },
-    ),
+    listPublicDashboards: builder.query<GetPublicDashboard[], void>({
+      query: params => ({
+        method: "GET",
+        url: "/api/dashboard/public",
+        params,
+      }),
+      providesTags: (result = []) => [
+        ...result.map(res => idTag("public-dashboard", res.id)),
+        listTag("public-dashboard"),
+      ],
+    }),
     createDashboardPublicLink: builder.mutation<
-      GetPublicOrEmbeddableDashboard,
+      Pick<Dashboard, "id"> & { uuid: Dashboard["public_uuid"] },
       Pick<Dashboard, "id">
     >({
       query: ({ id }) => ({
@@ -146,8 +142,15 @@ export const dashboardApi = Api.injectEndpoints({
       }),
       invalidatesTags: (_, error) =>
         invalidateTags(error, [listTag("public-dashboard")]),
+      transformResponse: ({ uuid }, _meta, { id }) => ({
+        id,
+        uuid,
+      }),
     }),
-    deleteDashboardPublicLink: builder.mutation<void, Pick<Dashboard, "id">>({
+    deleteDashboardPublicLink: builder.mutation<
+      Pick<Dashboard, "id">,
+      Pick<Dashboard, "id">
+    >({
       query: ({ id }) => ({
         method: "DELETE",
         url: `/api/dashboard/${id}/public_link`,
@@ -157,6 +160,7 @@ export const dashboardApi = Api.injectEndpoints({
           listTag("public-dashboard"),
           idTag("public-dashboard", id),
         ]),
+      transformResponse: (_baseQueryReturnValue, _meta, { id }) => ({ id }),
     }),
   }),
 });
@@ -173,5 +177,6 @@ export const {
   useListEmbeddableDashboardsQuery,
   useListPublicDashboardsQuery,
   useDeleteDashboardPublicLinkMutation,
+  useCreateDashboardPublicLinkMutation,
   endpoints: { deleteDashboardPublicLink, createDashboardPublicLink },
 } = dashboardApi;

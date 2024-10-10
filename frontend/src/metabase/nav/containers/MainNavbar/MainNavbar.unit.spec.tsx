@@ -33,6 +33,7 @@ import type { DashboardState } from "metabase-types/store";
 import {
   createMockDashboardState,
   createMockQueryBuilderState,
+  createMockSettingsState,
   createMockState,
 } from "metabase-types/store/mocks";
 
@@ -43,10 +44,12 @@ type SetupOpts = {
   route?: string;
   user?: User | null;
   hasDataAccess?: boolean;
-  hasOwnDatabase?: boolean;
+  withAdditionalDatabase?: boolean;
+  isUploadEnabled?: boolean;
   openQuestionCard?: Card;
   openDashboard?: Dashboard;
   models?: ModelResult[];
+  canCurateRootCollection?: boolean;
 };
 
 const PERSONAL_COLLECTION_BASE = createMockCollection({
@@ -60,38 +63,46 @@ const TEST_COLLECTION = createMockCollection({
   name: "Test collection",
 });
 
-const SAMPLE_DATABASE = createMockDatabase({
-  id: 1,
-  name: "Sample Database",
-  is_sample: true,
-});
-
-const USER_DATABASE = createMockDatabase({
-  id: 2,
-  name: "User Database",
-  is_sample: false,
-});
-
 async function setup({
   pathname = "/",
   route = pathname,
   user = createMockUser(),
   hasDataAccess = true,
-  hasOwnDatabase = true,
   openDashboard,
   openQuestionCard,
   models = [],
+  isUploadEnabled = false,
+  withAdditionalDatabase = true,
+  canCurateRootCollection = false,
 }: SetupOpts = {}) {
+  const SAMPLE_DATABASE = createMockDatabase({
+    id: 1,
+    name: "Sample Database",
+    is_sample: true,
+    can_upload: user?.is_superuser || (isUploadEnabled && hasDataAccess),
+  });
+
+  const USER_DATABASE = createMockDatabase({
+    id: 2,
+    name: "User Database",
+    is_sample: false,
+  });
+
   const databases = [];
-  const collections = [TEST_COLLECTION];
 
   if (hasDataAccess) {
     databases.push(SAMPLE_DATABASE);
 
-    if (hasOwnDatabase) {
+    if (withAdditionalDatabase) {
       databases.push(USER_DATABASE);
     }
   }
+  const OUR_ANALYTICS = createMockCollection({
+    ...ROOT_COLLECTION,
+    can_write: user?.is_superuser || canCurateRootCollection,
+  });
+
+  const collections = [TEST_COLLECTION];
 
   const personalCollection = user
     ? createMockCollection({
@@ -105,14 +116,17 @@ async function setup({
     collections.push(personalCollection);
   }
 
-  setupCollectionsEndpoints({ collections });
+  setupCollectionsEndpoints({
+    collections,
+    rootCollection: OUR_ANALYTICS,
+  });
   setupCollectionByIdEndpoint({
     collections: [PERSONAL_COLLECTION_BASE, TEST_COLLECTION],
   });
   setupDatabasesEndpoints(databases);
   setupSearchEndpoints(models);
   setupCollectionItemsEndpoint({
-    collection: createMockCollection(ROOT_COLLECTION),
+    collection: createMockCollection(OUR_ANALYTICS),
     collectionItems: [],
   });
   fetchMock.get("path:/api/bookmark", []);
@@ -141,6 +155,13 @@ async function setup({
     }),
     qb: createMockQueryBuilderState({ card: openQuestionCard }),
     entities: createMockEntitiesState({ dashboards: dashboardsForEntities }),
+    settings: createMockSettingsState({
+      "uploads-settings": {
+        db_id: isUploadEnabled ? SAMPLE_DATABASE.id : null,
+        schema_name: null,
+        table_prefix: null,
+      },
+    }),
   });
 
   renderWithProviders(
@@ -443,67 +464,94 @@ describe("nav > containers > MainNavbar", () => {
   });
 
   describe("better onboarding section", () => {
-    it("should render Metabase learn link to admins", async () => {
-      await setup({ user: createMockUser({ is_superuser: true }) });
-      const link = screen.getByRole("link", { name: /How to use Metabase/i });
-      expect(link).toBeInTheDocument();
-      expect(link).toHaveAttribute("href", "https://www.metabase.com/learn/");
-    });
+    describe("add data section", () => {
+      it("should render for admins", async () => {
+        await setup({
+          withAdditionalDatabase: false,
+          user: createMockUser({ is_superuser: true }),
+        });
 
-    it("should render Metabase learn link to regular users", async () => {
-      await setup({ user: createMockUser({ is_superuser: false }) });
-      const link = screen.getByRole("link", { name: /How to use Metabase/i });
-      expect(link).toBeInTheDocument();
-      expect(link).toHaveAttribute("href", "https://www.metabase.com/learn/");
-    });
+        const dataSection = screen.getByTestId("sidebar-add-data-section");
+        expect(dataSection).toBeInTheDocument();
 
-    it("data section should not render to non-admins", async () => {
-      await setup({ user: createMockUser({ is_superuser: false }) });
+        const introCTA = screen.getByText(
+          "Start by adding your data. Connect to a database or upload a CSV file.",
+        );
+        expect(introCTA).toBeInTheDocument();
 
-      const introCTA = screen.queryByText(
-        "Start by adding your data. Connect to a database or upload a CSV file.",
-      );
-      const addDataButton = screen.queryByRole("button", { name: /Add data/i });
+        const addDataButton = screen.getByRole("button", { name: /Add data/i });
+        expect(addDataButton).toBeInTheDocument();
+        await userEvent.click(addDataButton);
 
-      expect(introCTA).not.toBeInTheDocument();
-      expect(addDataButton).not.toBeInTheDocument();
-    });
+        const menu = screen.getByRole("menu");
+        const menuItems = screen.getAllByRole("menuitem");
 
-    it("intro CTA should not render when there are databases connected", async () => {
-      await setup({
-        hasOwnDatabase: true,
-        user: createMockUser({ is_superuser: true }),
+        expect(menuItems).toHaveLength(2);
+        expect(within(menu).getAllByRole("link")).toHaveLength(1);
       });
 
-      const introCTA = screen.queryByText(
-        "Start by adding your data. Connect to a database or upload a CSV file.",
-      );
-      expect(introCTA).not.toBeInTheDocument();
-    });
+      it("intro CTA should not render when there are databases connected", async () => {
+        await setup({
+          withAdditionalDatabase: true,
+          user: createMockUser({ is_superuser: true }),
+        });
 
-    it("data section should render for admins", async () => {
-      await setup({
-        hasOwnDatabase: false,
-        user: createMockUser({ is_superuser: true }),
+        const introCTA = screen.queryByText(
+          "Start by adding your data. Connect to a database or upload a CSV file.",
+        );
+        expect(introCTA).not.toBeInTheDocument();
       });
 
-      const introCTA = screen.getByText(
-        "Start by adding your data. Connect to a database or upload a CSV file.",
-      );
-      const addDataButton = screen.getByRole("button", { name: /Add data/i });
+      it("should render for regular users with 'curate' root collection permissions if uploads are disabled, but they have general data access", async () => {
+        await setup({
+          user: createMockUser({ is_superuser: false }),
+          canCurateRootCollection: true,
+          hasDataAccess: true,
+          isUploadEnabled: false,
+        });
 
-      expect(introCTA).toBeInTheDocument();
-      expect(addDataButton).toBeInTheDocument();
-      await userEvent.click(addDataButton);
+        const dataSection = screen.getByTestId("sidebar-add-data-section");
+        expect(dataSection).toBeInTheDocument();
+      });
 
-      const menu = screen.getByRole("menu");
-      const menuItems = screen.getAllByRole("menuitem");
+      it("should render for regular users with 'curate' root collection permissions if uploads are enabled for a database and they can upload to that database", async () => {
+        await setup({
+          user: createMockUser({ is_superuser: false }),
+          canCurateRootCollection: true,
+          hasDataAccess: true,
+          isUploadEnabled: true,
+        });
 
-      expect(menuItems).toHaveLength(2);
-      expect(within(menu).getAllByRole("link")).toHaveLength(1);
+        const dataSection = screen.getByTestId("sidebar-add-data-section");
+        expect(dataSection).toBeInTheDocument();
+      });
+
+      it("should not render for regular users if they cannot 'curate' the root collection", async () => {
+        await setup({
+          user: createMockUser({ is_superuser: false }),
+          canCurateRootCollection: false,
+          hasDataAccess: true,
+          isUploadEnabled: true,
+        });
+
+        const dataSection = screen.queryByTestId("sidebar-add-data-section");
+        expect(dataSection).not.toBeInTheDocument();
+      });
+
+      it("should not render for regular users if they don't have data access", async () => {
+        await setup({
+          user: createMockUser({ is_superuser: false }),
+          canCurateRootCollection: true,
+          hasDataAccess: false,
+          isUploadEnabled: true,
+        });
+
+        const dataSection = screen.queryByTestId("sidebar-add-data-section");
+        expect(dataSection).not.toBeInTheDocument();
+      });
     });
 
-    describe("'Add a database' menu option", () => {
+    describe("'Add a database' menu item", () => {
       it("should be wrapped in a link", async () => {
         await setup({
           user: createMockUser({ is_superuser: true }),
@@ -522,7 +570,7 @@ describe("nav > containers > MainNavbar", () => {
         );
       });
 
-      it("should render", async () => {
+      it("should render properly for admins", async () => {
         await setup({
           user: createMockUser({ is_superuser: true }),
         });
@@ -544,10 +592,29 @@ describe("nav > containers > MainNavbar", () => {
           within(addDatabaseMenuItem).getByLabelText("database icon"),
         ).toBeInTheDocument();
       });
+
+      it("should not render for regular users", async () => {
+        await setup({
+          user: createMockUser({ is_superuser: false }),
+          canCurateRootCollection: true,
+          hasDataAccess: true,
+          isUploadEnabled: true,
+        });
+
+        const addDataButton = screen.getByRole("button", { name: /Add data/i });
+        await userEvent.click(addDataButton);
+
+        const menuItems = screen.queryAllByRole("menuitem");
+        const [menuItem] = menuItems;
+        expect(menuItems).toHaveLength(1);
+        expect(
+          within(menuItem).queryByText("Add a database"),
+        ).not.toBeInTheDocument();
+      });
     });
 
-    describe("'Upload a spreadsheet' menu option", () => {
-      it("should render", async () => {
+    describe("'Upload a spreadsheet' menu item", () => {
+      it("should render properly for admins", async () => {
         await setup({
           user: createMockUser({ is_superuser: true }),
         });
@@ -567,9 +634,33 @@ describe("nav > containers > MainNavbar", () => {
         ).toBeInTheDocument();
       });
 
-      it("clicking on it should open a CSV info modal", async () => {
+      it("should render properly for regular users", async () => {
+        await setup({
+          user: createMockUser({ is_superuser: false }),
+          canCurateRootCollection: true,
+          hasDataAccess: true,
+          isUploadEnabled: true,
+        });
+
+        const addDataButton = screen.getByRole("button", { name: /Add data/i });
+        await userEvent.click(addDataButton);
+        const [uploadCSVMenuItem] = screen.getAllByRole("menuitem");
+
+        expect(
+          within(uploadCSVMenuItem).getByText("Upload a spreadsheet"),
+        ).toBeInTheDocument();
+        expect(
+          within(uploadCSVMenuItem).getByText(".csv, .tsv (50 MB max)"),
+        ).toBeInTheDocument();
+        expect(
+          within(uploadCSVMenuItem).getByLabelText("table2 icon"),
+        ).toBeInTheDocument();
+      });
+
+      it("clicking on it should show a CSV info modal for an admin, if uploads are disabled", async () => {
         await setup({
           user: createMockUser({ is_superuser: true }),
+          isUploadEnabled: false,
         });
 
         const addDataButton = screen.getByRole("button", { name: /Add data/i });
@@ -580,7 +671,92 @@ describe("nav > containers > MainNavbar", () => {
 
         await userEvent.click(uploadCSVMenuItem);
         expect(menu).not.toBeInTheDocument();
-        expect(screen.getByText("Upload CSVs to Metabase")).toBeInTheDocument();
+
+        const modal = screen.getByRole("dialog");
+        expect(modal).toBeInTheDocument();
+        [
+          "Upload CSVs to Metabase",
+          "Team members will be able to upload CSV files and work with them just like any other data source.",
+          "You'll be able to pick the default database where the data should be stored when enabling the feature.",
+          "Go to setup",
+        ].forEach(copy => {
+          expect(within(modal).getByText(copy)).toBeInTheDocument();
+        });
+
+        expect(within(modal).getByRole("link")).toHaveAttribute(
+          "href",
+          "/admin/settings/uploads",
+        );
+      });
+
+      it("clicking on it should show a CSV info modal for a regular user, if uploads are disabled", async () => {
+        await setup({
+          user: createMockUser({ is_superuser: false }),
+          canCurateRootCollection: true,
+          hasDataAccess: true,
+          isUploadEnabled: false,
+        });
+
+        const addDataButton = screen.getByRole("button", { name: /Add data/i });
+        await userEvent.click(addDataButton);
+
+        const menu = screen.getByRole("menu");
+        const [uploadCSVMenuItem] = screen.getAllByRole("menuitem");
+
+        await userEvent.click(uploadCSVMenuItem);
+        expect(menu).not.toBeInTheDocument();
+
+        const modal = screen.getByRole("dialog");
+        expect(modal).toBeInTheDocument();
+        [
+          "Upload CSVs to Metabase",
+          "You'll need to ask your admin to enable this feature to get started. Then, you'll be able to upload CSV files and work with them just like any other data source.",
+          "Got it",
+        ].forEach(copy => {
+          expect(within(modal).getByText(copy)).toBeInTheDocument();
+        });
+
+        expect(within(modal).queryByRole("link")).not.toBeInTheDocument();
+      });
+
+      it("clicking on it should not show a CSV info modal for an admin, if uploads are enabled", async () => {
+        await setup({
+          user: createMockUser({ is_superuser: true }),
+          isUploadEnabled: true,
+        });
+
+        const addDataButton = screen.getByRole("button", { name: /Add data/i });
+        await userEvent.click(addDataButton);
+
+        const menu = screen.getByRole("menu");
+        const [_, uploadCSVMenuItem] = screen.getAllByRole("menuitem");
+
+        await userEvent.click(uploadCSVMenuItem);
+        expect(menu).not.toBeInTheDocument();
+
+        const modal = screen.queryByRole("dialog");
+        expect(modal).not.toBeInTheDocument();
+      });
+
+      it("clicking on it should not show a CSV info modal for a regular user, if uploads are enabled", async () => {
+        await setup({
+          user: createMockUser({ is_superuser: false }),
+          canCurateRootCollection: true,
+          hasDataAccess: true,
+          isUploadEnabled: true,
+        });
+
+        const addDataButton = screen.getByRole("button", { name: /Add data/i });
+        await userEvent.click(addDataButton);
+
+        const menu = screen.getByRole("menu");
+        const [uploadCSVMenuItem] = screen.getAllByRole("menuitem");
+
+        await userEvent.click(uploadCSVMenuItem);
+        expect(menu).not.toBeInTheDocument();
+
+        const modal = screen.queryByRole("dialog");
+        expect(modal).not.toBeInTheDocument();
       });
     });
   });
