@@ -1,10 +1,12 @@
+import { createAction } from "@reduxjs/toolkit";
+
 import Questions from "metabase/entities/questions";
 import {
   DEFAULT_CARD_SIZE,
   GRID_WIDTH,
   getPositionForNewDashCard,
 } from "metabase/lib/dashboard_grid";
-import { createAction, createThunkAction } from "metabase/lib/redux";
+import { createThunkAction } from "metabase/lib/redux";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { getDefaultSize } from "metabase/visualizations";
 import type {
@@ -26,6 +28,7 @@ import {
 import type { SectionLayout } from "../sections";
 import { getDashCardById, getDashboardId } from "../selectors";
 import {
+  type NewDashboardCard,
   createDashCard,
   createVirtualCard,
   generateTemporaryDashcardId,
@@ -49,11 +52,6 @@ export type NewDashCardOpts = {
   tabId: DashboardTabId | null;
 };
 
-type NewDashboardCard = Omit<
-  DashboardCard,
-  "entity_id" | "created_at" | "updated_at"
->;
-
 export type AddDashCardOpts = NewDashCardOpts & {
   dashcardOverrides: Partial<NewDashboardCard> & {
     card: Card | VirtualCard;
@@ -61,10 +59,10 @@ export type AddDashCardOpts = NewDashCardOpts & {
 };
 
 export const MARK_NEW_CARD_SEEN = "metabase/dashboard/MARK_NEW_CARD_SEEN";
-export const markNewCardSeen = createAction(MARK_NEW_CARD_SEEN);
+export const markNewCardSeen = createAction<DashCardId>(MARK_NEW_CARD_SEEN);
 
-const _addDashCard = createAction<NewDashboardCard>(ADD_CARD_TO_DASH);
-const _addManyDashCards = createAction<NewDashboardCard[]>(
+export const addCardToDash = createAction<NewDashboardCard>(ADD_CARD_TO_DASH);
+export const addManyCardsToDash = createAction<NewDashboardCard[]>(
   ADD_MANY_CARDS_TO_DASH,
 );
 
@@ -97,7 +95,7 @@ export const addDashCardToDashboard =
       ...dashcardOverrides,
     });
 
-    dispatch(_addDashCard(dashcard));
+    dispatch(addCardToDash(dashcard));
 
     return dashcard;
   };
@@ -133,7 +131,7 @@ export const addSectionToDashboard =
         }),
       );
 
-    dispatch(_addManyDashCards(sectionDashcards));
+    dispatch(addManyCardsToDash(sectionDashcards));
     trackSectionAdded(dashId, sectionLayout.id);
   };
 
