@@ -26,7 +26,7 @@
 (defmacro with-send-notification-sync!
   "Notifications are sent async by default, wrap the body in this macro to send them synchronously."
   [& body]
-  `(binding [notification/send-notification! #'notification/send-notification-sync!]
+  `(binding [notification/*send-notification!* #'notification/send-notification-sync!]
      ~@body))
 
 (defn do-with-captured-channel-send!
