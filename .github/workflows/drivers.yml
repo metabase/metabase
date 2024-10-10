@@ -206,7 +206,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        partition-index: [0, 1]
+        partition-index: [0, 1, 2, 3]
     env:
       CI: 'true'
       DRIVERS: mysql
@@ -228,7 +228,7 @@ jobs:
       with:
         junit-name: 'be-tests-mariadb-10-2-ee'
         test-args: >-
-          :partition/total 2
+          :partition/total 4
           :partition/index ${{ matrix.partition-index }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
@@ -250,7 +250,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        partition-index: [0, 1]
+        partition-index: [0, 1, 2, 3]
     env:
       CI: 'true'
       DRIVERS: mysql
@@ -272,7 +272,7 @@ jobs:
       with:
         junit-name: 'be-tests-mariadb-latest-ee'
         test-args: >-
-          :partition/total 2
+          :partition/total 4
           :partition/index ${{ matrix.partition-index }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
@@ -551,7 +551,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        partition-index: [0, 1]
+        partition-index: [0, 1, 2, 3]
     env:
       CI: 'true'
       DRIVERS: mysql
@@ -573,7 +573,7 @@ jobs:
       with:
         junit-name: 'be-tests-mysql-8-0-ee'
         test-args: >-
-          :partition/total 2
+          :partition/total 4
           :partition/index ${{ matrix.partition-index }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
@@ -595,7 +595,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        partition-index: [0, 1]
+        partition-index: [0, 1, 2, 3]
     env:
       CI: 'true'
       DRIVERS: mysql
@@ -632,7 +632,7 @@ jobs:
       with:
         junit-name: 'be-tests-mysql-latest-ee'
         test-args: >-
-          :partition/total 2
+          :partition/total 4
           :partition/index ${{ matrix.partition-index }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
