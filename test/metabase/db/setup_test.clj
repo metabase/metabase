@@ -8,6 +8,7 @@
    [metabase.db.liquibase-test :as liquibase-test]
    [metabase.db.setup :as mdb.setup]
    [metabase.driver :as driver]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.test :as mt]
    [toucan2.core :as t2])
   (:import
@@ -18,14 +19,68 @@
 (deftest verify-db-connection-test
   (testing "Should be able to verify a DB connection"
     (testing "from a jdbc-spec map"
-      (#'mdb.setup/verify-db-connection :h2 (mdb.data-source/broken-out-details->DataSource
-                                             :h2
-                                             {:subprotocol "h2"
-                                              :subname     (format "mem:%s" (mt/random-name))
-                                              :classname   "org.h2.Driver"})))
+      (is (nil? (#'mdb.setup/verify-db-connection
+                 :h2
+                 (mdb.data-source/broken-out-details->DataSource
+                  :h2
+                  {:subprotocol "h2"
+                   :subname     (format "mem:%s" (mt/random-name))
+                   :classname   "org.h2.Driver"})))))
+
     (testing "from a connection URL"
-      (#'mdb.setup/verify-db-connection :h2 (mdb.data-source/raw-connection-string->DataSource
-                                             (format "jdbc:h2:mem:%s" (mt/random-name)))))))
+      (is (nil? (#'mdb.setup/verify-db-connection
+                 :h2
+                 (mdb.data-source/raw-connection-string->DataSource
+                  (format "jdbc:h2:mem:%s" (mt/random-name))))))))
+
+  (let [create-mock-connection (fn [version]
+                                 (reify java.sql.Connection
+                                   (close [_])
+                                   (^java.sql.PreparedStatement prepareStatement [_ ^String _]
+                                     (reify java.sql.PreparedStatement
+                                       (close [_])
+                                       (^java.sql.ResultSet executeQuery [_]
+                                         (reify java.sql.ResultSet
+                                           (close [_])
+                                           (next [_] true)
+                                           (^int getInt [_ ^int _] 1)))))
+                                   (getMetaData [_]
+                                     (reify java.sql.DatabaseMetaData
+                                       (getDatabaseProductName [_] "PostgreSQL")
+                                       (getDatabaseProductVersion [_] version)))))]
+
+    (testing "Should throw an exception for unsupported database version"
+      (with-redefs [sql-jdbc.conn/can-connect-with-spec? (constantly true)]
+        (let [mock-datasource
+              (reify javax.sql.DataSource
+                (getConnection [_] (create-mock-connection "11.0")))]
+          (try
+            (#'mdb.setup/verify-db-connection :postgres mock-datasource)
+            (is false "Expected an exception to be thrown")
+            (catch clojure.lang.ExceptionInfo e
+              (is (= "Database version 11.0 is below the required version 12 for postgres."
+                     (.getMessage e))))))))
+
+    (testing "Should not throw an exception for supported database version"
+      (with-redefs [sql-jdbc.conn/can-connect-with-spec? (constantly true)]
+        (let [mock-datasource
+              (reify javax.sql.DataSource
+                (getConnection [_] (create-mock-connection "13.0")))]
+          (is (nil? (#'mdb.setup/verify-db-connection :postgres mock-datasource))
+              "No exception was thrown, as expected"))))
+
+    (testing "Should throw an exception for connection issues"
+      (with-redefs [sql-jdbc.conn/can-connect-with-spec? (constantly false)]
+        (let [mock-datasource
+              (reify javax.sql.DataSource
+                (getConnection [_]
+                  (throw (Exception. "Connection failed"))))]
+          (try
+            (#'mdb.setup/verify-db-connection :postgres mock-datasource)
+            (is false "Expected an exception to be thrown")
+            (catch clojure.lang.ExceptionInfo e
+              (is (= "Unable to connect to Metabase postgres DB."
+                     (.getMessage e))))))))))
 
 (deftest setup-db-test
   (testing "Should be able to set up an arbitrary application DB"
