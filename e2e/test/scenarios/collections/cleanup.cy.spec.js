@@ -1,15 +1,23 @@
 import { SAMPLE_DB_TABLES } from "e2e/support/cypress_data";
 const { STATIC_ORDERS_ID } = SAMPLE_DB_TABLES;
-import { FIRST_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
+import {
+  FIRST_COLLECTION_ID,
+  ORDERS_QUESTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
 import {
   createCollection,
   describeEE,
+  describeWithSnowplowEE,
+  enableTracking,
+  expectGoodSnowplowEvent,
+  expectNoBadSnowplowEvents,
   getCollectionActions,
   main,
   modal,
   navigationSidebar,
   onlyOnOSS,
   popover,
+  resetSnowplow,
   restore,
   setTokenFeatures,
   undo,
@@ -88,10 +96,16 @@ describe("scenarios > collections > clean up", () => {
     });
   });
 
-  describeEE("clean up collection modal", () => {
+  describeWithSnowplowEE("clean up collection modal", () => {
     beforeEach(() => {
+      resetSnowplow();
       cy.signInAsAdmin();
       setTokenFeatures("all");
+      enableTracking();
+    });
+
+    afterEach(() => {
+      expectNoBadSnowplowEvents();
     });
 
     it("should be able to clean up stale items", () => {
@@ -174,6 +188,18 @@ describe("scenarios > collections > clean up", () => {
         moveToTrash();
         assertNoPagination();
 
+        // Because cutoff_date will be relative to the current date, we simply check
+        // that it exists and is a string. Snowplow will assert that it is in the correct
+        // format
+        expectGoodSnowplowEvent(
+          event =>
+            event &&
+            event.event === "stale_items_archived" &&
+            event.collection_id === seedData.collection.id &&
+            event.total_items_archived === 10 &&
+            typeof event.cutoff_date === "string",
+        );
+
         undo();
         assertStaleItemCount(seedData.totalStaleItemCount);
 
@@ -198,6 +224,25 @@ describe("scenarios > collections > clean up", () => {
               1, // header row
           );
         });
+
+        makeItemStale(ORDERS_QUESTION_ID, "card");
+
+        cy.findByRole("navigation").findByText("Our analytics").click();
+        selectCleanThingsUpCollectionAction();
+        cy.url().should("include", "cleanup");
+
+        selectAllItems();
+        moveToTrash();
+
+        // Ensure that stale items in Our Analytics are maked with a null collection id
+        expectGoodSnowplowEvent(
+          event =>
+            event &&
+            event.event === "stale_items_archived" &&
+            event.collection_id === null &&
+            event.total_items_archived === 1 &&
+            typeof event.cutoff_date === "string",
+        );
       });
     });
 

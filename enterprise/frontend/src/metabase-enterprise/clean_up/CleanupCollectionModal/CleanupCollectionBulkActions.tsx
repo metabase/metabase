@@ -16,12 +16,14 @@ interface CleanupCollectionBulkActionsProps {
   selected: CollectionItem[];
   clearSelectedItem: () => void;
   resetPagination: () => void;
+  onArchive: ({ totalArchivedItems }: { totalArchivedItems: number }) => void;
 }
 
 export const CleanupCollectionBulkActions = ({
   selected,
   clearSelectedItem,
   resetPagination,
+  onArchive,
 }: CleanupCollectionBulkActionsProps) => {
   const [undo, setUndo] = useState<Undo | undefined>();
 
@@ -41,6 +43,7 @@ export const CleanupCollectionBulkActions = ({
     Promise.all(actions)
       .then(() => {
         resetPagination();
+        onArchive({ totalArchivedItems: selected.length });
 
         const id = Date.now();
         const timeoutId = setTimeout(() => {
