@@ -82,6 +82,11 @@
   [^MongoCollection coll document-map]
   (.insertOne coll (mongo.conversion/to-document document-map)))
 
+(defn insert-many
+  "Insert document into mongo collection."
+  [^MongoCollection coll document-maps]
+  (.insertMany coll (map mongo.conversion/to-document document-maps)))
+
 (defn start-session!
   "Start session on client `c`."
   ^ClientSession [^MongoClient c]

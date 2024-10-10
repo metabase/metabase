@@ -1,0 +1,31 @@
+[
+  {
+    "a": "a string",
+    "b": {
+      "b_c": "a string",
+      "b_d": 42,
+      "b_e": {
+        "b_e_f": "a string"
+      }
+    },
+    "c": null
+  },
+  {
+    "a": "a string",
+    "b": {
+      "b_d": null,
+      "b_e": null,
+      "b_c": null
+    }
+  },
+  {
+    "a": "a string",
+    "b": {
+      "b_e": {}
+    }
+  },
+  {
+    "a": "a string",
+    "b": null
+  }
+]
