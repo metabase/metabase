@@ -38,7 +38,9 @@ interface ExpandToggleIconProps {
   isExpanded: boolean;
 }
 
-export const ExpandToggleIcon = styled(Icon)<ExpandToggleIconProps & IconProps>`
+export const ExpandToggleIcon = styled(Icon, {
+  shouldForwardProp: propName => propName !== "isExpanded",
+})<ExpandToggleIconProps & IconProps>`
   transition: transform 200ms;
 
   ${props =>
