@@ -3,7 +3,7 @@ import { t } from "ttag";
 import type { DataPickerValue } from "metabase/common/components/DataPicker";
 import { useDispatch } from "metabase/lib/redux";
 import { setUIControls } from "metabase/query_builder/actions";
-import { Box, Button } from "metabase/ui";
+import { Button, Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
@@ -23,6 +23,7 @@ export type NotebookProps = {
   setQueryBuilderMode?: (mode: string) => void;
   readOnly?: boolean;
   modelsFilterList?: DataPickerValue["model"][];
+  minNotebookWidth?: number;
 };
 
 export const Notebook = ({
@@ -37,6 +38,7 @@ export const Notebook = ({
   runQuestionQuery,
   setQueryBuilderMode,
   modelsFilterList,
+  minNotebookWidth,
 }: NotebookProps) => {
   const dispatch = useDispatch();
 
@@ -74,23 +76,38 @@ export const Notebook = ({
 
   return (
     <NotebookProvider modelsFilterList={modelsFilterList}>
-      <Box pos="relative" p={{ base: "1rem", sm: "2rem" }}>
-        <NotebookStepList
-          updateQuestion={handleUpdateQuestion}
-          question={question}
-          reportTimezone={reportTimezone}
-          readOnly={readOnly}
-        />
+      <Flex
+        miw={{ lg: minNotebookWidth }}
+        direction="column"
+        style={{ flex: 1 }}
+      >
+        <Flex
+          pos="relative"
+          p={{ base: "1rem", sm: "2rem" }}
+          direction="column"
+          style={{ overflowY: "auto" }}
+        >
+          <NotebookStepList
+            updateQuestion={handleUpdateQuestion}
+            question={question}
+            reportTimezone={reportTimezone}
+            readOnly={readOnly}
+          />
+        </Flex>
         {hasVisualizeButton && isRunnable && (
-          <Button
-            variant="filled"
-            style={{ minWidth: 220 }}
-            onClick={visualize}
+          <Flex
+            p="sm"
+            style={{
+              borderTop:
+                "var(--border-size) var(--border-style) var(--mb-color-border)",
+            }}
           >
-            {t`Visualize`}
-          </Button>
+            <Button variant="filled" miw={220} onClick={visualize}>
+              {t`Visualize`}
+            </Button>
+          </Flex>
         )}
-      </Box>
+      </Flex>
     </NotebookProvider>
   );
 };

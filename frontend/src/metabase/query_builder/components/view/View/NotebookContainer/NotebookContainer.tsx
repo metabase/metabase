@@ -119,23 +119,24 @@ export const NotebookContainer = ({
       onTransitionEnd={handleTransitionEnd}
     >
       {shouldShowNotebook && (
-        <Box
-          miw={{ lg: minNotebookWidth }}
-          style={{ flex: 1, overflowY: "auto" }}
-        >
-          <Notebook
-            question={question.setType("question")}
-            isDirty={isDirty}
-            isRunnable={isRunnable}
-            isResultDirty={isResultDirty}
-            reportTimezone={reportTimezone}
-            readOnly={readOnly}
-            updateQuestion={updateQuestion}
-            runQuestionQuery={runQuestionQuery}
-            setQueryBuilderMode={setQueryBuilderMode}
-            hasVisualizeButton={hasVisualizeButton}
-          />
-        </Box>
+        // <Box
+        //   miw={{ lg: minNotebookWidth }}
+        //   style={{ flex: 1, overflowY: "auto" }}
+        // >
+        <Notebook
+          question={question.setType("question")}
+          isDirty={isDirty}
+          isRunnable={isRunnable}
+          isResultDirty={isResultDirty}
+          reportTimezone={reportTimezone}
+          readOnly={readOnly}
+          updateQuestion={updateQuestion}
+          runQuestionQuery={runQuestionQuery}
+          setQueryBuilderMode={setQueryBuilderMode}
+          hasVisualizeButton={hasVisualizeButton}
+          minNotebookWidth={minNotebookWidth}
+        />
+        // </Box>
       )}
 
       {isShowingNotebookNativePreview && windowWidth < windowBreakpoint && (
