@@ -113,7 +113,7 @@
             }
           },
           "tags": {
-            "description": "Tags that can be used flagging teams / features the metric belongs to",
+            "description": "Tags that can be used flagging teams / features the grouped_metric belongs to",
             "type": "array",
             "items": {
               "type": "string"
@@ -122,7 +122,8 @@
         },
         "required": [
           "name",
-          "values"
+          "values",
+          "tags"
         ],
         "additionalProperties": false
       }
