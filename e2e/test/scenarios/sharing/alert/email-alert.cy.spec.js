@@ -58,6 +58,7 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
 
   it("should respect email alerts toggled off (metabase#12349)", () => {
     updateSetting("report-timezone", "America/New_York");
+    mockSlackConfigured();
 
     //For this test, we need to pretend that slack is set up
     mockSlackConfigured();

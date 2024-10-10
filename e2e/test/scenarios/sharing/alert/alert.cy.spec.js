@@ -16,7 +16,18 @@ import {
   visitQuestion,
 } from "e2e/support/helpers";
 
-const channels = { slack: mockSlackConfigured, email: setupSMTP };
+const channels = {
+  slack: {
+    setup: mockSlackConfigured,
+    createAlert: () => {
+      toggleAlertChannel("Email");
+      toggleAlertChannel("Slack");
+      cy.findByPlaceholderText(/Pick a user or channel/).click();
+      popover().findByText("#work").click();
+    },
+  },
+  email: { setup: setupSMTP, createAlert: () => {} },
+};
 
 describe("scenarios > alert", () => {
   beforeEach(() => {
@@ -48,9 +59,9 @@ describe("scenarios > alert", () => {
     });
   });
 
-  Object.entries(channels).forEach(([channel, setup]) => {
+  Object.entries(channels).forEach(([channel, config]) => {
     describe(`with ${channel} set up`, { tags: "@external" }, () => {
-      beforeEach(setup);
+      beforeEach(config.setup);
 
       it("educational screen should show for the first alert, but not for the second", () => {
         cy.intercept("POST", "/api/alert").as("savedAlert");
@@ -76,6 +87,8 @@ describe("scenarios > alert", () => {
 
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Set up an alert").click();
+
+        config.createAlert();
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Done").click();
 
