@@ -12,11 +12,19 @@ const mainConfig = require("./webpack.config");
 const { resolve } = require("path");
 const fs = require("fs");
 const path = require("path");
+const {
+  replaceAliasedImports,
+} = require("./bin/embedding-sdk/fixup-types-after-compilation");
 
 const SDK_SRC_PATH = __dirname + "/enterprise/frontend/src/embedding-sdk";
 const BUILD_PATH = __dirname + "/resources/embedding-sdk";
 const ENTERPRISE_SRC_PATH =
   __dirname + "/enterprise/frontend/src/metabase-enterprise";
+
+const isWatchMode = process.argv.includes("--watch");
+const skipDTS = process.env.SKIP_DTS === "true";
+
+console.log({ isWatchMode, skipDTS });
 
 // default WEBPACK_BUNDLE to development
 const WEBPACK_BUNDLE = process.env.WEBPACK_BUNDLE || "development";
@@ -151,15 +159,15 @@ module.exports = env => {
         EMBEDDING_SDK_VERSION,
         IS_EMBEDDING_SDK: true,
       }),
-      new ForkTsCheckerWebpackPlugin({
-        async: isDevMode,
-        typescript: {
-          configFile: resolve(__dirname, "./tsconfig.sdk.json"),
-          mode: "write-dts",
-          memoryLimit: 4096,
-        },
-      }),
-
+      !skipDTS &&
+        new ForkTsCheckerWebpackPlugin({
+          async: isDevMode,
+          typescript: {
+            configFile: resolve(__dirname, "./tsconfig.sdk.json"),
+            mode: "write-dts",
+            memoryLimit: 4096,
+          },
+        }),
       shouldAnalyzeBundles &&
         new BundleAnalyzerPlugin({
           analyzerMode: "static",
@@ -184,3 +192,24 @@ module.exports = env => {
 
   return config;
 };
+
+// TODO: possibly make its own script?
+if (isWatchMode) {
+  console.log("[dts fixup] Watching for changes in the SDK d.ts files...");
+  const dirty = new Map();
+
+  // watch d.ts file changes on the SDK
+  fs.watch(BUILD_PATH, { recursive: true }, async (eventType, filename) => {
+    if (filename && filename.endsWith(".d.ts")) {
+      if (dirty.get(filename)) {
+        return dirty.set(filename, false);
+      }
+      console.log(
+        "[dts fixup]",
+        `File ${filename} changed, fixing the imports`,
+      );
+      dirty.set(filename, true);
+      replaceAliasedImports(path.resolve(BUILD_PATH, filename));
+    }
+  });
+}

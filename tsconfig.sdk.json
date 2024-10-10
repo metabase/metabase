@@ -1,6 +1,10 @@
 {
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
+    // should make tsc run faster, we may need to delete the buildinfo file if we run into issues
+    "incremental": true,
+    // so that it doesn't accidentally end up in the distributed package
+    "tsBuildInfoFile": "./resources/embedding-sdk/.tsbuildinfo",
     "declaration": true,
     "emitDeclarationOnly": true,
     "outDir": "./resources/embedding-sdk/dist",
@@ -11,8 +15,10 @@
         "./enterprise/frontend/src/*",
         "./enterprise/frontend/test/*"
       ],
-      "cljs/*": ["./target/cljs_release/*"]
-    }
+      "cljs/*": [
+        "./target/cljs_release/*"
+      ]
+    },
   },
   "include": [
     "frontend/src/**/*.ts",
