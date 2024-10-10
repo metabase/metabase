@@ -3,6 +3,7 @@
    [clojure.test :refer [deftest is testing]]
    [mb.hawk.assert-exprs.approximately-equal :as =?]
    [medley.core :as m]
+   [metabase.analytics.prometheus :as prometheus]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -79,6 +80,17 @@
     (is (=? {:stages [{:source-table (meta/id :products)
                        :aggregation [[:avg {} [:field {} (meta/id :products :rating)]]]}]}
             (adjust query)))))
+
+(deftest adjust-prometheus-metric-test
+  (let [[source-metric mp] (mock-metric)
+        query              (lib/query mp source-metric)
+        calls              (atom nil)]
+    ;; Make metrics/adjust-metric-stages a no-op and verify that the :metabase-metrics/adjust-errors prometheus
+    ;; counter is incremented.
+    (with-redefs [prometheus/inc!                #(swap! calls conj %)
+                  metrics/adjust-metric-stages (fn [_ _ stages] stages)]
+      (is (= query (adjust query)))
+      (is (= 1 (count (filter #{:metabase-metrics/adjust-errors} @calls)))))))
 
 (deftest ^:parallel adjust-aggregation-metric-ref-test
   (let [[source-metric mp] (mock-metric)
