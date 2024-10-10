@@ -20,11 +20,12 @@ export type DashboardSharingEmbeddingModalProps = {
   onClose: () => void;
 };
 
-export const DashboardSharingEmbeddingModal = (
-  props: DashboardSharingEmbeddingModalProps,
-) => {
-  const { className, dashboard, isOpen, onClose } = props;
-
+export const DashboardSharingEmbeddingModal = ({
+  className,
+  dashboard,
+  isOpen,
+  onClose,
+}: DashboardSharingEmbeddingModalProps) => {
   const parameters = useSelector(getParameters);
 
   const [createPublicDashboardLink] = useCreateDashboardPublicLinkMutation();
@@ -33,7 +34,6 @@ export const DashboardSharingEmbeddingModal = (
     useUpdateDashboardEmbeddingParamsMutation();
   const [updateDashboardEnableEmbedding] =
     useUpdateDashboardEnableEmbeddingMutation();
-
 
   const getPublicUrl = (publicUuid: string) => Urls.publicDashboard(publicUuid);
 
