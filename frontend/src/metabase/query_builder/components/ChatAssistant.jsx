@@ -410,7 +410,6 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
                 // Process partial message events
                 if (event === "messages/partial" && data.length > 0) {
                     const { content, type } = data[0];
-                    console.log(content)
                     if (type === "ai") {
                         setMessages((prev) => {
                             const updatedMessages = [...prev];
