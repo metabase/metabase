@@ -10,6 +10,7 @@
    [metabase.driver.sql-jdbc.execute.legacy-impl :as sql-jdbc.legacy]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.sync :as driver.s]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -43,6 +44,39 @@
     #"timestamp_ntz" :type/DateTime
     ((get-method sql-jdbc.sync/database-type->base-type :hive-like)
      driver database-type)))
+
+(defn- get-tables-sql
+  [catalog]
+  (assert (string? (not-empty catalog)))
+  [(str/join
+    "\n"
+    ["select"
+     "  TABLE_NAME as name,"
+     "  TABLE_SCHEMA as schema,"
+     "  COMMENT description"
+     "  from information_schema.tables"
+     "  where TABLE_CATALOG = ?"
+     "    AND TABLE_SCHEMA <> 'information_schema'"])
+   catalog])
+
+(defn- describe-database-tables
+    [database]
+    (let [[inclusion-patterns
+           exclusion-patterns] (driver.s/db-details->schema-filter-patterns database)
+          syncable? (fn [schema]
+                      (driver.s/include-schema? inclusion-patterns exclusion-patterns schema))]
+      (eduction
+       (filter (comp syncable? :schema))
+       (sql-jdbc.execute/reducible-query database (get-tables-sql (-> database :details :catalog))))))
+
+(defmethod driver/describe-database :databricks
+    [driver database]
+    (try
+      {:tables (into #{} (describe-database-tables database))}
+      (catch Throwable e
+        (throw (ex-info (format "Error in %s describe-database: %s" driver (ex-message e))
+                        {}
+                        e)))))
 
 (defmethod sql-jdbc.sync/describe-fields-sql :databricks
   [driver & {:keys [schema-names table-names]}]
