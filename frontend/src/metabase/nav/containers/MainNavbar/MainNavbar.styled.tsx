@@ -1,7 +1,7 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
-import { color, lighten } from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 import { NAV_SIDEBAR_WIDTH } from "metabase/nav/constants";
 import {
   breakpointMaxSmall,
@@ -63,11 +63,11 @@ export const NavRoot = styled.nav<{ isOpen: boolean }>`
   }
 
   ${breakpointMinSmall} {
-    width: ${NAV_SIDEBAR_WIDTH};
+    width: ${props => (props.isOpen ? NAV_SIDEBAR_WIDTH : 0)};
   }
 
   ${breakpointMaxSmall} {
-    width: 90vw;
+    width: ${props => (props.isOpen ? "90vw" : 0)};
   }
 `;
 
@@ -143,31 +143,4 @@ export const LoadingAndErrorTitle = styled.h2`
 
 export const PaddedSidebarLink = styled(SidebarLink)`
   padding-inline-start: 12px;
-`;
-
-export const AddYourOwnDataLink = styled(SidebarLink)`
-  background: ${color("brand")};
-  border-radius: 8px;
-  color: ${color("white")};
-  margin: ${space(1)};
-  padding: 2px 6px;
-
-  svg {
-    color: ${color("brand-light")};
-  }
-
-  transition: background-color 0.3s linear;
-
-  @media (prefers-reduced-motion) {
-    transition: none;
-  }
-
-  &:hover {
-    background: ${lighten("brand", 0.12)};
-    color: ${color("white")};
-
-    svg {
-      color: ${color("brand-light")} !important;
-    }
-  }
 `;
