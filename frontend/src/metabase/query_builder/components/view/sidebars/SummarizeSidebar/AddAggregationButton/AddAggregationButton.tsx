@@ -26,7 +26,7 @@ export function AddAggregationButton({
 
   const renderTooltip = (children: ReactNode) =>
     hasAggregations ? (
-      <Tooltip label={t`Add metric`}>{children}</Tooltip>
+      <Tooltip label={t`Add a function or metric`}>{children}</Tooltip>
     ) : (
       children
     );
@@ -43,7 +43,7 @@ export function AddAggregationButton({
             aria-label={t`Add aggregation`}
             data-testid="add-aggregation-button"
           >
-            {hasAggregations ? null : t`Add a metric`}
+            {hasAggregations ? null : t`Add a function or metric`}
           </AddAggregationButtonRoot>,
         )}
       </Popover.Target>

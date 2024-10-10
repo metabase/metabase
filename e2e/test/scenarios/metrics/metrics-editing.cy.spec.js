@@ -459,7 +459,7 @@ describe("scenarios > metrics > editing", () => {
       });
       startNewAggregation();
       popover().within(() => {
-        cy.findByText("Common Metrics").click();
+        cy.findByText("Metrics").click();
         cy.findByText(ORDERS_SCALAR_METRIC.name).should("be.visible");
         cy.findByText(ORDERS_SCALAR_FILTER_METRIC.name).should("be.visible");
         cy.findByText(PRODUCTS_SCALAR_METRIC.name).should("not.exist");
@@ -482,7 +482,7 @@ describe("scenarios > metrics > editing", () => {
       startNewAggregation();
       popover().within(() => {
         cy.findByPlaceholderText("Find...").type("with filter");
-        cy.findByText("Common Metrics").should("be.visible");
+        cy.findByText("Metrics").should("be.visible");
         cy.findByText(ORDERS_SCALAR_METRIC.name).should("not.exist");
         cy.findByText(PRODUCTS_SCALAR_METRIC.name).should("not.exist");
         cy.findByText(ORDERS_SCALAR_MODEL_METRIC.name).should("not.exist");
@@ -499,7 +499,7 @@ describe("scenarios > metrics > editing", () => {
       });
       startNewAggregation();
       popover().within(() => {
-        cy.findByText("Common Metrics").click();
+        cy.findByText("Metrics").click();
         cy.findByText(ORDERS_SCALAR_FILTER_METRIC.name).should("be.visible");
         cy.findByText(ORDERS_SCALAR_FILTER_METRIC.name).realHover();
 
