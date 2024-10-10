@@ -6,7 +6,7 @@ import { DEFAULT_METABASE_COMPONENT_THEME } from "embedding-sdk/lib/theme";
 import Styles from "./Theme.module.css";
 import {
   accordionOverrides,
-  //   getActionIconOverrides,
+  actionIconOverrides,
   alertOverrides,
   anchorOverrides,
   //   getAutocompleteOverrides,
@@ -113,7 +113,7 @@ export const getThemeOverrides = (): MantineThemeProviderProps["theme"] => ({
   focusClassName: Styles.focus,
   components: {
     ...accordionOverrides,
-    // ...getActionIconOverrides(),
+    ...actionIconOverrides,
     ...alertOverrides,
     ...anchorOverrides,
     // ...getAutocompleteOverrides(),
