@@ -61,20 +61,24 @@
 (deftest ^:parallel custom-column-test
   (testing "#34957"
     (lib.drill-thru.tu/test-drill-application
-     {:drill-type     :drill-thru/summarize-column
-      :click-type     :header
-      :query-type     :unaggregated
-      :custom-query   (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
-                          (lib/expression "CustomColumn" (lib/+ 1 1)))
-      :custom-row     (assoc (get-in lib.drill-thru.tu/test-queries ["ORDERS" :unaggregated :row])
-                             "CustomColumn" 2)
-      :column-name    "CustomColumn"
-      :expected       {:type         :drill-thru/summarize-column
-                       :column       {:name "CustomColumn"}
-                       :aggregations [:distinct :sum :avg]}
-      :drill-args     ["sum"]
-      :expected-query {:stages
-                       [{:lib/type     :mbql.stage/mbql,
-                         :source-table (meta/id :orders)
-                         :expressions  [[:+ {:lib/expression-name "CustomColumn"} 1 1]]
-                         :aggregation  [[:sum {} [:expression {} "CustomColumn"]]]}]}})))
+     {:drill-type      :drill-thru/summarize-column
+      :click-type      :header
+      :query-type      :unaggregated
+      :custom-query    (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                           (lib/expression "CustomColumn" (lib/+ 1 1)))
+      :custom-row      (assoc (get-in lib.drill-thru.tu/test-queries ["ORDERS" :unaggregated :row])
+                              "CustomColumn" 2)
+      :column-name     "CustomColumn"
+      :expected        {:type         :drill-thru/summarize-column
+                        :column       {:name "CustomColumn"}
+                        :aggregations [:distinct :sum :avg]}
+      :drill-args      ["sum"]
+      :expected-query  {:stages
+                        [{:lib/type     :mbql.stage/mbql,
+                          :source-table (meta/id :orders)
+                          :expressions  [[:+ {:lib/expression-name "CustomColumn"} 1 1]]
+                          :aggregation  [[:sum {} [:expression {} "CustomColumn"]]]}]}
+      :expected-native {:stages
+                        [{:lib/type    :mbql.stage/mbql,
+                          :source-card number?
+                          :aggregation [[:sum {} [:field {} "CustomColumn"]]]}]}})))

@@ -113,7 +113,7 @@ describe("scenarios > browse > metrics", () => {
       cy.visit("/browse/metrics");
       main()
         .findByText(
-          "Metrics help you summarize and analyze your data effortlessly.",
+          "Create Metrics to define the official way to calculate important numbers for your team",
         )
         .should("be.visible");
     });
@@ -279,7 +279,7 @@ describe("scenarios > browse > metrics", () => {
 
       main()
         .findByText(
-          "Metrics help you summarize and analyze your data effortlessly.",
+          "Create Metrics to define the official way to calculate important numbers for your team",
         )
         .should("be.visible");
 

@@ -875,12 +875,12 @@
         (testing "channel send task history task details include retry config"
           (with-redefs
            [channel/send! (constantly true)]
-           (send!)
-           (is (= {:task         "channel-send"
-                   :db_id        nil
-                   :status       :success
-                   :task_details default-task-details}
-                  (latest-task-history-entry :channel-send)))))
+            (send!)
+            (is (= {:task         "channel-send"
+                    :db_id        nil
+                    :status       :success
+                    :task_details default-task-details}
+                   (latest-task-history-entry :channel-send)))))
 
         (testing "retry errors are recorded when the task eventually succeeds"
           (with-redefs [channel/send! (tu/works-after 2 (constantly nil))]

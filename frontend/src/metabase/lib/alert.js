@@ -18,6 +18,11 @@ export function channelIsValid(channel) {
   }
 }
 
+export function channelIsEnabled(channel) {
+  return channel.enabled;
+}
+
 export function alertIsValid(alert) {
-  return alert.channels.length > 0 && alert.channels.every(channelIsValid);
+  const enabledChannels = alert.channels.filter(channelIsEnabled);
+  return enabledChannels.length > 0 && enabledChannels.every(channelIsValid);
 }

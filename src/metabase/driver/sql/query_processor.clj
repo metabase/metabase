@@ -7,6 +7,7 @@
    [honey.sql.helpers :as sql.helpers]
    [honey.sql.protocols]
    [java-time.api :as t]
+   [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
    [metabase.driver.sql.query-processor.deprecated :as sql.qp.deprecated]
@@ -787,50 +788,51 @@
    (->honeysql driver mbql-expr)
    (->honeysql driver power)])
 
-(defn- aggregation-order-bys
-  [order-bys]
-  (filter (fn [[_direction expr]]
-            (and (vector? expr)
-                 (> (count expr) 1)
-                 (= (first expr) :aggregation)
-                 (int? (second expr))))
-          order-bys))
+(defn- aggregation?
+  [expr]
+  (and (vector? expr)
+       (> (count expr) 1)
+       (= (first expr) :aggregation)
+       (int? (second expr))))
 
 (defn- unwrap-aggregation-option
   [agg]
   (cond-> agg
     (and (vector? agg) (= (first agg) :aggregation-options)) second))
 
-(defn- over-aggregations
-  "Returns a vector containing the `aggregations` specified by `aggregation-order-bys` compiled to
+(defn- over-order-bys
+  "Returns a vector containing the `aggregations` specified by `order-bys` compiled to
   honeysql expressions for `driver` suitable for ordering in the over clause of a window function."
-  [driver aggregations aggregation-order-bys]
+  [driver aggregations order-bys]
   (let [aggregations (vec aggregations)]
     (into []
-          (keep (fn [[direction [_aggregation index]]]
-                  (let [agg (unwrap-aggregation-option (aggregations index))]
-                    (when-not (#{:cum-count :cum-sum :offset} (first agg))
-                      [(->honeysql driver agg) direction]))))
-          aggregation-order-bys)))
+          (keep (fn [[direction expr]]
+                  (if (aggregation? expr)
+                    (let [[_aggregation index] expr
+                          agg (unwrap-aggregation-option (aggregations index))]
+                      (when-not (#{:cum-count :cum-sum :offset} (first agg))
+                        [(->honeysql driver agg) direction]))
+                    [(->honeysql driver expr) direction])))
+          order-bys)))
 
 (defn- window-aggregation-over-expr-for-query-with-breakouts
   "Order by the first breakout, then partition by all the other ones. See #42003 and
   https://metaboat.slack.com/archives/C05MPF0TM3L/p1714084449574689 for more info."
   [driver inner-query]
-  (let [num-breakouts   (count (:breakout inner-query))
-        group-bys       (:group-by (apply-top-level-clause driver :breakout {} inner-query))
-        partition-exprs (when (> num-breakouts 1)
-                          (rest group-bys))
-        order-expr      (first group-bys)
-        over-order-bys  (->> (:order-by inner-query)
-                             aggregation-order-bys
-                             (over-aggregations driver (:aggregation inner-query)))]
+  (let [breakouts (:breakout inner-query)
+        group-bys (:group-by (apply-top-level-clause driver :breakout {} inner-query))
+        finest-temp-breakout (qp.util.transformations.nest-breakouts/finest-temporal-breakout-index breakouts 2)
+        partition-exprs (when (> (count breakouts) 1)
+                          (if finest-temp-breakout
+                            (m/remove-nth finest-temp-breakout group-bys)
+                            (butlast group-bys)))
+        order-bys (over-order-bys driver (:aggregation inner-query) (:order-by inner-query))]
     (merge
      (when (seq partition-exprs)
        {:partition-by (mapv (fn [expr]
                               [expr])
                             partition-exprs)})
-     {:order-by (conj over-order-bys [order-expr :asc])})))
+     {:order-by order-bys})))
 
 (defn- window-aggregation-over-expr-for-query-without-breakouts [driver inner-query]
   (when-let [order-bys (not-empty (:order-by (apply-top-level-clause driver :order-by {} inner-query)))]
@@ -1804,9 +1806,11 @@
       (when-let [source-query (:source-query inner-query)]
         (has-window-function-aggregations? source-query))))
 
-(defn- maybe-nest-breakouts-in-queries-with-window-fn-aggregations [inner-query]
+(defn- maybe-nest-breakouts-in-queries-with-window-fn-aggregations
+  [inner-query]
   (cond-> inner-query
-    (has-window-function-aggregations? inner-query) nest-breakouts-in-queries-with-window-fn-aggregations))
+    (has-window-function-aggregations? inner-query)
+    nest-breakouts-in-queries-with-window-fn-aggregations))
 
 (defmethod preprocess :sql
   [_driver inner-query]

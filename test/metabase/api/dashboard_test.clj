@@ -1,4 +1,4 @@
-(ns metabase.api.dashboard-test
+(ns ^:mb/driver-tests metabase.api.dashboard-test
   "Tests for /api/dashboard endpoints."
   (:require
    [cheshire.core :as json]
@@ -2622,7 +2622,7 @@
 (deftest fetch-embeddable-dashboards-test
   (testing "GET /api/dashboard/embeddable"
     (testing "Test that we can fetch a list of embeddable-accessible dashboards"
-      (mt/with-temporary-setting-values [enable-embedding true]
+      (mt/with-temporary-setting-values [enable-embedding-static true]
         (t2.with-temp/with-temp [Dashboard _ {:enable_embedding true}]
           (is (= [{:name true, :id true}]
                  (for [dash (mt/user-http-request :crowberto :get 200 "dashboard/embeddable")]
@@ -4600,13 +4600,17 @@
                             {:id (mt/id :orders :user_id)}
                             {:id (mt/id :people :source)}
                             {:id (mt/id :people :name)}])
-          :tables (sort-by :id [{:id (mt/id :categories)}
-                                {:id (mt/id :users)}
-                                {:id (mt/id :checkins)}
-                                {:id (mt/id :reviews)}
-                                {:id (mt/id :products)
-                                 :fields sequential?}
-                                {:id (mt/id :venues)}])
+          :tables (concat (sort-by :id
+                                   [{:id (mt/id :categories)}
+                                    {:id (mt/id :users)}
+                                    {:id (mt/id :checkins)}
+                                    {:id (mt/id :reviews)}
+                                    {:id (mt/id :products)
+                                     :fields sequential?}
+                                    {:id (mt/id :venues)}])
+                          (sort-by :id
+                                   [{:id (str "card__" card-id-2)
+                                     :fields sequential?}]))
           :cards [{:id link-card}]
           :databases [{:id (mt/id) :engine string?}]
           :dashboards [{:id link-dash}]}

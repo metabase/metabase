@@ -82,7 +82,7 @@
     (setting/set-value-of-type! :string :update-channel new-channel)))
 
 (defsetting update-channel
-  (deferred-tru "Metabase will notify you when a new release is available for the channel you select.")
+  (deferred-tru "We'll notify you here when there's a new version of this type of release.")
   :visibility :admin
   :type       :string
   :encryption :no
@@ -833,6 +833,7 @@ See [fonts](../configuring-metabase/fonts.md).")
                       :audit_app                      (premium-features/enable-audit-app?)
                       :cache_granular_controls        (premium-features/enable-cache-granular-controls?)
                       :collection_cleanup             (premium-features/enable-collection-cleanup?)
+                      :database_auth_providers        (premium-features/enable-database-auth-providers?)
                       :config_text_file               (premium-features/enable-config-text-file?)
                       :content_verification           (premium-features/enable-content-verification?)
                       :dashboard_subscription_filters (premium-features/enable-dashboard-subscription-filters?)
@@ -846,6 +847,7 @@ See [fonts](../configuring-metabase/fonts.md).")
                       :query_reference_validation     (premium-features/enable-query-reference-validation?)
                       :sandboxes                      (premium-features/enable-sandboxes?)
                       :scim                           (premium-features/enable-scim?)
+                      :serialization                  (premium-features/enable-serialization?)
                       :session_timeout_config         (premium-features/enable-session-timeout-config?)
                       :snippet_collections            (premium-features/enable-snippet-collections?)
                       :sso_google                     (premium-features/enable-sso-google?)

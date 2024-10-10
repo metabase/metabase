@@ -1,4 +1,4 @@
-(ns metabase.query-processor-test.string-extracts-test
+(ns ^:mb/driver-tests metabase.query-processor-test.string-extracts-test
   (:require
    [clojure.test :refer :all]
    [metabase.query-processor :as qp]

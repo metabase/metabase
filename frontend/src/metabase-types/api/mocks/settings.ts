@@ -5,6 +5,7 @@ import type {
   EngineSource,
   FontFile,
   SettingDefinition,
+  SettingKey,
   Settings,
   TokenFeatures,
   TokenStatus,
@@ -125,16 +126,18 @@ export const createMockTokenFeatures = (
   collection_cleanup: false,
   upload_management: false,
   query_reference_validation: false,
+  serialization: false,
   ...opts,
 });
 
-export const createMockSettingDefinition = (
-  opts?: Partial<SettingDefinition>,
-): SettingDefinition => ({
-  key: "key",
+export const createMockSettingDefinition = <
+  Key extends SettingKey = SettingKey,
+>(
+  opts: SettingDefinition<Key>,
+): SettingDefinition<Key> => ({
   env_name: "",
   is_env_setting: false,
-  value: null,
+  value: opts.value,
   ...opts,
 });
 
@@ -168,7 +171,12 @@ export const createMockSettings = (
   "email-smtp-username": null,
   "email-smtp-password": null,
   "embedding-app-origin": "",
+  "embedding-app-origins-sdk": "",
+  "embedding-app-origins-interactive": "",
   "enable-embedding": false,
+  "enable-embedding-static": false,
+  "enable-embedding-sdk": false,
+  "enable-embedding-interactive": false,
   "enable-enhancements?": false,
   "enable-nested-queries": true,
   "expand-browse-in-nav": true,
@@ -211,6 +219,7 @@ export const createMockSettings = (
   "report-timezone-long": "Europe/London",
   "saml-configured": false,
   "saml-enabled": false,
+  "saml-identity-provider-uri": null,
   "scim-enabled": false,
   "scim-base-url": "http://localhost:3000/api/ee/scim/v2/",
   "snowplow-url": "",

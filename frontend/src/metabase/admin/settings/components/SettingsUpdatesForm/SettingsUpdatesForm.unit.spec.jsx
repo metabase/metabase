@@ -78,7 +78,9 @@ describe("SettingsUpdatesForm", () => {
   it("shows release channel selection", async () => {
     setup({ currentVersion: "v1.0.0", latestVersion: "v1.0.0" });
 
-    expect(await screen.findByText("Update Channel")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Types of releases to check for"),
+    ).toBeInTheDocument();
   });
 
   it("shows correct message when latest version is installed", async () => {

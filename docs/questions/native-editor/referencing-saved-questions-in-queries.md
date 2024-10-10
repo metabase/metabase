@@ -66,7 +66,6 @@ FROM
 - [SQL Snippets](https://www.metabase.com/learn/building-analytics/sql-templates/sql-snippets.html)
 - [SQL Snippets vs Saved Questions vs. Views](https://www.metabase.com/learn/building-analytics/sql-templates/organizing-sql.html)
 - [SQL troubleshooting guide](../../troubleshooting-guide/sql.md).
-- [Segments and Metrics](../../data-modeling/segments-and-metrics.md)
 
 [cte]: https://www.metabase.com/learn/sql-questions/sql-cte
 [model]: ../../data-modeling/models.md

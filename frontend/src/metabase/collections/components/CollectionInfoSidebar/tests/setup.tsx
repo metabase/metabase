@@ -1,5 +1,5 @@
 import { renderWithProviders } from "__support__/ui";
-import type { Collection } from "metabase-types/api";
+import type { Collection, TokenFeature } from "metabase-types/api";
 import { createMockCollection } from "metabase-types/api/mocks";
 
 import { CollectionInfoSidebar } from "../CollectionInfoSidebar";
@@ -8,11 +8,20 @@ export const setup = ({
   collection,
   enableEnterprisePlugins,
   enableOfficialCollections = false,
+  enableSerialization = false,
 }: {
   collection: Collection;
   enableEnterprisePlugins?: boolean;
   enableOfficialCollections: boolean;
+  enableSerialization?: boolean;
 }) => {
+  const withFeatures: TokenFeature[] = [];
+  if (enableOfficialCollections) {
+    withFeatures.push("official_collections");
+  }
+  if (enableSerialization) {
+    withFeatures.push("serialization");
+  }
   return renderWithProviders(
     <>
       {collection.name}
@@ -23,9 +32,7 @@ export const setup = ({
       />
     </>,
     {
-      withFeatures: enableOfficialCollections
-        ? ["official_collections" as const]
-        : [],
+      withFeatures,
       shouldSetupEnterprisePlugins: enableEnterprisePlugins,
     },
   );
