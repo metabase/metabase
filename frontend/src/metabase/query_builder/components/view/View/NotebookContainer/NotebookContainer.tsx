@@ -78,18 +78,21 @@ export const NotebookContainer = ({
   const Handle = forwardRef<
     HTMLDivElement,
     Partial<ResizableBoxProps> & {
-      onResize?: any; //Mantine and react-resizeable have different opinions on what onResize should be
+      onResize?: any; //Mantine and react-resizable have different opinions on what onResize should be
+      handleAxis?: string; // undocumented prop https://github.com/react-grid-layout/react-resizable/issues/175
     }
   >(function Handle(props, ref) {
     const handleWidth = 10;
     const borderWidth = 1;
     const left = rem(-((handleWidth + borderWidth) / 2));
 
+    const { handleAxis, ...rest } = props;
+
     return (
       <Box
         data-testid="notebook-native-preview-resize-handle"
         ref={ref}
-        {...props}
+        {...rest}
         pos="absolute"
         top={0}
         bottom={0}

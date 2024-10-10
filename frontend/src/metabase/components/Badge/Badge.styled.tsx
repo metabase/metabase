@@ -43,7 +43,9 @@ export const MaybeLink = styled(RawMaybeLink)`
   }
 `;
 
-export const BadgeIcon = styled(Icon)<{ hasMargin: boolean }>`
+export const BadgeIcon = styled(Icon, {
+  shouldForwardProp: propName => propName !== "hasMargin",
+})<{ hasMargin: boolean }>`
   margin-right: ${props => (props.hasMargin ? "5px" : 0)};
 `;
 
