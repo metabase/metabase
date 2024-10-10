@@ -33,6 +33,7 @@
    [metabase.models.setting :as setting]
    [metabase.models.setting.cache :as setting.cache]
    [metabase.models.timeline-event :as timeline-event]
+   [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.plugins.classloader :as classloader]
    [metabase.query-processor.util :as qp.util]
@@ -125,7 +126,14 @@
 
    :model/Channel
    (fn [_] (default-timestamped
-            {:name (u.random/random-name)}))
+            {:name    (u.random/random-name)
+             :type    notification.tu/test-channel-type
+             :details {}}))
+
+   :model/ChannelTemplate
+   (fn [_] (default-timestamped
+            {:name         (u.random/random-name)
+             :channel_type notification.tu/test-channel-type}))
 
    :model/Dashboard
    (fn [_] (default-timestamped
@@ -189,6 +197,15 @@
             {:creator_id (user-id :crowberto)
              :name       (u.random/random-name)
              :content    "1 = 1"}))
+
+   :model/Notification
+   (fn [_] (default-timestamped
+            {:payload_type :notification/system-event
+             :active       true}))
+
+   :model/NotificationSubscription
+   (fn [_] (default-created-at-timestamped
+            {}))
 
    :model/QueryExecution
    (fn [_] {:hash         (qp.util/query-hash {})
