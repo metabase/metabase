@@ -9,4 +9,5 @@ export interface AccentColorOptions {
   light?: boolean;
   dark?: boolean;
   harmony?: boolean;
+  all?: boolean; // include the optional accent colors, e.g. greys
 }
