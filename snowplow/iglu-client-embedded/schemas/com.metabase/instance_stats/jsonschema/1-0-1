@@ -55,59 +55,13 @@
             "description": "Tags that can be used for flagging teams / features the metric belongs to",
             "type": "array",
             "items": {
+              "description": "a tag",
               "type": "string",
               "maxLength": 255
             }
           }
         },
         "required": ["key", "value", "tags"]
-      }
-    },
-    "grouped_metrics": {
-      "description": "Key-value pairs of grouped metrics, with tags.",
-      "type": "array",
-      "items": {
-        "description": "a Metric, which has a key a value and tags",
-        "type": "object",
-        "properties": {
-          "name": {
-            "description": "The unique name of the grouped metric",
-            "type": "string",
-            "maxLength": 255
-          },
-          "values": {
-            "description": "Values for the grouped metric",
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "group": {
-                  "description": "The group name",
-                  "type": "string",
-                  "maxLength": 255
-                },
-                "value": {
-                  "description": "The value for the group",
-                  "type": "number",
-                  "minimum": 0,
-                  "maximum": 9007199254740991
-                }
-              },
-              "required": ["group", "value"],
-              "additionalProperties": false
-            }
-          },
-          "tags": {
-            "description": "Tags that can be used flagging teams / features the grouped_metric belongs to",
-            "type": "array",
-            "items": {
-              "type": "string",
-              "maxLength": 255
-            }
-          }
-        },
-        "required": ["name", "values", "tags"],
-        "additionalProperties": false
       }
     },
     "features": {
