@@ -291,7 +291,6 @@ export type CopyDashboardRequest = {
   is_deep_copy?: boolean | null;
 };
 
-export type GetPublicOrEmbeddableDashboard = Pick<
-  Dashboard,
-  "id" | "name" | "public_uuid"
->;
+export type GetPublicDashboard = Pick<Dashboard, "id" | "name" | "public_uuid">;
+
+export type GetEmbeddableDashboard = Pick<Dashboard, "id" | "name">;
