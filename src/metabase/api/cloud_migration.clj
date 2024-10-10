@@ -47,3 +47,5 @@
   (t2/update! :model/CloudMigration {:state [:not-in cloud-migration/terminal-states]} {:state :cancelled}))
 
 (api/define-routes)
+
+(comment 1)

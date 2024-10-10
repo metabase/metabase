@@ -101,3 +101,6 @@ Unless otherwise noted, all files © 2024 Metabase, Inc.
 ## [Metabase Experts](https://www.metabase.com/partners/)
 
 If you’d like more technical resources to set up your data stack with Metabase, connect with a [Metabase Expert](https://www.metabase.com/partners/?utm_source=readme&utm_medium=metabase-expetrs&utm_campaign=readme).
+
+
+1
