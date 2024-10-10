@@ -38,27 +38,6 @@ import {
   setShowLoadingCompleteFavicon,
 } from "./data-fetching-typed";
 
-export {
-  fetchDashboard,
-  MARK_CARD_AS_SLOW,
-  markCardAsSlow,
-  SET_DOCUMENT_TITLE,
-  setDocumentTitle,
-  SET_SHOW_LOADING_COMPLETE_FAVICON,
-  setShowLoadingCompleteFavicon,
-  FETCH_DASHBOARD_CARD_DATA,
-  fetchDashboardCardDataAction,
-  FETCH_CARD_DATA_PENDING,
-  fetchCardDataPending,
-  CANCEL_FETCH_CARD_DATA,
-  setFetchCardDataCancel,
-  cancelFetchCardData,
-  FETCH_CARD_DATA,
-  fetchCardData,
-  CLEAR_CARD_DATA,
-  clearCardData,
-};
-
 export const CANCEL_FETCH_DASHBOARD_CARD_DATA =
   "metabase/dashboard/CANCEL_FETCH_DASHBOARD_CARD_DATA";
 
@@ -195,3 +174,24 @@ export const cancelFetchDashboardCardData = createThunkAction(
     }
   },
 );
+
+export {
+  fetchDashboard,
+  MARK_CARD_AS_SLOW,
+  markCardAsSlow,
+  SET_DOCUMENT_TITLE,
+  setDocumentTitle,
+  SET_SHOW_LOADING_COMPLETE_FAVICON,
+  setShowLoadingCompleteFavicon,
+  FETCH_DASHBOARD_CARD_DATA,
+  fetchDashboardCardDataAction,
+  FETCH_CARD_DATA_PENDING,
+  fetchCardDataPending,
+  CANCEL_FETCH_CARD_DATA,
+  setFetchCardDataCancel,
+  cancelFetchCardData,
+  FETCH_CARD_DATA,
+  fetchCardData,
+  CLEAR_CARD_DATA,
+  clearCardData,
+};
