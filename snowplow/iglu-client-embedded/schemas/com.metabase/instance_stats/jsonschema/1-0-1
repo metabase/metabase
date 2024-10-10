@@ -23,36 +23,47 @@
           },
           "value": {
             "description": "The value of this attribute",
-            "type": ["string", "boolean", "integer", "null"],
+            "type": [
+              "string",
+              "boolean",
+              "integer",
+              "null"
+            ],
             "maxLength": 255,
             "minimum": 0,
             "maximum": 2147483647
           }
         },
-        "required": ["key", "value"]
+        "required": [
+          "key",
+          "value"
+        ]
       }
     },
     "metrics": {
-      "description": "Key-value pairs of metrics",
+      "description": "Key-value pairs of metrics, with tags.",
       "type": "array",
       "items": {
         "type": "object",
         "description": "A single metric attribute",
         "properties": {
           "key": {
-            "description": "The key for this attribute",
+            "description": "The unique name of the metric",
             "type": "string",
             "maxLength": 255
           },
           "value": {
-            "description": "The value of this attribute",
-            "type": ["string", "boolean", "integer"],
+            "description": "The value of the metric",
+            "type": [
+              "string",
+              "integer"
+            ],
             "maxLength": 255,
             "minimum": 0,
             "maximum": 2147483647
           },
           "tags": {
-            "description": "Tags for this metric",
+            "description": "Tags that can be used for flagging teams / features the metric belongs to",
             "type": "array",
             "items": {
               "type": "string",
@@ -60,7 +71,11 @@
             }
           }
         },
-        "required": ["key", "value"]
+        "required": [
+          "key",
+          "value",
+          "tags"
+        ]
       }
     },
     "grouped_metrics": {
@@ -90,7 +105,10 @@
                   "type": "number"
                 }
               },
-              "required": ["group", "value"],
+              "required": [
+                "group",
+                "value"
+              ],
               "additionalProperties": false
             }
           },
@@ -102,7 +120,10 @@
             }
           }
         },
-        "required": ["name", "values"],
+        "required": [
+          "name",
+          "values"
+        ],
         "additionalProperties": false
       }
     },
@@ -127,7 +148,11 @@
             "type": "boolean"
           }
         },
-        "required": ["name", "available", "enabled"],
+        "required": [
+          "name",
+          "available",
+          "enabled"
+        ],
         "additionalProperties": true
       }
     },
@@ -145,16 +170,29 @@
           },
           "value": {
             "description": "The value of this metadata",
-            "type": ["string", "boolean", "integer", "null"],
+            "type": [
+              "string",
+              "boolean",
+              "integer",
+              "null"
+            ],
             "maxLength": 255,
             "minimum": 0,
             "maximum": 2147483647
           }
         },
-        "required": ["key", "value"]
+        "required": [
+          "key",
+          "value"
+        ]
       }
     }
   },
   "additionalProperties": false,
-  "required": ["instance_attributes", "features", "metadata"]
+  "required": [
+    "features",
+    "instance_attributes",
+    "metadata",
+    "metrics"
+  ]
 }
