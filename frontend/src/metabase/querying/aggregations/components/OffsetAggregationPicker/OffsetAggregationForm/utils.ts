@@ -1,3 +1,4 @@
+import { checkNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
 
 export function getBreakoutColumns(
@@ -14,5 +15,5 @@ export function getBreakoutColumn(
   stageIndex: number,
 ): Lib.ColumnMetadata {
   const columns = getBreakoutColumns(query, stageIndex);
-  return columns[0];
+  return checkNotNull(columns[0]);
 }
