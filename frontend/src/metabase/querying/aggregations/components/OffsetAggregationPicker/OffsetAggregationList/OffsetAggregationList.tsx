@@ -1,9 +1,10 @@
 import AccordionList from "metabase/core/components/AccordionList";
 import * as Lib from "metabase-lib";
 
-type AggregationListProps = {
+type OffsetAggregationListProps = {
   query: Lib.Query;
   stageIndex: number;
+  aggregations: Lib.AggregationClause[];
   onChange: (aggregation: Lib.AggregationClause) => void;
 };
 
@@ -12,12 +13,13 @@ type AggregationItem = {
   aggregation: Lib.AggregationClause;
 };
 
-export function AggregationList({
+export function OffsetAggregationList({
   query,
   stageIndex,
+  aggregations,
   onChange,
-}: AggregationListProps) {
-  const sections = getSections(query, stageIndex);
+}: OffsetAggregationListProps) {
+  const sections = getSections(query, stageIndex, aggregations);
 
   const handleChange = (item: AggregationItem) => {
     onChange(item.aggregation);
@@ -34,8 +36,11 @@ export function AggregationList({
   );
 }
 
-function getSections(query: Lib.Query, stageIndex: number) {
-  const aggregations = Lib.aggregations(query, stageIndex);
+function getSections(
+  query: Lib.Query,
+  stageIndex: number,
+  aggregations: Lib.AggregationClause[],
+) {
   const items = aggregations.map<AggregationItem>(aggregation => {
     const aggregationInfo = Lib.displayInfo(query, stageIndex, aggregation);
     return { name: aggregationInfo.displayName, aggregation };
