@@ -28,8 +28,10 @@ const PERSISTED_MODEL_REFRESH_DELAY = 200;
 
 export const cardApi = Api.injectEndpoints({
   endpoints: builder => {
-    const updateCardKeyMutation = <Key extends keyof UpdateCardRequest>() =>
-      builder.mutation<Card, UpdateCardKeyRequest<Key>>({
+    const updateCardPropertyMutation = <
+      PropertyKey extends keyof UpdateCardRequest,
+    >() =>
+      builder.mutation<Card, UpdateCardKeyRequest<PropertyKey>>({
         query: ({ id, ...body }) => ({
           method: "PUT",
           url: `/api/card/${id}`,
@@ -214,8 +216,10 @@ export const cardApi = Api.injectEndpoints({
         invalidatesTags: (_, error) =>
           invalidateTags(error, [listTag("public-card")]),
       }),
-      updateCardEnableEmbedding: updateCardKeyMutation<"enable_embedding">(),
-      updateCardEmbeddingParams: updateCardKeyMutation<"embedding_params">(),
+      updateCardEnableEmbedding:
+        updateCardPropertyMutation<"enable_embedding">(),
+      updateCardEmbeddingParams:
+        updateCardPropertyMutation<"embedding_params">(),
     };
   },
 });
