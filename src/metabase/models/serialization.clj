@@ -501,7 +501,7 @@
       (t2/reducible-select model {:where [:and
                                           [:or
                                            [:in :collection_id collection-set]
-                                           (when (contains? collection-set nil)
+                                           (when (some nil? collection-set)
                                              [:= :collection_id nil])]
                                           (when where
                                             where)]}))))
