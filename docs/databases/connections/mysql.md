@@ -172,6 +172,10 @@ mysql:
   command: ["--default-authentication-plugin=mysql_native_password"]
 ```
 
+## Limitations with Vitess-based databases
+
+When using Metabase with MySQL databases which use Vitess as middleware, there can be issues with how row limits are handled. Typically, Metabase applies limits (e.g., 2000 or 10000 rows) to the final query results. However, due to a known bug in Vitess, these limits might be applied to subqueries instead, leading to unexpected results. To avoid this behavior, add a `LIMIT` clause inside every subquery manually to control the number of rows returned.
+
 ## Further reading
 
 - [MariaDB](./mariadb.md)
