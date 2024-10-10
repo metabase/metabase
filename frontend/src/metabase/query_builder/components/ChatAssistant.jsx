@@ -107,8 +107,6 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
   // Initialize Client and Thread only once when component mounts
   useEffect(() => {
     const initializeClientAndThread = async () => {
-        console.log({langchain_url})
-        console.log({langchain_key})
       try {
         const clientInstance = new Client({apiUrl: langchain_url, apiKey: langchain_key});
         setClient(clientInstance);
