@@ -48,10 +48,12 @@ export const getLearnUrl = (path = "") => {
 interface DocsUrlProps {
   page?: string;
   anchor?: string;
+  version?: Version;
 }
 
 export const getDocsUrl = createSelector(
-  (state: State) => getSetting(state, "version"),
+  (state: State, props: DocsUrlProps) =>
+    props.version ?? getSetting(state, "version"),
   (state: State, props: DocsUrlProps) => props.page,
   (state: State, props: DocsUrlProps) => props.anchor,
   (version, page, anchor) => getDocsUrlForVersion(version, page, anchor),
@@ -80,7 +82,7 @@ const getDocsUrlForVersion = (
       // otherwise, it's a regular OSS or EE version string, just link to the major OSS doc link
       tag = "v0." + matches[1];
     }
-  } else {
+  } else if (version?.tag !== "master") {
     // otherwise, just link to the latest tag
     tag = "latest";
   }

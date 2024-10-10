@@ -113,10 +113,12 @@ function MetricsEmptyState() {
 
   const { url: metricsDocsLink, showMetabaseLinks } = useDocsUrl(
     "data-modeling/metrics",
+    undefined,
+    // TODO: Remove this once the v0.51 docs go live with the gold release
+    {
+      tag: "master",
+    },
   );
-
-  // TODO: Remove this once the v0.51 docs go live with the gold release
-  const fixedMetricsDocsLink = metricsDocsLink.replace("/latest/", "/master/");
 
   return (
     <Flex align="center" justify="center" mih="70vh">
@@ -132,7 +134,7 @@ function MetricsEmptyState() {
                 {showMetabaseLinks && (
                   <Link
                     target="_blank"
-                    to={fixedMetricsDocsLink}
+                    to={metricsDocsLink}
                     variant="brandBold"
                   >{t`Read the docs`}</Link>
                 )}

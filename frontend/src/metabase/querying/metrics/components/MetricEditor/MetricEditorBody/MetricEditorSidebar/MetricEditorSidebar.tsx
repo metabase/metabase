@@ -12,18 +12,17 @@ export function MetricEditorSidebar() {
     getDocsUrl(state, {
       page: "data-modeling/metrics",
       anchor: "creating-a-metric",
+      // TODO: Remove this once the v0.51 docs go live with the gold release
+      version: { tag: "master" },
     }),
   );
-
-  // TODO: Remove this once the v0.51 docs go live with the gold release
-  const fixedDocsUrl = docsUrl.replace("/latest/", "/master/");
 
   return (
     <Box pt="md" pr={{ sm: "sm", lg: "md" }}>
       {showMetabaseLinks && (
         <Button
           component={ExternalLink}
-          href={fixedDocsUrl}
+          href={docsUrl}
           variant="subtle"
           rightIcon={<Icon name="external" size={16} />}
         >
