@@ -682,7 +682,9 @@
                                (sort dashboard-card/dashcard-comparator dashcards))
         new-spot (autoplace/get-position-for-new-dashcard cards-on-first-tab)]
     (when-not already-on-dashboard?
-      (t2/insert! :model/DashboardCard (assoc new-spot :card_id (:id card))))))
+      (t2/insert! :model/DashboardCard (assoc new-spot
+                                              :card_id (:id card)
+                                              :dashboard_id dashboard-id)))))
 
 (defn create-card!
   "Create a new Card. Metadata will be fetched off thread. If the metadata takes longer than [[metadata-sync-wait-ms]]
