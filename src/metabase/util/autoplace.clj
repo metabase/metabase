@@ -14,10 +14,10 @@
 
 (defn- intersects [a b]
   (not (or
-        (>= (:col b) (+ (:col a) (:x_size a)))
-        (<= (+ (:col b) (:x_size b)) (:col a))
-        (>= (:row b) (+ (:row a) (:y_size a)))
-        (<= (+ (:row b) (:y_size b)) (:row a)))))
+        (>= (:col b) (+ (:col a) (:size_x a)))
+        (<= (+ (:col b) (:size_x b)) (:col a))
+        (>= (:row b) (+ (:row a) (:size_y a)))
+        (<= (+ (:row b) (:size_y b)) (:row a)))))
 
 (defn- intersects-with-any-card? [cards position]
   (boolean (some #(intersects position %) cards)))
@@ -40,15 +40,15 @@
   "
   ([cards]
    (get-position-for-new-dashcard cards (:width default-card-size) (:height default-card-size) default-grid-width))
-  ([cards x_size y_size grid-width]
+  ([cards size_x size_y grid-width]
    (let [dashboard-tab-id (:dashboard_tab_id (first cards))]
      (first
       (for [row (range 1000)
-            col (range (inc (- grid-width x_size)))
+            col (range (inc (- grid-width size_x)))
             :let [this-card {:col col
                              :row row
-                             :x_size x_size
-                             :y_size y_size
+                             :size_x size_x
+                             :size_y size_y
                              :dashboard_tab_id dashboard-tab-id}]
             :when (not (intersects-with-any-card? cards this-card))]
         this-card)))))
