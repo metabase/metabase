@@ -45,15 +45,13 @@
     [request respond raise]
     (let [sdk-client (get-in request [:headers "x-metabase-client"])
           version (get-in request [:headers "x-metabase-client-version"])]
-      (binding [*client* sdk-client
-                *version* version]
-        (handler
-         request
-         (fn [response]
-           (when sdk-client
-             (track-sdk-response (categorize-request response)))
-           (respond response))
-         (fn [response]
-           (when sdk-client
-             (track-sdk-response :error))
-           (raise response)))))))
+      (binding [*client* sdk-client *version* version]
+        (handler request
+                 (fn [response]
+                   (when sdk-client
+                     (track-sdk-response (categorize-request response)))
+                   (respond response))
+                 (fn [response]
+                   (when sdk-client
+                     (track-sdk-response :error))
+                   (raise response)))))))
