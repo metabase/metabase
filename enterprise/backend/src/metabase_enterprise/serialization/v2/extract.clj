@@ -80,9 +80,8 @@
   (when-let [colls (some-> colls not-empty set)]
     (let [known-cards (t2/select-pks-set Card {:where [:or
                                                        [:in :collection_id colls]
-                                                       (if (contains? colls nil)
-                                                         [:= :collection_id nil]
-                                                         false)]})
+                                                       (when (contains? colls nil)
+                                                         [:= :collection_id nil])]})
           escaped     (->> (set/difference (set cards) known-cards)
                            (mapv (fn [id]
                                    (-> (get reasons ["Card" id])

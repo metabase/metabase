@@ -1386,7 +1386,9 @@
       (t2/reducible-select Collection
                            {:where
                             [:and
-                             [:in :id collection-set]
+                             [:or
+                              [:in :id collection-set]
+                              (when (some nil? collection-set) [:= :id nil])]
                              not-trash-clause
                              (or where true)]})
       (t2/reducible-select Collection
