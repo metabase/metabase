@@ -44,7 +44,7 @@ const PaletteContainer = () => {
   });
 
   return (
-    <Overlay opacity={0.5}>
+    <Overlay backgroundOpacity={0.5}>
       <Center>
         <Card
           ref={ref}
