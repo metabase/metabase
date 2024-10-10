@@ -27,7 +27,6 @@ import {
   getDefaultIsAutoSplitEnabled,
   getDefaultIsHistogram,
   getDefaultLegendIsReversed,
-  getDefaultMaxCategories,
   getDefaultMetricFilter,
   getDefaultMetrics,
   getDefaultShowDataLabels,
@@ -142,7 +141,10 @@ export const GRAPH_DATA_SETTINGS = {
       return getSeriesOrderVisibilitySettings(settings, seriesKeys);
     },
     getProps: (rawSeries, settings, _onChange, _extra, onChangeSettings) => {
-      const groupedAfterIndex = settings["graph.max_categories"] ?? Infinity;
+      const groupedAfterIndex =
+        settings["graph.max_categories"] !== 0
+          ? settings["graph.max_categories"]
+          : Infinity;
       const onOtherColorChange = color =>
         onChangeSettings({ "graph.other_category_color": color });
       return {
@@ -446,8 +448,14 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS = {
     section: t`Display`,
     title: t`Maximum number of categories`,
     widget: "number",
-    getDefault: getDefaultMaxCategories,
-    isValid: (_, settings) => settings["graph.max_categories"] >= 0,
+    getDefault: series => {
+      const isAllBar = series.every(s => s.card.display === "bar");
+      return isAllBar ? 8 : 0;
+    },
+    isValid: (series, settings) => {
+      const isAllBar = series.every(s => s.card.display === "bar");
+      return isAllBar && settings["graph.max_categories"] >= 0;
+    },
     getHidden: series => {
       const isAllBar = series.every(s => s.card.display === "bar");
       return isAllBar && series.length < 2;

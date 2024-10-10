@@ -116,7 +116,7 @@ export const getCartesianChartModel = (
   const scaledDataset = scaleDataset(dataset, ungroupedSeriesModels, settings);
 
   const { ungroupedSeriesModels: seriesModels, groupedSeriesModels } =
-    groupSeriesIntoOther(dataset, ungroupedSeriesModels, settings);
+    groupSeriesIntoOther(ungroupedSeriesModels, settings);
 
   const [sampleGroupedModel] = groupedSeriesModels;
   if (sampleGroupedModel) {
@@ -126,7 +126,6 @@ export const getCartesianChartModel = (
         sampleGroupedModel.columnIndex,
         settings,
         !hiddenSeries.includes(OTHER_DATA_KEY),
-        renderingContext,
       ),
     );
   }
