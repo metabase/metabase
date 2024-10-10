@@ -73,4 +73,9 @@ const fixupTypesAfterCompilation = () => {
   dtsFilePaths.forEach(replaceAliasedImports);
 };
 
+// if running as standalone script
+if (process.argv.at(-1) === __filename) {
 fixupTypesAfterCompilation();
+}
+
+module.exports.replaceAliasedImports = replaceAliasedImports;
