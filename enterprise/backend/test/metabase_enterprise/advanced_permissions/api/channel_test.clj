@@ -1,13 +1,13 @@
 (ns metabase-enterprise.advanced-permissions.api.channel-test
   (:require
    [clojure.test :refer :all]
-   [metabase.api.channel-test :as api.channel-test]
    [metabase.models.permissions :as perms]
+   [metabase.notification.test-util :as notification.tu]
    [metabase.test :as mt]))
 
 (comment
  ;; to register the :metabase-test channel implementation
-  api.channel-test/keepme)
+  notification.tu/keepme)
 
 (deftest channel-api-test
   (testing "/api/channel"
@@ -17,20 +17,13 @@
          user  [group]]
         (letfn [(update-channel [user status]
                   (testing (format "set channel setting with %s user" (mt/user-descriptor user))
-                    (mt/with-temp [:model/Channel {id :id} {:type "channel/metabase-test"
-                                                            :details {:return-type  "return-value"
-                                                                      :return-value true}}]
+                    (mt/with-temp [:model/Channel {id :id} notification.tu/default-can-connect-channel]
                       (mt/user-http-request user :put status (format "channel/%d" id) {:name (mt/random-name)}))))
                 (create-channel [user status]
                   (testing (format "create channel setting with %s user" (mt/user-descriptor user))
-                    (mt/user-http-request user :post status "channel" {:name (mt/random-name)
-                                                                       :type "channel/metabase-test"
-                                                                       :details {:return-type  "return-value"
-                                                                                 :return-value true}})))
+                    (mt/user-http-request user :post status "channel" (assoc notification.tu/default-can-connect-channel :name (mt/random-name)))))
                 (include-details [user include-details?]
-                  (mt/with-temp [:model/Channel {id :id} {:type "channel/metabase-test"
-                                                          :details {:return-type  "return-value"
-                                                                    :return-value true}}]
+                  (mt/with-temp [:model/Channel {id :id} notification.tu/default-can-connect-channel]
                     (testing (format "GET /api/channel/:id with %s user" (mt/user-descriptor user))
                       (is (= include-details? (contains? (mt/user-http-request user :get 200 (str "channel/" id)) :details))))
 
