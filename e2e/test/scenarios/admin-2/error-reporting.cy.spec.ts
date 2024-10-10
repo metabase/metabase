@@ -1,5 +1,8 @@
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import {
+  commandPaletteAction,
+  commandPaletteButton,
+  commandPaletteInput,
   createQuestion,
   modal,
   restore,
@@ -40,6 +43,24 @@ describe("error reporting modal", () => {
       expect(fileContent).to.have.property("logs");
       expect(fileContent).to.have.property("bugReportDetails");
     });
+  });
+
+  it("should allow you to open the error reporting modal via the command palette", () => {
+    restore();
+    cy.signInAsAdmin();
+    cy.visit("/");
+
+    cy.findByTestId("home-page")
+      .findByText(/see what metabase can do/i)
+      .should("exist");
+
+    commandPaletteButton().click();
+    commandPaletteInput().type("Error");
+    commandPaletteAction(/Open error diagnostic modal/).click();
+
+    cy.findByRole("dialog", { name: "Download diagnostic information" }).should(
+      "be.visible",
+    );
   });
 
   it("should not show error reporting modal in embedding", () => {

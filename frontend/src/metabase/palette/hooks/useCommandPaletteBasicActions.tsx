@@ -11,6 +11,7 @@ import {
 import Collections from "metabase/entities/collections/collections";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { openDiagnostics } from "metabase/redux/app";
 import { closeModal, setOpenModal } from "metabase/redux/ui";
 import {
   getHasDataAccess,
@@ -186,7 +187,18 @@ export const useCommandPaletteBasicActions = ({
       },
     ];
 
-    return [...actions, ...browseActions];
+    const diagnosticAction = {
+      id: "diagnostic_modal",
+      name: t`Open error diagnostic modal`,
+      section: "basic",
+      icon: "info",
+      shortcut: ["$mod+f1"],
+      perform: () => {
+        dispatch(openDiagnostics());
+      },
+    };
+
+    return [...actions, ...browseActions, diagnosticAction];
   }, [
     dispatch,
     hasDataAccess,

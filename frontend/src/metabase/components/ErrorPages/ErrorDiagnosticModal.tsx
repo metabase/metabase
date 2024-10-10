@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { c, t } from "ttag";
 import _ from "underscore";
 
@@ -12,6 +12,9 @@ import {
 } from "metabase/forms";
 import { useToggle } from "metabase/hooks/use-toggle";
 import { capitalize } from "metabase/lib/formatting";
+import { useDispatch, useSelector } from "metabase/lib/redux";
+import { closeDiagnostics } from "metabase/redux/app";
+import { getIsErrorDiagnosticModalOpen } from "metabase/selectors/app";
 import { getIsEmbedded } from "metabase/selectors/embed";
 import { Button, Flex, Icon, Loader, Modal, Stack, Text } from "metabase/ui";
 
@@ -253,30 +256,12 @@ export const ErrorExplanationModal = ({
 };
 
 export const KeyboardTriggeredErrorModal = () => {
-  const [
-    isShowingDiagnosticModal,
-    { turnOn: openDiagnosticModal, turnOff: closeDiagnosticModal },
-  ] = useToggle(false);
+  const dispatch = useDispatch();
+  const isShowingDiagnosticModal = useSelector(getIsErrorDiagnosticModalOpen);
 
-  useEffect(() => {
-    if (getIsEmbedded()) {
-      return;
-    }
-    const keyboardListener = (event: KeyboardEvent) => {
-      if (
-        event.key === "F1" &&
-        (event.ctrlKey || event.metaKey) &&
-        !event.shiftKey &&
-        !event.altKey
-      ) {
-        openDiagnosticModal();
-      }
-    };
-    window.addEventListener("keydown", keyboardListener);
-    return () => {
-      window.removeEventListener("keydown", keyboardListener);
-    };
-  }, [openDiagnosticModal]);
+  const handleCloseModal = () => {
+    dispatch(closeDiagnostics());
+  };
 
   const {
     value: errorInfo,
@@ -293,7 +278,7 @@ export const KeyboardTriggeredErrorModal = () => {
       <ErrorDiagnosticModal
         loading={loading}
         errorInfo={errorInfo}
-        onClose={closeDiagnosticModal}
+        onClose={handleCloseModal}
       />
     </ErrorBoundary>
   );
