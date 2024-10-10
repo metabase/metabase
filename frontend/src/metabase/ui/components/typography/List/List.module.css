@@ -5,5 +5,5 @@
 
 .item {
   line-height: 1.5;
-  color: var(--mb-text-dark);
+  color: var(--mb-color-text-dark);
 }
