@@ -48,38 +48,31 @@ export const getNewCardUrl = ({
   );
 
   let nextQuestion: Question | undefined = undefined;
-  const isDashcardTitleClick =
-    nextCard.dataset_query === previousCard.dataset_query;
 
-  if (isDashcardTitleClick) {
+  if (isEditable) {
+    nextQuestion = new Question(cardAfterClick, metadata);
+
+    const isDashcardTitleClick =
+      nextCard.dataset_query === previousCard.dataset_query;
     const mightNeedFilterStage = parametersMappedToCard.some(
       parameter => parameter.type !== "temporal-unit",
     );
 
-    nextQuestion = isEditable
-      ? new Question(cardAfterClick, metadata)
-          .setQuery(
-            mightNeedFilterStage
-              ? Lib.ensureFilterStage(previousQuestion.query())
-              : previousQuestion.query(),
-          )
-          .setDisplay(cardAfterClick.display || previousCard.display)
-          .setSettings(dashcard.card.visualization_settings)
-          .lockDisplay()
-      : new Question(dashcard.card, metadata).setDashboardProps({
-          dashboardId: dashboard.id,
-          dashcardId: dashcard.id,
-        });
+    if (isDashcardTitleClick && mightNeedFilterStage) {
+      nextQuestion = nextQuestion.setQuery(
+        Lib.ensureFilterStage(nextQuestion.query()),
+      );
+    }
+
+    nextQuestion = nextQuestion
+      .setDisplay(cardAfterClick.display || previousCard.display)
+      .setSettings(dashcard.card.visualization_settings)
+      .lockDisplay();
   } else {
-    nextQuestion = isEditable
-      ? new Question(cardAfterClick, metadata)
-          .setDisplay(cardAfterClick.display || previousCard.display)
-          .setSettings(dashcard.card.visualization_settings)
-          .lockDisplay()
-      : new Question(dashcard.card, metadata).setDashboardProps({
-          dashboardId: dashboard.id,
-          dashcardId: dashcard.id,
-        });
+    nextQuestion = new Question(dashcard.card, metadata).setDashboardProps({
+      dashboardId: dashboard.id,
+      dashcardId: dashcard.id,
+    });
   }
 
   // This try/catch block is a temporary workaround for metabase#43990.
