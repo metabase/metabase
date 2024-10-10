@@ -1771,7 +1771,31 @@ describe("scenarios > dashboard > filters > query stages", () => {
         });
 
         it("2nd stage breakout", () => {
-          setup2ndStageBreakoutFilter();
+          editDashboard();
+
+          getFilter("Text").click();
+
+          getDashboardCard(0).findByText("Select…").click();
+          popover().within(() => {
+            getPopoverList().scrollTo("bottom");
+            getPopoverItem("Category", 2).click();
+          });
+
+          getDashboardCard(1).findByText("Select…").click();
+          popover().within(() => {
+            getPopoverList().scrollTo("bottom");
+            getPopoverItem("Category", 2).click();
+          });
+
+          cy.button("Save").click();
+          cy.wait("@updateDashboard");
+
+          filterWidget().eq(0).click();
+          popover().within(() => {
+            cy.findByLabelText("Gadget").click();
+            cy.button("Add filter").click();
+          });
+          cy.wait(["@dashboardData", "@dashboardData"]);
 
           verifyDashcardCellValues({
             dashcardIndex: 0,
