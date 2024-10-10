@@ -1,17 +1,17 @@
 import { createAction, createReducer } from "@reduxjs/toolkit";
 
+import { userApi } from "metabase/api/user";
 import Dashboards from "metabase/entities/dashboards";
 import Users from "metabase/entities/users";
 import { createAsyncThunk } from "metabase/lib/redux";
 import { CLOSE_QB_NEWB_MODAL } from "metabase/query_builder/actions";
-import { UserApi } from "metabase/services";
-import type { User } from "metabase-types/api";
+import type { CurrentUser, User } from "metabase-types/api";
 
 export const refreshCurrentUser = createAsyncThunk(
   "metabase/user/REFRESH_CURRENT_USER",
-  async (_, { fulfillWithValue }) => {
+  async (_, { dispatch, fulfillWithValue }) => {
     try {
-      return UserApi.current();
+      await dispatch(userApi.endpoints.getCurrentUser.initiate());
     } catch (e) {
       return fulfillWithValue(null);
     }
@@ -25,6 +25,11 @@ export const loadCurrentUser = createAsyncThunk(
       await dispatch(refreshCurrentUser());
     }
   },
+);
+
+// update current user with provided value
+export const updateCurrentUser = createAction<CurrentUser>(
+  "metabase/user/UPDATE_CURRENT_USER",
 );
 
 export const clearCurrentUser = createAction(
@@ -61,5 +66,8 @@ export const currentUser = createReducer<User | null>(null, builder => {
       ) {
         state.custom_homepage = null;
       }
+    })
+    .addCase(updateCurrentUser, (_state, { payload: currentUser }) => {
+      return currentUser;
     });
 });
