@@ -11,13 +11,35 @@ const Message = ({
   onApproveClick,
   onDenyClick,
   onSuggestion,
-  showCubeEditButton
+  showCubeEditButton,
 }) => {
   const isUser = message.sender === "user";
-  let hasError = false
+  let hasError = false;
   if (message.typeMessage === "error") {
-    hasError = true
+    hasError = true;
   }
+
+  // Function to handle rendering text from message
+  const renderMessageContent = (message) => {
+    // If message.text is an object or array, extract only the text content
+    if (Array.isArray(message.text)) {
+      return message.text
+        .filter((item) => typeof item === "object" && item.text) // Only consider items with a text property
+        .map((item, index) => (
+          <span key={index} style={{ display: "block" }}>
+            {item.text}
+          </span>
+        ));
+    } else if (typeof message.text === "object" && message.text.text) {
+      // If message.text is an object with a "text" field
+      return <span>{message.text.text}</span>;
+    } else if (typeof message.text === "string") {
+      // If message.text is a simple string, render it directly
+      return <span>{message.text}</span>;
+    }
+    return null; // Fallback for unexpected cases
+  };
+
   return (
     <div
       style={{
@@ -33,11 +55,7 @@ const Message = ({
           marginTop: "4px",
           marginBottom: "auto",
           padding: "6px",
-          backgroundColor: isUser
-            ? "#0458DD"
-            : hasError
-              ? "#FFCDD2"
-              : "#E9DFFF",
+          backgroundColor: isUser ? "#0458DD" : hasError ? "#FFCDD2" : "#E9DFFF",
           borderRadius: "50%",
           color: isUser ? "#FFF" : hasError ? "#D32F2F" : "#5B26D3",
         }}
@@ -55,8 +73,9 @@ const Message = ({
           alignItems: "flex-start",
         }}
       >
+        {/* Render the message content */}
         <span style={{ fontSize: "16px", whiteSpace: "pre-wrap" }}>
-          {message.text}
+          {renderMessageContent(message)}
         </span>
         {isLoading && (
           <div
@@ -71,7 +90,14 @@ const Message = ({
           </div>
         )}
         {hasError && (
-          <div style={{ marginTop: "8px", display: "flex", flexDirection: "row", gap: "1rem" }}>
+          <div
+            style={{
+              marginTop: "8px",
+              display: "flex",
+              flexDirection: "row",
+              gap: "1rem",
+            }}
+          >
             <Button
               variant="outlined"
               style={{
@@ -118,7 +144,7 @@ const Message = ({
               }}
               onClick={onSuggestion}
             >
-            <span
+              <span
                 style={{
                   fontSize: "14px",
                   fontWeight: "lighter",

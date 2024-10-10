@@ -33,8 +33,8 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
     const [client, setClient] = useState(null);  // For managing the Client
     const [agent, setAgent] = useState(null);    // For managing the Assistant Agent
     const [thread, setThread] = useState(null);  // To store the created thread
-    const langchain_url = process.env.REACT_APP_LANGCHAING_URL;
-    const langchain_key = process.env.REACT_APP_LANGCHAIN_KEY;
+    const langchain_url = "https://assistants-dev-7ca2258c0a7e5ea393441b5aca30fb7c.default.us.langgraph.app";
+    const langchain_key = "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";
     const [companyName, setCompanyName] = useState("");
     const [card, setCard] = useState(null);
     const [sources, setSources] = useState([]);
@@ -107,8 +107,10 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
   // Initialize Client and Thread only once when component mounts
   useEffect(() => {
     const initializeClientAndThread = async () => {
+        console.log({langchain_url})
+        console.log({langchain_key})
       try {
-        const clientInstance = new Client({ apiUrl: langchain_url, apiKey: langchain_key });
+        const clientInstance = new Client();
         setClient(clientInstance);
 
         // Search for assistants
@@ -408,30 +410,29 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
                 // Process partial message events
                 if (event === "messages/partial" && data.length > 0) {
                     const { content, type } = data[0];
-    
                     if (type === "ai") {
                         setMessages((prev) => {
                             const updatedMessages = [...prev];
-                            
+    
                             // Check if the last message is from the server
                             const lastMessage = updatedMessages[updatedMessages.length - 1];
-                            
+    
                             if (lastMessage && lastMessage.sender === 'server') {
-                                // If last message was a server message, append new content to it
+                                // Ensure content is a string or safely stringify objects/arrays
                                 updatedMessages[updatedMessages.length - 1].text = content;
                             } else {
-                                // Otherwise, add a new server message
+                                // Add a new server message if not present
                                 const newServerMessage = {
                                     id: Date.now() + Math.random(),
                                     sender: "server",
-                                    text: content,
+                                    text: typeof content === 'string' ? content : JSON.stringify(content),
                                     showVisualization: false,
                                     visualizationIdx,
                                     isLoading: true,
                                 };
                                 updatedMessages.push(newServerMessage);
                             }
-                            
+    
                             return updatedMessages;
                         });
                     }
@@ -474,6 +475,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
             setIsLoading(false);
         }
     };
+    
     
     
 
