@@ -27,13 +27,13 @@
   (cond
     (<= 200 status 299) :ok
     (<= 400 status 599) :error
-    ;; ignre other status codes
+    ;; ignore other status codes
     :else nil))
 
-(defn track-sdk-response
+(defn- track-sdk-response
   "Tabulates the number of ok and erroring requests made by clients of the SDK."
-  [response]
-  (case (categorize-request response)
+  [category]
+  (case category
     :ok (prometheus/inc :metabase-sdk/response-ok)
     :error (prometheus/inc :metabase-sdk/response-error)
     nil nil))
@@ -48,10 +48,8 @@
       (binding [*client* sdk-client *version* version]
         (handler request
                  (fn [response]
-                   (when sdk-client
-                     (track-sdk-response (categorize-request response)))
+                   (when sdk-client (track-sdk-response (categorize-request response)))
                    (respond response))
                  (fn [response]
-                   (when sdk-client
-                     (track-sdk-response :error))
+                   (when sdk-client (track-sdk-response :error))
                    (raise response)))))))
