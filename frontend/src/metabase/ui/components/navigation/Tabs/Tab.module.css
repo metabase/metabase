@@ -1,0 +1,47 @@
+.list {
+  --tab-border-color: var(--mb-color-bg-medium);
+
+  [data-orientation="horizontal"] {
+    padding: 0.6875rem 0.5rem;
+  }
+
+  [data-orientation="vertical"] {
+    padding: 0.6875rem 0.9375rem 0.6875rem 0.5rem;
+  }
+}
+
+.tab {
+  color: var(--mb-color-text-dark);
+  max-width: 100%;
+
+  &:hover {
+    background-color: var(--mb-color-brand-lighter);
+  }
+
+  &:focus:not([data-css-specificity-hack]) {
+    outline: none;
+  }
+
+  &:disabled {
+    color: var(--mb-color-text-light);
+    opacity: 1;
+  }
+
+  &[data-active="true"] {
+    color: var(--mb-color-brand);
+    border-color: var(--mb-color-brand);
+  }
+}
+
+.tabLabel {
+  font-size: var(--mantine-font-size-md);
+  font-weight: bold;
+  line-height: 1.15; /* consistent w/ mantine v6 spacing */
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+
+.tabSection[data-position="left"] {
+  margin-inline-end: 0.375rem;
+}
