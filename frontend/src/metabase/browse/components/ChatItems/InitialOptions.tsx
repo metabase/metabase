@@ -57,9 +57,9 @@ const HomeInitialOptionsView = ({
     <div
       style={{ display: "flex", gap: "16px", width: "100%", marginTop: "3rem" }}
     >
-      {suggestions.map((msg: string) => (
+      {suggestions.map((msg: string, index: number) => (
         <HomeXrayCard
-          key={""}
+          key={index} // Use index as the key for unique identification
           title={""}
           url={""}
           message={msg}
@@ -75,4 +75,3 @@ const getXrayDatabase = (databases: Database[] = []) => {
   const userDatabase = databases.find(d => !d.is_sample && isSyncCompleted(d));
   return userDatabase ?? sampleDatabase;
 };
-
