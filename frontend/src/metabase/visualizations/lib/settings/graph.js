@@ -1,6 +1,7 @@
 import { t } from "ttag";
 import _ from "underscore";
 
+import { color } from "metabase/lib/colors";
 import {
   getMaxDimensionsSupported,
   getMaxMetricsSupported,
@@ -140,7 +141,18 @@ export const GRAPH_DATA_SETTINGS = {
       const seriesKeys = seriesModels.map(s => s.vizSettingsKey);
       return getSeriesOrderVisibilitySettings(settings, seriesKeys);
     },
-    getProps: () => {},
+    getProps: (rawSeries, settings, _onChange, _extra, onChangeSettings) => {
+      const groupedAfterIndex = settings["graph.max_categories"] ?? Infinity;
+      const onOtherColorChange = color =>
+        onChangeSettings({ "graph.other_category_color": color });
+      return {
+        rawSeries,
+        settings,
+        groupedAfterIndex,
+        otherColor: settings["graph.other_category_color"],
+        onOtherColorChange,
+      };
+    },
     getHidden: (series, settings) => {
       return (
         settings["graph.dimensions"]?.length < 2 || series.length > MAX_SERIES
@@ -153,6 +165,7 @@ export const GRAPH_DATA_SETTINGS = {
       "graph.metrics",
       "graph.dimensions",
       "graph.max_categories",
+      "graph.other_category_color",
     ],
     writeDependencies: ["graph.series_order_dimension"],
   },
@@ -439,6 +452,9 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS = {
       const isAllBar = series.every(s => s.card.display === "bar");
       return isAllBar && series.length < 2;
     },
+  },
+  "graph.other_category_color": {
+    default: color("text-light"),
   },
   "graph.other_series_aggregation_fn": {
     section: t`Display`,

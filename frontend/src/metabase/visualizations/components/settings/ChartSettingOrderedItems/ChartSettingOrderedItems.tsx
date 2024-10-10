@@ -1,7 +1,10 @@
 import { PointerSensor, useSensor } from "@dnd-kit/core";
 import { useCallback } from "react";
 
-import type { DragEndEvent } from "metabase/core/components/Sortable";
+import type {
+  DragEndEvent,
+  SortableDivider,
+} from "metabase/core/components/Sortable";
 import { Sortable, SortableList } from "metabase/core/components/Sortable";
 import type { AccentColorOptions } from "metabase/lib/colors/types";
 import type { IconProps } from "metabase/ui";
@@ -32,6 +35,7 @@ interface ChartSettingOrderedItemsProps<T extends SortableItem>
   removeIcon?: IconProps["name"];
   accentColorOptions?: AccentColorOptions;
   getItemColor?: (item: SortableItem) => string | undefined;
+  dividers?: SortableDivider[];
 }
 
 export function ChartSettingOrderedItems<T extends SortableItem>({
@@ -48,6 +52,7 @@ export function ChartSettingOrderedItems<T extends SortableItem>({
   removeIcon,
   accentColorOptions,
   getItemColor = item => item.color,
+  dividers = [],
 }: ChartSettingOrderedItemsProps<T>) {
   const isDragDisabled = items.length < 1;
   const pointerSensor = useSensor(PointerSensor, {
@@ -114,6 +119,7 @@ export function ChartSettingOrderedItems<T extends SortableItem>({
       items={items}
       onSortEnd={onSortEnd}
       sensors={[pointerSensor]}
+      dividers={dividers}
     />
   );
 }
