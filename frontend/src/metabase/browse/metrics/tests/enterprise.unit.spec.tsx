@@ -19,6 +19,7 @@ describe("BrowseMetrics (EE without token)", () => {
   });
 
   it("displays a link to the metrics docs when show-metabase-links = false", async () => {
+    // Still show the link on enterprise, because disabling metabase links is not supported
     setup({ metricCount: 0, showMetabaseLinks: false });
     await screen.findByText(
       "Create Metrics to define the official way to calculate important numbers for your team",
