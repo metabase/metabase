@@ -68,10 +68,7 @@ export const autoApplyFilters = createReducer(
       string,
       {
         type: string;
-        payload: {
-          toastId: number | null;
-          dashboardId: number | null;
-        };
+        payload: { toastId: number | null; dashboardId: number | null };
       }
     >(SHOW_AUTO_APPLY_FILTERS_TOAST, (state, { payload }) => {
       const { toastId, dashboardId } = payload;
@@ -170,10 +167,7 @@ export const sidebar = createReducer(
         type: string;
         payload: {
           name: DashboardSidebarName;
-          props?: {
-            dashcardId?: DashCardId;
-            parameterId?: ParameterId;
-          };
+          props?: { dashcardId?: DashCardId; parameterId?: ParameterId };
         };
       }
     >(SET_SIDEBAR, (_state, { payload: { name, props } }) => ({
@@ -240,9 +234,7 @@ export const parameterValues = createReducer(
       string,
       {
         type: string;
-        payload: {
-          id: ParameterId;
-        };
+        payload: { id: ParameterId };
       }
     >(REMOVE_PARAMETER, (state, { payload: { id } }) => {
       delete state[id];

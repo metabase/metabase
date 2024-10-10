@@ -310,12 +310,7 @@ function isNewAdditionalSeriesCard(
 type FetchCardDataActionArgs = {
   dashcard_id: DashCardId;
   card_id: DashboardCard["card_id"];
-  result:
-    | Dataset
-    | {
-        error: unknown;
-      }
-    | null;
+  result: Dataset | { error: unknown } | null;
   currentTime?: number;
 };
 
