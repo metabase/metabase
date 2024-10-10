@@ -60,23 +60,23 @@
    catalog])
 
 (defn- describe-database-tables
-    [database]
-    (let [[inclusion-patterns
-           exclusion-patterns] (driver.s/db-details->schema-filter-patterns database)
-          syncable? (fn [schema]
-                      (driver.s/include-schema? inclusion-patterns exclusion-patterns schema))]
-      (eduction
-       (filter (comp syncable? :schema))
-       (sql-jdbc.execute/reducible-query database (get-tables-sql (-> database :details :catalog))))))
+  [database]
+  (let [[inclusion-patterns
+         exclusion-patterns] (driver.s/db-details->schema-filter-patterns database)
+        syncable? (fn [schema]
+                    (driver.s/include-schema? inclusion-patterns exclusion-patterns schema))]
+    (eduction
+     (filter (comp syncable? :schema))
+     (sql-jdbc.execute/reducible-query database (get-tables-sql (-> database :details :catalog))))))
 
 (defmethod driver/describe-database :databricks
-    [driver database]
-    (try
-      {:tables (into #{} (describe-database-tables database))}
-      (catch Throwable e
-        (throw (ex-info (format "Error in %s describe-database: %s" driver (ex-message e))
-                        {}
-                        e)))))
+  [driver database]
+  (try
+    {:tables (into #{} (describe-database-tables database))}
+    (catch Throwable e
+      (throw (ex-info (format "Error in %s describe-database: %s" driver (ex-message e))
+                      {}
+                      e)))))
 
 (defmethod sql-jdbc.sync/describe-fields-sql :databricks
   [driver & {:keys [schema-names table-names]}]
