@@ -574,8 +574,8 @@
       ;; change for a native query, populate-result-metadata removes it (set to nil) unless prevented by the
       ;; verified-result-metadata? flag (see #37009).
       (cond-> #_changes
-       (or (empty? (:result_metadata card))
-           (not verified-result-metadata?))
+        (or (empty? (:result_metadata card))
+            (not verified-result-metadata?))
         card.metadata/populate-result-metadata)
       pre-update
       populate-query-fields
