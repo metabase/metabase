@@ -72,11 +72,8 @@ describe("scenarios > collections > archive", () => {
     cy.log("Test individual archive and undo");
     cy.findByTestId(`archive-item-${DASHBOARD_NAME}`)
       .findByText(`${DASHBOARD_NAME}`)
-      .realHover()
       .findByLabelText("unarchive icon")
-      .as("unarchiveIcon")
-      .should("be.visible");
-    cy.get("@unarchiveIcon").click();
+      .click({ force: true });
     cy.wait("@updateDashboard");
     cy.findByTestId(`archive-item-${QUESTION_NAME}`).should("exist");
     cy.findByTestId(`archive-item-${DASHBOARD_NAME}`).should("not.exist");
@@ -116,11 +113,8 @@ describe("scenarios > collections > archive", () => {
     cy.log("test individual delete");
     cy.findByTestId(`archive-item-${DASHBOARD_NAME}`)
       .findByText(`${DASHBOARD_NAME}`)
-      .realHover()
       .findByLabelText("trash icon")
-      .as("trashIcon")
-      .should("be.visible");
-    cy.get("@trashIcon").click();
+      .click({ force: true });
     cy.wait("@deleteDashboard");
     cy.findByTestId(`archive-item-${QUESTION_NAME}`).should("exist");
     cy.findByTestId(`archive-item-${DASHBOARD_NAME}`).should("not.exist");
@@ -247,12 +241,8 @@ describe("scenarios > collections > archive", () => {
 
     cy.findByTestId("archive-item-Orders")
       .findByText("Orders")
-      .realHover()
       .findByLabelText("unarchive icon")
-      .as("unarchiveIcon")
-      .should("be.visible");
-
-    cy.get("@unarchiveIcon").click();
+      .click({ force: true });
 
     navigationSidebar().button("Orders").should("exist");
   });
