@@ -46,6 +46,7 @@ export function getUrl(
 
 export function getUrlWithParameters(
   question: Question,
+  originalQuestion: Question,
   parameters: ParameterWithTarget[],
   parameterValues: Record<ParameterId, ParameterValueOrArray>,
   { objectId }: { objectId?: string | number } = {},
@@ -66,15 +67,12 @@ export function getUrlWithParameters(
         question.type() !== "question"
           ? question.composeQuestionAdhoc().setParameters(parameters)
           : questionWithParameters;
-      questionWithParameters = questionWithParameters.setQuery(
-        Lib.ensureFilterStage(questionWithParameters.query()),
-      );
       questionWithParameters = questionWithParameters
         .setParameterValues(parameterValues)
         ._convertParametersToMbql();
 
       return getUrl(questionWithParameters, {
-        originalQuestion: question,
+        originalQuestion,
         includeDisplayIsLocked,
         query: objectId === undefined ? {} : { objectId },
       });

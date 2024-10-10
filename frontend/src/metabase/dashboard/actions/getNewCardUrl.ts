@@ -42,26 +42,34 @@ export const getNewCardUrl = ({
 
   const previousQuestion = new Question(previousCard, metadata);
   const { isEditable } = Lib.queryDisplayInfo(previousQuestion.query());
+  const parametersMappedToCard = getParametersMappedToDashcard(
+    dashboard.parameters,
+    dashcard,
+  );
+  const mightNeedFilterStage = parametersMappedToCard.some(
+    parameter => parameter.type !== "temporal-unit",
+  );
   const nextQuestion = isEditable
     ? new Question(cardAfterClick, metadata)
         .setDisplay(cardAfterClick.display || previousCard.display)
         .setSettings(dashcard.card.visualization_settings)
+        .setQuery(
+          mightNeedFilterStage
+            ? Lib.ensureFilterStage(previousQuestion.query())
+            : previousQuestion.query(),
+        )
         .lockDisplay()
     : new Question(dashcard.card, metadata).setDashboardProps({
         dashboardId: dashboard.id,
         dashcardId: dashcard.id,
       });
 
-  const parametersMappedToCard = getParametersMappedToDashcard(
-    dashboard.parameters,
-    dashcard,
-  );
-
   // This try/catch block is a temporary workaround for metabase#43990.
   // Please remove it once the underlying issue is fixed.
   try {
     const url = ML_Urls.getUrlWithParameters(
       nextQuestion,
+      previousQuestion,
       parametersMappedToCard,
       parameterValues,
       {
