@@ -555,8 +555,10 @@
 (defclause ^{:requires-features #{:expressions}} replace
   s StringExpressionArg, match :string, replacement :string)
 
+;; Relax the arg types to ExpressionArg for concat since many DBs allow to concatenate non-string types. This also
+;; aligns with the corresponding MLv2 schema and with the reference docs we publish.
 (defclause ^{:requires-features #{:expressions}} concat
-  a StringExpressionArg, b StringExpressionArg, more (rest StringExpressionArg))
+  a ExpressionArg, b ExpressionArg, more (rest ExpressionArg))
 
 (defclause ^{:requires-features #{:expressions :regex}} regex-match-first
   s StringExpressionArg, pattern :string)
