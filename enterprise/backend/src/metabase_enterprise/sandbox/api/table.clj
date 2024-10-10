@@ -48,8 +48,8 @@
                       (partial filter-fields-by-name
                                (->> sandbox-source-card :result_metadata (map :name) set)))
       :query  (update query-metadata-response :fields
-                       (partial filter-fields-by-id
-                                (->> sandbox-source-card :result_metadata (map u/the-id) set))))
+                      (partial filter-fields-by-id
+                               (->> sandbox-source-card :result_metadata (map u/the-id) set))))
     ;; Sandboxed via user attribute, not a source question, so no column-level sandboxing is in place
     query-metadata-response))
 
@@ -76,16 +76,16 @@
   :feature :sandboxes
   [ids]
   (for [table (api.table/batch-fetch-query-metadatas* ids)]
-      (if (only-sandboxed-perms? table)
-        (filter-fields-for-sandboxing
-         table
+    (if (only-sandboxed-perms? table)
+      (filter-fields-for-sandboxing
+       table
          ;; if the user has sandboxed perms, temporarily upgrade their perms to read perms for the Table so they can
          ;; fetch the metadata
-         (data-perms/with-additional-table-permission :perms/view-data (:db_id table) (u/the-id table) :unrestricted
-           (data-perms/with-additional-table-permission :perms/create-queries (:db_id table) (u/the-id table) :query-builder
-             table)))
+       (data-perms/with-additional-table-permission :perms/view-data (:db_id table) (u/the-id table) :unrestricted
+         (data-perms/with-additional-table-permission :perms/create-queries (:db_id table) (u/the-id table) :query-builder
+           table)))
         ;; Not sandboxed
-        table)))
+      table)))
 
 (api/defendpoint GET "/:id/query_metadata"
   "This endpoint essentially acts as a wrapper for the OSS version of this route. When a user has sandboxed permissions
