@@ -23,21 +23,13 @@
           },
           "value": {
             "description": "The value of this attribute",
-            "type": [
-              "string",
-              "boolean",
-              "integer",
-              "null"
-            ],
+            "type": ["string", "boolean", "integer", "null"],
             "maxLength": 255,
             "minimum": 0,
             "maximum": 2147483647
           }
         },
-        "required": [
-          "key",
-          "value"
-        ]
+        "required": ["key", "value"]
       }
     },
     "metrics": {
@@ -54,10 +46,7 @@
           },
           "value": {
             "description": "The value of the metric",
-            "type": [
-              "string",
-              "integer"
-            ],
+            "type": ["string", "integer"],
             "maxLength": 255,
             "minimum": 0,
             "maximum": 2147483647
@@ -71,11 +60,7 @@
             }
           }
         },
-        "required": [
-          "key",
-          "value",
-          "tags"
-        ]
+        "required": ["key", "value", "tags"]
       }
     },
     "grouped_metrics": {
@@ -105,10 +90,7 @@
                   "type": "number"
                 }
               },
-              "required": [
-                "group",
-                "value"
-              ],
+              "required": ["group", "value"],
               "additionalProperties": false
             }
           },
@@ -120,11 +102,7 @@
             }
           }
         },
-        "required": [
-          "name",
-          "values",
-          "tags"
-        ],
+        "required": ["name", "values", "tags"],
         "additionalProperties": false
       }
     },
@@ -149,11 +127,7 @@
             "type": "boolean"
           }
         },
-        "required": [
-          "name",
-          "available",
-          "enabled"
-        ],
+        "required": ["name", "available", "enabled"],
         "additionalProperties": true
       }
     },
@@ -171,29 +145,16 @@
           },
           "value": {
             "description": "The value of this metadata",
-            "type": [
-              "string",
-              "boolean",
-              "integer",
-              "null"
-            ],
+            "type": ["string", "boolean", "integer", "null"],
             "maxLength": 255,
             "minimum": 0,
             "maximum": 2147483647
           }
         },
-        "required": [
-          "key",
-          "value"
-        ]
+        "required": ["key", "value"]
       }
     }
   },
   "additionalProperties": false,
-  "required": [
-    "features",
-    "instance_attributes",
-    "metadata",
-    "metrics"
-  ]
+  "required": ["features", "instance_attributes", "metadata", "metrics"]
 }
