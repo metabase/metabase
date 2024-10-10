@@ -11,28 +11,52 @@ export const hasPackageJson = async () => {
   }
 };
 
-export const getPackageVersion = async (packageName: string) => {
+type DependencyMap = Record<string, string>;
+
+export const getPackageVersions = async (...packageNames: string[]) => {
+  const versions: Record<string, string> = {};
+
+  const projectDeps = await getProjectDependenciesFromPackageJson();
+
+  for (const name of packageNames) {
+    versions[name] =
+      (await getPackageVersionFromModule(name)) || projectDeps?.[name] || null;
+  }
+
+  return versions;
+};
+
+export const readJson = async (path: string) => {
+  const packageJson = await fs.readFile(path, "utf8");
+
+  return JSON.parse(packageJson);
+};
+
+export const getProjectDependenciesFromPackageJson =
+  async (): Promise<DependencyMap | null> => {
+    try {
+      const packageJsonPath = path.join(process.cwd(), "package.json");
+      const packageInfo = await readJson(packageJsonPath);
+
+      return packageInfo?.dependencies || null;
+    } catch (error) {
+      return null;
+    }
+  };
+
+export const getPackageVersionFromModule = async (packageName: string) => {
   try {
-    const packagePath = path.join(
+    const packageJsonPath = path.join(
       process.cwd(),
       "node_modules",
       packageName,
       "package.json",
     );
-    const packageJson = await fs.readFile(packagePath, "utf8");
 
-    const packageInfo = JSON.parse(packageJson);
+    const packageInfo = await readJson(packageJsonPath);
+
     return packageInfo.version || null;
   } catch (error) {
-    if ((error as { code: string }).code === "ENOENT") {
-      // Package not found
-      return null;
-    }
-    console.error(
-      `Error checking package version: ${
-        (error as { message: string }).message
-      }`,
-    );
     return null;
   }
 };
