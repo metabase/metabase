@@ -463,7 +463,7 @@
      ;; aggregation fields are not from the source-metadata and their field_ref
      ;; are not unique for a nested query. So do not merge them otherwise the metadata will be messed up.
      ;; TODO: I think the best option here is to introduce a parent_field_ref so that
-     ;; we could preserve metadata such as :sematic_type or :unit from the source field.
+     ;; we could preserve metadata such as :semantic_type or :unit from the source field.
       (if-let [source-metadata-for-field (and (not= :aggregation source)
                                               (get by-key (qp.util/field-ref->key field_ref)))]
         (merge-source-metadata-col source-metadata-for-field
@@ -476,16 +476,22 @@
 
 (defn- cols-for-source-query
   [{:keys [source-metadata], {native-source-query :native, :as source-query} :source-query} results]
-  (let [columns       (if native-source-query
-                        (maybe-merge-source-metadata source-metadata (column-info {:type :native} results))
-                        (mbql-cols source-query results))]
+  (let [source-metadata (cond->> source-metadata
+                          native-source-query (map #(dissoc % :semantic_type)))
+        columns         (if native-source-query
+                          (maybe-merge-source-metadata source-metadata (column-info {:type :native} results))
+                          (mbql-cols source-query results))]
     (qp.util/combine-metadata columns source-metadata)))
 
 (defn mbql-cols
   "Return the `:cols` result metadata for an 'inner' MBQL query based on the fields/breakouts/aggregations in the
   query."
   [{:keys [source-metadata source-query :source-query/model? fields], :as inner-query}, results]
-  (let [cols (cols-for-mbql-query inner-query)]
+  (let [native-source-card? (and (:qp/stage-is-from-source-card source-query)
+                                 (:native source-query))
+        cols (cond->> (cols-for-mbql-query inner-query)
+               native-source-card?
+               (map #(dissoc % :semantic_type)))]
     (cond
       (and (empty? cols) source-query)
       (cols-for-source-query inner-query results)
