@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-import type { ColumnItem } from "metabase/querying/filters/hooks/use-filter-modal";
+import type { ColumnItem } from "metabase/querying/filters/types";
 import type * as Lib from "metabase-lib";
 
 import { ColumnFilterGroup } from "../ColumnFilterGroup";

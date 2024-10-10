@@ -71,7 +71,7 @@
             :type     :query,
             :query    {:source-query {:source-table 1000,
                                       :aggregation  [[:count]],
-                                      :breakout     [[:field 17 nil]],
+                                      :breakout     [[:field 17 {:temporal-unit :year}]],
                                       :filter       [:= [:field 809 nil] "Cam's Toucannery"]},
                        :filter [:and
                                 [:> [:field "count" {:base-type :type/Integer}] 0]
@@ -81,7 +81,7 @@
              :type       :query
              :query      {:source-query {:source-table 1000
                                          :aggregation  [[:count]]
-                                         :breakout     [[:field 17 nil]]}
+                                         :breakout     [[:field 17 {:temporal-unit :day}]]}
                           :filter       [:> [:field "count" {:base-type :type/Integer}] 0]}
              :parameters [{:hash   "abc123"
                            :name   "foo"
@@ -92,7 +92,13 @@
                            :name   "bar"
                            :type   :number/<=
                            :target [:dimension [:field "count" {:base-type :type/Integer}] {:stage-number 1}]
-                           :value  [30]}]})))))
+                           :value  [30]}
+                          {:value "year"
+                           :type :temporal-unit
+                           :id "66cf9285"
+                           :target [:dimension
+                                    [:field 17 {:base-type :type/DateTime, :temporal-unit :day}]
+                                    {:stage-number -2}]}]})))))
 
 (deftest ^:parallel date-range-parameters-test
   (testing "date range parameters"
