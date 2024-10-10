@@ -1,10 +1,27 @@
-import type { MantineThemeOverride } from "@mantine/core";
+import { DatePicker } from "@mantine/dates";
 
-export const getDatePickerOverrides =
-  (): MantineThemeOverride["components"] => ({
-    DatePicker: {
-      defaultProps: {
-        size: "md",
-      },
+import Styles from "../Calendar/Calendar.module.css";
+
+export const datePickerOverrides = {
+  DatePicker: DatePicker.extend({
+    defaultProps: {
+      size: "md",
     },
-  });
+    classNames: {
+      day: Styles.day,
+      weekdaysRow: Styles.weekdaysRow,
+      month: Styles.month,
+      monthRow: Styles.row,
+      monthCell: Styles.cell,
+      monthsList: Styles.monthsList,
+      monthsListRow: Styles.row,
+      monthsListCell: Styles.cell,
+      yearsList: Styles.yearsList,
+      yearsListRow: Styles.row,
+      yearsListCell: Styles.cell,
+      calendarHeader: Styles.calendarHeader,
+      calendarHeaderLevel: Styles.calendarHeaderLevel,
+      calendarHeaderControl: Styles.calendarHeaderControl,
+    },
+  }),
+};
