@@ -95,10 +95,12 @@ export const fetchDashboardCardData =
         return dashcard.id;
       });
 
-      dispatch(fetchDashboardCardDataAction, {
-        currentTime: performance.now(),
-        loadingIds: loadingIds.concat(newLoadingIds),
-      });
+      dispatch(
+        fetchDashboardCardDataAction({
+          currentTime: performance.now(),
+          loadingIds: loadingIds.concat(newLoadingIds),
+        }),
+      );
     } else {
       nonVirtualDashcardsToFetch = nonVirtualDashcards;
       const newLoadingIds = nonVirtualDashcardsToFetch.map(({ dashcard }) => {
