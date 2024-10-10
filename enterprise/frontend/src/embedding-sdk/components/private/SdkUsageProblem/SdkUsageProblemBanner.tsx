@@ -83,7 +83,7 @@ export const SdkUsageProblemBanner = ({
               stroke={isError ? unthemedTextDark : undefined}
             />
 
-            <Text transform="capitalize" c={unthemedTextMedium} ff={fontFamily}>
+            <Text tt="capitalize" c={unthemedTextMedium} ff={fontFamily}>
               {severity}
             </Text>
           </Flex>
@@ -102,7 +102,7 @@ export const SdkUsageProblemBanner = ({
               <Text
                 fw="bold"
                 size="lg"
-                transform="capitalize"
+                tt="capitalize"
                 c={unthemedTextDark}
                 ff={fontFamily}
               >
