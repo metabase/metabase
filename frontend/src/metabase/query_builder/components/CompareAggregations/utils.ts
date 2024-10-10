@@ -258,7 +258,7 @@ export function updateQueryWithCompareOffsetAggregations(
   };
 }
 
-const DISABLED_TEMPORAL_COMPARISON_MESSAGE = true;
+const DISABLED_TEMPORAL_COMPARISON_MESSAGE = false;
 
 export function canAddTemporalCompareAggregation(
   query: Lib.Query,
