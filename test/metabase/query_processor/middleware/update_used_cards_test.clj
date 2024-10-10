@@ -12,6 +12,8 @@
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (defmacro with-used-cards-setup!
   [& body]
   `(mt/test-helpers-set-global-values!
@@ -78,7 +80,12 @@
         (do-test! card-id #(pulse/send-pulse! pulse))))))
 
 (deftest update-used-card-timestamp-test
-  (let [now           (t/offset-date-time)
+  ;; the DB might save `last_used_at` with a different level of precision than the JVM does, on my machine
+  ;; `offset-date-time` returns nanosecond precision (9 decimal places) but `last_used_at` is coming back with
+  ;; microsecond precision (6 decimal places). We don't care about such a small difference, just strip it off of the
+  ;; times we're comparing.
+  (let [now           (-> (t/offset-date-time)
+                          (.withNano 0))
         one-hour-ago  (t/minus now (t/hours 1))
         two-hours-ago (t/minus now (t/hours 2))]
     (testing "update with multiple cards of the same ids will set timestamp to the latest"
