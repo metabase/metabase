@@ -21,7 +21,7 @@ export const CollectionInfoSidebar = ({
   const [isOpen, setIsOpen] = useState(false);
 
   useMount(() => {
-    // this component is not rendered until it is "open"
+    // This component is not rendered until it is "open"
     // but we want to set isOpen after it mounts to get
     // pretty animations
     setIsOpen(true);
