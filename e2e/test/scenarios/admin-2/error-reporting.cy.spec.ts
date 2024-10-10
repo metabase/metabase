@@ -1,10 +1,10 @@
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   commandPaletteAction,
+  commandPaletteButton,
   commandPaletteInput,
   createQuestion,
   modal,
-  openCommandPalette,
   restore,
   visitDashboard,
   visitFullAppEmbeddingUrl,
@@ -52,10 +52,9 @@ describe("error reporting modal", () => {
 
     cy.findByTestId("home-page")
       .findByText(/see what metabase can do/i)
-      .realClick();
-    cy.wait(500);
+      .should("exist");
 
-    openCommandPalette();
+    commandPaletteButton().click();
     commandPaletteInput().type("Error");
     commandPaletteAction(/Open error diagnostic modal/).click();
 
