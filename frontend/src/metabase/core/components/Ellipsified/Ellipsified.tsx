@@ -48,7 +48,7 @@ export const Ellipsified = ({
       disabled={!isEnabled}
       label={canSkipTooltipRendering ? undefined : tooltip || children || " "}
       position={placement}
-      width={tooltipMaxWidth}
+      w={tooltipMaxWidth}
       multiline={multiline}
     >
       <EllipsifiedRoot
