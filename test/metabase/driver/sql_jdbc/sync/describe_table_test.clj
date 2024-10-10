@@ -149,6 +149,33 @@
                                             :table-names [(:name table)]))
                (:fields (driver/describe-table driver db table))))))
 
+(deftest describe-fields-shared-attributes-test
+  (testing "common metadata attributes"
+    (mt/test-drivers (mt/normal-drivers-with-feature :actions)
+      (is (=?
+           [[0 false true true]
+            [1 false false false]
+            [2 false false false]
+            [3 false false false]
+            [4 false false false]
+            [5 false false false]]
+           (sort-by
+            :first
+            (map (juxt :database-position :database-required :database-is-auto-increment (comp boolean :pk?))
+                 (describe-fields-for-table (mt/db) (t2/select-one Table :id (mt/id :venues))))))))
+    (mt/test-drivers (mt/normal-drivers-without-feature :actions)
+      (is (=?
+           [[0 true]
+            [1 false]
+            [2 false]
+            [3 false]
+            [4 false]
+            [5 false]]
+           (sort-by
+            :first
+            (map (juxt :database-position (comp boolean :pk?))
+                 (describe-fields-for-table (mt/db) (t2/select-one Table :id (mt/id :venues))))))))))
+
 (deftest database-types-fallback-test
   (mt/test-drivers (apply disj (sql-jdbc-drivers-using-default-describe-table-or-fields-impl)
                           (tqpt/timeseries-drivers))
