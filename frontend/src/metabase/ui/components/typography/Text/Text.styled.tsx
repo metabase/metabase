@@ -7,7 +7,6 @@ export const textOverrides: MantineThemeOverride["components"] = {
     defaultProps: {
       color: "var(--mb-color-text-primary)",
       size: "md",
-      variant: "monospace",
     },
     classNames: {
       root: TextStyles.root,
