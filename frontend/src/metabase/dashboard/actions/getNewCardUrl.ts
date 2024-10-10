@@ -46,23 +46,42 @@ export const getNewCardUrl = ({
     dashboard.parameters,
     dashcard,
   );
-  const mightNeedFilterStage = parametersMappedToCard.some(
-    parameter => parameter.type !== "temporal-unit",
-  );
-  const nextQuestion = isEditable
-    ? new Question(cardAfterClick, metadata)
-        .setDisplay(cardAfterClick.display || previousCard.display)
-        .setSettings(dashcard.card.visualization_settings)
-        .setQuery(
-          mightNeedFilterStage
-            ? Lib.ensureFilterStage(previousQuestion.query())
-            : previousQuestion.query(),
-        )
-        .lockDisplay()
-    : new Question(dashcard.card, metadata).setDashboardProps({
-        dashboardId: dashboard.id,
-        dashcardId: dashcard.id,
-      });
+
+  const isDashcardTitleClick =
+    nextCard.dataset_query === previousCard.dataset_query;
+
+  let nextQuestion: Question | undefined = undefined;
+
+  if (isDashcardTitleClick) {
+    const mightNeedFilterStage = parametersMappedToCard.some(
+      parameter => parameter.type !== "temporal-unit",
+    );
+
+    nextQuestion = isEditable
+      ? new Question(cardAfterClick, metadata)
+          .setQuery(
+            mightNeedFilterStage
+              ? Lib.ensureFilterStage(previousQuestion.query())
+              : previousQuestion.query(),
+          )
+          .setDisplay(cardAfterClick.display || previousCard.display)
+          .setSettings(dashcard.card.visualization_settings)
+          .lockDisplay()
+      : new Question(dashcard.card, metadata).setDashboardProps({
+          dashboardId: dashboard.id,
+          dashcardId: dashcard.id,
+        });
+  } else {
+    nextQuestion = isEditable
+      ? new Question(cardAfterClick, metadata)
+          .setDisplay(cardAfterClick.display || previousCard.display)
+          .setSettings(dashcard.card.visualization_settings)
+          .lockDisplay()
+      : new Question(dashcard.card, metadata).setDashboardProps({
+          dashboardId: dashboard.id,
+          dashcardId: dashcard.id,
+        });
+  }
 
   // This try/catch block is a temporary workaround for metabase#43990.
   // Please remove it once the underlying issue is fixed.
