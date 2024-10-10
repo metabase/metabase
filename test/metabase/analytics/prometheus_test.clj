@@ -166,11 +166,11 @@
 
 (deftest inc-test
   (testing "inc has no effect if system is not setup"
-    (prometheus/inc :metabase-email/messages)) ; << Does not throw.
+    (prometheus/inc! :metabase-email/messages)) ; << Does not throw.
   (testing "inc has no effect when called with unknown metric"
     (with-prometheus-system! [_ _system]
-      (prometheus/inc :metabase-email/unknown-metric))) ; << Does not throw.
+      (prometheus/inc! :metabase-email/unknown-metric))) ; << Does not throw.
   (testing "inc is recorded for known metrics"
     (with-prometheus-system! [_ system]
-      (prometheus/inc :metabase-email/messages)
+      (prometheus/inc! :metabase-email/messages)
       (is (< 0 (-> system :registry :metabase-email/messages ops/read-value))))))
