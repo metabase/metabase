@@ -350,6 +350,47 @@
   [liquibase & body]
   `(run-in-scope-locked ~liquibase (fn [] ~@body)))
 
+(defprotocol Listener
+  (report [l]))
+
+(defn make-listener [storage]
+  (reify
+    Listener
+    (report [_l]
+      (tap> @storage))
+
+    liquibase.changelog.visitor.ChangeExecListener
+    (^void willRun [_l
+                    ^liquibase.changelog.ChangeSet change-set
+                    ^liquibase.changelog.DatabaseChangeLog _
+                    ^liquibase.database.Database _
+                    ^liquibase.changelog.ChangeSet$RunStatus _]
+     (swap! storage assoc (.getId change-set) {:start (System/currentTimeMillis)}))
+    (^void willRun [_l
+                    ^liquibase.change.Change _change
+                    ^liquibase.changelog.ChangeSet change-set
+                    ^liquibase.changelog.DatabaseChangeLog _
+                    ^liquibase.database.Database _]
+     (swap! storage assoc (.getId change-set) {:start (System/currentTimeMillis)}))
+    (^void ran [_l
+                ^liquibase.changelog.ChangeSet change-set
+                ^liquibase.changelog.DatabaseChangeLog _
+                ^liquibase.database.Database _
+                ^liquibase.changelog.ChangeSet$ExecType _]
+     (swap! storage update (.getId change-set) (fn [s] (let [now (System/currentTimeMillis)]
+                                                         (-> s
+                                                             (assoc :end now)
+                                                             (assoc :duration (- now (:start s))))))))
+    (^void ran [_l
+                ^liquibase.change.Change _change
+                ^liquibase.changelog.ChangeSet change-set
+                ^liquibase.changelog.DatabaseChangeLog _
+                ^liquibase.database.Database _]
+     (swap! storage update (.getId change-set) (fn [s] (let [now (System/currentTimeMillis)]
+                                                         (-> s
+                                                             (assoc :end now)
+                                                             (assoc :duration (- now (:start s))))))))))
+
 (defn migrate-up-if-needed!
   "Run any unrun `liquibase` migrations, if needed."
   [^Liquibase liquibase ^DataSource data-source]
@@ -358,8 +399,8 @@
     (do
       (log/info "Database has unrun migrations. Checking if migration lock is taken...")
       (with-scope-locked liquibase
-      ;; while we were waiting for the lock, it was possible that another instance finished the migration(s), so make
-      ;; sure something still needs to be done...
+        ;; while we were waiting for the lock, it was possible that another instance finished the migration(s), so make
+        ;; sure something still needs to be done...
         (let [to-run-migrations      (unrun-migrations data-source)
               unrun-migrations-count (count to-run-migrations)]
           (if (pos? unrun-migrations-count)
@@ -368,7 +409,10 @@
               (log/infof "Running %s migrations ..." unrun-migrations-count)
               (doseq [^ChangeSet change to-run-migrations]
                 (log/tracef "To run migration %s" (.getId change)))
-              (.update liquibase contexts)
+              (let [listener (make-listener (atom {}))]
+                (.setChangeExecListener liquibase listener)
+                (.update liquibase contexts)
+                (report listener))
               (log/infof "Migration complete in %s" (u/format-milliseconds (- (System/currentTimeMillis) start-time))))
             (log/info "Migration lock cleared, but nothing to do here! Migrations were finished by another instance.")))))
     (log/info "No unrun migrations found.")))
