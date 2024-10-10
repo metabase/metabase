@@ -1198,7 +1198,7 @@
 
                        ;; Fourth dashboard where its parameter's source is another card
                        Collection   {coll4-id   :id
-                                     coll4-eid  :entity_id}    {:name     "Forth collection"}
+                                     _coll4-eid :entity_id}    {:name     "Forth collection"}
                        Card         {c4-id  :id
                                      c4-eid :entity_id}        {:name          "Question 4-1"
                                                                 :database_id   db-id
@@ -1376,19 +1376,19 @@
                         (map serdes/path)
                         set))))
 
-          #_ ;; (sanya) NOTE: this looks like an irrelevant test? I mean if we do escape analysis and don't allow
+          #_;; (sanya) NOTE: this looks like an irrelevant test? I mean if we do escape analysis and don't allow
           ;; leaking cards from unrelated collections, why this test?
-          (testing "select a collection where a dashboard contains parameter's source is card from another collection"
-            (is (=? #{[{:model "Collection"    :id coll4-eid :label "forth_collection"}]
-                      [{:model "Dashboard"     :id dash4-eid :label "dashboard_4"}]
-                      [{:model "Card"          :id c4-eid  :label "question_4_1"}]
-                      ;; card that parameter on dashboard linked to
-                      [{:model "Card"          :id c1-1-eid  :label "question_1_1"}]
-                      ;; card that the card on dashboard linked to
-                      [{:model "Card"          :id c1-2-eid  :label "question_1_2"}]}
-                    (->> (extract/extract {:targets [["Collection" coll4-id]] :no-settings true :no-data-model true})
-                         (map serdes/path)
-                         set)))))))))
+            (testing "select a collection where a dashboard contains parameter's source is card from another collection"
+              (is (=? #{[{:model "Collection"    :id coll4-eid :label "forth_collection"}]
+                        [{:model "Dashboard"     :id dash4-eid :label "dashboard_4"}]
+                        [{:model "Card"          :id c4-eid  :label "question_4_1"}]
+                        ;; card that parameter on dashboard linked to
+                        [{:model "Card"          :id c1-1-eid  :label "question_1_1"}]
+                        ;; card that the card on dashboard linked to
+                        [{:model "Card"          :id c1-2-eid  :label "question_1_2"}]}
+                      (->> (extract/extract {:targets [["Collection" coll4-id]] :no-settings true :no-data-model true})
+                           (map serdes/path)
+                           set)))))))))
 
 (deftest field-references-test
   (mt/with-empty-h2-app-db
