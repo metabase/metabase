@@ -7,6 +7,7 @@ import { Link } from "react-router";
 import { t } from "ttag";
 
 import S from "metabase/components/List/List.module.css";
+import Markdown from "metabase/core/components/Markdown";
 import Select from "metabase/core/components/Select";
 import CS from "metabase/css/core/index.css";
 import * as MetabaseCore from "metabase/lib/core";
@@ -110,9 +111,9 @@ const Field = ({ field, foreignKeys, url, icon, isEditing, formField }) => (
         <div className={F.fieldOther} />
       </div>
       {field.description && (
-        <div className={cx(S.itemSubtitle, CS.mb2, { [CS.mt1]: isEditing })}>
+        <Markdown className={cx(S.itemSubtitle, CS.mb2, { [CS.mt1]: isEditing })}>
           {field.description}
-        </div>
+        </Markdown>
       )}
     </div>
   </div>
