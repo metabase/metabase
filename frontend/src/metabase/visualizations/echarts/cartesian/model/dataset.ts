@@ -873,13 +873,12 @@ export const getSortedSeriesModels = (
           seriesModel.vizSettingsKey === orderSetting.key &&
           !usedDataKeys.has(seriesModel.dataKey),
       );
-      if (foundSeries === undefined) {
-        throw new TypeError("Series not found");
+      if (foundSeries) {
+        usedDataKeys.add(foundSeries.dataKey);
       }
-
-      usedDataKeys.add(foundSeries.dataKey);
       return foundSeries;
-    });
+    })
+    .filter(isNotNull);
 
   // On stacked charts we reverse the order of series so that the series
   // order in the sidebar matches series order on the chart.

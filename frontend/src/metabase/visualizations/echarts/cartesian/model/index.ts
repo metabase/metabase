@@ -98,11 +98,6 @@ export const getCartesianChartModel = (
     settings,
   );
 
-  // We currently ignore sorting and visibility settings on combined cards
-  const ungroupedSeriesModels = hasMultipleCards
-    ? unsortedSeriesModels
-    : getSortedSeriesModels(unsortedSeriesModels, settings);
-
   const unsortedDataset = getJoinedCardsDataset(
     rawSeries,
     cardsColumns,
@@ -113,10 +108,19 @@ export const getCartesianChartModel = (
     settings["graph.x_axis.scale"],
     showWarning,
   );
-  const scaledDataset = scaleDataset(dataset, ungroupedSeriesModels, settings);
+  const scaledDataset = scaleDataset(dataset, unsortedSeriesModels, settings);
 
-  const { ungroupedSeriesModels: seriesModels, groupedSeriesModels } =
-    groupSeriesIntoOther(ungroupedSeriesModels, settings);
+  const {
+    ungroupedSeriesModels: unsortedUngroupedSeriesModels,
+    groupedSeriesModels: unsortedGroupedSeriesModels,
+  } = groupSeriesIntoOther(unsortedSeriesModels, settings);
+
+  const seriesModels = hasMultipleCards
+    ? unsortedUngroupedSeriesModels
+    : getSortedSeriesModels(unsortedUngroupedSeriesModels, settings);
+  const groupedSeriesModels = hasMultipleCards
+    ? unsortedGroupedSeriesModels
+    : getSortedSeriesModels(unsortedGroupedSeriesModels, settings);
 
   const [sampleGroupedModel] = groupedSeriesModels;
   if (sampleGroupedModel) {
