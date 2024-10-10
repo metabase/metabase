@@ -126,7 +126,7 @@
   [driver dbdef]
   (if *allow-database-deletion*
     ((get-method tx/destroy-db! :sql-jdbc/test-extensions) driver dbdef)
-    (log/warn "`*allow-database-creation*` is `false`. Database removal is suppressed.")))
+    (log/warn "`*allow-database-deletion*` is `false`. Database removal is suppressed.")))
 
 ;; Differences to the :sql-jdbc/test-extensions original: false transactions, not using `jdbc/execute!` for
 ;; timezone setting, not overriding database timezone.
