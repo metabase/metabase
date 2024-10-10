@@ -112,6 +112,10 @@
     (let [parameters (merge-default-values (pulse-params/parameters pulse dashboard))]
       (pu/execute-dashboard-subscription-card dashcard parameters))
 
+    ;; iframes
+    (virtual-card-of-type? dashcard "iframe")
+    nil
+
     ;; actions
     (virtual-card-of-type? dashcard "action")
     nil
