@@ -124,7 +124,7 @@ const _CleanupCollectionModal = ({
     if (typeof collectionId === "number" || collectionId === "root") {
       trackStaleItemsArchived({
         collection_id: collectionId === "root" ? null : collectionId,
-        total_stale_items_found: totalArchivedItems,
+        total_items_archived: totalArchivedItems,
         cutoff_date: new Date(before_date).toISOString(),
       });
     }

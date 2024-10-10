@@ -196,7 +196,7 @@ describe("scenarios > collections > clean up", () => {
             event &&
             event.event === "stale_items_archived" &&
             event.collection_id === seedData.collection.id &&
-            event.total_stale_items_found === 10 &&
+            event.total_items_archived === 10 &&
             typeof event.cutoff_date === "string",
         );
 
@@ -240,7 +240,7 @@ describe("scenarios > collections > clean up", () => {
             event &&
             event.event === "stale_items_archived" &&
             event.collection_id === null &&
-            event.total_stale_items_found === 1 &&
+            event.total_items_archived === 1 &&
             typeof event.cutoff_date === "string",
         );
       });
