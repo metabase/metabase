@@ -10,7 +10,7 @@ import { getTitle } from "./utils";
 type OffsetAggregationPickerProps = {
   query: Lib.Query;
   stageIndex: number;
-  onSubmit: (query: Lib.Query) => void;
+  onSubmit: (query: Lib.Query, aggregations: Lib.ExpressionClause[]) => void;
   onClose: () => void;
 };
 

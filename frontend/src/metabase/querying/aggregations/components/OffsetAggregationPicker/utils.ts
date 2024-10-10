@@ -14,3 +14,8 @@ export function getTitle(
   const aggregationInfo = Lib.displayInfo(query, stageIndex, aggregation);
   return t`Compare “${aggregationInfo.displayName}” to the past`;
 }
+
+export function canAddOffsetAggregation(query: Lib.Query, stageIndex: number) {
+  const aggregations = Lib.aggregations(query, stageIndex);
+  return aggregations.length > 0;
+}

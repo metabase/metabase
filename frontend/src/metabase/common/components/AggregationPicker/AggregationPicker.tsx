@@ -11,13 +11,11 @@ import AccordionList from "metabase/core/components/AccordionList";
 import Markdown from "metabase/core/components/Markdown";
 import { useToggle } from "metabase/hooks/use-toggle";
 import { useSelector } from "metabase/lib/redux";
-import {
-  CompareAggregations,
-  canAddTemporalCompareAggregation,
-} from "metabase/query_builder/components/CompareAggregations";
 import { ExpressionWidget } from "metabase/query_builder/components/expressions/ExpressionWidget";
 import { ExpressionWidgetHeader } from "metabase/query_builder/components/expressions/ExpressionWidgetHeader";
 import { getQuestion } from "metabase/query_builder/selectors";
+import { OffsetAggregationPicker } from "metabase/querying/aggregations/components/OffsetAggregationPicker";
+import { canAddOffsetAggregation } from "metabase/querying/aggregations/components/OffsetAggregationPicker/utils";
 import { trackColumnCompareViaShortcut } from "metabase/querying/analytics";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Flex, Icon } from "metabase/ui";
@@ -106,10 +104,6 @@ export function AggregationPicker({
     [query, stageIndex, operator],
   );
 
-  const aggregations = useMemo(() => {
-    return Lib.aggregations(query, stageIndex);
-  }, [query, stageIndex]);
-
   const onSelect = useCallback(
     function (aggregation: Lib.Aggregable) {
       const isUpdate = clause != null && clauseIndex != null;
@@ -165,7 +159,7 @@ export function AggregationPicker({
 
     if (
       allowTemporalComparisons &&
-      canAddTemporalCompareAggregation(query, stageIndex)
+      canAddOffsetAggregation(query, stageIndex)
     ) {
       sections.push({
         type: "action",
@@ -299,8 +293,7 @@ export function AggregationPicker({
 
   if (isComparing) {
     return (
-      <CompareAggregations
-        aggregations={aggregations}
+      <OffsetAggregationPicker
         query={query}
         stageIndex={stageIndex}
         onClose={handleCompareClose}
