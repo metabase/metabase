@@ -19,6 +19,7 @@
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.driver.sql-jdbc.quoting :refer [with-quoting quote-columns quote-identifier]]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql.query-processor :as sql.qp]
@@ -860,12 +861,17 @@
 
 (defmethod sql-jdbc.sync/alter-columns-sql :postgres
   [driver table-name column-definitions]
-  (first (sql/format {:alter-table  (keyword table-name)
-                      :alter-column (map (fn [[column-name type-and-constraints]]
-                                           (vec (cons column-name (cons :type type-and-constraints))))
-                                         column-definitions)}
-                     :quoted true
-                     :dialect (sql.qp/quote-style driver))))
+  (with-quoting driver
+    (first (sql/format {:alter-table  (keyword table-name)
+                        :alter-column (map (fn [[column-name type-and-constraints]]
+                                             (vec (list* (quote-identifier column-name)
+                                                         :type
+                                                         (if (string? type-and-constraints)
+                                                           [[:raw type-and-constraints]]
+                                                           type-and-constraints))))
+                                           column-definitions)}
+                       :quoted true
+                       :dialect (sql.qp/quote-style driver)))))
 
 (defmethod driver/table-name-length-limit :postgres
   [_driver]
@@ -911,7 +917,7 @@
     (let [copy-manager (CopyManager. (.unwrap ^Connection (:connection conn) PgConnection))
           dialect      (sql.qp/quote-style driver)
           [sql & _] (sql/format {::copy       (keyword table-name)
-                                 :columns     (sql-jdbc.common/quote-columns dialect column-names)
+                                 :columns     (quote-columns driver column-names)
                                  ::from-stdin "''"}
                                 :quoted true
                                 :dialect dialect)
