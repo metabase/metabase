@@ -26,7 +26,8 @@
                                    {:remappings {:cat [:variable [:field (mt/id :venues :category_id) nil]]}
                                     :query      (mt.tu/restricted-column-query (mt/id))}}
                       :attributes {:cat 50}}
-      (testing "Users with restricted access to the columns of a table should only see columns included in the GTAP question"
+      (testing "Users with restricted access to the columns of a table via an MBQL sandbox should only see columns
+               included in the sandboxing question"
         (is (= #{"CATEGORY_ID" "ID" "NAME"}
                (field-names :rasta))))
 
@@ -52,7 +53,8 @@
           (t2/update! :model/Card :id (u/the-id card) {:result_metadata metadata})
           (card.metadata/save-metadata-async! metadata-future card)))
 
-      (testing "Users with restricted access to the columns of a table should only see columns included in the GTAP question"
+      (testing "Users with restricted access to the columns of a table via a native query sandbox should only see
+               columns included in the sandboxing question"
         (is (= #{"CATEGORY_ID" "ID" "NAME"}
                (field-names :rasta))))
 
