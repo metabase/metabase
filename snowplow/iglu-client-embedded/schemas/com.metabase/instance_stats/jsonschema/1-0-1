@@ -64,9 +64,10 @@
       }
     },
     "grouped_metrics": {
-      "description": "Grouped metrics",
+      "description": "Key-value pairs of grouped metrics, with tags.",
       "type": "array",
       "items": {
+        "description": "a Metric, which has a key a value and tags",
         "type": "object",
         "properties": {
           "name": {
@@ -87,7 +88,9 @@
                 },
                 "value": {
                   "description": "The value for the group",
-                  "type": "number"
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
                 }
               },
               "required": ["group", "value"],
@@ -98,7 +101,8 @@
             "description": "Tags that can be used flagging teams / features the grouped_metric belongs to",
             "type": "array",
             "items": {
-              "type": "string"
+              "type": "string",
+              "maxLength": 255
             }
           }
         },
