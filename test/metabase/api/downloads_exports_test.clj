@@ -107,7 +107,7 @@
                    :model/PulseCard _ (merge
                                        (when (= :csv  export-format) {:include_csv true})
                                        (when (= :json export-format) {:include_json true})
-                                       (when (= :xlsx export-format) {:include_xlsx true})
+                                       (when (= :xlsx export-format) {:include_xls true})
                                        {:pulse_id pulse-id
                                         :card_id  (:id card)})
                    :model/PulseChannel {pulse-channel-id :id} {:channel_type :email
@@ -130,8 +130,7 @@
                      :model/PulseCard _ (merge
                                          (case export-format
                                            :csv  {:include_csv true}
-                                           :json {:include_json true}
-                                           :xlsx {:include_xlsx true})
+                                           :xlsx {:include_xls true})
                                          {:pulse_id          pulse-id
                                           :card_id           (:card_id card-or-dashcard)
                                           :dashboard_card_id (:id card-or-dashcard)})
@@ -150,8 +149,7 @@
                                                     :dashboard_id dashboard-id}
                      :model/PulseCard _ (merge
                                          (when (= :csv  export-format) {:include_csv true})
-                                         (when (= :json export-format) {:include_json true})
-                                         (when (= :xlsx export-format) {:include_xlsx true})
+                                         (when (= :xlsx export-format) {:include_xls true})
                                          {:pulse_id          pulse-id
                                           :card_id           (:id card-or-dashcard)
                                           :dashboard_card_id dashcard-id})
@@ -820,7 +818,7 @@
     (doseq [export-format ["csv" "xlsx" "json"]]
       (testing (format "for %s" export-format)
         (mt/dataset test-data
-          (mt/with-temp [:model/Card {pivot-card-id :id}
+          (mt/with-temp [:model/Card {pivot-card-id :id :as pivot-card}
                          {:display                :pivot
                           :visualization_settings {:pivot_table.column_split
                                                    {:rows    [[:field (mt/id :orders :created_at) {:temporal-unit :month
@@ -860,7 +858,12 @@
                                                     (format "dashboard/%d/dashcard/%d/card/%d/query/%s?format_rows=true"
                                                             dashboard-id dashcard-id pivot-card-id (name export-format))
                                                     {})
-                  dash-data   (process-results (keyword export-format) dash-result)]
-              (is (= [["Created At" "E" "B" "C ($)" "A" "D"]
-                      ["Created At" "E" "B" "C ($)" "A" "D"]]
-                     (mapv first [card-data dash-data]))))))))))
+                  dash-data   (process-results (keyword export-format) dash-result)
+                  sub-data    (subscription-attachment! pivot-card (keyword export-format) true)]
+              (let [expected ["Created At" "E" "B" "C ($)" "A" "D"]]
+                (is (= {:downloads (repeat 2 expected)
+                        :subscription (when (#{"csv" "xlsx"} export-format)
+                                        expected)}
+                       {:downloads (mapv first [card-data dash-data])
+                        :subscription (when (#{"csv" "xlsx"} export-format)
+                                        (first sub-data))}))))))))))
