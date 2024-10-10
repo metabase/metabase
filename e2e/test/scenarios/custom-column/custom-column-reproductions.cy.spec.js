@@ -14,6 +14,7 @@ import {
   filterWidget,
   getDashboardCard,
   getNotebookStep,
+  getStepPreviewButton,
   main,
   modal,
   multiAutocompleteInput,
@@ -95,7 +96,7 @@ describe("issue 13289", () => {
     cy.button("Done").click();
   });
 
-  it("should allow 'zoom in' drill-through when grouped by custom column (metabase#13289) (metabase#13289)", () => {
+  it("should allow 'zoom in' drill-through when grouped by custom column (metabase#13289)", () => {
     summarize({ mode: "notebook" });
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Count of rows").click();
@@ -643,7 +644,7 @@ describe("issue 21135", () => {
   function previewCustomColumnNotebookStep() {
     cy.intercept("POST", "/api/dataset").as("dataset");
 
-    cy.findByTestId("step-expression-0-0").find(".Icon-play").click();
+    getStepPreviewButton("expression").click();
 
     cy.wait("@dataset");
   }

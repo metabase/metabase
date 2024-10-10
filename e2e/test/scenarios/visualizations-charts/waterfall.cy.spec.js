@@ -234,8 +234,7 @@ describe("scenarios > visualizations > waterfall", () => {
       display: "line",
     });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Visualization").click();
+    cy.findByTestId("viz-type-button").click();
     switchToWaterfallDisplay();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -262,8 +261,8 @@ describe("scenarios > visualizations > waterfall", () => {
         database: SAMPLE_DB_ID,
       },
     });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Visualization").click();
+
+    cy.findByTestId("viz-type-button").click();
     cy.icon("waterfall").click({ force: true });
     chartPathWithFillColor("#88BF4D").should("be.visible");
   });

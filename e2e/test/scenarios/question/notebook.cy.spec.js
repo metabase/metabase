@@ -11,6 +11,7 @@ import {
   filter,
   filterField,
   getNotebookStep,
+  getStepPreviewButton,
   hovercard,
   join,
   moveDnDKitElement,
@@ -690,20 +691,20 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       .as("dataStep")
       .within(() => {
         cy.findByText("Pick your starting data").should("exist");
-        cy.icon("play").should("not.be.visible");
       });
+    getStepPreviewButton("data").should("not.be.visible");
 
     entityPickerModal().within(() => {
       entityPickerModalTab("Tables").click();
       cy.findByText("Orders").click();
     });
 
-    cy.get("@dataStep").icon("play").should("be.visible");
-    getNotebookStep("filter").icon("play").should("not.be.visible");
-    getNotebookStep("summarize").icon("play").should("not.be.visible");
+    getStepPreviewButton("data").should("be.visible");
+    getStepPreviewButton("filter").should("not.be.visible");
+    getStepPreviewButton("summarize").should("not.be.visible");
 
+    getStepPreviewButton("data").click();
     cy.get("@dataStep").within(() => {
-      cy.icon("play").click();
       assertTableRowCount(10);
       cy.findByTextEnsureVisible("Subtotal");
       cy.findByTextEnsureVisible("Tax");
@@ -715,7 +716,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     getNotebookStep("limit").within(() => {
       cy.findByPlaceholderText("Enter a limit").type("5").realPress("Tab");
 
-      cy.icon("play").click();
+      cy.findByTestId("step-preview-button").click();
       assertTableRowCount(5);
 
       cy.findByDisplayValue("5").type("{selectall}50").realPress("Tab");

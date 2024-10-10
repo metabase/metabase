@@ -30,8 +30,8 @@ describe("scenarios > organization > timelines > question", () => {
     it("should create the first event and timeline", () => {
       visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
       cy.wait("@getCollection");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Visualization").should("be.visible");
+
+      cy.findByTestId("viz-type-button").should("be.visible");
 
       cy.icon("calendar").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -56,8 +56,8 @@ describe("scenarios > organization > timelines > question", () => {
 
       visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
       cy.wait("@getCollection");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Visualization").should("be.visible");
+
+      cy.findByTestId("viz-type-button").should("be.visible");
 
       cy.icon("calendar").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -88,8 +88,8 @@ describe("scenarios > organization > timelines > question", () => {
 
       visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
       cy.wait("@getCollection");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Visualization").should("be.visible");
+
+      cy.findByTestId("viz-type-button").should("be.visible");
 
       cy.findByLabelText("calendar icon").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -116,8 +116,8 @@ describe("scenarios > organization > timelines > question", () => {
 
       visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
       cy.wait("@getCollection");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Visualization").should("be.visible");
+
+      cy.findByTestId("viz-type-button").should("be.visible");
 
       cy.icon("calendar").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -146,8 +146,8 @@ describe("scenarios > organization > timelines > question", () => {
 
       visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
       cy.wait("@getCollection");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Visualization").should("be.visible");
+
+      cy.findByTestId("viz-type-button").should("be.visible");
 
       cy.icon("calendar").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -174,8 +174,8 @@ describe("scenarios > organization > timelines > question", () => {
 
       visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
       cy.wait("@getCollection");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Visualization").should("be.visible");
+
+      cy.findByTestId("viz-type-button").should("be.visible");
 
       cy.icon("calendar").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -240,8 +240,7 @@ describe("scenarios > organization > timelines > question", () => {
         },
       });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Visualization").should("be.visible");
+      cy.findByTestId("viz-type-button").should("be.visible");
       echartsIcon("star").should("be.visible");
     });
 
@@ -270,8 +269,7 @@ describe("scenarios > organization > timelines > question", () => {
         },
       });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Visualization").should("be.visible");
+      cy.findByTestId("viz-type-button").should("be.visible");
       echartsIcon("star").should("not.exist");
     });
 
@@ -296,8 +294,7 @@ describe("scenarios > organization > timelines > question", () => {
         },
       });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Visualization").should("be.visible");
+      cy.findByTestId("viz-type-button").should("be.visible");
       echartsIcon("star").should("be.visible");
     });
 
@@ -325,9 +322,7 @@ describe("scenarios > organization > timelines > question", () => {
 
         visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
 
-        cy.findByTestId("view-footer")
-          .findByText("Visualization")
-          .should("be.visible");
+        cy.findByTestId("viz-type-button").should("be.visible");
         echartsIcon("cloud").should("be.visible");
 
         // should hide individual events from chart if hidden in sidebar
