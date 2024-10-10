@@ -140,7 +140,6 @@ export const dashboardApi = Api.injectEndpoints({
         updateDashboardPropertyMutation<"enable_embedding">(),
       updateDashboardEmbeddingParams:
         updateDashboardPropertyMutation<"embedding_params">(),
-
       listPublicDashboards: builder.query<GetPublicDashboard[], void>({
         query: params => ({
           method: "GET",
@@ -176,7 +175,6 @@ export const dashboardApi = Api.injectEndpoints({
           url: `/api/dashboard/${id}/public_link`,
         }),
         transformResponse: (_baseQueryReturnValue, _meta, { id }) => ({ id }),
-
         invalidatesTags: (_, error, { id }) =>
           invalidateTags(error, [
             listTag("public-dashboard"),

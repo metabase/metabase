@@ -213,6 +213,7 @@ export const {
   useUnpersistModelMutation,
   useListEmbeddableCardsQuery,
   useListPublicCardsQuery,
+  useCreateCardPublicLinkMutation,
   useDeleteCardPublicLinkMutation,
   endpoints: { createCardPublicLink, deleteCardPublicLink },
 } = cardApi;

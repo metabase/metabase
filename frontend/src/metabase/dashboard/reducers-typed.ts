@@ -3,10 +3,10 @@ import { assocIn } from "icepick";
 import { omit } from "underscore";
 
 import {
-  updateDashboardEmbeddingParams,
-  updateDashboardEnableEmbedding,
   createDashboardPublicLink,
   deleteDashboardPublicLink,
+  updateDashboardEmbeddingParams,
+  updateDashboardEnableEmbedding,
 } from "metabase/api";
 import Dashboards from "metabase/entities/dashboards";
 import { handleActions } from "metabase/lib/redux";

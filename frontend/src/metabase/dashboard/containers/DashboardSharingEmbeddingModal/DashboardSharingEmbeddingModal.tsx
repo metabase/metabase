@@ -48,14 +48,10 @@ export const DashboardSharingEmbeddingModal = ({
           resourceParameters={parameters}
           resourceType="dashboard"
           onCreatePublicLink={() =>
-            createPublicDashboardLink({
-              id: dashboard.id,
-            })
+            createPublicDashboardLink({ id: dashboard.id })
           }
           onDeletePublicLink={() =>
-            deletePublicDashboardLink({
-              id: dashboard.id,
-            })
+            deletePublicDashboardLink({ id: dashboard.id })
           }
           onUpdateEnableEmbedding={enable_embedding =>
             updateDashboardEnableEmbedding({
