@@ -95,7 +95,7 @@ function formatSummary(report) {
       summary += `<code>${truncateError(test.error)}</code>`;
       summary += "</summary>";
       summary += `<pre>${test.error}</pre>`.replaceAll("\n", "<br>");
-      summary += `</details> |\n`;
+      summary += `</details> |\n\n`;
     });
   }
 

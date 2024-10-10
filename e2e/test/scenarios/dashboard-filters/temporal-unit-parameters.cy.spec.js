@@ -521,6 +521,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
         visitDashboard(dashboard.id);
       });
 
+      cy.findByTestId("test123");
       cy.log("unsupported column types are ignored");
       editDashboard();
       getDashboardCard(0)

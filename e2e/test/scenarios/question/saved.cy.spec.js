@@ -263,6 +263,7 @@ describe("scenarios > question > saved", () => {
         cy.wrap(originalWidth).as("originalWidth");
       });
 
+    cy.findByTestId("test123");
     cy.get("@headerCell")
       .find(".react-draggable")
       .trigger("mousedown", { which: 1 })
