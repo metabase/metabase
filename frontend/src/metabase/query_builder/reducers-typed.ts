@@ -1,6 +1,11 @@
 import { createReducer } from "@reduxjs/toolkit";
 
-import { createCardPublicLink, deleteCardPublicLink } from "metabase/api";
+import {
+  createCardPublicLink,
+  deleteCardPublicLink,
+  updateCardEmbeddingParams,
+  updateCardEnableEmbedding,
+} from "metabase/api";
 import type { Card, DatasetQuery } from "metabase-types/api";
 
 import {
@@ -14,8 +19,6 @@ import {
   SET_CARD_AND_RUN,
   SOFT_RELOAD_CARD,
   UPDATE_QUESTION,
-  updateEmbeddingParams,
-  updateEnableEmbedding,
 } from "./actions";
 
 // the card that is actively being worked on
@@ -107,25 +110,6 @@ export const card = createReducer<Card<DatasetQuery> | null>(null, builder => {
         visualization_settings: action.payload.card.visualization_settings,
       };
     })
-    .addCase(updateEnableEmbedding.fulfilled, (state, action) => {
-      if (!state) {
-        return state;
-      }
-      return {
-        ...state,
-        enable_embedding: action.payload.enable_embedding,
-      };
-    })
-    .addCase(updateEmbeddingParams.fulfilled, (state, action) => {
-      if (!state) {
-        return state;
-      }
-      return {
-        ...state,
-        embedding_params: action.payload.embedding_params,
-        initially_published_at: action.payload.initially_published_at,
-      };
-    })
     .addMatcher(createCardPublicLink.matchFulfilled, (state, action) => {
       if (!state) {
         return state;
@@ -143,6 +127,26 @@ export const card = createReducer<Card<DatasetQuery> | null>(null, builder => {
       return {
         ...state,
         public_uuid: null,
+      };
+    })
+    .addMatcher(updateCardEnableEmbedding.matchFulfilled, (state, action) => {
+      if (!state) {
+        return state;
+      }
+      return {
+        ...state,
+        enable_embedding: action.payload.enable_embedding,
+      };
+    })
+    .addMatcher(updateCardEmbeddingParams.matchFulfilled, (state, action) => {
+      if (!state) {
+        return state;
+      }
+
+      return {
+        ...state,
+        embedding_params: action.payload.embedding_params,
+        initially_published_at: action.payload.initially_published_at,
       };
     });
 });
