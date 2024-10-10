@@ -12,9 +12,9 @@ import type {
 import type { Dispatch, GetState } from "metabase-types/store";
 
 export const INITIALIZE = "metabase/dashboard/INITIALIZE";
-export const initialize = createAction<{
-  clearCache?: boolean;
-}>(INITIALIZE);
+export const initialize = createAction<{ clearCache?: boolean } | undefined>(
+  INITIALIZE,
+);
 
 export const RESET = "metabase/dashboard/RESET";
 export const reset = createAction(RESET);
@@ -46,6 +46,7 @@ export const cancelEditingDashboard = () => (dispatch: Dispatch) => {
 export type SetDashboardAttributesOpts = {
   id: DashboardId;
   attributes: Partial<Dashboard>;
+  isDirty?: boolean;
 };
 export const SET_DASHBOARD_ATTRIBUTES =
   "metabase/dashboard/SET_DASHBOARD_ATTRIBUTES";
@@ -66,9 +67,9 @@ export const setDashCardAttributes = createAction<SetDashCardAttributesOpts>(
 export type SetMultipleDashCardAttributesOpts = SetDashCardAttributesOpts[];
 export const SET_MULTIPLE_DASHCARD_ATTRIBUTES =
   "metabase/dashboard/SET_MULTIPLE_DASHCARD_ATTRIBUTES";
-export const setMultipleDashCardAttributes = createAction(
-  SET_MULTIPLE_DASHCARD_ATTRIBUTES,
-);
+export const setMultipleDashCardAttributes = createAction<{
+  dashcards: SetMultipleDashCardAttributesOpts;
+}>(SET_MULTIPLE_DASHCARD_ATTRIBUTES);
 
 export const ADD_CARD_TO_DASH = "metabase/dashboard/ADD_CARD_TO_DASH";
 export const ADD_MANY_CARDS_TO_DASH =
@@ -86,12 +87,7 @@ export const onUpdateDashCardVisualizationSettings = createAction(
   (
     id: DashCardId,
     settings: DashCardVisualizationSettings | null | undefined,
-  ) => ({
-    payload: {
-      id,
-      settings,
-    },
-  }),
+  ) => ({payload: {id, settings,},}),
 );
 
 export const UPDATE_DASHCARD_VISUALIZATION_SETTINGS_FOR_COLUMN =
@@ -112,10 +108,5 @@ export const onReplaceAllDashCardVisualizationSettings = createAction(
   (
     id: DashCardId,
     settings: DashCardVisualizationSettings | null | undefined,
-  ) => ({
-    payload: {
-      id,
-      settings,
-    },
-  }),
+  ) => ({payload: {id, settings,},}),
 );

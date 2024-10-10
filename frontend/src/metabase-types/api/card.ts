@@ -351,7 +351,6 @@ export type CardQueryRequest = {
   parameters?: unknown[];
 };
 
-export type GetPublicOrEmbeddableCard = Pick<
-  Card,
-  "id" | "name" | "public_uuid"
->;
+export type GetPublicCard = Pick<Card, "id" | "name" | "public_uuid">;
+
+export type GetEmbeddableCard = Pick<Card, "id" | "name">;

@@ -6,7 +6,8 @@ import type {
   CreateCardRequest,
   Dataset,
   GetCardRequest,
-  GetPublicOrEmbeddableCard,
+  GetEmbeddableCard,
+  GetPublicCard,
   ListCardsRequest,
   UpdateCardRequest,
 } from "metabase-types/api";
@@ -149,7 +150,7 @@ export const cardApi = Api.injectEndpoints({
         }, PERSISTED_MODEL_REFRESH_DELAY);
       },
     }),
-    listEmbeddableCards: builder.query<GetPublicOrEmbeddableCard[], void>({
+    listEmbeddableCards: builder.query<GetEmbeddableCard[], void>({
       query: params => ({
         method: "GET",
         url: "/api/card/embeddable",
@@ -160,7 +161,7 @@ export const cardApi = Api.injectEndpoints({
         listTag("embed-card"),
       ],
     }),
-    listPublicCards: builder.query<GetPublicOrEmbeddableCard[], void>({
+    listPublicCards: builder.query<GetPublicCard[], void>({
       query: params => ({
         method: "GET",
         url: "/api/card/public",
@@ -171,7 +172,7 @@ export const cardApi = Api.injectEndpoints({
         listTag("public-card"),
       ],
     }),
-    deleteCardPublicLink: builder.mutation<void, GetPublicOrEmbeddableCard>({
+    deleteCardPublicLink: builder.mutation<void, Pick<Card, "id">>({
       query: ({ id }) => ({
         method: "DELETE",
         url: `/api/card/${id}/public_link`,
@@ -212,6 +213,7 @@ export const {
   useUnpersistModelMutation,
   useListEmbeddableCardsQuery,
   useListPublicCardsQuery,
+  useCreateCardPublicLinkMutation,
   useDeleteCardPublicLinkMutation,
   endpoints: { createCardPublicLink, deleteCardPublicLink },
 } = cardApi;
