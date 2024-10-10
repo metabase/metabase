@@ -8,7 +8,6 @@ import type {
   Database,
   DatabaseId,
   SchemaName,
-  SearchModel,
   Table,
   TableId,
 } from "metabase-types/api";
@@ -16,18 +15,19 @@ import type {
 import type { QuestionPickerItem } from "../QuestionPicker";
 
 import type {
+  DataPickerFolderItem,
+  DataPickerItem,
   DataPickerValue,
+  DataPickerValueItem,
   ModelItem,
-  NotebookDataPickerFolderItem,
-  NotebookDataPickerValueItem,
   QuestionItem,
   TablePickerValue,
 } from "./types";
 
 export const generateKey = (
-  dbItem: NotebookDataPickerFolderItem | null,
-  schemaItem: NotebookDataPickerFolderItem | null,
-  tableItem: NotebookDataPickerValueItem | null,
+  dbItem: DataPickerFolderItem | null,
+  schemaItem: DataPickerFolderItem | null,
+  tableItem: DataPickerValueItem | null,
 ) => {
   return [dbItem?.id, schemaItem?.id, tableItem?.id].join("-");
 };
@@ -64,7 +64,7 @@ export const getDataPickerValue = (
 export const getDbItem = (
   databases: Database[] | undefined,
   dbId: DatabaseId | undefined,
-): NotebookDataPickerFolderItem | null => {
+): DataPickerFolderItem | null => {
   if (typeof dbId === "undefined") {
     return null;
   }
@@ -76,21 +76,24 @@ export const getDbItem = (
 };
 
 export const getSchemaItem = (
+  dbId: DatabaseId | undefined,
+  dbName: string | undefined,
   schemaName: SchemaName | undefined,
-): NotebookDataPickerFolderItem | null => {
-  if (typeof schemaName === "undefined") {
+  isOnlySchema: boolean,
+): DataPickerFolderItem | null => {
+  if (typeof schemaName === "undefined" || typeof dbId === "undefined") {
     return null;
   }
 
   const name = getSchemaDisplayName(schemaName);
 
-  return { model: "schema", id: schemaName, name };
+  return { model: "schema", id: schemaName, name, dbId, dbName, isOnlySchema };
 };
 
 export const getTableItem = (
   tables: Table[] | undefined,
   tableId: TableId | undefined,
-): NotebookDataPickerValueItem | null => {
+): DataPickerValueItem | null => {
   if (typeof tableId === "undefined") {
     return null;
   }
@@ -127,8 +130,16 @@ export const isTableItem = (
   return value?.model === "table";
 };
 
-export const isValidValueItem = (model: SearchModel): boolean => {
-  return ["table", "card", "dataset", "metric"].includes(model);
+export const isValueItem = (
+  item: DataPickerItem,
+): item is DataPickerValueItem => {
+  return ["table", "card", "dataset", "metric"].includes(item.model);
+};
+
+export const isFolderItem = (
+  item: DataPickerItem,
+): item is DataPickerFolderItem => {
+  return ["collection", "database", "schema"].includes(item.model);
 };
 
 export const createShouldShowItem = (
@@ -163,4 +174,20 @@ const hasDatabaseId = (
   value: unknown,
 ): value is Pick<CollectionItem, "database_id"> => {
   return typeof value === "object" && value != null && "database_id" in value;
+};
+
+export const castQuestionPickerItemToDataPickerItem = (
+  item: QuestionPickerItem,
+): DataPickerItem => {
+  // see comment for QuestionPickerItem definition to see why we need this cast
+  return item as DataPickerItem;
+};
+
+export const createQuestionPickerItemSelectHandler = (
+  onItemSelect: (item: DataPickerItem) => void,
+) => {
+  return (questionPickerItem: QuestionPickerItem) => {
+    const item = castQuestionPickerItemToDataPickerItem(questionPickerItem);
+    onItemSelect(item);
+  };
 };

@@ -16,6 +16,7 @@ import {
   renderWithProviders,
   screen,
   waitFor,
+  waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { getNextId } from "__support__/utils";
 import { ROOT_COLLECTION as ROOT } from "metabase/entities/collections";
@@ -551,6 +552,7 @@ describe("AddToDashSelectDashModal", () => {
         typedText,
       );
 
+      await waitForLoaderToBeRemoved();
       await screen.findAllByTestId("result-item");
 
       const call = fetchMock.lastCall("path:/api/search");
@@ -580,6 +582,7 @@ describe("AddToDashSelectDashModal", () => {
         typedText,
       );
 
+      await waitForLoaderToBeRemoved();
       await screen.findAllByTestId("result-item");
 
       const call = fetchMock.lastCall("path:/api/search");
