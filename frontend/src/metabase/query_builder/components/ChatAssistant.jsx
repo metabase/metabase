@@ -110,7 +110,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
         console.log({langchain_url})
         console.log({langchain_key})
       try {
-        const clientInstance = new Client();
+        const clientInstance = new Client({apiUrl: langchain_url, apiKey: langchain_key});
         setClient(clientInstance);
 
         // Search for assistants
