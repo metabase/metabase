@@ -7,7 +7,6 @@
    [java-time.api :as t]
    [metabase.config :as config]
    [metabase.driver :as driver]
-   [metabase.driver.postgres :as postgres]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -53,9 +52,10 @@
 ;;; |                                             metabase.driver impls                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defmethod postgres/enum-types :redshift
-  [_driver _database]
-  nil)
+;; Skip the postgres implementation of describe fields as it has to handle custom enums which redshift doesn't support.
+(defmethod driver/describe-fields :redshift
+  [driver database & args]
+  (apply (get-method driver/describe-fields :sql-jdbc) driver database args))
 
 (def ^:private get-tables-sql
   ;; Cal 2024-04-09 This query uses tables that the JDBC redshift driver currently uses.

@@ -206,14 +206,8 @@
   (cond-> [typname]
     (not= nspname "public") (conj (format "\"%s\".\"%s\"" nspname typname))))
 
-(defmulti enum-types
-  "Return a set of user defined enum types."
-  {:added "0.51.0", :arglists '([driver database])}
-  driver/dispatch-on-initialized-driver
-  :hierarchy #'driver/hierarchy)
-
-(defmethod enum-types :postgres
-  [_driver database]
+(defn- enum-types
+  [database]
   (into #{}
         (comp (mapcat get-typenames)
               (map keyword))
@@ -289,17 +283,16 @@
   ;; The implementation is based on `getColumns` in https://github.com/aws/amazon-redshift-jdbc-driver/blob/master/src/main/java/com/amazon/redshift/jdbc/RedshiftDatabaseMetaData.java
   ;; The `database-is-auto-increment` and `database-required` columns are currently missing because they are only
   ;; needed for actions, which redshift doesn't support yet.
-  #_
-  [default            (.getString rs "COLUMN_DEF")
-   no-default?        (contains? #{nil "NULL" "null"} default)
-   nullable           (.getInt rs "NULLABLE")
-   not-nullable?      (= 0 nullable)
+  #_[default            (.getString rs "COLUMN_DEF")
+     no-default?        (contains? #{nil "NULL" "null"} default)
+     nullable           (.getInt rs "NULLABLE")
+     not-nullable?      (= 0 nullable)
    ;; IS_AUTOINCREMENT could return nil
-   auto-increment     (.getString rs "IS_AUTOINCREMENT")
-   auto-increment?    (= "YES" auto-increment)
-   no-auto-increment? (= "NO" auto-increment)
-   column-name        (.getString rs "COLUMN_NAME")
-   required?          (and no-default? not-nullable? no-auto-increment?)]
+     auto-increment     (.getString rs "IS_AUTOINCREMENT")
+     auto-increment?    (= "YES" auto-increment)
+     no-auto-increment? (= "NO" auto-increment)
+     column-name        (.getString rs "COLUMN_NAME")
+     required?          (and no-default? not-nullable? no-auto-increment?)]
   [driver & {:keys [schema-names table-names]}]
   (sql/format {:select [[:c.column_name :name]
                         [:c.udt_name :database-type]
@@ -312,7 +305,7 @@
                                      :oid
                                      :c.ordinal_position]]]
                           :from [[:pg_catalog.pg_class :pc]]
-                          :where [:= :c.table_name :pc.relname] } :field-comment]
+                          :where [:= :c.table_name :pc.relname]} :field-comment]
                         [[:and
                           [:or [:= :column_default nil] [:= [:lower :column_default] [:inline "null"]]]
                           [:= :is_nullable [:inline "NO"]]
@@ -378,13 +371,13 @@
 ;; name, but first fetches database enum types so we have access to them.
 (defmethod driver/describe-fields :postgres
   [driver database & args]
-  (let [enums (enum-types driver database)]
+  (let [enums (enum-types database)]
     (eduction
-      (map (fn [{:keys [database-type] :as col}]
-             (cond-> col
-                (contains? enums (keyword database-type))
-                (assoc :base-type :type/PostgresEnum))))
-      (apply (get-method driver/describe-fields :sql-jdbc) driver database args))))
+     (map (fn [{:keys [database-type] :as col}]
+            (cond-> col
+              (contains? enums (keyword database-type))
+              (assoc :base-type :type/PostgresEnum))))
+     (apply (get-method driver/describe-fields :sql-jdbc) driver database args))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           metabase.driver.sql impls                                            |

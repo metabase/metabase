@@ -153,28 +153,28 @@
   (testing "common metadata attributes"
     (mt/test-drivers (mt/normal-drivers-with-feature :actions)
       (is (=?
-            [["id" false true true]
-             ["name" false false false]
-             ["category_id" false false false]
-             ["latitude" false false false]
-             ["longitude" false false false]
-             ["price" false false false]]
-            (sort-by
-              :first
-              (map (juxt (comp u/lower-case-en :name) :database-required :database-is-auto-increment (comp boolean :pk?))
-                   (describe-fields-for-table (mt/db) (t2/select-one Table :id (mt/id :venues))))))))
+           [[0 false true true]
+            [1 false false false]
+            [2 false false false]
+            [3 false false false]
+            [4 false false false]
+            [5 false false false]]
+           (sort-by
+            :first
+            (map (juxt :database-position :database-required :database-is-auto-increment (comp boolean :pk?))
+                 (describe-fields-for-table (mt/db) (t2/select-one Table :id (mt/id :venues))))))))
     (mt/test-drivers (mt/normal-drivers-without-feature :actions)
       (is (=?
-            [["id" true]
-             ["name" false]
-             ["category_id" false]
-             ["latitude" false]
-             ["longitude" false]
-             ["price" false]]
-            (sort-by
-              :first
-              (map (juxt (comp u/lower-case-en :name) (comp boolean :pk?))
-                   (describe-fields-for-table (mt/db) (t2/select-one Table :id (mt/id :venues))))))))))
+           [[0 true]
+            [1 false]
+            [2 false]
+            [3 false]
+            [4 false]
+            [5 false]]
+           (sort-by
+            :first
+            (map (juxt :database-position (comp boolean :pk?))
+                 (describe-fields-for-table (mt/db) (t2/select-one Table :id (mt/id :venues))))))))))
 
 (deftest database-types-fallback-test
   (mt/test-drivers (apply disj (sql-jdbc-drivers-using-default-describe-table-or-fields-impl)
