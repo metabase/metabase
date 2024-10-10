@@ -77,6 +77,7 @@
     target))
 
 (defn- escape-analysis [{colls "Collection" cards "Card" :as _nodes} reasons]
+  (log/tracef "Running escape analysis for %d colls and %d cards" (count colls) (count cards))
   (when-let [colls (some-> colls not-empty set)]
     (let [known-cards (t2/select-pks-set Card {:where [:or
                                                        [:in :collection_id colls]
@@ -88,7 +89,7 @@
                                        (assoc :escapee id)))))]
       escaped)))
 
-(defn- escape-report [escaped]
+(defn- log-escape-report! [escaped]
   (let [dashboards (group-by #(get % "Dashboard") escaped)]
     (doseq [[dash-id escapes] (dissoc dashboards nil)]
       (log/warnf "Failed to export Dashboard %d (%s) containing Card saved outside requested collections: %s"
@@ -129,7 +130,7 @@
         by-model      (u/group-by first second nodes)
         escaped       (escape-analysis by-model reasons)]
     (if (seq escaped)
-      (escape-report escaped)
+      (log-escape-report! escaped)
       (let [models         (model-set opts)
             coll-set       (get by-model "Collection")
             by-model       (select-keys by-model models)
@@ -137,7 +138,7 @@
                              (serdes/extract-all model (merge opts {:collection-set coll-set
                                                                     :where          [:in :id ids]})))
             extract-all    (fn [model]
-                            (serdes/extract-all model (assoc opts :collection-set coll-set)))]
+                             (serdes/extract-all model (assoc opts :collection-set coll-set)))]
         (eduction cat
                   [(if (seq targets)
                      (eduction (map extract-by-ids) cat by-model)
@@ -150,3 +151,12 @@
   [opts]
   (serdes.backfill/backfill-ids!)
   (extract-subtrees opts))
+
+(comment
+  (def nodes (let [colls (mapv vector (repeat "Collection") (collection-set-for-user nil))]
+               (set/union
+                (u/traverse colls #(serdes/ascendants (first %) (second %)))
+                (u/traverse colls #(serdes/descendants (first %) (second %))))))
+  (def escaped (escape-analysis (u/group-by first second nodes)
+                                (u/index-by #(take 2 %) #(first (nnext %)) nodes)))
+  (log-escape-report! escaped))
