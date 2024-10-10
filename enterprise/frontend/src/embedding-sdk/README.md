@@ -1244,7 +1244,7 @@ const DynamicAnalytics = dynamic(
 );
 ```
 
-If you authenticate with Metabase using JWT, you can create an a Route handler that sign a user into Metabase.
+If you authenticate with Metabase using JWT, you can create a Route handler that signs a user into Metabase.
 
 Create a new `route.ts` file in your `app/*` directory, for example `app/sso/metabase/route.ts` that corresponds to an endpoint at /sso/metabase.
 
@@ -1302,7 +1302,7 @@ const config = {
 
 This works almost the same as the App Router, but you don't need to mark your component that imports Metabase SDK components as a React Client component (with "use client").
 
-If you authenticate with Metabase using JWT, you can create an an API route that sign a user into Metabase.
+If you authenticate with Metabase using JWT, you can create an API route that signs a user into Metabase.
 
 Create a new `metabase.ts` file in your `pages/api/*` directory, for example `pages/api/sso/metabase.ts` that corresponds to an endpoint at /api/sso/metabase.
 
