@@ -29,7 +29,7 @@ export const BrowseHeader = styled.div`
   color: ${({ theme }) => theme.fn.themeColor("dark")};
 `;
 
-export const BrowseMain = styled.main`
+export const BrowseMain = styled.div`
   display: flex;
   flex-flow: column nowrap;
   flex: 1;
