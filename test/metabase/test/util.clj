@@ -338,6 +338,8 @@
   "Impl for [[with-temp-env-var-value!]] macro."
   [env-var-keyword value thunk]
   (mb.hawk.parallel/assert-test-is-not-parallel "with-temp-env-var-value!")
+  ;; app DB needs to be initialized if we're going to play around with the Settings cache.
+  (initialize/initialize-if-needed! :db)
   (let [value (str value)]
     (testing (colorize/blue (format "\nEnv var %s = %s\n" env-var-keyword (pr-str value)))
       (try

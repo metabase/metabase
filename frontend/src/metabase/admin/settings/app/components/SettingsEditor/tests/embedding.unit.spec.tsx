@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { screen } from "__support__/ui";
+import { screen, within } from "__support__/ui";
 import {
   createMockSettingDefinition,
   createMockSettings,
@@ -115,5 +115,11 @@ describe("SettingsEditor", () => {
 });
 
 const goToInteractiveEmbeddingSettings = async () => {
-  await userEvent.click(screen.getByText("Configure"));
+  await userEvent.click(
+    within(
+      screen.getByRole("article", {
+        name: "Interactive embedding",
+      }),
+    ).getByText("Configure"),
+  );
 };

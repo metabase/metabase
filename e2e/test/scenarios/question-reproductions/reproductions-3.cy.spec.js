@@ -634,7 +634,7 @@ describe(
             .click();
 
           cy.findByTestId("string-filter-picker").within(() => {
-            cy.findByLabelText("Filter operator").should("have.value", "Is");
+            cy.findByLabelText("Filter operator").should("have.text", "Is");
             cy.findByPlaceholderText("Search by ID").type(id);
             cy.button("Add filter").click();
           });

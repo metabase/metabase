@@ -85,7 +85,6 @@
      metabase.models.permissions/update-data-perms-graph!
      metabase.models.permissions/update-group-permissions!
      metabase.models.persisted-info/ready-database!
-     metabase.models.revision/revert!
      metabase.models.setting-test/test-user-local-allowed-setting!
      metabase.models.setting-test/test-user-local-only-setting!
      metabase.models.setting.cache/restore-cache!
@@ -140,6 +139,17 @@
   [s]
   (str/ends-with? s "!"))
 
+(defn- explicitly-safe? [qualified-symbol]
+  (contains? symbols-allowed-in-fns-not-ending-in-an-exclamation-point qualified-symbol))
+
+(defn- explicitly-unsafe? [config qualified-symbol]
+  (contains? (get-in config [:linters :metabase/validate-deftest :parallel/unsafe]) qualified-symbol))
+
+(defn- unsafe? [config qualified-symbol]
+  (and (or (end-with-exclamation? qualified-symbol)
+           (explicitly-unsafe? config qualified-symbol))
+       (not (explicitly-safe? qualified-symbol))))
+
 (defn- non-thread-safe-form-should-end-with-exclamation*
   [{[defn-or-defmacro form-name] :children, :as node} config]
   (when-not (and (:string-value form-name)
@@ -147,17 +157,16 @@
     (letfn [(walk [f form]
               (f form)
               (doseq [child (:children form)]
-                (walk f child)))]
-      (walk (fn [form]
+                (walk f child)))
+            (check-node [form]
               (when-let [qualified-symbol (hooks.common/node->qualified-symbol form)]
-                (when (and (not (contains? symbols-allowed-in-fns-not-ending-in-an-exclamation-point qualified-symbol))
-                           (or (end-with-exclamation? qualified-symbol)
-                               (contains? (get-in config [:linters :metabase/validate-deftest :parallel/unsafe]) qualified-symbol)))
-                  (hooks/reg-finding! (assoc (meta form-name)
-                                             :message (format "The name of this %s should end with `!` because it contains calls to non thread safe form `%s`. [:metabase/test-helpers-use-non-thread-safe-functions]"
-                                                              (:string-value defn-or-defmacro) qualified-symbol)
-                                             :type :metabase/test-helpers-use-non-thread-safe-functions)))))
-            node))
+                (when (unsafe? config qualified-symbol)
+                  (hooks/reg-finding!
+                   (assoc (meta form-name)
+                          :message (format "The name of this %s should end with `!` because it contains calls to non thread safe form `%s`. [:metabase/test-helpers-use-non-thread-safe-functions]"
+                                           (:string-value defn-or-defmacro) qualified-symbol)
+                          :type :metabase/test-helpers-use-non-thread-safe-functions)))))]
+      (walk check-node node))
     node))
 
 (defn non-thread-safe-form-should-end-with-exclamation
@@ -172,29 +181,29 @@
   {:node node})
 
 (comment
- (require '[clj-kondo.core :as clj-kondo])
- (def form (str '(defmacro a
-                   [x]
-                   `(fun-call x))))
+  (require '[clj-kondo.core :as clj-kondo])
+  (def form (str '(defmacro a
+                    [x]
+                    `(fun-call x))))
 
- (def form "(defmacro a
+  (def form "(defmacro a
            [x]
            `(some! ~x))")
 
- (def form "(defun f
+  (def form "(defun f
            [x]
            (let [g! (fn [] 1)]
            (g!)))")
 
- (str (hooks/parse-string form))
- (hooks/sexpr (hooks/parse-string form))
+  (str (hooks/parse-string form))
+  (hooks/sexpr (hooks/parse-string form))
 
- (binding [hooks/*reload* true]
-   (-> form
-       (with-in-str (clj-kondo/run! {:lint ["-"]}))
-       :findings))
+  (binding [hooks/*reload* true]
+    (-> form
+        (with-in-str (clj-kondo/run! {:lint ["-"]}))
+        :findings))
 
- (do (non-thread-safe-form-should-end-with-exclamation* (hooks/parse-string form)) nil))
+  (do (non-thread-safe-form-should-end-with-exclamation* (hooks/parse-string form)) nil))
 
 (defn- ns-form-node->require-node [ns-form-node]
   (some (fn [node]

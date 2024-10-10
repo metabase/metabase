@@ -5,7 +5,7 @@
 
 (deftest substitute-params-test
   (are [expected text context]
-    (= expected (channel.params/substitute-params text context))
+       (= expected (channel.params/substitute-params text context))
 
     "Hello ngoc@metabase.com!" "Hello {{email}}!" {:email "ngoc@metabase.com"}
     ;; nested access

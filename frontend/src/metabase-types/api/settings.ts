@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 export interface FormattingSettings {
   "type/Temporal"?: DateFormattingSettings;
   "type/Number"?: NumberFormattingSettings;
@@ -164,6 +166,7 @@ export const tokenFeatures = [
   "sso_saml",
   "session_timeout_config",
   "whitelabel",
+  "serialization",
   "dashboard_subscription_filters",
   "snippet_collections",
   "email_allow_list",
@@ -183,16 +186,16 @@ export type PasswordComplexity = {
 
 export type SessionCookieSameSite = "lax" | "strict" | "none";
 
-export type UpdateChannel = "latest" | "beta" | "nightly";
-
-export interface SettingDefinition {
-  key: string;
+export interface SettingDefinition<Key extends SettingKey = SettingKey> {
+  key: Key;
   env_name?: string;
-  is_env_setting: boolean;
-  value?: unknown;
-  default?: unknown;
-  description?: string;
+  is_env_setting?: boolean;
+  value?: SettingValue<Key>;
+  default?: SettingValue<Key>;
+  description?: string | ReactNode | null;
 }
+
+export type UpdateChannel = "latest" | "beta" | "nightly";
 
 export interface OpenAiModel {
   id: string;
@@ -215,6 +218,9 @@ interface InstanceSettings {
   "email-smtp-username": string | null;
   "email-smtp-password": string | null;
   "enable-embedding": boolean;
+  "enable-embedding-static": boolean;
+  "enable-embedding-sdk": boolean;
+  "enable-embedding-interactive": boolean;
   "enable-nested-queries": boolean;
   "enable-public-sharing": boolean;
   "enable-xrays": boolean;
@@ -253,6 +259,7 @@ interface AdminSettings {
   "premium-embedding-token": string | null;
   "saml-configured"?: boolean;
   "saml-enabled"?: boolean;
+  "saml-identity-provider-uri": string | null;
   "other-sso-enabled?"?: boolean; // yes the question mark is in the variable name
   "show-database-syncing-modal": boolean;
   "token-status": TokenStatus | null;
@@ -294,7 +301,9 @@ interface PublicSettings {
   "custom-homepage-dashboard": number | null;
   "ee-ai-features-enabled"?: boolean;
   "email-configured?": boolean;
-  "embedding-app-origin": string;
+  "embedding-app-origin": string | null;
+  "embedding-app-origins-sdk": string | null;
+  "embedding-app-origins-interactive": string | null;
   "enable-enhancements?": boolean;
   "enable-password-login": boolean;
   engines: Record<string, Engine>;
@@ -354,4 +363,4 @@ export type Settings = InstanceSettings &
 
 export type SettingKey = keyof Settings;
 
-export type SettingValue = Settings[SettingKey];
+export type SettingValue<Key extends SettingKey = SettingKey> = Settings[Key];
