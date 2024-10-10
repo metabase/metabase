@@ -18,6 +18,7 @@ describe("BrowseMetrics (EE with whitelabel token)", () => {
     );
     expect(screen.getByText("Read the docs")).toBeInTheDocument();
   });
+
   it("does not display a link to the metrics docs when show-metabase-links = false", async () => {
     setup({ metricCount: 0, showMetabaseLinks: false });
     await screen.findByText(
