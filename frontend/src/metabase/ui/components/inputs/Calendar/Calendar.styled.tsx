@@ -30,7 +30,7 @@ export const calendarOverrides = {
   }),
   WeekdaysRow: WeekdaysRow.extend({
     classNames: {
-      weekdaysRow: Styles.weekdaysRow,
+      weekday: Styles.weekday,
     },
   }),
   PickerControl: PickerControl.extend({
