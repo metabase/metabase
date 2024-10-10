@@ -4,12 +4,13 @@ import userEvent from "@testing-library/user-event";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import ChartSettings from "metabase/visualizations/components/ChartSettings";
 import registerVisualizations from "metabase/visualizations/register";
+import { createMockCard } from "metabase-types/api/mocks";
 
 registerVisualizations();
 
 function getSeries(display, index, changeSeriesName) {
   return {
-    card: {
+    card: createMockCard({
       display,
       visualization_settings: changeSeriesName
         ? {
@@ -19,7 +20,7 @@ function getSeries(display, index, changeSeriesName) {
           }
         : {},
       name: `Test ${index}`,
-    },
+    }),
     data: {
       rows: [
         ["a", 1],

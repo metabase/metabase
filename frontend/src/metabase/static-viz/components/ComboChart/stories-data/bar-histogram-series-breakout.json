@@ -28,7 +28,8 @@
         "graph.series_order": null,
         "graph.x_axis.scale": "histogram",
         "stackable.stack_type": null,
-        "graph.metrics": ["count"]
+        "graph.metrics": ["count"],
+        "graph.max_categories": 0
       },
       "last-edit-info": {
         "id": 1,

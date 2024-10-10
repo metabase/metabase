@@ -8,9 +8,10 @@ import type { DragEndEvent } from "metabase/core/components/Sortable";
 import type { AccentColorOptions } from "metabase/lib/colors/types";
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 import { isEmpty } from "metabase/lib/validate";
-import { Button, Select } from "metabase/ui";
+import { Button, Group, Select, Text } from "metabase/ui";
 import type { Series } from "metabase-types/api";
 
+import { ChartSettingColorPicker } from "./ChartSettingColorPicker";
 import {
   ChartSettingOrderedItems,
   type SortableItem as SortableChartSettingOrderedItem,
@@ -26,6 +27,7 @@ export interface SortableItem {
   name: string;
   color?: string;
   hidden?: boolean;
+  hideSettings?: boolean;
 }
 
 interface ChartSettingSeriesOrderProps {
@@ -43,6 +45,9 @@ interface ChartSettingSeriesOrderProps {
   getItemColor?: (item: SortableChartSettingOrderedItem) => string | undefined;
   addButtonLabel?: string;
   searchPickerPlaceholder?: string;
+  groupedAfterIndex?: number;
+  otherColor?: string;
+  onOtherColorChange?: (newColor: string) => void;
 }
 
 export const ChartSettingSeriesOrder = ({
@@ -56,6 +61,9 @@ export const ChartSettingSeriesOrder = ({
   onSortEnd,
   getItemColor,
   accentColorOptions,
+  otherColor,
+  groupedAfterIndex = Infinity,
+  onOtherColorChange,
 }: ChartSettingSeriesOrderProps) => {
   const [isSeriesPickerVisible, setSeriesPickerVisible] = useState(false);
 
@@ -67,6 +75,18 @@ export const ChartSettingSeriesOrder = ({
       ),
     [orderedItems],
   );
+  const items = useMemo(() => {
+    return visibleItems.map((item, index) => {
+      if (index < groupedAfterIndex) {
+        return item;
+      }
+      return {
+        ...item,
+        color: undefined,
+        hideSettings: true,
+      };
+    });
+  }, [groupedAfterIndex, visibleItems]);
 
   const canAddSeries = hiddenItems.length > 0;
 
@@ -131,14 +151,32 @@ export const ChartSettingSeriesOrder = ({
 
   const getId = useCallback((item: SortableItem) => item.key, []);
 
+  const dividers = useMemo(() => {
+    return [
+      {
+        afterIndex: groupedAfterIndex,
+        renderFn: () => (
+          <Group p={4} spacing="sm">
+            <ChartSettingColorPicker
+              pillSize="small"
+              onChange={onOtherColorChange}
+              value={otherColor ?? "var(--mb-color-text-light)"}
+            />
+            <Text fw="bold">{t`Other`}</Text>
+          </Group>
+        ),
+      },
+    ];
+  }, [groupedAfterIndex, onOtherColorChange, otherColor]);
+
   return (
     <ChartSettingOrderedSimpleRoot>
       {orderedItems.length > 0 ? (
         <>
           <ChartSettingOrderedItems
-            items={visibleItems}
+            items={items}
             getItemName={getItemTitle}
-            onRemove={visibleItems.length > 1 ? toggleDisplay : undefined}
+            onRemove={items.length > 1 ? toggleDisplay : undefined}
             onEnable={toggleDisplay}
             onSortEnd={handleSortEnd}
             onEdit={hasEditSettings ? handleOnEdit : undefined}
@@ -147,6 +185,7 @@ export const ChartSettingSeriesOrder = ({
             removeIcon="close"
             accentColorOptions={accentColorOptions}
             getItemColor={getItemColor}
+            dividers={dividers}
           />
           {canAddSeries && !isSeriesPickerVisible && (
             <Button

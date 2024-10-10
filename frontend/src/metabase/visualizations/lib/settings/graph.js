@@ -1,6 +1,7 @@
 import { t } from "ttag";
 import _ from "underscore";
 
+import { color } from "metabase/lib/colors";
 import {
   getMaxDimensionsSupported,
   getMaxMetricsSupported,
@@ -8,10 +9,7 @@ import {
 import { ChartSettingSeriesOrder } from "metabase/visualizations/components/settings/ChartSettingSeriesOrder";
 import { dimensionIsNumeric } from "metabase/visualizations/lib/numeric";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
-import {
-  keyForSingleSeries,
-  seriesSetting,
-} from "metabase/visualizations/lib/settings/series";
+import { seriesSetting } from "metabase/visualizations/lib/settings/series";
 import { getOptionFromColumn } from "metabase/visualizations/lib/settings/utils";
 import { dimensionIsTimeseries } from "metabase/visualizations/lib/timeseries";
 import { MAX_SERIES, columnsAreValid } from "metabase/visualizations/lib/utils";
@@ -39,6 +37,7 @@ import {
   getDefaultYAxisTitle,
   getIsXAxisLabelEnabledDefault,
   getIsYAxisLabelEnabledDefault,
+  getSeriesModelsForSettings,
   getSeriesOrderDimensionSetting,
   getSeriesOrderVisibilitySettings,
   getYAxisAutoRangeDefault,
@@ -134,10 +133,27 @@ export const GRAPH_DATA_SETTINGS = {
     section: t`Data`,
     widget: ChartSettingSeriesOrder,
     marginBottom: "1rem",
+    useRawSeries: true,
+    getValue: (rawSeries, settings) => {
+      const seriesModels = getSeriesModelsForSettings(rawSeries, settings);
 
-    getValue: (series, settings) => {
-      const seriesKeys = series.map(s => keyForSingleSeries(s));
+      const seriesKeys = seriesModels.map(s => s.vizSettingsKey);
       return getSeriesOrderVisibilitySettings(settings, seriesKeys);
+    },
+    getProps: (rawSeries, settings, _onChange, _extra, onChangeSettings) => {
+      const groupedAfterIndex =
+        settings["graph.max_categories"] !== 0
+          ? settings["graph.max_categories"]
+          : Infinity;
+      const onOtherColorChange = color =>
+        onChangeSettings({ "graph.other_category_color": color });
+      return {
+        rawSeries,
+        settings,
+        groupedAfterIndex,
+        otherColor: settings["graph.other_category_color"],
+        onOtherColorChange,
+      };
     },
     getHidden: (series, settings) => {
       return (
@@ -145,7 +161,14 @@ export const GRAPH_DATA_SETTINGS = {
       );
     },
     dashboard: false,
-    readDependencies: ["series_settings.colors", "series_settings"],
+    readDependencies: [
+      "series_settings.colors",
+      "series_settings",
+      "graph.metrics",
+      "graph.dimensions",
+      "graph.max_categories",
+      "graph.other_category_color",
+    ],
     writeDependencies: ["graph.series_order_dimension"],
   },
   "graph.metrics": {
@@ -420,6 +443,48 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS = {
       ],
     },
     default: getDefaultDataLabelsFormatting(),
+  },
+  "graph.max_categories": {
+    section: t`Display`,
+    title: t`Maximum number of categories`,
+    widget: "number",
+    getDefault: series => {
+      const isAllBar = series.every(s => s.card.display === "bar");
+      return isAllBar ? 8 : 0;
+    },
+    isValid: (series, settings) => {
+      const isAllBar = series.every(s => s.card.display === "bar");
+      return isAllBar && settings["graph.max_categories"] >= 0;
+    },
+    getHidden: series => {
+      const isAllBar = series.every(s => s.card.display === "bar");
+      return isAllBar && series.length < 2;
+    },
+  },
+  "graph.other_category_color": {
+    default: color("text-light"),
+  },
+  "graph.other_series_aggregation_fn": {
+    section: t`Display`,
+    title: t`"Other" series aggregation function`,
+    widget: "select",
+    getDefault: ([{ data }], settings) => {
+      const [metricName] = settings["graph.metrics"];
+      const metric = data.cols.find(col => col.name === metricName);
+      return metric?.aggregation_type ?? "sum";
+    },
+    getHidden: ([{ card }]) => card.dataset_query.type !== "native",
+    props: {
+      options: [
+        { name: t`Sum`, value: "sum" },
+        { name: t`Average`, value: "avg" },
+        { name: t`Median`, value: "median" },
+        { name: t`Standard deviation`, value: "stddev" },
+        { name: t`Min`, value: "min" },
+        { name: t`Max`, value: "max" },
+      ],
+    },
+    readDependencies: ["graph.metrics"],
   },
 };
 

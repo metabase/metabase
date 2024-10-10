@@ -81,6 +81,10 @@ export function cartesianChartCircleWithColors(colors) {
   return colors.map(color => cartesianChartCircleWithColor(color));
 }
 
+export function otherSeriesChartPaths() {
+  return chartPathWithFillColor("#949AAB");
+}
+
 export function scatterBubbleWithColor(color) {
   return echartsContainer().find(`path[d="${CIRCLE_PATH}"][fill="${color}"]`);
 }

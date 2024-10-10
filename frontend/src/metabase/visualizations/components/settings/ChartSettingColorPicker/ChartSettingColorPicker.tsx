@@ -24,7 +24,7 @@ export const ChartSettingColorPicker = ({
   accentColorOptions = { main: true, light: true, dark: true, harmony: false },
 }: ChartSettingColorPickerProps) => {
   return (
-    <div className={cx(CS.flex, CS.alignCenter, CS.mb1, className)}>
+    <div className={cx(CS.flex, CS.alignCenter, className)}>
       <ColorSelector
         value={value}
         colors={getAccentColors(accentColorOptions)}
