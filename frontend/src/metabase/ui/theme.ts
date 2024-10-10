@@ -5,7 +5,7 @@ import { DEFAULT_METABASE_COMPONENT_THEME } from "embedding-sdk/lib/theme";
 
 import Styles from "./Theme.module.css";
 import {
-  //   getAccordionOverrides,
+  accordionOverrides,
   //   getActionIconOverrides,
   alertOverrides,
   anchorOverrides,
@@ -112,7 +112,7 @@ export const getThemeOverrides = (): MantineThemeProviderProps["theme"] => ({
   fontFamilyMonospace: "Monaco, monospace",
   focusClassName: Styles.focus,
   components: {
-    // ...getAccordionOverrides(),
+    ...accordionOverrides,
     // ...getActionIconOverrides(),
     ...alertOverrides,
     ...anchorOverrides,
