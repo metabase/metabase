@@ -3,7 +3,7 @@ import { createAction } from "@reduxjs/toolkit";
 import {
   cancelFetchCardData,
   fetchCardData,
-} from "metabase/dashboard/actions/data-fetching";
+} from "metabase/dashboard/actions/data-fetching/data-fetching-typed";
 import Questions from "metabase/entities/questions";
 import {
   DEFAULT_CARD_SIZE,
