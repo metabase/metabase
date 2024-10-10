@@ -9655,8 +9655,6 @@ databaseChangeLog:
                   constraints:
                     nullable: false
 
-
-
   - changeSet:
       id: v52.2024-09-05T08:00:04
       author: qnkhuat
