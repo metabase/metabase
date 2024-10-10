@@ -47,10 +47,9 @@ export const getNewCardUrl = ({
     dashcard,
   );
 
+  let nextQuestion: Question | undefined = undefined;
   const isDashcardTitleClick =
     nextCard.dataset_query === previousCard.dataset_query;
-
-  let nextQuestion: Question | undefined = undefined;
 
   if (isDashcardTitleClick) {
     const mightNeedFilterStage = parametersMappedToCard.some(
