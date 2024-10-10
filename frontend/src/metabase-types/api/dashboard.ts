@@ -256,28 +256,28 @@ export type CreateDashboardRequest = {
 };
 
 export type UpdateDashboardRequest = {
+  id: DashboardId;
   collection_position?: number | null;
   caveats?: string | null;
   position?: number | null;
-} & Pick<Dashboard, "id"> &
-  Partial<
-    Pick<
-      Dashboard,
-      | "parameters"
-      | "point_of_interest"
-      | "description"
-      | "archived"
-      | "dashcards"
-      | "tabs"
-      | "show_in_getting_started"
-      | "enable_embedding"
-      | "collection_id"
-      | "name"
-      | "width"
-      | "embedding_params"
-      | "cache_ttl"
-    >
-  >;
+} & Partial<
+  Pick<
+    Dashboard,
+    | "parameters"
+    | "point_of_interest"
+    | "description"
+    | "archived"
+    | "dashcards"
+    | "tabs"
+    | "show_in_getting_started"
+    | "enable_embedding"
+    | "collection_id"
+    | "name"
+    | "width"
+    | "embedding_params"
+    | "cache_ttl"
+  >
+>;
 
 export type GetDashboardQueryMetadataRequest = {
   id: DashboardId;
@@ -295,7 +295,7 @@ export type CopyDashboardRequest = {
   is_deep_copy?: boolean | null;
 };
 
-export type UpdateDashboardKeyRequest<
+export type UpdateDashboardPropertyRequest<
   Key extends keyof UpdateDashboardRequest,
 > = Required<Pick<UpdateDashboardRequest, "id" | Key>>;
 

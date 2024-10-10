@@ -11,7 +11,7 @@ import type {
   ListDashboardsRequest,
   ListDashboardsResponse,
   SaveDashboardRequest,
-  UpdateDashboardKeyRequest,
+  UpdateDashboardPropertyRequest,
   UpdateDashboardRequest,
 } from "metabase-types/api";
 
@@ -27,10 +27,10 @@ import {
 
 export const dashboardApi = Api.injectEndpoints({
   endpoints: builder => {
-    const generateDashboardUpdateKeyMutation = <
+    const updateDashboardPropertyMutation = <
       Key extends keyof UpdateDashboardRequest,
     >() => {
-      return builder.mutation<Dashboard, UpdateDashboardKeyRequest<Key>>({
+      return builder.mutation<Dashboard, UpdateDashboardPropertyRequest<Key>>({
         query: ({ id, ...body }) => ({
           method: "PUT",
           url: `/api/dashboard/${id}`,
@@ -138,9 +138,9 @@ export const dashboardApi = Api.injectEndpoints({
         ],
       }),
       updateDashboardEnableEmbedding:
-        generateDashboardUpdateKeyMutation<"enable_embedding">(),
+        updateDashboardPropertyMutation<"enable_embedding">(),
       updateDashboardEmbeddingParams:
-        generateDashboardUpdateKeyMutation<"embedding_params">(),
+        updateDashboardPropertyMutation<"embedding_params">(),
       listPublicDashboards: builder.query<GetPublicDashboard[], void>({
         query: params => ({
           method: "GET",
