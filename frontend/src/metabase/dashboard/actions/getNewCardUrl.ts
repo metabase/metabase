@@ -80,18 +80,20 @@ export function getParametersMappedToDashcard(
   dashcard: QuestionDashboardCard,
 ): ParameterWithTarget[] {
   const { parameter_mappings } = dashcard;
-  return (parameters || [])
-    .map(parameter => {
-      const mapping = _.findWhere(parameter_mappings || [], {
-        parameter_id: parameter.id,
-      });
+  return (parameters || []).flatMap(parameter => {
+    const mapping = _.findWhere(parameter_mappings || [], {
+      parameter_id: parameter.id,
+    });
 
-      if (mapping) {
-        return {
-          ...parameter,
-          target: mapping.target,
-        };
-      }
-    })
-    .filter((parameter): parameter is ParameterWithTarget => parameter != null);
+    if (!mapping) {
+      return [];
+    }
+
+    return [
+      {
+        ...parameter,
+        target: mapping.target,
+      },
+    ];
+  });
 }
