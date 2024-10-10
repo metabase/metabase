@@ -58,7 +58,7 @@
    #'mw.session/reset-session-timeout           ; Resets the timeout cookie for user activity to [[mw.session/session-timeout]]
    #'mw.session/bind-current-user               ; Binds *current-user* and *current-user-id* if :metabase-user-id is non-nil
    #'mw.session/wrap-current-user-info          ; looks for :metabase-session-id and sets :metabase-user-id and other info if Session ID is valid
-   #'sdk/bind-embedding-mw                      ; reads Metabase Client and Version headers and binds them to sdk/*client* and sdk/*version*
+   #'sdk/embedding-mw                           ; reads sdk client headers, binds them to *client* and *version*, and tracks sdk-response metrics
    #'mw.session/wrap-session-id                 ; looks for a Metabase Session ID and assoc as :metabase-session-id
    #'mw.auth/wrap-static-api-key                ; looks for a static Metabase API Key on the request and assocs as :metabase-api-key
    #'wrap-cookies                               ; Parses cookies in the request map and assocs as :cookies
