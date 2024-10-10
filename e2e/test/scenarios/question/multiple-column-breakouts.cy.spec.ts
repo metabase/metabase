@@ -3,6 +3,7 @@ import {
   type DashboardDetails,
   type StructuredQuestionDetails,
   assertQueryBuilderRowCount,
+  assertTableData,
   createQuestion,
   createQuestionAndDashboard,
   dragField,
@@ -22,7 +23,6 @@ import {
   startNewQuestion,
   summarize,
   tableInteractive,
-  tableInteractiveBody,
   visitDashboard,
   visitEmbeddedPage,
   visitPublicDashboard,
@@ -1824,32 +1824,4 @@ function tableHeaderClick(
     .findAllByText(columnName)
     .eq(columnIndex)
     .trigger("mouseup");
-}
-
-function assertTableData({
-  columns = [],
-  firstRows = [],
-}: {
-  columns: string[];
-  firstRows?: string[][];
-}) {
-  tableInteractive()
-    .findAllByTestId("header-cell")
-    .should("have.length", columns.length);
-
-  columns.forEach((column, index) => {
-    tableInteractive()
-      .findAllByTestId("header-cell")
-      .eq(index)
-      .should("have.text", column);
-  });
-
-  firstRows.forEach((row, rowIndex) => {
-    row.forEach((cell, cellIndex) => {
-      tableInteractiveBody()
-        .findAllByTestId("cell-data")
-        .eq(columns.length * rowIndex + cellIndex)
-        .should("have.text", cell);
-    });
-  });
 }
