@@ -1,13 +1,12 @@
 import { createReducer } from "@reduxjs/toolkit";
 
+import { createCardPublicLink, deleteCardPublicLink } from "metabase/api";
 import type { Card, DatasetQuery } from "metabase-types/api";
 
 import {
   API_CREATE_QUESTION,
   API_UPDATE_QUESTION,
   CANCEL_QUESTION_CHANGES,
-  CREATE_PUBLIC_LINK,
-  DELETE_PUBLIC_LINK,
   INITIALIZE_QB,
   QUERY_COMPLETED,
   RELOAD_CARD,
@@ -108,38 +107,6 @@ export const card = createReducer<Card<DatasetQuery> | null>(null, builder => {
         visualization_settings: action.payload.card.visualization_settings,
       };
     })
-    .addCase<
-      string,
-      {
-        type: string;
-        payload: {
-          uuid: Card["public_uuid"];
-        };
-      }
-    >(CREATE_PUBLIC_LINK, (state, action) => {
-      if (!state) {
-        return state;
-      }
-      return {
-        ...state,
-        public_uuid: action.payload.uuid,
-      };
-    })
-    .addCase<
-      string,
-      {
-        type: string;
-      }
-    >(DELETE_PUBLIC_LINK, state => {
-      if (!state) {
-        return state;
-      }
-
-      return {
-        ...state,
-        public_uuid: null,
-      };
-    })
     .addCase(updateEnableEmbedding.fulfilled, (state, action) => {
       if (!state) {
         return state;
@@ -157,6 +124,25 @@ export const card = createReducer<Card<DatasetQuery> | null>(null, builder => {
         ...state,
         embedding_params: action.payload.embedding_params,
         initially_published_at: action.payload.initially_published_at,
+      };
+    })
+    .addMatcher(createCardPublicLink.matchFulfilled, (state, action) => {
+      if (!state) {
+        return state;
+      }
+      return {
+        ...state,
+        public_uuid: action.payload.uuid,
+      };
+    })
+    .addMatcher(deleteCardPublicLink.matchFulfilled, state => {
+      if (!state) {
+        return state;
+      }
+
+      return {
+        ...state,
+        public_uuid: null,
       };
     });
 });
