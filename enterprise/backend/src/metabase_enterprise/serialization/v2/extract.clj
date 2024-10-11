@@ -76,16 +76,16 @@
     [model-name (serdes/eid->id model-name id)]
     target))
 
-(defn- escape-analysis [{colls "Collection" cards "Card" :as _nodes} reasons]
+(defn- escape-analysis [{colls "Collection" cards "Card"} nodes]
   (log/tracef "Running escape analysis for %d colls and %d cards" (count colls) (count cards))
-  (when-let [colls (some-> colls not-empty set)]
+  (when-let [colls (-> colls set not-empty)]
     (let [known-cards (t2/select-pks-set Card {:where [:or
                                                        [:in :collection_id colls]
                                                        (when (contains? colls nil)
                                                          [:= :collection_id nil])]})
           escaped     (->> (set/difference (set cards) known-cards)
                            (mapv (fn [id]
-                                   (-> (get reasons ["Card" id])
+                                   (-> (get nodes ["Card" id])
                                        (assoc :escapee id)))))]
       escaped)))
 
@@ -123,12 +123,13 @@
   (let [inner-targets (if (seq targets)
                         (mapv parse-target targets)
                         (mapv vector (repeat "Collection") (collection-set-for-user user-id)))
+        ;; nodes are a map of `{[model-name id] {dep-model dep-id ...}}`
         nodes         (set/union
                        (u/traverse inner-targets #(serdes/ascendants (first %) (second %)))
                        (u/traverse inner-targets #(serdes/descendants (first %) (second %))))
-        reasons       (u/index-by #(take 2 %) #(first (nnext %)) nodes)
-        by-model      (u/group-by first second nodes)
-        escaped       (escape-analysis by-model reasons)]
+        ;; by model is a map of `{model-name [ids ...]}`
+        by-model      (u/group-by first second (keys nodes))
+        escaped       (escape-analysis by-model nodes)]
     (if (seq escaped)
       (log-escape-report! escaped)
       (let [models         (model-set opts)
@@ -154,9 +155,8 @@
 
 (comment
   (def nodes (let [colls (mapv vector (repeat "Collection") (collection-set-for-user nil))]
-               (set/union
+               (merge
                 (u/traverse colls #(serdes/ascendants (first %) (second %)))
                 (u/traverse colls #(serdes/descendants (first %) (second %))))))
-  (def escaped (escape-analysis (u/group-by first second nodes)
-                                (u/index-by #(take 2 %) #(first (nnext %)) nodes)))
+  (def escaped (escape-analysis (u/group-by first second (keys nodes)) nodes))
   (log-escape-report! escaped))

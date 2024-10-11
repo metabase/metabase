@@ -884,18 +884,19 @@
   "Traverses a graph of nodes using a user-defined function.
 
   `nodes`: A collection of initial nodes to start the traversal from.
-  `traverse-fn`: A function that, given a node, returns its directly connected nodes.
+  `traverse-fn`: A function that, given a node, returns a map of connected nodes to source they are connected from.
 
   The function performs a breadth-first traversal starting from the initial nodes, applying
   `traverse-fn` to each node to find connected nodes, and continues until all reachable nodes
   have been visited. Returns a set of all traversed nodes."
   [nodes traverse-fn]
-  (loop [to-traverse (set nodes)
-         traversed   #{}]
+  (loop [to-traverse (zipmap nodes (repeat nil))
+         traversed   {}]
     (let [item        (first to-traverse)
-          found       (traverse-fn item)
+          found       (traverse-fn (key item))
           traversed   (conj traversed item)
-          to-traverse (set/union (disj to-traverse item) (set/difference found traversed))]
+          to-traverse (into (dissoc to-traverse (key item))
+                            (apply dissoc found (keys traversed)))]
       (if (empty? to-traverse)
         traversed
         (recur to-traverse traversed)))))
@@ -1047,17 +1048,20 @@
      (/ (- (System/nanoTime) timer) 1e6)))
 
 (defn group-by
-  "(group-by first second     [[1 3] [1 4] [2 5]]) => {1 [3 4], 2 [5]}
-   (group-by first second + 0 [[1 3] [1 4] [2 5]]) => {1 7,     2 5}
-   (group-by first second         [[1 [3]] [1 [4]] [2 [5]]]) => {1 [[3] [4]], 2 [[5]]}
-   (group-by first second concat  [[1 [3]] [1 [4]] [2 [5]]]) => {1 (3 4), 2 (5)}
-   (group-by first second into    [[1 [3]] [1 [4]] [2 [5]]]) => {1 [3 4], 2 [5]}
-   (group-by first second into [] [[1 [3]] [1 [4]] [2 [5]]]) => {1 [3 4], 2 [5]}
-   (group-by first second into () [[1 [3]] [1 [4]] [2 [5]]]) => {1 (4 3), 2 (5)}
-   ;; as filter:
-   (group-by first any? second even? conj () [[1 3] [1 4] [2 5]])      => {1 (4)}
-   ;; as reducer (see index-by below):
-   (group-by first any? second even? max   0 [[1 3] [1 6] [1 4] [2 5]] => {1 6})"
+  "(group-by first                  [[1 3]   [1 4]   [2 5]])   => {1 [[1 3] [1 4]], 2 [[2 5]]}
+   (group-by first second           [[1 3]   [1 4]   [2 5]])   => {1 [3 4],         2 [5]}
+   (group-by first second +      0  [[1 3]   [1 4]   [2 5]])   => {1 7,             2 5}
+   (group-by first second           [[1 [3]] [1 [4]] [2 [5]]]) => {1 [[3] [4]],     2 [[5]]}
+   (group-by first second concat    [[1 [3]] [1 [4]] [2 [5]]]) => {1 (3 4),         2 (5)}
+   (group-by first second into      [[1 [3]] [1 [4]] [2 [5]]]) => {1 [3 4],         2 [5]}
+   (group-by first second into   [] [[1 [3]] [1 [4]] [2 [5]]]) => {1 [3 4],         2 [5]}
+   (group-by first second into   () [[1 [3]] [1 [4]] [2 [5]]]) => {1 (4 3),         2 (5)}
+   ;; as a filter:
+             kf    kpred  vf     vpred rf   init
+   (group-by first any?   second even? conj () [[1 3] [1 4] [2 5]])      => {1 (4)}
+   ;; as a reducer (see index-by below):
+             kf    kpred  vf     vpred rf   init
+   (group-by first any?   second even? max  0  [[1 3] [1 6] [1 4] [2 5]] => {1 6})"
 
   ([kf coll] (clojure.core/group-by kf coll))
   ([kf vf coll] (group-by kf vf conj [] coll))

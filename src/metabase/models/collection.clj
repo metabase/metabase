@@ -1410,22 +1410,24 @@
   (when id
     (let [{:keys [location]} (t2/select-one :model/Collection :id id)]
       ;; it would work returning just one, but why not return all if it's cheap
-      (set (map vector (repeat "Collection") (location-path->ids location))))))
+      (into {} (for [parent-id (location-path->ids location)]
+                 {["Collection" parent-id] {"Collection" id}})))))
 
 (defmethod serdes/descendants "Collection" [_model-name id]
   (let [location    (when id (t2/select-one-fn :location Collection :id id))
-        child-colls (when id ;; (sanya) NOTE: I'm not sure we should not descend here, but it seems we did not before
-                      (set (for [child-id (t2/select-pks-set :model/Collection {:where [:and
-                                                                                        [:like :location (str location id "/%")]
-                                                                                        [:or
-                                                                                         [:not= :type trash-collection-type]
-                                                                                         [:= :type nil]]]})]
-                             ["Collection" child-id {"Collection" id}])))
-        dashboards  (set (for [dash-id (t2/select-pks-set :model/Dashboard {:where [:= :collection_id id]})]
-                           ["Dashboard" dash-id {"Collection" id}]))
-        cards       (set (for [card-id (t2/select-pks-set :model/Card {:where [:= :collection_id id]})]
-                           ["Card" card-id {"Collection" id}]))]
-    (set/union child-colls dashboards cards)))
+        child-colls (when id ; traversing root coll will return all (even personal) colls, do not do it
+                      (into {} (for [child-id (t2/select-pks-set :model/Collection
+                                                                 {:where [:and
+                                                                          [:= :location (str location id "/")]
+                                                                          [:or
+                                                                           [:not= :type trash-collection-type]
+                                                                           [:= :type nil]]]})]
+                                 {["Collection" child-id] {"Collection" id}})))
+        dashboards  (into {} (for [dash-id (t2/select-pks-set :model/Dashboard {:where [:= :collection_id id]})]
+                               {["Dashboard" dash-id] {"Collection" id}}))
+        cards       (into {} (for [card-id (t2/select-pks-set :model/Card {:where [:= :collection_id id]})]
+                               {["Card" card-id] {"Collection" id}}))]
+    (merge child-colls dashboards cards)))
 
 (defmethod serdes/storage-path "Collection" [coll {:keys [collections]}]
   (let [parental (get collections (:entity_id coll))]

@@ -1376,19 +1376,14 @@
                         (map serdes/path)
                         set))))
 
-          #_;; (sanya) NOTE: this looks like an irrelevant test? I mean if we do escape analysis and don't allow
-          ;; leaking cards from unrelated collections, why this test?
-            (testing "select a collection where a dashboard contains parameter's source is card from another collection"
-              (is (=? #{[{:model "Collection"    :id coll4-eid :label "forth_collection"}]
-                        [{:model "Dashboard"     :id dash4-eid :label "dashboard_4"}]
-                        [{:model "Card"          :id c4-eid  :label "question_4_1"}]
-                        ;; card that parameter on dashboard linked to
-                        [{:model "Card"          :id c1-1-eid  :label "question_1_1"}]
-                        ;; card that the card on dashboard linked to
-                        [{:model "Card"          :id c1-2-eid  :label "question_1_2"}]}
-                      (->> (extract/extract {:targets [["Collection" coll4-id]] :no-settings true :no-data-model true})
-                           (map serdes/path)
-                           set)))))))))
+          (testing "depending on data from personal collections results in errors"
+            (mt/with-log-messages-for-level [messages [metabase-enterprise :warn]]
+              (extract/extract {:targets [["Collection" coll4-id]] :no-settings true :no-data-model true})
+              (let [msgs (into #{}
+                               (map :message)
+                               (messages))]
+                (is (some #(str/starts-with? % "Failed to export Dashboard") msgs))
+                (is (some #(str/starts-with? % "Failed to export Cards") msgs))))))))))
 
 (deftest field-references-test
   (mt/with-empty-h2-app-db
