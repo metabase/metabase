@@ -55,7 +55,7 @@ export function getDataSourceParts({
     const isBasedOnSavedQuestion = isVirtualCardId(table.id);
     if (!isBasedOnSavedQuestion) {
       parts.push({
-        model: "question",
+        model: "schema",
         name: table.schema_name,
         href: database.id >= 0 && Urls.browseSchema(table),
       });
@@ -99,7 +99,7 @@ export function getDataSourceParts({
       {
         name: table.displayName(),
         href: hasTableLink ? getTableURL(table) : "",
-        model: "table",
+        model: table.type ?? "table",
       }
     );
 

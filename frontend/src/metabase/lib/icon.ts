@@ -9,7 +9,7 @@ import type {
   SearchModel,
 } from "metabase-types/api";
 
-type IconModel = SearchModel | CollectionItemModel | "schema";
+export type IconModel = SearchModel | CollectionItemModel | "schema";
 
 export type ObjectWithModel = {
   id?: unknown;

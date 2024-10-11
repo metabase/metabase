@@ -1,21 +1,15 @@
 import { Fragment, useMemo } from "react";
-import { match } from "ts-pattern";
 import { c } from "ttag";
 
 import { SidesheetCardSection } from "metabase/common/components/Sidesheet";
 import Link from "metabase/core/components/Link";
-import { getIcon } from "metabase/lib/icon";
-import { Box, Flex, FixedSizeIcon as Icon, type IconProps } from "metabase/ui";
+import { Flex, FixedSizeIcon as Icon } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 
 import { getDataSourceParts } from "../../../ViewHeader/components/QuestionDataSource/utils";
 
-interface QuestionSource {
-  href: string;
-  name: string;
-  model?: string;
-  iconProps: Omit<IconProps, "display">;
-}
+import type { QuestionSource } from "./types";
+import { getIconPropsForSource } from "./utils";
 
 export const QuestionSources = ({ question }: { question: Question }) => {
   const sources = getDataSourceParts({
@@ -26,14 +20,10 @@ export const QuestionSources = ({ question }: { question: Question }) => {
   }) as unknown as QuestionSource[];
 
   const sourcesWithIcons: QuestionSource[] = useMemo(() => {
-    return sources.map(source => {
-      const modelForIcon = match(source.model)
-        .with("question", () => ({ model: "card" as const }))
-        .with("model", () => ({ model: "dataset" as const }))
-        .otherwise(() => ({ model: "table" as const }));
-      const iconProps = getIcon(modelForIcon);
-      return { ...source, iconProps };
-    });
+    return sources.map(source => ({
+      ...source,
+      iconProps: getIconPropsForSource(source),
+    }));
   }, [sources]);
 
   if (!sources.length) {
@@ -51,7 +41,9 @@ export const QuestionSources = ({ question }: { question: Question }) => {
           <Fragment key={`${href}-${name}`}>
             <Link to={href} variant="brand">
               <Flex gap="sm" lh="1.25rem" maw="20rem">
-                <Box component={Icon} mt={2} c="text-dark" {...iconProps} />
+                {iconProps ? (
+                  <Icon mt={2} c="text-dark" {...iconProps} />
+                ) : null}
                 {name}
               </Flex>
             </Link>
