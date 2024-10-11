@@ -49,7 +49,7 @@
                                (->> sandbox-source-card :result_metadata (map :name) set)))
       :query  (update query-metadata-response :fields
                       (partial filter-fields-by-id
-                               (->> sandbox-source-card :result_metadata (map u/the-id) set))))
+                               (->> sandbox-source-card :result_metadata (map u/id) set))))
     ;; Sandboxed via user attribute, not a source question, so no column-level sandboxing is in place
     query-metadata-response))
 
