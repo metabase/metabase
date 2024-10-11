@@ -1,8 +1,20 @@
 .root {
+  /* TODO: change all usages of compact to compact-md */
+
+  --button-height-md: calc(2.5rem * var(--mantine-scale));
+  --button-padding-x: 0.9375rem;
+  --button-height-compact-md: calc(1.5rem * var(--mantine-scale));
+
+  &[data-size=^"compact"] {
+    --button-padding-x: 0.4375rem !important;
+  }
+
   overflow: hidden;
+  line-height: 1.15; /* mimic line-height ration from mantine v6 */
+  font-size: var(--mantine-font-size-md);
 
   &:active {
-    transform: none;
+    transform: none; /* Remove Mantine's default pressed effect */
   }
 
   & [data-position="right"] {
@@ -106,13 +118,15 @@
 }
 
 .label {
+  height: auto;
+  display: inline-block;
   text-overflow: ellipsis;
 }
 
 .leftSection {
-  margin-right: 0.5rem;
+  margin-inline-end: 0.5rem;
 }
 
 .rightSection {
-  margin-left: 0.5rem;
+  margin-inline-start: 0.5rem;
 }
