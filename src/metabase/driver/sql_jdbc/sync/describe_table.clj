@@ -657,18 +657,19 @@
 ;; was JSON so what they're getting is JSON.
 (defmethod sql-jdbc.sync.interface/describe-nested-field-columns :sql-jdbc
   [driver database table]
-  (let [jdbc-spec (sql-jdbc.conn/db->pooled-connection-spec database)]
-    (sql-jdbc.execute/do-with-connection-with-options
-     driver
-     jdbc-spec
-     nil
-     (fn [^Connection conn]
-       (let [unfold-json-fields (table->unfold-json-fields driver conn table)
-              ;; Just pass in `nil` here, that's what we do in the normal sync process and it seems to work correctly.
-              ;; We don't currently have a driver-agnostic way to get the physical database name. `(:name database)` is
-              ;; wrong, because it's a human-friendly name rather than a physical name. `(get-in
-              ;; database [:details :db])` works for most drivers but not H2.
-             pks                (get-table-pks driver conn nil table)]
-         (if (empty? unfold-json-fields)
-           #{}
-           (describe-json-fields driver jdbc-spec table unfold-json-fields pks)))))))
+  (let [jdbc-spec (sql-jdbc.conn/db->pooled-connection-spec database)
+        [unfold-json-fields pks] (sql-jdbc.execute/do-with-connection-with-options
+                                  driver
+                                  jdbc-spec
+                                  nil
+                                  (fn [^Connection conn]
+                                    (let [unfold-json-fields (table->unfold-json-fields driver conn table)
+                                           ;; Just pass in `nil` here, that's what we do in the normal sync process and it seems to work correctly.
+                                           ;; We don't currently have a driver-agnostic way to get the physical database name. `(:name database)` is
+                                           ;; wrong, because it's a human-friendly name rather than a physical name. `(get-in
+                                           ;; database [:details :db])` works for most drivers but not H2.
+                                          pks                (get-table-pks driver conn nil table)]
+                                      [unfold-json-fields pks])))]
+    (if (empty? unfold-json-fields)
+      #{}
+      (describe-json-fields driver jdbc-spec table unfold-json-fields pks))))
