@@ -90,7 +90,7 @@
      :card-id           card-id
      :token-params      (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
      :embedding-params  (t2/select-one-fn :embedding_params Card :id card-id)
-     :query-params      (api.embed.common/parse-query-params query-params)
+     :query-params      (api.embed.common/parse-query-params (dissoc query-params :format_rows :pivot_results))
      :qp                qp
      :constraints       constraints
      :options           options)))
@@ -114,7 +114,7 @@
   (run-query-for-unsigned-token-async
    (unsign-and-translate-ids token)
    export-format
-   (api.embed.common/parse-query-params (dissoc (m/map-keys keyword query-params) :format_rows))
+   (api.embed.common/parse-query-params (dissoc (m/map-keys keyword query-params) :format_rows :pivot_results))
    :constraints nil
    :middleware {:process-viz-settings? true
                 :js-int-to-string?     false

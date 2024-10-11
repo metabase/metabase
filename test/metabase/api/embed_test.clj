@@ -6,6 +6,7 @@
    [clj-time.core :as time]
    [clojure.data.csv :as csv]
    [clojure.set :as set]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [crypto.random :as crypto-random]
    [dk.ative.docjure.spreadsheet :as spreadsheet]
@@ -290,7 +291,8 @@
        (card-token card-or-id additional-token-keys)
        "/query"
        response-format-route-suffix
-       "?format_rows=true"))
+       (when-not (str/blank? response-format-route-suffix)
+         "?format_rows=true")))
 
 (def ^:private response-format->request-options
   {""      nil
@@ -427,7 +429,10 @@
 
           (testing "If `:locked` parameter is present in URL params, request should fail"
             (is (= "You can only specify a value for :venue_id in the JWT."
-                   (client/client :get 400 (str (card-query-url card response-format {:params {:venue_id 100}}) "?venue_id=100"))))))))))
+                   (let [url (card-query-url card response-format {:params {:venue_id 100}})]
+                     (client/client :get 400 (str url (if (str/includes? url "format_rows")
+                                                        "&venue_id=100"
+                                                        "?venue_id=100"))))))))))))
 
 (deftest card-disabled-params-test
   (with-embedding-enabled-and-new-secret-key!
@@ -440,7 +445,10 @@
 
         (testing "If a `:disabled` param is passed in the URL the request should fail"
           (is (= "You're not allowed to specify a value for :venue_id."
-                 (client/client :get 400 (str (card-query-url card response-format) "?venue_id=200")))))))))
+                 (let [url (card-query-url card response-format)]
+                   (client/client :get 400 (str url (if (str/includes? url "format_rows")
+                                                      "&venue_id=200"
+                                                      "?venue_id=200")))))))))))
 
 (deftest card-enabled-params-test
   (mt/test-helpers-set-global-values!
@@ -449,7 +457,10 @@
         (do-response-formats [response-format request-options]
           (testing "If `:enabled` param is present in both JWT and the URL, the request should fail"
             (is (= "You can't specify a value for :venue_id if it's already set in the JWT."
-                   (client/real-client :get 400 (str (card-query-url card response-format {:params {:venue_id 100}}) "?venue_id=200")))))
+                   (let [url (card-query-url card response-format {:params {:venue_id 100}})]
+                     (client/client :get 400 (str url (if (str/includes? url "format_rows")
+                                                        "&venue_id=100"
+                                                        "?venue_id=100")))))))
 
           (testing "If an `:enabled` param is present in the JWT, that's ok"
             #_{:clj-kondo/ignore [:deprecated-var]}
@@ -463,9 +474,12 @@
             #_{:clj-kondo/ignore [:deprecated-var]}
             (test-query-results
              response-format
-             (client/real-client :get (response-format->status-code response-format)
-                                 (str (card-query-url card response-format) "?venue_id=200")
-                                 {:request-options request-options}))))))))
+             (let [url (card-query-url card response-format)]
+               (client/real-client :get (response-format->status-code response-format)
+                                   (str url (if (str/includes? url "format_rows")
+                                              "&venue_id=200"
+                                              "?venue_id=200"))
+                                   {:request-options request-options})))))))))
 
 (defn card-with-date-field-filter-default
   []
@@ -538,7 +552,7 @@
     (with-embedding-enabled-and-new-secret-key!
       (t2.with-temp/with-temp [Card card (card-with-date-field-filter)]
         (is (= "count\n107\n"
-               (client/client :get 200 (str (card-query-url card "/csv") "?date=Q1-2014"))))))))
+               (client/client :get 200 (str (card-query-url card "/csv") "&date=Q1-2014"))))))))
 
 (deftest csv-forward-url-test
   (mt/test-helpers-set-global-values!
