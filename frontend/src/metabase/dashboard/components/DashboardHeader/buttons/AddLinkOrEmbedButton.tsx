@@ -45,7 +45,7 @@ export const AddLinkOrEmbedButton = () => {
           data-element-id={t`Add a link or iframe`}
           aria-label={t`Add a link or iframe`}
         >
-          <Group spacing="xs" noWrap>
+          <Group gap="xs" noWrap>
             <Icon name="link" size={18} />
             <Icon name="chevrondown" size={10} />
           </Group>

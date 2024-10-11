@@ -41,7 +41,7 @@ export const SearchFilterPopoverWrapper = ({
 
   return (
     <FocusTrap active>
-      <SearchPopoverContainer spacing={0} {...stackProps}>
+      <SearchPopoverContainer gap={0} {...stackProps}>
         {children}
         <DropdownApplyButtonDivider />
         <Group position="right" align="center" px="sm" pb="sm">

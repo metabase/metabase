@@ -132,7 +132,7 @@ const EmptyStateSubtitle = ({ children }: PropsWithChildren) => {
 
 const EmptyStateWrapper = ({ children }: PropsWithChildren) => {
   return (
-    <Stack data-testid="collection-empty-state" align="center" spacing={0}>
+    <Stack data-testid="collection-empty-state" align="center" gap={0}>
       {children}
     </Stack>
   );

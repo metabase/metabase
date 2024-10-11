@@ -31,7 +31,7 @@ export function FilterColumnName({
   }
 
   return (
-    <Group fw="bold" spacing="xs">
+    <Group fw="bold" gap="xs">
       <Text color="text-dark">{columnInfo.displayName}</Text>
       <Text color="text-light">{t`in`}</Text>
       <Text color="text-dark">{columnInfo.table.displayName}</Text>

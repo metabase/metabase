@@ -98,7 +98,7 @@ export function DateIntervalPicker({
       </Flex>
       <Divider />
       <Group px="md" py="sm" position="apart">
-        <Group c="text-medium" spacing="sm">
+        <Group c="text-medium" gap="sm">
           <Icon name="calendar" />
           <Text c="inherit">{dateRangeText}</Text>
         </Group>

@@ -128,7 +128,7 @@ export function NotebookDataPicker({
           onClick={handleClick}
           onAuxClick={handleAuxClick}
         >
-          <Group spacing="xs">
+          <Group gap="xs">
             {tableInfo && <Icon name={getTableIcon(tableInfo)} />}
             {tableInfo?.displayName ?? placeholder}
           </Group>

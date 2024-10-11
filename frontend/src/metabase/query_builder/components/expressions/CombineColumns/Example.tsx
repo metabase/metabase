@@ -13,7 +13,7 @@ export const Example = ({ columnsAndSeparators }: Props) => {
   const example = getExample(columnsAndSeparators);
 
   return (
-    <Stack spacing="sm">
+    <Stack gap="sm">
       <Text color="text-medium" lh={1} weight="bold">{t`Example`}</Text>
 
       <Card
