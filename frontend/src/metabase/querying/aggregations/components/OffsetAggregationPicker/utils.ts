@@ -79,12 +79,21 @@ export function getBreakoutColumn(
   query: Lib.Query,
   stageIndex: number,
 ): Lib.ColumnMetadata {
-  const [column] = getSupportedBreakoutColumns(query, stageIndex);
-  if (!column) {
+  const columns = getSupportedBreakoutColumns(query, stageIndex);
+  if (columns.length === 0) {
     throw new Error("No supported breakout column found.");
   }
 
-  return column;
+  const columnWithBreakout = columns.find(column => {
+    const { breakoutPositions = [] } = Lib.displayInfo(
+      query,
+      stageIndex,
+      column,
+    );
+    return breakoutPositions.length > 0;
+  });
+
+  return columnWithBreakout ?? columns[0];
 }
 
 function getGroupBreakoutInfo(
