@@ -30,7 +30,6 @@ import Dashboards from "metabase/entities/dashboards";
 import type { Deferred } from "metabase/lib/promise";
 import { defer } from "metabase/lib/promise";
 import { createAsyncThunk, createThunkAction } from "metabase/lib/redux";
-import { checkNotNull } from "metabase/lib/types";
 import { equals } from "metabase/lib/utils";
 import { uuid } from "metabase/lib/uuid";
 import { addFields, addParamValues } from "metabase/redux/metadata";
@@ -174,12 +173,14 @@ type FetchCardDataActionArgs = {
   };
 };
 
-type FetchCardDataActionReturned = {
-  dashcard_id: DashCardId;
-  card_id: CardId;
-  result: Dataset | { error: unknown } | null;
-  currentTime?: number;
-};
+type FetchCardDataActionReturned =
+  | {
+      dashcard_id: DashCardId;
+      card_id: CardId;
+      result: Dataset | { error: unknown } | null;
+      currentTime?: number;
+    }
+  | undefined;
 
 export const fetchCardDataAction = createAsyncThunk<
   FetchCardDataActionReturned,
@@ -211,7 +212,11 @@ export const fetchCardDataAction = createAsyncThunk<
     const { dashboardId, dashboards, parameterValues, dashcardData } =
       getState().dashboard;
 
-    const dashboard = dashboards[checkNotNull(dashboardId)];
+    if (!dashboardId) {
+      return;
+    }
+
+    const dashboard = dashboards[dashboardId];
 
     // if we have a parameter, apply it to the card query before we execute
     const datasetQuery = applyParameters(
@@ -393,10 +398,13 @@ export const fetchCardData =
 export const fetchDashboardCardData =
   ({ isRefreshing = false, reload = false, clearCache = false } = {}) =>
   (dispatch: Dispatch, getState: GetState) => {
-    const dashboard = checkNotNull(getDashboardComplete(getState()));
+    const dashboard = getDashboardComplete(getState());
+    if (!dashboard) {
+      return;
+    }
+
     const selectedTabId = getSelectedTabId(getState());
     const dashboardLoadId = uuid();
-
     const loadingIds = getLoadingDashCards(getState()).loadingIds;
     const nonVirtualDashcards = getCurrentTabDashboardCards(
       dashboard,
@@ -470,7 +478,11 @@ export const fetchDashboardCardData =
 
 export const reloadDashboardCards =
   () => async (dispatch: Dispatch, getState: GetState) => {
-    const dashboard = checkNotNull(getDashboardComplete(getState()));
+    const dashboard = getDashboardComplete(getState());
+
+    if (!dashboard) {
+      return;
+    }
 
     const reloads = getAllDashboardCards(dashboard)
       .filter(({ dashcard }) => !isVirtualDashCard(dashcard))
@@ -492,7 +504,12 @@ export const reloadDashboardCards =
 export const cancelFetchDashboardCardData = createThunkAction(
   CANCEL_FETCH_DASHBOARD_CARD_DATA,
   () => (dispatch, getState) => {
-    const dashboard = checkNotNull(getDashboardComplete(getState()));
+    const dashboard = getDashboardComplete(getState());
+
+    if (!dashboard) {
+      return;
+    }
+
     for (const { card, dashcard } of getAllDashboardCards(dashboard)) {
       dispatch(cancelFetchCardData(card.id, dashcard.id));
     }
