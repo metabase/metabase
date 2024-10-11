@@ -72,12 +72,12 @@
                                                           :channel_id   (:id chn)
                                                           :template_id  nil}]}}
                  {:task          "channel-send"
-                  :task_details {:retry_config   (mt/malli=? :map)
-                                 :channel_id     (:id chn)
-                                 :channel_type   "channel/metabase-test"
-                                 :template_id    nil
-                                 :notifcation_id (:id n)
-                                 :recipient_ids  (mt/malli=? [:sequential :int])}}]
+                  :task_details {:retry_config    (mt/malli=? :map)
+                                 :channel_id      (:id chn)
+                                 :channel_type    "channel/metabase-test"
+                                 :template_id     nil
+                                 :notification_id (:id n)
+                                 :recipient_ids   (mt/malli=? [:sequential :int])}}]
                 (t2/select [:model/TaskHistory :task :task_details] :task [:in ["channel-send" "notification-send"]]
                            {:order-by [[:started_at :asc]]})))))))
 

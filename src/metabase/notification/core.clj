@@ -93,7 +93,8 @@
                              (vswap! retry-errors conj {:message   (u/strip-error e)
                                                         :timestamp (t/offset-date-time)})
                              (log/warnf e "[Notification %d] Failed to send to channel %s , retrying..." notification-id (handler->channel-name handler))
-                             (throw e))))]
+                             (throw e))))
+          retrier     (retry/make retry-config)]
       (log/debugf "[Notification %d] Sending a message to channel %s" notification-id (handler->channel-name handler))
       (task-history/with-task-history {:task            "channel-send"
                                        :on-success-info (fn [update-map _result]
@@ -101,14 +102,14 @@
                                                             (seq @retry-errors)
                                                             (update :task_details merge (retry-report))))
                                        :on-fail-info    (fn [update-map _result]
-                                                          (update update-map :task_details #(merge % (retry-report))))
+                                                          (update update-map :task_details merge (retry-report)))
                                        :task_details    {:retry_config   retry-config
                                                          :channel_id     (:id channel)
                                                          :channel_type   (:type channel)
                                                          :template_id    (:template_id handler)
                                                          :notifcation_id notification-id
                                                          :recipient_ids  (map :id (:recipients handler))}}
-        ((retry/decorate send! (retry/random-exponential-backoff-retry (str (random-uuid)) retry-config)))
+        (retrier send!)
         (log/debugf "[Notification %d] Sent to channel %s with %d retries" notification-id (handler->channel-name handler) (count @retry-errors))))
     (catch Throwable e
       (log/errorf e "[Notification %d] Error sending notification!" (:notification_id handler)))))
