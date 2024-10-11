@@ -247,7 +247,7 @@ export const cancelQuery = () => (dispatch: Dispatch, getState: GetState) => {
     const { cancelQueryDeferred } = getState().qb;
     if (cancelQueryDeferred) {
       // it could have type Deferred + resolve/reject, please fix other similar places
-      // @ts-expect-error probably it never worked, Promise.resolve() doesn't exist in spec
+      // @ts-expect-error probably it never worked, promise.resolve() doesn't exist in spec
       cancelQueryDeferred.resolve();
     }
     dispatch(setDocumentTitle(""));
