@@ -19,7 +19,7 @@ import type { Dashboard } from "metabase-types/api";
 import CS from "./SaveQuestionForm.module.css";
 import { useSaveQuestionContext } from "./context";
 
-const COLLECTION_PICKER_MODALS: CollectionPickerModel[] = [
+const COLLECTION_PICKER_MODELS: CollectionPickerModel[] = [
   "collection",
   "dashboard",
 ];
@@ -94,7 +94,7 @@ export const SaveQuestionForm = ({
               title={t`Where do you want to save this?`}
               zIndex={DEFAULT_MODAL_Z_INDEX + 1}
               collectionPickerModalProps={{
-                models: COLLECTION_PICKER_MODALS,
+                models: COLLECTION_PICKER_MODELS,
               }}
             />
           )}
