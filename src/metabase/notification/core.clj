@@ -59,24 +59,28 @@
 (mu/defn- send-notification-sync!
   "Send the notification to all handlers synchronously. Do not use this directly, use *send-notification!* instead."
   [notification-info :- NotificationInfo]
-  (let [noti-handlers (hydrate-notification-handler (t2/select :model/NotificationHandler :notification_id (:id notification-info)))]
-    (log/infof "[Notification %d] Found %d %s"
-               (:id notification-info) (count noti-handlers) (u/format-plural (count noti-handlers) "handler"))
-    (doseq [handler noti-handlers]
-      (let [channel-type (:channel_type handler)
-            messages     (channel/render-notification
-                          channel-type
-                          notification-info
-                          (:template handler)
-                          (:recipients handler))]
-        (log/infof "[Notification %d] Got %d %s for channel %s"
-                   (:id notification-info) (count messages) (u/format-plural (count messages) "message") (:channel_type handler))
-        (doseq [message messages]
-          (log/infof "[Notification %d] Sending message to channel %s"
-                     (:id notification-info) (:channel_type handler))
-          (channel/send! (or (:channel handler)
-                             {:type channel-type}) message))))
-    (log/infof "[Notification %d] Sent successfully" (:id notification-info)))
+  (try
+    (let [noti-handlers (hydrate-notification-handler (t2/select :model/NotificationHandler :notification_id (:id notification-info)))]
+      (log/infof "[Notification %d] Found %d %s"
+                 (:id notification-info) (count noti-handlers) (u/format-plural (count noti-handlers) "handler"))
+      (doseq [handler noti-handlers]
+        (let [channel-type (:channel_type handler)
+              messages     (channel/render-notification
+                            channel-type
+                            notification-info
+                            (:template handler)
+                            (:recipients handler))]
+          (log/infof "[Notification %d] Got %d %s for channel %s"
+                     (:id notification-info) (count messages) (u/format-plural (count messages) "message") (:channel_type handler))
+          (doseq [message messages]
+            (log/infof "[Notification %d] Sending message to channel %s"
+                       (:id notification-info) (:channel_type handler))
+            (channel/send! (or (:channel handler)
+                               {:type channel-type}) message))))
+      (log/infof "[Notification %d] Sent successfully" (:id notification-info)))
+    (catch Exception e
+      (log/errorf e "[Notification %d] Failed to send" (:id notification-info))
+      (throw e)))
   nil)
 
 (defn- send-notification-async!
@@ -84,6 +88,7 @@
   [notification]
   (.submit ^ExecutorService @pool ^Callable
            (fn []
+             (Thread/sleep 1000)
              (send-notification-sync! notification)))
   nil)
 
