@@ -3,8 +3,13 @@ import { t } from "ttag";
 import * as Lib from "metabase-lib";
 import type { TemporalUnit } from "metabase-types/api";
 
-import { OFFSET_DISPLAY_UNITS, OFFSET_UNITS } from "./constants";
-import type { OffsetData } from "./types";
+import {
+  COLUMN_TYPES,
+  COLUMN_TYPE_NAMES,
+  OFFSET_DISPLAY_UNITS,
+  OFFSET_UNITS,
+} from "./constants";
+import type { ComparisonType, OffsetData } from "./types";
 
 export function getTitle(
   query: Lib.Query,
@@ -199,4 +204,11 @@ export function getOffsetUnitOptions(
       value: unit,
       label: Lib.describeTemporalUnit(OFFSET_DISPLAY_UNITS[unit] ?? unit),
     }));
+}
+
+export function getColumnTypeOptions(comparisonType: ComparisonType) {
+  return COLUMN_TYPES[comparisonType].map(columnType => ({
+    value: columnType,
+    label: COLUMN_TYPE_NAMES[columnType],
+  }));
 }

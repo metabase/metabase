@@ -12,7 +12,7 @@ type OffsetUnitInputProps = {
   column: Lib.ColumnMetadata;
   groupUnit: TemporalUnit;
   offsetUnit: TemporalUnit;
-  onOffsetUnitChange: (value: TemporalUnit) => void;
+  onOffsetUnitChange: (offsetUnit: TemporalUnit) => void;
 };
 
 export function OffsetUnitInput({

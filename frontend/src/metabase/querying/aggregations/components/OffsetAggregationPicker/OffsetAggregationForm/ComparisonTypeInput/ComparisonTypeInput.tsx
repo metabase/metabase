@@ -6,7 +6,7 @@ import type { ComparisonType } from "../../types";
 
 type ComparisonTypeInputProps = {
   comparisonType: ComparisonType;
-  onComparisonTypeChange: (value: ComparisonType) => void;
+  onComparisonTypeChange: (comparisonType: ComparisonType) => void;
 };
 
 export function ComparisonTypeInput({

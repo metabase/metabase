@@ -7,7 +7,7 @@ import type { ComparisonType } from "../../types";
 interface OffsetValueInputProps {
   comparisonType: ComparisonType;
   offsetValue: number;
-  onOffsetValueChange: (value: number) => void;
+  onOffsetValueChange: (offsetValue: number) => void;
 }
 
 export const OffsetValueInput = ({

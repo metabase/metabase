@@ -12,7 +12,7 @@ type GroupUnitInputProps = {
   stageIndex: number;
   column: Lib.ColumnMetadata;
   groupUnit: TemporalUnit;
-  onGroupUnitChange: (value: TemporalUnit) => void;
+  onGroupUnitChange: (groupUnit: TemporalUnit) => void;
 };
 
 export function GroupUnitInput({

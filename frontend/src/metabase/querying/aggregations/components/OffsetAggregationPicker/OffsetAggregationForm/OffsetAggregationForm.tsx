@@ -5,9 +5,10 @@ import { Box, Button, Group, Input, Stack } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import type { TemporalUnit } from "metabase-types/api";
 
-import type { ComparisonType, OffsetData } from "../types";
+import type { ColumnType, ComparisonType, OffsetData } from "../types";
 import { getBreakoutColumn, getInitialData } from "../utils";
 
+import { ColumnTypeInput } from "./ColumnTypeInput";
 import { ComparisonTypeInput } from "./ComparisonTypeInput";
 import { GroupUnitInput } from "./GroupUnitInput";
 import { OffsetUnitInput } from "./OffsetUnitInput";
@@ -34,6 +35,10 @@ export function OffsetAggregationForm({
     setData(data => ({ ...data, comparisonType }));
   };
 
+  const handleColumnTypeChange = (columnType: ColumnType) => {
+    setData(data => ({ ...data, columnType }));
+  };
+
   const handleGroupUnitChange = (groupUnit: TemporalUnit) => {
     setData(data => ({
       ...data,
@@ -52,7 +57,7 @@ export function OffsetAggregationForm({
 
   return (
     <form>
-      <Stack>
+      <Stack p="lg" spacing="lg">
         <ComparisonTypeInput
           comparisonType={data.comparisonType}
           onComparisonTypeChange={handleComparisonTypeChange}
@@ -82,6 +87,11 @@ export function OffsetAggregationForm({
             />
           </Group>
         </Box>
+        <ColumnTypeInput
+          comparisonType={data.comparisonType}
+          columnType={data.columnType}
+          onColumnTypeChange={handleColumnTypeChange}
+        />
         <Button variant="filled" type="submit">{t`Done`}</Button>
       </Stack>
     </form>
