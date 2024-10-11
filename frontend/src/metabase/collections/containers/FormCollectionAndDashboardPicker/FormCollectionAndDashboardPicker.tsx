@@ -8,14 +8,12 @@ import {
   isTrashedCollection,
   isValidCollectionId,
 } from "metabase/collections/utils";
-import type {
-  CollectionPickerItem,
-  CollectionPickerOptions,
-} from "metabase/common/components/CollectionPicker";
 import {
-  DashboardPickerModal,
-  type DashboardPickerModalProps,
-} from "metabase/common/components/DashboardPicker";
+  type CollectionPickerItem,
+  CollectionPickerModal,
+  type CollectionPickerModalProps,
+  type CollectionPickerOptions,
+} from "metabase/common/components/CollectionPicker";
 import type { FilterItemsInPersonalCollection } from "metabase/common/components/EntityPicker";
 import CollectionName from "metabase/containers/CollectionName";
 import SnippetCollectionName from "metabase/containers/SnippetCollectionName";
@@ -68,7 +66,7 @@ interface FormCollectionPickerProps extends HTMLAttributes<HTMLDivElement> {
   onOpenCollectionChange?: (collectionId: CollectionId) => void;
   filterPersonalCollections?: FilterItemsInPersonalCollection;
   zIndex?: number;
-  dashboardPickerModalProps?: Partial<DashboardPickerModalProps>;
+  collectionPickerModalProps?: Partial<CollectionPickerModalProps>;
 }
 
 export function FormCollectionAndDashboardPicker({
@@ -78,7 +76,7 @@ export function FormCollectionAndDashboardPicker({
   placeholder = t`Select a collection or dashboard`,
   type = "collections",
   filterPersonalCollections,
-  dashboardPickerModalProps,
+  collectionPickerModalProps,
   collectionIdFieldName,
   dashboardIdFieldName,
 }: FormCollectionPickerProps) {
@@ -196,17 +194,14 @@ export function FormCollectionAndDashboardPicker({
         </Button>
       </FormField>
       {isPickerOpen && (
-        <>
-          <DashboardPickerModal
-            title={t`Pick where to save this`}
-            value={pickerValue}
-            onChange={handleChange}
-            onClose={() => setIsPickerOpen(false)}
-            options={options}
-            canSelectCollection
-            {...dashboardPickerModalProps}
-          />
-        </>
+        <CollectionPickerModal
+          title={t`Select a collection`}
+          value={pickerValue}
+          onChange={handleChange}
+          onClose={() => setIsPickerOpen(false)}
+          options={options}
+          {...collectionPickerModalProps}
+        />
       )}
     </>
   );
