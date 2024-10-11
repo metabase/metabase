@@ -11,6 +11,16 @@ on:
       commit:
         description: 'A full-length commit SHA-1 hash'
         required: true
+      release-channel:
+        description: 'The release channel to publish to (optional)'
+        type: choice
+        options:
+          - none
+          - latest
+          - beta
+          - nightly
+        required: true
+        default: 'none'
       skip-docker:
         description: 'Skip Docker image publishing'
         type: boolean
@@ -706,10 +716,24 @@ jobs:
       tag_ee: true
       tag_oss: true
 
+  set-release-channel:
+    if: ${{ !inputs.auto }}
+    needs: [push-tags, verify-docker-pull, verify-s3-download, publish-version-info]
+    uses: ./.github/workflows/release-tag.yml
+    secrets: inherit
+    with:
+      # we need this job to run even if we don't tag, so we send through a skip flag
+      skip: ${{ inputs.release-channel == 'none' }}
+      version: ${{ inputs.version }}
+      tag_name: ${{ inputs.release-channel }}
+      tag_rollout: 100
+      tag_ee: true
+      tag_oss: true
+
   publish-complete-message:
     if: ${{ !inputs.auto }}
     runs-on: ubuntu-22.04
-    needs: [draft-release-notes, verify-docker-pull, verify-s3-download, publish-version-info]
+    needs: set-release-channel
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
