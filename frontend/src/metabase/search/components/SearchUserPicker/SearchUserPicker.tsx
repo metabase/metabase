@@ -76,11 +76,11 @@ export const SearchUserPicker = ({
       isLoading={isLoading}
       onApply={() => onChange(selectedUserIds)}
     >
-      <SearchUserPickerContainer p="sm" spacing="xs">
-        <SearchUserSelectBox spacing={0}>
+      <SearchUserPickerContainer p="sm" gap="xs">
+        <SearchUserSelectBox gap={0}>
           <SearchUserItemContainer
             data-testid="search-user-select-box"
-            spacing="xs"
+            gap="xs"
             p="xs"
             mah="30vh"
           >
@@ -119,7 +119,7 @@ export const SearchUserPicker = ({
         <SearchUserPickerContent
           data-testid="search-user-list"
           h="100%"
-          spacing="xs"
+          gap="xs"
           p="xs"
         >
           {filteredUsers.length > 0 ? (

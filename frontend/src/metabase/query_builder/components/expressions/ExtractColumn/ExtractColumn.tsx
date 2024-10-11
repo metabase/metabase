@@ -155,7 +155,7 @@ function ExtractionPicker({
         onBack={onCancel}
       />
       <Box p="sm">
-        <Stack spacing={0}>
+        <Stack gap={0}>
           {extractions.map(extraction => (
             <ExtractColumnButton
               key={extraction.info.tag}
