@@ -1,4 +1,4 @@
-(ns metabase.pulse.markdown
+(ns metabase.util.markdown
   (:require
    [clojure.edn :as edn]
    [clojure.java.io :as io]

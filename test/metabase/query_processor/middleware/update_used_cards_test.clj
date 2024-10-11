@@ -4,7 +4,7 @@
    [java-time.api :as t]
    [metabase.dashboard-subscription-test :as dashboard-subscription-test]
    [metabase.pulse :as pulse]
-   [metabase.pulse-test :as pulse-test]
+   [metabase.pulse-test :as pulse.send-test]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.update-used-cards :as qp.update-used-cards]
    [metabase.query-processor.pipeline :as qp.pipeline]
@@ -68,7 +68,7 @@
 (deftest alert-test
   (with-used-cards-setup!
     (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query venues)}]
-      (pulse-test/with-pulse-for-card [pulse {:card card-id}]
+      (pulse.send-test/with-pulse-for-card [pulse {:card card-id}]
         (do-test! card-id #(pulse/send-pulse! pulse))))))
 
 (deftest dashboard-subscription-test

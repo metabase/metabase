@@ -3,38 +3,37 @@
    [hiccup.core :refer [h]]
    [metabase.formatter :as formatter]
    [metabase.models.dashboard-card :as dashboard-card]
-   [metabase.pulse.markdown :as markdown]
    [metabase.pulse.render.body :as body]
    [metabase.pulse.render.image-bundle :as image-bundle]
    [metabase.pulse.render.png :as png]
    [metabase.pulse.render.style :as style]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.markdown :as markdown]
    [metabase.util.urls :as urls]))
 
-(def ^:dynamic *include-buttons*
-  "Should the rendered pulse include buttons? (default: `false`)"
-  false)
-
-(def ^:dynamic *include-title*
-  "Should the rendered pulse include a title? (default: `false`)"
-  false)
-
-(def ^:dynamic *include-description*
-  "Should the rendered pulse include a card description? (default: `false`)"
-  false)
+;;; I gave these keys below namespaces to make them easier to find usages for but didn't use `metabase.pulse.render` so
+;;; we can keep this as an internal namespace you don't need to know about outside of the module.
+(mr/def ::options
+  "Options for Pulse (i.e. Alert/Dashboard Subscription) rendering."
+  [:map
+   [:pulse/include-buttons?     {:description "default: false", :optional true} :boolean]
+   [:pulse/include-title?       {:description "default: false", :optional true} :boolean]
+   [:pulse/include-description? {:description "default: false", :optional true} :boolean]])
 
 (defn- card-href
   [card]
-  (h (urls/card-url (:id card))))
+  (h (urls/card-url (u/the-id card))))
 
 (mu/defn- make-title-if-needed :- [:maybe formatter/RenderedPulseCard]
-  [render-type card dashcard]
-  (when *include-title*
+  [render-type card dashcard options :- [:maybe ::options]]
+  (when (:pulse/include-title? options)
     (let [card-name    (or (-> dashcard :visualization_settings :card.title)
                            (-> card :name))
-          image-bundle (when *include-buttons*
+          image-bundle (when (:pulse/include-buttons? options)
                          (image-bundle/external-link-image-bundle render-type))]
       {:attachments (when image-bundle
                       (image-bundle/image-bundle->attachment image-bundle))
@@ -51,14 +50,14 @@
                              :rel    "noopener noreferrer"}
                          (h card-name)]]
                        [:td {:style (style/style {:text-align :right})}
-                        (when *include-buttons*
+                        (when (:pulse/include-buttons? options)
                           [:img {:style (style/style {:width :16px})
                                  :width 16
                                  :src   (:image-src image-bundle)}])]]]]})))
 
 (mu/defn- make-description-if-needed :- [:maybe formatter/RenderedPulseCard]
-  [dashcard card]
-  (when *include-description*
+  [dashcard card options :- [:maybe ::options]]
+  (when (:pulse/include-description? options)
     (when-let [description (or (get-in dashcard [:visualization_settings :card.description])
                                (:description card))]
       {:attachments {}
@@ -151,62 +150,81 @@
   - content (a hiccup form suitable for rendering on rich clients or rendering into an image)
   - render/text : raw text suitable for substituting on clients when text is preferable. (Currently slack uses this for
     scalar results where text is preferable to an image of a div of a single result."
-  [render-type
-   timezone-id :- [:maybe :string]
-   card
-   dashcard
-   results]
-  (let [{title             :content
-         title-attachments :attachments} (make-title-if-needed render-type card dashcard)
-        {description :content}           (make-description-if-needed dashcard card)
-        {pulse-body       :content
-         body-attachments :attachments
-         text             :render/text}  (render-pulse-card-body render-type timezone-id card dashcard results)]
-    (cond-> {:attachments (merge title-attachments body-attachments)
-             :content [:p
-                       ;; Provide a horizontal scrollbar for tables that overflow container width.
-                       ;; Surrounding <p> element prevents buggy behavior when dragging scrollbar.
-                       [:div
-                        [:a {:href        (card-href card)
-                             :target      "_blank"
-                             :rel         "noopener noreferrer"
-                             :style       (style/style
-                                           (style/section-style)
-                                           {:display         :block
-                                            :text-decoration :none})}
-                         title
-                         description
-                         [:div {:class "pulse-body"
-                                :style (style/style {:overflow-x :auto ;; when content is wide enough, automatically show a horizontal scrollbar
-                                                     :display :block
-                                                     :margin  :16px})}
-                          (if-let [more-results-message (body/attached-results-text render-type card)]
-                            (conj more-results-message (list pulse-body))
-                            pulse-body)]]]]}
-      text (assoc :render/text text))))
+  ([render-type timezone-id  card dashcard results]
+   (render-pulse-card render-type timezone-id  card dashcard results nil))
 
-(defn render-pulse-card-for-display
+  ([render-type
+    timezone-id :- [:maybe :string]
+    card
+    dashcard
+    results
+    options     :- [:maybe ::options]]
+   (let [{title             :content
+          title-attachments :attachments} (make-title-if-needed render-type card dashcard options)
+         {description :content}           (make-description-if-needed dashcard card options)
+         {pulse-body       :content
+          body-attachments :attachments
+          text             :render/text}  (render-pulse-card-body render-type timezone-id card dashcard results)]
+     (cond-> {:attachments (merge title-attachments body-attachments)
+              :content [:p
+                        ;; Provide a horizontal scrollbar for tables that overflow container width.
+                        ;; Surrounding <p> element prevents buggy behavior when dragging scrollbar.
+                        [:div
+                         [:a {:href        (card-href card)
+                              :target      "_blank"
+                              :rel         "noopener noreferrer"
+                              :style       (style/style
+                                            (style/section-style)
+                                            {:display         :block
+                                             :text-decoration :none})}
+                          title
+                          description
+                          [:div {:class "pulse-body"
+                                 :style (style/style {:overflow-x :auto ;; when content is wide enough, automatically show a horizontal scrollbar
+                                                      :display :block
+                                                      :margin  :16px})}
+                           (if-let [more-results-message (body/attached-results-text render-type card)]
+                             (conj more-results-message (list pulse-body))
+                             pulse-body)]]]]}
+       text (assoc :render/text text)))))
+
+(mu/defn render-pulse-card-for-display
   "Same as `render-pulse-card` but isn't intended for an email, rather for previewing so there is no need for
   attachments"
-  [timezone-id card results]
-  (:content (render-pulse-card :inline timezone-id card nil results)))
+  ([timezone-id card results]
+   (render-pulse-card-for-display timezone-id card results))
+
+  ([timezone-id card results options :- [:maybe ::options]]
+   (:content (render-pulse-card :inline timezone-id card nil results options))))
 
 (mu/defn render-pulse-section :- formatter/RenderedPulseCard
   "Render a single Card section of a Pulse to a Hiccup form (representating HTML)."
-  [timezone-id
-   {card :card, dashcard :dashcard, result :result}]
-  (let [{:keys [attachments content]} (binding [*include-title*       true
-                                                *include-description* true]
-                                        (render-pulse-card :attachment timezone-id card dashcard result))]
-    {:attachments attachments
-     :content     [:div {:style (style/style {:margin-top    :20px
-                                              :margin-bottom :20px})}
-                   content]}))
+  ([timezone-id part]
+   (render-pulse-section timezone-id part))
+
+  ([timezone-id
+    {card :card, dashcard :dashcard, result :result, :as _part}
+    options :- [:maybe ::options]]
+   (let [options                       (merge {:pulse/include-title?       true
+                                               :pulse/include-description? true}
+                                              options)
+         {:keys [attachments content]} (render-pulse-card :attachment timezone-id card dashcard result options)]
+     {:attachments attachments
+      :content     [:div {:style (style/style {:margin-top    :20px
+                                               :margin-bottom :20px})}
+                    content]})))
 
 (mu/defn render-pulse-card-to-png :- bytes?
   "Render a `pulse-card` as a PNG. `data` is the `:data` from a QP result."
-  ^bytes [timezone-id :- [:maybe :string] pulse-card result width]
-  (png/render-html-to-png (render-pulse-card :inline timezone-id pulse-card nil result) width))
+  (^bytes [timezone-id pulse-card result width]
+   (render-pulse-card-to-png timezone-id pulse-card result width nil))
+
+  (^bytes [timezone-id :- [:maybe :string]
+           pulse-card
+           result
+           width
+           options :- [:maybe ::options]]
+   (png/render-html-to-png (render-pulse-card :inline timezone-id pulse-card nil result options) width)))
 
 (mu/defn render-pulse-card-to-base64 :- string?
   "Render a `pulse-card` as a PNG and return it as a base64 encoded string."

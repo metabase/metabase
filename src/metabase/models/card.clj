@@ -28,7 +28,7 @@
    [metabase.models.parameter-card :as parameter-card :refer [ParameterCard]]
    [metabase.models.params :as params]
    [metabase.models.permissions :as perms]
-   [metabase.models.pulse :as pulse]
+   [metabase.models.pulse :as models.pulse]
    [metabase.models.query :as query]
    [metabase.models.query.permissions :as query-perms]
    [metabase.models.revision :as revision]
@@ -715,8 +715,8 @@
 
 (defn- delete-alerts-if-needed! [& {:keys [old-card new-card actor]}]
   ;; If there are alerts, we need to check to ensure the card change doesn't invalidate the alert
-  (when-let [alerts (binding [pulse/*allow-hydrate-archived-cards* true]
-                      (seq (pulse/retrieve-alerts-for-cards {:card-ids [(:id new-card)]})))]
+  (when-let [alerts (binding [models.pulse/*allow-hydrate-archived-cards* true]
+                      (seq (models.pulse/retrieve-alerts-for-cards {:card-ids [(:id new-card)]})))]
     (cond
 
       (card-archived? old-card new-card)

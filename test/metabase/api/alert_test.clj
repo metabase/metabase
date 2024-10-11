@@ -11,7 +11,7 @@
             User]]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
-   [metabase.models.pulse :as pulse]
+   [metabase.models.pulse :as models.pulse]
    [metabase.models.pulse-test :as pulse-test]
    [metabase.server.request.util :as req.util]
    [metabase.test :as mt]
@@ -82,7 +82,7 @@
     ;; Make this Alert actually be an alert
     (t2/update! Pulse (u/the-id alert) {:alert_condition "rows"})
     (let [alert (t2/select-one Pulse :id (u/the-id alert))]
-      (assert (pulse/is-alert? alert))
+      (assert (models.pulse/is-alert? alert))
       ;; Since Alerts do not actually go in Collections, but rather their Cards do, put the Card in the Collection
       (t2/update! Card (u/the-id card) {:collection_id (u/the-id collection)})
       (let [card (t2/select-one Card :id (u/the-id card))]
@@ -116,7 +116,7 @@
       ;; Go ahead and put all the Cards for all of the Alerts in the temp Collection
       (when (seq alerts-or-ids)
         (doseq [alert (t2/select Pulse :id [:in (set (map u/the-id alerts-or-ids))])
-                :let  [card (#'pulse/alert->card alert)]]
+                :let  [card (#'models.pulse/alert->card alert)]]
           (t2/update! Card (u/the-id card) {:collection_id (u/the-id collection)})))
       (f))))
 

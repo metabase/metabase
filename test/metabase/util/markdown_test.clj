@@ -1,9 +1,9 @@
-(ns metabase.pulse.markdown-test
+(ns metabase.util.markdown-test
   (:require
    [clojure.test :refer :all]
    [metabase.public-settings :as public-settings]
-   [metabase.pulse.markdown :as markdown]
-   [metabase.test.util :as tu]))
+   [metabase.test.util :as tu]
+   [metabase.util.markdown :as markdown]))
 
 (defn- slack
   [markdown]
@@ -13,7 +13,7 @@
   [text]
   (@#'markdown/escape-text text))
 
-(deftest process-markdown-slack-test
+(deftest ^:parallel process-markdown-slack-test
   (testing "Headers are converted to bold text"
     (is (= "*header*"          (slack "# header")))
     (is (= "*header*"          (slack "## header")))
@@ -23,8 +23,9 @@
     (is (= "*header*"          (slack "###### header")))
     (is (= "*header*"          (slack "header\n=========")))
     (is (= "*header*"          (slack "header\n---------")))
-    (is (= "*header*\ncontent" (slack "# header\ncontent"))))
+    (is (= "*header*\ncontent" (slack "# header\ncontent")))))
 
+(deftest ^:parallel process-markdown-slack-test-2
   (testing "Bold and italic text uses Slack's syntax"
     (is (= "*bold*"   (slack "**bold**")))
     (is (= "*bold*"   (slack "__bold__")))
@@ -33,8 +34,9 @@
     (is (= "_*both*_" (slack "***both***")))
     (is (= "*_both_*" (slack "__*both*__")))
     (is (= "*_both_*" (slack "**_both_**")))
-    (is (= "_*both*_" (slack "___both___"))))
+    (is (= "_*both*_" (slack "___both___")))))
 
+(deftest ^:parallel process-markdown-slack-test-3
   (testing "Nested bold or italic only render the top-level syntax"
     (is (= "*bold extra bold*"           (slack "**bold **extra bold****")))
     (is (= "*bold extra extra bold*"     (slack "**bold **extra **extra bold******")))
@@ -43,25 +45,29 @@
     (is (= "_italic extra italic_"       (slack "*italic *extra italic**")))
     (is (= "_italic extra extra italic_" (slack "*italic *extra *extra italic***")))
     (is (= "_italic extra italic_"       (slack "_italic _extra italic__")))
-    (is (= "_italic extra extra italic_" (slack "_italic _extra _extra italic___"))))
+    (is (= "_italic extra extra italic_" (slack "_italic _extra _extra italic___")))))
 
+(deftest ^:parallel process-markdown-slack-test-4
   (testing "Lines are correctly split or joined"
     (is (= "foo bar"  (slack "foo\nbar")))
     (is (= "foo\nbar" (slack "foo\n\nbar")))
     (is (= "foo\nbar" (slack "foo  \nbar")))
-    (is (= "foo\nbar" (slack "foo\\\nbar"))))
+    (is (= "foo\nbar" (slack "foo\\\nbar")))))
 
+(deftest ^:parallel process-markdown-slack-test-5
   (testing "Horizontal lines are created using box drawing characters"
     (is (= "───────────────────"               (slack "----")))
-    (is (= "text\n\n───────────────────\ntext" (slack "text\n\n----\ntext"))))
+    (is (= "text\n\n───────────────────\ntext" (slack "text\n\n----\ntext")))))
 
+(deftest ^:parallel process-markdown-slack-test-6
   (testing "Code blocks are preserved"
     (is (= "`code`"                (slack "`code`")))
     (is (= "```\ncode\nblock```"   (slack "    code\n    block")))
     (is (= "```\ncode\nblock\n```" (slack "```\ncode\nblock\n```")))
     (is (= "```\ncode\nblock\n```" (slack "```lang\ncode\nblock\n```")))
-    (is (= "```\ncode\nblock\n```" (slack "~~~\ncode\nblock\n~~~"))))
+    (is (= "```\ncode\nblock\n```" (slack "~~~\ncode\nblock\n~~~")))))
 
+(deftest ^:parallel process-markdown-slack-test-7
   (testing "Blockquotes are preserved"
     (is (= ">block"               (slack ">block")))
     (is (= ">block"               (slack "> block")))
@@ -69,8 +75,9 @@
     (is (= ">block quote"         (slack ">block\n>quote")))
     (is (= ">• quoted\n>• list"   (slack "> * quoted\n> * list")))
     (is (= ">1. quoted\n>2. list" (slack "> 1. quoted\n> 1. list")))
-    (is (= ">quote\n>• footer"    (slack ">quote\n>- footer"))))
+    (is (= ">quote\n>• footer"    (slack ">quote\n>- footer")))))
 
+(deftest ^:parallel process-markdown-slack-test-8
   (testing "Links use Slack's syntax, tooltips are dropped, link formatting is preserved"
     (is (= "<https://metabase.com|Metabase>"   (slack "[Metabase](https://metabase.com)")))
     (is (= "<https://metabase.com|Metabase>"   (slack "[Metabase](https://metabase.com \"tooltip\")")))
@@ -78,34 +85,40 @@
     (is (= "<https://metabase.com|_Metabase_>" (slack "[_Metabase_](https://metabase.com)")))
     (is (= "<https://metabase.com|*Metabase*>" (slack "[**Metabase**](https://metabase.com)")))
     (is (= "<https://metabase.com|*Metabase*>" (slack "[__Metabase__](https://metabase.com)")))
-    (is (= "<https://metabase.com|`Metabase`>" (slack "[`Metabase`](https://metabase.com)"))))
+    (is (= "<https://metabase.com|`Metabase`>" (slack "[`Metabase`](https://metabase.com)")))))
 
+(deftest process-markdown-slack-test-9
   (testing "Relative links are resolved to the current site URL"
     (tu/with-temporary-setting-values [public-settings/site-url "https://example.com"]
-      (is (= "<https://example.com/foo|Metabase>"   (slack "[Metabase](/foo)")))))
+      (is (= "<https://example.com/foo|Metabase>"   (slack "[Metabase](/foo)"))))))
 
+(deftest ^:parallel process-markdown-slack-test-10
   (testing "Auto-links are preserved"
     (is (= "<http://metabase.com>"                        (slack "<http://metabase.com>")))
     (is (= "<mailto:test@metabase.com>"                   (slack "<mailto:test@metabase.com>")))
-    (is (= "<mailto:test@metabase.com|test@metabase.com>" (slack "<test@metabase.com>"))))
+    (is (= "<mailto:test@metabase.com|test@metabase.com>" (slack "<test@metabase.com>")))))
 
+(deftest ^:parallel process-markdown-slack-test-11
   (testing "Bare URLs and email addresses are parsed as links"
     (is (= "<https://metabase.com>"                       (slack "https://metabase.com")))
-    (is (= "<mailto:test@metabase.com|test@metabase.com>" (slack "test@metabase.com"))))
+    (is (= "<mailto:test@metabase.com|test@metabase.com>" (slack "test@metabase.com")))))
 
+(deftest ^:parallel process-markdown-slack-test-12
   (testing "Link references render as normal links"
     (is (= "<https://metabase.com|metabase>" (slack "[metabase]: https://metabase.com\n[metabase]")))
     (is (= "<https://metabase.com|Metabase>" (slack "[Metabase]: https://metabase.com\n[Metabase]")))
     (is (= "<https://metabase.com|Metabase>" (slack "[METABASE]: https://metabase.com\n[Metabase]")))
-    (is (= "<https://metabase.com|Metabase>" (slack "[Metabase]: https://metabase.com \"tooltip\"\n[Metabase]"))))
+    (is (= "<https://metabase.com|Metabase>" (slack "[Metabase]: https://metabase.com \"tooltip\"\n[Metabase]")))))
 
+(deftest ^:parallel process-markdown-slack-test-13
   (testing "Lists are rendered correctly using raw text"
     (is (= "• foo\n• bar"   (slack "* foo\n* bar")))
     (is (= "• foo\n• bar"   (slack "- foo\n- bar")))
     (is (= "• foo\n• bar"   (slack "+ foo\n+ bar")))
     (is (= "1. foo\n2. bar" (slack "1. foo\n2. bar")))
-    (is (= "1. foo\n2. bar" (slack "1. foo\n1. bar"))))
+    (is (= "1. foo\n2. bar" (slack "1. foo\n1. bar")))))
 
+(deftest ^:parallel process-markdown-slack-test-14
   (testing "Nested lists are rendered correctly"
     (is (= "1. foo\n    1. bar"                     (slack "1. foo\n   1. bar")))
     (is (= "• foo\n    • bar"                       (slack "* foo\n   * bar")))
@@ -114,8 +127,9 @@
     (is (= "• foo\n    1. bar\n    2. baz"          (slack "* foo\n   1. bar\n   2. baz")))
     (is (= "• foo\n    1. bar\n• baz"               (slack "* foo\n   1. bar\n* baz")))
     (is (= "• foo\n    >quote"                      (slack "* foo\n   >quote")))
-    (is (= "• foo\n    ```\n    codeblock\n    ```" (slack "* foo\n    ```\n    codeblock\n    ```"))))
+    (is (= "• foo\n    ```\n    codeblock\n    ```" (slack "* foo\n    ```\n    codeblock\n    ```")))))
 
+(deftest ^:parallel process-markdown-slack-test-15
   (testing "Characters that are escaped in Markdown are preserved as plain text"
     (is (= "\\" (slack "\\\\")))
     (is (= "/"  (slack "\\/")))
@@ -136,29 +150,34 @@
     (is (= "^"  (slack "\\^")))
     (is (= "="  (slack "\\=")))
     (is (= "|"  (slack "\\|")))
-    (is (= "?"  (slack "\\?"))))
+    (is (= "?"  (slack "\\?")))))
 
+(deftest ^:parallel process-markdown-slack-test-16
   (testing "Certain characters that are escaped in Markdown are surrounded by zero-width characters for Slack"
     (is (= "\u00ad&\u00ad" (slack "\\&")))
     (is (= "\u00ad>\u00ad" (slack "\\>")))
     (is (= "\u00ad<\u00ad" (slack "\\<")))
     (is (= "\u00ad*\u00ad" (slack "\\*")))
     (is (= "\u00ad_\u00ad" (slack "\\_")))
-    (is (= "\u00ad`\u00ad" (slack "\\`"))))
+    (is (= "\u00ad`\u00ad" (slack "\\`")))))
 
+(deftest ^:parallel process-markdown-slack-test-17
   (testing "Images in Markdown are converted to links, with alt text preserved"
     (is (= "<image.png|[Image]>"           (slack "![](image.png)")))
-    (is (= "<image.png|[Image: alt-text]>" (slack "![alt-text](image.png)"))))
+    (is (= "<image.png|[Image: alt-text]>" (slack "![alt-text](image.png)")))))
 
+(deftest ^:parallel process-markdown-slack-test-18
   (testing "Image references are treated the same as normal images"
     (is (=  "<image.png|[Image]>"           (slack "![][ref]\n\n[ref]: image.png")))
     (is (=  "<image.png|[Image: alt-text]>" (slack "![alt-text][ref]\n\n[ref]: image.png")))
-    (is (=  "<image.png|[Image]>"           (slack "![][Ref]\n\n[REF]: image.png"))))
+    (is (=  "<image.png|[Image]>"           (slack "![][Ref]\n\n[REF]: image.png")))))
 
+(deftest ^:parallel process-markdown-slack-test-19
   (testing "Linked images include link target in parentheses"
     (is (= "<image.png|[Image]>\n(https://metabase.com)"  (slack "[![](image.png)](https://metabase.com)")))
-    (is (=  "<image.png|[Image]>\n(https://metabase.com)" (slack "[![][ref]](https://metabase.com)\n\n[ref]: image.png"))))
+    (is (=  "<image.png|[Image]>\n(https://metabase.com)" (slack "[![][ref]](https://metabase.com)\n\n[ref]: image.png")))))
 
+(deftest ^:parallel process-markdown-slack-test-20
   (testing "Raw HTML in Markdown is passed through unmodified, aside from angle brackets being
            escaped with zero-width characters"
     (is (= (escape "<h1>header</h1>")              (slack "<h1>header</h1>")))
@@ -171,13 +190,15 @@
     (is (= (escape "<em><!-- comment --></em>")    (slack "<em><!-- comment --></em>")))
     (is (= (escape "<!-- <p>comm\nent</p> -->")    (slack "<!-- <p>comm\nent</p> -->")))
     (is (= (escape "<!-- <p>comm\nent</p> -->")    (slack "<!-- <p>comm\nent</p> -->")))
-    (is (= (escape "<!DOCTYPE html>")              (slack "<!DOCTYPE html>"))))
+    (is (= (escape "<!DOCTYPE html>")              (slack "<!DOCTYPE html>")))))
 
+(deftest ^:parallel process-markdown-slack-test-21
   (testing "HTML entities (outside of HTML tags) are converted to Unicode"
     (is (= "&" (slack "&amp;")))
     (is (= ">" (slack "&gt;")))
-    (is (= "ℋ" (slack "&HilbertSpace;"))))
+    (is (= "ℋ" (slack "&HilbertSpace;")))))
 
+(deftest ^:parallel process-markdown-slack-test-22
   (testing "Square brackets that aren't used for a link are left as-is (#20993)"
     (is (= "[]"     (slack "[]")))
     (is (= "[test]" (slack "[test]")))))
@@ -206,22 +227,26 @@
         (is (= "<p><img src=\"https://example.com/image.png\" alt=\"alt-text\" /></p>\n"
                (html "![alt-text](image.png)")))
         (is (= "<p><a href=\"https://example.com/dashboard/1\">dashboard 1</a></p>\n"
-               (html "[dashboard 1](/dashboard/1)"))))))
+               (html "[dashboard 1](/dashboard/1)")))))))
 
+(deftest ^:parallel process-markdown-email-test-2
   (testing "Bare URLs and email addresses are converted to links"
     (is (= "<p><a href=\"https://metabase.com\">https://metabase.com</a></p>\n"
            (html "https://metabase.com")))
     (is (= "<p><a href=\"mailto:test@metabase.com\">test@metabase.com</a></p>\n"
-           (html "test@metabase.com"))))
+           (html "test@metabase.com")))))
 
+(deftest ^:parallel process-markdown-email-test-3
   (testing "Link references render as normal links"
     (is (= "<p><a href=\"https://metabase.com\">metabase</a></p>\n"
-           (html "[metabase]: https://metabase.com\n[metabase]"))))
+           (html "[metabase]: https://metabase.com\n[metabase]")))))
 
+(deftest ^:parallel process-markdown-email-test-4
   (testing "Lone square brackets are preserved as-is (#20993)"
     (is (= "<p>[]</p>\n"     (html "[]")))
-    (is (= "<p>[test]</p>\n" (html "[test]"))))
+    (is (= "<p>[test]</p>\n" (html "[test]")))))
 
+(deftest ^:parallel process-markdown-email-test-5
   (testing "HTML in the source markdown is escaped properly, but HTML entities are retained"
     (is (= "<p>&lt;h1&gt;header&lt;/h1&gt;</p>\n" (html "<h1>header</h1>")))
     (is (= "<p>&amp;</p>\n"                       (html "&amp;")))))

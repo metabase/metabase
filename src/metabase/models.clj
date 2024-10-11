@@ -31,7 +31,7 @@
     :as perms-group-membership]
    [metabase.models.permissions-revision :as perms-revision]
    [metabase.models.persisted-info :as persisted-info]
-   [metabase.models.pulse :as pulse]
+   [metabase.models.pulse :as models.pulse]
    [metabase.models.pulse-card :as pulse-card]
    [metabase.models.pulse-channel :as pulse-channel]
    [metabase.models.pulse-channel-recipient :as pulse-channel-recipient]
@@ -91,7 +91,7 @@
          pulse-card/keep-me
          pulse-channel-recipient/keep-me
          pulse-channel/keep-me
-         pulse/keep-me
+         models.pulse/keep-me
          query-cache/keep-me
          query-execution/keep-me
          query-analysis/keep-me
@@ -139,7 +139,7 @@
  [perms-revision PermissionsRevision]
  [a-perm-revision ApplicationPermissionsRevision]
  [persisted-info PersistedInfo]
- [pulse Pulse]
+ [models.pulse Pulse]
  [pulse-card PulseCard]
  [pulse-channel PulseChannel]
  [pulse-channel-recipient PulseChannelRecipient]

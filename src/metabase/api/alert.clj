@@ -13,7 +13,7 @@
    [metabase.events :as events]
    [metabase.models.card :refer [Card]]
    [metabase.models.interface :as mi]
-   [metabase.models.pulse :as pulse]
+   [metabase.models.pulse :as models.pulse]
    [metabase.models.pulse-channel :refer [PulseChannel]]
    [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
    [metabase.plugins.classloader :as classloader]
@@ -37,8 +37,8 @@
   (let [user-id (if api/*is-superuser?*
                   user_id
                   api/*current-user-id*)]
-    (as-> (pulse/retrieve-alerts {:archived? archived
-                                  :user-id   user-id}) <>
+    (as-> (models.pulse/retrieve-alerts {:archived? archived
+                                         :user-id   user-id}) <>
       (filter mi/can-read? <>)
       (t2/hydrate <> :can_write))))
 
@@ -46,7 +46,7 @@
   "Fetch an alert by ID"
   [id]
   {id ms/PositiveInt}
-  (-> (api/read-check (pulse/retrieve-alert id))
+  (-> (api/read-check (models.pulse/retrieve-alert id))
       (t2/hydrate :can_write)))
 
 (api/defendpoint GET "/question/:id"
@@ -55,8 +55,8 @@
   {id       [:maybe ms/PositiveInt]
    archived [:maybe ms/BooleanValue]}
   (-> (if api/*is-superuser?*
-        (pulse/retrieve-alerts-for-cards {:card-ids [id], :archived? archived})
-        (pulse/retrieve-user-alerts-for-card {:card-id id, :user-id api/*current-user-id*, :archived?  archived}))
+        (models.pulse/retrieve-alerts-for-cards {:card-ids [id], :archived? archived})
+        (models.pulse/retrieve-user-alerts-for-card {:card-id id, :user-id api/*current-user-id*, :archived?  archived}))
       (t2/hydrate :can_write)))
 
 (defn- only-alert-keys [request]
@@ -139,20 +139,20 @@
   "Create a new Alert."
   [:as {{:keys [alert_condition card channels alert_first_only alert_above_goal]
          :as new-alert-request-body} :body}]
-  {alert_condition  pulse/AlertConditions
+  {alert_condition  models.pulse/AlertConditions
    alert_first_only :boolean
    alert_above_goal [:maybe :boolean]
-   card             pulse/CardRef
+   card             models.pulse/CardRef
    channels         [:+ :map]}
   (validation/check-has-application-permission :subscription false)
   ;; To create an Alert you need read perms for its Card
   (api/read-check Card (u/the-id card))
   ;; ok, now create the Alert
-  (let [alert-card (-> card (maybe-include-csv alert_condition) pulse/card->ref)
+  (let [alert-card (-> card (maybe-include-csv alert_condition) models.pulse/card->ref)
         new-alert  (api/check-500
                     (-> new-alert-request-body
                         only-alert-keys
-                        (pulse/create-alert! api/*current-user-id* alert-card channels)))]
+                        (models.pulse/create-alert! api/*current-user-id* alert-card channels)))]
     (events/publish-event! :event/alert-create {:object new-alert :user-id api/*current-user-id*})
     (notify-new-alert-created! new-alert)
     ;; return our new Alert
@@ -170,10 +170,10 @@
   [id :as {{:keys [alert_condition alert_first_only alert_above_goal card channels archived]
             :as alert-updates} :body}]
   {id               ms/PositiveInt
-   alert_condition  [:maybe pulse/AlertConditions]
+   alert_condition  [:maybe models.pulse/AlertConditions]
    alert_first_only [:maybe :boolean]
    alert_above_goal [:maybe :boolean]
-   card             [:maybe pulse/CardRef]
+   card             [:maybe models.pulse/CardRef]
    channels         [:maybe [:+ [:map]]]
    archived         [:maybe :boolean]}
   (try
@@ -182,7 +182,7 @@
       (validation/check-has-application-permission :subscription false)))
 
   ;; fetch the existing Alert in the DB
-  (let [alert-before-update                   (api/check-404 (pulse/retrieve-alert id))
+  (let [alert-before-update                   (api/check-404 (models.pulse/retrieve-alert id))
         current-user-has-application-permissions? (and (premium-features/enable-advanced-permissions?)
                                                        (resolve 'metabase-enterprise.advanced-permissions.common/current-user-has-application-permissions?))
         has-subscription-perms?               (and current-user-has-application-permissions?
@@ -219,12 +219,12 @@
                  [403 (tru "Non-admin users without subscription permissions are not allowed to add recipients")]))
 
     ;; now update the Alert
-    (let [updated-alert (pulse/update-alert!
+    (let [updated-alert (models.pulse/update-alert!
                          (merge
                           (assoc (only-alert-keys alert-updates)
                                  :id id)
                           (when card
-                            {:card (pulse/card->ref card)})
+                            {:card (models.pulse/card->ref card)})
                           (when (contains? alert-updates :channels)
                             {:channels channels})
                           ;; automatically archive alert if it now has no recipients
@@ -249,7 +249,7 @@
   [id]
   {id ms/PositiveInt}
   (validation/check-has-application-permission :subscription false)
-  (let [alert (pulse/retrieve-alert id)]
+  (let [alert (models.pulse/retrieve-alert id)]
     (api/read-check alert)
     (api/let-404 [alert-id (u/the-id alert)
                   pc-id    (t2/select-one-pk PulseChannel :pulse_id alert-id :channel_type "email")

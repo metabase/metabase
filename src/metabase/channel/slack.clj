@@ -6,10 +6,9 @@
    ;; TODO: integrations.slack should be migrated to channel.slack
    [metabase.integrations.slack :as slack]
    [metabase.public-settings :as public-settings]
-   [metabase.pulse.markdown :as markdown]
-   [metabase.pulse.parameters :as pulse-params]
-   [metabase.pulse.render :as render]
+   [metabase.pulse.core :as pulse]
    [metabase.util.malli :as mu]
+   [metabase.util.markdown :as markdown]
    [metabase.util.urls :as urls]))
 
 (defn- truncate-mrkdwn
@@ -41,7 +40,7 @@
           {card-id :id card-name :name :as card} card]
       {:title           (or (-> dashcard :visualization_settings :card.title)
                             card-name)
-       :rendered-info   (render/render-pulse-card :inline (channel.shared/defaulted-timezone card) card dashcard result)
+       :rendered-info   (pulse/render-pulse-card :inline (channel.shared/defaulted-timezone card) card dashcard result)
        :title_link      (urls/card-url card-id)
        :attachment-name "image.png"
        :channel-id      channel-id
@@ -69,10 +68,10 @@
     (reduce (fn [processed {:keys [rendered-info attachment-name channel-id] :as attachment-data}]
               (conj processed (if (:blocks attachment-data)
                                 attachment-data
-                                (if (:render/text rendered-info)
+                                (if (:pulse/text rendered-info)
                                   (-> (f attachment-data)
-                                      (assoc :text (:render/text rendered-info)))
-                                  (let [image-bytes (render/png-from-render-info rendered-info slack-width)
+                                      (assoc :text (:pulse/text rendered-info)))
+                                  (let [image-bytes (pulse/png-from-render-info rendered-info slack-width)
                                         image-url   (slack/upload-file! image-bytes attachment-name channel-id)]
                                     (-> (f attachment-data)
                                         (assoc :image_url image-url)))))))
@@ -113,7 +112,7 @@
 (defn- filter-text
   [filter]
   (truncate-mrkdwn
-   (format "*%s*\n%s" (:name filter) (pulse-params/value-string filter))
+   (format "*%s*\n%s" (:name filter) (pulse/value-string filter))
    attachment-text-length-limit))
 
 (defn- slack-dashboard-header
@@ -127,10 +126,10 @@
         link-section    {:type "section"
                          :fields [{:type "mrkdwn"
                                    :text (format "<%s | *Sent from %s by %s*>"
-                                                 (pulse-params/dashboard-url (:id dashboard) (pulse-params/parameters pulse dashboard))
+                                                 (pulse/dashboard-url (:id dashboard) (pulse/parameters pulse dashboard))
                                                  (public-settings/site-name)
                                                  (-> pulse :creator :common_name))}]}
-        filters         (pulse-params/parameters pulse dashboard)
+        filters         (pulse/parameters pulse dashboard)
         filter-fields   (for [filter filters]
                           {:type "mrkdwn"
                            :text (filter-text filter)})

@@ -10,11 +10,11 @@
    [hickory.zip :as hik.z]
    [metabase.email.messages :as messages]
    [metabase.pulse :as pulse]
-   [metabase.pulse.markdown :as markdown]
    [metabase.pulse.render :as render]
    [metabase.pulse.render.image-bundle :as img]
    [metabase.pulse.render.png :as png]
    [metabase.pulse.render.style :as style]
+   [metabase.util.markdown :as markdown]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)

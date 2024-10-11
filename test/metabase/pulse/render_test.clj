@@ -7,9 +7,9 @@
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models
     :refer [Card Dashboard DashboardCard DashboardCardSeries]]
-   [metabase.pulse :as pulse]
    [metabase.pulse.render :as render]
    [metabase.pulse.render.test-util :as render.tu]
+   [metabase.pulse.send :as pulse]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -161,28 +161,30 @@
                                               :rows [[#t "2020" 2]
                                                      [#t "2021" 3]]}))))))
 
-(deftest make-description-if-needed-test
+(deftest ^:parallel make-description-if-needed-test
   (testing "Use Visualization Settings's description if it exists"
     (mt/with-temp [Card          card {:description "Card description"}
                    Dashboard     dashboard {}
                    DashboardCard dc1 {:dashboard_id (:id dashboard) :card_id (:id card)
                                       :visualization_settings {:card.description "Visualization description"}}]
-      (binding [render/*include-description* true]
-        (is (= "<p>Visualization description</p>\n" (last (:content (#'render/make-description-if-needed dc1 card))))))))
+      (is (= "<p>Visualization description</p>\n"
+             (last (:content (#'render/make-description-if-needed dc1 card {:pulse/include-description? true}))))))))
 
+(deftest ^:parallel make-description-if-needed-test-2
   (testing "Fallback to Card's description if Visualization Settings's description not exists"
     (mt/with-temp [Card          card {:description "Card description"}
                    Dashboard     dashboard {}
                    DashboardCard dc1 {:dashboard_id (:id dashboard) :card_id (:id card)}]
-      (binding [render/*include-description* true]
-        (is (= "<p>Card description</p>\n" (last (:content (#'render/make-description-if-needed dc1 card))))))))
+      (is (= "<p>Card description</p>\n"
+             (last (:content (#'render/make-description-if-needed dc1 card {:pulse/include-description? true}))))))))
 
+(deftest ^:parallel make-description-if-needed-test-3
   (testing "Test markdown converts to html"
     (mt/with-temp [Card          card {:description "# Card description"}
                    Dashboard     dashboard {}
                    DashboardCard dc1 {:dashboard_id (:id dashboard) :card_id (:id card)}]
-      (binding [render/*include-description* true]
-        (is (= "<h1>Card description</h1>\n" (last (:content (#'render/make-description-if-needed dc1 card)))))))))
+      (is (= "<h1>Card description</h1>\n"
+             (last (:content (#'render/make-description-if-needed dc1 card {:pulse/include-description? true}))))))))
 
 (deftest table-rendering-of-percent-types-test
   (testing "If a column is marked as a :type/Percentage semantic type it should render as a percent"
@@ -249,7 +251,11 @@
     (mt/with-temp [Card card {:name          "A Card"
                               :dataset_query (mt/mbql-query venues {:limit 1})}]
       (mt/with-temp-env-var-value! [mb-site-url "https://mb.com"]
-        (let [rendered-card-content (:content (binding [render/*include-title* true]
-                                                (render/render-pulse-card :inline (pulse/defaulted-timezone card) card nil (qp/process-query (:dataset_query card)))))]
+        (let [rendered-card-content (:content (render/render-pulse-card :inline
+                                                                        (pulse/defaulted-timezone card)
+                                                                        card
+                                                                        nil
+                                                                        (qp/process-query (:dataset_query card))
+                                                                        {:pulse/include-title? true}))]
           (is (some? (lib.util.match/match-one rendered-card-content
                        [:a (_ :guard #(= (format "https://mb.com/question/%d" (:id card)) (:href %))) "A Card"]))))))))

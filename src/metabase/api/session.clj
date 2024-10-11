@@ -13,7 +13,7 @@
    [metabase.integrations.ldap :as ldap]
    [metabase.models :refer [PulseChannel]]
    [metabase.models.login-history :refer [LoginHistory]]
-   [metabase.models.pulse :as pulse]
+   [metabase.models.pulse :as models.pulse]
    [metabase.models.session :refer [Session]]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.models.user :as user :refer [User]]
@@ -355,7 +355,7 @@
                     {:type        type
                      :status-code 400}))))
 
-(api/defendpoint POST "/pulse/unsubscribe"
+(api/defendpoint POST "/models.pulse/unsubscribe"
   "Allow non-users to unsubscribe from pulses/subscriptions, with the hash given through email."
   [:as {{:keys [email hash pulse-id]} :body, :as request}]
   {pulse-id ms/PositiveInt
@@ -371,9 +371,9 @@
                           {:type        type
                            :status-code 400}))))
       (events/publish-event! :event/subscription-unsubscribe {:object {:email email}})
-      {:status :success :title (:name (pulse/retrieve-notification pulse-id :archived false))})))
+      {:status :success :title (:name (models.pulse/retrieve-notification pulse-id :archived false))})))
 
-(api/defendpoint POST "/pulse/unsubscribe/undo"
+(api/defendpoint POST "/models.pulse/unsubscribe/undo"
   "Allow non-users to undo an unsubscribe from pulses/subscriptions, with the hash given through email."
   [:as {{:keys [email hash pulse-id]} :body, :as request}]
   {pulse-id ms/PositiveInt
@@ -389,6 +389,6 @@
                            :status-code 400}))
           (t2/update! PulseChannel (:id pulse-channel) (update-in pulse-channel [:details :emails] conj email))))
       (events/publish-event! :event/subscription-unsubscribe-undo {:object {:email email}})
-      {:status :success :title (:name (pulse/retrieve-notification pulse-id :archived false))})))
+      {:status :success :title (:name (models.pulse/retrieve-notification pulse-id :archived false))})))
 
 (api/define-routes +log-all-request-failures)

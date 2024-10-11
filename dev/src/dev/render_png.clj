@@ -9,16 +9,17 @@
    [metabase.email.messages :as messages]
    [metabase.models :refer [Card]]
    [metabase.models.card :as card]
-   [metabase.pulse :as pulse]
-   [metabase.pulse.markdown :as markdown]
    [metabase.pulse.render :as render]
    [metabase.pulse.render.image-bundle :as img]
    [metabase.pulse.render.png :as png]
    [metabase.pulse.render.style :as style]
+   [metabase.pulse.send :as pulse]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
+   [metabase.util.markdown :as markdown]
    [toucan2.core :as t2])
-  (:import (java.io File)))
+  (:import
+   (java.io File)))
 
 (set! *warn-on-reflection* true)
 

@@ -4,8 +4,8 @@
    [hiccup.core :as hiccup]
    [malli.core :as mc]
    [malli.error :as me]
-   [metabase.pulse.markdown :as markdown]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [metabase.util.markdown :as markdown])
   (:import
    (org.apache.commons.io FileUtils)))
 

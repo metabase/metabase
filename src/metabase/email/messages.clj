@@ -21,12 +21,7 @@
    [metabase.models.user :refer [User]]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
-   [metabase.pulse.markdown :as markdown]
-   [metabase.pulse.parameters :as pulse-params]
-   [metabase.pulse.render :as render]
-   [metabase.pulse.render.image-bundle :as image-bundle]
-   [metabase.pulse.render.js-svg :as js-svg]
-   [metabase.pulse.render.style :as style]
+   [metabase.pulse.core :as pulse]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.query-processor.streaming.interface :as qp.si]
@@ -37,6 +32,7 @@
    [metabase.util.i18n :as i18n :refer [trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.markdown :as markdown]
    [metabase.util.urls :as urls]
    [stencil.core :as stencil]
    [stencil.loader :as stencil-loader]
@@ -76,10 +72,10 @@
 
   The available icons are defined in [[js-svg/icon-paths]]."
   [icon-name]
-  (let [color     (style/primary-color)
-        png-bytes (js-svg/icon icon-name color)]
-    (-> (image-bundle/make-image-bundle :attachment png-bytes)
-        (image-bundle/image-bundle->attachment))))
+  (let [color     (pulse/primary-color)
+        png-bytes (pulse/icon icon-name color)]
+    (-> (pulse/make-image-bundle :attachment png-bytes)
+        (pulse/image-bundle->attachment))))
 
 (defn- button-style [color]
   (str "display: inline-block; "
@@ -100,12 +96,12 @@
   "Context that is used across multiple email templates, and that is the same for all emails"
   []
   {:applicationName           (public-settings/application-name)
-   :applicationColor          (style/primary-color)
+   :applicationColor          (pulse/primary-color)
    :applicationLogoUrl        (logo-url)
-   :buttonStyle               (button-style (style/primary-color))
-   :colorTextLight            style/color-text-light
-   :colorTextMedium           style/color-text-medium
-   :colorTextDark             style/color-text-dark
+   :buttonStyle               (button-style (pulse/primary-color))
+   :colorTextLight            pulse/color-text-light
+   :colorTextMedium           pulse/color-text-medium
+   :colorTextDark             pulse/color-text-dark
    :siteUrl                   (public-settings/site-url)})
 
 ;;; ### Public Interface
@@ -338,13 +334,13 @@
     (merge (common-context)
            {:emailType                 "pulse"
             :title                     (:name dashboard)
-            :titleUrl                  (pulse-params/dashboard-url dashboard-id (pulse-params/parameters pulse dashboard))
+            :titleUrl                  (pulse/dashboard-url dashboard-id (pulse/parameters pulse dashboard))
             :dashboardDescription      (markdown/process-markdown (:description dashboard) :html)
            ;; There are legacy pulses that exist without being tied to a dashboard
             :dashboardHasTabs          (when dashboard-id
                                          (boolean (seq (t2/hydrate dashboard :tabs))))
             :creator                   (-> pulse :creator :common_name)
-            :sectionStyle              (style/style (style/section-style))
+            :sectionStyle              (pulse/style (pulse/section-style))
             :notificationText          (if (nil? non-user-email)
                                          "Manage your subscriptions"
                                          "Unsubscribe")
@@ -433,10 +429,10 @@
   (filter some? (mapcat result-attachment parts)))
 
 (defn- render-part
-  [timezone part]
+  [timezone part options]
   (case (:type part)
     :card
-    (render/render-pulse-section timezone part)
+    (pulse/render-pulse-section timezone part options)
 
     :text
     {:content (markdown/process-markdown (:text part) :html)}
@@ -446,11 +442,11 @@
 
 (defn- render-filters
   [notification dashboard]
-  (let [filters (pulse-params/parameters notification dashboard)
+  (let [filters (pulse/parameters notification dashboard)
         cells   (map
                  (fn [filter]
                    [:td {:class "filter-cell"
-                         :style (style/style {:width "50%"
+                         :style (pulse/style {:width "50%"
                                               :padding "0px"
                                               :vertical-align "baseline"})}
                     [:table {:cellpadding "0"
@@ -459,23 +455,23 @@
                              :height "100%"}
                      [:tr
                       [:td
-                       {:style (style/style {:color style/color-text-medium
+                       {:style (pulse/style {:color pulse/color-text-medium
                                              :min-width "100px"
                                              :width "50%"
                                              :padding "4px 4px 4px 0"
                                              :vertical-align "baseline"})}
                        (:name filter)]
                       [:td
-                       {:style (style/style {:color style/color-text-dark
+                       {:style (pulse/style {:color pulse/color-text-dark
                                              :min-width "100px"
                                              :width "50%"
                                              :padding "4px 16px 4px 8px"
                                              :vertical-align "baseline"})}
-                       (pulse-params/value-string filter)]]]])
+                       (pulse/value-string filter)]]]])
                  filters)
         rows    (partition 2 2 nil cells)]
     (html
-     [:table {:style (style/style {:table-layout :fixed
+     [:table {:style (pulse/style {:table-layout :fixed
                                    :border-collapse :collapse
                                    :cellpadding "0"
                                    :cellspacing "0"
@@ -488,8 +484,7 @@
 
 (defn- render-message-body
   [notification message-type message-context timezone dashboard parts]
-  (let [rendered-cards  (binding [render/*include-title* true]
-                          (mapv #(render-part timezone %) parts))
+  (let [rendered-cards  (mapv #(render-part timezone % {:pulse/include-title? true}) parts)
         icon-name       (case message-type
                           :alert :bell
                           :pulse :dashboard)
@@ -549,7 +544,7 @@
             {:emailType                 "alert"
              :questionName              card-name
              :questionURL               (urls/card-url card-id)
-             :sectionStyle              (style/section-style)}
+             :sectionStyle              (pulse/section-style)}
             (when alert-condition-map
               {:alertCondition (get alert-condition-map (pulse->alert-condition-kwd alert))})))))
 

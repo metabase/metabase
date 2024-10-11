@@ -1,5 +1,5 @@
-(ns metabase.pulse
-  "Public API for sending Pulses."
+(ns metabase.pulse.send
+  "Code related to sending Pulses (Alerts or Dashboard Subscriptions)."
   (:require
    [metabase.api.common :as api]
    [metabase.channel.core :as channel]
@@ -8,7 +8,7 @@
    [metabase.models.dashboard-card :as dashboard-card]
    [metabase.models.database :refer [Database]]
    [metabase.models.interface :as mi]
-   [metabase.models.pulse :as pulse :refer [Pulse]]
+   [metabase.models.pulse :as models.pulse :refer [Pulse]]
    [metabase.models.serialization :as serdes]
    [metabase.models.task-history :as task-history]
    [metabase.pulse.parameters :as pulse-params]
@@ -27,8 +27,6 @@
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
-
-;;; ------------------------------------------------- PULSE SENDING --------------------------------------------------
 
 (defn- merge-default-values
   "For the specific case of Dashboard Subscriptions we should use `:default` parameter values as the actual `:value` for
@@ -377,10 +375,6 @@
             (t2/delete! Pulse :id pulse-id))))
       (log/infof "Skipping sending %s %d" (alert-or-pulse pulse) (:id pulse)))))
 
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                             Sending Notifications                                              |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
 (defn send-pulse!
   "Execute and Send a `Pulse`, optionally specifying the specific `PulseChannels`.  This includes running each
    `PulseCard`, formatting the content, and sending the content to any specified destination.
@@ -398,7 +392,7 @@
         pulse     (-> (mi/instance Pulse pulse)
                       ;; This is usually already done by this step, in the `send-pulses` task which uses `retrieve-pulse`
                       ;; to fetch the Pulse.
-                      pulse/hydrate-notification
+                      models.pulse/hydrate-notification
                       (merge (when channel-ids {:channel-ids channel-ids})))]
     (when (not (:archived dashboard))
       (send-pulse!* pulse dashboard))))
