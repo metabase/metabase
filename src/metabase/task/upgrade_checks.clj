@@ -20,7 +20,9 @@
         {:keys [status body]} (http/get version-info-url (merge
                                                           {:content-type "application/json"}
                                                           (when config/is-prod?
-                                                            {:query-params {"instance" (public-settings/site-uuid-for-version-info-fetching)}})))]
+                                                            {:query-params {"instance" (public-settings/site-uuid-for-version-info-fetching)
+                                                                            "current-version" (:tag config/mb-version-info)
+                                                                            "channel" (public-settings/update-channel)}})))]
     (when (not= status 200)
       (throw (Exception. (format "[%d]: %s" status body))))
     (json/parse-string body keyword)))
