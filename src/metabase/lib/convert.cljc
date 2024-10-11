@@ -79,10 +79,16 @@
           almost-stage
           (lib.schema/ref-errors-for-stage almost-stage)))
 
+(def ^:dynamic *clean-stage*
+  "If true (this is the default), the stages of the are cleaned.
+  When converting queries at later stages of the preprocessing pipeline, this cleaning might not be desirable."
+  true)
+
 (defn- clean-stage [almost-stage]
-  (-> almost-stage
-      clean-stage-schema-errors
-      clean-stage-ref-errors))
+  (cond-> almost-stage
+    *clean-stage*
+    (-> clean-stage-schema-errors
+        clean-stage-ref-errors)))
 
 (defn- clean [almost-query]
   (loop [almost-query almost-query
@@ -523,7 +529,7 @@
 
 (defmethod ->legacy-MBQL :mbql/join [join]
   (let [base (cond-> (disqualify join)
-               (str/starts-with? (:alias join) legacy-default-join-alias) (dissoc :alias))]
+               (and *clean-stage* (str/starts-with? (:alias join) legacy-default-join-alias)) (dissoc :alias))]
     (merge (-> base
                (dissoc :stages :conditions)
                (update-vals ->legacy-MBQL))

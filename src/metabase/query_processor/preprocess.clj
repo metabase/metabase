@@ -73,6 +73,19 @@
                      assoc :converted-form query)))
       (with-meta (meta middleware-fn))))
 
+(defn- ensure-pmbql-for-unclean-query
+  [middleware-fn]
+  (-> (fn [query]
+        (mu/disable-enforcement
+          (binding [lib.convert/*clean-stage* false]
+            (let [query' (cond-> (cond->> query
+                                   (not (:lib/type query))
+                                   (lib.query/query (qp.store/metadata-provider)))
+                           (contains? query :info)
+                           (assoc :info (:info query)))]
+              (-> query' middleware-fn ->legacy)))))
+      (with-meta (meta middleware-fn))))
+
 (def ^:private middleware
   "Pre-processing middleware. Has the form
 
@@ -105,7 +118,7 @@
    (ensure-legacy #'resolve-joined-fields/resolve-joined-fields)
    (ensure-legacy #'fix-bad-refs/fix-bad-references)
    (ensure-legacy #'escape-join-aliases/escape-join-aliases)
-   (ensure-pmbql #'qp.remove-inactive-field-refs/remove-inactive-field-refs)
+   (ensure-pmbql-for-unclean-query #'qp.remove-inactive-field-refs/remove-inactive-field-refs)
    ;; yes, this is called a second time, because we need to handle any joins that got added
    (ensure-legacy #'qp.middleware.enterprise/apply-sandboxing)
    (ensure-legacy #'qp.cumulative-aggregations/rewrite-cumulative-aggregations)
