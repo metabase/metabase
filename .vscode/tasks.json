@@ -1,41 +1,41 @@
 {
-    // See https://go.microsoft.com/fwlink/?LinkId=733558
-    // for the documentation about the tasks.json format
-    "version": "2.0.0",
-    "tasks": [
-      {
-        "label": "Run front-end and back-end",
-        "type": "shell",
-        "command": "yarn dev",
-        "presentation": {
-          "reveal": "always"
-        },
-        "problemMatcher": [],
-        "group": {
-          "kind": "build",
-          "isDefault": true
-        }
+  // See https://go.microsoft.com/fwlink/?LinkId=733558
+  // for the documentation about the tasks.json format
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Run front-end and back-end",
+      "type": "shell",
+      "command": "yarn dev",
+      "presentation": {
+        "reveal": "always"
       },
-      {
-        "label": "Format front-end code",
-        "type": "shell",
-        "command": "yarn prettier",
-        "presentation": {
-          "reveal": "always",
-          "panel": "dedicated",
-          "clear": true
-        }
-      },
-      {
-        "label": "Run front-end linters",
-        "type": "shell",
-        "command": "yarn lint",
-        "presentation": {
-          "reveal": "always",
-          "panel": "dedicated",
-          "clear": true
-        },
-        "problemMatcher": []
+      "problemMatcher": [],
+      "group": {
+        "kind": "build",
+        "isDefault": true
       }
-    ]
-  }
+    },
+    {
+      "label": "Format front-end code",
+      "type": "shell",
+      "command": "yarn prettier",
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true
+      }
+    },
+    {
+      "label": "Run front-end linters",
+      "type": "shell",
+      "command": "yarn lint",
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true
+      },
+      "problemMatcher": []
+    }
+  ]
+}
