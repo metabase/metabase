@@ -155,7 +155,7 @@ export const EmbedFrame = ({
       <ContentContainer
         id={DASHBOARD_PDF_EXPORT_ROOT_ID}
         className={cx(EmbedFrameS.WithThemeBackground, {
-          [EmbedFrameS.WithSdkThemeBackground]: isEmbeddingSdk,
+          [EmbedFrameS.WithSdkContentContainer]: isEmbeddingSdk,
         })}
       >
         {hasHeader && (
