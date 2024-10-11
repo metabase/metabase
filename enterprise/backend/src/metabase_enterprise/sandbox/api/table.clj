@@ -68,7 +68,7 @@
        (data-perms/with-additional-table-permission :perms/view-data (:db_id table) (u/the-id table) :unrestricted
          (data-perms/with-additional-table-permission :perms/create-queries (:db_id table) (u/the-id table) :query-builder
            (thunk))))
-      ;; Not sandboxed
+      ;; Not sandboxed, so user can fetch full metadata
       (thunk))))
 
 (defenterprise batch-fetch-table-query-metadatas
@@ -84,7 +84,7 @@
        (data-perms/with-additional-table-permission :perms/view-data (:db_id table) (u/the-id table) :unrestricted
          (data-perms/with-additional-table-permission :perms/create-queries (:db_id table) (u/the-id table) :query-builder
            table)))
-        ;; Not sandboxed
+      ;; Not sandboxed, so user can fetch full metadata
       table)))
 
 (api/defendpoint GET "/:id/query_metadata"
