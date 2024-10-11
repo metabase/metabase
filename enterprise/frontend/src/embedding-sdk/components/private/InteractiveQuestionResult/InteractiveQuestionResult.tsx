@@ -80,6 +80,7 @@ export const InteractiveQuestionResult = ({
       style={style}
     >
       <Group className={InteractiveQuestionS.TopBar} position="apart" p="md">
+        <InteractiveQuestion.BackButton />
         {withTitle && (customTitle ?? <InteractiveQuestion.Title />)}
         <Group spacing="xs">
           {withResetButton && <InteractiveQuestion.ResetButton />}
