@@ -230,6 +230,38 @@ export function getIncludeCurrentLabel(offsetUnit: TemporalUnit) {
   return t`Include this ${offsetUnitLabel}`;
 }
 
+export function getOffsetValueMin(comparisonType: ComparisonType) {
+  return comparisonType === "moving-average" ? 2 : 1;
+}
+
+export function setComparisonType(
+  options: OffsetOptions,
+  comparisonType: ComparisonType,
+): OffsetOptions {
+  return {
+    ...options,
+    comparisonType,
+    columnType: COLUMN_TYPES[comparisonType][0],
+    offsetValue: Math.max(
+      options.offsetValue,
+      getOffsetValueMin(comparisonType),
+    ),
+  };
+}
+
+export function setGroupUnit(
+  options: OffsetOptions,
+  groupUnit: TemporalUnit,
+): OffsetOptions {
+  const offsetUnits = OFFSET_UNITS[groupUnit];
+
+  return {
+    ...options,
+    groupUnit,
+    offsetUnit: offsetUnits ? offsetUnits[0] : groupUnit,
+  };
+}
+
 export function applyOffset(
   query: Lib.Query,
   stageIndex: number,

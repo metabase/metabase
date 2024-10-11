@@ -16,8 +16,8 @@ export const OFFSET_UNITS: Partial<Record<TemporalUnit, TemporalUnit[]>> = {
 
 export const OFFSET_DISPLAY_UNITS: Partial<Record<TemporalUnit, TemporalUnit>> =
   {
-    "minute-of-hour": "minute",
-    "hour-of-day": "hour",
+    "minute-of-hour": "hour",
+    "hour-of-day": "day",
     "day-of-week": "week",
     "day-of-month": "month",
     "day-of-year": "year",

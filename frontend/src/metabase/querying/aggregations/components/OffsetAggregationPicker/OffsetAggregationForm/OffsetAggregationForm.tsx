@@ -11,6 +11,8 @@ import {
   getBreakoutColumn,
   getInitialOptions,
   getOffsetClause,
+  setComparisonType,
+  setGroupUnit,
 } from "../utils";
 
 import { ColumnTypeInput } from "./ColumnTypeInput";
@@ -43,7 +45,7 @@ export function OffsetAggregationForm({
   );
 
   const handleComparisonTypeChange = (comparisonType: ComparisonType) => {
-    setOptions(options => ({ ...options, comparisonType }));
+    setOptions(options => setComparisonType(options, comparisonType));
   };
 
   const handleColumnTypeChange = (columnType: ColumnType) => {
@@ -51,11 +53,7 @@ export function OffsetAggregationForm({
   };
 
   const handleGroupUnitChange = (groupUnit: TemporalUnit) => {
-    setOptions(options => ({
-      ...options,
-      groupUnit,
-      offsetUnit: groupUnit,
-    }));
+    setOptions(options => setGroupUnit(options, groupUnit));
   };
 
   const handleOffsetValueChange = (offsetValue: number) => {

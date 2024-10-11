@@ -3,6 +3,7 @@ import { t } from "ttag";
 import { NumberInput } from "metabase/ui";
 
 import type { ComparisonType } from "../../types";
+import { getOffsetValueMin } from "../../utils";
 
 interface OffsetValueInputProps {
   comparisonType: ComparisonType;
@@ -15,7 +16,7 @@ export const OffsetValueInput = ({
   offsetValue,
   onOffsetValueChange,
 }: OffsetValueInputProps) => {
-  const minimum = comparisonType === "offset" ? 1 : 2;
+  const minimum = getOffsetValueMin(comparisonType);
 
   const handleChange = (value: number | "") => {
     if (typeof value === "number") {
