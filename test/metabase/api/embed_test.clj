@@ -289,7 +289,8 @@
   (str "embed/card/"
        (card-token card-or-id additional-token-keys)
        "/query"
-       response-format-route-suffix))
+       response-format-route-suffix
+       "?format_rows=true"))
 
 (def ^:private response-format->request-options
   {""      nil
