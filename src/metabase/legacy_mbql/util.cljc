@@ -4,8 +4,7 @@
   (:require
    #?@(:clj
        [[metabase.legacy-mbql.jvm-util :as mbql.jvm-u]
-        [metabase.models.dispatch :as models.dispatch]
-        [metabase.util.i18n]])
+        [metabase.models.dispatch :as models.dispatch]])
    [clojure.string :as str]
    [metabase.legacy-mbql.predicates :as mbql.preds]
    [metabase.legacy-mbql.schema :as mbql.s]
@@ -352,7 +351,7 @@
 (defn- temporal-case-expression
   "Creates a `:case` expression with a condition for each value of the given unit."
   [column unit n]
-  (let [user-locale #?(:clj  (metabase.util.i18n/user-locale)
+  (let [user-locale #?(:clj  (i18n/user-locale)
                        :cljs nil)]
     [:case
      (vec (for [raw-value (range 1 (inc n))]

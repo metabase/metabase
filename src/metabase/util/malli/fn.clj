@@ -194,10 +194,10 @@
           ;; In prod, log a warning.
           (log/warn
            (case error-type
-             ::invalid-input  (i18n/tru "Invalid input - Please report this as an issue on Github: {0}"
-                                        (pr-str humanized))
-             ::invalid-output (i18n/tru "Invalid output - Please report this as an issue on Github: {0}"
-                                        (pr-str humanized)))
+             ::invalid-input  (format "Invalid input - Please report this as an issue on Github: %s"
+                                      (pr-str humanized))
+             ::invalid-output (format "Invalid output - Please report this as an issue on Github: %s"
+                                      (pr-str humanized)))
            details))))))
 
 (defn validate-input
