@@ -52,9 +52,14 @@ on:
         description: Apply to OSS
         type: boolean
         default: true
+      skip:
+        description: Skip everything in this job
+        type: boolean
+        default: false
 
 jobs:
   check-version:
+    if: ${{ !inputs.skip }}
     runs-on: ubuntu-22.04
     timeout-minutes: 5
     outputs:
@@ -135,6 +140,7 @@ jobs:
           throw new Error("No edition selected to tag");
 
   copy-to-s3:
+    if: ${{ !inputs.skip }}
     runs-on: ubuntu-22.04
     needs: check-version
     timeout-minutes: 5
@@ -216,6 +222,7 @@ jobs:
         fi
 
   tag-docker-image:
+    if: ${{ !inputs.skip }}
     runs-on: ubuntu-22.04
     needs: check-version
     timeout-minutes: 5
@@ -260,6 +267,7 @@ jobs:
         docker push $DOCKERHUB_REPO\:$TAG_NAME
 
   push-git-tags:
+    if: ${{ !inputs.skip }}
     permissions: write-all
     needs: check-version
     runs-on: ubuntu-22.04
@@ -283,6 +291,7 @@ jobs:
         fi
 
   update-release-log:
+    if: ${{ !inputs.skip }}
     needs: check-version
     uses: ./.github/workflows/release-log.yml
     with:
@@ -290,6 +299,7 @@ jobs:
     secrets: inherit
 
   update-version-info:
+    if: ${{ !inputs.skip }}
     runs-on: ubuntu-22.04
     needs: check-version
     timeout-minutes: 5
