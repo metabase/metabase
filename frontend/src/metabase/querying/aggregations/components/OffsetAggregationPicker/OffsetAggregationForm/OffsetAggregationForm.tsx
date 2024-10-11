@@ -76,7 +76,7 @@ export function OffsetAggregationForm({
   };
 
   return (
-    <Box component="form" miw="29.5rem" onSubmit={handleSubmit}>
+    <Box component="form" p="lg" miw="29.5rem" onSubmit={handleSubmit}>
       <Stack spacing="lg">
         <ComparisonTypeInput
           comparisonType={options.comparisonType}

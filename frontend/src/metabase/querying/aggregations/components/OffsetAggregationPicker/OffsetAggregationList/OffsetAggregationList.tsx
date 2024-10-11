@@ -1,4 +1,5 @@
 import AccordionList from "metabase/core/components/AccordionList";
+import { Box } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import S from "./OffsetAggregationList.module.css";
@@ -28,14 +29,16 @@ export function OffsetAggregationList({
   };
 
   return (
-    <AccordionList
-      className={S.list}
-      sections={sections}
-      width="23.5rem"
-      maxHeight={Infinity}
-      alwaysExpanded
-      onChange={handleChange}
-    />
+    <Box w="23.5rem" py="sm">
+      <AccordionList
+        className={S.list}
+        sections={sections}
+        width="100%"
+        maxHeight={Infinity}
+        alwaysExpanded
+        onChange={handleChange}
+      />
+    </Box>
   );
 }
 

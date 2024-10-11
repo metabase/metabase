@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 
-import { Box, PopoverBackButton } from "metabase/ui";
+import { Box, Divider, PopoverBackButton } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 
 import { OffsetAggregationForm } from "./OffsetAggregationForm";
@@ -43,10 +43,13 @@ export function OffsetAggregationPicker({
   };
 
   return (
-    <Box p="lg">
-      <PopoverBackButton mb="lg" onClick={handleBackClick}>
-        {getTitle(query, stageIndex, aggregation)}
-      </PopoverBackButton>
+    <div>
+      <Box p="md">
+        <PopoverBackButton onClick={handleBackClick}>
+          {getTitle(query, stageIndex, aggregation)}
+        </PopoverBackButton>
+      </Box>
+      <Divider />
       {aggregation ? (
         <OffsetAggregationForm
           query={query}
@@ -62,6 +65,6 @@ export function OffsetAggregationPicker({
           onChange={setAggregation}
         />
       )}
-    </Box>
+    </div>
   );
 }
