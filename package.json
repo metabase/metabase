@@ -244,6 +244,7 @@
     "eslint-plugin-import": "^2.29.1",
     "eslint-plugin-jest": "^27.2.0",
     "eslint-plugin-jest-dom": "^5.4.0",
+    "eslint-plugin-jest-formatting": "^3.1.0",
     "eslint-plugin-no-only-tests": "^2.4.0",
     "eslint-plugin-postcss-modules": "^2.0.0",
     "eslint-plugin-react": "^7.32.2",
