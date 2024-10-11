@@ -294,10 +294,10 @@
               (catch Throwable e
                 (is (= "Invalid token" (ex-message e)))
                 (let [recipient->emails (mt/summarize-multipart-email #"Your Slack connection stopped working.")]
-                  (is (=? (mt/email-to :crowberto {:subject "Your Slack connection stopped working"
-                                                   :to #{"crowberto@metabase.com"}
-                                                   :body [{"Your Slack connection stopped working." true}]})
-                          (select-keys recipient->emails ["crowberto@metabase.com"])))
+                  (is (=? {:from "notifications@metabase.com",
+                           :subject "Your Slack connection stopped working",
+                           :body [{"Your Slack connection stopped working." true}]}
+                          (-> recipient->emails (get "crowberto@metabase.com") first)))
                   (is (= (t2/select-fn-set :email :model/User :is_superuser true)
                          (set (keys recipient->emails)))))
                 (is (false? (slack/slack-token-valid?))))))
