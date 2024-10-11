@@ -1,12 +1,17 @@
-import { useMemo, useState } from "react";
+import { type FormEvent, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { Button, Flex, Group, Input, Stack } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import type { TemporalUnit } from "metabase-types/api";
 
-import type { ColumnType, ComparisonType, OffsetData } from "../types";
-import { getBreakoutColumn, getInitialData } from "../utils";
+import type { ColumnType, ComparisonType, OffsetOptions } from "../types";
+import {
+  applyOffset,
+  getBreakoutColumn,
+  getInitialOptions,
+  getOffsetClause,
+} from "../utils";
 
 import { ColumnTypeInput } from "./ColumnTypeInput";
 import { ComparisonTypeInput } from "./ComparisonTypeInput";
@@ -19,89 +24,100 @@ import { OffsetValueInput } from "./OffsetValueInput";
 type OffsetAggregationFormProps = {
   query: Lib.Query;
   stageIndex: number;
+  aggregation: Lib.AggregationClause;
+  onSubmit: (query: Lib.Query, aggregations: Lib.ExpressionClause[]) => void;
 };
 
 export function OffsetAggregationForm({
   query,
   stageIndex,
+  aggregation,
+  onSubmit,
 }: OffsetAggregationFormProps) {
   const column = useMemo(
     () => getBreakoutColumn(query, stageIndex),
     [query, stageIndex],
   );
-  const [data, setData] = useState<OffsetData>(() =>
-    getInitialData(query, stageIndex, column),
+  const [options, setOptions] = useState<OffsetOptions>(() =>
+    getInitialOptions(query, stageIndex, column),
   );
 
   const handleComparisonTypeChange = (comparisonType: ComparisonType) => {
-    setData(data => ({ ...data, comparisonType }));
+    setOptions(options => ({ ...options, comparisonType }));
   };
 
   const handleColumnTypeChange = (columnType: ColumnType) => {
-    setData(data => ({ ...data, columnType }));
+    setOptions(options => ({ ...options, columnType }));
   };
 
   const handleGroupUnitChange = (groupUnit: TemporalUnit) => {
-    setData(data => ({
-      ...data,
+    setOptions(options => ({
+      ...options,
       groupUnit,
       offsetUnit: groupUnit,
     }));
   };
 
   const handleOffsetValueChange = (offsetValue: number) => {
-    setData(data => ({ ...data, offsetValue }));
+    setOptions(options => ({ ...options, offsetValue }));
   };
 
   const handleOffsetUnitChange = (offsetUnit: TemporalUnit) => {
-    setData(data => ({ ...data, offsetUnit }));
+    setOptions(options => ({ ...options, offsetUnit }));
   };
 
   const handleIncludeCurrentChange = (includeCurrent: boolean) => {
-    setData(data => ({ ...data, includeCurrent }));
+    setOptions(options => ({ ...options, includeCurrent }));
+  };
+
+  const handleSubmit = (event: FormEvent) => {
+    event.preventDefault();
+    const newClause = getOffsetClause(query, stageIndex, aggregation, options);
+    const newQuery = applyOffset(query, stageIndex, column, newClause, options);
+    onSubmit(newQuery, [newClause]);
   };
 
   return (
-    <form>
+    <form onSubmit={handleSubmit}>
       <Stack spacing="lg">
         <ComparisonTypeInput
-          comparisonType={data.comparisonType}
+          comparisonType={options.comparisonType}
           onComparisonTypeChange={handleComparisonTypeChange}
         />
         <GroupUnitInput
           query={query}
           stageIndex={stageIndex}
           column={column}
-          groupUnit={data.groupUnit}
+          groupUnit={options.groupUnit}
           onGroupUnitChange={handleGroupUnitChange}
         />
         <Stack spacing="sm">
           <Input.Label>{t`Compare to`}</Input.Label>
           <Group spacing="sm">
             <OffsetValueInput
-              comparisonType={data.comparisonType}
-              offsetValue={data.offsetValue}
+              comparisonType={options.comparisonType}
+              offsetValue={options.offsetValue}
               onOffsetValueChange={handleOffsetValueChange}
             />
             <OffsetUnitInput
               query={query}
               stageIndex={stageIndex}
               column={column}
-              groupUnit={data.groupUnit}
-              offsetUnit={data.offsetUnit}
+              groupUnit={options.groupUnit}
+              offsetUnit={options.offsetUnit}
               onOffsetUnitChange={handleOffsetUnitChange}
             />
-            <OffsetLabel comparisonType={data.comparisonType} />
+            <OffsetLabel comparisonType={options.comparisonType} />
           </Group>
           <IncludeCurrentInput
-            offsetUnit={data.offsetUnit}
-            includeCurrent={data.includeCurrent}
+            offsetUnit={options.offsetUnit}
+            includeCurrent={options.includeCurrent}
             onIncludeCurrentChange={handleIncludeCurrentChange}
           />
         </Stack>
         <ColumnTypeInput
-          comparisonType={data.comparisonType}
-          columnType={data.columnType}
+          comparisonType={options.comparisonType}
+          columnType={options.columnType}
           onColumnTypeChange={handleColumnTypeChange}
         />
         <Flex justify="end">

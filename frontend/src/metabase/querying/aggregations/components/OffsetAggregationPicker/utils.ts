@@ -9,7 +9,7 @@ import {
   OFFSET_DISPLAY_UNITS,
   OFFSET_UNITS,
 } from "./constants";
-import type { ComparisonType, OffsetData } from "./types";
+import type { BreakoutInfo, ComparisonType, OffsetOptions } from "./types";
 
 export function getTitle(
   query: Lib.Query,
@@ -65,7 +65,7 @@ function getGroupBreakoutInfo(
   query: Lib.Query,
   stageIndex: number,
   column: Lib.ColumnMetadata,
-) {
+): BreakoutInfo | undefined {
   const breakouts = Lib.breakouts(query, stageIndex);
   const { breakoutPositions = [] } = Lib.displayInfo(query, stageIndex, column);
 
@@ -84,7 +84,7 @@ function getOffsetBreakoutInfo(
   stageIndex: number,
   column: Lib.ColumnMetadata,
   groupUnit: TemporalUnit,
-) {
+): BreakoutInfo | undefined {
   const breakouts = Lib.breakouts(query, stageIndex);
   const { breakoutPositions = [] } = Lib.displayInfo(query, stageIndex, column);
 
@@ -160,11 +160,11 @@ function getInitialOffsetUnit(
   return breakoutInfo?.breakoutUnit ?? groupUnit;
 }
 
-export function getInitialData(
+export function getInitialOptions(
   query: Lib.Query,
   stageIndex: number,
   column: Lib.ColumnMetadata,
-): OffsetData {
+): OffsetOptions {
   const groupUnit = getInitialGroupUnit(query, stageIndex, column);
   const offsetUnit = getInitialOffsetUnit(query, stageIndex, column, groupUnit);
 
@@ -218,4 +218,174 @@ export function getIncludeCurrentLabel(offsetUnit: TemporalUnit) {
   const displayUnit = OFFSET_DISPLAY_UNITS[offsetUnit] ?? offsetUnit;
   const offsetUnitLabel = Lib.describeTemporalUnit(displayUnit).toLowerCase();
   return t`Include this ${offsetUnitLabel}`;
+}
+
+export function applyOffset(
+  query: Lib.Query,
+  stageIndex: number,
+  column: Lib.ColumnMetadata,
+  offset: Lib.ExpressionClause,
+  options: OffsetOptions,
+) {
+  let newQuery = query;
+  newQuery = Lib.aggregate(newQuery, stageIndex, offset);
+  newQuery = removeExtraBreakouts(newQuery, stageIndex, column, options);
+  newQuery = applyOffsetBreakout(newQuery, stageIndex, column, options);
+  newQuery = applyGroupBreakout(newQuery, stageIndex, column, options);
+  return newQuery;
+}
+
+export function getOffsetClause(
+  query: Lib.Query,
+  stageIndex: number,
+  aggregation: Lib.AggregationClause,
+  { columnType, offsetValue, includeCurrent }: OffsetOptions,
+) {
+  switch (columnType) {
+    case "offset":
+      return Lib.offsetClause(query, stageIndex, aggregation, -offsetValue);
+    case "diff-offset":
+      return Lib.diffOffsetClause(query, stageIndex, aggregation, -offsetValue);
+    case "percent-diff-offset":
+      return Lib.percentDiffOffsetClause(
+        query,
+        stageIndex,
+        aggregation,
+        -offsetValue,
+      );
+    case "moving-average":
+      return Lib.movingAverageClause({
+        query,
+        stageIndex,
+        clause: aggregation,
+        offset: -offsetValue,
+        includeCurrentPeriod: includeCurrent,
+      });
+    case "diff-moving-average":
+      return Lib.diffMovingAverageClause({
+        query,
+        stageIndex,
+        clause: aggregation,
+        offset: -offsetValue,
+        includeCurrentPeriod: includeCurrent,
+      });
+    case "percent-diff-moving-average":
+      return Lib.percentDiffMovingAverageClause({
+        query,
+        stageIndex,
+        clause: aggregation,
+        offset: -offsetValue,
+        includeCurrentPeriod: includeCurrent,
+      });
+  }
+}
+
+function findTemporalBucket(
+  query: Lib.Query,
+  stageIndex: number,
+  column: Lib.ColumnMetadata,
+  unit: TemporalUnit,
+) {
+  const bucket = Lib.availableTemporalBuckets(query, stageIndex, column).find(
+    bucket => {
+      const bucketInfo = Lib.displayInfo(query, stageIndex, bucket);
+      return bucketInfo.shortName === unit;
+    },
+  );
+
+  return bucket ? bucket : null;
+}
+
+function applyBreakout(
+  query: Lib.Query,
+  stageIndex: number,
+  column: Lib.ColumnMetadata,
+  breakoutInfo?: BreakoutInfo,
+) {
+  const breakouts = Lib.breakouts(query, stageIndex);
+  const newQuery = breakoutInfo
+    ? Lib.replaceClause(
+        query,
+        stageIndex,
+        breakouts[breakoutInfo.breakoutIndex],
+        column,
+      )
+    : Lib.breakout(query, stageIndex, column);
+  const newBreakoutIndex = breakoutInfo
+    ? breakoutInfo.breakoutIndex
+    : breakouts.length;
+
+  if (newBreakoutIndex > 0) {
+    const newBreakouts = Lib.breakouts(newQuery, stageIndex);
+    return Lib.swapClauses(
+      newQuery,
+      stageIndex,
+      newBreakouts[0],
+      newBreakouts[newBreakoutIndex],
+    );
+  } else {
+    return newQuery;
+  }
+}
+
+function applyGroupBreakout(
+  query: Lib.Query,
+  stageIndex: number,
+  column: Lib.ColumnMetadata,
+  { groupUnit }: OffsetOptions,
+) {
+  const bucket = findTemporalBucket(query, stageIndex, column, groupUnit);
+  const columnWithBucket = Lib.withTemporalBucket(column, bucket);
+  const breakoutInfo = getGroupBreakoutInfo(query, stageIndex, column);
+  return applyBreakout(query, stageIndex, columnWithBucket, breakoutInfo);
+}
+
+function applyOffsetBreakout(
+  query: Lib.Query,
+  stageIndex: number,
+  column: Lib.ColumnMetadata,
+  { groupUnit, offsetUnit }: OffsetOptions,
+) {
+  if (offsetUnit === groupUnit) {
+    return query;
+  }
+
+  const bucket = findTemporalBucket(query, stageIndex, column, offsetUnit);
+  const columnWithBucket = Lib.withTemporalBucket(column, bucket);
+  const breakoutInfo = getOffsetBreakoutInfo(
+    query,
+    stageIndex,
+    column,
+    groupUnit,
+  );
+  return applyBreakout(query, stageIndex, columnWithBucket, breakoutInfo);
+}
+
+function removeExtraBreakouts(
+  query: Lib.Query,
+  stageIndex: number,
+  column: Lib.ColumnMetadata,
+  { groupUnit }: OffsetOptions,
+) {
+  const { breakoutPositions = [] } = Lib.displayInfo(query, stageIndex, column);
+  const breakouts = Lib.breakouts(query, stageIndex);
+  const groupBreakoutInfo = getGroupBreakoutInfo(query, stageIndex, column);
+  const offsetBreakoutInfo = getOffsetBreakoutInfo(
+    query,
+    stageIndex,
+    column,
+    groupUnit,
+  );
+  const excludeBreakoutIndexes = [
+    groupBreakoutInfo?.breakoutIndex,
+    offsetBreakoutInfo?.breakoutIndex,
+  ];
+
+  return breakoutPositions.reduce(
+    (query, breakoutIndex) =>
+      excludeBreakoutIndexes.includes(breakoutIndex)
+        ? query
+        : Lib.removeClause(query, stageIndex, breakouts[breakoutIndex]),
+    query,
+  );
 }

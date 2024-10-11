@@ -10,11 +10,16 @@ export type ColumnType =
   | "diff-moving-average"
   | "percent-diff-moving-average";
 
-export type OffsetData = {
+export type OffsetOptions = {
   comparisonType: ComparisonType;
   columnType: ColumnType;
   groupUnit: TemporalUnit;
   offsetValue: number;
   offsetUnit: TemporalUnit;
   includeCurrent: boolean;
+};
+
+export type BreakoutInfo = {
+  breakoutIndex: number;
+  breakoutUnit: TemporalUnit;
 };

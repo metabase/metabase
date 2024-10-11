@@ -17,6 +17,7 @@ type OffsetAggregationPickerProps = {
 export function OffsetAggregationPicker({
   query,
   stageIndex,
+  onSubmit,
   onClose,
 }: OffsetAggregationPickerProps) {
   const aggregations = useMemo(
@@ -26,6 +27,14 @@ export function OffsetAggregationPicker({
   const [aggregation, setAggregation] = useState(
     aggregations.length === 1 ? aggregations[0] : undefined,
   );
+
+  const handleSubmit = (
+    query: Lib.Query,
+    aggregations: Lib.ExpressionClause[],
+  ) => {
+    onSubmit(query, aggregations);
+    onClose();
+  };
 
   const handleBackClick = () => {
     if (aggregation == null || aggregations.length <= 1) {
@@ -41,7 +50,12 @@ export function OffsetAggregationPicker({
         {getTitle(query, stageIndex, aggregation)}
       </PopoverBackButton>
       {aggregation ? (
-        <OffsetAggregationForm query={query} stageIndex={stageIndex} />
+        <OffsetAggregationForm
+          query={query}
+          stageIndex={stageIndex}
+          aggregation={aggregation}
+          onSubmit={handleSubmit}
+        />
       ) : (
         <OffsetAggregationList
           query={query}
