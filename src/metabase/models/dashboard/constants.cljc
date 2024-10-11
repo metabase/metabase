@@ -1,5 +1,7 @@
 (ns metabase.models.dashboard.constants)
 
+;;; TODO -- doesn't seem to actually be used outside of this namespace, seems to be redefined in
+;;; `frontend/src/metabase/lib/dashboard_grid.js`
 (def ^:export GRID_WIDTH
   "Default width of a dashboard"
   24)

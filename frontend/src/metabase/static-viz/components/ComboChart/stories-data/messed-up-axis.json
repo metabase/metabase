@@ -213,17 +213,17 @@
         },
         "graph.dimensions": ["TOTAL"],
         "graph.metrics": ["count"],
-        "metabase.shared.models.visualization-settings/column-settings": {
-          "{:metabase.shared.models.visualization-settings/field-id 15, :metabase.shared.models.visualization-settings/field-metadata {\"base-type\" \"type/Float\"}}": {
-            "metabase.shared.models.visualization-settings/prefix": "2323________11111232323",
-            "metabase.shared.models.visualization-settings/suffix": "232323___________2222232323"
+        "metabase.models.visualization-settings/column-settings": {
+          "{:metabase.models.visualization-settings/field-id 15, :metabase.models.visualization-settings/field-metadata {\"base-type\" \"type/Float\"}}": {
+            "metabase.models.visualization-settings/prefix": "2323________11111232323",
+            "metabase.models.visualization-settings/suffix": "232323___________2222232323"
           },
-          "{:metabase.shared.models.visualization-settings/column-name \"count\"}": {
-            "metabase.shared.models.visualization-settings/prefix": "____________________________",
-            "metabase.shared.models.visualization-settings/suffix": "____________________________"
+          "{:metabase.models.visualization-settings/column-name \"count\"}": {
+            "metabase.models.visualization-settings/prefix": "____________________________",
+            "metabase.models.visualization-settings/suffix": "____________________________"
           }
         },
-        "metabase.shared.models.visualization-settings/global-column-settings": {}
+        "metabase.models.visualization-settings/global-column-settings": {}
       },
       "results_timezone": "America/Montevideo",
       "results_metadata": {
