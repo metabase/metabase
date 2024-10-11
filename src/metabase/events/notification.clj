@@ -12,7 +12,6 @@
    [metabase.notification.core :as notification]
    [metabase.public-settings :as public-settings]
    [metabase.pulse.render.style :as style]
-   [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [trs]]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
@@ -119,8 +118,7 @@
                                                       :event_name       topic
                                                       :notification_ids (map :id notifications)}}
         (let [event-info (enriched-event-info topic event-info)]
-          (log/infof "Found %d %s for event: %s"
-                     (count notifications) (u/format-plural (count notifications) "notification") topic)
+          (log/infof "Found %d %s for event: %s" (count notifications) "notifications" topic)
           (doseq [notification notifications]
             (notification/*send-notification!* (assoc notification :payload event-info))))))))
 

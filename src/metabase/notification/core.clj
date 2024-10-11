@@ -118,8 +118,7 @@
   "Send the notification to all handlers synchronously. Do not use this directly, use *send-notification!* instead."
   [notification-info :- NotificationInfo]
   (let [noti-handlers (hydrate-notification-handler (t2/select :model/NotificationHandler :notification_id (:id notification-info)))]
-    (log/debugf "[Notification %d] Found %d %s"
-               (:id notification-info) (count noti-handlers) (u/format-plural (count noti-handlers) "handler"))
+    (log/debugf "[Notification %d] Found %d handlers" (:id notification-info) (count noti-handlers))
     (task-history/with-task-history
       {:task          "notification-send"
        :task_details {:notification_id       (:id notification-info)
@@ -132,9 +131,9 @@
                             notification-info
                             (:template handler)
                             (:recipients handler))]
-          (log/debugf "[Notification %d] Got %d %s for channel %s with template %d"
+          (log/debugf "[Notification %d] Got %d messages for channel %s with template %d"
                       (:id notification-info) (count messages)
-                      (u/format-plural (count messages) "message") (handler->channel-name handler)
+                      (handler->channel-name handler)
                       (-> handler :template :id))
           (doseq [message messages]
             (channel-send-retrying! handler message))))))
