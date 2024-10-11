@@ -123,7 +123,7 @@
                                  new-joins)]
     (lib.util/update-query-stage query-with-joins agg-stage-index add-join-aliases source-field->join-alias)))
 
-(defn splice-compatible-metrics
+(defn- splice-compatible-metrics
   "Splices in metric definitions that are compatible with the query."
   [query path expanded-stages]
   (let [agg-stage-index (aggregation-stage-index expanded-stages)]
