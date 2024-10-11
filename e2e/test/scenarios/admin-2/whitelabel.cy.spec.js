@@ -535,6 +535,7 @@ describeEE("formatting > whitelabel", () => {
 
   describe("font", () => {
     const font = "Open Sans";
+
     beforeEach(() => {
       cy.log("Change Application Font");
       cy.signInAsAdmin();
