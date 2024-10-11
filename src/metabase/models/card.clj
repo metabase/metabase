@@ -11,7 +11,6 @@
    [metabase.audit :as audit]
    [metabase.config :as config]
    [metabase.db.query :as mdb.query]
-   [metabase.email.messages :as messages]
    [metabase.events :as events]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.core :as lib]
@@ -693,39 +692,24 @@
        (< 1 (count (get-in new-card [:dataset_query :query :breakout])))))
 
 (defn- delete-alert-and-notify!
-  "Removes all of the alerts and notifies all of the email recipients of the alerts change via `NOTIFY-FN!`"
-  [& {:keys [notify-fn! alerts actor]}]
-  (t2/delete! :model/Pulse :id [:in (map :id alerts)])
-  (doseq [{:keys [channels] :as alert} alerts
-          :let [email-channel (m/find-first #(= :email (:channel_type %)) channels)]]
-    (doseq [recipient (:recipients email-channel)]
-      (notify-fn! alert recipient actor))))
-
-(defn delete-alert-and-notify-archived!
-  "Removes all alerts and will email each recipient letting them know"
-  [& {:keys [alerts actor]}]
-  (delete-alert-and-notify! {:notify-fn! messages/send-alert-stopped-because-archived-email!
-                             :alerts     alerts
-                             :actor      actor}))
-
-(defn- delete-alert-and-notify-changed! [& {:keys [alerts actor]}]
-  (delete-alert-and-notify! {:notify-fn! messages/send-alert-stopped-because-changed-email!
-                             :alerts     alerts
-                             :actor      actor}))
+  "Removes all of the alerts and notifies all of the email recipients of the alerts change."
+  [topic actor alerts]
+  (t2/delete! :model/Pulse :id [:in (mapv u/the-id alerts)])
+  (events/publish-event! topic {:alerts alerts, :actor actor}))
 
 (defn- delete-alerts-if-needed! [& {:keys [old-card new-card actor]}]
   ;; If there are alerts, we need to check to ensure the card change doesn't invalidate the alert
   (when-let [alerts (binding [models.pulse/*allow-hydrate-archived-cards* true]
-                      (seq (models.pulse/retrieve-alerts-for-cards {:card-ids [(:id new-card)]})))]
+                      (not-empty (models.pulse/retrieve-alerts-for-cards {:card-ids [(u/the-id new-card)]})))]
     (cond
 
       (card-archived? old-card new-card)
-      (delete-alert-and-notify-archived! :alerts alerts, :actor actor)
+      (delete-alert-and-notify! :event/card-update.alerts-deleted.card-archived actor alerts)
 
       (or (display-change-broke-alert? old-card new-card)
           (goal-missing? old-card new-card)
           (multiple-breakouts? new-card))
-      (delete-alert-and-notify-changed! :alerts alerts, :actor actor)
+      (delete-alert-and-notify! :event/card-update.alerts-deleted.card-became-invalid actor alerts)
 
       ;; The change doesn't invalidate the alert, do nothing
       :else

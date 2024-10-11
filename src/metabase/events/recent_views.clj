@@ -9,8 +9,6 @@
    [methodical.core :as m]
    [steffan-westcott.clj-otel.api.trace.span :as span]))
 
-(derive ::event :metabase/event)
-
 (derive ::dashboard-read :metabase/event)
 (derive :event/dashboard-read ::dashboard-read)
 
