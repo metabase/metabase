@@ -68,9 +68,13 @@ const replaceAliasedImports = filePath => {
 };
 
 const fixupTypesAfterCompilation = () => {
+  console.log("[dts fixup] Fixing SDK d.ts files...");
+
   const dtsFilePaths = traverseFilesTree(SDK_DIST_DIR_PATH);
 
   dtsFilePaths.forEach(replaceAliasedImports);
+
+  console.log("[dts fixup] Done!");
 };
 
 const watchFilesAndFixThem = () => {
@@ -102,10 +106,24 @@ const watchFilesAndFixThem = () => {
   );
 };
 
+const waitForFolder = async folderPath => {
+  while (!fs.existsSync(folderPath)) {
+    console.log(`Waiting for ${folderPath} to be created...`);
+    await new Promise(resolve => setTimeout(resolve, 1000));
+  }
+};
+
 const isWatchMode = process.argv.includes("--watch");
 
-if (isWatchMode) {
-  watchFilesAndFixThem();
-} else {
+const run = async () => {
+  // when running on a clean state and with --watch, the folder might not exist yet
+  await waitForFolder(SDK_DIST_DIR_PATH);
   fixupTypesAfterCompilation();
-}
+
+  if (isWatchMode) {
+    console.log("\n\n\n");
+    watchFilesAndFixThem();
+  }
+};
+
+run();

@@ -388,6 +388,7 @@
     "embedding-sdk:publish": "cd ./resources/embedding-sdk && npm publish",
     "embedding-sdk:test-unit": "yarn test-unit enterprise/frontend/src/embedding-sdk/",
     "embedding-sdk:tsc": "tsc --project tsconfig.sdk.json",
+    "embedding-sdk:clean": "rm -rf resources/embedding-sdk/dist && rm -rf resources/embedding-sdk/.tsbuildinfo",
     "embedding-sdk:dev": "concurrently -n 'tsc,webpack,fix-types' -c 'blue,green,yellow' 'npm:embedding-sdk:dev:dts' 'npm:embedding-sdk:dev:webpack' 'npm:embedding-sdk:dev:fixup'",
     "embedding-sdk:dev:dts": "yarn embedding-sdk:tsc --watch --preserveWatchOutput",
     "embedding-sdk:dev:webpack": "SKIP_DTS=true yarn build-embedding-sdk:watch",
