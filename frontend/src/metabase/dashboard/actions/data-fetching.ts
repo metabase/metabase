@@ -61,6 +61,11 @@ import type { Dispatch, GetState } from "metabase-types/store";
 
 export const FETCH_DASHBOARD_CARD_DATA =
   "metabase/dashboard/FETCH_DASHBOARD_CARD_DATA";
+export const fetchDashboardCardDataAction = createAction<{
+  currentTime: number;
+  loadingIds: DashCardId[];
+}>(FETCH_DASHBOARD_CARD_DATA);
+
 export const CANCEL_FETCH_DASHBOARD_CARD_DATA =
   "metabase/dashboard/CANCEL_FETCH_DASHBOARD_CARD_DATA";
 
@@ -409,13 +414,12 @@ export const fetchDashboardCardData =
         return dashcard.id;
       });
 
-      dispatch({
-        type: FETCH_DASHBOARD_CARD_DATA,
-        payload: {
+      dispatch(
+        fetchDashboardCardDataAction({
           currentTime: performance.now(),
           loadingIds: loadingIds.concat(newLoadingIds),
-        },
-      });
+        }),
+      );
     } else {
       nonVirtualDashcardsToFetch = nonVirtualDashcards;
       const newLoadingIds = nonVirtualDashcardsToFetch.map(({ dashcard }) => {
@@ -427,13 +431,12 @@ export const fetchDashboardCardData =
         dispatch(cancelFetchCardData(dashcard.card.id, dashcard.id));
       }
 
-      dispatch({
-        type: FETCH_DASHBOARD_CARD_DATA,
-        payload: {
+      dispatch(
+        fetchDashboardCardDataAction({
           currentTime: performance.now(),
           loadingIds: newLoadingIds,
-        },
-      });
+        }),
+      );
     }
 
     const promises = nonVirtualDashcardsToFetch.map(({ card, dashcard }) => {
