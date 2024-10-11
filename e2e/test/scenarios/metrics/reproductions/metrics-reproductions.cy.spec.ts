@@ -9,7 +9,7 @@ import {
 const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
 
 describe("issue 47058", () => {
-  before(() => {
+  beforeEach(() => {
     restore();
     cy.signInAsNormalUser();
     cy.intercept("GET", "/api/card/*/query_metadata", req =>
