@@ -36,7 +36,7 @@ To move an item (question, dashboard, model, or collection) to Trash:
 2. Click on the three dots menu;
 3. Select "Move to trash".
 
-When a collection is deleted, all items in the collection are deleted as well.
+When a collection is moved to the trash, Metabase moves all items in the collection to the trash as well.
 
 You'll still be able to see the contents of the items in Trash, but you won't be able to modify them or use them as a source for other questions.
 
