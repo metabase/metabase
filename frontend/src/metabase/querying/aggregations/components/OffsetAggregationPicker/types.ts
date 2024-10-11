@@ -16,4 +16,5 @@ export type OffsetData = {
   groupUnit: TemporalUnit;
   offsetValue: number;
   offsetUnit: TemporalUnit;
+  includeCurrent: boolean;
 };

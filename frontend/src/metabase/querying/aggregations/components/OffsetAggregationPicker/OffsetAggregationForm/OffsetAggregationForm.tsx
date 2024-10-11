@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { Box, Button, Group, Input, Stack } from "metabase/ui";
+import { Button, Group, Input, Stack } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import type { TemporalUnit } from "metabase-types/api";
 
@@ -11,6 +11,7 @@ import { getBreakoutColumn, getInitialData } from "../utils";
 import { ColumnTypeInput } from "./ColumnTypeInput";
 import { ComparisonTypeInput } from "./ComparisonTypeInput";
 import { GroupUnitInput } from "./GroupUnitInput";
+import { IncludeCurrentInput } from "./IncludeCurrentInput";
 import { OffsetLabel } from "./OffsetLabel";
 import { OffsetUnitInput } from "./OffsetUnitInput";
 import { OffsetValueInput } from "./OffsetValueInput";
@@ -56,6 +57,10 @@ export function OffsetAggregationForm({
     setData(data => ({ ...data, offsetUnit }));
   };
 
+  const handleIncludeCurrentChange = (includeCurrent: boolean) => {
+    setData(data => ({ ...data, includeCurrent }));
+  };
+
   return (
     <form>
       <Stack p="lg" spacing="lg">
@@ -70,8 +75,8 @@ export function OffsetAggregationForm({
           groupUnit={data.groupUnit}
           onGroupUnitChange={handleGroupUnitChange}
         />
-        <Box>
-          <Input.Label mb="sm">{t`Compare to`}</Input.Label>
+        <Stack spacing="sm">
+          <Input.Label>{t`Compare to`}</Input.Label>
           <Group spacing="sm">
             <OffsetValueInput
               comparisonType={data.comparisonType}
@@ -88,7 +93,12 @@ export function OffsetAggregationForm({
             />
             <OffsetLabel comparisonType={data.comparisonType} />
           </Group>
-        </Box>
+          <IncludeCurrentInput
+            offsetUnit={data.offsetUnit}
+            includeCurrent={data.includeCurrent}
+            onIncludeCurrentChange={handleIncludeCurrentChange}
+          />
+        </Stack>
         <ColumnTypeInput
           comparisonType={data.comparisonType}
           columnType={data.columnType}

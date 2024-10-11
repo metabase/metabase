@@ -174,6 +174,7 @@ export function getInitialData(
     groupUnit,
     offsetValue: 1,
     offsetUnit,
+    includeCurrent: false,
   };
 }
 
@@ -211,4 +212,10 @@ export function getColumnTypeOptions(comparisonType: ComparisonType) {
     value: columnType,
     label: COLUMN_TYPE_NAMES[columnType],
   }));
+}
+
+export function getIncludeCurrentLabel(offsetUnit: TemporalUnit) {
+  const displayUnit = OFFSET_DISPLAY_UNITS[offsetUnit] ?? offsetUnit;
+  const offsetUnitLabel = Lib.describeTemporalUnit(displayUnit).toLowerCase();
+  return t`Include this ${offsetUnitLabel}`;
 }
