@@ -11,7 +11,8 @@
 
 (methodical/defmethod events/publish-event! ::alerts-deleted-on-card-save
   "When a Card is saved and associated Alerts are deleted send email notifications to recipients of that alert. At the
-  time of this writing this is triggered by [[metabase.models.card/delete-alerts-if-needed!]]."
+  time of this writing this is triggered by [[metabase.models.card/delete-alerts-if-needed!]] and
+  by [[metabase.api.collection/maybe-send-archived-notifications!]]."
   [topic {:keys [alerts actor], :as _event}]
   (let [send-message! (case topic
                         :event/card-update.alerts-deleted.card-archived
