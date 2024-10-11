@@ -103,12 +103,12 @@
                                                             (update :task_details merge (retry-report))))
                                        :on-fail-info    (fn [update-map _result]
                                                           (update update-map :task_details merge (retry-report)))
-                                       :task_details    {:retry_config   retry-config
-                                                         :channel_id     (:id channel)
-                                                         :channel_type   (:type channel)
-                                                         :template_id    (:template_id handler)
-                                                         :notifcation_id notification-id
-                                                         :recipient_ids  (map :id (:recipients handler))}}
+                                       :task_details    {:retry_config    retry-config
+                                                         :channel_id      (:id channel)
+                                                         :channel_type    (:type channel)
+                                                         :template_id     (:template_id handler)
+                                                         :notification_id notification-id
+                                                         :recipient_ids   (map :id (:recipients handler))}}
         (retrier send!)
         (log/debugf "[Notification %d] Sent to channel %s with %d retries" notification-id (handler->channel-name handler) (count @retry-errors))))
     (catch Throwable e
