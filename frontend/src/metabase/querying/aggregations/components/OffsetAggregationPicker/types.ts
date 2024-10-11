@@ -14,5 +14,6 @@ export type OffsetData = {
   comparisonType: ComparisonType;
   columnType: ColumnType;
   groupUnit: TemporalUnit;
+  offsetValue: number;
   offsetUnit: TemporalUnit;
 };

@@ -1,45 +1,39 @@
 import { useMemo } from "react";
-import { t } from "ttag";
 
 import { Select } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import type { TemporalUnit } from "metabase-types/api";
 
-import { getGroupUnitOptions } from "../../utils";
+import { getOffsetUnitOptions } from "../../utils";
 
-type GroupUnitInputProps = {
+type OffsetUnitInputProps = {
   query: Lib.Query;
   stageIndex: number;
   column: Lib.ColumnMetadata;
   groupUnit: TemporalUnit;
-  onGroupUnitChange: (value: TemporalUnit) => void;
+  offsetUnit: TemporalUnit;
+  onOffsetUnitChange: (value: TemporalUnit) => void;
 };
 
-export function GroupUnitInput({
+export function OffsetUnitInput({
   query,
   stageIndex,
   column,
   groupUnit,
-  onGroupUnitChange,
-}: GroupUnitInputProps) {
+  offsetUnit,
+  onOffsetUnitChange,
+}: OffsetUnitInputProps) {
   const options = useMemo(
-    () => getGroupUnitOptions(query, stageIndex, column),
-    [query, stageIndex, column],
+    () => getOffsetUnitOptions(query, stageIndex, column, groupUnit),
+    [query, stageIndex, column, groupUnit],
   );
 
   const handleChange = (newValue: string) => {
     const newOption = options.find(option => option.value === newValue);
     if (newOption) {
-      onGroupUnitChange(newOption.value);
+      onOffsetUnitChange(newOption.value);
     }
   };
 
-  return (
-    <Select
-      data={options}
-      value={groupUnit}
-      label={t`Group by`}
-      onChange={handleChange}
-    />
-  );
+  return <Select data={options} value={offsetUnit} onChange={handleChange} />;
 }

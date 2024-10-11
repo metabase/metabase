@@ -9,3 +9,15 @@ export const OFFSET_UNITS: Partial<Record<TemporalUnit, TemporalUnit[]>> = {
   quarter: ["quarter", "quarter-of-year"],
   year: ["year"],
 };
+
+export const OFFSET_DISPLAY_UNITS: Partial<Record<TemporalUnit, TemporalUnit>> =
+  {
+    "minute-of-hour": "minute",
+    "hour-of-day": "hour",
+    "day-of-week": "week",
+    "day-of-month": "month",
+    "day-of-year": "year",
+    "week-of-year": "year",
+    "month-of-year": "year",
+    "quarter-of-year": "year",
+  };

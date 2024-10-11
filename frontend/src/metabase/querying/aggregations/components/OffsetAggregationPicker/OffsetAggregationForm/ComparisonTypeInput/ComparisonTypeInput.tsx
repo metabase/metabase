@@ -2,34 +2,34 @@ import { t } from "ttag";
 
 import { Button, Flex, Input, Stack } from "metabase/ui";
 
-import type { ComparisonType } from "../types";
+import type { ComparisonType } from "../../types";
 
 type ComparisonTypeInputProps = {
-  value: ComparisonType;
-  onChange: (value: ComparisonType) => void;
+  comparisonType: ComparisonType;
+  onComparisonTypeChange: (value: ComparisonType) => void;
 };
 
 export function ComparisonTypeInput({
-  onChange,
-  value,
+  comparisonType,
+  onComparisonTypeChange,
 }: ComparisonTypeInputProps) {
   return (
     <Stack spacing="sm">
       <Input.Label>{t`How to compare`}</Input.Label>
       <Flex gap="sm">
         <Button
-          variant={value === "offset" ? "filled" : "default"}
+          variant={comparisonType === "offset" ? "filled" : "default"}
           radius="xl"
           p="sm"
-          onClick={() => onChange("offset")}
+          onClick={() => onComparisonTypeChange("offset")}
         >
           {t`Compare values`}
         </Button>
         <Button
-          variant={value === "moving-average" ? "filled" : "default"}
+          variant={comparisonType === "moving-average" ? "filled" : "default"}
           radius="xl"
           p="sm"
-          onClick={() => onChange("moving-average")}
+          onClick={() => onComparisonTypeChange("moving-average")}
         >
           {t`Moving average`}
         </Button>

@@ -3,7 +3,7 @@ import { t } from "ttag";
 import * as Lib from "metabase-lib";
 import type { TemporalUnit } from "metabase-types/api";
 
-import { OFFSET_UNITS } from "./constants";
+import { OFFSET_DISPLAY_UNITS, OFFSET_UNITS } from "./constants";
 import type { OffsetData } from "./types";
 
 export function getTitle(
@@ -167,6 +167,7 @@ export function getInitialData(
     comparisonType: "offset",
     columnType: "offset",
     groupUnit,
+    offsetValue: 1,
     offsetUnit,
   };
 }
@@ -182,5 +183,20 @@ export function getGroupUnitOptions(
     .map(unit => ({
       value: unit,
       label: Lib.describeTemporalUnit(unit),
+    }));
+}
+
+export function getOffsetUnitOptions(
+  query: Lib.Query,
+  stageIndex: number,
+  column: Lib.ColumnMetadata,
+  groupUnit: TemporalUnit,
+) {
+  return Lib.availableTemporalBuckets(query, stageIndex, column)
+    .map(bucket => Lib.displayInfo(query, stageIndex, bucket).shortName)
+    .filter(unit => OFFSET_UNITS[groupUnit]?.includes(unit))
+    .map(unit => ({
+      value: unit,
+      label: Lib.describeTemporalUnit(OFFSET_DISPLAY_UNITS[unit] ?? unit),
     }));
 }
