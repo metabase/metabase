@@ -109,11 +109,13 @@ export function OffsetAggregationForm({
             />
             <OffsetLabel comparisonType={options.comparisonType} />
           </Group>
-          <IncludeCurrentInput
-            offsetUnit={options.offsetUnit}
-            includeCurrent={options.includeCurrent}
-            onIncludeCurrentChange={handleIncludeCurrentChange}
-          />
+          {options.comparisonType === "moving-average" && (
+            <IncludeCurrentInput
+              offsetUnit={options.offsetUnit}
+              includeCurrent={options.includeCurrent}
+              onIncludeCurrentChange={handleIncludeCurrentChange}
+            />
+          )}
         </Stack>
         <ColumnTypeInput
           comparisonType={options.comparisonType}
