@@ -122,7 +122,7 @@
           (log/infof "Found %d %s for event: %s"
                      (count notifications) (u/format-plural (count notifications) "notification") topic)
           (doseq [notification notifications]
-            (notification/send-notification! (assoc notification :payload event-info))))))))
+            (notification/*send-notification!* (assoc notification :payload event-info))))))))
 
 (methodical/defmethod events/publish-event! ::notification
   [topic event-info]
