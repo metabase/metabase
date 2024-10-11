@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { Button, Group, Input, Stack } from "metabase/ui";
+import { Button, Flex, Group, Input, Stack } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import type { TemporalUnit } from "metabase-types/api";
 
@@ -104,7 +104,9 @@ export function OffsetAggregationForm({
           columnType={data.columnType}
           onColumnTypeChange={handleColumnTypeChange}
         />
-        <Button variant="filled" type="submit">{t`Done`}</Button>
+        <Flex justify="end">
+          <Button variant="filled" type="submit">{t`Done`}</Button>
+        </Flex>
       </Stack>
     </form>
   );
