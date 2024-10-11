@@ -26,7 +26,7 @@ export function OffsetAggregationPicker({
   );
 
   const handleBackClick = () => {
-    if (hasOneAggregation) {
+    if (aggregation == null || hasOneAggregation) {
       onClose();
     } else {
       setAggregation(undefined);

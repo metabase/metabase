@@ -1,16 +1,14 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { checkNotNull } from "metabase/lib/types";
 import { Button, Stack } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import type { TemporalUnit } from "metabase-types/api";
 
 import { ComparisonTypeInput } from "./ComparisonTypeInput";
 import { GroupUnitInput } from "./GroupUnitInput";
-import { OFFSET_UNITS } from "./constants";
-import type { ComparisonType, OffsetOptions } from "./types";
-import { getBreakoutColumn } from "./utils";
+import type { ComparisonType, OffsetData } from "./types";
+import { getInitialBreakoutColumn, getInitialData } from "./utils";
 
 type OffsetAggregationFormProps = {
   query: Lib.Query;
@@ -22,25 +20,22 @@ export function OffsetAggregationForm({
   stageIndex,
 }: OffsetAggregationFormProps) {
   const column = useMemo(
-    () => getBreakoutColumn(query, stageIndex),
+    () => getInitialBreakoutColumn(query, stageIndex),
     [query, stageIndex],
   );
-  const [options, setOptions] = useState<OffsetOptions>({
-    comparisonType: "offset",
-    groupUnit: "month",
-    offsetUnit: "month",
-  });
+  const [options, setOptions] = useState<OffsetData>(() =>
+    getInitialData(query, stageIndex, column),
+  );
 
   const handleComparisonTypeChange = (comparisonType: ComparisonType) => {
     setOptions(options => ({ ...options, comparisonType }));
   };
 
   const handleGroupUnitChange = (groupUnit: TemporalUnit) => {
-    const offsetUnits = checkNotNull(OFFSET_UNITS[groupUnit]);
     setOptions(options => ({
       ...options,
       groupUnit,
-      offsetUnit: offsetUnits[0],
+      offsetUnit: groupUnit,
     }));
   };
 

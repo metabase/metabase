@@ -23,7 +23,7 @@ export function GroupUnitInput({
   onChange,
 }: GroupUnitInputProps) {
   const options = useMemo(
-    () => getAvailableGroupOptions(query, stageIndex, column),
+    () => getOptions(query, stageIndex, column),
     [query, stageIndex, column],
   );
 
@@ -44,7 +44,7 @@ export function GroupUnitInput({
   );
 }
 
-function getAvailableGroupOptions(
+function getOptions(
   query: Lib.Query,
   stageIndex: number,
   column: Lib.ColumnMetadata,
