@@ -199,22 +199,27 @@
 
 (defmulti supported-engine? "Does this instance support the given engine?" keyword)
 
-(defmethod supported-engine? :in-place [_] true)
-(defmethod supported-engine? :fulltext [_] (search.fulltext/supported-db? (mdb/db-type)))
+(defmethod supported-engine? :search.engine/in-place [_] true)
+(defmethod supported-engine? :search.engine/fulltext [_] (search.fulltext/supported-db? (mdb/db-type)))
 
 (def ^:private default-engine :search.engine/in-place)
 
+(defn- known-engine? [engine]
+  (let [registered? #(contains? (methods supported-engine?) %)]
+    (some registered? (cons engine (ancestors engine)))))
+
 (defn- parse-engine [value]
   (or (when-not (str/blank? value)
-        (cond
-          (not (contains? (methods supported-engine?) value))
-          (log/warnf "Search-engine is unknown: %s" value)
+        (let [engine (keyword "search.engine" value)]
+          (cond
+            (not (known-engine? engine))
+            (log/warnf "Search-engine is unknown: %s" value)
 
-          (not (supported-engine? value))
-          (log/warnf "Search-engine is not supported: %s" value)
+            (not (supported-engine? engine))
+            (log/warnf "Search-engine is not supported: %s" value)
 
-          :else
-          (keyword "search.engine" value)))
+            :else
+            engine)))
       default-engine))
 
 ;; This forwarding is here for tests, we should clean those up.
@@ -248,29 +253,31 @@
    [:search-native-query                 {:optional true} [:maybe true?]]
    [:model-ancestors?                    {:optional true} [:maybe boolean?]]
    [:verified                            {:optional true} [:maybe true?]]
-   [:ids                                 {:optional true} [:maybe [:set ms/PositiveInt]]]])
+   [:ids                                 {:optional true} [:maybe [:set ms/PositiveInt]]]
+   [:calculate-available-models?         {:optional true} [:maybe :boolean]]])
 
 (mu/defn search-context :- SearchContext
   "Create a new search context that you can pass to other functions like [[search]]."
   [{:keys [archived
+           calculate-available-models?
            created-at
            created-by
            current-user-id
-           is-superuser?
            current-user-perms
+           filter-items-in-personal-collection
+           ids
+           is-superuser?
            last-edited-at
            last-edited-by
            limit
+           model-ancestors?
            models
-           filter-items-in-personal-collection
            offset
            search-engine
-           search-string
-           model-ancestors?
-           table-db-id
            search-native-query
-           verified
-           ids]} :- ::search-context.input]
+           search-string
+           table-db-id
+           verified]} :- ::search-context.input]
   ;; for prod where Malli is disabled
   {:pre [(pos-int? current-user-id) (set? current-user-perms)]}
   (when (some? verified)
@@ -278,14 +285,15 @@
      [:content-verification :official-collections]
      (deferred-tru "Content Management or Official Collections")))
   (let [models (if (string? models) [models] models)
-        ctx    (cond-> {:archived?          (boolean archived)
-                        :current-user-id    current-user-id
-                        :is-superuser?      is-superuser?
-                        :current-user-perms current-user-perms
-                        :model-ancestors?   (boolean model-ancestors?)
-                        :models             models
-                        :search-engine      (parse-engine search-engine)
-                        :search-string      search-string}
+        ctx    (cond-> {:archived?                   (boolean archived)
+                        :calculate-available-models? (boolean calculate-available-models?)
+                        :current-user-id             current-user-id
+                        :current-user-perms          current-user-perms
+                        :is-superuser?               is-superuser?
+                        :models                      models
+                        :model-ancestors?            (boolean model-ancestors?)
+                        :search-engine               (parse-engine search-engine)
+                        :search-string               search-string}
                  (some? created-at)                          (assoc :created-at created-at)
                  (seq created-by)                            (assoc :created-by created-by)
                  (some? filter-items-in-personal-collection) (assoc :filter-items-in-personal-collection filter-items-in-personal-collection)
@@ -344,17 +352,20 @@
     ;; We get to do this slicing and dicing with the result data because
     ;; the pagination of search is for UI improvement, not for performance.
     ;; We intend for the cardinality of the search results to be below the default max before this slicing occurs
-    {:available_models (model-set-fn search-ctx)
-     :data             (cond->> total-results
-                         (some? (:offset-int search-ctx)) (drop (:offset-int search-ctx))
-                         (some? (:limit-int search-ctx)) (take (:limit-int search-ctx))
-                         true (map add-perms-for-col))
-     :limit            (:limit-int search-ctx)
-     :models           (:models search-ctx)
-     :offset           (:offset-int search-ctx)
-     :table_db_id      (:table-db-id search-ctx)
-     :engine           (:search-engine search-ctx)
-     :total            (count total-results)}))
+    (cond->
+     {:data             (cond->> total-results
+                          (some? (:offset-int search-ctx)) (drop (:offset-int search-ctx))
+                          (some? (:limit-int search-ctx)) (take (:limit-int search-ctx))
+                          true (map add-perms-for-col))
+      :limit            (:limit-int search-ctx)
+      :models           (:models search-ctx)
+      :offset           (:offset-int search-ctx)
+      :table_db_id      (:table-db-id search-ctx)
+      :engine           (:search-engine search-ctx)
+      :total            (count total-results)}
+
+      (:calculate-available-models? search-ctx)
+      (assoc :available_models (model-set-fn search-ctx)))))
 
 (mu/defn search
   "Builds a search query that includes all the searchable entities, and runs it."

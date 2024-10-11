@@ -26,6 +26,7 @@ import {
   setupSubscriptionWithRecipients,
   sharingMenu,
   sidebar,
+  updateSetting,
   viewEmailPage,
   visitDashboard,
 } from "e2e/support/helpers";
@@ -51,8 +52,8 @@ describe("scenarios > dashboard > subscriptions", () => {
 
     openSharingMenu("Embed");
     getEmbedModalSharingPane().within(() => {
-      cy.findByText("Public embed").should("be.visible");
-      cy.findByText("Static embed").should("be.visible");
+      cy.findByText("public embedding").should("be.visible");
+      cy.findByText("Static embedding").should("be.visible");
     });
   });
 
@@ -754,9 +755,7 @@ function openSlackCreationForm() {
 }
 
 function openRecipientsWithUserVisibilitySetting(setting) {
-  cy.request("PUT", "/api/setting/user-visibility", {
-    value: setting,
-  });
+  updateSetting("user-visibility", setting);
   cy.signInAsNormalUser();
   openDashboardSubscriptions();
 

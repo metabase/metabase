@@ -234,7 +234,8 @@
   general public. Throws a 404 if the Dashboard doesn't exist."
   [& conditions]
   {:pre [(even? (count conditions))]}
-  (binding [params/*ignore-current-user-perms-and-return-all-field-values* true]
+  (binding [params/*ignore-current-user-perms-and-return-all-field-values* true
+            params/*field-id-context* (atom params/empty-field-id-context)]
     (-> (api/check-404 (apply t2/select-one [Dashboard :name :description :id :parameters :auto_apply_filters :width], :archived false, conditions))
         (t2/hydrate [:dashcards :card :series :dashcard/action] :tabs :param_values :param_fields)
         api.dashboard/add-query-average-durations

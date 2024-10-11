@@ -1,4 +1,4 @@
-(ns metabase.api.card-test
+(ns ^:mb/driver-tests metabase.api.card-test
   "Tests for /api/card endpoints."
   (:require
    [cheshire.core :as json]
@@ -885,7 +885,7 @@
     (testing "Ignore values of `enable_embedding` while creating a Card (this must be done via `PUT /api/card/:id` instead)"
       ;; should be ignored regardless of the value of the `enable-embedding` Setting.
       (doseq [enable-embedding? [true false]]
-        (mt/with-temporary-setting-values [enable-embedding enable-embedding?]
+        (mt/with-temporary-setting-values [enable-embedding-static enable-embedding?]
           (mt/with-model-cleanup [:model/Card]
             (is (=? {:enable_embedding false}
                     (mt/user-http-request :crowberto :post 200 "card" {:name                   "My Card"
@@ -1422,12 +1422,12 @@
   (testing "PUT /api/card/:id"
     (t2.with-temp/with-temp [:model/Card card]
       (testing "If embedding is disabled, even an admin should not be allowed to update embedding params"
-        (mt/with-temporary-setting-values [enable-embedding false]
+        (mt/with-temporary-setting-values [enable-embedding-static false]
           (is (= "Embedding is not enabled."
                  (mt/user-http-request :crowberto :put 400 (str "card/" (u/the-id card))
                                        {:embedding_params {:abc "enabled"}})))))
 
-      (mt/with-temporary-setting-values [enable-embedding true]
+      (mt/with-temporary-setting-values [enable-embedding-static true]
         (testing "Non-admin should not be allowed to update Card's embedding parms"
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :put 403 (str "card/" (u/the-id card))
@@ -2864,7 +2864,7 @@
 
 (deftest test-that-we-can-fetch-a-list-of-embeddable-cards
   (testing "GET /api/card/embeddable"
-    (mt/with-temporary-setting-values [enable-embedding true]
+    (mt/with-temporary-setting-values [enable-embedding-static true]
       (t2.with-temp/with-temp [:model/Card _ {:enable_embedding true}]
         (is (= [{:name true, :id true}]
                (for [card (mt/user-http-request :crowberto :get 200 "card/embeddable")]
@@ -3841,7 +3841,8 @@
                               {:id (mt/id :orders :user_id)}
                               {:id (mt/id :people :source)}
                               {:id (mt/id :people :name)}])
-            :tables empty?
+            :tables (sort-by :id
+                             [{:id (str "card__" card-id-2)}])
             :databases [{:id (mt/id) :engine string?}]}
            (-> (mt/user-http-request :crowberto :get 200 (str "card/" card-id-2 "/query_metadata"))
                 ;; The output is so large, these help debugging
@@ -3858,3 +3859,49 @@
                                        false
                                        (apply original-can-read? args)))]
           (is (map? (mt/user-http-request :crowberto :get 200 (format "card/%d/query_metadata" (:id card))))))))))
+
+(deftest pivot-tables-with-model-sources-show-row-totals
+  (testing "Pivot Tables with a model source will return row totals (#46575)"
+    (mt/with-temp [:model/Card {model-id :id} {:type :model
+                                               :dataset_query
+                                               {:database (mt/id)
+                                                :type     :query
+                                                :query
+                                                {:source-table (mt/id :orders)
+                                                 :joins
+                                                 [{:fields       :all
+                                                   :strategy     :left-join
+                                                   :alias        "People - User"
+                                                   :condition
+                                                   [:=
+                                                    [:field (mt/id :orders :user_id) {:base-type :type/Integer}]
+                                                    [:field (mt/id :people :id) {:base-type :type/BigInteger :join-alias "People - User"}]]
+                                                   :source-table (mt/id :people)}]}}}
+                   :model/Card {pivot-id :id} {:display :pivot
+                                               :dataset_query
+                                               {:database (mt/id)
+                                                :type     :query
+                                                :query
+                                                {:aggregation  [[:sum [:field "TOTAL" {:base-type :type/Float}]]]
+                                                 :breakout
+                                                 [[:field "CREATED_AT" {:base-type :type/DateTime, :temporal-unit :month}]
+                                                  [:field "NAME" {:base-type :type/Text}]
+                                                  [:field (mt/id :products :category) {:base-type    :type/Text
+                                                                                       :source-field (mt/id :orders :product_id)}]]
+                                                 :source-table (format "card__%s" model-id)}}
+                                               :visualization_settings
+                                               {:pivot_table.column_split
+                                                {:rows
+                                                 [[:field "NAME" {:base-type :type/Text}]
+                                                  [:field "CREATED_AT" {:base-type :type/DateTime, :temporal-unit :month}]]
+                                                 :columns [[:field (mt/id :products :category) {:base-type    :type/Text
+                                                                                                :source-field (mt/id :orders :product_id)}]]
+                                                 :values  [[:aggregation 0]]}}}]
+      ;; pivot row totals have a pivot-grouping of 1 (the second-last column in these results)
+      ;; before fixing issue #46575, these rows would not be returned given the model + card setup
+      (is (= [nil "Abbey Satterfield" "Doohickey" 1 347.91]
+             (let [result (mt/user-http-request :rasta :post 202 (format "card/pivot/%d/query" pivot-id))
+                   totals (filter (fn [row]
+                                    (< 0 (second (reverse row))))
+                                  (get-in result [:data :rows]))]
+               (first totals)))))))

@@ -31,8 +31,6 @@ export type ColorGetter = (colorName: string) => string;
 
 export interface RenderingContext {
   getColor: ColorGetter;
-  formatValue: Formatter;
-
   measureText: TextWidthMeasurer;
   measureTextHeight: TextHeightMeasurer;
   fontFamily: string;
@@ -80,6 +78,7 @@ export type ComputedVisualizationSettings = VisualizationSettings & {
 export interface StaticVisualizationProps {
   rawSeries: RawSeries;
   renderingContext: RenderingContext;
+  isStorybook?: boolean;
 }
 
 export interface VisualizationProps {

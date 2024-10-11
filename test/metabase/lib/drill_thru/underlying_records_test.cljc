@@ -13,8 +13,7 @@
    [metabase.lib.options :as lib.options]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.lib.test-util.metadata-providers.mock :as providers.mock]
-   [metabase.util :as u]))
+   [metabase.lib.test-util.metadata-providers.mock :as providers.mock]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -42,6 +41,7 @@
    {:drill-type  :drill-thru/underlying-records
     :click-type  :cell
     :query-type  :aggregated
+    :query-kinds [:mbql]
     :column-name "count"
     :expected    {:type :drill-thru/underlying-records, :row-count 77, :table-name "Orders"}}))
 
@@ -50,6 +50,7 @@
    {:drill-type  :drill-thru/underlying-records
     :click-type  :cell
     :query-type  :aggregated
+    :query-kinds [:mbql]
     :column-name "sum"
     :expected    {:type :drill-thru/underlying-records, :row-count 1, :table-name "Orders"}}))
 
@@ -58,6 +59,7 @@
    {:drill-type  :drill-thru/underlying-records
     :click-type  :cell
     :query-type  :aggregated
+    :query-kinds [:mbql]
     :column-name "max"
     :expected    {:type :drill-thru/underlying-records, :row-count 2, :table-name "Orders"}}))
 
@@ -66,6 +68,7 @@
    {:drill-type   :drill-thru/underlying-records
     :click-type   :cell
     :query-type   :aggregated
+    :query-kinds [:mbql]
     :column-name  "count"
     :custom-query (-> (lib/query lib.tu/metadata-provider-with-mock-cards (lib.tu/mock-cards :orders))
                       (lib/aggregate (lib/count))
@@ -77,18 +80,12 @@
 
 (deftest ^:parallel do-not-return-fk-filter-for-non-fk-column-test
   (testing "underlying-records should only get shown once for aggregated query (#34439)"
-    (let [test-case           {:click-type  :cell
-                               :query-type  :aggregated
-                               :column-name "max"}
-          {:keys [query row]} (lib.drill-thru.tu/query-and-row-for-test-case test-case)
-          context             (lib.drill-thru.tu/test-case-context query row test-case)]
-      (testing (str "\nQuery = \n"   (u/pprint-to-str query)
-                    "\nContext =\n" (u/pprint-to-str context))
-        (let [drills (lib/available-drill-thrus query context)]
-          (testing (str "\nAvailable drills =\n" (u/pprint-to-str drills))
-            (is (= 1
-                   (count (filter #(= (:type %) :drill-thru/underlying-records)
-                                  drills))))))))))
+    (lib.drill-thru.tu/test-available-drill-thrus
+     {:click-type  :cell
+      :query-type  :aggregated
+      :query-kinds [:mbql]
+      :column-name "max"
+      :expected    #(->> % (map :type) (filter #{:drill-thru/underlying-records}) count (= 1))})))
 
 (def ^:private last-month
   #?(:cljs (let [now    (js/Date.)
@@ -129,7 +126,7 @@
                          :fields      (symbol "nil #_\"key is not present.\"")}]}
               (->> (lib.drill-thru/available-drill-thrus query context)
                    (m/find-first #(= (:type %) :drill-thru/underlying-records))
-                   (lib.drill-thru/drill-thru query -1)))))))
+                   (lib.drill-thru/drill-thru query -1 nil)))))))
 
 (deftest ^:parallel underlying-records-apply-test
   (testing "sum(subtotal) over time"
@@ -308,7 +305,7 @@
                          :aggregation (symbol "nil #_\"key is not present.\"")
                          :breakout    (symbol "nil #_\"key is not present.\"")
                          :fields      (symbol "nil #_\"key is not present.\"")}]}
-              (lib.drill-thru/drill-thru query -1 drill))))))
+              (lib.drill-thru/drill-thru query drill))))))
 
 (deftest ^:parallel preserve-temporal-bucket-test
   (testing "preserve the temporal bucket on a breakout column in the previous stage (#13504 #36582)"

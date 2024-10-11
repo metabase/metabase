@@ -4,6 +4,7 @@
    [medley.core :as m]
    [metabase.channel.core :as channel]
    [metabase.integrations.slack :as slack]
+   [metabase.notification.test-util :as notification.tu]
    [metabase.pulse :as pulse]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
@@ -79,21 +80,10 @@
                  slack/files-channel (constantly "FOO")]
      (do-with-site-url! (fn [] ~@body))))
 
-(defn do-with-captured-channel-send-messages!
-  [thunk]
-  (let [channel-messages (atom nil)]
-    (with-redefs [channel/send! (fn [channel message]
-                                  (swap! channel-messages update (:type channel) conj message))]
-      (thunk)
-      @channel-messages)))
-
 (defmacro with-captured-channel-send-messages!
-  "Macro that captures all messages sent to channels in the body of the macro.
-  Returns a map of channel-type -> messages sent to that channel."
   [& body]
-  `(do-with-captured-channel-send-messages!
-    (fn []
-      ~@body)))
+  `(notification.tu/with-captured-channel-send!
+     ~@body))
 
 (def png-attachment
   {:type         :inline

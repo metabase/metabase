@@ -1,4 +1,4 @@
-(ns metabase.driver.redshift-test
+(ns ^:mb/driver-tests metabase.driver.redshift-test
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
@@ -6,8 +6,7 @@
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-   [metabase.driver.sql-jdbc.sync.describe-database
-    :as sql-jdbc.describe-database]
+   [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.models.database :refer [Database]]
    [metabase.models.field :refer [Field]]
@@ -19,7 +18,7 @@
    [metabase.sync.util :as sync-util]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
-   [metabase.test.data.redshift :as redshift.test]
+   [metabase.test.data.redshift :as redshift.tx]
    [metabase.test.data.sql :as sql.tx]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -91,7 +90,7 @@
                                  "  2000"]]
                        (-> line
                            (str/replace #"\Q{{site-uuid}}\E" (public-settings/site-uuid))
-                           (str/replace #"\Q{{schema}}\E" (redshift.test/unique-session-schema))))]
+                           (str/replace #"\Q{{schema}}\E" (redshift.tx/unique-session-schema))))]
         (is (= expected
                (sql->lines
                 (query->native!
@@ -191,7 +190,7 @@
                {:database   (mt/id)
                 :type       :native
                 :native     {:query         (str "select * "
-                                                 (format "from \"%s\".test_data_checkins " (redshift.test/unique-session-schema))
+                                                 (format "from \"%s\".test_data_checkins " (redshift.tx/unique-session-schema))
                                                  "where {{date}} "
                                                  "order by date desc "
                                                  "limit 1;")
@@ -206,7 +205,7 @@
 
 (defn- execute! [format-string & args]
   (let [sql  (apply format format-string args)
-        spec (sql-jdbc.conn/connection-details->spec :redshift @redshift.test/db-connection-details)]
+        spec (sql-jdbc.conn/connection-details->spec :redshift @redshift.tx/db-connection-details)]
     (log/info (u/format-color 'blue "[redshift] %s" sql))
     (try
       (jdbc/execute! spec sql)
@@ -223,9 +222,9 @@
       (let [db-details (tx/dbdef->connection-details :redshift nil nil)]
         (mt/with-temp [:model/Database database {:engine :redshift, :details db-details}]
           (let [tbl-nm       (tx/db-qualified-table-name (:name database) "table")
-                qual-tbl-nm  (format "\"%s\".\"%s\"" (redshift.test/unique-session-schema) tbl-nm)
+                qual-tbl-nm  (format "\"%s\".\"%s\"" (redshift.tx/unique-session-schema) tbl-nm)
                 view-nm      (tx/db-qualified-table-name (:name database) "view")
-                qual-view-nm (format "\"%s\".\"%s\"" (redshift.test/unique-session-schema) view-nm)]
+                qual-view-nm (format "\"%s\".\"%s\"" (redshift.tx/unique-session-schema) view-nm)]
             ;; create a table with a CHARACTER VARYING and a NUMERIC column, and a late bound view that selects from it
             (execute!
              (str "DROP TABLE IF EXISTS %1$s;%n"
@@ -234,18 +233,20 @@
              qual-tbl-nm
              qual-view-nm)
             ;; sync the schema again to pick up the new view (and table, though we aren't checking that)
-            (binding [sync-util/*log-exceptions-and-continue?* false]
+            (binding [sync-util/*log-exceptions-and-continue?*                       false
+                      redshift.tx/*override-describe-database-to-filter-by-db-name?* false]
               (sync/sync-database! database {:scan :schema}))
-            (is (contains?
-                 (t2/select-fn-set :name Table :db_id (u/the-id database)) ; the new view should have been synced
-                 view-nm))
+            (testing "the new view should have been synced"
+              (is (contains?
+                   (t2/select-fn-set :name Table :db_id (u/the-id database))
+                   view-nm)))
             (let [table-id (t2/select-one-pk Table :db_id (u/the-id database), :name view-nm)]
-              ;; and its columns' :base_type should have been identified correctly
-              (is (= [{:name "numeric_col",   :database_type "numeric",           :base_type :type/Decimal}
-                      {:name "weird_varchar", :database_type "character varying", :base_type :type/Text}]
-                     (map
-                      mt/derecordize
-                      (t2/select [Field :name :database_type :base_type] :table_id table-id {:order-by [:name]})))))))))))
+              (testing "and its columns' :base_type should have been identified correctly"
+                (is (= [{:name "numeric_col",   :database_type "numeric",           :base_type :type/Decimal}
+                        {:name "weird_varchar", :database_type "character varying", :base_type :type/Text}]
+                       (map
+                        mt/derecordize
+                        (t2/select [Field :name :database_type :base_type] :table_id table-id {:order-by [:name]}))))))))))))
 
 (deftest redshift-lbv-sync-error-test
   (mt/test-driver
@@ -254,7 +255,7 @@
       (let [db-details (tx/dbdef->connection-details :redshift nil nil)]
         (t2.with-temp/with-temp [Database database {:engine :redshift, :details db-details}]
           (let [view-nm      (tx/db-qualified-table-name (:name database) "lbv")
-                qual-view-nm (format "\"%s\".\"%s\"" (redshift.test/unique-session-schema) view-nm)]
+                qual-view-nm (format "\"%s\".\"%s\"" (redshift.tx/unique-session-schema) view-nm)]
             (execute!
              (str "CREATE OR REPLACE VIEW %1$s AS ("
                   "WITH test_data AS (SELECT 'open' AS shop_status UNION ALL SELECT 'closed' AS shop_status) "
@@ -263,17 +264,19 @@
                   "CASE WHEN shop_status = 'open' THEN 11387.133 END AS case_when_numeric_inc_nulls "
                   "FROM test_data) WITH NO SCHEMA BINDING;")
              qual-view-nm)
-            (binding [sync-util/*log-exceptions-and-continue?* false]
+            (binding [sync-util/*log-exceptions-and-continue?*                       false
+                      redshift.tx/*override-describe-database-to-filter-by-db-name?* false]
               (sync/sync-database! database {:scan :schema}))
-            (is (contains?
-                 (t2/select-fn-set :name Table :db_id (u/the-id database)) ; the new view should have been synced without errors
-                 view-nm))
+            (testing "the new view should have been synced without errors"
+              (is (contains?
+                   (t2/select-fn-set :name Table :db_id (u/the-id database))
+                   view-nm)))
             (let [table-id (t2/select-one-pk Table :db_id (u/the-id database), :name view-nm)]
-                ;; and its columns' :base_type should have been identified correctly
-              (is (= [{:name "case_when_numeric_inc_nulls", :database_type "numeric",           :base_type :type/Decimal}
-                      {:name "raw_null",                    :database_type "character varying", :base_type :type/Text}
-                      {:name "raw_var",                     :database_type "character varying", :base_type :type/Text}]
-                     (t2/select [Field :name :database_type :base_type] :table_id table-id {:order-by [:name]}))))))))))
+              (testing "and its columns' :base_type should have been identified correctly"
+                (is (= [{:name "case_when_numeric_inc_nulls", :database_type "numeric",           :base_type :type/Decimal}
+                        {:name "raw_null",                    :database_type "character varying", :base_type :type/Text}
+                        {:name "raw_var",                     :database_type "character varying", :base_type :type/Text}]
+                       (t2/select [Field :name :database_type :base_type] :table_id table-id {:order-by [:name]})))))))))))
 
 (deftest describe-database-privileges-test
   (mt/test-driver :redshift
@@ -289,7 +292,7 @@
                             (format "CREATE TABLE %s (i INTEGER);%n" schema+table)))
              (mt/with-temp [:model/Database db {:engine :redshift, :details details}]
                (let [table-is-in-results? (fn []
-                                            (binding [redshift.test/*override-describe-database-to-filter-by-db-name?* false]
+                                            (binding [redshift.tx/*override-describe-database-to-filter-by-db-name?* false]
                                               (->> (:tables (driver/describe-database :redshift db))
                                                    (map :name)
                                                    (some #{table-name})
@@ -326,7 +329,7 @@
                                                :dataset_query (mt/mbql-query users)
                                                :database_id   (mt/id)}
                            :model/Database db {:engine :redshift, :details details}]
-              (binding [redshift.test/*override-describe-database-to-filter-by-db-name?* false]
+              (binding [redshift.tx/*override-describe-database-to-filter-by-db-name?* false]
                 (persist-models!)
                 (let [synced-schemas (set (map :schema (:tables (driver/describe-database :redshift db))))]
                   (testing "sense check: there are results matching some schemas in the schema-filters-patterns"
@@ -348,9 +351,9 @@
       (let [db-details (tx/dbdef->connection-details :redshift nil nil)]
         (mt/with-temp [Database database {:engine :redshift, :details db-details}]
           (let [table-name    (tx/db-qualified-table-name (:name database) "sync_t")
-                qual-tbl-nm   (format "\"%s\".\"%s\"" (redshift.test/unique-session-schema) table-name)
+                qual-tbl-nm   (format "\"%s\".\"%s\"" (redshift.tx/unique-session-schema) table-name)
                 mview-nm      (tx/db-qualified-table-name (:name database) "sync_mv")
-                qual-mview-nm (format "\"%s\".\"%s\"" (redshift.test/unique-session-schema) mview-nm)]
+                qual-mview-nm (format "\"%s\".\"%s\"" (redshift.tx/unique-session-schema) mview-nm)]
             (execute!
              (str "CREATE TABLE IF NOT EXISTS %1$s(weird_varchar CHARACTER VARYING(50), numeric_col NUMERIC(10,2));\n"
                   "CREATE MATERIALIZED VIEW %2$s AS SELECT * FROM %1$s;")
@@ -395,7 +398,7 @@
     (mt/test-driver :redshift
       (testing "`table-privileges` should return the correct data for current_user and role privileges"
         (mt/with-temp [Database database {:engine :redshift :details (tx/dbdef->connection-details :redshift nil nil)}]
-          (let [schema-name                  (redshift.test/unique-session-schema)
+          (let [schema-name                  (redshift.tx/unique-session-schema)
                 username                     (str (sql.tu.unique-prefix/unique-prefix) "privilege_rows_test_role")
                 db-name                      (:name database)
                 table-name                   (tx/db-qualified-table-name db-name "table")

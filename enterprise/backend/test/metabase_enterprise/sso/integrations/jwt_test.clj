@@ -346,7 +346,7 @@
 (deftest jwt-token-test
   (testing "should return a session token when token=true"
     (with-jwt-default-setup!
-      (mt/with-temporary-setting-values [enable-embedding true]
+      (mt/with-temporary-setting-values [enable-embedding-static true]
         (let [jwt-iat-time (buddy-util/now)
               jwt-exp-time (+ (buddy-util/now) 3600)
               jwt-payload  (jwt/sign {:email      "rasta@metabase.com"

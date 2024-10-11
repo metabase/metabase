@@ -273,8 +273,7 @@
                   (lib.tu/mock-metadata-provider
                    {:cards [model]}))
         metric-query (as-> (lib/query model-mp model) $q
-                       (lib/aggregate $q (lib/avg (m/find-first agg-col-fn (-> (lib/visible-columns $q)
-                                                                               #_(doto tap>))))))
+                       (lib/aggregate $q (lib/avg (m/find-first agg-col-fn (lib/visible-columns $q)))))
         metric {:lib/type :metadata/card
                 :id (fresh-card-id model-mp)
                 :database-id (meta/id)

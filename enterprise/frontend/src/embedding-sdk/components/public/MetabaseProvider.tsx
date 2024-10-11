@@ -1,12 +1,10 @@
+import { Global } from "@emotion/react";
 import type { Action, Store } from "@reduxjs/toolkit";
 import { type JSX, type ReactNode, memo, useEffect } from "react";
 import { Provider } from "react-redux";
 
 import { SdkThemeProvider } from "embedding-sdk/components/private/SdkThemeProvider";
-import {
-  EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID,
-  EMBEDDING_SDK_ROOT_ELEMENT_ID,
-} from "embedding-sdk/config";
+import { EMBEDDING_SDK_ROOT_ELEMENT_ID } from "embedding-sdk/config";
 import { useInitData } from "embedding-sdk/hooks";
 import type { SdkEventHandlersConfig } from "embedding-sdk/lib/events";
 import type { SdkPluginsConfig } from "embedding-sdk/lib/plugins";
@@ -21,13 +19,19 @@ import {
 import type { SdkStoreState } from "embedding-sdk/store/types";
 import type { SDKConfig } from "embedding-sdk/types";
 import type { MetabaseTheme } from "embedding-sdk/types/theme";
+import { LocaleProvider } from "metabase/public/LocaleProvider";
 import { setOptions } from "metabase/redux/embed";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 
-import { PublicComponentStylesWrapper } from "../private/PublicComponentStylesWrapper";
+import { SCOPED_CSS_RESET } from "../private/PublicComponentStylesWrapper";
 import { SdkFontsGlobalStyles } from "../private/SdkGlobalFontsStyles";
-import "metabase/css/index.module.css";
+import {
+  FullPagePortalContainer,
+  PortalContainer,
+} from "../private/SdkPortalContainer";
 import { SdkUsageProblemDisplay } from "../private/SdkUsageProblem";
+
+import "metabase/css/index.module.css";
 import "metabase/css/vendor.css";
 
 export interface MetabaseProviderProps {
@@ -37,6 +41,7 @@ export interface MetabaseProviderProps {
   eventHandlers?: SdkEventHandlersConfig;
   theme?: MetabaseTheme;
   className?: string;
+  locale?: string;
 }
 
 interface InternalMetabaseProviderProps extends MetabaseProviderProps {
@@ -51,6 +56,7 @@ export const MetabaseProviderInternal = ({
   theme,
   store,
   className,
+  locale,
 }: InternalMetabaseProviderProps): JSX.Element => {
   const { fontFamily } = theme ?? {};
   useInitData({ config });
@@ -83,12 +89,14 @@ export const MetabaseProviderInternal = ({
 
   return (
     <EmotionCacheProvider>
+      <Global styles={SCOPED_CSS_RESET} />
       <SdkThemeProvider theme={theme}>
         <SdkFontsGlobalStyles baseUrl={config.metabaseInstanceUrl} />
         <div className={className} id={EMBEDDING_SDK_ROOT_ELEMENT_ID}>
-          <PortalContainer />
-          {children}
+          <LocaleProvider locale={locale}>{children}</LocaleProvider>
           <SdkUsageProblemDisplay config={config} />
+          <PortalContainer />
+          <FullPagePortalContainer />
         </div>
       </SdkThemeProvider>
     </EmotionCacheProvider>
@@ -107,14 +115,3 @@ export const MetabaseProvider = memo(function MetabaseProvider({
     </Provider>
   );
 });
-
-/**
- * This is the portal container used by popovers modals etc, it is wrapped with PublicComponentStylesWrapper
- * so that it has our styles applied.
- * Mantine components needs to have the defaultProps set to use `EMBEDDING_SDK_PORTAL_CONTAINER_ELEMENT_ID` as target for the portal
- */
-const PortalContainer = () => (
-  <PublicComponentStylesWrapper>
-    <div id={EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID}></div>
-  </PublicComponentStylesWrapper>
-);

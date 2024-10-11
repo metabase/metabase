@@ -1,20 +1,13 @@
-> **NOTE**: This SDK is actively being developed. You can expect some changes to the API. The SDK currently only works
-> with a specific version of Metabase.
+> **NOTE**: This SDK is actively being developed. You can expect some changes to the API. The SDK currently only works with a specific version of Metabase.
 
 # Metabase Embedding SDK for React
 
 The Metabase Embedding SDK for React offers a way to integrate Metabase into your application more seamlessly and with
 greater flexibility than using the current interactive embedding offering based on iframes.
 
-<div>
-  <a href="https://www.loom.com/share/b6998692937c4ecaab1af097f2123c6f">
-    <img style="max-width: 300px" src="https://cdn.loom.com/sessions/thumbnails/b6998692937c4ecaab1af097f2123c6f-with-play.gif">
-  </a>
-</div>
+Live demo: https://metaba.se/sdk-demo
 
-[Watch a 5-minute tour of the SDK's features.](https://www.loom.com/share/b6998692937c4ecaab1af097f2123c6f)
-
-Features currently supported:
+## Features currently supported
 
 - embedding questions - static
 - embedding questions - w/drill-down
@@ -25,25 +18,45 @@ Features currently supported:
 - Modify existing questions
 - theming with CSS variables
 - plugins for custom actions, overriding dashboard card menu items
-- subscribing to events
-- editing dashboards - requires upgrade to metabase v50
-- creating dashboards
+- subscribing to user or system events
+- creating and editing dashboards
+- create new questions from scratch and modifying existing questions
 
-Features not yet supported:
+## Known limitations
 
-- letting users create new questions from scratch
+- The SDK is currently only compatible with Metabase v50
+- Some of the Pro/EE features are not exposed in the UI
+  - Verified content
+  - Official collections
+  - Subscriptions
+  - Alerts
+  - ...
+- The Metabase Embedding SDK does not support server-side rendering (SSR) at the moment.
+- Embedding multiple instances of interactive dashboards on the same page is not supported.
+  - Please use static dashboards if you need to embed multiple dashboards on the same page.
 
 # Changelog
 
 [View changelog](https://github.com/metabase/metabase/blob/master/enterprise/frontend/src/embedding-sdk/CHANGELOG.md)
+
+# Feedback
+
+For issues and feedback, there are two options:
+
+- Chat with the team directly on Slack: If you don't have access, please reach out to us
+  at [sdk-feedback@metabase.com](mailto:sdk-feedback@metabase.com) and we'll get you setup.
+- Email the team at [sdk-feedback@metabase.com](mailto:sdk-feedback@metabase.com). This will reach the development team
+  directly.
+
+For security issues, please follow the instructions for responsible
+disclosure [here](https://github.com/metabase/metabase/blob/master/SECURITY.md#reporting-a-vulnerability).
 
 # Prerequisites
 
 - You have an application using React. The SDK is tested to work with React 18. It may work in React 17, but cause some
   warnings or unexpected behaviors.
 - You have a Pro or Enterprise [subscription or free trial](https://www.metabase.com/pricing/) of Metabase
-- You have a running Metabase instance using a compatible version of the enterprise binary. v1.50.x are the only
-  supported versions at this time.
+- You have a running Metabase instance using a compatible version of the enterprise binary. v1.50.x are the only supported versions at this time.
 
 # Getting started
 
@@ -70,12 +83,12 @@ You have the following options:
 Start the Metabase container:
 
 ```bash
-docker run -d -p 3000:3000 --name metabase metabase/metabase-enterprise:v1.50.6
+docker run -d -p 3000:3000 --name metabase metabase/metabase-enterprise:v1.50.24
 ```
 
 ### 2. Running the Jar file
 
-1. Download the Jar file from https://downloads.metabase.com/enterprise/v1.50.6/metabase.jar
+1. Download the Jar file from https://downloads.metabase.com/enterprise/v1.50.24/metabase.jar
 2. Create a new directory and move the Metabase JAR into it.
 3. Change into your new Metabase directory and run the JAR.
 
@@ -1162,7 +1175,7 @@ prop:
 
  * @returns {Promise<{id: string, exp: number} | null>}
  */
-async function fetchRefreshToken(url) {
+async function fetchRequestToken(url) {
     const response = await fetch(url, {
         method: "GET",
         credentials: "include",
@@ -1173,30 +1186,171 @@ async function fetchRefreshToken(url) {
 
 // Pass this configuration to MetabaseProvider.
 // Wrap the fetchRequestToken function in useCallback if it has dependencies to prevent re-renders.
-const config = {fetchRefreshToken};
+const config = {fetchRequestToken};
 ```
 
-# Known limitations
+### Using with Next.js
 
-- The Metabase Embedding SDK does not support server-side rendering (SSR) at the moment.
-    - If you are using a framework with SSR support such as Next.js or Remix, you have to ensure that the SDK components
-      are rendered on the client side.
-    - For example, you can apply the `"use client"` directive on Next.js or use the `remix-utils/ClientOnly` component
-      on Remix.
-- Embedding multiple instances of interactive dashboards on the same page are not supported.
-    - Please use static dashboards if you need to embed multiple dashboards on the same page.
+#### Using App Router
 
-# Feedback
+Create a component that imports the `MetabaseProvider` and mark it a React Client component with "use client";
 
-For issues and feedback, there are two options:
+```typescript jsx
+"use client";
 
-- Chat with the team directly on Slack: If you don't have access, please reach out to us
-  at [sdk-feedback@metabase.com](mailto:sdk-feedback@metabase.com) and we'll get you setup.
-- Email the team at [sdk-feedback@metabase.com](mailto:sdk-feedback@metabase.com). This will reach the development team
-  directly.
+import { MetabaseProvider, StaticQuestion } from "@metabase/embedding-sdk-react";
 
-For security issues, please follow the instructions for responsible
-disclosure [here](https://github.com/metabase/metabase/blob/master/SECURITY.md#reporting-a-vulnerability).
+const config = {...}; // Your Metabase SDK configuration
+
+export default function MetabaseComponents() {
+  return (
+    <MetabaseProvider config={config}>
+      <StaticQuestion questionId={QUESTION_ID} />
+    </MetabaseProvider>
+  );
+```
+
+Make sure to use default export, as named export is not supported with this setup.
+
+Then, import this component in your page:
+
+```typescript jsx
+// page.tsx
+
+const MetabaseComponentsNoSsr = dynamic(() => import("@/components/MetabaseComponents"), {
+  ssr: false
+});
+
+export default function HomePage() {
+  return (
+    <>
+      <MetabaseComponentsNoSsr />
+    </>
+  );
+}
+```
+
+> [!CAUTION]
+> If you export the component as a named export, it will not work with Next.js. You must use a default export.
+
+This won't work:
+
+```typescript jsx
+const DynamicAnalytics = dynamic(
+  () => import("@/components/MetabaseComponents").then((module) => module.MetabaseComponents),
+  {
+    ssr: false,
+  }
+);
+```
+
+If you authenticate with Metabase using JWT, you can create a Route handler that signs a user into Metabase.
+
+Create a new `route.ts` file in your `app/*` directory, for example `app/sso/metabase/route.ts` that corresponds to an endpoint at /sso/metabase.
+
+```typescript
+import jwt from "jsonwebtoken";
+
+const METABASE_JWT_SHARED_SECRET = process.env.METABASE_JWT_SHARED_SECRET || "";
+const METABASE_INSTANCE_URL = process.env.METABASE_INSTANCE_URL || "";
+
+export async function GET() {
+  const token = jwt.sign(
+    {
+      email: user.email,
+      first_name: user.firstName,
+      last_name: user.lastName,
+      groups: [user.group],
+      exp: Math.round(Date.now() / 1000) + 60 * 10, // 10 minutes expiration
+    },
+    // This is the JWT signing secret in your Metabase JWT authentication setting
+    METABASE_JWT_SHARED_SECRET
+  );
+  const ssoUrl = `${METABASE_INSTANCE_URL}/auth/sso?token=true&jwt=${token}`;
+
+  try {
+    const ssoResponse = await fetch(ssoUrl, { method: "GET" });
+    const ssoResponseBody = await ssoResponse.json();
+
+    return Response.json(ssoResponseBody);
+  } catch (error) {
+    if (error instanceof Error) {
+      return Response.json(
+        {
+          status: "error",
+          message: "authentication failed",
+          error: error.message,
+        },
+        {
+          status: 401,
+        }
+      );
+    }
+  }
+}
+```
+
+And pass this `config` to `MetabaseProvider`
+```ts
+const config = {
+  metabaseInstanceUrl: "https://metabase.example.com", // Required: Your Metabase instance URL
+  jwtProviderUri: "/sso/metabase", // Required: An endpoint in your app that returns signs the user in and delivers a token
+};
+```
+
+#### Using Pages Router
+
+This works almost the same as the App Router, but you don't need to mark your component that imports Metabase SDK components as a React Client component (with "use client").
+
+If you authenticate with Metabase using JWT, you can create an API route that signs a user into Metabase.
+
+Create a new `metabase.ts` file in your `pages/api/*` directory, for example `pages/api/sso/metabase.ts` that corresponds to an endpoint at /api/sso/metabase.
+
+```typescript
+import type { NextApiRequest, NextApiResponse } from "next";
+import jwt from "jsonwebtoken";
+
+const METABASE_JWT_SHARED_SECRET = process.env.METABASE_JWT_SHARED_SECRET || "";
+const METABASE_INSTANCE_URL = process.env.METABASE_INSTANCE_URL || "";
+
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  const token = jwt.sign(
+    {
+      email: user.email,
+      first_name: user.firstName,
+      last_name: user.lastName,
+      groups: [user.group],
+      exp: Math.round(Date.now() / 1000) + 60 * 10, // 10 minutes expiration
+    },
+    // This is the JWT signing secret in your Metabase JWT authentication setting
+    METABASE_JWT_SHARED_SECRET
+  );
+  const ssoUrl = `${METABASE_INSTANCE_URL}/auth/sso?token=true&jwt=${token}`;
+
+  try {
+    const ssoResponse = await fetch(ssoUrl, { method: "GET" });
+    const ssoResponseBody = await ssoResponse.json();
+
+    res.status(200).json(ssoResponseBody);
+  } catch (error) {
+    if (error instanceof Error) {
+      res.status(401).json({
+        status: "error",
+        message: "authentication failed",
+        error: error.message,
+      });
+    }
+  }
+}
+```
+
+And pass this `config` to `MetabaseProvider`
+```ts
+const config = {
+  metabaseInstanceUrl: "https://metabase.example.com", // Required: Your Metabase instance URL
+  jwtProviderUri: "/api/sso/metabase", // Required: An endpoint in your app that returns signs the user in and delivers a token
+};
+```
 
 # Development
 

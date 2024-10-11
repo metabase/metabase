@@ -5,7 +5,6 @@ import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { useUserSetting } from "metabase/common/hooks";
-import { useHasTokenFeature } from "metabase/common/hooks/use-has-token-feature";
 import { useIsAtHomepageDashboard } from "metabase/common/hooks/use-is-at-homepage-dashboard";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import { Tree } from "metabase/components/tree";
@@ -14,16 +13,13 @@ import {
   getCollectionIcon,
 } from "metabase/entities/collections";
 import { isSmallScreen } from "metabase/lib/dom";
-import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { WhatsNewNotification } from "metabase/nav/components/WhatsNewNotification";
-import { UploadCSV } from "metabase/nav/containers/MainNavbar/SidebarItems/UploadCSV";
-import { getSetting } from "metabase/selectors/settings";
 import type { IconName, IconProps } from "metabase/ui";
+import type Database from "metabase-lib/v1/metadata/Database";
 import type { Bookmark, Collection, User } from "metabase-types/api";
 
 import {
-  AddYourOwnDataLink,
   CollectionMenuList,
   CollectionsMoreIcon,
   CollectionsMoreIconContainer,
@@ -35,6 +31,7 @@ import {
   TrashSidebarSection,
 } from "../MainNavbar.styled";
 import { SidebarCollectionLink, SidebarLink } from "../SidebarItems";
+import { SidebarOnboardingSection } from "../SidebarItems/SidebarOnboardingSection";
 import type { SelectedItem } from "../types";
 
 import BookmarkList from "./BookmarkList";
@@ -50,8 +47,8 @@ type Props = {
   currentUser: User;
   bookmarks: Bookmark[];
   hasDataAccess: boolean;
-  hasOwnDatabase: boolean;
   collections: CollectionTreeItem[];
+  databases: Database[];
   selectedItems: SelectedItem[];
   handleCloseNavbar: () => void;
   handleLogout: () => void;
@@ -65,14 +62,13 @@ type Props = {
   }) => Promise<any>;
 };
 const OTHER_USERS_COLLECTIONS_URL = Urls.otherUsersPersonalCollections();
-const ADD_YOUR_OWN_DATA_URL = "/admin/databases/create";
 
-function MainNavbarView({
+export function MainNavbarView({
   isAdmin,
   currentUser,
   bookmarks,
   collections,
-  hasOwnDatabase,
+  databases,
   selectedItems,
   hasDataAccess,
   reorderBookmarks,
@@ -110,18 +106,6 @@ function MainNavbarView({
     [isAtHomepageDashboard, onItemSelect],
   );
 
-  // Can upload CSVs if
-  // - properties.token_features.attached_dwh === true
-  // - properties.uploads-settings.db_id exists
-  // - retrieve collection using properties.uploads-settings.db_id
-  const hasAttachedDWHFeature = useHasTokenFeature("attached_dwh");
-  const uploadDbId = useSelector(
-    state => getSetting(state, "uploads-settings")?.db_id,
-  );
-  const rootCollection = collections.find(
-    ({ id, can_write }) => (id === null || id === "root") && can_write,
-  );
-
   const [[trashCollection], collectionsWithoutTrash] = useMemo(
     () => _.partition(collections, c => c.type === "trash"),
     [collections],
@@ -140,10 +124,6 @@ function MainNavbarView({
             >
               {t`Home`}
             </PaddedSidebarLink>
-
-            {hasAttachedDWHFeature && uploadDbId && rootCollection && (
-              <UploadCSV collection={rootCollection} />
-            )}
           </SidebarSection>
 
           {bookmarks.length > 0 && (
@@ -185,22 +165,6 @@ function MainNavbarView({
                 onItemSelect={onItemSelect}
                 hasDataAccess={hasDataAccess}
               />
-              {hasDataAccess && (
-                <>
-                  {!hasOwnDatabase && isAdmin && (
-                    <AddYourOwnDataLink
-                      icon="add"
-                      url={ADD_YOUR_OWN_DATA_URL}
-                      isSelected={nonEntityItem?.url?.startsWith(
-                        ADD_YOUR_OWN_DATA_URL,
-                      )}
-                      onClick={onItemSelect}
-                    >
-                      {t`Add your own data`}
-                    </AddYourOwnDataLink>
-                  )}
-                </>
-              )}
             </ErrorBoundary>
           </SidebarSection>
 
@@ -219,6 +183,12 @@ function MainNavbarView({
           )}
         </div>
         <WhatsNewNotification />
+        <SidebarOnboardingSection
+          collections={collections}
+          databases={databases}
+          hasDataAccess={hasDataAccess}
+          isAdmin={isAdmin}
+        />
       </SidebarContentRoot>
     </ErrorBoundary>
   );
@@ -275,5 +245,3 @@ function CollectionSectionHeading({
     </SidebarHeadingWrapper>
   );
 }
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default MainNavbarView;

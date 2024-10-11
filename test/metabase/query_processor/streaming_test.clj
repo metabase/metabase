@@ -318,7 +318,7 @@
           card-defaults     {:dataset_query query, :public_uuid public-uuid, :enable_embedding true}
           user              (or user :rasta)]
       (mt/with-temporary-setting-values [enable-public-sharing true
-                                         enable-embedding      true]
+                                         enable-embedding-static true]
         (embed-test/with-new-secret-key!
           (t2.with-temp/with-temp [Card          card      (if viz-settings
                                                              (assoc card-defaults :visualization_settings viz-settings)
@@ -510,6 +510,46 @@
                  :xlsx (fn [results]
                          (is (= [["ID" "Name" "Category ID" "Categories → Name"]
                                  [1.0 "Red Medicine" 4.0 "Asian"]]
+                                (xlsx-test/parse-xlsx-results results))))}}))
+
+(deftest self-join-export-test
+  (do-test!
+   "Export respects renamed self-joined columns #48046"
+   {:query {:database (mt/id)
+            :query
+            {:source-table (mt/id :venues)
+             :joins
+             [{:fields       "all",
+               :source-table (mt/id :venues)
+               :condition    ["="
+                              ["field" (mt/id :venues :id) nil]
+                              ["field" (mt/id :venues :id) {:join-alias "Venues"}]],
+               :alias        "Venues"}]
+             :order-by     [["asc" ["field" (mt/id :venues :id) nil]]]
+             :limit        1}
+            :type     "query"}
+
+    :viz-settings {:column_settings
+                   {"[\"name\",\"NAME\"]"   {:column_title "Left Name"}
+                    "[\"name\",\"NAME_2\"]" {:column_title "Right Name"}}
+                   :table.columns
+                   [{:name "ID", :fieldRef [:field (mt/id :venues :id) nil], :enabled true}
+                    {:name "NAME", :fieldRef [:field (mt/id :venues :name) nil], :enabled true}
+                    {:name "NAME_2", :fieldRef [:field (mt/id :venues :name) {:join-alias "Venues"}], :enabled true}]}
+
+    :assertions {:csv (fn [results]
+                        (is (= [["ID" "Left Name" "Right Name"]
+                                ["1" "Red Medicine" "Red Medicine"]]
+                               (parse-csv-results results))))
+
+                 :json (fn [results]
+                         (is (= [["ID" "Left Name" "Right Name"]
+                                 ["1" "Red Medicine" "Red Medicine"]]
+                                (parse-json-results results))))
+
+                 :xlsx (fn [results]
+                         (is (= [["ID" "Left Name" "Right Name"]
+                                 [1.0 "Red Medicine" "Red Medicine"]]
                                 (xlsx-test/parse-xlsx-results results))))}}))
 
 (deftest native-query-test

@@ -33,6 +33,7 @@
    [metabase.models.setting :as setting]
    [metabase.models.setting.cache :as setting.cache]
    [metabase.models.timeline-event :as timeline-event]
+   [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.plugins.classloader :as classloader]
    [metabase.query-processor.util :as qp.util]
@@ -125,7 +126,14 @@
 
    :model/Channel
    (fn [_] (default-timestamped
-            {:name (u.random/random-name)}))
+            {:name    (u.random/random-name)
+             :type    notification.tu/test-channel-type
+             :details {}}))
+
+   :model/ChannelTemplate
+   (fn [_] (default-timestamped
+            {:name         (u.random/random-name)
+             :channel_type notification.tu/test-channel-type}))
 
    :model/Dashboard
    (fn [_] (default-timestamped
@@ -189,6 +197,15 @@
             {:creator_id (user-id :crowberto)
              :name       (u.random/random-name)
              :content    "1 = 1"}))
+
+   :model/Notification
+   (fn [_] (default-timestamped
+            {:payload_type :notification/system-event
+             :active       true}))
+
+   :model/NotificationSubscription
+   (fn [_] (default-created-at-timestamped
+            {}))
 
    :model/QueryExecution
    (fn [_] {:hash         (qp.util/query-hash {})
@@ -322,6 +339,8 @@
   "Impl for [[with-temp-env-var-value!]] macro."
   [env-var-keyword value thunk]
   (mb.hawk.parallel/assert-test-is-not-parallel "with-temp-env-var-value!")
+  ;; app DB needs to be initialized if we're going to play around with the Settings cache.
+  (initialize/initialize-if-needed! :db)
   (let [value (str value)]
     (testing (colorize/blue (format "\nEnv var %s = %s\n" env-var-keyword (pr-str value)))
       (try

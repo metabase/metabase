@@ -1,4 +1,4 @@
-(ns metabase.api.dataset-test
+(ns ^:mb/driver-tests metabase.api.dataset-test
   "Unit tests for /api/dataset endpoints. There are additional tests for downloading XLSX/CSV/JSON results generally in
   [[metabase.query-processor.streaming-test]] and specifically for each format
   in [[metabase.query-processor.streaming.csv-test]] etc."

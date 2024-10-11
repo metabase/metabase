@@ -1,0 +1,27 @@
+import noResultsSource from "assets/img/no_results.svg";
+import { Fragment } from "react";
+import { Canvas, Story, Meta } from "@storybook/blocks";
+import { Box, Image, Stack, Text } from "metabase/ui";
+import * as ImageStories from "./Image.stories";
+
+<Meta of={ImageStories} />
+
+# Image
+
+Our themed wrapper around [Mantine Image](https://v6.mantine.dev/core/image/).
+
+## Docs
+
+- [Mantine Image Docs](https://v6.mantine.dev/core/image/)
+
+## Examples
+
+<Canvas>
+  <Story of={ImageStories.Default} />
+</Canvas>
+
+### Image position
+
+<Canvas>
+  <Story of={ImageStories.BackgroundPosition} />
+</Canvas>
