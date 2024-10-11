@@ -6,7 +6,7 @@
    [malli.destructure :as md]
    [malli.error :as me]
    [metabase.config :as config]
-   [metabase.shared.util.i18n :as i18n]
+   [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli.humanize :as mu.humanize]
    [metabase.util.malli.registry :as mr]))

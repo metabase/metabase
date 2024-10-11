@@ -12,7 +12,7 @@
    [malli.destructure]
    [malli.error :as me]
    [malli.util :as mut]
-   [metabase.shared.util.i18n :as i18n])
+   [metabase.util.i18n :as i18n])
   #?(:cljs (:require-macros [metabase.util.malli])))
 
 #?(:clj
