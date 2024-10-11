@@ -76,7 +76,7 @@ describe("command palette", () => {
 
       // When entering a query, if there are results that come before search results, highlight
       // the first action, otherwise, highlight the first search result
-      commandPaletteInput().clear().type("Or");
+      commandPaletteInput().clear().type("For");
       cy.findByRole("option", { name: "Performance" }).should(
         "have.attr",
         "aria-selected",
