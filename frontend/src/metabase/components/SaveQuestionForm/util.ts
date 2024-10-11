@@ -96,6 +96,18 @@ export const getInitialValues = (
       ? t`${originalQuestion.displayName()} - Modified`
       : undefined;
 
+  const dashboardId =
+    question.dashboardId() === undefined || isReadonly
+      ? initialDashboardId
+      : question.dashboardId();
+
+  const collectionId =
+    question.collectionId() === undefined ||
+    isReadonly ||
+    dashboardId === initialDashboardId
+      ? initialCollectionId
+      : question.collectionId();
+
   return {
     name:
       // Saved question
@@ -105,14 +117,8 @@ export const getInitialValues = (
       "",
     description:
       originalQuestion?.description() || question.description() || "",
-    collection_id:
-      question.collectionId() === undefined || isReadonly
-        ? initialCollectionId
-        : question.collectionId(),
-    dashboard_id:
-      question.dashboardId() === undefined || isReadonly
-        ? initialDashboardId
-        : question.dashboardId(),
+    collection_id: collectionId,
+    dashboard_id: dashboardId,
     tab_id: initialDashboardTabId,
     saveType:
       originalQuestion &&

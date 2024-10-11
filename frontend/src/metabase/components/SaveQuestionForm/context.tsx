@@ -85,9 +85,9 @@ export const SaveQuestionProvider = ({
     item => item.model === "dashboard",
   ) as RecentCollectionItem | undefined;
 
+  const initialDashboardId = lastUsedDashboard?.id;
   const initialCollectionId =
     lastUsedDashboard?.parent_collection.id ?? defaultCollectionId;
-  const initialDashboardId = lastUsedDashboard?.id;
 
   const initialValues: FormValues = useMemo(
     () =>
