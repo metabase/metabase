@@ -29,7 +29,7 @@ export const RightViewFooterButtonGroup = () => {
       {ExecutionTime.shouldRender({ result }) && (
         <ExecutionTime time={result.running_time} />
       )}
-      <Group spacing="sm" noWrap>
+      <Group gap="sm" noWrap>
         {QuestionLastUpdated.shouldRender({ result }) && (
           <QuestionLastUpdated
             className={cx(CS.hide, CS.smShow)}

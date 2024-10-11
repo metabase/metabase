@@ -44,7 +44,7 @@ export const CleanupCollectionTable = ({
   onSelectNone,
 }: CleanupCollectionTableProps) => (
   <div className={CS.tableContainer}>
-    <Table className={CS.table} cellPadding="0" cellSpacing="0">
+    <Table className={CS.table} cellPadding="0" cellgap="0">
       <colgroup>
         {/* Select */}
         <Columns.Select.Col />

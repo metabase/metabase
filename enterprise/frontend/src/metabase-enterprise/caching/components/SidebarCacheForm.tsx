@@ -68,7 +68,7 @@ const SidebarCacheForm_Base = ({
       <Stack
         align="space-between"
         h="calc(100% + 2.5rem)" // to make bottom padding nice with scroll containers
-        spacing="md"
+        gap="md"
         aria-labelledby={headingId}
         {...groupProps}
       >

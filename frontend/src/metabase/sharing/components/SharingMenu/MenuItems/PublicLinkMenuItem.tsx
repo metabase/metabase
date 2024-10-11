@@ -34,7 +34,7 @@ export function PublicLinkMenuItem({
           </Title>
         ) : (
           <Link to="/admin/settings/public-sharing" target="_blank">
-            <Stack spacing="xs">
+            <Stack gap="xs">
               <Title order={4}>{t`Public links are off`}</Title>
               <Text size="sm">{t`Enable them in settings`}</Text>
             </Stack>

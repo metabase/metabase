@@ -93,7 +93,7 @@ export function SelectEmbedTypePane({
     <Stack
       display={"inline-flex"}
       p="lg"
-      spacing="lg"
+      gap="lg"
       data-testid="sharing-pane-container"
       align="stretch"
     >

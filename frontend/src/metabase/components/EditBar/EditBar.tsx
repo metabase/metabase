@@ -25,7 +25,7 @@ function EditBar({
       admin={admin}
       data-testid={dataTestId ?? "edit-bar"}
     >
-      <Group spacing="sm" align="center" noWrap>
+      <Group gap="sm" align="center" noWrap>
         <EditIcon name="pencil" size={12} />
         <Title>{title}</Title>
       </Group>
