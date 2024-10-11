@@ -121,6 +121,17 @@ export default class LeafletMap extends Component {
     this.map.remove();
   }
 
+  supportsFilter() {
+    const {
+      series: [{ card }],
+      metadata,
+    } = this.props;
+
+    const question = new Question(card, metadata);
+    const { isNative } = Lib.queryDisplayInfo(question.query());
+    return !isNative || question.isSaved();
+  }
+
   startFilter() {
     this._filter = new L.Draw.Rectangle(
       this.map,
@@ -156,9 +167,7 @@ export default class LeafletMap extends Component {
     });
 
     const question = new Question(card, metadata);
-    const { isNative } = Lib.queryDisplayInfo(question.query());
-
-    if (!isNative || question.isSaved()) {
+    if (this.supportsFilter()) {
       const query = question.query();
       const stageIndex = -1;
       const filterBounds = {

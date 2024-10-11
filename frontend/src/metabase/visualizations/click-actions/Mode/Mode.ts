@@ -37,37 +37,31 @@ export class Mode {
     settings: Record<string, any>,
     extraData?: Record<string, any>,
   ): ClickAction[] {
-    // keeping try/catch here as MBQL was failing silently
-    try {
-      const mode = this._queryMode;
-      const question = this._question;
-      const props = { question, settings, clicked, extraData };
+    const mode = this._queryMode;
+    const question = this._question;
+    const props = { question, settings, clicked, extraData };
 
-      let actions = [
-        ...(mode.hasDrills
-          ? queryDrill(question, clicked, this.isDrillEnabled)
-          : []),
-        ...(mode.clickActions?.flatMap(drill => drill(props)) ?? []),
-      ];
+    let actions = [
+      ...(mode.hasDrills
+        ? queryDrill(question, clicked, this.isDrillEnabled)
+        : []),
+      ...(mode.clickActions?.flatMap(drill => drill(props)) ?? []),
+    ];
 
-      if (!actions.length && mode.fallback) {
-        actions = mode.fallback(props);
-      }
-
-      if (this._plugins?.mapQuestionClickActions) {
-        actions = this._plugins.mapQuestionClickActions(actions, {
-          value: clicked.value,
-          column: clicked.column,
-          event: clicked.event,
-          data: clicked.data,
-        });
-      }
-
-      return actions;
-    } catch (e) {
-      console.error(e);
-      return [];
+    if (!actions.length && mode.fallback) {
+      actions = mode.fallback(props);
     }
+
+    if (this._plugins?.mapQuestionClickActions) {
+      actions = this._plugins.mapQuestionClickActions(actions, {
+        value: clicked.value,
+        column: clicked.column,
+        event: clicked.event,
+        data: clicked.data,
+      });
+    }
+
+    return actions;
   }
 
   private isDrillEnabled = (drill: DrillThruDisplayInfo): boolean => {

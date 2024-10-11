@@ -9,7 +9,8 @@
    [metabase.task :as task]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [toucan2.core :as t2])
+   [toucan2.core :as t2]
+   [toucan2.realize :as t2.realize])
   (:import
    (org.quartz DisallowConcurrentExecution)))
 
@@ -21,6 +22,9 @@
 
 ;; This number has not been chosen scientifically.
 (def ^:private max-delete-batch-size 1000)
+
+(defn- run-realized! [f reducible]
+  (run! (comp f t2.realize/realize) reducible))
 
 (defn- analyze-cards-without-complete-analysis!
   ([]
@@ -34,7 +38,7 @@
                                      :where     [:and
                                                  [:not :report_card.archived]
                                                  [:= :qa.id nil]]})]
-     (run! analyze-fn cards))))
+     (run-realized! analyze-fn cards))))
 
 (defn- analyze-stale-cards!
   ([]
@@ -42,7 +46,7 @@
   ([analyze-fn]
    ;; TODO once we are storing the hash of the query used for analysis, we'll be able to filter this properly.
    (let [cards (t2/reducible-select [:model/Card :id])]
-     (run! analyze-fn cards))))
+     (run-realized!  analyze-fn cards))))
 
 (defn- delete-orphan-analysis! []
   (transduce
