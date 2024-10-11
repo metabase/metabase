@@ -1,5 +1,4 @@
-import _ from "underscore";
-
+import CS from "metabase/css/core/index.css";
 import {
   ChartTypeSettings,
   useChartTypeVisualizations,
@@ -47,8 +46,10 @@ export const ChartTypeSelector = ({
 
   return (
     <ChartTypeSettings
-      w="30rem"
+      w="20rem"
       p="xl"
+      h="100%"
+      className={CS.overflowYScroll}
       sensibleVisualizations={sensibleVisualizations}
       nonSensibleVisualizations={nonSensibleVisualizations}
       selectedVisualization={selectedVisualization}

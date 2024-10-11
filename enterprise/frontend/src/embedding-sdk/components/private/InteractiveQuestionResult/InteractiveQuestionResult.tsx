@@ -1,4 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
+import cx from "classnames";
 import { type ReactElement, type ReactNode, useState } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
@@ -11,11 +12,14 @@ import { Box, Button, Group, Icon } from "metabase/ui";
 
 import { InteractiveQuestion } from "../../public/InteractiveQuestion";
 import { useInteractiveQuestionContext } from "../InteractiveQuestion/context";
+import {
+  FlexibleSizeComponent,
+  type FlexibleSizeProps,
+} from "../util/FlexibleSizeComponent";
 
 import InteractiveQuestionS from "./InteractiveQuestionResult.module.css";
 
 export interface InteractiveQuestionResultProps {
-  height?: string | number;
   withResetButton?: boolean;
   withTitle?: boolean;
   customTitle?: ReactNode;
@@ -25,25 +29,32 @@ type QuestionView = "notebook" | "filter" | "summarize" | "visualization";
 
 const ContentView = ({
   questionView,
-  onReturn,
+  onReturnToVisualization,
 }: {
   questionView: QuestionView;
-  onReturn: () => void;
+  onReturnToVisualization: () => void;
 }) =>
   match<QuestionView>(questionView)
-    .with("filter", () => <InteractiveQuestion.Filter onClose={onReturn} />)
-    .with("summarize", () => (
-      <InteractiveQuestion.Summarize onClose={onReturn} />
+    .with("filter", () => (
+      <InteractiveQuestion.Filter onClose={onReturnToVisualization} />
     ))
-    .with("notebook", () => <InteractiveQuestion.Notebook onApply={onReturn} />)
+    .with("summarize", () => (
+      <InteractiveQuestion.Summarize onClose={onReturnToVisualization} />
+    ))
+    .with("notebook", () => (
+      <InteractiveQuestion.Notebook onApply={onReturnToVisualization} />
+    ))
     .otherwise(() => <InteractiveQuestion.QuestionVisualization />);
 
 export const InteractiveQuestionResult = ({
   height,
+  width,
+  className,
+  style,
   withTitle,
   customTitle,
   withResetButton,
-}: InteractiveQuestionResultProps): ReactElement => {
+}: InteractiveQuestionResultProps & FlexibleSizeProps): ReactElement => {
   const [questionView, setQuestionView] =
     useState<QuestionView>("visualization");
 
@@ -51,7 +62,7 @@ export const InteractiveQuestionResult = ({
     useInteractiveQuestionContext();
 
   const [isChartSelectorOpen, { toggle: toggleChartTypeSelector }] =
-    useDisclosure(true);
+    useDisclosure(false);
 
   if (isQuestionLoading) {
     return <SdkLoader />;
@@ -62,10 +73,11 @@ export const InteractiveQuestionResult = ({
   }
 
   return (
-    <Box
-      h={height ?? "100%"}
-      w="100%"
-      className={InteractiveQuestionS.Container}
+    <FlexibleSizeComponent
+      height={height}
+      width={width}
+      className={cx(InteractiveQuestionS.Container, className)}
+      style={style}
     >
       <Group className={InteractiveQuestionS.TopBar} position="apart" p="md">
         {withTitle && (customTitle ?? <InteractiveQuestion.Title />)}
@@ -97,7 +109,7 @@ export const InteractiveQuestionResult = ({
       <Group className={InteractiveQuestionS.MidBar} py={0} px="md">
         {questionView === "visualization" && (
           <Button
-            compact={true}
+            compact
             radius="xl"
             py="sm"
             px="md"
@@ -130,10 +142,10 @@ export const InteractiveQuestionResult = ({
         <Box className={InteractiveQuestionS.Content}>
           <ContentView
             questionView={questionView}
-            onReturn={() => setQuestionView("visualization")}
+            onReturnToVisualization={() => setQuestionView("visualization")}
           />
         </Box>
       </Box>
-    </Box>
+    </FlexibleSizeComponent>
   );
 };
