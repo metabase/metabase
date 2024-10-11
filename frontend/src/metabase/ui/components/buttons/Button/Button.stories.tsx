@@ -7,7 +7,7 @@ import { Button, type ButtonProps } from "./";
 const args = {
   variant: "default",
   color: undefined,
-  compact: false,
+  size: "md",
   disabled: false,
   fullWidth: false,
   radius: "md",
@@ -24,8 +24,22 @@ const argTypes = {
     options: { default: undefined, success: "success", error: "error" },
     control: { type: "inline-radio" },
   },
-  compact: {
-    control: { type: "boolean" },
+  size: {
+    control: {
+      type: "select",
+      options: [
+        "xs",
+        "sm",
+        "md",
+        "lg",
+        "xl",
+        "compact-xs",
+        "compact-sm",
+        "compact-md",
+        "compact-lg",
+        "compact-xl",
+      ],
+    },
   },
   disabled: {
     control: { type: "boolean" },
@@ -190,7 +204,7 @@ export const CompactSize = {
   render: GridTemplate,
   name: "Compact size",
   args: {
-    compact: true,
+    size: "compact-md",
   },
 };
 
@@ -199,7 +213,7 @@ export const CompactSizeCustomColor = {
   name: "Compact size, custom color",
   args: {
     color: "error",
-    compact: true,
+    size: "compact-md",
   },
 };
 
@@ -207,7 +221,7 @@ export const CompactSizeDisabled = {
   render: GridTemplate,
   name: "Compact size, disabled",
   args: {
-    compact: true,
+    size: "compact-md",
     disabled: true,
   },
 };
@@ -216,7 +230,7 @@ export const CompactSizeLoading = {
   render: LoadingGridTemplate,
   name: "Compact size, loading",
   args: {
-    compact: true,
+    size: "compact-md",
     loading: true,
   },
 };
@@ -225,7 +239,7 @@ export const CompactSizeFullWidth = {
   render: GridTemplate,
   name: "Compact size, full width",
   args: {
-    compact: true,
+    size: "compact-md",
     fullWidth: true,
   },
 };
@@ -234,7 +248,7 @@ export const CompactSizeFullWidthDisabled = {
   render: GridTemplate,
   name: "Compact size, full width, disabled",
   args: {
-    compact: true,
+    size: "compact-md",
     disabled: true,
     fullWidth: true,
   },
@@ -244,7 +258,7 @@ export const CompactSizeFullWidthLoading = {
   render: LoadingGridTemplate,
   name: "Compact size, full width, loading",
   args: {
-    compact: true,
+    size: "compact-md",
     loading: true,
     fullWidth: true,
   },
