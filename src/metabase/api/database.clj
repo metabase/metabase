@@ -81,8 +81,8 @@
                                      [:map
                                       [:native_permissions [:enum :write :none]]]]]
   "For each database in DBS add a `:native_permissions` field describing the current user's permissions for running
-  native (e.g. SQL) queries. Will be either `:write` or `:none`. `:write` means you can run ad-hoc native queries,
-  and save new Cards with native queries; `:none` means you can do neither.
+  native (e.g. SQL) queries. Will be either `:write` or `:none`. `:write` means you can run ad-hoc native queries on at
+  least one table, and save new Cards with native queries; `:none` means you can do neither.
 
   For the curious: the use of `:write` and `:none` is mainly for legacy purposes, when we had data-access-based
   permissions; there was a specific option where you could give a Perms Group permissions to run existing Cards with
