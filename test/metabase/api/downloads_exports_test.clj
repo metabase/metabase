@@ -32,10 +32,10 @@
   (.formatCellValue cell-formatter c))
 
 (defn- read-xlsx
-  [result]
+  [pivot result]
   (with-open [in (io/input-stream result)]
     (->> (spreadsheet/load-workbook in)
-         (spreadsheet/select-sheet "Query result")
+         (spreadsheet/select-sheet (if pivot "data" "Query result"))
          (spreadsheet/row-seq)
          (mapv (fn [r]
                  (->>  (spreadsheet/cell-seq r)
@@ -49,11 +49,11 @@
      (map #(mapv % ks) result))))
 
 (defn- process-results
-  [export-format results]
+  [pivot export-format results]
   (when (seq results)
     (case export-format
       :csv  (csv/read-csv results)
-      :xlsx (read-xlsx results)
+      :xlsx (read-xlsx pivot results)
       :json (tabulate-maps results))))
 
 (defn- card-download
@@ -62,7 +62,7 @@
                              (format "card/%d/query/%s" id (name export-format))
                              :format_rows   format-rows
                              :pivot_results pivot)
-       (process-results export-format)))
+       (process-results pivot export-format)))
 
 (defn- unsaved-card-download
   [card {:keys [export-format format-rows pivot]}]
@@ -78,7 +78,7 @@
                                             {:format-rows?    format-rows
                                              :pivot?          (boolean pivot)
                                              :userland-query? true})))
-       (process-results export-format)))
+       (process-results pivot export-format)))
 
 (defn public-question-download
   [card {:keys [export-format format-rows pivot]}]
@@ -89,7 +89,7 @@
                                  (format "public/card/%s/query/%s?format_rows=%s&pivot_results=%s"
                                          public-uuid (name export-format)
                                          format-rows pivot))
-           (process-results export-format)))))
+           (process-results pivot export-format)))))
 
 (defn- dashcard-download
   [card-or-dashcard {:keys [export-format format-rows pivot]}]
@@ -100,7 +100,7 @@
                                        (format "dashboard/%d/dashcard/%d/card/%d/query/%s" dashboard-id dashcard-id card-id (name export-format))
                                        :format_rows   format-rows
                                        :pivot_results pivot)
-                 (process-results export-format)))]
+                 (process-results pivot export-format)))]
     (if (contains? card-or-dashcard :dashboard_id)
       (dashcard-download* card-or-dashcard)
       (mt/with-temp [:model/Dashboard {dashboard-id :id} {}
@@ -118,7 +118,7 @@
                                                  public-uuid dashcard-id card-id (name export-format))
                                          :format_rows   format-rows
                                          :pivot_results pivot)
-                   (process-results export-format)))]
+                   (process-results pivot export-format)))]
       (if (contains? card-or-dashcard :dashboard_id)
         (mt/with-temp [:model/Dashboard {dashboard-id :id} {:public_uuid public-uuid}]
           (public-dashcard-download* (assoc card-or-dashcard :dashboard_id dashboard-id)))
@@ -149,7 +149,7 @@
   [card {:keys [export-format format-rows pivot]}]
   (letfn [(alert-attachment* [pulse]
             (->> (run-pulse-and-return-attached-csv-data! pulse export-format)
-                 (process-results export-format)))]
+                 (process-results pivot export-format)))]
     (mt/with-temp [:model/Pulse {pulse-id :id
                                  :as      pulse} {:name "Test Alert"
                                                   :alert_condition "rows"}
@@ -172,7 +172,7 @@
   [card-or-dashcard {:keys [export-format format-rows pivot]}]
   (letfn [(subscription-attachment* [pulse]
             (->> (run-pulse-and-return-attached-csv-data! pulse export-format)
-                 (process-results export-format)))]
+                 (process-results pivot export-format)))]
     (if (contains? card-or-dashcard :dashboard_id)
       ;; dashcard
       (mt/with-temp [:model/Pulse {pulse-id :id
@@ -256,7 +256,7 @@
    [:field "MEASURE" {:base-type :type/Integer}]])
 
 (deftest simple-pivot-export-test
-  (testing "Pivot table csv exports look pivoted"
+  (testing "Pivot table exports look pivoted"
     (mt/dataset test-data
       (mt/with-temp [:model/Card card
                      {:display                :pivot
@@ -275,19 +275,19 @@
                                                 :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]
                                                                [:field (mt/id :products :created_at) {:base-type :type/DateTime :temporal-unit :year}]]}}}]
         (testing "formatted"
-          (is (= [[["Category" "2016" "2017" "2018" "2019" "Row totals"]
-                   ["Doohickey" "$632.14" "$854.19" "$496.43" "$203.13" "$2,185.89"]
-                   ["Gadget" "$679.83" "$1,059.11" "$844.51" "$435.75" "$3,019.20"]
-                   ["Gizmo" "$529.70" "$1,080.18" "$997.94" "$227.06" "$2,834.88"]
-                   ["Widget" "$987.39" "$1,014.68" "$912.20" "$195.04" "$3,109.31"]
-                   ["Grand totals" "$2,829.06" "$4,008.16" "$3,251.08" "$1,060.98" "$11,149.28"]]
-                  #{:unsaved-card-download :card-download :dashcard-download
-                    :alert-attachment :subscription-attachment
-                    :public-question-download :public-dashcard-download}]
-                 (->> (all-outputs! card {:export-format :csv :format-rows true :pivot true})
-                      (group-by second)
-                      ((fn [m] (update-vals m #(into #{} (mapv first %)))))
-                      (apply concat)))))
+            (is (= [[["Category" "2016" "2017" "2018" "2019" "Row totals"]
+                     ["Doohickey" "$632.14" "$854.19" "$496.43" "$203.13" "$2,185.89"]
+                     ["Gadget" "$679.83" "$1,059.11" "$844.51" "$435.75" "$3,019.20"]
+                     ["Gizmo" "$529.70" "$1,080.18" "$997.94" "$227.06" "$2,834.88"]
+                     ["Widget" "$987.39" "$1,014.68" "$912.20" "$195.04" "$3,109.31"]
+                     ["Grand totals" "$2,829.06" "$4,008.16" "$3,251.08" "$1,060.98" "$11,149.28"]]
+                    #{:unsaved-card-download :card-download :dashcard-download
+                      :alert-attachment :subscription-attachment
+                      :public-question-download :public-dashcard-download}]
+                   (->> (all-outputs! card {:export-format :csv :format-rows true :pivot true})
+                        (group-by second)
+                        ((fn [m] (update-vals m #(into #{} (mapv first %)))))
+                        (apply concat)))))
         (testing "unformatted"
           (is (= [[["Category"
                     "2016-01-01T00:00:00Z"
@@ -965,7 +965,7 @@
             ;; This is not new behaviour, we'll just fix it when a better solution to 'errors in downloaded files' comes along
             (let [results (mt/user-http-request :rasta :post 200 (format "card/%d/query/%s" card-id export-format) :format_rows true)
                   results-string (if (= "xlsx" export-format)
-                                   (read-xlsx results)
+                                   (read-xlsx false results)
                                    (str results))]
               (testing (format "Testing export format: %s" export-format)
                 (doseq [illegal illegal-strings]
@@ -994,8 +994,37 @@
             (let [result (mt/user-http-request :crowberto :post 200
                                                (format "card/%d/query/%s?format_rows=false" pivot-card-id export-format)
                                                {})
-                  data   (process-results (keyword export-format) result)]
+                  data   (process-results false (keyword export-format) result)]
               (is (= ["Category" "Sum of Price"]
                      (first data)))
               (is (= 2
                      (count (second data)))))))))))
+
+(deftest format-rows-value-affects-xlsx-exports
+  (testing "Format-rows true/false is respected for xlsx exports."
+    (mt/dataset test-data
+      (mt/with-temp [:model/Card card
+                     {:display                :pivot
+                      :visualization_settings {:pivot_table.column_split
+                                               {:rows    [[:field (mt/id :products :category) {:base-type :type/Text}]]
+                                                :columns [[:field (mt/id :products :created_at) {:base-type :type/DateTime :temporal-unit :year}]]
+                                                :values  [[:aggregation 0]]}
+                                               :column_settings
+                                               {"[\"name\",\"sum\"]" {:number_style       "currency"
+                                                                      :currency_in_header false}}}
+                      :dataset_query          {:database (mt/id)
+                                               :type     :query
+                                               :query
+                                               {:source-table (mt/id :products)
+                                                :aggregation  [[:sum [:field (mt/id :products :price) {:base-type :type/Float}]]]
+                                                :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]
+                                                               [:field (mt/id :products :created_at) {:base-type :type/DateTime :temporal-unit :year}]]}}}]
+        (is (= [["Category" "Created At" "Sum of Price"]
+                ["Doohickey" "2016" "632.14"]
+                ["Doohickey" "2017" "854.19"]]
+               (take 3 (card-download card {:export-format :xlsx :format-rows true :pivot true})))
+            ;; Excel will apply a default format which is seen here. The 'actual' data in the cells is unformatted.
+            (= [["Category" "Created At" "Sum of Price"]
+                ["Doohickey" "January 1, 2016, 12:00 AM" "632.14"]
+                ["Doohickey" "January 1, 2017, 12:00 AM" "854.19"]]
+               (take 3 (card-download card {:export-format :xlsx :format-rows false :pivot true}))))))))

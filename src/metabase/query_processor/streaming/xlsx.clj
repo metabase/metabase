@@ -217,28 +217,30 @@
   [format-settings {semantic-type  :semantic_type
                     effective-type :effective_type
                     base-type      :base_type
-                    unit           :unit :as col}]
-  (let [col-type (common/col-type col)]
-    (u/one-or-many
-     (cond
-        ;; Primary key or foreign key
-       (isa? col-type :Relation/*)
-       "0"
+                    unit           :unit :as col}
+   format-rows?]
+  (when format-rows?
+    (let [col-type (common/col-type col)]
+      (u/one-or-many
+       (cond
+         ;; Primary key or foreign key
+         (isa? col-type :Relation/*)
+         "0"
 
-       (isa? semantic-type :type/Coordinate)
-       nil
+         (isa? semantic-type :type/Coordinate)
+         nil
 
-        ;; This logic is a guard against someone setting the semantic type of a non-temporal value like 1.0 to temporal.
-        ;; It will not apply formatting to the value in this case.
-       (and (or (some #(contains? datetime-setting-keys %) (keys format-settings))
-                (isa? semantic-type :type/Temporal))
-            (or (isa? effective-type :type/Temporal)
-                (isa? base-type :type/Temporal)))
-       (datetime-format-string format-settings unit)
+         ;; This logic is a guard against someone setting the semantic type of a non-temporal value like 1.0 to temporal.
+         ;; It will not apply formatting to the value in this case.
+         (and (or (some #(contains? datetime-setting-keys %) (keys format-settings))
+                  (isa? semantic-type :type/Temporal))
+              (or (isa? effective-type :type/Temporal)
+                  (isa? base-type :type/Temporal)))
+         (datetime-format-string format-settings unit)
 
-       (or (some #(contains? number-setting-keys %) (keys format-settings))
-           (isa? col-type :type/Currency))
-       (number-format-strings format-settings)))))
+         (or (some #(contains? number-setting-keys %) (keys format-settings))
+             (isa? col-type :type/Currency))
+         (number-format-strings format-settings))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             XLSX export logic                                                  |
@@ -262,10 +264,10 @@
 
 (defn- compute-column-cell-styles
   "Compute a sequence of cell styles for each column"
-  [^Workbook workbook ^DataFormat data-format viz-settings cols]
+  [^Workbook workbook ^DataFormat data-format viz-settings cols format-rows?]
   (for [col cols]
     (let [settings       (common/viz-settings-for-col col viz-settings)
-          format-strings (format-settings->format-strings settings col)]
+          format-strings (format-settings->format-strings settings col format-rows?)]
       (when (seq format-strings)
         (mapv
          (partial cell-string-format-style workbook data-format)
@@ -583,7 +585,7 @@
                                      "pivot" [[]]
                                      "data" [])
         data-format                 (. ^XSSFWorkbook wb createDataFormat)
-        cell-styles                 (compute-column-cell-styles wb data-format viz-settings ordered-cols)
+        cell-styles                 (compute-column-cell-styles wb data-format viz-settings ordered-cols format-rows?)
         typed-cell-styles           (compute-typed-cell-styles wb data-format)
         data-sheet                  (spreadsheet/select-sheet "data" wb)
         pivot-sheet                 (spreadsheet/select-sheet "pivot" wb)
@@ -656,7 +658,7 @@
           (let [{:keys [workbook sheet]} @workbook-data
                 data-format              (. ^SXSSFWorkbook workbook createDataFormat)]
             (set-no-style-custom-helper sheet)
-            (vreset! cell-styles (compute-column-cell-styles workbook data-format viz-settings ordered-cols))
+            (vreset! cell-styles (compute-column-cell-styles workbook data-format viz-settings ordered-cols format-rows?))
             (vreset! typed-cell-styles (compute-typed-cell-styles workbook data-format)))))
 
       (write-row! [_ row row-num ordered-cols {:keys [output-order] :as viz-settings}]
