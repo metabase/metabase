@@ -110,7 +110,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
       try {
         const clientInstance = new Client({apiUrl: langchain_url, apiKey: langchain_key});
         setClient(clientInstance);
-
+        
         // Search for assistants
         const assistants = await clientInstance.assistants.search({ metadata: null, limit: 10, offset: 0 });
         const selectedAgent = assistants[0];
@@ -374,8 +374,8 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
     const sendMessage = async () => {
         if (!inputValue.trim() || !client || !agent || !thread) return;
     
-        setIsLoading(true);
-        let visualizationIdx = messages.filter(msg => msg.showVisualization).length;
+        setIsLoading(true);  // Set loading to true when the message is sent
+        let visualizationIdx = messages.filter((msg) => msg.showVisualization).length;
     
         // Prepare the user message to be sent
         let messagesToSend = [{ role: "human", content: inputValue }];
@@ -388,64 +388,149 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
             isLoading: true,
         };
     
-        setMessages((prev) => [...prev, userMessage]);
+        // Display temporary message during server response wait time
+        const tempMessageId = Date.now() + Math.random();
+        const tempMessage = {
+            id: tempMessageId,
+            sender: "server",
+            text: "", // This will be updated with the actual content from the response chunks
+            isLoading: true,
+            isTemporary: true, // Marking as a temporary message
+        };
     
-        // Clear input field
+        // Append the user message and the temporary server message to the state
+        setMessages((prev) => [...prev, userMessage, tempMessage]);
+    
+        // Call emulateDataStream to show a waiting message while we fetch the first chunk
+        emulateDataStream(100, tempMessageId);
+    
+        // Clear the input field
         setInputValue("");
+    
+        let currentMessage = ""; // To accumulate partial chunks
+        let isNewMessage = true; // Flag to track new message status
+        let lastMessageId = tempMessageId; // Track last message to update its loading state
     
         try {
             const streamResponse = client.runs.stream(thread.thread_id, agent.assistant_id, {
-                input: { messages: messagesToSend, company_name: initialCompanyName, database_id: initialDbName, schema: initialSchema.schema },
+                input: {
+                    messages: messagesToSend,
+                    company_name: initialCompanyName,
+                    database_id: initialDbName,
+                    schema: initialSchema.schema,
+                },
                 config: { recursion_limit: 25 },
                 streamMode: "messages",
             });
     
-            let serverMessageIndex = -1;
+            let chunkProcessed = false;  // Flag to check if chunks are processed
     
             for await (const chunk of streamResponse) {
                 const { event, data } = chunk;
+                chunkProcessed = true;  // Mark as processed when chunk is received
     
-                // Process partial message events
+                // Handle partial messages
                 if (event === "messages/partial" && data.length > 0) {
-                    const { content, type } = data[0];
-                    if (type === "ai") {
+                    const messageData = data[0];
+    
+                    // Ensure that content is being extracted and is valid
+                    if (messageData && messageData.content && messageData.content[0] && messageData.content[0].text) {
+                        const partialText = messageData.content[0].text; // Current text chunk
+    
+                        if (isNewMessage) {
+                            // New message stream detected, append a new temporary message
+                            const newTempMessageId = Date.now() + Math.random();
+                            const newTempMessage = {
+                                id: newTempMessageId,
+                                sender: "server",
+                                text: partialText, // Use partial chunk text
+                                isLoading: true,
+                                isTemporary: true,
+                            };
+                            setMessages((prev) => [...prev, newTempMessage]);
+    
+                            // Set flag to false after first chunk of the new message
+                            isNewMessage = false;
+                            lastMessageId = newTempMessageId;  // Track the new message ID
+                        } else {
+                            // Update the most recent message (new chunks for the same message)
+                            setMessages((prev) => {
+                                const updatedMessages = [...prev];
+                                const lastMessageIndex = updatedMessages.findIndex(msg => msg.id === lastMessageId);
+    
+                                // Replace text of the last message with the new partial content
+                                if (lastMessageIndex >= 0 && updatedMessages[lastMessageIndex].isTemporary) {
+                                    updatedMessages[lastMessageIndex].text = partialText;
+                                }
+    
+                                return updatedMessages;
+                            });
+                        }
+    
+                        // Store the current message to ensure the final text is updated correctly
+                        currentMessage = partialText;
+                    }
+                }
+    
+                // Handle complete messages
+                if (event === "messages/complete" && data.length > 0) {
+                    const messageData = data[0];
+    
+                    if (messageData && typeof messageData.content === 'string') {
+                        // Mark the current message as complete and replace the temporary message with the final message content
                         setMessages((prev) => {
                             const updatedMessages = [...prev];
+                            const lastMessageIndex = updatedMessages.findIndex(msg => msg.id === lastMessageId);
     
-                            // Check if the last message is from the server
-                            const lastMessage = updatedMessages[updatedMessages.length - 1];
-    
-                            if (lastMessage && lastMessage.sender === 'server') {
-                                // Ensure content is a string or safely stringify objects/arrays
-                                updatedMessages[updatedMessages.length - 1].text = content;
+                            if (lastMessageIndex >= 0 && updatedMessages[lastMessageIndex].isTemporary) {
+                                // Replace temporary message with the final complete message content
+                                updatedMessages[lastMessageIndex].text = currentMessage;
+                                updatedMessages[lastMessageIndex].isLoading = false;
+                                updatedMessages[lastMessageIndex].isTemporary = false;
                             } else {
-                                // Add a new server message if not present
-                                const newServerMessage = {
+                                // Add a new message for complete content
+                                const completeMessage = {
                                     id: Date.now() + Math.random(),
                                     sender: "server",
-                                    text: typeof content === 'string' ? content : JSON.stringify(content),
+                                    text: currentMessage,
                                     showVisualization: false,
                                     visualizationIdx,
-                                    isLoading: true,
+                                    isLoading: false,
                                 };
-                                updatedMessages.push(newServerMessage);
+                                updatedMessages.push(completeMessage);
                             }
     
                             return updatedMessages;
                         });
+    
+                        // Reset for the next message
+                        currentMessage = "";
+                        isNewMessage = true; // Ready for a new message stream
                     }
-                }
     
-                // Process complete message events
-                if (event === "messages/complete" && data.length > 0) {
-                    const { content, type } = data[0];
-    
-                    if (type === "tool") {
+                    // Check if the message contains a card_id (tool output)
+                    if (messageData.type === "tool") {
                         try {
-                            const parsedContent = JSON.parse(content);
+                            const parsedContent = JSON.parse(messageData.content);
                             const { card_id } = parsedContent;
     
                             if (card_id) {
+                                // Create a temporary message to show card generation progress
+                                const cardMessageId = Date.now() + Math.random();
+                                const cardTempMessage = {
+                                    id: cardMessageId,
+                                    sender: "server",
+                                    text: "Generating card...", // Show progress text
+                                    isLoading: true,
+                                    isTemporary: true,
+                                };
+    
+                                // Append the card generation message without removing any prior message
+                                setMessages((prev) => [...prev, cardTempMessage]);
+    
+                                // Show the card generation progress message
+                                showCardGenerationMessage(75, cardMessageId);
+    
                                 // Fetch the dataset and show visualization
                                 await handleGetDatasetQuery(card_id);
     
@@ -453,12 +538,13 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
                                     const visualizationMessage = {
                                         id: Date.now() + Math.random(),
                                         sender: "server",
-                                        text: "",
+                                        text: "", // Visualizations typically don’t have text
                                         showVisualization: true,
                                         visualizationIdx,
                                         isLoading: false,
                                     };
-                                    return [...prev, visualizationMessage];
+    
+                                    return [...prev, visualizationMessage]; // Append visualization message without removing others
                                 });
                             }
                         } catch (error) {
@@ -467,14 +553,127 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
                     }
                 }
             }
+    
+            // Set loading to false once all chunks are processed
+            if (!chunkProcessed) {
+                setIsLoading(false);
+            }
         } catch (error) {
             console.error("Error during message processing:", error.message);
         } finally {
+            // Ensure loading is turned off when the process finishes, even if there are no more chunks
             setIsLoading(false);
+    
+            // Update the last message to ensure it is marked as fully loaded
+            setMessages((prev) => {
+                const updatedMessages = [...prev];
+                const lastMessageIndex = updatedMessages.findIndex(msg => msg.id === lastMessageId);
+    
+                if (lastMessageIndex >= 0) {
+                    updatedMessages[lastMessageIndex].isLoading = false;
+                }
+    
+                return updatedMessages;
+            });
         }
     };
     
     
+    
+      
+      
+    
+    
+    function showCardGenerationMessage(chunkInterval = 100, tempMessageId) {
+        const messages = [
+            "Fetching the data from your database to generate the card...",
+            "Working with your database to gather the necessary information...",
+            "Generating the card with the requested data, please hold on for a moment...",
+            "Querying your database and preparing the card with all relevant insights...",
+            "The data is being processed and your card will be visible shortly..."
+        ];
+    
+        const startTime = Date.now();
+    
+        function chunkString(str, chunkSize) {
+            const chunks = [];
+            for (let i = 0; i < str.length; i += chunkSize) {
+                chunks.push(str.slice(i, i + chunkSize));
+            }
+            return chunks;
+        }
+    
+        function getRandomMessage() {
+            return messages[Math.floor(Math.random() * messages.length)];
+        }
+    
+        function simulateTyping(message, index = 0) {
+            const chunks = chunkString(message, 5); // Chunk size of 5 characters
+    
+            if (index < chunks.length) {
+                setMessages((prev) => {
+                    return prev.map((msg) =>
+                        msg.id === tempMessageId
+                            ? {
+                                  ...msg,
+                                  text: msg.text + chunks[index], // Append chunks of text
+                              }
+                            : msg
+                    );
+                });
+                setTimeout(() => simulateTyping(message, index + 1), chunkInterval);
+            }
+        }
+    
+        const selectedMessage = getRandomMessage();
+        simulateTyping(selectedMessage);
+    }
+    
+// Updated emulateDataStream to integrate with chat messages
+function emulateDataStream(chunkInterval = 100, tempMessageId) {
+    const messages = [
+        "Scanning through your card collection and analyzing relevant tables...",
+        "Identifying patterns in the data and cross-referencing cards with table structures...",
+        "Exploring relationships between request and cards and extracting key metrics from tables...",
+        "Mapping relevant cards and corresponding table columns for comprehensive analysis...",
+        "Evaluating the semantic connections between cards and their associated table data...",
+    ];
+
+    const startTime = Date.now();
+
+    function chunkString(str, chunkSize) {
+        const chunks = [];
+        for (let i = 0; i < str.length; i += chunkSize) {
+            chunks.push(str.slice(i, i + chunkSize));
+        }
+        return chunks;
+    }
+
+    function getRandomMessage() {
+        return messages[Math.floor(Math.random() * messages.length)];
+    }
+
+    function simulateTyping(message, index = 0) {
+        const chunks = chunkString(message, 5); // Chunk size of 5 characters
+
+        if (index < chunks.length) {
+            setMessages((prev) => {
+                return prev.map((msg) =>
+                    msg.id === tempMessageId
+                        ? {
+                              ...msg,
+                              text: msg.text + chunks[index], // Append chunks of text
+                          }
+                        : msg
+                );
+            });
+            setTimeout(() => simulateTyping(message, index + 1), chunkInterval);
+        }
+    }
+
+    const selectedMessage = getRandomMessage();
+    simulateTyping(selectedMessage);
+}
     
 
     const handleSuggestion = () => {
