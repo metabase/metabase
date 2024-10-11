@@ -275,19 +275,19 @@
                                                 :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]
                                                                [:field (mt/id :products :created_at) {:base-type :type/DateTime :temporal-unit :year}]]}}}]
         (testing "formatted"
-            (is (= [[["Category" "2016" "2017" "2018" "2019" "Row totals"]
-                     ["Doohickey" "$632.14" "$854.19" "$496.43" "$203.13" "$2,185.89"]
-                     ["Gadget" "$679.83" "$1,059.11" "$844.51" "$435.75" "$3,019.20"]
-                     ["Gizmo" "$529.70" "$1,080.18" "$997.94" "$227.06" "$2,834.88"]
-                     ["Widget" "$987.39" "$1,014.68" "$912.20" "$195.04" "$3,109.31"]
-                     ["Grand totals" "$2,829.06" "$4,008.16" "$3,251.08" "$1,060.98" "$11,149.28"]]
-                    #{:unsaved-card-download :card-download :dashcard-download
-                      :alert-attachment :subscription-attachment
-                      :public-question-download :public-dashcard-download}]
-                   (->> (all-outputs! card {:export-format :csv :format-rows true :pivot true})
-                        (group-by second)
-                        ((fn [m] (update-vals m #(into #{} (mapv first %)))))
-                        (apply concat)))))
+          (is (= [[["Category" "2016" "2017" "2018" "2019" "Row totals"]
+                   ["Doohickey" "$632.14" "$854.19" "$496.43" "$203.13" "$2,185.89"]
+                   ["Gadget" "$679.83" "$1,059.11" "$844.51" "$435.75" "$3,019.20"]
+                   ["Gizmo" "$529.70" "$1,080.18" "$997.94" "$227.06" "$2,834.88"]
+                   ["Widget" "$987.39" "$1,014.68" "$912.20" "$195.04" "$3,109.31"]
+                   ["Grand totals" "$2,829.06" "$4,008.16" "$3,251.08" "$1,060.98" "$11,149.28"]]
+                  #{:unsaved-card-download :card-download :dashcard-download
+                    :alert-attachment :subscription-attachment
+                    :public-question-download :public-dashcard-download}]
+                 (->> (all-outputs! card {:export-format :csv :format-rows true :pivot true})
+                      (group-by second)
+                      ((fn [m] (update-vals m #(into #{} (mapv first %)))))
+                      (apply concat)))))
         (testing "unformatted"
           (is (= [[["Category"
                     "2016-01-01T00:00:00Z"
