@@ -182,6 +182,11 @@
     ;; database IDs... commented out for now until someone gets a change to look at this. -- Cam
     [:multi {:dispatch :model}
      [:card [:map
+             [:dashboard {:optional true}
+              [:maybe
+               [:map
+                [:name :string]
+                [:id :int]]]]
              [:display :string]
              #_[:database_id :int]
              [:parent_collection ::pc]
