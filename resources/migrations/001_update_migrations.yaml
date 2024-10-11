@@ -9941,6 +9941,7 @@ databaseChangeLog:
         - dropColumn:
             tableName: channel_template
             columnName: entity_id
+      rollback: # not necessary, will be removed with the table
 
   - changeSet:
       id: v52.2024-10-01T08:00:01
