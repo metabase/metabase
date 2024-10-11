@@ -3,7 +3,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.channel.slack :as channel.slack]
-   [metabase.email.messages :as messages]
+   [metabase.email.result-attachment :as email.result-attachment]
    [metabase.models
     :refer [Card
             Collection
@@ -935,7 +935,7 @@
   (when (seq rows)
     [(let [^java.io.ByteArrayOutputStream baos (java.io.ByteArrayOutputStream.)]
        (with-open [os baos]
-         (#'messages/stream-api-results-to-export-format :csv true os result)
+         (#'email.result-attachment/stream-api-results-to-export-format :csv true os result)
          (let [output-string (.toString baos "UTF-8")]
            {:type         :attachment
             :content-type :csv
@@ -966,7 +966,7 @@
                          PulseChannel  {pc-id :id} {:pulse_id pulse-id}
                          PulseChannelRecipient _ {:user_id          (pulse.test-util/rasta-id)
                                                   :pulse_channel_id pc-id}]
-            (with-redefs [messages/result-attachment result-attachment]
+            (with-redefs [email.result-attachment/result-attachment result-attachment]
               (pulse.send/send-pulse! pulse)
               (is (= 1
                      (-> @mt/inbox
@@ -982,8 +982,8 @@
 
 (deftest attachment-filenames-stay-readable-test
   (testing "Filenames remain human-readable (#41669)"
-    (let [tmp (#'messages/create-temp-file ".tmp")
-          {:keys [file-name]} (#'messages/create-result-attachment-map :csv "テストSQL質問" tmp)]
+    (let [tmp (#'email.result-attachment/create-temp-file ".tmp")
+          {:keys [file-name]} (#'email.result-attachment/create-result-attachment-map :csv "テストSQL質問" tmp)]
       (is (= "テストSQL質問" (first (str/split file-name #"_")))))))
 
 (deftest dashboard-description-markdown-test
