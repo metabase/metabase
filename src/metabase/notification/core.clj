@@ -88,7 +88,6 @@
   [notification]
   (.submit ^ExecutorService @pool ^Callable
            (fn []
-             (Thread/sleep 1000)
              (send-notification-sync! notification)))
   nil)
 
