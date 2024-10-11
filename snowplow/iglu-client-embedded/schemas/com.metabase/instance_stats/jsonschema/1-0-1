@@ -39,7 +39,7 @@
         "type": "object",
         "description": "A single metric attribute",
         "properties": {
-          "key": {
+          "name": {
             "description": "The unique name of the metric",
             "type": "string",
             "maxLength": 255
@@ -61,7 +61,7 @@
             }
           }
         },
-        "required": ["key", "value", "tags"]
+        "required": ["name", "value", "tags"]
       }
     },
     "features": {
