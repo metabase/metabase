@@ -38,7 +38,7 @@ export const PublicLinkCopyPanel = ({
   removeTooltipLabel?: string;
   onCopy?: () => void;
 }) => (
-  <Stack spacing={0}>
+  <Stack gap={0}>
     <TextInput
       readOnly
       data-testid="public-link-input"
@@ -71,7 +71,7 @@ export const PublicLinkCopyPanel = ({
             </Tooltip>
           )}
         </Box>
-        <Group spacing="sm" position="right">
+        <Group gap="sm" position="right">
           {extensions &&
             extensions.length > 0 &&
             extensions.map(extension => (

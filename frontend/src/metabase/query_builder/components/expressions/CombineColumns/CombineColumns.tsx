@@ -151,10 +151,10 @@ export function CombineColumns({
   return (
     <form onSubmit={handleSubmit}>
       <Box maw="100vw" w={width} p="lg" pt={0}>
-        <Stack spacing="lg" mt="lg">
-          <Stack spacing="md">
+        <Stack gap="lg" mt="lg">
+          <Stack gap="md">
             <Box>
-              <Stack spacing="md">
+              <Stack gap="md">
                 {columnsAndSeparators.map(
                   (item, index) =>
                     // Do not allow editing the first column when it is passed from

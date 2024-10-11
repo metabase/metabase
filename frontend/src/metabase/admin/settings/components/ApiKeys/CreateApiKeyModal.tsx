@@ -49,7 +49,7 @@ export const CreateApiKeyModal = ({ onClose }: { onClose: () => void }) => {
           onSubmit={handleSubmit}
         >
           <Form data-testid="create-api-key-modal">
-            <Stack spacing="md">
+            <Stack gap="md">
               <FormTextInput
                 name="name"
                 label={t`Key name`}

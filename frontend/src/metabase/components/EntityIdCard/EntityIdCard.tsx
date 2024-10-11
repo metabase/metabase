@@ -29,7 +29,7 @@ const EntityIdTitle = (props?: TitleProps) => {
 
   return (
     <SidesheetCardTitle mb={0} {...props}>
-      <Group spacing="sm">
+      <Group gap="sm">
         {t`Entity ID`}
         <Popover position="top-start">
           <Popover.Target>
@@ -37,7 +37,7 @@ const EntityIdTitle = (props?: TitleProps) => {
           </Popover.Target>
           <Popover.Dropdown>
             <Paper p="md" maw="13rem">
-              <Text size="sm">
+              <Text fz="sm">
                 {t`When using serialization, replace the sequential ID with this global entity ID to have stable URLs across environments. Also useful when troubleshooting serialization.`}{" "}
                 {showMetabaseLinks && (
                   <>

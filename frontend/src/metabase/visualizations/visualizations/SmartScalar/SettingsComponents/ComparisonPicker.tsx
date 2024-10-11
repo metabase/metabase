@@ -129,7 +129,7 @@ export function ComparisonPicker({
       );
     }
     return (
-      <Stack spacing="sm">
+      <Stack gap="sm">
         {options.map(optionArgs =>
           renderMenuOption({
             editedValue,

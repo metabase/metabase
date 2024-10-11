@@ -41,7 +41,7 @@ export function ValuesSourceSettings({
   return (
     <>
       <Radio.Group value={queryType} onChange={onChangeQueryType}>
-        <Stack spacing="xs">
+        <Stack gap="xs">
           <RadioContainer
             ownValue="list"
             selectedValue={queryType}
