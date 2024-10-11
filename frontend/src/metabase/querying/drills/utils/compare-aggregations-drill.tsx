@@ -3,9 +3,9 @@ import { t } from "ttag";
 import { useDispatch } from "metabase/lib/redux";
 import { setUIControls } from "metabase/query_builder/actions";
 import {
-  CompareAggregations,
-  canAddTemporalCompareAggregation,
-} from "metabase/query_builder/components/CompareAggregations";
+  OffsetAggregationPicker,
+  canAddOffsetAggregation,
+} from "metabase/querying/aggregations/components/OffsetAggregationPicker";
 import { trackColumnCompareViaColumnHeader } from "metabase/querying/analytics";
 import type {
   ClickActionPopoverProps,
@@ -15,12 +15,11 @@ import * as Lib from "metabase-lib";
 
 export const compareAggregationsDrill: Drill<
   Lib.CompareAggregationsDrillThruInfo
-> = ({ drill, question, query, stageIndex, clicked }) => {
-  if (!clicked.column || !canAddTemporalCompareAggregation(query, stageIndex)) {
+> = ({ drill, question, query, stageIndex }) => {
+  const { aggregation } = Lib.aggregationDrillDetails(drill);
+  if (!canAddOffsetAggregation(query, stageIndex, aggregation)) {
     return [];
   }
-
-  const { aggregation } = Lib.aggregationDrillDetails(drill);
 
   const DrillPopover = ({
     onChangeCardAndRun,
@@ -29,11 +28,9 @@ export const compareAggregationsDrill: Drill<
     const dispatch = useDispatch();
 
     return (
-      <CompareAggregations
-        aggregations={[aggregation]}
+      <OffsetAggregationPicker
         query={query}
         stageIndex={stageIndex}
-        onClose={onClose}
         onSubmit={(nextQuery, aggregations) => {
           const nextQuestion = question.setQuery(nextQuery);
           const nextCard = nextQuestion.card();
@@ -49,6 +46,7 @@ export const compareAggregationsDrill: Drill<
           onChangeCardAndRun({ nextCard });
           onClose();
         }}
+        onClose={onClose}
       />
     );
   };

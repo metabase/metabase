@@ -5,11 +5,16 @@ import type * as Lib from "metabase-lib";
 
 import { OffsetAggregationForm } from "./OffsetAggregationForm";
 import { OffsetAggregationList } from "./OffsetAggregationList";
-import { getSupportedAggregations, getTitle } from "./utils";
+import {
+  getInitialAggregation,
+  getSupportedAggregations,
+  getTitle,
+} from "./utils";
 
 type OffsetAggregationPickerProps = {
   query: Lib.Query;
   stageIndex: number;
+  initialAggregation?: Lib.AggregationClause;
   onSubmit: (query: Lib.Query, aggregations: Lib.ExpressionClause[]) => void;
   onClose: () => void;
 };
@@ -17,6 +22,7 @@ type OffsetAggregationPickerProps = {
 export function OffsetAggregationPicker({
   query,
   stageIndex,
+  initialAggregation,
   onSubmit,
   onClose,
 }: OffsetAggregationPickerProps) {
@@ -24,20 +30,12 @@ export function OffsetAggregationPicker({
     () => getSupportedAggregations(query, stageIndex),
     [query, stageIndex],
   );
-  const [aggregation, setAggregation] = useState(
-    aggregations.length === 1 ? aggregations[0] : undefined,
+  const [aggregation, setAggregation] = useState(() =>
+    getInitialAggregation(aggregations, initialAggregation),
   );
 
-  const handleSubmit = (
-    query: Lib.Query,
-    aggregations: Lib.ExpressionClause[],
-  ) => {
-    onSubmit(query, aggregations);
-    onClose();
-  };
-
   const handleBackClick = () => {
-    if (aggregation == null || aggregations.length <= 1) {
+    if (aggregation == null || aggregations.length <= 1 || initialAggregation) {
       onClose();
     } else {
       setAggregation(undefined);
@@ -54,7 +52,7 @@ export function OffsetAggregationPicker({
           query={query}
           stageIndex={stageIndex}
           aggregation={aggregation}
-          onSubmit={handleSubmit}
+          onSubmit={onSubmit}
         />
       ) : (
         <OffsetAggregationList

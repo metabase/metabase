@@ -24,15 +24,23 @@ export function getTitle(
   return t`Compare “${aggregationInfo.displayName}” to the past`;
 }
 
+function isSupportedAggregation(
+  query: Lib.Query,
+  stageIndex: number,
+  aggregation: Lib.AggregationClause,
+) {
+  const functions = Lib.functionsUsedByExpression(
+    query,
+    stageIndex,
+    aggregation,
+  );
+  return !functions.includes("offset");
+}
+
 export function getSupportedAggregations(query: Lib.Query, stageIndex: number) {
-  return Lib.aggregations(query, stageIndex).filter(aggregation => {
-    const functions = Lib.functionsUsedByExpression(
-      query,
-      stageIndex,
-      aggregation,
-    );
-    return !functions.includes("offset");
-  });
+  return Lib.aggregations(query, stageIndex).filter(aggregation =>
+    isSupportedAggregation(query, stageIndex, aggregation),
+  );
 }
 
 export function getSupportedBreakoutColumns(
@@ -44,7 +52,11 @@ export function getSupportedBreakoutColumns(
   );
 }
 
-export function canAddOffsetAggregation(query: Lib.Query, stageIndex: number) {
+export function canAddOffsetAggregation(
+  query: Lib.Query,
+  stageIndex: number,
+  initialAggregation?: Lib.AggregationClause,
+) {
   const aggregations = getSupportedAggregations(query, stageIndex);
   const columns = getSupportedBreakoutColumns(query, stageIndex);
   if (aggregations.length === 0 || columns.length === 0) {
@@ -53,7 +65,14 @@ export function canAddOffsetAggregation(query: Lib.Query, stageIndex: number) {
 
   const column = getBreakoutColumn(query, stageIndex);
   const groupUnit = getDefaultGroupUnit(query, stageIndex, column);
-  return groupUnit != null;
+  if (!groupUnit) {
+    return false;
+  }
+
+  return (
+    !initialAggregation ||
+    isSupportedAggregation(query, stageIndex, initialAggregation)
+  );
 }
 
 export function getBreakoutColumn(
@@ -168,6 +187,17 @@ function getInitialOffsetUnit(
   );
 
   return breakoutInfo?.breakoutUnit ?? groupUnit;
+}
+
+export function getInitialAggregation(
+  aggregations: Lib.AggregationClause[],
+  initialAggregation?: Lib.AggregationClause,
+) {
+  if (initialAggregation) {
+    return initialAggregation;
+  } else {
+    return aggregations.length === 1 ? aggregations[0] : undefined;
+  }
 }
 
 export function getInitialOptions(

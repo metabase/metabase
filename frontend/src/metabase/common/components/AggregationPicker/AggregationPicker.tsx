@@ -298,8 +298,8 @@ export function AggregationPicker({
       <OffsetAggregationPicker
         query={query}
         stageIndex={stageIndex}
-        onClose={handleCompareClose}
         onSubmit={handleCompareSubmit}
+        onClose={handleCompareClose}
       />
     );
   }
