@@ -176,6 +176,7 @@ describe("cronToScheduleSettings", () => {
       const cron = "0 30 8 ? * 7";
       expect(cronToScheduleSettings(cron)?.schedule_day).toBe("sat");
     });
+
     it('sets schedule_day to undefined if dayOfWeek is "?"', () => {
       const cron = "0 30 8 ? * ?";
       expect(cronToScheduleSettings(cron)?.schedule_day).toBeUndefined();
@@ -206,6 +207,7 @@ describe("cronToScheduleSettings", () => {
         schedule_frame: "last",
       });
     });
+
     it("converts 0 0 6 ? * 6#1 correctly", () => {
       const cron = "0 0 6 ? * 6#1";
       expect(cronToScheduleSettings(cron)).toEqual({
@@ -226,6 +228,7 @@ describe("hourToTwelveHourFormat", () => {
     expect(hourToTwelveHourFormat(23)).toBe(11);
     expect(hourToTwelveHourFormat(12)).toBe(12);
   });
+
   it("does not change hours that are already in 12-hour format", () => {
     expect(hourToTwelveHourFormat(11)).toBe(11);
     expect(hourToTwelveHourFormat(10)).toBe(10);
