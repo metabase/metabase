@@ -342,12 +342,12 @@ async function reduxUpdateQuestion(
 ) {
   const fullCard = question.card();
 
-  const omit = [
+  const keysToOmit = [
     excludeDatasetQuery ? "dataset_query" : null,
     excludeVizualisationSettings ? "visualization_settings" : null,
   ].filter(Boolean);
 
-  const card = _.omit(fullCard, ...omit);
+  const card = _.omit(fullCard, ...keysToOmit);
 
   const action = await dispatch(
     Questions.actions.update({ id: question.id() }, card),
