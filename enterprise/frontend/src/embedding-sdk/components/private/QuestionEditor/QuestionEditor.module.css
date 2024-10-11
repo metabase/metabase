@@ -7,8 +7,10 @@
 
 .ChartTypeSelector {
   grid-area: ChartTypeSelector;
+  overflow: hidden;
 }
 
 .Content {
   grid-area: Content;
+  overflow: auto;
 }
