@@ -35,5 +35,12 @@ export function OffsetUnitInput({
     }
   };
 
-  return <Select data={options} value={offsetUnit} onChange={handleChange} />;
+  return (
+    <Select
+      data={options}
+      value={offsetUnit}
+      w="10rem"
+      onChange={handleChange}
+    />
+  );
 }

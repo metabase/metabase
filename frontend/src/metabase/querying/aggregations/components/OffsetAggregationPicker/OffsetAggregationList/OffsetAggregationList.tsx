@@ -1,6 +1,8 @@
 import AccordionList from "metabase/core/components/AccordionList";
 import * as Lib from "metabase-lib";
 
+import S from "./OffsetAggregationList.module.css";
+
 type OffsetAggregationListProps = {
   query: Lib.Query;
   stageIndex: number;
@@ -27,8 +29,9 @@ export function OffsetAggregationList({
 
   return (
     <AccordionList
+      className={S.list}
       sections={sections}
-      width="100%"
+      width="23.5rem"
       maxHeight={Infinity}
       alwaysExpanded
       onChange={handleChange}

@@ -39,6 +39,7 @@ export function GroupUnitInput({
       data={options}
       value={groupUnit}
       label={t`Group by`}
+      w="14rem"
       onChange={handleChange}
     />
   );

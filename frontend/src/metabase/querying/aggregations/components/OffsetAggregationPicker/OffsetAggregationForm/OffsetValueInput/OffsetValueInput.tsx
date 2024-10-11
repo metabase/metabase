@@ -31,6 +31,7 @@ export const OffsetValueInput = ({
       min={minimum}
       step={1}
       precision={0}
+      w="3.5rem"
       aria-label={t`Offset`}
       onChange={handleChange}
     />
