@@ -8,9 +8,9 @@
    [hickory.select :as hik.s]
    [metabase.formatter :as formatter]
    [metabase.models :refer [Card]]
-   [metabase.pulse :as pulse]
    [metabase.pulse.render.body :as body]
    [metabase.pulse.render.test-util :as render.tu]
+   [metabase.pulse.send :as pulse.send]
    [metabase.pulse.util :as pu]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
@@ -847,7 +847,7 @@
 
 (defn- render-card
   [render-type card data]
-  (body/render render-type :attachment (pulse/defaulted-timezone card) card nil data))
+  (body/render render-type :attachment (pulse.send/defaulted-timezone card) card nil data))
 
 (deftest render-cards-are-thread-safe-test-for-js-visualization
   (mt/with-temp [:model/Card card {:dataset_query          (mt/mbql-query orders
