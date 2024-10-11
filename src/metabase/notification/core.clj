@@ -81,9 +81,9 @@
 (defn- send-notification-async!
   "Send a notification asynchronously."
   [notification]
-  (let [task (bound-fn []
-               (send-notification-sync! notification))]
-    (.submit ^ExecutorService @pool ^Callable task))
+  (.submit ^ExecutorService @pool ^Callable
+           (fn []
+             (send-notification-sync! notification)))
   nil)
 
 (def ^:dynamic *send-notification!*
