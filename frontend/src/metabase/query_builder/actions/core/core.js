@@ -235,6 +235,7 @@ export const apiUpdateQuestion = (question, { rerunQuery } = {}) => {
 
     const isResultDirty = getIsResultDirty(getState());
     const isModel = question.type() === "model";
+    const isMetric = question.type() === "metric";
 
     const { isNative } = Lib.queryDisplayInfo(question.query());
 
@@ -255,6 +256,7 @@ export const apiUpdateQuestion = (question, { rerunQuery } = {}) => {
           question,
           originalQuestion,
         ),
+        excludeVizualisationSettings: isMetric,
       },
     );
 
@@ -336,12 +338,17 @@ async function reduxCreateQuestion(question, dispatch) {
 async function reduxUpdateQuestion(
   question,
   dispatch,
-  { excludeDatasetQuery = false },
+  { excludeDatasetQuery = false, excludeVizualisationSettings = false },
 ) {
   const fullCard = question.card();
-  const card = excludeDatasetQuery
-    ? _.omit(fullCard, "dataset_query")
-    : fullCard;
+
+  const omit = [
+    excludeDatasetQuery ? "dataset_query" : null,
+    excludeVizualisationSettings ? "visualization_settings" : null,
+  ].filter(Boolean);
+
+  const card = _.omit(fullCard, ...omit);
+
   const action = await dispatch(
     Questions.actions.update({ id: question.id() }, card),
   );
