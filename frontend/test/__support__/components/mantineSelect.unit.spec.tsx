@@ -1,4 +1,4 @@
-import { render, screen } from "__support__/ui";
+import { render, screen, within } from "__support__/ui";
 import { Select } from "metabase/ui";
 
 import { viewMantineSelectOptions } from "./mantineSelect";
@@ -26,7 +26,7 @@ describe("viewMantineSelectOptions", () => {
     expect(displayedOption.value).toBe("Option 2");
   });
 
-  it("fetches options from the <Select> component within a provided element", async () => {
+  it("identifies the <Select> component within a provided element, and returns information about its options", async () => {
     render(
       <>
         <Select
@@ -63,7 +63,54 @@ describe("viewMantineSelectOptions", () => {
     );
     const { optionElements, optionTextContents, displayedOption } =
       await viewMantineSelectOptions({
-        within: secondSelectContainer,
+        findWithinElement: secondSelectContainer,
+      });
+
+    expect(optionElements.length).toBe(3);
+    expect(optionTextContents).toContain("Second Select, option 1");
+    expect(optionTextContents).toContain("Second Select, option 2");
+    expect(optionTextContents).toContain("Second Select, option 3");
+    expect(displayedOption.value).toBe("Second Select, option 2");
+  });
+
+  it("fetches options from the Select component with a given root element", async () => {
+    render(
+      <>
+        <Select
+          value="select1-option2"
+          data={[
+            { value: "select1-option1", label: "First Select, option 1" },
+            { value: "select1-option2", label: "First Select, option 2" },
+            { value: "select1-option3", label: "First Select, option 3" },
+          ]}
+        />
+        <div data-testid="second-select-container">
+          <Select
+            value="select2-option2"
+            data={[
+              {
+                value: "select2-option1",
+                label: "Second Select, option 1",
+              },
+              {
+                value: "select2-option2",
+                label: "Second Select, option 2",
+              },
+              {
+                value: "select2-option3",
+                label: "Second Select, option 3",
+              },
+            ]}
+          />
+        </div>
+      </>,
+    );
+    const secondSelectRoot = await within(
+      await screen.findByTestId("second-select-container"),
+    ).findByRole("combobox");
+    const { optionElements, optionTextContents, displayedOption } =
+      await viewMantineSelectOptions({
+        root: secondSelectRoot,
       });
 
     expect(optionElements.length).toBe(3);
