@@ -36,22 +36,20 @@ export function OffsetAggregationPicker({
   };
 
   return (
-    <div>
-      <Box p="md">
-        <PopoverBackButton onClick={handleBackClick}>
-          {getTitle(query, stageIndex, aggregation)}
-        </PopoverBackButton>
-        {aggregation ? (
-          <OffsetAggregationForm query={query} stageIndex={stageIndex} />
-        ) : (
-          <OffsetAggregationList
-            query={query}
-            stageIndex={stageIndex}
-            aggregations={aggregations}
-            onChange={setAggregation}
-          />
-        )}
-      </Box>
-    </div>
+    <Box p="lg">
+      <PopoverBackButton mb="lg" onClick={handleBackClick}>
+        {getTitle(query, stageIndex, aggregation)}
+      </PopoverBackButton>
+      {aggregation ? (
+        <OffsetAggregationForm query={query} stageIndex={stageIndex} />
+      ) : (
+        <OffsetAggregationList
+          query={query}
+          stageIndex={stageIndex}
+          aggregations={aggregations}
+          onChange={setAggregation}
+        />
+      )}
+    </Box>
   );
 }

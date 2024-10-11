@@ -63,7 +63,7 @@ export function OffsetAggregationForm({
 
   return (
     <form>
-      <Stack p="lg" spacing="lg">
+      <Stack spacing="lg">
         <ComparisonTypeInput
           comparisonType={data.comparisonType}
           onComparisonTypeChange={handleComparisonTypeChange}
