@@ -192,24 +192,3 @@ module.exports = env => {
 
   return config;
 };
-
-// TODO: possibly make its own script?
-if (isWatchMode) {
-  console.log("[dts fixup] Watching for changes in the SDK d.ts files...");
-  const dirty = new Map();
-
-  // watch d.ts file changes on the SDK
-  fs.watch(BUILD_PATH, { recursive: true }, async (eventType, filename) => {
-    if (filename && filename.endsWith(".d.ts")) {
-      if (dirty.get(filename)) {
-        return dirty.set(filename, false);
-      }
-      console.log(
-        "[dts fixup]",
-        `File ${filename} changed, fixing the imports`,
-      );
-      dirty.set(filename, true);
-      replaceAliasedImports(path.resolve(BUILD_PATH, filename));
-    }
-  });
-}

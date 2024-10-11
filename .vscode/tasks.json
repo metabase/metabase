@@ -36,6 +36,45 @@
         "clear": true
       },
       "problemMatcher": []
+    },
+    {
+      "label": "Run embedding sdk dev commands",
+      "dependsOn": [
+        "embedding-sdk:dev:dts",
+        "embedding-sdk:dev:webpack",
+        "embedding-sdk:dev:fixup",
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "embedding-sdk:dev:dts",
+      "type": "shell",
+      "command": "yarn embedding-sdk:dev:dts",
+      "presentation": {
+        "group": "sdk:dev"
+      },
+      "problemMatcher": [],
+      "isBackground": true // this removes the spinning indicator
+    },
+    {
+      "label": "embedding-sdk:dev:webpack",
+      "type": "shell",
+      "command": "yarn embedding-sdk:dev:webpack",
+      "presentation": {
+        "group": "sdk:dev"
+      },
+      "problemMatcher": [],
+      "isBackground": true
+    },
+    {
+      "label": "embedding-sdk:dev:fixup",
+      "type": "shell",
+      "command": "yarn embedding-sdk:dev:fixup",
+      "presentation": {
+        "group": "sdk:dev"
+      },
+      "problemMatcher": [],
+      "isBackground": true
     }
   ]
 }

@@ -17,9 +17,9 @@ const REPLACES_MAP = {
   "metabase-enterprise": `${SDK_PACKAGE_NAME}/dist/enterprise/frontend/src/metabase-enterprise`,
   "metabase-lib": `${SDK_PACKAGE_NAME}/dist/frontend/src/metabase-lib`,
   "metabase-types": `${SDK_PACKAGE_NAME}/dist/frontend/src/metabase-types`,
-  "metabase": `${SDK_PACKAGE_NAME}/dist/frontend/src/metabase`,
+  metabase: `${SDK_PACKAGE_NAME}/dist/frontend/src/metabase`,
   "embedding-sdk": `${SDK_PACKAGE_NAME}/dist/enterprise/frontend/src/embedding-sdk`,
-  "cljs": `${SDK_PACKAGE_NAME}/dist/target/cljs_release`,
+  cljs: `${SDK_PACKAGE_NAME}/dist/target/cljs_release`,
 };
 
 const traverseFilesTree = dir => {
@@ -73,9 +73,39 @@ const fixupTypesAfterCompilation = () => {
   dtsFilePaths.forEach(replaceAliasedImports);
 };
 
-// if running as standalone script
-if (process.argv.at(-1) === __filename) {
-fixupTypesAfterCompilation();
-}
+const watchFilesAndFixThem = () => {
+  console.log("[dts fixup] Watching for changes in the SDK d.ts files...");
+  // we need to keep track of the files that just edited
+  // as they trigger a file save event otherwise we'd end up in a loop
 
-module.exports.replaceAliasedImports = replaceAliasedImports;
+  // NOTE: if this solution ends up being flaky for some reason, we could
+  // just check if the file includes "@metabase/embedding-sdk-react", if it does
+  // it means we can skip it
+  const dirty = new Map();
+
+  fs.watch(
+    SDK_DIST_DIR_PATH,
+    { recursive: true },
+    async (eventType, filename) => {
+      if (filename && filename.endsWith(".d.ts")) {
+        if (dirty.get(filename)) {
+          return dirty.set(filename, false);
+        }
+        console.log(
+          "[dts fixup]",
+          `File ${filename} changed, fixing the imports`,
+        );
+        dirty.set(filename, true);
+        replaceAliasedImports(path.resolve(SDK_DIST_DIR_PATH, filename));
+      }
+    },
+  );
+};
+
+const isWatchMode = process.argv.includes("--watch");
+
+if (isWatchMode) {
+  watchFilesAndFixThem();
+} else {
+  fixupTypesAfterCompilation();
+}
