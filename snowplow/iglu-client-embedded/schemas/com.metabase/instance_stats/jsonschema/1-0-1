@@ -46,7 +46,7 @@
           },
           "value": {
             "description": "The value of the metric",
-            "type": ["string", "integer"],
+            "type": "integer",
             "maxLength": 255,
             "minimum": 0,
             "maximum": 2147483647
