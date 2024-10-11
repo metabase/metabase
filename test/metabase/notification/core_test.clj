@@ -64,7 +64,7 @@
                  :channel_id   (:id chn)
                  :recipients   [{:type :notification-recipient/user :user_id (mt/user->id :crowberto)}]}])]
         (t2/delete! :model/TaskHistory)
-        (notification/send-notification! n)
+        (notification/*send-notification!* n)
         (is (=? [{:task         "notification-send"
                   :task_details {:notification_id (:id n)
                                  :notification_handlers [{:id           (mt/malli=? :int)
@@ -102,7 +102,7 @@
                                   (throw (Exception. "test-exception"))
                                   (reset! send-args args)))]
               (with-redefs [channel/send! send!]
-                (notification/send-notification! n))
+                (notification/*send-notification!* n))
               (is (some? @send-args))
               (is (=? {:task "channel-send"
                        :task_details {:attempted_retries 1
