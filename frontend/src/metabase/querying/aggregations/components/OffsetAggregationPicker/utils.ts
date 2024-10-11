@@ -301,7 +301,7 @@ export function setGroupUnit(
   };
 }
 
-export function applyOffset(
+export function applyOffsetClause(
   query: Lib.Query,
   stageIndex: number,
   offset: Lib.ExpressionClause,

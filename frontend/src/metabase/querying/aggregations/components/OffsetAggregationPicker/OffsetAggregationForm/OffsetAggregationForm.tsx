@@ -7,7 +7,7 @@ import type { TemporalUnit } from "metabase-types/api";
 
 import type { ColumnType, ComparisonType, OffsetOptions } from "../types";
 import {
-  applyOffset,
+  applyOffsetClause,
   getBreakoutColumn,
   getInitialOptions,
   getOffsetClause,
@@ -71,7 +71,7 @@ export function OffsetAggregationForm({
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
     const newClause = getOffsetClause(query, stageIndex, aggregation, options);
-    const newQuery = applyOffset(query, stageIndex, newClause, options);
+    const newQuery = applyOffsetClause(query, stageIndex, newClause, options);
     onSubmit(newQuery, [newClause]);
   };
 
