@@ -8,7 +8,7 @@
    [hickory.core :as hik]
    [hickory.render :as hik.r]
    [hickory.zip :as hik.z]
-   [metabase.email.messages :as messages]
+   [metabase.email.result-attachment :as email.result-attachment]
    [metabase.pulse :as pulse]
    [metabase.pulse.render :as render]
    [metabase.pulse.render.image-bundle :as img]
@@ -37,13 +37,11 @@
         (for [cell row]
           [:td {:style table-style} cell])])]))
 
-(def ^:private result-attachment #'messages/result-attachment)
-
 (defn- render-csv-for-dashcard
   [part]
   (-> part
       (assoc-in [:card :include_csv] true)
-      result-attachment
+      email.result-attachment/result-attachment
       first
       :content
       slurp

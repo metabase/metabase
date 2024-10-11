@@ -10,8 +10,7 @@
    [metabase.util.retry :as retry]
    [metabase.util.retry-test :as rt])
   (:import
-   (io.github.resilience4j.retry Retry)
-   (java.io IOException)))
+   (io.github.resilience4j.retry Retry)))
 
 (set! *warn-on-reflection* true)
 
@@ -59,19 +58,6 @@
       (is (-> (@et/inbox "test@test.com")
               (get-in [0 :body 0 :content])
               (str/includes? "deactivated"))))))
-
-(defmacro ^:private with-create-temp-failure! [& body]
-  `(with-redefs [messages/create-temp-file (fn [~'_]
-                                             (throw (IOException. "Failed to write file")))]
-     ~@body))
-
-;; Test that IOException bubbles up
-(deftest throws-exception
-  (is (thrown-with-msg?
-       IOException
-       (re-pattern (format "Unable to create temp file in `%s`" (System/getProperty "java.io.tmpdir")))
-       (with-create-temp-failure!
-         (#'messages/create-temp-file-or-throw "txt")))))
 
 (deftest alert-schedule-text-test
   (testing "Alert schedules can be described as English strings, with the timezone included"
