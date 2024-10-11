@@ -9636,6 +9636,13 @@ databaseChangeLog:
                   constraints:
                     nullable: true
               - column:
+                  name: entity_id
+                  type: char(21)
+                  remarks: Random NanoID tag for unique identity.
+                  constraints:
+                    nullable: true
+                    unique: true
+              - column:
                   name: created_at
                   type: ${timestamp_type}
                   remarks: The timestamp of when the template was created
@@ -9925,6 +9932,15 @@ databaseChangeLog:
               - column:
                   name: permissions_group_id
             indexName: idx_notification_recipient_permissions_group_id
+
+  - changeSet:
+      id: v52.2024-09-05T08:00:13
+      author: qnkhuat
+      comment: Drop the channel_template.entity_id column
+      changes:
+        - dropColumn:
+            tableName: channel_template
+            columnName: entity_id
 
   - changeSet:
       id: v52.2024-10-01T08:00:01
