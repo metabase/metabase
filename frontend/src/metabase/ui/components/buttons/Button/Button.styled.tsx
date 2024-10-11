@@ -17,7 +17,6 @@ export const buttonOverrides = {
       root: ButtonStyles.root,
       label: ButtonStyles.label,
     },
-
     vars: () => {
       return {
         root: {
@@ -29,12 +28,7 @@ export const buttonOverrides = {
     // styles: (theme: MantineTheme, { compact }: ButtonStylesParams) => {
     //   return {
     //     root: {
-    //       height: "auto",
     //       padding: compact ? `${rem(3)} ${rem(7)}` : `${rem(11)} ${rem(15)}`,
-    //       fontSize: theme.fontSizes.md,
-    //       lineHeight: theme.lineHeight,
-    //       overflow: "hidden",
-    //       ":active": { transform: "none" }, // Remove Mantine's default pressed effect
     //       [`&:has(.${getStylesRef("label")}:empty)`]: {
     //         padding: compact ? `${rem(3)} ${rem(3)}` : `${rem(11)} ${rem(11)}`,
     //         [`.${getStylesRef("leftIcon")}`]: {
@@ -44,20 +38,6 @@ export const buttonOverrides = {
     //           marginLeft: 0,
     //         },
     //       },
-    //     },
-    //     label: {
-    //       ref: getStylesRef("label"),
-    //       display: "inline-block",
-    //       height: "auto",
-    //       textOverflow: "ellipsis",
-    //     },
-    //     leftIcon: {
-    //       ref: getStylesRef("leftIcon"),
-    //       marginRight: theme.spacing.sm,
-    //     },
-    //     rightIcon: {
-    //       ref: getStylesRef("rightIcon"),
-    //       marginLeft: theme.spacing.sm,
     //     },
     //   };
   }),
