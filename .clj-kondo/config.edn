@@ -306,7 +306,8 @@
                                      metabase.db.setup}                                             ; TODO these are only calling `metabase.db.setup/setup-db!` and there's a slightly different version in `metabase.db`
     metabase.driver                :any                                                             ; TODO -- 19 namespaces!!!! CRY
     metabase.email                 #{metabase.email
-                                     metabase.email.messages}                                       ; TODO -- consolidate these into a real API namespace.
+                                     metabase.email.messages
+                                     metabase.email.result-attachment}                              ; TODO -- consolidate these into a real API namespace.
     metabase.embed                 #{metabase.embed.settings}
     metabase.events                #{metabase.events}
     metabase.formatter             #{metabase.formatter}
