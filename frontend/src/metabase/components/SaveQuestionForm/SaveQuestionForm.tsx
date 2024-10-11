@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import { FormCollectionAndDashboardPicker } from "metabase/collections/containers/FormCollectionAndDashboardPicker";
+import type { CollectionPickerModel } from "metabase/common/components/CollectionPicker";
 import { getPlaceholder } from "metabase/components/SaveQuestionForm/util";
 import Button from "metabase/core/components/Button";
 import FormErrorMessage from "metabase/core/components/FormErrorMessage";
@@ -16,6 +17,11 @@ import type { Dashboard } from "metabase-types/api";
 
 import CS from "./SaveQuestionForm.module.css";
 import { useSaveQuestionContext } from "./context";
+
+const COLLECTION_PICKER_MODALS: CollectionPickerModel[] = [
+  "collection",
+  "dashboard",
+];
 
 export const SaveQuestionForm = ({
   onCancel,
@@ -80,6 +86,9 @@ export const SaveQuestionForm = ({
               dashboardIdFieldName="dashboard_id"
               title={t`Where do you want to save this?`}
               zIndex={DEFAULT_MODAL_Z_INDEX + 1}
+              collectionPickerModalProps={{
+                models: COLLECTION_PICKER_MODALS,
+              }}
             />
           )}
           {showTabSelect && (

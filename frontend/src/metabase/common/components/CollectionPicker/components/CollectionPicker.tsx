@@ -17,7 +17,11 @@ import {
   NestedItemPicker,
   type PickerState,
 } from "../../EntityPicker";
-import type { CollectionPickerItem, CollectionPickerOptions } from "../types";
+import type {
+  CollectionPickerItem,
+  CollectionPickerModel,
+  CollectionPickerOptions,
+} from "../types";
 import {
   getCollectionIdPath,
   getParentCollectionId,
@@ -38,6 +42,7 @@ interface CollectionPickerProps {
   initialValue?: Partial<CollectionPickerItem>;
   options?: CollectionPickerOptions;
   shouldDisableItem?: (item: CollectionPickerItem) => boolean;
+  models?: CollectionPickerModel[];
 }
 
 export const CollectionPickerInner = (
@@ -46,6 +51,7 @@ export const CollectionPickerInner = (
     initialValue,
     options = defaultOptions,
     shouldDisableItem,
+    models = ["collection"],
   }: CollectionPickerProps,
   ref: Ref<unknown>,
 ) => {
@@ -55,6 +61,7 @@ export const CollectionPickerInner = (
     getStateFromIdPath({
       idPath: ["root"],
       namespace: options.namespace,
+      models,
     }),
   );
 
@@ -82,11 +89,19 @@ export const CollectionPickerInner = (
           isUserSubfolder,
         ),
         namespace: options.namespace,
+        models,
       });
       setPath(newPath);
       onItemSelect(folder);
     },
-    [setPath, onItemSelect, options.namespace, userPersonalCollectionId, path],
+    [
+      setPath,
+      onItemSelect,
+      options.namespace,
+      userPersonalCollectionId,
+      path,
+      models,
+    ],
   );
 
   const handleItemSelect = useCallback(
@@ -164,6 +179,7 @@ export const CollectionPickerInner = (
             userPersonalCollectionId,
           ),
           namespace: options.namespace,
+          models,
         });
         setPath(newPath);
 
