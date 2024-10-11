@@ -14,7 +14,7 @@ type ResizeObserverCallback = (
 // This comes with some tradeoffs. On the SDK, there will be issues with scalars
 // not rendering properly on the first render, as we rely on rapid resize observer
 // updates to resize the text.
-const ResizeObserver = process.env.IS_EMBEDDING_SDK
+const ResizeObserverImpl = process.env.IS_EMBEDDING_SDK
   ? JuggleResizeObserver
   : window.ResizeObserver;
 
@@ -28,7 +28,7 @@ function createResizeObserver() {
     });
   }
 
-  const observer = new ResizeObserver(handler);
+  const observer = new ResizeObserverImpl(handler);
 
   return {
     observer,

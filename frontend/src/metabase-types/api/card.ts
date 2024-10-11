@@ -14,6 +14,7 @@ import type { Table } from "./table";
 import type { UserInfo } from "./user";
 import type { CardDisplayType, VisualizationDisplay } from "./visualization";
 import type { SmartScalarComparison } from "./visualization-settings";
+
 export type CardType = "model" | "question" | "metric";
 
 type CreatorInfo = Pick<
@@ -308,6 +309,9 @@ export interface UpdateCardRequest {
   collection_preview?: boolean;
 }
 
+export type UpdateCardKeyRequest<PropertyKey extends keyof UpdateCardRequest> =
+  Required<Pick<UpdateCardRequest, "id" | PropertyKey>>;
+
 export type CardError = {
   field?: string;
   table: string;
@@ -351,7 +355,6 @@ export type CardQueryRequest = {
   parameters?: unknown[];
 };
 
-export type GetPublicOrEmbeddableCard = Pick<
-  Card,
-  "id" | "name" | "public_uuid"
->;
+export type GetPublicCard = Pick<Card, "id" | "name" | "public_uuid">;
+
+export type GetEmbeddableCard = Pick<Card, "id" | "name">;

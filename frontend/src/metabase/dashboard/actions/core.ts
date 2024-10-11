@@ -1,6 +1,6 @@
+import { createAction } from "@reduxjs/toolkit";
 import { push } from "react-router-redux";
 
-import { createAction } from "metabase/lib/redux";
 import { getLocation } from "metabase/selectors/routing";
 import type {
   DashCardId,
@@ -12,7 +12,9 @@ import type {
 import type { Dispatch, GetState } from "metabase-types/store";
 
 export const INITIALIZE = "metabase/dashboard/INITIALIZE";
-export const initialize = createAction(INITIALIZE);
+export const initialize = createAction<{ clearCache?: boolean } | undefined>(
+  INITIALIZE,
+);
 
 export const RESET = "metabase/dashboard/RESET";
 export const reset = createAction(RESET);
@@ -44,6 +46,7 @@ export const cancelEditingDashboard = () => (dispatch: Dispatch) => {
 export type SetDashboardAttributesOpts = {
   id: DashboardId;
   attributes: Partial<Dashboard>;
+  isDirty?: boolean;
 };
 export const SET_DASHBOARD_ATTRIBUTES =
   "metabase/dashboard/SET_DASHBOARD_ATTRIBUTES";
@@ -64,9 +67,9 @@ export const setDashCardAttributes = createAction<SetDashCardAttributesOpts>(
 export type SetMultipleDashCardAttributesOpts = SetDashCardAttributesOpts[];
 export const SET_MULTIPLE_DASHCARD_ATTRIBUTES =
   "metabase/dashboard/SET_MULTIPLE_DASHCARD_ATTRIBUTES";
-export const setMultipleDashCardAttributes = createAction(
-  SET_MULTIPLE_DASHCARD_ATTRIBUTES,
-);
+export const setMultipleDashCardAttributes = createAction<{
+  dashcards: SetMultipleDashCardAttributesOpts;
+}>(SET_MULTIPLE_DASHCARD_ATTRIBUTES);
 
 export const ADD_CARD_TO_DASH = "metabase/dashboard/ADD_CARD_TO_DASH";
 export const ADD_MANY_CARDS_TO_DASH =
@@ -85,8 +88,10 @@ export const onUpdateDashCardVisualizationSettings = createAction(
     id: DashCardId,
     settings: DashCardVisualizationSettings | null | undefined,
   ) => ({
-    id,
-    settings,
+    payload: {
+      id,
+      settings,
+    },
   }),
 );
 
@@ -98,7 +103,7 @@ export const onUpdateDashCardColumnSettings = createAction(
     id: DashCardId,
     column: string,
     settings?: Record<string, unknown> | null,
-  ) => ({ id, column, settings }),
+  ) => ({ payload: { id, column, settings } }),
 );
 
 export const REPLACE_ALL_DASHCARD_VISUALIZATION_SETTINGS =
@@ -109,7 +114,9 @@ export const onReplaceAllDashCardVisualizationSettings = createAction(
     id: DashCardId,
     settings: DashCardVisualizationSettings | null | undefined,
   ) => ({
-    id,
-    settings,
+    payload: {
+      id,
+      settings,
+    },
   }),
 );

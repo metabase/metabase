@@ -486,31 +486,34 @@
                                           :id [:in [rev-dash-1-old rev-dash-2-old rev-card-1-old]])))
         (is (= #{true} (t2/select-fn-set :most_recent (t2/table-name :model/Revision)
                                          :id [:in [rev-dash-1-new rev-dash-2-new rev-card-1-new]])))))))
+
 (deftest fks-are-indexed-test
   (mt/test-driver :postgres
-    (testing "FKs are not created automatically in Postgres, check that migrations add necessary indexes"
-      (is (= [{:table_name  "field_usage"
-               :column_name "query_execution_id"}
-              {:table_name  "pulse_channel"
-               :column_name "channel_id"}]
-             (t2/query
-              "SELECT
-                    conrelid::regclass::text AS table_name,
-                    a.attname AS column_name
-                FROM
-                    pg_constraint AS c
-                    JOIN pg_attribute AS a ON a.attnum = ANY(c.conkey) AND a.attrelid = c.conrelid
-                WHERE
-                    c.contype = 'f'
-                    AND NOT EXISTS (
-                        SELECT 1
-                        FROM pg_index AS i
-                        WHERE i.indrelid = c.conrelid
-                          AND a.attnum = ANY(i.indkey)
-                    )
-                ORDER BY
-                    table_name,
-                    column_name;"))))))
+    (let [excluded-fks #{{:table_name  "field_usage"
+                          :column_name "query_execution_id"}
+                         {:table_name  "pulse_channel"
+                          :column_name "channel_id"}}
+          indexed-fks  (t2/query
+                        "SELECT
+                              conrelid::regclass::text AS table_name,
+                              a.attname AS column_name
+                          FROM
+                              pg_constraint AS c
+                              JOIN pg_attribute AS a ON a.attnum = ANY(c.conkey) AND a.attrelid = c.conrelid
+                          WHERE
+                              c.contype = 'f'
+                              AND NOT EXISTS (
+                                  SELECT 1
+                                  FROM pg_index AS i
+                                  WHERE i.indrelid = c.conrelid
+                                    AND a.attnum = ANY(i.indkey)
+                              )
+                          ORDER BY
+                              table_name,
+                              column_name;")]
+      (doseq [fk indexed-fks]
+        (testing (format "Consider adding an index on %s.%s or add it to the excluded-fks set" (:table_name fk) (:column_name fk))
+          (is (contains? excluded-fks fk)))))))
 
 (deftest remove-collection-color-test
   (testing "Migration v48.00-019"
