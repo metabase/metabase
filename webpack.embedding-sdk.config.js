@@ -12,19 +12,13 @@ const mainConfig = require("./webpack.config");
 const { resolve } = require("path");
 const fs = require("fs");
 const path = require("path");
-const {
-  replaceAliasedImports,
-} = require("./bin/embedding-sdk/fixup-types-after-compilation");
 
 const SDK_SRC_PATH = __dirname + "/enterprise/frontend/src/embedding-sdk";
 const BUILD_PATH = __dirname + "/resources/embedding-sdk";
 const ENTERPRISE_SRC_PATH =
   __dirname + "/enterprise/frontend/src/metabase-enterprise";
 
-const isWatchMode = process.argv.includes("--watch");
 const skipDTS = process.env.SKIP_DTS === "true";
-
-console.log({ isWatchMode, skipDTS });
 
 // default WEBPACK_BUNDLE to development
 const WEBPACK_BUNDLE = process.env.WEBPACK_BUNDLE || "development";
