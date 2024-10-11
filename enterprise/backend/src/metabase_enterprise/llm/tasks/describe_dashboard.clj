@@ -1,11 +1,11 @@
 (ns metabase-enterprise.llm.tasks.describe-dashboard
   "LLM task(s) for generating dashboard descriptions"
   (:require
-   [cheshire.core :as json]
    [clojure.set :refer [rename-keys]]
    [clojure.walk :as walk]
    [metabase-enterprise.llm.client :as llm-client]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
 (defn- dashboard->prompt-data
@@ -61,7 +61,7 @@
                                     {:description "%%FILL_THIS_DESCRIPTION_IN%%"
                                      :keywords    "%%FILL_THESE_KEYWORDS_IN%%"
                                      :questions   "%%FILL_THESE_QUESTIONS_IN%%"})
-        json-str             (json/generate-string summary-with-prompts)
+        json-str             (json/encode summary-with-prompts)
         client               (-> (llm-client/create-chat-completion)
                                  (llm-client/wrap-parse-json
                                   (fn [{:keys [description keywords questions]}]

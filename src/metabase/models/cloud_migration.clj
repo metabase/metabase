@@ -1,7 +1,6 @@
 (ns metabase.models.cloud-migration
   "A model representing a migration to cloud."
   (:require
-   [cheshire.core :as json]
    [clj-http.client :as http]
    [clojure.java.io :as io]
    [clojure.set :as set]
@@ -14,6 +13,7 @@
    [metabase.models.setting.cache :as setting.cache]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
@@ -222,7 +222,7 @@
                           {:form-params  {:part_count (count parts)}
                            :content-type :json})
                 :body
-                (json/parse-string keyword))
+                json/decode+kw)
 
             etags
             (->> (map (fn [[start end] [part-number url]]
@@ -294,7 +294,7 @@
                                                        (config/mb-version-info :tag))}
                   :content-type :json})
       :body
-      (json/parse-string keyword)
+      json/decode+kw
       (select-keys [:id :upload_url])
       (set/rename-keys {:id :external_id})))
 

@@ -1,10 +1,10 @@
 (ns metabase.server.middleware.offset-paging-test
   (:require
-   [cheshire.core :as json]
    [clojure.java.io :as io]
    [clojure.test :refer :all]
    [metabase.server.handler :as handler]
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
+   [metabase.util.json :as json]
    [ring.mock.request :as ring.mock]
    [ring.util.response :as response])
   (:import
@@ -28,7 +28,7 @@
           (fn [body]
             (if (instance? PipedInputStream body)
               (with-open [r (io/reader body)]
-                (json/parse-stream r))
+                (json/decode r))
               body))))
 
 (deftest paging-test

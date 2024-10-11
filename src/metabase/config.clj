@@ -1,9 +1,9 @@
 (ns metabase.config
   (:require
-   [cheshire.core :as json]
    [clojure.java.io :as io]
    [clojure.string :as str]
    [environ.core :as env]
+   [jsonista.core :as jsonista]
    [net.cgrand.macrovich :as macros])
   (:import
    (clojure.lang Keyword)))
@@ -159,7 +159,7 @@
   "Default user details provided as a JSON string at launch time for first-user setup flow."
   []
   (when-let [user-json (env/env :mb-user-defaults)]
-    (json/parse-string user-json true)))
+    (jsonista/read-value user-json (jsonista/object-mapper {:decode-key-fn true}))))
 
 (def ^:const internal-mb-user-id
   "The user-id of the internal metabase user.
