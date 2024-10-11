@@ -10,6 +10,11 @@ export type ColumnType =
   | "diff-moving-average"
   | "percent-diff-moving-average";
 
+export type ColumnTypeInfo = {
+  label: string;
+  example: string;
+};
+
 export type OffsetOptions = {
   comparisonType: ComparisonType;
   columnType: ColumnType;

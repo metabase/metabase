@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import type { TemporalUnit } from "metabase-types/api";
 
-import type { ColumnType, ComparisonType } from "./types";
+import type { ColumnType, ColumnTypeInfo, ComparisonType } from "./types";
 
 export const OFFSET_UNITS: Partial<Record<TemporalUnit, TemporalUnit[]>> = {
   minute: ["minute", "minute-of-hour"],
@@ -35,11 +35,29 @@ export const COLUMN_TYPES: Record<ComparisonType, ColumnType[]> = {
   ],
 };
 
-export const COLUMN_TYPE_NAMES: Record<ColumnType, string> = {
-  offset: t`Previous value`,
-  "diff-offset": t`Value difference`,
-  "percent-diff-offset": t`Percentage difference`,
-  "moving-average": t`Moving average value`,
-  "diff-moving-average": t`Value difference with moving average`,
-  "percent-diff-moving-average": t`Percentage difference with moving average`,
+export const COLUMN_TYPE_INFO: Record<ColumnType, ColumnTypeInfo> = {
+  offset: {
+    label: t`Previous value`,
+    example: "1826, 3004",
+  },
+  "diff-offset": {
+    label: t`Value difference`,
+    example: "+42, -3",
+  },
+  "percent-diff-offset": {
+    label: t`Percentage difference`,
+    example: "+2.3%, -0.1%",
+  },
+  "moving-average": {
+    label: t`Moving average value`,
+    example: "1826, 3004",
+  },
+  "diff-moving-average": {
+    label: t`Value difference with moving average`,
+    example: "+42, -3",
+  },
+  "percent-diff-moving-average": {
+    label: t`Percentage difference with moving average`,
+    example: "+2.3%, -0.1%",
+  },
 };

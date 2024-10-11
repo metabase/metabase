@@ -5,7 +5,7 @@ import type { TemporalUnit } from "metabase-types/api";
 
 import {
   COLUMN_TYPES,
-  COLUMN_TYPE_NAMES,
+  COLUMN_TYPE_INFO,
   OFFSET_DISPLAY_UNITS,
   OFFSET_UNITS,
 } from "./constants";
@@ -250,7 +250,7 @@ export function getOffsetUnitOptions(
 export function getColumnTypeOptions(comparisonType: ComparisonType) {
   return COLUMN_TYPES[comparisonType].map(columnType => ({
     value: columnType,
-    label: COLUMN_TYPE_NAMES[columnType],
+    label: COLUMN_TYPE_INFO[columnType].label,
   }));
 }
 
