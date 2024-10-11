@@ -170,3 +170,17 @@ export function getInitialData(
     offsetUnit,
   };
 }
+
+export function getGroupUnitOptions(
+  query: Lib.Query,
+  stageIndex: number,
+  column: Lib.ColumnMetadata,
+) {
+  return Lib.availableTemporalBuckets(query, stageIndex, column)
+    .map(bucket => Lib.displayInfo(query, stageIndex, bucket).shortName)
+    .filter(unit => OFFSET_UNITS[unit])
+    .map(unit => ({
+      value: unit,
+      label: Lib.describeTemporalUnit(unit),
+    }));
+}
