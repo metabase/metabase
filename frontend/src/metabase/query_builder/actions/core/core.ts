@@ -103,7 +103,6 @@ export const reloadCard = createThunkAction(RELOAD_CARD, () => {
 
     dispatch(
       runQuestionQuery({
-        // @ts-expect-error convert querying.js to typescript
         overrideWithQuestion: question,
         shouldUpdateUrl: false,
       }),
