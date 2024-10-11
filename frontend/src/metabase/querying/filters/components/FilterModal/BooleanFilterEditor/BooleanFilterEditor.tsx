@@ -74,7 +74,7 @@ export function BooleanFilterEditor({
           </FilterTitle>
         </Grid.Col>
         <Grid.Col span={4}>
-          <Group spacing="md">
+          <Group gap="md">
             <Checkbox
               label={t`True`}
               checked={values.length > 0 ? values[0] : false}

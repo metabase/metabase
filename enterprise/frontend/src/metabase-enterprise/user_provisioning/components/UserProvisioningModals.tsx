@@ -32,7 +32,7 @@ export const UserProvisioningFirstEnabledModal = ({
       onClose={onClose}
       title={t`Here's what you'll need to set SCIM up`}
     >
-      <Stack spacing="lg">
+      <Stack gap="lg">
         <Text c="text-medium">
           {t`To set up SCIM-based provisioning, you'll need to share this endpoint URL and token with your identity provider.`}
         </Text>
@@ -91,7 +91,7 @@ export const UserProvisioningRegenerateTokenModal = ({
         onClose={onClose}
         title={t`Regenerate token?`}
       >
-        <Stack spacing="lg">
+        <Stack gap="lg">
           <Text>
             {/* eslint-disable-next-line no-literal-metabase-strings -- in admin settings */}
             {t`This will delete the existing token. You'll need to update your identity provider with the new token, otherwise people won't be able to log in to your Metabase.`}
@@ -117,7 +117,7 @@ export const UserProvisioningRegenerateTokenModal = ({
       onClose={onClose}
       title={t`Copy and save the SCIM token`}
     >
-      <Stack spacing="lg" mt="0.5rem">
+      <Stack gap="lg" mt="0.5rem">
         <LoadingAndErrorWrapper
           error={regenerateTokenReq.error}
           loading={regenerateTokenReq.isLoading}

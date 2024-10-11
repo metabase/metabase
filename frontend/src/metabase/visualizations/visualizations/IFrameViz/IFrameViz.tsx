@@ -68,7 +68,7 @@ export function IFrameViz({
   if (isEditing && !isEditingParameter && !isPreviewing) {
     return (
       <IFrameEditWrapper>
-        <Stack h="100%" spacing="sm">
+        <Stack h="100%" gap="sm">
           <Group align="center" noWrap>
             <Text fw="bold" truncate>
               {t`Paste your snippet here`}
