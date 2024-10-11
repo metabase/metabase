@@ -143,11 +143,7 @@ export function showVirtualDashCardInfoText(
   }
 }
 
-export function getAllDashboardCards(dashboard: Dashboard | null) {
-  if (!dashboard) {
-    return [];
-  }
-
+export function getAllDashboardCards(dashboard: Dashboard) {
   const results = [];
   for (const dashcard of dashboard.dashcards) {
     const cards = [dashcard.card].concat((dashcard as any).series || []);
@@ -157,7 +153,7 @@ export function getAllDashboardCards(dashboard: Dashboard | null) {
 }
 
 export function getCurrentTabDashboardCards(
-  dashboard: Dashboard | null,
+  dashboard: Dashboard,
   selectedTabId: SelectedTabId,
 ) {
   return getAllDashboardCards(dashboard).filter(

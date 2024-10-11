@@ -393,7 +393,7 @@ export const fetchCardData =
 export const fetchDashboardCardData =
   ({ isRefreshing = false, reload = false, clearCache = false } = {}) =>
   (dispatch: Dispatch, getState: GetState) => {
-    const dashboard = getDashboardComplete(getState());
+    const dashboard = checkNotNull(getDashboardComplete(getState()));
     const selectedTabId = getSelectedTabId(getState());
     const dashboardLoadId = uuid();
 
@@ -439,13 +439,21 @@ export const fetchDashboardCardData =
       );
     }
 
-    const promises = nonVirtualDashcardsToFetch.map(({ card, dashcard }) => {
-      return dispatch(
-        fetchCardData(card, dashcard, { reload, clearCache, dashboardLoadId }),
-      ).then(() => {
-        return dispatch(updateLoadingTitle(nonVirtualDashcardsToFetch.length));
-      });
-    });
+    const promises = nonVirtualDashcardsToFetch.map(
+      async ({ card, dashcard }) => {
+        await dispatch(
+          // TODO: fix the return type of getAllDashboardCards to make sure
+          // that the relationship between a dashcard and its card
+          // is actually reflected in the type system
+          fetchCardData(card as Card, dashcard, {
+            reload,
+            clearCache,
+            dashboardLoadId,
+          }),
+        );
+        await dispatch(updateLoadingTitle(nonVirtualDashcardsToFetch.length));
+      },
+    );
 
     if (nonVirtualDashcardsToFetch.length > 0) {
       dispatch(
@@ -462,13 +470,19 @@ export const fetchDashboardCardData =
 
 export const reloadDashboardCards =
   () => async (dispatch: Dispatch, getState: GetState) => {
-    const dashboard = getDashboardComplete(getState());
+    const dashboard = checkNotNull(getDashboardComplete(getState()));
 
     const reloads = getAllDashboardCards(dashboard)
       .filter(({ dashcard }) => !isVirtualDashCard(dashcard))
       .map(({ card, dashcard }) =>
         dispatch(
-          fetchCardData(card, dashcard, { reload: true, ignoreCache: true }),
+          // TODO: fix the return type of getAllDashboardCards to make sure
+          // that the relationship between a dashcard and its card
+          // is actually reflected in the type system
+          fetchCardData(card as Card, dashcard, {
+            reload: true,
+            ignoreCache: true,
+          }),
         ),
       );
 
@@ -478,7 +492,7 @@ export const reloadDashboardCards =
 export const cancelFetchDashboardCardData = createThunkAction(
   CANCEL_FETCH_DASHBOARD_CARD_DATA,
   () => (dispatch, getState) => {
-    const dashboard = getDashboardComplete(getState());
+    const dashboard = checkNotNull(getDashboardComplete(getState()));
     for (const { card, dashcard } of getAllDashboardCards(dashboard)) {
       dispatch(cancelFetchCardData(card.id, dashcard.id));
     }
