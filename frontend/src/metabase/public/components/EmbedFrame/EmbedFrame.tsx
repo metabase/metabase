@@ -154,14 +154,9 @@ export const EmbedFrame = ({
     >
       <ContentContainer
         id={DASHBOARD_PDF_EXPORT_ROOT_ID}
-        className={EmbedFrameS.WithThemeBackground}
-        // FIXME: for debugging only!!!
-        style={{
-          ...(isEmbeddingSdk && {
-            background:
-              "var(--mb-color-bg-dashboard, --mb-color-background, #ff0000)",
-          }),
-        }}
+        className={cx(EmbedFrameS.WithThemeBackground, {
+          [EmbedFrameS.WithSdkThemeBackground]: isEmbeddingSdk,
+        })}
       >
         {hasHeader && (
           <Header
