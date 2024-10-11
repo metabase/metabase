@@ -1,0 +1,25 @@
+/* Make sure our mb color vars are present */
+/* Must be done here as opposed to layout.tsx because nextjs complains about impure css */
+@import url("../../../css/core/colors.module.css");
+
+body {
+  font-family: var(--font-lato), sans-serif;
+  background-color: var(--mb-base-color-gray-5);
+}
+
+a {
+  color: var(--mb-color-brand);
+}
+
+hr {
+  border: 0;
+  border-top: 1px solid var(--mb-color-border);
+}
+
+.mantine-Navbar-root {
+  border-right: 1px solid var(--mb-color-border);
+}
+
+.mantine-Header-root {
+  border-bottom: 1px solid var(--mb-color-border);
+}
