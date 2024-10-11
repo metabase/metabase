@@ -378,7 +378,7 @@
                                       :iat        jwt-iat-time
                                       :exp        jwt-exp-time}
                                      default-jwt-secret)
-              result       (client/client-real-response :get 400 "/auth/sso"
+              result       (client/client-real-response :get 402 "/auth/sso"
                                                         :token true
                                                         :jwt jwt-payload)]
           (is result nil)))))
