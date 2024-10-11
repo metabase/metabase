@@ -81,16 +81,29 @@
                        :aggregation [[:avg {} [:field {} (meta/id :products :rating)]]]}]}
             (adjust query)))))
 
-(deftest adjust-prometheus-metric-test
-  (let [[source-metric mp] (mock-metric)
-        query              (lib/query mp source-metric)
-        calls              (atom nil)]
-    ;; Make metrics/adjust-metric-stages a no-op and verify that the :metabase-metrics/adjust-errors prometheus
-    ;; counter is incremented.
-    (with-redefs [prometheus/inc!                #(swap! calls conj %)
-                  metrics/adjust-metric-stages (fn [_ _ stages] stages)]
-      (is (= query (adjust query)))
-      (is (= 1 (count (filter #{:metabase-metrics/adjust-errors} @calls)))))))
+(deftest adjust-errors-prometheus-metric-test
+  (testing "failure to adjust :metric clauses"
+    (let [[source-metric mp] (mock-metric)
+          query              (lib/query mp source-metric)
+          calls              (atom nil)]
+      ;; Make metrics/adjust-metric-stages a no-op and verify that the :metabase-metrics/adjust-errors prometheus
+      ;; counter is incremented.
+      (with-redefs [prometheus/inc!              #(swap! calls conj %)
+                    metrics/adjust-metric-stages (fn [_ _ stages] stages)]
+        (is (= query (adjust query)))
+        (is (= 1 (count (filter #{:metabase-metrics/adjust-errors} @calls)))))))
+  (testing "metric missing aggregation exception"
+    (let [[bad-source-metric mp] (mock-metric (-> (lib/query meta/metadata-provider (meta/table-metadata :products))))
+          query                  (-> (lib/query mp (meta/table-metadata :products))
+                                     (lib/aggregate (lib/+ (lib.options/ensure-uuid
+                                                            [:metric {} (:id bad-source-metric)]) 1)))
+          calls                  (atom nil)]
+      (with-redefs [prometheus/inc! #(swap! calls conj %)]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Source metric missing aggregation"
+             (adjust query)))
+        (is (= 1 (count (filter #{:metabase-metrics/adjust-errors} @calls))))))))
 
 (deftest ^:parallel adjust-aggregation-metric-ref-test
   (let [[source-metric mp] (mock-metric)
