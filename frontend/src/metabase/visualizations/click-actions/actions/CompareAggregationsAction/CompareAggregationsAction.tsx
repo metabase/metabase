@@ -3,11 +3,11 @@ import { t } from "ttag";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
 import { setUIControls } from "metabase/query_builder/actions";
-import {
-  CompareAggregations,
-  canAddTemporalCompareAggregation,
-} from "metabase/query_builder/components/CompareAggregations";
 import { getQuestion } from "metabase/query_builder/selectors";
+import {
+  OffsetAggregationPicker,
+  canAddOffsetAggregation,
+} from "metabase/querying/aggregations/components/OffsetAggregationPicker";
 import { trackColumnCompareViaPlusModal } from "metabase/querying/analytics";
 import type { LegacyDrill } from "metabase/visualizations/types";
 import type { ClickActionPopoverProps } from "metabase/visualizations/types/click-actions";
@@ -26,7 +26,7 @@ export const CompareAggregationsAction: LegacyDrill = ({
     clicked.value !== undefined ||
     !clicked.columnShortcuts ||
     !isEditable ||
-    !canAddTemporalCompareAggregation(query, stageIndex)
+    !canAddOffsetAggregation(query, stageIndex)
   ) {
     return [];
   }
@@ -39,7 +39,6 @@ export const CompareAggregationsAction: LegacyDrill = ({
   }: ClickActionPopoverProps) => {
     const currentQuestion = useSelector(getQuestion);
     const dispatch = useDispatch();
-    const aggregations = Lib.aggregations(query, stageIndex);
 
     function handleSubmit(
       nextQuery: Lib.Query,
@@ -60,12 +59,11 @@ export const CompareAggregationsAction: LegacyDrill = ({
     }
 
     return (
-      <CompareAggregations
-        aggregations={aggregations}
+      <OffsetAggregationPicker
         query={query}
         stageIndex={stageIndex}
-        onClose={onClose}
         onSubmit={handleSubmit}
+        onClose={onClose}
       />
     );
   };

@@ -14,8 +14,10 @@ import { useSelector } from "metabase/lib/redux";
 import { ExpressionWidget } from "metabase/query_builder/components/expressions/ExpressionWidget";
 import { ExpressionWidgetHeader } from "metabase/query_builder/components/expressions/ExpressionWidgetHeader";
 import { getQuestion } from "metabase/query_builder/selectors";
-import { OffsetAggregationPicker } from "metabase/querying/aggregations/components/OffsetAggregationPicker";
-import { canAddOffsetAggregation } from "metabase/querying/aggregations/components/OffsetAggregationPicker/utils";
+import {
+  OffsetAggregationPicker,
+  canAddOffsetAggregation,
+} from "metabase/querying/aggregations/components/OffsetAggregationPicker";
 import { trackColumnCompareViaShortcut } from "metabase/querying/analytics";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Flex, Icon } from "metabase/ui";
