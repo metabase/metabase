@@ -25,7 +25,14 @@ export function getTitle(
 }
 
 export function getSupportedAggregations(query: Lib.Query, stageIndex: number) {
-  return Lib.aggregations(query, stageIndex);
+  return Lib.aggregations(query, stageIndex).filter(aggregation => {
+    const functions = Lib.functionsUsedByExpression(
+      query,
+      stageIndex,
+      aggregation,
+    );
+    return !functions.includes("offset");
+  });
 }
 
 export function getSupportedBreakoutColumns(

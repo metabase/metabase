@@ -2,6 +2,7 @@ import * as ML from "cljs/metabase.lib.js";
 
 import { expressionParts } from "./expression";
 import type {
+  AggregationClause,
   ColumnExtraction,
   ColumnMetadata,
   DrillThru,
@@ -52,7 +53,7 @@ export type ColumnExtractionTag =
 export function functionsUsedByExpression(
   query: Query,
   stageIndex: number,
-  expression: ExpressionClause,
+  expression: ExpressionClause | AggregationClause,
 ): string[] {
   const parts = expressionParts(query, stageIndex, expression);
   return walk(parts);
