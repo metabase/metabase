@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.dashboard-subscription-test :as dashboard-subscription-test]
-   [metabase.pulse :as pulse]
+   [metabase.pulse.core :as pulse]
    [metabase.pulse.send-test :as pulse.send-test]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.update-used-cards :as qp.update-used-cards]
