@@ -513,9 +513,9 @@ export const clearCardData = createAction(
   (cardId, dashcardId) => ({ payload: { cardId, dashcardId } }),
 );
 
-function getDatasetQueryParams(datasetQuery: DatasetQuery) {
+function getDatasetQueryParams(datasetQuery: Partial<DatasetQuery> = {}) {
   const parameters =
-    datasetQuery.parameters
+    datasetQuery?.parameters
       ?.map(parameter => ({
         ...parameter,
         value: parameter.value ?? null,
@@ -525,12 +525,14 @@ function getDatasetQueryParams(datasetQuery: DatasetQuery) {
   return match(datasetQuery)
     .with({ type: "native" }, ({ native }) => ({
       type: "native",
+      query: undefined,
       native,
       parameters,
     }))
     .with({ type: "query" }, ({ query }) => ({
       type: "query",
       query,
+      native: undefined,
       parameters,
     }))
     .otherwise(() => ({
