@@ -5,10 +5,11 @@ import { Button, Stack } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import type { TemporalUnit } from "metabase-types/api";
 
+import type { ComparisonType, OffsetData } from "../types";
+import { getBreakoutColumn, getInitialData } from "../utils";
+
 import { ComparisonTypeInput } from "./ComparisonTypeInput";
 import { GroupUnitInput } from "./GroupUnitInput";
-import type { ComparisonType, OffsetData } from "./types";
-import { getInitialBreakoutColumn, getInitialData } from "./utils";
 
 type OffsetAggregationFormProps = {
   query: Lib.Query;
@@ -20,7 +21,7 @@ export function OffsetAggregationForm({
   stageIndex,
 }: OffsetAggregationFormProps) {
   const column = useMemo(
-    () => getInitialBreakoutColumn(query, stageIndex),
+    () => getBreakoutColumn(query, stageIndex),
     [query, stageIndex],
   );
   const [options, setOptions] = useState<OffsetData>(() =>

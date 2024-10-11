@@ -5,7 +5,7 @@ import { Select } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { TemporalUnit } from "metabase-types/api";
 
-import { OFFSET_UNITS } from "../constants";
+import { OFFSET_UNITS } from "../../constants";
 
 type GroupUnitInputProps = {
   query: Lib.Query;

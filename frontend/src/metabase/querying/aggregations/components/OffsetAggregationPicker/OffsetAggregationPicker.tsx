@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { Box, PopoverBackButton } from "metabase/ui";
-import * as Lib from "metabase-lib";
+import type * as Lib from "metabase-lib";
 
 import { OffsetAggregationForm } from "./OffsetAggregationForm";
 import { OffsetAggregationList } from "./OffsetAggregationList";
-import { getTitle } from "./utils";
+import { getSupportedAggregations, getTitle } from "./utils";
 
 type OffsetAggregationPickerProps = {
   query: Lib.Query;
@@ -19,14 +19,16 @@ export function OffsetAggregationPicker({
   stageIndex,
   onClose,
 }: OffsetAggregationPickerProps) {
-  const aggregations = Lib.aggregations(query, stageIndex);
-  const hasOneAggregation = aggregations.length === 1;
+  const aggregations = useMemo(
+    () => getSupportedAggregations(query, stageIndex),
+    [query, stageIndex],
+  );
   const [aggregation, setAggregation] = useState(
-    hasOneAggregation ? aggregations[0] : undefined,
+    aggregations.length === 1 ? aggregations[0] : undefined,
   );
 
   const handleBackClick = () => {
-    if (aggregation == null || hasOneAggregation) {
+    if (aggregation == null || aggregations.length <= 1) {
       onClose();
     } else {
       setAggregation(undefined);
