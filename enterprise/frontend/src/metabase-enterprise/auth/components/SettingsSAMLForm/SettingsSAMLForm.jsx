@@ -97,7 +97,7 @@ const SettingsSAMLForm = ({ elements = [], settingValues = {}, onSubmit }) => {
               <ExternalLink href={docsUrl}>{t`documentation`}</ExternalLink>
             )}.`}
           </SAMLFormCaption>
-          <Stack spacing="0.75rem" m="2.5rem 0">
+          <Stack gap="0.75rem" m="2.5rem 0">
             <SettingHeader
               id="saml-user-provisioning-enabled?"
               setting={settings["saml-user-provisioning-enabled?"]}

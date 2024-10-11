@@ -97,7 +97,7 @@ export const SdkUsageProblemBanner = ({
           maw="20rem"
           data-testid="sdk-usage-problem-card"
         >
-          <Stack spacing="sm">
+          <Stack gap="sm">
             <Flex w="100%" justify="space-between">
               <Text
                 fw="bold"

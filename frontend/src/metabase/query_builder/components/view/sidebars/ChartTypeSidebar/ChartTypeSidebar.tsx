@@ -73,7 +73,7 @@ export const ChartTypeSidebar = ({
       onDone={() => dispatch(onCloseChartType())}
       data-testid="chart-type-sidebar"
     >
-      <Stack spacing={0} m="lg">
+      <Stack gap={0} m="lg">
         <ChartTypeSettings
           selectedVisualization={selectedVisualization}
           onSelectVisualization={handleSelectVisualization}

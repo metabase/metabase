@@ -37,7 +37,7 @@ export const TypeFilterContent: SearchFilterDropdown<"type">["ContentComponent"]
           value={selectedTypes}
           onChange={value => setSelectedTypes(value as EnabledSearchModel[])}
         >
-          <Stack spacing="md" p="md" justify="center" align="flex-start">
+          <Stack gap="md" p="md" justify="center" align="flex-start">
             {typeFilters.map(model => (
               <Checkbox
                 wrapperProps={{

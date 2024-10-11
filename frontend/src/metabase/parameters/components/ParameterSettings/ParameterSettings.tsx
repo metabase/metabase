@@ -216,7 +216,7 @@ export const ParameterSettings = ({
             value={isMultiValue}
             onChange={val => onChangeIsMultiSelect(val === "multi")}
           >
-            <Stack spacing="xs">
+            <Stack gap="xs">
               <Radio
                 checked={isMultiValue === "multi"}
                 label={t`Multiple values`}

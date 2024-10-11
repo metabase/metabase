@@ -31,7 +31,7 @@ export const TestTabbedSidesheet = () => {
             <SidesheetCard>Tab 1 content</SidesheetCard>
           </Tabs.Panel>
           <Tabs.Panel value="two" h="100%">
-            <Stack spacing="lg">
+            <Stack gap="lg">
               <SidesheetCard title="Sidesheets with tabs">
                 Lots of side sheets have tabs, which can be tricky to set up to
                 handle scrolling properly. Fortunately, there are a couple

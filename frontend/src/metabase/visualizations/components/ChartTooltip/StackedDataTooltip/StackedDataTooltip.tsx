@@ -69,7 +69,7 @@ const StackedDataTooltip = ({
         </DataPointHeader>
       )}
       <DataPointTable>
-        <DataPointTableHeader hasBottomSpacing={sortedBodyRows.length > 0}>
+        <DataPointTableHeader hasBottomgap={sortedBodyRows.length > 0}>
           {sortedHeaderRows.map((row, index) => (
             <TooltipRow
               key={index}

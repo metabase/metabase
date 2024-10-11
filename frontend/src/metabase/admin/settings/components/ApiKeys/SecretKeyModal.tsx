@@ -22,7 +22,7 @@ export const SecretKeyModal = ({
     title={t`Copy and save the API key`}
     data-testid="secret-key-modal"
   >
-    <Stack spacing="xl" data-testid="secret-key-modal">
+    <Stack gap="xl" data-testid="secret-key-modal">
       <CopyTextInput
         label={t`The API key`}
         size="sm"

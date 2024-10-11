@@ -45,7 +45,7 @@ export const SelectItem = forwardRef(function SelectItem(
       fz={getItemFontSize(size)}
       lh={getItemLineHeight(size)}
       p="sm"
-      spacing="sm"
+      gap="sm"
       role="option"
       aria-selected={selected}
       {...props}

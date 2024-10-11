@@ -136,7 +136,7 @@ export const ModelPersistenceConfiguration = () => {
   const { url: docsUrl } = useDocsUrl("data-modeling/model-persistence");
 
   return (
-    <Stack spacing="xl" maw="40rem">
+    <Stack gap="xl" maw="40rem">
       <Box
         mb="sm"
         lh="1.5rem"

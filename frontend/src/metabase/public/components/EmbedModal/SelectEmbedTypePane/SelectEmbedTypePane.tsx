@@ -118,8 +118,8 @@ export function SelectEmbedTypePane({
   };
 
   return (
-    <Stack p="lg" spacing="lg" data-testid="sharing-pane-container">
-      <Group spacing="lg">
+    <Stack p="lg" gap="lg" data-testid="sharing-pane-container">
+      <Group gap="lg">
         <SharingPaneButton
           header={t`Static embed`}
           description={t`Securely embed this dashboard in your own application’s server code.`}

@@ -15,7 +15,7 @@ export const CollectionPermissionsHelp = () => {
 
       <Title order={6} my="sm">{t`Collections Permission Levels`}</Title>
 
-      <Stack spacing={16} mt="1rem">
+      <Stack gap={16} mt="1rem">
         <PermissionHelpDescription
           icon="check"
           iconColor="success"

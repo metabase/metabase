@@ -88,7 +88,7 @@ export const OverviewSettings = ({
         </StaticEmbedSetupPaneSettingsContentSection>
       }
       previewSlot={
-        <Stack spacing="2rem" className={cx(CS.flexFull, CS.wFull)}>
+        <Stack gap="2rem" className={cx(CS.flexFull, CS.wFull)}>
           {serverEmbedCodeSlot}
 
           <ClientEmbedCodePane

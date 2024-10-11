@@ -68,7 +68,7 @@ export const QueryDownloadPopover = ({
         </Text>
       )}
 
-      <Stack spacing="sm">
+      <Stack gap="sm">
         {formats.map(format => (
           <DownloadButton
             key={format}

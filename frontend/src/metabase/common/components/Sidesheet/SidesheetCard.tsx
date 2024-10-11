@@ -20,7 +20,7 @@ export const SidesheetCard = ({
           {title}
         </Title>
       )}
-      <Stack spacing="md" className={CS.textMedium}>
+      <Stack gap="md" className={CS.textMedium}>
         {children}
       </Stack>
     </Paper>

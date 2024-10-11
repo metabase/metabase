@@ -124,8 +124,8 @@ export function DateOffsetIntervalPicker({
         />
       </PickerGrid>
       <Divider />
-      <Group px="md" py="sm" spacing="sm" position="apart">
-        <Group c="text-medium" spacing="sm">
+      <Group px="md" py="sm" gap="sm" position="apart">
+        <Group c="text-medium" gap="sm">
           <Icon name="calendar" />
           <Text c="inherit">{dateRangeText}</Text>
         </Group>

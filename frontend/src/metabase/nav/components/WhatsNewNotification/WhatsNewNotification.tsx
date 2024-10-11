@@ -53,7 +53,7 @@ export function WhatsNewNotification() {
   }
   return (
     <Paper my="lg" mx="auto" p="md" shadow="md" withBorder w={244}>
-      <Stack spacing="sm">
+      <Stack gap="sm">
         <Flex justify="space-between">
           <Sparkles color={color("brand")} />
           <DismissIconButtonWrapper onClick={dimiss}>

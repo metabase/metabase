@@ -25,7 +25,7 @@ export const ChartTypeOption = ({
     <Center pos="relative" data-testid="chart-type-option">
       <Stack
         align="center"
-        spacing="xs"
+        gap="xs"
         role="option"
         aria-selected={isSelected}
         data-testid={`${visualization.uiName}-container`}

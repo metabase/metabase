@@ -49,8 +49,8 @@ const RegenerateKeyModal = ({
     >
       <FormProvider initialValues={{}} onSubmit={handleRegenerate}>
         <Form>
-          <Stack spacing="lg">
-            <Stack spacing="xs">
+          <Stack gap="lg">
+            <Stack gap="xs">
               <Text
                 component="label"
                 weight="bold"
@@ -61,7 +61,7 @@ const RegenerateKeyModal = ({
                 {apiKey.name}
               </Text>
             </Stack>
-            <Stack spacing="xs">
+            <Stack gap="xs">
               <Text
                 component="label"
                 weight="bold"
@@ -140,7 +140,7 @@ export const EditApiKeyModal = ({
         >
           {({ dirty }) => (
             <Form>
-              <Stack spacing="md">
+              <Stack gap="md">
                 <FormTextInput
                   name="name"
                   label={t`Key name`}

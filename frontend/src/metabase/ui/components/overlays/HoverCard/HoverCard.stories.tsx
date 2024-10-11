@@ -37,7 +37,7 @@ const argTypes = {
 const sampleArgs = {
   simple: <Text>Hover!</Text>,
   interactive: (
-    <Stack spacing="sm">
+    <Stack gap="sm">
       <TextInput autoFocus placeholder="First name" />
       <TextInput placeholder="Last name" />
       <Button>Update</Button>

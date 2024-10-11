@@ -51,7 +51,7 @@ export const DataPermissionsHelp = () => {
         >
           <Accordion.Control>{t`Database ‘View data’ levels`}</Accordion.Control>
           <Accordion.Panel>
-            <Stack spacing="1rem" py="1rem">
+            <Stack gap="1rem" py="1rem">
               <PermissionHelpDescription
                 icon="eye"
                 iconColor="success"
@@ -100,7 +100,7 @@ export const DataPermissionsHelp = () => {
         >
           <Accordion.Control>{t`Schema or table ‘View data’ levels`}</Accordion.Control>
           <Accordion.Panel>
-            <Stack spacing="1rem" py="1rem">
+            <Stack gap="1rem" py="1rem">
               <PermissionHelpDescription
                 icon="check"
                 iconColor="success"
@@ -161,7 +161,7 @@ export const DataPermissionsHelp = () => {
         >
           <Accordion.Control>{t`‘Create queries’ levels`}</Accordion.Control>
           <Accordion.Panel>
-            <Stack spacing="1rem" py="1rem">
+            <Stack gap="1rem" py="1rem">
               <PermissionHelpDescription
                 icon="check"
                 iconColor="success"
@@ -196,7 +196,7 @@ export const DataPermissionsHelp = () => {
         <Accordion.Item value="others">
           <Accordion.Control>{t`Other data permissions`}</Accordion.Control>
           <Accordion.Panel>
-            <Stack spacing="1rem" py="1rem">
+            <Stack gap="1rem" py="1rem">
               <Text>
                 {jt`${(
                   <strong>{t`Download results (Pro):`}</strong>

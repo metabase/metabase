@@ -66,7 +66,7 @@ export const HelpLinkSettings = ({
         </Stack>
       </Radio.Group>
       {isTextInputVisible && (
-        <Stack ml={28} spacing={0}>
+        <Stack ml={28} gap={0}>
           {error && (
             <Text size="md" color="error">
               {error}

@@ -14,7 +14,7 @@ const EntityIdTitle = () => {
   );
 
   return (
-    <Group spacing="sm">
+    <Group gap="sm">
       {t`Entity ID`}
       <Popover position="top-start">
         <Popover.Target>

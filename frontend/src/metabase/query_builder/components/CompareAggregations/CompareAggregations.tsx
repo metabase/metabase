@@ -147,14 +147,14 @@ export const CompareAggregations = ({
 
       {aggregation && (
         <form onSubmit={handleSubmit}>
-          <Stack p="lg" spacing="xl">
-            <Stack spacing="md">
+          <Stack p="lg" gap="xl">
+            <Stack gap="md">
               <ComparisonTypePicker
                 value={comparisonType}
                 onChange={handleComparisonTypeChange}
               />
 
-              <Stack spacing="sm">
+              <Stack gap="sm">
                 <Input.Label>{t`Compare to`}</Input.Label>
                 {shouldShowPresets && (
                   <OffsetPresets

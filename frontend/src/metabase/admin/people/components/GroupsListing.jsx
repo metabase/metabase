@@ -82,7 +82,7 @@ function DeleteGroupModal({
 
   return (
     <ModalContent title={modalTitle} onClose={onClose}>
-      <Stack spacing="xl">
+      <Stack gap="xl">
         <Text>
           {hasApiKeys
             ? jt`All members of this group will lose any permissions settings they have based on this group, and its related API keys will be deleted. You can ${(
@@ -94,7 +94,7 @@ function DeleteGroupModal({
             : t`Are you sure? All members of this group will lose any permissions settings they have based on this group.
                 This can't be undone.`}
         </Text>
-        <Group spacing="md" position="right">
+        <Group gap="md" position="right">
           <Button onClick={onClose}>{t`Cancel`}</Button>
           <Button
             variant="filled"

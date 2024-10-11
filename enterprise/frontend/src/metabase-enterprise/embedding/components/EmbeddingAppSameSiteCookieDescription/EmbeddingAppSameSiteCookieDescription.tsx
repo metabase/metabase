@@ -27,7 +27,7 @@ export const EmbeddingAppSameSiteCookieDescription = () => {
     authorizedOriginsContainsNonInstanceDomain(embeddingAuthorizedOrigins);
 
   return (
-    <Stack spacing="sm">
+    <Stack gap="sm">
       {shouldDisplayNote && <AuthorizedOriginsNote />}
       {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
       <Text>{t`Determines whether or not cookies are allowed to be sent on cross-site requests. You’ll likely need to change this to None if your embedding application is hosted under a different domain than Metabase. Otherwise, leave it set to Lax, as it's more secure.`}</Text>

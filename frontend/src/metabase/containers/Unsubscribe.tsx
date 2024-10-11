@@ -204,7 +204,7 @@ function UnsubscribeRoot({ children }: { children: JSX.Element }) {
 
 function ErrorDisplay() {
   return (
-    <Stack align="center" spacing="xs" aria-label="error message">
+    <Stack align="center" gap="xs" aria-label="error message">
       <StyledMetabotLogo variant="sad" />
       <Text
         fw={700}

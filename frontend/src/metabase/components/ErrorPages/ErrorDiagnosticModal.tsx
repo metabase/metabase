@@ -91,7 +91,7 @@ export const ErrorDiagnosticModal = ({
           <Text>
             {t`Select the info you want to include in the diagnostic JSON file.`}
           </Text>
-          <Stack spacing="md" my="lg">
+          <Stack gap="md" my="lg">
             {canIncludeQueryData && (
               <FormCheckbox name="queryResults" label={t`Query results`} />
             )}

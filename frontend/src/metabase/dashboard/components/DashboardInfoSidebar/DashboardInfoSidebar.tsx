@@ -154,7 +154,7 @@ const OverviewTab = ({
   canWrite: boolean;
 }) => {
   return (
-    <Stack spacing="lg">
+    <Stack gap="lg">
       <SidesheetCard title={t`Description`} pb="md">
         <SidesheetEditableDescription
           description={dashboard.description}
