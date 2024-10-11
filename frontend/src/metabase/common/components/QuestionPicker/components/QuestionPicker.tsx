@@ -211,6 +211,7 @@ export const QuestionPicker = ({
 
   useEnsureCollectionSelected({
     currentCollection,
+    currentDashboard,
     enabled: path === defaultPath,
     options,
     useRootCollection: initialValue?.id == null,
