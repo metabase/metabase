@@ -14,6 +14,8 @@
   "enterprise/backend"
   "bin/build"
   "modules/drivers"
+  ".clj-kondo/src"
+  ".clj-kondo/test"
   #_"dev"]
 
  ;; See https://github.com/weavejester/cljfmt/blob/master/cljfmt/resources/cljfmt/indents/clojure.clj for the default

@@ -3,6 +3,7 @@ import { useState } from "react";
 import { c, t } from "ttag";
 
 import { getTableUrl } from "metabase/browse/containers/TableBrowser/TableBrowser";
+import { getCollectionName } from "metabase/collections/utils";
 import { SidesheetCardSection } from "metabase/common/components/Sidesheet";
 import DateTime from "metabase/components/DateTime";
 import Link from "metabase/core/components/Link";
@@ -22,6 +23,7 @@ export const QuestionDetails = ({ question }: { question: Question }) => {
   const lastEditInfo = question.lastEditInfo();
   const createdBy = question.getCreator();
   const createdAt = question.getCreatedAt();
+  const collection = question.collection();
 
   return (
     <>
@@ -62,11 +64,11 @@ export const QuestionDetails = ({ question }: { question: Question }) => {
             className={SidebarStyles.IconMargin}
           />
           <Text>
-            <Link
-              to={`/collection/${question.collection()?.id}`}
-              variant="brand"
-            >
-              {question.collection()?.name}
+            <Link to={Urls.collection(collection)} variant="brand">
+              {
+                // We need to use getCollectionName or the name of the root collection will not be displayed
+                getCollectionName(collection)
+              }
             </Link>
           </Text>
         </Flex>

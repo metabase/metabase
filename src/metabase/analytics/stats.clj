@@ -132,8 +132,14 @@
    :sso_configured                       (google/google-auth-enabled)
    :instance_started                     (snowplow/instance-creation)
    :has_sample_data                      (t2/exists? Database, :is_sample true)
-   :enable_embedding                     (embed.settings/enable-embedding)
-   :embedding_app_origin_set             (boolean (embed.settings/embedding-app-origin))
+   :enable_embedding                     #_:clj-kondo/ignore (embed.settings/enable-embedding)
+   :enable_embedding_sdk                 (embed.settings/enable-embedding-sdk)
+   :enable_embedding_interactive         (embed.settings/enable-embedding-interactive)
+   :embedding_app_origin_set             (boolean  (or
+                                                    #_:clj-kondo/ignore (embed.settings/embedding-app-origin)
+                                                    (embed.settings/embedding-app-origins-interactive)
+                                                    (let [sdk-origins (embed.settings/embedding-app-origins-sdk)]
+                                                      (and sdk-origins (not= "localhost:*" sdk-origins)))))
    :appearance_site_name                 (not= (public-settings/site-name) "Metabase")
    :appearance_help_link                 (public-settings/help-link)
    :appearance_logo                      (not= (public-settings/application-logo-url) "app/assets/img/logo.svg")
@@ -354,16 +360,25 @@
 ;;; Execution Metrics
 
 (defn- execution-metrics-sql []
+  ;; Postgres automatically adjusts for daylight saving time when performing time calculations on TIMESTAMP WITH TIME
+  ;; ZONE. This can cause discrepancies when subtracting 30 days if the calculation crosses a DST boundary (e.g., in the
+  ;; Pacific/Auckland timezone). To avoid this, we ensure all date computations are done in UTC on Postgres to prevent
+  ;; any time shifts due to DST. See PR #48204
   (let [thirty-days-ago (case (db/db-type)
-                          :postgres "CURRENT_TIMESTAMP - INTERVAL '30 days'"
+                          :postgres "CURRENT_TIMESTAMP AT TIME ZONE 'UTC' - INTERVAL '30 days'"
                           :h2       "DATEADD('DAY', -30, CURRENT_TIMESTAMP)"
-                          :mysql    "CURRENT_TIMESTAMP - INTERVAL 30 DAY")]
+                          :mysql    "CURRENT_TIMESTAMP - INTERVAL 30 DAY")
+        started-at      (case (db/db-type)
+                          :postgres "started_at AT TIME ZONE 'UTC'"
+                          :h2       "started_at"
+                          :mysql    "started_at")
+        timestamp-where (str started-at " > " thirty-days-ago)]
     (str/join
      "\n"
      ["WITH user_executions AS ("
       "    SELECT executor_id, COUNT(*) AS num_executions"
       "    FROM query_execution"
-      "    WHERE started_at > " thirty-days-ago
+      "    WHERE " timestamp-where
       "    GROUP BY executor_id"
       "),"
       "query_stats_1 AS ("
@@ -380,7 +395,7 @@
       "        COALESCE(SUM(CASE WHEN running_time >= 1000000 AND running_time < 10000000 THEN 1 ELSE 0 END), 0) AS num_by_latency__1001_10000,"
       "        COALESCE(SUM(CASE WHEN running_time >= 10000000 THEN 1 ELSE 0 END), 0) AS num_by_latency__10000_plus"
       "    FROM query_execution"
-      "    WHERE started_at > " thirty-days-ago
+      "    WHERE " timestamp-where
       "),"
       "query_stats_2 AS ("
       "    SELECT"
@@ -588,12 +603,12 @@
 (defn- csv-upload-available?
   "Is CSV upload currently available to be used on this instance?"
   []
-  (let [major-version (config/current-major-version)
-        minor-version (config/current-minor-version)
-        engines       (t2/select-fn-set :engine :model/Database
-                                        {:where [:in :engine (map name (keys csv-upload-version-availability))]})]
-    (when (and major-version minor-version)
-      (boolean
+  (boolean
+   (let [major-version (config/current-major-version)
+         minor-version (config/current-minor-version)
+         engines       (t2/select-fn-set :engine :model/Database
+                                         {:where [:in :engine (map name (keys csv-upload-version-availability))]})]
+     (when (and major-version minor-version)
        (some
         (fn [engine]
           (when-let [[required-major required-minor] (csv-upload-version-availability engine)]
@@ -626,10 +641,10 @@
     :available true
     :enabled   (slack/slack-configured?)}
    {:name      :sso-google
-    :available (premium-features/enable-sso-google?)
+    :available true
     :enabled   (google/google-auth-configured)}
    {:name      :sso-ldap
-    :available (premium-features/enable-sso-ldap?)
+    :available true
     :enabled   (public-settings/ldap-enabled?)}
    {:name      :sample-data
     :available true
@@ -637,13 +652,13 @@
    {:name      :interactive-embedding
     :available (premium-features/hide-embed-branding?)
     :enabled   (and
-                (embed.settings/enable-embedding)
-                (boolean (embed.settings/embedding-app-origin))
+                (embed.settings/enable-embedding-interactive)
+                (boolean (embed.settings/embedding-app-origins-interactive))
                 (public-settings/sso-enabled?))}
    {:name      :static-embedding
     :available true
     :enabled   (and
-                (embed.settings/enable-embedding)
+                (embed.settings/enable-embedding-static)
                 (or
                  (t2/exists? :model/Dashboard :enable_embedding true)
                  (t2/exists? :model/Card :enable_embedding true)))}
@@ -662,13 +677,13 @@
     :enabled   (t2/exists? :model/Database :uploads_enabled true)}
    {:name      :mb-analytics
     :available (premium-features/enable-audit-app?)
-    :enabled   true}
+    :enabled   (premium-features/enable-audit-app?)}
    {:name      :advanced-permissions
     :available (premium-features/enable-advanced-permissions?)
-    :enabled   true}
+    :enabled   (premium-features/enable-advanced-permissions?)}
    {:name      :serialization
     :available (premium-features/enable-serialization?)
-    :enabled   true}
+    :enabled   (premium-features/enable-serialization?)}
    {:name      :official-collections
     :available (premium-features/enable-official-collections?)
     :enabled   (t2/exists? :model/Collection :authority_level "official")}
@@ -678,6 +693,9 @@
    {:name      :attached-dwh
     :available (premium-features/has-attached-dwh?)
     :enabled   (premium-features/has-attached-dwh?)}
+   {:name      :database-auth-providers
+    :available (premium-features/enable-database-auth-providers?)
+    :enabled   (premium-features/enable-database-auth-providers?)}
    {:name      :config-text-file
     :available (premium-features/enable-config-text-file?)
     :enabled   (some? (get env/env :mb-config-file-path))}
@@ -704,10 +722,12 @@
   []
   (let [features (concat (snowplow-features-data) (ee-snowplow-features-data))]
     (mapv
-     ;; Convert keys and feature names to strings to match expected Snowplow scheml
+     ;; Convert keys and feature names to strings to match expected Snowplow schema
      (fn [feature]
        (-> (update feature :name name)
            (update :name u/->snake_case_en)
+           ;; Ensure that unavailable features are not reported as enabled
+           (update :enabled (fn [enabled?] (if-not (:available feature) false enabled?)))
            (walk/stringify-keys)))
      features)))
 
@@ -731,4 +751,7 @@
       #_{:clj-kondo/ignore [:deprecated-var]}
       (send-stats-deprecated! stats)
       (snowplow/track-event! ::snowplow/instance_stats
-                             (assoc snowplow-stats :metadata [{"stats_export_time_seconds" elapsed-secs}])))))
+                             (assoc snowplow-stats
+                                    :metadata
+                                    [{"key"   "stats_export_time_seconds"
+                                      "value" elapsed-secs}])))))

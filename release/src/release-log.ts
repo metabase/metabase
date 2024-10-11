@@ -14,7 +14,8 @@ type CommitInfo = {
 const tablePageTemplate = fs.readFileSync('./src/tablePageTemplate.html', 'utf8');
 
 export async function gitLog(majorVersion: number) {
-  const { stdout } = await $`git log origin/release-x.${majorVersion}.x ..v1.${majorVersion}.0-RC1 --pretty='format:%(decorate:prefix=,suffix=)||%s||%H||%ah'`;
+  const { stdout: baseCommit } = await $`git merge-base origin/release-x.${majorVersion}.x master`;
+  const { stdout } = await $`git log origin/release-x.${majorVersion}.x ..${baseCommit.trim()} --pretty='format:%(decorate:prefix=,suffix=)||%s||%H||%ah'`;
   const processedCommits = stdout.split('\n').map(processCommit);
   return buildTable(processedCommits, majorVersion);
 }

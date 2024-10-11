@@ -29,7 +29,7 @@
 
 ;; ## Dashboard Revisions
 
-(deftest serialize-dashboard-test
+(deftest ^:parallel serialize-dashboard-test
   (testing "without tabs"
     (t2.with-temp/with-temp [Dashboard           {dashboard-id :id :as dashboard} {:name "Test Dashboard"}
                              Card                {card-id :id}     {}
@@ -71,7 +71,7 @@
                                :card_id (= card-id card_id)
                                :series  (= [series-id-1 series-id-2] series))])))))))
 
-(deftest serialize-dashboard-with-tabs-test
+(deftest ^:parallel serialize-dashboard-with-tabs-test
   (testing "with tabs"
     (t2.with-temp/with-temp [Dashboard           {dashboard-id :id :as dashboard} {:name "Test Dashboard"}
                              :model/DashboardTab {tab-id :id}                     {:dashboard_id dashboard-id :name "Test Tab" :position 0}
@@ -451,7 +451,7 @@
     :user-id      (mt/user->id :crowberto)
     :is-creation? is-creation?}))
 
-(defn- revert-to-previous-revision
+(defn- revert-to-previous-revision!
   "Revert to a previous revision for a model.
   `n` is the number of revisions to revert back to.
   `n=1` means do nothing (i.e. revert to the current revision).
@@ -491,7 +491,7 @@
                  {:id tab-3-id :name "Tab 3" :position 2}]
                 (t2/select :model/DashboardTab :dashboard_id dashboard-id {:order-by [[:position :asc]]})))
         ;; revert
-        (revert-to-previous-revision Dashboard dashboard-id 2)
+        (revert-to-previous-revision! Dashboard dashboard-id 2)
         (is (=? [{:id tab-1-id :name "Tab 1" :position 0}
                  {:id tab-2-id :name "Tab 2" :position 1}]
                 (t2/select :model/DashboardTab :dashboard_id dashboard-id {:order-by [[:position :asc]]}))))))
@@ -519,7 +519,7 @@
                  {:id tab-2-id :name "Tab 2" :position 1}]
                 (t2/select :model/DashboardTab :dashboard_id dashboard-id {:order-by [[:position :asc]]})))
         ;; revert
-        (revert-to-previous-revision Dashboard dashboard-id 2)
+        (revert-to-previous-revision! Dashboard dashboard-id 2)
         (is (=? [{:id tab-1-id :name "Tab 1" :position 0}
                  {:id tab-2-id :name "Tab 2" :position 1}]
                 (t2/select :model/DashboardTab :dashboard_id dashboard-id {:order-by [[:position :asc]]}))))))
@@ -547,7 +547,7 @@
         (is (=? [{:id tab-2-id :name "Tab 2" :position 0}]
                 (t2/select :model/DashboardTab :dashboard_id dashboard-id {:order-by [[:position :asc]]})))
        ;; revert
-        (revert-to-previous-revision Dashboard dashboard-id 2)
+        (revert-to-previous-revision! Dashboard dashboard-id 2)
         (is (=? [{:id (mt/malli=? [:fn pos-int?]) :name "Tab 1" :position 0}
                  {:id tab-2-id :name "Tab 2" :position 1}]
                 (t2/select :model/DashboardTab :dashboard_id dashboard-id {:order-by [[:position :asc]]})))))))
@@ -623,7 +623,7 @@
       (create-dashboard-revision! dashboard-id false)
 
      ;; revert
-      (revert-to-previous-revision Dashboard dashboard-id 2)
+      (revert-to-previous-revision! Dashboard dashboard-id 2)
       (testing "tab 1 should have 2 cards"
         (is (= 2 (t2/count :model/DashboardCard :dashboard_tab_id tab-1-id)))
         (testing "and position of first card is (0,0)"
@@ -688,7 +688,7 @@
     (t2/update! :model/Card :id will-be-archived-card {:archived true})
 
     (testing "revert should not include archived or deleted card ids (#34884)"
-      (revert-to-previous-revision Dashboard dashboard-id 2)
+      (revert-to-previous-revision! Dashboard dashboard-id 2)
       (is (=? #{{:card_id                unchanged-card
                  :visualization_settings {}}
                 {:card_id                nil
@@ -1057,7 +1057,7 @@
                     ["Card" (:id card)]))
              (serdes/descendants "Dashboard" (:id dashboard)))))))
 
-(deftest hydrate-tabs-test
+(deftest ^:parallel hydrate-tabs-test
   (mt/with-temp
     [:model/Dashboard    dash1      {:name "A dashboard"}
      :model/DashboardTab dash1-tab1 {:name "Tab 1", :dashboard_id (:id dash1)}
@@ -1069,7 +1069,7 @@
              [dash2-tab1 dash2-tab2]]
             (map :tabs (t2/hydrate [dash1 dash2] :tabs))))))
 
-(deftest hydrate-dashcards-test
+(deftest ^:parallel hydrate-dashcards-test
   (mt/with-temp
     [:model/Dashboard     dash1       {:name "A dashboard"}
      :model/DashboardCard dash1-card1 {:dashboard_id (:id dash1)}
@@ -1081,7 +1081,7 @@
              [dash2-card1 dash2-card2]]
             (map :dashcards (t2/hydrate [dash1 dash2] :dashcards))))))
 
-(deftest hydrate-resolved-params-test
+(deftest ^:parallel hydrate-resolved-params-test
   (mt/with-temp
     [:model/Dashboard     dash      {:parameters [{:name "Category Name"
                                                    :slug "category_name"
@@ -1106,7 +1106,7 @@
                                                                    [:id [:= (:id card)]]]]]]]])}}
             (-> dash (t2/hydrate :resolved-params) :resolved-params)))))
 
-(deftest hydrate-resolved-params-model-test
+(deftest ^:parallel hydrate-resolved-params-model-test
   (mt/with-temp
     [:model/Dashboard     dash      {:parameters [{:name "Category Name"
                                                    :slug "category_name"

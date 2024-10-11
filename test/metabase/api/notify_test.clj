@@ -1,4 +1,4 @@
-(ns metabase.api.notify-test
+(ns ^:mb/driver-tests metabase.api.notify-test
   (:require
    [clj-http.client :as http]
    [clojure.java.jdbc :as jdbc]

@@ -369,7 +369,9 @@ describe("collection permissions", () => {
                   // Test will fail on this step first
                   cy.findByText("First collection").should("not.exist");
                   // This is the second step that makes sure not even search returns collections with read-only access
-                  cy.findByPlaceholderText("Search…").type("third{Enter}");
+                  cy.findByPlaceholderText(
+                    "Search this collection or everywhere…",
+                  ).type("third{Enter}");
 
                   cy.wait("@search");
                   cy.findByText(/Loading/i).should("not.exist");
@@ -417,9 +419,9 @@ describe("collection permissions", () => {
     );
     cy.findByTestId("permission-table");
 
-    sidebar().findByText("Metabase analytics").click();
+    sidebar().findByText("Usage analytics").click();
     cy.findByTestId("permissions-editor").findByText(
-      "Permissions for Metabase analytics",
+      "Permissions for Usage analytics",
     );
     cy.findByTestId("permission-table");
   });

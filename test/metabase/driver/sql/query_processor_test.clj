@@ -1,4 +1,4 @@
-(ns metabase.driver.sql.query-processor-test
+(ns ^:mb/driver-tests metabase.driver.sql.query-processor-test
   (:require
    [buddy.core.codecs :as codecs]
    [clojure.string :as str]

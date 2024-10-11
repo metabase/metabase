@@ -1,4 +1,4 @@
-(ns metabase.db.schema-migrations-test
+(ns ^:mb/driver-tests metabase.db.schema-migrations-test
   "Tests for the schema migrations defined in the Liquibase YAML files. The basic idea is:
 
   1. Create a temporary H2/Postgres/MySQL/MariaDB database
@@ -486,31 +486,34 @@
                                           :id [:in [rev-dash-1-old rev-dash-2-old rev-card-1-old]])))
         (is (= #{true} (t2/select-fn-set :most_recent (t2/table-name :model/Revision)
                                          :id [:in [rev-dash-1-new rev-dash-2-new rev-card-1-new]])))))))
+
 (deftest fks-are-indexed-test
   (mt/test-driver :postgres
-    (testing "FKs are not created automatically in Postgres, check that migrations add necessary indexes"
-      (is (= [{:table_name  "field_usage"
-               :column_name "query_execution_id"}
-              {:table_name  "pulse_channel"
-               :column_name "channel_id"}]
-             (t2/query
-              "SELECT
-                    conrelid::regclass::text AS table_name,
-                    a.attname AS column_name
-                FROM
-                    pg_constraint AS c
-                    JOIN pg_attribute AS a ON a.attnum = ANY(c.conkey) AND a.attrelid = c.conrelid
-                WHERE
-                    c.contype = 'f'
-                    AND NOT EXISTS (
-                        SELECT 1
-                        FROM pg_index AS i
-                        WHERE i.indrelid = c.conrelid
-                          AND a.attnum = ANY(i.indkey)
-                    )
-                ORDER BY
-                    table_name,
-                    column_name;"))))))
+    (let [excluded-fks #{{:table_name  "field_usage"
+                          :column_name "query_execution_id"}
+                         {:table_name  "pulse_channel"
+                          :column_name "channel_id"}}
+          indexed-fks  (t2/query
+                        "SELECT
+                              conrelid::regclass::text AS table_name,
+                              a.attname AS column_name
+                          FROM
+                              pg_constraint AS c
+                              JOIN pg_attribute AS a ON a.attnum = ANY(c.conkey) AND a.attrelid = c.conrelid
+                          WHERE
+                              c.contype = 'f'
+                              AND NOT EXISTS (
+                                  SELECT 1
+                                  FROM pg_index AS i
+                                  WHERE i.indrelid = c.conrelid
+                                    AND a.attnum = ANY(i.indkey)
+                              )
+                          ORDER BY
+                              table_name,
+                              column_name;")]
+      (doseq [fk indexed-fks]
+        (testing (format "Consider adding an index on %s.%s or add it to the excluded-fks set" (:table_name fk) (:column_name fk))
+          (is (contains? excluded-fks fk)))))))
 
 (deftest remove-collection-color-test
   (testing "Migration v48.00-019"
@@ -2627,3 +2630,87 @@
                       (map #(select-keys % [:collection_id :perm_type :perm_value :object]))))))
         (testing "the invalid permissions (for a nonexistent table) were deleted"
           (is (empty? (t2/select :model/Permissions :object [:in [nonexistent-path nonexistent-read-path]]))))))))
+
+(deftest populate-enabled-embedding-settings-works
+  (testing "Check that embedding settings are nil when enable-embedding is nil"
+    (impl/test-migrations ["v51.2024-09-26T03:01:00" "v51.2024-09-26T03:03:00"] [migrate!]
+      (t2/delete! :model/Setting :key "enable-embedding")
+      (migrate!)
+      (is (= nil (t2/select-one :model/Setting :key "enable-embedding-interactive")))
+      (is (= nil (t2/select-one :model/Setting :key "enable-embedding-static")))
+      (is (= nil (t2/select-one-fn :value :model/Setting :key "enable-embedding-sdk")))))
+  (testing "Check that embedding settings are true when enable-embedding is true"
+    (impl/test-migrations ["v51.2024-09-26T03:01:00" "v51.2024-09-26T03:03:00"] [migrate!]
+      (t2/delete! :model/Setting :key "enable-embedding")
+      (t2/insert! :model/Setting {:key "enable-embedding" :value "true"})
+      (migrate!)
+      (is (= "true" (t2/select-one-fn :value :model/Setting :key "enable-embedding-interactive")))
+      (is (= "true" (t2/select-one-fn :value :model/Setting :key "enable-embedding-static")))
+      (is (= "true" (t2/select-one-fn :value :model/Setting :key "enable-embedding-sdk")))))
+  (testing "Check that embedding settings are false when enable-embedding is false"
+    (impl/test-migrations ["v51.2024-09-26T03:01:00" "v51.2024-09-26T03:03:00"] [migrate!]
+      (t2/delete! :model/Setting :key "enable-embedding")
+      (t2/insert! :model/Setting {:key "enable-embedding" :value "false"})
+      (migrate!)
+      (is (= "false" (t2/select-one-fn :value :model/Setting :key "enable-embedding-interactive")))
+      (is (= "false" (t2/select-one-fn :value :model/Setting :key "enable-embedding-static")))
+      (is (= "false" (t2/select-one-fn :value :model/Setting :key "enable-embedding-sdk"))))))
+
+(deftest populate-enabled-embedding-settings-encrypted-works
+  (testing "With encryption turned on > "
+    (mt/with-temp-env-var-value! [MB_ENCRYPTION_SECRET_KEY "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"]
+      (testing "Check that embedding settings are nil when enable-embedding is nil"
+        (impl/test-migrations ["v51.2024-09-26T03:01:00" "v51.2024-09-26T03:03:00"] [migrate!]
+          (t2/delete! :model/Setting :key "enable-embedding")
+          (migrate!)
+          (is (= nil (t2/select-one :model/Setting :key "enable-embedding-interactive")))
+          (is (= nil (t2/select-one :model/Setting :key "enable-embedding-static")))
+          (is (= nil (t2/select-one :model/Setting :key "enable-embedding-sdk")))))
+      (testing "Check that embedding settings are true when enable-embedding is true"
+        (impl/test-migrations ["v51.2024-09-26T03:01:00" "v51.2024-09-26T03:03:00"] [migrate!]
+          (t2/delete! :model/Setting :key "enable-embedding")
+          (t2/insert! :model/Setting {:key "enable-embedding" :value "true"})
+          (migrate!)
+          (is (= "true" (t2/select-one-fn :value :model/Setting :key "enable-embedding-interactive")))
+          (is (= "true" (t2/select-one-fn :value :model/Setting :key "enable-embedding-static")))
+          (is (= "true" (t2/select-one-fn :value :model/Setting :key "enable-embedding-sdk")))))
+      (testing "Check that embedding settings are false when enable-embedding is false"
+        (impl/test-migrations ["v51.2024-09-26T03:01:00" "v51.2024-09-26T03:03:00"] [migrate!]
+          (t2/delete! :model/Setting :key "enable-embedding")
+          (t2/insert! :model/Setting {:key "enable-embedding" :value "false"})
+          (migrate!)
+          (is (= "false" (t2/select-one-fn :value :model/Setting :key "enable-embedding-interactive")))
+          (is (= "false" (t2/select-one-fn :value :model/Setting :key "enable-embedding-static")))
+          (is (= "false" (t2/select-one-fn :value :model/Setting :key "enable-embedding-sdk"))))))))
+
+(deftest populate-embedding-origin-settings-works
+  (testing "Check that embedding-origins are unset when embedding-app-origin is unset"
+    (impl/test-migrations "v51.2024-09-26T03:04:00" [migrate!]
+      (t2/delete! :model/Setting :key "embedding-app-origin")
+      (migrate!)
+      (is (= nil (t2/select-one :model/Setting :key "embedding-app-origins-interactive")))
+      (is (= nil (t2/select-one :model/Setting :key "embedding-app-origins-sdk")))))
+  (testing "Check that embedding-origins settings are propigated when embedding-app-origin is set to some value"
+    (impl/test-migrations "v51.2024-09-26T03:04:00" [migrate!]
+      (t2/delete! :model/Setting :key "embedding-app-origin")
+      (t2/insert! :model/Setting {:key "embedding-app-origin" :value "1.2.3.4:5555"})
+      (is (= "1.2.3.4:5555" (t2/select-one-fn :value :model/Setting :key "embedding-app-origin")))
+      (migrate!)
+      (is (= "1.2.3.4:5555" (t2/select-one-fn :value :model/Setting :key "embedding-app-origins-interactive"))))))
+
+(deftest populate-embedding-origin-settings-encrypted-works
+  (testing "With encryption turned on > "
+    (mt/with-temp-env-var-value! [MB_ENCRYPTION_SECRET_KEY "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"]
+      (testing "Check that embedding-origins are unset when embedding-app-origin is unset"
+        (impl/test-migrations "v51.2024-09-26T03:04:00" [migrate!]
+          (t2/delete! :model/Setting :key "embedding-app-origin")
+          (migrate!)
+          (is (= nil (t2/select-one :model/Setting :key "embedding-app-origins-interactive")))
+          (is (= nil (t2/select-one :model/Setting :key "embedding-app-origins-sdk")))))
+      (testing "Check that embedding-origins settings are propigated when embedding-app-origin is set to some value"
+        (impl/test-migrations "v51.2024-09-26T03:04:00" [migrate!]
+          (t2/delete! :model/Setting :key "embedding-app-origin")
+          (t2/insert! :model/Setting {:key "embedding-app-origin" :value "1.2.3.4:5555"})
+          (is (= "1.2.3.4:5555" (t2/select-one-fn :value :model/Setting :key "embedding-app-origin")))
+          (migrate!)
+          (is (= "1.2.3.4:5555" (t2/select-one-fn :value :model/Setting :key "embedding-app-origins-interactive"))))))))

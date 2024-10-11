@@ -26,6 +26,8 @@
   :metabase/require-shape-checker                      {:level :warning}
   :metabase/test-helpers-use-non-thread-safe-functions {:level :warning}
   :metabase/validate-logging                           {:level :warning}
+  :metabase/validate-mb-driver-tests                   {:level :warning}
+  :metabase/validate-mb-once                           {:level :warning}
 
   :metabase/validate-deftest
   {:level :warning
@@ -150,6 +152,7 @@
               :druid
               :druid-jdbc
               :googleanalytics
+              :hive-like
               :mongo
               :oracle
               :presto-jdbc
@@ -321,6 +324,7 @@
     metabase.metabot               #{metabase.metabot}
     metabase.models                :any                                                             ; TODO -- scream, 62 namespaces used elsewhere, but to be fair a lot of these don't *need* to be required.
     metabase.moderation            #{metabase.moderation}
+    metabase.notification          #{metabase.notification.core}
     metabase.permissions           #{metabase.permissions.util}                                     ; TODO -- this is currently the only namespace in this module. Give it a real API namespace?
     metabase.plugins               #{metabase.plugins
                                      metabase.plugins.classloader}                                  ; TODO -- not 100% sure the classloader belongs here
@@ -373,7 +377,10 @@
                                      metabase.sync.util}                                            ; TODO -- consolidate these into a real API namespace.
     metabase.task                  #{metabase.task
                                      metabase.task.index-values
-                                     metabase.task.persist-refresh}                                 ; TODO -- consolidate these into a real API namespace.
+                                     metabase.task.persist-refresh
+                                     ;; We need to expose this to the metabase.search module.
+                                     ;; Ideally, it would just live inside that module.
+                                     metabase.task.search-index}                                    ; TODO -- consolidate these into a real API namespace.
     metabase.troubleshooting       #{metabase.troubleshooting}
     metabase.types                 #{metabase.types}
     metabase.upload                #{metabase.upload}
@@ -396,7 +403,7 @@
     metabase.api                   :any
     metabase.async                 :any
     metabase.audit                 :any
-    metabase.auth-provider         #{metabase.util}
+    metabase.auth-provider         #{metabase.util metabase.public-settings}
     metabase.bootstrap             #{}
     metabase.cmd                   :any
     metabase.compatibility         :any
@@ -417,6 +424,7 @@
     metabase.metabot               :any
     metabase.models                :any
     metabase.moderation            :any
+    metabase.notification          :any
     metabase.permissions           :any
     metabase.plugins               :any
     metabase.public-settings       :any
@@ -499,6 +507,8 @@
     metabase-enterprise.test                                      met
     metabase.analytics.sdk                                        sdk
     metabase.analytics.stats                                      stats
+    metabase.analysis.native-query-analyzer                       nqa
+    metabase.analysis.native-query-analyzer.parameter-substitution nqa.sub
     metabase.analyze.query-results                                qr
     metabase.analyze.classifiers.category                         classifiers.category
     metabase.analyze.classifiers.core                             classifiers
@@ -615,6 +625,7 @@
     metabase.models.interface                                     mi
     metabase.models.moderation-review                             moderation-review
     metabase.models.native-query-snippet                          native-query-snippet
+    metabase.models.notification                                  models.notification
     metabase.models.params                                        params
     metabase.models.permissions                                   perms
     metabase.models.permissions-group                             perms-group
@@ -628,8 +639,8 @@
     metabase.models.setting.cache                                 setting.cache
     metabase.models.timeline                                      timeline
     metabase.models.timeline-event                                timeline-event
-    metabase.analysis.native-query-analyzer                       nqa
-    metabase.analysis.native-query-analyzer.parameter-substitution nqa.sub
+    metabase.notification.core                                    notification
+    metabase.notification.test-util                               notification.tu
     metabase.plugins.initialize                                   plugins.init
     metabase.public-settings                                      public-settings
     metabase.public-settings.premium-features                     premium-features
@@ -857,6 +868,7 @@
    metabase.dashboard-subscription-test/with-link-card-fixture-for-dashboard                                                 hooks.common/let-second
    metabase.db.schema-migrations-test.impl/test-migrations                                                                   hooks.metabase.db.schema-migrations-test.impl/test-migrations
    metabase.driver.bigquery-cloud-sdk-test/calculate-bird-scarcity                                                           hooks.metabase.query-processor-test.expressions-test/calculate-bird-scarcity
+   metabase.driver.oracle-test/with-temp-user                                                                                hooks.common/let-one-with-optional-value
    metabase.driver/register!                                                                                                 hooks.metabase.driver/register!
    metabase.legacy-mbql.schema.macros/defclause                                                                              hooks.metabase.legacy-mbql.schemas.macros/defclause
    metabase.lib.schema.mbql-clause/define-catn-mbql-clause                                                                   hooks.metabase.lib.schema.mbql-clause/define-mbql-clause
@@ -882,6 +894,8 @@
    metabase.query-processor.middleware.cache-test/with-mock-cache!                                                           hooks.common/with-two-bindings
    metabase.sample-data-test/with-temp-sample-database-db                                                                    hooks.common/with-one-binding
    metabase.stale-test/with-stale-items                                                                                      hooks.toucan2.tools.with-temp/with-temp
+   metabase.test.data.datasets/test-driver                                                                                   hooks.metabase.test.data.datasets/test-driver
+   metabase.test.data.datasets/test-drivers                                                                                  hooks.metabase.test.data.datasets/test-drivers
    metabase.test.data.users/with-group                                                                                       hooks.common/let-one-with-optional-value
    metabase.test.data/$ids                                                                                                   hooks.metabase.test.data/$ids
    metabase.test.data/dataset                                                                                                hooks.metabase.test.data/dataset
@@ -900,7 +914,8 @@
    metabase.test/mbql-query                                                                                                  hooks.metabase.test.data/mbql-query
    metabase.test/query                                                                                                       hooks.metabase.test.data/mbql-query
    metabase.test/run-mbql-query                                                                                              hooks.metabase.test.data/mbql-query
-   metabase.test/test-drivers                                                                                                hooks.common/do*
+   metabase.test/test-driver                                                                                                 hooks.metabase.test.data.datasets/test-driver
+   metabase.test/test-drivers                                                                                                hooks.metabase.test.data.datasets/test-drivers
    metabase.test/with-column-remappings                                                                                      hooks.common/with-ignored-first-arg
    metabase.test/with-group                                                                                                  hooks.common/let-one-with-optional-value
    metabase.test/with-log-level                                                                                              hooks.common/with-ignored-first-arg

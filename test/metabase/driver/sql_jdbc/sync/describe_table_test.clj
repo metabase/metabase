@@ -1,4 +1,4 @@
-(ns metabase.driver.sql-jdbc.sync.describe-table-test
+(ns ^:mb/driver-tests metabase.driver.sql-jdbc.sync.describe-table-test
   (:require
    [cheshire.core :as json]
    [clojure.java.jdbc :as jdbc]

@@ -101,6 +101,7 @@ export type DashboardCardLayoutAttrs = {
 export type DashCardVisualizationSettings = {
   [key: string]: unknown;
   virtual_card?: VirtualCard;
+  iframe?: string;
 };
 
 export type BaseDashboardCard = DashboardCardLayoutAttrs & {
@@ -256,23 +257,27 @@ export type CreateDashboardRequest = {
 
 export type UpdateDashboardRequest = {
   id: DashboardId;
-  parameters?: Parameter[] | null;
-  point_of_interest?: string | null;
-  description?: string | null;
-  archived?: boolean | null;
-  dashcards?: DashboardCard[] | null;
   collection_position?: number | null;
-  tabs?: DashboardTab[];
-  show_in_getting_started?: boolean | null;
-  enable_embedding?: boolean | null;
-  collection_id?: CollectionId | null;
-  name?: string | null;
-  width?: DashboardWidth | null;
   caveats?: string | null;
-  embedding_params?: EmbeddingParameters | null;
-  cache_ttl?: number;
   position?: number | null;
-};
+} & Partial<
+  Pick<
+    Dashboard,
+    | "parameters"
+    | "point_of_interest"
+    | "description"
+    | "archived"
+    | "dashcards"
+    | "tabs"
+    | "show_in_getting_started"
+    | "enable_embedding"
+    | "collection_id"
+    | "name"
+    | "width"
+    | "embedding_params"
+    | "cache_ttl"
+  >
+>;
 
 export type GetDashboardQueryMetadataRequest = {
   id: DashboardId;
@@ -289,3 +294,11 @@ export type CopyDashboardRequest = {
   collection_position?: number | null;
   is_deep_copy?: boolean | null;
 };
+
+export type UpdateDashboardPropertyRequest<
+  Key extends keyof UpdateDashboardRequest,
+> = Required<Pick<UpdateDashboardRequest, "id" | Key>>;
+
+export type GetPublicDashboard = Pick<Dashboard, "id" | "name" | "public_uuid">;
+
+export type GetEmbeddableDashboard = Pick<Dashboard, "id" | "name">;
