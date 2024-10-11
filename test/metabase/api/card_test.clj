@@ -2211,7 +2211,8 @@
       (testing "Removing the time portion of the timestamp should only show the date"
         (is (= [["T"] ["2023-1-1"]]
                (parse-xlsx-results-to-strings
-                (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))))))))))
+                (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))
+                                      :format_rows true))))))))
 
 (deftest xlsx-default-currency-formatting-test
   (testing "The default currency is USD"
@@ -2225,7 +2226,8 @@
       (is (= [["MONEY"]
               ["[$$]123.45"]]
              (parse-xlsx-results-to-strings
-              (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card)))))))))
+              (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))
+                                    :format_rows true)))))))
 
 (deftest xlsx-default-currency-formatting-test-2
   (testing "Default localization settings take effect"
@@ -2241,7 +2243,8 @@
         (is (= [["MONEY"]
                 ["[$€]123.45"]]
                (parse-xlsx-results-to-strings
-                (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))))))))))
+                (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))
+                                      :format_rows true))))))))
 
 (deftest xlsx-currency-formatting-test
   (testing "Currencies are applied correctly in Excel files"
@@ -2263,7 +2266,8 @@
           (is (= [currencies
                   ["[$$]123.45" "[$CA$]123.45" "[$€]123.45" "[$¥]123.45"]]
                  (parse-xlsx-results-to-strings
-                  (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card)))))))))))
+                  (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))
+                                        :format_rows true)))))))))
 
 (deftest xlsx-full-formatting-test
   (testing "Formatting should be applied correctly for all types, including numbers, currencies, exponents, and times. (relates to #14393)"
@@ -2401,7 +2405,8 @@
                       ["Jan 1, 2023, 12:34 PM" "2023-1-1" "1-1-2023, 12:34:56.000" "Jan 1, 2023" "12:34 PM" "2,345.30" "[$$]2,345.30" "[$USD] 3456.30" "2,931.30 US dollars" "1.71806E+4" "8.02%" "0.000%"]
                       ["Jan 1, 2023, 12:34 PM" "2023-1-1" "1-1-2023, 12:34:56.000" "Jan 1, 2023" "12:34 PM" "3,456.00" "[$$]3,456.00" "[$USD] 2300.00" "2,250.00 US dollars" "12.7181E+4" "95.40%" "11.580%"]]
                      (parse-xlsx-results-to-strings
-                      (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))))))))))
+                      (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))
+                                            :format_rows true))))))))
       (testing "Global currency settings are applied correctly"
         (mt/with-temporary-setting-values [custom-formatting {:type/Temporal {:date_abbreviate true}
                                                               :type/Currency {:currency "EUR", :currency_style "symbol"}}]
@@ -2416,9 +2421,11 @@
                       ["Jan 1, 2023, 12:34 PM" "2023-1-1" "1-1-2023, 12:34:56.000" "Jan 1, 2023" "12:34 PM" "2,345.30" "[$€]2,345.30" "[$EUR] 3456.30" "2,931.30 euros" "1.71806E+4" "8.02%" "0.000%"]
                       ["Jan 1, 2023, 12:34 PM" "2023-1-1" "1-1-2023, 12:34:56.000" "Jan 1, 2023" "12:34 PM" "3,456.00" "[$€]3,456.00" "[$EUR] 2300.00" "2,250.00 euros" "12.7181E+4" "95.40%" "11.580%"]]
                      (parse-xlsx-results-to-strings
-                      (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card)))))))
+                      (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))
+                                            :format_rows true)))))
             (parse-xlsx-results-to-strings
-             (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))))))))))
+             (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))
+                                   :format_rows true))))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
