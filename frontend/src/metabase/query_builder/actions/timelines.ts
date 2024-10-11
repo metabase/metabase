@@ -1,5 +1,8 @@
 import { createAction } from "redux-actions";
 
+import type { CollectionId, Timeline } from "metabase-types/api";
+import type { Dispatch, GetState } from "metabase-types/store";
+
 import { getFetchedTimelines } from "../selectors";
 
 export const SELECT_TIMELINE_EVENTS = "metabase/qb/SELECT_TIMELINE_EVENTS";
@@ -15,8 +18,8 @@ export const SHOW_TIMELINE_EVENTS = "metabase/qb/SHOW_TIMELINE_EVENTS";
 export const showTimelineEvents = createAction(SHOW_TIMELINE_EVENTS);
 
 export const showTimelinesForCollection =
-  collectionId => (dispatch, getState) => {
-    const fetchedTimelines = getFetchedTimelines(getState());
+  (collectionId: CollectionId) => (dispatch: Dispatch, getState: GetState) => {
+    const fetchedTimelines: Timeline[] = getFetchedTimelines(getState());
     const collectionTimelines = collectionId
       ? fetchedTimelines.filter(t => t.collection_id === collectionId)
       : fetchedTimelines.filter(t => t.collection_id == null);

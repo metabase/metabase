@@ -224,7 +224,7 @@ const defaultLoginPageIllustration = {
   isDefault: true,
 };
 
-const getLoadingMessage = (isSlow: boolean) =>
+const getLoadingMessage = (isSlow?: boolean) =>
   isSlow ? t`Waiting for results...` : t`Doing science...`;
 
 // selectors that customize behavior between app versions

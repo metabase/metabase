@@ -8,7 +8,9 @@ import { getWhiteLabeledLoadingMessageFactory } from "metabase/selectors/whitela
 import { runQuestionQuery as apiRunQuestionQuery } from "metabase/services";
 import { getSensibleDisplays } from "metabase/visualizations";
 import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
 import { isAdHocModelOrMetricQuestion } from "metabase-lib/v1/metadata/utils/models";
+import type { Dispatch, GetState } from "metabase-types/store";
 
 import {
   getCard,
@@ -71,18 +73,24 @@ const loadCompleteUIControls = createThunkAction(
   },
 );
 
-export const runDirtyQuestionQuery = () => async (dispatch, getState) => {
-  const areResultsDirty = getIsResultDirty(getState());
-  const queryResults = getQueryResults(getState());
-  const hasResults = !!queryResults;
+export const runDirtyQuestionQuery =
+  () => async (dispatch: Dispatch, getState: GetState) => {
+    const areResultsDirty = getIsResultDirty(getState());
+    const queryResults = getQueryResults(getState());
+    const hasResults = !!queryResults;
 
-  if (hasResults && !areResultsDirty) {
-    const question = getQuestion(getState());
-    return dispatch(queryCompleted(question, queryResults));
-  }
+    if (hasResults && !areResultsDirty) {
+      const question = getQuestion(getState());
 
-  return dispatch(runQuestionQuery());
-};
+      if (!question) {
+        return;
+      }
+
+      return dispatch(queryCompleted(question, queryResults));
+    }
+
+    return dispatch(runQuestionQuery());
+  };
 
 /**
  * Queries the result for the currently active question or alternatively for the card question provided in `overrideWithQuestion`.
@@ -94,13 +102,17 @@ export const runQuestionQuery = ({
   ignoreCache = false,
   overrideWithQuestion = null,
 } = {}) => {
-  return async (dispatch, getState) => {
+  return async (dispatch: Dispatch, getState: GetState) => {
     dispatch(loadStartUIControls());
 
     const question = overrideWithQuestion
       ? overrideWithQuestion
       : getQuestion(getState());
     const originalQuestion = getOriginalQuestion(getState());
+
+    if (!question) {
+      return;
+    }
 
     const isCardDirty = originalQuestion
       ? question.isDirtyComparedToWithoutParameters(originalQuestion) ||
@@ -166,8 +178,8 @@ export const CLEAR_QUERY_RESULT = "metabase/query_builder/CLEAR_QUERY_RESULT";
 export const clearQueryResult = createAction(CLEAR_QUERY_RESULT);
 
 export const QUERY_COMPLETED = "metabase/qb/QUERY_COMPLETED";
-export const queryCompleted = (question, queryResults) => {
-  return async (dispatch, getState) => {
+export const queryCompleted = (question: Question, queryResults: any) => {
+  return async (dispatch: Dispatch, getState: GetState) => {
     const [{ data, error }] = queryResults;
     const prevCard = getCard(getState());
     const { data: prevData, error: prevError } =
@@ -222,18 +234,20 @@ export const queryErrored = createThunkAction(
       if (error && error.isCancelled) {
         return null;
       } else {
-        return { error: error, duration: new Date() - startTime };
+        return { error: error, duration: Date.now() - startTime };
       }
     };
   },
 );
 
 export const CANCEL_QUERY = "metabase/qb/CANCEL_QUERY";
-export const cancelQuery = () => (dispatch, getState) => {
+export const cancelQuery = () => (dispatch: Dispatch, getState: GetState) => {
   const isRunning = getIsRunning(getState());
   if (isRunning) {
     const { cancelQueryDeferred } = getState().qb;
     if (cancelQueryDeferred) {
+      // it could have type Deferred + resolve/reject, please fix other similar places
+      // @ts-expect-error probably it never worked, Promise.resolve() doesn't exist in spec
       cancelQueryDeferred.resolve();
     }
     dispatch(setDocumentTitle(""));
