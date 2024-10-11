@@ -1,4 +1,5 @@
 /* eslint-disable react/prop-types */
+import { useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -28,6 +29,7 @@ const ChartSettingFieldPicker = ({
   colors,
   series,
   onChangeSeriesColor,
+  fieldSettingWidget = null,
 }) => {
   let columnKey;
   if (value && showColumnSetting && columns) {
@@ -36,6 +38,25 @@ const ChartSettingFieldPicker = ({
       columnKey = getColumnKey(column);
     }
   }
+
+  const menuWidgetInfo = useMemo(() => {
+    if (columnKey && showColumnSetting) {
+      return {
+        id: "column_settings",
+        props: {
+          initialKey: columnKey,
+        },
+      };
+    }
+
+    if (fieldSettingWidget) {
+      return {
+        id: fieldSettingWidget,
+      };
+    }
+
+    return null;
+  }, [columnKey, fieldSettingWidget, showColumnSetting]);
 
   let seriesKey;
   if (series && columnKey && showColorPicker) {
@@ -73,20 +94,12 @@ const ChartSettingFieldPicker = ({
         isInitiallyOpen={value === undefined}
         hiddenIcons
       />
-      {columnKey && (
+      {menuWidgetInfo && (
         <SettingsButton
           onlyIcon
           icon="ellipsis"
           onClick={e => {
-            onShowWidget(
-              {
-                id: "column_settings",
-                props: {
-                  initialKey: columnKey,
-                },
-              },
-              e.target,
-            );
+            onShowWidget(menuWidgetInfo, e.target);
           }}
         />
       )}

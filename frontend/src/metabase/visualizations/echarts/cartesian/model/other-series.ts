@@ -19,6 +19,7 @@ export function groupSeriesIntoOther(
   const maxCategories = settings["graph.max_categories"];
 
   if (
+    !settings["graph.max_categories_enabled"] ||
     !maxCategories ||
     maxCategories <= 0 ||
     seriesModels.length <= maxCategories

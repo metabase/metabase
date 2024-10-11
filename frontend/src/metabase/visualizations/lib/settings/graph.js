@@ -6,6 +6,7 @@ import {
   getMaxDimensionsSupported,
   getMaxMetricsSupported,
 } from "metabase/visualizations";
+import { ChartSettingMaxCategories } from "metabase/visualizations/components/settings/ChartSettingMaxCategories";
 import { ChartSettingSeriesOrder } from "metabase/visualizations/components/settings/ChartSettingSeriesOrder";
 import { dimensionIsNumeric } from "metabase/visualizations/lib/numeric";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
@@ -65,6 +66,13 @@ function canHaveDataLabels(series, vizSettings) {
   return vizSettings["stackable.stack_type"] !== "normalized" || !areAllAreas;
 }
 
+const areAllBars = (series, settings) =>
+  getSeriesDisplays(series, settings).every(display => display === "bar");
+
+const canHaveMaxCategoriesSetting = (series, settings) => {
+  return areAllBars(series, settings) && series.length >= 2;
+};
+
 export const GRAPH_DATA_SETTINGS = {
   ...columnSettings({
     getColumns: ([
@@ -95,12 +103,18 @@ export const GRAPH_DATA_SETTINGS = {
     getDefault: (series, vizSettings) =>
       getDefaultDimensions(series, vizSettings),
     persistDefault: true,
-    getProps: ([{ card, data }], vizSettings) => {
+    getProps: ([{ card, data }], vizSettings, _, { transformedSeries }) => {
       const addedDimensions = vizSettings["graph.dimensions"];
       const maxDimensionsSupported = getMaxDimensionsSupported(card.display);
       const options = data.cols
         .filter(getDefaultDimensionFilter(card.display))
         .map(getOptionFromColumn);
+      const fieldSettingWidgets = canHaveMaxCategoriesSetting(
+        transformedSeries,
+        vizSettings,
+      )
+        ? [null, "graph.max_categories"] // We want to show "graph.max_categories" setting for the breakout dimension (2nd)
+        : [];
       return {
         options,
         addAnother:
@@ -113,9 +127,7 @@ export const GRAPH_DATA_SETTINGS = {
             ? t`Add series breakout`
             : null,
         columns: data.cols,
-        // When this prop is passed it will only show the
-        // column settings for any index that is included in the array
-        showColumnSettingForIndicies: [0],
+        fieldSettingWidgets,
       };
     },
     writeDependencies: ["graph.metrics"],
@@ -136,12 +148,12 @@ export const GRAPH_DATA_SETTINGS = {
     useRawSeries: true,
     getValue: (rawSeries, settings) => {
       const seriesModels = getSeriesModelsForSettings(rawSeries, settings);
-
       const seriesKeys = seriesModels.map(s => s.vizSettingsKey);
       return getSeriesOrderVisibilitySettings(settings, seriesKeys);
     },
     getProps: (rawSeries, settings, _onChange, _extra, onChangeSettings) => {
       const groupedAfterIndex =
+        settings["graph.max_categories_enabled"] &&
         settings["graph.max_categories"] !== 0
           ? settings["graph.max_categories"]
           : Infinity;
@@ -152,7 +164,9 @@ export const GRAPH_DATA_SETTINGS = {
         settings,
         groupedAfterIndex,
         otherColor: settings["graph.other_category_color"],
+        otherSettingWidgetId: "graph.max_categories",
         onOtherColorChange,
+        truncateAfter: 10,
       };
     },
     getHidden: (series, settings) => {
@@ -444,22 +458,29 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS = {
     },
     default: getDefaultDataLabelsFormatting(),
   },
-  "graph.max_categories": {
-    section: t`Display`,
-    title: t`Maximum number of categories`,
-    widget: "number",
-    getDefault: series => {
-      const isAllBar = series.every(s => s.card.display === "bar");
-      return isAllBar ? 8 : 0;
+  "graph.max_categories_enabled": {
+    hidden: true,
+    getDefault: (series, settings) => {
+      return canHaveMaxCategoriesSetting(series, settings);
     },
     isValid: (series, settings) => {
-      const isAllBar = series.every(s => s.card.display === "bar");
-      return isAllBar && settings["graph.max_categories"] >= 0;
+      return canHaveMaxCategoriesSetting(series, settings);
     },
-    getHidden: series => {
-      const isAllBar = series.every(s => s.card.display === "bar");
-      return isAllBar && series.length < 2;
+    readDependencies: ["series_settings"],
+  },
+  "graph.max_categories": {
+    widget: ChartSettingMaxCategories,
+    hidden: true,
+    default: 8,
+    isValid: (series, settings) => {
+      return canHaveMaxCategoriesSetting(series, settings);
     },
+    getProps: (_series, settings) => {
+      return {
+        isEnabled: settings["graph.max_categories_enabled"],
+      };
+    },
+    readDependencies: ["graph.max_categories_enabled", "series_settings"],
   },
   "graph.other_category_color": {
     default: color("text-light"),
