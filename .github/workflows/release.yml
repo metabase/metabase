@@ -688,8 +688,6 @@ jobs:
         --paths "/version-info.json" "/version-info-ee.json"
 
   tag-nightly:
-    if: ${{ inputs.auto }}
-    needs: [push-tags, verify-docker-pull, verify-s3-download]
     if: false
     needs: [push-tags, verify-docker-pull, verify-s3-download, check-version]
     uses: ./.github/workflows/release-tag.yml
