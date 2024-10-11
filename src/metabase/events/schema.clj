@@ -2,7 +2,6 @@
   (:require
    [malli.core :as mc]
    [malli.util :as mut]
-   [metabase.models.view-log :as view-log]
    [toucan2.core :as t2]))
 
 #_{:clj-kondo/ignore [:unused-private-var]}
@@ -64,7 +63,7 @@
      :event/card-read   (mc/schema
                          [:map {:closed true}
                           ;; context is deliberately coupled to view-log's context
-                          [:context [:and :some ::view-log/context]]
+                          [:context [:and :some :metabase.models.view-log/context]]
                           [:user-id [:maybe pos-int?]]
                           [:object-id [:maybe pos-int?]]])
      :event/card-query  [:map {:closed true}

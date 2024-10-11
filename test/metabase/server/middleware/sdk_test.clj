@@ -22,7 +22,7 @@
   (are [client]
       (let [request (mock-request {:client client})
             handler (sdk/embedding-mw
-                     (fn [_request respond _raise] (respond {:status 200 :body client})))
+                     (fn [_ respond _] (respond {:status 200 :body client})))
             response (handler request identity identity)]
         (is (= (:body response "no-body") client)))
     nil
@@ -30,11 +30,11 @@
 
 (deftest bind-client-version-test
   (are [version]
-       (let [request (mock-request {:version version})
-             handler (sdk/embedding-mw
-                      (fn [_request respond _raise] (respond {:status 200 :body version})))
-              response (handler request identity identity)]
-         (is (= (:body response "no-body") version)))
+      (let [request (mock-request {:version version})
+            handler (sdk/embedding-mw
+                     (fn [_ respond _] (respond {:status 200 :body version})))
+            response (handler request identity identity)]
+        (is (= (:body response "no-body") version)))
     nil
     "1.1.1"))
 
@@ -42,9 +42,9 @@
   (let [prometheus-standin (atom {})]
     (with-redefs [prometheus/inc! (fn [k] (swap! prometheus-standin update k (fnil inc 0)))]
       (let [request (mock-request {:client "my-client"}) ;; <-- has X-Metabase-Client header => SDK context
-            good (sdk/embedding-mw (fn [_request respond _raise] (respond {:status 200})))
-            bad (sdk/embedding-mw (fn [_request respond _raise] (respond {:status 400})))
-            exception (sdk/embedding-mw (fn [_request _respond raise] (raise {})))]
+            good (sdk/embedding-mw (fn [_ respond _] (respond {:status 200})))
+            bad (sdk/embedding-mw (fn [_ respond _] (respond {:status 400})))
+            exception (sdk/embedding-mw (fn [_ _respond raise] (raise {})))]
         (good request identity identity)
         (is (= {:metabase-sdk/response-ok 1} @prometheus-standin))
         (bad request identity identity)
@@ -58,9 +58,9 @@
   (let [prometheus-standin (atom {})]
     (with-redefs [prometheus/inc! (fn [k] (swap! prometheus-standin update k (fnil inc 0)))]
       (let [request (mock-request {}) ;; <= no X-Metabase-Client header => no SDK context
-            good (sdk/embedding-mw (fn [_request respond _raise] (respond {:status 200})))
-            bad (sdk/embedding-mw (fn [_request respond _raise] (respond {:status 400})))
-            exception (sdk/embedding-mw (fn [_request _respond raise] (raise {})))]
+            good (sdk/embedding-mw (fn [_ respond _] (respond {:status 200})))
+            bad (sdk/embedding-mw (fn [_ respond _] (respond {:status 400})))
+            exception (sdk/embedding-mw (fn [_ _respond raise] (raise {})))]
         (good request identity identity)
         (is (= {} @prometheus-standin))
         (bad request identity identity)
