@@ -297,7 +297,7 @@
                   (is (=? (mt/email-to :crowberto {:subject "Your Slack connection stopped working"
                                                    :to #{"crowberto@metabase.com"}
                                                    :body [{"Your Slack connection stopped working." true}]})
-                          recipient->emails))
+                          (select-keys recipient->emails ["crowberto@metabase.com"])))
                   (is (= (t2/select-fn-set :email :model/User :is_superuser true)
                          (set (keys recipient->emails)))))
                 (is (false? (slack/slack-token-valid?))))))
