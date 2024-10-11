@@ -107,7 +107,7 @@
 (defn ^:private generate-response-token
   [session jwt-data]
   (api/check (embed.settings/enable-embedding-sdk)
-             [400 (tru "SDK Embedding is not enabled.")])
+             [402 (tru "SDK Embedding is not enabled.")])
   (response/response {:id  (:id session)
                       :exp (:exp jwt-data)
                       :iat (:iat jwt-data)}))
