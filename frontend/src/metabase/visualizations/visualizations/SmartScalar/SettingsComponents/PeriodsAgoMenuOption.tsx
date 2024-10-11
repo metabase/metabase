@@ -98,7 +98,7 @@ export function PeriodsAgoMenuOption({
   return (
     <MenuItemStyled py="xs" aria-selected={isSelected}>
       <Box px="sm" onClick={() => onChange({ type, value }, true)}>
-        <Group spacing="sm">
+        <Group gap="sm">
           <NumberInputStyled
             type="number"
             value={value}

@@ -66,7 +66,7 @@ export function BooleanFilterPicker({
       )}
       <div>
         <Radio.Group value={optionType} onChange={handleOptionChange}>
-          <Stack p="md" pb={isExpanded ? "md" : 0} spacing="sm">
+          <Stack p="md" pb={isExpanded ? "md" : 0} gap="sm">
             {visibleOptions.map(option => (
               <Radio
                 key={option.type}

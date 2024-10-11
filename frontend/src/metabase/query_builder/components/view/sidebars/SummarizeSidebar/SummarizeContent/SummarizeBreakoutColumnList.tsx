@@ -30,7 +30,7 @@ export const SummarizeBreakoutColumnList = ({
   <Stack
     data-testid="summarize-breakout-column-list"
     h="100%"
-    spacing="0"
+    gap="0"
     {...containerProps}
   >
     <SectionTitle>{t`Group by`}</SectionTitle>

@@ -38,7 +38,7 @@ const KeyValuePairChartTooltip = ({
 
   return (
     <TooltipTable>
-      <TableBody hasBottomSpacing={showFooter}>
+      <TableBody hasBottomgap={showFooter}>
         {rows.map(({ key, value, col }, index) => (
           <TooltipRow
             key={index}

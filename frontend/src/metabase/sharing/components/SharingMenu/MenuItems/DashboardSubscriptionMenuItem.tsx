@@ -42,7 +42,7 @@ export function DashboardSubscriptionMenuItem({
         }
         disabled
       >
-        <Stack spacing="xs">
+        <Stack gap="xs">
           <Title order={4} c="inherit">{t`Can't send subscriptions`}</Title>
           <Text
             size="sm"
