@@ -13,6 +13,7 @@ import {
   restore,
   showDashboardCardActions,
   sidebar,
+  visitDashboard,
 } from "e2e/support/helpers";
 
 const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
@@ -132,8 +133,8 @@ describe("issue 44171", () => {
       cy.findByText("Total").click();
     });
     cy.button("Save changes").click();
-    cy.get("@dashboardId").then(id => {
-      cy.visit(`/dashboard/${id}`);
+    cy.get<number>("@dashboardId").then(id => {
+      visitDashboard(id);
     });
 
     editDashboard();
