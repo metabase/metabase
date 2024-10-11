@@ -71,7 +71,7 @@ describe("issue 47058", () => {
   });
 });
 
-describe("Issue 44171", () => {
+describe("issue 44171", () => {
   const METRIC_A: StructuredQuestionDetails = {
     name: "Metric 44171-A",
     type: "metric",
