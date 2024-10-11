@@ -1,8 +1,9 @@
-import { useMemo } from "react";
+import { type Ref, forwardRef, useMemo } from "react";
 import { t } from "ttag";
 
-import { Select } from "metabase/ui";
+import { Flex, Select, Text } from "metabase/ui";
 
+import { COLUMN_TYPE_INFO } from "../../constants";
 import type { ColumnType, ComparisonType } from "../../types";
 import { getColumnTypeOptions } from "../../utils";
 
@@ -34,7 +35,30 @@ export function ColumnTypeInput({
       data={options}
       value={columnType}
       label={t`Column to create`}
+      itemComponent={ColumnTypeItem}
       onChange={handleChange}
     />
   );
 }
+
+type ColumnTypeItemProps = {
+  value: ColumnType;
+  label: string;
+  selected: boolean;
+};
+
+const ColumnTypeItem = forwardRef(function SelectItem(
+  { value, label, selected, ...props }: ColumnTypeItemProps,
+  ref: Ref<HTMLDivElement>,
+) {
+  return (
+    <div ref={ref} {...props}>
+      <Flex justify="space-between" gap="md">
+        <Text color="inherit">{label}</Text>
+        <Text color={selected ? "inherit" : "text-light"}>
+          {COLUMN_TYPE_INFO[value].example}
+        </Text>
+      </Flex>
+    </div>
+  );
+});
