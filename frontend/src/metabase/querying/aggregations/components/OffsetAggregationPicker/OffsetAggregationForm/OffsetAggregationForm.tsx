@@ -11,6 +11,7 @@ import { getBreakoutColumn, getInitialData } from "../utils";
 import { ColumnTypeInput } from "./ColumnTypeInput";
 import { ComparisonTypeInput } from "./ComparisonTypeInput";
 import { GroupUnitInput } from "./GroupUnitInput";
+import { OffsetLabel } from "./OffsetLabel";
 import { OffsetUnitInput } from "./OffsetUnitInput";
 import { OffsetValueInput } from "./OffsetValueInput";
 
@@ -85,6 +86,7 @@ export function OffsetAggregationForm({
               offsetUnit={data.offsetUnit}
               onOffsetUnitChange={handleOffsetUnitChange}
             />
+            <OffsetLabel comparisonType={data.comparisonType} />
           </Group>
         </Box>
         <ColumnTypeInput
