@@ -55,7 +55,8 @@ export const Fade = styled.div<{ visible?: boolean }>`
 export const FadeAndSlide = styled.div<{ visible?: boolean }>`
   position: absolute;
   width: 100%;
-  transition: opacity ${TRANSITION_DURATION} linear,
+  transition:
+    opacity ${TRANSITION_DURATION} linear,
     transform ${TRANSITION_DURATION} linear;
   opacity: ${({ visible }) => (visible ? "1" : "0")};
   transform: ${({ visible }) =>

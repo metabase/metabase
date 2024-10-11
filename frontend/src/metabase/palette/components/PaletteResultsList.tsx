@@ -94,7 +94,7 @@ export const PaletteResultList: React.FC<PaletteResultListProps> = props => {
         block: "nearest",
       });
     } else {
-      parentRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+      parentRef.current?.scrollTo?.({ top: 0, behavior: "smooth" });
     }
   }, [activeIndex]);
 
@@ -120,7 +120,7 @@ export const PaletteResultList: React.FC<PaletteResultListProps> = props => {
       if (item.command) {
         item.command.perform(item);
         query.toggle();
-      } else {
+      } else if (!item.extra?.href) {
         query.setSearch("");
         query.setCurrentRootAction(item.id);
       }

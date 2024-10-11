@@ -14,7 +14,9 @@ export const FilterButton = styled(Button)<FilterButtonProps>`
   color: ${({ isExpanded }) => (isExpanded ? color("white") : color("filter"))};
   background-color: ${({ isExpanded }) =>
     isExpanded ? alpha("filter", 0.8) : alpha("filter", 0.2)};
-  transition: border 300ms linear, background 300ms linear;
+  transition:
+    border 300ms linear,
+    background 300ms linear;
 
   &:hover {
     color: ${color("white")};

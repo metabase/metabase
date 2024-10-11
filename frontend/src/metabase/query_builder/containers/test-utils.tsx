@@ -390,9 +390,8 @@ export const triggerNotebookQueryChange = async () => {
  */
 export const revertNotebookQueryChange = async () => {
   const limitStep = screen.getByTestId("step-limit-0-0");
-  const limitInput = await within(limitStep).findByPlaceholderText(
-    "Enter a limit",
-  );
+  const limitInput =
+    await within(limitStep).findByPlaceholderText("Enter a limit");
 
   await userEvent.click(limitInput);
   await userEvent.type(limitInput, "{backspace}");

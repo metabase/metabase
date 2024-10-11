@@ -4,6 +4,13 @@ title: Driver interface changelog
 
 # Driver Interface Changelog
 
+## Metabase 0.50.28
+
+- The `:temporal/requires-default-unit` feature has been added. It should be false for most drivers, but it's necessary
+  for a few (like the old, pre-JDBC Druid driver) to find all temporal field refs and put a `:temporal-unit :default` on them.
+  That default setting was previously done for all drivers, but it introduced some downstream issues, so now only those
+  drivers which need it can set the feature.
+
 ## Metabase 0.50.17
 
 - Added method `metabase.driver/incorporate-auth-provider-details` for driver specific behavior required to

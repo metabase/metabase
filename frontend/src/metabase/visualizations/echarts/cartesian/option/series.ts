@@ -582,6 +582,9 @@ const buildEChartsLineAreaSeries = (
         color: seriesModel.color,
         opacity: 1,
       },
+      areaStyle: {
+        opacity: CHART_STYLE.opacity.areaFocused,
+      },
     },
     blur: {
       label: getBlurLabelStyle(settings, hasMultipleSeries),
@@ -591,7 +594,7 @@ const buildEChartsLineAreaSeries = (
       lineStyle: {
         opacity: blurOpacity,
       },
-      areaStyle: { opacity: CHART_STYLE.opacity.area },
+      areaStyle: { opacity: CHART_STYLE.opacity.areaBlurred },
     },
     z: Z_INDEXES.lineAreaSeries,
     id: seriesModel.dataKey,

@@ -51,9 +51,8 @@ describe("QueryBuilder", () => {
         await setup({
           card: TEST_TIME_SERIES_WITH_DATE_BREAKOUT_CARD,
         });
-        const timeSeriesModeFooter = await screen.findByTestId(
-          "timeseries-chrome",
-        );
+        const timeSeriesModeFooter =
+          await screen.findByTestId("timeseries-chrome");
         expect(timeSeriesModeFooter).toBeInTheDocument();
         expect(
           within(timeSeriesModeFooter).getByText("by"),
@@ -68,9 +67,8 @@ describe("QueryBuilder", () => {
           card: TEST_TIME_SERIES_WITH_CUSTOM_DATE_BREAKOUT_CARD,
         });
 
-        const timeSeriesModeFooter = await screen.findByTestId(
-          "timeseries-chrome",
-        );
+        const timeSeriesModeFooter =
+          await screen.findByTestId("timeseries-chrome");
         expect(timeSeriesModeFooter).toBeInTheDocument();
         expect(
           within(timeSeriesModeFooter).getByText("by"),

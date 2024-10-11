@@ -27,7 +27,10 @@
 :global(.tippy-box),
 :global(.tippy-content) {
   max-height: inherit;
-  transition: transform 0s, visibility 0.3s, opacity 0.3s;
+  transition:
+    transform 0s,
+    visibility 0.3s,
+    opacity 0.3s;
 }
 
 :global(.tippy-box[data-theme~="tooltip"]) {

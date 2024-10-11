@@ -54,7 +54,7 @@ export interface Collection {
   can_write: boolean;
   archived: boolean;
   children?: Collection[];
-  authority_level?: "official" | null;
+  authority_level?: CollectionAuthorityLevel;
   type?: "instance-analytics" | null;
 
   parent_id?: CollectionId | null;
@@ -81,7 +81,7 @@ export const COLLECTION_ITEM_MODELS = [
   "collection",
   "indexed-entity",
 ] as const;
-export type CollectionItemModel = typeof COLLECTION_ITEM_MODELS[number];
+export type CollectionItemModel = (typeof COLLECTION_ITEM_MODELS)[number];
 
 export type CollectionItemId = number;
 
@@ -108,6 +108,7 @@ export interface CollectionItem {
   "last-edit-info"?: LastEditInfo;
   location?: string;
   effective_location?: string;
+  authority_level?: CollectionAuthorityLevel;
   getIcon: () => IconProps;
   getUrl: (opts?: Record<string, unknown>) => string;
   setArchived?: (isArchived: boolean) => void;

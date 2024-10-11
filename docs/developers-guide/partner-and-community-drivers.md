@@ -45,7 +45,6 @@ Current partner drivers:
 - [ClickHouse](https://github.com/ClickHouse/metabase-clickhouse-driver)
 - [DuckDB](https://github.com/MotherDuck-Open-Source/metabase_duckdb_driver) (for now, only available for self-hosted Metabases)
 - [Exasol](https://github.com/exasol/metabase-driver)
-- [Firebolt](https://docs.firebolt.io/integrations/business-intelligence/connecting-to-metabase.html)
 - [Materialize](https://github.com/MaterializeInc/metabase-materialize-driver)
 - [Ocient](https://github.com/Xeograph/metabase-ocient-driver)
 - [Starburst (compatible with Trino)](https://github.com/starburstdata/metabase-driver)
@@ -57,11 +56,9 @@ If you have interest in becoming a partner, please fill the [partner form](https
 
 ## Community drivers
 
-> Note: Metabase Cloud doesn't support community drivers
+> You install these drivers at your own risk. The plugins run as part of your Metabase and will have access to anything your Metabase does. And since we can’t vet for them, we don’t make them available on [Metabase Cloud](https://www.metabase.com/cloud/).
 
 Anyone can build a community driver. These are the currently known third-party database drivers for Metabase.
-
-You install these drivers at your own risk. The plugins will run as part of your Metabase instance and, as such, will have access to anything it does.
 
 | Database                                                                               | GitHub Stars                                                                                         | Last release (_if available_)                                                                                                |
 |----------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------|

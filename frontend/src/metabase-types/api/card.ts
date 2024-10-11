@@ -112,17 +112,27 @@ export type PivotTableCollapsedRowsSetting = {
 export type TableColumnOrderSetting = {
   name: string;
   enabled: boolean;
+  fieldRef?: FieldReference;
 };
 
 export type StackType = "stacked" | "normalized" | null;
 export type StackValuesDisplay = "total" | "all" | "series";
 
 export const numericScale = ["linear", "pow", "log"] as const;
-export type NumericScale = typeof numericScale[number];
+export type NumericScale = (typeof numericScale)[number];
 
 export type XAxisScale = "ordinal" | "histogram" | "timeseries" | NumericScale;
 
 export type YAxisScale = NumericScale;
+
+export interface ColumnSettings {
+  column_title?: string;
+  number_separators?: string;
+  currency?: string;
+
+  // some options are untyped
+  [key: string]: any;
+}
 
 export type VisualizationSettings = {
   "graph.show_values"?: boolean;
@@ -131,6 +141,9 @@ export type VisualizationSettings = {
 
   // Table
   "table.columns"?: TableColumnOrderSetting[];
+  // Keys here can be modern (returned by `getColumnKey`) or legacy (`getLegacyColumnKey`).
+  // Use `getColumnSettings` which checks for both keys.
+  column_settings?: Record<string, ColumnSettings>;
 
   // X-axis
   "graph.x_axis.title_text"?: string;

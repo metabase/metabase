@@ -143,8 +143,23 @@ yarn test-cypress-open-qa
 
 Tests that depend on Snowplow expect a running server. To run them, you need to:
 
-- run Snowplow locally: `docker-compose -f ./snowplow/docker-compose.yml up -d`
 - pass env variables to the test run: `MB_SNOWPLOW_AVAILABLE=true MB_SNOWPLOW_URL=http://localhost:9090 yarn test-cypress-open`
+
+## Testing with Snowplow
+Our end-to-end testing environment has been configured to run Snowplow Micro alongside the application.
+
+To run Snowplow locally use the following commands:
+
+```
+docker-compose -f ./snowplow/docker-compose.yml up -d
+export MB_SNOWPLOW_AVAILABLE=true
+export MB_SNOWPLOW_URL=http://localhost:9090
+```
+
+1. You can use `describeWithSnowplow` (or `describeWithSnowplowEE` for EE edition) method to define tests that only run when a Snowplow instance is running
+2. Use `resetSnowplow()` test helper before each test to clear the queue of processed events.
+3. Use `expectGoodSnowplowEvents(count)` to assert that events have been sent and processed correctly. Use `expectGoodSnowPlowEvent({ ...payload})` to assert on the content of a snowplow event
+4. Use `expectNoBadSnowplowEvents()` after each test to assert that no invalid events have been sent.
 
 ### Running tests that require SMTP server
 

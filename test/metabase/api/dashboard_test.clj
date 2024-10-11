@@ -43,6 +43,7 @@
    [metabase.models.data-permissions.graph :as data-perms.graph]
    [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
+   [metabase.models.params :as params]
    [metabase.models.params.chain-filter :as chain-filter]
    [metabase.models.params.chain-filter-test :as chain-filter-test]
    [metabase.models.permissions :as perms]
@@ -420,58 +421,60 @@
                                (#'api.dashboard/get-dashboard dash-id))))))))
 
 (deftest last-used-parameter-value-test
-  (mt/dataset test-data
-    (mt/with-column-remappings [orders.user_id people.name]
-      (mt/as-admin
-        (t2.with-temp/with-temp
-          [Dashboard {dashboard-a-id :id} {:name       "Test Dashboard"
-                                           :creator_id (mt/user->id :crowberto)
-                                           :parameters [{:name    "Name", :slug "name", :id "a" :type :string/contains
-                                                         :default ["default_value"]}]}
-           Dashboard {dashboard-b-id :id} {:name       "Test Dashboard"
-                                           :creator_id (mt/user->id :crowberto)
-                                           :parameters [{:name "Name", :slug "name", :id "a" :type :string/contains}]}
-           Card {card-id :id} {:database_id   (mt/id)
-                               :query_type    :native
-                               :name          "test question"
-                               :creator_id    (mt/user->id :crowberto)
-                               :dataset_query {:type     :native
-                                               :native   {:query "SELECT COUNT(*) FROM people WHERE {{name}}"
-                                                          :template-tags
-                                                          {"name" {:name         "Name"
-                                                                   :display-name "name"
-                                                                   :type         :dimension
-                                                                   :dimension    [:field (mt/id :people :name) nil]
-                                                                   :widget-type  :string/contains}}}
-                                               :database (mt/id)}}
-           DashboardCard {dashcard-a-id :id} {:parameter_mappings [{:parameter_id "a", :card_id card-id, :target [:dimension [:template-tag "id"]]}]
-                                              :card_id            card-id
-                                              :dashboard_id       dashboard-a-id}
-           DashboardCard {dashcard-b-id :id} {:parameter_mappings [{:parameter_id "a", :card_id card-id, :target [:dimension [:template-tag "id"]]}]
-                                              :card_id            card-id
-                                              :dashboard_id       dashboard-b-id}]
-          (testing "User's set parameter is saved and sent back in the dashboard response, unique per dashboard."
-           ;; api request mimicking a user setting a parameter value
-            (is (some? (mt/user-http-request :rasta :post (format "dashboard/%d/dashcard/%s/card/%s/query" dashboard-a-id dashcard-a-id card-id)
-                                             {:parameters [{:id "a" :value ["initial value"]}]})))
-            (is (some? (mt/user-http-request :rasta :post (format "dashboard/%d/dashcard/%s/card/%s/query" dashboard-b-id dashcard-b-id card-id)
-                                             {:parameters [{:id "a" :value ["initial value"]}]})))
-            (is (some? (mt/user-http-request :rasta :post (format "dashboard/%d/dashcard/%s/card/%s/query" dashboard-a-id dashcard-a-id card-id)
-                                             {:parameters [{:id "a" :value ["new value"]}]})))
-            (is (= {:dashboard-a {:a ["new value"]}
-                    :dashboard-b {:a ["initial value"]}}
-                   {:dashboard-a (:last_used_param_values (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-a-id)))
-                    :dashboard-b (:last_used_param_values (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-b-id)))})))
-          (testing "If a User unsets a parameter's value, the default is NOT used."
-           ;; api request mimicking a user clearing parameter value, and no default exists
-            (is (some? (mt/user-http-request :rasta :post (format "dashboard/%d/dashcard/%s/card/%s/query" dashboard-a-id dashcard-a-id card-id)
-                                             {:parameters [{:id "a" :value nil}]})))
-            (is (= {}
-                   (:last_used_param_values (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-a-id)))))
-            (is (some? (mt/user-http-request :rasta :post (format "dashboard/%d/dashcard/%s/card/%s/query" dashboard-a-id dashcard-a-id card-id)
-                                             {:parameters [{:id "a" :value nil :default ["default value"]}]})))
-            (is (= {:a nil}
-                   (:last_used_param_values (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-a-id)))))))))))
+  (mt/test-helpers-set-global-values!
+    (mt/with-temporary-setting-values [synchronous-batch-updates true]
+      (mt/dataset test-data
+        (mt/with-column-remappings [orders.user_id people.name]
+          (mt/as-admin
+            (t2.with-temp/with-temp
+              [Dashboard {dashboard-a-id :id} {:name       "Test Dashboard"
+                                               :creator_id (mt/user->id :crowberto)
+                                               :parameters [{:name    "Name", :slug "name", :id "a" :type :string/contains
+                                                             :default ["default_value"]}]}
+               Dashboard {dashboard-b-id :id} {:name       "Test Dashboard"
+                                               :creator_id (mt/user->id :crowberto)
+                                               :parameters [{:name "Name", :slug "name", :id "a" :type :string/contains}]}
+               Card {card-id :id} {:database_id   (mt/id)
+                                   :query_type    :native
+                                   :name          "test question"
+                                   :creator_id    (mt/user->id :crowberto)
+                                   :dataset_query {:type     :native
+                                                   :native   {:query "SELECT COUNT(*) FROM people WHERE {{name}}"
+                                                              :template-tags
+                                                              {"name" {:name         "Name"
+                                                                       :display-name "name"
+                                                                       :type         :dimension
+                                                                       :dimension    [:field (mt/id :people :name) nil]
+                                                                       :widget-type  :string/contains}}}
+                                                   :database (mt/id)}}
+               DashboardCard {dashcard-a-id :id} {:parameter_mappings [{:parameter_id "a", :card_id card-id, :target [:dimension [:template-tag "id"]]}]
+                                                  :card_id            card-id
+                                                  :dashboard_id       dashboard-a-id}
+               DashboardCard {dashcard-b-id :id} {:parameter_mappings [{:parameter_id "a", :card_id card-id, :target [:dimension [:template-tag "id"]]}]
+                                                  :card_id            card-id
+                                                  :dashboard_id       dashboard-b-id}]
+              (testing "User's set parameter is saved and sent back in the dashboard response, unique per dashboard."
+                ;; api request mimicking a user setting a parameter value
+                (is (some? (mt/user-http-request :rasta :post (format "dashboard/%d/dashcard/%s/card/%s/query" dashboard-a-id dashcard-a-id card-id)
+                                                 {:parameters [{:id "a" :value ["initial value"]}]})))
+                (is (some? (mt/user-http-request :rasta :post (format "dashboard/%d/dashcard/%s/card/%s/query" dashboard-b-id dashcard-b-id card-id)
+                                                 {:parameters [{:id "a" :value ["initial value"]}]})))
+                (is (some? (mt/user-http-request :rasta :post (format "dashboard/%d/dashcard/%s/card/%s/query" dashboard-a-id dashcard-a-id card-id)
+                                                 {:parameters [{:id "a" :value ["new value"]}]})))
+                (is (= {:dashboard-a {:a ["new value"]}
+                        :dashboard-b {:a ["initial value"]}}
+                       {:dashboard-a (:last_used_param_values (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-a-id)))
+                        :dashboard-b (:last_used_param_values (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-b-id)))})))
+              (testing "If a User unsets a parameter's value, the default is NOT used."
+                ;; api request mimicking a user clearing parameter value, and no default exists
+                (is (some? (mt/user-http-request :rasta :post (format "dashboard/%d/dashcard/%s/card/%s/query" dashboard-a-id dashcard-a-id card-id)
+                                                 {:parameters [{:id "a" :value nil}]})))
+                (is (= {}
+                       (:last_used_param_values (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-a-id)))))
+                (is (some? (mt/user-http-request :rasta :post (format "dashboard/%d/dashcard/%s/card/%s/query" dashboard-a-id dashcard-a-id card-id)
+                                                 {:parameters [{:id "a" :value nil :default ["default value"]}]})))
+                (is (= {:a nil}
+                       (:last_used_param_values (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-a-id)))))))))))))
 
 (deftest fetch-dashboard-test
   (testing "GET /api/dashboard/:id"
@@ -4768,3 +4771,88 @@
           (let [[p & tail :as seen] @providers]
             (is (>= (count seen) 2))
             (is (every? #(identical? p %) tail))))))))
+
+;; This test is same as [[metabase.api.public-test/dashboard-param-values-param-fields-hydration-test]]
+;; adjusted to run with NORMAL dashboard.
+(deftest ^:synchronized dashboard-param-values-param-fields-hydration-test
+  (mt/with-temp
+    [:model/Dashboard     d   {:name "D"
+                               :parameters [{:name      "State filter param 1"
+                                             :slug      "p1"
+                                             :id        "p1"
+                                             :type      "location"}
+                                            {:name      "State filter param 2"
+                                             :slug      "p2"
+                                             :id        "p2"
+                                             :type      "text"}
+                                            {:name      "State filter param 3"
+                                             :slug      "p3"
+                                             :id        "p3"
+                                             :type      "text"}]}
+     :model/Card          c1  (let [query {:database (mt/id)
+                                           :type     :native
+                                           :native   {:query "select * from people"}}]
+                                {:name "C1"
+                                 :type :model
+                                 :database_id (mt/id)
+                                 :dataset_query query
+                                 :result_metadata
+                                 (mapv (fn [{col-name :name :as meta}]
+                                         ;; Map model's metadata to corresponding field id
+                                         (assoc meta :id  (mt/id :people (keyword (u/lower-case-en col-name)))))
+                                       (-> (qp/process-query query)
+                                           :data :results_metadata :columns))})
+
+     :model/Card          c2 (let [query {:database (mt/id)
+                                          :type :query
+                                          :query {:source-table (str "card__" (:id c1))
+                                                  :aggregation
+                                                  [[:distinct [:field "STATE" {:base-type :type/Text}]]]}}]
+                               {:name "C2"
+                                :database_id (mt/id)
+                                :dataset_query query
+                                :result_metadata (-> (qp/process-query query)
+                                                     :data :results_metadata :columns)})
+     :model/DashboardCard _dc1 {:dashboard_id       (:id d)
+                                :card_id            (:id c2)
+                                :parameter_mappings
+                                [{:parameter_id "p1"
+                                  :target [:dimension [:field "STATE" {:base-type :type/Text}]]}
+                                 {:parameter_id "p2"
+                                  :target [:dimension [:field "NAME" {:base-type :type/Text}]]}
+                                 {:parameter_id "p3"
+                                  :target [:dimension [:field "CITY" {:base-type :type/Text}]]}]}
+     :model/DashboardCard _dc2 {:dashboard_id       (:id d)
+                                :card_id            (:id c2)
+                                :parameter_mappings
+                                [{:parameter_id "p1"
+                                  :target [:dimension [:field "STATE" {:base-type :type/Text}]]}
+                                 {:parameter_id "p2"
+                                  :target [:dimension [:field "NAME" {:base-type :type/Text}]]}
+                                 {:parameter_id "p3"
+                                  :target [:dimension [:field "CITY" {:base-type :type/Text}]]}]}]
+    (let [call-count (volatile! 0)
+          orig-filterable-columns-for-query params/filterable-columns-for-query]
+      (with-redefs [params/filterable-columns-for-query
+                    (fn [& args]
+                      (vswap! call-count inc)
+                      (apply orig-filterable-columns-for-query args))]
+        (let [response (mt/user-http-request :crowberto :get 200 (format "dashboard/%d?dashboard_load_id=%s"
+                                                                         (:id d) (str (random-uuid))))]
+          (testing "Baseline: expected :param_fields (#42829)"
+            (is (=? {(mt/id :people :name)  {:name "NAME"}
+                     (mt/id :people :state) {:name "STATE"}
+                     (mt/id :people :city)  {:name "CITY"}}
+                    (get response :param_fields))))
+          (testing "Baseline: expected :param_values (#42829)"
+            (is (=? {(mt/id :people :state) {:values ["AK" "AL"]}}
+                    (-> (get response :param_values)
+                        ;; Take just first 2 values for testing purposes
+                        (update-in [(mt/id :people :state) :values] (partial take 2))))))
+          (testing "Reasonable amount of `filterable-columns` calls performed during dashboard load"
+            ;; Current implementation of [[metabase.models.params/dashcards->param-field-ids]] is supposed
+            ;; to compute `filterable-columns` only once per card per dashboard load, thanks to use of (1) context
+            ;; sharing of it between :param_fields and :param_values hydration. This test defines multiple
+            ;; dashcards and parameters for each dashcard, linked to a single card. Following is the proof
+            ;; of things working as described.
+            (is (= 1 @call-count))))))))

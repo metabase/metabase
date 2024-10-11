@@ -164,7 +164,7 @@
     (-> segment
         :table_id
         serdes/table->path
-        serdes/storage-table-path-prefix
+        serdes/storage-path-prefixes
         (concat ["segments" (serdes/storage-leaf-file-name id label)]))))
 
 (defmethod serdes/make-spec "Segment" [_model-name _opts]

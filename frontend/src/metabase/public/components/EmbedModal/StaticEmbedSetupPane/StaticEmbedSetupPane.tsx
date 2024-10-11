@@ -240,7 +240,7 @@ export const StaticEmbedSetupPane = ({
   };
 
   const [activeTab, setActiveTab] = useState<
-    typeof EMBED_MODAL_TABS[keyof typeof EMBED_MODAL_TABS]
+    (typeof EMBED_MODAL_TABS)[keyof typeof EMBED_MODAL_TABS]
   >(EMBED_MODAL_TABS.Overview);
   return (
     <Stack spacing={0}>

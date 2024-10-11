@@ -6,7 +6,6 @@
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
@@ -40,8 +39,7 @@
      (fn [field]
        ;; implicit datetime Fields get bucketing of `:default`. This is so other middleware doesn't try to give it
        ;; default bucketing of `:day`
-       [:field (u/the-id field) (when (lib.types.isa/temporal? field)
-                                  {:temporal-unit :default})])
+       [:field (u/the-id field) nil])
      fields)))
 
 (mu/defn ^:private source-metadata->fields :- mbql.s/Fields

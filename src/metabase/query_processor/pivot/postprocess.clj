@@ -24,6 +24,11 @@
 
 ;; The 'pivot-grouping' is the giveaway. If you ever see that column, you know you're dealing with raw pivot rows.
 
+(def NON_PIVOT_ROW_GROUP
+  "Pivot query results have a 'pivot-grouping' column. Rows whose pivot-grouping value is 0 are expected results.
+  Rows whose pivot-grouping values are greater than 0 represent subtotals, and should not be included in non-pivot result outputs."
+  0)
+
 ;; Most of the post processing functions use a 'pivot-spec' map.
 (mr/def ::pivot-spec
   [:map

@@ -23,7 +23,7 @@
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
-   (com.google.cloud.bigquery BigQuery DatasetId TableResult)))
+   (com.google.cloud.bigquery DatasetId TableResult)))
 
 (set! *warn-on-reflection* true)
 
@@ -687,12 +687,12 @@
     (let [fake-execute-called (atom false)
           orig-fn             @#'bigquery/execute-bigquery]
       (testing "Retry functionality works as expected"
-        (with-redefs [bigquery/execute-bigquery (fn [^BigQuery client ^String sql parameters _]
+        (with-redefs [bigquery/execute-bigquery (fn [& args]
                                                   (if-not @fake-execute-called
                                                     (do (reset! fake-execute-called true)
                                                         ;; simulate a transient error being thrown
                                                         (throw (ex-info "Transient error" {:retryable? true})))
-                                                    (orig-fn client sql parameters nil)))]
+                                                    (apply orig-fn args)))]
           ;; run any other test that requires a successful query execution
           (table-rows-sample-test)
           ;; make sure that the fake exception was thrown, and thus the query execution was retried
@@ -703,13 +703,12 @@
     (let [fake-execute-called (atom false)
           orig-fn        @#'bigquery/execute-bigquery]
       (testing "Should not retry query on cancellation"
-        (with-redefs [bigquery/execute-bigquery (fn [^BigQuery client ^String sql parameters _]
-                                                  ;; We only want to simulate exception on the query that we're testing and not on possible db setup queries
-                                                  (if (and (re-find #"notRetryCancellationExceptionTest" sql) (not @fake-execute-called))
+        (with-redefs [bigquery/execute-bigquery (fn [& args]
+                                                  (if (not @fake-execute-called)
                                                     (do (reset! fake-execute-called true)
                                                         ;; Simulate a cancellation happening
                                                         (throw (ex-info "Query cancelled" {::bigquery/cancelled? true})))
-                                                    (orig-fn client sql parameters nil)))]
+                                                    (apply orig-fn args)))]
           (try
             (qp/process-query {:native {:query "SELECT CURRENT_TIMESTAMP() AS notRetryCancellationExceptionTest"} :database (mt/id)
                                :type     :native})
@@ -759,23 +758,49 @@
             (is (< count-after (+ count-before 5))
                 "unbounded thread growth!")))))))
 
+(deftest later-page-fetch-returns-nil-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (testing "BigQuery queries which fail on later pages are caught properly"
+      (let [page-counter (atom 3)
+            orig-exec    @#'bigquery/reducible-bigquery-results
+            wrap-result  (fn wrap-result [^TableResult result]
+                           (proxy [TableResult] []
+                             (getSchema [] (.getSchema result))
+                             (getValues [] (.getValues result))
+                             (hasNextPage [] (.hasNextPage result))
+                             (getNextPage []
+                               (if (zero? @page-counter)
+                                 nil
+                                 (wrap-result (.getNextPage result))))))]
+        (with-redefs [bigquery/reducible-bigquery-results (fn [page & args]
+                                                            (apply orig-exec (wrap-result page) args))]
+          (binding [bigquery/*page-size*     10 ; small pages so there are several
+                    bigquery/*page-callback* (fn []
+                                               (let [pages (swap! page-counter #(max (dec %) 0))]
+                                                 (log/debugf "*page-callback counting down: %d to go" pages)))]
+            (mt/dataset test-data
+              (is (thrown-with-msg?
+                   clojure.lang.ExceptionInfo
+                   #"Cannot get next page from BigQuery"
+                   (mt/process-query (mt/query orders)))))))))))
+
 (deftest later-page-fetch-throws-test
   (mt/test-driver :bigquery-cloud-sdk
     (testing "BigQuery queries which fail on later pages are caught properly"
       (let [count-before (count (future-thread-names))
             page-counter (atom 3)
-            orig-exec    @#'bigquery/execute-bigquery
+            orig-exec    @#'bigquery/reducible-bigquery-results
             wrap-result  (fn wrap-result [^TableResult result]
                            (proxy [TableResult] []
                              (getSchema [] (.getSchema result))
                              (getValues [] (.getValues result))
-                             (getNextPageToken [] (.getNextPageToken result))
+                             (hasNextPage [] (.hasNextPage result))
                              (getNextPage []
                                (if (zero? @page-counter)
                                  (throw (ex-info "onoes BigQuery failed to fetch a later page" {}))
                                  (wrap-result (.getNextPage result))))))]
-        (with-redefs [bigquery/execute-bigquery (fn [^BigQuery client ^String sql parameters cancel-chan]
-                                                  (wrap-result (orig-exec client sql parameters cancel-chan)))]
+        (with-redefs [bigquery/reducible-bigquery-results (fn [page & args]
+                                                            (apply orig-exec (wrap-result page) args))]
           (dotimes [_ 10]
             (reset! page-counter 3)
             (binding [bigquery/*page-size*     100 ; small pages so there are several
@@ -789,20 +814,22 @@
           (let [count-after (count (future-thread-names))]
             (is (< count-after (+ count-before 5)))))))))
 
-;; TODO Temporarily disabling due to flakiness (#33140)
-#_(deftest global-max-rows-test
-    (mt/test-driver :bigquery-cloud-sdk
-      (testing "The limit middleware prevents us from fetching more pages than are necessary to fulfill query max-rows"
-        (let [page-size          100
-              max-rows           1000
-              num-page-callbacks (atom 0)]
-          (binding [bigquery/*page-size*     page-size
-                    bigquery/*page-callback* (fn []
-                                               (swap! num-page-callbacks inc))]
+(deftest cancel-page-test
+  (mt/test-driver
+    :bigquery-cloud-sdk
+    (let [page-size 10
+          max-rows 50000]
+      (testing "Cancel happens after first page"
+        (mt/with-open-channels [canceled-chan (a/promise-chan)]
+          (binding [qp.pipeline/*canceled-chan* canceled-chan
+                    bigquery/*page-size*     page-size
+                    bigquery/*page-callback* (fn [] (a/put! canceled-chan true))]
             (mt/dataset test-data
-              (let [rows (mt/rows (mt/process-query (mt/query orders {:query {:limit max-rows}})))]
-                (is (= max-rows (count rows)))
-                (is (= (/ max-rows page-size) @num-page-callbacks)))))))))
+              (is (thrown-with-msg?
+                   Exception
+                   #"Query cancelled"
+                   (-> (mt/query orders {:query {:limit max-rows}})
+                       mt/process-query))))))))))
 
 (defn- synced-tables [db-attributes]
   (t2.with-temp/with-temp [Database db db-attributes]
@@ -952,3 +979,36 @@
                   qp.compile/compile-and-splice-parameters
                   :query
                   pretty-sql-lines))))))
+
+(deftest bigquery-process-stop-test
+  (mt/test-driver
+    :bigquery-cloud-sdk
+    (sync/sync-database! (mt/db) {:scan :schema})
+    (let [before-names (future-thread-names)]
+      (doseq [:let [callbacks (atom 0)]
+              [stop-tag stopper] [[:exception #(throw (Exception. "My Exception"))]
+                                  [:cancelled #(a/>!! qp.pipeline/*canceled-chan* true)]]
+              [tag callback] [[:initial-query stopper]
+                              [:during-page #(when (>= (swap! callbacks inc) 2)
+                                               (stopper))]]]
+        (testing (format "%s %s" tag stop-tag)
+          (reset! callbacks 0)
+          (binding [bigquery/*page-callback* callback
+                    bigquery/*page-size* 10]
+            (let [query  {:database (mt/id)
+                          :type "native"
+                          :native {:query (format "select * from `%s.orders` limit 100" test-db-name)}}
+                  result (mt/user-http-request :crowberto :post 202 "dataset" query)
+                  result (if (string? result)
+                           ;; If we get a string it means we streamed some partial results, the last line will be the
+                           ;; last streamed row + the full json exception.
+                           (-> result
+                               str/split-lines
+                               last
+                               (str/replace #"^[^\{]*\{" "{")
+                               (json/parse-string true))
+                           result)]
+              (is (= "failed" (:status result)))
+              (is (= (if (= :cancelled stop-tag) "Query cancelled" "My Exception")
+                     (:error result)))))))
+      (is (< (count before-names) (+ (count (future-thread-names)) 5))))))

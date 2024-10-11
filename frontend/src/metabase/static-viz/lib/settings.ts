@@ -2,8 +2,7 @@ import type {
   ComputedVisualizationSettings,
   RemappingHydratedDatasetColumn,
 } from "metabase/visualizations/types";
-import { getColumnKey } from "metabase-lib/v1/queries/utils/get-column-key";
-import { normalize } from "metabase-lib/v1/queries/utils/normalize";
+import { getObjectColumnSettings } from "metabase-lib/v1/queries/utils/column-key";
 import type {
   DatasetColumn,
   RawSeries,
@@ -14,22 +13,15 @@ const getColumnSettings = (
   column: DatasetColumn,
   settings: VisualizationSettings,
 ): Record<string, unknown> => {
-  const columnKey = Object.keys(settings.column_settings ?? {}).find(
-    possiblyDenormalizedFieldRef =>
-      normalize(possiblyDenormalizedFieldRef) === getColumnKey(column),
+  const storedSettings = getObjectColumnSettings(
+    settings.column_settings,
+    column,
   );
-
-  if (!columnKey) {
-    return { column };
-  }
-
-  return { column, ...settings.column_settings?.[columnKey] };
+  const columnSettings = { column, ...column.settings, ...storedSettings };
+  return columnSettings;
 };
 
-export const getCommonStaticVizSettings = (
-  rawSeries: RawSeries,
-  dashcardSettings: VisualizationSettings,
-) => {
+export const getCommonStaticVizSettings = (rawSeries: RawSeries) => {
   const [{ card }] = rawSeries;
 
   const settings: ComputedVisualizationSettings = {
@@ -38,5 +30,5 @@ export const getCommonStaticVizSettings = (
       getColumnSettings(column, settings),
   };
 
-  return { ...settings, ...dashcardSettings };
+  return settings;
 };

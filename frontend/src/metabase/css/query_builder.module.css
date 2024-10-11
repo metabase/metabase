@@ -278,7 +278,9 @@
 
 .RunButton {
   opacity: 1;
-  transition: transform 0.25s, opacity 0.25s;
+  transition:
+    transform 0.25s,
+    opacity 0.25s;
 }
 
 .RunButton.RunButtonCompact {

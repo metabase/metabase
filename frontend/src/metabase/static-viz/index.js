@@ -1,5 +1,6 @@
 import { setPlatformAPI } from "echarts/core";
 import ReactDOMServer from "react-dom/server";
+
 import "metabase/lib/dayjs";
 
 import { StaticVisualization } from "metabase/static-viz/components/StaticVisualization";
@@ -9,6 +10,8 @@ import {
   measureTextEChartsAdapter,
   measureTextWidth,
 } from "metabase/static-viz/lib/text";
+import { extractRemappings } from "metabase/visualizations";
+import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
 
 import { LegacyStaticChart } from "./containers/LegacyStaticChart";
 
@@ -28,6 +31,21 @@ export function LegacyRenderChart(type, options) {
   );
 }
 
+// Dashcard settings should be merged with the first card settings
+// Replicates the logic from frontend/src/metabase/dashboard/components/DashCard/DashCard.tsx
+function getRawSeriesWithDashcardSettings(rawSeries, dashcardSettings) {
+  return rawSeries.map((series, index) => {
+    const isMainCard = index === 0;
+    if (isMainCard) {
+      return {
+        ...series,
+        card: extendCardWithDashcardSettings(series.card, dashcardSettings),
+      };
+    }
+    return series;
+  });
+}
+
 export function RenderChart(rawSeries, dashcardSettings, colors) {
   const getColor = createColorGetter(colors);
   const renderingContext = {
@@ -38,13 +56,18 @@ export function RenderChart(rawSeries, dashcardSettings, colors) {
     fontFamily: "Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif",
   };
 
-  const props = {
+  const rawSeriesWithDashcardSettings = getRawSeriesWithDashcardSettings(
     rawSeries,
     dashcardSettings,
-    renderingContext,
-  };
+  );
+  const rawSeriesWithRemappings = extractRemappings(
+    rawSeriesWithDashcardSettings,
+  );
 
   return ReactDOMServer.renderToStaticMarkup(
-    <StaticVisualization {...props} />,
+    <StaticVisualization
+      rawSeries={rawSeriesWithRemappings}
+      renderingContext={renderingContext}
+    />,
   );
 }

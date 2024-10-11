@@ -11,6 +11,7 @@ import {
   addOrUpdateDashboardCard,
   appBar,
   assertQueryBuilderRowCount,
+  changeSynchronousBatchUpdateSetting,
   commandPalette,
   commandPaletteSearch,
   createDashboardWithTabs,
@@ -1456,6 +1457,12 @@ describe("issues 15279 and 24500", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    changeSynchronousBatchUpdateSetting(true);
+  });
+
+  afterEach(() => {
+    cy.signInAsAdmin();
+    changeSynchronousBatchUpdateSetting(false);
   });
 
   it("corrupted dashboard filter should still appear in the UI without breaking other filters (metabase#15279, metabase#24500)", () => {
@@ -2710,16 +2717,14 @@ describe("issue 42829", () => {
     drillAndVerifyResults();
   });
 
-  // param_fields is null for public dashboards, should be fixed on the BE
-  it.skip("should be able to get field values coming from a sql model-based question in a public dashboard (metabase#42829)", () => {
+  it("should be able to get field values coming from a sql model-based question in a public dashboard (metabase#42829)", () => {
     cy.get("@dashboardId").then(dashboardId =>
       visitPublicDashboard(dashboardId),
     );
     filterAndVerifyResults();
   });
 
-  // param_fields is null for embedded dashboards, should be fixed on the BE
-  it.skip("should be able to get field values coming from a sql model-based question in a embedded dashboard (metabase#42829)", () => {
+  it("should be able to get field values coming from a sql model-based question in a embedded dashboard (metabase#42829)", () => {
     cy.get("@dashboardId").then(dashboardId =>
       visitEmbeddedPage({
         resource: { dashboard: dashboardId },

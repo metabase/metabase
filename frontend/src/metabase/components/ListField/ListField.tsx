@@ -137,7 +137,7 @@ export const ListField = ({
             <Checkbox
               data-testid={`${option[0]}-filter-value`}
               checkedColor={
-                checkedColor ?? isDashboardFilter ? "brand" : "filter"
+                (checkedColor ?? isDashboardFilter) ? "brand" : "filter"
               }
               checked={selectedValues.has(option[0])}
               label={<LabelWrapper>{optionRenderer(option)}</LabelWrapper>}

@@ -71,15 +71,15 @@ function DeleteGroupModal({
     apiKeysCount === 0
       ? t`Remove this group?`
       : apiKeysCount === 1
-      ? t`Are you sure you want remove this group and its API key?`
-      : t`Are you sure you want remove this group and its API keys?`;
+        ? t`Are you sure you want remove this group and its API key?`
+        : t`Are you sure you want remove this group and its API keys?`;
 
   const confirmButtonText =
     apiKeysCount === 0
       ? t`Remove group`
       : apiKeysCount === 1
-      ? t`Remove group and API key`
-      : t`Remove group and API keys`;
+        ? t`Remove group and API key`
+        : t`Remove group and API keys`;
 
   return (
     <ModalContent title={modalTitle} onClose={onClose}>
@@ -300,8 +300,9 @@ function GroupsTable({
             index={index}
             apiKeys={
               isDefaultGroup(group)
-                ? apiKeys ?? []
-                : apiKeys?.filter(apiKey => apiKey.group.id === group.id) ?? []
+                ? (apiKeys ?? [])
+                : (apiKeys?.filter(apiKey => apiKey.group.id === group.id) ??
+                  [])
             }
             groupBeingEdited={groupBeingEdited}
             onEditGroupClicked={onEditGroupClicked}

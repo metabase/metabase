@@ -23,6 +23,9 @@ export type DatabaseItem = {
 
 export type SchemaItem = {
   id: SchemaName;
+  dbId: DatabaseId;
+  dbName: string | undefined;
+  isOnlySchema: boolean;
   name: string;
   model: "schema";
 };
@@ -55,12 +58,17 @@ export type TablePickerValue = {
 
 export type DataPickerValue = TablePickerValue | QuestionItem | ModelItem;
 
-export type NotebookDataPickerFolderItem =
-  | CollectionItem
-  | DatabaseItem
-  | SchemaItem;
+export type DataPickerFolderItem = CollectionItem | DatabaseItem | SchemaItem;
 
-export type NotebookDataPickerValueItem = TableItem | QuestionItem | ModelItem;
+export type DataPickerValueItem = TableItem | QuestionItem | ModelItem;
+
+export type DataPickerItem = DataPickerFolderItem | DataPickerValueItem;
 
 export type DataPickerModalOptions = EntityPickerModalOptions &
   QuestionPickerOptions;
+
+export type TablePickerStatePath = [
+  DatabaseId | undefined,
+  SchemaName | undefined,
+  TableId | undefined,
+];

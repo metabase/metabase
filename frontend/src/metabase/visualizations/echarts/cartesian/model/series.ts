@@ -275,11 +275,14 @@ export const getDimensionModel = (
   return {
     column: cardsColumns[0].dimension.column,
     columnIndex: cardsColumns[0].dimension.index,
-    columnByCardId: rawSeries.reduce((columnByCardId, series, index) => {
-      const cardColumns = cardsColumns[index];
-      columnByCardId[series.card.id] = cardColumns.dimension.column;
-      return columnByCardId;
-    }, {} as Record<CardId, DatasetColumn>),
+    columnByCardId: rawSeries.reduce(
+      (columnByCardId, series, index) => {
+        const cardColumns = cardsColumns[index];
+        columnByCardId[series.card.id] = cardColumns.dimension.column;
+        return columnByCardId;
+      },
+      {} as Record<CardId, DatasetColumn>,
+    ),
   };
 };
 
@@ -534,12 +537,15 @@ export function getDisplaySeriesSettingsByDataKey(
   stackModels: StackModel[] | null,
   settings: ComputedVisualizationSettings,
 ) {
-  const seriesSettingsByKey = seriesModels.reduce((acc, seriesModel) => {
-    acc[seriesModel.dataKey] = settings.series(
-      seriesModel.legacySeriesSettingsObjectKey,
-    );
-    return acc;
-  }, {} as Record<DataKey, SeriesSettings>);
+  const seriesSettingsByKey = seriesModels.reduce(
+    (acc, seriesModel) => {
+      acc[seriesModel.dataKey] = settings.series(
+        seriesModel.legacySeriesSettingsObjectKey,
+      );
+      return acc;
+    },
+    {} as Record<DataKey, SeriesSettings>,
+  );
 
   if (stackModels != null) {
     stackModels.forEach(({ display, seriesKeys }) => {

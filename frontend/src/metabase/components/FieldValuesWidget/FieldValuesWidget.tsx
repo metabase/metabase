@@ -192,9 +192,8 @@ export function FieldValuesWidgetInner({
         newOptions = values;
         newValuesMode = has_more_values ? "search" : newValuesMode;
       } else if (canUseParameterEndpoints(parameter)) {
-        const { values, has_more_values } = await dispatchFetchParameterValues(
-          query,
-        );
+        const { values, has_more_values } =
+          await dispatchFetchParameterValues(query);
         newOptions = values;
         newValuesMode = has_more_values ? "search" : newValuesMode;
       } else {

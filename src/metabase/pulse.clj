@@ -400,7 +400,7 @@
 
 (defmethod notification [:pulse :email]
   [{pulse-id :id, pulse-name :name, dashboard-id :dashboard_id, :as pulse} parts {:keys [recipients]}]
-  (log/debug (u/format-color :cyan "Sending Pulse (%s: %s) with %s Cards via email"
+  (log/debug (u/format-color :cyan "Rendering Pulse (%s: %s) with %s Cards via email"
                              pulse-id (pr-str pulse-name) (parts->cards-count parts)))
   (let [user-recipients     (filter (fn [recipient] (and (u/email? (:email recipient))
                                                          (some? (:id recipient)))) recipients)
@@ -420,7 +420,7 @@
   [{pulse-id :id, pulse-name :name, dashboard-id :dashboard_id, :as pulse}
    parts
    {{channel-id :channel} :details}]
-  (log/debug (u/format-color :cyan "Sending Pulse (%s: %s) with %s Cards via Slack"
+  (log/debug (u/format-color :cyan "Rendering Pulse (%s: %s) with %s Cards via Slack"
                              pulse-id (pr-str pulse-name) (parts->cards-count parts)))
   (let [dashboard (t2/select-one Dashboard :id dashboard-id)]
     {:channel-id  channel-id
@@ -431,7 +431,7 @@
 
 (defmethod notification [:alert :email]
   [{:keys [id] :as pulse} parts channel]
-  (log/debugf "Sending Alert (%s: %s) via email" id name)
+  (log/debugf "Rendering Alert (%s: %s) via email" id name)
   (let [condition-kwd       (messages/pulse->alert-condition-kwd pulse)
         email-subject       (trs "Alert: {0} has {1}"
                                  (first-question-name pulse)
@@ -452,7 +452,7 @@
 
 (defmethod notification [:alert :slack]
   [pulse parts {{channel-id :channel} :details}]
-  (log/debug (u/format-color :cyan "Sending Alert (%s: %s) via Slack" (:id pulse) (:name pulse)))
+  (log/debug (u/format-color :cyan "Rendering Alert (%s: %s) via Slack" (:id pulse) (:name pulse)))
   {:channel-id  channel-id
    :attachments (cons {:blocks [{:type "header"
                                  :text {:type "plain_text"
@@ -502,11 +502,14 @@
 ;;; |                                             Sending Notifications                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defn- slack-or-email
+  [{:keys [channel-id]}]
+  (if channel-id :slack :email))
+
 (defmulti ^:private send-notification!
   "Invokes the side-effecty function for sending emails/slacks depending on the notification type"
-  {:arglists '([pulse-or-alert])}
-  (fn [{:keys [channel-id]}]
-    (if channel-id :slack :email)))
+  {:arglists '([notification])}
+  slack-or-email)
 
 (defmethod send-notification! :slack
   [{:keys [channel-id message attachments]}]
@@ -530,14 +533,22 @@
 (defn- send-notification-retrying!
   "Like [[send-notification!]] but retries sending on errors according to the retry settings."
   [& args]
-  (apply (retry/decorate send-notification!) args))
+  (let [f (fn [pulse-id notification]
+            (let [channel-name (name (slack-or-email notification))]
+              (try
+                (log/debugf "[Pulse %d] Sending to %s channel" pulse-id channel-name)
+                (send-notification! notification)
+                (catch Exception e
+                  (log/warnf e "[Pulse %d] Error sending to %s channel. Retrying..." pulse-id channel-name)
+                  (throw e)))))]
+    (apply (retry/decorate f) args)))
 
-(defn- send-notifications! [notifications]
+(defn- send-notifications! [pulse-id notifications]
   (doseq [notification notifications]
     ;; do a try-catch around each notification so if one fails, we'll still send the other ones for example, an Alert
     ;; set up to send over both Slack & email: if Slack fails, we still want to send the email (#7409)
     (try
-      (send-notification-retrying! notification)
+      (send-notification-retrying! pulse-id notification)
       (catch Throwable e
         (log/error e "Error sending notification!")))))
 
@@ -559,6 +570,8 @@
                       ;; This is usually already done by this step, in the `send-pulses` task which uses `retrieve-pulse`
                       ;; to fetch the Pulse.
                       pulse/hydrate-notification
-                      (merge (when channel-ids {:channel-ids channel-ids})))]
+                      (merge (when channel-ids {:channel-ids channel-ids})))
+        notifications (pulse->notifications pulse dashboard)]
     (when (not (:archived dashboard))
-      (send-notifications! (pulse->notifications pulse dashboard)))))
+      (log/debugf "[Pulse %d] Sending %d notifications" (:id pulse) (count notifications))
+      (send-notifications! (:id pulse) notifications))))

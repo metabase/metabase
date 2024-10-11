@@ -337,6 +337,7 @@
 
 (defsetting entity-id-translation-counter
   (deferred-tru "A counter for tracking the number of entity_id -> id translations. Whenever we call [[model->entity-ids->ids]], we increment this counter by the number of translations.")
+  :encryption :no
   :visibility :internal
   :export?    false
   :audit      :never

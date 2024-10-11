@@ -25,9 +25,9 @@ export const SEARCH_MODELS = [
   "metric",
 ] as const;
 
-export type EnabledSearchModel = typeof ENABLED_SEARCH_MODELS[number];
+export type EnabledSearchModel = (typeof ENABLED_SEARCH_MODELS)[number];
 
-export type SearchModel = typeof SEARCH_MODELS[number];
+export type SearchModel = (typeof SEARCH_MODELS)[number];
 
 export interface SearchScore {
   weight: number;

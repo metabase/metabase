@@ -1,6 +1,7 @@
 import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
+  blockUserGroupPermissions,
   describeEE,
   openNativeEditor,
   popover,
@@ -10,6 +11,7 @@ import {
   setFilterListSource,
   setFilterQuestionSource,
   setTokenFeatures,
+  updateSetting,
   visitEmbeddedPage,
   visitPublicQuestion,
   visitQuestion,
@@ -42,7 +44,7 @@ describe("scenarios > filters > sql filters > values source", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    cy.request("PUT", "/api/setting/enable-public-sharing", { value: true });
+    updateSetting("enable-public-sharing", true);
     cy.intercept("POST", "/api/dataset").as("dataset");
     cy.intercept("GET", "/api/session/properties").as("sessionProperties");
     cy.intercept("PUT", "/api/card/*").as("updateQuestion");
@@ -349,9 +351,10 @@ describe("scenarios > filters > sql filters > values source", () => {
 
 describeEE("scenarios > filters > sql filters > values source", () => {
   beforeEach(() => {
-    restore("default-ee");
+    restore();
     cy.signInAsAdmin();
     setTokenFeatures("all");
+    blockUserGroupPermissions(USER_GROUPS.ALL_USERS_GROUP);
     cy.intercept("POST", "/api/dataset/parameter/values").as("parameterValues");
     cy.intercept("GET", "/api/card/*/params/*/values").as(
       "cardParameterValues",
@@ -371,7 +374,7 @@ describeEE("scenarios > filters > sql filters > values source", () => {
     cy.sandboxTable({
       table_id: PRODUCTS_ID,
       attribute_remappings: {
-        attr_uid: ["dimension", ["field", PRODUCTS.ID, null]],
+        attr_cat: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
       },
     });
 
@@ -390,8 +393,9 @@ describeEE("scenarios > filters > sql filters > values source", () => {
     FieldFilter.openEntryForm();
     cy.wait("@cardParameterValues");
     checkFilterValueNotInList("Gadget");
+    checkFilterValueNotInList("Gizmo");
     checkFilterValueNotInList("Doohickey");
-    FieldFilter.selectFilterValueFromList("Gizmo");
+    FieldFilter.selectFilterValueFromList("Widget");
   });
 });
 

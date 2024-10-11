@@ -25,6 +25,7 @@
 
 (defsetting application-name
   (deferred-tru "Replace the word “Metabase” wherever it appears.")
+  :encryption :no
   :visibility :public
   :export?    true
   :type       :string
@@ -69,12 +70,64 @@
   :audit   :getter
   :default true)
 
+(defsetting site-uuid
+  ;; Don't i18n this docstring because it's not user-facing! :)
+  "Unique identifier used for this instance of {0}. This is set once and only once the first time it is fetched via
+  its magic getter. Nice!"
+  :encryption :no
+  :visibility :authenticated
+  :base       setting/uuid-nonce-base
+  :doc        false)
+
+(defsetting upgrade-threshold
+  (deferred-tru "Threshold (value in 0-100) indicating at which treshold it should offer an upgrade to the latest major version.")
+  :visibility :internal
+  :export?    false
+  :type       :integer
+  :setter     :none
+  :getter     (fn []
+                ;; site-uuid is stable, current-major lets the threshold randomize during each major revision. So they
+                ;; might be early one release, and then later the next.
+                (-> (site-uuid) (str "-" (config/current-major-version)) hash (mod 100))))
+
+(defn- prevent-upgrade?
+  "On a major upgrade, we check the rollout threshold to indicate whether we should remove the latest release from the
+  version info. This lets us stage upgrade notifications to self-hosted instances in a controlled manner. Defaults to
+  show the upgrade except under certain circumstances."
+  [current-major latest threshold]
+  (when (and (integer? current-major) (integer? threshold) (string? (:version latest)))
+    (try (let [upgrade-major (-> latest :version config/major-version)
+               rollout       (some-> latest :rollout)]
+           (when (and upgrade-major rollout)
+             (cond
+               ;; it's the same or a minor release
+               (= upgrade-major current-major) false
+               ;; the rollout threshold is larger than our threshold
+               (>= rollout threshold) false
+               :else true)))
+         (catch Exception _e true))))
+
+(defn- version-info*
+  [raw-version-info {:keys [current-major upgrade-threshold-value]}]
+  (try
+    (cond-> raw-version-info
+      (prevent-upgrade? current-major (-> raw-version-info :latest) upgrade-threshold-value)
+      (dissoc :latest))
+    (catch Exception e
+      (log/error e "Error processing version info")
+      raw-version-info)))
+
 (defsetting version-info
   (deferred-tru "Information about available versions of Metabase.")
-  :type    :json
-  :audit   :never
-  :default {}
-  :doc     false)
+  :encryption :no
+  :type       :json
+  :audit      :never
+  :default    {}
+  :doc        false
+  :getter     (fn []
+                (let [raw-vi (setting/get-value-of-type :json :version-info)
+                      current-major (config/current-major-version)]
+                  (version-info* raw-vi {:current-major current-major :upgrade-threshold-value (upgrade-threshold)}))))
 
 (defsetting version-info-last-checked
   (deferred-tru "Indicates when Metabase last checked for new versions.")
@@ -95,6 +148,7 @@
 (defsetting site-name
   (deferred-tru "The name used for this instance of {0}."
                 (application-name-for-setting-descriptions))
+  :encryption :no
   :default    "Metabase"
   :audit      :getter
   :visibility :settings-manager
@@ -102,6 +156,7 @@
 
 (defsetting custom-homepage
   (deferred-tru "Pick one of your dashboards to serve as homepage. Users without dashboard access will be directed to the default homepage.")
+  :encryption :no
   :default    false
   :type       :boolean
   :audit      :getter
@@ -109,17 +164,10 @@
 
 (defsetting custom-homepage-dashboard
   (deferred-tru "ID of dashboard to use as a homepage")
+  :encryption :no
   :type       :integer
   :visibility :public
   :audit      :getter)
-
-(defsetting site-uuid
-  ;; Don't i18n this docstring because it's not user-facing! :)
-  "Unique identifier used for this instance of {0}. This is set once and only once the first time it is fetched via
-  its magic getter. Nice!"
-  :visibility :authenticated
-  :base       setting/uuid-nonce-base
-  :doc        false)
 
 (defsetting site-uuid-for-premium-features-token-checks
   "In the interest of respecting everyone's privacy and keeping things as anonymous as possible we have a *different*
@@ -128,6 +176,7 @@
   in [[metabase.public-settings.premium-features/fetch-token-status]]. (`site-uuid` is used for anonymous
   analytics/stats and if we sent it along with the premium features token check API request it would no longer be
   anonymous.)"
+  :encryption :when-encryption-key-set
   :visibility :internal
   :base       setting/uuid-nonce-base
   :doc        false)
@@ -135,12 +184,14 @@
 (defsetting site-uuid-for-version-info-fetching
   "A *different* site-wide UUID that we use for the version info fetching API calls. Do not use this for any other
   applications. (See [[site-uuid-for-premium-features-token-checks]] for more reasoning.)"
+  :encryption :when-encryption-key-set
   :visibility :internal
   :base       setting/uuid-nonce-base)
 
 (defsetting site-uuid-for-unsubscribing-url
   "UUID that we use for generating urls users to unsubscribe from alerts. The hash is generated by
   hash(secret_uuid + email + subscription_id) = url. Do not use this for any other applications. (See #29955)"
+  :encryption :when-encryption-key-set
   :visibility :internal
   :base       setting/uuid-nonce-base)
 
@@ -164,6 +215,7 @@
   (deferred-tru
    (str "This URL is used for things like creating links in emails, auth redirects, and in some embedding scenarios, "
         "so changing it could break functionality or get you locked out of this instance."))
+  :encryption :when-encryption-key-set
   :visibility :public
   :audit      :getter
   :getter     (fn []
@@ -191,6 +243,7 @@
   :visibility :public
   :export?    true
   :audit      :getter
+  :encryption :no
   :getter     (fn []
                 (let [value (setting/get-value-of-type :string :site-locale)]
                   (when (i18n/available-locale? value)
@@ -204,6 +257,7 @@
 (defsetting admin-email
   (deferred-tru "The email address users should be referred to if they encounter a problem.")
   :visibility :authenticated
+  :encryption :when-encryption-key-set
   :audit      :getter)
 
 (defsetting anon-tracking-enabled
@@ -216,6 +270,7 @@
 
 (defsetting map-tile-server-url
   (deferred-tru "The map tile server URL template used in map visualizations, for example from OpenStreetMaps or MapBox.")
+  :encryption :no
   :default    "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
   :visibility :public
   :audit      :getter)
@@ -232,6 +287,7 @@
 
 (defsetting landing-page
   (deferred-tru "Enter a URL of the landing page to show the user. This overrides the custom homepage setting above.")
+  :encryption :no
   :visibility :public
   :export?    true
   :type       :string
@@ -277,6 +333,7 @@
 
 (defsetting persisted-model-refresh-cron-schedule
   (deferred-tru "cron syntax string to schedule refreshing persisted models.")
+  :encryption :no
   :type       :string
   :default    "0 0 0/6 * * ? *"
   :visibility :admin
@@ -318,6 +375,7 @@
 
 (defsetting notification-link-base-url
   (deferred-tru "By default \"Site Url\" is used in notification links, but can be overridden.")
+  :encryption :no
   :visibility :internal
   :type       :string
   :feature    :whitelabel
@@ -327,12 +385,14 @@
 
 (defsetting deprecation-notice-version
   (deferred-tru "Metabase version for which a notice about usage of deprecated features has been shown.")
+  :encryption :no
   :visibility :admin
   :doc        false
   :audit      :never)
 
 (defsetting loading-message
   (deferred-tru "Choose the message to show while a query is running.")
+  :encryption :no
   :visibility :public
   :export?    true
   :feature    :whitelabel
@@ -342,6 +402,7 @@
 
 (defsetting application-colors
   (deferred-tru "Choose the colors used in the user interface throughout Metabase and others specifically for the charts. You need to refresh your browser to see your changes take effect.")
+  :encryption :no
   :visibility :public
   :export?    true
   :type       :json
@@ -375,6 +436,7 @@ To change the chart colors:
 
 (defsetting application-font
   (deferred-tru "Replace “Lato” as the font family.")
+  :encryption :no
   :visibility :public
   :export?    true
   :type       :string
@@ -389,6 +451,7 @@ To change the chart colors:
 
 (defsetting application-font-files
   (deferred-tru "Tell us where to find the file for each font weight. You don’t need to include all of them, but it’ll look better if you do.")
+  :encryption :no
   :visibility :public
   :export?    true
   :type       :json
@@ -425,6 +488,7 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting application-logo-url
   (deferred-tru "Upload a file to replace the Metabase logo on the top bar.")
+  :encryption :no
   :visibility :public
   :export?    true
   :type       :string
@@ -435,6 +499,7 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting application-favicon-url
   (deferred-tru "Upload a file to use as the favicon.")
+  :encryption :no
   :visibility :public
   :export?    true
   :type       :string
@@ -453,6 +518,7 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting login-page-illustration
   (deferred-tru "Options for displaying the illustration on the login page.")
+  :encryption :no
   :visibility :public
   :export?    true
   :type       :string
@@ -462,6 +528,7 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting login-page-illustration-custom
   (deferred-tru "The custom illustration for the login page.")
+  :encryption :no
   :visibility :public
   :export?    true
   :type       :string
@@ -470,6 +537,7 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting landing-page-illustration
   (deferred-tru "Options for displaying the illustration on the landing page.")
+  :encryption :no
   :visibility :public
   :export?    true
   :type       :string
@@ -479,6 +547,7 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting landing-page-illustration-custom
   (deferred-tru "The custom illustration for the landing page.")
+  :encryption :no
   :visibility :public
   :export?    true
   :type       :string
@@ -487,6 +556,7 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting no-data-illustration
   (deferred-tru "Options for displaying the illustration when there are no results after running a question.")
+  :encryption :no
   :visibility :public
   :export?    true
   :type       :string
@@ -496,6 +566,7 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting no-data-illustration-custom
   (deferred-tru "The custom illustration for when there are no results after running a question.")
+  :encryption :no
   :visibility :public
   :export?    true
   :type       :string
@@ -504,6 +575,7 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting no-object-illustration
   (deferred-tru "Options for displaying the illustration when there are no results after searching.")
+  :encryption :no
   :visibility :public
   :export?    true
   :type       :string
@@ -513,6 +585,7 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting no-object-illustration-custom
   (deferred-tru "The custom illustration for when there are no results after searching.")
+  :encryption :no
   :visibility :public
   :export?    true
   :type       :string
@@ -554,6 +627,7 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting help-link-custom-destination
   (deferred-tru "Custom URL for the help link.")
+  :encryption :no
   :visibility :public
   :type       :string
   :audit      :getter
@@ -606,6 +680,7 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting custom-formatting
   (deferred-tru "Object keyed by type, containing formatting settings")
+  :encryption :no
   :type       :json
   :export?    true
   :default    {}
@@ -653,6 +728,7 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting source-address-header
   (deferred-tru "Identify the source of HTTP requests by this header's value, instead of its remote address.")
+  :encryption :no
   :default "X-Forwarded-For"
   :export? true
   :audit   :getter
@@ -694,6 +770,7 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting has-sample-database?
   "Whether this instance has a Sample Database database"
+  :type       :boolean
   :visibility :authenticated
   :setter     :none
   :getter     (fn [] (t2/exists? :model/Database, :is_sample true))
@@ -848,6 +925,7 @@ See [fonts](../configuring-metabase/fonts.md).")
 (defsetting uploads-schema-name
   (deferred-tru "Schema name for uploads")
   :deprecated "0.50.0"
+  :encryption :no
   :visibility :internal
   :export?    false
   :type       :string
@@ -856,6 +934,7 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting uploads-table-prefix
   (deferred-tru "Prefix for upload table names")
+  :encryption :no
   :deprecated "0.50.0"
   :visibility :internal
   :export?    false
@@ -869,6 +948,7 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting uploads-settings
   (deferred-tru "Upload settings")
+  :encryption :when-encryption-key-set ; this doesn't really have an effect as this setting is not stored as a setting model
   :visibility :authenticated
   :export?    false ; the data is exported with a database export, so we don't need to export a setting
   :type       :json

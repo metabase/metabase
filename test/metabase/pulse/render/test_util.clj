@@ -16,6 +16,7 @@
    [metabase.pulse.util :as pu]
    [metabase.query-processor :as qp]
    [metabase.query-processor.card :as qp.card]
+   [metabase.query-processor.pivot :as qp.pivot]
    [toucan2.core :as t2])
   (:import
    (org.apache.batik.anim.dom SVGOMDocument AbstractElement$ExtendedNamedNodeHashMap)
@@ -247,10 +248,30 @@
             hik/parse
             hik/as-hickory)))))
 
+(defn render-pivot-card-as-hickory!
+  "Render the card with `card-id` using the pivot qp and the static-viz rendering pipeline as a hickory data structure.
+  Redefines some internal rendering functions to keep svg from being rendered into a png. Functions from `hickory.select`
+  can be used on the output of this function and are particularly useful for writing test assertions."
+  [card-id]
+  (let [{:keys [visualization_settings] :as card} (t2/select-one :model/Card :id card-id)
+        query                                     (qp.card/query-for-card card [] nil {:process-viz-settings? true} nil)
+        results                                   (qp.pivot/run-pivot-query (assoc query :viz-settings visualization_settings))]
+    (with-redefs [js-svg/svg-string->bytes       identity
+                  image-bundle/make-image-bundle (fn [_ s]
+                                                   {:image-src   s
+                                                    :render-type :inline})]
+      (let [content (-> (render/render-pulse-card :inline "UTC" card nil results)
+                        :content)]
+        (-> content
+            (edit-nodes img-node-with-svg? img-node->svg-node) ;; replace the :img tag with its parsed SVG.
+            hiccup/html
+            hik/parse
+            hik/as-hickory)))))
+
 (defn render-dashcard-as-hickory
-  "Render the dashcard with `dashcard-id` using the static-viz rendering pipeline as a hickory data structure.
-  Redefines some internal rendering functions to keep svg from being rendered into a png.
-  Functions from `hickory.select` can be used on the output of this function and are particularly useful for writing test assertions."
+  "Render the dashcard with `dashcard-id` using the static-viz rendering pipeline as a hickory data structure. Redefines
+  some internal rendering functions to keep svg from being rendered into a png. Functions from `hickory.select` can be
+  used on the output of this function and are particularly useful for writing test assertions."
   ([dashcard-id] (render-dashcard-as-hickory dashcard-id []))
   ([dashcard-id parameters]
    (let [dashcard                  (t2/select-one :model/DashboardCard :id dashcard-id)
