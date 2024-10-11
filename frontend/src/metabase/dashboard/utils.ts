@@ -143,19 +143,21 @@ export function showVirtualDashCardInfoText(
   }
 }
 
-export function getAllDashboardCards(dashboard: Dashboard) {
+export function getAllDashboardCards(dashboard: Dashboard | null) {
+  if (!dashboard) {
+    return [];
+  }
+
   const results = [];
-  if (dashboard) {
-    for (const dashcard of dashboard.dashcards) {
-      const cards = [dashcard.card].concat((dashcard as any).series || []);
-      results.push(...cards.map(card => ({ card, dashcard })));
-    }
+  for (const dashcard of dashboard.dashcards) {
+    const cards = [dashcard.card].concat((dashcard as any).series || []);
+    results.push(...cards.map(card => ({ card, dashcard })));
   }
   return results;
 }
 
 export function getCurrentTabDashboardCards(
-  dashboard: Dashboard,
+  dashboard: Dashboard | null,
   selectedTabId: SelectedTabId,
 ) {
   return getAllDashboardCards(dashboard).filter(

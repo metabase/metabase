@@ -9,11 +9,10 @@ import { combineReducers, handleActions } from "metabase/lib/redux";
 
 import {
   ADD_CARD_TO_DASH,
+  ADD_DASHCARD_IDS_TO_LOADING_QUEUE,
   ADD_MANY_CARDS_TO_DASH,
   CANCEL_FETCH_CARD_DATA,
   CLEAR_CARD_DATA,
-  FETCH_CARD_DATA,
-  FETCH_CARD_DATA_PENDING,
   FETCH_DASHBOARD_CARD_DATA,
   INITIALIZE,
   MARK_NEW_CARD_SEEN,
@@ -29,6 +28,7 @@ import {
   UNDO_REMOVE_CARD_FROM_DASH,
   UPDATE_DASHCARD_VISUALIZATION_SETTINGS,
   UPDATE_DASHCARD_VISUALIZATION_SETTINGS_FOR_COLUMN,
+  fetchCardDataAction,
   fetchDashboard,
   tabsReducer,
 } from "./actions";
@@ -160,7 +160,7 @@ const dashcardData = handleActions(
       next: (state, { payload: { clearCache = true } = {} }) =>
         clearCache ? {} : state,
     },
-    [FETCH_CARD_DATA]: {
+    [fetchCardDataAction.fulfilled]: {
       next: (state, { payload: { dashcard_id, card_id, result } }) =>
         assocIn(state, [dashcard_id, card_id], result),
     },
@@ -234,7 +234,7 @@ const loadingDashCards = handleActions(
         };
       },
     },
-    [FETCH_CARD_DATA_PENDING]: {
+    [ADD_DASHCARD_IDS_TO_LOADING_QUEUE]: {
       next: (state, { payload: { dashcard_id } }) => {
         const loadingIds = !state.loadingIds.includes(dashcard_id)
           ? state.loadingIds.concat(dashcard_id)
@@ -245,7 +245,7 @@ const loadingDashCards = handleActions(
         };
       },
     },
-    [FETCH_CARD_DATA]: {
+    [fetchCardDataAction.fulfilled]: {
       next: (state, { payload: { dashcard_id, currentTime } }) => {
         const loadingIds = state.loadingIds.filter(id => id !== dashcard_id);
         return {
