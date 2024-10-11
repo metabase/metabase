@@ -30,13 +30,7 @@ import MoveEventModal from "metabase/timelines/questions/containers/MoveEventMod
 import NewEventModal from "metabase/timelines/questions/containers/NewEventModal";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type {
-  Alert,
-  Card,
-  CollectionId,
-  DashboardTabId,
-  User,
-} from "metabase-types/api";
+import type { Alert, Card, CollectionId, User } from "metabase-types/api";
 import type { QueryBuilderMode } from "metabase-types/store";
 
 interface QueryModalsProps {
@@ -123,7 +117,7 @@ export function QueryModals({
   );
 
   const nativeToDashboarQuestionDashboard = useCallback(
-    (question: Question, tabId?: DashboardTabId) => {
+    (question: Question) => {
       const dashboardId = question.dashboardId();
 
       if (!dashboardId) {
@@ -131,26 +125,14 @@ export function QueryModals({
       }
 
       dispatch(
-        push(
-          Urls.dashboard(
-            { id: dashboardId, name: "" },
-            {
-              editMode: true,
-              addCardWithId: question.id(),
-              tabId,
-            },
-          ),
-        ),
+        push(Urls.dashboard({ id: dashboardId, name: "" }, { editMode: true })),
       );
     },
     [dispatch],
   );
 
   const handleSaveModalCreate = useCallback(
-    async (
-      question: Question,
-      options?: { dashboardTabId?: DashboardTabId },
-    ) => {
+    async (question: Question) => {
       const newQuestion = await onCreate(question);
       const type = question.type();
       const isDashboardQuestion = _.isNumber(question.dashboardId());
@@ -159,7 +141,7 @@ export function QueryModals({
         onCloseModal();
         setQueryBuilderMode("view");
       } else if (isDashboardQuestion) {
-        nativeToDashboarQuestionDashboard(newQuestion, options?.dashboardTabId);
+        nativeToDashboarQuestionDashboard(newQuestion);
       } else {
         onOpenModal(MODAL_TYPES.SAVED);
       }
