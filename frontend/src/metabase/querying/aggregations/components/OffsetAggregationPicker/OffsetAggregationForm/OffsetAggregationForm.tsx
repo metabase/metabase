@@ -73,7 +73,7 @@ export function OffsetAggregationForm({
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
     const newClause = getOffsetClause(query, stageIndex, aggregation, options);
-    const newQuery = applyOffset(query, stageIndex, column, newClause, options);
+    const newQuery = applyOffset(query, stageIndex, newClause, options);
     onSubmit(newQuery, [newClause]);
   };
 

@@ -74,7 +74,10 @@ function getGroupBreakoutInfo(
     const bucket = Lib.temporalBucket(breakout);
     if (bucket != null) {
       const bucketInfo = Lib.displayInfo(query, stageIndex, bucket);
-      return { breakoutIndex, breakoutUnit: bucketInfo.shortName };
+      const breakoutUnit = bucketInfo.shortName;
+      if (OFFSET_UNITS[breakoutUnit]) {
+        return { breakoutIndex, breakoutUnit };
+      }
     }
   }
 }
@@ -223,15 +226,14 @@ export function getIncludeCurrentLabel(offsetUnit: TemporalUnit) {
 export function applyOffset(
   query: Lib.Query,
   stageIndex: number,
-  column: Lib.ColumnMetadata,
   offset: Lib.ExpressionClause,
   options: OffsetOptions,
 ) {
   let newQuery = query;
   newQuery = Lib.aggregate(newQuery, stageIndex, offset);
-  newQuery = removeExtraBreakouts(newQuery, stageIndex, column, options);
-  newQuery = applyOffsetBreakout(newQuery, stageIndex, column, options);
-  newQuery = applyGroupBreakout(newQuery, stageIndex, column, options);
+  newQuery = removeExtraBreakouts(newQuery, stageIndex, options);
+  newQuery = applyOffsetBreakout(newQuery, stageIndex, options);
+  newQuery = applyGroupBreakout(newQuery, stageIndex, options);
   return newQuery;
 }
 
@@ -331,9 +333,9 @@ function applyBreakout(
 function applyGroupBreakout(
   query: Lib.Query,
   stageIndex: number,
-  column: Lib.ColumnMetadata,
   { groupUnit }: OffsetOptions,
 ) {
+  const column = getBreakoutColumn(query, stageIndex);
   const bucket = findTemporalBucket(query, stageIndex, column, groupUnit);
   const columnWithBucket = Lib.withTemporalBucket(column, bucket);
   const breakoutInfo = getGroupBreakoutInfo(query, stageIndex, column);
@@ -343,13 +345,13 @@ function applyGroupBreakout(
 function applyOffsetBreakout(
   query: Lib.Query,
   stageIndex: number,
-  column: Lib.ColumnMetadata,
   { groupUnit, offsetUnit }: OffsetOptions,
 ) {
   if (offsetUnit === groupUnit) {
     return query;
   }
 
+  const column = getBreakoutColumn(query, stageIndex);
   const bucket = findTemporalBucket(query, stageIndex, column, offsetUnit);
   const columnWithBucket = Lib.withTemporalBucket(column, bucket);
   const breakoutInfo = getOffsetBreakoutInfo(
@@ -364,9 +366,9 @@ function applyOffsetBreakout(
 function removeExtraBreakouts(
   query: Lib.Query,
   stageIndex: number,
-  column: Lib.ColumnMetadata,
   { groupUnit }: OffsetOptions,
 ) {
+  const column = getBreakoutColumn(query, stageIndex);
   const { breakoutPositions = [] } = Lib.displayInfo(query, stageIndex, column);
   const breakouts = Lib.breakouts(query, stageIndex);
   const groupBreakoutInfo = getGroupBreakoutInfo(query, stageIndex, column);
