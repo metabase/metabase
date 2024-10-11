@@ -1,14 +1,9 @@
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
-<<<<<<< HEAD
-import type { EntityPickerTab } from "../../EntityPicker";
-=======
 import type { RecentItem } from "metabase-types/api";
 
-import type { CollectionPickerModel } from "../../CollectionPicker";
-import type { EntityTab } from "../../EntityPicker";
->>>>>>> 5f79aaac67 (replace dashcard flow)
+import type { EntityPickerTab } from "../../EntityPicker";
 import {
   EntityPickerModal,
   defaultOptions as defaultEntityPickerOptions,
