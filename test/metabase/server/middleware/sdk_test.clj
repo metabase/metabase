@@ -20,21 +20,21 @@
 
 (deftest bind-client-test
   (are [client]
-      (let [request (mock-request {:client client})
-            handler (sdk/embedding-mw
-                     (fn [_ respond _] (respond {:status 200 :body client})))
-            response (handler request identity identity)]
-        (is (= (:body response "no-body") client)))
+       (let [request (mock-request {:client client})
+             handler (sdk/embedding-mw
+                      (fn [_ respond _] (respond {:status 200 :body client})))
+             response (handler request identity identity)]
+         (is (= (:body response "no-body") client)))
     nil
     "embedding-iframe"))
 
 (deftest bind-client-version-test
   (are [version]
-      (let [request (mock-request {:version version})
-            handler (sdk/embedding-mw
-                     (fn [_ respond _] (respond {:status 200 :body version})))
-            response (handler request identity identity)]
-        (is (= (:body response "no-body") version)))
+       (let [request (mock-request {:version version})
+             handler (sdk/embedding-mw
+                      (fn [_ respond _] (respond {:status 200 :body version})))
+             response (handler request identity identity)]
+         (is (= (:body response "no-body") version)))
     nil
     "1.1.1"))
 
