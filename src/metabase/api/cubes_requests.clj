@@ -14,17 +14,16 @@
 (api/defendpoint GET "/"
   "Fetch all cubes requests."
   []
-  (->> (t2/select :cubes_requests)  ;; Updated table name
-       (into [])))  ;; Directly return results
+  (->> (t2/select :cubes_requests)
+       (into [])))
 
 (api/defendpoint GET "/:id"
   "Fetch a single cube request by ID."
   [id]
   {id ms/PositiveInt}
-  (let [result (t2/select-one :cubes_requests :id id)]  ;; Updated table name
-    ;; Ensure hydration only happens if needed
+  (let [result (t2/select-one :cubes_requests :id id)]
     (if result
-      (t2/hydrate result :db)  ;; Hydrate with necessary data if needed
+      (t2/hydrate result :db)
       result)))
 
 (api/defendpoint POST "/"
@@ -49,35 +48,68 @@
                             :type            type
                             :category        category}]
     (t2/with-transaction [_conn]
-      (let [cubes-request (api/check-500 (t2/insert! :cubes_requests cubes-request-data))]  ;; Insert without specifying "id"
+      (let [cubes-request (api/check-500 (t2/insert! :cubes_requests cubes-request-data))]
         cubes-request))))
+
+;; New POST endpoint for /register
+(api/defendpoint POST "/register"
+  "Register a new cube connection."
+  [:as {{:keys [projectName dockerfile dockerContextPath customGitUrl customGitBranch customGitBuildPath apiUrl token apiPort]} :body}]
+  {projectName ms/NonBlankString
+   dockerfile ms/NonBlankString
+   dockerContextPath ms/NonBlankString
+   customGitUrl ms/NonBlankString
+   customGitBranch ms/NonBlankString
+   customGitBuildPath ms/NonBlankString
+   apiUrl ms/NonBlankString
+   token ms/NonBlankString
+   apiPort ms/PositiveInt}
+  (let [register-data {:projectName        projectName
+                       :dockerfile         dockerfile
+                       :dockerContextPath  dockerContextPath
+                       :customGitUrl       customGitUrl
+                       :customGitBranch    customGitBranch
+                       :customGitBuildPath customGitBuildPath
+                       :apiUrl             apiUrl
+                       :token              token
+                       :apiPort            apiPort}]
+    (t2/with-transaction [_conn]
+      (let [register-result (api/check-500 (t2/insert! :cube_connections register-data))]
+        register-result))))
+
+;; New POST endpoint for /deploy
+(api/defendpoint POST "/deploy"
+  "Deploy a cube by project name."
+  [:as {{:keys [projectName]} :body}]
+  {projectName ms/NonBlankString}
+  (let [deploy-data {:projectName projectName}]
+    (t2/with-transaction [_conn]
+      ;; Insert deploy logic, if necessary, or trigger relevant actions
+      (let [deploy-result (api/check-500 (t2/insert! :cube_deployments deploy-data))]
+        deploy-result))))
 
 (derive :event/cubes_requests-update :metabase/event)
 
 (defn- write-check-and-update-cubes-request!
   "Check whether the current user has write permissions, then update `CubesRequest` fields."
   [id {:keys [description user admin_user verified_status in_semantic_layer name type category], :as body}]
-  ;; Logging incoming and existing data for debugging
   (println "Incoming body for update:" body)
 
-  (let [existing   (api/write-check CubesRequest id)  ;; Check write permissions
-        selected-fields (u/select-keys-when body       ;; Select fields to update
+  (let [existing   (api/write-check CubesRequest id)
+        selected-fields (u/select-keys-when body
                            :present #{:description :user :admin_user :verified_status :in_semantic_layer :name :type :category})
-        changes    (when-not (= selected-fields existing)  ;; Check if there are changes to apply
+        changes    (when-not (= selected-fields existing)
                      selected-fields)]
 
-    ;; Apply changes if there are any
     (when changes
       (let [update-result (t2/update! CubesRequest id changes)]
-        (println "Update result:" update-result)))  ;; Log the result of the update
+        (println "Update result:" update-result)))
 
-    ;; Fetch the updated entity
     (let [updated-entity (t2/select-one CubesRequest :id id)]
       (println "Updated entity fetched after update:" updated-entity)
       (when updated-entity
         (let [hydrated-entity (t2/hydrate updated-entity :db)]
-          ;; Ensure the event is correctly published with a valid topic
-          (events/publish-event! :event/cubes_requests-update  
+          (events/publish-event! :event/cubes_requests-update
                                  {:object hydrated-entity :user-id api/*current-user-id*})
           hydrated-entity)))))
 

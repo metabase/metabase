@@ -1,56 +1,111 @@
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
-import ReactFlow, {
-  useNodesState,
-  useEdgesState,
-  addEdge,
-  Background,
-  Controls,
-  MarkerType,
-  Edge,
-  ReactFlowInstance,
-} from "reactflow";
+import React, { useCallback, useMemo, useRef, useState } from "react";
+import ReactFlow, { useNodesState, useEdgesState, addEdge, Background, Controls, MarkerType, Edge, ReactFlowInstance } from "reactflow";
 import "reactflow/dist/style.css";
 import { Flex, Group, Title } from "metabase/ui";
 import { t } from "ttag";
 import NoResults from "assets/img/no_results.svg";
-import {
-  createGraphData,
-  createNewGraphData,
-  CubeData,
-  CubeFlowProps,
-  extractCubeName,
-  extractSQLInfo,
-  extractTableName,
-  FieldData,
-  MapData,
-  newExtractAllJoins,
-} from "./utils";
+import { createNewGraphData, CubeData, FieldData, MapData, newExtractAllJoins } from "./utils";
 import CustomNode from "./CubeNode";
 import { getLayoutedElements } from "./LayoutedElements";
-import {
-  skipToken,
-  useGetCubeDataQuery,
-  useListDatabasesQuery,
-} from "metabase/api";
+import { skipToken, useGetCubeDataQuery, useListDatabasesQuery } from "metabase/api";
 import LoadingAndErrorWrapper from "../LoadingAndErrorWrapper";
-import {
-  BrowseContainer,
-  BrowseHeader,
-  BrowseSection,
-  CenteredEmptyState,
-} from "metabase/browse/components/BrowseContainer.styled";
+import { BrowseContainer, BrowseHeader, BrowseSection, CenteredEmptyState } from "metabase/browse/components/BrowseContainer.styled";
 import { Box } from "@mantine/core";
-import { GetCubeDataRequest } from "metabase-types/api";
+import { CubeDataItem } from "metabase-types/api";
 
 const nodeTypes = {
   custom: CustomNode,
 };
+
+const getTableName = (cubeName: string, cubeNameArr: any[], tableNameArr: any[]) => {
+  let idx = 0;
+  for (let i = 0; i < cubeNameArr.length; i++) {
+    if (cubeName === cubeNameArr[i]) {
+      idx = i;
+    }
+  }
+  return tableNameArr[idx];
+};
+
+const createData = (arr: any[], extractedKeys: any[], cubeNameArr: any[], tableNameArr: any[]): MapData[] => {
+  const resultMap: { [key: string]: MapData } = {};
+
+  const addField = (
+    sourceCube: string,
+    sourceField: string,
+    targetTable: string,
+    targetField: string,
+  ) => {
+    const id = `${sourceCube}-${targetTable}`;
+    if (!resultMap[id]) {
+      resultMap[id] = {
+        id,
+        sourceCube,
+        sourceField,
+        targetTable,
+        targetField,
+      };
+    }
+  };
+  arr.forEach((items: string[], index: number) => {
+    const cubeName = extractedKeys[index];
+
+    items.forEach((item: string) => {
+      const sourceMatch = item.match(/\${(\w+)}\.(\w+)/);
+      const targetMatch = item.match(/=\s*\${(\w+)}\.(\w+)/);
+
+      if (sourceMatch && targetMatch) {
+        const [, sourceCube, sourceField] = sourceMatch;
+        const [, targetCube, targetField] = targetMatch;
+        const targetTableName = getTableName(targetCube, cubeNameArr, tableNameArr);
+
+        addField(sourceCube, sourceField, targetTableName, targetField);
+      }
+    });
+  });
+
+  return Object.values(resultMap);
+};
+
+const extractingField = (arr: any[], extractedKeys: any[], cubeNameArr: any[], tableNameArr: any[]): FieldData[] => {
+  const resultMap: { [key: string]: FieldData } = {};
+
+  const addField = (table: string, field: string, type?: string) => {
+    const id = `${table}-${field}`;
+    if (!resultMap[id]) {
+      resultMap[id] = { id, table, field, type };
+    }
+  };
+
+  arr.forEach((items: string[], index: number) => {
+    const cubeName = extractedKeys[index];
+
+    items.forEach((item: string) => {
+      const sourceMatch = item.match(/\${(\w+)}\.(\w+)/);
+      const targetMatch = item.match(/=\s*\${(\w+)}\.(\w+)/);
+
+      if (sourceMatch) {
+        const [, sourceCube, sourceField] = sourceMatch;
+        addField(sourceCube, sourceField, "source");
+      }
+
+      if (targetMatch) {
+        const [, targetCube, targetField] = targetMatch;
+        const targetTableName = getTableName(targetCube, cubeNameArr, tableNameArr);
+        addField(targetTableName, targetField, "target");
+      }
+    });
+  });
+
+  tableNameArr.forEach(table => {
+    if (!Object.values(resultMap).some(field => field.table === table)) {
+      addField(table, "id");
+    }
+  });
+
+  return Object.values(resultMap);
+};
+
 
 const CubeFlow = () => {
   const {
@@ -69,46 +124,45 @@ const CubeFlow = () => {
     return "";
   }, [databases]);
 
-  const { data, isLoading, error } = useGetCubeDataQuery(
-    companyName ? { companyName } : skipToken,
+
+  const { data: cubeDataResponse, isLoading, error } = useGetCubeDataQuery(
+    companyName ? { projectName: companyName } : skipToken,
   );
+
   const [showDefinition, setShowDefinition] = useState<boolean>(false);
   const reactFlowInstanceRef = useRef<ReactFlowInstance | null>(null);
 
-  const cubes = data as { content: string }[];
+  const cubes: CubeDataItem[] = cubeDataResponse?.cubes ?? [];
 
   const tableGroups: { [key: string]: FieldData[] } = {};
+
   if (error) {
     return <LoadingAndErrorWrapper error />;
   }
 
-  if (!cubes && isLoading) {
+  if (!cubes.length && isLoading) {
     return <LoadingAndErrorWrapper loading />;
   }
 
-  if (!cubes?.length) {
+  if (!cubes.length) {
     return (
       <CenteredEmptyState
         title={<Box mb=".5rem">{t`No databases here yet`}</Box>}
-        illustrationElement={
-          <Box mb=".5rem">
-            <img src={NoResults} />
-          </Box>
-        }
+        illustrationElement={<Box mb=".5rem"><img src={NoResults} /></Box>}
       />
     );
   }
 
-  const cubesArr: any = cubes.map(cube => cube.content);
+  const cubesArr = cubes.map(cube => cube.name);
   let tableNameArr: string[] = [];
   let cubeNameArr: string[] = [];
   cubes.forEach(cube => {
-    const cubeName = extractCubeName(cube.content);
-    const tableName = extractCubeName(cube.content);
+    const cubeName = cube.name;
+    const tableName = cube.name;
     tableNameArr.push(tableName);
     cubeNameArr.push(cubeName);
-    const cubeInfo = extractSQLInfo(cube.content);
   });
+
   const newJoinFromArr = newExtractAllJoins(cubesArr);
 
   const extractedKeys = Object.keys(newJoinFromArr);
@@ -120,103 +174,11 @@ const CubeFlow = () => {
         return item.replace("${CUBE}", `\${${cubeName}}`);
       });
     });
-
     return result;
   };
   const modifiedValues = modifiedExtractedVal();
-
-  const getTableName = (cubeName: string) => {
-    let idx = 0;
-    for (let i = 0; i < cubeNameArr.length; i++) {
-      if (cubeName === cubeNameArr[i]) {
-        idx = i;
-      }
-    }
-    return tableNameArr[idx];
-  };
-
-  const extractingField = (arr: any[]): FieldData[] => {
-    const resultMap: { [key: string]: FieldData } = {};
-
-    const addField = (table: string, field: string, type?: string) => {
-      const id = `${table}-${field}`;
-      if (!resultMap[id]) {
-        resultMap[id] = { id, table, field, type };
-      }
-    };
-
-    arr.forEach((items: string[], index: number) => {
-      const cubeName = extractedKeys[index];
-
-      items.forEach((item: string) => {
-        const sourceMatch = item.match(/\${(\w+)}\.(\w+)/);
-        const targetMatch = item.match(/=\s*\${(\w+)}\.(\w+)/);
-
-        if (sourceMatch) {
-          const [, sourceCube, sourceField] = sourceMatch;
-          addField(sourceCube, sourceField, "source");
-        }
-
-        if (targetMatch) {
-          const [, targetCube, targetField] = targetMatch;
-          const targetTableName = getTableName(targetCube);
-          addField(targetTableName, targetField, "target");
-        }
-      });
-    });
-
-    tableNameArr.forEach(table => {
-      if (!Object.values(resultMap).some(field => field.table === table)) {
-        addField(table, "id");
-      }
-    });
-
-    return Object.values(resultMap);
-  };
-
-  const extractField = extractingField(modifiedValues);
-
-  const createData = (arr: any[]): MapData[] => {
-    const resultMap: { [key: string]: MapData } = {};
-
-    const addField = (
-      sourceCube: string,
-      sourceField: string,
-      targetTable: string,
-      targetField: string,
-    ) => {
-      const id = `${sourceCube}-${targetTable}`;
-      if (!resultMap[id]) {
-        resultMap[id] = {
-          id,
-          sourceCube,
-          sourceField,
-          targetTable,
-          targetField,
-        };
-      }
-    };
-    arr.forEach((items: string[], index: number) => {
-      const cubeName = extractedKeys[index];
-
-      items.forEach((item: string) => {
-        const sourceMatch = item.match(/\${(\w+)}\.(\w+)/);
-        const targetMatch = item.match(/=\s*\${(\w+)}\.(\w+)/);
-
-        if (sourceMatch && targetMatch) {
-          const [, sourceCube, sourceField] = sourceMatch;
-          const [, targetCube, targetField] = targetMatch;
-          const targetTableName = getTableName(targetCube);
-
-          addField(sourceCube, sourceField, targetTableName, targetField);
-        }
-      });
-    });
-
-    return Object.values(resultMap);
-  };
-
-  const newField = createData(modifiedValues);
+  const extractField = extractingField(modifiedValues, extractedKeys, cubeNameArr, tableNameArr);
+  const newField = createData(modifiedValues, extractedKeys, cubeNameArr, tableNameArr);
 
   extractField.forEach(field => {
     if (!tableGroups[field.table]) {
@@ -228,20 +190,33 @@ const CubeFlow = () => {
   const cubeData: CubeData = {};
 
   cubes.forEach(cube => {
-    const cubeName = extractCubeName(cube.content);
-    const cubeInfo = extractSQLInfo(cube.content);
-
-    cubeData[cubeName] = {
-      fields: cubeInfo.fields,
+    const cubeName = cube.name;
+    const cubeInfo = {
+      fields: [
+        ...cube.dimensions.map(dimension => ({
+          name: dimension.name,
+          title: dimension.title,
+          description: dimension.description,
+          type: dimension.type,
+          isVisible: dimension.isVisible,
+          public: dimension.public,
+          primaryKey: dimension.primaryKey,
+        })),
+        ...cube.measures.map(measure => ({
+          name: measure.name,
+          title: measure.title,
+          description: measure.description,
+          type: measure.type,
+          isVisible: measure.isVisible,
+          public: measure.public,
+          aggType: measure.aggType,
+        }))
+      ],
     };
+
+    cubeData[cubeName] = cubeInfo;
   });
 
-  const oldGraphData = createGraphData(
-    tableGroups,
-    cubeData,
-    tableNameArr,
-    cubeNameArr,
-  );
   const graphData = createNewGraphData(
     tableGroups,
     cubeData,
@@ -345,7 +320,7 @@ const CubeFlow = () => {
             stroke: isHighlighted ? highlightColor : defaultColor,
           },
           markerEnd: {
-            type: MarkerType.ArrowClosed, // Or whichever marker type you're using
+            type: MarkerType.ArrowClosed,
             color: isHighlighted ? highlightColor : defaultColor,
           },
         } as Edge;

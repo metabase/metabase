@@ -18,7 +18,16 @@ export interface CubeFlowProps {
 }
 
 interface CubeInfo {
-  fields: { [fieldName: string]: string };
+  fields: {
+    name: string;
+    title: string;
+    description: string;
+    type: string;
+    isVisible: boolean;
+    public: boolean;
+    aggType?: string; // Campo opcional para medidas
+    primaryKey?: boolean; // Campo opcional para dimensiones
+  }[];
 }
 
 interface Field {
@@ -136,28 +145,6 @@ export const formatAndCleanCubeContent = (content: string) => {
   return formattedContent;
 };
 
-export function extractCubeName(cubeString: string): string {
-  const cubeRegex = /cube\(`([^`]+)`/;
-  const cubeRegexs = /cube\(([`'"])([^`'"]+)\1/;
-  const match = cubeString.match(cubeRegex);
-  const matches = cubeString.match(cubeRegexs);
-  if (matches && matches[2]) {
-    return matches[2].trim();
-  }
-  throw new Error("Cube name not found");
-}
-
-export function extractCubeNames(content: any) {
-  const cubeRegex = /cube\s*\(`([^`]+)`/g;
-  const cubeNames = [];
-  let match;
-
-  while ((match = cubeRegex.exec(content)) !== null) {
-    cubeNames.push(match[1]);
-  }
-
-  return cubeNames;
-}
 
 export function separateCubes(input: string) {
   const cubeDefinitions = input.split(/cube\(/).slice(1);
@@ -186,7 +173,7 @@ export function extractAllJoins(
   const allJoinsContent: Record<string, string[]> = {};
 
   cubesContent.forEach(content => {
-    const cubeName = extractCubeName(content);
+    const cubeName = content
 
     const joinContent = extractJoinsContent(content);
     // console.log('join content', joinContent)
@@ -296,7 +283,7 @@ export function newExtractAllJoins(
   const allJoins: Record<string, string[]> = {};
 
   cubesContent.forEach(content => {
-    const cubeName = extractCubeName(content);
+    const cubeName = content
 
     const joinContent = extractJoinsContent(content);
 
@@ -448,7 +435,6 @@ export function createNewGraphData(
   });
   return { nodes, edges };
 }
-
 const getTableName = (
   cubeName: string,
   cubeNameArr: string[],
@@ -480,7 +466,7 @@ export const tableArr = (cubes: any) => {
 export const cubeArr = (cubes: any) => {
   let cubeNameArr;
   cubes.forEach((cube: any) => {
-    const cubeName = extractCubeName(cube.content);
+    const cubeName = cube.name;
     cubeNameArr.push(cubeName);
   });
   return cubeNameArr;

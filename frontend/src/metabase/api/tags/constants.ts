@@ -34,6 +34,8 @@ export const TAG_TYPES = [
   "feedback",
   "company",
   "cubes_requests",
+  "cube-registration",
+  "cube-deployment"
 ] as const;
 
 export const TAG_TYPE_MAPPING = {
@@ -55,4 +57,6 @@ export const TAG_TYPE_MAPPING = {
   feedback: "feedback",
   company: "company",
   cubes_requests: "cubes_requests",
+  "cube-registration":"cube-registration",
+  "cube-deployment":"cube-deployment"
 } as const;

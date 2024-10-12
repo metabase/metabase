@@ -140,120 +140,44 @@ export const CubeTable = ({
   const [sortingOptions, setSortingOptions] = useState<SortingOptions>(
     DEFAULT_SORTING_OPTIONS,
   );
-  const [typesWithSql , setTypesWithSql] = useState<CubeResult[]>([]);
+
+  //TODO: ADD sql, verified_status, in_semantic_layer, user, admin_user, updated_at
+  const combineCubeData = (cube: any) => {
+    const combinedMeasuresAndDimensions = [
+      ...cube.measures.map((measure: any) => ({
+        category: "measure",
+        name: measure.name.split(".")[1],
+        type: measure.type,
+        title: measure.title,
+        description: measure.description,
+        sql: measure.sql,
+      })),
+      ...cube.dimensions.map((dimension: any) => ({
+        category: "dimension",
+        name: dimension.name.split(".")[1],
+        type: dimension.type,
+        title: dimension.title,
+        description: dimension.description,
+        primaryKey: dimension.primaryKey,
+        sql: dimension.sql,
+      })),
+    ];
+  
+    return combinedMeasuresAndDimensions; // No necesitas aplanar, ya que no hay un array anidado
+  };
+  
+  // Establecer el estado inicial con la combinación de 'measures' y 'dimensions'
+  const [typesWithSql, setTypesWithSql] = useState<CubeResult[]>(
+    cubeData ? combineCubeData(cubeData) : []
+  );
+
+  useEffect(() => {
+    if (cubeData) {
+      setTypesWithSql(combineCubeData(cubeData));
+    }
+  }, [cubeData]);
+
   const [updatedTypesWithSql, setUpdatedTypesWithSql] = useState<CubeResult[]>([]); // Initialize with typesWithSql
-
-
-  function parseCubeFile(code: string) {
-    try {
-      // Use acorn to parse the code
-      const ast = parse(code, { ecmaVersion: 2020, sourceType: 'module' });
-
-      // Find the cube definition (should only be 1 this may not be needed)
-      ast.body.forEach((node: any) => {
-        if (
-          node.type === 'ExpressionStatement' &&
-          node.expression.type === 'CallExpression' &&
-          node.expression.callee.name === 'cube'
-        ) {
-          const cubeDefinition = node.expression.arguments[1];
-
-          const cubeContent = astToJson(cubeDefinition);
-          const result = extractPartsWithSql(cubeContent);
-          setTypesWithSql(result)
-          setUpdatedTypesWithSql(result);
-
-          return result
-        }
-      });
-    } catch (err) {
-      console.error(`Error parsing code ${code}:`, err);
-    }
-  }
-
-  // Helper function to convert AST nodes to JSON
-  function astToJson(node: any): any {
-    switch (node.type) {
-      case 'ObjectExpression':
-        const obj: any = {};
-        node.properties.forEach((prop: any) => {
-          const key: any = prop.key.name || prop.key.value;
-          obj[key] = astToJson(prop.value);
-        });
-        return obj;
-      case 'ArrayExpression':
-        return node.elements.map(astToJson);
-      case 'Literal':
-        return node.value;
-      case 'TemplateLiteral':
-        if (node.expressions.length === 0) {
-          // No expressions, return the cooked value as a normal string
-          return node.quasis[0].value.cooked;
-        } else {
-          // Template literal with expressions
-          return astToCode(node);
-        }
-      case 'Identifier':
-        return node.name;
-      case 'BinaryExpression':
-        return astToCode(node);
-      case 'CallExpression':
-        return astToCode(node);
-      case 'MemberExpression':
-        return astToCode(node);
-      case 'UnaryExpression':
-        return astToCode(node);
-      default:
-        return null;
-    }
-  }
-
-  // Helper function to convert AST expressions back to code
-  function astToCode(node: any): any {
-    switch (node.type) {
-      case 'Identifier':
-        return node.name;
-      case 'Literal':
-        return JSON.stringify(node.value);
-      case 'TemplateLiteral':
-        let str = '';
-        for (let i = 0; i < node.quasis.length; i++) {
-          str += node.quasis[i].value.cooked;
-          if (i < node.expressions.length) {
-            str += '${' + astToCode(node.expressions[i]) + '}';
-          }
-        }
-        return '`' + str + '`';
-      case 'MemberExpression':
-        const object: any = astToCode(node.object);
-        const property: any = node.computed
-          ? `[${astToCode(node.property)}]`
-          : `.${astToCode(node.property)}`;
-        return `${object}${property}`;
-      case 'BinaryExpression':
-        return `(${astToCode(node.left)} ${node.operator} ${astToCode(node.right)})`;
-      case 'CallExpression':
-        return `${astToCode(node.callee)}(${node.arguments.map(astToCode).join(', ')})`;
-      case 'UnaryExpression':
-        return `${node.operator}${astToCode(node.argument)}`;
-      case 'ArrayExpression':
-        return `[${node.elements.map(astToCode).join(', ')}]`;
-      case 'ObjectExpression':
-        const props = node.properties.map(
-          (prop: any) => `${astToCode(prop.key)}: ${astToCode(prop.value)}`
-        );
-        return `{${props.join(', ')}}`;
-      default:
-        return '';
-    }
-  }
-
-
-  useMemo(() => {
-    if (cubeData.content) {
-      parseCubeFile(cubeData.content);
-    }
-  }, [cubeData.content]);
 
   
   useEffect(() => {

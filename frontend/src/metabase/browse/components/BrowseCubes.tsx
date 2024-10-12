@@ -20,14 +20,6 @@ import {
 } from "./BrowseContainer.styled";
 import { CubeResult, CubeTable } from "./CubeTable";
 import { SingleCube } from "./CubeSql";
-import {
-  addCubeWrapper,
-  extractCubeName,
-  extractCubeNames,
-  formatAndCleanCubeContent,
-  removeLineBreaks,
-  separateCubes,
-} from "metabase/components/Cube/utils";
 import { CubeHeader } from "./CubeHeader";
 import { BrowseHeaderContent } from "./BrowseHeader.styled";
 import { CubeDataItem, GetCubeDataRequest } from "metabase-types/api";
@@ -69,10 +61,10 @@ export const BrowseCubes = () => {
   }, [databases]);
 
   const {
-    data: cubeData,
+    data: cubeDataResponse,
     isLoading,
     error,
-  } = useGetCubeDataQuery(companyName ? { companyName } : skipToken);
+  } = useGetCubeDataQuery(companyName ? { projectName: companyName } : skipToken); 
   const [updateCubeData] = useUpdateCubeDataMutation();
   const [syncSChema] = useSyncDatabaseSchemaMutation();
   const [dbId, setDbId] = useState<number | null>(null);
@@ -91,29 +83,28 @@ export const BrowseCubes = () => {
   const [selectTeamFilter, setSelectTeamFilter] = useState<string>("");
 
   useEffect(() => {
-    if (cubeData) {
-      setCubeFromUrl(cubeData);
+    if (cubeDataResponse?.cubes) {
+      setCubeFromUrl(cubeDataResponse.cubes);
     }
-  }, [cubeData]);
+  }, [cubeDataResponse]);
 
   const handleSemanticView = () => {
     setIsSql(!isSql);
   };
 
-  const setCubeFromUrl = (cubes: any) => {
+  const setCubeFromUrl = (cubes: CubeDataItem[]) => {
     const cubeName = window.location.pathname.split("/").pop();
 
     if (!cubeName) return;
 
-    const matchedCube = cubes.find((cube: any) => {
-      const fileName = cube.fileName.replace(".js", "");
-      return fileName.toLowerCase() === cubeName.toLowerCase();
+    const matchedCube = cubes.find((cube) => {
+      const fileName = cube.name.toLowerCase();
+      return fileName === cubeName.toLowerCase();
     });
 
     if (matchedCube) {
       setSelectedCube(matchedCube);
-      const extractDetails = extractCubeName(matchedCube.content as string);
-      setTitle(extractDetails);
+      setTitle(matchedCube.title);
       const dbId = setDbFromUrl();
       if (dbId !== undefined) {
         setDbId(dbId);
@@ -139,64 +130,6 @@ export const BrowseCubes = () => {
     return Number(slug.substring(0, indexOfDash));
   };
 
-  const updateCube = async (updatedCubes: any) => {
-    try {
-      const extractedCubeNames = extractCubeNames(updatedCubes);
-      const extractedCubeContent = separateCubes(updatedCubes);
-
-      const cubeFiles: Record<string, string> = {};
-
-      for (let i = 0; i < extractedCubeNames.length; i++) {
-        const cubeName = extractedCubeNames[i];
-        const cubeContent = extractedCubeContent[i];
-
-        const fileName = `${cubeName.toLowerCase()}.js`;
-        cubeFiles[fileName] = cubeContent;
-      }
-
-      const payload = {
-        cubeFiles: {
-          model: {
-            cubes: cubeFiles,
-          },
-        },
-      };
-
-      if (companyName !== undefined) {
-        await updateCubeData({
-          payload,
-          companyName,
-        });
-
-        await syncDbSchema();
-      } else {
-        console.warn("companyName not found", companyName);
-      }
-    } catch (error) {
-      throw error;
-    }
-  };
-
-  const syncDbSchema = async () => {
-    if (dbId !== null) {
-      await syncSChema(dbId);
-    }
-  };
-
-  const handleCubeUpdate = (updatedCube: any, originalCube: any) => {
-    if (selectedCube !== null) {
-      const newCubeData = removeLineBreaks(updatedCube);
-      const cubeName = extractCubeName(originalCube);
-      const wrapperData = addCubeWrapper(newCubeData, cubeName);
-      const wrapperDataWoLineBreak = addCubeWrapper(updatedCube, cubeName);
-      updateCube(wrapperDataWoLineBreak);
-      let modifiedCube = {
-        fileName: selectedCube.fileName,
-        content: wrapperDataWoLineBreak,
-      };
-      setSelectedCube(modifiedCube);
-    }
-  };
 
   const tabStyle = {
     padding: "10px 20px",
@@ -213,11 +146,11 @@ export const BrowseCubes = () => {
     return <LoadingAndErrorWrapper error />;
   }
 
-  if (!cubeData && isLoading) {
+  if (!cubeDataResponse && isLoading) {
     return <LoadingAndErrorWrapper loading />;
   }
 
-  if (!cubeData?.length) {
+  if (!cubeDataResponse?.cubes.length) {
     return (
       <CenteredEmptyState
         title={<Box mb=".5rem">{t`No databases here yet`}</Box>}
@@ -272,7 +205,7 @@ export const BrowseCubes = () => {
       <BrowseMain>
         <BrowseSection>
           <div>
-            {cubeData && !isCubeFlowOpen && selectedCube === null ? (
+            {cubeDataResponse && !isCubeFlowOpen && selectedCube === null ? (
               <>
                 <div style={{ display: "flex", flexDirection: "row" }}></div>
               </>
@@ -284,9 +217,6 @@ export const BrowseCubes = () => {
                       <SingleCube
                         cube={selectedCube}
                         isExpanded={true}
-                        onUpdate={(updatedCube: any, originalCube: any) =>
-                          handleCubeUpdate(updatedCube, originalCube)
-                        }
                         handleSemanticView={handleSemanticView}
                       />
                     ) : (
@@ -438,7 +368,7 @@ export const BrowseCubes = () => {
             )}
           </div>
         </BrowseSection>
-        {cubeData && selectedCube && activeTab === "Preview" && dbId && (
+        {cubeDataResponse?.cubes && selectedCube && activeTab === "Preview" && dbId && (
           <CubePreviewTable dbId={dbId} cubeData={selectedCube} />
         )}
       </BrowseMain>

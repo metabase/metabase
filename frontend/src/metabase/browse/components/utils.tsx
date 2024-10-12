@@ -1,14 +1,11 @@
 import { t } from "ttag";
-
-import type { CollectionEssentials, SearchResult } from "metabase-types/api";
+import type { CollectionEssentials, CubeDataItem, SearchResult } from "metabase-types/api";
 import { SortDirection, type SortingOptions } from "metabase-types/api/sorting";
 
 import type { ModelResult } from "../types";
 import { getCollectionName } from "../utils";
-
 import { pathSeparatorChar } from "./constants";
 import { CubeResult } from "./CubeTable";
-import { SortedCube } from "./SemanticTable";
 
 export const getBreadcrumbMaxWidths = (
   collections: CollectionEssentials["effective_ancestors"],
@@ -126,32 +123,32 @@ export const getMaxRecentModelCount = (
 
 
 const getValueForSortingSemantic = (
-  cube: SortedCube,
-  sort_column: keyof SortedCube,
+  cube: CubeDataItem,
+  sort_column: keyof CubeDataItem,
 ): string => {
-  if (sort_column === "fileName") {
-    return cube.fileName;
+  if (sort_column === "name") {
+    return cube.name;
+  } else if (sort_column === "title") {
+    return cube.title;
   } else {
-    // You might want to add more sorting options based on the content
-    // For now, we'll just return an empty string for 'content'
     return "";
   }
 };
 
 export const isValidSortColumnSemantic = (
   sort_column: string,
-): sort_column is keyof SortedCube => {
-  return ["fileName", "content"].includes(sort_column);
+): sort_column is keyof CubeDataItem => {
+  return ["name", "title"].includes(sort_column);
 };
 
 export const getSecondarySortColumnSemantic = (
   sort_column: string,
-): keyof SortedCube => {
-  return sort_column === "fileName" ? "content" : "fileName";
+): keyof CubeDataItem => {
+  return sort_column === "name" ? "title" : "name";
 };
 
 export const sortCubeData = (
-  cubeDataArray: SortedCube[],
+  cubeDataArray: CubeDataItem[],
   sortingOptions: SortingOptions,
   localeCode: string = "en",
 ) => {

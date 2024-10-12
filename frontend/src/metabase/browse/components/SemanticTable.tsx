@@ -5,7 +5,7 @@ import {
     type CSSProperties,
   } from "react";
   import { t } from "ttag";
-  
+
   import * as Urls from "metabase/lib/urls";
   import EntityItem from "metabase/components/EntityItem";
   import { SortableColumnHeader } from "metabase/components/ItemsTable/BaseItemsTable";
@@ -48,19 +48,6 @@ import { CubeDataItem } from "metabase-types/api";
     onRowClick: (cube: CubeDataItem) => void;
   }
 
-  interface CubeResult {
-    fileName: string;
-    content: any;
-  }
-
-  export interface SortedCube {
-    fileName: string;
-    content: string;
-    title: string;
-    description: string;
-  }
-  
-  
   export const itemsTableContainerName = "ItemsTableContainer";
   
   const descriptionProps: ResponsiveProps = {
@@ -74,7 +61,7 @@ import { CubeDataItem } from "metabase-types/api";
   };
   
   const DEFAULT_SORTING_OPTIONS: SortingOptions = {
-    sort_column: "fileName",
+    sort_column: "name",
     sort_direction: SortDirection.Asc,
   };
   
@@ -100,28 +87,14 @@ import { CubeDataItem } from "metabase-types/api";
   
     // const sortedModels = cubeDataArray
     const sortingCubes = (cubeArr: CubeDataItem[]) => {
-      let result:any = [];
-    
-      cubeArr.forEach((item: CubeDataItem) => {
-        const captionMatch = item.content.match(/caption:\s*`([^`]+)`/);
-        const subTitleMatch = item.content.match(/subTitle:\s*`([^`]+)`/);
-    
-        result.push({
-          title: captionMatch ? captionMatch[1] : '',
-          description: subTitleMatch ? subTitleMatch[1] : '',
-          fileName: item.fileName,
-          content: item.content,
-        });
-      });
-    
-      return result;
+      return cubeArr.map((item: CubeDataItem) => ({
+        ...item, // Devolvemos el item directamente
+      }));
     };
     
+    const CubeDataItems = sortingCubes(cubeDataArray)
 
-    const sortedCubes = sortingCubes(cubeDataArray)
-    // console.log('sortedCubes',sortedCubes)
-
-    const sortedModels = sortCubeData(sortedCubes, sortingOptions, localeCode);
+    const sortedModels = sortCubeData(CubeDataItems, sortingOptions, localeCode);
   
     /** The name column has an explicitly set width. The remaining columns divide the remaining width. This is the percentage allocated to the collection column */
     const collectionWidth = 38.5;
@@ -183,7 +156,7 @@ import { CubeDataItem } from "metabase-types/api";
               <Ellipsified>{t`Creation date`}</Ellipsified>
             </SortableColumnHeader>
             <SortableColumnHeader
-              name="last update"
+              name="description"
               {...descriptionProps}
               columnHeaderProps={{
                 style: {
@@ -191,7 +164,7 @@ import { CubeDataItem } from "metabase-types/api";
                 },
               }}
             >
-              {t`Last update`}
+              {t`Description`}
             </SortableColumnHeader>
             <Columns.RightEdge.Header />
           </tr>
@@ -205,8 +178,8 @@ import { CubeDataItem } from "metabase-types/api";
             </Repeat>
           ) : 
           (
-            sortedModels.map((cube: SortedCube) => (
-              <TBodyRow cube={cube} key={cube.fileName} onRowClick={onRowClick} />
+            sortedModels.map((cube: CubeDataItem) => (
+              <TBodyRow cube={cube} key={cube.name} onRowClick={onRowClick} />
             ))
           )}
         </TBody>
@@ -214,23 +187,23 @@ import { CubeDataItem } from "metabase-types/api";
     );
   };
 
-  const TBodyRow = ({ cube,skeleton, onRowClick }: { cube: SortedCube, skeleton?:boolean, onRowClick:(cube: CubeDataItem) => void }) => {
+  const TBodyRow = ({ cube, skeleton, onRowClick }: { cube: CubeDataItem, skeleton?: boolean, onRowClick: (cube: CubeDataItem) => void }) => {
     return (
       <ModelTableRow
       onClick={(e: React.MouseEvent) => {
         if (skeleton) {
           return;
         }
-        onRowClick(cube)
+        onRowClick(cube);
       }}
       tabIndex={0}
-      key={cube.fileName}
+      key={cube.name}
       >
         <NameCell cube={cube}>
-          <EntityItem.Name name={cube.fileName} variant="list" />
+          <EntityItem.Name name={cube.title} variant="list" />
         </NameCell> 
-         <ModelCell {...collectionProps}>25.02.2024 at 8.40am</ModelCell> 
-         <ModelCell {...descriptionProps}>25.02.2024 at 8.40am</ModelCell> 
+        <ModelCell {...collectionProps}>25.02.2024 at 8.40am</ModelCell> 
+        <ModelCell {...descriptionProps}>{cube.description}</ModelCell> 
         <Columns.RightEdge.Cell />
       </ModelTableRow>
     );
@@ -241,20 +214,19 @@ import { CubeDataItem } from "metabase-types/api";
     testIdPrefix = "table",
     icon,
   }: PropsWithChildren<{
-    cube?: CubeResult;
+    cube?: CubeDataItem;
     testIdPrefix?: string;
     icon?: IconProps;
   }>) => {
-    const headingId = `model-${cube?.fileName || "dummy"}-heading`;
+    const headingId = `model-${cube?.name || "dummy"}-heading`;
     return (
       <ItemNameCell
         data-testid={`${testIdPrefix}-name`}
         aria-labelledby={headingId}
       >
         <MaybeItemLink
-            to={cube ? Urls.browseCube({ fileName: cube.fileName, content: cube.content}) : undefined}
+          to={cube ? Urls.browseCube({ name: cube.name }) : undefined}
           style={{
-            // To align the icons with "Name" in the <th>
             paddingInlineStart: "1.4rem",
             paddingInlineEnd: ".5rem",
           }}
@@ -268,11 +240,11 @@ import { CubeDataItem } from "metabase-types/api";
           />
           )}
           <CollectionsIcon name="folder" />
-            <EntityItem.Name
-              name={cube?.fileName || ""}
-              variant="list"
-              id={headingId}
-            />
+          <EntityItem.Name
+            name={cube?.title || ""}
+            variant="list"
+            id={headingId}
+          />
         </MaybeItemLink>
       </ItemNameCell>
     );

@@ -160,7 +160,6 @@ const AppBarLarge = ({
           ) : isSemanticLayerVisible && !isDataMapVisible ? (
             <SemanticCrumbs
               crumbs={[
-                { title: t`OmniAI Layer`, to: "/browse/semantic-layer" },
                 ...(semanticName
                   ? [
                       {
@@ -175,7 +174,6 @@ const AppBarLarge = ({
           ) : isDataMapVisible ? (
             <SemanticCrumbs
               crumbs={[
-                { title: t`OmniAI Layer`, to: "/browse/semantic-layer" },
                 {
                   title: t`${semanticName}`,
                   to: `/browse/semantic-layer/${semanticSlug}`,
