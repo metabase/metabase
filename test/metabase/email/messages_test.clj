@@ -86,7 +86,8 @@
 (deftest render-pulse-email-test
   (testing "Email with few rows and columns can be rendered when tracing (#21166)"
     (mt/with-log-level [metabase.email :trace]
-      (let [part {:card   {:name "card-name"
+      (let [part {:card   {:id   1
+                           :name "card-name"
                            :visualization_settings
                            {:table.column_formatting []}}
                   :result {:data {:cols [{:name "x"} {:name "y"}]

@@ -192,7 +192,7 @@
   "Same as `render-pulse-card` but isn't intended for an email, rather for previewing so there is no need for
   attachments"
   ([timezone-id card results]
-   (render-pulse-card-for-display timezone-id card results))
+   (render-pulse-card-for-display timezone-id card results nil))
 
   ([timezone-id card results options :- [:maybe ::options]]
    (:content (render-pulse-card :inline timezone-id card nil results options))))
