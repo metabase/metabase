@@ -1,6 +1,6 @@
 import cx from "classnames";
 import { Component } from "react";
-import { ngettext, msgid, t } from "ttag";
+import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
 import ButtonsS from "metabase/css/components/buttons.module.css";
