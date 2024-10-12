@@ -7,7 +7,8 @@
    "Field"
    "Segment"
    "Table"
-   "Channel"])
+   "Channel"
+   "ChannelTemplate"])
 
 (def content
   "Content model types"
@@ -60,6 +61,10 @@
    "ModelIndex"
    "ModelIndexValue"
    "ModerationReview"
+   "Notification"
+   "NotificationSubscription"
+   "NotificationHandler"
+   "NotificationRecipient"
    "Permissions"
    "PermissionsGroup"
    "PermissionsGroupMembership"
