@@ -489,7 +489,7 @@
                     :visibility-type   :normal
                     :nfc-path          [:jsoncol "mybool"]}
                    {:name              "jsoncol → myint"
-                    :database-type     "double precision"
+                    :database-type     "decimal"
                     :base-type         :type/Number
                     :database-position 0
                     :json-unfolding    false

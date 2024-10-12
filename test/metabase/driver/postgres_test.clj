@@ -389,7 +389,7 @@
 (deftest ^:parallel json-query-test
   (let [boop-identifier (h2x/identifier :field "boop" "bleh -> meh")]
     (testing "Transforming MBQL query with JSON in it to postgres query works"
-      (let [boop-field {:nfc-path [:bleh :meh] :database-type "bigint"}]
+      (let [boop-field {:nfc-path [:bleh :meh] :database-type "decimal"}]
         (is (= [::postgres/json-query
                 [::h2x/identifier :field ["boop" "bleh"]]
                 "bigint"
