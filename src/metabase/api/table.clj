@@ -8,6 +8,7 @@
    [metabase.driver.h2 :as h2]
    [metabase.driver.util :as driver.u]
    [metabase.events :as events]
+   [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.card :refer [Card]]
    [metabase.models.database :refer [Database]]
@@ -141,45 +142,47 @@
 
 (def ^:private auto-bin-str (deferred-tru "Auto bin"))
 (def ^:private dont-bin-str (deferred-tru "Don''t bin"))
-(def ^:private minute-str (deferred-tru "Minute"))
-(def ^:private hour-str (deferred-tru "Hour"))
-(def ^:private day-str (deferred-tru "Day"))
 
 ;; note the order of these options corresponds to the order they will be shown to the user in the UI
-(def ^:private time-options
-  [[minute-str "minute"]
-   [hour-str "hour"]
-   [(deferred-tru "Minute of hour") "minute-of-hour"]])
+(defn- time-options []
+  (mapv (fn [unit]
+          [(lib/describe-temporal-unit unit) (name unit)])
+        [:minute
+         :hour
+         :minute-of-hour]))
 
-(def ^:private datetime-options
-  [[minute-str "minute"]
-   [hour-str "hour"]
-   [day-str "day"]
-   [(deferred-tru "Week") "week"]
-   [(deferred-tru "Month") "month"]
-   [(deferred-tru "Quarter") "quarter"]
-   [(deferred-tru "Year") "year"]
-   [(deferred-tru "Minute of hour") "minute-of-hour"]
-   [(deferred-tru "Hour of day") "hour-of-day"]
-   [(deferred-tru "Day of week") "day-of-week"]
-   [(deferred-tru "Day of month") "day-of-month"]
-   [(deferred-tru "Day of year") "day-of-year"]
-   [(deferred-tru "Week of year") "week-of-year"]
-   [(deferred-tru "Month of year") "month-of-year"]
-   [(deferred-tru "Quarter of year") "quarter-of-year"]])
+(defn- datetime-options []
+  (mapv (fn [unit]
+          [(lib/describe-temporal-unit unit) (name unit)])
+        [:minute
+         :hour
+         :day
+         :month
+         :quarter
+         :year
+         :minute-of-hour
+         :hour-of-day
+         :day-of-week
+         :day-of-month
+         :day-of-year
+         :week-of-year
+         :month-of-year
+         :quarter-of-year]))
 
-(def ^:private date-options
-  [[day-str "day"]
-   [(deferred-tru "Week") "week"]
-   [(deferred-tru "Month") "month"]
-   [(deferred-tru "Quarter") "quarter"]
-   [(deferred-tru "Year") "year"]
-   [(deferred-tru "Day of week") "day-of-week"]
-   [(deferred-tru "Day of month") "day-of-month"]
-   [(deferred-tru "Day of year") "day-of-year"]
-   [(deferred-tru "Week of year") "week-of-year"]
-   [(deferred-tru "Month of year") "month-of-year"]
-   [(deferred-tru "Quarter of year") "quarter-of-year"]])
+(defn- date-options []
+  (mapv (fn [unit]
+          [(lib/describe-temporal-unit unit) (name unit)])
+        [:day
+         :week
+         :month
+         :quarter
+         :year
+         :day-of-week
+         :day-of-month
+         :day-of-year
+         :week-of-year
+         :month-of-year
+         :quarter-of-year]))
 
 (def ^:private dimension-options
   (let [default-entry [auto-bin-str ["default"]]]
@@ -189,17 +192,17 @@
                     {:name name
                      :mbql [:field nil {:temporal-unit param}]
                      :type :type/Date})
-                  date-options)
+                  (date-options))
              (map (fn [[name param]]
                     {:name name
                      :mbql [:field nil {:temporal-unit param}]
                      :type :type/DateTime})
-                  datetime-options)
+                  (datetime-options))
              (map (fn [[name param]]
                     {:name name
                      :mbql [:field nil {:temporal-unit param}]
                      :type :type/Time})
-                  time-options)
+                  (time-options))
              (conj
               (mapv (fn [[name [strategy param]]]
                       {:name name
@@ -262,13 +265,13 @@
                                 (pred v))) dimension-options-for-response))))
 
 (def ^:private datetime-default-index
-  (dimension-index-for-type :type/DateTime #(= (str day-str) (str (:name %)))))
+  (dimension-index-for-type :type/DateTime #(= (lib/describe-temporal-unit :day) (str (:name %)))))
 
 (def ^:private date-default-index
-  (dimension-index-for-type :type/Date #(= (str day-str) (str (:name %)))))
+  (dimension-index-for-type :type/Date #(= (lib/describe-temporal-unit :day) (str (:name %)))))
 
 (def ^:private time-default-index
-  (dimension-index-for-type :type/Time #(= (str hour-str) (str (:name %)))))
+  (dimension-index-for-type :type/Time #(= (lib/describe-temporal-unit :hour) (str (:name %)))))
 
 (def ^:private numeric-default-index
   (dimension-index-for-type :type/Number #(.contains ^String (str (:name %)) (str auto-bin-str))))
