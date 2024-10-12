@@ -43,34 +43,34 @@ const RELATIVE_SHORTCUTS: ShortcutMap = {
   // plural message ID
   [t`Last`]: [
     {
-      name: ngetext(msgid`Week`, `Weeks`, 1),
+      name: ngettext(msgid`Week`, `Weeks`, 1),
       operator: "time-interval",
       values: ["last", "week"],
     },
     {
-      name: ngetext(msgid`Month`, `Months`, 1),
+      name: ngettext(msgid`Month`, `Months`, 1),
       operator: "time-interval",
       values: ["last", "month"],
     },
     {
-      name: ngetext(msgid`Year`, `Years`, 1),
+      name: ngettext(msgid`Year`, `Years`, 1),
       operator: "time-interval",
       values: ["last", "year"],
     },
   ],
   [t`This`]: [
     {
-      name: ngetext(msgid`Week`, `Weeks`, 1),
+      name: ngettext(msgid`Week`, `Weeks`, 1),
       operator: "time-interval",
       values: ["current", "week"],
     },
     {
-      name: ngetext(msgid`Month`, `Months`, 1),
+      name: ngettext(msgid`Month`, `Months`, 1),
       operator: "time-interval",
       values: ["current", "month"],
     },
     {
-      name: ngetext(msgid`Year`, `Years`, 1),
+      name: ngettext(msgid`Year`, `Years`, 1),
       operator: "time-interval",
       values: ["current", "year"],
     },
