@@ -16,11 +16,11 @@ export const OffsetValueInput = ({
   offsetValue,
   onOffsetValueChange,
 }: OffsetValueInputProps) => {
-  const minimum = getOffsetValueMin(comparisonType);
+  const min = getOffsetValueMin(comparisonType);
 
   const handleChange = (value: number | "") => {
     if (typeof value === "number") {
-      onOffsetValueChange(Math.floor(Math.max(Math.abs(value), minimum)));
+      onOffsetValueChange(value);
     }
   };
 
@@ -28,7 +28,7 @@ export const OffsetValueInput = ({
     <NumberInput
       type="number"
       value={offsetValue}
-      min={minimum}
+      min={min}
       step={1}
       precision={0}
       w="3.5rem"

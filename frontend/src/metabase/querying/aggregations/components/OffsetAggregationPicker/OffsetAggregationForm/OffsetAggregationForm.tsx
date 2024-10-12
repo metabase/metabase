@@ -13,6 +13,7 @@ import {
   getOffsetClause,
   setComparisonType,
   setGroupUnit,
+  setOffsetValue,
 } from "../utils";
 
 import { ColumnTypeInput } from "./ColumnTypeInput";
@@ -57,7 +58,7 @@ export function OffsetAggregationForm({
   };
 
   const handleOffsetValueChange = (offsetValue: number) => {
-    setOptions(options => ({ ...options, offsetValue }));
+    setOptions(options => setOffsetValue(options, offsetValue));
   };
 
   const handleOffsetUnitChange = (offsetUnit: TemporalUnit) => {

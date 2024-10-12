@@ -301,6 +301,18 @@ export function setGroupUnit(
   };
 }
 
+export function setOffsetValue(
+  options: OffsetOptions,
+  offsetValue: number,
+): OffsetOptions {
+  const min = getOffsetValueMin(options.comparisonType);
+
+  return {
+    ...options,
+    offsetValue: Math.floor(Math.max(Math.abs(offsetValue), min)),
+  };
+}
+
 export function applyOffsetClause(
   query: Lib.Query,
   stageIndex: number,
