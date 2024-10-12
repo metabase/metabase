@@ -68,9 +68,9 @@
     (reduce (fn [processed {:keys [rendered-info attachment-name channel-id] :as attachment-data}]
               (conj processed (if (:blocks attachment-data)
                                 attachment-data
-                                (if (:pulse/text rendered-info)
+                                (if (:render/text rendered-info)
                                   (-> (f attachment-data)
-                                      (assoc :text (:pulse/text rendered-info)))
+                                      (assoc :text (:render/text rendered-info)))
                                   (let [image-bytes (pulse/png-from-render-info rendered-info slack-width)
                                         image-url   (slack/upload-file! image-bytes attachment-name channel-id)]
                                     (-> (f attachment-data)
