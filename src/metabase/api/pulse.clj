@@ -1,5 +1,6 @@
 (ns metabase.api.pulse
-  "/api/pulse endpoints."
+  "`/api/pulse` endpoints. These are all authenticated. For unauthenticated `/api/pulse/unsubscribe` endpoints,
+  see [[metabase.api.pulse.unsubscribe]]."
   (:require
    [clojure.set :refer [difference]]
    [compojure.core :refer [GET POST PUT]]

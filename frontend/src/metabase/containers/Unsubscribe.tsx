@@ -20,7 +20,7 @@ import { color } from "metabase/lib/colors";
 import { useSelector } from "metabase/lib/redux";
 import { isEmpty } from "metabase/lib/validate";
 import { getLoginPageIllustration } from "metabase/selectors/whitelabel";
-import { SessionApi } from "metabase/services";
+import { PulseUnsubscribeApi } from "metabase/services";
 import { Center, Stack, Text } from "metabase/ui";
 
 const ERRORS = {
@@ -160,7 +160,7 @@ function useUnsubscribeRequest({
     }
 
     if (subscriptionChange === SUBSCRIPTION.UNSUBSCRIBE) {
-      return await SessionApi.unsubscribe({
+      return await PulseUnsubscribeApi.unsubscribe({
         hash,
         email,
         "pulse-id": pulseId,
@@ -168,7 +168,7 @@ function useUnsubscribeRequest({
     }
 
     if (subscriptionChange === SUBSCRIPTION.RESUBSCRIBE) {
-      return await SessionApi.undo_unsubscribe({
+      return await PulseUnsubscribeApi.undo_unsubscribe({
         hash,
         email,
         "pulse-id": pulseId,

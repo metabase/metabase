@@ -225,7 +225,7 @@ describe("scenarios > dashboard > subscriptions", () => {
         emailSubscriptionRecipients();
 
         openEmailPage(dashboardName).then(() => {
-          cy.intercept("/api/session/pulse/unsubscribe").as("unsubscribe");
+          cy.intercept("/api/pulse/unsubscribe").as("unsubscribe");
           cy.findByText("Unsubscribe").click();
           cy.wait("@unsubscribe");
           cy.contains(
@@ -249,8 +249,8 @@ describe("scenarios > dashboard > subscriptions", () => {
         emailSubscriptionRecipients();
 
         openEmailPage(dashboardName).then(() => {
-          cy.intercept("/api/session/pulse/unsubscribe").as("unsubscribe");
-          cy.intercept("/api/session/pulse/unsubscribe/undo").as("resubscribe");
+          cy.intercept("/api/pulse/unsubscribe").as("unsubscribe");
+          cy.intercept("/api/pulse/unsubscribe/undo").as("resubscribe");
 
           cy.findByText("Unsubscribe").click();
           cy.wait("@unsubscribe");

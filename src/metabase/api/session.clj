@@ -11,9 +11,7 @@
    [metabase.events :as events]
    [metabase.integrations.google :as google]
    [metabase.integrations.ldap :as ldap]
-   [metabase.models :refer [PulseChannel]]
    [metabase.models.login-history :refer [LoginHistory]]
-   [metabase.models.pulse :as models.pulse]
    [metabase.models.session :refer [Session]]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.models.user :as user :refer [User]]
@@ -343,52 +341,5 @@
       (catch Throwable e
         (log/error e "Authentication endpoint error")
         (throw e)))))
-
-;;; ----------------------------------------------------- Unsubscribe non-users from pulses -----------------------------------------------
-
-(def ^:private unsubscribe-throttler (throttle/make-throttler :unsubscribe, :attempts-threshold 50))
-
-(defn- check-hash [pulse-id email hash ip-address]
-  (throttle-check unsubscribe-throttler ip-address)
-  (when (not= hash (messages/generate-pulse-unsubscribe-hash pulse-id email))
-    (throw (ex-info (tru "Invalid hash.")
-                    {:type        type
-                     :status-code 400}))))
-
-(api/defendpoint POST "/models.pulse/unsubscribe"
-  "Allow non-users to unsubscribe from pulses/subscriptions, with the hash given through email."
-  [:as {{:keys [email hash pulse-id]} :body, :as request}]
-  {pulse-id ms/PositiveInt
-   email    :string
-   hash     :string}
-  (check-hash pulse-id email hash (req.util/ip-address request))
-  (t2/with-transaction [_conn]
-    (api/let-404 [pulse-channel (t2/select-one PulseChannel :pulse_id pulse-id :channel_type "email")]
-      (let [emails (get-in pulse-channel [:details :emails])]
-        (if (some #{email} emails)
-          (t2/update! PulseChannel (:id pulse-channel) (update-in pulse-channel [:details :emails] #(remove #{email} %)))
-          (throw (ex-info (tru "Email for pulse-id doesn't exist.")
-                          {:type        type
-                           :status-code 400}))))
-      (events/publish-event! :event/subscription-unsubscribe {:object {:email email}})
-      {:status :success :title (:name (models.pulse/retrieve-notification pulse-id :archived false))})))
-
-(api/defendpoint POST "/models.pulse/unsubscribe/undo"
-  "Allow non-users to undo an unsubscribe from pulses/subscriptions, with the hash given through email."
-  [:as {{:keys [email hash pulse-id]} :body, :as request}]
-  {pulse-id ms/PositiveInt
-   email    :string
-   hash     :string}
-  (check-hash pulse-id email hash (req.util/ip-address request))
-  (t2/with-transaction [_conn]
-    (api/let-404 [pulse-channel (t2/select-one PulseChannel :pulse_id pulse-id :channel_type "email")]
-      (let [emails (get-in pulse-channel [:details :emails])]
-        (if (some #{email} emails)
-          (throw (ex-info (tru "Email for pulse-id already exists.")
-                          {:type        type
-                           :status-code 400}))
-          (t2/update! PulseChannel (:id pulse-channel) (update-in pulse-channel [:details :emails] conj email))))
-      (events/publish-event! :event/subscription-unsubscribe-undo {:object {:email email}})
-      {:status :success :title (:name (models.pulse/retrieve-notification pulse-id :archived false))})))
 
 (api/define-routes +log-all-request-failures)
