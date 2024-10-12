@@ -312,7 +312,7 @@ const config = {
       REACT_APP_WEBSOCKET_SERVER:
         process.env.REACT_APP_WEBSOCKET_SERVER || "wss://dev.chat.omniloy.com",
       REACT_APP_SEMANTIC:
-        process.env.REACT_APP_SEMANTIC || "http://newomniloydev-cube-server-f5e531:3001",
+        process.env.REACT_APP_SEMANTIC || "https://dev.semantic.omniloy.com",
       REACT_APP_LANGCHAIN_URL:
         process.env.REACT_APP_LANGCHAIN_URL || "https://assistants-dev-7ca2258c0a7e5ea393441b5aca30fb7c.default.us.langgraph.app",
       REACT_APP_LANGCHAIN_KEY:
