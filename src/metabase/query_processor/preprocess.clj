@@ -73,16 +73,26 @@
                      assoc :converted-form query)))
       (with-meta (meta middleware-fn))))
 
+(def ^:private unconverted-property?
+  (some-fn #{:info} qualified-keyword?))
+
+(defn- copy-unconverted-properties
+  [to from]
+  (reduce-kv (fn [m k v]
+               (cond-> m
+                 (unconverted-property? k) (assoc k v)))
+             to
+             from))
+
 (defn- ensure-pmbql-for-unclean-query
   [middleware-fn]
   (-> (fn [query]
         (mu/disable-enforcement
           (binding [lib.convert/*clean-stage* false]
-            (let [query' (cond-> (cond->> query
-                                   (not (:lib/type query))
-                                   (lib.query/query (qp.store/metadata-provider)))
-                           (contains? query :info)
-                           (assoc :info (:info query)))]
+            (let [query' (-> (cond->> query
+                               (not (:lib/type query))
+                               (lib.query/query (qp.store/metadata-provider)))
+                             (copy-unconverted-properties query))]
               (-> query' middleware-fn ->legacy)))))
       (with-meta (meta middleware-fn))))
 
