@@ -295,8 +295,8 @@
           retry-config (retry/retry-configuration)
           retry-errors (volatile! [])
           retry-report (fn []
-                         {:attempted-retries (count @retry-errors)
-                          :retry-errors       @retry-errors})
+                         {:attempted_retries (count @retry-errors)
+                          :retry_errors       @retry-errors})
           send!        (fn []
                          (try
                            (channel/send! channel message)
@@ -313,10 +313,10 @@
                                                             (update :task_details merge (retry-report))))
                                        :on-fail-info    (fn [update-map _result]
                                                           (update update-map :task_details #(merge % (retry-report))))
-                                       :task_details    {:retry-config retry-config
-                                                         :channel-type (:type channel)
-                                                         :channel-id   (:id channel)
-                                                         :pulse-id     pulse-id}}
+                                       :task_details    {:retry_config retry-config
+                                                         :channel_type (:type channel)
+                                                         :channel_id   (:id channel)
+                                                         :pulse_id     pulse-id}}
         ((retry/decorate send! (retry/random-exponential-backoff-retry (str (random-uuid)) retry-config)))
         (log/debugf "[Pulse %d] Sent to channel %s with %d retries" pulse-id (format-channel channel) (count @retry-errors))))
     (catch Throwable e
