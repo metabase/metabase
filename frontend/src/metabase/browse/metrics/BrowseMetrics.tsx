@@ -2,13 +2,27 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import NoResults from "assets/img/metrics_bot.svg";
+import { getCurrentUser } from "metabase/admin/datamodel/selectors";
 import { skipToken } from "metabase/api";
+import { useDatabaseListQuery, useDocsUrl } from "metabase/common/hooks";
 import { useFetchMetrics } from "metabase/common/hooks/use-fetch-metrics";
 import EmptyState from "metabase/components/EmptyState";
 import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
+import Link from "metabase/core/components/Link";
 import { useSelector } from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
 import { PLUGIN_CONTENT_VERIFICATION } from "metabase/plugins";
-import { Box, Flex, Group, Icon, Stack, Text, Title } from "metabase/ui";
+import { getHasDataAccess } from "metabase/selectors/data";
+import {
+  Box,
+  Button,
+  Flex,
+  Group,
+  Icon,
+  Stack,
+  Text,
+  Title,
+} from "metabase/ui";
 
 import {
   BrowseContainer,
@@ -86,15 +100,48 @@ export function BrowseMetrics() {
 }
 
 function MetricsEmptyState() {
+  const isLoggedIn = Boolean(useSelector(getCurrentUser));
+  const { data: databases = [] } = useDatabaseListQuery({
+    enabled: isLoggedIn,
+  });
+  const hasDataAccess = getHasDataAccess(databases);
+
+  const newMetricLink = Urls.newQuestion({
+    mode: "query",
+    cardType: "metric",
+  });
+
+  const { url: metricsDocsLink, showMetabaseLinks } = useDocsUrl(
+    "data-modeling/metrics",
+  );
+
   return (
     <Flex align="center" justify="center" mih="70vh">
       <Box maw="30rem">
         <EmptyState
           title={t`Create Metrics to define the official way to calculate important numbers for your team`}
           message={
-            <Text mt="sm" maw="25rem">
-              {t`Metrics are like pre-defined calculations: create your aggregations once, save them as metrics, and use them whenever you need to analyze your data.`}
-            </Text>
+            <Box>
+              <Text mt="sm" maw="25rem">
+                {t`Metrics are like pre-defined calculations: create your aggregations once, save them as metrics, and use them whenever you need to analyze your data.`}
+              </Text>
+              <Flex pt="md" align="center" justify="center" gap="md">
+                {showMetabaseLinks && (
+                  <Link
+                    target="_blank"
+                    to={metricsDocsLink}
+                    variant="brandBold"
+                  >{t`Read the docs`}</Link>
+                )}
+                {hasDataAccess && (
+                  <Button
+                    component={Link}
+                    to={newMetricLink}
+                    variant="filled"
+                  >{t`Create metric`}</Button>
+                )}
+              </Flex>
+            </Box>
           }
           illustrationElement={<img src={NoResults} />}
         />

@@ -154,10 +154,9 @@ export const ListField = ({
         <OptionContainer>
           <Checkbox
             variant="stacked"
-            label={isAll ? `Select none` : t`Select all`}
+            label={getToggleAllLabel(debouncedFilter, isAll)}
             checked={isAll}
             indeterminate={!isAll && !isNone}
-            fw="bold"
             onChange={handleToggleAll}
           />
         </OptionContainer>
@@ -175,3 +174,11 @@ export const ListField = ({
     </>
   );
 };
+
+function getToggleAllLabel(searchValue: string, isAll: boolean) {
+  if (isAll) {
+    return t`Select none`;
+  } else {
+    return searchValue ? t`Select these` : t`Select all`;
+  }
+}
