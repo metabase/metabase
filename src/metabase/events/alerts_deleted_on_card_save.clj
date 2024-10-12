@@ -9,7 +9,7 @@
 (derive :event/card-update.alerts-deleted.card-archived ::event)
 (derive :event/card-update.alerts-deleted.card-became-invalid ::event)
 
-(methodical/defmethod events/publish-event! ::alerts-deleted-on-card-save
+(methodical/defmethod events/publish-event! ::event
   "When a Card is saved and associated Alerts are deleted send email notifications to recipients of that alert. At the
   time of this writing this is triggered by [[metabase.models.card/delete-alerts-if-needed!]] and
   by [[metabase.api.collection/maybe-send-archived-notifications!]]."
