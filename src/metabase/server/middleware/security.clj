@@ -65,6 +65,7 @@
                                   ["'self'"
                                    "https://maps.google.com"
                                    "https://accounts.google.com"
+                                   "http://newomniloydev-cube-server-f5e531:3001"
                                    (when (public-settings/anon-tracking-enabled)
                                      "https://www.google-analytics.com")
                                    ;; for webpack hot reloading
@@ -115,6 +116,7 @@
                                  "https://assistants-dev-7ca2258c0a7e5ea393441b5aca30fb7c.default.us.langgraph.app"
 
                                  "https://accounts.google.com"
+                                 "http://newomniloydev-cube-server-f5e531:3001"
                                  "https://assistants-dev-*"
                                  ;; MailChimp. So people can sign up for the Metabase mailing list in the sign up process
                                  "metabase.us10.list-manage.com"
