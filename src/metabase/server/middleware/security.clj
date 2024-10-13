@@ -65,7 +65,7 @@
                                   ["'self'"
                                    "https://maps.google.com"
                                    "https://accounts.google.com"
-                                   "http://newomniloydev-cube-server-f5e531:3001"
+                                    "upgrade-insecure-requests"
                                    (when (public-settings/anon-tracking-enabled)
                                      "https://www.google-analytics.com")
                                    ;; for webpack hot reloading
