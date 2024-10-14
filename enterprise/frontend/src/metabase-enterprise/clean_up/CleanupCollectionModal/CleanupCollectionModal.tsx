@@ -14,6 +14,7 @@ import { Flex, Modal } from "metabase/ui";
 import { useListStaleCollectionItemsQuery } from "metabase-enterprise/api/collection";
 import { SortDirection, type SortingOptions } from "metabase-types/api/sorting";
 
+import { trackStaleItemsArchived } from "../analytics";
 import type { StaleCollectionItem } from "../types";
 
 import { CleanupCollectionBulkActions } from "./CleanupCollectionBulkActions";
@@ -113,6 +114,22 @@ const _CleanupCollectionModal = ({
     setTotal(total);
   }, [setTotal, total]);
 
+  const handleOnArchive = ({
+    totalArchivedItems,
+  }: {
+    totalArchivedItems: number;
+  }) => {
+    // In theory if we should only get numbers or root bad for a collection id
+    // if we are dealing with Our Analytics / root, set collection_id to null
+    if (typeof collectionId === "number" || collectionId === "root") {
+      trackStaleItemsArchived({
+        collection_id: collectionId === "root" ? null : collectionId,
+        total_items_archived: totalArchivedItems,
+        cutoff_date: new Date(before_date).toISOString(),
+      });
+    }
+  };
+
   return (
     <Modal.Root
       opened
@@ -186,6 +203,7 @@ const _CleanupCollectionModal = ({
           selected={selection.selected}
           clearSelectedItem={selection.clear}
           resetPagination={pagination.resetPage}
+          onArchive={handleOnArchive}
         />
       </Modal.Content>
     </Modal.Root>
