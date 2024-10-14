@@ -8,7 +8,7 @@ title: Embedded analytics SDK
 
 > The Metabase embedding SDK is currently in beta, but you should check it out and kick the tires; you can do a lot of [cool stuff with it](#example-apps-built-with-the-embedding-sdk).
 
-With the [Embedding SDK](./embedding-sdk-introduction.md), you can embed individual Metabase components with React (like standalone charts, dashboards, the query builder, and more). You can manage access and interactivity per component, and you have advanced customization for seamless styling.
+With the [Embedded analytics SDK](./embedding-sdk-introduction.md), you can embed individual Metabase components with React (like standalone charts, dashboards, the query builder, and more). You can manage access and interactivity per component, and you have advanced customization for seamless styling.
 
 ## Example apps built with the embedded analytics SDK
 
@@ -47,57 +47,14 @@ or with yarn:
 yarn add @metabase/embedding-sdk-react
 ```
 
-## Development
+## Developing with the embedded analytics SDK
 
-### Storybook
-
-You can use storybook to run SDK components during local development.
-
-When you have Metabase instance running:
-
-```bash
-yarn storybook-embedding-sdk
-```
-
-### Initial configuration
-
-1. Set JWT secret to be "`0000000000000000000000000000000000000000000000000000000000000000`" in Admin > Authentication > JWT > String used by the JWT signing key.
-2. Enable the Embedded Analytics SDK in Admin settings > Settings > Embedding. Enter the origins for your website or app where you want to allow SDK embedding, separated by a space.
-3. Make sure "User Provisioning" setting is set to "`on`".
-4. Set Authorized Origins to "`*`" in Admin > Embedding > Interactive embedding.
-
-### Building locally
-
-First you need to build the Metabase Embedding SDK for React locally:
-
-```bash
-yarn build-release:cljs
-```
-
-And then run:
-
-```bash
-yarn build-embedding-sdk:watch
-```
-
-### Using the local build
-
-After that you need to add this built SDK package location to your package.json. In this example we assume that your
-application is located in the same directory as Metabase directory:
-
-```json
-"dependencies": {
-"@metabase/embedding-sdk-react": "file:../metabase/resources/embedding-sdk"
-}
-```
-
-And then you can install the package using npm or yarn:
-
-```bash
-npm install
-# or
-yarn
-```
+- [Quickstart](./quickstart.md)
+- [Questions](./questions.md)
+- [Dashboards](./dashboards.md)
+- [Appearence](./appearance.md)
+- [Plugins](./plugins.md)
+- [Development](./development.md)
 
 ## Embedding SDK source code
 
@@ -110,8 +67,8 @@ You can find the [embedding SDK source code in the Metabase repo](https://github
   - Official collections
   - Subscriptions
   - Alerts
-- The Metabase Embedding SDK does not support server-side rendering (SSR) at the moment.
-- Multiple embedded dashboards on the same application page. If you need to embed multiple dashboards on the same application page, you can embed static dashboards.
+- The Metabase Embedding SDK doesn't support server-side rendering (SSR).
+- You can't embed multiple interactive dashboards on the same application page. If you need to embed multiple dashboards on the same application page, you can embed static dashboards.
 
 ## Feedback
 
