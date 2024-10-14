@@ -203,6 +203,8 @@
                        {:description (trs "Number of successful SDK requests.")})
    (prometheus/counter :metabase-sdk/response-error
                        {:description (trs "Number of errors when responding to SDK requests.")})
+   (prometheus/counter :metabase-query-processor/metrics
+                       {:description (trs "Number metrics processed by the query processor.")})
    (prometheus/counter :metabase-query-processor/metrics-errors
                        {:description (trs "Number of errors when processing metrics.")})])
 

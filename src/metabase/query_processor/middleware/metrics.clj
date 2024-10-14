@@ -238,6 +238,11 @@
        (catch Throwable e
          (prometheus/inc-and-throw! :metabase-query-processor/metrics-errors e))))
 
+(defn- match-one-metric
+  [query]
+  (lib.util.match/match-one query
+    [:metric _ _] &match))
+
 (defn adjust
   "Looks for `[:metric {} id]` clause references and adjusts the query accordingly.
 
@@ -253,6 +258,8 @@
    2. Metric source cards can reference themselves.
       A query built from a `:source-card` of `:type :metric` can reference itself."
   [query]
+  (when (match-one-metric query)
+    (prometheus/inc! :metabase-query-processor/metrics))
   (let [query (lib.walk/walk
                query
                (fn [_query path-type path stage-or-join]
@@ -260,8 +267,7 @@
                    (update stage-or-join :stages #(adjust-metric-stages-counting-errors query path %)))))]
     (u/prog1
       (update query :stages #(adjust-metric-stages-counting-errors query nil %))
-      (when-let [metric (lib.util.match/match-one <>
-                          [:metric _ _] &match)]
+      (when-let [metric (match-one-metric <>)]
         (prometheus/inc! :metabase-query-processor/metrics-errors)
         (log/warn "Failed to replace metric"
                   (pr-str {:metric metric}))))))

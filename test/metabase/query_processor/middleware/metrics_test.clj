@@ -91,6 +91,7 @@
       (with-redefs [prometheus/inc!              #(swap! calls conj %)
                     metrics/adjust-metric-stages (fn [_ _ stages] stages)]
         (is (= query (adjust query)))
+        (is (= 1 (count (filter #{:metabase-query-processor/metrics} @calls))))
         (is (= 1 (count (filter #{:metabase-query-processor/metrics-errors} @calls)))))))
   (testing "metric missing aggregation increments counter and throws exception"
     (let [[bad-source-metric mp] (mock-metric (-> (lib/query meta/metadata-provider (meta/table-metadata :products))))
@@ -103,6 +104,7 @@
              clojure.lang.ExceptionInfo
              #"Source metric missing aggregation"
              (adjust query)))
+        (is (= 1 (count (filter #{:metabase-query-processor/metrics} @calls))))
         (is (= 1 (count (filter #{:metabase-query-processor/metrics-errors} @calls))))))))
 
 (deftest ^:parallel adjust-aggregation-metric-ref-test
