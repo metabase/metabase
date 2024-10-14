@@ -435,7 +435,7 @@ describe("parameters/utils/targets", () => {
           const columnsInfos = getColumnsInfos(query, columns);
 
           expect(columnsInfos).toEqual(
-            withColumnsStage(-1, [["Orders", "Created At"]]),
+            withColumnsStage(-2, [["Orders", "Created At"]]),
           );
         });
 
@@ -445,7 +445,7 @@ describe("parameters/utils/targets", () => {
           const columnsInfos = getColumnsInfos(query, columns);
 
           expect(columnsInfos).toEqual(
-            withColumnsStage(-1, [
+            withColumnsStage(-2, [
               ["Orders", "Created At"],
               ["Products", "Product → Created At"],
             ]),
@@ -458,7 +458,7 @@ describe("parameters/utils/targets", () => {
           const columnsInfos = getColumnsInfos(query, columns);
 
           expect(columnsInfos).toEqual(
-            withColumnsStage(-1, [["Orders", "Created At: Month"]]),
+            withColumnsStage(-2, [["Orders", "Created At: Month"]]),
           );
         });
       });

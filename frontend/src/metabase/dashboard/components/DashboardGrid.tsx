@@ -489,7 +489,7 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
   };
 
   renderDashCard(
-    dc: DashboardCard,
+    dashcard: DashboardCard,
     {
       isMobile,
       gridItemWidth,
@@ -504,7 +504,7 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
   ) {
     return (
       <DashCard
-        dashcard={dc}
+        dashcard={dashcard}
         slowCards={this.props.slowCards}
         gridItemWidth={gridItemWidth}
         totalNumGridCols={totalNumGridCols}

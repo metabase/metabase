@@ -137,7 +137,10 @@ export function buildColumnTarget(
   column: Lib.ColumnMetadata,
   parameter: Parameter | undefined,
 ): StructuredParameterDimensionTarget {
-  const fieldRef = Lib.legacyRef(query, stageIndex, column);
+  // BE works incorrectly with non-negative stage indexes: https://github.com/metabase/metabase/issues/48441
+  const fixedStageIndex =
+    stageIndex >= 0 ? stageIndex - Lib.stageCount(query) : stageIndex;
+  const fieldRef = Lib.legacyRef(query, fixedStageIndex, column);
 
   if (!isConcreteFieldReference(fieldRef)) {
     throw new Error(`Cannot build column target field reference: ${fieldRef}`);
@@ -149,7 +152,7 @@ export function buildColumnTarget(
     return ["dimension", fieldRef];
   }
 
-  return ["dimension", fieldRef, { "stage-number": stageIndex }];
+  return ["dimension", fieldRef, { "stage-number": fixedStageIndex }];
 }
 
 export function buildTemplateTagVariableTarget(
@@ -170,16 +173,19 @@ export function getParameterColumns(question: Question, parameter?: Parameter) {
       ? question.composeQuestionAdhoc().query()
       : question.query();
 
+  const nextQuery = Lib.ensureFilterStage(query);
+
   if (parameter && isTemporalUnitParameter(parameter)) {
-    const availableColumns = getTemporalColumns(query);
+    const needsFilterStage = Lib.stageCount(query) < Lib.stageCount(nextQuery);
+    const stageIndex = needsFilterStage ? -2 : -1;
+    const availableColumns = getTemporalColumns(nextQuery, stageIndex);
     const columns = availableColumns.filter(({ column, stageIndex }) => {
-      return columnFilterForParameter(query, stageIndex, parameter)(column);
+      return columnFilterForParameter(nextQuery, stageIndex, parameter)(column);
     });
 
-    return { query, columns };
+    return { query: nextQuery, columns };
   }
 
-  const nextQuery = Lib.ensureFilterStage(query);
   const availableColumns = getFilterableColumns(nextQuery);
   const columns = parameter
     ? availableColumns.filter(({ column, stageIndex }) =>
@@ -190,8 +196,7 @@ export function getParameterColumns(question: Question, parameter?: Parameter) {
   return { query: nextQuery, columns };
 }
 
-function getTemporalColumns(query: Lib.Query) {
-  const stageIndex = -1;
+function getTemporalColumns(query: Lib.Query, stageIndex: number) {
   const columns = Lib.breakouts(query, stageIndex).map(breakout => {
     return Lib.breakoutColumn(query, stageIndex, breakout);
   });
