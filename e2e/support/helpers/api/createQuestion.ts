@@ -166,6 +166,10 @@ export const question = (
           cy.intercept("POST", "/api/dataset").as("dataset");
           cy.visit(`/model/${body.id}`);
           cy.wait("@dataset"); // Wait for `result_metadata` to load
+        } else if (type === "metric") {
+          cy.intercept("POST", "/api/dataset").as("dataset");
+          cy.visit(`/metric/${body.id}`);
+          cy.wait("@dataset"); // Wait for `result_metadata` to load
         } else {
           // We need to use the wildcard because endpoint for pivot tables has the following format: `/api/card/pivot/${id}/query`
           cy.intercept("POST", `/api/card/**/${body.id}/query`).as(
