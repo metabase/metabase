@@ -4,11 +4,14 @@ title: "Embedded analytics SDK - components"
 
 # Embedded analytics SDK - questions
 
-You can embed a static or interactive question.
-
-You can embed a static question using the `InteractiveQuestion` component.
+- [Interactive questions](#embedding-an-interactive-question)
+- [Static questions](#embedding-a-static-question)
+- [Creating a question](#creating-a-question)
+- [Editing a question](#editing-a-question)
 
 ## Embedding an interactive question
+
+You can embed a static question using the `InteractiveQuestion` component.
 
 ```typescript jsx
 import React from "react";
@@ -28,7 +31,7 @@ export default function App() {
 const questionId = 1; // This is the question ID you want to embed
 ```
 
-Parameters include:
+## Question props
 
 - **questionId**: `number | string` (required) – The ID of the question. This is either:
   - The numerical ID when accessing a question link, e.g., `http://localhost:3000/question/1-my-question` where the ID is `1`.
@@ -59,54 +62,53 @@ By default, the Embedded Analytics SDK provides a default layout for interactive
 Using the `InteractiveQuestion` with its default layout looks like this:
 
 ```typescript jsx
-<InteractiveQuestion questionId={95}/>
+<InteractiveQuestion questionId={95} />
 ```
 
 To customize the layout, use namespaced components within the `InteractiveQuestion`. For example:
 
 ```typescript jsx
 <InteractiveQuestion questionId={95}>
-    <div
-        style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-        }}
-    >
-        <div style={{display: "grid", placeItems: "center"}}>
-            <InteractiveQuestion.Title/>
-            <InteractiveQuestion.ResetButton/>
-        </div>
-        <div
-            style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "flex-start",
-                overflow: "hidden",
-            }}
-        >
-            <div style={{width: "100%"}}>
-                <InteractiveQuestion.QuestionVisualization/>
-            </div>
-            <div style={{display: "flex", flex: 1, overflow: "scroll"}}>
-                <InteractiveQuestion.Summarize/>
-            </div>
-        </div>
-        <div style={{display: "flex", flexDirection: "column"}}>
-            <InteractiveQuestion.Filter/>
-        </div>
+  <div
+    style={{
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      justifyContent: "center",
+    }}
+  >
+    <div style={{ display: "grid", placeItems: "center" }}>
+      <InteractiveQuestion.Title />
+      <InteractiveQuestion.ResetButton />
     </div>
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "flex-start",
+        overflow: "hidden",
+      }}
+    >
+      <div style={{ width: "100%" }}>
+        <InteractiveQuestion.QuestionVisualization />
+      </div>
+      <div style={{ display: "flex", flex: 1, overflow: "scroll" }}>
+        <InteractiveQuestion.Summarize />
+      </div>
+    </div>
+    <div style={{ display: "flex", flexDirection: "column" }}>
+      <InteractiveQuestion.Filter />
+    </div>
+  </div>
 </InteractiveQuestion>
 ```
 
 ## Interactive question components
 
-These components are available via the `InteractiveQuestion` namespace (e.g.,  `<InteractiveQuestion.Filter />`)
-
+These components are available via the `InteractiveQuestion` namespace (e.g., `<InteractiveQuestion.Filter />`)
 
 | Component               | Info                                                                                                                         |
-|-------------------------|------------------------------------------------------------------------------------------------------------------------------|
+| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
 | `BackButton`            | The back button, which provides `back` functionality for the InteractiveDashboard                                            |
 | `FilterBar`             | The row of badges that contains the current filters that are applied to the question                                         |
 | `Filter`                | The Filter pane containing all possible filters                                                                              |
@@ -125,7 +127,7 @@ You can embed a static question using the `StaticQuestion` component.
 
 The component has a default height, which can be customized by using the `height` prop. To inherit the height from the parent container, you can pass `100%` to the height prop.
 
-### Static embed parameters
+## Static embed props
 
 - **questionId**: `number | string` (required) – The ID of the question. This is either:
   - The numerical ID when accessing a question link, e.g., `http://localhost:3000/question/1-my-question` where the ID is `1`.
@@ -151,6 +153,44 @@ export default function App() {
 You can pass parameter values to questions defined with SQL via `parameterValues` prop, in the format of `{parameter_name: parameter_value}`. Learn more about [SQL parameters](../questions/native-editor/sql-parameters.md)
 
 ```jsx
-<StaticQuestion questionId={questionId} parameterValues={{product_id: 50}}/>
+<StaticQuestion questionId={questionId} parameterValues={{ product_id: 50 }} />
 ```
 
+## Creating a Question
+
+With the `CreateQuestion` component, you can create a new question from scratch with Metabase's query builder.
+
+```tsx
+import React from "react";
+import {MetabaseProvider, CreateQuestion} from "@metabase/embedding-sdk-react";
+
+const config = {...}
+
+export default function App() {
+    return (
+        <MetabaseProvider config={config}>
+            <CreateQuestion/>
+        </MetabaseProvider>
+    );
+}
+```
+
+## Editing a question
+
+With the `ModifyQuestion` component, you can edit an existing question using the query builder.
+
+```tsx
+import React from "react";
+import {MetabaseProvider, ModifyQuestion} from "@metabase/embedding-sdk-react";
+
+const config = {...}
+
+export default function App() {
+    return (
+        <MetabaseProvider config={config}>
+            <ModifyQuestion questionId={1}/>
+        </MetabaseProvider>
+    );
+}
+
+```
