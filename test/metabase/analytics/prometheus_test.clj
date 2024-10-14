@@ -179,7 +179,7 @@
   ([expected actual epsilon]
    (< (- expected epsilon) actual (+ expected epsilon))))
 
-(deftest inc-test
+(deftest inc!-test
   (testing "inc has no effect if system is not setup"
     (prometheus/inc! :metabase-email/messages)) ; << Does not throw.
   (testing "inc has no effect when called with unknown metric"
@@ -188,7 +188,7 @@
   (testing "inc is recorded for known metrics"
     (with-prometheus-system! [_ system]
       (prometheus/inc! :metabase-email/messages)
-      (is (< 0 (-> system :registry :metabase-email/messages ops/read-value))))))
+      (is (approx= 1 (metric-value system :metabase-email/messages))))))
 
 (deftest inc-and-throw!-test
   (testing "inc-and-throw! increments counter and throws exception"
