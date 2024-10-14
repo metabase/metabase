@@ -1,4 +1,4 @@
-import { Button, rem } from "@mantine/core";
+import { Button } from "@mantine/core";
 
 import ButtonStyles from "./Button.module.css";
 
@@ -17,29 +17,6 @@ export const buttonOverrides = {
       root: ButtonStyles.root,
       label: ButtonStyles.label,
     },
-    vars: () => {
-      return {
-        root: {
-          "--button-padding-x": rem(15),
-        },
-      };
-    },
-
-    // styles: (theme: MantineTheme, { compact }: ButtonStylesParams) => {
-    //   return {
-    //     root: {
-    //       padding: compact ? `${rem(3)} ${rem(7)}` : `${rem(11)} ${rem(15)}`,
-    //       [`&:has(.${getStylesRef("label")}:empty)`]: {
-    //         padding: compact ? `${rem(3)} ${rem(3)}` : `${rem(11)} ${rem(11)}`,
-    //         [`.${getStylesRef("leftIcon")}`]: {
-    //           marginRight: 0,
-    //         },
-    //         [`.${getStylesRef("rightIcon")}`]: {
-    //           marginLeft: 0,
-    //         },
-    //       },
-    //     },
-    //   };
   }),
 };
 //     variants: {
