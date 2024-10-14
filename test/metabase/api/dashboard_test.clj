@@ -1149,6 +1149,21 @@
             (is (not=  (:entity_id dashboard) (:entity_id response))
                 "The copy should have a new entity ID generated")))))))
 
+(deftest copy-dashboard-with-dashboard-questions-test
+  (mt/with-temp [:model/Dashboard {dash-id :id} {}
+                 :model/Card {dq-id :id} {:dashboard_id dash-id
+                                          :dataset_query (mt/$ids
+                                                           {:database (mt/id)
+                                                            :type     :query
+                                                            :query    {:source-table $$orders
+                                                                       :aggregation  [[:avg $orders.total]]
+                                                                       :breakout     [!month.orders.created_at]}})}
+                 :model/DashboardCard _ {:dashboard_id dash-id :card_id dq-id}]
+    (let [new-dash-id (:id (mt/user-http-request :rasta :post 200 (format "dashboard/%d/copy" dash-id)))]
+      (is (= 1
+             (t2/count :model/DashboardCard :dashboard_id dash-id)
+             (t2/count :model/DashboardCard :dashboard_id new-dash-id))))))
+
 (deftest copy-dashboard-test-2
   (mt/with-model-cleanup [:model/Dashboard]
     (testing "POST /api/dashboard/:id/copy"

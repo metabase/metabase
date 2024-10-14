@@ -383,8 +383,10 @@
                                    same-collection?        (update :name #(str % " - " (tru "Duplicate")))
                                    (:dashboard_id to-copy) (assoc :dashboard_id (u/the-id new-dashboard)))
                                  @api/*current-user*
-                             ;; creating cards from a transaction. wait until tx complete to signal event
-                                 true)]))
+                                 ;; creating cards from a transaction. wait until tx complete to signal event
+                                 true
+                                 ;; do not autoplace these cards. we will create the dashboard cards ourselves.
+                                 false)]))
      :discarded  discard
      :referenced reference}))
 
