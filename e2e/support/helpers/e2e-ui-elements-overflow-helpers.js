@@ -34,18 +34,14 @@ export const assertDescendantNotOverflowsContainer = (
     return;
   }
 
-  cy.wrap(descendantRect).should($descendantRect => {
-    expect($descendantRect.bottom, `${message} bottom`).to.be.lte(
-      containerRect.bottom,
-    );
-    expect($descendantRect.top, `${message} top`).to.be.gte(containerRect.top);
-    expect($descendantRect.left, `${message} left`).to.be.gte(
-      containerRect.left,
-    );
-    expect($descendantRect.right, `${message} right`).to.be.lte(
-      containerRect.right,
-    );
-  });
+  expect(descendantRect.bottom, `${message} bottom`).to.be.lte(
+    containerRect.bottom,
+  );
+  expect(descendantRect.top, `${message} top`).to.be.gte(containerRect.top);
+  expect(descendantRect.left, `${message} left`).to.be.gte(containerRect.left);
+  expect(descendantRect.right, `${message} right`).to.be.lte(
+    containerRect.right,
+  );
 };
 
 export const assertIsEllipsified = element => {

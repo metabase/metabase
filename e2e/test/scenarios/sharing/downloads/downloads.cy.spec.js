@@ -409,6 +409,7 @@ describe("scenarios > dashboard > download pdf", () => {
     cy.signInAsAdmin();
     cy.deleteDownloadsFolder();
   });
+
   it("should allow you to download a PDF of a dashboard", () => {
     const date = Date.now();
     cy.createDashboardWithQuestions({
