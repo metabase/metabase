@@ -13,6 +13,7 @@
    [metabase.api.common.validation :as validation]
    [metabase.api.dataset :as api.dataset]
    [metabase.api.query-metadata :as api.query-metadata]
+   [metabase.db.query :as mdb.query]
    [metabase.email.messages :as messages]
    [metabase.events :as events]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
@@ -48,6 +49,7 @@
    [metabase.query-processor.util :as qp.util]
    [metabase.related :as related]
    [metabase.util :as u]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -502,6 +504,40 @@
       (u/prog1 (first (last-edit/with-last-edit-info [dashboard] :dashboard))
         (events/publish-event! :event/dashboard-read {:object-id (:id dashboard) :user-id api/*current-user-id*})))))
 
+(api/defendpoint GET "/:id/items"
+  "Get Dashboard with ID."
+  [id]
+  {id ms/PositiveInt}
+  (api/read-check :model/Dashboard id)
+  ;; query copied from metabase.api.collection to match the shape of api/collection/<:id|root>/items
+  (let [query      {:select [:c.id :c.name :c.description :c.entity_id :c.collection_position :c.display :c.collection_preview
+                             :last_used_at :c.collection_id :c.archived_directly :c.archived :c.dataset_query :c.database_id
+                             [(h2x/literal "card")  :model]
+                             [{:select   [:status]
+                               :from     [:moderation_review]
+                               :where    [:and
+                                          [:= :moderated_item_type "card"]
+                                          [:= :moderated_item_id :c.id]
+                                          [:= :most_recent true]]
+                               :order-by [[:id :desc]]
+                               ;; limit 1 to ensure that there is only one result but this invariant should hold true, just
+                               ;; protecting against potential bugs
+                               :limit    1}
+                              :moderated_status]]
+                    :from      [[:report_card :c]]
+                    :where     [:and
+                                [:= :c.dashboard_id id]
+                                [:exists {:select 1
+                                          :from [[:report_dashboardcard :dc]]
+                                          :where [:and [:= :c.id :dc.card_id] [:= :c.dashboard_id :dc.dashboard_id]]}]
+                                [:= :c.archived false]]}
+        cards      (mdb.query/query query)]
+    {:total  (count cards)
+     :data   (into []
+                   (map #(update % :dataset_query (comp mbql.normalize/normalize json/parse-string)))
+                   (last-edit/with-last-edit-info cards :card))
+     :models (if (seq cards) ["card"] [])}))
+
 (defn- check-allowed-to-change-embedding
   "You must be a superuser to change the value of `enable_embedding` or `embedding_params`. Embedding must be
   enabled."
@@ -632,6 +668,7 @@
 (defn- do-update-dashcards!
   [dashboard current-cards new-cards]
   (let [{:keys [to-create to-update to-delete]} (u/row-diff current-cards new-cards)]
+    (dashboard/archive-or-unarchive-internal-dashboard-questions! (:id dashboard) new-cards)
     (assert-new-dashcards-are-not-internal-to-other-dashboards dashboard to-create)
     (when (seq to-update)
       (update-dashcards! dashboard to-update))

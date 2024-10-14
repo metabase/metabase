@@ -202,9 +202,26 @@
               (is (= [{:model "metric" :id (u/the-id metric) :name "rand-metric-name"}
                       {:model "table" :id (u/the-id table1) :name "rand-name"}
                       {:model "dashboard" :id (u/the-id dash) :name "rand-name2"}
-                      {:model "card" :id (u/the-id card1) :name "rand-name"}
+                      {:model "card" :id (u/the-id card1) :name "rand-name" :dashboard nil}
                       {:model "dataset" :id (u/the-id dataset) :name "rand-name"}]
-                     (map #(select-keys % [:model :id :name]) recent-views))))))))))
+                     (map #(select-keys % [:model :id :name :dashboard]) recent-views))))))))))
+
+(deftest recent-card-read-views-have-dashboard-info-for-dashboard-questions
+  (clear-recent-views-for-user :crowberto)
+  (mt/with-test-user :crowberto
+    (mt/with-model-cleanup [:model/ViewLog :model/RecentViews]
+      (mt/with-temp [:model/Dashboard {dash-id :id} {:name "the dashboard name"}
+                     :model/Card      {card-id :id} {:name "dashboard question card"
+                                                     :dashboard_id dash-id}]
+        (testing "recent_views endpoint shows the current user's recently viewed items."
+          (clear-recent-views-for-user :crowberto)
+          (testing (str "> EVENT: " :event/card-read " does create recent views.")
+            (doseq [[topic event] [[:event/card-read      {:user-id (mt/user->id :crowberto) :object-id card-id :context :question}]]]
+              (events/publish-event! topic (assoc event :user-id (mt/user->id :crowberto))))
+            (let [recent-views (:recents (mt/user-http-request :crowberto :get 200 "activity/recents?context=views"))]
+              (is (= [{:model "card" :id card-id :name "dashboard question card" :dashboard {:name "the dashboard name"
+                                                                                             :id   dash-id}}]
+                     (map #(select-keys % [:model :id :name :dashboard]) recent-views))))))))))
 
 (deftest recent-card-query-views-test
   (clear-recent-views-for-user :crowberto)

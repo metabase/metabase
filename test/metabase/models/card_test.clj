@@ -1084,19 +1084,25 @@
   (mt/with-temp [:model/Collection {coll-id :id} {}
                  :model/Collection {other-coll-id :id} {}
                  :model/Dashboard {dash-id :id} {:collection_id coll-id}
-                 :model/Card {card-id :id} {:dashboard_id dash-id}]
+                 :model/Card card {:dashboard_id dash-id}]
     (testing "Can't update the collection_id"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid dashboard-internal card"
-                            (t2/update! :model/Card card-id {:collection_id other-coll-id}))))
+                            (card/update-card! {:card-before-update card
+                                                :card-updates {:collection_id other-coll-id}}))))
     (testing "CAN 'update' the collection_id"
-      (is (t2/update! :model/Card card-id {:collection_id coll-id})))
+      (is (card/update-card! {:card-before-update card
+                              :card-updates {:collection_id coll-id}})))
     (testing "Can't update the collection_position"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid dashboard-internal card"
-                            (t2/update! :model/Card card-id {:collection_position 5}))))
+                            (card/update-card! {:card-before-update card
+                                                :card-updates {:collection_position 5}}))))
     (testing "CAN 'update' the collection_position"
-      (is (t2/update! :model/Card card-id {:collection_position nil})))
+      (is (card/update-card! {:card-before-update card
+                              :card-updates {:collection_position nil}})))
     (testing "Can't update the type"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid dashboard-internal card"
-                            (t2/update! :model/Card card-id {:type :model}))))
+                            (card/update-card! {:card-before-update card
+                                                :card-updates {:type :model}}))))
     (testing "CAN 'update' the type"
-      (is (t2/update! :model/Card card-id {:type :question})))))
+      (is (card/update-card! {:card-before-update card
+                              :card-updates {:type :question}})))))
