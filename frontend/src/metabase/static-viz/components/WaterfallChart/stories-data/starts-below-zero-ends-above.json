@@ -205,10 +205,10 @@
       "viz-settings": {
         "graph.dimensions": ["category"],
         "graph.metrics": ["Change Inverted"],
-        "metabase.shared.models.visualization-settings/column-settings": {
-          "{:metabase.shared.models.visualization-settings/field-id 1550}": {}
+        "metabase.models.visualization-settings/column-settings": {
+          "{:metabase.models.visualization-settings/field-id 1550}": {}
         },
-        "metabase.shared.models.visualization-settings/global-column-settings": {}
+        "metabase.models.visualization-settings/global-column-settings": {}
       },
       "native_form": {
         "query": "SELECT \"source\".\"category\" AS \"category\", \"source\".\"Change Inverted\" AS \"Change Inverted\" FROM (SELECT \"source\".\"category\" AS \"category\", \"source\".\"change\" AS \"change\", 0 - \"source\".\"change\" AS \"Change Inverted\" FROM (SELECT \"csv_upload_data\".\"csv_upload_waterfall_starts_above_0_ends_below_20231216121109\".\"_mb_row_id\" AS \"_mb_row_id\", \"csv_upload_data\".\"csv_upload_waterfall_starts_above_0_ends_below_20231216121109\".\"category\" AS \"category\", \"csv_upload_data\".\"csv_upload_waterfall_starts_above_0_ends_below_20231216121109\".\"change\" AS \"change\" FROM \"csv_upload_data\".\"csv_upload_waterfall_starts_above_0_ends_below_20231216121109\") AS \"source\") AS \"source\" LIMIT 2000",
