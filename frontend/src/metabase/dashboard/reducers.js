@@ -1,10 +1,8 @@
 import { assocIn, chain, dissoc, merge, updateIn } from "icepick";
-import produce from "immer";
 import reduceReducers from "reduce-reducers";
 import _ from "underscore";
 
 import Actions from "metabase/entities/actions";
-import Dashboards from "metabase/entities/dashboards";
 import Questions from "metabase/entities/questions";
 import Revisions from "metabase/entities/revisions";
 import { combineReducers, handleActions } from "metabase/lib/redux";
@@ -21,104 +19,33 @@ import {
   REMOVE_CARD_FROM_DASH,
   REPLACE_ALL_DASHCARD_VISUALIZATION_SETTINGS,
   SET_DASHBOARD_ATTRIBUTES,
+  RESET_PARAMETERS,
   SET_DASHCARD_ATTRIBUTES,
   SET_MULTIPLE_DASHCARD_ATTRIBUTES,
   UNDO_REMOVE_CARD_FROM_DASH,
   UPDATE_DASHCARD_VISUALIZATION_SETTINGS,
   UPDATE_DASHCARD_VISUALIZATION_SETTINGS_FOR_COLUMN,
-  UPDATE_EMBEDDING_PARAMS,
-  UPDATE_ENABLE_EMBEDDING,
+  fetchCardDataAction,
   fetchDashboard,
   tabsReducer,
 } from "./actions";
 import { INITIAL_DASHBOARD_STATE } from "./constants";
-import * as typedReducers from "./reducers-typed";
 import {
-  calculateDashCardRowAfterUndo,
-  syncParametersAndEmbeddingParams,
-} from "./utils";
-
-function newDashboard(before, after, isDirty) {
-  return {
-    ...before,
-    ...after,
-    embedding_params: syncParametersAndEmbeddingParams(before, after),
-    isDirty: isDirty ?? true,
-  };
-}
-
-const dashboards = handleActions(
-  {
-    [fetchDashboard.fulfilled]: {
-      next: (state, { payload }) => ({
-        ...state,
-        ...payload.entities.dashboard,
-      }),
-    },
-    [SET_DASHBOARD_ATTRIBUTES]: {
-      next: (state, { payload: { id, attributes, isDirty } }) => {
-        return {
-          ...state,
-          [id]: newDashboard(state[id], attributes, isDirty),
-        };
-      },
-    },
-    [ADD_CARD_TO_DASH]: (state, { payload: dashcard }) => ({
-      ...state,
-      [dashcard.dashboard_id]: {
-        ...state[dashcard.dashboard_id],
-        dashcards: [...state[dashcard.dashboard_id].dashcards, dashcard.id],
-      },
-    }),
-    [ADD_MANY_CARDS_TO_DASH]: (state, { payload: dashcards }) => {
-      const [{ dashboard_id }] = dashcards;
-      const dashcardIds = dashcards.map(({ id }) => id);
-      return {
-        ...state,
-        [dashboard_id]: {
-          ...state[dashboard_id],
-          dashcards: [...state[dashboard_id].dashcards, ...dashcardIds],
-        },
-      };
-    },
-    [CREATE_PUBLIC_LINK]: {
-      next: (state, { payload }) =>
-        assocIn(state, [payload.id, "public_uuid"], payload.uuid),
-    },
-    [DELETE_PUBLIC_LINK]: {
-      next: (state, { payload }) =>
-        assocIn(state, [payload.id, "public_uuid"], null),
-    },
-    [UPDATE_EMBEDDING_PARAMS]: {
-      next: (state, { payload }) =>
-        assocIn(
-          state,
-          [payload.id, "embedding_params"],
-          payload.embedding_params,
-        ),
-    },
-    [UPDATE_ENABLE_EMBEDDING]: {
-      next: (state, { payload }) =>
-        produce(state, draftState => {
-          const dashboard = draftState[payload.id];
-          dashboard.enable_embedding = payload.enable_embedding;
-          dashboard.initially_published_at = payload.initially_published_at;
-        }),
-    },
-    [Dashboards.actionTypes.UPDATE]: {
-      next: (state, { payload }) => {
-        return produce(state, draftState => {
-          const draftDashboard = draftState[payload.dashboard.id];
-          if (draftDashboard) {
-            draftDashboard.collection_id = payload.dashboard.collection_id;
-            draftDashboard.collection = payload.dashboard.collection;
-          }
-        });
-      },
-    },
-  },
-  INITIAL_DASHBOARD_STATE.dashboards,
-);
+  autoApplyFilters,
+  dashboardId,
+  dashboards,
+  editingDashboard,
+  isAddParameterPopoverOpen,
+  isNavigatingBackToDashboard,
+  loadingControls,
+  loadingDashCards,
+  missingActionParameters,
+  parameterValues,
+  sidebar,
+  slowCards,
+  theme,
+} from "./reducers-typed";
+import { calculateDashCardRowAfterUndo } from "./utils";
 
 const dashcards = handleActions(
   {
@@ -244,7 +171,7 @@ const dashcardData = handleActions(
       next: (state, { payload: { clearCache = true } = {} }) =>
         clearCache ? {} : state,
     },
-    [FETCH_CARD_DATA]: {
+    [fetchCardDataAction.fulfilled]: {
       next: (state, { payload: { dashcard_id, card_id, result } }) =>
         assocIn(state, [dashcard_id, card_id], result),
     },
@@ -265,10 +192,25 @@ const dashcardData = handleActions(
 export const dashboardReducers = reduceReducers(
   INITIAL_DASHBOARD_STATE,
   combineReducers({
-    ...typedReducers,
+    dashboardId,
+    missingActionParameters,
+    autoApplyFilters,
+    theme,
+    slowCards,
+    isNavigatingBackToDashboard,
+    isAddParameterPopoverOpen,
+    editingDashboard,
+    loadingControls,
+    sidebar,
+    parameterValues,
     dashboards,
+    loadingDashCards,
     dashcards,
     dashcardData,
+    draftParameterValues,
+    // Combined reducer needs to init state for every slice
+    selectedTabId: (state = INITIAL_DASHBOARD_STATE.selectedTabId) => state,
+    tabDeletions: (state = INITIAL_DASHBOARD_STATE.tabDeletions) => state,
   }),
   tabsReducer,
 );

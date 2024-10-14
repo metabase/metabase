@@ -1,0 +1,16 @@
+.Main {
+  grid-area: Main;
+  display: grid;
+  grid-template: 1fr / auto 1fr;
+  grid-template-areas: "ChartTypeSelector Content";
+}
+
+.ChartTypeSelector {
+  grid-area: ChartTypeSelector;
+  overflow: hidden;
+}
+
+.Content {
+  grid-area: Content;
+  overflow: auto;
+}

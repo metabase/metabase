@@ -341,7 +341,8 @@
   :export?    false
   :audit      :never
   :type       :json
-  :default    default-eid-translation-counter)
+  :default    default-eid-translation-counter
+  :doc false)
 
 (defn- compute-result [processed-result current-count]
   (merge-with + processed-result current-count))
