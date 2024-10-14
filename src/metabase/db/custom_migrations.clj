@@ -1588,7 +1588,8 @@
                                                                        handler))]
         (t2/insert! :notification_recipient (map #(merge {:notification_handler_id handler-id
                                                           :created_at              :%now
-                                                          :updated_at              :%now} %)
+                                                          :updated_at              :%now}
+                                                         %)
                                                  recipients))))))
 
 (define-migration CreateSystemNotificationUserJoined
