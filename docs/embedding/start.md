@@ -12,13 +12,17 @@ What is embedding, and how does it work?
 
 The solution to self-service customer analytics: embed the full Metabase app in your app. Interactive embedding integrates with your data permissions to let people slice and dice data on their own using Metabase's query builder.
 
-## [Interactive embedding quick start](./interactive-embedding-quick-start-guide.md)
+## [Interactive embedding quickstart](./interactive-embedding-quick-start-guide.md)
 
 You'll embed the full Metabase application in your app. Once logged in, people can view a Metabase dashboard in your web app, and be able to use the full Metabase application to explore their data, and only their data.
 
-## [Embedding SDK](./embedded-analytics-sdk/introduction.md)
+## [Embedding SDK](./sdk/introduction.md)
 
 With the Embedding SDK, you can embed individual Metabase components with React (like standalone charts, dashboards, the query builder, and more). You can manage access and interactivity per component, and you have advanced customization for seamless styling.
+
+## [Embedding SDK quickstart](./sdk/quickstart.md)
+
+Jump to a SDK quickstart with a sample React application.
 
 ## [Static embedding](./static-embedding.md)
 
