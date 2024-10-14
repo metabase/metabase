@@ -1,6 +1,6 @@
 import { createReducer } from "@reduxjs/toolkit";
 import { assocIn, chain, dissocIn, merge, updateIn } from "icepick";
-import { omit } from "underscore";
+import _, { omit } from "underscore";
 
 import {
   createDashboardPublicLink,
@@ -471,9 +471,10 @@ export const dashcards = createReducer(
   INITIAL_DASHBOARD_STATE.dashcards,
   builder => {
     builder
-      .addCase(fetchDashboard.fulfilled, (state, action) => {
-        Object.assign(state, action.payload.entities.dashcard);
-      })
+      .addCase(fetchDashboard.fulfilled, (state, action) => ({
+        ...state,
+        ...action.payload.entities.dashcard,
+      }))
       .addCase(setDashCardAttributes, (state, action) => {
         const { id, attributes } = action.payload;
         Object.assign(state[id], attributes, { isDirty: true });
@@ -520,19 +521,24 @@ export const dashcards = createReducer(
             .value(),
       )
       .addCase(addCardToDash, (state, action) => {
-        const dashcard = action.payload;
-        Object.assign(state[dashcard.id], dashcard, {
+        // @ts-expect-error - Type instantiation issue that I don't know how to solve
+        state[action.payload.id] = {
+          ...action.payload,
           isAdded: true,
           justAdded: true,
-        });
+        };
       })
       .addCase(addManyCardsToDash, (state, action) => {
-        action.payload.forEach((dc, index) => {
-          Object.assign(state[dc.id], dc, {
-            isAdded: true,
-            justAdded: index === 0,
-          });
-        });
+        const storeDashcards = action.payload.map((dc, index) => ({
+          ...dc,
+          isAdded: true,
+          justAdded: index === 0,
+        }));
+        const storeDashCardsMap = _.indexBy(storeDashcards, "id");
+        return {
+          ...state,
+          ...storeDashCardsMap,
+        };
       })
       .addCase(removeCardFromDashboard.fulfilled, (state, action) => {
         const { dashcardId } = action.payload;
