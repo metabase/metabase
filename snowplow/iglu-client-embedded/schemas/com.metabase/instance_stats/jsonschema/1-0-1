@@ -9,6 +9,11 @@
   },
   "type": "object",
   "properties": {
+    "analytics_uuid": {
+      "description": "The UUID for the instance",
+      "type": "string",
+      "maxLength": 255
+    },
     "instance_attributes": {
       "description": "Key-value pairs of instance attributes",
       "type": "array",
@@ -62,6 +67,79 @@
           }
         },
         "required": ["name", "value", "tags"]
+      }
+    },
+    "grouped_metrics": {
+      "description": "Key-value pairs of grouped metrics, with tags.",
+      "type": "array",
+      "items": {
+        "description": "a Grouped Metric, which has a key a value and tags",
+        "type": "object",
+        "properties": {
+          "name": {
+            "description": "The unique name of the grouped metric",
+            "type": "string",
+            "maxLength": 255
+          },
+          "values": {
+            "description": "Values for the grouped metric",
+            "type": "array",
+            "items": {
+              "description": "Items in a groped metric value",
+              "type": "object",
+              "properties": {
+                "group": {
+                  "description": "The group name",
+                  "type": "string",
+                  "maxLength": 255
+                },
+                "value": {
+                  "description": "The value for the group",
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": ["group", "value"],
+              "additionalProperties": false
+            }
+          },
+          "tags": {
+            "description": "Tags that can be used flagging teams / features the grouped_metric belongs to",
+            "type": "array",
+            "items": {
+              "description": "a single tag",
+              "type": "string",
+              "maxLength": 255
+            }
+          }
+        },
+        "required": ["name", "values", "tags"],
+        "additionalProperties": false
+      }
+    },
+    "settings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "key": { "type": "string" },
+          "value": {
+            "oneOf": [
+              { "type": "string" },
+              { "type": "boolean" },
+              { "type": "number" },
+              { "type": "string", "format": "date-time" }
+            ]
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": ["key", "value", "tags"]
       }
     },
     "features": {
