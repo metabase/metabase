@@ -78,17 +78,17 @@
 (mr/def ::timezone-id
   [:and
    ::common/non-blank-string
-  ;;  [:or
-  ;;   (into [:enum
-  ;;          {:error/message "valid timezone ID"
-  ;;           :error/fn      (fn [{:keys [value]} _]
-  ;;                            (str "invalid timezone ID: " (pr-str value)))}]
-  ;;         (sort
-  ;;          #?(;; 600 timezones on java 17
-  ;;             :clj (ZoneId/getAvailableZoneIds)
-  ;;             ;; 596 timezones on moment-timezone 0.5.38
-  ;;             :cljs (.names (.-tz moment)))))
-  ;;   ::literal/string.zone-offset]
+   [:or
+    (into [:enum
+           {:error/message "valid timezone ID"
+            :error/fn      (fn [{:keys [value]} _]
+                             (str "invalid timezone ID: " (pr-str value)))}]
+          (sort
+           #?(;; 600 timezones on java 17
+              :clj (ZoneId/getAvailableZoneIds)
+              ;; 596 timezones on moment-timezone 0.5.38
+              :cljs (.names (.-tz moment)))))
+    ::literal/string.zone-offset]
    ])
 
 (mbql-clause/define-catn-mbql-clause :convert-timezone

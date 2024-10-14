@@ -7,6 +7,12 @@ const path = require("path");
 const IGNORED_PACKAGES = ["react", "react-dom"];
 const SDK_DIST_DIR = path.resolve("./resources/embedding-sdk");
 
+// these deps are polyfilled from node in our main app by webpack
+const DEPENDENCIES_TO_ADD = {
+  events: "^3.3.0",
+  querystring: "^0.2.1",
+};
+
 function filterOutReactDependencies(object) {
   const result = {};
 
@@ -46,9 +52,10 @@ function generateSdkPackage() {
 
   const mergedContent = {
     ...sdkPackageTemplateJsonContent,
-    dependencies: filterOutReactDependencies(
-      mainPackageJsonContent.dependencies,
-    ),
+    dependencies: filterOutReactDependencies({
+      ...mainPackageJsonContent.dependencies,
+      ...DEPENDENCIES_TO_ADD,
+    }),
     resolutions: filterOutReactDependencies(mainPackageJsonContent.resolutions),
     version: maybeCommitHash
       ? `${sdkPackageTemplateJsonContent.version}-${todayDate}-${maybeCommitHash}`

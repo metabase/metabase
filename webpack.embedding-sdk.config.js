@@ -128,7 +128,14 @@ module.exports = env => {
     // externals: [/(node_modules)/],
     externals: [
       nodeExternals({
-        allowlist: ["process/browser.js", "process", "moment"],
+        allowlist: [
+          "process/browser.js",
+          "process",
+          "moment",
+          "moment-timezone", // needed for some clojure code that expects it
+          "react-virtualized", // it creates issues on vite,
+          "echarts", // we have a patch on echarts
+        ],
       }),
     ],
 
