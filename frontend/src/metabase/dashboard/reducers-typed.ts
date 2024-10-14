@@ -1,5 +1,5 @@
 import { createReducer } from "@reduxjs/toolkit";
-import { assoc, dissoc, assocIn } from "icepick";
+import { assoc, assocIn, dissoc } from "icepick";
 import { omit } from "underscore";
 
 import {
@@ -24,11 +24,7 @@ import type {
 } from "metabase-types/store/dashboard";
 
 import {
-  CANCEL_FETCH_CARD_DATA,
   CLOSE_SIDEBAR,
-  FETCH_CARD_DATA,
-  FETCH_CARD_DATA_PENDING,
-  FETCH_DASHBOARD_CARD_DATA,
   HIDE_ADD_PARAMETER_POPOVER,
   INITIALIZE,
   REMOVE_PARAMETER,
@@ -417,7 +413,6 @@ export const loadingDashCards = createReducer(
       }));
   },
 );
-
 
 export const draftParameterValues = createReducer({}, builder => {
   builder
