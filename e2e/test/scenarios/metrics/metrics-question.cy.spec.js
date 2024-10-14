@@ -208,7 +208,7 @@ describe("scenarios > metrics > question", () => {
     });
   });
 
-  it("should not show 'Replace existing question' option when saving an edited ad-hoc question from a metric", () => {
+  it("should not show 'Replace existing question' option when saving an edited ad-hoc question from a metric (metabase#48555)", () => {
     cy.signInAsAdmin();
     createQuestion(ORDERS_SCALAR_METRIC, { visitQuestion: true });
 
