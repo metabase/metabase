@@ -12,7 +12,8 @@
     "analytics_uuid": {
       "description": "The UUID for the instance",
       "type": "string",
-      "maxLength": 255
+      "maxLength": 36,
+      "minLength": 36
     },
     "instance_attributes": {
       "description": "Key-value pairs of instance attributes",
@@ -192,5 +193,5 @@
     }
   },
   "additionalProperties": false,
-  "required": ["features", "instance_attributes", "metadata", "metrics"]
+  "required": ["features", "instance_attributes", "metadata", "metrics", "analytics_uuid"]
 }

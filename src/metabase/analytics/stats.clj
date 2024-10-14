@@ -821,7 +821,8 @@
   (let [instance-attributes (snowplow-instance-attributes stats)
         metrics             (snowplow-metrics stats (->snowplow-metric-info))
         features            (snowplow-features)]
-    {:instance-attributes instance-attributes
+    {:analytics-uuid      (snowplow/analytics-uuid)
+     :instance-attributes instance-attributes
      :metrics             metrics
      :features            features}))
 
