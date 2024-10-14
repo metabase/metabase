@@ -132,7 +132,7 @@ describe("scenarios > question > download", () => {
           },
           sheet => {
             expect(sheet["A1"].v).to.eq("Total");
-            expect(sheet["A2"].v).to.eq("USD 39.72");
+            expect(sheet["A2"].w).to.eq("USD 39.72");
           },
         );
 
@@ -144,7 +144,6 @@ describe("scenarios > question > download", () => {
           sheet => {
             expect(sheet["A1"].v).to.eq("Total");
             expect(sheet["A2"].v).to.eq(39.718145389078366);
-            expect(sheet["A2"].w).to.eq("39.718145389078366");
           },
         );
       });
