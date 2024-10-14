@@ -1,5 +1,5 @@
 import { createReducer } from "@reduxjs/toolkit";
-import { assocIn } from "icepick";
+import { assocIn, chain, dissocIn, merge, updateIn } from "icepick";
 import { omit } from "underscore";
 
 import {
@@ -8,15 +8,21 @@ import {
   updateDashboardEmbeddingParams,
   updateDashboardEnableEmbedding,
 } from "metabase/api";
+import Actions from "metabase/entities/actions";
 import Dashboards from "metabase/entities/dashboards";
+import Questions from "metabase/entities/questions";
+import Revisions from "metabase/entities/revisions";
 import { handleActions } from "metabase/lib/redux";
 import { NAVIGATE_BACK_TO_DASHBOARD } from "metabase/query_builder/actions";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
+  Card,
   DashCardId,
   Dashboard,
   ParameterId,
   ParameterValueOrArray,
+  Revision,
+  WritebackAction,
 } from "metabase-types/api";
 import type {
   DashboardSidebarName,
@@ -40,19 +46,31 @@ import {
   addDashcardIdsToLoadingQueue,
   addManyCardsToDash,
   cancelFetchCardData,
+  clearCardData,
   fetchCardDataAction,
   fetchDashboard,
   fetchDashboardCardDataAction,
   initialize,
   markCardAsSlow,
+  markNewCardSeen,
+  onReplaceAllDashCardVisualizationSettings,
+  onUpdateDashCardColumnSettings,
+  onUpdateDashCardVisualizationSettings,
+  removeCardFromDashboard,
   reset,
+  setDashCardAttributes,
   setDashboardAttributes,
   setDisplayTheme,
   setDocumentTitle,
+  setMultipleDashCardAttributes,
   setShowLoadingCompleteFavicon,
+  undoRemoveCardFromDashboard,
 } from "./actions";
 import { INITIAL_DASHBOARD_STATE } from "./constants";
-import { syncParametersAndEmbeddingParams } from "./utils";
+import {
+  calculateDashCardRowAfterUndo,
+  syncParametersAndEmbeddingParams,
+} from "./utils";
 
 export const dashboardId = createReducer(
   INITIAL_DASHBOARD_STATE.dashboardId,
@@ -204,17 +222,12 @@ export const sidebar = createReducer(
 export const parameterValues = createReducer(
   INITIAL_DASHBOARD_STATE.parameterValues,
   builder => {
-    builder.addCase<
-      string,
-      {
-        type: string;
-        payload: {
-          clearCache?: boolean;
-        };
-      }
-    >(INITIALIZE, (state, { payload: { clearCache = true } = {} }) => {
-      return clearCache ? {} : state;
-    });
+    builder.addCase(
+      initialize,
+      (state, { payload: { clearCache = true } = {} }) => {
+        return clearCache ? {} : state;
+      },
+    );
 
     builder.addCase(fetchDashboard.fulfilled, (_state, { payload }) => {
       return payload.parameterValues;
@@ -259,17 +272,12 @@ export const parameterValues = createReducer(
       }
     });
 
-    builder.addCase<
-      string,
-      {
-        type: string;
-        payload: {
-          id: ParameterId;
-        };
-      }
-    >(REMOVE_PARAMETER, (state, { payload: { id } }) => {
-      delete state[id];
-    });
+    builder.addCase<string, { type: string; payload: { id: ParameterId } }>(
+      REMOVE_PARAMETER,
+      (state, { payload: { id } }) => {
+        delete state[id];
+      },
+    );
   },
 );
 
@@ -411,5 +419,161 @@ export const loadingDashCards = createReducer(
         ...state,
         loadingStatus: "idle",
       }));
+  },
+);
+
+export const dashcardData = createReducer(
+  INITIAL_DASHBOARD_STATE.dashcardData,
+  builder => {
+    builder
+      .addCase(initialize, (state, action) => {
+        const { clearCache = true } = action.payload ?? {};
+        return clearCache ? {} : state;
+      })
+      .addCase(fetchCardDataAction.fulfilled, (state, action) => {
+        const { dashcard_id, card_id, result } = action.payload ?? {};
+        if (dashcard_id && card_id) {
+          return assocIn(state, [dashcard_id, card_id], result);
+        }
+      })
+      .addCase(clearCardData, (state, action) => {
+        const { cardId, dashcardId } = action.payload;
+        return dissocIn(state, [dashcardId, cardId]);
+      })
+      .addCase<string, { type: string; payload: { object: Card } }>(
+        Questions.actionTypes.UPDATE,
+        (state, action) => {
+          const id = action.payload.object.id;
+          for (const dashcardId in state) {
+            if (id in state[dashcardId]) {
+              delete state[dashcardId][id];
+            }
+          }
+        },
+      )
+      .addCase<string, { type: string; payload: Revision }>(
+        Revisions.actionTypes.REVERT,
+        (state, action) => {
+          const { model_id } = action.payload;
+          for (const dashcardId in state) {
+            if (model_id in state[dashcardId]) {
+              delete state[dashcardId][model_id];
+            }
+          }
+        },
+      );
+  },
+);
+
+export const dashcards = createReducer(
+  INITIAL_DASHBOARD_STATE.dashcards,
+  builder => {
+    builder
+      .addCase(fetchDashboard.fulfilled, (state, action) => {
+        Object.assign(state, action.payload.entities.dashcard);
+      })
+      .addCase(setDashCardAttributes, (state, action) => {
+        const { id, attributes } = action.payload;
+        Object.assign(state[id], attributes, { isDirty: true });
+      })
+      .addCase(setMultipleDashCardAttributes, (state, action) => {
+        action.payload.dashcards.forEach(({ id, attributes }) => {
+          Object.assign(state[id], attributes, { isDirty: true });
+        });
+      })
+      .addCase(
+        onUpdateDashCardVisualizationSettings,
+        (state, { payload: { id, settings } }) =>
+          chain(state)
+            .updateIn([id, "visualization_settings"], (value = {}) => ({
+              ...value,
+              ...settings,
+            }))
+            .assocIn([id, "isDirty"], true)
+            .value(),
+      )
+      .addCase(
+        onUpdateDashCardColumnSettings,
+        (state, { payload: { column, id, settings } }) =>
+          chain(state)
+            .updateIn([id, "visualization_settings"], (value = {}) =>
+              updateIn(
+                merge({ column_settings: {} }, value),
+                ["column_settings", column],
+                columnSettings => ({
+                  ...columnSettings,
+                  ...settings,
+                }),
+              ),
+            )
+            .assocIn([id, "isDirty"], true)
+            .value(),
+      )
+      .addCase(
+        onReplaceAllDashCardVisualizationSettings,
+        (state, { payload: { id, settings } }) =>
+          chain(state)
+            .assocIn([id, "visualization_settings"], settings)
+            .assocIn([id, "isDirty"], true)
+            .value(),
+      )
+      .addCase(addCardToDash, (state, action) => {
+        const dashcard = action.payload;
+        Object.assign(state[dashcard.id], dashcard, {
+          isAdded: true,
+          justAdded: true,
+        });
+      })
+      .addCase(addManyCardsToDash, (state, action) => {
+        action.payload.forEach((dc, index) => {
+          Object.assign(state[dc.id], dc, {
+            isAdded: true,
+            justAdded: index === 0,
+          });
+        });
+      })
+      .addCase(removeCardFromDashboard.fulfilled, (state, action) => {
+        const { dashcardId } = action.payload;
+        state[dashcardId].isRemoved = true;
+      })
+      .addCase(undoRemoveCardFromDashboard.fulfilled, (state, action) => {
+        const { dashcardId } = action.payload;
+        state[dashcardId].isRemoved = false;
+        state[dashcardId].row = calculateDashCardRowAfterUndo(
+          state[dashcardId].row,
+        );
+      })
+      .addCase(markNewCardSeen, (state, action) => {
+        const dashcardId = action.payload;
+        state[dashcardId].justAdded = false;
+      })
+      .addCase(Questions.actionTypes.UPDATE, (state, action) => {
+        const card = action.payload.object;
+        for (const dashcardId in state) {
+          if (state[dashcardId].card?.id === card?.id) {
+            state[dashcardId].card = card;
+          }
+        }
+      })
+      .addCase<
+        string,
+        {
+          type: string;
+          payload: {
+            object: WritebackAction;
+          };
+        }
+      >(Actions.actionTypes.UPDATE, (state, action) => {
+        const actionObj = action.payload.object;
+        for (const dashcardId in state) {
+          const dashcard = state[dashcardId];
+          if ("action" in dashcard && dashcard.action?.id === actionObj?.id) {
+            dashcard.action = Object.assign(actionObj, {
+              database_e3nabled_actions:
+                dashcard.action.database_enabled_actions || false,
+            });
+          }
+        }
+      });
   },
 );

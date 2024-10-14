@@ -1,3 +1,5 @@
+import type { CardId } from "metabase-types/api/card";
+
 export interface Revision {
   id: number;
   description: string;
@@ -13,6 +15,7 @@ export interface Revision {
     last_name: string;
     common_name: string;
   };
+  model_id: CardId;
 }
 
 export interface RevisionListQuery {
