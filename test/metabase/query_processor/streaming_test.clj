@@ -358,7 +358,7 @@
 
                   :public
                   (let [results (mt/user-http-request user :get 200
-                                                      (format "public/card/%s/query/%s" public-uuid (name export-format))
+                                                      (format "public/card/%s/query/%s?format_rows=true" public-uuid (name export-format))
                                                       {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}})]
                     ((-> assertions export-format) results))
 
