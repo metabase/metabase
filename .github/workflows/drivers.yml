@@ -738,6 +738,21 @@ jobs:
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        version:
+          - docker-image: postgres:12-alpine
+            junit-name: be-tests-postgres-ee
+          - docker-image: postgres:latest
+            unit-name: be-tests-postgres-latest-ee
+        job:
+          - name: driver-tests
+            test-args: >-
+              :only-tags [:mb/driver-tests]
+          - name: app-db-tests
+            test-args: >-
+              :exclude-tags [:mb/driver-tests]
     env:
       CI: 'true'
       DRIVERS: postgres
@@ -749,7 +764,7 @@ jobs:
       MB_POSTGRESQL_TEST_USER: mb_test
     services:
       postgres:
-        image: postgres:12-alpine
+        image: ${{ matrix.version.docker-image }}
         ports:
           - "5432:5432"
         env:
@@ -758,43 +773,12 @@ jobs:
           POSTGRES_HOST_AUTH_METHOD: trust
     steps:
     - uses: actions/checkout@v4
-    - name: Test Postgres driver (12)
+    - name: Test Postgres driver (${{ matrix.version.docker-image }})
       uses: ./.github/actions/test-driver
       with:
-        junit-name: 'be-tests-postgres-ee'
-
-  be-tests-postgres-latest-ee:
-    needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
-    runs-on: ubuntu-22.04
-    timeout-minutes: 90
-    env:
-      CI: 'true'
-      DRIVERS: postgres
-      MB_DB_TYPE: postgres
-      MB_DB_PORT: 5432
-      MB_DB_HOST: localhost
-      MB_DB_DBNAME: circle_test
-      MB_DB_USER: circle_test
-      MB_POSTGRESQL_TEST_USER: circle_test
-      MB_POSTGRES_SSL_TEST_SSL: true
-      MB_POSTGRES_SSL_TEST_SSL_MODE: verify-full
-      MB_POSTGRES_SSL_TEST_SSL_ROOT_CERT_PATH: 'test-resources/certificates/us-east-2-bundle.pem'
-    services:
-      postgres:
-        image: circleci/postgres:latest
-        ports:
-          - "5432:5432"
-        env:
-          POSTGRES_USER: circle_test
-          POSTGRES_DB: circle_test
-          POSTGRES_HOST_AUTH_METHOD: trust
-    steps:
-    - uses: actions/checkout@v4
-    - name: Test Postgres driver (latest)
-      uses: ./.github/actions/test-driver
-      with:
-        junit-name: 'be-tests-postgres-latest-ee'
+        junit-name: ${{ matrix.version.junit-name }}
+        test-args: >-
+          ${{ matrix.job.test-args }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
