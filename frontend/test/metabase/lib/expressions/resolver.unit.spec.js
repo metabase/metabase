@@ -112,6 +112,7 @@ describe("metabase-lib/v1/expressions/resolve", () => {
       // 0 < [A]
       expect(() => filter(["<", 0, A])).toThrow();
     });
+
     it("should still allow a string literal on the left-hand side of a comparison", () => {
       // "XYZ" < [B]
       expect(() => filter(["<", "XYZ", B])).not.toThrow();
@@ -162,6 +163,7 @@ describe("metabase-lib/v1/expressions/resolve", () => {
     it("should accept COALESCE for number", () => {
       expect(() => expr(["round", ["coalesce", 0]])).not.toThrow();
     });
+
     it("should accept COALESCE for string", () => {
       expect(() => expr(["trim", ["coalesce", "B"]])).not.toThrow();
     });
@@ -277,17 +279,20 @@ describe("metabase-lib/v1/expressions/resolve", () => {
 
   describe("for CASE expressions", () => {
     const expr = e => collect(e, "expression");
+
     it("should handle CASE with two arguments", () => {
       // CASE(A,B)
       expect(expr(["case", [[A, B]]]).segments).toEqual(["A"]);
       expect(expr(["case", [[A, B]]]).dimensions).toEqual(["B"]);
     });
+
     it("should handle CASE with three arguments", () => {
       // CASE(P, Q, R)
       const opt = { default: R };
       expect(expr(["case", [[P, Q]], opt]).segments).toEqual(["P"]);
       expect(expr(["case", [[P, Q]], opt]).dimensions).toEqual(["Q", "R"]);
     });
+
     it("should handle CASE with four arguments", () => {
       // CASE(A, B, P, Q)
       const ab = [A, B];
@@ -295,6 +300,7 @@ describe("metabase-lib/v1/expressions/resolve", () => {
       expect(expr(["case", [ab, pq]]).segments).toEqual(["A", "P"]);
       expect(expr(["case", [ab, pq]]).dimensions).toEqual(["B", "Q"]);
     });
+
     it("should handle CASE with five arguments", () => {
       // CASE(A, B, P, Q, R)
       const ab = [A, B];
@@ -303,17 +309,20 @@ describe("metabase-lib/v1/expressions/resolve", () => {
       expect(expr(["case", [ab, pq], opt]).segments).toEqual(["A", "P"]);
       expect(expr(["case", [ab, pq], opt]).dimensions).toEqual(["B", "Q", "R"]);
     });
+
     it("should handle CASE with two complex arguments", () => {
       // CASE(P < 2, Q)
       expect(expr(["case", [[["<", P, 2], Q]]]).segments).toEqual([]);
       expect(expr(["case", [[["<", P, 2], Q]]]).dimensions).toEqual(["P", "Q"]);
     });
+
     it("should handle nested CASE", () => {
       // CASE(P, Q, CASE(A, B))
       const opt = { default: ["case", [[A, B]]] };
       expect(expr(["case", [[P, Q]], opt]).segments).toEqual(["P", "A"]);
       expect(expr(["case", [[P, Q]], opt]).dimensions).toEqual(["Q", "B"]);
     });
+
     it("should handle CASE inside COALESCE", () => {
       // COALESCE(CASE(A, B))
       expect(expr(["coalesce", ["case", [[A, B]]]]).segments).toEqual(["A"]);
@@ -324,6 +333,7 @@ describe("metabase-lib/v1/expressions/resolve", () => {
       // CASE(X)
       expect(() => expr(["case", [], { default: Y }])).toThrow();
     });
+
     it("should reject a CASE expression with incorrect argument type", () => {
       // CASE(X, 1, 2, 3)
       expect(() =>

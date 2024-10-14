@@ -3,7 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.formatter :as formatter]
-   [metabase.shared.models.visualization-settings :as mb.viz]))
+   [metabase.models.visualization-settings :as mb.viz]))
 
 (defn format [value viz]
   (str ((formatter/number-formatter {:id 1}

@@ -37,7 +37,7 @@
    [metabase.api.pulse.unsubscribe :as api.pulse.unsubscribe]
    [metabase.api.revision :as api.revision]
    [metabase.api.routes.common
-    :refer [+auth +message-only-exceptions +public-exceptions +static-apikey]]
+    :refer [+auth +message-only-exceptions +public-exceptions]]
    [metabase.api.search :as api.search]
    [metabase.api.segment :as api.segment]
    [metabase.api.session :as api.session]
@@ -125,7 +125,7 @@
   (context "/metabot"              [] (+auth api.metabot/routes))
   (context "/model-index"          [] (+auth api.model-index/routes))
   (context "/native-query-snippet" [] (+auth api.native-query-snippet/routes))
-  (context "/notify"               [] (+static-apikey api.notify/routes))
+  (context "/notify"               [] (+auth api.notify/routes))
   (context "/permissions"          [] (+auth api.permissions/routes))
   (context "/persist"              [] (+auth api.persist/routes))
   (context "/premium-features"     [] (+auth api.premium-features/routes))

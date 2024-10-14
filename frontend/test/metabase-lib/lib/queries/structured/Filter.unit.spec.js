@@ -32,9 +32,11 @@ describe("Filter", () => {
         filter(["=", ["field", ORDERS.TOTAL, null], 42]).displayName(),
       ).toEqual("Total is equal to 42");
     });
+
     it("should return the correct string for a segment filter", () => {
       expect(filter(["segment", 1]).displayName()).toEqual("Expensive Things");
     });
+
     describe("date labels", () => {
       it("should display is-week filter as a day range", () => {
         expect(
@@ -45,6 +47,7 @@ describe("Filter", () => {
           ]).displayName(),
         ).toEqual("Created At is October 4–10, 2026");
       });
+
       it("should display between dates filter with undefined temporal unit as day range", () => {
         expect(
           filter([
@@ -55,6 +58,7 @@ describe("Filter", () => {
           ]).displayName(),
         ).toEqual("Created At is October 4–11, 2026");
       });
+
       it("should display between-weeks filter as day range", () => {
         expect(
           filter([
@@ -65,6 +69,7 @@ describe("Filter", () => {
           ]).displayName(),
         ).toEqual("Created At is October 4–17, 2026");
       });
+
       it("should display between-minutes filter", () => {
         expect(
           filter([
@@ -85,6 +90,7 @@ describe("Filter", () => {
           "Created At is October 4, 10:20 AM – October 11, 2026, 4:30 PM",
         );
       });
+
       it("should display slice filters with enough context for understanding them", () => {
         expect(
           filter([
@@ -124,6 +130,7 @@ describe("Filter", () => {
       });
     });
   });
+
   describe("isValid", () => {
     describe("with a field filter", () => {
       it("should return true for a field that exists", () => {
@@ -131,16 +138,19 @@ describe("Filter", () => {
           true,
         );
       });
+
       it("should return false for a field that doesn't exists", () => {
         expect(filter(["=", ["field", 12341234, null], 42]).isValid()).toBe(
           false,
         );
       });
+
       it("should return false with a null operator", () => {
         expect(
           filter([null, ["field", ORDERS.TOTAL, null], 42]).isValid(),
         ).toBe(false);
       });
+
       it("should return true for a filter with an expression for the field", () => {
         expect(
           filter(["=", ["/", ["field", 12341234, null], 43], 42]).isValid(),
@@ -148,6 +158,7 @@ describe("Filter", () => {
       });
     });
   });
+
   describe("operator", () => {
     it("should return the correct FilterOperator", () => {
       expect(
@@ -155,6 +166,7 @@ describe("Filter", () => {
       ).toBe("=");
     });
   });
+
   describe("setDimension", () => {
     it("should set the dimension for existing filter clause", () => {
       expect(
@@ -166,12 +178,14 @@ describe("Filter", () => {
         ),
       ).toEqual(["=", ["field", ORDERS.TOTAL, null], 42]);
     });
+
     it("should set the dimension for new filter clause", () => {
       expect(filter([]).setDimension(["field", ORDERS.TOTAL, null])).toEqual([
         null,
         ["field", ORDERS.TOTAL, null],
       ]);
     });
+
     it("should set the dimension and default operator for empty filter clauses", () => {
       expect(
         filter([]).setDimension(["field", ORDERS.TOTAL, null], {
@@ -179,6 +193,7 @@ describe("Filter", () => {
         }),
       ).toEqual(["=", ["field", ORDERS.TOTAL, null], undefined]);
     });
+
     it("should set the dimension correctly when changing from segment", () => {
       expect(
         filter(["segment", 1]).setDimension(["field", ORDERS.TOTAL, null]),
@@ -210,6 +225,7 @@ describe("Filter", () => {
     describe(method, () => {
       for (const [method_, mbql] of CASES) {
         const expected = method_ === method;
+
         it(`should return ${expected} for ${JSON.stringify(mbql)}`, () => {
           expect(filter(mbql)[method]()).toEqual(expected);
         });

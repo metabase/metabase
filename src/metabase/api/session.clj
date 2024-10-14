@@ -197,6 +197,7 @@
 
 (api/defendpoint DELETE "/"
   "Logout."
+  ;; `metabase-session-id` gets added automatically by the [[metabase.server.middleware.session]] middleware
   [:as {:keys [metabase-session-id]}]
   (api/check-exists? Session metabase-session-id)
   (t2/delete! Session :id metabase-session-id)
