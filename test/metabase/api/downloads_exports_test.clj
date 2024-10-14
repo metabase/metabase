@@ -81,14 +81,17 @@
        (process-results pivot export-format)))
 
 (defn public-question-download
-  [card {:keys [export-format format-rows pivot]}]
-  (let [public-uuid (str (random-uuid))
+  [card {:keys [export-format format-rows pivot]
+         :or   {format-rows false
+                pivot       false}}]
+  (let [public-uuid  (str (random-uuid))
         cleaned-card (dissoc card :id :entity_id)]
     (mt/with-temp [:model/Card _ (assoc cleaned-card :public_uuid public-uuid)]
       (->> (mt/user-http-request :crowberto :get 200
                                  (format "public/card/%s/query/%s?format_rows=%s&pivot_results=%s"
                                          public-uuid (name export-format)
-                                         format-rows pivot))
+                                         format-rows
+                                         pivot))
            (process-results pivot export-format)))))
 
 (defn- dashcard-download
