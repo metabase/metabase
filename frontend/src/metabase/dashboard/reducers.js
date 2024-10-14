@@ -4,13 +4,11 @@ import _ from "underscore";
 
 import Actions from "metabase/entities/actions";
 import Questions from "metabase/entities/questions";
-import Revisions from "metabase/entities/revisions";
 import { combineReducers, handleActions } from "metabase/lib/redux";
 
 import {
   ADD_CARD_TO_DASH,
   ADD_MANY_CARDS_TO_DASH,
-  CLEAR_CARD_DATA,
   INITIALIZE,
   MARK_NEW_CARD_SEEN,
   REMOVE_CARD_FROM_DASH,
@@ -24,7 +22,6 @@ import {
   UNDO_REMOVE_CARD_FROM_DASH,
   UPDATE_DASHCARD_VISUALIZATION_SETTINGS,
   UPDATE_DASHCARD_VISUALIZATION_SETTINGS_FOR_COLUMN,
-  fetchCardDataAction,
   fetchDashboard,
   tabsReducer,
 } from "./actions";
@@ -33,6 +30,7 @@ import {
   autoApplyFilters,
   dashboardId,
   dashboards,
+  dashcardData,
   editingDashboard,
   isAddParameterPopoverOpen,
   isNavigatingBackToDashboard,
@@ -162,32 +160,6 @@ const dashcards = handleActions(
   INITIAL_DASHBOARD_STATE.dashcards,
 );
 
-// Many of these slices are also updated by `tabsReducer` in `frontend/src/metabase/dashboard/actions/tabs.ts`
-const dashcardData = handleActions(
-  {
-    // clear existing dashboard data when loading a dashboard
-    [INITIALIZE]: {
-      next: (state, { payload: { clearCache = true } = {} }) =>
-        clearCache ? {} : state,
-    },
-    [fetchCardDataAction.fulfilled]: {
-      next: (state, { payload: { dashcard_id, card_id, result } }) =>
-        assocIn(state, [dashcard_id, card_id], result),
-    },
-    [CLEAR_CARD_DATA]: {
-      next: (state, { payload: { cardId, dashcardId } }) =>
-        assocIn(state, [dashcardId, cardId]),
-    },
-    [Questions.actionTypes.UPDATE]: (state, { payload: { object: card } }) =>
-      _.mapObject(state, dashboardData => dissoc(dashboardData, card.id)),
-    [Revisions.actionTypes.REVERT]: (state, { payload: revision }) =>
-      _.mapObject(state, dashboardData =>
-        dissoc(dashboardData, revision.model_id),
-      ),
-  },
-  INITIAL_DASHBOARD_STATE.dashcardData,
-);
-
 const draftParameterValues = handleActions(
   {
     [INITIALIZE]: {
@@ -243,8 +215,8 @@ export const dashboardReducers = reduceReducers(
     dashboards,
     loadingDashCards,
     dashcards,
-    dashcardData,
     draftParameterValues,
+    dashcardData,
     // Combined reducer needs to init state for every slice
     selectedTabId: (state = INITIAL_DASHBOARD_STATE.selectedTabId) => state,
     tabDeletions: (state = INITIAL_DASHBOARD_STATE.tabDeletions) => state,
