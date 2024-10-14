@@ -3,6 +3,7 @@
    [cheshire.core :as json]
    [clj-http.client :as http]
    [java-time.api :as t]
+   [metabase.analytics.prometheus :as prometheus]
    [metabase.channel.core :as channel]
    [metabase.channel.shared :as channel.shared]
    [metabase.pulse.render :as render]
@@ -37,19 +38,25 @@
 (mu/defmethod channel/send! :channel/http
   [{{:keys [url method auth-method auth-info]} :details} :- HTTPChannel
    request]
-  (let [req (merge
-             {:accept       :json
-              :content-type :json
-              :method       :post
-              :url          url}
-             (when method
-               {:method (keyword method)})
-             (cond-> request
-               (= "request-body" auth-method) (update :body merge auth-info)
-               (= "header" auth-method)       (update :headers merge auth-info)
-               (= "query-param" auth-method)  (update :query-params merge auth-info)))]
-    (http/request (cond-> req
-                    (map? (:body req)) (update :body json/generate-string)))))
+  (try
+    (let [req (merge
+               {:accept       :json
+                :content-type :json
+                :method       :post
+                :url          url}
+               (when method
+                 {:method (keyword method)})
+               (cond-> request
+                 (= "request-body" auth-method) (update :body merge auth-info)
+                 (= "header" auth-method)       (update :headers merge auth-info)
+                 (= "query-param" auth-method)  (update :query-params merge auth-info)))]
+      (http/request (cond-> req
+                      (map? (:body req)) (update :body json/generate-string))))
+    (catch Exception e
+      (prometheus/inc! :metabase-channel/http-errors)
+      (throw e))
+    (finally
+      (prometheus/inc! :metabase-channel/http))))
 
 (defmethod channel/can-connect? :channel/http
   [_channel-type details]

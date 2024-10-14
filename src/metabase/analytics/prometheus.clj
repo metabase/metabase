@@ -198,7 +198,11 @@
   [(prometheus/counter :metabase-email/messages
                        {:description (trs "Number of emails sent.")})
    (prometheus/counter :metabase-email/message-errors
-                       {:description (trs "Number of errors when sending emails.")})])
+                       {:description (trs "Number of errors when sending emails.")})
+   (prometheus/counter :metabase-channel/http
+                       {:description (trs "Number of http calls made via channel.")})
+   (prometheus/counter :metabase-channel/http-errors
+                       {:description (trs "Number of errors when making http calls via channel.")})])
 
 (defn- setup-metrics!
   "Instrument the application. Conditionally done when some setting is set. If [[prometheus-server-port]] is not set it

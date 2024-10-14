@@ -5,7 +5,9 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [compojure.core :as compojure]
+   [iapetos.operations :as ops]
    [medley.core :as m]
+   [metabase.analytics.prometheus-test :as prometheus-test]
    [metabase.channel.core :as channel]
    [metabase.task.send-pulses :as task.send-pulses]
    [metabase.test :as mt]
@@ -75,8 +77,8 @@
   "Create a temporary server given a list of routes and handlers, and execute the body
   with the server URL binding.
 
-  (with-server [url [(make-route :get (identity {:status 200}))] & handlers]
-  (http/get (str url \"/test_http_channel_200\"))"
+    (with-server [url [(make-route :get \"test\" (identity {:status 200}))] & handlers]
+      (http/get (str url \"/test\"))"
   [[url-binding handlers] & body]
   `(do-with-server
     ~handlers
@@ -344,3 +346,26 @@
                                              :raw_data      {:cols ["count"] :rows [[1000]]}}
                         :sent_at            (mt/malli=? :any)}}
                 @received-message))))))
+
+(deftest track-prometheus-metrics-test
+  (with-server [url [get-200 get-400]]
+    (let [total #(-> % :registry :metabase-channel/http ops/read-value int)
+          error #(-> % :registry :metabase-channel/http-errors ops/read-value int)]
+      (testing "total +=1 when there is no error"
+        (prometheus-test/with-prometheus-system! [_ system]
+          (channel/send!  {:type        :channel/http
+                           :details     {:url         (str url (:path get-200))
+                                         :auth-method "none"
+                                         :method      "get"}}
+                         nil)
+          (is (= 1 (total system)))
+          (is (= 0 (error system)))))
+      (testing "total +=1 and error+=1 when there is an error"
+        (prometheus-test/with-prometheus-system! [_ system]
+          (channel/send!  {:type        :channel/http
+                           :details     {:url         (str url (:path get-200))
+                                         :auth-method "none"
+                                         :method      "get"}}
+                         nil)
+          (is (= 1 (total system)))
+          (is (= 0 (error system))))))))
