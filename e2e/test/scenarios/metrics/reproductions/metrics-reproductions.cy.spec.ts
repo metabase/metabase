@@ -125,6 +125,8 @@ describe("issue 44171", () => {
   });
 
   it("should not save viz settings on metrics", () => {
+    cy.intercept("PUT", "/api/card/*").as("saveCard");
+
     openQuestionActions();
     popover().findByText("Edit metric definition").click();
     getNotebookStep("summarize").button("Count").click();
@@ -136,6 +138,11 @@ describe("issue 44171", () => {
     cy.get<number>("@dashboardId").then(id => {
       visitDashboard(id);
     });
+
+    cy.get("@saveCard")
+      .its("request.body")
+      .its("visualization_settings")
+      .should("not.exist");
 
     editDashboard();
     cy.findByTestId("dashboard-header")
