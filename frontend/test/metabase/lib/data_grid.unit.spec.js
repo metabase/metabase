@@ -68,6 +68,7 @@ describe("data_grid", () => {
         [null, 3, 4, 5],
       ]);
     });
+
     it("should pivot non-numeric values correctly", () => {
       const data = makeData([
         ["a", "x", "q"],
@@ -93,6 +94,7 @@ describe("data_grid", () => {
         [null, 3, 4, 5],
       ]);
     });
+
     it("should pivot values correctly with columns flipped", () => {
       const data = makeData([
         ["a", "x", 1],
@@ -211,6 +213,7 @@ describe("data_grid", () => {
       ["b", "y", 5],
       ["b", "z", 6],
     ]);
+
     it("should produce multi-level top header with row totals", () => {
       const { topHeaderItems, leftHeaderItems, rowCount, columnCount } =
         multiLevelPivotForIndexes(data, [0, 1], [], [2]);
@@ -284,6 +287,7 @@ describe("data_grid", () => {
       expect(rowCount).toEqual(6);
       expect(columnCount).toEqual(1);
     });
+
     it("should allow unspecified values", () => {
       const data = makePivotData([
         ["a", "x", 1],
@@ -298,6 +302,7 @@ describe("data_grid", () => {
       expect(getValues(getRowSection(0, 0))).toEqual(["1"]);
       expect(getValues(getRowSection(1, 1))).toEqual([null]);
     });
+
     it("should handle multiple value columns", () => {
       const data = makePivotData(
         [["a", "b", 1, 2]],
@@ -315,6 +320,7 @@ describe("data_grid", () => {
       expect(getValues(leftHeaderItems)).toEqual(["b"]);
       expect(getValues(getRowSection(0, 0))).toEqual(["1", "2"]);
     });
+
     it("should work with three levels of row grouping", () => {
       // three was picked because there was a bug during development that showed up with at least three
       const data = makePivotData(
@@ -370,6 +376,7 @@ describe("data_grid", () => {
       expect(rowCount).toEqual(15);
       expect(columnCount).toEqual(1);
     });
+
     it("should format values", () => {
       const data = makePivotData(
         [[1, "2020-01-01T00:00:00", 1000]],
@@ -402,6 +409,7 @@ describe("data_grid", () => {
       expect(getValues(leftHeaderItems)).toEqual(["January 1, 2020, 12:00 AM"]);
       expect(getValues(getRowSection(0, 0))).toEqual(["1,000"]);
     });
+
     it("should format values without a pivoted column or row", () => {
       const data = makePivotData(
         [[1, 1000]],
@@ -421,6 +429,7 @@ describe("data_grid", () => {
       ({ getRowSection } = multiLevelPivotForIndexes(data, [], [0], [1]));
       expect(getValues(getRowSection(0, 0))).toEqual(["1,000"]);
     });
+
     it("should format multiple values", () => {
       const data = makePivotData(
         [
@@ -490,6 +499,7 @@ describe("data_grid", () => {
         "10",
       ]);
     });
+
     describe("sorting", () => {
       it("sorts multiple columns ascending", () => {
         const { leftHeaderItems } = multiLevelPivotForIndexes(
@@ -610,6 +620,7 @@ describe("data_grid", () => {
           rows,
           cols: [...cols, { name: "pivot-grouping", base_type: TYPE.Text }],
         };
+
         it("hides single collapsed rows", () => {
           const { getRowSection, leftHeaderItems, rowCount } =
             multiLevelPivotForIndexes(data, [], [0, 1], [2], {
@@ -621,6 +632,7 @@ describe("data_grid", () => {
             { isSubtotal: true, value: "3" },
           ]);
         });
+
         it("hides collapsed columns", () => {
           const { getRowSection, leftHeaderItems, rowCount } =
             multiLevelPivotForIndexes(data, [], [0, 1], [2], {
