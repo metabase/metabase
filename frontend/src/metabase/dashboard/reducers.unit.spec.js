@@ -17,6 +17,7 @@ const TEST_DASHBOARD = createMockDashboard();
 
 describe("dashboard reducers", () => {
   let initState;
+
   beforeEach(() => {
     initState = reducer(undefined, {});
   });

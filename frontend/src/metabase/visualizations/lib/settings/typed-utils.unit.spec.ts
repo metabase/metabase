@@ -84,6 +84,7 @@ describe("mergeSettings (metabase#14597)", () => {
         "table.columns": [ID_COLUMN, QUANTITY_COLUMN],
       });
     });
+
     it("should add new columns that don't appear in the second settings", () => {
       expect(
         mergeSettings(
