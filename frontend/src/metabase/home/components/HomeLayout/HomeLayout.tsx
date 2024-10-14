@@ -87,7 +87,6 @@ export const HomeLayout = () => {
   );
   const databaseMetadataData = databaseMetadata;
   useEffect(() => {
-    console.log({databaseMetadataData})
     if (databaseMetadataData && Array.isArray(databaseMetadataData.tables)) {
       const schema = databaseMetadata.tables?.map((table: any) => ({
         display_name: table.display_name,
@@ -230,7 +229,6 @@ export const HomeLayout = () => {
                 spacing="xs"
                 style={{
                   flexGrow: 1,
-                  marginTop: "1rem",
                   // borderRight: isChatHistoryOpen ? "1px solid #e3e3e3" : "none",
                 }}
               >
