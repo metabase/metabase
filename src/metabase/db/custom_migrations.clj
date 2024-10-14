@@ -1588,7 +1588,8 @@
                                                                        handler))]
         (t2/insert! :notification_recipient (map #(merge {:notification_handler_id handler-id
                                                           :created_at              :%now
-                                                          :updated_at              :%now}%)
+                                                          :updated_at              :%now}
+                                                         %)
                                                  recipients))))))
 
 (define-migration CreateSystemNotificationUserJoined
@@ -1596,7 +1597,7 @@
                      :channel_template
                      {:name         "User joined Email template"
                       :channel_type "channel/email"
-                      :details      (json/generate-string {:type           "email/resource"
+                      :details      (json/generate-string {:type           "email/mustache-resource"
                                                            :subject        "{{context.extra.user-invited-email-subject}}"
                                                            :path           "metabase/email/new_user_invite.mustache"
                                                            :recipient-type :cc})
@@ -1612,13 +1613,12 @@
        :recipients      [{:type    "notification-recipient/template"
                           :details (json/generate-string {:pattern "{{event-info.object.email}}"})}]}])))
 
-
 (define-migration CreateSystemNotificationAlertCreated
   (let [template-id (t2/insert-returning-pk!
                      :channel_template
                      {:name         "Alert Created Email template"
                       :channel_type "channel/email"
-                      :details      (json/generate-string {:type           "email/resource"
+                      :details      (json/generate-string {:type           "email/mustache-resource"
                                                            :subject        "You set up an alert"
                                                            :path           "metabase/email/alert_new_confirmation.mustache"
                                                            :recipient-type :cc})
@@ -1639,7 +1639,7 @@
                      :channel_template
                      {:name         "Slack Token Error Email template"
                       :channel_type "channel/email"
-                      :details      (json/generate-string {:type           "email/resource"
+                      :details      (json/generate-string {:type           "email/mustache-resource"
                                                            :subject        "Your Slack connection stopped working"
                                                            :path           "metabase/email/slack_token_error.mustache"
                                                            :recipient-type :cc})

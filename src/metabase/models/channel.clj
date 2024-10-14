@@ -71,8 +71,8 @@
    :details       mi/transform-json})
 
 (def ^:private channel-template-details-type
-  #{:email/mustache
-    :email/resource})
+  #{:email/mustache-text
+    :email/mustache-resource})
 
 (def ^:private ChannelTemplateEmailDetails
   [:merge
@@ -81,10 +81,10 @@
     [:subject                         string?]
     [:recipient-type {:optional true} (ms/enum-keywords-and-strings :cc :bcc)]]
    [:multi {:dispatch (comp keyword :type)}
-    [:email/resource
+    [:email/mustache-resource
      [:map
       [:path string?]]]
-    [:email/mustache
+    [:email/mustache-text
      [:map
       [:body string?]]]]])
 

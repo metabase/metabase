@@ -140,9 +140,9 @@
 (defn- render-body
   [{:keys [details] :as _template} payload]
   (case (keyword (:type details))
-    :email/resource
+    :email/mustache-resource
     (stencil/render-file (:path details) payload)
-    :email/mustache
+    :email/mustache-text
     (stencil/render-string (:body details) payload)
     nil))
 

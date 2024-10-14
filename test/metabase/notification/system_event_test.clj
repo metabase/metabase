@@ -11,8 +11,8 @@
    [toucan2.core :as t2]))
 
 (use-fixtures
- :once
- (fixtures/initialize :test-users-personal-collections))
+  :once
+  (fixtures/initialize :test-users-personal-collections))
 
 (defn- publish-user-invited-event!
   [user invitor from-setup?]
@@ -26,7 +26,7 @@
     (mt/with-model-cleanup [:model/Notification]
       (notification.tu/with-send-notification-sync!
         (mt/with-temp [:model/ChannelTemplate tmpl {:channel_type :channel/email
-                                                    :details      {:type    :email/mustache
+                                                    :details      {:type    :email/mustache-text
                                                                    :subject "Welcome {{event-info.object.first_name}} to {{context.site-name}}"
                                                                    :body    "Hello {{event-info.object.first_name}}! Welcome to {{context.site-name}}!"}}
                        :model/User             {user-id :id} {:email "ngoc@metabase.com"}
@@ -64,7 +64,7 @@
     (mt/with-model-cleanup [:model/Notification]
       (notification.tu/with-send-notification-sync!
         (mt/with-temp [:model/ChannelTemplate tmpl {:channel_type :channel/email
-                                                    :details      {:type    :email/resource
+                                                    :details      {:type    :email/mustache-resource
                                                                    :subject "Welcome {{event-info.object.first_name}} to {{context.site-name}}"
                                                                    :path    "notification/channel_template/hello_world"}}
                        :model/User             {user-id :id} {:email "ngoc@metabase.com"}
@@ -154,36 +154,37 @@
 
 (deftest alert-create-email-test
   (mt/with-temp [:model/Card card {:name "A Card"}]
-    (let [rasta (mt/fetch-user :rasta)
-          check (fn [alert-condition condition-regex]
-                  (let [regexes [#"This is just a confirmation"
-                                 (re-pattern (format "<a href=\"%s\"*>%s</a>" (urls/card-url (:id card)) (:name card)))
-                                 condition-regex]
-                        email (-> (notification.tu/with-captured-channel-send!
-                                    (events/publish-event! :event/alert-create {:object (t2/instance :model/Pulse
-                                                                                                     (merge {:name "A Pulse"
-                                                                                                             :card card}
-                                                                                                            alert-condition))
-                                                                                :user-id (:id rasta)}))
-                                  :channel/email
-                                  first)]
-                    (is (= {:recipients     #{(:email rasta)}
-                            :message-type   :attachments
-                            :subject        "You set up an alert"
-                            :message        [(zipmap (map str regexes) (repeat true))]
-                            :recipient-type :cc}
-                           (apply mt/summarize-multipart-single-email email regexes)))))]
+    (mt/with-temporary-setting-values [site-url "https://metabase.com"]
+      (let [rasta (mt/fetch-user :rasta)
+            check (fn [alert-condition condition-regex]
+                    (let [regexes [#"This is just a confirmation"
+                                   (re-pattern (format "<a href=\"%s\"*>%s</a>" (urls/card-url (:id card)) (:name card)))
+                                   condition-regex]
+                          email   (-> (notification.tu/with-captured-channel-send!
+                                        (events/publish-event! :event/alert-create {:object (t2/instance :model/Pulse
+                                                                                                         (merge {:name "A Pulse"
+                                                                                                                 :card card}
+                                                                                                                alert-condition))
+                                                                                    :user-id (:id rasta)}))
+                                      :channel/email
+                                      first)]
+                      (is (= {:recipients     #{(:email rasta)}
+                              :message-type   :attachments
+                              :subject        "You set up an alert"
+                              :message        [(zipmap (map str regexes) (repeat true))]
+                              :recipient-type :cc}
+                             (apply mt/summarize-multipart-single-email email regexes)))))]
 
-      (doseq [[alert-condition condition-regex]
-              [[{:alert_condition "rows"}
-                #"This alert will be sent whenever this question has any results"]
-               [{:alert_condition "goal"
-                 :alert_above_goal true}
-                #"This alert will be sent when this question meets its goal"]
-               [{:alert_condition "goal"
-                 :alert_above_goal false}
-                #"This alert will be sent when this question goes below its goal"]]]
-        (check alert-condition condition-regex)))))
+        (doseq [[alert-condition condition-regex]
+                [[{:alert_condition "rows"}
+                  #"This alert will be sent whenever this question has any results"]
+                 [{:alert_condition "goal"
+                   :alert_above_goal true}
+                  #"This alert will be sent when this question meets its goal"]
+                 [{:alert_condition "goal"
+                   :alert_above_goal false}
+                  #"This alert will be sent when this question goes below its goal"]]]
+          (check alert-condition condition-regex))))))
 
 (deftest slack-error-token-email-test
   (let [check (fn [recipients regexes]
@@ -201,8 +202,8 @@
                          (apply mt/summarize-multipart-single-email email regexes)))))
         admin-emails (t2/select-fn-set :email :model/User :is_superuser true)]
     (testing "send to admins with a link to setting page"
-     (check admin-emails [#"Your Slack connection stopped working"
-                          #"<a[^>]*href=\"https?://metabase\.com/admin/settings/slack\"[^>]*>Go to settings</a>"]))
+      (check admin-emails [#"Your Slack connection stopped working"
+                           #"<a[^>]*href=\"https?://metabase\.com/admin/settings/slack\"[^>]*>Go to settings</a>"]))
 
     (mt/with-temporary-setting-values
       [admin-email "it@metabase.com"]
