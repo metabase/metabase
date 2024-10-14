@@ -50,7 +50,6 @@
          (into {}
                (map (fn [card-metadata]
                       (let [unprocessed-metric-query (lib/query query (:dataset-query card-metadata))
-                            [_ {aggregation-name :name}] (first (lib/aggregations unprocessed-metric-query))
                             metric-query (lib.convert/->pMBQL
                                           ((requiring-resolve 'metabase.query-processor.preprocess/preprocess)
                                            unprocessed-metric-query))
@@ -58,7 +57,8 @@
                         (if-let [aggregation (first (lib/aggregations metric-query))]
                           [(:id card-metadata)
                            {:query metric-query
-                            :aggregation (assoc-in aggregation [1 :name] (or aggregation-name metric-name))
+                            :aggregation (cond-> aggregation
+                                           (nil? (get-in aggregation [1 :name])) (assoc-in [1 :name] metric-name))
                             :name metric-name}]
                           (throw (ex-info "Source metric missing aggregation" {:source metric-query})))))))
          not-empty)))
