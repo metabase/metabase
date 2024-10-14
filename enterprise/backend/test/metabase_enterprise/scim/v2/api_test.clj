@@ -142,8 +142,9 @@
                           :active true}
                 response (scim-client :post 201 "ee/scim/v2/Users" new-user)]
             (is (malli= scim-api/SCIMUser response))
-            (is (=? (select-keys user [:email :first_name :last_name :is_active])
-                    (t2/select-one [:model/User :email :first_name :last_name :is_active]
+            (is (=? (assoc (select-keys user [:email :first_name :last_name :is_active])
+                           :sso_source :scim)
+                    (t2/select-one [:model/User :email :first_name :last_name :is_active :sso_source]
                                    :entity_id (:id response)))))
           (finally (t2/delete! :model/User :email (:email user))))))
 

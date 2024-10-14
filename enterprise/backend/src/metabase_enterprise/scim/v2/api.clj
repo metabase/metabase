@@ -163,7 +163,8 @@
       :last_name  familyName
       :email      email
       :is_active  is-active?
-      :type       :personal}
+      :type       :personal
+      :sso_source "scim"}
      (when (and locale (i18n/available-locale? locale))
        {:locale locale}))))
 
