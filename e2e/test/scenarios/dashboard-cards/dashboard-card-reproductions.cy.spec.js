@@ -1095,8 +1095,8 @@ describe("issue 31628", () => {
   };
 
   const assertDescendantsNotOverflowDashcards = descendantsSelector => {
-    cy.findAllByTestId("dashcard").should($dashcards => {
-      $dashcards.each((dashcardIndex, dashcard) => {
+    cy.findAllByTestId("dashcard").should(dashcards => {
+      dashcards.each((dashcardIndex, dashcard) => {
         const descendants = dashcard.querySelectorAll(descendantsSelector);
 
         descendants.forEach(descendant => {
