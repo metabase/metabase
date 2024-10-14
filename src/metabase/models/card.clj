@@ -22,7 +22,6 @@
    [metabase.models.audit-log :as audit-log]
    [metabase.models.card.metadata :as card.metadata]
    [metabase.models.collection :as collection]
-   [metabase.models.dashboard-card :as dashboard-card]
    [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
    [metabase.models.moderation-review :as moderation-review]
@@ -677,14 +676,14 @@
 (defn- autoplace-dashcard-for-card! [dashboard-id card]
   (let [dashboard (t2/hydrate (t2/select-one :model/Dashboard dashboard-id) :dashcards [:tabs :tab-cards])
         {:keys [dashcards tabs]} dashboard
-        already-on-dashboard? (seq (filter #(= (:id card) (:card_id %)) dashcards))
-        cards-on-first-tab (or (first tabs)
-                               (sort dashboard-card/dashcard-comparator dashcards))
-        new-spot (autoplace/get-position-for-new-dashcard cards-on-first-tab)]
+        already-on-dashboard? (seq (filter #(= (:id card) (:card_id %)) dashcards))]
     (when-not already-on-dashboard?
-      (t2/insert! :model/DashboardCard (assoc new-spot
-                                              :card_id (:id card)
-                                              :dashboard_id dashboard-id)))))
+      (let [cards-on-first-tab (or (:cards (first tabs))
+                                   dashcards)
+            new-spot (autoplace/get-position-for-new-dashcard cards-on-first-tab)]
+        (t2/insert! :model/DashboardCard (assoc new-spot
+                                                :card_id (:id card)
+                                                :dashboard_id dashboard-id))))))
 
 (defn create-card!
   "Create a new Card. Metadata will be fetched off thread. If the metadata takes longer than [[metadata-sync-wait-ms]]
