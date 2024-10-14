@@ -113,7 +113,16 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
         
         // Search for assistants
         const assistants = await clientInstance.assistants.search({ metadata: null, limit: 10, offset: 0 });
-        const selectedAgent = assistants[0];
+        let selectedAgent = assistants[0];
+        for (let i = 0; i < assistants.length; i++) {
+            if (
+                (chatType === 'insights' && assistants[i].name === 'get_insight_agent') ||
+                (chatType !== 'insights' && assistants[i].name === 'get_data_agent')
+            ) {
+                selectedAgent = assistants[i];
+                break;
+            }
+        }
         setAgent(selectedAgent);
 
         // Create a new thread
