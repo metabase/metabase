@@ -48,7 +48,8 @@ const ChatMessageList = ({
 
         return (
           <div key={message.id || index}>
-            <Message
+               {message.text !== "" && (
+                <Message
               message={message}
               isLoading={isLastServerMessage}
               onFeedbackClick={onFeedbackClick}
@@ -63,7 +64,10 @@ const ChatMessageList = ({
               sendAdminRequest={sendAdminRequest}
               onSuggestion={onSuggestion}
             />
+               )}
+            
 
+            {/* Display visualization */}
             {message.showVisualization && (
               <>
                 {!card ? (
@@ -151,6 +155,7 @@ const ChatMessageList = ({
                                     selectedTimelineEventIds={[]}
                                   />
                                 </div>
+
                                 {message.showButton === false ? (
                                   <div></div>
                                 ) : (
@@ -207,5 +212,6 @@ const ChatMessageList = ({
     </div>
   );
 };
+
 
 export default ChatMessageList;
