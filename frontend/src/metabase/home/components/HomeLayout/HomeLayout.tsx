@@ -130,52 +130,52 @@ export const HomeLayout = () => {
 
   }, [window.location.pathname]);
 
-  const { ws, isConnected } = useWebSocket(
-    assistant_url,
-    async (e: any) => {
-      if (e.data) {
-        const data = JSON.parse(e.data);
-        switch (data.type) {
-          case "tool":
-            await handleFunctionalityMessages(data.functions);
-            break;
-          default:
-            break;
-        }
-      }
-    },
-    () => console.error("WebSocket error"),
-    () => console.log("WebSocket closed"),
-    () => console.log("WebSocket opened"),
-  );
+  // const { ws, isConnected } = useWebSocket(
+  //   assistant_url,
+  //   async (e: any) => {
+  //     if (e.data) {
+  //       const data = JSON.parse(e.data);
+  //       switch (data.type) {
+  //         case "tool":
+  //           await handleFunctionalityMessages(data.functions);
+  //           break;
+  //         default:
+  //           break;
+  //       }
+  //     }
+  //   },
+  //   () => console.error("WebSocket error"),
+  //   () => console.log("WebSocket closed"),
+  //   () => console.log("WebSocket opened"),
+  // );
 
 
-  const handleFunctionalityMessages = async (functions: any[]) => {
-    functions.forEach(async func => {
-      switch (func.function_name) {
-        case "getSuggestions":
-          console.log(func.arguments.suggestions);
-          dispatch(setSuggestions(func.arguments.suggestions));
-          break;
-        default:
-          console.log(func);
-          break;
-      }
-    });
-  };
+  // const handleFunctionalityMessages = async (functions: any[]) => {
+  //   functions.forEach(async func => {
+  //     switch (func.function_name) {
+  //       case "getSuggestions":
+  //         console.log(func.arguments.suggestions);
+  //         dispatch(setSuggestions(func.arguments.suggestions));
+  //         break;
+  //       default:
+  //         console.log(func);
+  //         break;
+  //     }
+  //   });
+  // };
 
-  useEffect(() => {
-    //TODO: No se hace el envio si no tiene suggestion ni schemas
-    if (isConnected && !suggestions.suggestions && schema.length > 0) {
-      ws.send(
-        JSON.stringify({
-          type: "getSuggestions",
-          appType: selectedChatType, //No hará falta porque cargaremos las dos de golpe
-          schema: schema,
-        }),
-      );
-    }
-  }, [isConnected, suggestions, schema, selectedChatType]);
+  // useEffect(() => {
+  //   //TODO: No se hace el envio si no tiene suggestion ni schemas
+  //   if (isConnected && !suggestions.suggestions && schema.length > 0) {
+  //     ws.send(
+  //       JSON.stringify({
+  //         type: "getSuggestions",
+  //         appType: selectedChatType, //No hará falta porque cargaremos las dos de golpe
+  //         schema: schema,
+  //       }),
+  //     );
+  //   }
+  // }, [isConnected, suggestions, schema, selectedChatType]);
 
   const handleSendMessage = () => {
     if (!inputValue.trim()) return;
@@ -217,7 +217,7 @@ export const HomeLayout = () => {
                 <LayoutRoot data-testid="home-page">
                   <ContentContainer>
                     <ChatGreeting chatType={selectedChatType} />
-                    {suggestions.suggestions ? (
+                    {/* {suggestions.suggestions ? (
                       <HomeInitialOptions suggestions={suggestions.suggestions} chatType={selectedChatType} onClick={handleSuggestionClick} />
                     ) : (
                       // Mientras no haya sugerencias, mostramos un mensaje de carga
@@ -229,7 +229,7 @@ export const HomeLayout = () => {
                           <LoadingSpinner />
                         </div>
                       </div>
-                    )}
+                    )} */}
                   </ContentContainer>
                   {schema.length > 0 ? (
                     <ChatSection>
@@ -298,7 +298,7 @@ export const HomeLayout = () => {
                 style={{
                   flexGrow: 1,
                   marginTop: "1rem",
-                  borderRight: isChatHistoryOpen ? "1px solid #e3e3e3" : "none",
+                  // borderRight: isChatHistoryOpen ? "1px solid #e3e3e3" : "none",
                 }}
               >
                 <ChatAssistant
@@ -315,12 +315,12 @@ export const HomeLayout = () => {
                   threadId={threadId}
                   inputValue={inputValue}
                   messages={messages}
-                  isChatHistoryOpen={isChatHistoryOpen}
+                  isChatHistoryOpen={false}
                   setIsChatHistoryOpen={setIsChatHistoryOpen}
                   setShowButton={setShowButton}
                 />
               </Stack>
-              {isChatHistoryOpen && (
+              {/* {isChatHistoryOpen && (
                 <Stack
                   mb="lg"
                   spacing="xs"
@@ -334,7 +334,7 @@ export const HomeLayout = () => {
                     setInsights={setInsights}
                   />
                 </Stack>
-              )}
+              )} */}
             </Flex>
           </BrowseMain>
         </BrowseContainer>
