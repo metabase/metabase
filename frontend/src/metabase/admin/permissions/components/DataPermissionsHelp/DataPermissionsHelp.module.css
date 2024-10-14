@@ -1,0 +1,49 @@
+.control {
+  &:not([data-css-specificity-hack="🪗"]) {
+    padding-left: 0.875rem;
+
+    &:hover {
+      background: unset;
+    }
+  }
+}
+
+.label {
+  &:not([data-css-specificity-hack="🪗"]) {
+    color: var(--mb-color-brand);
+    font-weight: 700;
+  }
+}
+
+.item {
+  &:not([data-css-specificity-hack="🪗"]) {
+    border: 1px solid var(--mb-color-border);
+    border-radius: 0.5rem;
+
+    &[data-active] {
+      border: 1px solid var(--mb-color-border);
+    }
+
+    & + & {
+      margin-top: 0.75rem;
+    }
+  }
+}
+
+.content {
+  &:not([data-css-specificity-hack="🪗"]) {
+    border-top: 1px solid var(--mb-color-border);
+    color: var(--mb-color-text-dark);
+  }
+}
+
+.chevron {
+  &:not([data-css-specificity-hack="🪗"]) {
+    color: var(--mb-color-text-dark);
+    border: 1px solid var(--mb-color-border);
+    border-radius: 100%;
+    margin-left: 1rem;
+    height: 1.75rem;
+    width: 1.75rem;
+  }
+}

@@ -21,6 +21,8 @@ import {
 
 import { hasPermissionValueInGraph } from "../../utils/graph/data-permissions";
 
+import S from "./DataPermissionsHelp.module.css";
+
 export const DataPermissionsHelp = () => {
   const isAdvancedPermissionsFeatureEnabled = useSelector(
     state => getSetting(state, "token-features").advanced_permissions,
@@ -43,6 +45,13 @@ export const DataPermissionsHelp = () => {
 
       <Accordion
         chevron={<Icon name="chevrondown" size={12} />}
+        classNames={{
+          control: S.control,
+          label: S.label,
+          item: S.item,
+          content: S.content,
+          chevron: S.chevron,
+        }}
         defaultValue="database-level"
       >
         <Accordion.Item

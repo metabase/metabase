@@ -4,7 +4,6 @@ import { rem } from "@mantine/core";
 import { DEFAULT_METABASE_COMPONENT_THEME } from "embedding-sdk/lib/theme";
 
 import {
-  getAccordionOverrides,
   getActionIconOverrides,
   getAlertOverrides,
   getAnchorOverrides,
@@ -112,7 +111,6 @@ export const getThemeOverrides = (): MantineThemeOverride => ({
     }),
   },
   components: {
-    ...getAccordionOverrides(),
     ...getActionIconOverrides(),
     ...getAlertOverrides(),
     ...getAnchorOverrides(),
