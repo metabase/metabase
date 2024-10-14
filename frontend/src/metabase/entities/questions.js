@@ -109,16 +109,23 @@ const Questions = createEntity({
         undo(opts, getLabel(card), archived ? t`trashed` : t`restored`),
       ),
 
-    setCollection: (card, collection, opts) => {
+    // NOTE: standard questions (i.e. not models, metrics, etc.) can live in dashboards as well as collections.
+    // this function name is incorrectly but maintained for consistency with other entities.
+    setCollection: (card, destination, opts) => {
       return async dispatch => {
+        const collection_id =
+          destination.model === "dashboard"
+            ? canonicalCollectionId(destination.collection_id)
+            : canonicalCollectionId(destination.id);
+        const dashboard_id =
+          destination.model === "dashboard" ? destination.id : null;
+        const archived = isRootTrashCollection(destination);
+        const update = { collection_id, dashboard_id, archived };
+
         const result = await dispatch(
           Questions.actions.update(
             { id: card.id },
-            {
-              collection_id: canonicalCollectionId(collection && collection.id),
-              dashboard_id: null,
-              archived: isRootTrashCollection(collection),
-            },
+            update,
             undo(opts, getLabel(card), t`moved`),
           ),
         );
