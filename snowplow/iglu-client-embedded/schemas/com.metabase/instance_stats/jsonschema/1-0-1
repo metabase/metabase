@@ -179,13 +179,17 @@
             "description": "The unique name of the setting"
           },
           "value": {
+            "type": ["string", "boolean", "integer", "null"],
             "description": "The value of this setting",
-            "type": ["string", "boolean", "integer", "null"]
+            "maxLength": 255,
+            "minimum": 0,
+            "maximum": 2147483647
           },
           "tags": {
             "type": "array",
             "description": "Tags that can be used for flagging teams / features the setting belongs to",
             "items": {
+              "description": "a tag for the setting to help categorize it",
               "type": "string",
               "maxLength": 255
             }
