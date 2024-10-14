@@ -2,7 +2,7 @@ import cx from "classnames";
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import { currency } from "cljs/metabase.shared.util.currency";
+import { currency } from "cljs/metabase.util.currency";
 import type { SelectChangeEvent } from "metabase/core/components/Select";
 import Select, { Option } from "metabase/core/components/Select";
 import AdminS from "metabase/css/admin.module.css";
