@@ -743,9 +743,17 @@ jobs:
       matrix:
         version:
           - docker-image: postgres:12-alpine
-            junit-name: be-tests-postgres-ee
+            junit-name: postgres-ee
+            env:
+              test-ssl: 'false'
+              test-ssl-mode: ''
+              test-ssl-root-cert-path: ''
           - docker-image: postgres:latest
-            unit-name: be-tests-postgres-latest-ee
+            junit-name: postgres-latest-ee
+            env:
+              test-ssl: 'true'
+              test-ssl-mode: verify-full
+              test-ssl-root-cert-path: 'test-resources/certificates/us-east-2-bundle.pem'
         job:
           - name: driver-tests
             test-args: >-
@@ -762,6 +770,9 @@ jobs:
       MB_DB_DBNAME: mb_test
       MB_DB_USER: mb_test
       MB_POSTGRESQL_TEST_USER: mb_test
+      MB_POSTGRES_SSL_TEST_SSL: ${{ matrix.version.env.test-ssl }}
+      MB_POSTGRES_SSL_TEST_SSL_MODE: ${{ matrix.version.env.test-ssl-mode }}
+      MB_POSTGRES_SSL_TEST_SSL_ROOT_CERT_PATH: ${{ matrix.version.env.test-ssl-root-cert-path }}
     services:
       postgres:
         image: ${{ matrix.version.docker-image }}
@@ -776,7 +787,7 @@ jobs:
     - name: Test Postgres driver (${{ matrix.version.docker-image }})
       uses: ./.github/actions/test-driver
       with:
-        junit-name: ${{ matrix.version.junit-name }}
+        junit-name: 'be-tests-${{ matrix.version.junit-name }}'
         test-args: >-
           ${{ matrix.job.test-args }}
     - name: Upload Test Results
