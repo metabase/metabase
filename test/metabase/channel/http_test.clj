@@ -357,7 +357,7 @@
                            :details     {:url         (str url (:path get-200))
                                          :auth-method "none"
                                          :method      "get"}}
-                         nil)
+                          nil)
           (is (= 1 (total system)))
           (is (= 0 (error system)))))
       (testing "total +=1 and error+=1 when there is an error"
@@ -366,6 +366,6 @@
                            :details     {:url         (str url (:path get-200))
                                          :auth-method "none"
                                          :method      "get"}}
-                         nil)
+                          nil)
           (is (= 1 (total system)))
           (is (= 0 (error system))))))))
