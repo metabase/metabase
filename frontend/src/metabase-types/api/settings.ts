@@ -267,7 +267,6 @@ interface AdminSettings {
   "last-acknowledged-version": string | null;
   "show-static-embed-terms": boolean | null;
   "embedding-homepage": EmbeddingHomepageStatus;
-  "setup-embedding-autoenabled": boolean;
   "setup-license-active-at-setup": boolean;
   "store-url": string;
 }

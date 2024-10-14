@@ -126,10 +126,9 @@
 
   (init-status/set-progress! 0.5)
   ;; Set up Prometheus
-  (when (prometheus/prometheus-server-port)
-    (log/info "Setting up prometheus metrics")
-    (prometheus/setup!)
-    (init-status/set-progress! 0.6))
+  (log/info "Setting up prometheus metrics")
+  (prometheus/setup!)
+  (init-status/set-progress! 0.6)
 
   (premium-features/airgap-check-user-count)
   (init-status/set-progress! 0.65)

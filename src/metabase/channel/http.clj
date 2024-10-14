@@ -76,7 +76,7 @@
      :rows (:rows data)}))
 
 (mu/defmethod channel/render-notification [:channel/http :notification/alert]
-  [_channel-type {:keys [card pulse payload]} _recipients]
+  [_channel-type {:keys [card pulse payload]} _template _recipients]
   (let [request-body      {:type               "alert"
                            :alert_id           (:id pulse)
                            :alert_creator_id   (get-in pulse [:creator :id])
