@@ -8,8 +8,8 @@
    [metabase.lib.schema.binning :as lib.schema.binning]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.shared.formatting.numbers :as fmt.num]
-   [metabase.shared.util.i18n :as i18n]
+   [metabase.util.formatting.numbers :as fmt.num]
+   [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
 
 (defmulti with-binning-method

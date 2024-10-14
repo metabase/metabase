@@ -246,6 +246,7 @@ describe("mongo as the default database", { tags: "@mongo" }, () => {
 
 describe("scenatios > question > native > mysql", { tags: "@external" }, () => {
   const MYSQL_DB_NAME = "QA MySQL8";
+
   beforeEach(() => {
     cy.intercept("POST", "/api/card").as("createQuestion");
     cy.intercept("POST", "/api/dataset").as("dataset");

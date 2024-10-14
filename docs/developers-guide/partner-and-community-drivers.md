@@ -77,7 +77,7 @@ Anyone can build a community driver. These are the currently known third-party d
 | [Peaka](https://github.com/peakacom/metabase-driver)                                   | ![GitHub stars](https://img.shields.io/github/stars/peakacom/metabase-driver)                        | ![GitHub (Pre-)Release Date](https://img.shields.io/github/release-date-pre/peakacom/metabase-driver)                        |
 | [GreptimeDB](https://github.com/greptimeteam/greptimedb-metabase-driver)               | ![GitHub stars](https://img.shields.io/github/stars/greptimeteam/greptimedb-metabase-driver)         | ![GitHub (Pre-)Release Date](https://img.shields.io/github/release-date-pre/greptimeteam/greptimedb-metabase-driver)         |
 
-If you don't see a driver for your database, then try looking in the comments of the [issue related to the database](https://github.com/metabase/metabase/labels/Database%2F). You might also find more by [searching on GitHub](https://github.com/search?q=metabase+driver).
+If you don't see a driver for your database, try looking in the comments of the [issue related to the database](https://github.com/metabase/metabase/labels/Database%2F). You might also find more drivers by searching on GitHub for "Metabase driver".
 
 If you are having problems installing or using a community driver, your best bet is to contact the author of the driver.
 
