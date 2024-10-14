@@ -113,11 +113,15 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
     }),
     "pie.rows": {
       hidden: true,
-      getValue: (rawSeries, settings) => {
-        return getPieRows(rawSeries, settings, (value, options) =>
-          String(formatValue(value, options)),
-        );
-      },
+      getValue: _.memoize(
+        (rawSeries, settings) => {
+          return getPieRows(rawSeries, settings, (value, options) =>
+            String(formatValue(value, options)),
+          );
+        },
+        (rawSeries, settings) =>
+          JSON.stringify(rawSeries) + JSON.stringify(settings),
+      ),
       readDependencies: [
         "pie.dimension",
         "pie.metric",
