@@ -88,7 +88,7 @@ describe("ListField", () => {
     expect(screen.queryByLabelText("Gizmo")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Doohickey")).not.toBeInTheDocument();
 
-    const checkbox = screen.getByLabelText("Select all");
+    const checkbox = screen.getByLabelText("Select these");
     expect(checkbox).not.toBeChecked();
     await userEvent.click(checkbox);
     expect(onChange).toHaveBeenCalledWith(["Doohickey", "Gadget", "Widget"]);

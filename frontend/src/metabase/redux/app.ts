@@ -93,6 +93,20 @@ const isNavbarOpen = handleActions(
   true,
 );
 
+export const OPEN_DIAGNOSTICS = "metabase/app/OPEN_DIAGNOSTIC_MODAL";
+export const CLOSE_DIAGNOSTICS = "metabase/app/CLOSE_DIAGNOSTIC_MODAL";
+
+export const openDiagnostics = createAction(OPEN_DIAGNOSTICS);
+export const closeDiagnostics = createAction(CLOSE_DIAGNOSTICS);
+
+const isErrorDiagnosticsOpen = handleActions(
+  {
+    [OPEN_DIAGNOSTICS]: () => true,
+    [CLOSE_DIAGNOSTICS]: () => false,
+  },
+  false,
+);
+
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default combineReducers({
   errorPage,
@@ -103,4 +117,5 @@ export default combineReducers({
     }
     return true;
   },
+  isErrorDiagnosticsOpen,
 });
