@@ -175,20 +175,19 @@
         "properties": {
           "key": {
             "type": "string",
+            "maxLength": 255,
             "description": "The unique name of the setting"
           },
           "value": {
             "description": "The value of this setting",
-            "type": ["string", "boolean", "integer", "date", "null"],
-            "maxLength": 255,
-            "minimum": 0,
-            "maximum": 2147483647
+            "type": ["string", "boolean", "integer", "null"]
           },
           "tags": {
             "type": "array",
             "description": "Tags that can be used for flagging teams / features the setting belongs to",
             "items": {
-              "type": "string"
+              "type": "string",
+              "maxLength": 255
             }
           }
         },
