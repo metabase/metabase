@@ -130,53 +130,6 @@ export const HomeLayout = () => {
 
   }, [window.location.pathname]);
 
-  // const { ws, isConnected } = useWebSocket(
-  //   assistant_url,
-  //   async (e: any) => {
-  //     if (e.data) {
-  //       const data = JSON.parse(e.data);
-  //       switch (data.type) {
-  //         case "tool":
-  //           await handleFunctionalityMessages(data.functions);
-  //           break;
-  //         default:
-  //           break;
-  //       }
-  //     }
-  //   },
-  //   () => console.error("WebSocket error"),
-  //   () => console.log("WebSocket closed"),
-  //   () => console.log("WebSocket opened"),
-  // );
-
-
-  // const handleFunctionalityMessages = async (functions: any[]) => {
-  //   functions.forEach(async func => {
-  //     switch (func.function_name) {
-  //       case "getSuggestions":
-  //         console.log(func.arguments.suggestions);
-  //         dispatch(setSuggestions(func.arguments.suggestions));
-  //         break;
-  //       default:
-  //         console.log(func);
-  //         break;
-  //     }
-  //   });
-  // };
-
-  // useEffect(() => {
-  //   //TODO: No se hace el envio si no tiene suggestion ni schemas
-  //   if (isConnected && !suggestions.suggestions && schema.length > 0) {
-  //     ws.send(
-  //       JSON.stringify({
-  //         type: "getSuggestions",
-  //         appType: selectedChatType, //No hará falta porque cargaremos las dos de golpe
-  //         schema: schema,
-  //       }),
-  //     );
-  //   }
-  // }, [isConnected, suggestions, schema, selectedChatType]);
-
   const handleSendMessage = () => {
     if (!inputValue.trim()) return;
 
@@ -184,13 +137,6 @@ export const HomeLayout = () => {
     setShowChatAssistant(true);
 
     setInputValue(""); // Clear the input value
-  };
-
-  const handleSuggestionClick = (message: string) => {
-    dispatch(setInitialMessage(message)); // Set the initial message from the card in Redux
-
-    setShowChatAssistant(true);
-    setInputValue(""); // Clear the input value if needed (or skip this line)
   };
 
   const handleStartNewChat = () => {
@@ -217,19 +163,6 @@ export const HomeLayout = () => {
                 <LayoutRoot data-testid="home-page">
                   <ContentContainer>
                     <ChatGreeting chatType={selectedChatType} />
-                    {/* {suggestions.suggestions ? (
-                      <HomeInitialOptions suggestions={suggestions.suggestions} chatType={selectedChatType} onClick={handleSuggestionClick} />
-                    ) : (
-                      // Mientras no haya sugerencias, mostramos un mensaje de carga
-                      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100%" }}>
-                        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "1rem" }}>
-                          <p style={{ fontSize: "16px", color: "#76797D", fontWeight: "500", marginBottom: "1rem" }}>
-                            {t`Loading suggestions...`}
-                          </p>
-                          <LoadingSpinner />
-                        </div>
-                      </div>
-                    )} */}
                   </ContentContainer>
                   {schema.length > 0 ? (
                     <ChatSection>
@@ -320,21 +253,7 @@ export const HomeLayout = () => {
                   setShowButton={setShowButton}
                 />
               </Stack>
-              {/* {isChatHistoryOpen && (
-                <Stack
-                  mb="lg"
-                  spacing="xs"
-                  style={{ minWidth: "300px", width: "300px", marginTop: "1rem" }}
-                >
-                  <ChatHistory
-                    setSelectedChatHistory={setSelectedChatHistory}
-                    setThreadId={setSelectedThreadId}
-                    type={selectedChatHistoryType}
-                    setOldCardId={setOldCardId}
-                    setInsights={setInsights}
-                  />
-                </Stack>
-              )} */}
+
             </Flex>
           </BrowseMain>
         </BrowseContainer>
