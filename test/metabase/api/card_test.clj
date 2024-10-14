@@ -3980,9 +3980,8 @@
                                            :card_id      card-id}]
       (is (=? {:collection_id coll-id
                :dashboard_id  nil}
-              (mt/user-http-request :rasta :put 200 (str "card/" card-id) {:collection_id coll-id
-                                                                           :dashboard_id  nil
-                                                                           :delete_old_dashcards "true"})))
+              (mt/user-http-request :rasta :put 200 (str "card/" card-id "?delete_old_dashcards=true") {:collection_id coll-id
+                                                                                                        :dashboard_id  nil})))
       (is (= coll-id (t2/select-one-fn :collection_id :model/Card card-id)))
       ;; we remove the card from the dashboard it was in
       (is (not (t2/exists? :model/DashboardCard :dashboard_id dash-id :card_id card-id)))))
