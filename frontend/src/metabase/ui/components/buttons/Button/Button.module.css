@@ -2,13 +2,9 @@
   /* TODO: change all usages of compact to compact-md */
 
   --button-height-md: calc(2.5rem * var(--mantine-scale));
-  --button-padding-x: 0.9375rem;
   --button-height-compact-md: calc(1.5rem * var(--mantine-scale));
 
-  &[data-size=^"compact"] {
-    --button-padding-x: 0.4375rem !important;
-  }
-
+  padding-inline: 15px;
   overflow: hidden;
   line-height: 1.15; /* mimic line-height ration from mantine v6 */
   font-size: var(--mantine-font-size-md);
@@ -17,24 +13,35 @@
     transform: none; /* Remove Mantine's default pressed effect */
   }
 
-  & [data-position="right"] {
+  [data-position="right"] {
     margin-left: 0.5rem;
   }
 
-  & [data-position="left"] {
+  [data-position="left"] {
     margin-right: 0.5rem;
   }
 
-  &:has(.mantine-Button-label) {
-    border: 2px solid red !important;
+  &[data-with-left-section],
+  &[data-with-right-section] {
+    padding: 11px 15px;
+  }
 
-    & [data-position="right"] {
-      margin-left: 0;
+  /* Button with icon only */
+  &:has(.label:empty) {
+    padding: 11px;
+
+    &[data-size^="compact"] {
+      padding: 3px;
     }
 
-    & [data-position="left"] {
-      margin-right: 0;
+    [data-position="right"],
+    [data-position="left"] {
+      margin-inline: 0;
     }
+  }
+
+  &[data-size^="compact"] {
+    padding: 3px 7px;
   }
 
   &[data-variant="default"] {
@@ -43,68 +50,20 @@
     background-color: var(--mb-color-bg-white);
 
     &:hover {
-      color: var(--mb-color-brand);
-      background-color: var(--mb-color-bg-light);
-    }
-
-    &:disabled {
-      color: var(--mb-color-text-tertiary);
-      border-color: var(--mb-color-border);
-      background-color: var(--mb-color-background-disabled);
+      background-color: var(--button-hover);
     }
   }
 
   &[data-variant="filled"] {
-    color: var(--mb-color-text-white);
-    border-color: var(--mb-color-background-brand);
-    background-color: var(--mb-color-background-brand);
-
     &:hover {
-      border-color: color-mix(
-        in srgb,
-        var(--mb-color-background-brand) 88%,
-        transparent
-      );
-      background-color: color-mix(
-        in srgb,
-        var(--mb-color-background-brand) 88%,
-        transparent
-      );
-    }
-
-    &:disabled {
-      color: var(--mb-color-text-tertiary);
-      border-color: var(--mb-color-border);
-      background-color: var(--mb-color-background-disabled);
-    }
-  }
-
-  &[data-variant="outline"] {
-    color: var(--mb-color-brand);
-    border-color: var(--mb-color-brand);
-
-    &:hover {
-      color: color-mix(in srgb, var(--mb-color-brand) 88%, transparent);
-      border-color: color-mix(in srgb, var(--mb-color-brand) 88%, transparent);
-      background-color: color-mix(
-        in srgb,
-        var(--mb-color-brand) 10%,
-        transparent
-      );
-    }
-
-    &:disabled {
-      color: var(--mb-color-text-tertiary);
-      border-color: var(--mb-color-border);
-      background-color: var(--mb-color-background-disabled);
+      border-color: color-mix(in srgb, var(--button-bg) 88%, transparent);
+      background-color: color-mix(in srgb, var(--button-bg) 88%, transparent);
     }
   }
 
   &[data-variant="subtle"] {
-    color: var(--mb-color-brand);
-
     &:hover {
-      color: color-mix(in srgb, var(--mb-color-brand) 88%, transparent);
+      color: color-mix(in srgb, var(--button-color) 88%, transparent);
       background-color: transparent;
     }
 
@@ -113,7 +72,20 @@
       color: var(--mb-color-text-light);
       border-color: transparent;
       background-color: transparent;
+
+      &:hover {
+        color: var(--mb-color-text-light);
+        border-color: transparent;
+        background-color: transparent;
+      }
     }
+  }
+
+  &:disabled,
+  &:disabled:hover {
+    color: var(--mb-color-text-tertiary);
+    border-color: var(--mb-color-border);
+    background-color: var(--mb-color-background-disabled);
   }
 }
 
