@@ -11,8 +11,8 @@
    [toucan2.core :as t2]))
 
 (use-fixtures
- :once
- (fixtures/initialize :test-users-personal-collections))
+  :once
+  (fixtures/initialize :test-users-personal-collections))
 
 (defn- publish-user-invited-event!
   [user invitor from-setup?]
@@ -202,8 +202,8 @@
                          (apply mt/summarize-multipart-single-email email regexes)))))
         admin-emails (t2/select-fn-set :email :model/User :is_superuser true)]
     (testing "send to admins with a link to setting page"
-     (check admin-emails [#"Your Slack connection stopped working"
-                          #"<a[^>]*href=\"https?://metabase\.com/admin/settings/slack\"[^>]*>Go to settings</a>"]))
+      (check admin-emails [#"Your Slack connection stopped working"
+                           #"<a[^>]*href=\"https?://metabase\.com/admin/settings/slack\"[^>]*>Go to settings</a>"]))
 
     (mt/with-temporary-setting-values
       [admin-email "it@metabase.com"]

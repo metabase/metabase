@@ -1588,7 +1588,7 @@
                                                                        handler))]
         (t2/insert! :notification_recipient (map #(merge {:notification_handler_id handler-id
                                                           :created_at              :%now
-                                                          :updated_at              :%now}%)
+                                                          :updated_at              :%now} %)
                                                  recipients))))))
 
 (define-migration CreateSystemNotificationUserJoined
@@ -1611,7 +1611,6 @@
        :template_id     template-id
        :recipients      [{:type    "notification-recipient/template"
                           :details (json/generate-string {:pattern "{{event-info.object.email}}"})}]}])))
-
 
 (define-migration CreateSystemNotificationAlertCreated
   (let [template-id (t2/insert-returning-pk!
