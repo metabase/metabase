@@ -85,7 +85,7 @@ const QuestionEditorInner = () => {
           <Stack h="100%">
             <Box>
               <Button
-                compact={true}
+                compact
                 radius="xl"
                 py="sm"
                 px="md"
