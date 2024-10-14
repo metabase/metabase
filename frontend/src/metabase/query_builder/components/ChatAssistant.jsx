@@ -443,8 +443,8 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
                     const messageData = data[0];
     
                     // Ensure that content is being extracted and is valid
-                    if (messageData && messageData.content && messageData.content[0] && messageData.content[0].text) {
-                        const partialText = messageData.content[0].text; // Current text chunk
+                    if (messageData && messageData.content) {
+                        const partialText = messageData.content; // Current text chunk
     
                         if (isNewMessage) {
                             // New message stream detected, append a new temporary message
@@ -484,45 +484,36 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
                 // Handle complete messages
                 if (event === "messages/complete" && data.length > 0) {
                     const messageData = data[0];
-    
-                    if (messageData && typeof messageData.content === 'string') {
-                        // Mark the current message as complete and replace the temporary message with the final message content
-                        setMessages((prev) => {
-                            const updatedMessages = [...prev];
-                            const lastMessageIndex = updatedMessages.findIndex(msg => msg.id === lastMessageId);
-    
-                            if (lastMessageIndex >= 0 && updatedMessages[lastMessageIndex].isTemporary) {
-                                // Replace temporary message with the final complete message content
-                                updatedMessages[lastMessageIndex].text = currentMessage;
-                                updatedMessages[lastMessageIndex].isLoading = false;
-                                updatedMessages[lastMessageIndex].isTemporary = false;
-                            } else {
-                                // Add a new message for complete content
-                                const completeMessage = {
-                                    id: Date.now() + Math.random(),
-                                    sender: "server",
-                                    text: currentMessage,
-                                    showVisualization: false,
-                                    visualizationIdx,
-                                    isLoading: false,
-                                };
-                                updatedMessages.push(completeMessage);
-                            }
-    
-                            return updatedMessages;
-                        });
-    
-                        // Reset for the next message
-                        currentMessage = "";
-                        isNewMessage = true; // Ready for a new message stream
-                    }
-    
-                    // Check if the message contains a card_id (tool output)
-                    if (messageData.type === "tool") {
+                
+                    // Handle tool type messages
+                    if (messageData && messageData.type === "tool") {
                         try {
+                            // Parse the outer content
                             const parsedContent = JSON.parse(messageData.content);
+                
+                            // Check if the parsed content contains an error
+                            if (parsedContent.error) {
+                                // Parse the nested error message (which is also JSON)
+                                const parsedError = JSON.parse(parsedContent.error);
+                
+                                // Extract the "message" field
+                                const errorMessage = parsedError.via?.[0]?.message || "An unknown error occurred.";
+                
+                                // Display the parsed message in your chat
+                                setMessages((prev) => [
+                                    ...prev,
+                                    {
+                                        id: Date.now() + Math.random(),
+                                        sender: "server",
+                                        text: `Error: ${errorMessage}`,
+                                        isLoading: false,
+                                    }
+                                ]);
+                                return; // Exit early, as this is an error message
+                            }
+                
+                            // Check if the message contains a card_id for card generation
                             const { card_id } = parsedContent;
-    
                             if (card_id) {
                                 // Create a temporary message to show card generation progress
                                 const cardMessageId = Date.now() + Math.random();
@@ -533,16 +524,16 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
                                     isLoading: true,
                                     isTemporary: true,
                                 };
-    
+                
                                 // Append the card generation message without removing any prior message
                                 setMessages((prev) => [...prev, cardTempMessage]);
-    
+                
                                 // Show the card generation progress message
                                 showCardGenerationMessage(75, cardMessageId);
-    
+                
                                 // Fetch the dataset and show visualization
                                 await handleGetDatasetQuery(card_id);
-    
+                
                                 setMessages((prev) => {
                                     const visualizationMessage = {
                                         id: Date.now() + Math.random(),
@@ -552,15 +543,51 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
                                         visualizationIdx,
                                         isLoading: false,
                                     };
-    
+                
                                     return [...prev, visualizationMessage]; // Append visualization message without removing others
                                 });
                             }
                         } catch (error) {
                             console.error("Error parsing tool message content:", error);
                         }
+                    } else if (messageData && typeof messageData.content === 'string') {
+                        // Handle normal text messages
+                        setMessages((prev) => {
+                            const updatedMessages = [...prev];
+                            const lastMessageIndex = updatedMessages.findIndex(msg => msg.id === lastMessageId);
+                
+                            if (lastMessageIndex >= 0 && updatedMessages[lastMessageIndex].isTemporary) {
+                                // Replace temporary message with the final complete message content
+                                updatedMessages[lastMessageIndex] = {
+                                    ...updatedMessages[lastMessageIndex], // Keep the existing properties
+                                    text: messageData.content, // Update with the final message content
+                                    isLoading: false, // Mark as not loading
+                                    isTemporary: false // Mark as a permanent message
+                                };
+                            } else {
+                                // Add a new message for complete content
+                                const completeMessage = {
+                                    id: Date.now() + Math.random(),
+                                    sender: "server",
+                                    text: messageData.content, // Use the complete content from the message
+                                    showVisualization: false,
+                                    visualizationIdx,
+                                    isLoading: false,
+                                };
+                                updatedMessages.push(completeMessage);
+                            }
+                
+                            return updatedMessages;
+                        });
+                
+                        // Reset for the next message
+                        currentMessage = "";
+                        isNewMessage = true; // Ready for a new message stream
                     }
                 }
+                
+                
+                
             }
     
             // Set loading to false once all chunks are processed
@@ -587,13 +614,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
         }
     };
     
-    
-    
-      
-      
-    
-    
-    function showCardGenerationMessage(chunkInterval = 100, tempMessageId) {
+    function showCardGenerationMessage(chunkInterval = 50, tempMessageId) {
         const messages = [
             "Fetching the data from your database to generate the card...",
             "Working with your database to gather the necessary information...",
@@ -639,7 +660,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
     }
     
 // Updated emulateDataStream to integrate with chat messages
-function emulateDataStream(chunkInterval = 100, tempMessageId) {
+function emulateDataStream(chunkInterval = 50, tempMessageId) {
     const messages = [
         "Scanning through your card collection and analyzing relevant tables...",
         "Identifying patterns in the data and cross-referencing cards with table structures...",

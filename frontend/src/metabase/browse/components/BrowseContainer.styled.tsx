@@ -11,7 +11,6 @@ export const BrowseContainer = styled.div`
   display: flex;
   flex: 1;
   flex-flow: column nowrap;
-  margin-top: 1rem;
   container-name: ItemsTableContainer;
   container-type: inline-size;
   background-color: white;
