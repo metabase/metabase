@@ -3,7 +3,7 @@ import { t } from "ttag";
 import type { ExportFormat } from "metabase/common/types/export";
 import { useSelector } from "metabase/lib/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
-import { Checkbox, Group, Radio, Stack, Text } from "metabase/ui";
+import { Checkbox, Chip, Group, Radio, Stack, Text } from "metabase/ui";
 
 interface ExportSettingsWidgetProps {
   formats: ExportFormat[];
@@ -31,18 +31,17 @@ export const ExportSettingsWidget = ({
   const applicationName = useSelector(getApplicationName);
   return (
     <Stack>
-      <Radio.Group value={selectedFormat} onChange={onChangeFormat}>
+      <Chip.Group value={selectedFormat} onChange={onChangeFormat}>
         <Group spacing="xs" noWrap>
           {formats.map(format => (
-            <Radio
-              variant="pill"
+            <Chip
               key={format}
               value={format}
-              label={`.${format}`}
-            />
+              variant="brand"
+            >{`.${format}`}</Chip>
           ))}
         </Group>
-      </Radio.Group>
+      </Chip.Group>
       {canConfigureFormatting ? (
         <Stack spacing="xs">
           <Radio.Group

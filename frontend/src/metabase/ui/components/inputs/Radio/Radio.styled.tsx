@@ -10,38 +10,6 @@ export const getRadioOverrides = (): MantineThemeOverride["components"] => ({
     defaultProps: {
       size: "md",
     },
-    variants: {
-      pill: (theme: MantineTheme) => ({
-        root: {
-          display: "inline-block",
-        },
-        inner: {
-          display: "none",
-        },
-        body: {},
-        label: {
-          fontWeight: 600,
-          display: "inline-flex",
-          alignItems: "center",
-          justifyContent: "center",
-          minWidth: "3rem",
-          height: "2rem",
-          borderRadius: theme.radius.xl,
-          backgroundColor: "var(--mb-color-brand-light)",
-          fontSize: theme.fontSizes.sm,
-          cursor: "pointer",
-          transition: "all 0.2s ease",
-          padding: 0,
-          "&:not([data-checked])": {
-            color: theme.fn.themeColor("brand"),
-          },
-          "[data-checked] &": {
-            backgroundColor: theme.fn.themeColor("brand"),
-            color: "white",
-          },
-        },
-      }),
-    },
     styles: (theme: MantineTheme, { size = "md" }) => ({
       root: {
         [`&:has(.${getStylesRef("input")}:disabled)`]: {
