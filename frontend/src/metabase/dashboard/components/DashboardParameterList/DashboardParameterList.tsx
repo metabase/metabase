@@ -41,7 +41,9 @@ export function DashboardParameterList({
       isFullscreen={isFullscreen}
       isNightMode={shouldRenderAsNightMode}
       isEditing={isEditing}
-      setParameterValue={(id, value) => dispatch(setParameterValue(id, value))}
+      setParameterValue={({ parameterId, value }) =>
+        dispatch(setParameterValue({ parameterId, value }))
+      }
       setParameterIndex={(id, index) => dispatch(setParameterIndex(id, index))}
       setEditingParameter={id => dispatch(setEditingParameter(id))}
       setParameterValueToDefault={id =>

@@ -1,3 +1,4 @@
+import { createAction } from "@reduxjs/toolkit";
 import { assoc } from "icepick";
 import { t } from "ttag";
 import _ from "underscore";
@@ -10,7 +11,7 @@ import {
 import { getParameterMappings } from "metabase/dashboard/actions/auto-wire-parameters/utils";
 import { updateDashboard } from "metabase/dashboard/actions/save";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
-import { createAction, createThunkAction } from "metabase/lib/redux";
+import { createAsyncThunk, createThunkAction } from "metabase/lib/redux";
 import {
   createParameter,
   setParameterName as setParamName,
@@ -30,6 +31,7 @@ import type {
   ParameterId,
   ParameterMappingOptions,
   ParameterTarget,
+  ParameterValueOrArray,
   TemporalUnit,
   ValuesQueryType,
   ValuesSourceConfig,
@@ -146,18 +148,18 @@ export const addParameter = createThunkAction(
 );
 
 export const REMOVE_PARAMETER = "metabase/dashboard/REMOVE_PARAMETER";
-export const removeParameter = createThunkAction(
-  REMOVE_PARAMETER,
-  (parameterId: ParameterId) => (dispatch, getState) => {
-    dispatch(closeAddCardAutoWireToasts());
+export const removeParameter = createAsyncThunk<
+  { id: ParameterId },
+  ParameterId
+>(REMOVE_PARAMETER, (parameterId: ParameterId, { dispatch, getState }) => {
+  dispatch(closeAddCardAutoWireToasts());
 
-    updateParameters(dispatch, getState, parameters =>
-      parameters.filter(p => p.id !== parameterId),
-    );
+  updateParameters(dispatch, getState, parameters =>
+    parameters.filter(p => p.id !== parameterId),
+  );
 
-    return { id: parameterId };
-  },
-);
+  return { id: parameterId };
+});
 
 export const SET_PARAMETER_MAPPING = "metabase/dashboard/SET_PARAMETER_MAPPING";
 
@@ -434,22 +436,39 @@ export const setParameterFilteringParameters = createThunkAction(
 );
 
 export const SET_PARAMETER_VALUE = "metabase/dashboard/SET_PARAMETER_VALUE";
-export const setParameterValue = createThunkAction(
-  SET_PARAMETER_VALUE,
-  (parameterId: ParameterId, value: unknown) => (_dispatch, getState) => {
-    const isSettingDraftParameterValues = !getIsAutoApplyFilters(getState());
-    const isValueEmpty = isParameterValueEmpty(value);
 
-    return {
-      id: parameterId,
-      value: isValueEmpty ? PULSE_PARAM_EMPTY : value,
-      isDraft: isSettingDraftParameterValues,
-    };
-  },
-);
+export type SetParameterValueReturned = {
+  id: ParameterId;
+  value: ParameterValueOrArray | null;
+  isDraft: boolean;
+};
+
+export type SetParameterValueOpts = {
+  parameterId: ParameterId;
+  value: ParameterValueOrArray | null;
+};
+export type SetParameterValueAction = (
+  args: SetParameterValueOpts,
+) => Promise<SetParameterValueReturned>;
+export const setParameterValue = createAsyncThunk<
+  SetParameterValueReturned,
+  SetParameterValueOpts
+>(SET_PARAMETER_VALUE, ({ parameterId, value }, { getState }) => {
+  const isSettingDraftParameterValues = !getIsAutoApplyFilters(getState());
+  const isValueEmpty = isParameterValueEmpty(value);
+
+  return {
+    id: parameterId,
+    value: isValueEmpty ? PULSE_PARAM_EMPTY : value,
+    isDraft: isSettingDraftParameterValues,
+  };
+});
 
 export const SET_PARAMETER_VALUES = "metabase/dashboard/SET_PARAMETER_VALUES";
-export const setParameterValues = createAction(SET_PARAMETER_VALUES);
+export const setParameterValues =
+  createAction<Record<ParameterId, ParameterValueOrArray>>(
+    SET_PARAMETER_VALUES,
+  );
 
 // Auto-apply filters
 const APPLY_DRAFT_PARAMETER_VALUES =
@@ -471,7 +490,7 @@ export const setParameterDefaultValue = createThunkAction(
       ...parameter,
       default: defaultValue,
     }));
-    dispatch(setParameterValue(parameterId, defaultValue));
+    dispatch(setParameterValue({ parameterId, value: defaultValue }));
     return { id: parameterId, defaultValue };
   },
 );
@@ -486,28 +505,28 @@ export const setParameterValueToDefault = createThunkAction(
     );
     const defaultValue = parameter?.default;
     if (defaultValue) {
-      dispatch(setParameterValue(parameterId, defaultValue));
+      dispatch(setParameterValue({ parameterId, value: defaultValue }));
     }
   },
 );
 
 export const RESET_PARAMETERS = "metabase/dashboard/RESET_PARAMETERS";
-export const resetParameters = createThunkAction(
-  RESET_PARAMETERS,
-  () => (_dispatch, getState) => {
-    const parameters = getFiltersToReset(getState());
+export const resetParameters = createAsyncThunk<
+  { id: ParameterId; value: ParameterValueOrArray }[],
+  void
+>(RESET_PARAMETERS, (_, { getState }) => {
+  const parameters = getFiltersToReset(getState());
 
-    return parameters.map(parameter => {
-      const newValue = parameter.default ?? null;
-      const isValueEmpty = isParameterValueEmpty(newValue);
+  return parameters.map(parameter => {
+    const newValue = parameter.default ?? null;
+    const isValueEmpty = isParameterValueEmpty(newValue);
 
-      return {
-        id: parameter.id,
-        value: isValueEmpty ? PULSE_PARAM_EMPTY : newValue,
-      };
-    });
-  },
-);
+    return {
+      id: parameter.id,
+      value: isValueEmpty ? PULSE_PARAM_EMPTY : newValue,
+    };
+  });
+});
 
 export const SET_PARAMETER_REQUIRED =
   "metabase/dashboard/SET_PARAMETER_REQUIRED";
@@ -660,7 +679,10 @@ export const setOrUnsetParameterValues =
     const parameterValues = getParameterValues(getState());
     parameterIdValuePairs
       .map(([id, value]) =>
-        setParameterValue(id, value === parameterValues[id] ? null : value),
+        setParameterValue({
+          parameterId: id,
+          value: value === parameterValues[id] ? null : value,
+        }),
       )
       .forEach(dispatch);
   };

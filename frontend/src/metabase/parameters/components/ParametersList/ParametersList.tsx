@@ -73,7 +73,8 @@ export const ParametersList = ({
       setEditingParameter={setEditingParameter}
       setValue={
         setParameterValue &&
-        ((value: any) => setParameterValue(valuePopulatedParameter.id, value))
+        ((value: any) =>
+          setParameterValue({ parameterId: valuePopulatedParameter.id, value }))
       }
       setParameterValueToDefault={setParameterValueToDefault}
       enableParameterRequiredBehavior={enableParameterRequiredBehavior}

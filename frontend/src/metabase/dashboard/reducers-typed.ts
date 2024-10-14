@@ -11,13 +11,7 @@ import {
 import Dashboards from "metabase/entities/dashboards";
 import { handleActions } from "metabase/lib/redux";
 import { NAVIGATE_BACK_TO_DASHBOARD } from "metabase/query_builder/actions";
-import type { UiParameter } from "metabase-lib/v1/parameters/types";
-import type {
-  DashCardId,
-  Dashboard,
-  ParameterId,
-  ParameterValueOrArray,
-} from "metabase-types/api";
+import type { DashCardId, Dashboard, ParameterId } from "metabase-types/api";
 import type {
   DashboardSidebarName,
   StoreDashboard,
@@ -27,12 +21,8 @@ import {
   CLOSE_SIDEBAR,
   HIDE_ADD_PARAMETER_POPOVER,
   INITIALIZE,
-  REMOVE_PARAMETER,
   RESET,
-  RESET_PARAMETERS,
   SET_EDITING_DASHBOARD,
-  SET_PARAMETER_VALUE,
-  SET_PARAMETER_VALUES,
   SET_SIDEBAR,
   SHOW_ADD_PARAMETER_POPOVER,
   SHOW_AUTO_APPLY_FILTERS_TOAST,
@@ -45,10 +35,14 @@ import {
   fetchDashboardCardDataAction,
   initialize,
   markCardAsSlow,
+  removeParameter,
   reset,
+  resetParameters,
   setDashboardAttributes,
   setDisplayTheme,
   setDocumentTitle,
+  setParameterValue,
+  setParameterValues,
   setShowLoadingCompleteFavicon,
 } from "./actions";
 import { INITIAL_DASHBOARD_STATE } from "./constants";
@@ -154,9 +148,9 @@ export const loadingControls = createReducer(
       state.showLoadCompleteFavicon = payload;
     });
 
-    builder.addCase(RESET, () => INITIAL_DASHBOARD_STATE.loadingControls);
+    builder.addCase(reset, () => INITIAL_DASHBOARD_STATE.loadingControls);
 
-    builder.addCase(INITIALIZE, () => INITIAL_DASHBOARD_STATE.loadingControls);
+    builder.addCase(initialize, () => INITIAL_DASHBOARD_STATE.loadingControls);
 
     builder.addCase(fetchDashboard.pending, state => {
       state.isLoading = true;
@@ -178,7 +172,7 @@ export const sidebar = createReducer(
   builder => {
     builder.addCase(INITIALIZE, () => DEFAULT_SIDEBAR);
     builder.addCase(RESET, () => DEFAULT_SIDEBAR);
-    builder.addCase(REMOVE_PARAMETER, () => DEFAULT_SIDEBAR);
+    builder.addCase(removeParameter.fulfilled, () => DEFAULT_SIDEBAR);
     builder.addCase(SET_EDITING_DASHBOARD, () => DEFAULT_SIDEBAR);
     builder.addCase(CLOSE_SIDEBAR, () => DEFAULT_SIDEBAR);
 
@@ -204,70 +198,41 @@ export const sidebar = createReducer(
 export const parameterValues = createReducer(
   INITIAL_DASHBOARD_STATE.parameterValues,
   builder => {
-    builder.addCase<
-      string,
-      {
-        type: string;
-        payload: {
-          clearCache?: boolean;
-        };
-      }
-    >(INITIALIZE, (state, { payload: { clearCache = true } = {} }) => {
-      return clearCache ? {} : state;
-    });
+    builder.addCase(
+      initialize,
+      (state, { payload: { clearCache = true } = {} }) => {
+        return clearCache ? {} : state;
+      },
+    );
 
     builder.addCase(fetchDashboard.fulfilled, (_state, { payload }) => {
       return payload.parameterValues;
     });
 
-    builder.addCase<
-      string,
-      {
-        type: string;
-        payload: {
-          id: ParameterId;
-          value: ParameterValueOrArray;
-          isDraft: boolean;
-        };
-      }
-    >(SET_PARAMETER_VALUE, (state, { payload: { id, value, isDraft } }) => {
-      if (!isDraft) {
-        state[id] = value;
-      }
-    });
+    builder.addCase(
+      setParameterValue.fulfilled,
+      (state, { payload: { id, value, isDraft } }) => {
+        if (!isDraft) {
+          state[id] = value;
+        }
+      },
+    );
 
-    builder.addCase<
-      string,
-      {
-        type: string;
-        payload: Record<ParameterId, ParameterValueOrArray>;
-      }
-    >(SET_PARAMETER_VALUES, (_state, { payload }) => {
+    builder.addCase(setParameterValues, (_state, { payload }) => {
       return payload;
     });
 
-    builder.addCase<
-      string,
-      {
-        type: string;
-        payload: UiParameter[];
-      }
-    >(RESET_PARAMETERS, (state, { payload: parameters }) => {
-      for (const parameter of parameters) {
-        const { id, value } = parameter;
-        state[id] = value;
-      }
-    });
+    builder.addCase(
+      resetParameters.fulfilled,
+      (state, { payload: parameters }) => {
+        for (const parameter of parameters) {
+          const { id, value } = parameter;
+          state[id] = value;
+        }
+      },
+    );
 
-    builder.addCase<
-      string,
-      {
-        type: string;
-        payload: {
-          id: ParameterId;
-        };
-      }
-    >(REMOVE_PARAMETER, (state, { payload: { id } }) => {
+    builder.addCase(removeParameter.fulfilled, (state, { payload: { id } }) => {
       delete state[id];
     });
   },
@@ -416,13 +381,10 @@ export const loadingDashCards = createReducer(
 
 export const draftParameterValues = createReducer({}, builder => {
   builder
-    .addCase<string, { type: string; payload?: { clearCache?: boolean } }>(
-      INITIALIZE,
-      (state, action) => {
-        const { clearCache = true } = action.payload ?? {};
-        return clearCache ? {} : state;
-      },
-    )
+    .addCase(initialize, (state, action) => {
+      const { clearCache = true } = action.payload ?? {};
+      return clearCache ? {} : state;
+    })
 
     .addCase(fetchDashboard.fulfilled, (state, action) => {
       const { dashboard, parameterValues, preserveParameters } = action.payload;
@@ -431,36 +393,14 @@ export const draftParameterValues = createReducer({}, builder => {
         : parameterValues;
     })
 
-    .addCase<
-      string,
-      {
-        type: string;
-        payload: {
-          id: ParameterId;
-          value: ParameterValueOrArray;
-          isDraft: boolean;
-        };
-      }
-    >(SET_PARAMETER_VALUE, (state, action) => {
+    .addCase(setParameterValue.fulfilled, (state, action) => {
       const { id, value } = action.payload;
       return assoc(state ?? {}, id, value);
     })
 
-    .addCase<
-      string,
-      {
-        type: string;
-        payload: Record<ParameterId, ParameterValueOrArray>;
-      }
-    >(SET_PARAMETER_VALUES, (_state, action) => action.payload)
+    .addCase(setParameterValues, (_state, action) => action.payload)
 
-    .addCase<
-      string,
-      {
-        type: string;
-        payload: UiParameter[];
-      }
-    >(RESET_PARAMETERS, (state, action) => {
+    .addCase(resetParameters.fulfilled, (state, action) => {
       const parameters = action.payload;
       return parameters.reduce(
         (result, parameter) => assoc(result, parameter.id, parameter.value),
@@ -468,13 +408,10 @@ export const draftParameterValues = createReducer({}, builder => {
       );
     })
 
-    .addCase<string, { type: string; payload: { id: ParameterId } }>(
-      REMOVE_PARAMETER,
-      (state, action) => {
-        const { id } = action.payload;
-        return dissoc(state, id);
-      },
-    );
+    .addCase(removeParameter.fulfilled, (state, action) => {
+      const { id } = action.payload;
+      return dissoc(state, id);
+    });
 });
 
 // Combined reducer needs to init state for every slice

@@ -63,7 +63,12 @@ function getAction(
 
           const parameterIdValuePairs = getDashboardDrillParameters(clicked);
           parameterIdValuePairs
-            .map(([id, value]) => setParameterValue(id, value))
+            .map(([parameterId, value]) =>
+              setParameterValue({
+                parameterId,
+                value,
+              }),
+            )
             .forEach(action => dispatch(action));
         },
       };

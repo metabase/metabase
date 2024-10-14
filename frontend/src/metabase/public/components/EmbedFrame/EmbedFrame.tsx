@@ -1,11 +1,13 @@
 import cx from "classnames";
 import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
+import type { HandleThunkActionCreator } from "react-redux";
 import { useMount } from "react-use";
 import _ from "underscore";
 
 import TitleAndDescription from "metabase/components/TitleAndDescription";
 import CS from "metabase/css/core/index.css";
+import type { setParameterValue as setParameterValueDashboardAction } from "metabase/dashboard/actions";
 import {
   FixedWidthContainer,
   ParametersFixedWidthContainer,
@@ -65,7 +67,9 @@ export type EmbedFrameBaseProps = Partial<{
   draftParameterValues: ParameterValuesMap;
   hiddenParameterSlugs: string;
   enableParameterRequiredBehavior: boolean;
-  setParameterValue: (parameterId: ParameterId, value: any) => void;
+  setParameterValue: HandleThunkActionCreator<
+    typeof setParameterValueDashboardAction
+  >;
   setParameterValueToDefault: (id: ParameterId) => void;
   children: ReactNode;
   dashboardTabs: ReactNode;

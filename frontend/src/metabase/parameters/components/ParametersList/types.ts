@@ -1,3 +1,6 @@
+import type { HandleThunkActionCreator } from "react-redux";
+
+import type { setParameterValue as setParameterValueDashboardAction } from "metabase/dashboard/actions";
 import type {
   DashboardFullscreenControls,
   DashboardNightModeControls,
@@ -19,7 +22,9 @@ export type ParametersListProps = {
     isEditing: boolean;
     vertical: boolean;
     commitImmediately: boolean;
-    setParameterValue: (parameterId: ParameterId, value: any) => void;
+    setParameterValue: HandleThunkActionCreator<
+      typeof setParameterValueDashboardAction
+    >;
     setParameterValueToDefault: (parameterId: ParameterId) => void;
     setParameterIndex: (
       parameterId: ParameterId,
