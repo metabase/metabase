@@ -74,6 +74,7 @@ describe("Static gauge utils", () => {
   describe("calculateRelativeValueAngle", () => {
     const minValue = 0;
     const maxValue = 10;
+
     it("calculates min value", () => {
       expect(calculateRelativeValueAngle(0, minValue, maxValue)).toEqual(0);
     });
