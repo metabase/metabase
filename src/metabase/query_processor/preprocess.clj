@@ -88,7 +88,7 @@
   [middleware-fn]
   (-> (fn [query]
         (mu/disable-enforcement
-          (binding [lib.convert/*clean-stage* false]
+          (binding [lib.convert/*clean-query* false]
             (let [query' (-> (cond->> query
                                (not (:lib/type query))
                                (lib.query/query (qp.store/metadata-provider)))

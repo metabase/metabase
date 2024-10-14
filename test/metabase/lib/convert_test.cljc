@@ -477,7 +477,7 @@
     :type     :query}))
 
 (deftest ^:parallel unclean-stage-round-trip-test
-  (binding [lib.convert/*clean-stage* false]
+  (binding [lib.convert/*clean-query* false]
     (doseq [query
             [{:database 7
               :type :query

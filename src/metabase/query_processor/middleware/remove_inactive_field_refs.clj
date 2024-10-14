@@ -1,4 +1,11 @@
 (ns metabase.query-processor.middleware.remove-inactive-field-refs
+  "This middleware exists to let queries run even if some database columns have been removed in the data warehouse.
+
+  Queries that don't depend on removed columns (other than showing them) should run and show the available data.
+  Queries that use removed fields otherwise, e.g., for filtering or summary will continue to fail.
+
+  We only try to fix queries if we know a column has been removed. We recognize this during the next sync: deleted
+  columns are marked active = false."
   (:require
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.metadata :as lib.metadata]
@@ -101,7 +108,11 @@
   "Remove any references to fields that are not active.
   This might result in a broken query, but the original query would break at run time too because of the
   references to columns that do not exist in the database.
-  This middleware can fix queries that contain references that are not used other than being returned."
+  This middleware can fix queries that contain references that are not used other than being returned.
+
+  This function should be called after the point where the implicit :fields clauses are added to the query.
+  We determine which direct database field references are referencing active fields and remove the others.
+  Then we recursively remove references to the removed columns."
   [query :- ::lib.schema/query]
   (let [fields-clauses (collect-fields-clauses query)
         field-ids (into #{}

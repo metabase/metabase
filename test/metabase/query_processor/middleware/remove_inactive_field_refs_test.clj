@@ -9,6 +9,7 @@
    [toucan2.core :as t2]))
 
 (deftest ^:synchronized deleted-columns-test
+  ;; It doesn't really matter which DB we test with. The test uses H2 column names.
   (mt/test-driver :h2
     (qp.store/with-metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
       (mt/with-temp [:model/Card card0 {:dataset_query
