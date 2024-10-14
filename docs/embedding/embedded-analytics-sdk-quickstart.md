@@ -165,6 +165,6 @@ Your browser should automatically open the app. By default, the app runs on [htt
 
 ## At this point, you should be up and running
 
-Try changing some of the `theme` options to style the components.
+Try changing some of the `theme` options in the [client app](https://github.com/metabase/metabase-nodejs-react-sdk-embedding-sample/blob/main/client/src/App.js) to style the components.
 
 ![Embedded Metabase components](./images/embedded-components.png)
