@@ -92,7 +92,7 @@
                     metrics/adjust-metric-stages (fn [_ _ stages] stages)]
         (is (= query (adjust query)))
         (is (= 1 (count (filter #{:metabase-metrics/adjust-errors} @calls)))))))
-  (testing "metric missing aggregation exception"
+  (testing "metric missing aggregation increments counter and throws exception"
     (let [[bad-source-metric mp] (mock-metric (-> (lib/query meta/metadata-provider (meta/table-metadata :products))))
           query                  (-> (lib/query mp (meta/table-metadata :products))
                                      (lib/aggregate (lib/+ (lib.options/ensure-uuid
