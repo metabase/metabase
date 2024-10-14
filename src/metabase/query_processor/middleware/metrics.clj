@@ -231,6 +231,13 @@
       :else
       expanded-stages)))
 
+(defn- adjust-metric-stages-counting-errors
+  "Call [[adjust-metric-stages]] and inc an error counter if any exception is thrown."
+  [query path expanded-stages]
+  (try (adjust-metric-stages query path expanded-stages)
+       (catch Throwable e
+         (prometheus/inc-and-throw! :metabase-query-processor/metrics-errors e))))
+
 (defn adjust
   "Looks for `[:metric {} id]` clause references and adjusts the query accordingly.
 
@@ -250,11 +257,9 @@
                query
                (fn [_query path-type path stage-or-join]
                  (when (= path-type :lib.walk/join)
-                   (update stage-or-join :stages #(adjust-metric-stages query path %)))))]
+                   (update stage-or-join :stages #(adjust-metric-stages-counting-errors query path %)))))]
     (u/prog1
-      (try (update query :stages #(adjust-metric-stages query nil %))
-           (catch Throwable e
-             (prometheus/inc-and-throw! :metabase-query-processor/metrics-errors e)))
+      (update query :stages #(adjust-metric-stages-counting-errors query nil %))
       (when-let [metric (lib.util.match/match-one <>
                           [:metric _ _] &match)]
         (prometheus/inc! :metabase-query-processor/metrics-errors)
