@@ -33,7 +33,7 @@
           (is (contains? (:tables actual-tables) {:name "airport", :schema "airports", :description nil}))
           (is (contains? (:tables actual-tables) {:name "bird", :schema "bird-flocks", :description nil})))
         (testing "information_schema is excluded"
-          (is (empty? (filter #(= "information_schema" (:name %)) (:tables actual-tables)))))))
+          (is (empty? (filter #(= "information_schema" (:schema %)) (:tables actual-tables)))))))
     (testing "`driver/describe-database` returns expected results for `exclusion` schema filters."
       (let [actual-tables (driver/describe-database :databricks (update (mt/db) :details assoc
                                                                         :schema-filters-patterns "test-data"
