@@ -228,6 +228,7 @@ jobs:
             env:
               test-ssl: 'true'
         partition-index: [0, 1, 2, 3]
+    name: Test ${{ matrix.version.name }} (${{ matrix.partition-index }})
     services:
       mysql:
         image: ${{ matrix.version.docker-image }}
@@ -235,8 +236,8 @@ jobs:
           - "3306:3306"
         env:
           MYSQL_DATABASE: metabase_test
-          MYSQL_USER: root
-          MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+          MYSQL_USER: metabase
+          MYSQL_PASSWORD: metabase
     env:
       CI: 'true'
       DRIVERS: mysql
@@ -244,8 +245,10 @@ jobs:
       MB_DB_HOST: localhost
       MB_DB_PORT: 3306
       MB_DB_DBNAME: metabase_test
-      MB_DB_USER: root
-      MB_MYSQL_TEST_USER: root
+      MB_DB_USER: metabase
+      MB_DB_PASS: metabase
+      MB_MYSQL_TEST_USER: metabase
+      MB_MYSQL_TEST_PASSWORD: metabase
       # set up env vars for something named "MYSQL_SSL" to run MySQL SSL tests verifying connectivity with PEM cert
       # they are deliberately given a different name to prevent them from affecting the regular test run against
       # the configured MySQL instance, but there is one particular test (mysql-connect-with-ssl-and-pem-cert-test)
