@@ -198,7 +198,7 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
-  be-tests-mariadb-10-2-ee:
+  be-tests-mysql-mariadb:
     needs: files-changed
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-22.04
@@ -206,6 +206,19 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        version:
+          - name: MariaDB Latest
+            junit-name: mariadb-latest
+            docker-image: mariadb:latest
+          - name: MariaDB 10.2
+            junit-name: mariadb-10-2
+            docker-image: mariadb:10.2.23
+          - name: MySQL 8.0
+            junit-name: mysql-8-0
+            docker-image: mysql:8.0
+          - name: MySQL Latest
+            junit-name: mysql-latest
+            docker-image: mysql:latest
         partition-index: [0, 1, 2, 3]
     env:
       CI: 'true'
@@ -213,64 +226,25 @@ jobs:
       MB_DB_TYPE: mysql
       MB_DB_HOST: localhost
       MB_DB_PORT: 3306
-      MB_DB_DBNAME: circle_test
+      MB_DB_DBNAME: metabase_test
       MB_DB_USER: root
+      MB_DB_PASS: ''
       MB_MYSQL_TEST_USER: root
     services:
       mariadb:
-        image: circleci/mariadb:10.2.23
+        image: ${{ matrix.version.docker-image }}
         ports:
           - "3306:3306"
+        env:
+          MYSQL_DATABASE: metabase_test
+          MYSQL_USER: root
+          MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
     steps:
     - uses: actions/checkout@v4
-    - name: Test MariaDB driver (10.2)
+    - name: Test ${{ matrix.version.name }}
       uses: ./.github/actions/test-driver
       with:
-        junit-name: 'be-tests-mariadb-10-2-ee'
-        test-args: >-
-          :partition/total 4
-          :partition/index ${{ matrix.partition-index }}
-    - name: Upload Test Results
-      uses: ./.github/actions/upload-test-results
-      if: always()
-      with:
-        input-path: ./target/junit/
-        output-name: ${{ github.job }}
-        bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-        aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ vars.AWS_REGION }}
-        trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
-
-  be-tests-mariadb-latest-ee:
-    needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
-    runs-on: ubuntu-22.04
-    timeout-minutes: 90
-    strategy:
-      fail-fast: false
-      matrix:
-        partition-index: [0, 1, 2, 3]
-    env:
-      CI: 'true'
-      DRIVERS: mysql
-      MB_DB_TYPE: mysql
-      MB_DB_HOST: localhost
-      MB_DB_PORT: 3306
-      MB_DB_DBNAME: circle_test
-      MB_DB_USER: root
-      MB_MYSQL_TEST_USER: root
-    services:
-      mariadb:
-        image: circleci/mariadb:latest
-        ports:
-          - "3306:3306"
-    steps:
-    - uses: actions/checkout@v4
-    - name: Test MariaDB driver (latest)
-      uses: ./.github/actions/test-driver
-      with:
-        junit-name: 'be-tests-mariadb-latest-ee'
+        junit-name: 'be-tests-${{ matrix.version.junit-name }}-ee'
         test-args: >-
           :partition/total 4
           :partition/index ${{ matrix.partition-index }}
@@ -531,109 +505,6 @@ jobs:
       with:
         junit-name: 'be-tests-mongo-sharded-cluster-ee'
         test-args: ':only "[metabase.driver.mongo.sharded-cluster-test]"'
-    - name: Upload Test Results
-      uses: ./.github/actions/upload-test-results
-      if: always()
-      with:
-        input-path: ./target/junit/
-        output-name: ${{ github.job }}
-        bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-        aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ vars.AWS_REGION }}
-        trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
-
-  be-tests-mysql-8-0-ee:
-    needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
-    runs-on: ubuntu-22.04
-    timeout-minutes: 90
-    strategy:
-      fail-fast: false
-      matrix:
-        partition-index: [0, 1, 2, 3]
-    env:
-      CI: 'true'
-      DRIVERS: mysql
-      MB_DB_TYPE: mysql
-      MB_DB_HOST: localhost
-      MB_DB_PORT: 3306
-      MB_DB_DBNAME: circle_test
-      MB_DB_USER: root
-      MB_MYSQL_TEST_USER: root
-    services:
-      mysql:
-        image: cimg/mysql:8.0
-        ports:
-          - "3306:3306"
-    steps:
-    - uses: actions/checkout@v4
-    - name: Test MySQL driver (8.0)
-      uses: ./.github/actions/test-driver
-      with:
-        junit-name: 'be-tests-mysql-8-0-ee'
-        test-args: >-
-          :partition/total 4
-          :partition/index ${{ matrix.partition-index }}
-    - name: Upload Test Results
-      uses: ./.github/actions/upload-test-results
-      if: always()
-      with:
-        input-path: ./target/junit/
-        output-name: ${{ github.job }}
-        bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-        aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ vars.AWS_REGION }}
-        trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
-
-  be-tests-mysql-latest-ee:
-    needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
-    runs-on: ubuntu-22.04
-    timeout-minutes: 90
-    strategy:
-      fail-fast: false
-      matrix:
-        partition-index: [0, 1, 2, 3]
-    env:
-      CI: 'true'
-      DRIVERS: mysql
-      MB_DB_TYPE: mysql
-      MB_DB_HOST: localhost
-      MB_DB_PORT: 3306
-      MB_DB_DBNAME: circle_test
-      MB_DB_USER: root
-      MB_MYSQL_TEST_USER: root
-      # set up env vars for something named "MYSQL_SSL" to run MySQL SSL tests verifying connectivity with PEM cert
-      # they are deliberately given a different name to prevent them from affecting the regular test run against
-      # the configured MySQL instance, but there is one particular test (mysql-connect-with-ssl-and-pem-cert-test)
-      # that overrides the MB_MYSQL_TEST_* values with them
-      # the MYSQL_RDS_SSL_INSTANCE vars are defined as secrets and can be altered
-      MB_MYSQL_SSL_TEST_HOST: ${{ secrets.MYSQL_RDS_SSL_INSTANCE_HOST }}
-      MB_MYSQL_SSL_TEST_SSL: true
-      MB_MYSQL_SSL_TEST_ADDITIONAL_OPTIONS: 'verifyServerCertificate=true'
-      # the contents of the ./resources/certificates/rds-combined-ca-bundle.pem file
-      MB_MYSQL_SSL_TEST_SSL_CERT: ${{ secrets.MB_MYSQL_SSL_TEST_SSL_CERT }}
-      MB_MYSQL_SSL_TEST_USER: metabase
-      MB_MYSQL_SSL_TEST_PASSWORD: ${{ secrets.MYSQL_RDS_SSL_INSTANCE_PASSWORD }}
-    services:
-      mysql:
-        image: mysql:latest
-        env:
-          MYSQL_ALLOW_EMPTY_PASSWORD: true
-          MYSQL_DATABASE: circle_test
-        ports:
-        - "3306:3306"
-    steps:
-    - uses: actions/checkout@v4
-    - name: Test MySQL driver (latest)
-      uses: ./.github/actions/test-driver
-      with:
-        junit-name: 'be-tests-mysql-latest-ee'
-        test-args: >-
-          :partition/total 4
-          :partition/index ${{ matrix.partition-index }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
