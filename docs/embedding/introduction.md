@@ -19,7 +19,7 @@ There are three ways to embed Metabase in your app:
 
 ## Embedding SDK with React (BETA)
 
-With the [Embedding SDK](./embedding-sdk-introduction.md), you can embed individual Metabase components with React (like standalone charts, dashboards, the query builder, and more). You can manage access and interactivity per component, and you have advanced customization for seamless styling.
+With the [Embedding SDK](./embedded-analytics-sdk/introduction.md), you can embed individual Metabase components with React (like standalone charts, dashboards, the query builder, and more). You can manage access and interactivity per component, and you have advanced customization for seamless styling.
 
 ## Interactive embedding
 

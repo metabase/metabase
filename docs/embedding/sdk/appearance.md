@@ -1,8 +1,8 @@
 ---
-title: Embedded analytics SDK theme
+title: "Embedded analytics SDK - appearance"
 ---
 
-# Embedded analytics SDK theme
+# Embedded analytics SDK - appearance
 
 You can style your embedded Metabase components with a theme.
 

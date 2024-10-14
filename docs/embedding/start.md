@@ -16,7 +16,7 @@ The solution to self-service customer analytics: embed the full Metabase app in 
 
 You'll embed the full Metabase application in your app. Once logged in, people can view a Metabase dashboard in your web app, and be able to use the full Metabase application to explore their data, and only their data.
 
-## [Embedding SDK](./embedding-sdk-introduction.md)
+## [Embedding SDK](./embedded-analytics-sdk/introduction.md)
 
 With the Embedding SDK, you can embed individual Metabase components with React (like standalone charts, dashboards, the query builder, and more). You can manage access and interactivity per component, and you have advanced customization for seamless styling.
 
