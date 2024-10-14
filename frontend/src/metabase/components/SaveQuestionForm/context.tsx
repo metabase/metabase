@@ -77,6 +77,7 @@ export const SaveQuestionProvider = ({
   const [isSavedQuestionInitiallyChanged] = useState(
     isNotNull(originalQuestion) &&
       originalQuestion.type() !== "model" &&
+      originalQuestion.type() !== "metric" &&
       question.isDirtyComparedTo(originalQuestion),
   );
 
