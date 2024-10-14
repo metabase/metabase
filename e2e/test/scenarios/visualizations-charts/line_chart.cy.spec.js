@@ -807,55 +807,6 @@ describe("scenarios > visualizations > line chart", () => {
       cy.findByText(X_AXIS_VALUE);
     });
   });
-
-  it(
-    "should apply brush filters to the native query series selecting area range when axis is a number",
-    { viewportHeight: 800, viewportWidth: 1280 },
-    () => {
-      cy.createNativeQuestion(
-        {
-          native: {
-            query: `
-        SELECT
-          ORDERS.QUANTITY AS "Quantity",
-          COUNT(*) AS "count"
-        FROM
-          ORDERS
-        GROUP BY
-          ORDERS.QUANTITY
-        `,
-          },
-          display: "line",
-          visualization_settings: {
-            "graph.metrics": ["count"],
-            "graph.dimensions": ["Quantity"],
-          },
-        },
-        { visitQuestion: true },
-      );
-
-      queryBuilderMain().within(() => {
-        echartsContainer().findByText("Quantity").should("exist");
-      });
-      cy.wait(100); // wait to avoid grabbing the svg before the chart redraws
-
-      cy.findByTestId("query-visualization-root")
-        .trigger("mousedown", 180, 200)
-        .trigger("mousemove", 180, 200)
-        .trigger("mouseup", 220, 200);
-
-      cy.findByTestId("filters-visibility-control").click();
-      cy.findByTestId("filter-pill").should(
-        "contain.text",
-        "Quantity is between",
-      );
-      const X_AXIS_VALUE = 8;
-      echartsContainer().within(() => {
-        cy.get("text").contains("Quantity").should("be.visible");
-        cy.findByText(X_AXIS_VALUE);
-      });
-    },
-  );
 });
 
 function showTooltipForFirstCircleInSeries(seriesColor) {

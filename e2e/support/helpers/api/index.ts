@@ -11,6 +11,7 @@ export { createDashboardWithTabs } from "./createDashboardWithTabs";
 export { createModerationReview } from "./createModerationReview";
 export { createNativeQuestion } from "./createNativeQuestion";
 export type { NativeQuestionDetails } from "./createNativeQuestion";
+export { createNativeQuestionAndDashboard } from "./createNativeQuestionAndDashboard";
 export { createPulse } from "./createPulse";
 export { createQuestion } from "./createQuestion";
 export type {
