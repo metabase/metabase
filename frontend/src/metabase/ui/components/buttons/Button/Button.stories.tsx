@@ -73,7 +73,7 @@ const ButtonGroupTemplate = (args: ButtonProps) => (
 );
 
 const GridRow = (args: ButtonProps) => (
-  <Group noWrap>
+  <Group wrap="nowrap">
     <Button {...args}>Save</Button>
     <Button {...args} leftSection={<Icon name="add" />}>
       New
@@ -102,14 +102,14 @@ const GridTemplate = (args: ButtonProps) => (
 );
 
 const LoadingGridRow = (args: ButtonProps) => (
-  <Group noWrap>
+  <Group wrap="nowrap">
     <Button {...args} loaderPosition="left">
       Save
     </Button>
     <Button {...args} loaderPosition="right">
       Save
     </Button>
-    <Button {...args} leftIcon={<Icon name="play" />} />
+    <Button {...args} leftSection={<Icon name="play" />} />
   </Group>
 );
 
@@ -151,7 +151,7 @@ export const DefaultSize = {
 };
 
 export const DefaultSizeCustomColor = {
-  render: ButtonGroupTemplate,
+  render: GridTemplate,
   name: "Default size, custom color",
   args: {
     color: "error",
