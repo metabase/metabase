@@ -716,3 +716,19 @@
                 (mt/format-rows-by
                  [u.date/temporal-str->iso8601-str int int 3.0]
                  (mt/rows (qp/process-query query)))))))))
+
+(deftest ^:parallel ^:mb/once fetch-referenced-metrics-test
+  (testing "Metric's aggregation `:name` is used in expanded aggregation (#48625)"
+    (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+          metric-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                           (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :orders :total)))))]
+      (mt/with-temp [:model/Card metric {:dataset_query (lib.convert/->legacy-MBQL metric-query)
+                                         :database_id (mt/id)
+                                         :name "Orders, Count"
+                                         :type :metric}]
+        (let [query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                        (lib/aggregate (lib.metadata/metric mp (:id metric))))
+              stage (get-in query [:stages 0])]
+          (is (=  "sum"
+                  (get-in (#'metrics/fetch-referenced-metrics query stage)
+                          [(:id metric) :aggregation 1 :name]))))))))
