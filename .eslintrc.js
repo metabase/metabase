@@ -246,7 +246,6 @@ module.exports = {
       ],
       rules: {
         "jest/valid-title": ["error", { ignoreTypeOfDescribeName: true }],
-        // "jest-formatting/padding-around-test-blocks": ["error"],
       },
     },
     {
