@@ -47,6 +47,7 @@ describe("getDataSourceParts", () => {
   afterEach(() => {
     jest.restoreAllMocks();
   });
+
   it("returns an array of Records if formatTableAsComponent is false", () => {
     const parts = getDataSourceParts({
       question: createMockQuestion(),
