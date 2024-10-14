@@ -112,9 +112,7 @@ describe("issue 44171", () => {
     cy.signInAsAdmin();
 
     createQuestion(METRIC_A);
-    createQuestion(METRIC_B).then(({ body: { id } }) => {
-      cy.visit(`/metric/${id}`);
-    });
+    createQuestion(METRIC_B, { visitQuestion: true });
     createDashboard(
       {
         name: "Dashboard 44171",
