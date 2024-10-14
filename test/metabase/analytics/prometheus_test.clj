@@ -164,7 +164,6 @@
                   (filter #(str/starts-with? % "metabase_email_"))
                   set))))))
 
-
 (defn- metric-value
   "Return the value of `metric` in `system`'s registry."
   [system metric]
