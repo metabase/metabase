@@ -203,8 +203,8 @@
                        {:description (trs "Number of successful SDK requests.")})
    (prometheus/counter :metabase-sdk/response-error
                        {:description (trs "Number of errors when responding to SDK requests.")})
-   (prometheus/counter :metabase-metrics/adjust-errors
-                       {:description (trs "Number of errors when adjusting metrics.")})])
+   (prometheus/counter :metabase-query-processor/metrics-errors
+                       {:description (trs "Number of errors when processing metrics.")})])
 
 (defn- setup-metrics!
   "Instrument the application. Conditionally done when some setting is set. If [[prometheus-server-port]] is not set it

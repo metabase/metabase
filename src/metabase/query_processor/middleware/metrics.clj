@@ -254,9 +254,9 @@
     (u/prog1
       (try (update query :stages #(adjust-metric-stages query nil %))
            (catch Throwable e
-             (prometheus/inc-and-throw! :metabase-metrics/adjust-errors e)))
+             (prometheus/inc-and-throw! :metabase-query-processor/metrics-errors e)))
       (when-let [metric (lib.util.match/match-one <>
                           [:metric _ _] &match)]
-        (prometheus/inc! :metabase-metrics/adjust-errors)
+        (prometheus/inc! :metabase-query-processor/metrics-errors)
         (log/warn "Failed to replace metric"
                   (pr-str {:metric metric}))))))
