@@ -2,6 +2,7 @@ import type { PropsWithChildren } from "react";
 
 import {
   BackButton,
+  ChartTypeSelector,
   Filter,
   FilterBar,
   FilterButton,
@@ -24,6 +25,7 @@ import {
   type InteractiveQuestionResultProps,
 } from "embedding-sdk/components/private/InteractiveQuestionResult";
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
+import type { FlexibleSizeProps } from "embedding-sdk/components/private/util/FlexibleSizeComponent";
 
 export type InteractiveQuestionProps = PropsWithChildren<{
   questionId?: InteractiveQuestionProviderProps["cardId"];
@@ -41,13 +43,17 @@ export const _InteractiveQuestion = ({
   customTitle,
   plugins,
   height,
+  width,
+  className,
+  style,
   children = null,
   onBeforeSave,
   onSave,
   isSaveEnabled,
   entityTypeFilter,
 }: InteractiveQuestionProps &
-  InteractiveQuestionResultProps): JSX.Element | null => (
+  InteractiveQuestionResultProps &
+  FlexibleSizeProps): JSX.Element | null => (
   <InteractiveQuestionProvider
     cardId={questionId}
     componentPlugins={plugins}
@@ -59,6 +65,9 @@ export const _InteractiveQuestion = ({
     {children ?? (
       <InteractiveQuestionResult
         height={height}
+        width={width}
+        className={className}
+        style={style}
         customTitle={customTitle}
         withResetButton={withResetButton}
         withTitle={withTitle}
@@ -83,6 +92,7 @@ const InteractiveQuestion = withPublicComponentWrapper(
   QuestionVisualization: typeof QuestionVisualization;
   SaveQuestionForm: typeof SdkSaveQuestionForm;
   SaveButton: typeof SaveButton;
+  ChartTypeSelector: typeof ChartTypeSelector;
 };
 
 InteractiveQuestion.BackButton = BackButton;
@@ -98,5 +108,6 @@ InteractiveQuestion.NotebookButton = NotebookButton;
 InteractiveQuestion.QuestionVisualization = QuestionVisualization;
 InteractiveQuestion.SaveQuestionForm = SdkSaveQuestionForm;
 InteractiveQuestion.SaveButton = SaveButton;
+InteractiveQuestion.ChartTypeSelector = ChartTypeSelector;
 
 export { InteractiveQuestion };
