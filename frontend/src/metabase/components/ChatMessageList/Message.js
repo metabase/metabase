@@ -24,21 +24,22 @@ const Message = ({
     // If message.text is an object or array, extract only the text content
     if (Array.isArray(message.text)) {
       return message.text
-        .filter((item) => typeof item === "object" && item.text) // Only consider items with a text property
+        .filter((item) => typeof item === "object" && item.text && item.text.trim().length > 0) // Exclude empty or whitespace-only text
         .map((item, index) => (
           <span key={index} style={{ display: "block" }}>
             {item.text}
           </span>
         ));
-    } else if (typeof message.text === "object" && message.text.text) {
+    } else if (typeof message.text === "object" && message.text.text && message.text.text.trim().length > 0) {
       // If message.text is an object with a "text" field
       return <span>{message.text.text}</span>;
-    } else if (typeof message.text === "string") {
+    } else if (typeof message.text === "string" && message.text.trim().length > 0) {
       // If message.text is a simple string, render it directly
       return <span>{message.text}</span>;
     }
-    return null; // Fallback for unexpected cases
+    return null; // Fallback for unexpected cases or empty text
   };
+  
 
   return (
     <div
@@ -64,7 +65,7 @@ const Message = ({
       <div
         style={{
           padding: "0px 16px",
-          width: "90%",
+          width: "95%",
           wordWrap: "break-word",
           color: hasError ? "#D32F2F" : "#333",
           position: "relative",
@@ -74,7 +75,7 @@ const Message = ({
         }}
       >
         {/* Render the message content */}
-        <span style={{ fontSize: "16px", whiteSpace: "pre-wrap" }}>
+        <span style={{ fontSize: "16px", whiteSpace: "pre-wrap", paddingRight: "2rem" }}>
           {renderMessageContent(message)}
         </span>
         {isLoading && (
@@ -84,6 +85,7 @@ const Message = ({
               right: 0,
               top: "50%",
               transform: "translateY(-50%)",
+              marginLeft: "2rem"
             }}
           >
             <LoadingSpinner />
