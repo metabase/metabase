@@ -34,9 +34,7 @@
                                 {:name metric-name}
                                 (select-keys % [:name :display-name])
                                 (select-keys (get &match 1) [:lib/uuid :name :display-name]))))
-                    (prometheus/inc-and-throw!
-                     :metabase-metrics/adjust-errors
-                     (ex-info "Incompatible metric" {:match &match :lookup lookup}))))))
+                    (throw (ex-info "Incompatible metric" {:match &match :lookup lookup}))))))
     query))
 
 (defn- find-metric-ids
@@ -63,9 +61,7 @@
                            {:query metric-query
                             :aggregation (assoc-in aggregation [1 :name] (or aggregation-name metric-name))
                             :name metric-name}]
-                          (prometheus/inc-and-throw!
-                           :metabase-metrics/adjust-errors
-                           (ex-info "Source metric missing aggregation" {:source metric-query})))))))
+                          (throw (ex-info "Source metric missing aggregation" {:source metric-query})))))))
          not-empty)))
 
 (defn- expression-with-name-from-source
@@ -146,10 +142,8 @@
                                (include-implicit-joins $q agg-stage-index metric-query)
                                (reduce #(lib/filter %1 agg-stage-index %2) $q (lib/filters metric-query -1))
                                (replace-metric-aggregation-refs $q agg-stage-index lookup)))
-                           (prometheus/inc-and-throw!
-                            :metabase-metrics/adjust-errors
-                            (ex-info "Incompatible metric" {:query query
-                                                            :metric metric-query}))))
+                           (throw (ex-info "Incompatible metric" {:query query
+                                                                  :metric metric-query}))))
                        temp-query
                        lookup)]
         (:stages new-query))
@@ -258,7 +252,9 @@
                  (when (= path-type :lib.walk/join)
                    (update stage-or-join :stages #(adjust-metric-stages query path %)))))]
     (u/prog1
-      (update query :stages #(adjust-metric-stages query nil %))
+      (try (update query :stages #(adjust-metric-stages query nil %))
+           (catch Throwable e
+             (prometheus/inc-and-throw! :metabase-metrics/adjust-errors e)))
       (when-let [metric (lib.util.match/match-one <>
                           [:metric _ _] &match)]
         (prometheus/inc! :metabase-metrics/adjust-errors)
