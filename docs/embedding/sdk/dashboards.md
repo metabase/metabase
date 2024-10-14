@@ -70,13 +70,13 @@ The plugin's default configuration looks like this:
 
 ```typescript jsx
 const plugins = {
-    dashboard: {
-        dashcardMenu: {
-            withDownloads: true,
-            withEditLink: true,
-            customItems: [],
-        },
+  dashboard: {
+    dashcardMenu: {
+      withDownloads: true,
+      withEditLink: true,
+      customItems: [],
     },
+  },
 };
 ```
 
@@ -84,12 +84,12 @@ const plugins = {
 
 ```typescript jsx
 <InteractiveDashboard
-    questionId={1}
-    plugins={{
-        dashboard: {
-            dashcardMenu: null,
-        },
-    }}
+  questionId={1}
+  plugins={{
+    dashboard: {
+      dashcardMenu: null,
+    },
+  }}
 />
 ```
 
@@ -99,13 +99,13 @@ To remove the download button from the dashcard menu, set `withDownloads` to `fa
 
 ```typescript jsx
 const plugins = {
-    dashboard: {
-        dashcardMenu: {
-            withDownloads: false,
-            withEditLink: false,
-            customItems: [],
-        },
+  dashboard: {
+    dashcardMenu: {
+      withDownloads: false,
+      withEditLink: false,
+      customItems: [],
     },
+  },
 };
 ```
 
@@ -126,28 +126,28 @@ Here's an example:
 
 ```typescript jsx
 const plugins: SdkPluginsConfig = {
-    dashboard: {
-        dashcardMenu: {
-            customItems: [
-                {
-                    iconName: "chevronright",
-                    label: "Custom action",
-                    onClick: () => {
-                        alert(`Custom action clicked`);
-                    },
-                },
-                ({question}) => {
-                    return {
-                        iconName: "chevronright",
-                        label: "Custom action",
-                        onClick: () => {
-                            alert(`Custom action clicked ${question.name}`);
-                        },
-                    };
-                },
-            ],
+  dashboard: {
+    dashcardMenu: {
+      customItems: [
+        {
+          iconName: "chevronright",
+          label: "Custom action",
+          onClick: () => {
+            alert(`Custom action clicked`);
+          },
         },
+        ({ question }) => {
+          return {
+            iconName: "chevronright",
+            label: "Custom action",
+            onClick: () => {
+              alert(`Custom action clicked ${question.name}`);
+            },
+          };
+        },
+      ],
     },
+  },
 };
 ```
 
@@ -158,14 +158,13 @@ React component. This function also can receive the question as an argument.
 
 ```typescript jsx
 const plugins: SdkPluginsConfig = {
-    dashboard: {
-        dashcardMenu: ({question}) => (
-            <button onClick={() => console.log(question.name)}>Click me</button>
-        ),
-    },
+  dashboard: {
+    dashcardMenu: ({ question }) => (
+      <button onClick={() => console.log(question.name)}>Click me</button>
+    ),
+  },
 };
 ```
-
 
 ## Creating dashboards
 
