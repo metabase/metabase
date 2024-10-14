@@ -9937,6 +9937,11 @@ databaseChangeLog:
       id: v52.2024-09-05T08:00:13
       author: qnkhuat
       comment: Drop the channel_template.entity_id column
+      preConditions:
+        - onFail: MARK_RAN
+        - columnExists:
+            tableName: metabase_database
+            columnName: is_attached_dwh
       changes:
         - dropColumn:
             tableName: channel_template
