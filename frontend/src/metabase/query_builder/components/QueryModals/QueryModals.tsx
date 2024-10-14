@@ -30,7 +30,7 @@ import MoveEventModal from "metabase/timelines/questions/containers/MoveEventMod
 import NewEventModal from "metabase/timelines/questions/containers/NewEventModal";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type { Alert, Card, CollectionId, User } from "metabase-types/api";
+import type { Alert, Card, User } from "metabase-types/api";
 import type { QueryBuilderMode } from "metabase-types/store";
 
 interface QueryModalsProps {
@@ -272,22 +272,40 @@ export function QueryModals({
           onClose={onCloseModal}
         />
       );
-    case MODAL_TYPES.MOVE:
+    case MODAL_TYPES.MOVE: {
+      const card = question.card();
+      const canMoveToDashboard =
+        card.type === "question" &&
+        Boolean(
+          card?.dashboard_count === 0 ||
+            (card?.dashboard_count === 1 && card?.dashboard_id),
+        );
+
       return (
         <MoveModal
-          title={t`Which collection should this be in?`}
+          title={t`Where do you want to save this?`}
           initialCollectionId={question.collectionId() ?? "root"}
           onClose={onCloseModal}
-          onMove={(collection: { id: CollectionId }) => {
+          canMoveToDashboard={canMoveToDashboard}
+          onMove={destination => {
+            const destinationCollectionId =
+              (destination.model === "dashboard"
+                ? destination.collection_id
+                : destination.id) || ROOT_COLLECTION.id;
+
+            const destinationDashboardId =
+              destination.model === "dashboard" ? destination.id : undefined;
+
             dispatch(
               Questions.actions.setCollection(
                 { id: question.id() },
-                { id: collection.id },
+                destination,
                 {
                   notify: {
                     message: (
                       <QuestionMoveToast
-                        collectionId={collection.id || ROOT_COLLECTION.id}
+                        collectionId={destinationCollectionId}
+                        dashboardId={destinationDashboardId}
                         question={question}
                       />
                     ),
@@ -300,6 +318,7 @@ export function QueryModals({
           }}
         />
       );
+    }
     case MODAL_TYPES.ARCHIVE:
       return (
         <Modal onClose={onCloseModal}>
