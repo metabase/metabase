@@ -1,5 +1,4 @@
-import { IconData } from "metabase/lib/icon";
-import { IconProps } from "metabase/ui";
+import type { IconData } from "metabase/lib/icon";
 
 export interface QuestionSource {
   href: string;
