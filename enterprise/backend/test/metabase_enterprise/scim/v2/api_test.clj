@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.scim.api :as scim]
    [metabase-enterprise.scim.v2.api :as scim-api]
+   [metabase.analytics.prometheus :as prometheus]
    [metabase.http-client :as client]
    [metabase.models.permissions-group :as perms-group]
    [metabase.test :as mt]
@@ -63,6 +64,28 @@
 
     (testing "A SCIM API key cannot be passed via the x-api-key header"
       (client/client :get 401 "ee/scim/v2/Users" {:request-options {:headers {"x-api-key" *scim-api-key*}}}))))
+
+(deftest prometheus-metrics-test
+  (testing "Prometheus counters get incremented for success responses and errors"
+    (with-scim-setup!
+      (let [calls (atom nil)]
+        (with-redefs [prometheus/inc! #(swap! calls conj %)]
+          (testing "Success response"
+            (scim-client :get 200 "ee/scim/v2/Users")
+            (is (= 1 (count (filter #{:metabase-scim/success-responses} @calls))))
+            (is (= 0 (count (filter #{:metabase-scim/error-responses} @calls)))))
+
+          (testing "Bad request (400)"
+            (scim-client :get 400 (format "ee/scim/v2/Users?filter=%s"
+                                          (codec/url-encode "id ne \"newuser@metabase.com\"")))
+            (is (= 1 (count (filter #{:metabase-scim/success-responses} @calls))))
+            (is (= 1 (count (filter #{:metabase-scim/error-responses} @calls)))))
+
+          (testing "Unexpected server error (500)"
+            (with-redefs [scim-api/scim-response #(throw (Exception.))]
+              (scim-client :get 500 "ee/scim/v2/Users")
+              (is (= 1 (count (filter #{:metabase-scim/success-responses} @calls))))
+              (is (= 2 (count (filter #{:metabase-scim/error-responses} @calls)))))))))))
 
 (deftest fetch-user-test
   (with-scim-setup!

@@ -202,7 +202,11 @@
    (prometheus/counter :metabase-sdk/response-ok
                        {:description (trs "Number of successful SDK requests.")})
    (prometheus/counter :metabase-sdk/response-error
-                       {:description (trs "Number of errors when responding to SDK requests.")})])
+                       {:description (trs "Number of errors when responding to SDK requests.")})
+   (prometheus/counter :metabase-scim/response-ok
+                       {:description (trs "Number of successful responses from SCIM endpoints")})
+   (prometheus/counter :metabase-scim/response-error
+                       {:description (trs "Number of error responses from SCIM endpoints")})])
 
 (defn- setup-metrics!
   "Instrument the application. Conditionally done when some setting is set. If [[prometheus-server-port]] is not set it
