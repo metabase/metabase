@@ -15,6 +15,8 @@ import {
   popover,
   queryBuilderHeader,
   restore,
+  sidebar,
+  summarize,
   undoToast,
   visitMetric,
 } from "e2e/support/helpers";
@@ -203,6 +205,19 @@ describe("scenarios > metrics > question", () => {
     cy.findByTestId("qb-header-action-panel").within(() => {
       cy.button("Filter").should("not.exist");
       cy.button("Summarize").should("not.exist");
+    });
+  });
+
+  it("should not show 'Replace existing question' option when saving an edited ad-hoc question from a metric", () => {
+    cy.signInAsAdmin();
+    createQuestion(ORDERS_SCALAR_METRIC, { visitQuestion: true });
+
+    summarize();
+    sidebar().findByText("Done").click();
+
+    queryBuilderHeader().button("Save").click();
+    modal().within(() => {
+      cy.findByText("Replace or save as new?").should("not.exist");
     });
   });
 });
