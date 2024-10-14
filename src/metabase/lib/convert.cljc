@@ -84,16 +84,23 @@
       clean-stage-schema-errors
       clean-stage-ref-errors))
 
+(def ^:dynamic *clean-query*
+  "If true (this is the default), the query is cleaned.
+  When converting queries at later stages of the preprocessing pipeline, this cleaning might not be desirable."
+  true)
+
 (defn- clean [almost-query]
-  (loop [almost-query almost-query
-         stage-index 0]
-    (let [current-stage (nth (:stages almost-query) stage-index)
-          new-stage (clean-stage current-stage)]
-      (if (= current-stage new-stage)
-        (if (= stage-index (dec (count (:stages almost-query))))
-          almost-query
-          (recur almost-query (inc stage-index)))
-        (recur (update almost-query :stages assoc stage-index new-stage) stage-index)))))
+  (if-not *clean-query*
+    almost-query
+    (loop [almost-query almost-query
+           stage-index 0]
+      (let [current-stage (nth (:stages almost-query) stage-index)
+            new-stage (clean-stage current-stage)]
+        (if (= current-stage new-stage)
+          (if (= stage-index (dec (count (:stages almost-query))))
+            almost-query
+            (recur almost-query (inc stage-index)))
+          (recur (update almost-query :stages assoc stage-index new-stage) stage-index))))))
 
 (defmulti ->pMBQL
   "Coerce something to pMBQL (the version of MBQL manipulated by Metabase Lib v2) if it's not already pMBQL."
@@ -523,7 +530,7 @@
 
 (defmethod ->legacy-MBQL :mbql/join [join]
   (let [base (cond-> (disqualify join)
-               (str/starts-with? (:alias join) legacy-default-join-alias) (dissoc :alias))]
+               (and *clean-query* (str/starts-with? (:alias join) legacy-default-join-alias)) (dissoc :alias))]
     (merge (-> base
                (dissoc :stages :conditions)
                (update-vals ->legacy-MBQL))
