@@ -60,6 +60,113 @@ export default function App() {
 }
 ```
 
+## Interactive dashboard plugins
+
+### `dashcardMenu`
+
+This plugin allows you to add, remove, and modify the custom actions on the overflow menu of dashboard cards. The plugin appears as a dropdown menu on the top right corner of the card.
+
+The plugin's default configuration looks like this:
+
+```typescript jsx
+const plugins = {
+    dashboard: {
+        dashcardMenu: {
+            withDownloads: true,
+            withEditLink: true,
+            customItems: [],
+        },
+    },
+};
+```
+
+`dashcardMenu`: can be used in the InteractiveDashboard like this:
+
+```typescript jsx
+<InteractiveDashboard
+    questionId={1}
+    plugins={{
+        dashboard: {
+            dashcardMenu: null,
+        },
+    }}
+/>
+```
+
+#### Enabling/disabling default actions
+
+To remove the download button from the dashcard menu, set `withDownloads` to `false`. To remove the edit link from the dashcard menu, set `withEditLink` to `false`.
+
+```typescript jsx
+const plugins = {
+    dashboard: {
+        dashcardMenu: {
+            withDownloads: false,
+            withEditLink: false,
+            customItems: [],
+        },
+    },
+};
+```
+
+#### Adding custom actions to the existing menu:
+
+You can add custom actions to the dashcard menu by adding an object to the `customItems` array. Each element can either be an object or a function that takes in the dashcard's question, and outputs a list of custom items in the form of:
+
+```typescript jsx
+{
+    iconName: string;
+    label: string;
+    onClick: () => void;
+    disabled ? : boolean;
+}
+```
+
+Here's an example:
+
+```typescript jsx
+const plugins: SdkPluginsConfig = {
+    dashboard: {
+        dashcardMenu: {
+            customItems: [
+                {
+                    iconName: "chevronright",
+                    label: "Custom action",
+                    onClick: () => {
+                        alert(`Custom action clicked`);
+                    },
+                },
+                ({question}) => {
+                    return {
+                        iconName: "chevronright",
+                        label: "Custom action",
+                        onClick: () => {
+                            alert(`Custom action clicked ${question.name}`);
+                        },
+                    };
+                },
+            ],
+        },
+    },
+};
+```
+
+#### Replacing the existing menu with your own component
+
+If you want to replace the existing menu with your own component, you can do so by providing a function that returns a
+React component. This function also can receive the question as an argument.
+
+```typescript jsx
+const plugins: SdkPluginsConfig = {
+    dashboard: {
+        dashcardMenu: ({question}) => (
+            <button onClick={() => console.log(question.name)}>Click me</button>
+        ),
+    },
+};
+```
+
+
 ## Creating dashboards
 
 Creating a dashboard could be done with `useCreateDashboardApi` hook or `CreateDashboardModal` component.
