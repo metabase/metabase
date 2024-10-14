@@ -4,7 +4,8 @@
    [metabase-enterprise.sandbox.api.table :as table]
    [metabase-enterprise.sandbox.test-util :as mt.tu]
    [metabase-enterprise.test :as met]
-   [metabase.models.card.metadata :as card.metadata]
+   [metabase.models.card :as card]
+   [metabase.query-processor.async :as qp.async]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -48,10 +49,10 @@
                                  :join   [[:permissions_group :pg] [:= :s.group_id :pg.id]
                                           [:report_card :c] [:= :c.id :s.card_id]]
                                  :where  [:= :pg.id (u/the-id &group)]})
-            {:keys [metadata metadata-future]} (@#'card.metadata/maybe-async-recomputed-metadata (:dataset_query card))]
+            {:keys [metadata metadata-future]} (qp.async/result-metadata-for-query-async (:dataset_query card))]
         (if metadata
           (t2/update! :model/Card :id (u/the-id card) {:result_metadata metadata})
-          (card.metadata/save-metadata-async! metadata-future card)))
+          (card/schedule-metadata-saving metadata-future card)))
 
       (testing "Users with restricted access to the columns of a table via a native query sandbox should only see
                columns included in the sandboxing question"
