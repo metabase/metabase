@@ -66,9 +66,7 @@ describe("scenarios > metrics > question", () => {
   });
 
   it("should be able to move a metric to a different collection", () => {
-    createQuestion(ORDERS_SCALAR_METRIC).then(({ body: card }) =>
-      visitMetric(card.id),
-    );
+    createQuestion(ORDERS_SCALAR_METRIC, { visitQuestion: true });
     openQuestionActions();
     popover().findByText("Move").click();
     modal().within(() => {
@@ -83,9 +81,7 @@ describe("scenarios > metrics > question", () => {
   });
 
   it("should be able to add a filter with an ad-hoc question", () => {
-    createQuestion(ORDERS_SCALAR_METRIC).then(({ body: card }) =>
-      visitMetric(card.id),
-    );
+    createQuestion(ORDERS_SCALAR_METRIC, { visitQuestion: true });
     cy.findByTestId("qb-header-action-panel").button("Filter").click();
     modal().within(() => {
       cy.findByText("Product").click();
@@ -98,9 +94,7 @@ describe("scenarios > metrics > question", () => {
   });
 
   it("should be able to add a custom aggregation expression based on a metric", () => {
-    createQuestion(ORDERS_TIMESERIES_METRIC).then(({ body: card }) =>
-      visitMetric(card.id),
-    );
+    createQuestion(ORDERS_TIMESERIES_METRIC, { visitQuestion: true });
     cy.findByTestId("qb-header-action-panel").button("Summarize").click();
     cy.findByTestId("sidebar-content")
       .button(ORDERS_TIMESERIES_METRIC.name)
@@ -114,18 +108,14 @@ describe("scenarios > metrics > question", () => {
   });
 
   it("should be able to add a breakout with an ad-hoc question", () => {
-    createQuestion(ORDERS_TIMESERIES_METRIC).then(({ body: card }) =>
-      visitMetric(card.id),
-    );
+    createQuestion(ORDERS_TIMESERIES_METRIC, { visitQuestion: true });
     cy.findByTestId("qb-header-action-panel").button("Summarize").click();
     cy.findByTestId("sidebar-content").findByText("Category").click();
     echartsContainer().findByText("Product → Category").should("be.visible");
   });
 
   it("should be able to change the temporal unit when consuming a timeseries metric", () => {
-    createQuestion(ORDERS_TIMESERIES_METRIC).then(({ body: card }) =>
-      visitMetric(card.id),
-    );
+    createQuestion(ORDERS_TIMESERIES_METRIC, { visitQuestion: true });
     assertQueryBuilderRowCount(49);
     cy.findByTestId("qb-header-action-panel").button("Summarize").click();
     cy.findByTestId("sidebar-content")
@@ -138,10 +128,7 @@ describe("scenarios > metrics > question", () => {
   });
 
   it("should be able to drill-thru with a metric", () => {
-    createQuestion(ORDERS_TIMESERIES_METRIC).then(({ body: card }) => {
-      visitMetric(card.id);
-      cy.wait("@dataset");
-    });
+    createQuestion(ORDERS_TIMESERIES_METRIC, { visitQuestion: true });
     cartesianChartCircle()
       .eq(23) // random dot
       .click({ force: true });
@@ -155,10 +142,7 @@ describe("scenarios > metrics > question", () => {
   });
 
   it("should be able to drill-thru with a metric without the aggregation clause", () => {
-    createQuestion(ORDERS_TIMESERIES_METRIC).then(({ body: card }) => {
-      visitMetric(card.id);
-      cy.wait("@dataset");
-    });
+    createQuestion(ORDERS_TIMESERIES_METRIC, { visitQuestion: true });
     cartesianChartCircle()
       .eq(23) // random dot
       .click({ force: true });
