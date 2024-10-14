@@ -78,7 +78,7 @@ describe("QuestionSources", () => {
       name: /Sample Database/i,
     });
     expect(
-      await within(databaseLink).findByLabelText("table icon"),
+      await within(databaseLink).findByLabelText("database icon"),
     ).toBeInTheDocument();
     expect(databaseLink).toHaveAttribute(
       "href",
@@ -88,7 +88,7 @@ describe("QuestionSources", () => {
     const tableLink = await screen.findByRole("link", { name: /Products/i });
     expect(tableLink).toBeInTheDocument();
     expect(
-      await within(tableLink).findByLabelText(`${modelIconMap["table"]} icon`),
+      await within(tableLink).findByLabelText(`table icon`),
     ).toBeInTheDocument();
     expect(tableLink).toHaveAttribute(
       "href",
@@ -120,7 +120,7 @@ describe("QuestionSources", () => {
     });
 
     expect(
-      await within(databaseLink).findByLabelText("table icon"),
+      await within(databaseLink).findByLabelText("database icon"),
     ).toBeInTheDocument();
     expect(databaseLink).toHaveAttribute(
       "href",
