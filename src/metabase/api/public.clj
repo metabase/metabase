@@ -201,8 +201,8 @@
    :constraints nil
    :middleware {:process-viz-settings? true
                 :js-int-to-string?     false
-                :format-rows?          format_rows
-                :pivot?                pivot_results}))
+                :format-rows?          (or format_rows false)
+                :pivot?                (or pivot_results false)}))
 
 ;;; ----------------------------------------------- Public Dashboards ------------------------------------------------
 
