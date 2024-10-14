@@ -82,7 +82,27 @@
             (adjust query)))))
 
 (deftest adjust-errors-prometheus-metric-test
-  (testing "failure to adjust :metric clauses"
+  (testing "adjustment of query with no metrics does not increment either counter"
+    (let [query              (-> (lib/query meta/metadata-provider (meta/table-metadata :products))
+                                 (lib/aggregate (lib/avg (meta/field-metadata :products :rating))))
+          calls              (atom nil)]
+      (with-redefs [prometheus/inc! #(swap! calls conj %)]
+        (is (=? {:stages [{:source-table (meta/id :products)
+                           :aggregation  [[:avg {} [:field {} (meta/id :products :rating)]]]}]}
+                (adjust query)))
+        (is (= 0 (count (filter #{:metabase-query-processor/metrics} @calls))))
+        (is (= 0 (count (filter #{:metabase-query-processor/metrics-errors} @calls)))))))
+  (testing "successful adjustment does not increment error counter"
+    (let [[source-metric mp] (mock-metric)
+          query              (lib/query mp source-metric)
+          calls              (atom nil)]
+      (with-redefs [prometheus/inc! #(swap! calls conj %)]
+        (is (=? {:stages [{:source-table (meta/id :products)
+                           :aggregation  [[:avg {} [:field {} (meta/id :products :rating)]]]}]}
+                (adjust query)))
+        (is (= 1 (count (filter #{:metabase-query-processor/metrics} @calls))))
+        (is (= 0 (count (filter #{:metabase-query-processor/metrics-errors} @calls)))))))
+  (testing "failure to adjust :metric clauses increments error counter"
     (let [[source-metric mp] (mock-metric)
           query              (lib/query mp source-metric)
           calls              (atom nil)]
@@ -91,6 +111,18 @@
       (with-redefs [prometheus/inc!              #(swap! calls conj %)
                     metrics/adjust-metric-stages (fn [_ _ stages] stages)]
         (is (= query (adjust query)))
+        (is (= 1 (count (filter #{:metabase-query-processor/metrics} @calls))))
+        (is (= 1 (count (filter #{:metabase-query-processor/metrics-errors} @calls)))))))
+  (testing "exceptions from other libs also increment error counter"
+    (let [[source-metric mp] (mock-metric)
+          query              (lib/query mp source-metric)
+          calls              (atom nil)]
+      (with-redefs [prometheus/inc!                     #(swap! calls conj %)
+                    lib.metadata/bulk-metadata-or-throw (fn [& _] (throw (Exception. "Test exception")))]
+        (is (thrown-with-msg?
+             java.lang.Exception
+             #"Test exception"
+             (adjust query)))
         (is (= 1 (count (filter #{:metabase-query-processor/metrics} @calls))))
         (is (= 1 (count (filter #{:metabase-query-processor/metrics-errors} @calls)))))))
   (testing "metric missing aggregation increments counter and throws exception"
