@@ -4,8 +4,6 @@
    [metabase-enterprise.sandbox.api.util :as sandbox.api.util]
    [metabase.api.common :as api]
    [metabase.api.table :as api.table]
-   [metabase.lib.util.match :as lib.util.match]
-   [metabase.models.card :refer [Card]]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.table :as table :refer [Table]]
    [metabase.public-settings.premium-features :refer [defenterprise]]
@@ -14,12 +12,12 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(mu/defn ^:private find-gtap-question :- [:maybe (ms/InstanceOf Card)]
-  "Find the associated GTAP question (if there is one) for the given `table-or-table-id` and
-  `user-or-user-id`. Returns nil if no question was found."
+(mu/defn ^:private find-sandbox-source-card :- [:maybe (ms/InstanceOf :model/Card)]
+  "Find the associated sandboxing card (if there is one) for the given `table-or-table-id` and `user-or-user-id`.
+  Returns nil if no question was found."
   [table-or-table-id user-or-user-id]
-  (t2/select-one Card
-                 {:select [:c.id :c.dataset_query]
+  (t2/select-one :model/Card
+                 {:select [:c.id :c.dataset_query :c.result_metadata]
                   :from   [[:sandboxes]]
                   :join   [[:permissions_group_membership :pgm] [:= :sandboxes.group_id :pgm.group_id]
                            [:report_card :c] [:= :c.id :sandboxes.card_id]]
@@ -33,16 +31,26 @@
   [table :- (ms/InstanceOf Table)]
   (boolean (seq (sandbox.api.util/enforced-sandboxes-for-tables #{(:id table)}))))
 
-(mu/defn ^:private query->fields-ids :- [:maybe [:sequential :int]]
-  [{{{:keys [fields]} :query} :dataset_query} :- [:maybe :map]]
-  (lib.util.match/match fields [:field (id :guard integer?) _] id))
+(defn- filter-fields-by-name [names fields]
+  (filter #(contains? names (:name %))
+          fields))
 
-(defn- maybe-filter-fields [table query-metadata-response]
-  ;; If we have sandboxed permissions and the associated GTAP limits the fields returned, we need make sure the
-  ;; query_metadata endpoint also excludes any fields the GTAP query would exclude
-  (if-let [gtap-field-ids (and (only-sandboxed-perms? table)
-                               (seq (query->fields-ids (find-gtap-question table api/*current-user-id*))))]
-    (update query-metadata-response :fields #(filter (comp (set gtap-field-ids) u/the-id) %))
+(defn- filter-fields-by-id [ids fields]
+  (filter #(contains? ids (:id %))
+          fields))
+
+(defn- filter-fields-for-sandboxing [table query-metadata-response]
+  ;; If we have sandboxed permissions and the associated sandbox limits the fields returned, we need to make sure
+  ;; the query_metadata endpoint also excludes any fields the sandbox query would exclude.
+  (if-let [sandbox-source-card (find-sandbox-source-card table api/*current-user-id*)]
+    (case (get-in sandbox-source-card [:dataset_query :type])
+      :native (update query-metadata-response :fields
+                      (partial filter-fields-by-name
+                               (->> sandbox-source-card :result_metadata (map :name) set)))
+      :query  (update query-metadata-response :fields
+                      (partial filter-fields-by-id
+                               (->> sandbox-source-card :result_metadata (map u/id) set))))
+    ;; Sandboxed via user attribute, not a source question, so no column-level sandboxing is in place
     query-metadata-response))
 
 (defenterprise fetch-table-query-metadata
@@ -50,18 +58,17 @@
   `include-hidden-fields?` and `include-editable-data-model?` can be either booleans or boolean strings."
   :feature :sandboxes
   [id opts]
-  (let [table            (api/check-404 (t2/select-one Table :id id))
-        sandboxed-perms? (only-sandboxed-perms? table)
-        thunk            (fn []
-                           (api.table/fetch-query-metadata* table opts))]
-    ;; if the user has sandboxed perms, temporarily upgrade their perms to read perms for the Table so they can see the
-    ;; metadata
-    (if sandboxed-perms?
-      (maybe-filter-fields
+  (let [table (api/check-404 (t2/select-one Table :id id))
+        thunk (fn [] (api.table/fetch-query-metadata* table opts))]
+    (if (only-sandboxed-perms? table)
+      (filter-fields-for-sandboxing
        table
+         ;; if the user has sandboxed perms, temporarily upgrade their perms to read perms for the Table so they can
+         ;; fetch the metadata
        (data-perms/with-additional-table-permission :perms/view-data (:db_id table) (u/the-id table) :unrestricted
          (data-perms/with-additional-table-permission :perms/create-queries (:db_id table) (u/the-id table) :query-builder
            (thunk))))
+      ;; Not sandboxed, so user can fetch full metadata
       (thunk))))
 
 (defenterprise batch-fetch-table-query-metadatas
@@ -69,16 +76,16 @@
   :feature :sandboxes
   [ids]
   (for [table (api.table/batch-fetch-query-metadatas* ids)]
-    (let [sandboxed-perms? (only-sandboxed-perms? table)]
-      ;; if the user has sandboxed perms, temporarily upgrade their perms to read perms for the Table so they can see
-      ;; the metadata
-      (if sandboxed-perms?
-        (maybe-filter-fields
-         table
-         (data-perms/with-additional-table-permission :perms/view-data (:db_id table) (u/the-id table) :unrestricted
-           (data-perms/with-additional-table-permission :perms/create-queries (:db_id table) (u/the-id table) :query-builder
-             table)))
-        table))))
+    (if (only-sandboxed-perms? table)
+      (filter-fields-for-sandboxing
+       table
+         ;; if the user has sandboxed perms, temporarily upgrade their perms to read perms for the Table so they can
+         ;; fetch the metadata
+       (data-perms/with-additional-table-permission :perms/view-data (:db_id table) (u/the-id table) :unrestricted
+         (data-perms/with-additional-table-permission :perms/create-queries (:db_id table) (u/the-id table) :query-builder
+           table)))
+      ;; Not sandboxed, so user can fetch full metadata
+      table)))
 
 (api/defendpoint GET "/:id/query_metadata"
   "This endpoint essentially acts as a wrapper for the OSS version of this route. When a user has sandboxed permissions
