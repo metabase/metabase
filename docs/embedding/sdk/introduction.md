@@ -52,7 +52,8 @@ yarn add @metabase/embedding-sdk-react
 - [Quickstart](./quickstart.md)
 - [Questions](./questions.md)
 - [Dashboards](./dashboards.md)
-- [Appearence](./appearance.md)
+- [Collections](./collections.md)
+- [Appearance](./appearance.md)
 - [Plugins](./plugins.md)
 - [Development](./development.md)
 
