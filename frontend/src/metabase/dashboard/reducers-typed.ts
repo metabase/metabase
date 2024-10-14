@@ -455,9 +455,11 @@ export const dashcardData = createReducer(
         Revisions.actionTypes.REVERT,
         (state, action) => {
           const { model_id } = action.payload;
-          for (const dashcardId in state) {
-            if (model_id in state[dashcardId]) {
-              delete state[dashcardId][model_id];
+          if (model_id) {
+            for (const dashcardId in state) {
+              if (model_id in state[dashcardId]) {
+                delete state[dashcardId][model_id];
+              }
             }
           }
         },
