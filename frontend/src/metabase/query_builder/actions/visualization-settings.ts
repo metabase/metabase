@@ -1,4 +1,7 @@
 import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
+import type { VisualizationSettings } from "metabase-types/api";
+import type { Dispatch, GetState } from "metabase-types/store";
 
 import {
   getDatasetEditorTab,
@@ -10,8 +13,13 @@ import {
 import { updateQuestion } from "./core";
 
 export const updateCardVisualizationSettings =
-  settings => async (dispatch, getState) => {
+  (settings: VisualizationSettings) =>
+  async (dispatch: Dispatch, getState: GetState) => {
     const question = getQuestion(getState());
+    if (!question) {
+      return;
+    }
+
     const previousQueryBuilderMode = getPreviousQueryBuilderMode(getState());
     const queryBuilderMode = getQueryBuilderMode(getState());
     const datasetEditorTab = getDatasetEditorTab(getState());
@@ -43,7 +51,8 @@ export const updateCardVisualizationSettings =
   };
 
 export const replaceAllCardVisualizationSettings =
-  (settings, newQuestion) => async (dispatch, getState) => {
+  (settings: VisualizationSettings, newQuestion: Question) =>
+  async (dispatch: Dispatch, getState: GetState) => {
     const oldQuestion = getQuestion(getState());
     const updatedQuestion = (newQuestion ?? oldQuestion).setSettings(settings);
     const { isEditable } = Lib.queryDisplayInfo(updatedQuestion.query());

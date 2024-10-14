@@ -1,3 +1,4 @@
+import type { Location, LocationDescriptor } from "history";
 import { push, replace } from "react-router-redux";
 import { createAction } from "redux-actions";
 import { parse as parseUrl } from "url";
@@ -8,6 +9,7 @@ import { equals } from "metabase/lib/utils";
 import { getLocation } from "metabase/selectors/routing";
 import * as Lib from "metabase-lib";
 import { isAdHocModelOrMetricQuestion } from "metabase-lib/v1/metadata/utils/models";
+import type { Dispatch } from "metabase-types/store";
 
 import {
   getCard,
@@ -24,7 +26,7 @@ import {
   getURLForCardState,
 } from "../utils";
 
-import { initializeQB, setCardAndRun } from "./core";
+import { type QueryParams, initializeQB, setCardAndRun } from "./core";
 import { resetRowZoom, zoomInRow } from "./object-detail";
 import { cancelQuery } from "./querying";
 import { resetUIControls, setQueryBuilderMode } from "./ui";
@@ -89,7 +91,7 @@ export const popState = createThunkAction(
   },
 );
 
-const getURL = (location, { includeMode = false } = {}) =>
+const getURL = (location: Location, { includeMode = false } = {}) =>
   // strip off trailing queryBuilderMode
   (includeMode
     ? location.pathname
@@ -99,7 +101,8 @@ const getURL = (location, { includeMode = false } = {}) =>
 
 // Logic for handling location changes, dispatched by top-level QueryBuilder component
 export const locationChanged =
-  (location, nextLocation, nextParams) => dispatch => {
+  (location: Location, nextLocation: Location, nextParams: QueryParams) =>
+  (dispatch: Dispatch) => {
     if (location !== nextLocation) {
       if (nextLocation.action === "POP") {
         if (
@@ -177,14 +180,14 @@ export const updateUrl = createThunkAction(
       const url = getURLForCardState(newState, dirty, queryParams, objectId);
 
       const urlParsed = parseUrl(url);
-      const locationDescriptor = {
+      const locationDescriptor: LocationDescriptor = {
         pathname: getPathNameFromQueryBuilderMode({
           pathname: urlParsed.pathname || "",
           queryBuilderMode,
           datasetEditorTab,
         }),
-        search: urlParsed.search,
-        hash: urlParsed.hash,
+        search: urlParsed.search ?? undefined,
+        hash: urlParsed.hash ?? undefined,
         state: newState,
       };
 
@@ -194,8 +197,11 @@ export const updateUrl = createThunkAction(
         (locationDescriptor.hash || "") === (window.location.hash || "");
       const isSameCard =
         currentState && isEqualCard(currentState.card, newState.card);
+      // TODO: looks like a bug
       const isSameMode =
+        // @ts-expect-error mode is not presented in a returned object
         getQueryBuilderModeFromLocation(locationDescriptor).mode ===
+        // @ts-expect-error mode is not presented in a returned object
         getQueryBuilderModeFromLocation(window.location).mode;
 
       if (isSameCard && isSameURL) {

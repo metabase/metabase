@@ -92,7 +92,7 @@ function SearchBarView({ location, onSearchActive, onSearchInactive }: Props) {
       // if we're already looking at the right model, don't navigate, just update the zoomed in row
       const isSameModel = result?.model_id === location?.state?.cardId;
       if (isSameModel && result.model === "indexed-entity") {
-        zoomInRow({ objectId: result.id })(dispatch);
+        dispatch(zoomInRow({ objectId: result.id }));
       } else {
         onChangeLocation(result.getUrl());
       }
