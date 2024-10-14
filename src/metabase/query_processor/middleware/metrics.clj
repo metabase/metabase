@@ -12,14 +12,6 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
-;; TODO should this live in metabase.analytics.prometheus?
-(defn- inc-and-throw!
-  ([exc]
-   (inc-and-throw! :metabase-metrics/adjust-errors exc))
-  ([counter exc]
-   (prometheus/inc! counter)
-   (throw exc)))
-
 (defn- replace-metric-aggregation-refs [query stage-number lookup]
   (if-let [aggregations (lib/aggregations query stage-number)]
     (let [columns (lib/visible-columns query stage-number)]
@@ -42,7 +34,9 @@
                                 {:name metric-name}
                                 (select-keys % [:name :display-name])
                                 (select-keys (get &match 1) [:lib/uuid :name :display-name]))))
-                    (inc-and-throw! (ex-info "Incompatible metric" {:match &match :lookup lookup}))))))
+                    (prometheus/inc-and-throw!
+                     :metabase-metrics/adjust-errors
+                     (ex-info "Incompatible metric" {:match &match :lookup lookup}))))))
     query))
 
 (defn- find-metric-ids
@@ -69,7 +63,9 @@
                            {:query metric-query
                             :aggregation (assoc-in aggregation [1 :name] (or aggregation-name metric-name))
                             :name metric-name}]
-                          (inc-and-throw! (ex-info "Source metric missing aggregation" {:source metric-query})))))))
+                          (prometheus/inc-and-throw!
+                           :metabase-metrics/adjust-errors
+                           (ex-info "Source metric missing aggregation" {:source metric-query})))))))
          not-empty)))
 
 (defn- expression-with-name-from-source
@@ -150,8 +146,10 @@
                                (include-implicit-joins $q agg-stage-index metric-query)
                                (reduce #(lib/filter %1 agg-stage-index %2) $q (lib/filters metric-query -1))
                                (replace-metric-aggregation-refs $q agg-stage-index lookup)))
-                           (inc-and-throw! (ex-info "Incompatible metric" {:query query
-                                                                           :metric metric-query}))))
+                           (prometheus/inc-and-throw!
+                            :metabase-metrics/adjust-errors
+                            (ex-info "Incompatible metric" {:query query
+                                                            :metric metric-query}))))
                        temp-query
                        lookup)]
         (:stages new-query))
