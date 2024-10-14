@@ -3986,11 +3986,23 @@
   (testing "We can move a question from a collection to a dashboard it is NOT already in"
     (mt/with-temp [:model/Collection {coll-id :id} {}
                    :model/Dashboard {dash-id :id} {:collection_id coll-id}
+                   :model/DashboardCard _ {:dashboard_id dash-id}
                    :model/Card {card-id :id} {}]
       (is (=? {:collection_id coll-id
                :dashboard_id  dash-id}
               (mt/user-http-request :rasta :put 200 (str "card/" card-id) {:dashboard_id dash-id})))
       (is (=? {:dashboard_id dash-id :card_id card-id}
+              (t2/select-one :model/DashboardCard :dashboard_id dash-id :card_id card-id)))))
+  (testing "We can move a question from a collection to a dashboard with tabs"
+    (mt/with-temp [:model/Collection {coll-id :id} {}
+                   :model/Dashboard {dash-id :id} {:collection_id coll-id}
+                   :model/DashboardTab {dash-tab-id :id} {:dashboard_id dash-id}
+                   :model/DashboardCard _ {:dashboard_id dash-id :dashboard_tab_id dash-tab-id}
+                   :model/Card {card-id :id} {}]
+      (is (=? {:collection_id coll-id
+               :dashboard_id  dash-id}
+              (mt/user-http-request :rasta :put 200 (str "card/" card-id) {:dashboard_id dash-id})))
+      (is (=? {:dashboard_id dash-id :card_id card-id :dashboard_tab_id dash-tab-id}
               (t2/select-one :model/DashboardCard :dashboard_id dash-id :card_id card-id)))))
   (testing "We can move a question from one dashboard to another"
     (mt/with-temp [:model/Collection {source-coll-id :id} {}
