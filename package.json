@@ -323,6 +323,7 @@
   "resolutions": {
     "ansi-html": "https://registry.npmjs.org/ansi-html-community/-/ansi-html-community-0.0.8.tgz",
     "ansi-regex": "5.0.1",
+    "cookie": "^0.7.0",
     "d3-color": "^3.1.0",
     "debug": "^4.3.4",
     "follow-redirects": "^1.15.5",
