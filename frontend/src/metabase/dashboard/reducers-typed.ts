@@ -569,7 +569,7 @@ export const dashcards = createReducer(
           const dashcard = state[dashcardId];
           if ("action" in dashcard && dashcard.action?.id === actionObj?.id) {
             dashcard.action = Object.assign(actionObj, {
-              database_e3nabled_actions:
+              database_enabled_actions:
                 dashcard.action.database_enabled_actions || false,
             });
           }
