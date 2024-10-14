@@ -84,7 +84,7 @@
 (def channel-template-email-with-mustatche-body
   "A :model/ChannelTemplate for email channels that has a :event/mustache template."
   {:channel_type :channel/email
-   :details      {:type    :email/mustache
+   :details      {:type    :email/mustache-text
                   :subject "Welcome {{event-info.object.first_name}} to {{settings.site-name}}"
                   :body    "Hello {{event-info.object.first_name}}! Welcome to {{settings.site-name}}!"}})
 
