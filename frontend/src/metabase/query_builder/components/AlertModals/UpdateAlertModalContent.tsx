@@ -24,7 +24,7 @@ import { AlertModalFooter } from "./AlertModals.styled";
 import { DeleteAlertSection } from "./DeleteAlertSection";
 
 interface UpdateAlertModalContentProps {
-  alert: Alert | null;
+  alert: Alert;
   onAlertUpdated: () => void;
   onCancel: () => void;
 }
