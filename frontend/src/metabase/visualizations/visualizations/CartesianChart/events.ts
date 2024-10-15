@@ -799,7 +799,11 @@ export const getSeriesClickData = (
   const seriesIndex = findSeriesModelIndexById(chartModel, seriesId);
   const seriesModel = chartModel.seriesModels[seriesIndex];
 
-  if (seriesIndex < 0 || dataIndex == null) {
+  if (
+    seriesIndex < 0 ||
+    dataIndex == null ||
+    seriesModel?.dataKey === OTHER_DATA_KEY
+  ) {
     return;
   }
 

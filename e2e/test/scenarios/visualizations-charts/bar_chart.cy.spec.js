@@ -834,9 +834,28 @@ describe("scenarios > visualizations > bar chart", () => {
 
     // Test 'Other' series renders
     otherSeriesChartPaths().should("have.length", 6);
-    chartPathWithFillColor(AK_SERIES_COLOR).first().realHover();
+
+    // Test drill-through is disabled for 'Other' series
+    otherSeriesChartPaths().first().click();
+    cy.findByTestId("click-actions-view").should("not.exist");
+
+    // Test drill-through is enabled for regular series
+    chartPathWithFillColor(AK_SERIES_COLOR).first().click();
+    cy.findByTestId("click-actions-view").should("exist");
+
+    // Test legend and series visibility toggling
+    queryBuilderMain()
+      .findAllByTestId("legend-item")
+      .should("have.length", 9)
+      .last()
+      .as("other-series-legend-item");
+    cy.get("@other-series-legend-item").findByLabelText("Hide series").click();
+    otherSeriesChartPaths().should("have.length", 0);
+    cy.get("@other-series-legend-item").findByLabelText("Show series").click();
+    otherSeriesChartPaths().should("have.length", 6);
 
     // Test tooltips
+    chartPathWithFillColor(AK_SERIES_COLOR).first().realHover();
     assertEChartsTooltip({ rows: [{ name: "Other", value: "9" }] });
     otherSeriesChartPaths().first().realHover();
     assertEChartsTooltip({
@@ -851,17 +870,6 @@ describe("scenarios > visualizations > bar chart", () => {
       ],
       footer: { name: "Total", value: "9" },
     });
-
-    // Test legend and series visibility toggling
-    queryBuilderMain()
-      .findAllByTestId("legend-item")
-      .should("have.length", 9)
-      .last()
-      .as("other-series-legend-item");
-    cy.get("@other-series-legend-item").findByLabelText("Hide series").click();
-    otherSeriesChartPaths().should("have.length", 0);
-    cy.get("@other-series-legend-item").findByLabelText("Show series").click();
-    otherSeriesChartPaths().should("have.length", 6);
 
     // Test "graph.max_categories" change
     cy.findByTestId("viz-settings-button").click();

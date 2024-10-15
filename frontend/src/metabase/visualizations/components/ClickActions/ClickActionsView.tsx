@@ -25,7 +25,7 @@ export const ClickActionsView = ({
   const hasOnlyOneSection = sections.length === 1;
 
   return (
-    <Container>
+    <Container data-testid="click-actions-view">
       {sections.map(([sectionKey, actions]) => {
         const sectionTitle = getSectionTitle(sectionKey, actions);
         const contentDirection = getSectionContentDirection(
