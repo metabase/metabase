@@ -29,7 +29,7 @@ import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import { updateCardTemplateTagNames } from "metabase-lib/v1/queries/NativeQuery";
 import { cardIsEquivalent } from "metabase-lib/v1/queries/utils/card";
 import { normalize } from "metabase-lib/v1/queries/utils/normalize";
-import type { Card, RecentItem, SegmentId } from "metabase-types/api";
+import type { Card, CardType, RecentItem, SegmentId } from "metabase-types/api";
 import { isSavedCard } from "metabase-types/guards";
 import type {
   Dispatch,
@@ -129,7 +129,7 @@ async function fetchAndPrepareSavedQuestionCards(
   return { card: { ...card, original_card_id: card.id }, originalCard };
 }
 
-function getRecentItemInfo(item: RecentItem) {
+function getRecentItemTableInfo(item: RecentItem) {
   if (item.model === "table" && item.database != null) {
     return {
       tableId: item.id,
@@ -150,6 +150,7 @@ function getRecentItemInfo(item: RecentItem) {
 }
 
 async function fetchRecentDataSourceQuery(
+  cardType: CardType,
   dispatch: Dispatch,
   getState: GetState,
 ) {
@@ -163,7 +164,7 @@ async function fetchRecentDataSourceQuery(
   }
 
   const [recentItem] = recentItems;
-  const tableInfo = getRecentItemInfo(recentItem);
+  const tableInfo = getRecentItemTableInfo(recentItem);
   if (tableInfo == null) {
     return;
   }
@@ -173,7 +174,8 @@ async function fetchRecentDataSourceQuery(
   const metadata = getMetadata(getState());
   const metadataProvider = Lib.metadataProvider(databaseId, metadata);
   const table = Lib.tableOrCardMetadata(metadataProvider, tableId);
-  return Lib.queryFromTableOrCardMetadata(metadataProvider, table);
+  const query = Lib.queryFromTableOrCardMetadata(metadataProvider, table);
+  return Lib.withDefaultClauses(query, cardType);
 }
 
 async function setRecentDataSourceQuery(
@@ -185,7 +187,11 @@ async function setRecentDataSourceQuery(
   const query = question.query();
   const { isNative } = Lib.queryDisplayInfo(query);
   if (!isNative && Lib.sourceTableOrCardId(query) == null) {
-    const newQuery = await fetchRecentDataSourceQuery(dispatch, getState);
+    const newQuery = await fetchRecentDataSourceQuery(
+      question.type(),
+      dispatch,
+      getState,
+    );
     if (newQuery) {
       return question.setQuery(newQuery).card();
     }

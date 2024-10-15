@@ -7,6 +7,7 @@ import type {
   TableId,
 } from "metabase-types/api";
 
+import { aggregateByCount, aggregations } from "./aggregation";
 import type {
   CardMetadata,
   Clause,
@@ -37,6 +38,14 @@ export function queryFromTableOrCardMetadata(
   tableOrCardMetadata: TableMetadata | CardMetadata,
 ): Query {
   return ML.query(metadataProvider, tableOrCardMetadata);
+}
+
+export function withDefaultClauses(query: Query, cardType: CardType): Query {
+  if (cardType === "metric" && aggregations(query, -1).length === 0) {
+    return aggregateByCount(query, -1);
+  } else {
+    return query;
+  }
 }
 
 export function toLegacyQuery(query: Query): DatasetQuery {
