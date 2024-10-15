@@ -793,6 +793,17 @@
                       metabase-enterprise.advanced-permissions.models.permissions.block-permissions-test
                       metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions-test]}}
 
+
+  ;; test the notification system
+  ;;    clj -X:dev:ee:ee-dev:test:test/notification
+  :test/notification
+  {:exec-args {:only ["test/metabase/notification"
+                      "test/metabase/channel"
+                      metabase.api.channel-test
+                      metabase.models.channel-test
+                      metabase.models.notification-test
+                      metabase.events.notification-test]}}
+
   ;; test all MBQL related stuff: MLv2, the legacy shared `metabase.legacy-mbql` code, and the QP
   ;;
   ;;    clj -X:dev:ee:ee-dev:test:test/mbql

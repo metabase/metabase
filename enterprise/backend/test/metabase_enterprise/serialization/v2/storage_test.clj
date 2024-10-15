@@ -175,7 +175,7 @@
                                  (is (= (not-empty (sort ks))
                                         (not-empty ks)))
                                  (do
-                                   ;; check every present key is sorted in a monotone increasing order
+                                  ;; check every present key is sorted in a monotone increasing order
                                    (is (< idx (get order k)))
                                    (recur (rest ks)
                                           (long new-idx)))))))
