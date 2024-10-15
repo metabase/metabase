@@ -2,9 +2,11 @@ import type { LocationDescriptorObject } from "history";
 import querystring from "querystring";
 
 import { fetchAlertsForQuestion } from "metabase/alert/alert";
+import { activityApi } from "metabase/api";
 import Questions from "metabase/entities/questions";
 import Snippets from "metabase/entities/snippets";
 import { deserializeCardFromUrl } from "metabase/lib/card";
+import { entityCompatibleQuery } from "metabase/lib/entities";
 import { isNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
 import {
@@ -12,18 +14,22 @@ import {
   getIsNotebookNativePreviewShown,
   getNotebookNativePreviewSidebarWidth,
 } from "metabase/query_builder/selectors";
-import { loadMetadataForCard } from "metabase/questions/actions";
+import {
+  loadMetadataForCard,
+  loadMetadataForTable,
+} from "metabase/questions/actions";
 import { setErrorPage } from "metabase/redux/app";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getUser } from "metabase/selectors/user";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import { updateCardTemplateTagNames } from "metabase-lib/v1/queries/NativeQuery";
 import { cardIsEquivalent } from "metabase-lib/v1/queries/utils/card";
 import { normalize } from "metabase-lib/v1/queries/utils/normalize";
-import type { Card, SegmentId } from "metabase-types/api";
+import type { Card, RecentItem, SegmentId } from "metabase-types/api";
 import { isSavedCard } from "metabase-types/guards";
 import type {
   Dispatch,
@@ -123,24 +129,95 @@ async function fetchAndPrepareSavedQuestionCards(
   return { card: { ...card, original_card_id: card.id }, originalCard };
 }
 
+function getRecentItemInfo(item: RecentItem) {
+  if (item.model === "table" && item.database != null) {
+    return {
+      tableId: item.id,
+      databaseId: item.database.id,
+    };
+  }
+  if (
+    (item.model === "card" ||
+      item.model === "dataset" ||
+      item.model === "metric") &&
+    item.database_id != null
+  ) {
+    return {
+      tableId: getQuestionVirtualTableId(item.id),
+      databaseId: item.database_id,
+    };
+  }
+}
+
+async function fetchRecentDataSourceQuery(
+  dispatch: Dispatch,
+  getState: GetState,
+) {
+  const recentItems = await entityCompatibleQuery(
+    { context: ["selections"] },
+    dispatch,
+    activityApi.endpoints.listRecents,
+  );
+  if (recentItems.length === 0) {
+    return;
+  }
+
+  const [recentItem] = recentItems;
+  const tableInfo = getRecentItemInfo(recentItem);
+  if (tableInfo == null) {
+    return;
+  }
+
+  const { tableId, databaseId } = tableInfo;
+  await dispatch(loadMetadataForTable(tableId));
+  const metadata = getMetadata(getState());
+  const metadataProvider = Lib.metadataProvider(databaseId, metadata);
+  const table = Lib.tableOrCardMetadata(metadataProvider, tableId);
+  return Lib.queryFromTableOrCardMetadata(metadataProvider, table);
+}
+
+async function setRecentDataSourceQuery(
+  card: Card,
+  dispatch: Dispatch,
+  getState: GetState,
+) {
+  const question = new Question(card, getMetadata(getState()));
+  const query = question.query();
+  const { isNative } = Lib.queryDisplayInfo(query);
+  if (!isNative && Lib.sourceTableOrCardId(query) == null) {
+    const newQuery = await fetchRecentDataSourceQuery(dispatch, getState);
+    if (newQuery) {
+      return question.setQuery(newQuery).card();
+    }
+  }
+
+  return card;
+}
+
 async function fetchAndPrepareAdHocQuestionCards(
   deserializedCard: Card,
   dispatch: Dispatch,
   getState: GetState,
 ) {
-  if (!deserializedCard.original_card_id) {
+  const card = await setRecentDataSourceQuery(
+    deserializedCard,
+    dispatch,
+    getState,
+  );
+
+  if (!card.original_card_id) {
     return {
-      card: deserializedCard,
+      card,
       originalCard: null,
     };
   }
 
-  const originalCard = await loadCard(deserializedCard.original_card_id, {
+  const originalCard = await loadCard(card.original_card_id, {
     dispatch,
     getState,
   });
 
-  if (cardIsEquivalent(deserializedCard, originalCard)) {
+  if (cardIsEquivalent(card, originalCard)) {
     return {
       card: { ...originalCard },
       originalCard: originalCard,
@@ -148,7 +225,7 @@ async function fetchAndPrepareAdHocQuestionCards(
   }
 
   return {
-    card: deserializedCard,
+    card,
     originalCard,
   };
 }
