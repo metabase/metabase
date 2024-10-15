@@ -4,7 +4,7 @@ import { Select } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import type { TemporalUnit } from "metabase-types/api";
 
-import { getOffsetUnitOptions } from "../../utils";
+import { getOffsetUnitOptions, getOffsetUnits } from "../../utils";
 
 type OffsetUnitInputProps = {
   query: Lib.Query;
@@ -12,6 +12,7 @@ type OffsetUnitInputProps = {
   column: Lib.ColumnMetadata;
   groupUnit: TemporalUnit;
   offsetUnit: TemporalUnit;
+  offsetValue: number;
   onOffsetUnitChange: (offsetUnit: TemporalUnit) => void;
 };
 
@@ -21,15 +22,21 @@ export function OffsetUnitInput({
   column,
   groupUnit,
   offsetUnit,
+  offsetValue,
   onOffsetUnitChange,
 }: OffsetUnitInputProps) {
-  const options = useMemo(
-    () => getOffsetUnitOptions(query, stageIndex, column, groupUnit),
+  const offsetUnits = useMemo(
+    () => getOffsetUnits(query, stageIndex, column, groupUnit),
     [query, stageIndex, column, groupUnit],
   );
 
+  const offsetOptions = useMemo(
+    () => getOffsetUnitOptions(offsetUnits, offsetValue),
+    [offsetUnits, offsetValue],
+  );
+
   const handleChange = (newValue: string) => {
-    const newOption = options.find(option => option.value === newValue);
+    const newOption = offsetOptions.find(option => option.value === newValue);
     if (newOption) {
       onOffsetUnitChange(newOption.value);
     }
@@ -37,7 +44,7 @@ export function OffsetUnitInput({
 
   return (
     <Select
-      data={options}
+      data={offsetOptions}
       value={offsetUnit}
       w="10rem"
       onChange={handleChange}

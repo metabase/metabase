@@ -22,13 +22,13 @@ export function GroupUnitInput({
   groupUnit,
   onGroupUnitChange,
 }: GroupUnitInputProps) {
-  const options = useMemo(
+  const groupOptions = useMemo(
     () => getGroupUnitOptions(query, stageIndex, column),
     [query, stageIndex, column],
   );
 
   const handleChange = (newValue: string) => {
-    const newOption = options.find(option => option.value === newValue);
+    const newOption = groupOptions.find(option => option.value === newValue);
     if (newOption) {
       onGroupUnitChange(newOption.value);
     }
@@ -36,7 +36,7 @@ export function GroupUnitInput({
 
   return (
     <Select
-      data={options}
+      data={groupOptions}
       value={groupUnit}
       label={t`Group by`}
       w="14rem"

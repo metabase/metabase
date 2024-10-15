@@ -8,6 +8,7 @@ import type { TemporalUnit } from "metabase-types/api";
 import type { ColumnType, ComparisonType, OffsetOptions } from "../types";
 import {
   applyOffsetClause,
+  canSelectOffsetUnit,
   getBreakoutColumn,
   getInitialOptions,
   getOffsetClause,
@@ -41,8 +42,14 @@ export function OffsetAggregationForm({
     () => getBreakoutColumn(query, stageIndex),
     [query, stageIndex],
   );
+
   const [options, setOptions] = useState<OffsetOptions>(() =>
     getInitialOptions(query, stageIndex, column),
+  );
+
+  const canSelectOffset = useMemo(
+    () => canSelectOffsetUnit(query, stageIndex, column, options.groupUnit),
+    [query, stageIndex, column, options.groupUnit],
   );
 
   const handleComparisonTypeChange = (comparisonType: ComparisonType) => {
@@ -98,15 +105,23 @@ export function OffsetAggregationForm({
               offsetValue={options.offsetValue}
               onOffsetValueChange={handleOffsetValueChange}
             />
-            <OffsetUnitInput
-              query={query}
-              stageIndex={stageIndex}
-              column={column}
-              groupUnit={options.groupUnit}
+            {canSelectOffset && (
+              <OffsetUnitInput
+                query={query}
+                stageIndex={stageIndex}
+                column={column}
+                groupUnit={options.groupUnit}
+                offsetUnit={options.offsetUnit}
+                offsetValue={options.offsetValue}
+                onOffsetUnitChange={handleOffsetUnitChange}
+              />
+            )}
+            <OffsetLabel
+              comparisonType={options.comparisonType}
               offsetUnit={options.offsetUnit}
-              onOffsetUnitChange={handleOffsetUnitChange}
+              offsetValue={options.offsetValue}
+              canSelectOffset={canSelectOffset}
             />
-            <OffsetLabel comparisonType={options.comparisonType} />
           </Group>
           {options.comparisonType === "moving-average" && (
             <IncludeCurrentInput

@@ -241,7 +241,18 @@ export function getGroupUnitOptions(
     }));
 }
 
-export function getOffsetUnitOptions(
+export function getOffsetValueMin(comparisonType: ComparisonType) {
+  return comparisonType === "moving-average" ? 2 : 1;
+}
+
+function getOffsetUnitLabel(offsetUnit: TemporalUnit, offsetValue: number) {
+  return Lib.describeTemporalUnit(
+    OFFSET_DISPLAY_UNITS[offsetUnit] ?? offsetUnit,
+    offsetValue,
+  );
+}
+
+export function getOffsetUnits(
   query: Lib.Query,
   stageIndex: number,
   column: Lib.ColumnMetadata,
@@ -249,11 +260,48 @@ export function getOffsetUnitOptions(
 ) {
   return Lib.availableTemporalBuckets(query, stageIndex, column)
     .map(bucket => Lib.displayInfo(query, stageIndex, bucket).shortName)
-    .filter(unit => OFFSET_UNITS[groupUnit]?.includes(unit))
-    .map(unit => ({
-      value: unit,
-      label: Lib.describeTemporalUnit(OFFSET_DISPLAY_UNITS[unit] ?? unit),
-    }));
+    .filter(unit => OFFSET_UNITS[groupUnit]?.includes(unit));
+}
+
+export function getOffsetUnitOptions(
+  offsetUnits: TemporalUnit[],
+  offsetValue: number,
+) {
+  return offsetUnits.map(unit => ({
+    value: unit,
+    label: getOffsetUnitLabel(unit, offsetValue),
+  }));
+}
+
+export function canSelectOffsetUnit(
+  query: Lib.Query,
+  stageIndex: number,
+  column: Lib.ColumnMetadata,
+  groupUnit: TemporalUnit,
+) {
+  const offsetUnits = getOffsetUnits(query, stageIndex, column, groupUnit);
+  return offsetUnits.length > 1;
+}
+
+export function getOffsetLabel(
+  comparisonType: ComparisonType,
+  offsetUnit: TemporalUnit,
+  offsetValue: number,
+  canSelectOffset: boolean,
+) {
+  const offsetUnitLabel = getOffsetUnitLabel(
+    offsetUnit,
+    offsetValue,
+  ).toLowerCase();
+
+  switch (comparisonType) {
+    case "offset":
+      return canSelectOffset ? t`ago` : t`${offsetUnitLabel} ago`;
+    case "moving-average":
+      return canSelectOffset
+        ? t`moving average`
+        : t`${offsetUnitLabel} moving average`;
+  }
 }
 
 export function getColumnTypeOptions(comparisonType: ComparisonType) {
@@ -267,10 +315,6 @@ export function getIncludeCurrentLabel(offsetUnit: TemporalUnit) {
   const displayUnit = OFFSET_DISPLAY_UNITS[offsetUnit] ?? offsetUnit;
   const offsetUnitLabel = Lib.describeTemporalUnit(displayUnit).toLowerCase();
   return t`Include this ${offsetUnitLabel}`;
-}
-
-export function getOffsetValueMin(comparisonType: ComparisonType) {
-  return comparisonType === "moving-average" ? 2 : 1;
 }
 
 export function setComparisonType(
