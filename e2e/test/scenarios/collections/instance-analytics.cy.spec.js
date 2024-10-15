@@ -377,12 +377,14 @@ describe("question and dashboard links", () => {
       popover().findByText("Usage insights").should("not.exist");
     });
   });
+
   describe("oss", { tags: "@OSS" }, () => {
     beforeEach(() => {
       onlyOnOSS();
       restore();
       cy.signInAsAdmin();
     });
+
     it("should never appear in OSS", () => {
       visitQuestion(ORDERS_QUESTION_ID);
 

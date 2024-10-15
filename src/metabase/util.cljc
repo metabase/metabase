@@ -17,11 +17,11 @@
    [clojure.walk :as walk]
    [flatland.ordered.map :refer [ordered-map]]
    [medley.core :as m]
-   [metabase.shared.util.i18n :refer [tru] :as i18n]
-   [metabase.shared.util.namespaces :as u.ns]
    [metabase.util.format :as u.format]
+   [metabase.util.i18n :refer [tru] :as i18n]
    [metabase.util.log :as log]
    [metabase.util.memoize :as memoize]
+   [metabase.util.namespaces :as u.ns]
    [net.cgrand.macrovich :as macros]
    [weavejester.dependency :as dep])
   #?(:clj (:import
@@ -35,7 +35,14 @@
 #?(:clj (set! *warn-on-reflection* true))
 
 (u.ns/import-fns
- [u.format colorize format-bytes format-color format-milliseconds format-nanoseconds format-seconds])
+ [u.format
+  colorize
+  format-bytes
+  format-color
+  format-milliseconds
+  format-nanoseconds
+  format-seconds
+  format-plural])
 
 #?(:clj (p/import-vars [u.jvm
                         all-ex-data

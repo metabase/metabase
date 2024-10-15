@@ -139,7 +139,8 @@
   [query-type model parsed-args honeysql]
   (merge
    (next-method query-type model parsed-args honeysql)
-   {:select    [:field/base_type
+   {:select    [:field/active
+                :field/base_type
                 :field/coercion_strategy
                 :field/database_type
                 :field/description

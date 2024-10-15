@@ -1407,18 +1407,18 @@
       ],
       "viz-settings": {
         "graph.show_goal": true,
-        "metabase.shared.models.visualization-settings/column-settings": {
-          "{:metabase.shared.models.visualization-settings/field-id 1478}": {},
-          "{:metabase.shared.models.visualization-settings/field-id 1491}": {},
-          "{:metabase.shared.models.visualization-settings/field-id 1504}": {},
-          "{:metabase.shared.models.visualization-settings/field-id 1507}": {}
+        "metabase.models.visualization-settings/column-settings": {
+          "{:metabase.models.visualization-settings/field-id 1478}": {},
+          "{:metabase.models.visualization-settings/field-id 1491}": {},
+          "{:metabase.models.visualization-settings/field-id 1504}": {},
+          "{:metabase.models.visualization-settings/field-id 1507}": {}
         },
         "graph.goal_label": "> 100 Speed",
         "graph.series_order_dimension": null,
         "graph.goal_value": 100,
         "graph.metrics": ["speed"],
         "graph.series_order": null,
-        "metabase.shared.models.visualization-settings/global-column-settings": {},
+        "metabase.models.visualization-settings/global-column-settings": {},
         "series_settings": { "speed": { "color": "#69C8C8" } },
         "graph.dimensions": ["defense"]
       },
