@@ -176,9 +176,9 @@
                                         (not-empty ks)))
                                  (do
                                   ;; check every present key is sorted in a monotone increasing order
-                                  (is (< idx (get order k)))
-                                  (recur (rest ks)
-                                         (long new-idx)))))))
+                                   (is (< idx (get order k)))
+                                   (recur (rest ks)
+                                          (long new-idx)))))))
               descend    (fn descend
                            ([coll]
                             (let [model (-> (:serdes/meta coll) last :model)]
@@ -192,9 +192,9 @@
                                 (check-sort coll order))
                               (doseq [[k v] coll]
                                 (cond
-                                 (map? v)               (descend v (conj path k))
-                                 (and (sequential? v)
-                                      (map? (first v))) (run! #(descend % (conj path k)) v))))))]
+                                  (map? v)               (descend v (conj path k))
+                                  (and (sequential? v)
+                                       (map? (first v))) (run! #(descend % (conj path k)) v))))))]
           (with-redefs [spit (fn [fname yaml-data]
                                (testing (format "File %s\n" fname)
                                  (let [coll (yaml/parse-string yaml-data)]
