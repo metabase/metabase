@@ -37,7 +37,7 @@ export const ColumnPicker = ({ value, onChange, comparisonType }: Props) => {
       label={t`Columns to create`}
       placeholder={t`Columns to create`}
       styles={{
-        item: {
+        option: {
           "&[data-selected]": {
             backgroundColor: "transparent",
           },

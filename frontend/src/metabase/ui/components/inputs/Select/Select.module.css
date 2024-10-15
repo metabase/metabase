@@ -1,0 +1,32 @@
+.SelectRoot {
+  margin-top: var(--mantine-spacing-xs);
+  border-color: var(--mb-color-border);
+  padding: 0;
+  overflow: auto;
+
+  & > div {
+    max-height: none !important;
+  }
+}
+
+.SelectWrapper {
+  color: var(--mb-color-text-dark);
+  &[data-disabled] {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  svg[data-error] {
+    color: var(--mb-color-error);
+  }
+}
+
+/* This are selectItemsOverrides also needed in MultiSelect */
+.Select {
+  &:has(.SelectLabel),
+  &:has(.SelectDescription),
+  &:has(.SelectError) {
+    .SelectWrapper {
+      margin-top: var(--mb-spacing-xs);
+    }
+  }
+}
