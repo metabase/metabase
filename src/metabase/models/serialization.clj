@@ -62,7 +62,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.interface :as mi]
-   [metabase.shared.models.visualization-settings :as mb.viz]
+   [metabase.models.visualization-settings :as mb.viz]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.log :as log]

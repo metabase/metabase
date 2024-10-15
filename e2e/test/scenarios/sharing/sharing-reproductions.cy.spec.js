@@ -402,6 +402,7 @@ describe("issue 22524", () => {
       },
     },
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -787,6 +788,7 @@ describe("issue 17657", () => {
       dashboard_id: ORDERS_DASHBOARD_ID,
     });
   }
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();

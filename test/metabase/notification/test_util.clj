@@ -4,11 +4,9 @@
    [clojure.set :as set]
    [metabase.channel.core :as channel]
    [metabase.events.notification :as events.notification]
-   [metabase.models.notification :as models.notification]
    [metabase.notification.core :as notification]
    [metabase.test :as mt]
-   [metabase.util :as u]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [metabase.util :as u]))
 
 (def test-channel-type
   "The channel type for the test channel."
@@ -31,6 +29,7 @@
   [_channel-type notification-info _template _recipients]
   [notification-info])
 
+#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defmacro with-send-notification-sync
   "Notifications are sent async by default, wrap the body in this macro to send them synchronously."
   [& body]
@@ -44,8 +43,8 @@
       (with-redefs
        [channel/send! (fn [channel message]
                         (swap! channel-messages update (:type channel) u/conjv message))]
-        (thunk)
-        @channel-messages))))
+       (thunk)
+       @channel-messages))))
 
 (defmacro with-captured-channel-send!
   "Macro that captures all messages sent to channels in the body of the macro.
@@ -74,6 +73,7 @@
          (doseq [topic# topics#]
            (underive topic# :metabase/event))))))
 
+#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defmacro with-notification-testing-setup
   "Macro that sets up the notification testing environment."
   [& body]

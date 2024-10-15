@@ -5,10 +5,10 @@
    [clojure.test :refer :all]
    [dk.ative.docjure.spreadsheet :as spreadsheet]
    [metabase.driver :as driver]
+   [metabase.models.visualization-settings :as mb.viz]
    [metabase.query-processor.streaming.common :as common]
    [metabase.query-processor.streaming.interface :as qp.si]
    [metabase.query-processor.streaming.xlsx :as qp.xlsx]
-   [metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.test :as mt])
   (:import
    (com.fasterxml.jackson.core JsonGenerator)

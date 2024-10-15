@@ -148,7 +148,6 @@
   with-fake-inbox]
 
  [client
-  authenticate
   build-url
   client
   real-client

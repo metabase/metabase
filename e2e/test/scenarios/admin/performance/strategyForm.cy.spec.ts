@@ -194,6 +194,7 @@ describe("scenarios > admin > performance > strategy form", () => {
     ["default policy", "Sample Database"].forEach(itemName => {
       const model = itemName === "default policy" ? "root" : "database";
       const expectedNumberOfOptions = itemName === "default policy" ? 4 : 5;
+
       it(`there are ${expectedNumberOfOptions} policy options for ${itemName}`, () => {
         openStrategyFormForDatabaseOrDefaultPolicy(itemName, "No caching");
         cacheStrategyForm()

@@ -118,7 +118,7 @@
                                                       :event_name       topic
                                                       :notification_ids (map :id notifications)}}
         (let [event-info (enriched-event-info topic event-info)]
-          (log/infof "Found %d %s for event: %s" (count notifications) "notifications" topic)
+          (log/infof "Found %d notifications for event: %s" (count notifications) topic)
           (doseq [notification notifications]
             (notification/*send-notification!* (assoc notification :payload event-info))))))))
 

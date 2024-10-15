@@ -875,12 +875,12 @@
         (testing "channel send task history task details include retry config"
           (with-redefs
            [channel/send! (constantly true)]
-            (send!)
-            (is (= {:task         "channel-send"
-                    :db_id        nil
-                    :status       :success
-                    :task_details default-task-details}
-                   (latest-task-history-entry :channel-send)))))
+           (send!)
+           (is (= {:task         "channel-send"
+                   :db_id        nil
+                   :status       :success
+                   :task_details default-task-details}
+                  (latest-task-history-entry :channel-send)))))
 
         (testing "retry errors are recorded when the task eventually succeeds"
           (with-redefs [channel/send! (tu/works-after 2 (constantly nil))]
@@ -899,20 +899,20 @@
                     (latest-task-history-entry :channel-send)))))
 
         (testing "retry errors are recorded when the task eventually fails"
-         (with-redefs [channel/send! (tu/works-after 5 (constantly nil))]
-           (send!)
-           (is (=? {:task         "channel-send"
-                    :db_id        nil
-                    :status       :failed
-                    :task_details {:original-info     default-task-details
-                                   :attempted_retries 4
-                                   :retry_errors      (mt/malli=?
-                                                       [:sequential {:min 4 :max 4}
-                                                        [:map
-                                                         [:trace :any]
-                                                         [:cause :any]
-                                                         [:via :any]]])}}
-                   (latest-task-history-entry :channel-send)))))))))
+          (with-redefs [channel/send! (tu/works-after 5 (constantly nil))]
+            (send!)
+            (is (=? {:task         "channel-send"
+                     :db_id        nil
+                     :status       :failed
+                     :task_details {:original-info     default-task-details
+                                    :attempted_retries 4
+                                    :retry_errors      (mt/malli=?
+                                                        [:sequential {:min 4 :max 4}
+                                                         [:map
+                                                          [:trace :any]
+                                                          [:cause :any]
+                                                          [:via :any]]])}}
+                    (latest-task-history-entry :channel-send)))))))))
 
 (deftest alerts-do-not-remove-user-metadata
   (testing "Alerts that exist on a Model shouldn't remove metadata (#35091)."

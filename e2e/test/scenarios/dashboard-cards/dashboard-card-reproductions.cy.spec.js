@@ -1095,15 +1095,17 @@ describe("issue 31628", () => {
   };
 
   const assertDescendantsNotOverflowDashcards = descendantsSelector => {
-    cy.findAllByTestId("dashcard").each((dashcard, dashcardIndex) => {
-      const descendants = dashcard.find(descendantsSelector);
+    cy.findAllByTestId("dashcard").should(dashcards => {
+      dashcards.each((dashcardIndex, dashcard) => {
+        const descendants = dashcard.querySelectorAll(descendantsSelector);
 
-      descendants.each((_descendantIndex, descendant) => {
-        assertDescendantNotOverflowsContainer(
-          descendant,
-          dashcard[0],
-          `dashcard[${dashcardIndex}] [data-testid="${descendant.dataset.testid}"]`,
-        );
+        descendants.forEach(descendant => {
+          assertDescendantNotOverflowsContainer(
+            descendant,
+            dashcard,
+            `dashcard[${dashcardIndex}] [data-testid="${descendant.dataset.testid}"]`,
+          );
+        });
       });
     });
   };

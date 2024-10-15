@@ -18,7 +18,6 @@ describeWithSnowplow("scenarios > embedding-homepage > snowplow events", () => {
     cy.intercept("GET", "/api/session/properties", req => {
       req.continue(res => {
         res.body["embedding-homepage"] = "visible";
-        res.body["setup-embedding-autoenabled"] = true;
         res.body["example-dashboard-id"] = 1;
         res.body["setup-license-active-at-setup"] = true;
         res.send();
