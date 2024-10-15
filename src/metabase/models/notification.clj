@@ -35,7 +35,9 @@
 
 (def notification-types
   "Set of valid notification types."
-  #{:notification/system-event})
+  #{:notification/system-event
+    ;; for testing only
+    :notification/testing})
 
 (t2/deftransforms :model/Notification
   {:payload_type (mi/transform-validator mi/transform-keyword (partial mi/assert-enum notification-types))})

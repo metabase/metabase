@@ -1,9 +1,11 @@
 (ns metabase.notification.test-util
   "Define the `metabase-test` channel and notification test utilities."
   (:require
+   [clojure.set :as set]
    [metabase.channel.core :as channel]
    [metabase.events.notification :as events.notification]
    [metabase.notification.core :as notification]
+   [metabase.test :as mt]
    [metabase.util :as u]))
 
 (def test-channel-type
@@ -23,7 +25,12 @@
   [_channel message]
   message)
 
-(defmacro with-send-notification-sync!
+(defmethod channel/render-notification [:channel/metabase-test :notification/testing]
+  [_channel-type notification-info _template _recipients]
+  [notification-info])
+
+#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
+(defmacro with-send-notification-sync
   "Notifications are sent async by default, wrap the body in this macro to send them synchronously."
   [& body]
   `(binding [notification/*send-notification!* #'notification/send-notification-sync!]
@@ -31,7 +38,7 @@
 
 (defn do-with-captured-channel-send!
   [thunk]
-  (with-send-notification-sync!
+  (with-send-notification-sync
     (let [channel-messages (atom {})]
       (with-redefs
        [channel/send! (fn [channel message]
@@ -60,10 +67,19 @@
      (try
        (doseq [topic# topics#]
          (derive topic# :metabase/event))
-       ~@body
+       (with-redefs [events.notification/supported-topics (set/union @#'events.notification/supported-topics topics#)]
+         ~@body)
        (finally
          (doseq [topic# topics#]
            (underive topic# :metabase/event))))))
+
+#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
+(defmacro with-notification-testing-setup
+  "Macro that sets up the notification testing environment."
+  [& body]
+  `(mt/with-model-cleanup [:model/Notification]
+     (notification.tu/with-send-notification-sync
+       ~@body)))
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                         Dummy Data                                              ;;
@@ -81,7 +97,7 @@
 
 ;; :model/ChannelTemplate
 
-(def channel-template-email-with-mustatche-body
+(def channel-template-email-with-mustache-body
   "A :model/ChannelTemplate for email channels that has a :event/mustache template."
   {:channel_type :channel/email
    :details      {:type    :email/mustache-text
