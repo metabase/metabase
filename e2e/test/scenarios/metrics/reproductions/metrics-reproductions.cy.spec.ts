@@ -14,6 +14,9 @@ import {
   showDashboardCardActions,
   sidebar,
   visitDashboard,
+  getNotebookStep,
+  main,
+  restore,
 } from "e2e/support/helpers";
 
 const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
