@@ -141,9 +141,9 @@ export const BulkMoveModal = ({
       : t`Move "${selectedItems[0].name}"?`;
 
   const canMoveToDashboard =
-    selectedItems.length === 1 && selectedItems[0].model === "card";
-  // TODO: get the backend to send along dashboard_count on dashboards in collection items endpoints
-  // && selectedItems[0]?.dashboard_count === 0;
+    selectedItems.length === 1 &&
+    selectedItems[0].model === "card" &&
+    selectedItems[0].dashboard_count === 0;
 
   const models: CollectionPickerModel[] = canMoveToDashboard
     ? ["collection", "dashboard"]
