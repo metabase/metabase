@@ -71,11 +71,12 @@
         query              (if query-fn
                              (query-fn mp source-metric)
                              (lib/query mp source-metric))
-        calls              (atom nil)]
-    (with-redefs [prometheus/inc! #(swap! calls conj %)]
+        metrics              (atom {})
+        read-metric          #(% @metrics 0)]
+    (with-redefs [prometheus/inc! #(swap! metrics update % (fnil inc 0))]
       (check-fn query)
-      (is (= expected-metrics-count (count (filter #{:metabase-query-processor/metrics} @calls))))
-      (is (= expected-metrics-errors (count (filter #{:metabase-query-processor/metrics-errors} @calls)))))))
+      (is (= expected-metrics-count (read-metric :metabase-query-processor/metrics)))
+      (is (= expected-metrics-errors (read-metric :metabase-query-processor/metrics-errors))))))
 
 (deftest adjust-prometheus-metrics-test
   (testing "adjustment of query with no metrics does not increment either counter"
