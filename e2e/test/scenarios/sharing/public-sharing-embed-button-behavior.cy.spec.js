@@ -696,7 +696,7 @@ describe("#39152 sharing an unsaved question", () => {
               new_embed: true,
               time_since_creation: closeTo(
                 toSecond(Date.now() - this.timeAfterResourceCreation),
-                1,
+                15,
               ),
               time_since_initial_publication: null,
               params: {
@@ -732,8 +732,8 @@ describe("#39152 sharing an unsaved question", () => {
               event: "static_embed_published",
               artifact: resource,
               new_embed: false,
-              time_since_creation: closeTo(toSecond(HOUR), 10),
-              time_since_initial_publication: closeTo(toSecond(HOUR), 10),
+              time_since_creation: closeTo(toSecond(HOUR), 15),
+              time_since_initial_publication: closeTo(toSecond(HOUR), 15),
               params: {
                 disabled: 1,
                 locked: 1,

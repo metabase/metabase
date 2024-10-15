@@ -74,9 +74,7 @@ function setup({ step = createMockNotebookStep() }: SetupOpts = {}) {
 describe("AggregateStep", () => {
   it("should render correctly without an aggregation", () => {
     setup();
-    expect(
-      screen.getByText("Pick the metric you want to see"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Pick a function or metric")).toBeInTheDocument();
   });
 
   it("should render correctly with an aggregation", () => {
@@ -104,7 +102,7 @@ describe("AggregateStep", () => {
   it("should add an aggregation with a basic operator", async () => {
     const { getRecentAggregationClause } = setup();
 
-    await userEvent.click(screen.getByText("Pick the metric you want to see"));
+    await userEvent.click(screen.getByText("Pick a function or metric"));
     await userEvent.click(screen.getByText("Average of ..."));
     await userEvent.click(screen.getByText("Quantity"));
 
