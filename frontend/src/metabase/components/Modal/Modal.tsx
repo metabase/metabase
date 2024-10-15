@@ -8,16 +8,14 @@ export type ModalProps = {
   isOpen?: boolean;
 } & (WindowModalProps & FullPageModalProps);
 
-const Modal = ({ full = false, ...props }: ModalProps) => {
+const Modal = ({ full = false, isOpen = true, ...props }: ModalProps) => {
   if (full) {
-    return props.isOpen ? <RoutelessFullPageModal {...props} /> : null;
+    return isOpen ? (
+      <RoutelessFullPageModal isOpen={isOpen} {...props} />
+    ) : null;
   } else {
-    return <WindowModal {...props} />;
+    return <WindowModal isOpen={isOpen} {...props} />;
   }
-};
-
-Modal.defaultProps = {
-  isOpen: true,
 };
 
 export { Modal };
