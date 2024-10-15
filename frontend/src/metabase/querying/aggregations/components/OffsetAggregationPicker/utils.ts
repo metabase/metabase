@@ -415,45 +415,23 @@ function findTemporalBucket(
   return bucket ? bucket : null;
 }
 
-type ApplyBreakoutOpts = {
-  query: Lib.Query;
-  stageIndex: number;
-  column: Lib.ColumnMetadata;
-  breakoutInfo: BreakoutInfo | undefined;
-  requiredBreakoutIndex: number;
-};
-
-function applyBreakout({
-  query,
-  stageIndex,
-  column,
-  breakoutInfo,
-  requiredBreakoutIndex,
-}: ApplyBreakoutOpts) {
-  const breakouts = Lib.breakouts(query, stageIndex);
-  const newQuery = breakoutInfo
-    ? Lib.replaceClause(
-        query,
-        stageIndex,
-        breakouts[breakoutInfo.breakoutIndex],
-        column,
-      )
-    : Lib.breakout(query, stageIndex, column);
-  const newBreakoutIndex = breakoutInfo
-    ? breakoutInfo.breakoutIndex
-    : breakouts.length;
-
-  if (newBreakoutIndex !== requiredBreakoutIndex) {
-    const newBreakouts = Lib.breakouts(newQuery, stageIndex);
-    return Lib.swapClauses(
-      newQuery,
-      stageIndex,
-      newBreakouts[requiredBreakoutIndex],
-      newBreakouts[newBreakoutIndex],
-    );
-  } else {
-    return newQuery;
+function applyBreakout(
+  query: Lib.Query,
+  stageIndex: number,
+  column: Lib.ColumnMetadata,
+  breakoutInfo: BreakoutInfo | undefined,
+) {
+  if (!breakoutInfo) {
+    return Lib.breakout(query, stageIndex, column);
   }
+
+  const breakouts = Lib.breakouts(query, stageIndex);
+  return Lib.replaceClause(
+    query,
+    stageIndex,
+    breakouts[breakoutInfo.breakoutIndex],
+    column,
+  );
 }
 
 function applyGroupBreakout(
@@ -463,13 +441,12 @@ function applyGroupBreakout(
 ) {
   const column = getBreakoutColumn(query, stageIndex);
   const bucket = findTemporalBucket(query, stageIndex, column, groupUnit);
-  return applyBreakout({
+  return applyBreakout(
     query,
     stageIndex,
-    column: Lib.withTemporalBucket(column, bucket),
-    breakoutInfo: getGroupBreakoutInfo(query, stageIndex, column),
-    requiredBreakoutIndex: 0,
-  });
+    Lib.withTemporalBucket(column, bucket),
+    getGroupBreakoutInfo(query, stageIndex, column),
+  );
 }
 
 function applyOffsetBreakout(
@@ -483,13 +460,12 @@ function applyOffsetBreakout(
 
   const column = getBreakoutColumn(query, stageIndex);
   const bucket = findTemporalBucket(query, stageIndex, column, offsetUnit);
-  return applyBreakout({
+  return applyBreakout(
     query,
     stageIndex,
-    column: Lib.withTemporalBucket(column, bucket),
-    breakoutInfo: getOffsetBreakoutInfo(query, stageIndex, column, groupUnit),
-    requiredBreakoutIndex: 1,
-  });
+    Lib.withTemporalBucket(column, bucket),
+    getOffsetBreakoutInfo(query, stageIndex, column, groupUnit),
+  );
 }
 
 function removeExtraBreakouts(
