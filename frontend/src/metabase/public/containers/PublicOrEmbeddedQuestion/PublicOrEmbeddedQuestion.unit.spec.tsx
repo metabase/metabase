@@ -133,7 +133,9 @@ describe("PublicOrEmbeddedQuestion", () => {
       await userEvent.click(getIcon("download"));
 
       expect(
-        within(screen.getByRole("dialog")).getByText("Download full results"),
+        within(screen.getByRole("dialog")).getByRole("heading", {
+          name: /download/i,
+        }),
       ).toBeInTheDocument();
     });
 
