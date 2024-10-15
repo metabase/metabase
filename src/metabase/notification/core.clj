@@ -123,7 +123,7 @@
       (task-history/with-task-history
         {:task          "notification-send"
          :task_details {:notification_id       (:id notification-info)
-                        :notification_handlers (map #(select-keys % [:id :channel_type :channel_id :template_id]))}}
+                        :notification_handlers (map #(select-keys % [:id :channel_type :channel_id :template_id]) noti-handlers)}}
         (doseq [handler noti-handlers]
           (let [channel-type (:channel_type handler)
                 messages     (channel/render-notification
