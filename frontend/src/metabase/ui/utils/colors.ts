@@ -45,8 +45,20 @@ const CUSTOM_COLORS = [
   "white",
 ] as const;
 
-function getColorShades(colorName: string): ColorShades {
-  return Array(10).fill(colorName) as ColorShades;
+export function getColorShades(colorName: string): ColorShades {
+  // yes this is silly, but it makes typescript so happy
+  return [
+    colorName,
+    colorName,
+    colorName,
+    colorName,
+    colorName,
+    colorName,
+    colorName,
+    colorName,
+    colorName,
+    colorName,
+  ];
 }
 
 export function getThemeColors(): Record<string, ColorShades> {
