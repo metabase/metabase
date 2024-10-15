@@ -231,13 +231,6 @@
       :else
       expanded-stages)))
 
-(defn- adjust-metric-stages-counting-errors
-  "Call [[adjust-metric-stages]] and inc an error counter if any exception is thrown."
-  [query path expanded-stages]
-  (try (adjust-metric-stages query path expanded-stages)
-       (catch Throwable e
-         (prometheus/inc-and-throw! :metabase-query-processor/metrics-errors e))))
-
 (defn- match-one-metric
   [query]
   (lib.util.match/match-one query
@@ -262,14 +255,19 @@
     query
     (do
       (prometheus/inc! :metabase-query-processor/metrics)
-      (let [query (lib.walk/walk
-                   query
-                   (fn [_query path-type path stage-or-join]
-                     (when (= path-type :lib.walk/join)
-                       (update stage-or-join :stages #(adjust-metric-stages-counting-errors query path %)))))]
-        (u/prog1
-          (update query :stages #(adjust-metric-stages-counting-errors query nil %))
-          (when-let [metric (match-one-metric <>)]
-            (prometheus/inc! :metabase-query-processor/metrics-errors)
-            (log/warn "Failed to replace metric"
-                      (pr-str {:metric metric}))))))))
+      (try
+        (let [query (lib.walk/walk
+                     query
+                     (fn [_query path-type path stage-or-join]
+                       (when (= path-type :lib.walk/join)
+                         (update stage-or-join :stages #(adjust-metric-stages query path %)))))]
+          (u/prog1
+            (update query :stages #(adjust-metric-stages query nil %))
+            (when-let [metric (match-one-metric <>)]
+              ;; There is a small chance we could wind up double-counting errors here if prometheus/inc! or log/warn
+              ;; throw an exception, but it seems unlikely enough to not warrant complications to avoid it.
+              (prometheus/inc! :metabase-query-processor/metrics-errors)
+              (log/warn "Failed to replace metric"
+                        (pr-str {:metric metric})))))
+        (catch Throwable e
+          (prometheus/inc-and-throw! :metabase-query-processor/metrics-errors e))))))
