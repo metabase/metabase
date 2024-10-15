@@ -89,9 +89,13 @@ export const cardApi = Api.injectEndpoints({
         invalidatesTags: (_, error) => invalidateTags(error, [listTag("card")]),
       }),
       updateCard: builder.mutation<Card, UpdateCardRequest>({
-        query: ({ id, ...body }) => ({
+        query: ({ id, delete_old_dashcards, ...body }) => ({
           method: "PUT",
-          url: `/api/card/${id}`,
+          url:
+            `/api/card/${id}` +
+            (delete_old_dashcards !== undefined
+              ? `?delete_old_dashcards=${delete_old_dashcards}`
+              : ""),
           body,
         }),
         invalidatesTags: (_, error, { id }) =>
