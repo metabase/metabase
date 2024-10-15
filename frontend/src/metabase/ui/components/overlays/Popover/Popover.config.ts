@@ -5,7 +5,7 @@ import PopoverStyles from "./Popover.module.css";
 
 export const DEFAULT_POPOVER_Z_INDEX = 300;
 
-export const getPopoverOverrides = {
+export const popoverOverrides = {
   Popover: Popover.extend({
     defaultProps: {
       radius: "sm",

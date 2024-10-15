@@ -1,4 +1,4 @@
-import type { MantineThemeProviderProps } from "@mantine/core";
+import type { MantineThemeOverride } from "@mantine/core";
 import { rem } from "@mantine/core";
 
 import { DEFAULT_METABASE_COMPONENT_THEME } from "embedding-sdk/lib/theme";
@@ -53,7 +53,7 @@ export const breakpoints = {
 };
 export type BreakpointName = keyof typeof breakpoints;
 
-export const getThemeOverrides = (): MantineThemeProviderProps["theme"] => ({
+export const getThemeOverrides = (): MantineThemeOverride => ({
   breakpoints,
   colors: getThemeColors(),
   primaryColor: "brand",
