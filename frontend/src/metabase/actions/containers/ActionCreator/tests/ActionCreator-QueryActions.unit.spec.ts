@@ -69,6 +69,7 @@ describe("ActionCreator > Query Actions", () => {
           screen.getByTestId("collection-picker-button"),
         ).toHaveTextContent("Select a model");
       });
+
       it("should preselect model", async () => {
         const MODEL_NAME = "Awesome Model";
         const model = createMockCard({

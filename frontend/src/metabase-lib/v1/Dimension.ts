@@ -1716,93 +1716,98 @@ const NUMBER_SUBDIMENSIONS = [
   },
 ];
 
+/**
+ * These all have to use `ngettext` instead of `t` because the plural versions are used in some places (see
+ * `metabase.lib.temporal-bucket/describe-temporal-bucket`) and apparently if you use them as a plural message ID in
+ * some places you have to do it everywhere.
+ */
 const DATETIME_SUBDIMENSIONS = [
   {
-    name: t`Minute`,
+    name: ngettext(msgid`Minute`, `Minutes`, 1),
     options: {
       "temporal-unit": "minute",
     },
   },
   {
-    name: t`Hour`,
+    name: ngettext(msgid`Hour`, `Hours`, 1),
     options: {
       "temporal-unit": "hour",
     },
   },
   {
-    name: t`Day`,
+    name: ngettext(msgid`Day`, `Days`, 1),
     options: {
       "temporal-unit": "day",
     },
   },
   {
-    name: t`Week`,
+    name: ngettext(msgid`Week`, `Weeks`, 1),
     options: {
       "temporal-unit": "week",
     },
   },
   {
-    name: t`Month`,
+    name: ngettext(msgid`Month`, `Months`, 1),
     options: {
       "temporal-unit": "month",
     },
   },
   {
-    name: t`Quarter`,
+    name: ngettext(msgid`Quarter`, `Quarters`, 1),
     options: {
       "temporal-unit": "quarter",
     },
   },
   {
-    name: t`Year`,
+    name: ngettext(msgid`Year`, `Years`, 1),
     options: {
       "temporal-unit": "year",
     },
   },
   {
-    name: t`Minute of hour`,
+    name: ngettext(msgid`Minute of hour`, `Minutes of hour`, 1),
     options: {
       "temporal-unit": "minute-of-hour",
     },
   },
   {
-    name: t`Hour of day`,
+    name: ngettext(msgid`Hour of day`, `Hours of day`, 1),
     options: {
       "temporal-unit": "hour-of-day",
     },
   },
   {
-    name: t`Day of week`,
+    name: ngettext(msgid`Day of week`, `Days of week`, 1),
     options: {
       "temporal-unit": "day-of-week",
     },
   },
   {
-    name: t`Day of month`,
+    name: ngettext(msgid`Day of month`, `Days of month`, 1),
     options: {
       "temporal-unit": "day-of-month",
     },
   },
   {
-    name: t`Day of year`,
+    name: ngettext(msgid`Day of year`, `Days of year`, 1),
     options: {
       "temporal-unit": "day-of-year",
     },
   },
   {
-    name: t`Week of year`,
+    name: ngettext(msgid`Week of year`, `Weeks of year`, 1),
     options: {
       "temporal-unit": "week-of-year",
     },
   },
   {
-    name: t`Month of year`,
+    name: ngettext(msgid`Month of year`, `Months of year`, 1),
     options: {
       "temporal-unit": "month-of-year",
     },
   },
   {
-    name: t`Quarter of year`,
+    name: ngettext(msgid`Quarter of year`, `Quarters of year`, 1),
     options: {
       "temporal-unit": "quarter-of-year",
     },

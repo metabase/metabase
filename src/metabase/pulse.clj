@@ -8,6 +8,7 @@
    [metabase.models.dashboard-card :as dashboard-card]
    [metabase.models.database :refer [Database]]
    [metabase.models.interface :as mi]
+   [metabase.models.params.shared :as shared.params]
    [metabase.models.pulse :as pulse :refer [Pulse]]
    [metabase.models.serialization :as serdes]
    [metabase.models.task-history :as task-history]
@@ -15,7 +16,6 @@
    [metabase.pulse.util :as pu]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.server.middleware.session :as mw.session]
-   [metabase.shared.parameters.parameters :as shared.params]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -291,8 +291,8 @@
           retry-config (retry/retry-configuration)
           retry-errors (volatile! [])
           retry-report (fn []
-                         {:attempted-retries (count @retry-errors)
-                          :retry-errors       @retry-errors})
+                         {:attempted_retries (count @retry-errors)
+                          :retry_errors       @retry-errors})
           send!        (fn []
                          (try
                            (channel/send! channel message)
@@ -309,10 +309,10 @@
                                                             (update :task_details merge (retry-report))))
                                        :on-fail-info    (fn [update-map _result]
                                                           (update update-map :task_details #(merge % (retry-report))))
-                                       :task_details    {:retry-config retry-config
-                                                         :channel-type (:type channel)
-                                                         :channel-id   (:id channel)
-                                                         :pulse-id     pulse-id}}
+                                       :task_details    {:retry_config retry-config
+                                                         :channel_type (:type channel)
+                                                         :channel_id   (:id channel)
+                                                         :pulse_id     pulse-id}}
         ((retry/decorate send! (retry/random-exponential-backoff-retry (str (random-uuid)) retry-config)))
         (log/debugf "[Pulse %d] Sent to channel %s with %d retries" pulse-id (format-channel channel) (count @retry-errors))))
     (catch Throwable e
