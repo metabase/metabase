@@ -21,5 +21,6 @@ module.exports = {
     },
     "postcss-discard-comments": {},
     "postcss-nesting": {},
+    "postcss-preset-mantine": {},
   },
 };
