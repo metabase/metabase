@@ -871,7 +871,6 @@
    metabase.models.dashboard-test/with-dash-in-collection!                                                                   hooks.common/with-three-bindings
    metabase.models.interface/define-batched-hydration-method                                                                 hooks.metabase.models.interface/define-hydration-method
    metabase.models.interface/define-simple-hydration-method                                                                  hooks.metabase.models.interface/define-hydration-method
-   metabase.notification.test-util/with-basic-notifciation                                                                   hooks.common/let-one-with-optional-value
    metabase.models.pulse-test/with-dashboard-subscription-in-collection!                                                     hooks.common/with-four-bindings
    metabase.models.pulse-test/with-pulse-in-collection!                                                                      hooks.common/with-four-bindings
    metabase.models.setting.multi-setting/define-multi-setting                                                                hooks.metabase.models.setting/define-multi-setting
