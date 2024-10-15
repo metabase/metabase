@@ -113,14 +113,20 @@ const Questions = createEntity({
     // this function name is incorrectly but maintained for consistency with other entities.
     setCollection: (card, destination, opts) => {
       return async dispatch => {
-        const collection_id =
+        const archived =
+          destination.model === "collection" &&
+          isRootTrashCollection(destination);
+
+        const update =
           destination.model === "dashboard"
-            ? canonicalCollectionId(destination.collection_id)
-            : canonicalCollectionId(destination.id);
-        const dashboard_id =
-          destination.model === "dashboard" ? destination.id : null;
-        const archived = isRootTrashCollection(destination);
-        const update = { collection_id, dashboard_id, archived };
+            ? {
+                dashboard_id: destination.id,
+                archived,
+              }
+            : {
+                collection_id: canonicalCollectionId(destination.id),
+                archived,
+              };
 
         const result = await dispatch(
           Questions.actions.update(

@@ -67,12 +67,8 @@ export const MoveModal = ({
   const recentFilter = makeRecentFilter(shouldDisableItem);
 
   const handleMove = useCallback(
-    async (destination: CollectionPickerValueItem) =>
-      await onMove({
-        id: destination.id,
-        model: destination.model,
-        collection_id: destination.collection_id,
-      }),
+    (destination: CollectionPickerValueItem) =>
+      onMove({ id: destination.id, model: destination.model }),
     [onMove],
   );
 
@@ -164,7 +160,6 @@ export const BulkMoveModal = ({
         onMove({
           id: destination.id,
           model: destination.model,
-          collection_id: destination.collection_id,
         })
       }
       options={{
