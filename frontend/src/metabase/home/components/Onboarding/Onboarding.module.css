@@ -100,3 +100,10 @@
     flex-wrap: nowrap;
   }
 }
+
+.video {
+  aspect-ratio: 16 / 9;
+  border: 0;
+  border-radius: 0.5rem;
+  width: 100%;
+}
