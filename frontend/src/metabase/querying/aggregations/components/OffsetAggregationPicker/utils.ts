@@ -372,47 +372,30 @@ export function applyOffsetClause(
 }
 
 export function getOffsetClause(
-  query: Lib.Query,
-  stageIndex: number,
   aggregation: Lib.AggregationClause,
   { columnType, offsetValue, includeCurrent }: OffsetOptions,
 ) {
   switch (columnType) {
     case "offset":
-      return Lib.offsetClause(query, stageIndex, aggregation, -offsetValue);
+      return Lib.offsetClause(aggregation, -offsetValue);
     case "diff-offset":
-      return Lib.diffOffsetClause(query, stageIndex, aggregation, -offsetValue);
+      return Lib.diffOffsetClause(aggregation, -offsetValue);
     case "percent-diff-offset":
-      return Lib.percentDiffOffsetClause(
-        query,
-        stageIndex,
+      return Lib.percentDiffOffsetClause(aggregation, -offsetValue);
+    case "moving-average":
+      return Lib.movingAverageClause(aggregation, -offsetValue, includeCurrent);
+    case "diff-moving-average":
+      return Lib.diffMovingAverageClause(
         aggregation,
         -offsetValue,
+        includeCurrent,
       );
-    case "moving-average":
-      return Lib.movingAverageClause({
-        query,
-        stageIndex,
-        clause: aggregation,
-        offset: -offsetValue,
-        includeCurrentPeriod: includeCurrent,
-      });
-    case "diff-moving-average":
-      return Lib.diffMovingAverageClause({
-        query,
-        stageIndex,
-        clause: aggregation,
-        offset: -offsetValue,
-        includeCurrentPeriod: includeCurrent,
-      });
     case "percent-diff-moving-average":
-      return Lib.percentDiffMovingAverageClause({
-        query,
-        stageIndex,
-        clause: aggregation,
-        offset: -offsetValue,
-        includeCurrentPeriod: includeCurrent,
-      });
+      return Lib.percentDiffMovingAverageClause(
+        aggregation,
+        -offsetValue,
+        includeCurrent,
+      );
   }
 }
 
