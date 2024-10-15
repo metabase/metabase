@@ -3,8 +3,8 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.formatter.datetime :as datetime]
+   [metabase.models.visualization-settings :as mb.viz]
    [metabase.public-settings :as public-settings]
-   [metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.test :as mt]))
 
 (def ^:private now "2020-07-16T18:04:00Z[UTC]")

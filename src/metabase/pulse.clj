@@ -8,6 +8,7 @@
    [metabase.models.dashboard-card :as dashboard-card]
    [metabase.models.database :refer [Database]]
    [metabase.models.interface :as mi]
+   [metabase.models.params.shared :as shared.params]
    [metabase.models.pulse :as pulse :refer [Pulse]]
    [metabase.models.serialization :as serdes]
    [metabase.models.task-history :as task-history]
@@ -15,7 +16,6 @@
    [metabase.pulse.util :as pu]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.server.middleware.session :as mw.session]
-   [metabase.shared.parameters.parameters :as shared.params]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -111,6 +111,10 @@
     (:card_id dashcard)
     (let [parameters (merge-default-values (pulse-params/parameters pulse dashboard))]
       (pu/execute-dashboard-subscription-card dashcard parameters))
+
+    ;; iframes
+    (virtual-card-of-type? dashcard "iframe")
+    nil
 
     ;; actions
     (virtual-card-of-type? dashcard "action")

@@ -9,6 +9,7 @@ describe("DelayedLoadingAndErrorWrapper", () => {
 
       expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
     });
+
     it("should display a delayed loader if given a true loading prop", async () => {
       render(
         <DelayedLoadingAndErrorWrapper

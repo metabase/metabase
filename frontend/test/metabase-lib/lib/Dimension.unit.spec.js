@@ -72,6 +72,7 @@ describe("Dimension", () => {
       describe("field with ID", () => {
         const mbql = ["field", ORDERS.PRODUCT_ID, null];
         const dimension = Dimension.parseMBQL(mbql, metadata);
+
         it("should parse correctly", () => {
           expect(dimension).toBeInstanceOf(FieldDimension);
           expect(dimension.isIntegerFieldId()).toEqual(true);
@@ -167,6 +168,7 @@ describe("Dimension", () => {
         expect(d1.isEqual(["field", 1, null])).toEqual(true);
         expect(d1.isEqual(["field", 1, {}])).toEqual(true);
       });
+
       it("returns false for different type clauses", () => {
         const d1 = Dimension.parseMBQL(
           ["field", 2, { "source-field": 1 }],
@@ -175,6 +177,7 @@ describe("Dimension", () => {
         const d2 = Dimension.parseMBQL(["field", 1, null], metadata);
         expect(d1.isEqual(d2)).toEqual(false);
       });
+
       it("returns false for field clauses with different arguments", () => {
         const d1 = Dimension.parseMBQL(
           ["field", 2, { "source-field": 1 }],
@@ -242,15 +245,18 @@ describe("Dimension", () => {
           null,
         );
       });
+
       describe("displayName()", () => {
         it("returns the field name", () => {
           expect(dimension.displayName()).toEqual("Total");
         });
       });
+
       describe("subDisplayName()", () => {
         it("returns 'Default' for numeric fields", () => {
           expect(dimension.subDisplayName()).toEqual("Default");
         });
+
         it("returns 'Default' for non-numeric fields", () => {
           expect(
             Dimension.parseMBQL(
@@ -260,14 +266,17 @@ describe("Dimension", () => {
           ).toEqual("Default");
         });
       });
+
       describe("subTriggerDisplayName()", () => {
         it("returns 'Unbinned' if the dimension is a binnable number", () => {
           expect(dimension.subTriggerDisplayName()).toBe("Unbinned");
         });
+
         it("does not have a value if the dimension is a category", () => {
           expect(categoryDimension.subTriggerDisplayName()).toBeFalsy();
         });
       });
+
       describe("column()", () => {
         it("should return the column", () => {
           expect(dimension.column()).toEqual({
@@ -280,6 +289,7 @@ describe("Dimension", () => {
           });
         });
       });
+
       describe("field()", () => {
         it("should return correct Field for underlying Field", () => {
           expect(dimension.field().id).toEqual(ORDERS.TOTAL);
@@ -410,21 +420,25 @@ describe("Dimension", () => {
           ]);
         });
       });
+
       describe("displayName()", () => {
         it("returns the field name", () => {
           expect(dimension.displayName()).toEqual("Title");
         });
       });
+
       describe("subDisplayName()", () => {
         it("returns the field name", () => {
           expect(dimension.subDisplayName()).toEqual("Title");
         });
       });
+
       describe("subTriggerDisplayName()", () => {
         it("does not have a value", () => {
           expect(dimension.subTriggerDisplayName()).toBeFalsy();
         });
       });
+
       describe("column()", () => {
         it("should return the column", () => {
           expect(dimension.column()).toEqual({
@@ -442,6 +456,7 @@ describe("Dimension", () => {
           });
         });
       });
+
       describe("fk()", () => {
         it("should return the fk", () => {
           const fk = dimension.fk();
@@ -451,6 +466,7 @@ describe("Dimension", () => {
           expect(fk._metadata).toEqual(metadata);
         });
       });
+
       describe("getMLv1CompatibleDimension", () => {
         it("should strip away *-type options", () => {
           const dimension = Dimension.parseMBQL(
@@ -492,16 +508,19 @@ describe("Dimension", () => {
           ]);
         });
       });
+
       describe("displayName()", () => {
         it("returns the field name", () => {
           expect(dimension.displayName()).toEqual("Created At");
         });
       });
+
       describe("subDisplayName()", () => {
         it("returns 'Month'", () => {
           expect(dimension.subDisplayName()).toEqual("Month");
         });
       });
+
       describe("subTriggerDisplayName()", () => {
         it("returns 'by month'", () => {
           expect(dimension.subTriggerDisplayName()).toEqual("by month");
@@ -565,6 +584,7 @@ describe("Dimension", () => {
           expect(dimension.field().displayName()).toEqual("Created At");
         });
       });
+
       describe("getMLv1CompatibleDimension", () => {
         it("should strip away *-type options", () => {
           const dimension = Dimension.parseMBQL(
@@ -610,15 +630,18 @@ describe("Dimension", () => {
 
     describe("FK field", () => {
       const fk = dimension.fk();
+
       it("should return FK field Dimension when you call fk() method", () => {
         expect(fk).toBeInstanceOf(FieldDimension);
         expect(fk._metadata).toEqual(metadata);
       });
+
       it("should return underlying Field", () => {
         expect(fk.field()).toBeInstanceOf(Field);
         expect(fk.field().id).toEqual(ORDERS.PRODUCT_ID);
         expect(fk.field().displayName()).toEqual("Product ID");
       });
+
       it("should render correctly", () => {
         expect(fk.mbql()).toEqual(["field", ORDERS.PRODUCT_ID, null]);
         expect(fk.render()).toEqual("Product ID");
@@ -646,11 +669,13 @@ describe("Dimension", () => {
           ]);
         });
       });
+
       describe("displayName()", () => {
         it("returns the field name", () => {
           expect(dimension.displayName()).toEqual("Total");
         });
       });
+
       describe("subDisplayName()", () => {
         it("returns '10 bins'", () => {
           expect(dimension.subDisplayName()).toEqual("10 bins");
@@ -694,6 +719,7 @@ describe("Dimension", () => {
           expect(dimension.mbql()).toEqual(["expression", "Hello World"]);
         });
       });
+
       describe("displayName()", () => {
         it("returns the expression name", () => {
           expect(dimension.displayName()).toEqual("Hello World");
@@ -807,21 +833,25 @@ describe("Dimension", () => {
           ]);
         });
       });
+
       describe("displayName()", () => {
         it("returns the field name", () => {
           expect(dimension.displayName()).toEqual("Total");
         });
       });
+
       describe("subDisplayName()", () => {
         it("returns 'Default' for numeric fields", () => {
           expect(dimension.subDisplayName()).toEqual("Default");
         });
       });
+
       describe("subTriggerDisplayName()", () => {
         it("returns 'Unbinned' if the dimension is a binnable number", () => {
           expect(dimension.subTriggerDisplayName()).toBe("Unbinned");
         });
       });
+
       describe("column()", () => {
         it("returns the dimension column", () => {
           expect(dimension.column()).toEqual({
@@ -834,6 +864,7 @@ describe("Dimension", () => {
           });
         });
       });
+
       describe("isEqual", () => {
         it("should return true for another Dimension with the same underlying MBQL", () => {
           const anotherDimension = Dimension.parseMBQL([
@@ -844,6 +875,7 @@ describe("Dimension", () => {
           expect(dimension.isEqual(anotherDimension)).toBe(true);
         });
       });
+
       describe("isSameBaseDimension", () => {
         it("should return true for another Dimension with the same underlying MBQL", () => {
           const anotherDimension = Dimension.parseMBQL([
@@ -854,6 +886,7 @@ describe("Dimension", () => {
           expect(dimension.isSameBaseDimension(anotherDimension)).toBe(true);
         });
       });
+
       describe("getMLv1CompatibleDimension", () => {
         it("should strip away *-type options", () => {
           const dimension = Dimension.parseMBQL(
