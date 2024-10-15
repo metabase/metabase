@@ -1,10 +1,10 @@
 (ns metabase-enterprise.sandbox.api.table-test
   (:require
+   [clojure.core.async :as a]
    [clojure.test :refer :all]
    [metabase-enterprise.sandbox.api.table :as table]
    [metabase-enterprise.sandbox.test-util :as mt.tu]
    [metabase-enterprise.test :as met]
-   [metabase.models.card :as card]
    [metabase.query-processor.async :as qp.async]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -36,6 +36,13 @@
         (is (= all-columns
                (field-names :crowberto)))))))
 
+(defn- result-metadata-for-query [query]
+  (mt/with-test-user :crowberto
+    (first
+     (a/alts!!
+      [(qp.async/result-metadata-for-query-async query)
+       (a/timeout 1000)]))))
+
 (deftest native-query-metadata-test
   (testing "GET /api/table/:id/query_metadata"
     (met/with-gtaps! {:gtaps      {:venues
@@ -49,10 +56,8 @@
                                  :join   [[:permissions_group :pg] [:= :s.group_id :pg.id]
                                           [:report_card :c] [:= :c.id :s.card_id]]
                                  :where  [:= :pg.id (u/the-id &group)]})
-            {:keys [metadata metadata-future]} (qp.async/result-metadata-for-query-async (:dataset_query card))]
-        (if metadata
-          (t2/update! :model/Card :id (u/the-id card) {:result_metadata metadata})
-          (card/schedule-metadata-saving metadata-future card)))
+            metadata (result-metadata-for-query (:dataset_query card))]
+        (t2/update! :model/Card :id (u/the-id card) {:result_metadata metadata}))
 
       (testing "Users with restricted access to the columns of a table via a native query sandbox should only see
                columns included in the sandboxing question"

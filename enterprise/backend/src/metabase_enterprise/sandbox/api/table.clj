@@ -12,7 +12,7 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(mu/defn find-sandbox-source-card :- [:maybe (ms/InstanceOf :model/Card)]
+(mu/defn ^:private find-sandbox-source-card :- [:maybe (ms/InstanceOf :model/Card)]
   "Find the associated sandboxing card (if there is one) for the given `table-or-table-id` and `user-or-user-id`.
   Returns nil if no question was found."
   [table-or-table-id user-or-user-id]
