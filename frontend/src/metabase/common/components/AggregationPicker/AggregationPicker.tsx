@@ -142,7 +142,7 @@ export function AggregationPicker({
 
       sections.push({
         key: "operators",
-        name: t`Basic Metrics`,
+        name: t`Basic functions`,
         items: operatorItems,
         icon: "table2",
       });
@@ -151,7 +151,7 @@ export function AggregationPicker({
     if (metrics.length > 0) {
       sections.push({
         key: "metrics",
-        name: t`Common Metrics`,
+        name: t`Metrics`,
         items: metrics.map(metric =>
           getMetricListItem(query, stageIndex, metric, clauseIndex),
         ),

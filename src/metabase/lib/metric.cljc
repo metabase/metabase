@@ -15,7 +15,7 @@
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
-   [metabase.shared.util.i18n :as i18n]
+   [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
 
 (defn- resolve-metric [query metric-id]

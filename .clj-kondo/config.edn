@@ -128,6 +128,7 @@
      clojure.core.async/to-chan!
      clojure.core.async/to-chan!!
      metabase.channel.core/send!
+     metabase.models.notification/create-notification!
      metabase.driver.sql-jdbc.execute/execute-prepared-statement!
      metabase.pulse/send-pulse!
      metabase.query-processor.store/store-database!
@@ -324,6 +325,7 @@
     metabase.metabot               #{metabase.metabot}
     metabase.models                :any                                                             ; TODO -- scream, 62 namespaces used elsewhere, but to be fair a lot of these don't *need* to be required.
     metabase.moderation            #{metabase.moderation}
+    metabase.notification          #{metabase.notification.core}
     metabase.permissions           #{metabase.permissions.util}                                     ; TODO -- this is currently the only namespace in this module. Give it a real API namespace?
     metabase.plugins               #{metabase.plugins
                                      metabase.plugins.classloader}                                  ; TODO -- not 100% sure the classloader belongs here
@@ -354,17 +356,6 @@
                                      metabase.server.protocols
                                      metabase.server.request.util}                                  ; TODO -- consolidate these into a real API namespace.
     metabase.setup                 #{metabase.setup}
-    metabase.shared                #{metabase.shared.dashboards.constants
-                                     metabase.shared.formatting.constants
-                                     metabase.shared.formatting.date
-                                     metabase.shared.formatting.numbers
-                                     metabase.shared.models.visualization-settings
-                                     metabase.shared.parameters.parameters
-                                     metabase.shared.util.currency
-                                     metabase.shared.util.i18n
-                                     metabase.shared.util.internal.time-common
-                                     metabase.shared.util.namespaces
-                                     metabase.shared.util.time}                                     ; TODO -- consolidate these into a real API namespace.
     metabase.sync                  #{metabase.sync
                                      metabase.sync.analyze
                                      metabase.sync.concurrent
@@ -423,6 +414,7 @@
     metabase.metabot               :any
     metabase.models                :any
     metabase.moderation            :any
+    metabase.notification          :any
     metabase.permissions           :any
     metabase.plugins               :any
     metabase.public-settings       :any
@@ -441,7 +433,6 @@
     metabase.search                :any
     metabase.server                :any
     metabase.setup                 :any
-    metabase.shared                :any
     metabase.sync                  :any
     metabase.task                  :any
     metabase.troubleshooting       :any
@@ -505,6 +496,8 @@
     metabase-enterprise.test                                      met
     metabase.analytics.sdk                                        sdk
     metabase.analytics.stats                                      stats
+    metabase.analysis.native-query-analyzer                       nqa
+    metabase.analysis.native-query-analyzer.parameter-substitution nqa.sub
     metabase.analyze.query-results                                qr
     metabase.analyze.classifiers.category                         classifiers.category
     metabase.analyze.classifiers.core                             classifiers
@@ -621,6 +614,7 @@
     metabase.models.interface                                     mi
     metabase.models.moderation-review                             moderation-review
     metabase.models.native-query-snippet                          native-query-snippet
+    metabase.models.notification                                  models.notification
     metabase.models.params                                        params
     metabase.models.permissions                                   perms
     metabase.models.permissions-group                             perms-group
@@ -634,8 +628,8 @@
     metabase.models.setting.cache                                 setting.cache
     metabase.models.timeline                                      timeline
     metabase.models.timeline-event                                timeline-event
-    metabase.analysis.native-query-analyzer                       nqa
-    metabase.analysis.native-query-analyzer.parameter-substitution nqa.sub
+    metabase.notification.core                                    notification
+    metabase.notification.test-util                               notification.tu
     metabase.plugins.initialize                                   plugins.init
     metabase.public-settings                                      public-settings
     metabase.public-settings.premium-features                     premium-features
@@ -687,8 +681,6 @@
     metabase.server.middleware.ssl                                mw.ssl
     metabase.server.request.util                                  req.util
     metabase.server.protocols                                     server.protocols
-    metabase.shared.util                                          shared.u
-    metabase.shared.util.currency                                 currency
     metabase.sync.analyze.fingerprint                             sync.fingerprint
     metabase.sync.field-values                                    field-values
     metabase.sync.interface                                       i
@@ -710,6 +702,7 @@
     metabase.test.util.timezone                                   test.tz
     metabase.timeseries-query-processor-test.util                 tqpt
     metabase.util.cron                                            u.cron
+    metabase.util.currency                                        currency
     metabase.util.date-2                                          u.date
     metabase.util.date-2.common                                   u.date.common
     metabase.util.date-2.parse                                    u.date.parse
@@ -784,7 +777,6 @@
   metabase.query-processor.middleware.cache.impl/with-reducible-deserialized-results    clojure.core/let
   metabase.query-processor.middleware.process-userland-query-test/with-query-execution! clojure.core/let
   metabase.query-processor.setup/with-qp-setup                                          clojure.core/let
-  metabase.shared.util.namespaces/import-fns                                            potemkin/import-vars
   metabase.sync.util/sum-for                                                            clojure.core/for
   metabase.sync.util/with-emoji-progress-bar                                            clojure.core/let
   metabase.test.data.interface/defdataset                                               clojure.core/def
@@ -808,6 +800,7 @@
   metabase.util.malli/defn                                                              schema.core/defn
   metabase.util.malli/defn-                                                             schema.core/defn
   metabase.util.malli/fn                                                                schema.core/fn
+  metabase.util.namespaces/import-fns                                                   potemkin/import-vars
   metabase.util.ssh/with-ssh-tunnel                                                     clojure.core/let
   metabase.xrays.domain-entities.malli/defn                                             schema.core/defn
   monger.operators/defoperator                                                          clojure.core/def
@@ -963,7 +956,6 @@
    metabase.models.user-test/with-groups                                         macros.metabase.models.user-test/with-groups
    metabase.query-processor.streaming/streaming-response                         macros.metabase.query-processor.streaming/streaming-response
    metabase.related-test/with-world                                              macros.metabase.related-test/with-world
-   metabase.shared.util.namespaces/import-fn                                     macros.metabase.shared.util.namespaces/import-fn
    metabase.task.setup.query-analysis-setup/with-test-setup!                     macros.metabase.task.setup.query-analysis-setup/with-test-setup!
    metabase.test.data.users/with-group-for-user                                  macros.metabase.test.data.users/with-group-for-user
    metabase.test.util/with-temp-env-var-value!                                   macros.metabase.test.util/with-temp-env-var-value!
@@ -972,6 +964,7 @@
    metabase.test/with-persistence-enabled!                                       macros.metabase.test.persistence/with-persistence-enabled!
    metabase.test/with-temp-env-var-value!                                        macros.metabase.test.util/with-temp-env-var-value!
    metabase.test/with-temporary-raw-setting-values                               macros.metabase.test.util/with-temporary-raw-setting-values
+   metabase.util.namespaces/import-fn                                            macros.metabase.util.namespaces/import-fn
    metabase.xrays.domain-entities.malli/define-getters-and-setters               macros.metabase.xrays.domain-entities.malli/define-getters-and-setters}}
 
  :config-in-comment

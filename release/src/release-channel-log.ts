@@ -35,8 +35,8 @@ export async function gitLog(channel: ReleaseChannel, edition: Edition): Promise
 function processCommit(commitLine: string, edition: Edition): CommitInfo {
   const [refs, message, hash, date] = commitLine.split('||');
   const version = edition === "ee"
-   ? refs?.match(/(v1\.[\d\.\-RCrc]+)/)?.[1] ?? ''
-   : refs?.match(/(v0\.[\d\.\-RCrc]+)/)?.[1] ?? '';
+   ? refs?.match(/(v1\.[\d\.\-(RC|beta|alpha)]+)/i)?.[1] ?? ''
+   : refs?.match(/(v0\.[\d\.\-(RC|beta|alpha)]+)/i)?.[1] ?? '';
 
   return { version, message, hash, date};
 }

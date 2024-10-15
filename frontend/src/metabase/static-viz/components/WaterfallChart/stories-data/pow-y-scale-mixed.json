@@ -237,8 +237,8 @@
         "graph.y_axis.scale": "pow",
         "graph.show_values": true,
         "graph.metrics": ["change"],
-        "metabase.shared.models.visualization-settings/column-settings": {},
-        "metabase.shared.models.visualization-settings/global-column-settings": {}
+        "metabase.models.visualization-settings/column-settings": {},
+        "metabase.models.visualization-settings/global-column-settings": {}
       },
       "native_form": {
         "query": "SELECT \"source\".\"category\" AS \"category\", \"source\".\"change\" AS \"change\" FROM (SELECT \"csv_upload_data\".\"csv_upload_waterfall_starts_above_0_ends_below_20231216121109\".\"_mb_row_id\" AS \"_mb_row_id\", \"csv_upload_data\".\"csv_upload_waterfall_starts_above_0_ends_below_20231216121109\".\"category\" AS \"category\", \"csv_upload_data\".\"csv_upload_waterfall_starts_above_0_ends_below_20231216121109\".\"change\" AS \"change\" FROM \"csv_upload_data\".\"csv_upload_waterfall_starts_above_0_ends_below_20231216121109\") AS \"source\" LIMIT 2000",
