@@ -1,7 +1,0 @@
-name: "Metabase CodeQL config"
-
-paths-ignore:
-  - "**/node_modules"
-  - "frontend/test/**"
-  - "frontend/**/*.unit.*"
-  - "e2e/**"
