@@ -134,8 +134,10 @@ export const getRoutes = store => {
           <Route
             path="getting-started"
             title={t`Getting Started`}
-            component={Onboarding}
-          />
+            component={IsAdmin}
+          >
+            <IndexRoute component={Onboarding} />
+          </Route>
 
           <Route path="search" title={t`Search`} component={SearchApp} />
           {/* Send historical /archive route to trash - can remove in v52 */}
