@@ -160,9 +160,41 @@ export const CollectionPickerInner = (
 
   useDeepCompareEffect(
     function setInitialPath() {
+      if (!pathProp && currentDashboard?.collection) {
+        const newPath = getStateFromIdPath({
+          idPath: getCollectionIdPath(
+            {
+              ...currentDashboard.collection,
+              location: currentDashboard.collection?.effective_location,
+              is_personal: currentDashboard.collection?.is_personal,
+            },
+            userPersonalCollectionId,
+          ),
+          namespace: options.namespace,
+          models,
+        });
+
+        const newSelectedItem = {
+          id: currentDashboard.id,
+          model: "dashboard" as const,
+          name: currentDashboard.name,
+        };
+
+        newPath[newPath.length - 1].selectedItem = newSelectedItem;
+
+        onPathChange(newPath);
+
+        if (currentDashboard.collection?.can_write) {
+          // start with the current item selected if we can
+          onItemSelect({
+            ...currentDashboard.collection,
+            model: "dashboard",
+          });
+        }
+      }
       // do not overwrite the previously selected item when the user switches
       // tabs; in this case the component is unmounted and this hook runs again
-      if (!pathProp && currentCollection?.id) {
+      else if (!pathProp && currentCollection?.id) {
         const newPath = getStateFromIdPath({
           idPath: getCollectionIdPath(
             {
