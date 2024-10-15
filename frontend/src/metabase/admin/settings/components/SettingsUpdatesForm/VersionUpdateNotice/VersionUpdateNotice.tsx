@@ -1,9 +1,12 @@
 import cx from "classnames";
 import { c, t } from "ttag";
 
+import { getLatestVersion } from "metabase/admin/settings/selectors";
+import { useSetting } from "metabase/common/hooks";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
+import { useSelector } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
 import type { VersionInfoRecord } from "metabase-types/api";
 
@@ -60,8 +63,11 @@ function DefaultUpdateMessage({ currentVersion }: { currentVersion: string }) {
 }
 
 function NewVersionAvailable({ currentVersion }: { currentVersion: string }) {
-  const latestVersion = MetabaseSettings.latestVersion();
-  const versionInfo = MetabaseSettings.versionInfo();
+  const versionInfo = useSetting("version-info");
+  const updateChannel = useSetting("update-channel");
+  const latestVersion = useSelector(getLatestVersion);
+
+  const lastestVersionInfo = versionInfo?.[updateChannel];
 
   return (
     <div>
@@ -98,26 +104,28 @@ function NewVersionAvailable({ currentVersion }: { currentVersion: string }) {
         </ExternalLink>
       </NewVersionContainer>
 
-      <div
-        className={cx(
-          CS.textMedium,
-          CS.bordered,
-          CS.rounded,
-          CS.p2,
-          CS.mt2,
-          CS.overflowYScroll,
-        )}
-        style={{ height: 330 }}
-      >
-        <h3 className={cx(CS.pb3, CS.textUppercase)}>{t`What's Changed:`}</h3>
+      {versionInfo && (
+        <div
+          className={cx(
+            CS.textMedium,
+            CS.bordered,
+            CS.rounded,
+            CS.p2,
+            CS.mt2,
+            CS.overflowYScroll,
+          )}
+          style={{ height: 330 }}
+        >
+          <h3 className={cx(CS.pb3, CS.textUppercase)}>{t`What's Changed:`}</h3>
 
-        {versionInfo.latest && <Version version={versionInfo.latest} />}
+          {lastestVersionInfo && <Version version={lastestVersionInfo} />}
 
-        {versionInfo.older &&
-          versionInfo.older.map((version, index) => (
-            <Version key={index} version={version} />
-          ))}
-      </div>
+          {versionInfo.older &&
+            versionInfo.older.map((version, index) => (
+              <Version key={index} version={version} />
+            ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -129,10 +137,7 @@ function Version({ version }: { version: VersionInfoRecord }) {
 
   return (
     <div className={CS.pb3}>
-      <h3 className={CS.textMedium}>
-        {formatVersion(version.version)}{" "}
-        {version.patch ? "(" + t`patch release` + ")" : null}
-      </h3>
+      <h3 className={CS.textMedium}>{formatVersion(version.version)}</h3>
       <ul style={{ listStyleType: "disc", listStylePosition: "inside" }}>
         {version.highlights &&
           version.highlights.map((highlight, index) => (

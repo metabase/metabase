@@ -22,7 +22,7 @@ import { CloudPanel } from "./components/CloudPanel";
 import { BccToggleWidget } from "./components/Email/BccToggleWidget";
 import { SettingsEmailForm } from "./components/Email/SettingsEmailForm";
 import SettingsLicense from "./components/SettingsLicense";
-import SettingsUpdatesForm from "./components/SettingsUpdatesForm/SettingsUpdatesForm";
+import { SettingsUpdatesForm } from "./components/SettingsUpdatesForm/SettingsUpdatesForm";
 import { UploadSettings } from "./components/UploadSettings";
 import CustomGeoJSONWidget from "./components/widgets/CustomGeoJSONWidget";
 import {
@@ -608,6 +608,21 @@ export const getSettingValues = createSelector(getSettings, settings => {
   }
   return settingValues;
 });
+
+export const getCurrentVersion = createSelector(
+  getDerivedSettingValues,
+  settings => {
+    return settings.version?.tag;
+  },
+);
+
+export const getLatestVersion = createSelector(
+  getDerivedSettingValues,
+  settings => {
+    const updateChannel = settings["update-channel"] ?? "latest";
+    return settings["version-info"]?.[updateChannel]?.version;
+  },
+);
 
 export const getNewVersionAvailable = createSelector(getSettings, settings => {
   return MetabaseSettings.newVersionAvailable(settings);
