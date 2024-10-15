@@ -18,6 +18,10 @@
       true,
       { "ignoreProperties": ["composes"] }
     ],
+    "function-no-unknown": [
+      true,
+      { "ignoreFunctions": ["alpha", "lighten", "darken", "rem"] }
+    ],
     "comment-empty-line-before": null,
     "selector-pseudo-element-colon-notation": null,
     "no-empty-source": null,
