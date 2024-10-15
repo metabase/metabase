@@ -1,8 +1,8 @@
 import { jt } from "ttag";
 
+import type { MoveDestination } from "metabase/collections/types";
 import { coerceCollectionId } from "metabase/collections/utils";
 import type Question from "metabase-lib/v1/Question";
-import type { CollectionId, DashboardId } from "metabase-types/api";
 
 import {
   CollectionLink,
@@ -11,11 +11,10 @@ import {
   ToastRoot,
 } from "./QuestionMoveToast.styled";
 
-interface QuestionMoveToastProps {
-  collectionId: CollectionId;
-  dashboardId?: DashboardId;
+type QuestionMoveToastProps = {
+  destination: MoveDestination;
   question: Question;
-}
+};
 
 const getMessage = (question: Question, collectionLink: JSX.Element) => {
   const type = question.type();
@@ -35,19 +34,17 @@ const getMessage = (question: Question, collectionLink: JSX.Element) => {
   throw new Error(`Unknown question.type(): ${type}`);
 };
 
-function QuestionMoveToast({
-  collectionId,
-  dashboardId,
-  question,
-}: QuestionMoveToastProps) {
-  const link = dashboardId ? (
-    <DashboardLink key="dashboard-link" id={dashboardId} />
-  ) : (
-    <CollectionLink
-      key="collection-link"
-      id={coerceCollectionId(collectionId)}
-    />
-  );
+function QuestionMoveToast({ destination, question }: QuestionMoveToastProps) {
+  const link =
+    destination.model === "dashboard" ? (
+      <DashboardLink key="dashboard-link" id={destination.id} />
+    ) : (
+      <CollectionLink
+        key="collection-link"
+        id={coerceCollectionId(destination.id)}
+      />
+    );
+
   return (
     <ToastRoot>
       <StyledIcon name="collection" />
