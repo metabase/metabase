@@ -15,7 +15,6 @@ import {
   popover,
   queryBuilderHeader,
   restore,
-  sidebar,
   summarize,
   undoToast,
   visitMetric,
@@ -213,7 +212,7 @@ describe("scenarios > metrics > question", () => {
     createQuestion(ORDERS_SCALAR_METRIC, { visitQuestion: true });
 
     summarize();
-    sidebar().findByText("Done").click();
+    cy.button("Done").click();
 
     queryBuilderHeader().button("Save").click();
     modal().within(() => {
