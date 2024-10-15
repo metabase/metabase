@@ -1,11 +1,14 @@
 (ns metabase-enterprise.sandbox.api.table-test
   (:require
+   [clojure.core.async :as a]
    [clojure.test :refer :all]
    [metabase-enterprise.sandbox.api.table :as table]
    [metabase-enterprise.sandbox.test-util :as mt.tu]
    [metabase-enterprise.test :as met]
+   [metabase.query-processor.async :as qp.async]
    [metabase.test :as mt]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [toucan2.core :as t2]))
 
 (def ^:private all-columns
   #{"CATEGORY_ID" "ID" "LATITUDE" "LONGITUDE" "NAME" "PRICE"})
@@ -24,7 +27,40 @@
                                    {:remappings {:cat [:variable [:field (mt/id :venues :category_id) nil]]}
                                     :query      (mt.tu/restricted-column-query (mt/id))}}
                       :attributes {:cat 50}}
-      (testing "Users with restricted access to the columns of a table should only see columns included in the GTAP question"
+      (testing "Users with restricted access to the columns of a table via an MBQL sandbox should only see columns
+               included in the sandboxing question"
+        (is (= #{"CATEGORY_ID" "ID" "NAME"}
+               (field-names :rasta))))
+
+      (testing "Users with full permissions should not be affected by this field filtering"
+        (is (= all-columns
+               (field-names :crowberto)))))))
+
+(defn- result-metadata-for-query [query]
+  (mt/with-test-user :crowberto
+    (first
+     (a/alts!!
+      [(qp.async/result-metadata-for-query-async query)
+       (a/timeout 1000)]))))
+
+(deftest native-query-metadata-test
+  (testing "GET /api/table/:id/query_metadata"
+    (met/with-gtaps! {:gtaps      {:venues
+                                   {:query (mt/native-query {:query "SELECT CATEGORY_ID, ID, NAME from venues;"})
+                                    :remappings {:cat [:variable [:field (mt/id :venues :category_id) nil]]}}}
+                      :attributes {:cat 50}}
+      ;; Fetch the card and manually compute & save the metadata
+      (let [card (t2/select-one :model/Card
+                                {:select [:c.id :c.dataset_query]
+                                 :from   [[:sandboxes :s]]
+                                 :join   [[:permissions_group :pg] [:= :s.group_id :pg.id]
+                                          [:report_card :c] [:= :c.id :s.card_id]]
+                                 :where  [:= :pg.id (u/the-id &group)]})
+            metadata (result-metadata-for-query (:dataset_query card))]
+        (t2/update! :model/Card :id (u/the-id card) {:result_metadata metadata}))
+
+      (testing "Users with restricted access to the columns of a table via a native query sandbox should only see
+               columns included in the sandboxing question"
         (is (= #{"CATEGORY_ID" "ID" "NAME"}
                (field-names :rasta))))
 
