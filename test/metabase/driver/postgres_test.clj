@@ -392,10 +392,10 @@
       (let [boop-field {:nfc-path [:bleh :meh] :database-type "decimal"}]
         (is (= [::postgres/json-query
                 [::h2x/identifier :field ["boop" "bleh"]]
-                "bigint"
+                "decimal"
                 [:meh]]
                (#'sql.qp/json-query :postgres boop-identifier boop-field)))
-        (is (= ["(boop.bleh#>> array[?]::text[])::bigint" "meh"]
+        (is (= ["(boop.bleh#>> array[?]::text[])::decimal" "meh"]
                (sql/format-expr (#'sql.qp/json-query :postgres boop-identifier boop-field))))))
     (testing "What if types are weird and we have lists"
       (let [weird-field {:nfc-path [:bleh "meh" :foobar 1234] :database-type "bigint"}]
