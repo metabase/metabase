@@ -6,17 +6,17 @@ import {
   editDashboard,
   getDashboardCard,
   getNotebookStep,
+  getNotebookStep,
+  main,
   main,
   modal,
   openQuestionActions,
   popover,
   restore,
+  restore,
   showDashboardCardActions,
   sidebar,
   visitDashboard,
-  getNotebookStep,
-  main,
-  restore,
 } from "e2e/support/helpers";
 
 const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
