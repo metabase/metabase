@@ -11,7 +11,7 @@ import type { CommonModalProps } from "./types";
 export interface ModalContentProps extends CommonModalProps {
   "data-testid"?: string;
   id?: string;
-  title?: string;
+  title?: string | ReactNode;
   footer?: ReactNode;
   children: ReactNode;
 

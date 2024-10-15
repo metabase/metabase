@@ -25,13 +25,15 @@ interface CollectionBreadcrumbsProps
   baseCollectionId?: CollectionId | null;
 }
 
+// TODO: stateful solution is somehow resolving the collection id to the trash sometimes...
 export const CollectionBreadcrumbs = (props: CollectionBreadcrumbsProps) => {
   const statefulCollectionId = useSelector(getCollectionId);
   const collectionId = props.collectionId ?? statefulCollectionId ?? "root";
 
   const { data: collection } = useGetCollectionQuery({ id: collectionId });
 
-  const dashboardId = useSelector(getQuestion)?.dashboardId();
+  const question = useSelector(getQuestion);
+  const dashboardId = question?.dashboardId();
   const isDashboardQuestion = _.isNumber(dashboardId);
   const isQuestionPage = useLocation().pathname?.startsWith("/question");
   const shouldShowDashboard = isDashboardQuestion && isQuestionPage;

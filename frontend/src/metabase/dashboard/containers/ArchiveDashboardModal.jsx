@@ -31,6 +31,14 @@ class ArchiveDashboardModal extends Component {
   render() {
     const { dashboard } = this.props;
 
+    const hasDashboardQuestions = dashboard.dashcards.some(dc =>
+      _.isNumber(dc.card.dashboard_id),
+    );
+
+    const message = hasDashboardQuestions
+      ? t`This will trash the dashboard and the questions that are saved in it. Are you sure you want to do this?`
+      : t`Are you sure you want to do this?`;
+
     return (
       <ArchiveModal
         title={
@@ -38,9 +46,9 @@ class ArchiveDashboardModal extends Component {
             ? t`Move this page to trash?`
             : t`Move this dashboard to trash?`
         }
-        message={t`Are you sure you want to do this?`}
         model="dashboard"
         modelId={dashboard?.id}
+        message={message}
         onClose={this.props.onClose}
         onArchive={this.archive}
       />

@@ -1,17 +1,13 @@
 import { useCallback } from "react";
 import { push } from "react-router-redux";
-import { t } from "ttag";
 import _ from "underscore";
 
 import { useGetDefaultCollectionId } from "metabase/collections/hooks";
 import Modal from "metabase/components/Modal";
 import QuestionSavedModal from "metabase/components/QuestionSavedModal";
 import { AddToDashSelectDashModal } from "metabase/containers/AddToDashSelectDashModal";
-import { MoveModal } from "metabase/containers/MoveModal";
 import { SaveQuestionModal } from "metabase/containers/SaveQuestionModal";
-import { ROOT_COLLECTION } from "metabase/entities/collections/constants";
 import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
-import Questions from "metabase/entities/questions";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { CreateAlertModalContent } from "metabase/notifications/AlertModals";
 import * as Urls from "metabase/lib/urls";
@@ -23,7 +19,6 @@ import type { QueryModalType } from "metabase/query_builder/constants";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import { getQuestionWithParameters } from "metabase/query_builder/selectors";
 import { FilterModal } from "metabase/querying/filters/components/FilterModal";
-import QuestionMoveToast from "metabase/questions/components/QuestionMoveToast";
 import ArchiveQuestionModal from "metabase/questions/containers/ArchiveQuestionModal";
 import EditEventModal from "metabase/timelines/questions/containers/EditEventModal";
 import MoveEventModal from "metabase/timelines/questions/containers/MoveEventModal";
@@ -32,6 +27,8 @@ import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { Alert, Card, User } from "metabase-types/api";
 import type { QueryBuilderMode } from "metabase-types/store";
+
+import { MoveQuestionModal } from "../MoveQuestionModal";
 
 interface QueryModalsProps {
   questionAlerts: Alert[];
@@ -272,49 +269,8 @@ export function QueryModals({
           onClose={onCloseModal}
         />
       );
-    case MODAL_TYPES.MOVE: {
-      const card = question.card();
-      const canMoveToDashboard =
-        card.type === "question" &&
-        Boolean(
-          card?.dashboard_count === 0 ||
-            (card?.dashboard_count === 1 && card?.dashboard_id),
-        );
-
-      return (
-        <MoveModal
-          title={t`Where do you want to save this?`}
-          initialCollectionId={question.collectionId() ?? "root"}
-          onClose={onCloseModal}
-          canMoveToDashboard={canMoveToDashboard}
-          onMove={destination => {
-            const destinationId =
-              destination.model === "collection"
-                ? destination.id || ROOT_COLLECTION.id
-                : destination.id;
-
-            dispatch(
-              Questions.actions.setCollection(
-                { id: question.id() },
-                { ...destination, id: destinationId },
-                {
-                  notify: {
-                    message: (
-                      <QuestionMoveToast
-                        destination={destination}
-                        question={question}
-                      />
-                    ),
-                    undo: false,
-                  },
-                },
-              ),
-            );
-            onCloseModal();
-          }}
-        />
-      );
-    }
+    case MODAL_TYPES.MOVE:
+      return <MoveQuestionModal question={question} onClose={onCloseModal} />;
     case MODAL_TYPES.ARCHIVE:
       return (
         <Modal onClose={onCloseModal}>
