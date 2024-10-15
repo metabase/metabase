@@ -108,6 +108,7 @@ function LastEditInfoLabel({
           size="sm"
           fw="bold"
           c="var(--mb-color-text-secondary)"
+          data-testid="revision-history-text"
         >
           {children}
         </Text>
