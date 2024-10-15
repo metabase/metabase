@@ -134,12 +134,13 @@
    :sso_configured                       (google/google-auth-enabled)
    :instance_started                     (snowplow/instance-creation)
    :has_sample_data                      (t2/exists? Database, :is_sample true)
-   :enable_embedding                     #_ {:clj-kondo/ignore [:deprecated-var]} (embed.settings/enable-embedding)
+   :enable_embedding                     #_{:clj-kondo/ignore [:deprecated-var]} (embed.settings/enable-embedding)
    :enable_embedding_sdk                 (embed.settings/enable-embedding-sdk)
    :enable_embedding_interactive         (embed.settings/enable-embedding-interactive)
    :enable_embedding_static              (embed.settings/enable-embedding-static)
-   :embedding_app_origin_set             (boolean #_{:clj-kondo/ignore [:deprecated-var]}
-                                                  (embed.settings/embedding-app-origin))
+   :embedding_app_origin_set             (boolean
+                                          #_{:clj-kondo/ignore [:deprecated-var]}
+                                          (embed.settings/embedding-app-origin))
    :embedding_app_origin_sdk_set         (boolean (let [sdk-origins (embed.settings/embedding-app-origins-sdk)]
                                                     (and sdk-origins (not= "localhost:*" sdk-origins))))
    :embedding_app_origin_interactive_set (embed.settings/embedding-app-origins-interactive)
@@ -621,8 +622,8 @@
 (defn- snowplow-grouped-metrics [{query-executions :query_executions :as _snowplow-grouped-metric-info}]
   [{:name :query_executions_by_source
     :values (mapv (fn [qe-group]
-                   {:group qe-group
-                    :value (get query-executions qe-group)})
+                    {:group qe-group
+                     :value (get query-executions qe-group)})
                   ["interactive_embed" "internal" "public_link" "sdk_embed" "static_embed"])
     :tags ["embedding"]}])
 
