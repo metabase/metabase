@@ -142,7 +142,7 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
       });
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Pick the metric you want to see").click();
+      cy.findByText("Pick a function or metric").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Count of rows").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
