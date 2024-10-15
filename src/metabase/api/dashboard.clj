@@ -112,7 +112,7 @@
                   :can_write
                   :param_fields
                   :param_values
-                  [:collection :is_personal]))))
+                  [:collection :is_personal :effective_location]))))
 
 (api/defendpoint POST "/"
   "Create a new Dashboard."
