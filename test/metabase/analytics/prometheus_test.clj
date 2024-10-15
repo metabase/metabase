@@ -176,7 +176,7 @@
   ([expected actual]
    (approx= expected actual 0.001))
   ([expected actual epsilon]
-   (< (- expected epsilon) actual (+ expected epsilon))))
+   (< (abs (- actual expected)) epsilon)))
 
 (deftest inc!-test
   (testing "inc has no effect if system is not setup"
