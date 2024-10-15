@@ -41,11 +41,11 @@
    (triggers/for-job send-notification-job-key)
    (triggers/start-now)
    (triggers/with-schedule
-     (cron/schedule
-      (cron/cron-schedule cron-schedule)
-      (cron/in-time-zone (TimeZone/getTimeZone ^String (send-notification-timezone)))
+    (cron/schedule
+     (cron/cron-schedule cron-schedule)
+     (cron/in-time-zone (TimeZone/getTimeZone ^String (send-notification-timezone)))
       ;; We want to fire the trigger once even if the previous triggers  missed
-      (cron/with-misfire-handling-instruction-fire-and-proceed)))
+     (cron/with-misfire-handling-instruction-fire-and-proceed)))
    ;; higher than sync
    (triggers/with-priority 6)))
 
@@ -55,27 +55,27 @@
   (let [existing-trigger (first (task/existing-trigger send-notification-job-key (send-notification-trigger-key id)))]
     (cond
      ;; delete trigger if type changes
-     (and
-      (not= type :notification-subscription/cron)
-      existing-trigger)
-     (do
-      (log/infof "Deleting trigger for subscription %d because of type changes" id)
-      (task/delete-trigger! (-> existing-trigger :key triggers/key)))
+      (and
+       (not= type :notification-subscription/cron)
+       existing-trigger)
+      (do
+        (log/infof "Deleting trigger for subscription %d because of type changes" id)
+        (task/delete-trigger! (-> existing-trigger :key triggers/key)))
 
      ;; create new if there is no existing trigger
-     (not existing-trigger)
-     (do
-      (log/infof "Creating new trigger for subscription %d with schedule %s" id cron_schedule)
-      (task/add-trigger! (build-trigger id cron_schedule)))
+      (not existing-trigger)
+      (do
+        (log/infof "Creating new trigger for subscription %d with schedule %s" id cron_schedule)
+        (task/add-trigger! (build-trigger id cron_schedule)))
 
-     (not= cron_schedule (:schedule existing-trigger))
-     (do
-      (log/infof "Rescheduling trigger for subscription %d from %s to %s" id (:schedule existing-trigger) cron_schedule)
-      (task/delete-trigger! (-> existing-trigger :key triggers/key))
-      (task/add-trigger! (build-trigger id cron_schedule)))
+      (not= cron_schedule (:schedule existing-trigger))
+      (do
+        (log/infof "Rescheduling trigger for subscription %d from %s to %s" id (:schedule existing-trigger) cron_schedule)
+        (task/delete-trigger! (-> existing-trigger :key triggers/key))
+        (task/add-trigger! (build-trigger id cron_schedule)))
 
-     :else
-     (log/infof "No changes to trigger for subscription %d" id))))
+      :else
+      (log/infof "No changes to trigger for subscription %d" id))))
 
 (defn delete-trigger-for-subscription!
   "Delete the trigger for a notification subscription."
