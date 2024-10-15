@@ -147,7 +147,10 @@ describeWithSnowplowEE(
         waitLoading();
 
         cy.findByTestId("download-button").click();
-        popover().findByText(".png").click();
+        popover().within(() => {
+          cy.findByText(".png").click();
+          cy.findByTestId("download-results-button").click();
+        });
 
         cy.verifyDownload(".png", { contains: true });
 
