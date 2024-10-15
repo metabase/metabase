@@ -4,7 +4,7 @@ import querystring from "querystring";
 import { fetchAlertsForQuestion } from "metabase/alert/alert";
 import Questions from "metabase/entities/questions";
 import Snippets from "metabase/entities/snippets";
-import { deserializeCardFromUrl, loadCard } from "metabase/lib/card";
+import { deserializeCardFromUrl } from "metabase/lib/card";
 import { isNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
 import {
@@ -35,6 +35,7 @@ import { getQueryBuilderModeFromLocation } from "../../typed-utils";
 import { updateUrl } from "../navigation";
 import { cancelQuery, runQuestionQuery } from "../querying";
 
+import { loadCard } from "./card";
 import { resetQB } from "./core";
 import {
   getParameterValuesForQuestion,
