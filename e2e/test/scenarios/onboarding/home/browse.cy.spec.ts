@@ -124,6 +124,7 @@ describeWithSnowplowEE("scenarios > browse (EE)", () => {
     );
     cy.intercept("POST", "/api/moderation-review").as("updateVerification");
   });
+
   const openFilterPopover = () => filterButton().click();
   const toggle = () =>
     cy.findByRole("switch", { name: /Show verified models only/ });

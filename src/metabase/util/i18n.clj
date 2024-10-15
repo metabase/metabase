@@ -6,6 +6,7 @@
    [clojure.walk :as walk]
    [metabase.util.i18n.impl :as i18n.impl]
    [metabase.util.log :as log]
+   [net.cgrand.macrovich :as macros]
    [potemkin :as p]
    [potemkin.types :as p.types])
   (:import
@@ -175,7 +176,7 @@
       (throw (Exception. "Premature i18n string lookup. Is there a top-level call to `trs` or `tru`?")))
     str))
 
-(defmacro tru
+(defmacro tru-clj
   "Applies `str` to `deferred-tru`'s expansion.
 
   The first argument can be a format string, or a valid `str` form with all string arguments. The latter can be used to
@@ -187,7 +188,7 @@
   [format-string-or-str & args]
   `(str* (deferred-tru ~format-string-or-str ~@args)))
 
-(defmacro trs
+(defmacro trs-clj
   "Applies `str` to `deferred-trs`'s expansion.
 
   The first argument can be a format string, or a valid `str` form with all string arguments. The latter can be used to
@@ -227,7 +228,7 @@
   (validate-n format-string format-string-pl)
   `(UserLocalizedString. ~format-string ~[n] ~{:n n :format-string-pl format-string-pl}))
 
-(defmacro trun
+(defmacro trun-clj
   "Similar to `tru` but chooses the appropriate singular or plural form based on the value of `n`.
 
   The first argument should be the singular form; the second argument should be the plural form, and the third argument
@@ -250,7 +251,7 @@
   (validate-n format-string format-string-pl)
   `(SiteLocalizedString. ~format-string ~[n] ~{:n n :format-string-pl format-string-pl}))
 
-(defmacro trsn
+(defmacro trsn-clj
   "Similar to `trs` but chooses the appropriate singular or plural form based on the value of `n`.
 
   The first argument should be the singular form; the second argument should be the plural form, and the third argument
@@ -273,3 +274,62 @@
                    (cond-> node
                      (localized-string? node) str))
                  x))
+
+;;;; Clojure/ClojureScript macros
+
+(defmacro tru
+  "i18n a string with the user's locale. Format string will be translated to the user's locale when the form is eval'ed.
+  Placeholders should use `gettext` format e.g. `{0}`, `{1}`, and so forth.
+
+    (tru \"Number of cans: {0}\" 2)"
+  {:style/indent [:form]}
+  [format-string & args]
+  (macros/case
+    :clj
+    `(tru-clj ~format-string ~@args)
+
+    :cljs
+    `(js-i18n ~format-string ~@args)))
+
+(defmacro trs
+  "i18n a string with the site's locale, when called from Clojure. Format string will be translated to the site's
+  locale when the form is eval'ed. Placeholders should use `gettext` format e.g. `{0}`, `{1}`, and so forth.
+
+    (trs \"Number of cans: {0}\" 2)
+
+  NOTE: When called from ClojureScript, this function behaves identically to `tru`. The originating JS callsite must
+  temporarily override the locale used by ttag using the `withInstanceLocalization` wrapper function."
+  {:style/indent [:form]}
+  [format-string & args]
+  (macros/case
+    :clj
+    `(trs-clj ~format-string ~@args)
+
+    :cljs
+    `(js-i18n ~format-string ~@args)))
+
+(defmacro trun
+  "i18n a string with both singular and plural forms, using the current user's locale. The appropriate plural form will
+  be returned based on the value of `n`. `n` can be interpolated into the format strings using the `{0}`
+  syntax. (Other placeholders are not supported)."
+  {:style/indent [:form]}
+  [format-string format-string-pl n]
+  (macros/case
+    :clj
+    `(trun-clj ~format-string ~format-string-pl ~n)
+
+    :cljs
+    `(js-i18n-n ~format-string ~format-string-pl ~n)))
+
+(defmacro trsn
+  "i18n a string with both singular and plural forms, using the site's locale. The appropriate plural form will be
+  returned based on the value of `n`. `n` can be interpolated into the format strings using the `{0}` syntax. (Other
+  placeholders are not supported)."
+  {:style/indent [:form]}
+  [format-string format-string-pl n]
+  (macros/case
+    :clj
+    `(trsn-clj ~format-string ~format-string-pl ~n)
+
+    :cljs
+    `(js-i18n-n ~format-string ~format-string-pl ~n)))
