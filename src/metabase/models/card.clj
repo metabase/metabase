@@ -412,18 +412,22 @@
   `(binding [*updating-dashboard* true]
      ~@body))
 
-(defn- is-valid-dashboard-internal-card-for-update [card changes]
+(defn- invalid-dashboard-internal-card-update-reason?
+  "Returns the reason, if any, why this card is an invalid Dashboard Question"
+  [card changes]
   (let [dq-will-change? (api/column-will-change? :dashboard_id card changes)
         will-be-dq? (or (and (not dq-will-change?)
                              (:dashboard_id card))
                         (and dq-will-change?
                              (:dashboard_id changes)))]
-    (if-not will-be-dq?
-      true
-      (and
-       (or *updating-dashboard* (not (api/column-will-change? :collection_id card changes)))
-       (not (api/column-will-change? :collection_position card changes))
-       (not (api/column-will-change? :type card changes))))))
+    (when will-be-dq?
+      (cond
+       (not (or *updating-dashboard* (not (api/column-will-change? :collection_id card changes))))
+       (tru "Invalid Dashboard Question: Cannot manually set `collection_id` on a Dashboard Question")
+       (api/column-will-change? :collection_position card changes)
+       (tru "Invalid Dashboard Question: Cannot set `collection_position` on a Dashboard Question")
+       (api/column-will-change? :type card changes)
+       (tru "Invalid Dashboard Question: Cannot set `type` on a Dashboard Question")))))
 
 (defn- assert-is-valid-dashboard-internal-update [changes card]
   (let [dashboard-id->name (dissoc
@@ -440,11 +444,10 @@
       (throw (ex-info (tru "Cannot convert to dashboard question: appears in other dashboards ({0})" (str/join "," (vals dashboard-id->name)))
                       {:status-code 400
                        :other-dashboards dashboard-id->name}))))
-  (when-not (is-valid-dashboard-internal-card-for-update card changes)
-    (throw (ex-info (tru "Invalid dashboard-internal card")
-                    {:status-code 400
-                     :changes changes
-                     :card card})))
+  (when-let [reason (invalid-dashboard-internal-card-update-reason? card changes)]
+    (throw (ex-info reason {:status-code 400
+                            :changes changes
+                            :card card})))
   changes)
 
 (defn- check-dashboard-internal-card-insert [card]
@@ -864,7 +867,11 @@
 
     (assert-is-valid-dashboard-internal-update card-updates card-before-update)
 
-    (when (:dashboard_id card-updates)
+    (when (or (:dashboard_id card-updates)
+
+              ;; we're un-archiving the card
+              (and (api/column-will-change? :archived card-before-update card-updates)
+                   (not (:archived card-updates))))
       (autoplace-dashcard-for-card! (:dashboard_id card-updates)
                                     card-before-update))
 
