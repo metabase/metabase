@@ -107,7 +107,7 @@
                    :model/PulseCard _ (merge
                                        (when (= :csv  export-format) {:include_csv true})
                                        (when (= :json export-format) {:include_json true})
-                                       (when (= :xlsx export-format) {:include_xlsx true})
+                                       (when (= :xlsx export-format) {:include_xls true})
                                        {:pulse_id pulse-id
                                         :card_id  (:id card)})
                    :model/PulseChannel {pulse-channel-id :id} {:channel_type :email
@@ -130,8 +130,7 @@
                      :model/PulseCard _ (merge
                                          (case export-format
                                            :csv  {:include_csv true}
-                                           :json {:include_json true}
-                                           :xlsx {:include_xlsx true})
+                                           :xlsx {:include_xls true})
                                          {:pulse_id          pulse-id
                                           :card_id           (:card_id card-or-dashcard)
                                           :dashboard_card_id (:id card-or-dashcard)})
@@ -150,8 +149,7 @@
                                                     :dashboard_id dashboard-id}
                      :model/PulseCard _ (merge
                                          (when (= :csv  export-format) {:include_csv true})
-                                         (when (= :json export-format) {:include_json true})
-                                         (when (= :xlsx export-format) {:include_xlsx true})
+                                         (when (= :xlsx export-format) {:include_xls true})
                                          {:pulse_id          pulse-id
                                           :card_id           (:id card-or-dashcard)
                                           :dashboard_card_id dashcard-id})
@@ -814,3 +812,58 @@
                   data   (process-results (keyword export-format) result)]
               (is (= ["Category" "Sum of Price"]
                      (first data))))))))))
+
+(deftest unpivoted-pivot-results-respect-row-col-measure-order
+  (testing "If a pivot question is downloaded or exported unpivoted, the results are ordered according to the order set in the rows, cols, and measures (in that order)."
+    (doseq [export-format ["csv" "xlsx" "json"]]
+      (testing (format "for %s" export-format)
+        (mt/dataset test-data
+          (mt/with-temp [:model/Card {pivot-card-id :id :as pivot-card}
+                         {:display                :pivot
+                          :visualization_settings {:pivot_table.column_split
+                                                   {:rows    [[:field (mt/id :orders :created_at) {:temporal-unit :month
+                                                                                                   :base-type     :type/Text}]]
+                                                    :columns []
+                                                    :values  [[:aggregation 4]
+                                                              [:aggregation 1]
+                                                              [:aggregation 2]
+                                                              [:aggregation 0]
+                                                              [:aggregation 3]]}
+                                                   :column_settings
+                                                   {"[\"name\",\"count\"]" {:column_title "A"}
+                                                    "[\"name\",\"sum\"]"   {:column_title "B"}
+                                                    "[\"name\",\"avg\"]"   {:column_title "C"}
+                                                    "[\"name\",\"max\"]"   {:column_title "D"}
+                                                    "[\"name\",\"min\"]"   {:column_title "E"}}}
+                          :dataset_query          {:database (mt/id)
+                                                   :type     :query
+                                                   :query
+                                                   {:source-table (mt/id :orders)
+                                                    :aggregation  [[:count]
+                                                                   [:sum [:field (mt/id :orders :quantity) {:base-type :type/Float}]]
+                                                                   [:avg [:field (mt/id :orders :discount) {:base-type :type/Float}]]
+                                                                   [:max [:field (mt/id :orders :quantity) {:base-type :type/Float}]]
+                                                                   [:min [:field (mt/id :orders :quantity) {:base-type :type/Float}]]]
+                                                    :breakout     [[:field (mt/id :orders :created_at) {:temporal-unit :month
+                                                                                                        :base-type     :type/Text}]]}}}
+                         :model/Dashboard {dashboard-id :id} {}
+                         :model/DashboardCard {dashcard-id :id} {:dashboard_id dashboard-id
+                                                                 :card_id      pivot-card-id}]
+            (let [card-result (mt/user-http-request :crowberto :post 200
+                                                    (format "card/%d/query/%s?format_rows=true"
+                                                            pivot-card-id export-format)
+                                                    {})
+                  card-data   (process-results (keyword export-format) card-result)
+                  dash-result (mt/user-http-request :crowberto :post 200
+                                                    (format "dashboard/%d/dashcard/%d/card/%d/query/%s?format_rows=true"
+                                                            dashboard-id dashcard-id pivot-card-id (name export-format))
+                                                    {})
+                  dash-data   (process-results (keyword export-format) dash-result)
+                  sub-data    (subscription-attachment! pivot-card (keyword export-format) true)]
+              (let [expected ["Created At" "E" "B" "C ($)" "A" "D"]]
+                (is (= {:downloads (repeat 2 expected)
+                        :subscription (when (#{"csv" "xlsx"} export-format)
+                                        expected)}
+                       {:downloads (mapv first [card-data dash-data])
+                        :subscription (when (#{"csv" "xlsx"} export-format)
+                                        (first sub-data))}))))))))))
