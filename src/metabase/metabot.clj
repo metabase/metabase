@@ -20,6 +20,9 @@
 (p/import-vars
  [metabot-feedback
   submit-feedback]
+ [metabot-settings
+  openai-api-key
+  openai-organization]
  [metabot-util
   denormalize-database
   denormalize-model

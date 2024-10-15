@@ -322,6 +322,7 @@
     metabase.lib                   :any                                                             ; TODO -- :cry: 34 externally referenced namespaces, but maybe half of them are schema namespaces which technically don't need to be required.
     metabase.logger                #{metabase.logger}
     metabase.metabot               #{metabase.metabot}
+    metabase.metabot-v3            #{metabase.metabot-v3}
     metabase.models                :any                                                             ; TODO -- scream, 62 namespaces used elsewhere, but to be fair a lot of these don't *need* to be required.
     metabase.moderation            #{metabase.moderation}
     metabase.notification          #{metabase.notification.core}
@@ -411,6 +412,7 @@
     metabase.logger                #{metabase.config
                                      metabase.plugins}
     metabase.metabot               :any
+    metabase.metabot-v3            :any
     metabase.models                :any
     metabase.moderation            :any
     metabase.notification          :any
@@ -864,6 +866,7 @@
    metabase.lib.test-util.macros/$ids                                                                                        hooks.metabase.test.data/$ids
    metabase.lib.test-util.macros/mbql-query                                                                                  hooks.metabase.test.data/mbql-query
    metabase.lib.test-util.macros/with-testing-against-standard-queries                                                       hooks.metabase.lib.test-util.macros/with-testing-against-standard-queries
+   metabase.metabot-v3.tools.interface/deftool                                                                               hooks.metabase.metabot-v3.tools.interface/deftool
    metabase.models.collection-test/with-collection-hierarchy!                                                                hooks.common/let-one-with-optional-value
    metabase.models.collection-test/with-personal-and-impersonal-collections                                                  hooks.common/with-two-bindings
    metabase.models.dashboard-tab-test/with-dashtab-in-personal-collection                                                    hooks.common/with-one-top-level-binding
