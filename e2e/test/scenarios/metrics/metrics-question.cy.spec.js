@@ -215,8 +215,6 @@ describe("scenarios > metrics > question", () => {
     cy.button("Done").click();
 
     queryBuilderHeader().button("Save").click();
-    modal().within(() => {
-      cy.findByText("Replace or save as new?").should("not.exist");
-    });
+    modal().findByText("Replace or save as new?").should("not.exist");
   });
 });
