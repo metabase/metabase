@@ -27,5 +27,5 @@ export const getErrorComponent = (state: SdkStoreState) =>
 export const getMetabaseInstanceUrl = (state: SdkStoreState) =>
   state.sdk?.metabaseInstanceUrl;
 
-export const getFetchRefreshTokenFn = (state: SdkStoreState) =>
+export const [getFetchRefreshTokenFn = (state: SdkStoreState) =>
   state.sdk.fetchRefreshTokenFn;

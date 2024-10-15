@@ -35,8 +35,10 @@
   sso-backend)
 
 (defn- throw-not-configured-error []
-  (throw (ex-info (str (tru "SSO has not been enabled and/or configured"))
-                  {:status-code 400})))
+  (throw
+    (ex-info "SSO has not been enabled and/or configured"
+             {:status-code 400
+              :status      "error-sso-disabled"})))
 
 (defmethod sso-get :default
   [_]

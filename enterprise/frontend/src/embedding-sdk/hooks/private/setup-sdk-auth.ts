@@ -20,7 +20,11 @@ const setupJwtAuth = (
   api.onBeforeRequest = async () => {
     const tokenState = await dispatch(getOrRefreshSession(jwtProviderUri));
 
+    console.log({tokenState})
+
     api.sessionToken = (tokenState.payload as EmbeddingSessionToken | null)?.id;
+
+    console.log(api.sessionToken)
   };
 
   dispatch(setLoginStatus({ status: "validated" }));

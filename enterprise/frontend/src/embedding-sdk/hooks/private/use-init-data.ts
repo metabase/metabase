@@ -6,6 +6,8 @@ import { setupSdkAuth } from "embedding-sdk/hooks";
 import { COULD_NOT_AUTHENTICATE_MESSAGE } from "embedding-sdk/lib/user-warnings";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
 import {
+  getOrRefreshSession,
+  refreshTokenAsync,
   setFetchRefreshTokenFn,
   setLoginStatus,
 } from "embedding-sdk/store/reducer";
@@ -15,6 +17,8 @@ import api from "metabase/lib/api";
 import { refreshSiteSettings } from "metabase/redux/settings";
 import { refreshCurrentUser } from "metabase/redux/user";
 import registerVisualizations from "metabase/visualizations/register";
+import { match } from "ts-pattern";
+import { useMount } from "react-use";
 
 const registerVisualizationsOnce = _.once(registerVisualizations);
 
@@ -22,7 +26,7 @@ interface InitDataLoaderParameters {
   config: SDKConfig;
 }
 
-export const useInitData = ({ config }: InitDataLoaderParameters) => {
+export const useInitDataOld = ({ config }: InitDataLoaderParameters) => {
   const { allowConsoleLog = true } = config;
 
   // This is outside of a useEffect otherwise calls done on the first render could use the wrong value
@@ -102,4 +106,98 @@ export const useInitData = ({ config }: InitDataLoaderParameters) => {
       fetchData();
     }
   }, [dispatch, loginStatus.status]);
+};
+
+export const useInitData = ({ config }: { config: SDKConfig }) => {
+  const loginStatus = useSdkSelector(getLoginStatus);
+  const dispatch = useSdkDispatch();
+
+  const { allowConsoleLog = true } = config;
+
+  useMount(() => {
+    // This is outside of a useEffect otherwise calls done on the first render could use the wrong value
+    // This is the case for example for the locale json files
+    if (api.basename !== config.metabaseInstanceUrl) {
+      api.basename = config.metabaseInstanceUrl;
+    }
+
+    registerVisualizationsOnce();
+
+    const EMBEDDING_SDK_VERSION = getEmbeddingSdkVersion();
+    api.requestClient = {
+      name: "embedding-sdk-react",
+      version: EMBEDDING_SDK_VERSION,
+    };
+
+    if (allowConsoleLog) {
+      // eslint-disable-next-line no-console
+      console.log(
+        // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
+        `Using Metabase Embedding SDK, version ${EMBEDDING_SDK_VERSION}`,
+      );
+    }
+
+    dispatch(setFetchRefreshTokenFn(config.fetchRequestToken ?? null));
+  });
+
+  useEffect(() => {
+    match(loginStatus.status)
+      .with("uninitialized", () => {
+        setupSdkAuth(config, dispatch);
+      })
+      .with("validated", async () => {
+        if (!config.jwtProviderUri) {
+          dispatch(
+            setLoginStatus({
+              status: "error",
+              error: new Error("jwtProviderUri not present"),
+            }),
+          );
+        } else {
+          const token = await dispatch(
+            refreshTokenAsync(config.jwtProviderUri),
+          );
+          console.log(token)
+          if (token) {
+            dispatch(
+              setLoginStatus({
+                status: "loading",
+              }),
+            );
+          }
+        }
+      })
+      .with("loading", async () => {
+        try {
+          console.log(api.sessionToken)
+          const [userResponse, siteSettingsResponse] = await Promise.all([
+            dispatch(refreshCurrentUser()),
+            dispatch(refreshSiteSettings({})),
+          ]);
+
+          if (
+            userResponse.meta.requestStatus === "rejected" ||
+            siteSettingsResponse.meta.requestStatus === "rejected"
+          ) {
+            dispatch(
+              setLoginStatus({
+                status: "error",
+                error: new Error(COULD_NOT_AUTHENTICATE_MESSAGE),
+              }),
+            );
+            return;
+          }
+
+          dispatch(setLoginStatus({ status: "success" }));
+        } catch (error) {
+          dispatch(
+            setLoginStatus({
+              status: "error",
+              error: new Error(COULD_NOT_AUTHENTICATE_MESSAGE),
+            }),
+          );
+        }
+      })
+      .otherwise(() => null);
+  });
 };

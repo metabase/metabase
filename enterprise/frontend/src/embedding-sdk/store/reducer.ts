@@ -42,6 +42,8 @@ const REFRESH_TOKEN = "sdk/token/REFRESH_TOKEN";
 export const getOrRefreshSession = createAsyncThunk(
   GET_OR_REFRESH_SESSION,
   async (url: string, { dispatch, getState }) => {
+    console.log("getOrRefreshSession")
+    console.trace()
     const state = getSessionTokenState(getState() as SdkStoreState);
     const token = state?.token;
 
