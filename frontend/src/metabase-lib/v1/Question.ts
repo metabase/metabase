@@ -762,7 +762,9 @@ class Question {
           : -1;
         return applyFilterParameter(query, stageIndex, parameter);
       } else if (isTemporalUnitParameter(parameter)) {
-        const stageIndex = -1; // temporal unit parameters at different stages are not supported
+        const stageIndex = isDimensionTarget(parameter.target)
+          ? getParameterDimensionTargetStageIndex(parameter.target)
+          : -1;
         return applyTemporalUnitParameter(query, stageIndex, parameter);
       } else {
         return query;
