@@ -561,7 +561,7 @@
           (mt/with-db database
             (sync-tables/sync-tables-and-database! database)
             (is (= #{{:name              "trivial_json → a",
-                      :database-type     "bigint",
+                      :database-type     "decimal",
                       :base-type         :type/Integer,
                       :database-position 0,
                       :json-unfolding    false,
@@ -586,7 +586,7 @@
           (mt/with-db database
             (sync-tables/sync-tables-and-database! database)
             (is (= #{{:name              "trivial_json → a",
-                      :database-type     "bigint",
+                      :database-type     "decimal",
                       :base-type         :type/Integer,
                       :database-position 0,
                       :json-unfolding    false,
