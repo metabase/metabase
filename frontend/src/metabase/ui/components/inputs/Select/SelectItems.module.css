@@ -1,0 +1,62 @@
+.SelectItems_Options {
+  padding: 0.75rem;
+}
+
+.SelectItems_Item {
+  --combobox-option-padding: 0;
+
+  color: var(--mb-color-text-primary);
+  font-size: var(--select-item-font-size);
+  line-height: var(--select-item-line-height);
+
+  &:hover {
+    color: var(--mb-color-text-hover);
+    background-color: var(--mb-color-background-hover);
+  }
+
+  &[aria-selected="true"] {
+    color: var(--mb-color-text-selected) !important;
+    background-color: var(--mb-color-background-selected) !important;
+  }
+
+  &[data-combobox-disabled] {
+    cursor: default;
+    color: var(--mb-color-text-light);
+    pointer-events: none;
+    opacity: 0.75;
+  }
+}
+
+.SelectItems_Group {
+  &:not(:first-of-type) {
+    &::before {
+      content: "";
+      display: block;
+      margin-top: calc(var(--mantine-spacing-sm) - 1px);
+      margin-bottom: var(--mantine-spacing-xs);
+      margin-inline: var(--mantine-spacing-sm);
+      border-top: 1px solid var(--mb-color-border);
+    }
+  }
+}
+
+.SelectItems_GroupLabel {
+  --combobox-option-padding: var(--mantine-spacing-sm);
+
+  color: var(--mb-color-text-primary);
+  font-size: --select-item-group-label-font-size;
+  margin-top: 0 !important;
+  padding-top: var(--mantine-spacing-xs);
+  padding-bottom: var(--mantine-spacing-xs);
+
+  &::after {
+    display: none;
+  }
+}
+
+.SelectItemsNothingFound {
+  color: var(--mb-color-text-light);
+  padding: var(--mantine-spacing-sm);
+  font-size: var(--select-item-font-size);
+  line-height: var(--select-item-line-height);
+}
