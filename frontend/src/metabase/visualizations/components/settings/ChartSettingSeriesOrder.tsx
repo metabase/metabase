@@ -199,6 +199,7 @@ export const ChartSettingSeriesOrder = ({
               color="text-medium"
               variant="subtle"
               leftIcon={<Icon name="gear" />}
+              aria-label={t`Other series settings`}
               onClick={handleOtherSeriesSettingsClick}
             />
           </Flex>

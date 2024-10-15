@@ -101,6 +101,7 @@ const ChartSettingFieldPicker = ({
           onClick={e => {
             onShowWidget(menuWidgetInfo, e.target);
           }}
+          data-testid={`settings-${value}`}
         />
       )}
       {onRemove && (

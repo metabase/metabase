@@ -771,8 +771,15 @@ describe("scenarios > visualizations > bar chart", () => {
       { "temporal-unit": "month" },
     ];
 
-    function setMaxCategories(value) {
-      cy.findByLabelText("Maximum number of categories")
+    function setMaxCategories(value, { viaBreakoutSettings = false } = {}) {
+      if (viaBreakoutSettings) {
+        // TODO Remove `force: true` once the popover positioning is fixed
+        leftSidebar().findByTestId("settings-STATE").click({ force: true });
+      } else {
+        leftSidebar().findByLabelText("Other series settings").click();
+      }
+      popover()
+        .findByTestId("graph-max-categories-input")
         .type(`{selectAll}${value}`)
         .blur();
       cy.wait(500); // wait for viz to re-render
@@ -858,24 +865,22 @@ describe("scenarios > visualizations > bar chart", () => {
 
     // Test "graph.max_categories" change
     cy.findByTestId("viz-settings-button").click();
-    leftSidebar().within(() => {
-      cy.findByText("Display").click();
-      setMaxCategories(4);
-    });
+    setMaxCategories(4);
     chartPathWithFillColor(AK_SERIES_COLOR).first().realHover();
     echartsTooltip().find("tr").should("have.length", 5);
     queryBuilderMain().findAllByTestId("legend-item").should("have.length", 5);
 
     // Test "graph.max_categories" removes "Other" altogether
-    leftSidebar().within(() => setMaxCategories(0));
+    setMaxCategories(0);
     chartPathWithFillColor(AK_SERIES_COLOR).first().realHover();
     echartsTooltip().find("tr").should("have.length", 14);
     queryBuilderMain().findAllByTestId("legend-item").should("have.length", 14);
     otherSeriesChartPaths().should("not.exist");
 
     // Test "graph.other_series_aggregation_fn" is hidden for MBQL queries
+    setMaxCategories(8, { viaBreakoutSettings: true });
     leftSidebar().within(() => {
-      setMaxCategories(8);
+      cy.findByText("Display").click();
       cy.findByText('"Other" series aggregation function').should("not.exist");
     });
 

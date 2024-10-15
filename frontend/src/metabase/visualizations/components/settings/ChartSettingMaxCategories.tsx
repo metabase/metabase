@@ -31,7 +31,10 @@ export const ChartSettingMaxCategories = ({
         label={t`Enforce maximum number of series`}
         onChange={e => handleToggleMaxNumberOfSeries(e.target.checked)}
       />
-      <ChartSettingInputNumeric {...props} />
+      <ChartSettingInputNumeric
+        {...props}
+        data-testid="graph-max-categories-input"
+      />
       <Text>{t`Series after this number will be grouped into "Other"`}</Text>
     </Stack>
   );
