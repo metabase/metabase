@@ -2,8 +2,7 @@
   (:refer-clojure :exclude [fn defn defn- defmethod])
   (:require
    #?@(:clj
-       ([metabase.util.i18n]
-        [metabase.util.malli.defn :as mu.defn]
+       ([metabase.util.malli.defn :as mu.defn]
         [metabase.util.malli.fn :as mu.fn]
         [net.cgrand.macrovich :as macros]
         [potemkin :as p]))
@@ -12,12 +11,12 @@
    [malli.destructure]
    [malli.error :as me]
    [malli.util :as mut]
-   [metabase.shared.util.i18n :as i18n])
+   [metabase.util.i18n :as i18n])
   #?(:cljs (:require-macros [metabase.util.malli])))
 
 #?(:clj
    (p/import-vars
-    [mu.fn fn]
+    [mu.fn fn instrument-ns?]
     [mu.defn defn defn-]))
 
 (core/defn humanize-include-value
@@ -39,7 +38,7 @@
 (def localized-string-schema
   "Schema for localized string."
   #?(:clj  [:fn {:error/message "must be a localized string"}
-            metabase.util.i18n/localized-string?]
+            i18n/localized-string?]
      ;; TODO Is there a way to check if a string is being localized in CLJS, by the `ttag`?
      ;; The compiler seems to just inline the translated strings with no annotation or wrapping.
      :cljs :string))
@@ -118,12 +117,14 @@
    (defn validate-throw
      "Returns the value if it matches the schema, else throw an exception."
      [schema-or-validator value]
-     (if-not ((if (fn? schema-or-validator)
-                schema-or-validator
-                (mc/validator schema-or-validator))
-              value)
-       (throw (ex-info "Value does not match schema" {:value value :schema schema-or-validator}))
-       value)))
+     (let [is-validator? (fn? schema-or-validator)]
+       (if-not ((if is-validator?
+                  schema-or-validator
+                  (mc/validator schema-or-validator))
+                value)
+         (throw (ex-info "Value does not match schema" (when-not is-validator?
+                                                         {:error (explain schema-or-validator value)})))
+         value))))
 
 (core/defn map-schema-assoc
   "Returns a new schema that is the same as map-schema, but with the key k associated with the value v.

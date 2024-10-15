@@ -97,8 +97,8 @@
         "params": null
       },
       "viz-settings": {
-        "metabase.shared.models.visualization-settings/column-settings": {},
-        "metabase.shared.models.visualization-settings/global-column-settings": {}
+        "metabase.models.visualization-settings/column-settings": {},
+        "metabase.models.visualization-settings/global-column-settings": {}
       },
       "results_timezone": "America/Montevideo",
       "results_metadata": {
@@ -231,8 +231,8 @@
         "params": null
       },
       "viz-settings": {
-        "metabase.shared.models.visualization-settings/column-settings": {},
-        "metabase.shared.models.visualization-settings/global-column-settings": {}
+        "metabase.models.visualization-settings/column-settings": {},
+        "metabase.models.visualization-settings/global-column-settings": {}
       },
       "results_timezone": "America/Montevideo",
       "results_metadata": {

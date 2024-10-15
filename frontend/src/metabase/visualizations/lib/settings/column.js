@@ -2,7 +2,7 @@ import moment from "moment-timezone"; // eslint-disable-line no-restricted-impor
 import { t } from "ttag";
 import _ from "underscore";
 
-import { currency } from "cljs/metabase.shared.util.currency";
+import { currency } from "cljs/metabase.util.currency";
 import {
   formatColumn,
   getCurrencySymbol,

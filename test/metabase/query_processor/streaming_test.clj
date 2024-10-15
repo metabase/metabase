@@ -7,13 +7,13 @@
    [medley.core :as m]
    [metabase.api.embed-test :as embed-test]
    [metabase.models :refer [Card Dashboard DashboardCard]]
+   [metabase.models.visualization-settings :as mb.viz]
    [metabase.query-processor :as qp]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.query-processor.streaming.test-util :as streaming.test-util]
    [metabase.query-processor.streaming.xlsx-test :as xlsx-test]
    [metabase.server.protocols :as server.protocols]
-   [metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.pipeline :as t2.pipeline]
@@ -333,6 +333,7 @@
                   (let [results (mt/user-http-request user :post 200
                                                       (format "dataset/%s" (name export-format))
                                                       {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}}
+                                                      :format_rows true
                                                       :query query-json
                                                       :visualization_settings viz-settings-json)]
                     ((-> assertions export-format) results))
@@ -340,7 +341,8 @@
                   :card
                   (let [results (mt/user-http-request user :post 200
                                                       (format "card/%d/query/%s" (u/the-id card) (name export-format))
-                                                      {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}})]
+                                                      {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}}
+                                                      :format_rows true)]
                     ((-> assertions export-format) results))
 
                   :dashboard
@@ -350,12 +352,13 @@
                                                               (u/the-id dashcard)
                                                               (u/the-id card)
                                                               (name export-format))
-                                                      {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}})]
+                                                      {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}}
+                                                      :format_rows true)]
                     ((-> assertions export-format) results))
 
                   :public
                   (let [results (mt/user-http-request user :get 200
-                                                      (format "public/card/%s/query/%s" public-uuid (name export-format))
+                                                      (format "public/card/%s/query/%s?format_rows=true" public-uuid (name export-format))
                                                       {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}})]
                     ((-> assertions export-format) results))
 
