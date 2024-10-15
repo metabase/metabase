@@ -143,7 +143,7 @@ Metabase uses this anonymous user account to identify anonymous views, for examp
 - Last name: Metabase
 - Email: internal@metabase.com
 
-Metabase uses this account to load content into Metabase (like the [Metabase analytics](../usage-and-performance-tools/usage-analytics.md) collection). You may see this `internal@metabase.com` account in the logs.
+Metabase uses this account to load content into Metabase (like the [Usage analytics](../usage-and-performance-tools/usage-analytics.md) collection). You may see this `internal@metabase.com` account in the logs.
 
 ## Groups
 
