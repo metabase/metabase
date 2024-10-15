@@ -33,6 +33,7 @@
    [metabase.query-processor.middleware.persistence :as qp.persistence]
    [metabase.query-processor.middleware.pre-alias-aggregations :as qp.pre-alias-aggregations]
    [metabase.query-processor.middleware.reconcile-breakout-and-order-by-bucketing :as reconcile-bucketing]
+   [metabase.query-processor.middleware.remove-inactive-field-refs :as qp.remove-inactive-field-refs]
    [metabase.query-processor.middleware.resolve-fields :as qp.resolve-fields]
    [metabase.query-processor.middleware.resolve-joined-fields :as resolve-joined-fields]
    [metabase.query-processor.middleware.resolve-joins :as resolve-joins]
@@ -72,6 +73,29 @@
                      assoc :converted-form query)))
       (with-meta (meta middleware-fn))))
 
+(def ^:private unconverted-property?
+  (some-fn #{:info} qualified-keyword?))
+
+(defn- copy-unconverted-properties
+  [to from]
+  (reduce-kv (fn [m k v]
+               (cond-> m
+                 (unconverted-property? k) (assoc k v)))
+             to
+             from))
+
+(defn- ensure-pmbql-for-unclean-query
+  [middleware-fn]
+  (-> (fn [query]
+        (mu/disable-enforcement
+          (binding [lib.convert/*clean-query* false]
+            (let [query' (-> (cond->> query
+                               (not (:lib/type query))
+                               (lib.query/query (qp.store/metadata-provider)))
+                             (copy-unconverted-properties query))]
+              (-> query' middleware-fn ->legacy)))))
+      (with-meta (meta middleware-fn))))
+
 (def ^:private middleware
   "Pre-processing middleware. Has the form
 
@@ -104,6 +128,7 @@
    (ensure-legacy #'resolve-joined-fields/resolve-joined-fields)
    (ensure-legacy #'fix-bad-refs/fix-bad-references)
    (ensure-legacy #'escape-join-aliases/escape-join-aliases)
+   (ensure-pmbql-for-unclean-query #'qp.remove-inactive-field-refs/remove-inactive-field-refs)
    ;; yes, this is called a second time, because we need to handle any joins that got added
    (ensure-legacy #'qp.middleware.enterprise/apply-sandboxing)
    (ensure-legacy #'qp.cumulative-aggregations/rewrite-cumulative-aggregations)
