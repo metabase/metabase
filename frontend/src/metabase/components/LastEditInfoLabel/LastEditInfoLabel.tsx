@@ -95,15 +95,20 @@ function LastEditInfoLabel({
     <Tooltip disabled={!timeLabel} {...tooltipProps}>
       {onClick ? (
         <TextButton
-          size="small"
           className={className}
+          size="small"
           onClick={onClick}
           data-testid="revision-history-button"
         >
           {children}
         </TextButton>
       ) : (
-        <Text size="sm" fw="bold" c="var(--mb-color-text-secondary)">
+        <Text
+          className={className}
+          size="sm"
+          fw="bold"
+          c="var(--mb-color-text-secondary)"
+        >
           {children}
         </Text>
       )}
