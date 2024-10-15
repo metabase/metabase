@@ -471,8 +471,6 @@ function removeExtraBreakouts(
   { groupUnit }: OffsetOptions,
 ) {
   const column = getBreakoutColumn(query, stageIndex);
-  const { breakoutPositions = [] } = Lib.displayInfo(query, stageIndex, column);
-  const breakouts = Lib.breakouts(query, stageIndex);
   const groupBreakoutInfo = getGroupBreakoutInfo(query, stageIndex, column);
   const offsetBreakoutInfo = getOffsetBreakoutInfo(
     query,
@@ -485,11 +483,15 @@ function removeExtraBreakouts(
     offsetBreakoutInfo?.breakoutIndex,
   ];
 
-  return breakoutPositions.reduce(
-    (query, breakoutIndex) =>
-      excludeBreakoutIndexes.includes(breakoutIndex)
-        ? query
-        : Lib.removeClause(query, stageIndex, breakouts[breakoutIndex]),
-    query,
-  );
+  const breakouts = Lib.breakouts(query, stageIndex);
+  return breakouts.reduce((query, breakout, breakoutIndex) => {
+    if (excludeBreakoutIndexes.includes(breakoutIndex)) {
+      return query;
+    }
+
+    const column = Lib.breakoutColumn(query, stageIndex, breakout);
+    return Lib.isTemporal(column)
+      ? Lib.removeClause(query, stageIndex, breakout)
+      : query;
+  }, query);
 }
