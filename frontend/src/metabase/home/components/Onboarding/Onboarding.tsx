@@ -82,7 +82,7 @@ export const Onboarding = () => {
               </Accordion.Control>
               <Accordion.Panel>
                 <Stack spacing="lg">
-                  <VideoPlaceholder />
+                  <VideoPlaceholder src="https://www.youtube.com/embed/dVNB-xJW0CY?si=m_fyWH878JJ0CVS1" />
                   <Text>
                     {t`You can connect multiple databases, and query them directly with the query builder or the Native/SQL editor.`}
                   </Text>
@@ -98,7 +98,7 @@ export const Onboarding = () => {
               </Accordion.Control>
               <Accordion.Panel>
                 <Stack spacing="lg">
-                  <VideoPlaceholder />
+                  <VideoPlaceholder src="https://www.youtube.com/embed/dVNB-xJW0CY?si=m_fyWH878JJ0CVS1" />
                   {/* TODO: different copy for different plans? */}
                   <Text>{t`Don't be shy with the invites.`}</Text>
 
@@ -123,7 +123,7 @@ export const Onboarding = () => {
               </Accordion.Control>
               <Accordion.Panel>
                 <Stack spacing="lg">
-                  <VideoPlaceholder />
+                  <VideoPlaceholder src="https://www.youtube.com/embed/dVNB-xJW0CY?si=m_fyWH878JJ0CVS1" />
                   <Text>
                     {jt`Hover over a table and click the yellow lightning bolt ${(
                       <Icon
@@ -146,7 +146,7 @@ export const Onboarding = () => {
               </Accordion.Control>
               <Accordion.Panel>
                 <Stack spacing="lg">
-                  <VideoPlaceholder />
+                  <VideoPlaceholder src="https://www.youtube.com/embed/dVNB-xJW0CY?si=m_fyWH878JJ0CVS1" />
                   <Text>
                     {jt`Filter and summarize data, add custom columns, join data from other tables, and more - ${(<b>{t`all without SQL`}</b>)}. And when you build a chart with the query builder, people will be able to ${(
                       <b>{t`drill-through the chart`}</b>
@@ -165,7 +165,7 @@ export const Onboarding = () => {
               </Accordion.Control>
               <Accordion.Panel>
                 <Stack spacing="lg">
-                  <VideoPlaceholder />
+                  <VideoPlaceholder src="https://www.youtube.com/embed/dVNB-xJW0CY?si=m_fyWH878JJ0CVS1" />
                   <Text>
                     {jt`Use the ${(<b>{t`native query editor`}</b>)} to query data with SQL or the query language native to your database. You can insert variables in your code to create ${
                       showMetabaseLinks ? (
@@ -187,7 +187,7 @@ export const Onboarding = () => {
               </Accordion.Control>
               <Accordion.Panel>
                 <Stack spacing="lg">
-                  <VideoPlaceholder />
+                  <VideoPlaceholder src="https://www.youtube.com/embed/dVNB-xJW0CY?si=m_fyWH878JJ0CVS1" />
                   <Text>
                     {jt`You can organize questions into a ${
                       showMetabaseLinks ? (
@@ -197,11 +197,11 @@ export const Onboarding = () => {
                       )
                     } and add text cards.`}
                   </Text>
-                  <VideoPlaceholder />
+                  <VideoPlaceholder src="https://www.youtube.com/embed/dVNB-xJW0CY?si=m_fyWH878JJ0CVS1" />
                   <Text>
                     {jt`You can add ${(<b>{t`filters`}</b>)} to dashboards and connect them to fields on questions to narrow the results.`}
                   </Text>
-                  <VideoPlaceholder />
+                  <VideoPlaceholder src="https://www.youtube.com/embed/dVNB-xJW0CY?si=m_fyWH878JJ0CVS1" />
                   <Text>
                     {t`You can drill-through your dashboard and charts to see more detailed data underneath.`}
                   </Text>
@@ -220,7 +220,7 @@ export const Onboarding = () => {
               </Accordion.Control>
               <Accordion.Panel>
                 <Stack spacing="lg">
-                  <VideoPlaceholder />
+                  <VideoPlaceholder src="https://www.youtube.com/embed/dVNB-xJW0CY?si=m_fyWH878JJ0CVS1" />
                   {shouldConfigureCommunicationChannels && (
                     <Text>
                       {jt`${(<Link to="/admin/settings/email/smtp">{t`Set up email`}</Link>)} or ${(<Link to="/admin/settings/notifications">{t`Slack`}</Link>)} first.`}
@@ -241,7 +241,7 @@ export const Onboarding = () => {
               </Accordion.Control>
               <Accordion.Panel>
                 <Stack spacing="lg">
-                  <VideoPlaceholder />
+                  <VideoPlaceholder src="https://www.youtube.com/embed/Cgd-vQIUjx8?si=xNWXkEhPBkuglGAf" />
                   {shouldConfigureCommunicationChannels && (
                     <Text>
                       {jt`${(<Link to="/admin/settings/email/smtp">{t`Set up email`}</Link>)} or ${(<Link to="/admin/settings/notifications">{t`Slack`}</Link>)} first.`}
@@ -315,15 +315,12 @@ export const Onboarding = () => {
   );
 };
 
-function VideoPlaceholder() {
-  return (
-    <Box
-      bg="aliceblue"
-      w="100%"
-      style={{
-        aspectRatio: "16/9",
-        borderRadius: 8,
-      }}
-    ></Box>
-  );
+function VideoPlaceholder({
+  src,
+  title = "YouTube video player",
+}: {
+  src: string;
+  title?: string;
+}) {
+  return <iframe className={S.video} src={src} title={title} loading="lazy" />;
 }
