@@ -1,12 +1,17 @@
-import type { MultiSelectProps, SelectItem } from "@mantine/core";
-import { MultiSelect, Tooltip } from "@mantine/core";
+import { Tooltip } from "@mantine/core";
 import { useUncontrolled } from "@mantine/hooks";
 import type { ClipboardEvent, FocusEvent } from "react";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { color } from "metabase/lib/colors";
-import { Icon } from "metabase/ui";
+import { Icon, isComboboxItemWithMissingLabel } from "metabase/ui";
+import type {
+  LegacyComboboxData,
+  LegacyComboboxDataItem,
+} from "metabase/ui/components/inputs/Combobox";
+
+import { MultiSelect, type MultiSelectProps } from "../MultiSelect";
 
 import { parseValues, unique } from "./utils";
 
@@ -186,12 +191,14 @@ export function MultiAutocomplete({
   );
 }
 
-function getSelectItem(item: string | SelectItem): SelectItem {
+function getSelectItem(
+  item: string | LegacyComboboxDataItem,
+): LegacyComboboxDataItem {
   if (typeof item === "string") {
     return { value: item, label: item };
   }
 
-  if (!item.label) {
+  if (isComboboxItemWithMissingLabel(item)) {
     return { value: item.value, label: item.value?.toString() ?? "" };
   }
 
@@ -199,7 +206,7 @@ function getSelectItem(item: string | SelectItem): SelectItem {
 }
 
 function getAvailableSelectItems(
-  data: ReadonlyArray<string | SelectItem>,
+  data: LegacyComboboxData,
   selectedValues: string[],
 ) {
   const all = [...data, ...selectedValues].map(getSelectItem);
@@ -207,10 +214,11 @@ function getAvailableSelectItems(
 
   // Deduplicate items based on value
   return all.filter(function (option) {
-    if (seen.has(option.value)) {
+    const value = typeof option === "string" ? option : option.value;
+    if (seen.has(value)) {
       return false;
     }
-    seen.add(option.value);
+    seen.add(value);
     return true;
   });
 }

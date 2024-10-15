@@ -1,0 +1,102 @@
+.MultiSelectOptions {
+  box-sizing: border-box;
+  min-height: var(--multiselect-options-min-height);
+  margin-left: 0;
+  gap: var(--mantine-spacing-xs);
+  padding-top: var(--mantine-spacing-xs);
+  padding-left: var(--mantine-spacing-xs);
+  padding-bottom: var(--mantine-spacing-xs);
+  padding-right: var(--multiselect-section-size);
+  align-items: center;
+
+  [data-with-icon="true"] & {
+    padding-left: 0;
+  }
+}
+
+.MultiSelectInput {
+  padding: 0;
+  box-sizing: border-box;
+  background: var(--mb-color-background);
+  color: var(--mb-color-text-primary);
+
+  &[data-with-icon] {
+    padding-left: var(--mantine-spacing-lg);
+  }
+
+  &::placeholder {
+    color: var(--mb-color-text-secondary);
+  }
+
+  &[data-variant="default"] {
+    padding-top: 7px;
+    padding-bottom: 7px;
+  }
+  &[data-variant="unstyled"] {
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+}
+
+.MultiSelectOption {
+  margin: 0;
+  /* FIXME: There used to be a distinct 'icon' part of this component which I think has become a simple <svg>. Need to double check. */
+  svg {
+    width: var(--mantine-spacing-lg);
+  }
+
+  /* FIXME: These styles were originally applied to the 'defaultValue' of the multiselect but I don't see why the value should be styled differently when it is the default */
+  padding: 0;
+  padding-left: var(--mantine-spacing-sm);
+  padding-right: var(--mantine-spacing-sm);
+  font-weight: bold;
+  border-radius: var(--mantine-radius-xs);
+  color: var(--mb-color-text-selected);
+  background-color: var(--mb-color-background-selected);
+  height: var(--multiselect-option-height);
+  font-size: var(--multiselect-option-font-size);
+
+  .mantine-Pill-remove {
+    color: var(--mb-color-text-selected);
+    width: 12px;
+    height: 12px;
+    min-width: 12px;
+    min-height: 12px;
+    border-width: 0;
+    margin-left: var(--mantine-spacing-xs);
+
+    svg {
+      width: 100% !important;
+      height: 100% !important;
+    }
+  }
+}
+
+.MultiSelectInputField {
+  min-height: var(--multiselect-input-height);
+  padding: 0;
+  margin-left: var(--mantine-spacing-sm);
+
+  &::placeholder {
+    color: var(--mb-color-text-light);
+
+    [data-invalid] & {
+      /* FIXME: Need to ensure this works */
+      color: var(--mb-color-error);
+    }
+  }
+
+  &::-webkit-search-cancel-button {
+    display: none;
+  }
+
+  [data-with-icon="true"] &:first-child {
+    margin-left: 0;
+  }
+}
+
+/* FIXME: This class is not assigned to anything */
+.MultiSelectDropdown {
+  background-color: var(--mb-color-background);
+  border-color: var(--mb-color-border);
+}

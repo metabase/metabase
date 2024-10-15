@@ -8,7 +8,7 @@ import S from "./SelectItem.module.css";
 import { getItemFontSize, getItemLineHeight } from "./utils";
 
 export interface SelectItemProps
-  extends HTMLAttributes<HTMLDivElement>,
+  extends Omit<HTMLAttributes<HTMLDivElement>, "style">,
     BoxProps {
   value: string;
   label?: string;
@@ -18,6 +18,7 @@ export interface SelectItemProps
   disabled?: boolean;
 }
 
+// FIXME:Is this needed anymore?
 export const SelectItem = forwardRef(function SelectItem(
   {
     className,
@@ -34,24 +35,18 @@ export const SelectItem = forwardRef(function SelectItem(
   return (
     <Group
       ref={ref}
-      className={cx(
-        S.item,
-        {
-          [S.selected]: selected,
-          [S.disabled]: disabled,
-        },
-        className,
-      )}
+      className={cx(S.item, className)}
       fz={getItemFontSize(size)}
       lh={getItemLineHeight(size)}
       p="sm"
       gap="sm"
+      flex={1}
       role="option"
       aria-selected={selected}
       {...props}
     >
       {icon && <Icon name={icon} />}
-      <Text color="inherit" lh="inherit">
+      <Text c="inherit" lh="inherit">
         {label}
       </Text>
     </Group>
