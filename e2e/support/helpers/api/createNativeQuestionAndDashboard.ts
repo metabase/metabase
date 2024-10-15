@@ -7,7 +7,7 @@ import type {
 } from "metabase-types/api";
 
 import { type DashboardDetails, createDashboard } from "./createDashboard";
-import type { NativeQuestionDetails } from "./createQuestion";
+import type { NativeQuestionDetails } from "./createNativeQuestion";
 
 export const createNativeQuestionAndDashboard = ({
   questionDetails,
