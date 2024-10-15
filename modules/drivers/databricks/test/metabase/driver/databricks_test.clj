@@ -8,10 +8,11 @@
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
+;; Because the datasets that are tested are preloaded, it is fine just to modify the database details to sync other schemas.
 (deftest ^:parallel sync-test
-  (testing "`driver/describe-database` implementation returns expected resutls."
-    (mt/test-driver
-      :databricks
+  (mt/test-driver
+    :databricks
+    (testing "`driver/describe-database` implementation returns expected results for inclusion of test-data schema."
       (is (= {:tables
               #{{:name "venues", :schema "test-data", :description nil}
                 {:name "checkins", :schema "test-data", :description nil}
@@ -21,7 +22,27 @@
                 {:name "reviews", :schema "test-data", :description nil}
                 {:name "orders", :schema "test-data", :description nil}
                 {:name "products", :schema "test-data", :description nil}}}
-             (driver/describe-database :databricks (mt/db)))))))
+             (driver/describe-database :databricks (mt/db)))))
+    (testing "`driver/describe-database` returns expected results for `all` schema filters."
+      (let [actual-tables (driver/describe-database :databricks (-> (mt/db)
+                                                                    (update :details dissoc :schema-filters-patterns)
+                                                                    (update :details assoc  :schema-filters-type "all")))]
+        (testing "tables from multiple schemas were found"
+          (is (contains? (:tables actual-tables) {:name "venues", :schema "test-data", :description nil}))
+          (is (contains? (:tables actual-tables) {:name "checkins", :schema "test-data", :description nil}))
+          (is (contains? (:tables actual-tables) {:name "airport", :schema "airports", :description nil}))
+          (is (contains? (:tables actual-tables) {:name "bird", :schema "bird-flocks", :description nil})))
+        (testing "information_schema is excluded"
+          (is (empty? (filter #(= "information_schema" (:schema %)) (:tables actual-tables)))))))
+    (testing "`driver/describe-database` returns expected results for `exclusion` schema filters."
+      (let [actual-tables (driver/describe-database :databricks (update (mt/db) :details assoc
+                                                                        :schema-filters-patterns "test-data"
+                                                                        :schema-filters-type "exclusion"))]
+        (testing "tables from multiple schemas were found"
+          (is (not (contains? (:tables actual-tables) {:name "venues", :schema "test-data", :description nil})))
+          (is (not (contains? (:tables actual-tables) {:name "checkins", :schema "test-data", :description nil})))
+          (is (contains? (:tables actual-tables) {:name "airport", :schema "airports", :description nil}))
+          (is (contains? (:tables actual-tables) {:name "bird", :schema "bird-flocks", :description nil})))))))
 
 (deftest ^:parallel describe-fields-test
   (testing "`describe-fields` returns expected values"
