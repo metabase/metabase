@@ -2,22 +2,19 @@ import cx from "classnames";
 import { useState } from "react";
 import { c, t } from "ttag";
 
-import { getTableUrl } from "metabase/browse/containers/TableBrowser/TableBrowser";
 import { getCollectionName } from "metabase/collections/utils";
 import { SidesheetCardSection } from "metabase/common/components/Sidesheet";
 import DateTime from "metabase/components/DateTime";
 import Link from "metabase/core/components/Link";
 import Styles from "metabase/css/core/index.css";
-import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { getUserName } from "metabase/lib/user";
-import { getMetadata } from "metabase/selectors/metadata";
 import { QuestionPublicLinkPopover } from "metabase/sharing/components/PublicLinkPopover";
 import { Box, Flex, FixedSizeIcon as Icon, Text } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
-import type { Database } from "metabase-types/api";
 
 import SidebarStyles from "./QuestionInfoSidebar.module.css";
+import { QuestionSources } from "./components/QuestionSources";
 
 export const QuestionDetails = ({ question }: { question: Question }) => {
   const lastEditInfo = question.lastEditInfo();
@@ -74,51 +71,10 @@ export const QuestionDetails = ({ question }: { question: Question }) => {
         </Flex>
       </SidesheetCardSection>
       <SharingDisplay question={question} />
-      <SourceDisplay question={question} />
+      <QuestionSources question={question} />
     </>
   );
 };
-
-function SourceDisplay({ question }: { question: Question }) {
-  const sourceInfo = question.legacyQueryTable();
-  const metadata = useSelector(getMetadata);
-
-  if (!sourceInfo) {
-    return null;
-  }
-
-  const model = String(sourceInfo.id).includes("card__") ? "card" : "table";
-
-  const sourceUrl =
-    model === "card"
-      ? Urls.browseDatabase(sourceInfo.db as Database)
-      : getTableUrl(sourceInfo, metadata);
-
-  return (
-    <SidesheetCardSection title={t`Based on`}>
-      <Flex gap="sm" align="center">
-        {sourceInfo.db && (
-          <>
-            <Text>
-              <Link
-                to={`/browse/databases/${sourceInfo.db.id}`}
-                variant="brand"
-              >
-                {sourceInfo.db.name}
-              </Link>
-            </Text>
-            {"/"}
-          </>
-        )}
-        <Text>
-          <Link to={sourceUrl} variant="brand">
-            {sourceInfo?.display_name}
-          </Link>
-        </Text>
-      </Flex>
-    </SidesheetCardSection>
-  );
-}
 
 function SharingDisplay({ question }: { question: Question }) {
   const publicUUID = question.publicUUID();

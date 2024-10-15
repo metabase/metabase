@@ -15,7 +15,6 @@ import SidesheetS from "metabase/common/components/Sidesheet/sidesheet.module.cs
 import { Timeline } from "metabase/common/components/Timeline";
 import { getTimelineEvents } from "metabase/common/components/Timeline/utils";
 import { useRevisionListQuery } from "metabase/common/hooks";
-import { EntityIdCard } from "metabase/components/EntityIdCard";
 import { revertToRevision, updateDashboard } from "metabase/dashboard/actions";
 import { DASHBOARD_DESCRIPTION_MAX_LENGTH } from "metabase/dashboard/constants";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -24,6 +23,7 @@ import { Stack, Tabs, Text } from "metabase/ui";
 import type { Dashboard, Revision, User } from "metabase-types/api";
 
 import { DashboardDetails } from "./DashboardDetails";
+import { DashboardEntityIdCard } from "./DashboardEntityIdCard";
 
 interface DashboardInfoSidebarProps {
   dashboard: Dashboard;
@@ -172,7 +172,7 @@ const OverviewTab = ({
       <SidesheetCard>
         <DashboardDetails dashboard={dashboard} />
       </SidesheetCard>
-      <EntityIdCard entityId={dashboard.entity_id} />
+      <DashboardEntityIdCard dashboard={dashboard} />
     </Stack>
   );
 };

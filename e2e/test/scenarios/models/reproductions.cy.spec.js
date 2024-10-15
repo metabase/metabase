@@ -81,6 +81,7 @@ describe("issue 19180", () => {
   const QUESTION = {
     native: { query: "select * from products" },
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -202,6 +203,7 @@ describe("issue 19776", { tags: "@OSS" }, () => {
   function openEllipsisMenuFor(item) {
     cy.findByText(item).closest("tr").find(".Icon-ellipsis").click();
   }
+
   beforeEach(() => {
     onlyOnOSS();
     restore();
@@ -305,6 +307,7 @@ describe("issue 20517", () => {
     },
     type: "model",
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -347,6 +350,7 @@ describe.skip("issue 20624", () => {
       column_settings: { '["name","TITLE"]': { column_title: renamedColumn } },
     },
   };
+
   beforeEach(() => {
     cy.intercept("PUT", "/api/card/*").as("updateCard");
 
@@ -420,6 +424,7 @@ describe("issue 22517", () => {
   function renameColumn(column, newName) {
     cy.findByDisplayValue(column).clear().type(newName).blur();
   }
+
   beforeEach(() => {
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
     cy.intercept("PUT", "/api/card/*").as("updateMetadata");
@@ -524,6 +529,7 @@ describe.skip("issue 22519", () => {
       "source-table": REVIEWS_ID,
     },
   };
+
   beforeEach(() => {
     cy.intercept("PUT", "/api/field/*").as("updateField");
     cy.intercept("POST", "/api/dataset").as("dataset");
@@ -748,6 +754,7 @@ describe("issue 23421", () => {
     },
     type: "model",
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -835,6 +842,7 @@ describe("issue 25537", () => {
       cy.request("PUT", `/api/user/${user_id}`, { locale });
     });
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -1028,6 +1036,7 @@ describe("issue 28971", () => {
     cy.findByText("Showing 4 rows").should("exist");
   });
 });
+
 describe("issue 29378", () => {
   const ACTION_DETAILS = {
     name: "Update orders quantity",
@@ -1109,6 +1118,7 @@ describe("issue 29517 - nested question based on native model with remapped valu
   function selectModelColumn(column) {
     cy.findAllByTestId("header-cell").contains(column).click();
   }
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -1277,6 +1287,7 @@ describe("issue 31309", () => {
       ],
     },
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -1415,6 +1426,7 @@ describe("issue 32483", () => {
     type: "string/=",
     sectionId: "string",
   });
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -1559,6 +1571,7 @@ describe("issue 32963", () => {
       );
     });
   }
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -1734,6 +1747,7 @@ describe("issue 40252", () => {
     native: { query: "select 1 as b1, 2 as b2" },
     type: "model",
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();

@@ -21,10 +21,12 @@ fuzz("FUZZING metabase-lib/v1/expressions/recursive-parser", () => {
       const { expression } = generateExpression(seed, "number");
       expect(() => handle(expression)).not.toThrow();
     });
+
     it("should parse generated string expression from seed " + seed, () => {
       const { expression } = generateExpression(seed, "string");
       expect(() => handle(expression)).not.toThrow();
     });
+
     it("should parse generated boolean expression from seed " + seed, () => {
       const { expression } = generateExpression(seed, "boolean");
       expect(() => handle(expression)).not.toThrow();
