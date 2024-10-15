@@ -40,12 +40,12 @@
 
 (defn do-with-captured-channel-send!
   [thunk]
-  (with-send-notification-sync
-    (with-redefs
-      [channel/send! (fn [channel message]
-                       (swap! captured-messages update (:type channel) u/conjv message))]
-      (thunk)
-      @captured-messages)))
+  (with-redefs
+    [channel/send! (fn [channel message]
+                     (swap! captured-messages update (:type channel) u/conjv message))]
+    (thunk)
+    @captured-messages)))
+
 
 (defmacro with-captured-channel-send!
   "Macro that captures all messages sent to channels in the body of the macro.

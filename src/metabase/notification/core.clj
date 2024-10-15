@@ -121,9 +121,9 @@
     (let [noti-handlers (hydrate-notification-handler (t2/select :model/NotificationHandler :notification_id (:id notification-info)))]
       (log/debugf "[Notification %d] Found %d handlers" (:id notification-info) (count noti-handlers))
       (task-history/with-task-history
-        {:task          "notification-send"
-         :task_details {:notification_id       (:id notification-info)
-                        :notification_handlers (map #(select-keys % [:id :channel_type :channel_id :template_id]) noti-handlers)}}
+       {:task          "notification-send"
+        :task_details {:notification_id       (:id notification-info)
+                       :notification_handlers (map #(select-keys % [:id :channel_type :channel_id :template_id]) noti-handlers)}}
         (doseq [handler noti-handlers]
           (let [channel-type (:channel_type handler)
                 messages     (channel/render-notification
