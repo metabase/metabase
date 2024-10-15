@@ -8,8 +8,8 @@
    [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
    [metabase-enterprise.sso.integrations.sso-utils :as sso-utils]
    [metabase.api.common :as api]
-   [metabase.api.common.validation :as validation]
    [metabase.api.session :as api.session]
+   [metabase.embed.settings :as embed.settings]
    [metabase.integrations.common :as integrations.common]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.server.middleware.session :as mw.session]
@@ -106,7 +106,8 @@
 
 (defn ^:private generate-response-token
   [session jwt-data]
-  (validation/check-embedding-enabled)
+  (api/check (embed.settings/enable-embedding-sdk)
+             [402 (tru "SDK Embedding is not enabled.")])
   (response/response {:id  (:id session)
                       :exp (:exp jwt-data)
                       :iat (:iat jwt-data)}))

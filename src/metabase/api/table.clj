@@ -3,6 +3,7 @@
   (:require
    [clojure.java.io :as io]
    [compojure.core :refer [GET POST PUT]]
+   [flatland.ordered.map :as ordered-map]
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.driver.h2 :as h2]
@@ -25,7 +26,7 @@
    [metabase.types :as types]
    [metabase.upload :as upload]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.i18n :refer [deferred-tru deferred-trun tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -141,94 +142,114 @@
 
 (def ^:private auto-bin-str (deferred-tru "Auto bin"))
 (def ^:private dont-bin-str (deferred-tru "Don''t bin"))
-(def ^:private minute-str (deferred-tru "Minute"))
-(def ^:private hour-str (deferred-tru "Hour"))
-(def ^:private day-str (deferred-tru "Day"))
+
+;;; Apparently `msgcat` is not cool with us using a string as both a singular message ID and a plural message ID, and
+;;; since we're using stuff like `Minute` as a plural string elsewhere (see [[metabase.lib.temporal-bucket]]) we're
+;;; forced to use `*-trun` here as well
+(def ^:private unit->deferred-i18n-description
+  {:minute          (deferred-trun "Minute" "Minutes" 1)
+   :hour            (deferred-trun "Hour" "Hours" 1)
+   :day             (deferred-trun "Day" "Days" 1)
+   :week            (deferred-trun "Week" "Weeks" 1)
+   :month           (deferred-trun "Month" "Months" 1)
+   :quarter         (deferred-trun "Quarter" "Quarters" 1)
+   :year            (deferred-trun "Year" "Years" 1)
+   :minute-of-hour  (deferred-trun "Minute of hour" "Minutes of hour" 1)
+   :hour-of-day     (deferred-trun "Hour of day" "Hours of day" 1)
+   :day-of-week     (deferred-trun "Day of week" "Days of week" 1)
+   :day-of-month    (deferred-trun "Day of month" "Days of month" 1)
+   :day-of-year     (deferred-trun "Day of year" "Days of year" 1)
+   :week-of-year    (deferred-trun "Week of year" "Weeks of year" 1)
+   :month-of-year   (deferred-trun "Month of year" "Months of year" 1)
+   :quarter-of-year (deferred-trun "Quarter of year" "Quarters of year" 1)})
 
 ;; note the order of these options corresponds to the order they will be shown to the user in the UI
 (def ^:private time-options
-  [[minute-str "minute"]
-   [hour-str "hour"]
-   [(deferred-tru "Minute of hour") "minute-of-hour"]])
+  (mapv (fn [unit]
+          [(unit->deferred-i18n-description unit) (name unit)])
+        [:minute :hour :minute-of-hour]))
 
 (def ^:private datetime-options
-  [[minute-str "minute"]
-   [hour-str "hour"]
-   [day-str "day"]
-   [(deferred-tru "Week") "week"]
-   [(deferred-tru "Month") "month"]
-   [(deferred-tru "Quarter") "quarter"]
-   [(deferred-tru "Year") "year"]
-   [(deferred-tru "Minute of hour") "minute-of-hour"]
-   [(deferred-tru "Hour of day") "hour-of-day"]
-   [(deferred-tru "Day of week") "day-of-week"]
-   [(deferred-tru "Day of month") "day-of-month"]
-   [(deferred-tru "Day of year") "day-of-year"]
-   [(deferred-tru "Week of year") "week-of-year"]
-   [(deferred-tru "Month of year") "month-of-year"]
-   [(deferred-tru "Quarter of year") "quarter-of-year"]])
+  (mapv (fn [unit]
+          [(unit->deferred-i18n-description unit) (name unit)])
+        [:minute
+         :hour
+         :day
+         :week
+         :month
+         :quarter
+         :year
+         :minute-of-hour
+         :hour-of-day
+         :day-of-week
+         :day-of-month
+         :day-of-year
+         :week-of-year
+         :month-of-year
+         :quarter-of-year]))
 
 (def ^:private date-options
-  [[day-str "day"]
-   [(deferred-tru "Week") "week"]
-   [(deferred-tru "Month") "month"]
-   [(deferred-tru "Quarter") "quarter"]
-   [(deferred-tru "Year") "year"]
-   [(deferred-tru "Day of week") "day-of-week"]
-   [(deferred-tru "Day of month") "day-of-month"]
-   [(deferred-tru "Day of year") "day-of-year"]
-   [(deferred-tru "Week of year") "week-of-year"]
-   [(deferred-tru "Month of year") "month-of-year"]
-   [(deferred-tru "Quarter of year") "quarter-of-year"]])
+  (mapv (fn [unit]
+          [(unit->deferred-i18n-description unit) (name unit)])
+        [:day
+         :week
+         :month
+         :quarter
+         :year
+         :day-of-week
+         :day-of-month
+         :day-of-year
+         :week-of-year
+         :month-of-year
+         :quarter-of-year]))
 
 (def ^:private dimension-options
   (let [default-entry [auto-bin-str ["default"]]]
-    (zipmap (range)
-            (concat
-             (map (fn [[name param]]
-                    {:name name
-                     :mbql [:field nil {:temporal-unit param}]
-                     :type :type/Date})
-                  date-options)
-             (map (fn [[name param]]
-                    {:name name
-                     :mbql [:field nil {:temporal-unit param}]
-                     :type :type/DateTime})
-                  datetime-options)
-             (map (fn [[name param]]
-                    {:name name
-                     :mbql [:field nil {:temporal-unit param}]
-                     :type :type/Time})
-                  time-options)
-             (conj
-              (mapv (fn [[name [strategy param]]]
-                      {:name name
-                       :mbql [:field nil {:binning (merge {:strategy strategy}
-                                                          (when param
-                                                            {strategy param}))}]
-                       :type :type/Number})
-                    [default-entry
-                     [(deferred-tru "10 bins") ["num-bins" 10]]
-                     [(deferred-tru "50 bins") ["num-bins" 50]]
-                     [(deferred-tru "100 bins") ["num-bins" 100]]])
-              {:name dont-bin-str
-               :mbql nil
-               :type :type/Number})
-             (conj
-              (mapv (fn [[name [strategy param]]]
-                      {:name name
-                       :mbql [:field nil {:binning (merge {:strategy strategy}
-                                                          (when param
-                                                            {strategy param}))}]
-                       :type :type/Coordinate})
-                    [default-entry
-                     [(deferred-tru "Bin every 0.1 degrees") ["bin-width" 0.1]]
-                     [(deferred-tru "Bin every 1 degree") ["bin-width" 1.0]]
-                     [(deferred-tru "Bin every 10 degrees") ["bin-width" 10.0]]
-                     [(deferred-tru "Bin every 20 degrees") ["bin-width" 20.0]]])
-              {:name dont-bin-str
-               :mbql nil
-               :type :type/Coordinate})))))
+    (into (ordered-map/ordered-map)
+          (comp cat
+                (map-indexed vector))
+          [(map (fn [[name param]]
+                  {:name name
+                   :mbql [:field nil {:temporal-unit param}]
+                   :type :type/Date})
+                date-options)
+           (map (fn [[name param]]
+                  {:name name
+                   :mbql [:field nil {:temporal-unit param}]
+                   :type :type/DateTime})
+                datetime-options)
+           (map (fn [[name param]]
+                  {:name name
+                   :mbql [:field nil {:temporal-unit param}]
+                   :type :type/Time})
+                time-options)
+           (map (fn [[name [strategy param]]]
+                  {:name name
+                   :mbql [:field nil {:binning (merge {:strategy strategy}
+                                                      (when param
+                                                        {strategy param}))}]
+                   :type :type/Number})
+                [default-entry
+                 [(deferred-tru "10 bins") ["num-bins" 10]]
+                 [(deferred-tru "50 bins") ["num-bins" 50]]
+                 [(deferred-tru "100 bins") ["num-bins" 100]]])
+           [{:name dont-bin-str
+             :mbql nil
+             :type :type/Number}]
+           (map (fn [[name [strategy param]]]
+                  {:name name
+                   :mbql [:field nil {:binning (merge {:strategy strategy}
+                                                      (when param
+                                                        {strategy param}))}]
+                   :type :type/Coordinate})
+                [default-entry
+                 [(deferred-tru "Bin every 0.1 degrees") ["bin-width" 0.1]]
+                 [(deferred-tru "Bin every 1 degree") ["bin-width" 1.0]]
+                 [(deferred-tru "Bin every 10 degrees") ["bin-width" 10.0]]
+                 [(deferred-tru "Bin every 20 degrees") ["bin-width" 20.0]]])
+           [{:name dont-bin-str
+             :mbql nil
+             :type :type/Coordinate}]])))
 
 (def ^:private dimension-options-for-response
   (m/map-keys str dimension-options))
@@ -262,13 +283,13 @@
                                 (pred v))) dimension-options-for-response))))
 
 (def ^:private datetime-default-index
-  (dimension-index-for-type :type/DateTime #(= (str day-str) (str (:name %)))))
+  (dimension-index-for-type :type/DateTime #(= (str (unit->deferred-i18n-description :day)) (str (:name %)))))
 
 (def ^:private date-default-index
-  (dimension-index-for-type :type/Date #(= (str day-str) (str (:name %)))))
+  (dimension-index-for-type :type/Date #(= (str (unit->deferred-i18n-description :day)) (str (:name %)))))
 
 (def ^:private time-default-index
-  (dimension-index-for-type :type/Time #(= (str hour-str) (str (:name %)))))
+  (dimension-index-for-type :type/Time #(= (str (unit->deferred-i18n-description :hour)) (str (:name %)))))
 
 (def ^:private numeric-default-index
   (dimension-index-for-type :type/Number #(.contains ^String (str (:name %)) (str auto-bin-str))))

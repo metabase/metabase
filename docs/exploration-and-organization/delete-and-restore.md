@@ -10,7 +10,7 @@ Sometimes your questions, dashboards, models, or collections outlive their usefu
 
 Items in **Trash** won't show up in search (unless you use [advanced search filters](./exploration.md)), and you won't be able to use them to create new questions and dashboards.
 
-Moving items to Trash is not permanent: you'll be able to restore them to their original parent collection, or move them to another non-deleted collection. But if you'd' like to delete items permanently, [you can do that too](#permanently-deleting-items).
+Moving items to Trash isn't permanent; you'll be able to restore them to their original parent collection, or move them to another collection. But if you'd like to delete items permanently, [you can do that too](#permanently-deleting-items).
 
 Deleting an item will affect any [dashboards](../dashboards/introduction.md), [subscriptions](../dashboards/subscriptions.md), or [SQL questions](../questions/native-editor/referencing-saved-questions-in-queries.md) that depend on that item, so be careful!
 
@@ -36,7 +36,7 @@ To move an item (question, dashboard, model, or collection) to Trash:
 2. Click on the three dots menu;
 3. Select "Move to trash".
 
-> When a collection is deleted, all items in the collection are deleted as well.
+When a collection is moved to the trash, Metabase moves all items in the collection to the trash as well.
 
 You'll still be able to see the contents of the items in Trash, but you won't be able to modify them or use them as a source for other questions.
 
@@ -56,6 +56,10 @@ To restore an item:
 > Restoring a collection will also restore all the items from that collection.
 
 If the item's original parent collection has been deleted as well, you won't see an option to **Restore**. You'll still be able to move the it from Trash to a different collection.
+
+### Cleaning up collections
+
+To move older, unused items in bulk to the trash, check out [cleaning up collections](./collections.md#cleaning-up-collections).
 
 ## How deleting an item affects related items
 
