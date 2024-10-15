@@ -12,7 +12,6 @@ const args = {
   fullWidth: false,
   radius: "md",
   loading: false,
-  loaderPosition: "left",
 };
 
 const argTypes = {
@@ -103,12 +102,8 @@ const GridTemplate = (args: ButtonProps) => (
 
 const LoadingGridRow = (args: ButtonProps) => (
   <Group wrap="nowrap">
-    <Button {...args} loaderPosition="left">
-      Save
-    </Button>
-    <Button {...args} loaderPosition="right">
-      Save
-    </Button>
+    <Button {...args}>Save</Button>
+    <Button {...args}>Save</Button>
     <Button {...args} leftSection={<Icon name="play" />} />
   </Group>
 );
