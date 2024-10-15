@@ -66,6 +66,7 @@ describe("ChartTypeSettings", () => {
     await userEvent.click(getIcon("bar"));
     expect(onSelectVisualization).toHaveBeenCalledWith("bar");
   });
+
   it("calls onOpenSettings when a sensible visualization is clicked and was not already selected", async () => {
     const { onOpenSettings } = setup({ selectedVisualization: "line" });
     await userEvent.click(getIcon("line"));

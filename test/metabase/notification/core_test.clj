@@ -27,7 +27,7 @@
                                                    :user_id (mt/user->id :rasta)}]}])
               notification-info (assoc n :payload {:event-info  {:test true}
                                                    :event-topic :event/test
-                                                   :settings    {:test true}})
+                                                   :context     {:test true}})
               renders           (atom [])]
           (mt/with-dynamic-redefs [channel/render-notification (fn [channel-type notification template recipients]
                                                                  (swap! renders conj {:channel-type channel-type

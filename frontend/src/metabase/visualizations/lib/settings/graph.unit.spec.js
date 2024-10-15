@@ -243,6 +243,7 @@ describe("GRAPH_DISPLAY_VALUES_SETTINGS", () => {
   describe("graph.show_values", () => {
     const getHidden =
       GRAPH_DISPLAY_VALUES_SETTINGS["graph.show_values"].getHidden;
+
     it("should be hidden on normalized area charts", () => {
       const isHidden = getHidden(
         [{ card: { display: "area" } }, { card: { display: "area" } }],
@@ -291,6 +292,7 @@ describe("GRAPH_DISPLAY_VALUES_SETTINGS", () => {
 
       expect(isHidden).toBe(true);
     });
+
     it("should be hidden on normalized charts without line series", () => {
       const isHidden = getHidden(
         [
