@@ -266,12 +266,6 @@
   [metric]
   (some-> system .-registry metric prometheus/inc))
 
-(defn inc-and-throw!
-  "Call [[inc!]] on the given `metric` and then throw the `exception`."
-  [metric exception]
-  (inc! metric)
-  (throw exception))
-
 (comment
   (require 'iapetos.export)
   (spit "metrics" (iapetos.export/text-format (.registry system))))

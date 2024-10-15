@@ -188,12 +188,3 @@
     (with-prometheus-system! [_ system]
       (prometheus/inc! :metabase-email/messages)
       (is (approx= 1 (metric-value system :metabase-email/messages))))))
-
-(deftest inc-and-throw!-test
-  (testing "inc-and-throw! increments counter and throws exception"
-    (with-prometheus-system! [_ system]
-      (is (thrown?
-           clojure.lang.ExceptionInfo
-           (prometheus/inc-and-throw! :metabase-email/message-errors
-                                      (ex-info "Test error" {}))))
-      (is (approx= 1 (metric-value system :metabase-email/message-errors))))))

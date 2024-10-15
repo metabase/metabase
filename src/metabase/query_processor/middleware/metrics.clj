@@ -270,4 +270,5 @@
               (log/warn "Failed to replace metric"
                         (pr-str {:metric metric})))))
         (catch Throwable e
-          (prometheus/inc-and-throw! :metabase-query-processor/metrics-errors e))))))
+          (prometheus/inc! :metabase-query-processor/metrics-errors)
+          (throw e))))))
