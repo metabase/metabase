@@ -599,10 +599,37 @@
   (u/prog1 eid-translation/default-counter
     (setting/set-value-of-type! :json :entity-id-translation-counter <>)))
 
+(defn- categorize-query-execution [{client :embedding_client executor :executor_id}]
+  (cond
+    (= "embedding-sdk-react" client)                     "sdk_embed"
+    (and (= "embedding-iframe" client) (some? executor)) "interactive_embed"
+    (and (= "embedding-iframe" client) (nil? executor))  "static_embed"
+    (and (#{"" nil} client) (nil? executor))             "public_link"
+    :else                                                "internal"))
+
+(defn- ->one-day-ago []
+  (t/minus (t/offset-date-time) (t/days 1)))
+
+(defn- ->snowplow-grouped-metric-info []
+  {:query_executions (merge
+                      {"sdk_embed" 0 "interactive_embed" 0 "static_embed" 0 "public_link" 0 "internal" 0}
+                      (-> categorize-query-execution
+                          (group-by
+                           (t2/select [:model/QueryExecution :embedding_client :executor_id]))
+                          (update-vals count)))})
+
+(defn- snowplow-grouped-metrics [{query-executions :query_executions :as _snowplow-grouped-metric-info}]
+  [{:name :query_executions_by_source
+    :values (mapv (fn [qe-group]
+                   {:group qe-group
+                    :value (get query-executions qe-group)})
+                  ["interactive_embed" "internal" "public_link" "sdk_embed" "static_embed"])
+    :tags ["embedding"]}])
+
 (defn- ->snowplow-metric-info
   "Collects Snowplow metrics data that is not in the legacy stats format. Also clears entity id translation count."
   []
-  (let [one-day-ago (t/minus (t/offset-date-time) (t/days 1))
+  (let [one-day-ago (->one-day-ago)
         total-translation-count (:total (get-translation-count))
         _ (clear-translation-count!)]
     {:models                  (t2/count :model/Card :type :model :archived false)
@@ -821,11 +848,12 @@
   [stats]
   (let [instance-attributes (snowplow-instance-attributes stats)
         metrics             (snowplow-metrics stats (->snowplow-metric-info))
+        grouped-metrics     (snowplow-grouped-metrics (->snowplow-grouped-metric-info))
         features            (snowplow-features)]
     ;; grouped_metrics and settings are required in the json schema, but their data will be included in the next Milestone:
     {:analytics_uuid      (snowplow/analytics-uuid)
      :features            features
-     :grouped_metrics     []
+     :grouped_metrics     grouped-metrics
      :instance_attributes instance-attributes
      :metrics             metrics
      :settings             []}))

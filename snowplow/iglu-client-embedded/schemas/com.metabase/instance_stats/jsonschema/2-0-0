@@ -11,7 +11,8 @@
   "properties": {
     "analytics_uuid": {
       "description": "The UUID for the instance",
-      "type": "string"
+      "type": "string",
+      "maxLength": 255
     },
     "features": {
       "description": "Features",
