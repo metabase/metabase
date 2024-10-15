@@ -56,13 +56,11 @@ describe("movingAverageClause", () => {
     includeCurrentPeriod: boolean = false,
   ) => {
     const [aggregation] = aggregations(query, stageIndex);
-    const clause = movingAverageClause({
-      query,
-      stageIndex,
-      clause: aggregation,
+    const clause = movingAverageClause(
+      aggregation,
       offset,
       includeCurrentPeriod,
-    });
+    );
     const finalQuery = aggregate(query, stageIndex, clause);
 
     return {
@@ -384,13 +382,11 @@ describe("diffMovingAverageClause", () => {
     includeCurrentPeriod: boolean,
   ) => {
     const [clause] = aggregations(query, stageIndex);
-    const offsettedClause = diffMovingAverageClause({
-      query,
-      stageIndex,
+    const offsettedClause = diffMovingAverageClause(
       clause,
       offset,
       includeCurrentPeriod,
-    });
+    );
     const finalQuery = aggregate(query, stageIndex, offsettedClause);
 
     return {
@@ -853,13 +849,11 @@ describe("percentDiffMovingAverageClause", () => {
     includeCurrentPeriod: boolean,
   ) => {
     const [clause] = aggregations(query, stageIndex);
-    const offsettedClause = percentDiffMovingAverageClause({
-      query,
-      stageIndex,
+    const offsettedClause = percentDiffMovingAverageClause(
       clause,
       offset,
       includeCurrentPeriod,
-    });
+    );
     const finalQuery = aggregate(query, stageIndex, offsettedClause);
 
     return {

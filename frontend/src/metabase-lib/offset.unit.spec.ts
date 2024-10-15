@@ -51,7 +51,7 @@ const queryCategoryBreakout = createQueryWithClauses({
 describe("offsetClause", () => {
   const setup = (query: Query, offset: number) => {
     const [clause] = aggregations(query, stageIndex);
-    const offsettedClause = offsetClause(query, stageIndex, clause, offset);
+    const offsettedClause = offsetClause(clause, offset);
     const finalQuery = aggregate(query, stageIndex, offsettedClause);
 
     return {
@@ -166,7 +166,7 @@ describe("offsetClause", () => {
 describe("diffOffsetClause", () => {
   const setup = (query: Query, offset: number) => {
     const [clause] = aggregations(query, stageIndex);
-    const offsettedClause = diffOffsetClause(query, stageIndex, clause, offset);
+    const offsettedClause = diffOffsetClause(clause, offset);
     const finalQuery = aggregate(query, stageIndex, offsettedClause);
 
     return {
@@ -280,12 +280,7 @@ describe("diffOffsetClause", () => {
 describe("percentDiffOffsetClause", () => {
   const setup = (query: Query, offset: number) => {
     const [clause] = aggregations(query, stageIndex);
-    const offsettedClause = percentDiffOffsetClause(
-      query,
-      stageIndex,
-      clause,
-      offset,
-    );
+    const offsettedClause = percentDiffOffsetClause(clause, offset);
     const finalQuery = aggregate(query, stageIndex, offsettedClause);
 
     return {
