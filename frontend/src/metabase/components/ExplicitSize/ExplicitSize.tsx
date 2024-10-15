@@ -1,11 +1,11 @@
 import cx from "classnames";
 import debounce from "lodash.debounce";
-import React, {
+import {
   type CSSProperties,
-  Component,
   type ComponentType,
   type ForwardedRef,
   type PropsWithoutRef,
+  createRef,
 } from "react";
 import _ from "underscore";
 
@@ -67,6 +67,7 @@ function ExplicitSize<T>({
       timeoutId: ReturnType<typeof setTimeout> | null = null;
 
       _currentElement: Element | null = null;
+      _currentRef: React.RefObject<HTMLElement> = createRef();
 
       _printMediaQuery = window.matchMedia && window.matchMedia("print");
 
@@ -88,16 +89,11 @@ function ExplicitSize<T>({
         this._updateSize = refreshFn(this.__updateSize);
       }
 
-      _getElement() {
+      _getElement = () => {
         try {
-          let element: HTMLElement | null = null;
-          const { forwardedRef } = this.props;
+          let element = this._currentRef.current;
 
-          if (forwardedRef && typeof forwardedRef === "object") {
-            element = forwardedRef.current as HTMLElement;
-          }
-
-          if (selector && element instanceof HTMLElement) {
+          if (selector && element instanceof Element) {
             element = element.querySelector(selector) || element;
           }
 
@@ -106,7 +102,7 @@ function ExplicitSize<T>({
           console.error(e);
           return null;
         }
-      }
+      };
 
       componentDidMount() {
         this._initMediaQueryListener();
@@ -114,12 +110,14 @@ function ExplicitSize<T>({
         // Set the size on the next tick. We had issues with wrapped components
         // not adjusting if the size was fixed during mounting.
         this.timeoutId = setTimeout(this._updateSize, 0);
+        this.updateForwardedRef();
       }
 
       componentDidUpdate() {
         // update ResizeObserver if element changes
         this._updateResizeObserver();
         this._updateRefreshMode();
+        this.updateForwardedRef();
       }
 
       componentWillUnmount() {
@@ -129,6 +127,19 @@ function ExplicitSize<T>({
           clearTimeout(this.timeoutId);
         }
       }
+
+      updateForwardedRef = () => {
+        const { forwardedRef } = this.props;
+        if (!forwardedRef) {
+          return;
+        }
+
+        if (typeof forwardedRef === "function") {
+          forwardedRef(this._currentRef.current);
+        } else {
+          forwardedRef.current = this._currentRef.current;
+        }
+      };
 
       _getRefreshMode = () => {
         if (isCypressActive || this._printMediaQuery?.matches) {
@@ -221,6 +232,7 @@ function ExplicitSize<T>({
           }
         }
       };
+
       render() {
         const { forwardedRef, ...props } = this.props;
 
@@ -230,7 +242,7 @@ function ExplicitSize<T>({
           return (
             <div className={cx(className, CS.relative)} style={style}>
               <ComposedComponent
-                ref={forwardedRef}
+                ref={this._currentRef}
                 style={{ position: "absolute", top: 0, left: 0, width, height }}
                 {...(rest as unknown as T)}
                 {...this.state}
@@ -240,7 +252,7 @@ function ExplicitSize<T>({
         } else {
           return (
             <ComposedComponent
-              ref={forwardedRef}
+              ref={this._currentRef}
               {...(props as unknown as T)}
               {...this.state}
             />
@@ -252,9 +264,14 @@ function ExplicitSize<T>({
     return React.forwardRef<
       unknown,
       PropsWithoutRef<ExplicitSizeOuterProps<T>>
-    >((props, ref) => (
-      <WrappedComponent {...(props as T & InnerProps)} forwardedRef={ref} />
-    ));
+    >((props, forwardedRef) => {
+      return (
+        <WrappedComponent
+          {...(props as T & InnerProps)}
+          forwardedRef={forwardedRef}
+        />
+      );
+    });
   };
 }
 
