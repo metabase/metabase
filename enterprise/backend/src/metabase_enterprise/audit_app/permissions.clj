@@ -7,8 +7,8 @@
    [metabase.models.query.permissions :as query-perms]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.query-processor.store :as qp.store]
-   [metabase.shared.util.i18n :refer [tru]]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [toucan2.core :as t2]))
 
 (def audit-db-view-names
