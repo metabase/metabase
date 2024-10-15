@@ -3,10 +3,10 @@
   (:require
    [clojure.test :refer :all]
    [metabase.models :refer [Card Field]]
+   [metabase.models.visualization-settings :as mb.viz]
    [metabase.query-processor.middleware.visualization-settings
     :as viz-settings]
    [metabase.query-processor.store :as qp.store]
-   [metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.test :as mt]
    [toucan2.tools.with-temp :as t2.with-temp]))
 

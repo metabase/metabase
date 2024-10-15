@@ -20,11 +20,11 @@
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.shared.formatting.date :as fmt.date]
-   [metabase.shared.util.i18n :as i18n]
-   [metabase.shared.util.time :as shared.ut]
    [metabase.util :as u]
-   [metabase.util.malli :as mu]))
+   [metabase.util.formatting.date :as fmt.date]
+   [metabase.util.i18n :as i18n]
+   [metabase.util.malli :as mu]
+   [metabase.util.time :as u.time]))
 
 (def ^:private ExpressionParts
   [:map
@@ -47,7 +47,7 @@
                 (lib.util/clause? maybe-clause-arg)
                 (contains? expandable-temporal-units
                            (:temporal-unit (lib.options/options maybe-clause-arg)))
-                (shared.ut/timestamp-coercible? other-arg))))
+                (u.time/timestamp-coercible? other-arg))))
 
 (defn- expand-temporal-expression
   "Modify expression in a way, that its resulting [[expression-parts]] are digestable by filter picker.
@@ -61,7 +61,7 @@
    This functionality is backend approach to \"smaller solution\"."
   [[_operator options column-arg dt-arg :as _expression-clause]]
   (let [temporal-unit (:temporal-unit (lib.options/options column-arg))
-        interval (shared.ut/to-range (shared.ut/coerce-to-timestamp dt-arg) {:unit temporal-unit :n 1})
+        interval (u.time/to-range (u.time/coerce-to-timestamp dt-arg) {:unit temporal-unit :n 1})
         formatter (if (contains? expandable-time-units temporal-unit)
                     fmt.date/datetime->iso-string
                     fmt.date/date->iso-string)]
@@ -118,7 +118,7 @@
 
    Falls back to the full filter display-name"
   [query stage-number filter-clause]
-  (let [->temporal-name #(shared.ut/format-unit % nil)
+  (let [->temporal-name #(u.time/format-unit % nil)
         temporal? #(lib.util/original-isa? % :type/Temporal)
         unit-is (fn [unit-or-units]
                   (let [units (set (u/one-or-many unit-or-units))]
@@ -129,7 +129,7 @@
                        (clojure.core/contains? units (:temporal-unit (second maybe-clause)))))))]
     (lib.util.match/match-one filter-clause
       [:= _ (x :guard (unit-is lib.schema.temporal-bucketing/datetime-truncation-units)) (y :guard string?)]
-      (shared.ut/format-relative-date-range y 0 (:temporal-unit (second x)) nil nil {:include-current true})
+      (u.time/format-relative-date-range y 0 (:temporal-unit (second x)) nil nil {:include-current true})
 
       [:= _ (x :guard temporal?) (y :guard (some-fn int? string?))]
       (lib.temporal-bucket/describe-temporal-pair x y)
@@ -144,7 +144,7 @@
       (i18n/tru "After {0}" (->temporal-name y))
 
       [:between _ (x :guard temporal?) (y :guard string?) (z :guard string?)]
-      (shared.ut/format-diff y z)
+      (u.time/format-diff y z)
 
       [:is-null & _]
       (i18n/tru "Is Empty")

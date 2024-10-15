@@ -993,7 +993,8 @@
                                   pulse.test-util/png-attachment]
                         :message-type :attachments,
                         :recipients #{"rasta@metabase.com"}
-                        :subject "Daily Sad Toucans"}
+                        :subject "Daily Sad Toucans"
+                        :recipient-type nil}
                        (mt/summarize-multipart-single-email (-> channel-messages :channel/email first) #"Daily Sad Toucans")))))))))))
 
 (deftest send-test-alert-with-http-channel-test
@@ -1109,7 +1110,8 @@
                             pulse.test-util/png-attachment]
                   :message-type :attachments,
                   :recipients #{"rasta@metabase.com"}
-                  :subject "Daily Sad Toucans"}
+                  :subject "Daily Sad Toucans"
+                  :recipient-type nil}
                  (mt/summarize-multipart-single-email (-> channel-messages :channel/email first) #"Daily Sad Toucans"))))))))
 
 (deftest ^:parallel pulse-card-query-results-test

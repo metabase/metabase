@@ -19,9 +19,9 @@
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.shared.util.i18n :as i18n]
    [metabase.types :as types]
    [metabase.util :as u]
+   [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
@@ -166,7 +166,7 @@
   "e.g. something like \"- 2 days\""
   [amount :- :int
    unit   :- ::lib.schema.temporal-bucketing/unit.date-time.interval]
-  ;; TODO -- sorta duplicated with [[metabase.shared.parameters.parameters/translated-interval]], but not exactly
+  ;; TODO -- sorta duplicated with [[metabase.models.params.shared/translated-interval]], but not exactly
   (let [unit-str (interval-unit-str amount unit)]
     (wrap-str-in-parens-if-nested
      (if (pos? amount)
@@ -177,7 +177,7 @@
   "e.g. something like `minus_2_days`"
   [amount :- :int
    unit   :- ::lib.schema.temporal-bucketing/unit.date-time.interval]
-  ;; TODO -- sorta duplicated with [[metabase.shared.parameters.parameters/translated-interval]], but not exactly
+  ;; TODO -- sorta duplicated with [[metabase.models.params.shared/translated-interval]], but not exactly
   (let [unit-str (interval-unit-str amount unit)]
     (if (pos? amount)
       (lib.util/format "plus_%s_%s"  amount                    unit-str)
