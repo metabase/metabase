@@ -34,6 +34,8 @@ export const Onboarding = () => {
   const shouldConfigureCommunicationChannels =
     plan === "oss" || plan === "pro-self-hosted";
 
+  const shouldShowSupport = plan !== "oss";
+
   const newQuestionUrl = Urls.newQuestion({
     mode: "notebook",
     creationType: "custom_question",
@@ -54,7 +56,13 @@ export const Onboarding = () => {
   });
 
   return (
-    <Box px={rem(48)} py="xl" bg="var(--mb-base-color-white)" mih="100%">
+    <Box
+      mih="100%"
+      className={S.page}
+      px={{ base: "md", md: "lg", lg: rem(48) }}
+      pt="xl"
+      pb={212}
+    >
       <Box maw={592}>
         <Accordion
           defaultValue="set-up"
@@ -276,6 +284,32 @@ export const Onboarding = () => {
             </Accordion.Item>
           </Box>
         </Accordion>
+        {showMetabaseLinks && (
+          <Box mb={32}>
+            <Title
+              order={2}
+              mb={12}
+            >{t`Get the most out of ${applicationName}`}</Title>
+            <Text>
+              {t`There are more tutorials and guides to explore.`}
+              <br />
+              {jt`${(
+                <ExternalLink href="https://www.youtube.com/playlist?list=PLzmftu0Z5MYGY0aA3rgIGwSCifECMeuG6">{t`Click here to continue learning`}</ExternalLink>
+              )} about data visualization, modeling, and other advanced topics.`}
+            </Text>
+          </Box>
+        )}
+        {shouldShowSupport && (
+          <Box p={24} className={S.support}>
+            <Stack spacing={4}>
+              <Title order={4}>{t`Need to talk with someone?`}</Title>
+              <Text>{t`Reach out to engineers who can help with technical troubleshooting. Not your typical support agents.`}</Text>
+            </Stack>
+            <Link to="mailto:help@metabase.com" key="support">
+              <Button variant="filled">{t`Contact Support`}</Button>
+            </Link>
+          </Box>
+        )}
       </Box>
     </Box>
   );
