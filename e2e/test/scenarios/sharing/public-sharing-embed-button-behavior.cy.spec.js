@@ -741,6 +741,7 @@ describe("#39152 sharing an unsaved question", () => {
             });
           });
         });
+
         it("should send `static_embed_unpublished` when unpublishing changes in the static embed modal", () => {
           cy.get("@resourceId").then(id => {
             enableEmbeddingForResource({ resource, id });
