@@ -9990,6 +9990,26 @@ databaseChangeLog:
         - customChange:
             class: "metabase.db.custom_migrations.CreateSystemNotificationSlackTokenError"
 
+  - changeSet:
+      id: v52.2024-10-15T08:00:00
+      author: qnkhuat
+      comment: add notification_subscription.cron_schedule
+      preConditions:
+        - not:
+          - columnExists:
+              tableName: notification_subscription
+              columnName: cron_schedule
+      changes:
+        - addColumn:
+            tableName: notification_subscription
+            columns:
+              - column:
+                  name: cron_schedule
+                  type: varchar(128)
+                  remarks: the cron schedule for the subscription
+                  constraints:
+                    nullable: true
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

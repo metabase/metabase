@@ -36,15 +36,16 @@
   `(binding [notification/*send-notification!* #'notification/send-notification-sync!]
      ~@body))
 
+(def captured-messages (atom {}))
+
 (defn do-with-captured-channel-send!
   [thunk]
   (with-send-notification-sync
-    (let [channel-messages (atom {})]
-      (with-redefs
-       [channel/send! (fn [channel message]
-                        (swap! channel-messages update (:type channel) u/conjv message))]
-       (thunk)
-       @channel-messages))))
+    (with-redefs
+      [channel/send! (fn [channel message]
+                       (swap! captured-messages update (:type channel) u/conjv message))]
+      (thunk)
+      @captured-messages)))
 
 (defmacro with-captured-channel-send!
   "Macro that captures all messages sent to channels in the body of the macro.
@@ -54,6 +55,7 @@
       (channel/send! {:type :channel/email} {:say :hi})
       (channel/send! {:type :channel/email} {:say :xin-chao}))
 
+    @captured-messages
     ;; => {:channel/email [{:say :hi} {:say :xin-chao}]}"
   [& body]
   `(do-with-captured-channel-send!

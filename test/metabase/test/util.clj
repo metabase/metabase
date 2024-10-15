@@ -786,9 +786,7 @@
                 :let  [old-max-id            (get model->old-max-id model)
                        max-id-condition      (if old-max-id [:> pk old-max-id] true)
                        additional-conditions (with-model-cleanup-additional-conditions model)]]
-          (t2/query-one
-           {:delete-from (t2/table-name model)
-            :where       [:and max-id-condition additional-conditions]}))))))
+          (t2/delete! model {:where [:and max-id-condition additional-conditions]}))))))
 
 (defmacro with-model-cleanup
   "Execute `body`, then delete any *new* rows created for each model in `models`. Calls `delete!`, so if the model has
