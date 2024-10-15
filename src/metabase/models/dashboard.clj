@@ -212,8 +212,14 @@
                           :where     [:and
                                       [:in :dashcard.dashboard_id (map :id dashboards)]
                                       [:or
+                                       ;; show it if:
+                                       ;; - the card isn't archived
                                        [:= :card.archived false]
-                                       [:not= :card.dashboard_id nil]
+
+                                       ;; - the card is archived BUT it's a dashboard question that wasn't archived by itself
+                                       [:and
+                                        [:not= :card.dashboard_id nil]
+                                        [:= :card.archived_directly false]]
                                        [:= :card.archived nil]]] ; e.g. DashCards with no corresponding Card, e.g. text Cards
                           :order-by  [[:dashcard.dashboard_id] [:dashcard.created_at :asc]]}))
    :id
