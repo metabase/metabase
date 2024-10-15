@@ -44,7 +44,7 @@ export const HomeLayout = () => {
   const [schema, setSchema] = useState<any[]>([]);
   const [messages, setMessages] = useState([]);
   const [threadId, setThreadId] = useState('')
-  const [isChatHistoryOpen, setIsChatHistoryOpen] = useState(false);
+  const [isChatHistoryOpen, setIsChatHistoryOpen] = useState(true);
   const [showButton, setShowButton] = useState(false);
   const [insightDB, setInsightDB] = useState<number | null>(null);
   const [insightSchema, setInsightSchema] = useState<any[]>([]);
@@ -276,12 +276,26 @@ export const HomeLayout = () => {
                   threadId={threadId}
                   inputValue={inputValue}
                   messages={messages}
-                  isChatHistoryOpen={false}
+                  isChatHistoryOpen={isChatHistoryOpen}
                   setIsChatHistoryOpen={setIsChatHistoryOpen}
                   setShowButton={setShowButton}
                 />
               </Stack>
-
+              {isChatHistoryOpen && (
+                <Stack
+                  mb="lg"
+                  spacing="xs"
+                  style={{ minWidth: "300px", width: "300px", marginTop: "1rem" }}
+                >
+                  <ChatHistory
+                    setSelectedChatHistory={setSelectedChatHistory}
+                    setThreadId={setSelectedThreadId}
+                    type={selectedChatHistoryType}
+                    setOldCardId={setOldCardId}
+                    setInsights={setInsights}
+                  />
+                </Stack>
+              )}
             </Flex>
           </BrowseMain>
         </BrowseContainer>

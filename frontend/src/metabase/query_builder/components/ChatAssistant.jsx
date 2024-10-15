@@ -122,7 +122,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
   useEffect(() => {
     const initializeClientAndThread = async () => {
       try {
-        const clientInstance = new Client({apiUrl: langchain_url, apiKey: langchain_key});
+        const clientInstance = new Client();
         setClient(clientInstance);
         
         // Search for assistants
@@ -168,45 +168,88 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
 
     useEffect(() => {
         if (selectedMessages && selectedThreadId && selectedMessages.length > 0) {
+            setMessages([])
+            console.log("selectedMessages", selectedMessages, oldCardId);
             let visualizationIdx = 0;
-            setThreadId(selectedThreadId)
-            const parsedMessages = selectedMessages.flatMap((messageGroup) => {
-                const messages = messageGroup.text.map(([senderType, messageText]) => ({
+            setThreadId(selectedThreadId);
+      
+            // Parse the selectedMessages
+            const parsedMessages = selectedMessages.map((message) => {
+                // Determine the sender based on the type (either 'human' or 'ai')
+                const senderType = message.type === "human" ? "user" : "server";
+      
+                return {
                     id: generateRandomId(),
-                    text: messageText,
+                    text: message.content,  // Use the 'content' field directly
                     typeMessage: "data",
-                    sender: senderType === "human" ? "user" : "server",
+                    sender: senderType,
                     type: "text",
                     isLoading: false,
                     thread_id: selectedThreadId,
-                }));
-
-
-                for (let i = 0; i < messages.length; i++) {
-                    if (messages[i].text.includes("It was executed successfully, ready for your next task")) {
-                        messages[i - 1].sender = "server"
-                        if (i > 0) {
-                            messages[i - 1].showVisualization = true;
-                            messages[i - 1].visualizationIdx = visualizationIdx;
-                            messages[i - 1].showButton = false;
-                            visualizationIdx++;
-                        }
-                    }
-                }
-
-                return messages.filter(
-                    (message) =>
-                        !message.text.includes("It was executed successfully, ready for your next task")
-                );
+                };
             });
-            setDefaultQuestion([]);
-            setCard(null);
-            setCardHash([]);
-            setResult([])
-            handleGetDatasetQueryWithCards(oldCardId)
-            setMessages(parsedMessages);
+      
+            // Check for any message content with card_id and handle visualization generation
+            const cardIdPromises = selectedMessages.flatMap((message) => {
+                try {
+                    const parsedContent = JSON.parse(message.content);
+    
+                    // Check if the parsed content contains a card_id
+                    if (parsedContent.card_id) {
+                        const card_id = parsedContent.card_id;
+                        const cardMessageId = Date.now() + Math.random();
+    
+                        // Create a temporary loading message for card generation
+                        const cardTempMessage = {
+                            id: cardMessageId,
+                            sender: "server",
+                            text: "Generating card...",
+                            isLoading: true,
+                            isTemporary: true,
+                        };
+    
+                        // Add the temporary loading message to the messages
+                        setMessages((prev) => [...prev, cardTempMessage]);
+    
+                        // Fetch the dataset and add a visualization message after data retrieval
+                        return handleGetDatasetQuery(card_id).then(() => {
+                            setMessages((prev) => {
+                                const visualizationMessage = {
+                                    id: Date.now() + Math.random(),
+                                    sender: "server",
+                                    text: "", // Visualizations don't need text
+                                    showVisualization: true,
+                                    visualizationIdx,
+                                    isLoading: false,
+                                };
+                                return [...prev, visualizationMessage]; // Add the visualization message
+                            });
+                        });
+                    }
+                } catch (error) {
+                    console.error("Error parsing message content:", error);
+                }
+                return [];
+            });
+    
+            // Wait for all card generation promises to resolve before updating the state further
+            Promise.all(cardIdPromises).then(() => {
+                // After generating cards, update the other messages
+                setDefaultQuestion([]);
+                setCard(null);
+                setCardHash([]);
+                setResult([]);
+    
+                // Ensure cards are handled if needed
+                handleGetDatasetQueryWithCards(oldCardId);
+    
+                // Set the parsed messages that don't involve card generation
+                setMessages((prevMessages) => [...prevMessages, ...parsedMessages]);
+            });
         }
-    }, [selectedMessages]);
+    }, [selectedMessages, selectedThreadId]);
+    
+      
 
     useEffect(() => {
         if (inputRef.current) {
