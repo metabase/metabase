@@ -145,8 +145,6 @@ describe("setup (OSS)", () => {
 
       expect(await getLastSettingsPutPayload()).toEqual({
         "embedding-homepage": "visible",
-        "enable-embedding": true,
-        "setup-embedding-autoenabled": true,
         "setup-license-active-at-setup": false,
       });
     });

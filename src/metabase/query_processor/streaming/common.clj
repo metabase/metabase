@@ -3,11 +3,11 @@
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
+   [metabase.models.visualization-settings :as mb.viz]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
-   [metabase.shared.models.visualization-settings :as mb.viz]
-   [metabase.shared.util.currency :as currency]
+   [metabase.util.currency :as currency]
    [metabase.util.date-2 :as u.date])
   (:import
    (clojure.lang ISeq)

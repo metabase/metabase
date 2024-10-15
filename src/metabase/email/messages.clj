@@ -1,6 +1,8 @@
 (ns metabase.email.messages
   "Convenience functions for sending templated email messages.  Each function here should represent a single email.
-   NOTE: we want to keep this about email formatting, so don't put heavy logic here RE: building data for emails."
+   NOTE: we want to keep this about email formatting, so don't put heavy logic here RE: building data for emails.
+
+  NOTE: This namespace is deprecated, all of these emails will soon be converted to System Email Notifications."
   (:require
    [buddy.core.codecs :as codecs]
    [cheshire.core :as json]
@@ -48,9 +50,9 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- app-name-trs
+(defn app-name-trs
   "Return the user configured application name, or Metabase translated
-  via tru if a name isn't configured."
+  via trs if a name isn't configured."
   []
   (or (public-settings/application-name)
       (trs "Metabase")))
@@ -60,7 +62,9 @@
   (alter-meta! #'stencil/render-file assoc :style/indent 1)
   (stencil-loader/set-cache (cache/ttl-cache-factory {} :ttl 0)))
 
-(defn- logo-url []
+(defn logo-url
+  "Return the URL for the application logo. If the logo is the default, return a URL to the Metabase logo."
+  []
   (let [url (public-settings/application-logo-url)]
     (cond
       (= url "app/assets/img/logo.svg") "http://static.metabase.com/email_logo.png"
@@ -81,7 +85,9 @@
     (-> (image-bundle/make-image-bundle :attachment png-bytes)
         (image-bundle/image-bundle->attachment))))
 
-(defn- button-style [color]
+(defn button-style
+  "Return a CSS style string for a button with the given color."
+  [color]
   (str "display: inline-block; "
        "box-sizing: border-box; "
        "padding: 0.5rem 1.375rem; "
@@ -392,7 +398,7 @@
   point in the future; for now, this function is a stopgap.
 
   Results are streamed synchronously. Caller is responsible for closing `os` when this call is complete."
-  [export-format format-rows? ^OutputStream os {{:keys [rows]} :data, database-id :database_id, :as results}]
+  [^OutputStream os {:keys [export-format format-rows? pivot?]} {{:keys [rows]} :data, database-id :database_id, :as results}]
   ;; make sure Database/driver info is available for the streaming results writers -- they might need this in order to
   ;; get timezone information when writing results
   (driver/with-driver (driver.u/database->driver database-id)
@@ -405,6 +411,7 @@
         (qp.si/begin! w
                       (-> results
                           (assoc-in [:data :format-rows?] format-rows?)
+                          (assoc-in [:data :pivot?] pivot?)
                           (assoc-in [:data :ordered-cols] ordered-cols))
                       viz-settings')
         (dorun
@@ -415,18 +422,18 @@
         (qp.si/finish! w results)))))
 
 (defn- result-attachment
-  [{{card-name :name format-rows :format_rows :as card} :card
+  [{{card-name :name format-rows :format_rows pivot-results :pivot_results :as card} :card
     {{:keys [rows]} :data :as result}                   :result}]
   (when (seq rows)
     [(when-let [temp-file (and (:include_csv card)
                                (create-temp-file-or-throw "csv"))]
        (with-open [os (io/output-stream temp-file)]
-         (stream-api-results-to-export-format :csv format-rows os result))
+         (stream-api-results-to-export-format os {:export-format :csv :format-rows? format-rows :pivot? pivot-results} result))
        (create-result-attachment-map "csv" card-name temp-file))
      (when-let [temp-file (and (:include_xls card)
                                (create-temp-file-or-throw "xlsx"))]
        (with-open [os (io/output-stream temp-file)]
-         (stream-api-results-to-export-format :xlsx format-rows os result))
+         (stream-api-results-to-export-format os {:export-format :xlsx :format-rows? format-rows :pivot? pivot-results} result))
        (create-result-attachment-map "xlsx" card-name temp-file))]))
 
 (defn- part-attachments [parts]
@@ -509,7 +516,7 @@
   (for [{{result-card-id :id} :card :as result} results
         :let [pulse-card (m/find-first #(= (:id %) result-card-id) (:cards pulse))]]
     (if result-card-id
-      (update result :card merge (select-keys pulse-card [:include_csv :include_xls :format_rows]))
+      (update result :card merge (select-keys pulse-card [:include_csv :include_xls :format_rows :pivot_results]))
       result)))
 
 (defn render-pulse-email
@@ -538,7 +545,7 @@
   (or (:card alert)
       (first (:cards alert))))
 
-(defn- common-alert-context
+(defn common-alert-context
   "Template context that is applicable to all alert templates, including alert management templates
   (e.g. the subscribed/unsubscribed emails)"
   ([alert]
@@ -627,7 +634,8 @@
                          nil
                          (assoc-attachment-booleans alert results))))
 
-(def ^:private alert-condition-text
+(def alert-condition-text
+  "A map of alert conditions to their corresponding text."
   {:meets "when this question meets its goal"
    :below "when this question goes below its goal"
    :rows  "whenever this question has any results"})
@@ -649,18 +657,11 @@
   (str "metabase/email/" template-name ".mustache"))
 
 ;; Paths to the templates for all of the alerts emails
-(def ^:private new-alert-template          (template-path "alert_new_confirmation"))
 (def ^:private you-unsubscribed-template   (template-path "alert_unsubscribed"))
 (def ^:private admin-unsubscribed-template (template-path "alert_admin_unsubscribed_you"))
 (def ^:private added-template              (template-path "alert_you_were_added"))
 (def ^:private stopped-template            (template-path "alert_stopped_working"))
 (def ^:private archived-template           (template-path "alert_archived"))
-
-(defn send-new-alert-email!
-  "Send out the initial 'new alert' email to the `creator` of the alert"
-  [{:keys [creator] :as alert}]
-  (send-email! creator "You set up an alert" new-alert-template
-               (common-alert-context alert alert-condition-text)))
 
 (defn send-you-unsubscribed-alert-email!
   "Send an email to `who-unsubscribed` letting them know they've unsubscribed themselves from `alert`"
@@ -695,18 +696,6 @@
   [alert user {:keys [first_name last_name] :as _archiver}]
   (let [edited-text (format "the question was edited by %s %s" first_name last_name)]
     (send-email! user not-working-subject stopped-template (assoc (common-alert-context alert) :deletionCause edited-text))))
-
-(defn send-slack-token-error-emails!
-  "Email all admins when a Slack API call fails due to a revoked token or other auth error"
-  []
-  (email/send-message!
-   :subject (trs "Your Slack connection stopped working")
-   :recipients (all-admin-recipients)
-   :message-type :html
-   :message (stencil/render-file "metabase/email/slack_token_error.mustache"
-                                 (merge (common-context)
-                                        {:logoHeader  true
-                                         :settingsUrl (str (public-settings/site-url) "/admin/settings/slack")}))))
 
 (defn send-broken-subscription-notification!
   "Email dashboard and subscription creators information about a broken subscription due to bad parameters"

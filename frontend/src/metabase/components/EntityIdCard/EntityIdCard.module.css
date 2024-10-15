@@ -18,9 +18,7 @@
     color: var(--mb-color-brand);
   }
 
-  background-color: var(--mb-color-border);
   border-radius: 100%;
-  padding: 2px;
   cursor: pointer;
 
   &:focus {

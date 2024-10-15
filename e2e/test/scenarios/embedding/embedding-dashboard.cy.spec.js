@@ -686,6 +686,7 @@ describe("scenarios > embedding > dashboard parameters with defaults", () => {
 
 describeEE("scenarios > embedding > dashboard appearance", () => {
   const originalBaseUrl = Cypress.config("baseUrl");
+
   beforeEach(() => {
     // Reset the baseUrl to the default value
     // needed because we do `Cypress.config("baseUrl", null);` in the iframe test

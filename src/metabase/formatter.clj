@@ -7,11 +7,11 @@
    [clojure.string :as str]
    [hiccup.util]
    [metabase.formatter.datetime :as datetime]
+   [metabase.models.visualization-settings :as mb.viz]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor.streaming.common :as common]
-   [metabase.shared.models.visualization-settings :as mb.viz]
-   [metabase.shared.util.currency :as currency]
    [metabase.types :as types]
+   [metabase.util.currency :as currency]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.util.ui-logic :as ui-logic]
@@ -89,7 +89,7 @@
 (defn- qualify-keys
   [m]
   (update-keys m (fn [k] (keyword
-                          "metabase.shared.models.visualization-settings"
+                          "metabase.models.visualization-settings"
                           (name k)))))
 
 ;; TODO: use `metabase.query-processor.streaming.common/viz-settings-for-col` here, it's

@@ -5,8 +5,8 @@
    [clojure.java.classpath :as classpath]
    [clojure.string :as str]
    [clojure.tools.namespace.find :as ns.find]
-   [metabase.shared.util.i18n :refer [tru]]
    [metabase.util.format :as u.format]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [nano-id.core :as nano-id])
   (:import
