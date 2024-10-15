@@ -135,6 +135,9 @@ module.exports = env => {
           "moment-timezone", // needed for some clojure code that expects it
           "react-virtualized", // it creates issues on vite,
           "echarts", // we have a patch on echarts
+          "assert", // crashes on host cra app without it, but even with it :shrug:
+          "util",
+          "crypto",
         ],
       }),
     ],
@@ -156,7 +159,9 @@ module.exports = env => {
         banner:
           "/*\n* This file is subject to the terms and conditions defined in\n * file 'LICENSE.txt', which is part of this source code package.\n */\n",
       }),
-      new NodePolyfillPlugin(), // for crypto, among others
+      new NodePolyfillPlugin({
+        additionalAliases: ["asserts", "util"],
+      }), // for crypto, among others
       // https://github.com/remarkjs/remark/discussions/903
       new webpack.ProvidePlugin({
         process: "process/browser.js",
