@@ -4,7 +4,7 @@
   --button-height-md: calc(2.5rem * var(--mantine-scale));
   --button-height-compact-md: calc(1.5rem * var(--mantine-scale));
 
-  padding-inline: 15px;
+  padding-inline: rem(15px);
   overflow: hidden;
   line-height: 1.15; /* mimic line-height ration from mantine v6 */
   font-size: var(--mantine-font-size-md);
@@ -23,15 +23,15 @@
 
   &[data-with-left-section],
   &[data-with-right-section] {
-    padding: 11px 15px;
+    padding: rem(11px) rem(15px);
   }
 
   /* Button with icon only */
   &:has(.label:empty) {
-    padding: 11px;
+    padding: rem(11px);
 
     &[data-size^="compact"] {
-      padding: 3px;
+      padding: rem(3px);
     }
 
     [data-position="right"],
@@ -41,7 +41,7 @@
   }
 
   &[data-size^="compact"] {
-    padding: 3px 7px;
+    padding: rem(3px) rem(7px);
   }
 
   &[data-variant="default"] {
@@ -56,14 +56,14 @@
 
   &[data-variant="filled"] {
     &:hover {
-      border-color: color-mix(in srgb, var(--button-bg) 88%, transparent);
-      background-color: color-mix(in srgb, var(--button-bg) 88%, transparent);
+      border-color: alpha(var(--button-bg), 0.88);
+      background-color: alpha(var(--button-bg), 0.88);
     }
   }
 
   &[data-variant="subtle"] {
     &:hover {
-      color: color-mix(in srgb, var(--button-color) 88%, transparent);
+      color: alpha(var(--button-color) 0.68);
       background-color: transparent;
     }
 
