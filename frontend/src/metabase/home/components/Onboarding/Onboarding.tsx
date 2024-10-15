@@ -187,7 +187,13 @@ export const Onboarding = () => {
               </Accordion.Control>
               <Accordion.Panel>
                 <Stack spacing="lg">
-                  <VideoPlaceholder src="https://www.youtube.com/embed/dVNB-xJW0CY?si=m_fyWH878JJ0CVS1" />
+                  <img
+                    alt={`${applicationName} dashboard with tabs`}
+                    loading="lazy"
+                    src="app/assets/img/onboarding_dashboard_tabs.png"
+                    srcSet="app/assets/img/onboarding_dashboard_tabs@2x.png 2x"
+                    width="100%"
+                  />
                   <Text>
                     {jt`You can organize questions into a ${
                       showMetabaseLinks ? (
@@ -197,7 +203,13 @@ export const Onboarding = () => {
                       )
                     } and add text cards.`}
                   </Text>
-                  <VideoPlaceholder src="https://www.youtube.com/embed/dVNB-xJW0CY?si=m_fyWH878JJ0CVS1" />
+                  <img
+                    alt={`${applicationName} dashboard with filters`}
+                    loading="lazy"
+                    src="app/assets/img/onboarding_dashboard_filters.png"
+                    srcSet="app/assets/img/onboarding_dashboard_filters@2x.png 2x"
+                    width="100%"
+                  />
                   <Text>
                     {jt`You can add ${(<b>{t`filters`}</b>)} to dashboards and connect them to fields on questions to narrow the results.`}
                   </Text>
