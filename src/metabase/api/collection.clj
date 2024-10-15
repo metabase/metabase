@@ -531,7 +531,7 @@
       (update :collection_preview api/bit->boolean)
       (update :archived api/bit->boolean)
       (update :archived_directly api/bit->boolean)
-      (t2/hydrate :can_write :can_restore :can_delete)
+      (t2/hydrate :can_write :can_restore :can_delete :dashboard_count)
       (dissoc :authority_level :icon :personal_owner_id :dataset_query :table_id :query_type :is_upload)
       (assoc :fully_parameterized (fully-parameterized-query? row))))
 
