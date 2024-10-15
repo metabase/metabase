@@ -124,12 +124,16 @@ export function NumberInputWidget({
             shouldCreate={shouldCreate}
             autoFocus={autoFocus}
             data={customLabelOptions.concat(valueOptions)}
-            filter={(value, _selected, item) =>
-              Boolean(
-                value !== "" &&
-                  item.label?.toLowerCase().startsWith(value.toLowerCase()),
-              )
-            }
+            filter={({ options }: { options: any[] }) => {
+              return options.filter(item =>
+                Boolean(
+                  item.value !== "" &&
+                    item.label
+                      ?.toLowerCase()
+                      .startsWith(item.value.toLowerCase()),
+                ),
+              );
+            }}
           />
         </TokenFieldWrapper>
       ) : (
