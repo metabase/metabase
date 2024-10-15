@@ -70,6 +70,24 @@
   :audit   :getter
   :default true)
 
+(defn- set-update-channel! [new-channel]
+  (let [valid-channels #{"latest" "beta" "nightly"}]
+    (when-not (valid-channels new-channel)
+      (throw (IllegalArgumentException.
+              (tru "Invalid update channel ''{0}''. Valid channels are: {1}"
+                   new-channel valid-channels))))
+    (setting/set-value-of-type! :string :update-channel new-channel)))
+
+(defsetting update-channel
+  (deferred-tru "Metabase will notify you when a new release is available for the channel you select.")
+  :visibility :admin
+  :type       :string
+  :encryption :no
+  :export?    true
+  :audit      :getter
+  :setter     set-update-channel!
+  :default    "latest")
+
 (defsetting site-uuid
   ;; Don't i18n this docstring because it's not user-facing! :)
   "Unique identifier used for this instance of {0}. This is set once and only once the first time it is fetched via
