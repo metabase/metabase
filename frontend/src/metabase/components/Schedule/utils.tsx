@@ -4,7 +4,7 @@ import _ from "underscore";
 
 import { measureTextWidth } from "metabase/lib/measure-text";
 import type { SelectProps } from "metabase/ui";
-import { Box, Group } from "metabase/ui";
+import { Box, Group, isComboboxItem, isComboboxItemGroup } from "metabase/ui";
 import type { FontStyle } from "metabase/visualizations/shared/types/measure-text";
 
 const placeholderRegex = /^\{(\d)+\}$/;
@@ -51,7 +51,7 @@ const layoutSchedule = (nodes: ReactNode[]) => {
       if (nodes.length === 2) {
         result[result.length - 1] = (
           <Group
-            gap="md"
+            spacing="md"
             style={{ rowGap: ".35rem" }}
             key={`items-on-one-line`}
           >
@@ -120,9 +120,16 @@ export const combineConsecutiveStrings = (arr: ReactNode[]) => {
   }, []);
 };
 
-export const getLongestSelectLabel = (data: SelectProps["data"]) =>
-  data.reduce<string>((acc, option) => {
-    const label = typeof option === "string" ? option : option.label || "";
+export const getLongestSelectLabel = (data: SelectProps["data"] = []): string =>
+  [...data].reduce<string>((acc: string, option) => {
+    let label: string;
+    if (isComboboxItem(option)) {
+      label = option.label;
+    } else if (isComboboxItemGroup(option)) {
+      label = getLongestSelectLabel(option.items);
+    } else {
+      label = option;
+    }
     return label.length > acc.length ? label : acc;
   }, "");
 

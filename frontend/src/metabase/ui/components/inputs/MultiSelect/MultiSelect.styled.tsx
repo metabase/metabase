@@ -7,7 +7,7 @@ import { getSize, rem } from "@mantine/core";
 import {
   getSelectInputOverrides,
   getSelectItemsOverrides,
-} from "../Select/Select.styled";
+} from "../Select/Select.config";
 import { SelectDropdown } from "../Select/SelectDropdown";
 import { SelectItem } from "../Select/SelectItem";
 
@@ -47,6 +47,7 @@ export const getMultiSelectOverrides =
       ) => ({
         ...getSelectInputOverrides(theme),
         ...getSelectItemsOverrides(theme, size),
+        // transferred to css
         values: {
           boxSizing: "border-box",
           minHeight: getSize({ size, sizes: SIZES }),
@@ -64,6 +65,7 @@ export const getMultiSelectOverrides =
             paddingLeft: 0,
           },
         },
+        // transferred to css, .MultiSelectInputField
         input: {
           padding: 0,
           boxSizing: "border-box",
@@ -76,12 +78,15 @@ export const getMultiSelectOverrides =
             color: "var(--mb-color-text-secondary)",
           },
         },
+        // transferred to css
         icon: {
           width: theme.spacing.lg,
         },
+        // transferred to css
         value: {
           margin: 0,
         },
+        // transferred to css
         searchInput: {
           minHeight: getSize({ size, sizes: VALUE_SIZES }),
           padding: 0,
@@ -98,6 +103,7 @@ export const getMultiSelectOverrides =
             marginLeft: 0,
           },
         },
+        // transferred to css
         defaultValue: {
           padding: 0,
           paddingInline: theme.spacing.sm,
@@ -108,6 +114,7 @@ export const getMultiSelectOverrides =
           color: "var(--mb-color-text-selected)",
           backgroundColor: "var(--mb-color-background-selected)",
         },
+        // transferred to css
         defaultValueRemove: {
           color: "var(--mb-color-text-selected)",
           width: rem(12),
@@ -122,11 +129,13 @@ export const getMultiSelectOverrides =
             height: "100% !important",
           },
         },
+        // transferred to css but not applied to anything yet
         dropdown: {
           backgroundColor: "var(--mb-color-background)",
           borderColor: "var(--mb-color-border)",
         },
       }),
+      // converted
       variants: {
         default: () => ({
           input: {
