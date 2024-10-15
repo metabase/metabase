@@ -142,8 +142,8 @@
         (log/infof "[Notification %d] Sent successfully" (:id notification-info))))
     (catch Exception e
       (log/errorf e "[Notification %d] Failed to send" (:id notification-info))
-      (throw e))
-    nil))
+      (throw e)))
+  nil)
 
 (defn- send-notification-async!
   "Send a notification asynchronously."
