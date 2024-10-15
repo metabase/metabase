@@ -127,21 +127,22 @@
    :application_database                 (config/config-str :mb-db-type)
    :check_for_updates                    (public-settings/check-for-updates)
    :report_timezone                      (driver/report-timezone)
-   ; We deprecated advanced humanization but have this here anyways
+   ;; We deprecated advanced humanization but have this here anyways
    :friendly_names                       (= (humanization/humanization-strategy) "advanced")
    :email_configured                     (email/email-configured?)
    :slack_configured                     (slack/slack-configured?)
    :sso_configured                       (google/google-auth-enabled)
    :instance_started                     (snowplow/instance-creation)
    :has_sample_data                      (t2/exists? Database, :is_sample true)
-   :enable_embedding                     #_:clj-kondo/ignore (embed.settings/enable-embedding)
+   :enable_embedding                     #_ {:clj-kondo/ignore [:deprecated-var]} (embed.settings/enable-embedding)
    :enable_embedding_sdk                 (embed.settings/enable-embedding-sdk)
    :enable_embedding_interactive         (embed.settings/enable-embedding-interactive)
-   :embedding_app_origin_set             (boolean  (or
-                                                    #_:clj-kondo/ignore (embed.settings/embedding-app-origin)
-                                                    (embed.settings/embedding-app-origins-interactive)
-                                                    (let [sdk-origins (embed.settings/embedding-app-origins-sdk)]
-                                                      (and sdk-origins (not= "localhost:*" sdk-origins)))))
+   :enable_embedding_static              (embed.settings/enable-embedding-static)
+   :embedding_app_origin_set             (boolean #_{:clj-kondo/ignore [:deprecated-var]}
+                                                  (embed.settings/embedding-app-origin))
+   :embedding_app_origin_sdk_set         (boolean (let [sdk-origins (embed.settings/embedding-app-origins-sdk)]
+                                                    (and sdk-origins (not= "localhost:*" sdk-origins))))
+   :embedding_app_origin_interactive_set (embed.settings/embedding-app-origins-interactive)
    :appearance_site_name                 (not= (public-settings/site-name) "Metabase")
    :appearance_help_link                 (public-settings/help-link)
    :appearance_logo                      (not= (public-settings/application-logo-url) "app/assets/img/logo.svg")
@@ -821,10 +822,13 @@
   (let [instance-attributes (snowplow-instance-attributes stats)
         metrics             (snowplow-metrics stats (->snowplow-metric-info))
         features            (snowplow-features)]
-    {:analytics-uuid      (snowplow/analytics-uuid)
-     :instance-attributes instance-attributes
+    ;; grouped_metrics and settings are required in the json schema, but their data will be included in the next Milestone:
+    {:analytics_uuid      (snowplow/analytics-uuid)
+     :features            features
+     :grouped_metrics     []
+     :instance_attributes instance-attributes
      :metrics             metrics
-     :features            features}))
+     :settings             []}))
 
 (defn- generate-instance-stats!
   "Generate stats for this instance as data"
@@ -841,15 +845,16 @@
   "Collect usage stats and phone them home"
   []
   (when (public-settings/anon-tracking-enabled)
-    (let [start-time-ms            (System/currentTimeMillis)
-          {:keys [stats
-                  snowplow-stats]} (generate-instance-stats!)
-          end-time-ms              (System/currentTimeMillis)
-          elapsed-secs             (quot (- end-time-ms start-time-ms) 1000)]
+    (let [start-time-ms                  (System/currentTimeMillis)
+          {:keys [stats snowplow-stats]} (generate-instance-stats!)
+          end-time-ms                    (System/currentTimeMillis)
+          elapsed-secs                   (quot (- end-time-ms start-time-ms) 1000)
+          snowplow-data                  (assoc snowplow-stats
+                                                :metadata [{"key"   "stats_export_time_seconds"
+                                                            "value" elapsed-secs}])]
+      (assert (= #{:analytics_uuid :features :grouped_metrics :instance_attributes :metadata :metrics :settings}
+                 (set (keys snowplow-data)))
+              (str "Missing required keys in snowplow-data. got:" (sort (keys snowplow-data))))
       #_{:clj-kondo/ignore [:deprecated-var]}
       (send-stats-deprecated! stats)
-      (snowplow/track-event! ::snowplow/instance_stats
-                             (assoc snowplow-stats
-                                    :metadata
-                                    [{"key"   "stats_export_time_seconds"
-                                      "value" elapsed-secs}])))))
+      (snowplow/track-event! ::snowplow/instance_stats snowplow-data))))

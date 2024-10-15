@@ -5,15 +5,13 @@
     "vendor": "com.metabase",
     "name": "instance_stats",
     "format": "jsonschema",
-    "version": "1-0-1"
+    "version": "2-0-0"
   },
   "type": "object",
   "properties": {
     "analytics_uuid": {
       "description": "The UUID for the instance",
-      "type": "string",
-      "maxLength": 36,
-      "minLength": 36
+      "type": "string"
     },
     "features": {
       "description": "Features",
