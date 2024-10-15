@@ -307,6 +307,14 @@ export function interceptIfNotPreviouslyDefined({ method, url, alias } = {}) {
   }
 }
 
+/**
+ *
+ * @param {string=} name
+ * @param {Object=} options
+ * @param {boolean=} [options.addToDashboard]
+ * @param {boolean=} [options.wrapId]
+ * @param {string=} [options.idAlias]
+ */
 export function saveQuestion(
   name,
   { addToDashboard = false, wrapId = false, idAlias = "questionId" } = {},
