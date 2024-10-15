@@ -10,7 +10,7 @@ import {
   setInitialMessage,
 } from "metabase/redux/initialMessage";
 import { setDBInputValue, setCompanyName, setInsightDBInputValue, getDBInputValue } from "metabase/redux/initialDb";
-import { setInitialSchema } from "metabase/redux/initialSchema";
+import { setInitialSchema, setInitialInsightSchema } from "metabase/redux/initialSchema";
 import ChatAssistant from "metabase/query_builder/components/ChatAssistant";
 import {
   BrowseContainer,
@@ -46,6 +46,8 @@ export const HomeLayout = () => {
   const [threadId, setThreadId] = useState('')
   const [isChatHistoryOpen, setIsChatHistoryOpen] = useState(false);
   const [showButton, setShowButton] = useState(false);
+  const [insightDB, setInsightDB] = useState<number | null>(null);
+  const [insightSchema, setInsightSchema] = useState<any[]>([]);
   const assistant_url = process.env.REACT_APP_WEBSOCKET_SERVER;
 
   const dispatch = useDispatch();
@@ -61,10 +63,11 @@ export const HomeLayout = () => {
       const cubeDatabase = databases.find(
         database => database.is_cube === true,
       );
-      /*const rawDatabase = databases.find(database => database.is_cube === false);
+      const rawDatabase = databases.find(database => database.is_cube === false);
       if (rawDatabase) {
-          setDatabaseId(rawDatabase.id)
-      }*/
+        setInsightDB(rawDatabase.id as number)
+        dispatch(setInsightDBInputValue(rawDatabase.id as number));
+      }
       if (cubeDatabase) {
         setIsChatHistoryOpen(true);
         setShowButton(true);
@@ -103,6 +106,33 @@ export const HomeLayout = () => {
       setSchema(schema as any)
     }
   }, [databaseMetadataData]);
+
+  const {
+    data: rawDatabaseMetadata,
+    isLoading: rawDatabaseMetadataIsLoading,
+    error: rawDatabaseMetadataIsError
+  } = useGetDatabaseMetadataWithoutParamsQuery(
+      insightDB !== null ? { id: insightDB } : skipToken
+  );
+
+  useEffect(() => {
+    if (rawDatabaseMetadata && Array.isArray(rawDatabaseMetadata.tables)) {
+        const rawSchema = rawDatabaseMetadata.tables.map((table) => ({
+            display_name: table.display_name,
+            id: table.id,
+            fields: table.fields?.map((field) => ({
+                id: field.id,
+                name: field.name,
+                fieldName: field.display_name,
+                description: field.description,
+                details: field.fingerprint ? JSON.stringify(field.fingerprint) : null
+            }))
+        }));
+        setInsightSchema(rawSchema); 
+        dispatch(setInitialInsightSchema(rawSchema))
+    }
+  }, [rawDatabaseMetadata]);
+
 
   useEffect(() => {
     setInputValue("");
