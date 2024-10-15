@@ -17,7 +17,7 @@ import {
 } from "e2e/support/helpers/e2e-ad-hoc-question-helpers";
 import { useSelector } from "metabase/lib/redux";
 import { getDBInputValue, getCompanyName, getInsightDBInputValue } from "metabase/redux/initialDb";
-import { getInitialSchema } from "metabase/redux/initialSchema";
+import { getInitialSchema, getInitialInsightSchema } from "metabase/redux/initialSchema";
 import { useListDatabasesQuery, useGetDatabaseMetadataWithoutParamsQuery, skipToken } from "metabase/api";
 import { SemanticError } from "metabase/components/ErrorPages";
 import { SpinnerIcon } from "metabase/components/LoadingSpinner/LoadingSpinner.styled";
@@ -28,6 +28,8 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
     const initialDbName = useSelector(getDBInputValue);
     const initialCompanyName = useSelector(getCompanyName);
     const initialSchema = useSelector(getInitialSchema);
+    const initialInsightDbName = useSelector(getInsightDBInputValue);
+    const initialInsightSchema = useSelector(getInitialInsightSchema)
     const inputRef = useRef(null);
     const dispatch = useDispatch();
     const [client, setClient] = useState(null);  // For managing the Client
@@ -56,6 +58,13 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
     const [approvalChangeButtons, setApprovalChangeButtons] = useState(false);
     const [visualizationIndex, setVisualizationIndex] = useState(-1);
     const [inisghtPlan, setInisghtPlan] = useState([]);
+    const [insightCellCode, setInsightCellCode] = useState([]);
+    const [insightsCode, setInsightsCode] = useState([]);
+    const [insightsImg, setInsightsImg] = useState([]);
+    const [progressShow, setProgressShow] = useState(false);
+    const [insightsText, setInsightsText] = useState([]);
+    const [finalMessages, setFinalMessages] = useState([]);
+    const [finalMessagesText, setFinalMessagesText] = useState([]);
     const [runId, setRunId] = useState('');
     const [codeInterpreterThreadId, setCodeInterpreterThreadId] = useState('');
     const [schema, setSchema] = useState([]);
@@ -65,16 +74,21 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
     const [showCubeEditButton, setShowCubeEditButton] = useState(false)
     const [requestedFields, setRequestedFields] = useState([]);
     const [pendingInfoMessage, setPendingInfoMessage] = useState(null);
+    const [insightDB, setInsightDB] = useState(null);
     
     const databases = data?.data;
     useEffect(() => {
         if (databases) {
             const cubeDatabase = databases.find(database => database.is_cube === true);
+            const rawDatabase = databases.find(database => database.is_cube === false);
             if (cubeDatabase) {
                 setIsChatHistoryOpen(true);
                 setShowButton(true);
                 setDBInputValue(cubeDatabase.id);
                 setCompanyName(cubeDatabase.company_name)
+            }
+            if (rawDatabase) {
+                setInsightDB(rawDatabase.id);
             }
         }
     }, [databases]);
@@ -399,7 +413,9 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
     
         // Display temporary message during server response wait time
         const tempMessageId = Date.now() + Math.random();
-        const tempMessage = {
+        let tempMessage;
+        if(chatType !== 'insights') {
+        tempMessage = {
             id: tempMessageId,
             sender: "server",
             text: "", // This will be updated with the actual content from the response chunks
@@ -412,7 +428,17 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
     
         // Call emulateDataStream to show a waiting message while we fetch the first chunk
         emulateDataStream(50, tempMessageId);
-    
+        } else {
+            tempMessage = {
+                    id: Date.now() + Math.random(),
+                    text: "Please wait until we generate the response....",
+                    typeMessage: "data",
+                    sender: "server",
+                    type: "text",
+                    isLoading: true,
+                }
+            setMessages((prev) => [...prev, userMessage, tempMessage]);
+        }
         // Clear the input field
         setInputValue("");
     
@@ -423,13 +449,10 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
         let finalMessageProcessed = false; // Track if the final message has been appended
     
         try {
+            const schema = chatType === 'insights' ? initialInsightSchema : initialSchema.schema;
+            const databaseID = chatType === 'insights' ? initialInsightDbName : initialDbName;
             const streamResponse = client.runs.stream(thread.thread_id, agent.assistant_id, {
-                input: {
-                    messages: messagesToSend,
-                    company_name: initialCompanyName,
-                    database_id: initialDbName,
-                    schema: initialSchema.schema,
-                },
+                input: { messages: messagesToSend, company_name: initialCompanyName, database_id: databaseID, schema: schema },
                 config: { recursion_limit: 25 },
                 streamMode: "messages",
             });
@@ -440,57 +463,107 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
                 // Handle partial messages
                 if (event === "messages/partial" && data.length > 0) {
                     const messageData = data[0];
-    
+                    const { content, type, tool_calls, response_metadata } = data[0];
+                    console.log('tool_calls',tool_calls)
                     if (messageData && messageData.content) {
                         const partialText = messageData.content; // Current text chunk
     
                         // Check if the current chunk contains the previous message or it's a new message
-                        if (isNewMessage || !partialText.startsWith(currentMessage)) {
-                            // New message stream detected, append a new temporary message
-                            const newTempMessageId = Date.now() + Math.random();
-                            const newTempMessage = {
-                                id: newTempMessageId,
-                                sender: "server",
-                                text: partialText, // Use partial chunk text
-                                isLoading: true,
-                                isTemporary: true,
-                            };
-                            setMessages((prev) => [...prev, newTempMessage]);
-    
-                            // Set flag to false after first chunk of the new message
-                            isNewMessage = false;
-                            lastMessageId = newTempMessageId;  // Track the new message ID
-                        } else {
-                            // Replace the last message with the new chunk if it's a continuation
-                            setMessages((prev) => {
-                                const updatedMessages = [...prev];
-                                const lastMessageIndex = updatedMessages.findIndex(msg => msg.id === lastMessageId);
-    
-                                // Replace text of the last message with the new partial content
-                                if (lastMessageIndex >= 0 && updatedMessages[lastMessageIndex].isTemporary) {
-                                    updatedMessages[lastMessageIndex].text = partialText; // Replace with the full message
+                        if(chatType !== 'insights') {
+                            if (isNewMessage || !partialText.startsWith(currentMessage)) {
+                                // New message stream detected, append a new temporary message
+                                    const newTempMessageId = Date.now() + Math.random();
+                                    const newTempMessage = {
+                                        id: newTempMessageId,
+                                        sender: "server",
+                                        text: partialText, // Use partial chunk text
+                                        isLoading: true,
+                                        isTemporary: true,
+                                    };
+                                    setMessages((prev) => [...prev, newTempMessage]);
+            
+                                    // Set flag to false after first chunk of the new message
+                                    isNewMessage = false;
+                                    lastMessageId = newTempMessageId;  // Track the new message ID
+                                } else {
+                                    // Replace the last message with the new chunk if it's a continuation
+                                    setMessages((prev) => {
+                                        const updatedMessages = [...prev];
+                                        const lastMessageIndex = updatedMessages.findIndex(msg => msg.id === lastMessageId);
+            
+                                        // Replace text of the last message with the new partial content
+                                        if (lastMessageIndex >= 0 && updatedMessages[lastMessageIndex].isTemporary) {
+                                            updatedMessages[lastMessageIndex].text = partialText; // Replace with the full message
+                                        }
+                                        return updatedMessages;
+                                    });
                                 }
-    
-                                return updatedMessages;
-                            });
-                        }
+                        } else {
+                                setFinalMessages((prevText) => {
+                                    const updatedText = [...prevText];
+                                    const lastMessage = updatedText[updatedText.length - 1];
+                                    if (lastMessage && lastMessage.sender === 'server') {
+                                        // Update the text of the last message if it's from the server
+                                        updatedText[updatedText.length - 1].text = typeof content === 'string' ? content : JSON.stringify(content);
+                                    } else {
+                                        // Add a new message from the server if the last one wasn't from the server
+                                        updatedText.push({
+                                            id: Date.now() + Math.random(),
+                                            sender: "server",
+                                            text: typeof content === 'string' ? content : JSON.stringify(content),
+                                        });
+                                    }
+                                    return updatedText;
+                                });                                             
+                        }  
     
                         // Store the current message to ensure the final text is updated correctly
                         currentMessage = partialText;
+                    }
+                    if(tool_calls.length > 0 && response_metadata && response_metadata.finish_reason == 'stop') {
+                        if(tool_calls[0].name == "IdentifyFieldsOutput") {
+                            const { table_names } = tool_calls[0].args
+                        } else if (tool_calls[0].name == "CreatePlanOutput") {
+                            const {steps} = tool_calls[0].args
+                            removeExistingMessage("Please wait until we generate the response....")
+                            setMessages(prevMessages => [
+                                ...prevMessages,
+                                {
+                                    id: Date.now() + Math.random(),
+                                    text: "Here is a plan how we want to get insights for your task.",
+                                    typeMessage: "data",
+                                    sender: "server",
+                                    type: "text",
+                                    showType: "insightProgress",
+                                }
+                            ]);
+                            setInisghtPlan(steps)
+                            setProgressShow(true)
+                        }
                     }
                 }
     
                 // Handle complete messages
                 if (event === "messages/complete" && data.length > 0) {
+                    setFinalMessages((prevFinalMessages) => {
+                        const lastMessage = prevFinalMessages[prevFinalMessages.length - 1]?.text || '';
+                        // Use the last message (chunk) to update finalMessagesText
+                        const lastChunk = lastMessage;
+                        // Update finalMessagesText after processing
+                        setFinalMessagesText((prevFinalMessagesText) => [
+                            ...prevFinalMessagesText,
+                            lastChunk,
+                        ]);
+            
+                        return prevFinalMessages;
+                    });
                     const messageData = data[0];
     
                     // Handle tool type messages
                     if (messageData && messageData.type === "tool") {
                         try {
                             const parsedContent = JSON.parse(messageData.content);
-    
-                            // Check if the message contains a card_id for card generation
-                            const { card_id } = parsedContent;
+                            const { card_id, explanation, python_code, result } = parsedContent;
                             if (card_id) {
                                 const cardMessageId = Date.now() + Math.random();
                                 const cardTempMessage = {
@@ -525,6 +598,26 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
     
                                 cardGenerated = true;
                             }
+                            if (python_code && explanation) {
+                                setInsightCellCode(prevCode => [...prevCode, python_code]);
+                                setInsightsText(prevText => [...prevText, explanation]);
+                                setInsightsCode(prevCode => [...prevCode, python_code]);
+                            }
+                            if (result && result.outputs && result.outputs.length > 0) {
+                                result.outputs.forEach(output => {
+                                    if (output.data && output.data['image/png']) {
+                                        const generatedImages = output.data['image/png'];
+                                        const base64Image = `data:image/png;base64,${generatedImages}`;
+                                        setInsightsImg(prevInsightsImg => [...prevInsightsImg, base64Image]);
+                                    }
+                                    if (output.data && output.data['text/plain']) {
+                                        const plainText = output.data['text/plain'];
+                                        if (!plainText.includes('<Figure size') && !plainText.includes('Axes>')) {
+                                            setFinalMessagesText(prevText => [...prevText, plainText]);
+                                        }
+                                    }
+                                });
+                            }                            
                         } catch (error) {
                             console.error("Error parsing tool message content:", error);
                         }
@@ -683,6 +776,12 @@ function emulateDataStream(chunkInterval = 50, tempMessageId) {
         ));
     };
 
+    const removeExistingMessage = (messageContent) => {
+        setMessages(prevMessages =>
+            prevMessages.filter(message => message.text !== messageContent)
+        );
+    };
+
     const handleKeyPress = (e) => {
         if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault(); // Prevent the default behavior of creating a new line
@@ -824,7 +923,9 @@ function emulateDataStream(chunkInterval = 50, tempMessageId) {
                             <ChatMessageList messages={messages} isLoading={isLoading} onFeedbackClick={handleFeedbackDialogOpen}
                                 approvalChangeButtons={approvalChangeButtons} onApproveClick={handleAccept} onDenyClick={handleDeny}
                                 card={card} defaultQuestion={defaultQuestion} result={result} openModal={openModal} 
-                                showError={showError} insightsPlan={inisghtPlan} showCubeEditButton={showCubeEditButton} sendAdminRequest={handleCubeRequestDialogOpen} onSuggestion={handleSuggestion}
+                                showError={showError} insightsCode={insightsCode} showCubeEditButton={showCubeEditButton} sendAdminRequest={handleCubeRequestDialogOpen} onSuggestion={handleSuggestion}
+                                insightCellCode={insightCellCode} insightsImg={insightsImg} insightsPlan={inisghtPlan} progressShow={progressShow}
+                                insightsText={insightsText} finalMessages={finalMessages} finalMessagesText={finalMessagesText}
                             />
                             <div
                                 style={{
