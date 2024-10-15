@@ -6,13 +6,11 @@ import { WindowModal } from "metabase/components/Modal/WindowModal";
 export type ModalProps = {
   full?: boolean;
   isOpen?: boolean;
-} & (WindowModalProps & FullPageModalProps);
+} & Omit<WindowModalProps & FullPageModalProps, "isOpen">;
 
 const Modal = ({ full = false, isOpen = true, ...props }: ModalProps) => {
   if (full) {
-    return isOpen ? (
-      <RoutelessFullPageModal isOpen={isOpen} {...props} />
-    ) : null;
+    return isOpen ? <RoutelessFullPageModal {...props} /> : null;
   } else {
     return <WindowModal isOpen={isOpen} {...props} />;
   }
