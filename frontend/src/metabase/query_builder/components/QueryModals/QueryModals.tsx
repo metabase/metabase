@@ -288,24 +288,20 @@ export function QueryModals({
           onClose={onCloseModal}
           canMoveToDashboard={canMoveToDashboard}
           onMove={destination => {
-            const destinationCollectionId =
-              (destination.model === "dashboard"
-                ? destination.collection_id
-                : destination.id) || ROOT_COLLECTION.id;
-
-            const destinationDashboardId =
-              destination.model === "dashboard" ? destination.id : undefined;
+            const destinationId =
+              destination.model === "collection"
+                ? destination.id || ROOT_COLLECTION.id
+                : destination.id;
 
             dispatch(
               Questions.actions.setCollection(
                 { id: question.id() },
-                destination,
+                { ...destination, id: destinationId },
                 {
                   notify: {
                     message: (
                       <QuestionMoveToast
-                        collectionId={destinationCollectionId}
-                        dashboardId={destinationDashboardId}
+                        destination={destination}
                         question={question}
                       />
                     ),

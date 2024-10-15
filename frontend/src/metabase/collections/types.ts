@@ -15,7 +15,9 @@ export type MoveCollectionDestination = Pick<Collection, "id"> & {
 export type MoveDashboardDestination = Pick<Dashboard, "id"> & {
   model: "dashboard";
 } & Partial<Dashboard>;
-type MoveDestination = MoveCollectionDestination | MoveDashboardDestination;
+export type MoveDestination =
+  | MoveCollectionDestination
+  | MoveDashboardDestination;
 
 export type OnCopy = (items: CollectionItem[]) => void | null;
 export type OnCopyWithoutArguments = () => void;
