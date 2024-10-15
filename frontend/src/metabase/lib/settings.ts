@@ -326,6 +326,14 @@ class MetabaseSettings {
   }
 
   /**
+   * @deprecated use getSetting(state, "version-info")
+   */
+  latestVersion() {
+    const { latest } = this.versionInfo();
+    return latest && latest.version;
+  }
+
+  /**
    * @deprecated use getSetting(state, "is-metabot-enabled")
    */
   isMetabotEnabled() {
