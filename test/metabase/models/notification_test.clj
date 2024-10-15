@@ -7,9 +7,12 @@
    [metabase.task :as task]
    [metabase.task.notification :as task.notification]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :once (fixtures/initialize :web-server))
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                      Life cycle test                                            ;;
@@ -36,10 +39,19 @@
                                                                              :notification_id n-id})]
         (is (some? (t2/select-one :model/NotificationSubscription sub-id)))))
 
-    (testing "failed if type is invalid"
-      (is (thrown-with-msg? Exception #"Invalid value :notification-subscription/not-existed\. Must be one of .*"
-                            (t2/insert! :model/NotificationSubscription {:type           :notification-subscription/not-existed
-                                                                         :event_name     :event/card-create
+    (testing "fail if type is system event but event-name is nil"
+      (is (thrown-with-msg? Exception #"Value does not match schema"
+                            (t2/insert! :model/NotificationSubscription {:type            :notification-subscription/system-event
+                                                                         :notification_id n-id}))))
+    (testing "fail if type is cron but cron_schedule is nil"
+      (is (thrown-with-msg? Exception #"Value does not match schema"
+                            (t2/insert! :model/NotificationSubscription {:type            :notification-subscription/cron
+                                                                         :notification_id n-id}))))
+    (testing "fail if type is system event but has cron_schedule"
+      (is (thrown-with-msg? Exception #"Value does not match schema"
+                            (t2/insert! :model/NotificationSubscription {:type            :notification-subscription/system-event
+                                                                         :event_name      :event/card-create
+                                                                         :cron_schedule   "0 * * * * ? *"
                                                                          :notification_id n-id}))))))
 
 (deftest notification-subscription-event-name-test
@@ -254,53 +266,57 @@
     :timezone timezone}))
 
 (deftest update-subscription-trigger-test
-  (mt/with-temp [:model/Notification {noti-id :id}]
-    (testing "a trigger is created when create a notification subscription"
-      (let [sub-id (t2/insert-returning-pk! :model/NotificationSubscription {:type            :notification-subscription/cron
-                                                                             :cron_schedule   "0 * * * * ? *"
-                                                                             :notification_id noti-id})]
-        (is (= [(subscription->trigger-info
-                 sub-id
-                 "0 * * * * ? *")]
-               (send-notification-triggers sub-id)))
-        (testing "update trigger when cron schedule is changed"
-          (t2/update! :model/NotificationSubscription sub-id {:cron_schedule "1 * * * * ? *"})
-          (is (= [(subscription->trigger-info
-                   sub-id
-                   "1 * * * * ? *")]
-                 (send-notification-triggers sub-id))))
-
-        (testing "delete the trigger when type changes"
-          (t2/update! :model/NotificationSubscription sub-id {:type :notification-subscription/system-event
-                                                              :cron_schedule nil
-                                                              :event_name :event/card-create})
-          (is (empty? (send-notification-triggers sub-id))))))
-
-    (testing "delete the trigger when delete subscription"
-      (let [sub-id (t2/insert-returning-pk! :model/NotificationSubscription {:type            :notification-subscription/cron
-                                                                             :cron_schedule   "0 * * * * ? *"
-                                                                             :notification_id noti-id})]
-        (is (not-empty (send-notification-triggers sub-id)))
-        (t2/delete! :model/NotificationSubscription sub-id)
-        (is (empty? (send-notification-triggers sub-id)))))
-
-    (testing "delete notification will delete all subscription triggers"
-      (let [sub-id (t2/insert-returning-pk! :model/NotificationSubscription {:type            :notification-subscription/cron
-                                                                             :cron_schedule   "0 * * * * ? *"
-                                                                             :notification_id noti-id})]
-        (is (not-empty (send-notification-triggers sub-id)))
-        (t2/delete! :model/Notification noti-id)
-        (is (empty? (send-notification-triggers sub-id)))))))
-
-(deftest subscription-trigger-timezone-is-report-timezone-test
-  (mt/with-temporary-setting-values [report-timezone "Asia/Ho_Chi_Minh"]
+  (mt/with-temp-scheduler!
+    (task/init! ::task.notification/SendNotifications)
     (mt/with-temp [:model/Notification {noti-id :id}]
-      (testing "trigger timezone is report timezone"
+      (testing "a trigger is created when create a notification subscription"
         (let [sub-id (t2/insert-returning-pk! :model/NotificationSubscription {:type            :notification-subscription/cron
                                                                                :cron_schedule   "0 * * * * ? *"
                                                                                :notification_id noti-id})]
           (is (= [(subscription->trigger-info
                    sub-id
-                   "0 * * * * ? *"
-                   "Asia/Ho_Chi_Minh")]
-                 (send-notification-triggers sub-id))))))))
+                   "0 * * * * ? *")]
+                 (send-notification-triggers sub-id)))
+          (testing "update trigger when cron schedule is changed"
+            (t2/update! :model/NotificationSubscription sub-id {:cron_schedule "1 * * * * ? *"})
+            (is (= [(subscription->trigger-info
+                     sub-id
+                     "1 * * * * ? *")]
+                   (send-notification-triggers sub-id))))
+
+          (testing "delete the trigger when type changes"
+            (t2/update! :model/NotificationSubscription sub-id {:type :notification-subscription/system-event
+                                                                :cron_schedule nil
+                                                                :event_name :event/card-create})
+            (is (empty? (send-notification-triggers sub-id))))))
+
+      (testing "delete the trigger when delete subscription"
+        (let [sub-id (t2/insert-returning-pk! :model/NotificationSubscription {:type            :notification-subscription/cron
+                                                                               :cron_schedule   "0 * * * * ? *"
+                                                                               :notification_id noti-id})]
+          (is (not-empty (send-notification-triggers sub-id)))
+          (t2/delete! :model/NotificationSubscription sub-id)
+          (is (empty? (send-notification-triggers sub-id)))))
+
+      (testing "delete notification will delete all subscription triggers"
+        (let [sub-id (t2/insert-returning-pk! :model/NotificationSubscription {:type            :notification-subscription/cron
+                                                                               :cron_schedule   "0 * * * * ? *"
+                                                                               :notification_id noti-id})]
+          (is (not-empty (send-notification-triggers sub-id)))
+          (t2/delete! :model/Notification noti-id)
+          (is (empty? (send-notification-triggers sub-id))))))))
+
+(deftest subscription-trigger-timezone-is-report-timezone-test
+  (mt/with-temp-scheduler!
+    (task/init! ::task.notification/SendNotifications)
+    (mt/with-temporary-setting-values [report-timezone "Asia/Ho_Chi_Minh"]
+      (mt/with-temp [:model/Notification {noti-id :id}]
+        (testing "trigger timezone is report timezone"
+          (let [sub-id (t2/insert-returning-pk! :model/NotificationSubscription {:type            :notification-subscription/cron
+                                                                                 :cron_schedule   "0 * * * * ? *"
+                                                                                 :notification_id noti-id})]
+            (is (= [(subscription->trigger-info
+                     sub-id
+                     "0 * * * * ? *"
+                     "Asia/Ho_Chi_Minh")]
+                   (send-notification-triggers sub-id)))))))))
