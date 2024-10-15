@@ -3,6 +3,7 @@ import { render, screen } from "@testing-library/react";
 import Color from "color";
 
 import { getThemeOverrides } from "metabase/ui/theme";
+import { getColorShades } from "metabase/ui/utils/colors";
 
 import { Text } from "../..";
 
@@ -33,7 +34,7 @@ describe.skip("ThemeProvider", () => {
     // Simulate a user-provided theme override.
     // This is primarily used by the React embedding SDK.
     const theme: MantineThemeOverride = {
-      colors: { "text-dark": ["rgb(12, 34, 56)"] },
+      colors: { "text-dark": getColorShades("rgb(12, 34, 56)") },
     };
 
     render(
