@@ -324,7 +324,7 @@ export function getPieChartModel(
     ring: "inner" | "middle" | "outer",
     hasMultipleRings: boolean,
   ) {
-    if (hasMultipleRings) {
+    if (!hasMultipleRings) {
       return hexColor;
     }
     const accentNumber = hexToAccentColorMap.get(hexColor);
