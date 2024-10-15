@@ -113,7 +113,7 @@
                   :param_fields
                   :param_values
                   [:moderation_reviews :moderator_details]
-                  [:collection :is_personal]))))
+                  [:collection :is_personal :effective_location]))))
 
 (api/defendpoint POST "/"
   "Create a new Dashboard."
