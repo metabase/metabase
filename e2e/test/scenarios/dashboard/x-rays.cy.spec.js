@@ -377,8 +377,8 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
       .findByText("18,760")
       .should("exist");
     getDashcardByTitle("Transactions in the last 30 days")
-      .findByText("504")
-      .should("exist");
+      .findByTestId("scalar-value")
+      .should("exist"); // not asserting a value as it's dynamic
     getDashcardByTitle("Average quantity per month").within(() => {
       cy.findByText("Average of Quantity").should("exist");
       cy.findByText("Created At").should("exist");
