@@ -475,35 +475,28 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS = {
     isValid: (series, settings) => {
       return canHaveMaxCategoriesSetting(series, settings);
     },
-    getProps: (_series, settings) => {
+    getProps: ([{ card }], settings) => {
       return {
         isEnabled: settings["graph.max_categories_enabled"],
+        aggregationFunction: settings["graph.other_category_aggregation_fn"],
+        canChangeAggregationFunction: card.dataset_query.type === "native",
       };
     },
-    readDependencies: ["graph.max_categories_enabled", "series_settings"],
+    readDependencies: [
+      "graph.max_categories_enabled",
+      "graph.other_category_aggregation_fn",
+      "series_settings",
+    ],
   },
   "graph.other_category_color": {
     default: color("text-light"),
   },
   "graph.other_category_aggregation_fn": {
-    section: t`Display`,
-    title: t`"Other" series aggregation function`,
-    widget: "select",
+    hidden: true,
     getDefault: ([{ data }], settings) => {
       const [metricName] = settings["graph.metrics"];
       const metric = data.cols.find(col => col.name === metricName);
       return metric?.aggregation_type ?? "sum";
-    },
-    getHidden: ([{ card }]) => card.dataset_query.type !== "native",
-    props: {
-      options: [
-        { name: t`Sum`, value: "sum" },
-        { name: t`Average`, value: "avg" },
-        { name: t`Median`, value: "median" },
-        { name: t`Standard deviation`, value: "stddev" },
-        { name: t`Min`, value: "min" },
-        { name: t`Max`, value: "max" },
-      ],
     },
     readDependencies: ["graph.metrics"],
   },

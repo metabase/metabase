@@ -785,10 +785,11 @@ describe("scenarios > visualizations > bar chart", () => {
     }
 
     function setOtherCategoryAggregationFn(fnName) {
-      leftSidebar()
-        .findByLabelText('"Other" series aggregation function')
+      leftSidebar().findByLabelText("Other series settings").click();
+      popover()
+        .findByTestId("graph-other-category-aggregation-fn-picker")
         .click();
-      popover().findByText(fnName).click();
+      popover().last().findByText(fnName).click();
     }
 
     visitQuestionAdhoc({
@@ -886,10 +887,9 @@ describe("scenarios > visualizations > bar chart", () => {
 
     // Test "graph.other_category_aggregation_fn" is hidden for MBQL queries
     setMaxCategories(8, { viaBreakoutSettings: true });
-    leftSidebar().within(() => {
-      cy.findByText("Display").click();
-      cy.findByText('"Other" series aggregation function').should("not.exist");
-    });
+    cy.findByTestId("graph-other-category-aggregation-fn-picker").should(
+      "not.exist",
+    );
 
     // Test "graph.other_category_aggregation_fn" for native queries
     openNotebook();
@@ -901,7 +901,6 @@ describe("scenarios > visualizations > bar chart", () => {
     queryBuilderMain().findByTestId("visibility-toggler").click();
 
     cy.findByTestId("viz-settings-button").click();
-    leftSidebar().findByText("Display").click();
     setOtherCategoryAggregationFn("Average");
 
     chartPathWithFillColor(AK_SERIES_COLOR).first().realHover();
