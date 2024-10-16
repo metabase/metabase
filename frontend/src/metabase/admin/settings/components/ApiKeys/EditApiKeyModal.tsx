@@ -53,28 +53,28 @@ const RegenerateKeyModal = ({
             <Stack gap="xs">
               <Text
                 component="label"
-                weight="bold"
+                fw="bold"
                 color="text-light"
                 size="sm"
               >{t`Key name`}</Text>
-              <Text weight="bold" size="sm">
+              <Text fw="bold" size="sm">
                 {apiKey.name}
               </Text>
             </Stack>
             <Stack gap="xs">
               <Text
                 component="label"
-                weight="bold"
+                fw="bold"
                 color="text-light"
                 size="sm"
               >{t`Group`}</Text>
-              <Text weight="bold" size="sm">
+              <Text fw="bold" size="sm">
                 {apiKey.group.name}
               </Text>
             </Stack>
             <Text>{t`Metabase will replace the existing API key with a new key. You won't be able to recover the old key.`}</Text>
             <FormErrorMessage />
-            <Group position="right">
+            <Group justify="flex-end">
               <Button
                 onClick={() => setModal("edit")}
               >{t`No, don't regenerate`}</Button>
@@ -166,11 +166,11 @@ export const EditApiKeyModal = ({
                   disabled
                 />
                 <FormErrorMessage />
-                <Group position="apart" mt="lg">
+                <Group justify="space-between" mt="lg">
                   <Button
                     onClick={() => setModal("regenerate")}
                   >{t`Regenerate API Key`}</Button>
-                  <Group position="right">
+                  <Group justify="flex-end">
                     <Button onClick={onClose}>{t`Cancel`}</Button>
                     <FormSubmitButton
                       disabled={!dirty}

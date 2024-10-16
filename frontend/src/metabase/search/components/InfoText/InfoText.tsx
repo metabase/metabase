@@ -15,7 +15,7 @@ export const InfoText = ({
   isCompact,
   showLinks = true,
 }: InfoTextProps) => (
-  <Group noWrap gap="xs">
+  <Group wrap="nowrap" gap="xs">
     <InfoTextAssetLink showLinks={showLinks} result={result} />
     <InfoTextEditedInfo result={result} isCompact={isCompact} />
   </Group>

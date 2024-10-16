@@ -51,7 +51,7 @@ export const StaticTabContent = ({
           <Button
             variant="filled"
             mb="sm"
-            leftIcon={<Icon name="dashboard" />}
+            leftSection={<Icon name="dashboard" />}
           >{t`Embed this example dashboard`}</Button>
         </Link>
       )}

@@ -128,7 +128,7 @@ export const SdkUsageProblemBanner = ({
                 variant="subtle"
                 onClick={hideBanner}
                 ff={fontFamily}
-                compact
+                size="compact-md"
               >
                 Hide {severity}
               </Button>
@@ -137,7 +137,7 @@ export const SdkUsageProblemBanner = ({
                 <Button
                   fz="sm"
                   variant="outline"
-                  rightIcon={<Icon name="external" size={10} />}
+                  rightSection={<Icon name="external" size={10} />}
                   ff={fontFamily}
                   className={S.DocsButton}
                   compact

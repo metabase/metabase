@@ -286,7 +286,7 @@ export const WebhookForm = ({
                 c="var(--mb-color-text-medium)"
                 compact
                 pl="0"
-                leftIcon={<Icon name="trash" />}
+                leftSection={<Icon name="trash" />}
                 onClick={onDelete}
               >{t`Delete this destination`}</Button>
             )}

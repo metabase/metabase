@@ -32,7 +32,11 @@ export const SearchResultLink = ({
 
   return (
     <Tooltip isEnabled={isTruncated} tooltip={children}>
-      <ResultLinkWrapper data-testid="result-link-wrapper" gap="xs" noWrap>
+      <ResultLinkWrapper
+        data-testid="result-link-wrapper"
+        gap="xs"
+        wrap="nowrap"
+      >
         {leftIcon}
         <ResultLink
           {...componentProps}
