@@ -47,8 +47,7 @@ const ChatHistory = ({
         const clientInstance = new Client();
         setClient(clientInstance)
         const threads = await clientInstance.threads.search();
-     
-        console.log("Fetched threads: ", threads); // Log fetched threads
+        
         setCreatedThread(threads);
       } catch (error) {
         console.error("Error initializing Client or fetching threads:", error);
@@ -72,7 +71,6 @@ const ChatHistory = ({
 
       createdThread.forEach((thread: any) => {
         const timestamp = dayjs(thread.created_at);
-        console.log("Thread created_at:", thread.created_at, "Parsed as:", timestamp.format());
 
         if (timestamp.isSame(today, "day")) {
           categorizedHistory.today.push(thread);
@@ -117,7 +115,6 @@ const ChatHistory = ({
   }, [hasMore]);
 
   const handleHistoryItemClick = async (item: any) => {
-    console.log('selected:', item);
 
     try {
         // Fetch the selected thread's history using client.threads.getHistory
@@ -125,7 +122,6 @@ const ChatHistory = ({
         
         if (selectedThread.length > 0 && selectedThread[0].values) {
           const threadMessages = selectedThread[0].values.messages || [];
-          console.log('selectedThread:', threadMessages);
             let extractedCardId = null; // Initialize to store the card_id
             
             // Iterate over threadMessages to find the card_id
@@ -136,7 +132,6 @@ const ChatHistory = ({
                         const parsedContent = JSON.parse(message.content);
                         if (parsedContent.card_id) {
                             extractedCardId = parsedContent.card_id;
-                            console.log('Extracted card_id:', extractedCardId);
                             break;  // Stop once the card_id is found
                         }
                     } catch (error) {

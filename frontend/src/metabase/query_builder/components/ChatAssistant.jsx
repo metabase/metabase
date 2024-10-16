@@ -168,84 +168,73 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
 
     useEffect(() => {
         if (selectedMessages && selectedThreadId && selectedMessages.length > 0) {
-            setMessages([])
-            console.log("selectedMessages", selectedMessages, oldCardId);
+            // Clear existing messages
+            setMessages([]);
             let visualizationIdx = 0;
             setThreadId(selectedThreadId);
-      
-            // Parse the selectedMessages
-            const parsedMessages = selectedMessages.map((message) => {
-                // Determine the sender based on the type (either 'human' or 'ai')
-                const senderType = message.type === "human" ? "user" : "server";
-      
-                return {
-                    id: generateRandomId(),
-                    text: message.content,  // Use the 'content' field directly
-                    typeMessage: "data",
-                    sender: senderType,
-                    type: "text",
-                    isLoading: false,
-                    thread_id: selectedThreadId,
-                };
-            });
-      
-            // Check for any message content with card_id and handle visualization generation
-            const cardIdPromises = selectedMessages.flatMap((message) => {
-                try {
-                    const parsedContent = JSON.parse(message.content);
     
-                    // Check if the parsed content contains a card_id
-                    if (parsedContent.card_id) {
-                        const card_id = parsedContent.card_id;
-                        const cardMessageId = Date.now() + Math.random();
+            const processMessages = async () => {
+                let newMessages = [];
     
-                        // Create a temporary loading message for card generation
-                        const cardTempMessage = {
-                            id: cardMessageId,
+                // Step 1: Loop through the messages and find the one with the card_id
+                for (let i = 0; i < selectedMessages.length; i++) {
+                    const message = selectedMessages[i];
+                    const senderType = message.type === "human" ? "user" : "server";
+    
+                    // Step 2: Check if this message contains the card_id
+                    let card_id = null;
+                    try {
+                        const parsedContent = JSON.parse(message.content);
+                        if (parsedContent.card_id) {
+                            card_id = parsedContent.card_id;
+                        }
+                    } catch (error) {
+                        // If it's not a valid JSON, just continue to add the message
+                    }
+    
+                    // Step 3: If the message contains a card_id, skip rendering it but handle visualization
+                    if (card_id) {
+                        // Generate the visualization for the card
+                        await handleGetDatasetQuery(card_id);
+    
+                        // Add a visualization message to the list (this replaces the card_id message)
+                        const visualizationMessage = {
+                            id: Date.now() + Math.random(),
                             sender: "server",
-                            text: "Generating card...",
-                            isLoading: true,
-                            isTemporary: true,
+                            text: "", // Visualizations typically don’t need text
+                            showVisualization: true,
+                            visualizationIdx,
+                            isLoading: false,
                         };
     
-                        // Add the temporary loading message to the messages
-                        setMessages((prev) => [...prev, cardTempMessage]);
+                        // Add the visualization message in place of the card_id message
+                        newMessages.push(visualizationMessage);
     
-                        // Fetch the dataset and add a visualization message after data retrieval
-                        return handleGetDatasetQuery(card_id).then(() => {
-                            setMessages((prev) => {
-                                const visualizationMessage = {
-                                    id: Date.now() + Math.random(),
-                                    sender: "server",
-                                    text: "", // Visualizations don't need text
-                                    showVisualization: true,
-                                    visualizationIdx,
-                                    isLoading: false,
-                                };
-                                return [...prev, visualizationMessage]; // Add the visualization message
-                            });
-                        });
+                        // Skip the card_id message (don't add it to newMessages)
+                        continue;
                     }
-                } catch (error) {
-                    console.error("Error parsing message content:", error);
+    
+                    // Step 4: Add the regular messages (not the card_id message)
+                    const newMessageObj = {
+                        id: generateRandomId(),
+                        text: message.content,
+                        typeMessage: "data",
+                        sender: senderType,
+                        type: "text",
+                        isLoading: false,
+                        thread_id: selectedThreadId,
+                    };
+    
+                    // Add the regular message to the list
+                    newMessages.push(newMessageObj);
                 }
-                return [];
-            });
     
-            // Wait for all card generation promises to resolve before updating the state further
-            Promise.all(cardIdPromises).then(() => {
-                // After generating cards, update the other messages
-                setDefaultQuestion([]);
-                setCard(null);
-                setCardHash([]);
-                setResult([]);
+                // Step 5: After processing all messages, update the state
+                setMessages((prev) => [...prev, ...newMessages]);
+            };
     
-                // Ensure cards are handled if needed
-                handleGetDatasetQueryWithCards(oldCardId);
-    
-                // Set the parsed messages that don't involve card generation
-                setMessages((prevMessages) => [...prevMessages, ...parsedMessages]);
-            });
+            // Call the processMessages function to handle the logic
+            processMessages();
         }
     }, [selectedMessages, selectedThreadId]);
     
@@ -279,6 +268,10 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
 
 
     const handleGetDatasetQuery = async (cardId) => {
+        setCard(null)
+        setDefaultQuestion([])
+        setResult([])
+        setCardHash([])
         try {
             // Fetch the card details using the provided cardId
             const fetchedCard = await CardApi.get({ cardId });
@@ -347,61 +340,6 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
         } catch (error) {
             console.error("Error fetching card content:", error);
             setShowError(true);
-            setError("There was an error fetching the dataset. Please provide feedback if this issue persists.");
-        } finally {
-            setIsLoading(false);
-            removeLoadingMessage();
-        }
-    };
-    
-
-    const handleGetDatasetQueryWithCards = async (cardIds) => {
-        setIsLoading(true);
-        try {
-            const fetchedCards = await Promise.all(cardIds.map(cardId => CardApi.get({ cardId })));
-            const queryCards = await Promise.all(cardIds.map(cardId => CardApi.query({ cardId })));
-
-            const newQuestions = [];
-            const hashes = [];
-
-            fetchedCards.forEach((fetchedCard, index) => {
-                const getDatasetQuery = fetchedCard?.dataset_query;
-                const defaultQuestionTest = Question.create({
-                    databaseId: 1,
-                    name: fetchedCard.name,
-                    type: "query",
-                    display: fetchedCard.display,
-                    visualization_settings: {},
-                    dataset_query: getDatasetQuery
-                });
-
-                const itemtohash = {
-                    dataset_query: {
-                        database: getDatasetQuery.database,
-                        type: "query",
-                        query: getDatasetQuery.query
-                    },
-                    display: fetchedCard.display,
-                    visualization_settings: {},
-                    type: "question"
-                };
-
-                const newQuestion = defaultQuestionTest.setCard(fetchedCard);
-                newQuestions.push(newQuestion);
-
-                const hash = adhocQuestionHash(itemtohash);
-                hashes.push(hash);
-
-                setResult(prevResult => [...(prevResult || []), queryCards[index]]);
-            });
-
-            setDefaultQuestion(newQuestions);
-            setCard(fetchedCards);
-            setCardHash(hashes);
-
-        } catch (error) {
-            console.error("Error fetching card content:", error);
-            setShowError(true)
             setError("There was an error fetching the dataset. Please provide feedback if this issue persists.");
         } finally {
             setIsLoading(false);
@@ -507,7 +445,6 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
                 if (event === "messages/partial" && data.length > 0) {
                     const messageData = data[0];
                     const { content, type, tool_calls, response_metadata } = data[0];
-                    console.log('tool_calls',tool_calls)
                     if (messageData && messageData.content) {
                         const partialText = messageData.content; // Current text chunk
     
