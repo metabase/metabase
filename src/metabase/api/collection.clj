@@ -1204,7 +1204,7 @@
    group_id  [:maybe ms/PositiveInt]
    root_collection_id [:maybe ms/PositiveInt]}
   (api/check-superuser)
-  (graph/graph namespace group_id root_collection_id))
+  (graph/graph namespace (when group_id [group_id]) root_collection_id))
 
 (def CollectionID "an id for a [[Collection]]."
   [pos-int? {:title "Collection ID"}])
@@ -1260,15 +1260,17 @@
   Will overwrite parts of the graph that are present in the request, and leave the rest unchanged.
 
   If the `skip_graph` query parameter is true, it will only return the current revision"
-  [:as {{:keys [namespace revision groups skip_graph]} :body}]
-  {namespace [:maybe ms/NonBlankString]
-   revision  ms/Int
-   groups :map
-   skip_graph [:maybe ms/BooleanValue]}
+  [:as {{:keys [namespace revision groups skip_graph return_changes_only]} :body}]
+  {namespace  [:maybe ms/NonBlankString]
+   revision   ms/Int ;; can be 0.
+   groups     :map
+   skip_graph [:maybe ms/BooleanValue]
+   return_changes_only [:maybe ms/BooleanValue]} ;; added for backwards compatibility. use skip_graph instead.
   (api/check-superuser)
-  (update-graph!
-   namespace
-   (decode-graph {:revision revision :groups groups})
-   skip_graph))
+  (let [skip_graph (if skip_graph skip_graph return_changes_only)]
+    (update-graph!
+     namespace
+     (decode-graph {:revision revision :groups groups})
+     skip_graph)))
 
 (api/define-routes)
