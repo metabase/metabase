@@ -55,7 +55,7 @@ export const HomeLayout = () => {
 
   useEffect(() => {
     const initializeClient = async () => {
-      const clientInstance = new Client();
+      const clientInstance = new Client({apiUrl: langchain_url, apiKey: langchain_key});
       setClient(clientInstance);
     };
     initializeClient();
