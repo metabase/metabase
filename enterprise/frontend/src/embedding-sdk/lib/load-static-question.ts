@@ -14,16 +14,20 @@ type ParameterQueryInput = { id: string } & ParameterQueryObject;
 window.CardApi = CardApi;
 
 export async function loadStaticQuestion(options: Options) {
-  const { questionId, parameterValues, cancelDeferred: cancelled } = options;
+  const { questionId, parameterValues, cancelDeferred } = options;
 
   let card: Card | null;
   let result: Dataset | null;
 
   [card, result] = await Promise.all([
-    CardApi.get({ cardId: questionId }, { cancelled }),
+    CardApi.get({ cardId: questionId }, { cancelled: cancelDeferred?.promise }),
 
     // Query the card in parallel when no parameters are provided.
-    !parameterValues && CardApi.query({ cardId: questionId }, { cancelled }),
+    !parameterValues &&
+      CardApi.query(
+        { cardId: questionId },
+        { cancelled: cancelDeferred?.promise },
+      ),
   ]);
 
   if (parameterValues && card?.parameters) {
@@ -41,7 +45,7 @@ export async function loadStaticQuestion(options: Options) {
         cardId: questionId,
         parameters,
       },
-      { cancelled },
+      { cancelled: cancelDeferred?.promise },
     );
   }
 
