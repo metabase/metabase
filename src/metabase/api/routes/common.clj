@@ -5,16 +5,16 @@
    [metabase.server.middleware.auth :as mw.auth]
    [metabase.server.middleware.exceptions :as mw.exceptions]))
 
-(def +public-exceptions
+(def ^{:arglists '([handler])} +public-exceptions
   "Wrap `routes` so any Exception except 404 thrown is just returned as a generic 400, to prevent details from leaking in public
   endpoints."
   #'mw.exceptions/public-exceptions)
 
-(def +message-only-exceptions
+(def ^{:arglists '([handler])} +message-only-exceptions
   "Wrap `routes` so any Exception thrown is just returned as a 400 with only the message from the original
   Exception (i.e., remove the original stacktrace), to prevent details from leaking in public endpoints."
   #'mw.exceptions/message-only-exceptions)
 
-(def +auth
+(def ^{:arglists '([handler])} +auth
   "Wrap `routes` so they may only be accessed with proper authentication credentials."
   #'mw.auth/enforce-authentication)
