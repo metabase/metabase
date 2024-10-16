@@ -6,7 +6,7 @@ import {
   GRID_WIDTH,
   getPositionForNewDashCard,
 } from "metabase/lib/dashboard_grid";
-import { createThunkAction } from "metabase/lib/redux";
+import { createAsyncThunk } from "metabase/lib/redux";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { getDefaultSize } from "metabase/visualizations";
 import type {
@@ -248,34 +248,31 @@ export const replaceCard =
     dashboardId && trackQuestionReplaced(dashboardId);
   };
 
-export const removeCardFromDashboard = createThunkAction(
-  REMOVE_CARD_FROM_DASH,
-  ({
-    dashcardId,
-    cardId,
-  }: {
+export const removeCardFromDashboard = createAsyncThunk<
+  {
+    dashcardId: DashCardId;
+  },
+  {
     dashcardId: DashCardId;
     cardId: DashboardCard["card_id"];
-  }) =>
-    dispatch => {
-      dispatch(closeAddCardAutoWireToasts());
+  }
+>(REMOVE_CARD_FROM_DASH, ({ dashcardId, cardId }, { dispatch }) => {
+  dispatch(closeAddCardAutoWireToasts());
 
-      dispatch(cancelFetchCardData(cardId, dashcardId));
-      return { dashcardId };
-    },
-);
+  dispatch(cancelFetchCardData(cardId, dashcardId));
+  return { dashcardId };
+});
 
-export const undoRemoveCardFromDashboard = createThunkAction(
-  UNDO_REMOVE_CARD_FROM_DASH,
-  ({ dashcardId }) =>
-    (dispatch, getState) => {
-      const dashcard = getDashCardById(getState(), dashcardId);
+export const undoRemoveCardFromDashboard = createAsyncThunk<
+  { dashcardId: DashCardId },
+  { dashcardId: DashCardId }
+>(UNDO_REMOVE_CARD_FROM_DASH, ({ dashcardId }, { dispatch, getState }) => {
+  const dashcard = getDashCardById(getState(), dashcardId);
 
-      if (!isVirtualDashCard(dashcard)) {
-        const card = dashcard.card;
-        dispatch(fetchCardData(card, dashcard));
-      }
+  if (!isVirtualDashCard(dashcard)) {
+    const card = dashcard.card;
+    dispatch(fetchCardData(card, dashcard));
+  }
 
-      return { dashcardId };
-    },
-);
+  return { dashcardId };
+});
