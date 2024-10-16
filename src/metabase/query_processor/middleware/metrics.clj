@@ -64,8 +64,8 @@
          not-empty)))
 
 (defn- expression-with-name-from-source
-  [query [_ {:lib/keys [expression-name]} :as expression]]
-  (lib/expression query 0 expression-name expression))
+  [query agg-stage-index [_ {:lib/keys [expression-name]} :as expression]]
+  (lib/expression query agg-stage-index expression-name expression))
 
 (defn- update-metric-query-expression-names
   [metric-query unique-name-fn]
@@ -137,7 +137,8 @@
                                          (:qp/stage-had-source-card (lib.util/query-stage query agg-stage-index)))))
                            (let [metric-query (update-metric-query-expression-names metric-query unique-name-fn)]
                              (as-> query $q
-                               (reduce expression-with-name-from-source $q (lib/expressions metric-query -1))
+                               (reduce #(expression-with-name-from-source %1 agg-stage-index %2)
+                                       $q (lib/expressions metric-query -1))
                                (include-implicit-joins $q agg-stage-index metric-query)
                                (reduce #(lib/filter %1 agg-stage-index %2) $q (lib/filters metric-query -1))
                                (replace-metric-aggregation-refs $q agg-stage-index lookup)))
