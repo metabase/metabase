@@ -485,7 +485,7 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS = {
   "graph.other_category_color": {
     default: color("text-light"),
   },
-  "graph.other_series_aggregation_fn": {
+  "graph.other_category_aggregation_fn": {
     section: t`Display`,
     title: t`"Other" series aggregation function`,
     widget: "select",

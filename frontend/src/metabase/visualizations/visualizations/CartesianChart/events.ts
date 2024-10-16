@@ -488,7 +488,7 @@ export const getSeriesOnlyTooltipModel = (
         seriesModel.dataKey === OTHER_DATA_KEY
           ? getAggregatedOtherSeriesValue(
               chartModel.groupedSeriesModels ?? [],
-              settings["graph.other_series_aggregation_fn"],
+              settings["graph.other_category_aggregation_fn"],
               datum,
             )
           : datum[seriesModel.dataKey];
@@ -573,7 +573,7 @@ export const getStackedTooltipModel = (
         seriesModel.dataKey === OTHER_DATA_KEY
           ? getAggregatedOtherSeriesValue(
               chartModel.groupedSeriesModels ?? [],
-              settings["graph.other_series_aggregation_fn"],
+              settings["graph.other_category_aggregation_fn"],
               datum,
             )
           : datum[seriesModel.dataKey];
@@ -704,7 +704,7 @@ export const getOtherSeriesTooltipModel = (
     rows,
     footer: {
       name: getOtherSeriesAggregationLabel(
-        settings["graph.other_series_aggregation_fn"],
+        settings["graph.other_category_aggregation_fn"],
       ),
       values: [
         String(
@@ -712,7 +712,7 @@ export const getOtherSeriesTooltipModel = (
             isAlreadyScaled: true,
             value: getAggregatedOtherSeriesValue(
               groupedSeriesModels,
-              settings["graph.other_series_aggregation_fn"],
+              settings["graph.other_category_aggregation_fn"],
               datum,
             ),
             settings,

@@ -884,14 +884,14 @@ describe("scenarios > visualizations > bar chart", () => {
     queryBuilderMain().findAllByTestId("legend-item").should("have.length", 14);
     otherSeriesChartPaths().should("not.exist");
 
-    // Test "graph.other_series_aggregation_fn" is hidden for MBQL queries
+    // Test "graph.other_category_aggregation_fn" is hidden for MBQL queries
     setMaxCategories(8, { viaBreakoutSettings: true });
     leftSidebar().within(() => {
       cy.findByText("Display").click();
       cy.findByText('"Other" series aggregation function').should("not.exist");
     });
 
-    // Test "graph.other_series_aggregation_fn" for native queries
+    // Test "graph.other_category_aggregation_fn" for native queries
     openNotebook();
     queryBuilderHeader().button("View the SQL").click();
     cy.findByTestId("native-query-preview-sidebar")

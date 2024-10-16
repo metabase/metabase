@@ -346,7 +346,7 @@ function getOtherSeriesTransform(
       ...datum,
       [OTHER_DATA_KEY]: getAggregatedOtherSeriesValue(
         groupedSeriesModels,
-        settings["graph.other_series_aggregation_fn"],
+        settings["graph.other_category_aggregation_fn"],
         datum,
       ),
     }),
