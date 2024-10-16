@@ -262,7 +262,7 @@
   ([subscription-id cron-schedule timezone]
    {:key      (.getName (#'task.notification/send-notification-trigger-key subscription-id))
     :schedule cron-schedule
-    :data     {"subcription-id" subscription-id}
+    :data     {"subscription-id" subscription-id}
     :timezone timezone}))
 
 (deftest update-subscription-trigger-test

@@ -43,9 +43,9 @@
                                           :timeout-ms  2000
                                           :interval-ms 100})))
                   (is (=? {:task         "notification-trigger"
-                           :task_details {:trigger_type                "notification-subscription/cron"
-                                          :notification_subcription_id (mt/malli=? pos-int?)
-                                          :cron_schedule               every-second
-                                          :notification_ids            [(:id noti)]}}
+                           :task_details {:trigger_type                 "notification-subscription/cron"
+                                          :notification_subscription_id (mt/malli=? pos-int?)
+                                          :cron_schedule                every-second
+                                          :notification_ids             [(:id noti)]}}
                           (u/poll {:thunk #(latest-task-history-entry "notification-trigger")
                                    :done? (fn [task] (= [(:id noti)] (get-in task [:task_details :notification_ids])))}))))))))))))

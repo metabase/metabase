@@ -37,7 +37,7 @@
   (triggers/build
    (triggers/with-description (format "Notification Subscription %d" subscription-id))
    (triggers/with-identity (send-notification-trigger-key subscription-id))
-   (triggers/using-job-data {"subcription-id" subscription-id})
+   (triggers/using-job-data {"subscription-id" subscription-id})
    (triggers/for-job send-notification-job-key)
    (triggers/start-now)
    (triggers/with-schedule
@@ -95,10 +95,10 @@
     (try
       (log/infof "Sending notification %d for subscription %d" notification-id subscription-id)
       (task-history/with-task-history {:task         "notification-trigger"
-                                       :task_details {:trigger_type                :notification-subscription/cron
-                                                      :notification_subcription_id subscription-id
-                                                      :cron_schedule               (:cron_schedule subscription)
-                                                      :notification_ids            [notification-id]}}
+                                       :task_details {:trigger_type                 :notification-subscription/cron
+                                                      :notification_subscription_id subscription-id
+                                                      :cron_schedule                (:cron_schedule subscription)
+                                                      :notification_ids             [notification-id]}}
         (notification/*send-notification!* (t2/select-one :model/Notification notification-id)))
       (log/infof "Sent notification %d for subscription %d" notification-id subscription-id)
       (catch Exception e
@@ -108,8 +108,8 @@
 (jobs/defjob ^{:doc "Triggers that send a pulse to a list of channels at a specific time"}
   SendNotification
   [context]
-  (let [{:strs [subcription-id]} (qc/from-job-data context)]
-    (send-notification* subcription-id)))
+  (let [{:strs [subscription-id]} (qc/from-job-data context)]
+    (send-notification* subscription-id)))
 
 (defmethod task/init! ::SendNotifications [_]
   (let [send-notification-job (jobs/build

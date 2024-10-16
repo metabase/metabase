@@ -282,12 +282,12 @@
 (defn create-notification!
   "Create a new notification with `subsciptions`.
   Return the created notification."
-  [notification subcriptions handlers+recipients]
+  [notification subscriptions handlers+recipients]
   (t2/with-transaction [_conn]
     (let [instance (t2/insert-returning-instance! :model/Notification notification)
           id       (:id instance)]
-      (when (seq subcriptions)
-        (t2/insert! :model/NotificationSubscription (map #(assoc % :notification_id id) subcriptions)))
+      (when (seq subscriptions)
+        (t2/insert! :model/NotificationSubscription (map #(assoc % :notification_id id) subscriptions)))
       (doseq [handler handlers+recipients]
         (let [recipients (:recipients handler)
               handler    (-> handler
