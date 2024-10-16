@@ -254,7 +254,7 @@
   (map
    #(select-keys % [:key :schedule :data :timezone])
    (task/existing-triggers @#'task.notification/send-notification-job-key
-                          (#'task.notification/send-notification-trigger-key subscription-id))))
+                           (#'task.notification/send-notification-trigger-key subscription-id))))
 
 (defn- subscription->trigger-info
   ([subscription-id cron-schedule]
