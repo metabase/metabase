@@ -24,7 +24,10 @@ import {
 } from "metabase/ui";
 
 import S from "./Onboarding.module.css";
-import { trackChecklistItemExpanded } from "./analytics";
+import {
+  trackChecklistItemCTAClicked,
+  trackChecklistItemExpanded,
+} from "./analytics";
 import type { ChecklistItemValue } from "./types";
 
 export const Onboarding = () => {
@@ -109,7 +112,10 @@ export const Onboarding = () => {
                   <Text>
                     {t`You can connect multiple databases, and query them directly with the query builder or the Native/SQL editor.`}
                   </Text>
-                  <Link to="/admin/databases/create">
+                  <Link
+                    to="/admin/databases/create"
+                    onClick={() => trackChecklistItemCTAClicked("database")}
+                  >
                     <Button variant="outline">{t`Add Database`}</Button>
                   </Link>
                 </Stack>
@@ -126,10 +132,20 @@ export const Onboarding = () => {
                   <Text>{t`Don't be shy with the invites.`}</Text>
 
                   <Group spacing={0}>
-                    <Link to="/admin/people">
+                    <Link
+                      to="/admin/people"
+                      onClick={() =>
+                        trackChecklistItemCTAClicked("invite", "primary")
+                      }
+                    >
                       <Button variant="outline">{t`Invite people`}</Button>
                     </Link>
-                    <Link to="/admin/settings/authentication">
+                    <Link
+                      to="/admin/settings/authentication"
+                      onClick={() =>
+                        trackChecklistItemCTAClicked("invite", "secondary")
+                      }
+                    >
                       <Button variant="subtle">{t`Set up Single Sign-on`}</Button>
                     </Link>
                   </Group>
@@ -157,7 +173,10 @@ export const Onboarding = () => {
                       />
                     )}. ${applicationName} will create a bunch of charts based on that data and arrange them on a dashboard.`}
                   </Text>
-                  <Link to="/browse/databases">
+                  <Link
+                    to="/browse/databases"
+                    onClick={() => trackChecklistItemCTAClicked("x-ray")}
+                  >
                     <Button variant="outline">{t`Browse data`}</Button>
                   </Link>
                 </Stack>
@@ -175,7 +194,10 @@ export const Onboarding = () => {
                       <b>{t`drill-through the chart`}</b>
                     )} to explore the data further.`}
                   </Text>
-                  <Link to={newQuestionUrl}>
+                  <Link
+                    to={newQuestionUrl}
+                    onClick={() => trackChecklistItemCTAClicked("notebook")}
+                  >
                     <Button variant="outline">{t`New question`}</Button>
                   </Link>
                 </Stack>
@@ -198,7 +220,10 @@ export const Onboarding = () => {
                       )
                     }, and reference the results of models or other saved question in your code.`}
                   </Text>
-                  <Link to={newNativeQuestionUrl}>
+                  <Link
+                    to={newNativeQuestionUrl}
+                    onClick={() => trackChecklistItemCTAClicked("sql")}
+                  >
                     <Button variant="outline">{t`New native query`}</Button>
                   </Link>
                 </Stack>
@@ -240,7 +265,10 @@ export const Onboarding = () => {
                   <Text>
                     {t`You can drill-through your dashboard and charts to see more detailed data underneath.`}
                   </Text>
-                  <Link to="/dashboard/1">
+                  <Link
+                    to="/dashboard/1"
+                    onClick={() => trackChecklistItemCTAClicked("dashboard")}
+                  >
                     <Button variant="outline">{t`Edit a sample dashboard`}</Button>
                   </Link>
                 </Stack>
@@ -264,7 +292,10 @@ export const Onboarding = () => {
                   <Text>
                     {jt`To set up a subscription to a dashboard, click on the ${(<Icon name="subscription" className={S.inlineIcon} />)} ${(<i>{t`subscriptions`}</i>)} icon on the top bar. On a sidebar on the right set up a dashboard subscription via email or Slack.`}
                   </Text>
-                  <Link to="/dashboard/1">
+                  <Link
+                    to="/dashboard/1"
+                    onClick={() => trackChecklistItemCTAClicked("subscription")}
+                  >
                     <Button variant="outline">{t`Set up subscriptions for a sample dashboard`}</Button>
                   </Link>
                 </Stack>
@@ -311,7 +342,10 @@ export const Onboarding = () => {
                       }: when a question returns any result.`}</li>
                     </ul>
                   </Text>
-                  <Link to="/question/12">
+                  <Link
+                    to="/question/12"
+                    onClick={() => trackChecklistItemCTAClicked("alert")}
+                  >
                     <Button variant="outline">{t`Set up alert for a sample question`}</Button>
                   </Link>
                 </Stack>
