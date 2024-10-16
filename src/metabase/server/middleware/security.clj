@@ -93,7 +93,9 @@
                                  (when config/is-dev?
                                    "http://localhost:9630")
                                  "https://accounts.google.com"]
-                  :frame-src    ["*"]
+                  :frame-src    (->> (str/split (public-settings/allowed-iframe-hosts) #"[+ ,\s\r\n]")
+                                     (remove str/blank?)
+                                     vec)
                   :font-src     ["*"]
                   :img-src      ["*"
                                  "'self' data:"]
