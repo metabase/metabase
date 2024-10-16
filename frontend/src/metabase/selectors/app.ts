@@ -188,16 +188,6 @@ export const getErrorMessage = (state: State) => {
   return errorPage?.data?.message || errorPage?.data;
 };
 
-// TODO: ask Nick for advice on this...
-export const getViewedItem = createSelector(
-  [getQuestion, getDashboard, getDashboardId],
-  (question, dashboard, dashboardId) => {
-    return dashboardId
-      ? ({ model: "dashboard" as const, dashboard } as const)
-      : ({ model: "question" as const, question } as const);
-  },
-);
-
 export const getCollectionId = createSelector(
   [getQuestion, getDashboard, getDashboardId],
   (question, dashboard, dashboardId) =>
