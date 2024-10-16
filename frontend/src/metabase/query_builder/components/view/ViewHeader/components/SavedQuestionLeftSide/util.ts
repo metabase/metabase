@@ -1,8 +1,9 @@
 import { useGetCardQueryMetadataQuery } from "metabase/api";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
+import type { Table } from "metabase-types/api";
 
-export function useHiddenSourceTables(question: Question) {
+export function useHiddenSourceTables(question: Question): Table[] {
   const query = question.query();
   const { isEditable, isNative } = Lib.queryDisplayInfo(query);
 
@@ -16,5 +17,5 @@ export function useHiddenSourceTables(question: Question) {
     return [];
   }
 
-  return data?.tables.filter(table => table.visibility_type === "hidden");
+  return data?.tables.filter(table => table.visibility_type === "hidden") ?? [];
 }
