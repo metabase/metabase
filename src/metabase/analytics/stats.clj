@@ -620,12 +620,12 @@
                           (update-vals count)))})
 
 (defn- snowplow-grouped-metrics [{query-executions :query_executions :as _snowplow-grouped-metric-info}]
-  [{:name :query_executions_by_source
-    :values (mapv (fn [qe-group]
-                    {:group qe-group
-                     :value (get query-executions qe-group)})
-                  ["interactive_embed" "internal" "public_link" "sdk_embed" "static_embed"])
-    :tags ["embedding"]}])
+  (->> [{:name :query_executions_by_source
+         :values (mapv (fn [qe-group]
+                         {:group qe-group :value (get query-executions qe-group)})
+                       ["interactive_embed" "internal" "public_link" "sdk_embed" "static_embed"])
+         :tags ["embedding"]}]
+       (walk/postwalk (fn [x] (if (keyword? x) (-> x u/->snake_case_en name) x)))))
 
 (defn- ->snowplow-metric-info
   "Collects Snowplow metrics data that is not in the legacy stats format. Also clears entity id translation count."
