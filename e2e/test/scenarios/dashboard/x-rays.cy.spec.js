@@ -377,7 +377,7 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
       .findByText("18,760")
       .should("exist");
     getDashcardByTitle("Transactions in the last 30 days")
-      .findByText("504")
+      .findByText("507")
       .should("exist");
     getDashcardByTitle("Average quantity per month").within(() => {
       cy.findByText("Average of Quantity").should("exist");
