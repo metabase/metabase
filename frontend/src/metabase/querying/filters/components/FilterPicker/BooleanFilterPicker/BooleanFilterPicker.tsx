@@ -83,7 +83,7 @@ export function BooleanFilterPicker({
             c="text-medium"
             variant="subtle"
             aria-label={t`More options`}
-            rightIcon={<Icon name="chevrondown" />}
+            rightSection={<Icon name="chevrondown" />}
             onClick={() => setIsExpanded(true)}
           >
             {t`More options`}

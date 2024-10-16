@@ -5,7 +5,7 @@ import { Flex, TextInput } from "metabase/ui";
 
 export const SearchInputContainer = styled(Flex)`
   flex-grow: 1;
-`;
+` as unknown as typeof Flex;
 
 interface SearchInputProps extends TextInputProps {
   isActive: boolean;

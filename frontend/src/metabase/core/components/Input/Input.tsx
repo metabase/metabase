@@ -81,8 +81,8 @@ const BaseInput = forwardRef(function Input(
         hasError={error}
         fullWidth={fullWidth}
         hasSubtitle={Boolean(subtitle)}
-        hasLeftIcon={Boolean(leftIcon)}
-        hasRightIcon={Boolean(rightIcon)}
+        hasleftSection={Boolean(leftIcon)}
+        hasrightSection={Boolean(rightIcon)}
         hasClearButton={showResetButton}
         colorScheme={colorScheme}
         value={value}
@@ -126,7 +126,7 @@ const BaseInput = forwardRef(function Input(
           <InputResetButton
             data-testid="input-reset-button"
             size={size}
-            hasRightIcon={!!rightIcon}
+            hasrightSection={!!rightIcon}
             onClick={onResetClick}
           >
             <Icon name="close" />

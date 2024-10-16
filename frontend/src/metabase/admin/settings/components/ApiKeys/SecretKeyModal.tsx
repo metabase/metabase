@@ -48,7 +48,7 @@ export const SecretKeyModal = ({
           color="text-medium"
         >{t`Please copy this key and save it somewhere safe. For security reasons, we can't show it to you again.`}</Text>
       </Flex>
-      <Group position="right">
+      <Group justify="flex-end">
         <Button onClick={onClose} variant="filled">{t`Done`}</Button>
       </Group>
     </Stack>

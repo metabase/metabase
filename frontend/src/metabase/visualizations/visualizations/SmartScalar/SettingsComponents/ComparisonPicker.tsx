@@ -154,8 +154,8 @@ export function ComparisonPicker({
       <Menu.Target>
         <ComparisonPickerButton
           disabled={isDisabled}
-          leftIcon={isDraggable && <DragHandleIcon name="grabber" />}
-          rightIcon={
+          leftSection={isDraggable && <DragHandleIcon name="grabber" />}
+          rightSection={
             isRemovable && (
               <IconButtonWrapper
                 aria-label={t`Remove`}

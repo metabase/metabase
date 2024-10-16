@@ -35,7 +35,7 @@ export const StyledInput = styled(Textarea)`
 
 export const SaveButton = styled(Button)`
   ${interactiveDashcardElementCss}
-`;
+` as unknown as typeof Button;
 
 export const InteractiveText = styled(Text)<TextProps>`
   ${interactiveDashcardElementCss}
