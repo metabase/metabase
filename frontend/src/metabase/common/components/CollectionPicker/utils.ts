@@ -1,6 +1,7 @@
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections/constants";
 import type {
   CollectionId,
+  CollectionItemModel,
   ListCollectionItemsRequest,
 } from "metabase-types/api";
 
@@ -99,11 +100,14 @@ export const getStateFromIdPath = ({
   return statePath;
 };
 
-export const isFolder = (item: CollectionPickerItem): boolean => {
-  return Boolean(
-    item.model === "collection" && item?.here?.includes("collection"),
-  );
-};
+export const isFolderFactory =
+  (models: CollectionItemModel[]) =>
+  (item: CollectionPickerItem): boolean => {
+    return Boolean(
+      item.model === "collection" &&
+        models.some(model => item?.here?.includes(model)),
+    );
+  };
 
 export const getParentCollectionId = (
   location?: string | null,
