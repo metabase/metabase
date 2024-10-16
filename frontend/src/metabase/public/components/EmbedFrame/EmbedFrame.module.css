@@ -64,7 +64,8 @@ body {
     /* this is to make it work when exporting to pdfs,
   where the EmbedFrame is not part of the exported dom */
       .WithThemeBackground {
-    background-color: var(--mb-color-bg-dashboard);
+    /* the dashboard background color is not set by default in the embedding sdk */
+    background-color: var(--mb-color-bg-dashboard, --mb-color-background);
     border-color: var(--mb-color-border);
   }
 
@@ -105,13 +106,4 @@ body {
   .EmbedFrameFooter {
     background-color: transparent;
   }
-}
-
-/* this is to make it work when exporting to pdfs,
-   where the EmbedFrame is not part of the exported dom */
-.WithSdkContentContainer {
-  /* if the dashboard background theme is not set (it usually isn't in the SDK),
-     we fallback to the background color. */
-  background-color: var(--mb-color-bg-dashboard, --mb-color-background);
-  border-color: var(--mb-color-border);
 }
