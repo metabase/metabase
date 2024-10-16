@@ -24,7 +24,7 @@ import { SpinnerIcon } from "metabase/components/LoadingSpinner/LoadingSpinner.s
 import { t } from "ttag";
 
 
-const ChatAssistant = ({ client, selectedMessages, selectedThreadId, setSelectedThreadId, chatType, oldCardId, insights, initial_message, setMessages, setInputValue, setThreadId, threadId, inputValue, messages, isChatHistoryOpen, setIsChatHistoryOpen, setShowButton }) => {
+const ChatAssistant = ({ client, selectedMessages, selectedThreadId, setSelectedThreadId, chatType, oldCardId, insights, initial_message, setMessages, setInputValue, setThreadId, threadId, inputValue, messages, isChatHistoryOpen, setIsChatHistoryOpen, setShowButton, setShouldRefetchHistory }) => {
     const initialDbName = useSelector(getDBInputValue);
     const initialCompanyName = useSelector(getCompanyName);
     const initialSchema = useSelector(getInitialSchema);
@@ -622,6 +622,7 @@ const ChatAssistant = ({ client, selectedMessages, selectedThreadId, setSelected
         } catch (error) {
             console.error("Error during message processing:", error.message);
         } finally {
+            setShouldRefetchHistory(true); 
             setMessages((prev) =>
                 prev.map((msg) => ({
                     ...msg,
