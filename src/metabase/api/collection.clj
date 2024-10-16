@@ -1249,6 +1249,12 @@
     {:revision (c-perm-revision/latest-id)}
     (graph/graph namespace)))
 
+(api/defendpoint GET "/graph/revision"
+  "Fetch the current Collection Permissions revision."
+  []
+  (api/check-superuser)
+  {:revision (c-perm-revision/latest-id)})
+
 (api/defendpoint PUT "/graph"
   "Do a batch update of Collections Permissions by passing in a modified graph.
   Will overwrite parts of the graph that are present in the request, and leave the rest unchanged.
