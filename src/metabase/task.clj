@@ -338,8 +338,8 @@
        (map job-info)
        (filter some?)))
 
-(defn existing-trigger
-  "Get the existing trigger for a job by key name, if it exists."
+(defn existing-triggers
+  "Get the existing triggers for a job by key name, if it exists."
   [job-key trigger-key]
   (filter #(= (:key %) (.getName ^TriggerKey trigger-key)) (:triggers (job-info job-key))))
 

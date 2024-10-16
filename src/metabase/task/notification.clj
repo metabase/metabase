@@ -7,7 +7,6 @@
    [metabase.driver :as driver]
    [metabase.models.task-history :as task-history]
    [metabase.notification.core :as notification]
-   [metabase.pulse]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.task :as task]
    [metabase.util.log :as log]
@@ -52,7 +51,7 @@
 (defn update-subscription-trigger!
   "Update the trigger for a notification subscription if it exists and needs to be updated."
   [{:keys [id type cron_schedule] :as _notification-subscription}]
-  (let [existing-trigger (first (task/existing-trigger send-notification-job-key (send-notification-trigger-key id)))]
+  (let [existing-trigger (first (task/existing-triggers send-notification-job-key (send-notification-trigger-key id)))]
     (cond
      ;; delete trigger if type changes
      (and
@@ -84,7 +83,7 @@
 (defn delete-trigger-for-subscription!
   "Delete the trigger for a notification subscription."
   [notification-subscription-id]
-  (when-first [trigger (task/existing-trigger send-notification-job-key (send-notification-trigger-key notification-subscription-id))]
+  (when-first [trigger (task/existing-triggers send-notification-job-key (send-notification-trigger-key notification-subscription-id))]
     (log/infof "Deleting trigger for subscription %d" notification-subscription-id)
     (task/delete-trigger! (-> trigger :key triggers/key))))
 
@@ -105,7 +104,7 @@
         (log/errorf e "Failed to send notification %d for subscription %d" notification-id subscription-id)
         (throw e)))))
 
-(jobs/defjob ^{:doc "Triggers that send a pulse to a list of channels at a specific time"}
+(jobs/defjob ^{:doc "Triggers that send a notification for a subscription."}
   SendNotification
   [context]
   (let [{:strs [subscription-id]} (qc/from-job-data context)]

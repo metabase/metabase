@@ -253,7 +253,7 @@
   [subscription-id]
   (map
    #(select-keys % [:key :schedule :data :timezone])
-   (task/existing-trigger @#'task.notification/send-notification-job-key
+   (task/existing-triggers @#'task.notification/send-notification-job-key
                           (#'task.notification/send-notification-trigger-key subscription-id))))
 
 (defn- subscription->trigger-info
