@@ -800,9 +800,10 @@
   {:exec-args {:only ["test/metabase/notification"
                       "test/metabase/channel"
                       metabase.api.channel-test
+                      metabase.events.notification-test
                       metabase.models.channel-test
                       metabase.models.notification-test
-                      metabase.events.notification-test]}}
+                      metabase.task.notification-test]}}
 
   ;; test all MBQL related stuff: MLv2, the legacy shared `metabase.legacy-mbql` code, and the QP
   ;;
