@@ -34,6 +34,7 @@ import {
 } from "../MainNavbar.styled";
 import { SidebarCollectionLink, SidebarLink } from "../SidebarItems";
 import { SidebarOnboardingSection } from "../SidebarItems/SidebarOnboardingSection";
+import { trackOnboardingChecklistOpened } from "../SidebarItems/SidebarOnboardingSection/analytics";
 import type { SelectedItem } from "../types";
 
 import BookmarkList from "./BookmarkList";
@@ -134,6 +135,7 @@ export function MainNavbarView({
                 icon="learn"
                 url={ONBOARDING_URL}
                 isSelected={nonEntityItem?.url === ONBOARDING_URL}
+                onClick={() => trackOnboardingChecklistOpened()}
               >
                 {t`How to use ${applicationName}`}
               </PaddedSidebarLink>
