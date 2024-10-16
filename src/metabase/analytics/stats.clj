@@ -639,8 +639,8 @@
                                                 :archived false
                                                 :created_at [:>= one-day-ago])
      :new_users_last_24h              (t2/count :model/User
-                                                      :is_active true
-                                                      :date_joined [:>= one-day-ago])
+                                                :is_active true
+                                                :date_joined [:>= one-day-ago])
      :pivot_tables                    (t2/count :model/Card :display :pivot :archived false)
      :query_executions_last_24h       (t2/count :model/QueryExecution :started_at [:>= one-day-ago])
      :entity_id_translations_last_24h total-translation-count
