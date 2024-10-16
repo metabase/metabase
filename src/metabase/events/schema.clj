@@ -2,7 +2,7 @@
   (:require
    [malli.core :as mc]
    [malli.util :as mut]
-   [metabase.models.view-log :as view-log]
+   [metabase.models.view-log-impl :as view-log-impl]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -68,7 +68,7 @@
      :event/card-read   (mc/schema
                          [:map {:closed true}
                           ;; context is deliberately coupled to view-log's context
-                          [:context [:and :some ::view-log/context]]
+                          [:context view-log-impl/context]
                           [:user-id [:maybe pos-int?]]
                           [:object-id [:maybe pos-int?]]])
      :event/card-query  [:map {:closed true}
