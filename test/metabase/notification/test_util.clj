@@ -54,6 +54,7 @@
       (channel/send! {:type :channel/email} {:say :hi})
       (channel/send! {:type :channel/email} {:say :xin-chao}))
 
+    @captured-messages
     ;; => {:channel/email [{:say :hi} {:say :xin-chao}]}"
   [& body]
   `(do-with-captured-channel-send!

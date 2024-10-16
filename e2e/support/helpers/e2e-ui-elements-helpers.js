@@ -202,6 +202,12 @@ export const questionInfoButton = () => {
   return cy.findByTestId("qb-header-info-button");
 };
 
+/** Opens the question info sidesheet */
+export const openQuestionInfoSidesheet = () => {
+  questionInfoButton().click();
+  return sidesheet();
+};
+
 export const undo = () => {
   cy.findByTestId("toast-undo").findByText("Undo").click();
 };
