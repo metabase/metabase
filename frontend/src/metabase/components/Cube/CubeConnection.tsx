@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Modal, Flex, Text, Input, Box, Button } from "metabase/ui";
 import { t } from "ttag";
 import { useRegisterCubeDataMutation } from "metabase/api";
@@ -6,19 +6,20 @@ import { useRegisterCubeDataMutation } from "metabase/api";
 interface CubeConnectionProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (data: any) => void; // Add an onSave prop for passing the saved data to the parent
+  onSave: (data: any) => void;
+  initialData?: any; // Accept initial data prop
 }
 
-export const CubeConnection = ({ isOpen, onClose, onSave }: CubeConnectionProps) => {
+export const CubeConnection = ({ isOpen, onClose, onSave, initialData }: CubeConnectionProps) => {
   // Define state for each field of the object and validation errors
   const [formData, setFormData] = useState<any>({
     projectName: "",
     dockerfile: "",
     dockerContextPath: "",
+    apiUrl: "",
     customGitUrl: "",
     customGitBranch: "",
     customGitBuildPath: "",
-    apiUrl: "",
     token: "",
     port: "",
   });
@@ -32,6 +33,25 @@ export const CubeConnection = ({ isOpen, onClose, onSave }: CubeConnectionProps)
   });
 
   const [registerCubeData] = useRegisterCubeDataMutation(); // Initialize the mutation hook
+
+  // Populate the form with initial data when the modal opens
+  useEffect(() => {
+    if (initialData) {
+      setFormData({
+        ...formData,
+        projectName: initialData[0].projectName || "",
+        apiUrl: initialData[0].apiUrl || formData.apiUrl,
+        token: initialData[0].token || "",
+        // Keep the other fields empty if they're not part of the initial data
+        dockerfile: formData.dockerfile,
+        dockerContextPath: formData.dockerContextPath,
+        customGitUrl: formData.customGitUrl,
+        customGitBranch: formData.customGitBranch,
+        customGitBuildPath: formData.customGitBuildPath,
+        port: formData.port,
+      });
+    }
+  }, [initialData]);
 
   // Function to validate URLs
   const isValidUrl = (url: string) => {
@@ -135,8 +155,23 @@ export const CubeConnection = ({ isOpen, onClose, onSave }: CubeConnectionProps)
             {errors.port && <Text color="red">{errors.port}</Text>}
           </Flex>
 
-            {/* Custom Git URL */}
-            <Flex direction="column">
+          {/* API URL */}
+          <Flex direction="column">
+            <Text weight="bold">{t`Api URL`}</Text>
+            <Input
+              name="apiUrl"
+              value={formData.apiUrl}
+              onChange={handleInputChange}
+              error={!!errors.apiUrl}
+              placeholder={t`Enter a valid GitHub URL`}
+            />
+            {errors.apiUrl && (
+              <Text color="red">{errors.apiUrl}</Text>
+            )}
+          </Flex>
+
+          {/* Custom Git URL */}
+          <Flex direction="column">
             <Text weight="bold">{t`Git URL`}</Text>
             <Input
               name="customGitUrl"
