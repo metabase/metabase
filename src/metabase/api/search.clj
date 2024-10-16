@@ -31,13 +31,15 @@
                            :expires   (cookie-expiry)}))))
 
 (defn- +engine-cookie [handler]
-  (fn [request respond raise]
-    (if-let [new-engine (get-in request [:params :search_engine])]
-      (handler request (set-engine-cookie! respond new-engine) raise)
-      (handler (->> (get-in request [:cookies engine-cookie-name :value])
-                    (assoc-in request [:params :search_engine]))
-               respond
-               raise))))
+  (with-meta
+   (fn [request respond raise]
+     (if-let [new-engine (get-in request [:params :search_engine])]
+       (handler request (set-engine-cookie! respond new-engine) raise)
+       (handler (->> (get-in request [:cookies engine-cookie-name :value])
+                     (assoc-in request [:params :search_engine]))
+                respond
+                raise)))
+   (meta handler)))
 
 (api/defendpoint POST "/force-reindex"
   "If fulltext search is enabled, this will trigger a synchronous reindexing operation."
