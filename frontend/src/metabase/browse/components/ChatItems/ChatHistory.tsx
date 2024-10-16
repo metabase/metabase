@@ -1,5 +1,7 @@
 import React, { useEffect, useState, useRef } from "react";
-import { Box, Text, ScrollArea, Title, Divider, Button, Menu } from "metabase/ui";
+import { Box, Text, ScrollArea, Title, Divider } from "metabase/ui";
+import LoadingSpinner from "metabase/components/LoadingSpinner";
+
 import dayjs from "dayjs";
 
 interface ChatHistoryProps {
@@ -8,7 +10,11 @@ interface ChatHistoryProps {
   setThreadId: (id: any) => void;
   type: string;
   setOldCardId: (id: any) => void;
-  setInsights: (insights: any) => void; // Optional prop
+  setInsights: (insights: any) => void; 
+  showChatAssistant: boolean; 
+  setShowChatAssistant: (value: boolean) => void; 
+  shouldRefetchHistory: boolean; 
+  setShouldRefetchHistory: (value: boolean) => void; 
 }
 
 const ITEMS_PER_PAGE = 30; // Number of items to load per request
@@ -26,6 +32,10 @@ const ChatHistory = ({
   type,
   setOldCardId,
   setInsights,
+  showChatAssistant,
+  setShowChatAssistant,
+  shouldRefetchHistory, 
+  setShouldRefetchHistory, 
 }: ChatHistoryProps) => {
   const [chatHistory, setChatHistory] = useState<ChatHistoryState>({
     today: [],
@@ -33,33 +43,39 @@ const ChatHistory = ({
     last30Days: [],
   });
 
-
   const [createdThread, setCreatedThread] = useState<any[]>([]); // Store fetched threads
   const [offset, setOffset] = useState(0); // Track the current offset for pagination
   const [hasMore, setHasMore] = useState(true); // Track if there is more data to load
+  const [loading, setLoading] = useState(true); // Add a loading state
   const scrollContainerRef = useRef<HTMLDivElement | null>(null); // Ref for scroll area
   const [activeMenu, setActiveMenu] = useState<string | null>(null); // State for showing menu
 
-  // Fetch paginated threads from the API
+  const initializeClientAndThreads = async () => {
+    try {
+      setLoading(true); // Set loading to true while fetching data
+      const threads = await client.threads.search();
+      const filteredThreads = threads.filter(
+        (thread: any) => thread.metadata && thread.metadata.graph_id === "get_data_agent"
+      );
+      setCreatedThread(filteredThreads);
+      setLoading(false); // Set loading to false after fetching
+    } catch (error) {
+      console.error("Error initializing Client or fetching threads:", error);
+      setLoading(false); // Set loading to false if there's an error
+    }
+  };
+
   useEffect(() => {
-    const initializeClientAndThreads = async () => {
-      try {
-        const threads = await client.threads.search();
-        const deleted = await client.threads
-        
-        // Filter threads that have "get_data_agent" in the "graph_id" of their metadata
-        const filteredThreads = threads.filter((thread: any) => 
-          thread.metadata && thread.metadata.graph_id === "get_data_agent"
-        );
-        setCreatedThread(filteredThreads);
-      } catch (error) {
-        console.error("Error initializing Client or fetching threads:", error);
-      }
-    };
-  
     initializeClientAndThreads();
   }, []);
-  
+
+  // Refetch threads when `shouldRefetchHistory` is true
+  useEffect(() => {
+    if (shouldRefetchHistory) {
+      initializeClientAndThreads(); // Refetch threads
+      setShouldRefetchHistory(false); // Reset the flag after refetching
+    }
+  }, [shouldRefetchHistory, setShouldRefetchHistory]);
 
   useEffect(() => {
     if (createdThread && createdThread.length > 0) {
@@ -119,54 +135,57 @@ const ChatHistory = ({
   }, [hasMore]);
 
   const handleHistoryItemClick = async (item: any) => {
-
     try {
-        // Fetch the selected thread's history using client.threads.getHistory
-        const selectedThread = await client.threads.getHistory(item.thread_id);
-        
-        if (selectedThread.length > 0 && selectedThread[0].values) {
-          const threadMessages = selectedThread[0].values.messages || [];
-            let extractedCardId = null; // Initialize to store the card_id
-            
-            // Iterate over threadMessages to find the card_id
-            for (const message of threadMessages) {
-                // Check if message content includes 'card_id'
-                if (message.content && message.content.includes('"card_id"')) {
-                    try {
-                        const parsedContent = JSON.parse(message.content);
-                        if (parsedContent.card_id) {
-                            extractedCardId = parsedContent.card_id;
-                            break;  // Stop once the card_id is found
-                        }
-                    } catch (error) {
-                        console.error('Error parsing message content:', error);
-                    }
-                }
+      // Fetch the selected thread's history using client.threads.getHistory
+      const selectedThread = await client.threads.getHistory(item.thread_id);
+
+      if (selectedThread.length > 0 && selectedThread[0].values) {
+        const threadMessages = selectedThread[0].values.messages || [];
+        let extractedCardId = null; // Initialize to store the card_id
+
+        // Iterate over threadMessages to find the card_id
+        for (const message of threadMessages) {
+          // Check if message content includes 'card_id'
+          if (message.content && message.content.includes('"card_id"')) {
+            try {
+              const parsedContent = JSON.parse(message.content);
+              if (parsedContent.card_id) {
+                extractedCardId = parsedContent.card_id;
+                break; // Stop once the card_id is found
+              }
+            } catch (error) {
+              console.error("Error parsing message content:", error);
             }
-
-            const insights = item.insights || [];  // Extract insights (if any)
-
-            // Reset necessary state values
-            setThreadId(null);
-            setSelectedChatHistory([]);
-            setOldCardId([]);
-
-            // Set the thread ID, messages, and insights
-            setThreadId(item.thread_id);  // Set the selected thread id
-            setSelectedChatHistory(threadMessages);  // Set the messages from selected thread
-            setOldCardId(extractedCardId);  // Set the extracted card ID
-
-            // If it's an insight type, set the insights
-            if (item.type === "getInsights" && insights.length > 0) {
-                setInsights(insights);
-            }
-        } else {
-            console.error('No messages found in the selected thread.');
+          }
         }
+
+        const insights = item.insights || []; // Extract insights (if any)
+
+        // Reset necessary state values
+        setThreadId(null);
+        setSelectedChatHistory([]);
+        setOldCardId([]);
+
+        // Set the thread ID, messages, and insights
+        setThreadId(item.thread_id); // Set the selected thread id
+        setSelectedChatHistory(threadMessages); // Set the messages from selected thread
+        setOldCardId(extractedCardId); // Set the extracted card ID
+
+        // If it's an insight type, set the insights
+        if (item.type === "getInsights" && insights.length > 0) {
+          setInsights(insights);
+        }
+
+        if (!showChatAssistant) {
+          setShowChatAssistant(true);
+        }
+      } else {
+        console.error("No messages found in the selected thread.");
+      }
     } catch (error) {
-        console.error('Error fetching thread history:', error);
+      console.error("Error fetching thread history:", error);
     }
-};
+  };
 
   return (
     <Box
@@ -174,7 +193,7 @@ const ChatHistory = ({
         backgroundColor: "#FFF",
         borderRadius: "8px",
         padding: "16px",
-        height: "85vh",
+        height: "82vh",
         width: "100%",
         display: "flex",
         flexDirection: "column",
@@ -186,6 +205,22 @@ const ChatHistory = ({
       >
         Chat history
       </Title>
+
+      {/* Show loading spinner at the top if data is being loaded */}
+      {loading && (
+        <Box style={{ display: "flex", textAlign: "center", marginBottom: "1rem", width: "100%" }}>
+          <LoadingSpinner />
+        </Box>
+      )}
+
+      {/* Only show this message if no data was fetched */}
+      {!loading && chatHistory.today.length === 0 &&
+        chatHistory.last7Days.length === 0 &&
+        chatHistory.last30Days.length === 0 && (
+          <Text style={{ textAlign: "center", color: "#76797D", marginBottom: "1rem" }}>
+            No chat history available
+          </Text>
+        )}
 
       <ScrollArea ref={scrollContainerRef} style={{ flex: 1 }}>
         {chatHistory.today.length > 0 && (
@@ -217,7 +252,6 @@ const ChatHistory = ({
                 >
                   {chat.values?.messages?.[0]?.content || chat.thread_id}
                 </Text>
-               
               </Box>
             ))}
             <Divider my="sm" />
@@ -253,7 +287,6 @@ const ChatHistory = ({
                 >
                   {chat.values?.messages?.[0]?.content || chat.thread_id}
                 </Text>
-                
               </Box>
             ))}
             <Divider my="sm" />
@@ -289,18 +322,11 @@ const ChatHistory = ({
                 >
                   {chat.values?.messages?.[0]?.content || chat.thread_id}
                 </Text>
-                
               </Box>
             ))}
           </>
         )}
       </ScrollArea>
-
-      {chatHistory.today.length === 0 &&
-        chatHistory.last7Days.length === 0 &&
-        chatHistory.last30Days.length === 0 && (
-          <Text>No chat history available</Text>
-        )}
     </Box>
   );
 };

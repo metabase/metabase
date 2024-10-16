@@ -25,7 +25,7 @@ import useWebSocket from "metabase/hooks/useWebSocket";
 import { t } from "ttag";
 import { getSuggestions, setSuggestions } from "metabase/redux/suggestionsSlice";
 import { NoDatabaseError, SemanticError } from "metabase/components/ErrorPages";
-import { Client } from "@langchain/langgraph-sdk"; 
+import { Client } from "@langchain/langgraph-sdk";
 
 export const HomeLayout = () => {
   const initialMessage = useSelector(getInitialMessage);
@@ -51,11 +51,13 @@ export const HomeLayout = () => {
   const [insightSchema, setInsightSchema] = useState<any[]>([]);
   const langchain_url = "https://assistants-dev-7ca2258c0a7e5ea393441b5aca30fb7c.default.us.langgraph.app";
   const langchain_key = "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";
-  const [client, setClient] = useState<any>(null); 
+  const [client, setClient] = useState<any>(null);
+  const [shouldRefetchHistory, setShouldRefetchHistory] = useState(false); // State to trigger chat history refresh
+
 
   useEffect(() => {
     const initializeClient = async () => {
-      const clientInstance = new Client({apiUrl: langchain_url, apiKey: langchain_key});
+      const clientInstance = new Client({ apiUrl: langchain_url, apiKey: langchain_key });
       setClient(clientInstance);
     };
     initializeClient();
@@ -123,24 +125,24 @@ export const HomeLayout = () => {
     isLoading: rawDatabaseMetadataIsLoading,
     error: rawDatabaseMetadataIsError
   } = useGetDatabaseMetadataWithoutParamsQuery(
-      insightDB !== null ? { id: insightDB } : skipToken
+    insightDB !== null ? { id: insightDB } : skipToken
   );
 
   useEffect(() => {
     if (rawDatabaseMetadata && Array.isArray(rawDatabaseMetadata.tables)) {
-        const rawSchema = rawDatabaseMetadata.tables.map((table) => ({
-            display_name: table.display_name,
-            id: table.id,
-            fields: table.fields?.map((field) => ({
-                id: field.id,
-                name: field.name,
-                fieldName: field.display_name,
-                description: field.description,
-                details: field.fingerprint ? JSON.stringify(field.fingerprint) : null
-            }))
-        }));
-        setInsightSchema(rawSchema); 
-        dispatch(setInitialInsightSchema(rawSchema))
+      const rawSchema = rawDatabaseMetadata.tables.map((table) => ({
+        display_name: table.display_name,
+        id: table.id,
+        fields: table.fields?.map((field) => ({
+          id: field.id,
+          name: field.name,
+          fieldName: field.display_name,
+          description: field.description,
+          details: field.fingerprint ? JSON.stringify(field.fingerprint) : null
+        }))
+      }));
+      setInsightSchema(rawSchema);
+      dispatch(setInitialInsightSchema(rawSchema))
     }
   }, [rawDatabaseMetadata]);
 
@@ -200,32 +202,85 @@ export const HomeLayout = () => {
           ) : (
             <>
               {!dbId && window.location.pathname === "/browse/chat" ? <SemanticError details={undefined} /> :
-                <LayoutRoot data-testid="home-page">
-                  <ContentContainer>
-                    <ChatGreeting chatType={selectedChatType} />
-                  </ContentContainer>
-                  {schema.length > 0 ? (
-                    <ChatSection>
-                      <ChatPrompt
-                        chatType={selectedChatType}
-                        inputValue={inputValue}
-                        setInputValue={setInputValue}
-                        onSendMessage={handleSendMessage}
-                      />
-                    </ChatSection>
-                  ) : (
-                    <ChatSection>
-                      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100%" }}>
-                        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "1rem" }}>
-                          <p style={{ fontSize: "16px", color: "#76797D", fontWeight: "500", marginBottom: "1rem" }}>
-                            Please Wait while we initialize the chat
-                          </p>
-                          <LoadingSpinner />
+                (window.location.pathname !== "/browse/chat" ? (
+                  <LayoutRoot data-testid="home-page">
+                    <ContentContainer>
+                      <ChatGreeting chatType={selectedChatType} />
+                    </ContentContainer>
+                    {schema.length > 0 ? (
+                      <ChatSection>
+                        <ChatPrompt
+                          chatType={selectedChatType}
+                          inputValue={inputValue}
+                          setInputValue={setInputValue}
+                          onSendMessage={handleSendMessage}
+                        />
+                      </ChatSection>
+                    ) : (
+                      <ChatSection>
+                        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100%" }}>
+                          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "1rem" }}>
+                            <p style={{ fontSize: "16px", color: "#76797D", fontWeight: "500", marginBottom: "1rem" }}>
+                              Please Wait while we initialize the chat
+                            </p>
+                            <LoadingSpinner />
+                          </div>
                         </div>
-                      </div>
-                    </ChatSection>
-                  )}
-                </LayoutRoot>
+                      </ChatSection>
+                    )}
+                  </LayoutRoot>
+                ) : (
+                  <LayoutRoot data-testid="home-page" style={{ display: "flex", flexDirection: "row", padding: "4rem 4rem 2rem" }}>
+                    <div style={{ display: "flex", flexDirection: "column", minHeight: "100%", width: "70%", justifyContent: "space-between" }}>
+                      <ContentContainer>
+                        <ChatGreeting chatType={selectedChatType} />
+                      </ContentContainer>
+                      {schema.length > 0 ? (
+                        <ChatSection>
+                          <ChatPrompt
+                            chatType={selectedChatType}
+                            inputValue={inputValue}
+                            setInputValue={setInputValue}
+                            onSendMessage={handleSendMessage}
+                          />
+                        </ChatSection>
+                      ) : (
+                        <ChatSection>
+                          <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100%" }}>
+                            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "1rem" }}>
+                              <p style={{ fontSize: "16px", color: "#76797D", fontWeight: "500", marginBottom: "1rem" }}>
+                                Please Wait while we initialize the chat
+                              </p>
+                              <LoadingSpinner />
+                            </div>
+                          </div>
+                        </ChatSection>
+                      )}
+                    </div>
+                    {client && (
+                      <Stack
+                        mb="lg"
+                        spacing="xs"
+                        style={{ minWidth: "300px", width: "300px" }}
+                      >
+                        <ChatHistory
+                          client={client}
+                          setSelectedChatHistory={setSelectedChatHistory}
+                          setThreadId={setSelectedThreadId}
+                          type={selectedChatHistoryType}
+                          setOldCardId={setOldCardId}
+                          setInsights={setInsights}
+                          showChatAssistant={showChatAssistant}
+                          setShowChatAssistant={setShowChatAssistant}
+                          shouldRefetchHistory={shouldRefetchHistory}
+                          setShouldRefetchHistory={setShouldRefetchHistory}
+                        />
+                      </Stack>
+                    )}
+
+                  </LayoutRoot>
+                ))
+
               }
             </>
 
@@ -274,7 +329,7 @@ export const HomeLayout = () => {
                 }}
               >
                 <ChatAssistant
-                client={client}
+                  client={client}
                   selectedMessages={selectedChatHistory}
                   selectedThreadId={selectedThreadId}
                   chatType={selectedChatType}
@@ -291,6 +346,7 @@ export const HomeLayout = () => {
                   isChatHistoryOpen={isChatHistoryOpen}
                   setIsChatHistoryOpen={setIsChatHistoryOpen}
                   setShowButton={setShowButton}
+                  setShouldRefetchHistory={setShouldRefetchHistory}
                 />
               </Stack>
               {isChatHistoryOpen && selectedChatType !== "insights" && (
@@ -300,12 +356,16 @@ export const HomeLayout = () => {
                   style={{ minWidth: "300px", width: "300px", marginTop: "1rem" }}
                 >
                   <ChatHistory
-                  client={client}
+                    client={client}
                     setSelectedChatHistory={setSelectedChatHistory}
                     setThreadId={setSelectedThreadId}
                     type={selectedChatHistoryType}
                     setOldCardId={setOldCardId}
                     setInsights={setInsights}
+                    showChatAssistant={showChatAssistant}
+                    setShowChatAssistant={setShowChatAssistant}
+                    shouldRefetchHistory={shouldRefetchHistory}
+                    setShouldRefetchHistory={setShouldRefetchHistory}
                   />
                 </Stack>
               )}
