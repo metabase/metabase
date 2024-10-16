@@ -690,6 +690,36 @@
                                                 :card_id (:id card)
                                                 :dashboard_id dashboard-id))))))
 
+(defn- autoplace-or-remove-dashcards-for-card!
+  "When moving around dashboard questions (cards that are internal to a dashboard), we need to remove or autoplace new
+  DashboardQuestions."
+  [{:as card-before-update
+    card-id :id
+    old-dashboard-id :dashboard_id}
+   {:as card-updates
+    new-dashboard-id :dashboard_id
+    new-archived :archived}
+   delete-old-dashcards?]
+  (let [on-dashboard-before? (boolean old-dashboard-id)
+        on-dashboard-after? (boolean new-dashboard-id)
+        on-same-dashboard? (= old-dashboard-id new-dashboard-id)
+
+        archived-after? (boolean new-archived)]
+    ;; we'll end up unarchived and a dashboard card => make sure we autoplace
+    (when (and on-dashboard-after? (not archived-after?))
+      (autoplace-dashcard-for-card! (:dashboard_id card-updates) card-before-update))
+
+    (when (or
+           ;; we're moving from one dashboard to another dashboard
+           (and on-dashboard-before?
+                on-dashboard-after?
+                (not on-same-dashboard?))
+           ;; we're moving from a dashboard to a collection and the user has told us to delete
+           (and on-dashboard-before?
+                (not on-dashboard-after?)
+                delete-old-dashcards?))
+      (t2/delete! :model/DashboardCard :card_id card-id :dashboard_id old-dashboard-id))))
+
 (defn create-card!
   "Create a new Card. Metadata will be fetched off thread. If the metadata takes longer than [[metadata-sync-wait-ms]]
   the card will be saved without metadata and it will be saved to the card in the future when it is ready.
@@ -869,26 +899,7 @@
 
     (assert-is-valid-dashboard-internal-update card-updates card-before-update)
 
-    (when (or (:dashboard_id card-updates)
-
-              ;; we're un-archiving the card
-              (and (api/column-will-change? :archived card-before-update card-updates)
-                   (not (:archived card-updates))))
-      (autoplace-dashcard-for-card! (:dashboard_id card-updates)
-                                    card-before-update))
-
-    (when (or
-           ;; we're moving from one dashboard to another
-           (and (:dashboard_id card-updates)
-                (:dashboard_id card-before-update)
-                (not= (:dashboard_id card-updates) (:dashboard_id card-before-update)))
-           ;; we're moving from a dashboard into a collection, AND the user told us they want to remove the old dashcards
-           (and (:dashboard_id card-before-update)
-                (not (:dashboard_id card-updates))
-                delete-old-dashcards?))
-      (t2/delete! :model/DashboardCard
-                  :card_id (:id card-before-update)
-                  :dashboard_id (:dashboard_id card-before-update)))
+    (autoplace-or-remove-dashcards-for-card! card-before-update card-updates delete-old-dashcards?)
 
     (when (and (card-is-verified? card-before-update)
                (changed? card-compare-keys card-before-update card-updates))
