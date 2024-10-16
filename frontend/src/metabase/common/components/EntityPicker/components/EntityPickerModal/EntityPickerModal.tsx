@@ -226,7 +226,7 @@ export function EntityPickerModal<
     if (hasRecentsTab || shouldOptimisticallyAddRecentsTabWhileLoading) {
       computedTabs.push({
         id: RECENTS_TAB_ID,
-        model: null,
+        models: null,
         folderModels: [],
         displayName: t`Recents`,
         icon: "clock",
@@ -246,7 +246,7 @@ export function EntityPickerModal<
     if (hasSearchTab) {
       computedTabs.push({
         id: SEARCH_TAB_ID,
-        model: null,
+        models: null,
         folderModels: [],
         displayName: getSearchTabText(finalSearchResults, searchQuery),
         icon: "search",
