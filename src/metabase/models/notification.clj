@@ -6,7 +6,6 @@
   (:require
    [medley.core :as m]
    [metabase.models.interface :as mi]
-   [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -65,8 +64,7 @@
 
 (defn- delete-trigger-for-subscription!
   [& args]
-  (classloader/require 'metabase.task.notification)
-  (apply (resolve 'metabase.task.notification/delete-trigger-for-subscription!) args))
+  (apply (requiring-resolve 'metabase.task.notification/delete-trigger-for-subscription!) args))
 
 (t2/define-before-delete :model/Notification
   [instance]
@@ -113,8 +111,7 @@
 
 (defn- update-subscription-trigger!
   [& args]
-  (classloader/require 'metabase.task.notification)
-  (apply (resolve 'metabase.task.notification/update-subscription-trigger!) args))
+  (apply (requiring-resolve 'metabase.task.notification/update-subscription-trigger!) args))
 
 (t2/define-after-insert :model/NotificationSubscription
   [instance]
