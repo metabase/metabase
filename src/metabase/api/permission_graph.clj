@@ -7,7 +7,8 @@
    [clojure.spec.alpha :as s]
    [clojure.spec.gen.alpha :as gen]
    [clojure.walk :as walk]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [trs]]))
 
 (set! *warn-on-reflection* true)
 
@@ -94,28 +95,42 @@
    [:native {:optional true} Native]
    [:schemas {:optional true} Schemas]])
 
-(def DbGraph
-  "Permission graph for a single group"
-  [:map-of
-   Id
-   [:and
-    [:map
-     [:view-data {:optional true} Schemas]
-     [:create-queries {:optional true} Schemas]
-     [:data {:optional true} DataPerms]
-     [:download {:optional true} DataPerms]
-     [:data-model {:optional true} DataPerms]
-     [:details {:optional true} [:enum :yes :no]]]]])
+(def StrictDataPerms
+  "Data perms that care about how view-data and make-queries are related to one another.
+  If you have write access for native queries, you must have data access to all schemas."
+  [:and
+   DataPerms
+   [:fn {:error/fn (fn [_ _] (trs "Invalid DB permissions: If you have write access for native queries, you must have data access to all schemas."))}
+    (fn [{:keys [native schemas]}]
+      (not (and (= native :write) schemas (not (#{:all :impersonated} schemas)))))]])
+
+(def StrictDbGraph
+  "like db-graph, but with added validations:
+   - Ensures 'view-data' is not 'blocked' if 'create-queries' is 'query-builder-and-native'."
+  [:schema {:registry {"StrictDataPerms" StrictDataPerms}}
+   [:map-of
+    Id
+    [:and
+     [:map
+      [:view-data {:optional true} Schemas]
+      [:create-queries {:optional true} Schemas]
+      [:download {:optional true} "StrictDataPerms"]
+      [:data-model {:optional true} "StrictDataPerms"]
+      [:details {:optional true} [:enum :yes :no]]]
+     [:fn {:error/fn (fn [_ _] (trs "Invalid DB permissions: If you have write access for native queries, you must have data access to all schemas."))}
+      (fn [db-entry]
+        (let [{:keys [create-queries view-data]} db-entry]
+          (not (and (= create-queries :query-builder-and-native) (= view-data :blocked)))))]]]])
 
 (def DataPermissionsGraph
   "Used to transform, and verify data permissions graph"
   [:map
-   [:groups [:map-of GroupId [:maybe DbGraph]]]])
+   [:groups [:map-of GroupId [:maybe StrictDbGraph]]]])
 
 (def ApiDataPermissionsGraphph
   "Top level strict data graph schema expected over the API. Includes revision ID for avoiding concurrent updates."
   [:map
-   [:groups [:map-of GroupId [:maybe DbGraph]]]
+   [:groups [:map-of GroupId [:maybe StrictDbGraph]]]
    [:revision int?]])
 
 ;;; --------------------------------------------- Execution Permissions ----------------------------------------------
