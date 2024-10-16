@@ -684,24 +684,16 @@
   "Returns the default view-data permission level for a new database for a given group. On OSS, this is always `unrestricted`."
   metabase-enterprise.advanced-permissions.common
   [_group-id]
-  :unrestricted)
+  :blocked)
 
 (defn- new-database-permissions
   "Returns a map of {perm-type value} to be set for a new database, for the provided group."
-  [group-or-id]
-  (let [group-id             (u/the-id group-or-id)
-        view-data-level      (new-database-view-data-permission-level group-id)
-        create-queries-level (or (lowest-permission-level-in-any-database group-id :perms/create-queries)
-                                 :query-builder-and-native)
-        download-level       (if (= view-data-level :blocked)
-                               :no
-                               (or (lowest-permission-level-in-any-database group-id :perms/download-results)
-                                   :one-million-rows))]
-    {:perms/view-data view-data-level
-     :perms/create-queries create-queries-level
-     :perms/download-results download-level
+  [_group-or-id]
+    {:perms/view-data :blocked
+     :perms/create-queries :no
+     :perms/download-results :no
      :perms/manage-table-metadata :no
-     :perms/manage-database :no}))
+     :perms/manage-database :no})
 
 (defn set-new-database-permissions!
   "Sets permissions for a newly-added database to their appropriate values for a single group. For certain permission
