@@ -773,8 +773,7 @@ describe("scenarios > visualizations > bar chart", () => {
 
     function setMaxCategories(value, { viaBreakoutSettings = false } = {}) {
       if (viaBreakoutSettings) {
-        // TODO Remove `force: true` once the popover positioning is fixed
-        leftSidebar().findByTestId("settings-STATE").click({ force: true });
+        leftSidebar().findByTestId("settings-STATE").click();
       } else {
         leftSidebar().findByLabelText("Other series settings").click();
       }
