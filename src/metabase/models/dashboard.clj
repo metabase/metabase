@@ -259,7 +259,7 @@
     (when-let [ids (seq internal-dashboard-questions-to-archive)]
       (t2/update! :model/Card :id [:in ids] {:archived true :archived_directly true}))
     (when-let [ids (seq internal-dashboard-questions-to-unarchive)]
-      (t2/update! :model/Card :id [:in ids] {:archived false :archived_directly true}))))
+      (t2/update! :model/Card :id [:in ids] {:archived false :archived_directly false}))))
 
 ;;; --------------------------------------------------- Revisions ----------------------------------------------------
 
