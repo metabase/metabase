@@ -6,6 +6,8 @@ import {
   type ForwardedRef,
   type PropsWithoutRef,
   createRef,
+  Component,
+  forwardRef,
 } from "react";
 import _ from "underscore";
 
@@ -261,17 +263,16 @@ function ExplicitSize<T>({
       }
     }
 
-    return React.forwardRef<
-      unknown,
-      PropsWithoutRef<ExplicitSizeOuterProps<T>>
-    >((props, forwardedRef) => {
-      return (
-        <WrappedComponent
-          {...(props as T & InnerProps)}
-          forwardedRef={forwardedRef}
-        />
-      );
-    });
+    return forwardRef<unknown, PropsWithoutRef<ExplicitSizeOuterProps<T>>>(
+      (props, forwardedRef) => {
+        return (
+          <WrappedComponent
+            {...(props as T & InnerProps)}
+            forwardedRef={forwardedRef}
+          />
+        );
+      },
+    );
   };
 }
 
