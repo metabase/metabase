@@ -64,7 +64,7 @@ export const LLMSuggestQuestionInfo = ({
       <Button
         onClick={handleClick}
         className={className}
-        leftIcon={<Icon name="ai" color={iconColor} />}
+        leftSection={<Icon name="ai" color={iconColor} />}
         variant="subtle"
       />
     </Tooltip>

@@ -19,4 +19,4 @@ export const FilterTabItem = styled(Box)<FilterTabItemProps>`
   :focus-within {
     background-color: var(--mb-color-bg-light);
   }
-`;
+` as unknown as typeof Box;

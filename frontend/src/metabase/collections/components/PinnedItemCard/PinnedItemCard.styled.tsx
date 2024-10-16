@@ -32,7 +32,7 @@ export const ActionsContainer = styled(Box)<BoxProps>`
   align-items: center;
   gap: 0.5rem;
   visibility: hidden;
-`;
+` as unknown as typeof Box;
 
 export const Title = styled.div`
   font-weight: bold;

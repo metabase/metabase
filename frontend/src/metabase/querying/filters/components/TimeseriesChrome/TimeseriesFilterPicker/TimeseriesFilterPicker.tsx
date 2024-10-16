@@ -42,7 +42,7 @@ export function TimeseriesFilterPicker({
     <Popover opened={isOpened} onChange={setIsOpened}>
       <Popover.Target>
         <Button
-          rightIcon={<Icon name="chevrondown" />}
+          rightSection={<Icon name="chevrondown" />}
           data-testid="timeseries-filter-button"
           onClick={handleButtonClick}
         >

@@ -133,7 +133,7 @@ function FormCollectionPicker({
           id={id}
           onClick={() => setIsPickerOpen(true)}
           fullWidth
-          rightIcon={<Icon name="ellipsis" />}
+          rightSection={<Icon name="ellipsis" />}
           styles={{
             inner: {
               justifyContent: "space-between",

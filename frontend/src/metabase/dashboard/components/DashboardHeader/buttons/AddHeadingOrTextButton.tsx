@@ -56,7 +56,7 @@ export const AddHeadingOrTextButton = () => {
           data-element-id={t`Add a heading or text`}
           aria-label={t`Add a heading or text box`}
         >
-          <Group gap="xs" noWrap>
+          <Group gap="xs" wrap="nowrap">
             <Icon name="string" size={18} />
             <Icon name="chevrondown" size={10} />
           </Group>

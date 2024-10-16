@@ -83,7 +83,7 @@ export const RecentsListContent = ({
             >
               <ItemIcon active={isActive} item={item} type={item.model} />
               <ResultNameSection justify="center" gap="xs">
-                <Group gap="xs" align="center" noWrap>
+                <Group gap="xs" align="center" wrap="nowrap">
                   <ResultTitle
                     data-testid="recently-viewed-item-title"
                     truncate
