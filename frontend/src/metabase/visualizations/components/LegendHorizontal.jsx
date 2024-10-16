@@ -13,7 +13,7 @@ export default class LegendHorizontal extends Component {
       className,
       titles,
       colors,
-      hiddenIndices,
+      hiddenIndices = [],
       hovered,
       onHoverChange,
       onToggleSeriesVisibility,

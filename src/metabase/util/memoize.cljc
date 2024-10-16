@@ -8,8 +8,8 @@
   (:require
    #?@(:clj  ([clojure.core.memoize :as memoize])
        :cljs ([metabase.util.memoize.impl.js :as memoize]))
-   [metabase.shared.util.namespaces :as shared.ns]
-   [metabase.util.memoize.impl.bounded :as bounded]))
+   [metabase.util.memoize.impl.bounded :as bounded]
+   [metabase.util.namespaces :as shared.ns]))
 
 (shared.ns/import-fns
  [memoize

@@ -20,8 +20,8 @@
    [metabase.lib.test-util.metadata-providers.remap :as providers.remap]
    [metabase.lib.test-util.metadata-providers.with-cards-for-queries :as providers.cards-for-queries]
    [metabase.lib.util :as lib.util]
-   [metabase.shared.util.namespaces :as shared.ns]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.namespaces :as shared.ns]))
 
 (comment providers.cards-for-queries/keep-me
          providers.merged-mock/keep-me

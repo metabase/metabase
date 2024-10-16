@@ -1,0 +1,20 @@
+.UpsellCardComponent {
+  &.Large {
+    .MainStack {
+      padding-top: 2rem;
+      padding-bottom: 3rem;
+    }
+
+    .UpsellCTALink {
+      margin: 0;
+      margin-left: 3rem;
+      width: 10rem;
+    }
+  }
+
+  &.Default {
+    .Title {
+      font-size: 0.875rem;
+    }
+  }
+}

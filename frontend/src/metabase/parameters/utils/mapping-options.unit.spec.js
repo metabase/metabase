@@ -54,6 +54,7 @@ describe("parameters/utils/mapping-options", () => {
     describe("structured model", () => {
       let dataset;
       let virtualCardTable;
+
       beforeEach(() => {
         const question = ordersTable.question();
         dataset = question.setCard({
@@ -176,6 +177,7 @@ describe("parameters/utils/mapping-options", () => {
           },
         ]);
       });
+
       it("should also return fields from explicitly joined tables", () => {
         const card = structured({
           "source-table": ORDERS_ID,
@@ -262,6 +264,7 @@ describe("parameters/utils/mapping-options", () => {
           },
         ]);
       });
+
       it("should return fields in nested query", () => {
         const card = structured({
           "source-query": {
