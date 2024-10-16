@@ -87,7 +87,7 @@ export function DateIntervalPicker({
               aria-label={t`Starting from…`}
               c="text-medium"
               variant="subtle"
-              leftIcon={<Icon name="arrow_left_to_line" />}
+              leftSection={<Icon name="arrow_left_to_line" />}
               onClick={handleStartingFromClick}
             />
           </Tooltip>
@@ -97,7 +97,7 @@ export function DateIntervalPicker({
         <IncludeCurrentSwitch value={value} onChange={onChange} />
       </Flex>
       <Divider />
-      <Group px="md" py="sm" position="apart">
+      <Group px="md" py="sm" justify="space-between">
         <Group c="text-medium" gap="sm">
           <Icon name="calendar" />
           <Text c="inherit">{dateRangeText}</Text>

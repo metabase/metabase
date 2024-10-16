@@ -61,7 +61,7 @@ export const FeedbackModal = ({
           onChange={e => setEmail(e.currentTarget.value)}
         />
 
-        <Group position="right">
+        <Group justify="flex-end">
           <Button onClick={onClose}>{t`Cancel`}</Button>
           <Button variant="filled" onClick={handleSubmit}>
             {comment.trim().length + email.trim().length > 0

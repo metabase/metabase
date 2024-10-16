@@ -14,7 +14,7 @@ export const Example = ({ columnsAndSeparators }: Props) => {
 
   return (
     <Stack gap="sm">
-      <Text color="text-medium" lh={1} weight="bold">{t`Example`}</Text>
+      <Text color="text-medium" lh={1} fw="bold">{t`Example`}</Text>
 
       <Card
         bg="bg-light"
