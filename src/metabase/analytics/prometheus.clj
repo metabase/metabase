@@ -205,7 +205,7 @@
                        {:description (trs "Number of errors when responding to SDK requests.")})
    (prometheus/counter :metabase-query-processor/metrics
                        {:description (trs "Number of queries consuming metrics processed by the query processor.")})
-   (prometheus/counter :metabase-query-processor/metrics-errors
+   (prometheus/counter :metabase-query-processor/metric-errors
                        {:description (trs "Number of errors when processing metrics.")})])
 
 (defn- setup-metrics!

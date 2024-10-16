@@ -63,7 +63,7 @@
 
 (defn- check-prometheus-metrics!
   [& {expected-metrics-count  :metabase-query-processor/metrics
-      expected-metrics-errors :metabase-query-processor/metrics-errors
+      expected-metrics-errors :metabase-query-processor/metric-errors
       metric-and-mp           :metric-and-mp
       query-fn                :query-fn
       check-fn                :check-fn}]
@@ -76,13 +76,13 @@
     (with-redefs [prometheus/inc! #(swap! metrics update % (fnil inc 0))]
       (check-fn query)
       (is (= expected-metrics-count (read-metric :metabase-query-processor/metrics)))
-      (is (= expected-metrics-errors (read-metric :metabase-query-processor/metrics-errors))))))
+      (is (= expected-metrics-errors (read-metric :metabase-query-processor/metric-errors))))))
 
 (deftest adjust-prometheus-metrics-test
   (testing "adjustment of query with no metrics does not increment either counter"
     (check-prometheus-metrics!
      :metabase-query-processor/metrics 0
-     :metabase-query-processor/metrics-errors 0
+     :metabase-query-processor/metric-errors 0
      :query-fn (fn [_mp _metric]
                  (-> (lib/query meta/metadata-provider (meta/table-metadata :products))
                      (lib/aggregate (lib/avg (meta/field-metadata :products :rating)))))
@@ -92,21 +92,21 @@
   (testing "successful adjustment does not increment error counter"
     (check-prometheus-metrics!
      :metabase-query-processor/metrics 1
-     :metabase-query-processor/metrics-errors 0
+     :metabase-query-processor/metric-errors 0
      :check-fn #(is (=? {:stages [{:source-table (meta/id :products)
                                    :aggregation  [[:avg {} [:field {} (meta/id :products :rating)]]]}]}
                         (adjust %)))))
   (testing "failure to adjust :metric clauses increments error counter"
     (check-prometheus-metrics!
      :metabase-query-processor/metrics 1
-     :metabase-query-processor/metrics-errors 1
+     :metabase-query-processor/metric-errors 1
      :check-fn (fn [query]
                  (with-redefs [metrics/adjust-metric-stages (fn [_ _ stages] stages)]
                    (is (= query (adjust query)))))))
   (testing "exceptions from other libs also increment error counter"
     (check-prometheus-metrics!
      :metabase-query-processor/metrics 1
-     :metabase-query-processor/metrics-errors 1
+     :metabase-query-processor/metric-errors 1
      :check-fn (fn [query]
                  (with-redefs [lib.metadata/bulk-metadata-or-throw (fn [& _] (throw (Exception. "Test exception")))]
                    (is (thrown-with-msg?
@@ -116,7 +116,7 @@
   (testing "metric missing aggregation increments counter and throws exception"
     (check-prometheus-metrics!
      :metabase-query-processor/metrics 1
-     :metabase-query-processor/metrics-errors 1
+     :metabase-query-processor/metric-errors 1
      :metric-and-mp (mock-metric (-> (lib/query meta/metadata-provider (meta/table-metadata :products))))
      :query-fn (fn [mp metric]
                  (-> (lib/query mp (meta/table-metadata :products))
