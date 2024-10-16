@@ -231,7 +231,7 @@
       :else
       expanded-stages)))
 
-(defn- match-one-metric
+(defn- find-first-metric
   [query]
   (lib.util.match/match-one query
     [:metric _ _] &match))
@@ -251,7 +251,7 @@
    2. Metric source cards can reference themselves.
       A query built from a `:source-card` of `:type :metric` can reference itself."
   [query]
-  (if-not (match-one-metric query)
+  (if-not (find-first-metric query)
     query
     (do
       (prometheus/inc! :metabase-query-processor/metrics)
@@ -263,7 +263,7 @@
                          (update stage-or-join :stages #(adjust-metric-stages query path %)))))]
           (u/prog1
             (update query :stages #(adjust-metric-stages query nil %))
-            (when-let [metric (match-one-metric <>)]
+            (when-let [metric (find-first-metric <>)]
               ;; There is a small chance we could wind up double-counting errors here if prometheus/inc! or log/warn
               ;; throw an exception, but it seems unlikely enough to not warrant complications to avoid it.
               (prometheus/inc! :metabase-query-processor/metrics-errors)
