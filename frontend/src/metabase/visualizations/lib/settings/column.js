@@ -200,9 +200,14 @@ export const DATE_COLUMN_SETTINGS = {
     widget: "radio",
     default: "/",
     getProps: (column, settings) => {
-      const style = /\//.test(settings["date_style"])
-        ? settings["date_style"]
-        : "M/D/YYYY";
+      let style = settings["date_style"];
+
+      if (/(MMMM D, YYYY)/.test(settings["date_style"])) {
+        style = "M/D/YYYY";
+      } else if (/D MMMM, YYYY/.test(settings["date_style"])) {
+        style = "D/M/YYYY";
+      }
+
       return {
         options: [
           { name: style, value: "/" },
