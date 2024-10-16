@@ -15,7 +15,7 @@ const DatabaseNameField = ({ engine }: DatabaseNameFieldProps): JSX.Element => {
       name="name"
       title={t`Display name`}
       placeholder={t`Our ${name}`}
-      rightIcon="info"
+      rightSection="info"
       // eslint-disable-next-line no-literal-metabase-strings -- Admin settings
       rightIconTooltip={t`Choose what this data will be called in Metabase.`}
     />

@@ -28,7 +28,7 @@ export const CollectionAuthorityLevelDisplay = ({
   }
 
   return (
-    <Group noWrap gap="sm" pb="sm">
+    <Group wrap="nowrap" gap="sm" pb="sm">
       <Icon {...iconProps} />
       <Text lh={1}>{t`Official collection`}</Text>
     </Group>

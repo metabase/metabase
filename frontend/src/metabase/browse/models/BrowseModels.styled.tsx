@@ -104,7 +104,7 @@ export const CollectionExpandCollapseContainer = styled(Box)<
   align-items: center;
   grid-column: 1 / -1;
   margin: 1rem 0.25rem;
-`;
+` as unknown as typeof Box;
 
 export const CollectionHeaderToggleContainer = styled.div`
   padding: 0.5rem;

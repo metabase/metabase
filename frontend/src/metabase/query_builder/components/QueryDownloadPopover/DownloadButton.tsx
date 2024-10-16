@@ -25,7 +25,7 @@ export const DownloadButton = ({
         py="xs"
         px="sm"
         fw="bold"
-        position="apart"
+        justify="space-between"
       >
         <Text c="inherit">{`.${format}`}</Text>
         {showUnformattedInfo && (

@@ -190,7 +190,7 @@ export function IllustrationWidget({
               </Text>
               {customIllustrationSource && (
                 <Button
-                  leftIcon={<Icon name="close" />}
+                  leftSection={<Icon name="close" />}
                   variant="subtle"
                   c="text-dark"
                   ml="md"

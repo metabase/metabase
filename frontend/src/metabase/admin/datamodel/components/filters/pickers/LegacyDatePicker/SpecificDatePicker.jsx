@@ -102,7 +102,7 @@ export default class SpecificDatePicker extends Component {
                 this.onChange(null);
               }
             }}
-            rightIcon={calendar ? "calendar" : undefined}
+            rightSection={calendar ? "calendar" : undefined}
             onRightIconClick={() =>
               this.setState({ showCalendar: !this.state.showCalendar })
             }
