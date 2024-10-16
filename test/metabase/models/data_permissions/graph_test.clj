@@ -489,7 +489,15 @@
                                     :create-queries :query-builder}))))
               (testing "revoke schema perms"
                 (is (= nil
-                       (set-perms! {:view-data :blocked})))))))))))
+                       (set-perms! {:view-data :blocked}))))
+              (testing "disallow blocked data access + native querying"
+                (is (thrown-with-msg?
+                     Exception
+                     #"Invalid DB permissions: If you have write access for native queries, you must have data access to all schemas."
+                     (set-perms! {:view-data :blocked
+                                  :create-queries :query-builder-and-native})))
+                (is (= nil
+                       (perms)))))))))))
 
 (deftest no-op-partial-graph-updates
   (testing "Partial permission graphs with no changes to the existing graph do not error when run repeatedly (#25221)"

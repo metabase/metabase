@@ -225,8 +225,8 @@
     {}
     (let [query-type (lib/normalized-query-type query)]
       (case query-type
-        :query      (legacy-mbql-required-perms query perms-opts)
         :native     (native-query-perms query)
+        :query      (legacy-mbql-required-perms query perms-opts)
         :mbql/query (pmbql-required-perms query perms-opts)
         (throw (ex-info (tru "Invalid query type: {0}" query-type)
                         {:query query}))))))

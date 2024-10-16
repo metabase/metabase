@@ -54,6 +54,7 @@
   template tags."
   [query]
   (if-let [name->tag (seq (get-in query [:native :template-tags]))]
+    ;; Resolve namespace at runtime to avoid circular dependency
     ((requiring-resolve 'metabase.query-processor.compile/compile)
      (assoc-in query [:native :template-tags] (update-vals name->tag tag-default)))
     (:native query)))

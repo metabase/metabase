@@ -96,16 +96,24 @@
               (is (= false
                      (mi/can-write? card))))))))))
 
-(defn- native [query]
-  {:database 1
-   :type     :native
-   :native   {:query query}})
+(deftest ^:parallel native-query-test
+  (testing (str "By default, native queries are parsed and perms are only required for referenced tables")
+    (is (= {:perms/view-data      {(mt/id :checkins) :unrestricted}
+            :perms/create-queries {(mt/id :checkins) :query-builder-and-native}}
+           (query-perms/required-perms-for-query
+            {:database (mt/id)
+             :type     :native
+             :native   "SELECT * FROM CHECKINS"})))))
 
-(deftest ^:parallel native-query-perms-test
-  (is (= {:perms/create-queries :query-builder-and-native
-          :perms/view-data :unrestricted}
-         (query-perms/required-perms-for-query
-          (native "SELECT count(*) FROM toucan_sightings;")))))
+(deftest ^:parallel invalid-native-query-test
+  (testing (str "If the native query can't be parsed, or we can't map table references to table IDs in Metabase, we "
+                "require full data + native query access to the database")
+    (is (= {:perms/view-data      :unrestricted
+            :perms/create-queries :query-builder-and-native}
+           (query-perms/required-perms-for-query
+            {:database (mt/id)
+             :type     :native
+             :native   "SELECT * FROM INVALID_TABLE"})))))
 
 (deftest ^:parallel mbql-query-test
   (is (= {:perms/view-data      {(mt/id :venues) :unrestricted}
