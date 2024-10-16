@@ -432,9 +432,7 @@ export const dashcardData = createReducer(
         (state, action) => {
           const id = action.payload.object.id;
           for (const dashcardId in state) {
-            if (id in state[dashcardId]) {
-              delete state[dashcardId][id];
-            }
+            delete state[dashcardId][id];
           }
         },
       )
@@ -444,9 +442,7 @@ export const dashcardData = createReducer(
           const { model_id } = action.payload;
           if (model_id) {
             for (const dashcardId in state) {
-              if (model_id in state[dashcardId]) {
-                delete state[dashcardId][model_id];
-              }
+              delete state[dashcardId][model_id];
             }
           }
         },

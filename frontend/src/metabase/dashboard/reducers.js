@@ -215,8 +215,8 @@ export const dashboardReducers = reduceReducers(
     dashboards,
     loadingDashCards,
     dashcards,
-    draftParameterValues,
     dashcardData,
+    draftParameterValues,
     // Combined reducer needs to init state for every slice
     selectedTabId: (state = INITIAL_DASHBOARD_STATE.selectedTabId) => state,
     tabDeletions: (state = INITIAL_DASHBOARD_STATE.tabDeletions) => state,
