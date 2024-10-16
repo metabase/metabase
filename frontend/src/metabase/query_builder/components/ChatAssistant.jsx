@@ -22,9 +22,9 @@ import { useListDatabasesQuery, useGetDatabaseMetadataWithoutParamsQuery, skipTo
 import { SemanticError } from "metabase/components/ErrorPages";
 import { SpinnerIcon } from "metabase/components/LoadingSpinner/LoadingSpinner.styled";
 import { t } from "ttag";
-import { Client } from "@langchain/langgraph-sdk"; 
 
-const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId, chatType, oldCardId, insights, initial_message, setMessages, setInputValue, setThreadId, threadId, inputValue, messages, isChatHistoryOpen, setIsChatHistoryOpen, setShowButton }) => {
+
+const ChatAssistant = ({ client, selectedMessages, selectedThreadId, setSelectedThreadId, chatType, oldCardId, insights, initial_message, setMessages, setInputValue, setThreadId, threadId, inputValue, messages, isChatHistoryOpen, setIsChatHistoryOpen, setShowButton }) => {
     const initialDbName = useSelector(getDBInputValue);
     const initialCompanyName = useSelector(getCompanyName);
     const initialSchema = useSelector(getInitialSchema);
@@ -32,11 +32,8 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
     const initialInsightSchema = useSelector(getInitialInsightSchema)
     const inputRef = useRef(null);
     const dispatch = useDispatch();
-    const [client, setClient] = useState(null);  // For managing the Client
     const [agent, setAgent] = useState(null);    // For managing the Assistant Agent
     const [thread, setThread] = useState(null);  // To store the created thread
-    const langchain_url = "https://assistants-dev-7ca2258c0a7e5ea393441b5aca30fb7c.default.us.langgraph.app";
-    const langchain_key = "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";
     const [companyName, setCompanyName] = useState("");
     const [card, setCard] = useState(null);
     const [sources, setSources] = useState([]);
@@ -122,11 +119,10 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
   useEffect(() => {
     const initializeClientAndThread = async () => {
       try {
-        const clientInstance = new Client();
-        setClient(clientInstance);
+
         
         // Search for assistants
-        const assistants = await clientInstance.assistants.search({ metadata: null, limit: 10, offset: 0 });
+        const assistants = await client.assistants.search({ metadata: null, limit: 10, offset: 0 });
         let selectedAgent = assistants[0];
         for (let i = 0; i < assistants.length; i++) {
             if (
@@ -140,7 +136,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
         setAgent(selectedAgent);
 
         // Create a new thread
-        const createdThread = await clientInstance.threads.create();
+        const createdThread = await client.threads.create();
         setThread(createdThread);
       } catch (error) {
         console.error("Error initializing Client or creating thread:", error.message);
@@ -167,7 +163,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
     }
 
     useEffect(() => {
-        if (selectedMessages && selectedThreadId && selectedMessages.length > 0) {
+        if (client && selectedMessages && selectedThreadId && selectedMessages.length > 0) {
             // Clear existing messages
             setMessages([]);
             let visualizationIdx = 0;
@@ -236,7 +232,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
             // Call the processMessages function to handle the logic
             processMessages();
         }
-    }, [selectedMessages, selectedThreadId]);
+    }, [client, selectedMessages, selectedThreadId]);
     
       
 

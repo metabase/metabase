@@ -1,9 +1,9 @@
 import React, { useEffect, useState, useRef } from "react";
-import { Box, Text, ScrollArea, Title, Divider } from "metabase/ui";
-import { Client } from "@langchain/langgraph-sdk"; 
+import { Box, Text, ScrollArea, Title, Divider, Button, Menu } from "metabase/ui";
 import dayjs from "dayjs";
 
 interface ChatHistoryProps {
+  client: any;
   setSelectedChatHistory: (history: any) => void;
   setThreadId: (id: any) => void;
   type: string;
@@ -20,6 +20,7 @@ interface ChatHistoryState {
 }
 
 const ChatHistory = ({
+  client,
   setSelectedChatHistory,
   setThreadId,
   type,
@@ -32,30 +33,33 @@ const ChatHistory = ({
     last30Days: [],
   });
 
-  const langchain_url = "https://assistants-dev-7ca2258c0a7e5ea393441b5aca30fb7c.default.us.langgraph.app";
-  const langchain_key = "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";
+
   const [createdThread, setCreatedThread] = useState<any[]>([]); // Store fetched threads
-  const [client, setClient] = useState<any>(null)
   const [offset, setOffset] = useState(0); // Track the current offset for pagination
   const [hasMore, setHasMore] = useState(true); // Track if there is more data to load
   const scrollContainerRef = useRef<HTMLDivElement | null>(null); // Ref for scroll area
+  const [activeMenu, setActiveMenu] = useState<string | null>(null); // State for showing menu
 
   // Fetch paginated threads from the API
   useEffect(() => {
     const initializeClientAndThreads = async () => {
       try {
-        const clientInstance = new Client();
-        setClient(clientInstance)
-        const threads = await clientInstance.threads.search();
+        const threads = await client.threads.search();
+        const deleted = await client.threads
         
-        setCreatedThread(threads);
+        // Filter threads that have "get_data_agent" in the "graph_id" of their metadata
+        const filteredThreads = threads.filter((thread: any) => 
+          thread.metadata && thread.metadata.graph_id === "get_data_agent"
+        );
+        setCreatedThread(filteredThreads);
       } catch (error) {
         console.error("Error initializing Client or fetching threads:", error);
       }
     };
-
+  
     initializeClientAndThreads();
   }, []);
+  
 
   useEffect(() => {
     if (createdThread && createdThread.length > 0) {
@@ -164,8 +168,6 @@ const ChatHistory = ({
     }
 };
 
-
-
   return (
     <Box
       style={{
@@ -206,14 +208,16 @@ const ChatHistory = ({
                   justifyContent: "space-between",
                   padding: "8px 0",
                   cursor: "pointer",
+                  paddingRight: "2rem"
                 }}
-                onClick={() => handleHistoryItemClick(chat)}
               >
-                <Text style={{ color: "#76797d" }}>
-                  {/* Check and display the content of the first message */}
+                <Text
+                  style={{ color: "#76797d" }}
+                  onClick={() => handleHistoryItemClick(chat)}
+                >
                   {chat.values?.messages?.[0]?.content || chat.thread_id}
                 </Text>
-                <Text style={{ color: "#76797d", cursor: "pointer" }}>⋮</Text>
+               
               </Box>
             ))}
             <Divider my="sm" />
@@ -240,14 +244,16 @@ const ChatHistory = ({
                   justifyContent: "space-between",
                   padding: "8px 0",
                   cursor: "pointer",
+                  paddingRight: "2rem"
                 }}
-                onClick={() => handleHistoryItemClick(chat)}
               >
-                <Text style={{ color: "#76797d" }}>
-                  {/* Check and display the content of the first message */}
+                <Text
+                  style={{ color: "#76797d" }}
+                  onClick={() => handleHistoryItemClick(chat)}
+                >
                   {chat.values?.messages?.[0]?.content || chat.thread_id}
                 </Text>
-                <Text style={{ color: "#76797d", cursor: "pointer" }}>⋮</Text>
+                
               </Box>
             ))}
             <Divider my="sm" />
@@ -274,14 +280,16 @@ const ChatHistory = ({
                   justifyContent: "space-between",
                   padding: "8px 0",
                   cursor: "pointer",
+                  paddingRight: "2rem"
                 }}
-                onClick={() => handleHistoryItemClick(chat)}
               >
-                <Text style={{ color: "#76797d" }}>
-                  {/* Check and display the content of the first message */}
+                <Text
+                  style={{ color: "#76797d" }}
+                  onClick={() => handleHistoryItemClick(chat)}
+                >
                   {chat.values?.messages?.[0]?.content || chat.thread_id}
                 </Text>
-                <Text style={{ color: "#76797d", cursor: "pointer" }}>⋮</Text>
+                
               </Box>
             ))}
           </>
