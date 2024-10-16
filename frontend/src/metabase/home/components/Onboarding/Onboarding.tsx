@@ -134,10 +134,10 @@ export const Onboarding = () => {
               </Accordion.Control>
               <Accordion.Panel>
                 <Stack spacing="lg">
-                  <VideoPlaceholder
+                  <VideoTutorial
                     id="dVNB-xJW0CY"
                     ref={iframeRefs["database"]}
-                    title="foo"
+                    title="How to add a new database?"
                   />
 
                   <Text>
@@ -158,10 +158,10 @@ export const Onboarding = () => {
               </Accordion.Control>
               <Accordion.Panel>
                 <Stack spacing="lg">
-                  <VideoPlaceholder
+                  <VideoTutorial
                     id="dVNB-xJW0CY"
                     ref={iframeRefs["invite"]}
-                    title="foo"
+                    title={`How to invite your team mates to ${applicationName}`}
                   />
                   {/* TODO: different copy for different plans? */}
                   <Text>{t`Don't be shy with the invites.`}</Text>
@@ -197,10 +197,11 @@ export const Onboarding = () => {
               </Accordion.Control>
               <Accordion.Panel>
                 <Stack spacing="lg">
-                  <VideoPlaceholder
-                    id="dVNB-xJW0CY"
+                  <VideoTutorial
+                    id="FOAXF4p1AL0"
                     ref={iframeRefs["x-ray"]}
-                    title="foo"
+                    si="COmu2w0SqGagUoVp"
+                    title="How to find and use X-rays?"
                   />
                   <Text>
                     {jt`Hover over a table and click the yellow lightning bolt ${(
@@ -227,10 +228,11 @@ export const Onboarding = () => {
               </Accordion.Control>
               <Accordion.Panel>
                 <Stack spacing="lg">
-                  <VideoPlaceholder
-                    id="dVNB-xJW0CY"
+                  <VideoTutorial
+                    id="N9pR8KyaWzY"
                     ref={iframeRefs["notebook"]}
-                    title="foo"
+                    si="EQbwmOGt733oWkXF"
+                    title="How to use the Notebook editor?"
                   />
                   <Text>
                     {jt`Filter and summarize data, add custom columns, join data from other tables, and more - ${(<b>{t`all without SQL`}</b>)}. And when you build a chart with the query builder, people will be able to ${(
@@ -253,10 +255,11 @@ export const Onboarding = () => {
               </Accordion.Control>
               <Accordion.Panel>
                 <Stack spacing="lg">
-                  <VideoPlaceholder
-                    id="dVNB-xJW0CY"
+                  <VideoTutorial
+                    id="_iiG_MoxdAE"
                     ref={iframeRefs["sql"]}
-                    title="foo"
+                    si="QInRPzkHpFamjsHw"
+                    title="How to use the SQL/Native query editor?"
                   />
                   <Text>
                     {jt`Use the ${(<b>{t`native query editor`}</b>)} to query data with SQL or the query language native to your database. You can insert variables in your code to create ${
@@ -308,10 +311,10 @@ export const Onboarding = () => {
                   <Text>
                     {jt`You can add ${(<b>{t`filters`}</b>)} to dashboards and connect them to fields on questions to narrow the results.`}
                   </Text>
-                  <VideoPlaceholder
+                  <VideoTutorial
                     id="dVNB-xJW0CY"
                     ref={iframeRefs["dashboard"]}
-                    title="bar"
+                    title="How to use dashboards?"
                   />
                   <Text>
                     {t`You can drill-through your dashboard and charts to see more detailed data underneath.`}
@@ -334,10 +337,11 @@ export const Onboarding = () => {
               </Accordion.Control>
               <Accordion.Panel>
                 <Stack spacing="lg">
-                  <VideoPlaceholder
-                    id="dVNB-xJW0CY"
+                  <VideoTutorial
+                    id="8zjKBpDTEzI"
                     ref={iframeRefs["subscription"]}
-                    title="foo"
+                    si="9fgftfrqN67Wm7rB"
+                    title="How to create a dashboard email subscription?"
                   />
                   {shouldConfigureCommunicationChannels && (
                     <Text>
@@ -362,10 +366,11 @@ export const Onboarding = () => {
               </Accordion.Control>
               <Accordion.Panel>
                 <Stack spacing="lg">
-                  <VideoPlaceholder
-                    id="Cgd-vQIUjx8"
+                  <VideoTutorial
+                    id="MIUH3BsvIeA"
                     ref={iframeRefs["alert"]}
-                    title="foo"
+                    si="tbnZoSLJ7eZNOeXx"
+                    title="How to create an alert?"
                   />
                   {shouldConfigureCommunicationChannels && (
                     <Text>
@@ -443,8 +448,8 @@ export const Onboarding = () => {
   );
 };
 
-const VideoPlaceholder = forwardRef(function VideoPlaceholder(
-  { id, title }: { id: string; title: string },
+const VideoTutorial = forwardRef(function VideoTutorial(
+  { id, si, title }: { id: string; si?: string; title: string },
   ref: Ref<HTMLIFrameElement>,
 ) {
   return (
@@ -452,7 +457,7 @@ const VideoPlaceholder = forwardRef(function VideoPlaceholder(
       className={S.video}
       loading="lazy"
       ref={ref}
-      src={`https://www.youtube.com/embed/${id}?enablejsapi=1`}
+      src={`https://www.youtube.com/embed/${id}?si=${si}&enablejsapi=1`}
       title={title}
     />
   );
