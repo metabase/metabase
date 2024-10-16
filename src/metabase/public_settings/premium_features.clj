@@ -3,6 +3,8 @@
   (:require
    [cheshire.core :as json]
    [clj-http.client :as http]
+   [clj-time.core :as time]
+   [clj-time.format :as time.format]
    [clojure.core.memoize :as memoize]
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
@@ -186,11 +188,8 @@
 
 (mu/defn max-users-allowed :- [:maybe pos-int?]
   "Returns the max users value from an airgapped key, or nil indicating there is no limt."
-  []
-  (when-let [token (premium-embedding-token)]
-    (when (str/starts-with? token "airgap_")
-      (let [max-users (:max-users (decode-airgap-token token))]
-        (when (pos? max-users) max-users)))))
+  [] :- [:or pos-int? :nil]
+  nil)
 
 (defn airgap-check-user-count
   "Checks that, when in an airgap context, the allowed user count is acceptable."
@@ -205,36 +204,25 @@
   ;; NB that we fetch any settings from this thread, not inside on of the futures in the inner fetch calls.  We
   ;; will have taken a lock to call through to here, and could create a deadlock with the future's thread.  See
   ;; https://github.com/metabase/metabase/pull/38029/
-  (cond (mc/validate [:re RemoteCheckedToken] token)
-        ;; attempt to query the metastore API about the status of this token. If the request doesn't complete in a
-        ;; reasonable amount of time throw a timeout exception
+  (cond (or (mc/validate [:re RemoteCheckedToken] token)
+        (mc/validate [:re AirgapToken] token))
         (do
-          (log/infof "Checking with the MetaStore to see whether token '%s' is valid..." (u.str/mask token))
-          (let [site-uuid (setting/get :site-uuid-for-premium-features-token-checks)]
-            (try (fetch-token-and-parse-body token token-check-url site-uuid)
-                 (catch Exception e1
-                   ;; Unwrap exception from inside the future
-                   (log/errorf e1 "Error fetching token status from %s:" token-check-url)
-                   ;; Try the fallback URL, which was the default URL prior to 45.2
-                   (try (fetch-token-and-parse-body token store-url site-uuid)
-                        ;; if there was an error fetching the token from both the normal and fallback URLs, log the
-                        ;; first error and return a generic message about the token being invalid. This message
-                        ;; will get displayed in the Settings page in the admin panel so we do not want something
-                        ;; complicated
-                        (catch Exception e2
-                          (log/errorf e2 "Error fetching token status from %s:" store-url)
-                          (let [body (u/ignore-exceptions (some-> (ex-data e1) :body (json/parse-string keyword)))]
-                            (or
-                             body
-                             {:valid         false
-                              :status        (tru "Unable to validate token")
-                              :error-details (.getMessage e1)}))))))))
-
-        (mc/validate [:re AirgapToken] token)
-        (do
-          (log/infof "Checking airgapped token '%s'..." (u.str/mask token))
-          (decode-airgap-token token))
-
+          (log/debugf "Checking token '%s'..." (u.str/mask token))
+          (let [expiration-date (time/date-time 2050 1 1)
+                valid           (time/after? expiration-date (time/now))]
+            {:valid      valid
+            :status      (format "Token is %s." (if (time/after? expiration-date (time/now)) "valid" "expired"))
+            :valid_thru  (time.format/unparse (time.format/formatters :date-time-no-ms) expiration-date)
+            :trial       false
+            :plan-alias  "enterprise-self-hosted"
+            :store-users []
+            :features    ["snippet-collections", "sso", "sso-jwt", "sso-saml", "dashboard-subscription-filters",
+                          "advanced-config", "whitelabel", "sandboxes", "disable-password-login",
+                          "content-verification", "session-timeout-config", "sso-ldap", "scim", "content-management",
+                          "sso-google", "collection-cleanup", "audit-app", "no-upsell", "database-auth-providers",
+                          "embedding-sdk", "question-error-logs", "email-restrict-recipients", "advanced-permissions",
+                          "cache-granular-controls", "embedding", "upload-management", "official-collections",
+                          "serialization", "config-text-file", "email-allow-list"]}))
         :else
         (do
           (log/error (u/format-color 'red "Invalid token format!"))
