@@ -39,6 +39,14 @@ import type { RawSeries, Series } from "metabase-types/api";
 import { DimensionsWidget } from "./DimensionsWidget";
 import { SliceNameWidget } from "./SliceNameWidget";
 
+const pieRowsReadDeps = [
+  "pie.dimension",
+  "pie.metric",
+  "pie.colors",
+  "pie.sort_rows",
+  "pie.slice_threshold",
+];
+
 export const PIE_CHART_DEFINITION: VisualizationDefinition = {
   uiName: t`Pie`,
   identifier: "pie",
@@ -119,16 +127,21 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
             String(formatValue(value, options)),
           );
         },
-        (rawSeries, settings) =>
-          JSON.stringify(rawSeries) + JSON.stringify(settings),
+        ([{ card, data }], settings) =>
+          JSON.stringify({
+            cols: data.cols,
+            rows: data.rows.length,
+            dataset_query: card.dataset_query,
+            settings: _.pick(
+              settings,
+              ...pieRowsReadDeps,
+              "column",
+              "pie.rows",
+              "pie.sort_rows_dimension",
+            ),
+          }),
       ),
-      readDependencies: [
-        "pie.dimension",
-        "pie.metric",
-        "pie.colors",
-        "pie.sort_rows",
-        "pie.slice_threshold",
-      ],
+      readDependencies: pieRowsReadDeps,
       writeDependencies: ["pie.sort_rows_dimension"],
     },
     "pie.sort_rows_dimension": {
