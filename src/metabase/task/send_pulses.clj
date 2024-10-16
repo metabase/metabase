@@ -182,7 +182,7 @@
   ^{:doc
     "Find all active pulse Channels, group them by pulse-id and schedule time and create a trigger for each.
 
-    This is basically a migraiton in disguise to move from the old SendPulses job to the new SendPulse job.
+    This is basically a migration in disguise to move from the old SendPulses job to the new SendPulse job.
 
     Context: prior to this, SendPulses is a single job that runs hourly and send all Pulses that are scheduled for that
     hour.

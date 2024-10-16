@@ -19,7 +19,7 @@
 
 (def ^:private Notification
   [:map {:closed true}
-   [:payload_type (into [:enum] models.notification/notification-types)]
+   [:payload_type                  (into [:enum] models.notification/notification-types)]
    [:id           {:optional true} ms/PositiveInt]
    [:active       {:optional true} :boolean]
    [:created_at   {:optional true} :any]
