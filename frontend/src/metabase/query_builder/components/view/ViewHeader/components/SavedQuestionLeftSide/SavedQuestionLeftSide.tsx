@@ -13,6 +13,7 @@ import {
   ViewHeaderMainLeftContentContainer,
 } from "metabase/query_builder/components/view/ViewHeader/ViewTitleHeader.styled";
 import { Flex, HoverCard, Icon, Text, rem } from "metabase/ui";
+import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
 import { HeadBreadcrumbs } from "../HeaderBreadcrumbs";
@@ -122,16 +123,17 @@ export function SavedQuestionLeftSide({
 }
 
 export function ReadOnlyTag({ question }: { question: Question }) {
+  const { isEditable } = Lib.queryDisplayInfo(question.query());
   const hiddenSourceTables = useHiddenSourceTables(question);
 
-  if (hiddenSourceTables.length === 0) {
+  const tableName = hiddenSourceTables[0]?.display_name;
+
+  if (isEditable) {
     return null;
   }
 
-  const tableName = hiddenSourceTables[0].display_name;
-
   return (
-    <HoverCard position="bottom-start">
+    <HoverCard position="bottom-start" disabled={!tableName}>
       <HoverCard.Target>
         <Flex align="center" gap="xs" px={4} py={2} mt={4} className={CS.badge}>
           <Icon name="lock_filled" size={12} />
