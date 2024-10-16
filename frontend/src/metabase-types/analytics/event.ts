@@ -20,6 +20,10 @@ type OnboardingDatabaseUploadClickedEvent = ValidateEvent<{
   event: "data_add_via_db_clicked";
 }>;
 
+type OnboardingChecklistOpenedEvent = ValidateEvent<{
+  event: "onboarding_checklist_opened";
+}>;
+
 export type NewsletterToggleClickedEvent = ValidateEvent<{
   event: "newsletter-toggle-clicked";
   triggered_from: "setup";
@@ -36,4 +40,5 @@ export type SimpleEvent =
   | NewIFrameCardCreatedEvent
   | NewsletterToggleClickedEvent
   | OnboardingCSVUploadClickedEvent
-  | OnboardingDatabaseUploadClickedEvent;
+  | OnboardingDatabaseUploadClickedEvent
+  | OnboardingChecklistOpenedEvent;
