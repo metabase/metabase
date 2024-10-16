@@ -426,7 +426,9 @@
        (tru "Invalid Dashboard Question: Cannot manually set `collection_id` on a Dashboard Question")
        (api/column-will-change? :collection_position card changes)
        (tru "Invalid Dashboard Question: Cannot set `collection_position` on a Dashboard Question")
-       (api/column-will-change? :type card changes)
+       ;; `column-will-change?` seems broken in the case where we 'change' :question to "question"
+       (and (api/column-will-change? :type card changes)
+            (not (contains? #{"question" :question} (:type changes))))
        (tru "Invalid Dashboard Question: Cannot set `type` on a Dashboard Question")))))
 
 (defn- assert-is-valid-dashboard-internal-update [changes card]
