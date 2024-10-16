@@ -1,27 +1,44 @@
-import PropTypes from "prop-types";
-import { isValidElement } from "react";
+import { type ReactElement, isValidElement } from "react";
 
 import { TableInfoIcon } from "metabase/components/MetadataInfo/TableInfoIcon/TableInfoIcon";
 import { isNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
+import type { IconName } from "metabase/ui";
 import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
+import type Table from "metabase-lib/v1/metadata/Table";
 import {
   getQuestionIdFromVirtualTableId,
   getQuestionVirtualTableId,
   isVirtualCardId,
 } from "metabase-lib/v1/metadata/utils/saved-questions";
+import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import * as ML_Urls from "metabase-lib/v1/urls";
 
 import { HeadBreadcrumbs } from "../HeaderBreadcrumbs";
 
 import { IconWrapper, TablesDivider } from "./QuestionDataSource.styled";
 
+type DataSourcePart = ReactElement | DataSourceBadgePart;
+
+type DataSourceBadgePart = {
+  name?: string;
+  href?: string;
+  icon?: IconName;
+  model?: "database" | "schema" | "table" | "question" | "model" | "metric";
+};
+
 export function getDataSourceParts({
   question,
   subHead,
   isObjectDetail,
   formatTableAsComponent = true,
-}) {
+}: {
+  question: Question;
+  subHead?: boolean;
+  isObjectDetail?: boolean;
+  formatTableAsComponent?: boolean;
+}): DataSourcePart[] {
   if (!question) {
     return [];
   }
@@ -34,7 +51,7 @@ export function getDataSourceParts({
     return [];
   }
 
-  const parts = [];
+  const parts: DataSourcePart[] = [];
 
   const metadata = question.metadata();
   const database = metadata.database(Lib.databaseID(query));
@@ -43,21 +60,21 @@ export function getDataSourceParts({
     parts.push({
       icon: !subHead ? "database" : undefined,
       name: database.displayName(),
-      href: database.id >= 0 && Urls.browseDatabase(database),
+      href: database.id >= 0 ? Urls.browseDatabase(database) : undefined,
       model: "database",
     });
   }
 
   const table = !isNative
     ? metadata.table(Lib.sourceTableOrCardId(query))
-    : question.legacyQuery().table();
+    : (question.legacyQuery() as NativeQuery).table();
   if (table && table.hasSchema()) {
     const isBasedOnSavedQuestion = isVirtualCardId(table.id);
-    if (!isBasedOnSavedQuestion) {
+    if (database != null && !isBasedOnSavedQuestion) {
       parts.push({
         model: "schema",
         name: table.schema_name,
-        href: database.id >= 0 && Urls.browseSchema(table),
+        href: database.id >= 0 ? Urls.browseSchema(table) : undefined,
       });
     }
   }
@@ -65,10 +82,12 @@ export function getDataSourceParts({
   if (table) {
     const hasTableLink = subHead || isObjectDetail;
     if (isNative) {
-      return {
-        name: table.displayName(),
-        link: hasTableLink ? getTableURL() : "",
-      };
+      return [
+        {
+          name: table.displayName(),
+          href: hasTableLink ? getTableURL(table) : "",
+        },
+      ];
     }
 
     const allTables = [
@@ -88,7 +107,7 @@ export function getDataSourceParts({
         }),
     ].filter(isNotNull);
 
-    const part = formatTableAsComponent ? (
+    const part: DataSourcePart = formatTableAsComponent ? (
       <QuestionTableBadges
         tables={allTables}
         subHead={subHead}
@@ -106,17 +125,27 @@ export function getDataSourceParts({
     parts.push(part);
   }
 
-  return parts.filter(part => isValidElement(part) || part.name || part.icon);
+  return parts.filter(
+    part =>
+      isValidElement(part) ||
+      ("name" in part && part.name) ||
+      ("icon" in part && part.icon),
+  );
 }
 
-QuestionTableBadges.propTypes = {
-  tables: PropTypes.arrayOf(PropTypes.object).isRequired,
-  hasLink: PropTypes.bool,
-  subHead: PropTypes.bool,
-  isLast: PropTypes.bool,
+type QuestionTableBadgesProps = {
+  tables: Table[];
+  subHead?: boolean;
+  hasLink?: boolean;
+  isLast?: boolean;
 };
 
-function QuestionTableBadges({ tables, subHead, hasLink, isLast }) {
+function QuestionTableBadges({
+  tables,
+  subHead,
+  hasLink,
+  isLast,
+}: QuestionTableBadgesProps) {
   const badgeInactiveColor = isLast && !subHead ? "text-dark" : "text-light";
 
   const parts = tables.map(table => (
@@ -151,10 +180,12 @@ function QuestionTableBadges({ tables, subHead, hasLink, isLast }) {
   );
 }
 
-function getTableURL(table) {
+function getTableURL(table: Table) {
   if (isVirtualCardId(table.id)) {
     const cardId = getQuestionIdFromVirtualTableId(table.id);
-    return Urls.question({ id: cardId, name: table.displayName() });
+    if (cardId != null) {
+      return Urls.question({ id: cardId, name: table.displayName() });
+    }
   }
   return ML_Urls.getUrl(table.newQuestion());
 }
