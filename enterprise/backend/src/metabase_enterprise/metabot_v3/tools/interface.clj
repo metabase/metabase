@@ -23,7 +23,7 @@
    :keyword
    [:fn
     {:error/message "PARSED parameter names should be kebab-case (in YAML files they should use snake_case)"}
-    #(= (u/->kebab-case-en %) %)] ])
+    #(= (u/->kebab-case-en %) %)]])
 
 (mr/def ::metadata.parameter
   [:map
