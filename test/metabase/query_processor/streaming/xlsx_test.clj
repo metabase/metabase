@@ -28,7 +28,7 @@
    (let [viz-settings (common/viz-settings-for-col
                        (assoc col :field_ref [:field 1])
                        {::mb.viz/column-settings {{::mb.viz/field-id 1} format-settings}})
-         format-strings (@#'qp.xlsx/format-settings->format-strings viz-settings col)]
+         format-strings (@#'qp.xlsx/format-settings->format-strings viz-settings col true)]
      ;; If only one format string is returned (for datetimes) or both format strings
      ;; are equal, just return a single value to make tests more readable.
      (cond
