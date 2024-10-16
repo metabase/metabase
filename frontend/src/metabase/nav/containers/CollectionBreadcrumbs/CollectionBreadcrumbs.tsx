@@ -3,13 +3,12 @@ import _ from "underscore";
 
 import {
   skipToken,
-  useGetCardQuery,
   useGetCollectionQuery,
   useGetDashboardQuery,
 } from "metabase/api";
-import { ROOT_COLLECTION } from "metabase/entities/collections";
 import { useSelector } from "metabase/lib/redux";
-import { getViewedItem } from "metabase/selectors/app";
+import { getQuestion } from "metabase/query_builder/selectors";
+import { getCollectionId } from "metabase/selectors/app";
 import type { CollectionId } from "metabase-types/api";
 
 import {
@@ -26,42 +25,28 @@ interface CollectionBreadcrumbsProps
   baseCollectionId?: CollectionId | null;
 }
 
-// TODO: not sure how these changes will work for the embedding folks
 export const CollectionBreadcrumbs = (props: CollectionBreadcrumbsProps) => {
-  const viewedItem = useSelector(getViewedItem);
+  const statefulCollectionId = useSelector(getCollectionId);
+  const collectionId = props.collectionId ?? statefulCollectionId ?? "root";
 
-  const { data: viewedQuestion } = useGetCardQuery(
-    viewedItem.model === "question" && viewedItem.question?.id
-      ? { id: viewedItem.question.id() }
-      : skipToken,
-  );
-
-  const { data: viewedDashboard } = useGetDashboardQuery(
-    viewedItem.model === "dashboard" && viewedItem.dashboard?.id
-      ? { id: viewedItem.dashboard.id }
-      : skipToken,
-  );
-
-  const viewedItemParentCollectionId =
-    viewedDashboard?.collection_id ?? viewedQuestion?.collection_id;
-  const collectionId =
-    props.collectionId ?? viewedItemParentCollectionId ?? ROOT_COLLECTION.id;
   const { data: collection } = useGetCollectionQuery({ id: collectionId });
 
-  const dashboardId = viewedQuestion?.dashboard_id;
+  const question = useSelector(getQuestion);
+  const dashboardId = question?.dashboardId();
   const isDashboardQuestion = _.isNumber(dashboardId);
   const isQuestionPage = useLocation().pathname?.startsWith("/question");
   const shouldShowDashboard = isDashboardQuestion && isQuestionPage;
 
-  const { data: viewedDashboardQuestionDashboard } = useGetDashboardQuery(
+  const dashboardReq = useGetDashboardQuery(
     shouldShowDashboard ? { id: dashboardId } : skipToken,
   );
+  const dashboard = shouldShowDashboard ? dashboardReq?.data : undefined;
 
   return (
     <Breadcrumbs
       {...props}
       collection={collection}
-      dashboard={viewedDashboardQuestionDashboard}
+      dashboard={dashboard}
       baseCollectionId={props.baseCollectionId ?? null}
     />
   );
