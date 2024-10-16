@@ -5,6 +5,7 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.dashboard :as qp.dashboard]
    [metabase.query-processor.middleware.permissions :as qp.perms]
+   [metabase.query-processor.pivot :as qp.pivot]
    [metabase.server.middleware.session :as mw.session]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -24,19 +25,24 @@
                   card-type :type
                   :as       card} (t2/select-one :model/Card :id card-id, :archived false)]
         (let [query         (assoc query :async? false)
+              process-fn (if (= :pivot (:display card))
+                           qp.pivot/run-pivot-query
+                           qp/process-query)
               process-query (fn []
                               (binding [qp.perms/*card-id* card-id]
-                                (qp/process-query
+                                (process-fn
                                  (qp/userland-query
-                                  (assoc query :middleware {:skip-results-metadata?            true
-                                                            :process-viz-settings?             true
-                                                            :js-int-to-string?                 false
-                                                            :add-default-userland-constraints? false})
+                                  (assoc query
+                                         :middleware {:skip-results-metadata?            true
+                                                      :process-viz-settings?             true
+                                                      :js-int-to-string?                 false
+                                                      :add-default-userland-constraints? false})
                                   (merge (cond-> {:executed-by pulse-creator-id
                                                   :context     :pulse
                                                   :card-id     card-id}
                                            (= card-type :model)
                                            (assoc :metadata/model-metadata metadata))
+                                         {:visualization-settings (:visualization_settings card)}
                                          options)))))
               result        (if pulse-creator-id
                               (mw.session/with-current-user pulse-creator-id

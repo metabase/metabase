@@ -8,10 +8,12 @@ import {
   SidesheetCard,
   SidesheetTabPanelContainer,
 } from "metabase/common/components/Sidesheet";
+import { InsightsTabOrLink } from "metabase/common/components/Sidesheet/components/InsightsTabOrLink";
 import { SidesheetEditableDescription } from "metabase/common/components/Sidesheet/components/SidesheetEditableDescription";
 import SidesheetStyles from "metabase/common/components/Sidesheet/sidesheet.module.css";
 import { EntityIdCard } from "metabase/components/EntityIdCard";
 import Link from "metabase/core/components/Link";
+import { InsightsUpsellTab } from "metabase/dashboard/components/DashboardInfoSidebar/components/InsightsUpsellTab";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_MODERATION } from "metabase/plugins";
@@ -73,7 +75,9 @@ export const QuestionInfoSidebar = ({
         <Tabs.List mx="xl">
           <Tabs.Tab value="overview">{t`Overview`}</Tabs.Tab>
           {!isIAQuestion && <Tabs.Tab value="history">{t`History`}</Tabs.Tab>}
+          <InsightsTabOrLink question={question} />
         </Tabs.List>
+
         <SidesheetTabPanelContainer>
           <Tabs.Panel value="overview">
             <Stack spacing="lg">
@@ -109,6 +113,9 @@ export const QuestionInfoSidebar = ({
             <SidesheetCard>
               <QuestionActivityTimeline question={question} />
             </SidesheetCard>
+          </Tabs.Panel>
+          <Tabs.Panel value="insights">
+            <InsightsUpsellTab model={question.type()} />
           </Tabs.Panel>
         </SidesheetTabPanelContainer>
       </Tabs>
