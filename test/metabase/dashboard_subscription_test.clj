@@ -987,7 +987,7 @@
   (when (seq rows)
     [(let [^java.io.ByteArrayOutputStream baos (java.io.ByteArrayOutputStream.)]
        (with-open [os baos]
-         (#'messages/stream-api-results-to-export-format :csv true os result)
+         (#'messages/stream-api-results-to-export-format os {:export-format :csv :format-rows? true} result)
          (let [output-string (.toString baos "UTF-8")]
            {:type         :attachment
             :content-type :csv

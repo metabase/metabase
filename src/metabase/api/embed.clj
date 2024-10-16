@@ -90,7 +90,7 @@
      :card-id           card-id
      :token-params      (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
      :embedding-params  (t2/select-one-fn :embedding_params Card :id card-id)
-     :query-params      (api.embed.common/parse-query-params query-params)
+     :query-params      (api.embed.common/parse-query-params (dissoc query-params :format_rows :pivot_results))
      :qp                qp
      :constraints       constraints
      :options           options)))
@@ -107,17 +107,19 @@
 
 (api/defendpoint GET ["/card/:token/query/:export-format", :export-format api.dataset/export-format-regex]
   "Like `GET /api/embed/card/query`, but returns the results as a file in the specified format."
-  [token export-format format_rows :as {:keys [query-params]}]
+  [token export-format format_rows pivot_results :as {:keys [query-params]}]
   {export-format (into [:enum] api.dataset/export-formats)
-   format_rows   [:maybe :boolean]}
+   format_rows   [:maybe :boolean]
+   pivot_results [:maybe :boolean]}
   (run-query-for-unsigned-token-async
    (unsign-and-translate-ids token)
    export-format
-   (api.embed.common/parse-query-params (dissoc (m/map-keys keyword query-params) :format_rows))
+   (api.embed.common/parse-query-params (dissoc (m/map-keys keyword query-params) :format_rows :pivot_results))
    :constraints nil
    :middleware {:process-viz-settings? true
                 :js-int-to-string?     false
-                :format-rows?          format_rows}))
+                :format-rows?          (or format_rows false)
+                :pivot?                (or pivot_results false)}))
 
 ;;; ----------------------------------------- /api/embed/dashboard endpoints -----------------------------------------
 
@@ -159,7 +161,7 @@
      :card-id          card-id
      :embedding-params (t2/select-one-fn :embedding_params Dashboard :id dashboard-id)
      :token-params     (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
-     :query-params     (api.embed.common/parse-query-params (dissoc query-params :format_rows))
+     :query-params     (api.embed.common/parse-query-params (dissoc query-params :format_rows :pivot_results))
      :constraints      constraints
      :qp               qp
      :middleware       middleware)))
@@ -255,10 +257,11 @@
                       :export-format api.dataset/export-format-regex]
   "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the
   `embedding-secret-key` return the data in one of the export formats"
-  [token export-format dashcard-id card-id format_rows :as {:keys [query-params]}]
+  [token export-format dashcard-id card-id format_rows pivot_results :as {:keys [query-params]}]
   {dashcard-id   ms/PositiveInt
    card-id       ms/PositiveInt
    format_rows   [:maybe :boolean]
+   pivot_results [:maybe :boolean]
    export-format (into [:enum] api.dataset/export-formats)}
   (process-query-for-dashcard-with-signed-token token
                                                 dashcard-id
@@ -268,7 +271,8 @@
                                                 :constraints nil
                                                 :middleware {:process-viz-settings? true
                                                              :js-int-to-string?     false
-                                                             :format-rows?          format_rows}))
+                                                             :format-rows?          (or format_rows false)
+                                                             :pivot?                (or pivot_results false)}))
 
 ;;; ----------------------------------------------- Param values -------------------------------------------------
 
