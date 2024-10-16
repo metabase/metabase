@@ -27,8 +27,7 @@
    [metabase.util.log :as log]
    [metabase.xrays.automagic-dashboards.core :as magic]
    [taoensso.nippy :as nippy]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp])
+   [toucan2.core :as t2])
   (:import
    (org.bson.types ObjectId)))
 
@@ -96,7 +95,7 @@
              {:dbms_version  {:semantic-version [2 2134234]}
               :expected false}]]
       (testing (str "supports with " dbms_version)
-        (t2.with-temp/with-temp [Database db {:name "dummy", :engine "mongo", :dbms_version dbms_version}]
+        (mt/with-temp [Database db {:name "dummy", :engine "mongo", :dbms_version dbms_version}]
           (is (= expected
                  (driver/database-supports? :mongo :expressions db))))))
     (is (= #{:collection}
@@ -133,10 +132,10 @@
 (deftest ^:parallel nested-native-query-test
   (mt/test-driver :mongo
     (testing "Mbql query with nested native source query _returns correct results_ (#30112)"
-      (t2.with-temp/with-temp [Card {:keys [id]} {:dataset_query {:type     :native
-                                                                  :native   {:collection    "venues"
-                                                                             :query         native-query}
-                                                                  :database (mt/id)}}]
+      (mt/with-temp [Card {:keys [id]} {:dataset_query {:type     :native
+                                                        :native   {:collection    "venues"
+                                                                   :query         native-query}
+                                                        :database (mt/id)}}]
         (let [query (mt/mbql-query nil
                       {:source-table (str "card__" id)
                        :limit        1})]
@@ -159,10 +158,10 @@
                            "    \"longitude\": \"$longitude\",\n"
                            "    \"price\": \"$price\"}\n"
                            "}]")]
-        (t2.with-temp/with-temp [Card {:keys [id]} {:dataset_query {:type     :native
-                                                                    :native   {:collection    "venues"
-                                                                               :query         query-str}
-                                                                    :database (mt/id)}}]
+        (mt/with-temp [Card {:keys [id]} {:dataset_query {:type     :native
+                                                          :native   {:collection    "venues"
+                                                                     :query         query-str}
+                                                          :database (mt/id)}}]
           (let [query (mt/mbql-query venues
                         {:source-table (str "card__" id)
                          :aggregation [:count]
@@ -196,32 +195,105 @@
              {:schema nil, :name "reviews"}}
            (:tables (driver/describe-database :mongo (mt/db)))))))
 
-(deftest ^:parallel describe-table-test
+(deftest ^:parallel describe-table-query-test
+  (is (= [{"$sort" {"_id" 1}}
+          {"$limit" 500}
+          {"$unionWith" {"coll" "collection-name", "pipeline" [{"$sort" {"_id" -1}} {"$limit" 500}]}}
+          {"$project"
+           {"path" "$ROOT",
+            "kvs"
+            {"$map"
+             {"input" {"$objectToArray" "$$ROOT"},
+              "as" "item",
+              "in"
+              {"k" "$$item.k",
+               "object"
+               {"$cond" {"if" {"$eq" [{"$type" "$$item.v"} "object"]}, "then" "$$item.v", "else" nil}},
+               "type" {"$type" "$$item.v"}}}}}}
+          {"$unwind" {"path" "$kvs", "includeArrayIndex" "index"}}
+          {"$project"
+           {"path" "$kvs.k",
+            "result" {"$literal" false},
+            "type" "$kvs.type",
+            "index" 1,
+            "object" "$kvs.object"}}
+          {"$facet"
+           {"results" [{"$match" {"result" true}}],
+            "newResults"
+            [{"$match" {"result" false}}
+             {"$group"
+              {"_id" {"type" "$type", "path" "$path"},
+               "count" {"$sum" {"$cond" {"if" {"$eq" ["$type" "null"]}, "then" 0, "else" 1}}},
+               "index" {"$min" "$index"}}}
+             {"$sort" {"count" -1}}
+             {"$group" {"_id" "$_id.path", "type" {"$first" "$_id.type"}, "index" {"$min" "$index"}}}
+             {"$project" {"path" "$_id", "type" 1, "result" {"$literal" true}, "object" nil, "index" 1}}],
+            "nextItems"
+            [{"$match" {"result" false, "object" {"$ne" nil}}}
+             {"$project"
+              {"path" 1,
+               "kvs"
+               {"$map"
+                {"input" {"$objectToArray" "$object"},
+                 "as" "item",
+                 "in"
+                 {"k" "$$item.k",
+                  "object"
+                  {"$cond" {"if" {"$eq" [{"$type" "$$item.v"} "object"]}, "then" "$$item.v", "else" nil}},
+                  "type" {"$type" "$$item.v"}}}}}}
+             {"$unwind" {"path" "$kvs", "includeArrayIndex" "index"}}
+             {"$project"
+              {"path" {"$concat" ["$path" "." "$kvs.k"]},
+               "type" "$kvs.type",
+               "result" {"$literal" false},
+               "index" 1,
+               "object" "$kvs.object"}}]}}
+          {"$project" {"acc" {"$concatArrays" ["$results" "$newResults" "$nextItems"]}}}
+          {"$unwind" "$acc"}
+          {"$replaceRoot" {"newRoot" "$acc"}}
+          {"$facet"
+           {"results" [{"$match" {"result" true}}],
+            "newResults"
+            [{"$match" {"result" false}}
+             {"$group"
+              {"_id" {"type" "$type", "path" "$path"},
+               "count" {"$sum" {"$cond" {"if" {"$eq" ["$type" "null"]}, "then" 0, "else" 1}}},
+               "index" {"$min" "$index"}}}
+             {"$sort" {"count" -1}}
+             {"$group" {"_id" "$_id.path", "type" {"$first" "$_id.type"}, "index" {"$min" "$index"}}}
+             {"$project" {"path" "$_id", "type" 1, "result" {"$literal" true}, "object" nil, "index" 1}}]}}
+          {"$project" {"acc" {"$concatArrays" ["$results" "$newResults"]}}}
+          {"$unwind" "$acc"}
+          {"$replaceRoot" {"newRoot" "$acc"}}
+          {"$project" {"_id" 0, "index" "$index", "path" "$path", "type" "$type"}}]
+         (#'mongo/describe-table-query :collection-name "collection-name" :sample-size 1000 :max-depth 1))))
+
+(deftest describe-table-test
   (mt/test-driver :mongo
     (is (= {:schema nil
             :name   "venues"
             :fields #{{:name              "name"
-                       :database-type     "java.lang.String"
+                       :database-type     "string"
                        :base-type         :type/Text
                        :database-position 1}
                       {:name              "latitude"
-                       :database-type     "java.lang.Double"
+                       :database-type     "double"
                        :base-type         :type/Float
                        :database-position 3}
                       {:name              "longitude"
-                       :database-type     "java.lang.Double"
+                       :database-type     "double"
                        :base-type         :type/Float
                        :database-position 4}
                       {:name              "price"
-                       :database-type     "java.lang.Long"
+                       :database-type     "long"
                        :base-type         :type/Integer
                        :database-position 5}
                       {:name              "category_id"
-                       :database-type     "java.lang.Long"
+                       :database-type     "long"
                        :base-type         :type/Integer
                        :database-position 2}
                       {:name              "_id"
-                       :database-type     "java.lang.Long"
+                       :database-type     "long"
                        :base-type         :type/Integer
                        :pk?               true
                        :database-position 0}}}
@@ -285,7 +357,6 @@
                                        :table_id (mt/id :top-level-indexed) :name "name")]
             (testing "sanity check that we have 2 `name` fields"
               (is (= 2 (count name-fields))))
-
             (testing "only the top level field is indexed"
               (is (=? [{:name             "name"
                         :parent_id        nil
@@ -411,9 +482,9 @@
     (mt/dataset all-null-columns
       ;; do a full sync on the DB to get the correct semantic type info
       (sync/sync-database! (mt/db))
-      (is (= [{:name "_id",            :database_type "java.lang.Long",   :base_type :type/Integer, :semantic_type :type/PK}
-              {:name "favorite_snack", :database_type "NULL",             :base_type :type/*,       :semantic_type nil}
-              {:name "name",           :database_type "java.lang.String", :base_type :type/Text,    :semantic_type :type/Name}]
+      (is (= [{:name "_id",            :database_type "long",   :base_type :type/Integer, :semantic_type :type/PK}
+              {:name "favorite_snack", :database_type "null",   :base_type :type/*,       :semantic_type nil}
+              {:name "name",           :database_type "string", :base_type :type/Text,    :semantic_type :type/Name}]
              (map
               (partial into {})
               (t2/select [Field :name :database_type :base_type :semantic_type]
@@ -437,10 +508,10 @@
              ["Silvereye" "cherries" nil]]]]
           ;; do a full sync on the DB to get the correct semantic type info
           (sync/sync-database! (mt/db))
-          (is (= #{{:name "_id", :database_type "java.lang.Long", :base_type :type/Integer, :semantic_type :type/PK}
-                   {:name "favorite_snack", :database_type "java.lang.String", :base_type :type/Text, :semantic_type :type/Category}
-                   {:name "name", :database_type "java.lang.String", :base_type :type/Text, :semantic_type :type/Name}
-                   {:name "max_wingspan", :database_type "java.lang.Long", :base_type :type/Integer, :semantic_type nil}}
+          (is (= #{{:name "_id",            :database_type "long",   :base_type :type/Integer, :semantic_type :type/PK}
+                   {:name "favorite_snack", :database_type "string", :base_type :type/Text,    :semantic_type :type/Category}
+                   {:name "name",           :database_type "string", :base_type :type/Text,    :semantic_type :type/Name}
+                   {:name "max_wingspan",   :database_type "long",   :base_type :type/Integer, :semantic_type nil}}
                  (into #{}
                        (map (partial into {}))
                        (t2/select [Field :name :database_type :base_type :semantic_type]
@@ -616,13 +687,6 @@
                (rows-count {:query      "[{$match: {date: {$gte: ISODate(\"2015-12-20\")}}}]"
                             :collection "checkins"})))))))
 
-(deftest ^:parallel most-common-object-type-test
-  (is (= String
-         (#'mongo/most-common-object-type [[Float 20] [Integer 10] [String 30]])))
-  (testing "make sure it handles `nil` types correctly as well (#6880)"
-    (is (= nil
-           (#'mongo/most-common-object-type [[Float 20] [nil 40] [Integer 10] [String 30]])))))
-
 (deftest xrays-test
   (mt/test-driver :mongo
     (testing "make sure x-rays don't use features that the driver doesn't support"
@@ -637,7 +701,7 @@
     (testing (str "if we query a something an there are no values for the Field, the query should still return "
                   "successfully! (#8929 and #8894)")
       ;; add a temporary Field that doesn't actually exist to test data categories
-      (t2.with-temp/with-temp [Field _ {:name "parent_id", :table_id (mt/id :categories)}]
+      (mt/with-temp [Field _ {:name "parent_id", :table_id (mt/id :categories)}]
         ;; ok, now run a basic MBQL query against categories Table. When implicit Field IDs get added the `parent_id`
         ;; Field will be included
         (testing (str "if the column does not come back in the results for a given document we should fill in the "
@@ -700,6 +764,45 @@
 (defn- json-from-file [^String filename]
   (with-open [rdr (java.io.FileReader. (java.io.File. filename))]
     (json/parse-stream rdr true)))
+
+(defn- missing-fields-db []
+  (create-database-from-row-maps!
+   "test-missing-fields"
+   "coll"
+   (json-from-file "modules/drivers/mongo/test/metabase/driver/missing-fields.json")))
+
+(deftest sync-missing-fields-test
+  (mt/test-driver :mongo
+    (mt/with-db (missing-fields-db)
+      (sync/sync-database! (missing-fields-db))
+      (testing "Test that fields with missing or null values get synced correctly"
+        (let [results (map #(into {} %)
+                           (t2/select [Field :id :name :database_type :base_type :semantic_type :parent_id]
+                                      :active   true
+                                      :table_id (mt/id :coll)
+                                      {:order-by [:database_position]}))]
+          (is (=? [{:name "_id",    :database_type "long",   :base_type :type/Integer,   :semantic_type :type/PK}
+                   {:name "a",     :database_type "string", :base_type :type/Text,       :semantic_type :type/Category}
+                   {:name "b",     :database_type "object", :base_type :type/Dictionary, :semantic_type nil}
+                   {:name "b_c",   :database_type "string", :base_type :type/Text,       :semantic_type :type/Category}
+                   {:name "b_d",   :database_type "int",    :base_type :type/Integer,    :semantic_type :type/Category}
+                   {:name "b_e",   :database_type "object", :base_type :type/Dictionary, :semantic_type nil}
+                   {:name "b_e_f", :database_type "string", :base_type :type/Text,       :semantic_type :type/Category}
+                   {:name "c",     :database_type "null",   :base_type :type/*,          :semantic_type nil}]
+                  results))
+          (testing "parent_ids are correct"
+            (let [parent (fn [field-name]
+                           (let [field (first (filter #(= (:name %) field-name) results))]
+                             (:name (first (filter #(= (:id %) (:parent_id field)) results)))))]
+              (is (= {"_id"   nil
+                      "a"     nil
+                      "b"     nil
+                      "c"     nil
+                      "b_c"   "b"
+                      "b_d"   "b"
+                      "b_e"   "b"
+                      "b_e_f" "b_e"}
+                     (into {} (map (juxt :name #(parent (:name %))) results)))))))))))
 
 (defn- array-fields-db []
   (create-database-from-row-maps!
