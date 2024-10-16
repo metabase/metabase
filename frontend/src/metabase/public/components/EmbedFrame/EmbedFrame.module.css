@@ -8,6 +8,15 @@ body {
   --mb-color-text-tertiary: var(--mb-color-text-light);
 }
 
+.EmbedFrame,
+  /* this is to make it work when exporting to pdfs,
+where the EmbedFrame is not part of the exported dom */
+.WithThemeBackground {
+  /* the dashboard background color is not set by default in the embedding sdk */
+  background-color: var(--mb-color-bg-dashboard, --mb-color-background);
+  border-color: var(--mb-color-border);
+}
+
 .EmbedFrame {
   color: var(--mb-color-text-primary);
   background-color: var(--mb-color-bg-dashboard);
@@ -59,15 +68,6 @@ body {
   --mb-color-background-hover: var(--mb-base-color-brand-70);
   --mb-color-background-disabled: var(--mb-base-color-gray-70);
   --mb-color-background-brand: var(--mb-base-color-brand-60);
-
-  .EmbedFrame,
-    /* this is to make it work when exporting to pdfs,
-  where the EmbedFrame is not part of the exported dom */
-      .WithThemeBackground {
-    /* the dashboard background color is not set by default in the embedding sdk */
-    background-color: var(--mb-color-bg-dashboard, --mb-color-background);
-    border-color: var(--mb-color-border);
-  }
 
   .EmbedFrameHeader,
   .EmbedFrameFooter {
