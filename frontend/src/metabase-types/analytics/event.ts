@@ -1,3 +1,8 @@
+import type {
+  ChecklistItemCTA,
+  ChecklistItemValue,
+} from "metabase/home/components/Onboarding/types";
+
 type SimpleEventSchema = {
   event: string;
   target_id?: number | null;
@@ -26,15 +31,13 @@ type OnboardingChecklistOpenedEvent = ValidateEvent<{
 
 type OnboardingChecklistItemExpandedEvent = ValidateEvent<{
   event: "onboarding_checklist_item_expanded";
-  triggered_from:
-    | "database"
-    | "invite"
-    | "x-ray"
-    | "notebook"
-    | "sql"
-    | "dashboard"
-    | "subscription"
-    | "alert";
+  triggered_from: ChecklistItemValue;
+}>;
+
+type OnboardingChecklistItemCTAClickedEvent = ValidateEvent<{
+  event: "onboarding_checklist_cta_clicked";
+  triggered_from: ChecklistItemValue;
+  event_detail: ChecklistItemCTA;
 }>;
 
 export type NewsletterToggleClickedEvent = ValidateEvent<{
@@ -55,4 +58,5 @@ export type SimpleEvent =
   | OnboardingCSVUploadClickedEvent
   | OnboardingDatabaseUploadClickedEvent
   | OnboardingChecklistOpenedEvent
-  | OnboardingChecklistItemExpandedEvent;
+  | OnboardingChecklistItemExpandedEvent
+  | OnboardingChecklistItemCTAClickedEvent;

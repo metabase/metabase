@@ -7,3 +7,5 @@ export type ChecklistItemValue =
   | "dashboard"
   | "subscription"
   | "alert";
+
+export type ChecklistItemCTA = "primary" | "secondary";
