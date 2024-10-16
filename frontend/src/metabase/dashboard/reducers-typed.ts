@@ -1,5 +1,5 @@
 import { createReducer } from "@reduxjs/toolkit";
-import { assocIn } from "icepick";
+import { assocIn, dissocIn } from "icepick";
 import { omit } from "underscore";
 
 import {
@@ -9,14 +9,18 @@ import {
   updateDashboardEnableEmbedding,
 } from "metabase/api";
 import Dashboards from "metabase/entities/dashboards";
+import Questions from "metabase/entities/questions";
+import Revisions from "metabase/entities/revisions";
 import { handleActions } from "metabase/lib/redux";
 import { NAVIGATE_BACK_TO_DASHBOARD } from "metabase/query_builder/actions";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
+  Card,
   DashCardId,
   Dashboard,
   ParameterId,
   ParameterValueOrArray,
+  Revision,
 } from "metabase-types/api";
 import type {
   DashboardSidebarName,
@@ -40,6 +44,7 @@ import {
   addDashcardIdsToLoadingQueue,
   addManyCardsToDash,
   cancelFetchCardData,
+  clearCardData,
   fetchCardDataAction,
   fetchDashboard,
   fetchDashboardCardDataAction,
@@ -204,17 +209,12 @@ export const sidebar = createReducer(
 export const parameterValues = createReducer(
   INITIAL_DASHBOARD_STATE.parameterValues,
   builder => {
-    builder.addCase<
-      string,
-      {
-        type: string;
-        payload: {
-          clearCache?: boolean;
-        };
-      }
-    >(INITIALIZE, (state, { payload: { clearCache = true } = {} }) => {
-      return clearCache ? {} : state;
-    });
+    builder.addCase(
+      initialize,
+      (state, { payload: { clearCache = true } = {} }) => {
+        return clearCache ? {} : state;
+      },
+    );
 
     builder.addCase(fetchDashboard.fulfilled, (_state, { payload }) => {
       return payload.parameterValues;
@@ -259,17 +259,12 @@ export const parameterValues = createReducer(
       }
     });
 
-    builder.addCase<
-      string,
-      {
-        type: string;
-        payload: {
-          id: ParameterId;
-        };
-      }
-    >(REMOVE_PARAMETER, (state, { payload: { id } }) => {
-      delete state[id];
-    });
+    builder.addCase<string, { type: string; payload: { id: ParameterId } }>(
+      REMOVE_PARAMETER,
+      (state, { payload: { id } }) => {
+        delete state[id];
+      },
+    );
   },
 );
 
@@ -411,5 +406,46 @@ export const loadingDashCards = createReducer(
         ...state,
         loadingStatus: "idle",
       }));
+  },
+);
+
+export const dashcardData = createReducer(
+  INITIAL_DASHBOARD_STATE.dashcardData,
+  builder => {
+    builder
+      .addCase(initialize, (state, action) => {
+        const { clearCache = true } = action.payload ?? {};
+        return clearCache ? {} : state;
+      })
+      .addCase(fetchCardDataAction.fulfilled, (state, action) => {
+        const { dashcard_id, card_id, result } = action.payload ?? {};
+        if (dashcard_id && card_id) {
+          return assocIn(state, [dashcard_id, card_id], result);
+        }
+      })
+      .addCase(clearCardData, (state, action) => {
+        const { cardId, dashcardId } = action.payload;
+        return dissocIn(state, [dashcardId, cardId]);
+      })
+      .addCase<string, { type: string; payload: { object: Card } }>(
+        Questions.actionTypes.UPDATE,
+        (state, action) => {
+          const id = action.payload.object.id;
+          for (const dashcardId in state) {
+            delete state[dashcardId][id];
+          }
+        },
+      )
+      .addCase<string, { type: string; payload: Revision }>(
+        Revisions.actionTypes.REVERT,
+        (state, action) => {
+          const { model_id } = action.payload;
+          if (model_id) {
+            for (const dashcardId in state) {
+              delete state[dashcardId][model_id];
+            }
+          }
+        },
+      );
   },
 );
