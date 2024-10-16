@@ -105,11 +105,11 @@ export const DropdownSidebarFilter = ({
         legend={fieldHasValue ? label() : undefined}
         fieldHasValueOrFocus={fieldHasValue}
       >
-        <GroupOverflowHidden position="apart" noWrap w="100%">
+        <GroupOverflowHidden justify="space-between" wrap="nowrap" w="100%">
           {fieldHasValue ? (
             <DisplayComponent value={value} />
           ) : (
-            <GroupOverflowHidden noWrap>
+            <GroupOverflowHidden wrap="nowrap">
               {iconName && <DropdownLabelIcon size={16} name={iconName} />}
               <Text weight={700} truncate>
                 {label()}
@@ -118,13 +118,12 @@ export const DropdownSidebarFilter = ({
           )}
           <Button
             data-testid="sidebar-filter-dropdown-button"
-            compact
+            size="compact-xs"
             mr="0.25rem"
-            size="xs"
             c="inherit"
             variant="subtle"
             onClick={onClearFilter}
-            leftIcon={
+            leftSection={
               <Center m="-0.25rem">
                 <Icon size={16} name={getDropdownIcon()} />
               </Center>

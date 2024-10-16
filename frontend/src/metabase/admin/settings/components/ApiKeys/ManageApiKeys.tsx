@@ -166,7 +166,7 @@ export const ManageApiKeys = () => {
       <Stack pl="md" gap="lg">
         <Group
           align="start"
-          position="apart"
+          justify="space-between"
           data-testid="api-keys-settings-header"
         >
           <Stack>

@@ -90,7 +90,7 @@ const TimelineDetailsModal = ({
             fullWidth
             value={inputText}
             placeholder={t`Search for an event`}
-            leftIcon="search"
+            leftSection="search"
             onChange={handleSearchChange}
           />
           {canWrite && !isArchive && (

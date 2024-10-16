@@ -15,14 +15,14 @@ export const SearchMain = styled(Flex)`
   ${breakpointMinSmall} {
     padding: 2rem;
   }
-`;
+` as unknown as typeof Flex;
 
 export const SearchBody = styled(Flex)`
   ${breakpointMinMedium} {
     flex-direction: row-reverse;
     gap: 2.5rem;
   }
-`;
+` as unknown as typeof Flex;
 
 export const SearchControls = styled(Stack)`
   overflow: hidden;

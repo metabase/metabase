@@ -80,7 +80,7 @@ export const ChartTypeOption = ({
 
         <Text
           lh="unset"
-          align="center"
+          ta="center"
           fw="bold"
           fz="sm"
           color={isSelected ? "brand" : "text-medium"}
