@@ -9289,7 +9289,7 @@ databaseChangeLog:
             indexName: idx_collection_type
 
   - changeSet:
-      id: v51.2024-10-15T23:14:11
+      id: v52.2024-10-15T23:14:11
       author: noahmoss
       comment: downgrade migration for table-level native perms
       changes:
@@ -9297,6 +9297,7 @@ databaseChangeLog:
       rollback:
         - sqlFile:
             path: permissions/rollback/table_level_native_perms.sql
+            relativeToChangelogFile: true
 
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<

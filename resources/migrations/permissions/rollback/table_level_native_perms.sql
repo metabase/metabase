@@ -39,7 +39,7 @@ GROUP BY dp.group_id, dp.db_id;
 DELETE FROM data_permissions
 WHERE perm_value = 'query-builder'
   AND table_id IS NOT NULL
-  AND NOT EXISTS (
+  AND EXISTS (
       SELECT 1
       FROM data_permissions dp2
       WHERE dp2.group_id = data_permissions.group_id
