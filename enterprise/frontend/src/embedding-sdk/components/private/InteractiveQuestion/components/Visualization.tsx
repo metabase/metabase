@@ -1,14 +1,13 @@
 import cx from "classnames";
-import { t } from "ttag";
 
 import {
-  SdkError,
   SdkLoader,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
 import CS from "metabase/css/core/index.css";
 import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
 
 import { useInteractiveQuestionContext } from "../context";
+import { SdkError } from "embedding-sdk/components/private/SdkError";
 
 export const QuestionVisualization = () => {
   const {
@@ -26,7 +25,7 @@ export const QuestionVisualization = () => {
   }
 
   if (!question || !queryResults) {
-    return <SdkError message={t`Question not found`} />;
+    return <SdkError status="question-not-found" />;
   }
 
   const [result] = queryResults;
