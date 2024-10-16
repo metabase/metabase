@@ -1,5 +1,5 @@
 import { getAccentColors, getPreferredColor } from "./groups";
-import { ACCENT_COUNT } from "./palette";
+import { ACCENT_CORE_COUNT } from "./palette";
 import type { ColorPalette } from "./types";
 
 export const getColorsForValues = (
@@ -7,7 +7,7 @@ export const getColorsForValues = (
   existingMapping?: Record<string, string> | null,
   palette?: ColorPalette,
 ) => {
-  if (keys.length <= ACCENT_COUNT) {
+  if (keys.length <= ACCENT_CORE_COUNT) {
     return getHashBasedMapping(
       keys,
       getAccentColors({ light: false, dark: false }, palette),
@@ -18,7 +18,7 @@ export const getColorsForValues = (
     return getOrderBasedMapping(
       keys,
       getAccentColors(
-        { light: keys.length > ACCENT_COUNT * 2, harmony: true },
+        { light: keys.length > ACCENT_CORE_COUNT * 2, harmony: true },
         palette,
       ),
       existingMapping,

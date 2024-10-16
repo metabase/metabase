@@ -4,17 +4,13 @@ import type { ColorGetter } from "metabase/visualizations/types";
 
 import type { ColorPalette } from "./types";
 
-export const ACCENT_COUNT = 8;
-
 // NOTE: DO NOT ADD COLORS WITHOUT EXTREMELY GOOD REASON AND DESIGN REVIEW
 // NOTE: KEEP SYNCRONIZED WITH:
 // frontend/src/metabase/css/core/colors.module.css
 // frontend/src/metabase/styled-components/containers/GlobalStyles/GlobalStyles.tsx
 // frontend/src/metabase/styled-components/theme/css-variables.ts
-export const colors = {
-  brand: "#509EE3",
-  summarize: "#88BF4D",
-  filter: "#7172AD",
+
+const accentCoreColors = {
   accent0: "#509EE3",
   accent1: "#88BF4D",
   accent2: "#A989C5",
@@ -23,6 +19,22 @@ export const colors = {
   accent5: "#F2A86F",
   accent6: "#98D9D9",
   accent7: "#7172AD",
+};
+const accentOptionalColors = {
+  // not cycled through in default color mappings, but still shown in color picker
+  accent8: "#808080",
+};
+
+export const ACCENT_CORE_COUNT = Object.keys(accentCoreColors).length;
+export const ACCENT_TOTAL_COUNT =
+  ACCENT_CORE_COUNT + Object.keys(accentOptionalColors).length;
+
+export const colors = {
+  brand: "#509EE3",
+  summarize: "#88BF4D",
+  filter: "#7172AD",
+  ...accentCoreColors,
+  ...accentOptionalColors,
   "admin-navbar": "#7172AD",
   white: "#FFFFFF",
   success: "#84BB4C",
@@ -74,6 +86,7 @@ export const aliases: Record<string, (palette: ColorPalette) => string> = {
   "accent5-light": palette => tint(color(`accent5`, palette)),
   "accent6-light": palette => tint(color(`accent6`, palette)),
   "accent7-light": palette => tint(color(`accent7`, palette)),
+  "accent8-light": palette => tint(color(`accent8`, palette)),
 
   "accent0-dark": palette => shade(color(`accent0`, palette)),
   "accent1-dark": palette => shade(color(`accent1`, palette)),
@@ -83,6 +96,7 @@ export const aliases: Record<string, (palette: ColorPalette) => string> = {
   "accent5-dark": palette => shade(color(`accent5`, palette)),
   "accent6-dark": palette => shade(color(`accent6`, palette)),
   "accent7-dark": palette => shade(color(`accent7`, palette)),
+  "accent8-dark": palette => shade(color(`accent8`, palette)),
 };
 
 /**
