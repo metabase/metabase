@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { type Ref, forwardRef, useRef, useState } from "react";
 import { jt, t } from "ttag";
 
 import { getPlan } from "metabase/common/utils/plan";
@@ -37,7 +37,20 @@ export const Onboarding = () => {
     getPlan(getSetting(state, "token-features")),
   );
 
+  const iframeRefs = {
+    database: useRef<HTMLIFrameElement>(null),
+    invite: useRef<HTMLIFrameElement>(null),
+    "x-ray": useRef<HTMLIFrameElement>(null),
+    notebook: useRef<HTMLIFrameElement>(null),
+    sql: useRef<HTMLIFrameElement>(null),
+    dashboard: useRef<HTMLIFrameElement>(null),
+    subscription: useRef<HTMLIFrameElement>(null),
+    alert: useRef<HTMLIFrameElement>(null),
+  };
+
   const [itemValue, setItemValue] = useState<ChecklistItemValue | null>(null);
+
+  const DEFAULT_ITEM = "database";
 
   const shouldConfigureCommunicationChannels =
     plan === "oss" || plan === "pro-self-hosted";
@@ -63,19 +76,32 @@ export const Onboarding = () => {
     databaseId: lastUsedDatabaseId || undefined,
   });
 
+  const sendMessage = (command: string, value: ChecklistItemValue) => {
+    const iframeRef = iframeRefs[value];
+    if (iframeRef.current) {
+      iframeRef.current?.contentWindow?.postMessage(
+        JSON.stringify({
+          event: "command",
+          func: command,
+          args: [],
+        }),
+        "*",
+      );
+    }
+  };
+
+  const stopVideo = (value: ChecklistItemValue) =>
+    sendMessage("stopVideo", value);
+
   const handleValueChange = (newValue: ChecklistItemValue | null) => {
     if (newValue !== null) {
       trackChecklistItemExpanded(newValue);
     }
 
-    const itemClosed = newValue === null;
-    const itemSwitched = newValue !== itemValue;
+    const defaultItemInitiallyOpened = itemValue === null;
 
-    if (itemClosed || itemSwitched) {
-      setItemValue(newValue);
-
-      //TODO stop video
-    }
+    setItemValue(newValue);
+    stopVideo(defaultItemInitiallyOpened ? DEFAULT_ITEM : itemValue);
   };
 
   return (
@@ -88,7 +114,7 @@ export const Onboarding = () => {
     >
       <Box maw={592}>
         <Accordion
-          defaultValue="database"
+          defaultValue={DEFAULT_ITEM}
           classNames={{
             item: S.item,
             content: S.content,
@@ -108,7 +134,12 @@ export const Onboarding = () => {
               </Accordion.Control>
               <Accordion.Panel>
                 <Stack spacing="lg">
-                  <VideoPlaceholder src="https://www.youtube.com/embed/dVNB-xJW0CY?si=m_fyWH878JJ0CVS1" />
+                  <VideoPlaceholder
+                    id="dVNB-xJW0CY"
+                    ref={iframeRefs["database"]}
+                    title="foo"
+                  />
+
                   <Text>
                     {t`You can connect multiple databases, and query them directly with the query builder or the Native/SQL editor.`}
                   </Text>
@@ -127,7 +158,11 @@ export const Onboarding = () => {
               </Accordion.Control>
               <Accordion.Panel>
                 <Stack spacing="lg">
-                  <VideoPlaceholder src="https://www.youtube.com/embed/dVNB-xJW0CY?si=m_fyWH878JJ0CVS1" />
+                  <VideoPlaceholder
+                    id="dVNB-xJW0CY"
+                    ref={iframeRefs["invite"]}
+                    title="foo"
+                  />
                   {/* TODO: different copy for different plans? */}
                   <Text>{t`Don't be shy with the invites.`}</Text>
 
@@ -162,7 +197,11 @@ export const Onboarding = () => {
               </Accordion.Control>
               <Accordion.Panel>
                 <Stack spacing="lg">
-                  <VideoPlaceholder src="https://www.youtube.com/embed/dVNB-xJW0CY?si=m_fyWH878JJ0CVS1" />
+                  <VideoPlaceholder
+                    id="dVNB-xJW0CY"
+                    ref={iframeRefs["x-ray"]}
+                    title="foo"
+                  />
                   <Text>
                     {jt`Hover over a table and click the yellow lightning bolt ${(
                       <Icon
@@ -188,7 +227,11 @@ export const Onboarding = () => {
               </Accordion.Control>
               <Accordion.Panel>
                 <Stack spacing="lg">
-                  <VideoPlaceholder src="https://www.youtube.com/embed/dVNB-xJW0CY?si=m_fyWH878JJ0CVS1" />
+                  <VideoPlaceholder
+                    id="dVNB-xJW0CY"
+                    ref={iframeRefs["notebook"]}
+                    title="foo"
+                  />
                   <Text>
                     {jt`Filter and summarize data, add custom columns, join data from other tables, and more - ${(<b>{t`all without SQL`}</b>)}. And when you build a chart with the query builder, people will be able to ${(
                       <b>{t`drill-through the chart`}</b>
@@ -210,7 +253,11 @@ export const Onboarding = () => {
               </Accordion.Control>
               <Accordion.Panel>
                 <Stack spacing="lg">
-                  <VideoPlaceholder src="https://www.youtube.com/embed/dVNB-xJW0CY?si=m_fyWH878JJ0CVS1" />
+                  <VideoPlaceholder
+                    id="dVNB-xJW0CY"
+                    ref={iframeRefs["sql"]}
+                    title="foo"
+                  />
                   <Text>
                     {jt`Use the ${(<b>{t`native query editor`}</b>)} to query data with SQL or the query language native to your database. You can insert variables in your code to create ${
                       showMetabaseLinks ? (
@@ -261,7 +308,11 @@ export const Onboarding = () => {
                   <Text>
                     {jt`You can add ${(<b>{t`filters`}</b>)} to dashboards and connect them to fields on questions to narrow the results.`}
                   </Text>
-                  <VideoPlaceholder src="https://www.youtube.com/embed/dVNB-xJW0CY?si=m_fyWH878JJ0CVS1" />
+                  <VideoPlaceholder
+                    id="dVNB-xJW0CY"
+                    ref={iframeRefs["dashboard"]}
+                    title="bar"
+                  />
                   <Text>
                     {t`You can drill-through your dashboard and charts to see more detailed data underneath.`}
                   </Text>
@@ -283,7 +334,11 @@ export const Onboarding = () => {
               </Accordion.Control>
               <Accordion.Panel>
                 <Stack spacing="lg">
-                  <VideoPlaceholder src="https://www.youtube.com/embed/dVNB-xJW0CY?si=m_fyWH878JJ0CVS1" />
+                  <VideoPlaceholder
+                    id="dVNB-xJW0CY"
+                    ref={iframeRefs["subscription"]}
+                    title="foo"
+                  />
                   {shouldConfigureCommunicationChannels && (
                     <Text>
                       {jt`${(<Link to="/admin/settings/email/smtp">{t`Set up email`}</Link>)} or ${(<Link to="/admin/settings/notifications">{t`Slack`}</Link>)} first.`}
@@ -307,7 +362,11 @@ export const Onboarding = () => {
               </Accordion.Control>
               <Accordion.Panel>
                 <Stack spacing="lg">
-                  <VideoPlaceholder src="https://www.youtube.com/embed/Cgd-vQIUjx8?si=xNWXkEhPBkuglGAf" />
+                  <VideoPlaceholder
+                    id="Cgd-vQIUjx8"
+                    ref={iframeRefs["alert"]}
+                    title="foo"
+                  />
                   {shouldConfigureCommunicationChannels && (
                     <Text>
                       {jt`${(<Link to="/admin/settings/email/smtp">{t`Set up email`}</Link>)} or ${(<Link to="/admin/settings/notifications">{t`Slack`}</Link>)} first.`}
@@ -384,12 +443,17 @@ export const Onboarding = () => {
   );
 };
 
-function VideoPlaceholder({
-  src,
-  title = "YouTube video player",
-}: {
-  src: string;
-  title?: string;
-}) {
-  return <iframe className={S.video} src={src} title={title} loading="lazy" />;
-}
+const VideoPlaceholder = forwardRef(function VideoPlaceholder(
+  { id, title }: { id: string; title: string },
+  ref: Ref<HTMLIFrameElement>,
+) {
+  return (
+    <iframe
+      className={S.video}
+      loading="lazy"
+      ref={ref}
+      src={`https://www.youtube.com/embed/${id}?enablejsapi=1`}
+      title={title}
+    />
+  );
+});
