@@ -3,18 +3,15 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { useUpdateCardMutation } from "metabase/api";
 import type { MoveDestination } from "metabase/collections/types";
-import { canonicalCollectionId } from "metabase/collections/utils";
 import ConfirmContent from "metabase/components/ConfirmContent";
 import Modal from "metabase/components/Modal";
 import { MoveModal } from "metabase/containers/MoveModal";
-import { ROOT_COLLECTION } from "metabase/entities/collections/constants";
 import Dashboards from "metabase/entities/dashboards";
+import Questions from "metabase/entities/questions";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import QuestionMoveToast from "metabase/questions/components/QuestionMoveToast";
-import { addUndo } from "metabase/redux/undo";
 import { Box, Icon, Radio, Title } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 
@@ -39,8 +36,6 @@ export const MoveQuestionModal = ({
     boolean | undefined
   >();
 
-  const [updateQuestion] = useUpdateCardMutation();
-
   const card = question.card();
   const canMoveToDashboard =
     card.type === "question" &&
@@ -50,33 +45,17 @@ export const MoveQuestionModal = ({
     );
 
   const handleMove = async (destination: MoveDestination) => {
-    const update =
-      destination.model === "dashboard"
-        ? { dashboard_id: destination.id }
-        : {
-            dashboard_id: null,
-            collection_id:
-              canonicalCollectionId(destination.id) || ROOT_COLLECTION.id,
-          };
-
-    await updateQuestion({
-      id: question.id(),
-      delete_old_dashcards: deleteOldDashcards,
-      ...update,
-    })
+    await dispatch(
+      Questions.actions.setCollection({ id: question.id() }, destination, {
+        notify: {
+          message: (
+            <QuestionMoveToast destination={destination} question={question} />
+          ),
+          undo: false,
+        },
+      }),
+    )
       .then(() => {
-        dispatch(
-          addUndo({
-            message: (
-              <QuestionMoveToast
-                destination={destination}
-                question={question}
-              />
-            ),
-            undo: false,
-          }),
-        );
-
         if (destination.model === "dashboard") {
           dispatch(
             push(

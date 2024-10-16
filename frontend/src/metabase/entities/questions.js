@@ -125,6 +125,7 @@ const Questions = createEntity({
               }
             : {
                 collection_id: canonicalCollectionId(destination.id),
+                dashboard_id: null,
                 archived,
               };
 
