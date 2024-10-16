@@ -143,7 +143,7 @@ export const InfoTextAssetLink = ({
   const { label, link, icon }: InfoTextData = getInfoText(result);
 
   return label ? (
-    <SearchResultLink href={showLinks ? link : undefined} leftIcon={icon}>
+    <SearchResultLink href={showLinks ? link : undefined} leftSection={icon}>
       {label}
     </SearchResultLink>
   ) : null;

@@ -38,7 +38,7 @@ export const UserNameDisplay = ({
   };
 
   return (
-    <Text c="inherit" weight={700} truncate>
+    <Text c="inherit" fw={700} truncate>
       {getDisplayValue()}
     </Text>
   );

@@ -15,7 +15,7 @@ export function TimeToggle({ hasTime, ...props }: TimeToggleProps) {
     <Button
       c="text-medium"
       variant="subtle"
-      leftIcon={<Icon name="clock" />}
+      leftSection={<Icon name="clock" />}
       aria-label={label}
       {...props}
     >

@@ -33,7 +33,7 @@ const QuestionEditorInner = () => {
   return (
     <Box w="100%" h="100%">
       <Tabs value={activeTab} onChange={setActiveTab} defaultValue="notebook">
-        <Group position="apart">
+        <Group justify="space-between">
           <Group>
             <Tabs.Tab value="notebook">Notebook</Tabs.Tab>
             {queryResults ? (

@@ -121,7 +121,7 @@ export function ColumnInput({
               root: classNames(styles.root, { [styles.open]: open }),
               inner: styles.button,
             }}
-            rightIcon={<Icon name="chevrondown" style={{ height: 14 }} />}
+            rightSection={<Icon name="chevrondown" style={{ height: 14 }} />}
           >
             {text}
           </Button>

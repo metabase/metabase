@@ -8,4 +8,4 @@ export const HorizontalScrollBox = styled(Box)<
   BoxProps & React.HTMLProps<HTMLDivElement>
 >`
   overflow-x: auto;
-`;
+` as unknown as typeof Box;

@@ -67,7 +67,7 @@ export const InteractiveTabContent = ({
         <Button
           variant="filled"
           mb="sm"
-          leftIcon={<Icon name="sql" />}
+          leftSection={<Icon name="sql" />}
         >{t`Build it with the quick start`}</Button>
       </ExternalLink>
       <Text>{jt`${(

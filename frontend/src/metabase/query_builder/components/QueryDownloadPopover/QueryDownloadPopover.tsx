@@ -54,7 +54,7 @@ export const QueryDownloadPopover = ({
 
   return (
     <Stack w={hasTruncatedResults ? "18.75rem" : "16.25rem"}>
-      <Group align="center" position="apart" px="sm">
+      <Group align="center" justify="space-between" px="sm">
         <Title order={4}>{t`Download full results`}</Title>
         <Tooltip label={getFormattingInfoTooltipLabel()}>
           <Icon name="info_filled" />

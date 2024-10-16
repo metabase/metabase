@@ -113,7 +113,7 @@ function RadioContainer({
               disabled={disableEdit}
               variant="subtle"
               p={0}
-              compact={true}
+              size="compact-md"
             >
               <ClickAreaExpander>{t`Edit`}</ClickAreaExpander>
             </Button>

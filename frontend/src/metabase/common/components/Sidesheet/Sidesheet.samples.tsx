@@ -107,7 +107,7 @@ export const TestPagedSidesheet = () => {
         <SidesheetButtonWithChevron
           fullWidth
           onClick={() => setPage("sub")}
-          leftIcon={<Icon name="gear" />}
+          leftSection={<Icon name="gear" />}
         >
           More Settings in a full width button
         </SidesheetButtonWithChevron>

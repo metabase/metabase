@@ -63,7 +63,7 @@ export const InteractiveEmbeddingCTA = () => {
         top="-0.6rem"
       >
         <Text
-          align="center"
+          ta="center"
           c="text-white"
           span
           tt="uppercase"
@@ -85,7 +85,7 @@ export const InteractiveEmbeddingCTA = () => {
           <Stack gap="sm">
             <Group gap="sm">
               <CTAHeader
-                inline
+                display="inline"
                 fz="md"
                 order={5}
               >{t`Interactive Embedding`}</CTAHeader>

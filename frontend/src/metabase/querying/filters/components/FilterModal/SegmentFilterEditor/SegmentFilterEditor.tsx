@@ -33,7 +33,7 @@ export function SegmentFilterEditor({
       <Grid.Col span="auto">
         <Flex h="100%" align="center" gap="sm">
           <Icon name="filter" />
-          <Text color="text-dark" weight="bold">
+          <Text color="text-dark" fw="bold">
             {t`Filter down to a segment`}
           </Text>
         </Flex>

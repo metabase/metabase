@@ -77,7 +77,7 @@ function SearchApp({ location }) {
       m="auto"
       data-testid="search-app"
     >
-      <Text size="xl" weight={700}>
+      <Text size="xl" fw={700}>
         {jt`Results for "${searchText}"`}
       </Text>
       <SearchBody direction="column" justify="center">

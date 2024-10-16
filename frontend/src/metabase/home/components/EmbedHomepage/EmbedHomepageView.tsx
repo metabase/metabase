@@ -43,7 +43,7 @@ export const EmbedHomepageView = (props: EmbedHomepageViewProps) => {
   } = props;
   return (
     <Stack maw={550}>
-      <Group position="apart">
+      <Group justify="space-between">
         {/*  eslint-disable-next-line no-literal-metabase-strings -- only visible to admins */}
         <Text fw="bold">{t`Get started with Embedding Metabase in your app`}</Text>
         <Menu trigger="hover" closeDelay={200}>

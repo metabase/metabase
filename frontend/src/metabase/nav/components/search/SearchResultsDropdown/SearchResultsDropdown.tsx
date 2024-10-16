@@ -33,7 +33,7 @@ export const SearchResultsDropdown = ({
     return metadata.total > 0 ? (
       <SearchDropdownFooter
         data-testid="search-dropdown-footer"
-        position="apart"
+        justify="space-between"
         align="center"
         px="lg"
         py={rem(10)}

@@ -118,13 +118,13 @@ export function DateOffsetIntervalPicker({
         <Button
           c="text-medium"
           variant="subtle"
-          leftIcon={<Icon name="close" />}
+          leftSection={<Icon name="close" />}
           aria-label={t`Remove offset`}
           onClick={handleOffsetRemove}
         />
       </PickerGrid>
       <Divider />
-      <Group px="md" py="sm" gap="sm" position="apart">
+      <Group px="md" py="sm" gap="sm" justify="space-between">
         <Group c="text-medium" gap="sm">
           <Icon name="calendar" />
           <Text c="inherit">{dateRangeText}</Text>

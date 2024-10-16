@@ -94,7 +94,7 @@ function DeleteGroupModal({
             : t`Are you sure? All members of this group will lose any permissions settings they have based on this group.
                 This can't be undone.`}
         </Text>
-        <Group gap="md" position="right">
+        <Group gap="md" justify="flex-end">
           <Button onClick={onClose}>{t`Cancel`}</Button>
           <Button
             variant="filled"

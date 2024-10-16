@@ -22,7 +22,7 @@ export const TableInteractiveRoot = styled(Box)`
   .${TableS.TableInteractiveCellWrapper}:hover {
     background-color: ${getCellHoverBackground};
   }
-`;
+` as unknown as typeof Box;
 
 interface TableDraggableProps {
   enableCustomUserSelectHack?: boolean;

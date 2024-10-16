@@ -94,10 +94,10 @@ export const SearchUserPicker = ({
                   px="md"
                   py="sm"
                   maw="100%"
-                  rightIcon={<Icon name="close" />}
+                  rightSection={<Icon name="close" />}
                   onClick={() => removeUser(user)}
                 >
-                  <Text align="left" w="100%" truncate c="inherit">
+                  <Text ta="left" w="100%" truncate c="inherit">
                     {user?.common_name}
                   </Text>
                 </SelectedUserButton>
@@ -126,7 +126,7 @@ export const SearchUserPicker = ({
             generateUserListElements(filteredUsers)
           ) : (
             <Center py="md">
-              <Text size="md" weight={700}>{t`No results`}</Text>
+              <Text size="md" fw={700}>{t`No results`}</Text>
             </Center>
           )}
         </SearchUserPickerContent>

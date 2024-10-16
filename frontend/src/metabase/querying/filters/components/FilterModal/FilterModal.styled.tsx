@@ -17,4 +17,4 @@ export const ModalBody = styled(Modal.Body)`
 
 export const ModalFooter = styled(Flex)`
   border-top: 1px solid var(--mb-color-border);
-`;
+` as unknown as typeof Flex;

@@ -133,7 +133,7 @@ export const ErrorDiagnosticModal = ({
             <Button onClick={onClose}>{t`Cancel`}</Button>
             <FormSubmitButton
               variant="filled"
-              leftIcon={<Icon name="download" />}
+              leftSection={<Icon name="download" />}
               label={t`Download`}
               color="brand"
             />
@@ -155,7 +155,7 @@ export const ErrorDiagnosticModalTrigger = () => {
     <ErrorBoundary>
       <Stack justify="center" my="lg">
         <Button
-          leftIcon={<Icon name="download" />}
+          leftSection={<Icon name="download" />}
           onClick={() => setModalOpen(true)}
         >
           {t`Download diagnostic information`}

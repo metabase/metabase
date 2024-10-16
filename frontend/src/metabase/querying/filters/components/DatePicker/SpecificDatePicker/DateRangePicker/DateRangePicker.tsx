@@ -50,7 +50,7 @@ export function DateRangePicker({
         />
       </Box>
       <Divider />
-      <Group p="sm" position="apart">
+      <Group p="sm" justify="space-between">
         <TimeToggle hasTime={hasTime} onClick={handleTimeToggle} />
         <Button variant="filled" type="submit">
           {isNew ? t`Add filter` : t`Update filter`}

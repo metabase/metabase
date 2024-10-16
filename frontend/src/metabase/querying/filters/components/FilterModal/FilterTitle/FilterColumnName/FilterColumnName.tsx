@@ -24,7 +24,7 @@ export function FilterColumnName({
 
   if (!isSearching || !columnInfo.table) {
     return (
-      <Text color="text-dark" weight="bold">
+      <Text color="text-dark" fw="bold">
         {isSearching ? columnInfo.longDisplayName : columnInfo.displayName}
       </Text>
     );

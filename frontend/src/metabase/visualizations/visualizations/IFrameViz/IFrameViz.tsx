@@ -61,13 +61,13 @@ export function IFrameViz({
     return (
       <IFrameEditWrapper>
         <Stack h="100%" gap="sm">
-          <Group align="center" noWrap>
+          <Group align="center" wrap="nowrap">
             <Text fw="bold" truncate>
               {t`Paste your snippet here`}
             </Text>{" "}
             <Box ml="auto">
               <Button
-                compact
+                size="compact-md"
                 variant="filled"
                 style={{ pointerEvents: "all" }}
                 onClick={onTogglePreviewing}

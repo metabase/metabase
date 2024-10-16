@@ -10,7 +10,13 @@ import { TextInput } from "../TextInput";
 export interface NumberInputProps
   extends Omit<
     _NumberInputProps,
-    "vars" | "classNames" | "styles" | "value" | "defaultValue" | "onChange"
+    | "vars"
+    | "classNames"
+    | "styles"
+    | "value"
+    | "defaultValue"
+    | "onChange"
+    | "type"
   > {
   value: number | "";
   defaultValue?: number | "";
@@ -18,6 +24,7 @@ export interface NumberInputProps
   vars?: TextInputProps["vars"];
   classNames?: TextInputProps["classNames"];
   styles?: TextInputProps["styles"];
+  type?: TextInputProps["type"] | "number";
 }
 
 export const NumberInput = forwardRef(function NumberInput(

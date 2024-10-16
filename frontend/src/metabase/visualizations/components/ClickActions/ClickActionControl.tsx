@@ -106,7 +106,7 @@ export const ClickActionControl = ({
             label: styles.label,
             inner: styles.inner,
           }}
-          leftIcon={
+          leftSection={
             action.iconText ? (
               <ClickActionButtonTextIcon className={styles.nested}>
                 {action.iconText}
@@ -130,6 +130,4 @@ export const ClickActionControl = ({
     case "info":
       return <InfoControl>{action.title}</InfoControl>;
   }
-
-  return null;
 };

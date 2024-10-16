@@ -193,7 +193,7 @@ export function CombineColumns({
               )}
 
               <Button
-                leftIcon={<Icon name="add" />}
+                leftSection={<Icon name="add" />}
                 p={0}
                 variant="subtle"
                 onClick={handleRowAdd}
