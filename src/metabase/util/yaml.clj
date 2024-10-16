@@ -4,6 +4,7 @@
   (:require
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [clj-yaml.core :as yaml]
+   [clojure.java.io :as io]
    [clojure.string :as str]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
@@ -32,6 +33,13 @@
   Temporal
   (encode [data]
     (u.date/format data)))
+
+(defn from-file
+  "Returns YAML parsed from file/file-like/path f, with options passed to clj-yaml."
+  [f & {:as opts}]
+  (when (.exists (io/file f))
+    (with-open [r (io/reader f)]
+      (vectorized (parse-stream r opts)))))
 
 (defn generate-string
   "Returns a YAML string from Clojure value x"

@@ -22,7 +22,7 @@
   :visibility :internal
   :export?    false
   ;; TODO -- getter/setter should do URL validation and strip of trailing slashes
-  :default    "http://localhost:8000"  )
+  :default    "http://localhost:8000")
 
 (set! *warn-on-reflection* true)
 
@@ -56,7 +56,7 @@
 (mu/defn- build-request-body
   [message :- :string
    context :- ::metabot-v3.context/context
-   history :- ::history]
+   history :- [:maybe ::history]]
   (let [request  {:message       message
                   :context       (metabot-v3.context/hydrate-context context)
                   :history       history
