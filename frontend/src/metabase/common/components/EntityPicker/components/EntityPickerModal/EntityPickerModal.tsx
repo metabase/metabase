@@ -47,15 +47,15 @@ import {
 } from "./EntityPickerModal.styled";
 import { TabsView } from "./TabsView";
 
-export type EntityPickerModalOptions = {
+export type EntityPickerModalOptions<T = null> = {
   showSearch?: boolean;
   hasConfirmButtons?: boolean;
-  confirmButtonText?: string;
+  confirmButtonText?: string | ((item: T | null) => string);
   cancelButtonText?: string;
   hasRecents?: boolean;
 };
 
-export const defaultOptions: EntityPickerModalOptions = {
+export const defaultOptions: EntityPickerModalOptions<null> = {
   showSearch: true,
   hasConfirmButtons: true,
   hasRecents: true,
@@ -83,7 +83,7 @@ export interface EntityPickerModalProps<
   initialValue?: Partial<Item>;
   canSelectItem: boolean;
   tabs: EntityPickerTab<Id, Model, Item>[];
-  options?: Partial<EntityPickerOptions>;
+  options?: Partial<EntityPickerOptions<Item>>;
   searchResultFilter?: (results: SearchResult[]) => SearchResult[];
   recentFilter?: (results: RecentItem[]) => RecentItem[];
   searchParams?: Partial<SearchRequest>;
@@ -179,13 +179,13 @@ export function EntityPickerModal<
     },
   );
 
-  const tabModels = useMemo(
-    () =>
-      passedTabs
-        .flatMap(t => (t.additionalModels || []).concat(t.model || []))
-        .filter(Boolean),
-    [passedTabs],
-  );
+  // const tabModels = useMemo(
+  //   () =>
+  //     passedTabs
+  //       .flatMap(t => (t.additionalModels || []).concat(t.model || []))
+  //       .filter(Boolean),
+  //   [passedTabs],
+  // );
 
   const finalSearchResults = useMemo(() => {
     if (searchScope === "folder") {
@@ -211,7 +211,7 @@ export function EntityPickerModal<
     });
 
     return recentFilter(relevantModelRecents);
-  }, [recentItems, recentFilter, searchModels, tabModels]);
+  }, [recentItems, recentFilter, searchModels]);
 
   const tabs: EntityPickerTab<Id, Model, Item>[] = (function getTabs() {
     const computedTabs: EntityPickerTab<Id, Model, Item>[] = [];
@@ -412,7 +412,11 @@ export function EntityPickerModal<
                   onCancel={onClose}
                   canConfirm={canSelectItem}
                   actionButtons={showActionButtons ? actionButtons : []}
-                  confirmButtonText={options?.confirmButtonText}
+                  confirmButtonText={
+                    typeof options?.confirmButtonText === "function"
+                      ? options.confirmButtonText(selectedItem)
+                      : options?.confirmButtonText
+                  }
                   cancelButtonText={options?.cancelButtonText}
                 />
               )}
@@ -427,7 +431,7 @@ export function EntityPickerModal<
 }
 
 const assertValidProps = (
-  options: EntityPickerModalOptions,
+  options: EntityPickerModalOptions<null>,
   onConfirm: (() => void) | undefined,
 ) => {
   if (options.hasConfirmButtons && !onConfirm) {

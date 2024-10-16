@@ -25,7 +25,7 @@ export type PickerStateItem<Item, Query> = {
   entity?: "collection" | "dashboard";
 };
 
-export type EntityPickerOptions = EntityPickerModalOptions;
+export type EntityPickerOptions<T> = EntityPickerModalOptions<T>;
 
 export type EntityPickerTabRenderProps<
   Id extends SearchResultId,
@@ -62,7 +62,7 @@ export type ListProps<
   Model extends string,
   Item extends TypeWithModel<Id, Model>,
   Query,
-  Options extends EntityPickerOptions,
+  Options extends EntityPickerOptions<Item>,
 > = {
   query?: Query;
   onClick: (val: Item) => void;
