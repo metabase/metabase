@@ -20,7 +20,7 @@ import {
   getParentCollectionId,
   getPathLevelForItem,
   getStateFromIdPath,
-  isFolder,
+  isFolderFactory,
 } from "../utils";
 
 import { CollectionItemPickerResolver } from "./CollectionItemPickerResolver";
@@ -235,6 +235,8 @@ export const CollectionPickerInner = (
     useRootCollection: initialValue?.id == null,
     onInit,
   });
+
+  const isFolder = useMemo(() => isFolderFactory(models), [models]);
 
   if (error) {
     return <LoadingAndErrorWrapper error={error} />;

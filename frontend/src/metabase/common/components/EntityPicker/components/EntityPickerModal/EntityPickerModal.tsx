@@ -47,15 +47,15 @@ import {
 } from "./EntityPickerModal.styled";
 import { TabsView } from "./TabsView";
 
-export type EntityPickerModalOptions<T = null> = {
+export type EntityPickerModalOptions = {
   showSearch?: boolean;
   hasConfirmButtons?: boolean;
-  confirmButtonText?: string | ((item: T | null) => string);
+  confirmButtonText?: string | ((model: string) => string);
   cancelButtonText?: string;
   hasRecents?: boolean;
 };
 
-export const defaultOptions: EntityPickerModalOptions<null> = {
+export const defaultOptions: EntityPickerModalOptions = {
   showSearch: true,
   hasConfirmButtons: true,
   hasRecents: true,
@@ -414,7 +414,7 @@ export function EntityPickerModal<
                   actionButtons={showActionButtons ? actionButtons : []}
                   confirmButtonText={
                     typeof options?.confirmButtonText === "function"
-                      ? options.confirmButtonText(selectedItem)
+                      ? options.confirmButtonText(selectedItem?.model)
                       : options?.confirmButtonText
                   }
                   cancelButtonText={options?.cancelButtonText}
@@ -431,7 +431,7 @@ export function EntityPickerModal<
 }
 
 const assertValidProps = (
-  options: EntityPickerModalOptions<null>,
+  options: EntityPickerModalOptions,
   onConfirm: (() => void) | undefined,
 ) => {
   if (options.hasConfirmButtons && !onConfirm) {
