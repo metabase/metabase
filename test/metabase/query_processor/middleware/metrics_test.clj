@@ -717,7 +717,7 @@
                  [u.date/temporal-str->iso8601-str int int 3.0]
                  (mt/rows (qp/process-query query)))))))))
 
-(deftest ^:synchronized expressions-from-metrics-are-spliced-to-correct-stage
+(deftest ^:parallel expressions-from-metrics-are-spliced-to-correct-stage
   (testing "Integration test: Expression is spliced into correct stage during metric expansion (#48722)"
       (mt/with-temp [:model/Card source-model {:dataset_query (mt/mbql-query orders {})
                                                :database_id (mt/id)
