@@ -24,6 +24,19 @@ type OnboardingChecklistOpenedEvent = ValidateEvent<{
   event: "onboarding_checklist_opened";
 }>;
 
+type OnboardingChecklistItemExpandedEvent = ValidateEvent<{
+  event: "onboarding_checklist_item_expanded";
+  triggered_from:
+    | "database"
+    | "invite"
+    | "x-ray"
+    | "notebook"
+    | "sql"
+    | "dashboard"
+    | "subscription"
+    | "alert";
+}>;
+
 export type NewsletterToggleClickedEvent = ValidateEvent<{
   event: "newsletter-toggle-clicked";
   triggered_from: "setup";
@@ -41,4 +54,5 @@ export type SimpleEvent =
   | NewsletterToggleClickedEvent
   | OnboardingCSVUploadClickedEvent
   | OnboardingDatabaseUploadClickedEvent
-  | OnboardingChecklistOpenedEvent;
+  | OnboardingChecklistOpenedEvent
+  | OnboardingChecklistItemExpandedEvent;

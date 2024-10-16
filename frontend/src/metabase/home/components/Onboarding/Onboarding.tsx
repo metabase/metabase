@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { jt, t } from "ttag";
 
 import { getPlan } from "metabase/common/utils/plan";
@@ -23,6 +24,8 @@ import {
 } from "metabase/ui";
 
 import S from "./Onboarding.module.css";
+import { trackChecklistItemExpanded } from "./analytics";
+import type { ChecklistItemValue } from "./types";
 
 export const Onboarding = () => {
   const applicationName = useSelector(getApplicationName);
@@ -30,6 +33,8 @@ export const Onboarding = () => {
   const plan = useSelector(state =>
     getPlan(getSetting(state, "token-features")),
   );
+
+  const [itemValue, setItemValue] = useState<ChecklistItemValue | null>(null);
 
   const shouldConfigureCommunicationChannels =
     plan === "oss" || plan === "pro-self-hosted";
@@ -55,6 +60,21 @@ export const Onboarding = () => {
     databaseId: lastUsedDatabaseId || undefined,
   });
 
+  const handleValueChange = (newValue: ChecklistItemValue | null) => {
+    if (newValue !== null) {
+      trackChecklistItemExpanded(newValue);
+    }
+
+    const itemClosed = newValue === null;
+    const itemSwitched = newValue !== itemValue;
+
+    if (itemClosed || itemSwitched) {
+      setItemValue(newValue);
+
+      //TODO stop video
+    }
+  };
+
   return (
     <Box
       mih="100%"
@@ -65,7 +85,7 @@ export const Onboarding = () => {
     >
       <Box maw={592}>
         <Accordion
-          defaultValue="set-up"
+          defaultValue="database"
           classNames={{
             item: S.item,
             content: S.content,
@@ -73,10 +93,13 @@ export const Onboarding = () => {
             label: S.label,
             icon: S.icon,
           }}
+          onChange={(value: ChecklistItemValue | null) =>
+            handleValueChange(value)
+          }
         >
           <Box mb={64}>
             <Title order={2} mb={24}>{t`Set up your ${applicationName}`}</Title>
-            <Accordion.Item value="set-up">
+            <Accordion.Item value="database">
               <Accordion.Control icon={<Icon name="add_data" />}>
                 {t`Connect to your database`}
               </Accordion.Control>
@@ -117,7 +140,7 @@ export const Onboarding = () => {
 
           <Box mb={64}>
             <Title order={2} mb={24}>{t`Start visualizing your data`}</Title>
-            <Accordion.Item value="x-rays">
+            <Accordion.Item value="x-ray">
               <Accordion.Control icon={<Icon name="bolt" />}>
                 {t`Create automatic dashboards`}
               </Accordion.Control>
