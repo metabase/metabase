@@ -52,6 +52,7 @@ describe("Admin > UploadSettings > utils", () => {
         { name: "Database", value: 300 },
       ]);
     });
+
     it("should return an empty array if there are no databases", () => {
       expect(getDatabaseOptions([])).toEqual([]);
     });

@@ -73,7 +73,7 @@ export function visualize(
 /**
  * Summarize (Aggregate).
  *
- * Doesn't support summarizing using Custom Expression or Common Metrics!
+ * Doesn't support summarizing using Custom Expression or Metrics!
  */
 export function addSummaryField({
   metric,

@@ -8,6 +8,7 @@ type DashboardEventSchema = {
   section_layout?: string | null;
   full_width?: boolean | null;
   dashboard_accessed_via?: string | null;
+  domain_name?: string | null;
 };
 
 type ValidateEvent<

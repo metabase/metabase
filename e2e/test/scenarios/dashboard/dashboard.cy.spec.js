@@ -19,6 +19,7 @@ import {
   collectionOnTheGoModal,
   commandPalette,
   commandPaletteButton,
+  createDashboard,
   createDashboardWithTabs,
   createQuestionAndDashboard,
   dashboardHeader,
@@ -326,18 +327,6 @@ describe("scenarios > dashboard", () => {
       });
 
       describe("iframe cards", () => {
-        it("should be possible to add an iframe card", () => {
-          editDashboard();
-          addIFrameWhileEditing("https://example.com");
-          cy.findByTestId("dashboardcard-actions-panel").should("not.exist");
-          cy.button("Done").click();
-          getDashboardCards().eq(0).realHover();
-          cy.findByTestId("dashboardcard-actions-panel").should("be.visible");
-          validateIFrame("https://example.com");
-          saveDashboard();
-          validateIFrame("https://example.com");
-        });
-
         it("should handle various iframe and URL inputs", () => {
           const testCases = [
             {
@@ -1149,6 +1138,28 @@ describeWithSnowplow("scenarios > dashboard", () => {
 
   afterEach(() => {
     expectNoBadSnowplowEvents();
+  });
+
+  it("should be possible to add an iframe card", () => {
+    createDashboard({ name: "iframe card" }).then(({ body: { id } }) => {
+      visitDashboard(id);
+
+      editDashboard();
+      addIFrameWhileEditing("https://example.com");
+      cy.findByTestId("dashboardcard-actions-panel").should("not.exist");
+      cy.button("Done").click();
+      getDashboardCards().eq(0).realHover();
+      cy.findByTestId("dashboardcard-actions-panel").should("be.visible");
+      validateIFrame("https://example.com");
+      saveDashboard();
+      validateIFrame("https://example.com");
+
+      expectGoodSnowplowEvent({
+        event: "new_iframe_card_created",
+        target_id: id,
+        event_detail: "example.com",
+      });
+    });
   });
 
   it("saving a dashboard should track a 'dashboard_saved' snowplow event", () => {

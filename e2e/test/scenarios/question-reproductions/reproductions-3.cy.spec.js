@@ -79,6 +79,7 @@ describe("issue 32625, issue 31635", () => {
       },
     },
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -137,6 +138,7 @@ describe("issue 32964", () => {
       },
     },
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -164,6 +166,7 @@ describe("issue 33079", () => {
       breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }]],
     },
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -193,6 +196,7 @@ describe("issue 34414", () => {
     query: { "source-table": INVOICES_ID },
     type: "model",
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsNormalUser();
@@ -293,6 +297,7 @@ describe("issue 38354", { tags: "@external" }, () => {
       limit: 5,
     },
   };
+
   beforeEach(() => {
     restore();
     restore("postgres-12");
@@ -363,6 +368,7 @@ describe("issue 39102", () => {
     },
     type: "question",
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -480,6 +486,7 @@ describe("issue 39795", () => {
 describe("issue 40176", () => {
   const DIALECT = "postgres";
   const TABLE = "uuid_pk_table";
+
   beforeEach(() => {
     restore(`${DIALECT}-writable`);
     cy.signInAsAdmin();
@@ -918,7 +925,7 @@ describe("issue 32020", () => {
 
     cy.log("aggregation column from the source question");
     getNotebookStep("summarize")
-      .findByText(/Pick the metric/)
+      .findByText("Pick a function or metric")
       .click();
     popover().within(() => {
       cy.findByText("Sum of ...").click();

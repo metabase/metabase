@@ -63,6 +63,7 @@ describe("issue 23023", () => {
       type: "query",
     },
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -158,6 +159,7 @@ describe("issue 25016", () => {
       "table.cell_column": "count",
     },
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -253,6 +255,7 @@ describe("issue 27104", () => {
     },
     display: "bar",
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -426,6 +429,7 @@ describe("issue 28874", () => {
       },
     },
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsNormalUser();
@@ -738,6 +742,7 @@ describe("Custom columns visualization settings", () => {
       },
     },
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();

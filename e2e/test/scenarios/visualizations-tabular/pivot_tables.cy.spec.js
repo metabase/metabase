@@ -735,8 +735,9 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
   it("should open the download popover (metabase#14750)", () => {
     createTestQuestion();
     cy.icon("download").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    popover().within(() => cy.findByText("Download full results"));
+    popover().within(() =>
+      cy.findAllByText("Download").should("have.length", 2),
+    );
   });
 
   it.skip("should work for user without data permissions (metabase#14989)", () => {

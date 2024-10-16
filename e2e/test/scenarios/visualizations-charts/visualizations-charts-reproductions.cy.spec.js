@@ -57,6 +57,7 @@ describe("issue 13504", () => {
       "graph.metrics": ["count"],
     },
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -96,6 +97,7 @@ describe("issue 16170", { tags: "@mongo" }, () => {
 
     echartsContainer().get("text").contains("6,000");
   }
+
   beforeEach(() => {
     restore("mongo-5");
     cy.signInAsAdmin();
@@ -178,6 +180,7 @@ describe("issue 17524", () => {
       "funnel.dimension": "CATEGORY",
     },
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -447,6 +450,7 @@ describe("issue 18776", () => {
       "graph.x_axis.axis_enabled": false,
     },
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -632,6 +636,7 @@ describe("issue 21665", () => {
       },
     });
   }
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();

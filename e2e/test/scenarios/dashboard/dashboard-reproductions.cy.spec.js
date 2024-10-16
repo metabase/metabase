@@ -69,6 +69,7 @@ describe("issue 12578", () => {
       "source-table": ORDERS_ID,
     },
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -254,6 +255,7 @@ describe("issue 13736", () => {
       aggregation: [["count"]],
     },
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -319,6 +321,7 @@ describe("issue 16559", () => {
   const dashboardDetails = {
     name: "16559 Dashboard",
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -873,6 +876,7 @@ describe("issue 31766", () => {
     restore();
     cy.signInAsAdmin();
   });
+
   it("should not corrupt dashboard data (metabase#31766)", () => {
     const questionDetails = {
       name: "Orders",

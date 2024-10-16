@@ -34,14 +34,15 @@
 
 (defn- rasta-alert-message
   [& [data]]
-  (merge {:subject      "Alert: Test card has results"
-          :recipients   #{"rasta@metabase.com"}
-          :message-type :attachments,
-          :message      [{pulse.test-util/card-name true}
-                         ;; card static-viz
-                         pulse.test-util/png-attachment
-                         ;; icon
-                         pulse.test-util/png-attachment]}
+  (merge {:subject        "Alert: Test card has results"
+          :recipients     #{"rasta@metabase.com"}
+          :message-type   :attachments
+          :recipient-type nil
+          :message        [{pulse.test-util/card-name true}
+                           ;; card static-viz
+                           pulse.test-util/png-attachment
+                           ;; icon
+                           pulse.test-util/png-attachment]}
          data))
 
 (defn do-with-pulse-for-card
@@ -862,10 +863,10 @@
                                      retry-initial-interval 1]
     (mt/with-model-cleanup [:model/TaskHistory]
       (let [pulse-id             (rand-int 10000)
-            default-task-details {:pulse-id     pulse-id
-                                  :channel-type "channel/slack"
-                                  :channel-id   nil
-                                  :retry-config {:max-attempts            4
+            default-task-details {:pulse_id     pulse-id
+                                  :channel_type "channel/slack"
+                                  :channel_id   nil
+                                  :retry_config {:max-attempts            4
                                                  :initial-interval-millis 1
                                                  :multiplier              2.0
                                                  :randomization-factor    0.1
@@ -888,8 +889,8 @@
                      :db_id        nil
                      :status       :success
                      :task_details (merge default-task-details
-                                          {:attempted-retries 2
-                                           :retry-errors      (mt/malli=?
+                                          {:attempted_retries 2
+                                           :retry_errors      (mt/malli=?
                                                                [:sequential {:min 2 :max 2}
                                                                 [:map
                                                                  [:trace :any]
@@ -904,8 +905,8 @@
                      :db_id        nil
                      :status       :failed
                      :task_details {:original-info     default-task-details
-                                    :attempted-retries 4
-                                    :retry-errors      (mt/malli=?
+                                    :attempted_retries 4
+                                    :retry_errors      (mt/malli=?
                                                         [:sequential {:min 4 :max 4}
                                                          [:map
                                                           [:trace :any]
@@ -965,7 +966,7 @@
                                     :details      {:channel "#general"}}]
       (let [original-render-noti (var-get #'channel/render-notification)]
         (with-redefs [channel/render-notification (fn [& args]
-                                                    (if (= :channel/slacke (:type (first args)))
+                                                    (if (= :channel/slack (:type (first args)))
                                                       (throw (ex-info "Slack failed" {}))
                                                       (apply original-render-noti args)))]
          ;; slack failed but email should still be sent

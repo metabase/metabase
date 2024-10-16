@@ -409,9 +409,9 @@ class TableInteractive extends Component {
   };
 
   recomputeGridSize = () => {
-    if (this.header && this.grid) {
+    if (this.header && this.gridRef.current) {
       this.header.recomputeGridSize();
-      this.grid.recomputeGridSize();
+      this.gridRef.current.recomputeGridSize();
     }
   };
 
@@ -1043,7 +1043,7 @@ class TableInteractive extends Component {
       return;
     }
 
-    const scrollOffset = this.gridRef.current?.scrollTop || 0;
+    const scrollOffset = this.gridRef.current?.props?.scrollTop || 0;
 
     // infer row index from mouse position when we hover the gutter column
     if (event?.currentTarget?.id === "gutter-column") {
@@ -1262,7 +1262,7 @@ class TableInteractive extends Component {
                 />
                 <Grid
                   id="main-data-grid"
-                  ref={ref => (this.grid = ref)}
+                  ref={this.gridRef}
                   style={{
                     top: headerHeight,
                     left: 0,

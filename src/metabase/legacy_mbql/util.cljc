@@ -4,19 +4,25 @@
   (:require
    #?@(:clj
        [[metabase.legacy-mbql.jvm-util :as mbql.jvm-u]
-        [metabase.models.dispatch :as models.dispatch]
-        [metabase.util.i18n]])
+        [metabase.models.dispatch :as models.dispatch]])
    [clojure.string :as str]
    [metabase.legacy-mbql.predicates :as mbql.preds]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.schema.helpers :as schema.helpers]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.shared.util.i18n :as i18n]
-   [metabase.shared.util.time :as shared.ut]
    [metabase.util :as u]
+   [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.namespaces :as shared.ns]
+   [metabase.util.time :as u.time]))
+
+(shared.ns/import-fns
+ [schema.helpers
+  mbql-clause?
+  is-clause?
+  check-clause])
 
 (mu/defn normalize-token :- :keyword
   "Convert a string or keyword in various cases (`lisp-case`, `snake_case`, or `SCREAMING_SNAKE_CASE`) to a lisp-cased
@@ -27,36 +33,6 @@
       str/lower-case
       (str/replace #"_" "-")
       keyword))
-
-(defn mbql-clause?
-  "True if `x` is an MBQL clause (a sequence with a keyword as its first arg). (Since this is used by the code in
-  `normalize` this handles pre-normalized clauses as well.)"
-  [x]
-  (and (sequential? x)
-       (not (map-entry? x))
-       (keyword? (first x))))
-
-(defn is-clause?
-  "If `x` is an MBQL clause, and an instance of clauses defined by keyword(s) `k-or-ks`?
-
-    (is-clause? :count [:count 10])        ; -> true
-    (is-clause? #{:+ :- :* :/} [:+ 10 20]) ; -> true"
-  [k-or-ks x]
-  (and
-   (mbql-clause? x)
-   (if (coll? k-or-ks)
-     ((set k-or-ks) (first x))
-     (= k-or-ks (first x)))))
-
-(defn check-clause
-  "Returns `x` if it's an instance of a clause defined by keyword(s) `k-or-ks`
-
-    (check-clause :count [:count 10]) ; => [:count 10]
-    (check-clause? #{:+ :- :* :/} [:+ 10 20]) ; -> [:+ 10 20]
-    (check-clause :sum [:count 10]) ; => nil"
-  [k-or-ks x]
-  (when (is-clause? k-or-ks x)
-    x))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       Functions for manipulating queries                                       |
@@ -375,11 +351,11 @@
 (defn- temporal-case-expression
   "Creates a `:case` expression with a condition for each value of the given unit."
   [column unit n]
-  (let [user-locale #?(:clj  (metabase.util.i18n/user-locale)
+  (let [user-locale #?(:clj  (i18n/user-locale)
                        :cljs nil)]
     [:case
      (vec (for [raw-value (range 1 (inc n))]
-            [[:= column raw-value] (shared.ut/format-unit raw-value unit user-locale)]))
+            [[:= column raw-value] (u.time/format-unit raw-value unit user-locale)]))
      {:default ""}]))
 
 (defn- desugar-temporal-names

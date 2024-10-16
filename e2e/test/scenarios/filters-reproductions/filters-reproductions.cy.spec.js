@@ -72,6 +72,7 @@ describe.skip("issue 12496", () => {
     restore();
     cy.signInAsAdmin();
   });
+
   const datePickerInput = (picker, input) =>
     cy
       .findAllByTestId("specific-date-picker")
@@ -100,6 +101,7 @@ describe.skip("issue 12496", () => {
     // When a filter is added above, we have to unhide the filter pills:
     cy.findByTestId("filters-visibility-control").click();
   };
+
   it("should display correct day range in filter pill when drilling into a week", () => {
     setup("week");
     cartesianChartCircle().eq(0).click({ force: true });
@@ -114,6 +116,7 @@ describe.skip("issue 12496", () => {
       });
     });
   });
+
   it("should display correct day range in filter pill when drilling into a month", () => {
     setup("month");
     cartesianChartCircle().eq(0).click({ force: true });
@@ -128,6 +131,7 @@ describe.skip("issue 12496", () => {
       });
     });
   });
+
   it("should display correct day range in filter pill when drilling into a hour", () => {
     setup("hour");
     cartesianChartCircle().eq(0).click({ force: true });
@@ -146,6 +150,7 @@ describe.skip("issue 12496", () => {
       });
     });
   });
+
   it("should display correct minute in filter pill when drilling into a minute", () => {
     setup("minute");
     cartesianChartCircle().eq(0).click({ force: true });
@@ -159,6 +164,7 @@ describe.skip("issue 12496", () => {
       datePickerInput(0, 2).should("have.value", "56");
     });
   });
+
   it("should display correct minute in filter pill when drilling into a day", () => {
     setup("day");
     cartesianChartCircle().eq(0).click({ force: true });
@@ -505,6 +511,7 @@ describe("issue 24994", () => {
       ],
     },
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -574,6 +581,7 @@ describe("issue 25378", () => {
     },
     display: "line",
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -621,6 +629,7 @@ describe("issue 25927", () => {
     },
     display: "table",
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -674,6 +683,7 @@ describe("issue 25990", () => {
       },
     },
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -713,6 +723,7 @@ describe("issue 25994", () => {
       database: SAMPLE_DB_ID,
     },
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -756,6 +767,7 @@ describe.skip("issue 26861", () => {
       },
     },
   };
+
   beforeEach(() => {
     cy.intercept("POST", "/api/dataset").as("dataset");
 
@@ -794,6 +806,7 @@ describe("issue 27123", () => {
       limit: 100,
     },
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -854,6 +867,7 @@ describe("issue 30312", () => {
       "temporal-unit": "month",
     },
   ];
+
   beforeEach(() => {
     restore();
     cy.signInAsNormalUser();
