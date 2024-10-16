@@ -2,9 +2,9 @@
   "Utilities for processing parameters for inclusion in dashboard subscriptions."
   (:require
    [clojure.string :as str]
+   [metabase.models.params.shared :as shared.params]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :refer [defenterprise]]
-   [metabase.shared.parameters.parameters :as shared.params]
    [metabase.util :as u]
    [metabase.util.urls :as urls]
    [ring.util.codec :as codec]))
