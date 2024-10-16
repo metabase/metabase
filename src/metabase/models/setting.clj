@@ -527,7 +527,7 @@
     (u/prog1 (if f (f) false)
       (when (and config/is-dev?
                  (not <>))
-        (log/warn "Not returning Setting values from app DB because it is not yet initialized. Call metabase.db/setup-db! to set it up.")))))
+        (log/debug "Not returning Setting values from app DB because it is not yet initialized. Call metabase.db/setup-db! to set it up.")))))
 
 (defn- db-or-cache-value
   "Get the value, if any, of `setting-definition-or-name` from the DB (using / restoring the cache as needed)."
