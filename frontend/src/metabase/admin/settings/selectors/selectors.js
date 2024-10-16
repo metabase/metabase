@@ -517,6 +517,18 @@ export const ADMIN_SETTINGS_SECTIONS = {
     component: CloudPanel,
     settings: [],
   },
+  iframe: {
+    name: t`iframe`,
+    order: 133,
+    settings: [
+      {
+        key: "iframe-whitelist",
+        display_name: t`iframe Whitelist`,
+        description: null,
+        type: "string"
+      },
+    ],
+  },
 };
 
 export const getSectionsWithPlugins = _.once(() =>

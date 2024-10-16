@@ -1056,3 +1056,10 @@ See [fonts](../configuring-metabase/fonts.md).")
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Deprecated uploads settings end
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defsetting iframe-whitelist
+  (deferred-tru "List of domains allowed in iframes.")
+  :encryption :no
+  :visibility :settings-manager
+  :export?    true
+  :type       :string)
