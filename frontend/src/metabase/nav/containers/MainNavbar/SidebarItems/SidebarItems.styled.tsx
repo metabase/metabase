@@ -28,7 +28,7 @@ export const ExpandToggleButton = styled(TreeNode.ExpandToggleButton)`
 `;
 
 const activeColorCSS = css`
-  color: var(--mb-color-brand);
+  color: white;
 `;
 
 function getTextColor(isSelected: boolean) {
@@ -49,7 +49,7 @@ export const NodeRoot = styled(TreeNode.Root)<{
 
   &:hover {
     background-color: #587330;
-    color: var(--mb-color-brand);
+    color: white;
 
     ${ExpandToggleButton} {
       color: var(--mb-color-brand);
@@ -91,7 +91,7 @@ export const FullWidthButton = styled.button<{ isSelected: boolean }>`
     text-align: start;
 
     &:hover {
-      color: var(--mb-color-brand);
+      color: white;
     }
   }
 `;
