@@ -844,9 +844,14 @@
           {com.nextjournal/beholder     {:mvn/version "1.0.2"} ;; watcher
            io.github.tonsky/clj-reload {:mvn/version "0.7.1"}} ;; reloader
           :extra-paths "dev/src/watch"
-          :main-opts ["-m" "watch.watcher"]}}}
+          :main-opts ["-m" "watch.watceher"]}
 
+  ;; For experimenting with MetaBot v3 from the CLI.
+  ;;
+  ;;    clj -X:ee:metabot-v3/repl
+  :metabot-v3/repl
+  {:exec-fn metabase-enterprise.metabot-v3.repl/user-repl-cli}}
 
-
-  ;; TODO -- consider creating an alias that includes the `./bin` build-drivers & release code as well so we can work
-  ;; on them all from a single REPL process.
+ ;; TODO -- consider creating an alias that includes the `./bin` build-drivers & release code as well so we can work
+ ;; on them all from a single REPL process.
+}

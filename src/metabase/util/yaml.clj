@@ -4,17 +4,21 @@
   (:require
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [clj-yaml.core :as yaml]
-   [clojure.java.io :as io]
    [clojure.string :as str]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.files :as u.files]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [potemkin :as p])
   (:import
    (java.nio.file Files Path)
    (java.time.temporal Temporal)))
 
 (set! *warn-on-reflection* true)
+
+(p/import-vars
+ [yaml
+  parse-stream])
 
 (defn- vectorized
   "Returns x with lazy seqs converted to vectors wherever they appear in the data structure."
@@ -28,13 +32,6 @@
   Temporal
   (encode [data]
     (u.date/format data)))
-
-(defn from-file
-  "Returns YAML parsed from file/file-like/path f, with options passed to clj-yaml."
-  [f & {:as opts}]
-  (when (.exists (io/file f))
-    (with-open [r (io/reader f)]
-      (vectorized (yaml/parse-stream r opts)))))
 
 (defn generate-string
   "Returns a YAML string from Clojure value x"

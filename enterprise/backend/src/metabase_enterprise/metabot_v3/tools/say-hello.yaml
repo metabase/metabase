@@ -1,0 +1,10 @@
+name: say-hello
+description: Say hello to someone.
+parameters:
+  name:
+    type: string
+    required: true
+  greeting:
+    type:
+      - string
+      - "null"
