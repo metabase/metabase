@@ -173,7 +173,7 @@ In your app, you'll see an embedded `InteractiveQuestion` component.
 </MetabaseProvider>
 ```
 
-![Embedded Metabase components](./images/embedded-components.png)
+![Embedded Metabase components](../images/embedded-components.png)
 
 Try changing some of the `theme` options in the [client app](https://github.com/metabase/metabase-nodejs-react-sdk-embedding-sample/blob/main/client/src/App.js) to style the components.
 
