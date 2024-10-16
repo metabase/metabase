@@ -22,9 +22,9 @@ import { useListDatabasesQuery, useGetDatabaseMetadataWithoutParamsQuery, skipTo
 import { SemanticError } from "metabase/components/ErrorPages";
 import { SpinnerIcon } from "metabase/components/LoadingSpinner/LoadingSpinner.styled";
 import { t } from "ttag";
-import { Client } from "@langchain/langgraph-sdk"; 
 
-const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId, chatType, oldCardId, insights, initial_message, setMessages, setInputValue, setThreadId, threadId, inputValue, messages, isChatHistoryOpen, setIsChatHistoryOpen, setShowButton }) => {
+
+const ChatAssistant = ({ client, selectedMessages, selectedThreadId, setSelectedThreadId, chatType, oldCardId, insights, initial_message, setMessages, setInputValue, setThreadId, threadId, inputValue, messages, isChatHistoryOpen, setIsChatHistoryOpen, setShowButton }) => {
     const initialDbName = useSelector(getDBInputValue);
     const initialCompanyName = useSelector(getCompanyName);
     const initialSchema = useSelector(getInitialSchema);
@@ -32,11 +32,8 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
     const initialInsightSchema = useSelector(getInitialInsightSchema)
     const inputRef = useRef(null);
     const dispatch = useDispatch();
-    const [client, setClient] = useState(null);  // For managing the Client
     const [agent, setAgent] = useState(null);    // For managing the Assistant Agent
     const [thread, setThread] = useState(null);  // To store the created thread
-    const langchain_url = "https://assistants-dev-7ca2258c0a7e5ea393441b5aca30fb7c.default.us.langgraph.app";
-    const langchain_key = "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";
     const [companyName, setCompanyName] = useState("");
     const [card, setCard] = useState(null);
     const [sources, setSources] = useState([]);
@@ -122,11 +119,10 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
   useEffect(() => {
     const initializeClientAndThread = async () => {
       try {
-        const clientInstance = new Client({apiUrl: langchain_url, apiKey: langchain_key});
-        setClient(clientInstance);
+
         
         // Search for assistants
-        const assistants = await clientInstance.assistants.search({ metadata: null, limit: 10, offset: 0 });
+        const assistants = await client.assistants.search({ metadata: null, limit: 10, offset: 0 });
         let selectedAgent = assistants[0];
         for (let i = 0; i < assistants.length; i++) {
             if (
@@ -140,7 +136,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
         setAgent(selectedAgent);
 
         // Create a new thread
-        const createdThread = await clientInstance.threads.create();
+        const createdThread = await client.threads.create();
         setThread(createdThread);
       } catch (error) {
         console.error("Error initializing Client or creating thread:", error.message);
@@ -167,46 +163,78 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
     }
 
     useEffect(() => {
-        if (selectedMessages && selectedThreadId && selectedMessages.length > 0) {
+        if (client && selectedMessages && selectedThreadId && selectedMessages.length > 0) {
+            // Clear existing messages
+            setMessages([]);
             let visualizationIdx = 0;
-            setThreadId(selectedThreadId)
-            const parsedMessages = selectedMessages.flatMap((messageGroup) => {
-                const messages = messageGroup.text.map(([senderType, messageText]) => ({
-                    id: generateRandomId(),
-                    text: messageText,
-                    typeMessage: "data",
-                    sender: senderType === "human" ? "user" : "server",
-                    type: "text",
-                    isLoading: false,
-                    thread_id: selectedThreadId,
-                }));
-
-
-                for (let i = 0; i < messages.length; i++) {
-                    if (messages[i].text.includes("It was executed successfully, ready for your next task")) {
-                        messages[i - 1].sender = "server"
-                        if (i > 0) {
-                            messages[i - 1].showVisualization = true;
-                            messages[i - 1].visualizationIdx = visualizationIdx;
-                            messages[i - 1].showButton = false;
-                            visualizationIdx++;
+            setThreadId(selectedThreadId);
+    
+            const processMessages = async () => {
+                let newMessages = [];
+    
+                // Step 1: Loop through the messages and find the one with the card_id
+                for (let i = 0; i < selectedMessages.length; i++) {
+                    const message = selectedMessages[i];
+                    const senderType = message.type === "human" ? "user" : "server";
+    
+                    // Step 2: Check if this message contains the card_id
+                    let card_id = null;
+                    try {
+                        const parsedContent = JSON.parse(message.content);
+                        if (parsedContent.card_id) {
+                            card_id = parsedContent.card_id;
                         }
+                    } catch (error) {
+                        // If it's not a valid JSON, just continue to add the message
                     }
+    
+                    // Step 3: If the message contains a card_id, skip rendering it but handle visualization
+                    if (card_id) {
+                        // Generate the visualization for the card
+                        await handleGetDatasetQuery(card_id);
+    
+                        // Add a visualization message to the list (this replaces the card_id message)
+                        const visualizationMessage = {
+                            id: Date.now() + Math.random(),
+                            sender: "server",
+                            text: "", // Visualizations typically don’t need text
+                            showVisualization: true,
+                            visualizationIdx,
+                            isLoading: false,
+                        };
+    
+                        // Add the visualization message in place of the card_id message
+                        newMessages.push(visualizationMessage);
+    
+                        // Skip the card_id message (don't add it to newMessages)
+                        continue;
+                    }
+    
+                    // Step 4: Add the regular messages (not the card_id message)
+                    const newMessageObj = {
+                        id: generateRandomId(),
+                        text: message.content,
+                        typeMessage: "data",
+                        sender: senderType,
+                        type: "text",
+                        isLoading: false,
+                        thread_id: selectedThreadId,
+                    };
+    
+                    // Add the regular message to the list
+                    newMessages.push(newMessageObj);
                 }
-
-                return messages.filter(
-                    (message) =>
-                        !message.text.includes("It was executed successfully, ready for your next task")
-                );
-            });
-            setDefaultQuestion([]);
-            setCard(null);
-            setCardHash([]);
-            setResult([])
-            handleGetDatasetQueryWithCards(oldCardId)
-            setMessages(parsedMessages);
+    
+                // Step 5: After processing all messages, update the state
+                setMessages((prev) => [...prev, ...newMessages]);
+            };
+    
+            // Call the processMessages function to handle the logic
+            processMessages();
         }
-    }, [selectedMessages]);
+    }, [client, selectedMessages, selectedThreadId]);
+    
+      
 
     useEffect(() => {
         if (inputRef.current) {
@@ -236,6 +264,10 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
 
 
     const handleGetDatasetQuery = async (cardId) => {
+        setCard(null)
+        setDefaultQuestion([])
+        setResult([])
+        setCardHash([])
         try {
             // Fetch the card details using the provided cardId
             const fetchedCard = await CardApi.get({ cardId });
@@ -304,61 +336,6 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
         } catch (error) {
             console.error("Error fetching card content:", error);
             setShowError(true);
-            setError("There was an error fetching the dataset. Please provide feedback if this issue persists.");
-        } finally {
-            setIsLoading(false);
-            removeLoadingMessage();
-        }
-    };
-    
-
-    const handleGetDatasetQueryWithCards = async (cardIds) => {
-        setIsLoading(true);
-        try {
-            const fetchedCards = await Promise.all(cardIds.map(cardId => CardApi.get({ cardId })));
-            const queryCards = await Promise.all(cardIds.map(cardId => CardApi.query({ cardId })));
-
-            const newQuestions = [];
-            const hashes = [];
-
-            fetchedCards.forEach((fetchedCard, index) => {
-                const getDatasetQuery = fetchedCard?.dataset_query;
-                const defaultQuestionTest = Question.create({
-                    databaseId: 1,
-                    name: fetchedCard.name,
-                    type: "query",
-                    display: fetchedCard.display,
-                    visualization_settings: {},
-                    dataset_query: getDatasetQuery
-                });
-
-                const itemtohash = {
-                    dataset_query: {
-                        database: getDatasetQuery.database,
-                        type: "query",
-                        query: getDatasetQuery.query
-                    },
-                    display: fetchedCard.display,
-                    visualization_settings: {},
-                    type: "question"
-                };
-
-                const newQuestion = defaultQuestionTest.setCard(fetchedCard);
-                newQuestions.push(newQuestion);
-
-                const hash = adhocQuestionHash(itemtohash);
-                hashes.push(hash);
-
-                setResult(prevResult => [...(prevResult || []), queryCards[index]]);
-            });
-
-            setDefaultQuestion(newQuestions);
-            setCard(fetchedCards);
-            setCardHash(hashes);
-
-        } catch (error) {
-            console.error("Error fetching card content:", error);
-            setShowError(true)
             setError("There was an error fetching the dataset. Please provide feedback if this issue persists.");
         } finally {
             setIsLoading(false);
@@ -464,7 +441,6 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
                 if (event === "messages/partial" && data.length > 0) {
                     const messageData = data[0];
                     const { content, type, tool_calls, response_metadata } = data[0];
-                    console.log('tool_calls',tool_calls)
                     if (messageData && messageData.content) {
                         const partialText = messageData.content; // Current text chunk
     

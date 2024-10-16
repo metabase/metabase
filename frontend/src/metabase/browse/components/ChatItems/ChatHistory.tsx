@@ -1,9 +1,9 @@
 import React, { useEffect, useState, useRef } from "react";
-import { Box, Text, ScrollArea, Title, Divider } from "metabase/ui";
-import { useListCheckpointsQuery } from "metabase/api/checkpoints";
+import { Box, Text, ScrollArea, Title, Divider, Button, Menu } from "metabase/ui";
 import dayjs from "dayjs";
 
 interface ChatHistoryProps {
+  client: any;
   setSelectedChatHistory: (history: any) => void;
   setThreadId: (id: any) => void;
   type: string;
@@ -13,7 +13,6 @@ interface ChatHistoryProps {
 
 const ITEMS_PER_PAGE = 30; // Number of items to load per request
 
-// Explicit type for chat history
 interface ChatHistoryState {
   today: any[];
   last7Days: any[];
@@ -21,6 +20,7 @@ interface ChatHistoryState {
 }
 
 const ChatHistory = ({
+  client,
   setSelectedChatHistory,
   setThreadId,
   type,
@@ -33,116 +33,36 @@ const ChatHistory = ({
     last30Days: [],
   });
 
+
+  const [createdThread, setCreatedThread] = useState<any[]>([]); // Store fetched threads
   const [offset, setOffset] = useState(0); // Track the current offset for pagination
   const [hasMore, setHasMore] = useState(true); // Track if there is more data to load
   const scrollContainerRef = useRef<HTMLDivElement | null>(null); // Ref for scroll area
+  const [activeMenu, setActiveMenu] = useState<string | null>(null); // State for showing menu
 
-  // Fetch paginated checkpoints
-  const {
-    data: checkpoints,
-    error: checkpointsError,
-    isLoading: isLoadingCheckpoints,
-  } = useListCheckpointsQuery({ offset, limit: ITEMS_PER_PAGE });
+  // Fetch paginated threads from the API
+  useEffect(() => {
+    const initializeClientAndThreads = async () => {
+      try {
+        const threads = await client.threads.search();
+        const deleted = await client.threads
+        
+        // Filter threads that have "get_data_agent" in the "graph_id" of their metadata
+        const filteredThreads = threads.filter((thread: any) => 
+          thread.metadata && thread.metadata.graph_id === "get_data_agent"
+        );
+        setCreatedThread(filteredThreads);
+      } catch (error) {
+        console.error("Error initializing Client or fetching threads:", error);
+      }
+    };
+  
+    initializeClientAndThreads();
+  }, []);
+  
 
   useEffect(() => {
-    if (checkpoints && checkpoints.length > 0) {
-      const groupedHistory = checkpoints.reduce((acc: any, checkpoint: any) => {
-        const {
-          thread_id,
-          step,
-          agent_name,
-          agent_description,
-          card_id,
-          insights,
-        } = checkpoint;
-
-        if (!acc[thread_id]) {
-          acc[thread_id] = {
-            ...checkpoint,
-            card_id: card_id !== null && card_id !== 0 ? [card_id] : [],
-            agent_description:
-              agent_description && agent_description !== ""
-                ? [agent_description]
-                : [],
-            agent_name: agent_name && agent_name !== "" ? [agent_name] : [],
-            insights:
-              insights && insights !== null && insights !== "{}"
-                ? [insights]
-                : [],
-          };
-        } else {
-          if (acc[thread_id].step < step) {
-            acc[thread_id] = {
-              ...checkpoint,
-              card_id: acc[thread_id].card_id,
-              agent_description: acc[thread_id].agent_description,
-              agent_name: acc[thread_id].agent_name,
-              insights: acc[thread_id].insights,
-            };
-          }
-
-          if (
-            card_id &&
-            card_id !== 0 &&
-            !acc[thread_id].card_id.includes(card_id)
-          ) {
-            acc[thread_id].card_id.push(card_id);
-          }
-
-          if (
-            agent_description &&
-            agent_description !== "" &&
-            !acc[thread_id].agent_description.includes(agent_description)
-          ) {
-            acc[thread_id].agent_description.push(agent_description);
-          }
-
-          if (
-            agent_name &&
-            agent_name !== "" &&
-            !acc[thread_id].agent_name.includes(agent_name)
-          ) {
-            acc[thread_id].agent_name.push(agent_name);
-          }
-
-          if (
-            insights &&
-            insights !== "{}" &&
-            !acc[thread_id].insights.includes(insights)
-          ) {
-            acc[thread_id].insights.push(insights);
-          }
-        }
-
-        return acc;
-      }, {});
-
-      const rawChatGroups: any = Object.values(groupedHistory);
-      const filteredGroups = rawChatGroups.filter(
-        (group: any) =>
-          Array.isArray(group.agent_name) && group.agent_name.includes(type),
-      );
-
-      let chatGroups;
-      if (type === "getInsights") {
-        chatGroups = filteredGroups.filter(
-          (group: any) =>
-            Array.isArray(group.insights) && group.insights.length > 0,
-        );
-      } else {
-        chatGroups = filteredGroups.filter(
-          (group: any) =>
-            Array.isArray(group.card_id) && group.card_id.length > 0,
-        );
-      }
-
-      // Sort chat groups by date descending
-      chatGroups.sort((a: any, b: any) => {
-        const dateA = dayjs(JSON.parse(a.checkpoint).ts);
-        const dateB = dayjs(JSON.parse(b.checkpoint).ts);
-        return dateB.diff(dateA); // Sort descending
-      });
-
+    if (createdThread && createdThread.length > 0) {
       const today = dayjs().startOf("day");
       const last7Days = dayjs().subtract(7, "day").startOf("day");
       const last30Days = dayjs().subtract(30, "day").startOf("day");
@@ -153,33 +73,29 @@ const ChatHistory = ({
         last30Days: [],
       };
 
-      chatGroups.forEach((chat: any) => {
-        const timestamp = dayjs(JSON.parse(chat.checkpoint).ts);
+      createdThread.forEach((thread: any) => {
+        const timestamp = dayjs(thread.created_at);
 
         if (timestamp.isSame(today, "day")) {
-          categorizedHistory.today.push(chat);
+          categorizedHistory.today.push(thread);
         } else if (timestamp.isAfter(last7Days)) {
-          categorizedHistory.last7Days.push(chat);
+          categorizedHistory.last7Days.push(thread);
         } else if (timestamp.isAfter(last30Days)) {
-          categorizedHistory.last30Days.push(chat);
+          categorizedHistory.last30Days.push(thread);
         }
       });
 
-      setChatHistory(prevHistory => ({
+      setChatHistory((prevHistory) => ({
         today: [...prevHistory.today, ...categorizedHistory.today],
         last7Days: [...prevHistory.last7Days, ...categorizedHistory.last7Days],
-        last30Days: [
-          ...prevHistory.last30Days,
-          ...categorizedHistory.last30Days,
-        ],
+        last30Days: [...prevHistory.last30Days, ...categorizedHistory.last30Days],
       }));
 
-      // If fewer than ITEMS_PER_PAGE items are returned, there are no more items to load
-      if (checkpoints.length < ITEMS_PER_PAGE) {
+      if (createdThread.length < ITEMS_PER_PAGE) {
         setHasMore(false);
       }
     }
-  }, [checkpoints]);
+  }, [createdThread]);
 
   // Handle scrolling to bottom to load more items
   const handleScroll = () => {
@@ -188,7 +104,7 @@ const ChatHistory = ({
 
     const { scrollTop, scrollHeight, clientHeight } = scrollElement;
     if (scrollHeight - scrollTop === clientHeight && hasMore) {
-      setOffset(prevOffset => prevOffset + ITEMS_PER_PAGE); // Load the next batch
+      setOffset((prevOffset) => prevOffset + ITEMS_PER_PAGE); // Load the next batch
     }
   };
 
@@ -202,26 +118,55 @@ const ChatHistory = ({
     }
   }, [hasMore]);
 
-  const handleHistoryItemClick = (item: any) => {
-    setThreadId(null);
-    setSelectedChatHistory([]);
-    setOldCardId([]);
-    const parsedMetadata = JSON.parse(item.metadata);
-    const messages = parsedMetadata.writes?.solve?.messages || [];
-    const parsedCheckpoint = JSON.parse(item.checkpoint);
-    if (type === "getInsights") {
-      const newInsights = item.insights;
-      const parsedInsights = newInsights.map((insight: string) =>
-        JSON.parse(insight),
-      );
-      if (parsedInsights.length > 0) {
-        setInsights(parsedInsights);
-      }
+  const handleHistoryItemClick = async (item: any) => {
+
+    try {
+        // Fetch the selected thread's history using client.threads.getHistory
+        const selectedThread = await client.threads.getHistory(item.thread_id);
+        
+        if (selectedThread.length > 0 && selectedThread[0].values) {
+          const threadMessages = selectedThread[0].values.messages || [];
+            let extractedCardId = null; // Initialize to store the card_id
+            
+            // Iterate over threadMessages to find the card_id
+            for (const message of threadMessages) {
+                // Check if message content includes 'card_id'
+                if (message.content && message.content.includes('"card_id"')) {
+                    try {
+                        const parsedContent = JSON.parse(message.content);
+                        if (parsedContent.card_id) {
+                            extractedCardId = parsedContent.card_id;
+                            break;  // Stop once the card_id is found
+                        }
+                    } catch (error) {
+                        console.error('Error parsing message content:', error);
+                    }
+                }
+            }
+
+            const insights = item.insights || [];  // Extract insights (if any)
+
+            // Reset necessary state values
+            setThreadId(null);
+            setSelectedChatHistory([]);
+            setOldCardId([]);
+
+            // Set the thread ID, messages, and insights
+            setThreadId(item.thread_id);  // Set the selected thread id
+            setSelectedChatHistory(threadMessages);  // Set the messages from selected thread
+            setOldCardId(extractedCardId);  // Set the extracted card ID
+
+            // If it's an insight type, set the insights
+            if (item.type === "getInsights" && insights.length > 0) {
+                setInsights(insights);
+            }
+        } else {
+            console.error('No messages found in the selected thread.');
+        }
+    } catch (error) {
+        console.error('Error fetching thread history:', error);
     }
-    setThreadId(item.thread_id);
-    setSelectedChatHistory(messages);
-    setOldCardId(item.card_id);
-  };
+};
 
   return (
     <Box
@@ -257,19 +202,22 @@ const ChatHistory = ({
             </Text>
             {chatHistory.today.map((chat: any, index: number) => (
               <Box
-                key={`${chat.checkpoint_id}-${index}`}
+                key={`${chat.thread_id}-${index}`}
                 style={{
                   display: "flex",
                   justifyContent: "space-between",
                   padding: "8px 0",
                   cursor: "pointer",
+                  paddingRight: "2rem"
                 }}
-                onClick={() => handleHistoryItemClick(chat)}
               >
-                <Text style={{ color: "#76797d" }}>
-                  {chat.agent_description[0] || chat.thread_id}
+                <Text
+                  style={{ color: "#76797d" }}
+                  onClick={() => handleHistoryItemClick(chat)}
+                >
+                  {chat.values?.messages?.[0]?.content || chat.thread_id}
                 </Text>
-                <Text style={{ color: "#76797d", cursor: "pointer" }}>⋮</Text>
+               
               </Box>
             ))}
             <Divider my="sm" />
@@ -290,19 +238,22 @@ const ChatHistory = ({
             </Text>
             {chatHistory.last7Days.map((chat: any, index: number) => (
               <Box
-                key={`${chat.checkpoint_id}-${index}`}
+                key={`${chat.thread_id}-${index}`}
                 style={{
                   display: "flex",
                   justifyContent: "space-between",
                   padding: "8px 0",
                   cursor: "pointer",
+                  paddingRight: "2rem"
                 }}
-                onClick={() => handleHistoryItemClick(chat)}
               >
-                <Text style={{ color: "#76797d" }}>
-                  {chat.agent_description[0] || chat.thread_id}
+                <Text
+                  style={{ color: "#76797d" }}
+                  onClick={() => handleHistoryItemClick(chat)}
+                >
+                  {chat.values?.messages?.[0]?.content || chat.thread_id}
                 </Text>
-                <Text style={{ color: "#76797d", cursor: "pointer" }}>⋮</Text>
+                
               </Box>
             ))}
             <Divider my="sm" />
@@ -323,24 +274,33 @@ const ChatHistory = ({
             </Text>
             {chatHistory.last30Days.map((chat: any, index: number) => (
               <Box
-                key={`${chat.checkpoint_id}-${index}`}
+                key={`${chat.thread_id}-${index}`}
                 style={{
                   display: "flex",
                   justifyContent: "space-between",
                   padding: "8px 0",
                   cursor: "pointer",
+                  paddingRight: "2rem"
                 }}
-                onClick={() => handleHistoryItemClick(chat)}
               >
-                <Text style={{ color: "#76797d" }}>
-                  {chat.agent_description[0] || chat.thread_id}
+                <Text
+                  style={{ color: "#76797d" }}
+                  onClick={() => handleHistoryItemClick(chat)}
+                >
+                  {chat.values?.messages?.[0]?.content || chat.thread_id}
                 </Text>
-                <Text style={{ color: "#76797d", cursor: "pointer" }}>⋮</Text>
+                
               </Box>
             ))}
           </>
         )}
       </ScrollArea>
+
+      {chatHistory.today.length === 0 &&
+        chatHistory.last7Days.length === 0 &&
+        chatHistory.last30Days.length === 0 && (
+          <Text>No chat history available</Text>
+        )}
     </Box>
   );
 };

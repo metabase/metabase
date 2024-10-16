@@ -25,6 +25,7 @@ import useWebSocket from "metabase/hooks/useWebSocket";
 import { t } from "ttag";
 import { getSuggestions, setSuggestions } from "metabase/redux/suggestionsSlice";
 import { NoDatabaseError, SemanticError } from "metabase/components/ErrorPages";
+import { Client } from "@langchain/langgraph-sdk"; 
 
 export const HomeLayout = () => {
   const initialMessage = useSelector(getInitialMessage);
@@ -44,11 +45,21 @@ export const HomeLayout = () => {
   const [schema, setSchema] = useState<any[]>([]);
   const [messages, setMessages] = useState([]);
   const [threadId, setThreadId] = useState('')
-  const [isChatHistoryOpen, setIsChatHistoryOpen] = useState(false);
+  const [isChatHistoryOpen, setIsChatHistoryOpen] = useState(true);
   const [showButton, setShowButton] = useState(false);
   const [insightDB, setInsightDB] = useState<number | null>(null);
   const [insightSchema, setInsightSchema] = useState<any[]>([]);
-  const assistant_url = process.env.REACT_APP_WEBSOCKET_SERVER;
+  const langchain_url = "https://assistants-dev-7ca2258c0a7e5ea393441b5aca30fb7c.default.us.langgraph.app";
+  const langchain_key = "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";
+  const [client, setClient] = useState<any>(null); 
+
+  useEffect(() => {
+    const initializeClient = async () => {
+      const clientInstance = new Client({apiUrl: langchain_url, apiKey: langchain_key});
+      setClient(clientInstance);
+    };
+    initializeClient();
+  }, []);
 
   const dispatch = useDispatch();
   const {
@@ -263,6 +274,7 @@ export const HomeLayout = () => {
                 }}
               >
                 <ChatAssistant
+                client={client}
                   selectedMessages={selectedChatHistory}
                   selectedThreadId={selectedThreadId}
                   chatType={selectedChatType}
@@ -276,12 +288,27 @@ export const HomeLayout = () => {
                   threadId={threadId}
                   inputValue={inputValue}
                   messages={messages}
-                  isChatHistoryOpen={false}
+                  isChatHistoryOpen={isChatHistoryOpen}
                   setIsChatHistoryOpen={setIsChatHistoryOpen}
                   setShowButton={setShowButton}
                 />
               </Stack>
-
+              {isChatHistoryOpen && selectedChatType !== "insights" && (
+                <Stack
+                  mb="lg"
+                  spacing="xs"
+                  style={{ minWidth: "300px", width: "300px", marginTop: "1rem" }}
+                >
+                  <ChatHistory
+                  client={client}
+                    setSelectedChatHistory={setSelectedChatHistory}
+                    setThreadId={setSelectedThreadId}
+                    type={selectedChatHistoryType}
+                    setOldCardId={setOldCardId}
+                    setInsights={setInsights}
+                  />
+                </Stack>
+              )}
             </Flex>
           </BrowseMain>
         </BrowseContainer>
