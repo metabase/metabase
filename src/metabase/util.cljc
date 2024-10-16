@@ -35,7 +35,14 @@
 #?(:clj (set! *warn-on-reflection* true))
 
 (u.ns/import-fns
- [u.format colorize format-bytes format-color format-milliseconds format-nanoseconds format-seconds])
+ [u.format
+  colorize
+  format-bytes
+  format-color
+  format-milliseconds
+  format-nanoseconds
+  format-seconds
+  format-plural])
 
 #?(:clj (p/import-vars [u.jvm
                         all-ex-data
@@ -80,6 +87,22 @@
                          :cljs 'js/Error
                          :clj  'Throwable)
                       ~'_)))
+
+(defn strip-error
+  "Transforms the error in a list of strings to log"
+  ([e]
+   (strip-error e nil))
+  ([e prefix]
+   (->> (for [[e prefix] (map vector
+                              (take-while some? (iterate #(.getCause ^Exception %) e))
+                              (cons prefix (repeat "  caused by")))]
+          (str (when prefix (str prefix ": "))
+               (ex-message e)
+               (when-let [data (-> (ex-data e)
+                                   (dissoc :toucan2/context-trace)
+                                   not-empty)]
+                 (str " " (pr-str data)))))
+        (str/join "\n"))))
 
 (defmacro prog1
   "Execute `first-form`, then any other expressions in `body`, presumably for side-effects; return the result of

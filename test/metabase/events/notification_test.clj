@@ -71,12 +71,20 @@
       (mt/with-additional-premium-features #{:whitelabel}
         (mt/with-temporary-setting-values
           [application-name "Metabase Test"
-           site-name        "Metabase Test"]
+           site-name        "Metabase Test"
+           site-url         "https://metabase.com"
+           admin-email      "ngoc@metabase.com"]
           (is (= {:event-info  {:foo :bar}
                   :event-topic :event/user-joined
-                  :settings    {:application-name "Metabase Test"
-                                :site-name        "Metabase Test"}}
-                 (#'events.notification/enriched-event-info :event/user-joined event-info))))))))
+                  :context     {:application-name     "Metabase Test"
+                                :application-logo-url "http://static.metabase.com/email_logo.png"
+                                :site-name            "Metabase Test"
+                                :site-url             "https://metabase.com"
+                                :admin-email          "ngoc@metabase.com"
+                                :style                {:button true}
+                                :extra                {}}}
+                 (-> (#'events.notification/enriched-event-info :event/user-joined event-info)
+                     (update-in [:context :style :button] string?)))))))))
 
 (def user-hydra-model [:model/User :id :first_name])
 
@@ -113,3 +121,33 @@
             {}]]]
     (testing context
       (= expected (#'events.notification/hydrate! schema value)))))
+
+(deftest record-task-history-test
+  (notification.tu/with-notification-testing-setup
+    (mt/with-temp [:model/Channel chn-1 (assoc notification.tu/default-can-connect-channel :name (mt/random-name))
+                   :model/Channel chn-2 (assoc notification.tu/default-can-connect-channel :name (mt/random-name))]
+      (notification.tu/with-temporary-event-topics! #{:event/testing}
+        (doseq [_ (range 2)]
+          (models.notification/create-notification! {:payload_type :notification/testing}
+                                                    [{:type :notification-subscription/system-event
+                                                      :event_name :event/testing}]
+                                                    [{:channel_type notification.tu/test-channel-type
+                                                      :channel_id   (:id chn-1)
+                                                      :template_id  nil
+                                                      :recipients   [{:type :notification-recipient/user
+                                                                      :user_id (mt/user->id :crowberto)}]}
+                                                     {:channel_type notification.tu/test-channel-type
+                                                      :channel_id   (:id chn-2)
+                                                      :template_id  nil
+                                                      :recipients   [{:type :notification-recipient/user
+                                                                      :user_id (mt/user->id :rasta)}]}]))
+        (t2/select :model/NotificationSubscription)
+        (t2/delete! :model/TaskHistory :task [:in ["notification-send" "channel-send" "notification-trigger"]])
+        (events/publish-event! :event/testing {})
+        (testing "each notification should have a task history, in which each channel-send will have a task history"
+          (is (= {"notification-trigger" 1
+                  "notification-send"      (+ 1 1) ;; 2 notifications, each send to 2 channels
+                  "channel-send"           (+ 2 2)}
+                 (as-> (t2/select :model/TaskHistory :task [:in ["notification-send" "channel-send" "notification-trigger"]]) th
+                   (group-by :task th)
+                   (update-vals th count)))))))))

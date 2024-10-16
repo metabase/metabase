@@ -30,7 +30,13 @@
 
 (set! *warn-on-reflection* true)
 
-;; Adding or updating a Snowplow schema? Make sure that the map below is updated accordingly.
+;; Adding or updating a Snowplow schema? Here are some things to keep in mind:
+;; - Snowplow schemata are versioned and immutable, so if you need to make changes to a schema, you should create a new
+;;   version of it. The version number should be updated in the `schema->version` map below.
+;; - Schemas live inside the `/snowplow/iglu-client-embedded/schemas` directory.
+;; - The new schema should be added to the Metabase repo via the normal pull request workflow before it is uploaded to
+;;   SnowcatCloud in the last step. Make sure to sanity check your schema with SnowcatCloud in the
+;;   #external-snowcat-cloud channel since there might be some back and forth on the format.
 
 (def ^:private schema->version
   "The most recent version for each event schema. This should be updated whenever a new version of a schema is added
@@ -38,7 +44,7 @@
   {::account        "1-0-1"
    ::browse_data    "1-0-0"
    ::invite         "1-0-1"
-   ::instance_stats "1-0-0"
+   ::instance_stats "2-0-0"
    ::csvupload      "1-0-3"
    ::dashboard      "1-1-4"
    ::database       "1-0-1"

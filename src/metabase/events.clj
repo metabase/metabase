@@ -127,7 +127,7 @@
       (assert (map? event)
               (format "Invalid event %s: event must be a map." (pr-str event)))
       (try
-        (when-let [schema (events.schema/topic->schema topic)]
+        (when-let [schema (and (mu/instrument-ns? *ns*) (events.schema/topic->schema topic))]
           (mu/validate-throw schema event))
         (next-method topic event)
         (catch Throwable e
