@@ -880,7 +880,8 @@
     (when (or
            ;; we're moving from one dashboard to another
            (and (:dashboard_id card-updates)
-                (:dashboard_id card-before-update))
+                (:dashboard_id card-before-update)
+                (not= (:dashboard_id card-updates) (:dashboard_id card-before-update)))
            ;; we're moving from a dashboard into a collection, AND the user told us they want to remove the old dashcards
            (and (:dashboard_id card-before-update)
                 (not (:dashboard_id card-updates))
