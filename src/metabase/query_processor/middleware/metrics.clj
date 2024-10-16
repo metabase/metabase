@@ -9,7 +9,6 @@
    [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk :as lib.walk]
    [metabase.util :as u]
-   [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
 (defn- replace-metric-aggregation-refs [query stage-number lookup]
@@ -264,11 +263,7 @@
           (u/prog1
             (update query :stages #(adjust-metric-stages query nil %))
             (when-let [metric (find-first-metric <>)]
-              ;; There is a small chance we could wind up double-counting errors here if prometheus/inc! or log/warn
-              ;; throw an exception, but it seems unlikely enough to not warrant complications to avoid it.
-              (prometheus/inc! :metabase-query-processor/metric-errors)
-              (log/warn "Failed to replace metric"
-                        (pr-str {:metric metric})))))
+              (throw (ex-info "Failed to replace metric" {:metric metric})))))
         (catch Throwable e
           (prometheus/inc! :metabase-query-processor/metric-errors)
           (throw e))))))

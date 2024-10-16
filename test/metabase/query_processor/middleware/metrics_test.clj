@@ -102,7 +102,10 @@
      :metabase-query-processor/metric-errors 1
      :check-fn (fn [query]
                  (with-redefs [metrics/adjust-metric-stages (fn [_ _ stages] stages)]
-                   (is (= query (adjust query)))))))
+                   (is (thrown-with-msg?
+                        clojure.lang.ExceptionInfo
+                        #"Failed to replace metric"
+                        (adjust query)))))))
   (testing "exceptions from other libs also increment error counter"
     (check-prometheus-metrics!
      :metabase-query-processor/metrics 1
