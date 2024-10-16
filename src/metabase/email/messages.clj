@@ -392,7 +392,7 @@
   point in the future; for now, this function is a stopgap.
 
   Results are streamed synchronously. Caller is responsible for closing `os` when this call is complete."
-  [export-format format-rows? ^OutputStream os {{:keys [rows]} :data, database-id :database_id, :as results}]
+  [^OutputStream os {:keys [export-format format-rows? pivot?]} {{:keys [rows]} :data, database-id :database_id, :as results}]
   ;; make sure Database/driver info is available for the streaming results writers -- they might need this in order to
   ;; get timezone information when writing results
   (driver/with-driver (driver.u/database->driver database-id)
@@ -405,6 +405,7 @@
         (qp.si/begin! w
                       (-> results
                           (assoc-in [:data :format-rows?] format-rows?)
+                          (assoc-in [:data :pivot?] pivot?)
                           (assoc-in [:data :ordered-cols] ordered-cols))
                       viz-settings')
         (dorun
@@ -415,18 +416,18 @@
         (qp.si/finish! w results)))))
 
 (defn- result-attachment
-  [{{card-name :name format-rows :format_rows :as card} :card
+  [{{card-name :name format-rows :format_rows pivot-results :pivot_results :as card} :card
     {{:keys [rows]} :data :as result}                   :result}]
   (when (seq rows)
     [(when-let [temp-file (and (:include_csv card)
                                (create-temp-file-or-throw "csv"))]
        (with-open [os (io/output-stream temp-file)]
-         (stream-api-results-to-export-format :csv format-rows os result))
+         (stream-api-results-to-export-format os {:export-format :csv :format-rows? format-rows :pivot? pivot-results} result))
        (create-result-attachment-map "csv" card-name temp-file))
      (when-let [temp-file (and (:include_xls card)
                                (create-temp-file-or-throw "xlsx"))]
        (with-open [os (io/output-stream temp-file)]
-         (stream-api-results-to-export-format :xlsx format-rows os result))
+         (stream-api-results-to-export-format os {:export-format :xlsx :format-rows? format-rows :pivot? pivot-results} result))
        (create-result-attachment-map "xlsx" card-name temp-file))]))
 
 (defn- part-attachments [parts]
@@ -509,7 +510,7 @@
   (for [{{result-card-id :id} :card :as result} results
         :let [pulse-card (m/find-first #(= (:id %) result-card-id) (:cards pulse))]]
     (if result-card-id
-      (update result :card merge (select-keys pulse-card [:include_csv :include_xls :format_rows]))
+      (update result :card merge (select-keys pulse-card [:include_csv :include_xls :format_rows :pivot_results]))
       result)))
 
 (defn render-pulse-email

@@ -586,6 +586,7 @@
     metabase.driver.sql-jdbc.test-util                            sql-jdbc.tu
     metabase.driver.sql.parameters.substitute                     sql.params.substitute
     metabase.driver.sql.parameters.substitution                   sql.params.substitution
+    metabase.eid-translation                                      eid-translation
     metabase.email-test                                           et
     metabase.email.messages                                       messages
     metabase.formatter                                            formatter
