@@ -1,4 +1,5 @@
 import { type ReactElement, isValidElement } from "react";
+import { match } from "ts-pattern";
 
 import { TableInfoIcon } from "metabase/components/MetadataInfo/TableInfoIcon/TableInfoIcon";
 import { isNotNull } from "metabase/lib/types";
@@ -188,4 +189,13 @@ function getTableURL(table: Table) {
     }
   }
   return ML_Urls.getUrl(table.newQuestion());
+}
+
+export function getQuestionIcon(question: Question): IconName {
+  return match(question.type())
+    .returnType<IconName>()
+    .with("question", () => "table2")
+    .with("model", () => "model")
+    .with("metric", () => "metric")
+    .exhaustive();
 }
