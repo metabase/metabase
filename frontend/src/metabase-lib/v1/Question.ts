@@ -747,7 +747,7 @@ class Question {
     return utf8_to_b64url(JSON.stringify(sortObject(cardCopy)));
   }
 
-  _convertParametersToMbql(): Question {
+  _convertParametersToMbql({ isComposed }: { isComposed: boolean }): Question {
     const query = this.query();
     const { isNative } = Lib.queryDisplayInfo(query);
 
@@ -757,14 +757,17 @@ class Question {
 
     const newQuery = this.parameters().reduce((query, parameter) => {
       if (isFilterParameter(parameter)) {
-        const stageIndex = isDimensionTarget(parameter.target)
-          ? getParameterDimensionTargetStageIndex(parameter.target)
-          : -1;
+        const stageIndex =
+          isDimensionTarget(parameter.target) && !isComposed
+            ? getParameterDimensionTargetStageIndex(parameter.target)
+            : -1;
         return applyFilterParameter(query, stageIndex, parameter);
       } else if (isTemporalUnitParameter(parameter)) {
-        const stageIndex = isDimensionTarget(parameter.target)
-          ? getParameterDimensionTargetStageIndex(parameter.target)
-          : -1;
+        const stageIndex =
+          isDimensionTarget(parameter.target) && !isComposed
+            ? getParameterDimensionTargetStageIndex(parameter.target)
+            : -1;
+
         return applyTemporalUnitParameter(query, stageIndex, parameter);
       } else {
         return query;
