@@ -10,9 +10,6 @@ interface Options {
 
 type ParameterQueryInput = { id: string } & ParameterQueryObject;
 
-// @ts-expect-error - foo bar
-window.CardApi = CardApi;
-
 export async function loadStaticQuestion(options: Options) {
   const { questionId, parameterValues, cancelDeferred } = options;
 
