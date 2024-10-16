@@ -35,7 +35,7 @@ const ChatAssistant = ({ client, selectedMessages, selectedThreadId, setSelected
     const [agent, setAgent] = useState(null);    // For managing the Assistant Agent
     const [thread, setThread] = useState(null);  // To store the created thread
     const [companyName, setCompanyName] = useState("");
-    const [card, setCard] = useState(null);
+    const [card, setCard] = useState([]);
     const [sources, setSources] = useState([]);
     const [selectedIndex, setSelectedIndex] = useState(null)
     const [result, setResult] = useState([]);
@@ -72,7 +72,7 @@ const ChatAssistant = ({ client, selectedMessages, selectedThreadId, setSelected
     const [requestedFields, setRequestedFields] = useState([]);
     const [pendingInfoMessage, setPendingInfoMessage] = useState(null);
     const [insightDB, setInsightDB] = useState(null);
-    
+
     const databases = data?.data;
     useEffect(() => {
         if (databases) {
@@ -115,37 +115,37 @@ const ChatAssistant = ({ client, selectedMessages, selectedThreadId, setSelected
         }
     }, [databaseMetadataData]);
 
-  // Initialize Client and Thread only once when component mounts
-  useEffect(() => {
-    const initializeClientAndThread = async () => {
-      try {
+    // Initialize Client and Thread only once when component mounts
+    useEffect(() => {
+        const initializeClientAndThread = async () => {
+            try {
 
-        
-        // Search for assistants
-        const assistants = await client.assistants.search({ metadata: null, limit: 10, offset: 0 });
-        let selectedAgent = assistants[0];
-        for (let i = 0; i < assistants.length; i++) {
-            if (
-                (chatType === 'insights' && assistants[i].name === 'get_insight_agent') ||
-                (chatType !== 'insights' && assistants[i].name === 'get_data_agent')
-            ) {
-                selectedAgent = assistants[i];
-                break;
+
+                // Search for assistants
+                const assistants = await client.assistants.search({ metadata: null, limit: 10, offset: 0 });
+                let selectedAgent = assistants[0];
+                for (let i = 0; i < assistants.length; i++) {
+                    if (
+                        (chatType === 'insights' && assistants[i].name === 'get_insight_agent') ||
+                        (chatType !== 'insights' && assistants[i].name === 'get_data_agent')
+                    ) {
+                        selectedAgent = assistants[i];
+                        break;
+                    }
+                }
+                setAgent(selectedAgent);
+
+                // Create a new thread
+                const createdThread = await client.threads.create();
+                setThread(createdThread);
+            } catch (error) {
+                console.error("Error initializing Client or creating thread:", error.message);
             }
-        }
-        setAgent(selectedAgent);
+        };
 
-        // Create a new thread
-        const createdThread = await client.threads.create();
-        setThread(createdThread);
-      } catch (error) {
-        console.error("Error initializing Client or creating thread:", error.message);
-      }
-    };
+        initializeClientAndThread();
+    }, []);
 
-    initializeClientAndThread();
-  }, []);
-      
 
     useEffect(() => {
         setMessages([])
@@ -168,15 +168,15 @@ const ChatAssistant = ({ client, selectedMessages, selectedThreadId, setSelected
             setMessages([]);
             let visualizationIdx = 0;
             setThreadId(selectedThreadId);
-    
+
             const processMessages = async () => {
                 let newMessages = [];
-    
+
                 // Step 1: Loop through the messages and find the one with the card_id
                 for (let i = 0; i < selectedMessages.length; i++) {
                     const message = selectedMessages[i];
                     const senderType = message.type === "human" ? "user" : "server";
-    
+
                     // Step 2: Check if this message contains the card_id
                     let card_id = null;
                     try {
@@ -187,12 +187,12 @@ const ChatAssistant = ({ client, selectedMessages, selectedThreadId, setSelected
                     } catch (error) {
                         // If it's not a valid JSON, just continue to add the message
                     }
-    
+
                     // Step 3: If the message contains a card_id, skip rendering it but handle visualization
                     if (card_id) {
                         // Generate the visualization for the card
                         await handleGetDatasetQuery(card_id);
-    
+
                         // Add a visualization message to the list (this replaces the card_id message)
                         const visualizationMessage = {
                             id: Date.now() + Math.random(),
@@ -202,14 +202,14 @@ const ChatAssistant = ({ client, selectedMessages, selectedThreadId, setSelected
                             visualizationIdx,
                             isLoading: false,
                         };
-    
+
                         // Add the visualization message in place of the card_id message
                         newMessages.push(visualizationMessage);
-    
+
                         // Skip the card_id message (don't add it to newMessages)
                         continue;
                     }
-    
+
                     // Step 4: Add the regular messages (not the card_id message)
                     const newMessageObj = {
                         id: generateRandomId(),
@@ -220,21 +220,21 @@ const ChatAssistant = ({ client, selectedMessages, selectedThreadId, setSelected
                         isLoading: false,
                         thread_id: selectedThreadId,
                     };
-    
+
                     // Add the regular message to the list
                     newMessages.push(newMessageObj);
                 }
-    
+
                 // Step 5: After processing all messages, update the state
                 setMessages((prev) => [...prev, ...newMessages]);
             };
-    
+
             // Call the processMessages function to handle the logic
             processMessages();
         }
     }, [client, selectedMessages, selectedThreadId]);
-    
-      
+
+
 
     useEffect(() => {
         if (inputRef.current) {
@@ -264,21 +264,20 @@ const ChatAssistant = ({ client, selectedMessages, selectedThreadId, setSelected
 
 
     const handleGetDatasetQuery = async (cardId) => {
-        setCard(null)
-        setDefaultQuestion([])
-        setResult([])
-        setCardHash([])
         try {
+            setIsLoading(true); // Show loading state
+            
             // Fetch the card details using the provided cardId
             const fetchedCard = await CardApi.get({ cardId });
             const queryCard = await CardApi.query({ cardId });
             const getDatasetQuery = fetchedCard?.dataset_query;
+    
             if (!getDatasetQuery) {
                 throw new Error("No dataset query found for this card.");
             }
     
             // Create a new question object based on the fetched card's dataset query
-            const defaultQuestionTest = Question.create({
+            const newQuestion = Question.create({
                 databaseId: getDatasetQuery.database,
                 name: fetchedCard.name,
                 type: "query",
@@ -287,7 +286,7 @@ const ChatAssistant = ({ client, selectedMessages, selectedThreadId, setSelected
                 dataset_query: getDatasetQuery,
             });
     
-            // Create an item hash for tracking this question
+            // Generate a unique hash for this question
             const itemToHash = {
                 dataset_query: {
                     database: getDatasetQuery.database,
@@ -298,40 +297,19 @@ const ChatAssistant = ({ client, selectedMessages, selectedThreadId, setSelected
                 visualization_settings: {},
                 type: "question",
             };
+            const hash = adhocQuestionHash(itemToHash);
     
-            // Set up the question and add it to the state
-            const newQuestion = defaultQuestionTest.setCard(fetchedCard);
-            const hash1 = adhocQuestionHash(itemToHash);
-            setResult((prevResult) =>
-                Array.isArray(prevResult) ? [...prevResult, queryCard] : [queryCard]
-            );
+            // Append new values safely by ensuring prevCard is always an array
+            setCard((prevCard) => Array.isArray(prevCard) ? [...prevCard, { ...fetchedCard, hash }] : [{ ...fetchedCard, hash }]);
+            setDefaultQuestion((prevDefaultQuestion) => Array.isArray(prevDefaultQuestion) ? [...prevDefaultQuestion, newQuestion] : [newQuestion]);
+            setResult((prevResult) => Array.isArray(prevResult) ? [...prevResult, queryCard] : [queryCard]);
+            setCardHash((prevCardHash) => Array.isArray(prevCardHash) ? [...prevCardHash, hash] : [hash]);
     
+            // Handle code query if needed
             setCodeQuery((prevCodeQuery) => {
-                const query =
-                    queryCard?.data?.native_form?.query ??
-                    "Sorry, for some reason the query was not retrieved properly.";
-                return Array.isArray(prevCodeQuery)
-                    ? [...prevCodeQuery, query]
-                    : [query];
+                const query = queryCard?.data?.native_form?.query ?? "Sorry, query was not retrieved properly.";
+                return Array.isArray(prevCodeQuery) ? [...prevCodeQuery, query] : [query];
             });
-    
-            setDefaultQuestion((prevDefaultQuestion) =>
-                Array.isArray(prevDefaultQuestion)
-                    ? [...prevDefaultQuestion, newQuestion]
-                    : [newQuestion]
-            );
-    
-            setCard((prevCard) => {
-                const updatedCard = {
-                    ...fetchedCard, // Copy all properties from the fetched card
-                    hash: hash1, // Add the hash property
-                };
-                return Array.isArray(prevCard) ? [...prevCard, updatedCard] : [updatedCard];
-            });
-    
-            setCardHash((prevCardHash) =>
-                Array.isArray(prevCardHash) ? [...prevCardHash, hash1] : [hash1]
-            );
     
         } catch (error) {
             console.error("Error fetching card content:", error);
@@ -339,9 +317,10 @@ const ChatAssistant = ({ client, selectedMessages, selectedThreadId, setSelected
             setError("There was an error fetching the dataset. Please provide feedback if this issue persists.");
         } finally {
             setIsLoading(false);
-            removeLoadingMessage();
         }
     };
+    
+    
 
     useEffect(() => {
         if (pendingInfoMessage && visualizationIndex >= 0) {
@@ -356,10 +335,10 @@ const ChatAssistant = ({ client, selectedMessages, selectedThreadId, setSelected
                     isInsightError: true,
                     typeMessage: "error",
                 };
-    
+
                 return [...prevMessages, newMessage];
             });
-    
+
             setPendingInfoMessage(null);
         }
     }, [pendingInfoMessage, visualizationIndex, setMessages]);
@@ -391,31 +370,33 @@ const ChatAssistant = ({ client, selectedMessages, selectedThreadId, setSelected
         // Display temporary message during server response wait time
         const tempMessageId = Date.now() + Math.random();
         let tempMessage;
-        if(chatType !== 'insights') {
-        tempMessage = {
-            id: tempMessageId,
-            sender: "server",
-            text: "", // This will be updated with the actual content from the response chunks
-            isLoading: true,
-            isTemporary: true, // Marking as a temporary message
-        };
     
-        // Append the user message and the temporary server message to the state
-        setMessages((prev) => [...prev, userMessage, tempMessage]);
+        if (chatType !== 'insights') {
+            tempMessage = {
+                id: tempMessageId,
+                sender: "server",
+                text: "", // This will be updated with the actual content from the response chunks
+                isLoading: true,
+                isTemporary: true, // Marking as a temporary message
+            };
     
-        // Call emulateDataStream to show a waiting message while we fetch the first chunk
-        emulateDataStream(50, tempMessageId);
+            // Append the user message and the temporary server message to the state
+            setMessages((prev) => [...prev, userMessage, tempMessage]);
+    
+            // Call emulateDataStream to show a waiting message while we fetch the first chunk
+            emulateDataStream(50, tempMessageId);
         } else {
             tempMessage = {
-                    id: Date.now() + Math.random(),
-                    text: "Please wait until we generate the response....",
-                    typeMessage: "data",
-                    sender: "server",
-                    type: "text",
-                    isLoading: true,
-                }
+                id: Date.now() + Math.random(),
+                text: "Please wait until we generate the response....",
+                typeMessage: "data",
+                sender: "server",
+                type: "text",
+                isLoading: true,
+            };
             setMessages((prev) => [...prev, userMessage, tempMessage]);
         }
+    
         // Clear the input field
         setInputValue("");
     
@@ -440,81 +421,118 @@ const ChatAssistant = ({ client, selectedMessages, selectedThreadId, setSelected
                 // Handle partial messages
                 if (event === "messages/partial" && data.length > 0) {
                     const messageData = data[0];
-                    const { content, type, tool_calls, response_metadata } = data[0];
+                    const { content, type, tool_calls, response_metadata } = messageData;
+    
                     if (messageData && messageData.content) {
                         const partialText = messageData.content; // Current text chunk
     
                         // Check if the current chunk contains the previous message or it's a new message
-                        if(chatType !== 'insights') {
+                        if (chatType !== 'insights') {
                             if (isNewMessage || !partialText.startsWith(currentMessage)) {
                                 // New message stream detected, append a new temporary message
-                                    const newTempMessageId = Date.now() + Math.random();
-                                    const newTempMessage = {
-                                        id: newTempMessageId,
-                                        sender: "server",
-                                        text: partialText, // Use partial chunk text
-                                        isLoading: true,
-                                        isTemporary: true,
-                                    };
-                                    setMessages((prev) => [...prev, newTempMessage]);
-            
-                                    // Set flag to false after first chunk of the new message
-                                    isNewMessage = false;
-                                    lastMessageId = newTempMessageId;  // Track the new message ID
+                                const newTempMessageId = Date.now() + Math.random();
+                                const newTempMessage = {
+                                    id: newTempMessageId,
+                                    sender: "server",
+                                    text: partialText, // Use partial chunk text
+                                    isLoading: true,
+                                    isTemporary: true,
+                                };
+                                setMessages((prev) => [...prev, newTempMessage]);
+    
+                                // Set flag to false after first chunk of the new message
+                                isNewMessage = false;
+                                lastMessageId = newTempMessageId;  // Track the new message ID
+                            } else {
+                                // Replace the last message with the new chunk if it's a continuation
+                                setMessages((prev) => {
+                                    const updatedMessages = [...prev];
+                                    const lastMessageIndex = updatedMessages.findIndex(msg => msg.id === lastMessageId);
+    
+                                    // Replace text of the last message with the new partial content
+                                    if (lastMessageIndex >= 0 && updatedMessages[lastMessageIndex].isTemporary) {
+                                        updatedMessages[lastMessageIndex].text = partialText; // Replace with the full message
+                                    }
+                                    return updatedMessages;
+                                });
+                            }
+                        } else {
+                            setFinalMessages((prevText) => {
+                                const updatedText = [...prevText];
+                                const lastMessage = updatedText[updatedText.length - 1];
+                                if (lastMessage && lastMessage.sender === 'server') {
+                                    // Update the text of the last message if it's from the server
+                                    updatedText[updatedText.length - 1].text = typeof content === 'string' ? content : JSON.stringify(content);
                                 } else {
-                                    // Replace the last message with the new chunk if it's a continuation
-                                    setMessages((prev) => {
-                                        const updatedMessages = [...prev];
-                                        const lastMessageIndex = updatedMessages.findIndex(msg => msg.id === lastMessageId);
-            
-                                        // Replace text of the last message with the new partial content
-                                        if (lastMessageIndex >= 0 && updatedMessages[lastMessageIndex].isTemporary) {
-                                            updatedMessages[lastMessageIndex].text = partialText; // Replace with the full message
-                                        }
-                                        return updatedMessages;
+                                    // Add a new message from the server if the last one wasn't from the server
+                                    updatedText.push({
+                                        id: Date.now() + Math.random(),
+                                        sender: "server",
+                                        text: typeof content === 'string' ? content : JSON.stringify(content),
                                     });
                                 }
-                        } else {
-                                setFinalMessages((prevText) => {
-                                    const updatedText = [...prevText];
-                                    const lastMessage = updatedText[updatedText.length - 1];
-                                    if (lastMessage && lastMessage.sender === 'server') {
-                                        // Update the text of the last message if it's from the server
-                                        updatedText[updatedText.length - 1].text = typeof content === 'string' ? content : JSON.stringify(content);
-                                    } else {
-                                        // Add a new message from the server if the last one wasn't from the server
-                                        updatedText.push({
-                                            id: Date.now() + Math.random(),
-                                            sender: "server",
-                                            text: typeof content === 'string' ? content : JSON.stringify(content),
-                                        });
-                                    }
-                                    return updatedText;
-                                });                                             
-                        }  
+                                return updatedText;
+                            });
+                        }
     
                         // Store the current message to ensure the final text is updated correctly
                         currentMessage = partialText;
                     }
-                    if(tool_calls.length > 0 && response_metadata && response_metadata.finish_reason == 'stop') {
-                        if(tool_calls[0].name == "IdentifyFieldsOutput") {
-                            const { table_names } = tool_calls[0].args
-                        } else if (tool_calls[0].name == "CreatePlanOutput") {
-                            const {steps} = tool_calls[0].args
-                            removeExistingMessage("Please wait until we generate the response....")
+    
+                    // Handle tool calls (like card generation)
+                    if (tool_calls.length > 0 && response_metadata && response_metadata.finish_reason === 'stop') {
+                        if (tool_calls[0].name === "IdentifyFieldsOutput") {
+                            const { table_names } = tool_calls[0].args;
+                        } else if (tool_calls[0].name === "CreatePlanOutput") {
+                            const { steps } = tool_calls[0].args;
+                            removeExistingMessage("Please wait until we generate the response....");
                             setMessages(prevMessages => [
                                 ...prevMessages,
                                 {
                                     id: Date.now() + Math.random(),
-                                    text: "Here is a plan how we want to get insights for your task.",
+                                    text: "Here is a plan on how we want to get insights for your task.",
                                     typeMessage: "data",
                                     sender: "server",
-                                    type: "text",
                                     showType: "insightProgress",
                                 }
                             ]);
-                            setInisghtPlan(steps)
-                            setProgressShow(true)
+                            setInisghtPlan(steps);
+                            setProgressShow(true);
+                        } else if (tool_calls[0].name === "GenerateCardOutput") {
+                            const { card_id } = tool_calls[0].args;
+    
+                            const cardMessageId = Date.now() + Math.random();
+                            const cardTempMessage = {
+                                id: cardMessageId,
+                                sender: "server",
+                                text: "Generating card...", // Show progress text
+                                isLoading: true,
+                                isTemporary: true,
+                            };
+    
+                            // Append the card generation message
+                            setMessages((prev) => [...prev, cardTempMessage]);
+    
+                            // Show the card generation progress message
+                            showCardGenerationMessage(50, cardMessageId);
+    
+                            // Fetch the dataset and show visualization
+                            await handleGetDatasetQuery(card_id);
+    
+                            setMessages((prev) => {
+                                const visualizationMessage = {
+                                    id: Date.now() + Math.random(),
+                                    sender: "server",
+                                    text: "", // Visualizations typically don’t have text
+                                    showVisualization: true,
+                                    visualizationIdx,
+                                    isLoading: false,
+                                };
+    
+                                return [...prev, visualizationMessage]; // Append visualization message without removing others
+                            });
+    
+                            cardGenerated = true;
                         }
                     }
                 }
@@ -530,7 +548,7 @@ const ChatAssistant = ({ client, selectedMessages, selectedThreadId, setSelected
                             ...prevFinalMessagesText,
                             lastChunk,
                         ]);
-            
+    
                         return prevFinalMessages;
                     });
                     const messageData = data[0];
@@ -540,6 +558,7 @@ const ChatAssistant = ({ client, selectedMessages, selectedThreadId, setSelected
                         try {
                             const parsedContent = JSON.parse(messageData.content);
                             const { card_id, explanation, python_code, result } = parsedContent;
+    
                             if (card_id) {
                                 const cardMessageId = Date.now() + Math.random();
                                 const cardTempMessage = {
@@ -553,10 +572,7 @@ const ChatAssistant = ({ client, selectedMessages, selectedThreadId, setSelected
                                 // Append the card generation message
                                 setMessages((prev) => [...prev, cardTempMessage]);
     
-                                // Show the card generation progress message
-                                showCardGenerationMessage(50, cardMessageId);
-    
-                                // Fetch the dataset and show visualization
+                                // Fetch the dataset and append the card
                                 await handleGetDatasetQuery(card_id);
     
                                 setMessages((prev) => {
@@ -569,31 +585,33 @@ const ChatAssistant = ({ client, selectedMessages, selectedThreadId, setSelected
                                         isLoading: false,
                                     };
     
-                                    return [...prev, visualizationMessage]; // Append visualization message without removing others
+                                    return [...prev, visualizationMessage];
                                 });
     
                                 cardGenerated = true;
                             }
+    
                             if (python_code && explanation) {
-                                setInsightCellCode(prevCode => [...prevCode, python_code]);
-                                setInsightsText(prevText => [...prevText, explanation]);
-                                setInsightsCode(prevCode => [...prevCode, python_code]);
+                                setInsightCellCode((prevCode) => [...prevCode, python_code]);
+                                setInsightsText((prevText) => [...prevText, explanation]);
+                                setInsightsCode((prevCode) => [...prevCode, python_code]);
                             }
+    
                             if (result && result.outputs && result.outputs.length > 0) {
-                                result.outputs.forEach(output => {
+                                result.outputs.forEach((output) => {
                                     if (output.data && output.data['image/png']) {
                                         const generatedImages = output.data['image/png'];
                                         const base64Image = `data:image/png;base64,${generatedImages}`;
-                                        setInsightsImg(prevInsightsImg => [...prevInsightsImg, base64Image]);
+                                        setInsightsImg((prevInsightsImg) => [...prevInsightsImg, base64Image]);
                                     }
                                     if (output.data && output.data['text/plain']) {
                                         const plainText = output.data['text/plain'];
                                         if (!plainText.includes('<Figure size') && !plainText.includes('Axes>')) {
-                                            setFinalMessagesText(prevText => [...prevText, plainText]);
+                                            setFinalMessagesText((prevText) => [...prevText, plainText]);
                                         }
                                     }
                                 });
-                            }                            
+                            }
                         } catch (error) {
                             console.error("Error parsing tool message content:", error);
                         }
@@ -610,7 +628,7 @@ const ChatAssistant = ({ client, selectedMessages, selectedThreadId, setSelected
                                 isLoading: false,
                                 showVisualization: false,
                                 completedAfterCard: cardGenerated, // Flag to show it came after card generation
-                            }
+                            },
                         ]);
     
                         // Reset the state for the next message
@@ -622,7 +640,7 @@ const ChatAssistant = ({ client, selectedMessages, selectedThreadId, setSelected
         } catch (error) {
             console.error("Error during message processing:", error.message);
         } finally {
-            setShouldRefetchHistory(true); 
+            setShouldRefetchHistory(true);
             setMessages((prev) =>
                 prev.map((msg) => ({
                     ...msg,
@@ -633,8 +651,9 @@ const ChatAssistant = ({ client, selectedMessages, selectedThreadId, setSelected
         }
     };
     
-    
-    
+
+
+
     function showCardGenerationMessage(chunkInterval = 50, tempMessageId) {
         const messages = [
             "Fetching the data from your database to generate the card...",
@@ -643,9 +662,9 @@ const ChatAssistant = ({ client, selectedMessages, selectedThreadId, setSelected
             "Querying your database and preparing the card with all relevant insights...",
             "The data is being processed and your card will be visible shortly..."
         ];
-    
+
         const startTime = Date.now();
-    
+
         function chunkString(str, chunkSize) {
             const chunks = [];
             for (let i = 0; i < str.length; i += chunkSize) {
@@ -653,79 +672,79 @@ const ChatAssistant = ({ client, selectedMessages, selectedThreadId, setSelected
             }
             return chunks;
         }
-    
+
         function getRandomMessage() {
             return messages[Math.floor(Math.random() * messages.length)];
         }
-    
+
         function simulateTyping(message, index = 0) {
             const chunks = chunkString(message, 5); // Chunk size of 5 characters
-    
+
             if (index < chunks.length) {
                 setMessages((prev) => {
                     return prev.map((msg) =>
                         msg.id === tempMessageId
                             ? {
-                                  ...msg,
-                                  text: msg.text + chunks[index], // Append chunks of text
-                              }
+                                ...msg,
+                                text: msg.text + chunks[index], // Append chunks of text
+                            }
                             : msg
                     );
                 });
                 setTimeout(() => simulateTyping(message, index + 1), chunkInterval);
             }
         }
-    
+
         const selectedMessage = getRandomMessage();
         simulateTyping(selectedMessage);
     }
-    
-// Updated emulateDataStream to integrate with chat messages
-function emulateDataStream(chunkInterval = 50, tempMessageId) {
-    const messages = [
-        "Scanning through your card collection and analyzing relevant tables...",
-        "Identifying patterns in the data and cross-referencing cards with table structures...",
-        "Exploring relationships between request and cards and extracting key metrics from tables...",
-        "Mapping relevant cards and corresponding table columns for comprehensive analysis...",
-        "Evaluating the semantic connections between cards and their associated table data...",
-    ];
 
-    const startTime = Date.now();
+    // Updated emulateDataStream to integrate with chat messages
+    function emulateDataStream(chunkInterval = 50, tempMessageId) {
+        const messages = [
+            "Scanning through your card collection and analyzing relevant tables...",
+            "Identifying patterns in the data and cross-referencing cards with table structures...",
+            "Exploring relationships between request and cards and extracting key metrics from tables...",
+            "Mapping relevant cards and corresponding table columns for comprehensive analysis...",
+            "Evaluating the semantic connections between cards and their associated table data...",
+        ];
 
-    function chunkString(str, chunkSize) {
-        const chunks = [];
-        for (let i = 0; i < str.length; i += chunkSize) {
-            chunks.push(str.slice(i, i + chunkSize));
+        const startTime = Date.now();
+
+        function chunkString(str, chunkSize) {
+            const chunks = [];
+            for (let i = 0; i < str.length; i += chunkSize) {
+                chunks.push(str.slice(i, i + chunkSize));
+            }
+            return chunks;
         }
-        return chunks;
-    }
 
-    function getRandomMessage() {
-        return messages[Math.floor(Math.random() * messages.length)];
-    }
-
-    function simulateTyping(message, index = 0) {
-        const chunks = chunkString(message, 5); // Chunk size of 5 characters
-
-        if (index < chunks.length) {
-            setMessages((prev) => {
-                return prev.map((msg) =>
-                    msg.id === tempMessageId
-                        ? {
-                              ...msg,
-                              text: msg.text + chunks[index], // Append chunks of text
-                          }
-                        : msg
-                );
-            });
-            setTimeout(() => simulateTyping(message, index + 1), chunkInterval);
+        function getRandomMessage() {
+            return messages[Math.floor(Math.random() * messages.length)];
         }
+
+        function simulateTyping(message, index = 0) {
+            const chunks = chunkString(message, 5); // Chunk size of 5 characters
+
+            if (index < chunks.length) {
+                setMessages((prev) => {
+                    return prev.map((msg) =>
+                        msg.id === tempMessageId
+                            ? {
+                                ...msg,
+                                text: msg.text + chunks[index], // Append chunks of text
+                            }
+                            : msg
+                    );
+                });
+                setTimeout(() => simulateTyping(message, index + 1), chunkInterval);
+            }
+        }
+
+        const selectedMessage = getRandomMessage();
+        simulateTyping(selectedMessage);
     }
 
-    const selectedMessage = getRandomMessage();
-    simulateTyping(selectedMessage);
-}
-    
 
     const handleSuggestion = () => {
         // setMessages(prevMessages => [
@@ -830,7 +849,7 @@ function emulateDataStream(chunkInterval = 50, tempMessageId) {
             if (client, agent, thread) {
                 sendMessage();
             }
-         
+
         }
     }, [initial_message, client, agent, thread]);
 
@@ -899,7 +918,7 @@ function emulateDataStream(chunkInterval = 50, tempMessageId) {
 
                             <ChatMessageList messages={messages} isLoading={isLoading} onFeedbackClick={handleFeedbackDialogOpen}
                                 approvalChangeButtons={approvalChangeButtons} onApproveClick={handleAccept} onDenyClick={handleDeny}
-                                card={card} defaultQuestion={defaultQuestion} result={result} openModal={openModal} 
+                                card={card} defaultQuestion={defaultQuestion} result={result} openModal={openModal}
                                 showError={showError} insightsCode={insightsCode} showCubeEditButton={showCubeEditButton} sendAdminRequest={handleCubeRequestDialogOpen} onSuggestion={handleSuggestion}
                                 insightCellCode={insightCellCode} insightsImg={insightsImg} insightsPlan={inisghtPlan} progressShow={progressShow}
                                 insightsText={insightsText} finalMessages={finalMessages} finalMessagesText={finalMessagesText}
