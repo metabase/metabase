@@ -5,10 +5,10 @@
    [clojure.test :refer :all]
    [dk.ative.docjure.spreadsheet :as spreadsheet]
    [metabase.driver :as driver]
+   [metabase.models.visualization-settings :as mb.viz]
    [metabase.query-processor.streaming.common :as common]
    [metabase.query-processor.streaming.interface :as qp.si]
    [metabase.query-processor.streaming.xlsx :as qp.xlsx]
-   [metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.test :as mt])
   (:import
    (com.fasterxml.jackson.core JsonGenerator)
@@ -28,7 +28,7 @@
    (let [viz-settings (common/viz-settings-for-col
                        (assoc col :field_ref [:field 1])
                        {::mb.viz/column-settings {{::mb.viz/field-id 1} format-settings}})
-         format-strings (@#'qp.xlsx/format-settings->format-strings viz-settings col)]
+         format-strings (@#'qp.xlsx/format-settings->format-strings viz-settings col true)]
      ;; If only one format string is returned (for datetimes) or both format strings
      ;; are equal, just return a single value to make tests more readable.
      (cond

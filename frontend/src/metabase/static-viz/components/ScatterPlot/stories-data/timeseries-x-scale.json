@@ -1731,16 +1731,16 @@
       ],
       "viz-settings": {
         "graph.show_values": true,
-        "metabase.shared.models.visualization-settings/column-settings": {
-          "{:metabase.shared.models.visualization-settings/field-id 1416}": {},
-          "{:metabase.shared.models.visualization-settings/field-id 1417}": {},
-          "{:metabase.shared.models.visualization-settings/field-id 1418}": {}
+        "metabase.models.visualization-settings/column-settings": {
+          "{:metabase.models.visualization-settings/field-id 1416}": {},
+          "{:metabase.models.visualization-settings/field-id 1417}": {},
+          "{:metabase.models.visualization-settings/field-id 1418}": {}
         },
         "table.cell_column": "total_accident",
         "graph.series_order_dimension": null,
         "graph.metrics": ["total_accident"],
         "graph.series_order": null,
-        "metabase.shared.models.visualization-settings/global-column-settings": {},
+        "metabase.models.visualization-settings/global-column-settings": {},
         "series_settings": { "total_accident": { "color": "#69C8C8" } },
         "graph.dimensions": ["date"]
       },

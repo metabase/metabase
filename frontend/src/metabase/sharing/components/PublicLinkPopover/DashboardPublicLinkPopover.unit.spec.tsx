@@ -68,6 +68,7 @@ const setup = ({
     },
   );
 };
+
 describe("DashboardPublicLinkPopover", () => {
   it("should display a dashboard-specific public url", async () => {
     setup();

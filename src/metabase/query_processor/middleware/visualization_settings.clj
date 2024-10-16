@@ -2,9 +2,9 @@
   (:require
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.models.visualization-settings :as mb.viz]
    [metabase.public-settings :as public-settings]
-   [metabase.query-processor.store :as qp.store]
-   [metabase.shared.models.visualization-settings :as mb.viz]))
+   [metabase.query-processor.store :as qp.store]))
 
 (defn- normalize-field-settings
   [id settings]

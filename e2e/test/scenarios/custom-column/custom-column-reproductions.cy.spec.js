@@ -43,6 +43,7 @@ const { PRODUCTS, PRODUCTS_ID, ORDERS, ORDERS_ID, REVIEWS, REVIEWS_ID } =
 
 describe.skip("issue 12445", { tags: "@external" }, () => {
   const CC_NAME = "Abbr";
+
   beforeEach(() => {
     restore("mysql-8");
     cy.signInAsAdmin();
@@ -79,6 +80,7 @@ describe.skip("issue 12445", { tags: "@external" }, () => {
 
 describe("issue 13289", () => {
   const CC_NAME = "Math";
+
   beforeEach(() => {
     cy.intercept("POST", "/api/dataset").as("dataset");
 
@@ -134,6 +136,7 @@ describe("issue 13289", () => {
 describe("issue 13751", { tags: "@external" }, () => {
   const CC_NAME = "C-States";
   const PG_DB_NAME = "QA Postgres12";
+
   beforeEach(() => {
     restore("postgres-12");
     cy.signInAsAdmin();
@@ -179,6 +182,7 @@ describe.skip(
     // Ironically, both Prettier and Cypress remove escape characters from our code as well
     // We're testing for the literal sting `(?<=\/\/)[^\/]*`, but we need to escape the escape characters to make it work
     const ESCAPED_REGEX = "(?<=\\/\\/)[^\\/]*";
+
     beforeEach(() => {
       restore("postgres-12");
       cy.signInAsAdmin();
@@ -216,6 +220,7 @@ describe("issue 14843", () => {
       expressions: { [CC_NAME]: ["length", ["field", PEOPLE.CITY, null]] },
     },
   };
+
   beforeEach(() => {
     cy.intercept("POST", "/api/dataset").as("dataset");
 
@@ -258,6 +263,7 @@ describe("issue 18069", () => {
       },
     },
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -385,6 +391,7 @@ describe("issue 18814", () => {
       },
     },
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -717,6 +724,7 @@ describe("issue 23862", () => {
       breakout: [["expression", "CC"]],
     },
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -764,6 +772,7 @@ describe("issue 24922", () => {
     name: "CustomColumn",
     formula: 'case([OrdersSegment], "Segment", "Other")',
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -805,6 +814,7 @@ describe.skip("issue 25189", () => {
       },
     },
   };
+
   beforeEach(() => {
     cy.intercept("POST", "/api/dataset").as("dataset");
 
@@ -920,6 +930,7 @@ describe("issue 32032", () => {
       ["expression", "Custom Reviewer", { "base-type": "type/Text" }],
     ],
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();

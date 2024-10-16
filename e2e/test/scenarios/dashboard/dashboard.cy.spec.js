@@ -1156,8 +1156,8 @@ describeWithSnowplow("scenarios > dashboard", () => {
 
       expectGoodSnowplowEvent({
         event: "new_iframe_card_created",
-        dashboard_id: id,
-        domain_name: "example.com",
+        target_id: id,
+        event_detail: "example.com",
       });
     });
   });

@@ -9271,6 +9271,25 @@ databaseChangeLog:
                   remarks: running, failed, or completed
 
   - changeSet:
+      id: v51.2024-09-03T16:54:18
+      author: adam-james
+      comment: Add pivot_results to pulse_card
+      preConditions:
+        - not:
+            - columnExists:
+                tableName: pulse_card
+                columnName: pivot_results
+      changes:
+        - addColumn:
+            tableName: pulse_card
+            columns:
+              - column:
+                  name: pivot_results
+                  type: ${boolean.type}
+                  defaultValue: false
+                  remarks: Whether or not to apply pivot processing to the rows of the export
+
+  - changeSet:
       id: v51.2024-09-09T15:11:16
       author: johnswanson
       comment: add an index for `collection.type`
@@ -9932,6 +9951,83 @@ databaseChangeLog:
               - column:
                   name: permissions_group_id
             indexName: idx_notification_recipient_permissions_group_id
+
+  - changeSet:
+      id: v52.2024-09-05T08:00:13
+      author: qnkhuat
+      comment: Drop the channel_template.entity_id column
+      preConditions:
+        - onFail: MARK_RAN
+        - columnExists:
+            tableName: metabase_database
+            columnName: is_attached_dwh
+      changes:
+        - dropColumn:
+            tableName: channel_template
+            columnName: entity_id
+      rollback: # not necessary, will be removed with the table
+
+  - changeSet:
+      id: v52.2024-10-01T08:00:01
+      author: qnkhuat
+      comment: Migrate user invited email to system event notification
+      rollback: # not necessary, will be removed with the table
+      preConditions:
+        - onFail: MARK_RAN
+        - sqlCheck:
+            expectedResult: 0
+            sql: SELECT count(*) FROM notification_subscription WHERE type = 'notification-subscription/system-event' AND event_name = 'event/user-invited'
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.CreateSystemNotificationUserJoined"
+
+  - changeSet:
+      id: v52.2024-10-01T08:00:02
+      author: qnkhuat
+      comment: Migrate user invited email to system event notification
+      rollback: # not necessary, will be removed with the table
+      preConditions:
+        - onFail: MARK_RAN
+        - sqlCheck:
+            expectedResult: 0
+            sql: SELECT count(*) FROM notification_subscription WHERE type = 'notification-subscription/system-event' AND event_name = 'event/alert-create'
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.CreateSystemNotificationAlertCreated"
+
+  - changeSet:
+      id: v52.2024-10-01T08:00:03
+      author: qnkhuat
+      comment: Migrate user invited email to system event notification
+      rollback: # not necessary, will be removed with the table
+      preConditions:
+        - onFail: MARK_RAN
+        - sqlCheck:
+            expectedResult: 0
+            sql: SELECT count(*) FROM notification_subscription WHERE type = 'notification-subscription/system-event' AND event_name = 'event/slack-token-invalid'
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.CreateSystemNotificationSlackTokenError"
+
+  - changeSet:
+      id: v52.2024-10-15T08:00:00
+      author: qnkhuat
+      comment: add notification_subscription.cron_schedule
+      preConditions:
+        - not:
+          - columnExists:
+              tableName: notification_subscription
+              columnName: cron_schedule
+      changes:
+        - addColumn:
+            tableName: notification_subscription
+            columns:
+              - column:
+                  name: cron_schedule
+                  type: varchar(128)
+                  remarks: the cron schedule for the subscription
+                  constraints:
+                    nullable: true
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

@@ -199,6 +199,7 @@
 
 (api/defendpoint DELETE "/"
   "Logout."
+  ;; `metabase-session-id` gets added automatically by the [[metabase.server.middleware.session]] middleware
   [:as {:keys [metabase-session-id]}]
   (api/check-exists? Session metabase-session-id)
   (t2/delete! Session :id metabase-session-id)
@@ -337,12 +338,14 @@
                              :errors      {:account disabled-account-snippet}}))))))))
 
 (defn- +log-all-request-failures [handler]
-  (fn [request respond raise]
-    (try
-      (handler request respond raise)
-      (catch Throwable e
-        (log/error e "Authentication endpoint error")
-        (throw e)))))
+  (with-meta
+   (fn [request respond raise]
+     (try
+       (handler request respond raise)
+       (catch Throwable e
+         (log/error e "Authentication endpoint error")
+         (throw e))))
+   (meta handler)))
 
 ;;; ----------------------------------------------------- Unsubscribe non-users from pulses -----------------------------------------------
 
