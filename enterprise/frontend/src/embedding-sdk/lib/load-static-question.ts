@@ -16,15 +16,13 @@ export async function loadStaticQuestion(options: Options) {
   let card: Card | null;
   let result: Dataset | null;
 
+  const cancelled = cancelDeferred?.promise;
+
   [card, result] = await Promise.all([
-    CardApi.get({ cardId: questionId }, { cancelled: cancelDeferred?.promise }),
+    CardApi.get({ cardId: questionId }, { cancelled }),
 
     // Query the card in parallel when no parameters are provided.
-    !parameterValues &&
-      CardApi.query(
-        { cardId: questionId },
-        { cancelled: cancelDeferred?.promise },
-      ),
+    !parameterValues && CardApi.query({ cardId: questionId }, { cancelled }),
   ]);
 
   if (parameterValues && card?.parameters) {
@@ -38,11 +36,8 @@ export async function loadStaticQuestion(options: Options) {
       }));
 
     result = await CardApi.query(
-      {
-        cardId: questionId,
-        parameters,
-      },
-      { cancelled: cancelDeferred?.promise },
+      { cardId: questionId, parameters },
+      { cancelled },
     );
   }
 
