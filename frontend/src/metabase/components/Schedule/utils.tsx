@@ -51,7 +51,7 @@ const layoutSchedule = (nodes: ReactNode[]) => {
       if (nodes.length === 2) {
         result[result.length - 1] = (
           <Group
-            spacing="md"
+            gap="md"
             style={{ rowGap: ".35rem" }}
             key={`items-on-one-line`}
           >
