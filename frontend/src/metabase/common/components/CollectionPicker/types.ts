@@ -47,12 +47,13 @@ export type CollectionPickerValueItem = Omit<CollectionPickerItem, "model"> & {
   model: CollectionPickerValueModel;
 };
 
-export type CollectionPickerOptions = EntityPickerModalOptions & {
-  allowCreateNew?: boolean;
-  showPersonalCollections?: boolean;
-  showRootCollection?: boolean;
-  namespace?: "snippets";
-};
+export type CollectionPickerOptions =
+  EntityPickerModalOptions<CollectionPickerItem> & {
+    allowCreateNew?: boolean;
+    showPersonalCollections?: boolean;
+    showRootCollection?: boolean;
+    namespace?: "snippets";
+  };
 
 export type CollectionItemListProps = ListProps<
   CollectionItemId,

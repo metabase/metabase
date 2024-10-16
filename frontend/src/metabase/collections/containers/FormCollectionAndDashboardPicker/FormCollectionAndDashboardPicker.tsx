@@ -142,6 +142,10 @@ export function FormCollectionAndDashboardPicker({
       namespace: type === "snippet-collections" ? "snippets" : undefined,
       allowCreateNew: showCreateNewCollectionOption,
       hasRecents: type !== "snippet-collections",
+      confirmButtonText: item =>
+        item?.model === "dashboard"
+          ? t`Select this dashboard`
+          : t`Select this collection`,
     }),
     [filterPersonalCollections, type, showCreateNewCollectionOption],
   );
@@ -195,7 +199,7 @@ export function FormCollectionAndDashboardPicker({
       </FormField>
       {isPickerOpen && (
         <CollectionPickerModal
-          title={t`Select a collection`}
+          title={t`Select a collection or dashboard`}
           value={pickerValue}
           onChange={handleChange}
           onClose={() => setIsPickerOpen(false)}
