@@ -72,20 +72,20 @@
         (with-redefs [prometheus/inc! #(swap! calls conj %)]
           (testing "Success response"
             (scim-client :get 200 "ee/scim/v2/Users")
-            (is (= 1 (count (filter #{:metabase-scim/success-responses} @calls))))
-            (is (= 0 (count (filter #{:metabase-scim/error-responses} @calls)))))
+            (is (= 1 (count (filter #{:metabase-scim/response-ok} @calls))))
+            (is (= 0 (count (filter #{:metabase-scim/response-error} @calls)))))
 
           (testing "Bad request (400)"
             (scim-client :get 400 (format "ee/scim/v2/Users?filter=%s"
                                           (codec/url-encode "id ne \"newuser@metabase.com\"")))
-            (is (= 1 (count (filter #{:metabase-scim/success-responses} @calls))))
-            (is (= 1 (count (filter #{:metabase-scim/error-responses} @calls)))))
+            (is (= 1 (count (filter #{:metabase-scim/response-ok} @calls))))
+            (is (= 1 (count (filter #{:metabase-scim/response-error} @calls)))))
 
           (testing "Unexpected server error (500)"
             (with-redefs [scim-api/scim-response #(throw (Exception.))]
               (scim-client :get 500 "ee/scim/v2/Users")
-              (is (= 1 (count (filter #{:metabase-scim/success-responses} @calls))))
-              (is (= 2 (count (filter #{:metabase-scim/error-responses} @calls)))))))))))
+              (is (= 1 (count (filter #{:metabase-scim/response-ok} @calls))))
+              (is (= 2 (count (filter #{:metabase-scim/response-error} @calls)))))))))))
 
 (deftest fetch-user-test
   (with-scim-setup!
