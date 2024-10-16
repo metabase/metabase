@@ -137,10 +137,7 @@ export function buildColumnTarget(
   column: Lib.ColumnMetadata,
   parameter: Parameter | undefined,
 ): StructuredParameterDimensionTarget {
-  // BE works incorrectly with non-negative stage indexes: https://github.com/metabase/metabase/issues/48441
-  const fixedStageIndex =
-    stageIndex >= 0 ? stageIndex - Lib.stageCount(query) : stageIndex;
-  const fieldRef = Lib.legacyRef(query, fixedStageIndex, column);
+  const fieldRef = Lib.legacyRef(query, stageIndex, column);
 
   if (!isConcreteFieldReference(fieldRef)) {
     throw new Error(`Cannot build column target field reference: ${fieldRef}`);
