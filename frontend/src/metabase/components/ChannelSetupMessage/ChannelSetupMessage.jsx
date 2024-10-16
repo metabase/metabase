@@ -40,16 +40,20 @@ export default class ChannelSetupMessage extends Component {
     if (user.is_superuser) {
       content = (
         <div>
-          {channels.map(c => (
-            <Link
-              to={CHANNEL_MAP[c.toLowerCase()].link}
-              key={c.toLowerCase()}
-              className={cx(ButtonsS.Button, ButtonsS.ButtonPrimary, CS.mr1)}
-              target={window.OSX ? null : "_blank"}
-            >
-              {t`Configure`} {c}
-            </Link>
-          ))}
+          {channels.map(c => {
+            const config = CHANNEL_MAP[c.toLowerCase()];
+
+            return config ? (
+              <Link
+                to={CHANNEL_MAP[c.toLowerCase()].link}
+                key={c.toLowerCase()}
+                className={cx(ButtonsS.Button, ButtonsS.ButtonPrimary, CS.mr1)}
+                target={window.OSX ? null : "_blank"}
+              >
+                {t`Configure`} {c}
+              </Link>
+            ) : null;
+          })}
         </div>
       );
     } else {
