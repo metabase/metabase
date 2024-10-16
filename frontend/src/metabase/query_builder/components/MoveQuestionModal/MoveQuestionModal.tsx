@@ -63,16 +63,32 @@ export const MoveQuestionModal = ({
       id: question.id(),
       delete_old_dashcards: deleteOldDashcards,
       ...update,
-    }).then(() => {
-      dispatch(
-        addUndo({
-          message: (
-            <QuestionMoveToast destination={destination} question={question} />
-          ),
-          undo: false,
-        }),
-      );
-    });
+    })
+      .then(() => {
+        dispatch(
+          addUndo({
+            message: (
+              <QuestionMoveToast
+                destination={destination}
+                question={question}
+              />
+            ),
+            undo: false,
+          }),
+        );
+
+        if (destination.model === "dashboard") {
+          dispatch(
+            push(
+              Urls.dashboard(
+                { id: destination.id, name: "TODO" },
+                { editMode: true },
+              ),
+            ),
+          );
+        }
+      })
+      .finally(() => onClose());
 
     // TODO: handle error if update fails...
   };
@@ -88,18 +104,6 @@ export const MoveQuestionModal = ({
     } else {
       handleMove(destination);
     }
-  };
-
-  const handleMoveFromDashboardToDashboard = (destination: MoveDestination) => {
-    handleMove(destination);
-    dispatch(
-      push(
-        Urls.dashboard(
-          { id: destination.id, name: "TODO" },
-          { editMode: true },
-        ),
-      ),
-    );
   };
 
   if (confirmMoveState?.type === "dashboard-to-collection") {
@@ -151,9 +155,7 @@ export const MoveQuestionModal = ({
       <Modal>
         <ConfirmContent
           data-testid="dashboard-to-dashboard-move-confirmation"
-          onAction={() =>
-            handleMoveFromDashboardToDashboard(confirmMoveState.destination)
-          }
+          onAction={() => handleMove(confirmMoveState.destination)}
           onCancel={onClose}
           onClose={onClose}
           title={
