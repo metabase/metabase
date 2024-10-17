@@ -1,4 +1,4 @@
-import { trackSchemaEvent } from "metabase/lib/analytics";
+import { trackSchemaEvent, trackSimpleEvent } from "metabase/lib/analytics";
 import type { DashboardId, DashboardWidth } from "metabase-types/api";
 
 import type { SectionId } from "./sections";
@@ -84,10 +84,10 @@ export const trackIFrameDashcardsSaved = (
   dashboardId: DashboardId,
   domainName: string | null,
 ) => {
-  trackSchemaEvent("dashboard", {
+  trackSimpleEvent({
     event: "new_iframe_card_created",
-    dashboard_id: getDashboardId(dashboardId),
-    domain_name: domainName,
+    target_id: getDashboardId(dashboardId),
+    event_detail: domainName,
   });
 };
 

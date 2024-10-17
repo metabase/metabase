@@ -73,12 +73,6 @@ export type NewActionCardCreatedEvent = ValidateEvent<{
   dashboard_id: number;
 }>;
 
-export type NewIFrameCardCreatedEvent = ValidateEvent<{
-  event: "new_iframe_card_created";
-  dashboard_id: number;
-  domain_name: string | null;
-}>;
-
 export type CardSetToHideWhenNoResultsEvent = ValidateEvent<{
   event: "card_set_to_hide_when_no_results";
   dashboard_id: number;
@@ -139,7 +133,6 @@ export type DashboardEvent =
   | NewHeadingCardCreatedEvent
   | NewLinkCardCreatedEvent
   | NewActionCardCreatedEvent
-  | NewIFrameCardCreatedEvent
   | CardSetToHideWhenNoResultsEvent
   | DashboardPdfExportedEvent
   | CardMovedToTabEvent

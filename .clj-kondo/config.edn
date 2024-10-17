@@ -128,6 +128,7 @@
      clojure.core.async/to-chan!
      clojure.core.async/to-chan!!
      metabase.channel.core/send!
+     metabase.models.notification/create-notification!
      metabase.driver.sql-jdbc.execute/execute-prepared-statement!
      metabase.pulse.send/send-pulse!
      metabase.query-processor.store/store-database!
@@ -584,6 +585,7 @@
     metabase.driver.sql-jdbc.test-util                            sql-jdbc.tu
     metabase.driver.sql.parameters.substitute                     sql.params.substitute
     metabase.driver.sql.parameters.substitution                   sql.params.substitution
+    metabase.eid-translation                                      eid-translation
     metabase.email-test                                           et
     metabase.email.messages                                       messages
     metabase.formatter                                            formatter

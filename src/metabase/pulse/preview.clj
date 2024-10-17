@@ -158,11 +158,13 @@
   a style tag with an attribute 'nonce=%NONCE%'. Specifcally, this was designed to be used with the
   endpoint `api/pulse/preview_dashboard/:id`."
   [only-this-uri handler]
-  (fn [request respond raise]
-    (let [{:keys [uri]} request]
-      (handler
-       request
-       (if (str/starts-with? uri only-this-uri)
-         (comp respond (partial add-style-nonce request))
-         respond)
-       raise))))
+  (with-meta
+   (fn [request respond raise]
+     (let [{:keys [uri]} request]
+       (handler
+        request
+        (if (str/starts-with? uri only-this-uri)
+          (comp respond (partial add-style-nonce request))
+          respond)
+        raise)))
+   (meta handler)))

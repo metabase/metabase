@@ -336,11 +336,13 @@
                              :errors      {:account disabled-account-snippet}}))))))))
 
 (defn- +log-all-request-failures [handler]
-  (fn [request respond raise]
-    (try
-      (handler request respond raise)
-      (catch Throwable e
-        (log/error e "Authentication endpoint error")
-        (throw e)))))
+  (with-meta
+   (fn [request respond raise]
+     (try
+       (handler request respond raise)
+       (catch Throwable e
+         (log/error e "Authentication endpoint error")
+         (throw e))))
+   (meta handler)))
 
 (api/define-routes +log-all-request-failures)

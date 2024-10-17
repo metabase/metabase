@@ -43,6 +43,7 @@
     :model/BookmarkOrdering
     :model/CacheConfig
     :model/CardBookmark
+    :model/ChannelTemplate
     :model/CollectionBookmark
     :model/DashboardBookmark
     :model/DataPermissions
