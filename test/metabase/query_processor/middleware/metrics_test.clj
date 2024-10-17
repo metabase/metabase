@@ -3,6 +3,7 @@
    [clojure.test :refer [deftest is testing]]
    [mb.hawk.assert-exprs.approximately-equal :as =?]
    [medley.core :as m]
+   [metabase.analytics.prometheus :as prometheus]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -59,6 +60,76 @@
 
 (def adjust
   (comp #'metrics/adjust #'fetch-source-query/resolve-source-cards))
+
+(defn- check-prometheus-metrics!
+  [& {expected-metrics-count  :metabase-query-processor/metrics
+      expected-metrics-errors :metabase-query-processor/metric-errors
+      metric-and-mp           :metric-and-mp
+      query-fn                :query-fn
+      check-fn                :check-fn}]
+  (let [[source-metric mp] (or metric-and-mp (mock-metric))
+        query              (if query-fn
+                             (query-fn mp source-metric)
+                             (lib/query mp source-metric))
+        metrics              (atom {})
+        read-metric          #(% @metrics 0)]
+    (with-redefs [prometheus/inc! #(swap! metrics update % (fnil inc 0))]
+      (check-fn query)
+      (is (= expected-metrics-count (read-metric :metabase-query-processor/metrics)))
+      (is (= expected-metrics-errors (read-metric :metabase-query-processor/metric-errors))))))
+
+(deftest adjust-prometheus-metrics-test
+  (testing "adjustment of query with no metrics does not increment either counter"
+    (check-prometheus-metrics!
+     :metabase-query-processor/metrics 0
+     :metabase-query-processor/metric-errors 0
+     :query-fn (fn [_mp _metric]
+                 (-> (lib/query meta/metadata-provider (meta/table-metadata :products))
+                     (lib/aggregate (lib/avg (meta/field-metadata :products :rating)))))
+     :check-fn #(is (=? {:stages [{:source-table (meta/id :products)
+                                   :aggregation  [[:avg {} [:field {} (meta/id :products :rating)]]]}]}
+                        (adjust %)))))
+  (testing "successful adjustment does not increment error counter"
+    (check-prometheus-metrics!
+     :metabase-query-processor/metrics 1
+     :metabase-query-processor/metric-errors 0
+     :check-fn #(is (=? {:stages [{:source-table (meta/id :products)
+                                   :aggregation  [[:avg {} [:field {} (meta/id :products :rating)]]]}]}
+                        (adjust %)))))
+  (testing "failure to adjust :metric clauses increments error counter"
+    (check-prometheus-metrics!
+     :metabase-query-processor/metrics 1
+     :metabase-query-processor/metric-errors 1
+     :check-fn (fn [query]
+                 (with-redefs [metrics/adjust-metric-stages (fn [_ _ stages] stages)]
+                   (is (thrown-with-msg?
+                        clojure.lang.ExceptionInfo
+                        #"Failed to replace metric"
+                        (adjust query)))))))
+  (testing "exceptions from other libs also increment error counter"
+    (check-prometheus-metrics!
+     :metabase-query-processor/metrics 1
+     :metabase-query-processor/metric-errors 1
+     :check-fn (fn [query]
+                 (with-redefs [lib.metadata/bulk-metadata-or-throw (fn [& _] (throw (Exception. "Test exception")))]
+                   (is (thrown-with-msg?
+                        java.lang.Exception
+                        #"Test exception"
+                        (adjust query)))))))
+  (testing "metric missing aggregation increments counter and throws exception"
+    (check-prometheus-metrics!
+     :metabase-query-processor/metrics 1
+     :metabase-query-processor/metric-errors 1
+     :metric-and-mp (mock-metric (-> (lib/query meta/metadata-provider (meta/table-metadata :products))))
+     :query-fn (fn [mp metric]
+                 (-> (lib/query mp (meta/table-metadata :products))
+                     (lib/aggregate (lib/+ (lib.options/ensure-uuid
+                                            [:metric {} (:id metric)]) 1))))
+     :check-fn (fn [query]
+                 (is (thrown-with-msg?
+                      clojure.lang.ExceptionInfo
+                      #"Source metric missing aggregation"
+                      (adjust query)))))))
 
 (deftest ^:parallel no-metric-should-result-in-exact-same-query
   (let [query (lib/query meta/metadata-provider (meta/table-metadata :products))]
