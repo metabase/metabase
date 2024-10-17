@@ -528,14 +528,17 @@
 
 (api/defendpoint DELETE "/:id"
   "Disable a `User`.  This does not remove the `User` from the DB, but instead disables their account."
-  [id]
-  {id ms/PositiveInt}
+  [id purge]
+  {id ms/PositiveInt
+   purge [:maybe ms/BooleanValue]}
   (api/check-superuser)
   ;; don't technically need to because the internal user is already 'deleted' (deactivated), but keeps the warnings consistent
   (check-not-internal-user id)
-  (api/check-500
-   (when (pos? (t2/update! :model/User id {:type :personal} {:is_active false}))
-     (events/publish-event! :event/user-deactivated {:object (t2/select-one :model/User :id id) :user-id api/*current-user-id*})))
+  (if purge
+    (api/check-500 (t2/delete! :model/User :id id))
+    (api/check-500
+     (when (pos? (t2/update! :model/User id {:is_active false}))
+       (events/publish-event! :event/user-deactivated {:object (t2/select-one :model/User :id id) :user-id api/*current-user-id*}))))
   {:success true})
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
