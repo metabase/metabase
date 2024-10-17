@@ -38,9 +38,19 @@ export const LegacyPermissionsModal = ({
         <Modal.Body p="2.5rem">
           <Text mb="1rem">
             {jt`In Metabase 50, we split our data permissions into two new settings: ${(
-              <Text span color="brand" fw="bold">{t`View data`}</Text>
+              <Text
+                key="view-data"
+                span
+                color="brand"
+                fw="bold"
+              >{t`View data`}</Text>
             )} and ${(
-              <Text span color="brand" fw="bold">{t`Create queries`}</Text>
+              <Text
+                key="create-queries"
+                span
+                color="brand"
+                fw="bold"
+              >{t`Create queries`}</Text>
             )}. Having separate settings for what people can view and what they can query makes data permissions more expressive and easier to reason about.`}
           </Text>
           <Text mb="1.5rem">

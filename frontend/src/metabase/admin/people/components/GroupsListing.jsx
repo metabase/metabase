@@ -87,6 +87,7 @@ function DeleteGroupModal({
           {hasApiKeys
             ? jt`All members of this group will lose any permissions settings they have based on this group, and its related API keys will be deleted. You can ${(
                 <Link
+                  key="link"
                   to="/admin/settings/authentication/api-keys"
                   variant="brand"
                 >{t`move the API keys to another group`}</Link>

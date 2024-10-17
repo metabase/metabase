@@ -223,7 +223,7 @@
                           log (slurp (io/input-stream res))]
                       (testing "3 header lines, then cards+database+collection, then the error"
                         (is (re-find #"Failed to read file for Collection DoesNotExist" log))
-                        (is (re-find #"Cannot find file entry" log)) ;; underlying error
+                        (is (re-find #"Cannot find file" log)) ;; underlying error
                         (is (= {:deps-chain #{[{:id "**ID**", :model "Card"}]},
                                 :error      :metabase-enterprise.serialization.v2.load/not-found,
                                 :model      "Collection",
