@@ -3,16 +3,14 @@ import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { jt, t } from "ttag";
 
-import { getPlan } from "metabase/common/utils/plan";
+import { useDocsUrl } from "metabase/common/hooks";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import CS from "metabase/css/core/index.css";
-import { useSelector } from "metabase/lib/redux";
 import { getEmbedClientCodeExampleOptions } from "metabase/public/lib/code";
 import type {
   EmbedResourceType,
   ServerCodeSampleConfig,
 } from "metabase/public/lib/types";
-import { getDocsUrl, getSetting } from "metabase/selectors/settings";
 import { Box, Center, Stack, Text } from "metabase/ui";
 
 import { ClientEmbedCodePane } from "./ClientEmbedCodePane";
@@ -34,17 +32,17 @@ export const OverviewSettings = ({
   selectedServerCodeOption,
   onClientCodeCopy,
 }: OverviewSettingsProps): JSX.Element => {
-  const docsUrl = useSelector(state =>
-    // eslint-disable-next-line no-unconditional-metabase-links-render -- Only appear to admins
-    getDocsUrl(state, { page: "embedding/static-embedding" }),
-  );
-  const plan = useSelector(state =>
-    getPlan(getSetting(state, "token-features")),
-  );
-
   const [selectedClientCodeOptionId, setSelectedClientCodeOptionId] = useState(
     clientCodeOptions[0].id,
   );
+
+  // eslint-disable-next-line no-unconditional-metabase-links-render -- This links only shows for admins.
+  const { url: docsUrl } = useDocsUrl("embedding/static-embedding", undefined, {
+    utm_source: "product",
+    utm_medium: "docs",
+    utm_campaign: "embedding-static",
+    utm_content: "static-embed-settings-overview",
+  });
 
   useEffect(() => {
     if (selectedServerCodeOption) {
@@ -76,13 +74,7 @@ export const OverviewSettings = ({
           <Text>{jt`Check out the ${(
             <ExternalLink
               key="doc"
-              href={`${docsUrl}?${new URLSearchParams({
-                utm_source: "product",
-                utm_medium: "docs",
-                utm_campaign: "embedding-static",
-                utm_content: "static-embed-settings-overview",
-                source_plan: plan,
-              })}`}
+              href={docsUrl}
             >{t`documentation`}</ExternalLink>
           )} for more.`}</Text>
         </StaticEmbedSetupPaneSettingsContentSection>
