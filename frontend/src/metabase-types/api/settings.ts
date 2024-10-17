@@ -174,6 +174,7 @@ export const tokenFeatures = [
   "upload_management",
   "collection_cleanup",
   "query_reference_validation",
+  "metabot_v3",
 ] as const;
 
 export type TokenFeature = (typeof tokenFeatures)[number];
