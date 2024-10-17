@@ -1,8 +1,7 @@
 import { Autocomplete, type MantineThemeOverride } from "@mantine/core";
 
-import { selectInputClassNames } from "../Select/SelectInput.config";
+import { selectOverrides } from "../Select";
 import { SelectItem } from "../Select/SelectItem";
-import { selectItemsClassNames } from "../Select/SelectItems.config";
 
 export const autocompleteOverrides: MantineThemeOverride["components"] = {
   Autocomplete: Autocomplete.extend({
@@ -11,25 +10,12 @@ export const autocompleteOverrides: MantineThemeOverride["components"] = {
       comboboxProps: {
         withinPortal: true,
       },
-      // dropdownComponent: SelectDropdown,
-      renderOption: item => (
-        <SelectItem
-          // TODO: Support icons again
-          // icon={item.option.icon}
-          label={item.option.label}
-          value={item.option.value}
-        />
-      ),
+      renderOption: item => <SelectItem {...item.option} />,
       maxDropdownHeight: 512,
-      withScrollArea: true,
+      withScrollArea: false,
     },
     classNames: {
-      ...selectItemsClassNames,
-      ...selectInputClassNames,
+      ...selectOverrides.Select.classNames,
     },
-    // styles: (theme, _, { size = "md" }) => ({
-    //   ...getSelectInputOverrides(theme),
-    //   ...getSelectItemsOverrides(theme, size),
-    // }),
   }),
 };

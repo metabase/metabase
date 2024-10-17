@@ -1,23 +1,16 @@
-import { type MantineThemeOverride, Select, rem } from "@mantine/core";
+import { Select } from "@mantine/core";
 
 import S from "./Select.module.css";
-import { selectInputClassNames, selectInputVars } from "./SelectInput.config";
 import { SelectItem } from "./SelectItem";
-import { selectItemsClassNames, selectItemsVars } from "./SelectItems.config";
 
-export const selectOverrides: MantineThemeOverride["components"] = {
+export const selectOverrides = {
   Select: Select.extend({
     defaultProps: {
       size: "md",
       maxDropdownHeight: 512,
-      withScrollArea: true,
+      withScrollArea: false,
       renderOption: item => (
-        <SelectItem
-          // TODO: Support icons again
-          // icon={item.option.icon}
-          label={item.option.label}
-          value={item.option.value}
-        />
+        <SelectItem {...item.option} selected={item.checked} />
       ),
       clearButtonProps: {
         color: "text-dark",
@@ -25,31 +18,18 @@ export const selectOverrides: MantineThemeOverride["components"] = {
       comboboxProps: {
         withinPortal: true,
       },
-      // dropdownComponent: SelectDropdown,
-      // FIXME: The dropdownComponent prop is no longer supported.  Let's see what happens if I
-      // disable it. This may not be necessary because perhaps the Selects are
-      // no longer inside any TippyPopovers. Sloan thinks it is fine to remove
-      // this prop. It might be necessary to set it on the combobox.
-      //
     },
     classNames: {
       root: S.SelectRoot,
+      input: S.SelectInput,
       wrapper: S.SelectWrapper,
-      label: S.SelectLabel,
       error: S.SelectError,
-      description: S.SelectDescription,
-      ...selectItemsClassNames,
-      ...selectInputClassNames,
+      section: S.SelectInputSection,
+      option: S.SelectItems_Item,
+      options: S.SelectItems_Options,
+      group: S.SelectItems_Group,
+      groupLabel: S.SelectItems_GroupLabel,
+      empty: S.SelectItemsNothingFound,
     },
-    vars: (...params) => ({
-      ...selectItemsVars(...params),
-      ...selectInputVars(...params), // TODO:
-    }),
   }),
-};
-
-// FIXME: Use this in the grouplabel if needed
-const _SEPARATOR_FONT_SIZES = {
-  xs: rem(12),
-  md: rem(12),
 };
