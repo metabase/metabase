@@ -7,7 +7,6 @@
    [metabase-enterprise.sso.api.interface :as sso.i]
    [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
    [metabase-enterprise.sso.integrations.sso-utils :as sso-utils]
-   [metabase.api.common :as api]
    [metabase.api.session :as api.session]
    [metabase.embed.settings :as embed.settings]
    [metabase.integrations.common :as integrations.common]
@@ -88,9 +87,7 @@
                          (jwt/unsign jwt (sso-settings/jwt-shared-secret)
                                      {:max-age three-minutes-in-seconds})
                          (catch Throwable e
-                           (throw (ex-info (ex-message e)
-                                           (assoc (ex-data e) :status-code 401)
-                                           e))))
+                           (throw (ex-info (ex-message e) {:status "error-jwt-bad-unsigning"}))))
           login-attrs  (jwt-data->login-attributes jwt-data)
           email        (get jwt-data (jwt-attribute-email))
           first-name   (get jwt-data (jwt-attribute-firstname))
@@ -101,16 +98,22 @@
       {:session session, :redirect-url redirect-url, :jwt-data jwt-data})))
 
 (defn- check-jwt-enabled []
-  (api/check (sso-settings/jwt-enabled)
-             [400 (tru "JWT SSO has not been enabled and/or configured")]))
+  (when-not (sso-settings/jwt-enabled)
+    (throw
+     (ex-info (tru "JWT SSO has not been enabled and/or configured")
+              {:status "error-sso-jwt-disabled"}))))
 
 (defn ^:private generate-response-token
   [session jwt-data]
-  (api/check (embed.settings/enable-embedding-sdk)
-             [402 (tru "SDK Embedding is not enabled.")])
-  (response/response {:id  (:id session)
-                      :exp (:exp jwt-data)
-                      :iat (:iat jwt-data)}))
+  (if-not (embed.settings/enable-embedding-sdk)
+    (throw
+     (ex-info (tru "SDK Embedding is disabled. Enable it in the Embedding settings.")
+              {:status "error-embedding-sdk-disabled"}))
+    (response/response
+     {:status :ok
+      :id     (:id session)
+      :exp    (:exp jwt-data)
+      :iat    (:iat jwt-data)})))
 
 (defn ^:private redirect-to-idp
   [idp redirect]
@@ -134,4 +137,4 @@
 
 (defmethod sso.i/sso-post :jwt
   [_]
-  (throw (ex-info "POST not valid for JWT SSO requests" {:status-code 400})))
+  (throw (ex-info (tru "POST not valid for JWT SSO requests") {:status "error-post-jwt-not-valid"})))

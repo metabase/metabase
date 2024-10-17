@@ -3,7 +3,6 @@ import { useEffect, useState } from "react";
 import { t } from "ttag";
 
 import {
-  SdkError,
   SdkLoader,
   withPublicComponentWrapper,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
@@ -24,6 +23,7 @@ import { Box, Group } from "metabase/ui";
 import { PublicMode } from "metabase/visualizations/click-actions/modes/PublicMode";
 import Question from "metabase-lib/v1/Question";
 import type { Card, CardEntityId, CardId, Dataset } from "metabase-types/api";
+import { SdkError } from "embedding-sdk/components/private/SdkError";
 
 export type StaticQuestionProps = {
   questionId: CardId | CardEntityId;
@@ -148,11 +148,7 @@ const StaticQuestionInner = ({
   const isLoading = loading || (!result && !error) || isValidatingEntityId;
 
   if (error) {
-    return (
-      <SdkError
-        message={getResponseErrorMessage(error) ?? t`Invalid question ID`}
-      />
-    );
+    return <SdkError status="question-not-found" />;
   }
 
   if (isLoading) {
