@@ -1,6 +1,7 @@
 (ns metabase.query-processor.middleware.metrics-test
   (:require
    [clojure.test :refer [deftest is testing]]
+   [java-time.api :as t]
    [mb.hawk.assert-exprs.approximately-equal :as =?]
    [medley.core :as m]
    [metabase.lib.convert :as lib.convert]
@@ -729,7 +730,8 @@
                                          {:source-table (str "card__" (:id source-model))
                                           :expressions {"somedays" [:datetime-diff
                                                                     [:field "CREATED_AT" {:base-type :type/DateTime}]
-                                                                    [:now] :day]}
+                                                                    (t/offset-date-time 2024 10 16 0 0 0)
+                                                                    :day]}
                                           :aggregation [[:median [:expression "somedays" {:base-type :type/Integer}]]]})
                                        :database_id (mt/id)
                                        :name "somedays median"
