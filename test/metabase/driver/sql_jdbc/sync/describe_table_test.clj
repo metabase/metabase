@@ -165,7 +165,7 @@
                  (describe-fields-for-table (mt/db) (t2/select-one Table :id (mt/id :venues))))))))
     (mt/test-drivers (mt/normal-drivers-without-feature :actions)
       (is (=?
-           [[0 true]
+           [[0 (driver/database-supports? driver/*driver* :metadata/key-constraints (mt/db))]
             [1 false]
             [2 false]
             [3 false]
