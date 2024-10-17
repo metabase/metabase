@@ -531,18 +531,11 @@
   This is the lowest common denominator of types, hopefully,
   although as of writing this is just geared towards Postgres types"
   {:type/Text       "text"
-   :type/Integer    "bigint"
-   ;; You might think that the ordinary 'bigint' type in Postgres and MySQL should be this.
-   ;; However, Bigint in those DB's maxes out at 2 ^ 64.
-   ;; JSON, like Javascript itself, will happily represent 1.8 * (10^308),
-   ;; Losing digits merrily along the way.
-   ;; We can't really trust anyone to use MAX_SAFE_INTEGER, in JSON-land..
-   ;; So really without forcing arbitrary precision ('decimal' type),
-   ;; we have too many numerical regimes to test.
-   ;; (#22732) was basically the consequence of missing one.
+   ;; Store db type as decimal so we always cast to the least constrained type
+   :type/Integer    "decimal"
    :type/BigInteger "decimal"
-   :type/Float      "double precision"
-   :type/Number     "double precision"
+   :type/Float      "decimal"
+   :type/Number     "decimal"
    :type/Decimal    "decimal"
    :type/Boolean    "boolean"
    :type/DateTime   "timestamp"
