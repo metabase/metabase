@@ -707,7 +707,9 @@
         archived-after? (boolean new-archived)]
     ;; we'll end up unarchived and a dashboard card => make sure we autoplace
     (when (and on-dashboard-after? (not archived-after?))
-      (autoplace-dashcard-for-card! (:dashboard_id card-updates) card-before-update))
+      (autoplace-dashcard-for-card! (:dashboard_id card-updates) card-before-update)
+      (events/publish-event! :event/dashboard-update {:object (t2/select-one :model/Dashboard new-dashboard-id)
+                                                      :user-id api/*current-user-id*}))
 
     (when (or
            ;; we're moving from one dashboard to another dashboard
@@ -718,7 +720,9 @@
            (and on-dashboard-before?
                 (not on-dashboard-after?)
                 delete-old-dashcards?))
-      (t2/delete! :model/DashboardCard :card_id card-id :dashboard_id old-dashboard-id))))
+      (t2/delete! :model/DashboardCard :card_id card-id :dashboard_id old-dashboard-id)
+      (events/publish-event! :event/dashboard-update {:object (t2/select-one :model/Dashboard old-dashboard-id)
+                                                      :user-id api/*current-user-id*}))))
 
 (defn create-card!
   "Create a new Card. Metadata will be fetched off thread. If the metadata takes longer than [[metadata-sync-wait-ms]]
