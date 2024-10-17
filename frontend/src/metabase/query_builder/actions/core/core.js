@@ -1,4 +1,3 @@
-import { createAction } from "redux-actions";
 import _ from "underscore";
 
 import { fetchAlertsForQuestion } from "metabase/alert/alert";
@@ -7,7 +6,7 @@ import { updateModelIndexes } from "metabase/entities/model-indexes/actions";
 import Questions from "metabase/entities/questions";
 import Revision from "metabase/entities/revisions";
 import { shouldOpenInBlankWindow } from "metabase/lib/dom";
-import { createThunkAction } from "metabase/lib/redux";
+import { createAction, createThunkAction } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { copy } from "metabase/lib/utils";
 import { loadMetadataForCard } from "metabase/questions/actions";
@@ -286,9 +285,9 @@ export const apiUpdateQuestion = (question, { rerunQuery } = {}) => {
 export const SET_PARAMETER_VALUE = "metabase/qb/SET_PARAMETER_VALUE";
 export const setParameterValue = createAction(
   SET_PARAMETER_VALUE,
-  (parameterId, value) => {
-    return { id: parameterId, value: normalizeValue(value) };
-  },
+  (parameterId, value) => ({
+    payload: { id: parameterId, value: normalizeValue(value) },
+  }),
 );
 
 export const SET_PARAMETER_VALUE_TO_DEFAULT =

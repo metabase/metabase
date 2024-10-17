@@ -1,6 +1,8 @@
+import { createReducer } from "@reduxjs/toolkit";
+
 import {
   combineReducers,
-  createAction,
+  createAsyncThunk,
   createThunkAction,
   handleActions,
 } from "metabase/lib/redux";
@@ -9,7 +11,7 @@ import { MetabaseApi, RevisionsApi } from "metabase/services";
 export const UPDATE_PREVIEW_SUMMARY =
   "metabase/admin/datamodel/UPDATE_PREVIEW_SUMMARY";
 
-export const updatePreviewSummary = createAction(
+export const updatePreviewSummary = createAsyncThunk(
   UPDATE_PREVIEW_SUMMARY,
   async query => {
     const result = await MetabaseApi.dataset(query);
@@ -28,9 +30,11 @@ export const fetchSegmentRevisions = createThunkAction(
 
 // reducers
 
-const previewSummary = handleActions(
-  { [UPDATE_PREVIEW_SUMMARY]: { next: (state, { payload }) => payload } },
-  null,
+const previewSummary = createReducer(null, builder =>
+  builder.addCase(
+    updatePreviewSummary.fulfilled,
+    (state, { payload }) => payload,
+  ),
 );
 
 const revisions = handleActions(

@@ -24,13 +24,13 @@ export type GetAuthProviders = (providers: AuthProvider[]) => AuthProvider[];
 export type GetChangeMembershipConfirmation = (
   currentUser: User,
   updatedMembership: Member,
-) => Partial<ConfirmationState> | null;
+) => Pick<ConfirmationState, "title" | "message"> | null;
 
 export type GetRemoveMembershipConfirmation = (
   currentUser: User,
   currentUserMemberships: Member[],
   deletedMembershipId: number,
-) => Partial<ConfirmationState> | null;
+) => Pick<ConfirmationState, "title" | "message"> | null;
 
 export type GetRevokeManagerPeopleRedirect = (
   currentUser: User,

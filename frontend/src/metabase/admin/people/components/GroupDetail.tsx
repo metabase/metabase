@@ -1,7 +1,6 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
 import { Fragment, useEffect, useState } from "react";
-import { connect } from "react-redux";
 import { msgid, ngettext, t } from "ttag";
 
 import { AdminPaneLayout } from "metabase/components/AdminPaneLayout";
@@ -14,8 +13,10 @@ import {
   isAdminGroup,
   isDefaultGroup,
 } from "metabase/lib/groups";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { PLUGIN_GROUP_MANAGERS } from "metabase/plugins";
 import { getUser } from "metabase/selectors/user";
+import type { Group, Member, UserId } from "metabase-types/api";
 
 import {
   createMembership,
@@ -23,11 +24,11 @@ import {
   loadMemberships,
   updateMembership,
 } from "../people";
-import { getGroupMemberships, getMembershipsByUser } from "../selectors";
+import { getMembershipsByUser, getMembershipsList } from "../selectors";
 
-import GroupMembersTable from "./GroupMembersTable";
+import { GroupMembersTable } from "./GroupMembersTable";
 
-const GroupDescription = ({ group }) =>
+const GroupDescription = ({ group }: { group: Group }) =>
   isDefaultGroup(group) ? (
     <div className={cx(CS.px2, CS.textMeasure)}>
       <p>
@@ -49,111 +50,98 @@ const GroupDescription = ({ group }) =>
     </div>
   ) : null;
 
-const mapStateToProps = (state, props) => ({
-  groupMemberships: getGroupMemberships(state, props),
-  membershipsByUser: getMembershipsByUser(state),
-  currentUser: getUser(state),
-});
+export const GroupDetail = ({ group }: { group: Group }) => {
+  const dispatch = useDispatch();
 
-const mapDispatchToProps = {
-  createMembership,
-  deleteMembership,
-  updateMembership,
-  loadMemberships,
-  confirmDeleteMembershipAction: (membershipId, userMemberships) =>
-    PLUGIN_GROUP_MANAGERS.confirmDeleteMembershipAction(
-      membershipId,
-      userMemberships,
-    ),
-  confirmUpdateMembershipAction: (membership, userMemberships) =>
-    PLUGIN_GROUP_MANAGERS.confirmUpdateMembershipAction(
-      membership,
-      userMemberships,
-    ),
-};
+  const membershipsList = useSelector(getMembershipsList);
+  const groupMemberships = membershipsList.filter(
+    membership => membership.group_id === group.id,
+  );
+  const membershipsByUser = useSelector(getMembershipsByUser);
+  const currentUser = useSelector(getUser);
 
-const GroupDetail = ({
-  currentUser,
-  group,
-  users,
-  membershipsByUser,
-  groupMemberships,
-  createMembership,
-  updateMembership,
-  deleteMembership,
-  loadMemberships,
-  confirmDeleteMembershipAction,
-  confirmUpdateMembershipAction,
-}) => {
   const { modalContent, show } = useConfirmation();
   const [addUserVisible, setAddUserVisible] = useState(false);
-  const [alertMessage, setAlertMessage] = useState(null);
+  const [alertMessage, setAlertMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    loadMemberships();
-  }, [loadMemberships]);
+    dispatch(loadMemberships());
+  }, [dispatch]);
 
-  const alert = alertMessage => setAlertMessage(alertMessage);
+  const alert = (alertMessage: string | null) => setAlertMessage(alertMessage);
 
   const onAddUsersClicked = () => setAddUserVisible(true);
 
   const onAddUserCanceled = () => setAddUserVisible(false);
 
-  const onAddUserDone = async userIds => {
+  const onAddUserDone = async (userIds: UserId[]) => {
     setAddUserVisible(false);
     try {
       await Promise.all(
         userIds.map(async userId => {
-          await createMembership({
-            groupId: group.id,
-            userId,
-          });
+          await dispatch(
+            createMembership({
+              groupId: group.id,
+              userId,
+            }),
+          );
         }),
       );
     } catch (error) {
-      alert(error && typeof error.data ? error.data : error);
+      const e = error as { data: string } | string;
+      alert(typeof e === "object" ? e.data : e);
     }
   };
 
-  const handleChange = async membership => {
-    const confirmation = PLUGIN_GROUP_MANAGERS.getChangeMembershipConfirmation(
-      currentUser,
-      membership,
-    );
-
-    if (!confirmation) {
-      return await updateMembership(membership);
-    }
-
-    show({
-      ...confirmation,
-      onConfirm: () =>
-        confirmUpdateMembershipAction(
+  const handleChange = async (membership: Member) => {
+    if (currentUser) {
+      const confirmation =
+        PLUGIN_GROUP_MANAGERS.getChangeMembershipConfirmation(
+          currentUser,
           membership,
-          membershipsByUser[currentUser.id],
-        ),
-    });
+        );
+
+      if (!confirmation) {
+        return await dispatch(updateMembership(membership));
+      }
+
+      show({
+        ...confirmation,
+        onConfirm: () =>
+          dispatch(
+            PLUGIN_GROUP_MANAGERS.confirmUpdateMembershipAction(
+              membership,
+              membershipsByUser[currentUser.id],
+            ),
+          ),
+      });
+    }
   };
 
-  const handleRemove = async membershipId => {
-    const confirmation = PLUGIN_GROUP_MANAGERS.getRemoveMembershipConfirmation(
-      currentUser,
-      membershipsByUser[currentUser.id],
-      membershipId,
-    );
-
-    if (!confirmation) {
-      return await deleteMembership(membershipId);
-    }
-
-    show({
-      ...confirmation,
-      onConfirm: () =>
-        confirmDeleteMembershipAction(
-          membershipId,
+  const handleRemove = async (membershipId: Member["membership_id"]) => {
+    if (currentUser) {
+      const confirmation =
+        PLUGIN_GROUP_MANAGERS.getRemoveMembershipConfirmation(
+          currentUser,
           membershipsByUser[currentUser.id],
-        ),
-    });
+          membershipId,
+        );
+
+      if (!confirmation) {
+        return await dispatch(deleteMembership(membershipId));
+      }
+
+      show({
+        ...confirmation,
+        onConfirm: () =>
+          dispatch(
+            PLUGIN_GROUP_MANAGERS.confirmDeleteMembershipAction(
+              membershipId,
+              membershipsByUser[currentUser.id],
+            ),
+          ),
+      });
+    }
   };
 
   return (
@@ -171,16 +159,14 @@ const GroupDetail = ({
         </Fragment>
       }
       buttonText={t`Add members`}
-      buttonAction={canEditMembership(group) ? onAddUsersClicked : null}
+      buttonAction={canEditMembership(group) ? onAddUsersClicked : undefined}
       buttonDisabled={addUserVisible}
     >
       <GroupDescription group={group} />
       <GroupMembersTable
         groupMemberships={groupMemberships}
         membershipsByUser={membershipsByUser}
-        currentUser={currentUser}
         group={group}
-        users={users}
         showAddUser={addUserVisible}
         onAddUserCancel={onAddUserCanceled}
         onAddUserDone={onAddUserDone}
@@ -192,5 +178,3 @@ const GroupDetail = ({
     </AdminPaneLayout>
   );
 };
-
-export default connect(mapStateToProps, mapDispatchToProps)(GroupDetail);

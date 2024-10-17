@@ -21,6 +21,7 @@ import type {
   FieldId,
   ForeignKey,
   GroupListQuery,
+  type GroupUserMembership,
   ModelCacheRefreshStatus,
   ModelIndex,
   NativeQuerySnippet,
@@ -367,6 +368,14 @@ export function providePermissionsGroupTags(
   group: GroupListQuery,
 ): TagDescription<TagType>[] {
   return [idTag("permissions-group", group.id)];
+}
+
+export function providePermissionMemberTags(
+  groupMembershipMap: GroupUserMembership,
+): TagDescription<TagType>[] {
+  return Object.values(groupMembershipMap)
+    .flat()
+    .map(m => idTag("permissions-member", m.membership_id));
 }
 
 export function providePersistedInfoListTags(

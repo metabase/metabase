@@ -2,20 +2,21 @@ import cx from "classnames";
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { useListApiKeysQuery } from "metabase/api";
+import { useListApiKeysQuery, useListUsersQuery } from "metabase/api";
 import AdminContentTable from "metabase/components/AdminContentTable";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/components/PaginationControls";
 import Link from "metabase/core/components/Link";
 import CS from "metabase/css/core/index.css";
-import Users from "metabase/entities/users";
+import { usePagination } from "metabase/hooks/use-pagination";
 import { isAdminGroup, isDefaultGroup } from "metabase/lib/groups";
+import { useSelector } from "metabase/lib/redux";
 import { isNotNull } from "metabase/lib/types";
 import { getFullName } from "metabase/lib/user";
 import { PLUGIN_GROUP_MANAGERS } from "metabase/plugins";
+import { getUser } from "metabase/selectors/user";
 import { Icon, Text, Tooltip } from "metabase/ui";
 import type { ApiKey, Group, User as IUser, Member } from "metabase-types/api";
-import type { State } from "metabase-types/store";
 
 import AddMemberRow from "../AddMemberRow";
 
@@ -23,50 +24,47 @@ const canEditMembership = (group: Group) =>
   !isDefaultGroup(group) && PLUGIN_GROUP_MANAGERS.UserTypeCell;
 
 interface GroupMembersTableProps {
-  group: Group;
-  groupMemberships: Member[];
   membershipsByUser: Record<number, Member[]>;
-  currentUser: Partial<IUser>;
-  users: IUser[];
+  groupMemberships: Member[];
+  group: Group;
   showAddUser: any;
-  selectedUsers: IUser[];
   onAddUserCancel: () => void;
   onAddUserDone: (userIds: number[]) => void;
   onMembershipRemove: (membershipId: number) => void;
   onMembershipUpdate: (member: Member) => void;
-  reload: () => void;
-  groupUsers: IUser[];
-  page: number;
-  pageSize: number;
-  onNextPage: () => void;
-  onPreviousPage: () => void;
 }
 
-function GroupMembersTable({
-  group,
+const PAGE_SIZE = 25;
+export const GroupMembersTable = ({
   groupMemberships,
   membershipsByUser,
-  currentUser: { id: currentUserId } = {},
-  users,
+  group,
   showAddUser,
   onAddUserCancel,
   onAddUserDone,
   onMembershipRemove,
   onMembershipUpdate,
-  groupUsers,
-  page,
-  pageSize,
-  onNextPage,
-  onPreviousPage,
-  reload,
-}: GroupMembersTableProps) {
+}: GroupMembersTableProps) => {
+  const { handleNextPage, handlePreviousPage, page } = usePagination();
+
+  const currentUser = useSelector(getUser);
+
+  const { data: userResponse } = useListUsersQuery({
+    limit: PAGE_SIZE,
+    offset: PAGE_SIZE * page,
+    group_id: group.id,
+  });
+
+  const { data: users = [], total = 0 } = userResponse ?? {};
+
   const { isLoading, data: apiKeys } = useListApiKeysQuery();
   const groupApiKeys = useMemo(() => {
     return apiKeys?.filter(apiKey => apiKey.group.id === group.id) ?? [];
   }, [apiKeys, group.id]);
 
   // you can't remove people from Default and you can't remove the last user from Admin
-  const isCurrentUser = ({ id }: Partial<IUser>) => id === currentUserId;
+  const isCurrentUser = ({ id }: Partial<IUser>) =>
+    currentUser && id === currentUser.id;
   const canRemove = (user: IUser) =>
     !isDefaultGroup(group) && !(isAdminGroup(group) && isCurrentUser(user));
 
@@ -75,12 +73,10 @@ function GroupMembersTable({
   const handleAddUser: GroupMembersTableProps["onAddUserDone"] =
     async userIds => {
       await onAddUserDone(userIds);
-      reload();
     };
 
   const handleRemoveUser = async (membershipId: number) => {
     await onMembershipRemove(membershipId);
-    reload();
   };
 
   const columnTitles = [
@@ -112,7 +108,7 @@ function GroupMembersTable({
         {groupApiKeys?.map((apiKey: ApiKey) => (
           <ApiKeyRow key={`apiKey-${apiKey.id}`} apiKey={apiKey} />
         ))}
-        {groupUsers.map((user: IUser) => {
+        {users.map((user: IUser) => {
           return (
             <UserRow
               key={user.id}
@@ -130,11 +126,11 @@ function GroupMembersTable({
         <div className={cx(CS.flex, CS.alignCenter, CS.justifyEnd, CS.p2)}>
           <PaginationControls
             page={page}
-            pageSize={pageSize}
-            itemsLength={groupUsers.length}
-            total={groupMemberships.length}
-            onNextPage={onNextPage}
-            onPreviousPage={onPreviousPage}
+            pageSize={PAGE_SIZE}
+            itemsLength={users.length}
+            total={total}
+            onNextPage={handleNextPage}
+            onPreviousPage={handlePreviousPage}
           />
         </div>
       )}
@@ -147,17 +143,7 @@ function GroupMembersTable({
       )}
     </>
   );
-}
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Users.loadList({
-  reload: true,
-  pageSize: 25,
-  listName: "groupUsers",
-  query: (_state: State, props: GroupMembersTableProps) => ({
-    group_id: props.group.id,
-  }),
-})(GroupMembersTable);
+};
 
 interface UserRowProps {
   user: IUser;

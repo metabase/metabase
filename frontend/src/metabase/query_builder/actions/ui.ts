@@ -1,21 +1,22 @@
-import { createAction } from "redux-actions";
-
-import { createThunkAction } from "metabase/lib/redux";
+import { createAction, createThunkAction } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
 import { getOriginalCard } from "metabase/query_builder/selectors";
 import { updateUserSetting } from "metabase/redux/settings";
 import { UserApi } from "metabase/services";
+import type { DashboardId } from "metabase-types/api";
 import type {
   Dispatch,
   GetState,
   QueryBuilderMode,
+  QueryBuilderUIControls,
 } from "metabase-types/store";
 
 import { updateUrl } from "./navigation";
 import { cancelQuery } from "./querying";
 
 export const SET_UI_CONTROLS = "metabase/qb/SET_UI_CONTROLS";
-export const setUIControls = createAction(SET_UI_CONTROLS);
+export const setUIControls =
+  createAction<Partial<QueryBuilderUIControls>>(SET_UI_CONTROLS);
 
 export const RESET_UI_CONTROLS = "metabase/qb/RESET_UI_CONTROLS";
 export const resetUIControls = createAction(RESET_UI_CONTROLS);
@@ -54,9 +55,12 @@ export const setQueryBuilderMode =
 export const onEditSummary = createAction("metabase/qb/EDIT_SUMMARY");
 export const onCloseSummary = createAction("metabase/qb/CLOSE_SUMMARY");
 
-export const onOpenChartSettings = createAction(
-  "metabase/qb/OPEN_CHART_SETTINGS",
-);
+export const onOpenChartSettings = createAction<
+  | Partial<
+      Pick<QueryBuilderUIControls, "initialChartSettings" | "showSidebarTitle">
+    >
+  | undefined
+>("metabase/qb/OPEN_CHART_SETTINGS");
 export const onCloseChartSettings = createAction(
   "metabase/qb/CLOSE_CHART_SETTINGS",
 );
@@ -96,7 +100,9 @@ export const showChartSettings = createAction(SHOW_CHART_SETTINGS);
 
 export const NAVIGATE_BACK_TO_DASHBOARD =
   "metabase/qb/NAVIGATE_BACK_TO_DASHBOARD";
-export const navigateBackToDashboard = createAction(NAVIGATE_BACK_TO_DASHBOARD);
+export const navigateBackToDashboard = createAction<DashboardId>(
+  NAVIGATE_BACK_TO_DASHBOARD,
+);
 
 export const CLOSE_QB = "metabase/qb/CLOSE_QB";
 export const closeQB = createAction(CLOSE_QB);
