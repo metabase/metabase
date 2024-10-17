@@ -437,7 +437,7 @@ After the SDK is configured, you can embed your dashboard using the `StaticDashb
   option, use a `string` value, and use a list of strings for multiple options.
 - **withTitle**: `boolean` – Whether the dashboard should display a title.
 - **withCardTitle**: `boolean` – Whether the dashboard cards should display a title.
-- **withDownloads**: `boolean | null` – Whether to hide the download button.
+- **withDownloads**: `boolean | null` – Whether to show the download button. Defaults to `false`.
 - **hiddenParameters**: `string[] | null` – A list of parameters that will not be shown in the set of parameter
   filters. [More information here](https://www.metabase.com/docs/latest/questions/sharing/public-links#filter-parameters)
 - **onLoad**: `(dashboard: Dashboard | null) => void;` - event handler that triggers after dashboard loads with all
@@ -488,7 +488,7 @@ After the SDK is configured, you can embed your dashboard using the `Interactive
   option, use a `string` value, and use a list of strings for multiple options.
 - **withTitle**: `boolean` – Whether the dashboard should display a title.
 - **withCardTitle**: `boolean` – Whether the dashboard cards should display a title.
-- **withDownloads**: `boolean | null` – Whether to hide the download button.
+- **withDownloads**: `boolean | null` – Whether to show the download button. Defaults to `false`.
 - **hiddenParameters**: `string[] | null` – A list of parameters that will not be shown in the set of parameter
   filters. (More information
   here)[https://www.metabase.com/docs/latest/questions/sharing/public-links#filter-parameters]
@@ -610,7 +610,7 @@ component.
       Collection Browser to return data
 - **initialParameterValues**: `Record<string, string | string[]>` – Query parameters for the dashboard. For a single
   option, use a `string` value, and use a list of strings for multiple options.
-- **withDownloads**: `boolean | null` – Whether to hide the download button.
+- **withDownloads**: `boolean | null` – Whether to show the download button. Defaults to `false`.
 - **questionHeight**: `number | null` – Height of a question component when drilled from the dashboard to a question
   level.
 - **plugins** `{ dashcardMenu?: Object, mapQuestionClickActions?: Function } | null` – Additional mapper function to
@@ -679,7 +679,7 @@ With the Collection Browser, you can browse the items in your Metabase instance 
   in `http://localhost:3000/collection/1-my-collection` would be `1`. If no ID is provided, the collection browser will
   start at the root `Our analytics` collection, which is ID = 0.
 - **onClick**: `(item: CollectionItem) => void` - An optional click handler that emits the clicked entity.
-- **pageSize**: `number` – The number of items to display per page. The default is 25.
+- **pageSize**: `number` – The number of items to display per page. Defaults to 25.
 - **visibleEntityTypes**: `("question" | "model" | "dashboard" | "collection")[]` – the types of entities that should be
   visible. If not provided, all entities will be shown.
 
