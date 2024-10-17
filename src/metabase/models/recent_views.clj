@@ -419,7 +419,7 @@
     (when (and (not= "hidden" (:visibility_type table))
                (:database-name table)
                (:active table)
-               (mi/can-read? table))
+               (mi/can-read? :model/Table model_id))
       {:id model_id
        :name (:name table)
        :description (:description table)
