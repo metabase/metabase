@@ -117,6 +117,7 @@ export const ClickActionControl = ({
             label: styles.label,
             inner: styles.inner,
           }}
+          variant="unstyled"
           leftSection={
             action.iconText ? (
               <ClickActionButtonTextIcon className={styles.nested}>

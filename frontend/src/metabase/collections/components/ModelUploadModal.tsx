@@ -139,7 +139,7 @@ export function ModelUploadModal({
         </Radio.Group>
         {uploadMode !== UploadMode.create && (
           <Select
-            icon={<Icon name="model" />}
+            leftSection={<Icon name="model" />}
             placeholder="Select a model"
             value={tableId ? String(tableId) : ""}
             data={

@@ -1,4 +1,13 @@
+.wrapper {
+  --input-height-md: rem(40px);
+  --input-height-xs: rem(32px);
+  --inset-inline-end: 0;
+
+  line-height: 1rem;
+}
+
 .input {
+  display: block;
   color: var(--mb-color-text-dark);
   border-radius: var(--mantine-radius-xs);
   background-color: var(--mb-color-bg-white);
@@ -8,7 +17,7 @@
   }
 
   &:disabled {
-    background-color: var(--mb-color-bg-light);
+    background-color: var(--mb-color-bg-medium);
   }
 
   &[data-size="xs"] {
@@ -51,19 +60,19 @@
   color: var(--mb-color-text-dark);
   font-size: var(--mantine-font-size-sm);
   font-weight: bold;
-  line-height: var(--mantine-line-height);
+  line-height: var(--mantine-line-height-sm);
 }
 
 .description {
   color: var(--mb-color-text-dark);
   font-size: var(--mantine-font-size-xs);
-  line-height: var(--mantine-line-height);
+  line-height: var(--mantine-line-height-sm);
 }
 
 .error {
   color: var(--mb-color-error);
   font-size: var(--mantine-font-size-xs);
-  line-height: var(--mantine-line-height);
+  line-height: var(--mantine-line-height-sm);
 }
 
 .required {
