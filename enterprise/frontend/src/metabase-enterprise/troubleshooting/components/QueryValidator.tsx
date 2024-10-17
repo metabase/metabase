@@ -188,6 +188,7 @@ export const QueryValidator = () => {
       <Text fz="1rem" color="var(--mb-color-text-light)">
         {jt`Query Validation is currently disabled. ${(
           <Text
+            key="text"
             fz="inherit"
             color="var(--mb-color-brand)"
             component={Link}
