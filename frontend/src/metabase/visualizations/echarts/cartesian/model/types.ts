@@ -234,6 +234,9 @@ export type BaseCartesianChartModel = {
 
   trendLinesModel?: TrendLinesModel;
   seriesLabelsFormatters: SeriesFormatters;
+
+  // For `graph.max_categories` setting
+  groupedSeriesModels?: SeriesModel[];
 };
 
 export type CartesianChartModel = BaseCartesianChartModel & {

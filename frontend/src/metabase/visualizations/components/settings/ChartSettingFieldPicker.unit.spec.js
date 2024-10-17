@@ -4,19 +4,20 @@ import { within } from "@testing-library/react";
 import { renderWithProviders, screen } from "__support__/ui";
 import ChartSettings from "metabase/visualizations/components/ChartSettings";
 import registerVisualizations from "metabase/visualizations/register";
+import { createMockCard } from "metabase-types/api/mocks";
 
 registerVisualizations();
 
 function getSeries(metricColumnProps) {
   return [
     {
-      card: {
+      card: createMockCard({
         display: "line",
         visualization_settings: {
           "graph.dimensions": ["FOO"],
           "graph.metrics": ["BAR"],
         },
-      },
+      }),
       data: {
         rows: [
           ["a", 1],

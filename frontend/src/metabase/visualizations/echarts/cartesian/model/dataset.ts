@@ -8,6 +8,7 @@ import {
   ECHARTS_CATEGORY_AXIS_NULL_VALUE,
   NEGATIVE_STACK_TOTAL_DATA_KEY,
   ORIGINAL_INDEX_DATA_KEY,
+  OTHER_DATA_KEY,
   POSITIVE_STACK_TOTAL_DATA_KEY,
   X_AXIS_DATA_KEY,
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
@@ -47,6 +48,7 @@ import type { ShowWarning } from "../../types";
 import { tryGetDate } from "../utils/timeseries";
 
 import { isCategoryAxis, isNumericAxis, isTimeSeriesAxis } from "./guards";
+import { getAggregatedOtherSeriesValue } from "./other-series";
 import { getBarSeriesDataLabelKey, getColumnScaling } from "./util";
 
 /**
@@ -333,6 +335,23 @@ const getStackedAreasInterpolateTransform = (
     return transformedDatum;
   };
 };
+
+function getOtherSeriesTransform(
+  groupedSeriesModels: SeriesModel[],
+  settings: ComputedVisualizationSettings,
+): ConditionalTransform {
+  return {
+    condition: groupedSeriesModels.length > 0,
+    fn: datum => ({
+      ...datum,
+      [OTHER_DATA_KEY]: getAggregatedOtherSeriesValue(
+        groupedSeriesModels,
+        settings["graph.other_category_aggregation_fn"],
+        datum,
+      ),
+    }),
+  };
+}
 
 function getStackedValueTransformFunction(
   seriesDataKeys: DataKey[],
@@ -697,6 +716,7 @@ export const applyVisualizationSettingsDataTransformations = (
   stackModels: StackModel[],
   xAxisModel: XAxisModel,
   seriesModels: SeriesModel[],
+  groupedSeriesModels: SeriesModel[],
   yAxisScaleTransforms: NumericAxisScaleTransforms,
   settings: ComputedVisualizationSettings,
   showWarning?: ShowWarning,
@@ -734,6 +754,7 @@ export const applyVisualizationSettingsDataTransformations = (
 
   return transformDataset(dataset, [
     getNullReplacerTransform(settings, seriesModels),
+    getOtherSeriesTransform(groupedSeriesModels, settings),
     {
       condition: settings["stackable.stack_type"] === "normalized",
       fn: getNormalizedDatasetTransform(stackModels),
@@ -852,13 +873,12 @@ export const getSortedSeriesModels = (
           seriesModel.vizSettingsKey === orderSetting.key &&
           !usedDataKeys.has(seriesModel.dataKey),
       );
-      if (foundSeries === undefined) {
-        throw new TypeError("Series not found");
+      if (foundSeries) {
+        usedDataKeys.add(foundSeries.dataKey);
       }
-
-      usedDataKeys.add(foundSeries.dataKey);
       return foundSeries;
-    });
+    })
+    .filter(isNotNull);
 
   // On stacked charts we reverse the order of series so that the series
   // order in the sidebar matches series order on the chart.

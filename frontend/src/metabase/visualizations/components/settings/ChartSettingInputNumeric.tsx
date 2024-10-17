@@ -3,6 +3,7 @@ import { useState } from "react";
 import _ from "underscore";
 
 import { ChartSettingNumericInput } from "./ChartSettingInputNumeric.styled";
+import type { ChartSettingWidgetProps } from "./types";
 
 const ALLOWED_CHARS = [
   "0",
@@ -22,10 +23,7 @@ const ALLOWED_CHARS = [
 
 // Note: there are more props than these that are provided by the viz settings
 // code, we just don't have types for them here.
-interface ChartSettingInputProps {
-  value: number | undefined;
-  onChange: (value: number | undefined) => void;
-  onChangeSettings: () => void;
+interface ChartSettingInputProps extends ChartSettingWidgetProps<number> {
   options?: {
     isInteger?: boolean;
     isNonNegative?: boolean;
