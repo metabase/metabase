@@ -281,6 +281,7 @@ describe.skip("issue 13961", () => {
       },
     },
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -547,6 +548,7 @@ describe("issue 15460", () => {
 
 describe("issue 15700", () => {
   const widgetType = "String is not";
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -621,6 +623,7 @@ describe("issue 16739", () => {
     "widget-type": "string/=",
     default: null,
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -666,6 +669,7 @@ describe("issue 16756", () => {
       },
     },
   };
+
   beforeEach(() => {
     cy.intercept("POST", "/api/dataset").as("dataset");
 
@@ -726,6 +730,7 @@ describe("issue 17019", () => {
     },
     display: "scalar",
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -776,6 +781,7 @@ describe("issue 17490", () => {
       });
     });
   }
+
   beforeEach(() => {
     mockDatabaseTables();
 
@@ -855,6 +861,7 @@ describe("issue 21246", () => {
   function resultAssertion(res) {
     cy.findByTestId("scalar-value").invoke("text").should("eq", res);
   }
+
   beforeEach(() => {
     cy.intercept("POST", "/api/dataset").as("dataset");
 
@@ -967,6 +974,7 @@ describe("issue 27257", () => {
 
 describe("issue 29786", { tags: "@external" }, () => {
   const SQL_QUERY = "SELECT * FROM PRODUCTS WHERE {{f1}} AND {{f2}}";
+
   beforeEach(() => {
     restore("mysql-8");
     cy.intercept("POST", "/api/dataset").as("dataset");
@@ -1001,6 +1009,7 @@ describe("issue 29786", { tags: "@external" }, () => {
 
 describe("issue 31606", { tags: "@external" }, () => {
   const SQL_QUERY = "SELECT * FROM PRODUCTS WHERE CATEGORY = {{test}}";
+
   beforeEach(() => {
     cy.intercept("POST", "/api/dataset").as("dataset");
 

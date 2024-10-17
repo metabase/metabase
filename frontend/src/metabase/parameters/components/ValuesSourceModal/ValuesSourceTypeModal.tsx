@@ -445,11 +445,11 @@ function ModelHint() {
   const href = getLearnUrl("data-modeling/models");
   const text = t`do it once in a model`;
   const link = showMetabaseLinks ? (
-    <strong>
+    <strong key="link">
       <ExternalLink href={href}>{text}</ExternalLink>
     </strong>
   ) : (
-    <strong>{text}</strong>
+    <strong key="text">{text}</strong>
   );
 
   return (

@@ -7,12 +7,11 @@
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.lib.schema.temporal-bucketing
-    :as lib.schema.temporal-bucketing]
-   [metabase.shared.util.i18n :as i18n]
-   [metabase.shared.util.time :as shared.ut]
+   [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.util :as u]
-   [metabase.util.malli :as mu]))
+   [metabase.util.i18n :as i18n]
+   [metabase.util.malli :as mu]
+   [metabase.util.time :as u.time]))
 
 (mu/defn describe-temporal-unit :- :string
   "Get a translated description of a temporal bucketing unit."
@@ -267,7 +266,7 @@
    Used when comparing temporal values like `[:!= ... [:field {:temporal-unit :day-of-week} ...] \"2022-01-01\"]`"
   [temporal-column
    temporal-value :- [:or :int :string]]
-  (shared.ut/format-unit temporal-value (:unit (temporal-bucket temporal-column))))
+  (u.time/format-unit temporal-value (:unit (temporal-bucket temporal-column))))
 
 (defn add-temporal-bucket-to-ref
   "Internal helper shared between a few implementations of [[with-temporal-bucket-method]].

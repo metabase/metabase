@@ -19,6 +19,11 @@ type AlertListItemProps = {
   onEdit: () => void;
 };
 
+// Used when a slack channel is present on an alert. This value is hardcoded
+// to 1 because each alert can only be sent to a single slack channel. Additional channels
+// would require their own alert.
+const SLACK_CHANNEL_COUNT = 1;
+
 export const AlertListItem = ({
   alert,
   highlight,
@@ -50,6 +55,7 @@ export const AlertListItem = ({
   const emailEnabled = emailChannel && emailChannel.enabled;
   const slackChannel = alert.channels.find(c => c.channel_type === "slack");
   const slackEnabled = slackChannel && slackChannel.enabled;
+  const httpChannels = alert.channels.filter(c => c.channel_type === "http");
 
   return (
     <li
@@ -91,17 +97,30 @@ export const AlertListItem = ({
             />
           </li>
           {isAdmin && emailEnabled && emailChannel.recipients && (
-            <li className={cx(CS.ml3, CS.flex, CS.alignCenter)}>
+            <li
+              className={cx(CS.ml3, CS.flex, CS.alignCenter)}
+              aria-label={t`Number of email recipients`}
+            >
               <Icon name="mail" className={CS.mr1} />
               {emailChannel.recipients.length}
             </li>
           )}
           {isAdmin && slackEnabled && (
-            <li className={cx(CS.ml3, CS.flex, CS.alignCenter)}>
+            <li
+              className={cx(CS.ml3, CS.flex, CS.alignCenter)}
+              aria-label={t`Number of Slack channels`}
+            >
               <Icon name="slack" size={16} className={CS.mr1} />
-              {(slackChannel.details &&
-                slackChannel.details.channel.replace("#", "")) ||
-                t`No channel`}
+              {SLACK_CHANNEL_COUNT}
+            </li>
+          )}
+          {isAdmin && httpChannels.length > 0 && (
+            <li
+              className={cx(CS.ml3, CS.flex, CS.alignCenter)}
+              aria-label={t`Number of HTTP channels`}
+            >
+              <Icon name="webhook" size={16} className={CS.mr1} />
+              {httpChannels.length}
             </li>
           )}
         </ul>

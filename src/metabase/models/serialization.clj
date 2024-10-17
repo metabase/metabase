@@ -62,7 +62,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.interface :as mi]
-   [metabase.shared.models.visualization-settings :as mb.viz]
+   [metabase.models.visualization-settings :as mb.viz]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.log :as log]
@@ -501,7 +501,7 @@
       (t2/reducible-select model {:where [:and
                                           [:or
                                            [:in :collection_id collection-set]
-                                           (when (contains? collection-set nil)
+                                           (when (some nil? collection-set)
                                              [:= :collection_id nil])]
                                           (when where
                                             where)]}))))
@@ -513,8 +513,8 @@
       nested? (extract-reducible-nested model-name (dissoc opts :where)))))
 
 (defmulti descendants
-  "Returns set of `[model-name database-id]` pairs for all entities contained or used by this entity. e.g. the Dashboard
-   implementation should return pairs for all DashboardCard entities it contains, etc.
+  "Returns map of `{[model-name database-id] {initiating-model id}}` for all entities contained or used by this
+   entity. e.g. the Dashboard implementation should return pairs for all DashboardCard entities it contains, etc.
 
    Dispatched on model-name."
   {:arglists '([model-name db-id])}
@@ -524,9 +524,9 @@
   nil)
 
 (defmulti ascendants
-  "Return set of `[model-name database-id]` pairs for all entities containing this entity, required to successfully
-  load this entity in destination db. Notice that ascendants are searched recursively, but their descendants are not
-  analyzed.
+  "Return map of `{[model-name database-id] {initiating-model id}}` for all entities containing this entity, required
+  to successfully load this entity in destination db. Notice that ascendants are searched recursively, but their
+  descendants are not analyzed.
 
   Dispatched on model-name."
   {:arglists '([model-name db-id])}
@@ -1533,27 +1533,27 @@
          (filter some?)
          (reduce set/union #{}))))
 
-(defn- viz-click-behavior-descendants [{:keys [click_behavior]}]
+(defn- viz-click-behavior-descendants [{:keys [click_behavior]} src]
   (when-let [{:keys [linkType targetId type]} click_behavior]
     (case type
       "link" (when-let [model (link-card-model->toucan-model linkType)]
-               #{[(name model) targetId]})
+               {[(name model) targetId] src})
       ;; TODO: We might need to handle the click behavior that updates dashboard filters? I can't figure out how get
       ;; that to actually attach to a filter to check what it looks like.
       nil)))
 
-(defn- viz-column-settings-descendants [{:keys [column_settings]}]
+(defn- viz-column-settings-descendants [{:keys [column_settings]} src]
   (when column_settings
     (->> (vals column_settings)
-         (mapcat viz-click-behavior-descendants)
+         (mapcat #(viz-click-behavior-descendants % src))
          set)))
 
 (defn visualization-settings-descendants
   "Given the :visualization_settings (possibly nil) for an entity, return anything that should be considered a
   descendant. Always returns an empty set even if the input is nil."
-  [viz]
-  (set/union (viz-click-behavior-descendants  viz)
-             (viz-column-settings-descendants viz)))
+  [viz src]
+  (set/union (viz-click-behavior-descendants  viz src)
+             (viz-column-settings-descendants viz src)))
 
 ;;; Common transformers
 
@@ -1660,22 +1660,6 @@
                                   (maybe-lift outer-xform :export :export-with-context))
    :import-with-context (compose* (maybe-lift outer-xform :import :import-with-context)
                                   (maybe-lift inner-xform :import :import-with-context))})
-
-;;; ## Utilities
-
-(defn strip-error
-  "Transforms the error in a list of strings to log"
-  [e prefix]
-  (->> (for [[e prefix] (map vector
-                             (take-while some? (iterate #(.getCause ^Exception %) e))
-                             (cons prefix (repeat "  caused by")))]
-         (str (when prefix (str prefix ": "))
-              (ex-message e)
-              (when-let [data (-> (ex-data e)
-                                  (dissoc :toucan2/context-trace)
-                                  not-empty)]
-                (str " " (pr-str data)))))
-       (str/join "\n")))
 
 ;;; ## Memoizing appdb lookups
 

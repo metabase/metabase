@@ -10,6 +10,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models
     :refer [Card Dashboard DashboardCard LegacyMetric Pulse Segment]]
+   [metabase.notification.test-util :as notification.tu]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.tools.with-temp :as t2.with-temp]))
@@ -449,16 +450,21 @@
   (testing :event/user-invited
     (mt/with-current-user (mt/user->id :rasta)
       (mt/with-temp [:model/User {:keys [id] :as new-user}]
-        (is (= {:object new-user}
-               (events/publish-event! :event/user-invited {:object new-user})))
-        (is (partial=
-             {:model_id id
-              :user_id  (mt/user->id :rasta)
-              :details  (assoc (select-keys new-user [:first_name :last_name :email])
-                               :user_group_memberships [{:id 1}])
-              :topic    :user-invited
-              :model    "User"}
-             (mt/latest-audit-log-entry :user-invited id)))))))
+        (let [details {:invitor {:first_name "Ngoc"
+                                 :email      "ngoc@metabase.com"}}]
+          (is (= {:object  new-user
+                  :details details}
+                 (events/publish-event! :event/user-invited {:object new-user
+                                                             :details details})))
+          (is (partial=
+               {:model_id id
+                :user_id  (mt/user->id :rasta)
+                :details  (assoc (select-keys new-user [:first_name :last_name :email])
+                                 :user_group_memberships [{:id 1}]
+                                 :invitor (:invitor details))
+                :topic    :user-invited
+                :model    "User"}
+               (mt/latest-audit-log-entry :user-invited id))))))))
 
 (deftest user-update-event-test
   (testing :event/user-update
@@ -530,10 +536,7 @@
 
 (deftest create-channel-event-test
   (mt/with-current-user (mt/user->id :rasta)
-    (mt/with-temp [:model/Channel channel {:name    "Test channel"
-                                           :type    "channel/metabase-test"
-                                           :details {:return-type  "return-value"
-                                                     :return-value true}}]
+    (mt/with-temp [:model/Channel channel notification.tu/default-can-connect-channel]
       (testing :event/channel-create
         (is (= {:object channel}
                (events/publish-event! :event/channel-create {:object channel})))
@@ -541,8 +544,8 @@
                 :user_id  (mt/user->id :rasta)
                 :details  {:id          (:id channel)
                            :name        "Test channel"
-                           :description nil
-                           :type        "channel/metabase-test"
+                           :description "Test channel description"
+                           :type        notification.tu/test-channel-type
                            :active      true}
                 :topic    :channel-create
                 :model    "Channel"}

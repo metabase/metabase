@@ -5,10 +5,10 @@
    [clojure.test :refer :all]
    [dk.ative.docjure.spreadsheet :as spreadsheet]
    [metabase.driver :as driver]
+   [metabase.models.visualization-settings :as mb.viz]
    [metabase.query-processor.streaming.common :as common]
    [metabase.query-processor.streaming.interface :as qp.si]
    [metabase.query-processor.streaming.xlsx :as qp.xlsx]
-   [metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.test :as mt])
   (:import
    (com.fasterxml.jackson.core JsonGenerator)
@@ -28,7 +28,7 @@
    (let [viz-settings (common/viz-settings-for-col
                        (assoc col :field_ref [:field 1])
                        {::mb.viz/column-settings {{::mb.viz/field-id 1} format-settings}})
-         format-strings (@#'qp.xlsx/format-settings->format-strings viz-settings col)]
+         format-strings (@#'qp.xlsx/format-settings->format-strings viz-settings col true)]
      ;; If only one format string is returned (for datetimes) or both format strings
      ;; are equal, just return a single value to make tests more readable.
      (cond
@@ -696,7 +696,18 @@
       (qp.si/begin! results-writer {:data {:ordered-cols []}} {})
       (qp.si/finish! results-writer {:row_count 0})
       ;; No additional files should exist in the temp directory
-      (is (= expected-poifiles-count (count (file-seq poifiles-directory)))))))
+      (is (= expected-poifiles-count (count (file-seq poifiles-directory))))))
+  (testing "if the tempfile directory doesn't exist xlsx downloads still work"
+    (with-open [bos (ByteArrayOutputStream.)
+                os  (BufferedOutputStream. bos)]
+      (doto (io/file (str (System/getProperty "java.io.tmpdir") "/poifiles"))
+        (.delete))
+      (let [results-writer (qp.si/streaming-results-writer :xlsx os)]
+        (qp.si/begin! results-writer {:data {:ordered-cols []}} {})
+        (qp.si/finish! results-writer {:row_count 0})
+        (let [istr (ByteArrayInputStream. (.toByteArray bos))]
+          (is (spreadsheet/workbook? (spreadsheet/load-workbook-from-stream istr))
+              "not a valid workbook"))))))
 
 (deftest dont-format-non-temporal-columns-as-temporal-columns-test
   (testing "Don't format columns with temporal semantic type as datetime unless they're actually datetimes (#18729)"
