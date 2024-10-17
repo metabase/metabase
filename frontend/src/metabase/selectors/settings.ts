@@ -45,6 +45,39 @@ export const getLearnUrl = (path = "") => {
   return `https://www.metabase.com/learn/${path}`;
 };
 
+type UtmProps = {
+  utm_source?: string;
+  utm_medium: string;
+  utm_campaign: string;
+  utm_content?: string;
+};
+
+type UrlWithUtmProps = { url: string } & UtmProps;
+
+export const getUrlWithUtm = createSelector(
+  (state: State, props: UrlWithUtmProps) => props,
+  (state: State) => getPlan(getSetting(state, "token-features")),
+  (props: UrlWithUtmProps, plan: string) => {
+    const {
+      utm_source = "product",
+      utm_medium,
+      utm_campaign,
+      utm_content,
+    } = props;
+
+    const url = new URL(props.url);
+    url.searchParams.set("utm_source", utm_source);
+    url.searchParams.set("utm_medium", utm_medium);
+    url.searchParams.set("utm_campaign", utm_campaign);
+    if (utm_content) {
+      url.searchParams.set("utm_content", utm_content);
+    }
+    url.searchParams.set("source_plan", plan);
+
+    return url.toString();
+  },
+);
+
 interface DocsUrlProps {
   page?: string;
   anchor?: string;
