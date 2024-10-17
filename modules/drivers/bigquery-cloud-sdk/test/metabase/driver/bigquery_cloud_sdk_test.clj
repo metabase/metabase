@@ -770,15 +770,40 @@
                      first))))))))
 
 (deftest sync-table-with-array-test
-  (testing "Tables with ARRAY (REPEATED) columns can be synced successfully"
+  (testing "Tables with RECORD and ARRAY (REPEATED) columns can be synced successfully"
     (do-with-temp-obj "table_array_type_%s"
-                      (fn [tbl-nm] ["CREATE TABLE `%s.%s` AS SELECT 1 AS int_col, GENERATE_ARRAY(1,10) AS array_col"
+                      (fn [tbl-nm] ["CREATE TABLE `%s.%s` AS SELECT 1 AS int_col,
+                                     GENERATE_ARRAY(1,10) AS array_col,
+                                     STRUCT('Sam' AS name) AS primary,
+                                     [STRUCT('Rudisha' AS name)] AS participants"
                                     test-db-name
                                     tbl-nm])
                       (fn [tbl-nm] ["DROP TABLE IF EXISTS `%s.%s`" test-db-name tbl-nm])
                       (fn [tbl-nm]
                         (is (= [{:name "int_col" :database-type "INTEGER" :base-type :type/Integer :database-position 0 :database-partitioned false :table-name tbl-nm :table-schema test-db-name}
-                                {:name "array_col" :database-type "ARRAY" :base-type :type/Array :database-position 1 :database-partitioned false :table-name tbl-nm :table-schema test-db-name}]
+                                {:name "array_col" :database-type "ARRAY" :base-type :type/Array :database-position 1 :database-partitioned false :table-name tbl-nm :table-schema test-db-name}
+                                {:name "primary",
+                                 :table-name tbl-nm
+                                 :table-schema test-db-name
+                                 :database-type "RECORD",
+                                 :base-type :type/Dictionary,
+                                 :database-partitioned false,
+                                 :database-position 2,
+                                 :nested-fields
+                                 #{{:name "name",
+                                    :table-name tbl-nm
+                                    :table-schema test-db-name
+                                    :database-type "STRING",
+                                    :base-type :type/Text,
+                                    :nfc-path ["primary"],
+                                    :database-position 2}}}
+                                {:name "participants",
+                                 :table-name tbl-nm
+                                 :table-schema test-db-name
+                                 :database-type "ARRAY",
+                                 :base-type :type/Array,
+                                 :database-partitioned false,
+                                 :database-position 3}]
                                (driver/describe-fields :bigquery-cloud-sdk (mt/db) {:table-names [tbl-nm] :schema-names [test-db-name]}))
                             "`describe-fields` should detect the correct base-type for array type columns")))))
 
