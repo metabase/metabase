@@ -1,3 +1,7 @@
+## [0.1.38](https://github.com/metabase/metabase/compare/embedding-sdk-0.1.40...embedding-sdk-0.1.38) (2024-10-17)
+
+
+
 ## [0.1.37](https://github.com/metabase/metabase/compare/embedding-sdk-0.1.36...embedding-sdk-0.1.37) (2024-10-02)
 
 
