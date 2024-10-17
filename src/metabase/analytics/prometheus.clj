@@ -199,6 +199,14 @@
                        {:description (trs "Number of emails sent.")})
    (prometheus/counter :metabase-email/message-errors
                        {:description (trs "Number of errors when sending emails.")})
+   (prometheus/counter :metabase-sdk/response-ok
+                       {:description (trs "Number of successful SDK requests.")})
+   (prometheus/counter :metabase-sdk/response-error
+                       {:description (trs "Number of errors when responding to SDK requests.")})
+   (prometheus/counter :metabase-scim/response-ok
+                       {:description (trs "Number of successful responses from SCIM endpoints")})
+   (prometheus/counter :metabase-scim/response-error
+                       {:description (trs "Number of error responses from SCIM endpoints")})
    (prometheus/counter :metabase-query-processor/metrics
                        {:description (trs "Number of queries consuming metrics processed by the query processor.")})
    (prometheus/counter :metabase-query-processor/metric-errors
