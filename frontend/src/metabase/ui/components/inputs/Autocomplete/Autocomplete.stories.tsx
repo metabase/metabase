@@ -1,28 +1,58 @@
+import type { ComboboxItem, ComboboxItemGroup } from "@mantine/core";
+
 import { Autocomplete, type AutocompleteProps, Stack } from "metabase/ui";
 
-const dataWithGroupsLarge = [
-  { value: "Entity key", icon: "label", group: "Overall row" },
-  { value: "Entity name", icon: "string", group: "Overall row" },
-  { value: "Foreign key", icon: "connections", group: "Overall row" },
-  { value: "Category", icon: "string", group: "Common" },
-  { value: "Comment", icon: "string", group: "Common" },
-  { value: "Description", icon: "string", group: "Common" },
-  { value: "Title", icon: "string", group: "Common" },
-  { value: "City", icon: "location", group: "Location" },
-  { value: "Country", icon: "location", group: "Location" },
-  { value: "Latitude", icon: "location", group: "Location" },
-  { value: "Longitude", icon: "location", group: "Location" },
-  { value: "Longitude", icon: "location", group: "Location" },
-  { value: "State", icon: "location", group: "Location" },
-  { value: "Zip code", icon: "location", group: "Location" },
+type ComboboxItemWithIcon = ComboboxItem & { icon: string };
+const dataWithGroupsLarge: ComboboxItemGroup<ComboboxItemWithIcon>[] = [
+  {
+    group: "Overall row",
+    items: [
+      { icon: "label", value: "10", label: "Entity key" },
+      { icon: "string", value: "11", label: "Entity name" },
+      {
+        icon: "connections",
+        value: "12",
+        label: "Foreign key",
+      },
+    ],
+  },
+  {
+    group: "Common",
+    items: [
+      { icon: "string", value: "13", label: "Category" },
+      {
+        icon: "string",
+        value: "14",
+        label: "Comment",
+        disabled: true,
+      },
+      { icon: "string", value: "15", label: "Description" },
+      { icon: "string", value: "16", label: "Title" },
+    ],
+  },
+  {
+    group: "Location",
+    items: [
+      { icon: "location", value: "17", label: "City" },
+      { icon: "location", value: "18", label: "Country" },
+      { icon: "location", value: "19", label: "Latitude" },
+      { icon: "location", value: "20", label: "Longitude" },
+      { icon: "location", value: "21", label: "Longitude" },
+      { icon: "location", value: "22", label: "State" },
+      { icon: "location", value: "23", label: "Zip code" },
+    ],
+  },
 ];
 
-const dataWithGroups = dataWithGroupsLarge.slice(0, 6);
+const dataWithGroups: ComboboxItemGroup<ComboboxItemWithIcon>[] =
+  dataWithGroupsLarge.map(({ group, items }) => ({
+    group,
+    items: items.slice(0, 3),
+  }));
 
-const dataWithIcons = dataWithGroups.map(item => ({
-  ...item,
-  group: undefined,
-}));
+const dataWithIcons: ComboboxItem[] = dataWithGroups
+  .map(({ items }) => items.map(item => item))
+  .flat();
 
 const dataWithLabels = dataWithIcons.map(item => ({
   ...item,

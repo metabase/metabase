@@ -46,7 +46,7 @@ const IMAGE_SIZE_LIMIT = 2 * MB;
 
 interface SelectOption {
   label: string;
-  value: string;
+  value: IllustrationSettingValue;
 }
 const SELECT_OPTIONS: Record<IllustrationType, SelectOption[]> = {
   background: [
@@ -59,7 +59,7 @@ const SELECT_OPTIONS: Record<IllustrationType, SelectOption[]> = {
     { label: t`No illustration`, value: "none" },
     { label: t`Custom`, value: "custom" },
   ],
-};
+} as const;
 
 export function IllustrationWidget({
   id,
@@ -80,7 +80,7 @@ export function IllustrationWidget({
     settingValues[customIllustrationSetting] ?? undefined;
 
   async function handleChange(value: IllustrationSettingValue) {
-    setValue(value);
+    setValue(value ?? "none");
     setErrorMessage("");
     // Avoid saving the same value
     // When setting.value is set to the default value its value would be `null`
@@ -91,7 +91,7 @@ export function IllustrationWidget({
     if (value === "custom" && customIllustrationSource) {
       await onChange("custom");
     } else if (value !== "custom") {
-      await onChange(value);
+      await onChange(value ?? "none");
     }
   }
 
@@ -194,7 +194,7 @@ export function IllustrationWidget({
                   variant="subtle"
                   c="text-dark"
                   ml="md"
-                  compact
+                  size="compact-md"
                   onClick={handleRemoveCustomIllustration}
                   aria-label={t`Remove custom illustration`}
                 />

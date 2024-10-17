@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { color } from "metabase/lib/colors";
-import { Icon, isComboboxItemWithMissingLabel } from "metabase/ui";
+import { Icon } from "metabase/ui";
 import type {
   LegacyComboboxData,
   LegacyComboboxDataItem,
@@ -198,9 +198,9 @@ function getSelectItem(
     return { value: item, label: item };
   }
 
-  if (isComboboxItemWithMissingLabel(item)) {
-    return { value: item.value, label: item.value?.toString() ?? "" };
-  }
+  // if (isComboboxItemWithMissingLabel(item)) {
+  //   return { value: item.value, label: item.value?.toString() ?? "" };
+  // }
 
   return item;
 }

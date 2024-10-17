@@ -117,7 +117,7 @@ export const SelectTime = ({
   const applicationName = useSelector(getApplicationName);
   const timezoneTooltipText = t`Your ${applicationName} timezone`;
   return (
-    <Group spacing={isClock12Hour ? "xs" : "sm"} style={{ rowGap: ".5rem" }}>
+    <Group gap={isClock12Hour ? "xs" : "sm"} style={{ rowGap: ".5rem" }}>
       {/* Select the hour */}
       <AutoWidthSelect
         value={value}
@@ -132,7 +132,7 @@ export const SelectTime = ({
         aria-label={timeSelectLabel}
       />
       {/* Choose between AM and PM */}
-      <Group spacing="sm">
+      <Group gap="sm">
         {isClock12Hour && (
           <SegmentedControl
             radius="sm"
@@ -174,9 +174,9 @@ export const SelectWeekday = ({
   const { weekdays } = getScheduleStrings();
   const label = useMemo(() => getScheduleComponentLabel("weekday"), []);
   return (
-    <AutoWidthSelect
+    <AutoWidthSelect<ScheduleDayType>
       value={schedule.schedule_day}
-      onChange={(value: ScheduleDayType) =>
+      onChange={(value: ScheduleDayType | null) =>
         updateSchedule("schedule_day", value)
       }
       data={weekdays}
@@ -238,10 +238,11 @@ export const SelectMinute = ({
   );
 };
 
-export const AutoWidthSelect = ({
+export const AutoWidthSelect = <Value extends string>({
   style,
+  value,
   ...props
-}: { style?: Partial<FontStyle> } & SelectProps) => {
+}: { style?: Partial<FontStyle>; value: Value } & SelectProps<Value>) => {
   const fontFamily = useSelector(state =>
     getSetting(state, "application-font"),
   );
@@ -269,6 +270,7 @@ export const AutoWidthSelect = ({
         },
         input: { paddingInlineEnd: 0, lineHeight: "2.5rem" },
       }}
+      value={value}
       {...props}
     />
   );

@@ -1,7 +1,7 @@
 .root {
   &[data-size="md"] {
     .input {
-      font-size: var(--mantine-font-size-sm);
+      font-size: var(--mantine-font-size-md);
     }
   }
 

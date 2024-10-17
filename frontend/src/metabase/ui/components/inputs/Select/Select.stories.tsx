@@ -52,10 +52,10 @@ const dataWithGroups: ComboboxItemGroup<ComboboxItemWithIcon>[] =
   }));
 
 const dataWithNoGroups: ComboboxItem[] = dataWithGroups
-  .map(({ items }) => items.map(({ icon, ...rest }) => rest))
+  .map(({ items }) => items.map(item => item))
   .flat();
 
-const args: SelectProps = {
+const args: Partial<SelectProps<string>> = {
   data: dataWithNoGroups,
   size: "md",
   label: "Field type",
@@ -109,7 +109,7 @@ const argTypes = {
   },
 };
 
-const VariantTemplate = (args: SelectProps) => (
+const VariantTemplate = (args: SelectProps<string>) => (
   <Stack>
     <Select {...args} />
     <Select {...args} variant="unstyled" />
