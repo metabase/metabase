@@ -53,11 +53,12 @@ const ChatHistory = ({
   const initializeClientAndThreads = async () => {
     try {
       setLoading(true); // Set loading to true while fetching data
+      setCreatedThread([]); // Clear the existing threads
       const threads = await client.threads.search();
       const filteredThreads = threads.filter(
         (thread: any) => thread.metadata && thread.metadata.graph_id === "get_data_agent"
       );
-      setCreatedThread(filteredThreads);
+      setCreatedThread(filteredThreads); // Set the new fetched threads
       setLoading(false); // Set loading to false after fetching
     } catch (error) {
       console.error("Error initializing Client or fetching threads:", error);
@@ -82,16 +83,17 @@ const ChatHistory = ({
       const today = dayjs().startOf("day");
       const last7Days = dayjs().subtract(7, "day").startOf("day");
       const last30Days = dayjs().subtract(30, "day").startOf("day");
-
+  
+      // Clear chat history before updating with new data
       const categorizedHistory: ChatHistoryState = {
         today: [],
         last7Days: [],
         last30Days: [],
       };
-
+  
       createdThread.forEach((thread: any) => {
         const timestamp = dayjs(thread.created_at);
-
+  
         if (timestamp.isSame(today, "day")) {
           categorizedHistory.today.push(thread);
         } else if (timestamp.isAfter(last7Days)) {
@@ -100,13 +102,13 @@ const ChatHistory = ({
           categorizedHistory.last30Days.push(thread);
         }
       });
-
-      setChatHistory((prevHistory) => ({
-        today: [...prevHistory.today, ...categorizedHistory.today],
-        last7Days: [...prevHistory.last7Days, ...categorizedHistory.last7Days],
-        last30Days: [...prevHistory.last30Days, ...categorizedHistory.last30Days],
-      }));
-
+  
+      setChatHistory({
+        today: categorizedHistory.today,
+        last7Days: categorizedHistory.last7Days,
+        last30Days: categorizedHistory.last30Days,
+      });
+  
       if (createdThread.length < ITEMS_PER_PAGE) {
         setHasMore(false);
       }
