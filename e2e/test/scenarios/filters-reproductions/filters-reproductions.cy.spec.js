@@ -1415,22 +1415,56 @@ describe("issue 47887", () => {
         query: {
           "source-table": PEOPLE_ID,
           expressions: {
-            "asdfdsa": ["case", [
-              [["=", ["field", SAMPLE_DATABASE.PEOPLE.NAME, { "base-type": "type/Text" }], "Won"],
-              ["datetime-add", ["field", SAMPLE_DATABASE.PEOPLE.CREATED_AT, { "base-type": "type/DateTimeWithLocalTZ" }], 0, "month"]]],
-              { "default": ["datetime-add", ["field", SAMPLE_DATABASE.PEOPLE.BIRTH_DATE, { "base-type": "type/Date" }], 0, "month"] }]
+            asdfdsa: [
+              "case",
+              [
+                [
+                  [
+                    "=",
+                    [
+                      "field",
+                      SAMPLE_DATABASE.PEOPLE.NAME,
+                      { "base-type": "type/Text" },
+                    ],
+                    "Won",
+                  ],
+                  [
+                    "datetime-add",
+                    [
+                      "field",
+                      SAMPLE_DATABASE.PEOPLE.CREATED_AT,
+                      { "base-type": "type/DateTimeWithLocalTZ" },
+                    ],
+                    0,
+                    "month",
+                  ],
+                ],
+              ],
+              {
+                default: [
+                  "datetime-add",
+                  [
+                    "field",
+                    SAMPLE_DATABASE.PEOPLE.BIRTH_DATE,
+                    { "base-type": "type/Date" },
+                  ],
+                  0,
+                  "month",
+                ],
+              },
+            ],
           },
         },
         parameters: [],
       },
     });
 
-    cy.findByText("Show Editor").click()
-    cy.findByLabelText("Filter").click()
-    cy.findByLabelText("asdfdsa").click()
+    cy.findByTestId("notebook-button").click();
+    cy.findAllByTestId("action-buttons").last().findByText("Filter").click();
 
-    // Check that Date filter popover is opened
-    // Beware of triple comma.
-    cy.findByText("Specific dates…").click()
+    popover().within(() => {
+      cy.findByLabelText("asdfdsa").click();
+      cy.findByText("Specific dates…").click();
+    });
   });
 });
