@@ -636,6 +636,19 @@ const ChatAssistant = ({ client, selectedMessages, selectedThreadId, setSelected
                         isNewMessage = true;
                     }
                 }
+                if (event === "error" && data) {
+                    removeExistingMessage("Please wait until we generate the response....")
+                    setMessages((prev) => [
+                        ...prev,
+                        {
+                            id: Date.now() + Math.random(),
+                            sender: "server",
+                            text: data.message,
+                            isLoading: false,
+                            showVisualization: false,
+                        },
+                    ])
+                }
             }
         } catch (error) {
             console.error("Error during message processing:", error.message);
