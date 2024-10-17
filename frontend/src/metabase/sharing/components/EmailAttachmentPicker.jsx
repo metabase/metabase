@@ -29,7 +29,7 @@ export default class EmailAttachmentPicker extends Component {
   };
 
   componentDidMount() {
-    this.setState(this.calculateStateFromCards());
+    this.setState({ isPivotingEnabled: this.canConfigurePivoting() });
   }
 
   componentDidUpdate() {
