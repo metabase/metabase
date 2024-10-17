@@ -119,7 +119,7 @@ export const ChartSettingSeriesOrder = ({
   );
 
   const handleAddSeries = useCallback(
-    (seriesKey: string) => {
+    (seriesKey: string | null) => {
       const item = hiddenItems.find(item => item.key === seriesKey);
       if (item) {
         toggleDisplay(item);
@@ -158,7 +158,7 @@ export const ChartSettingSeriesOrder = ({
           )}
           {isSeriesPickerVisible && (
             <Select
-              initiallyOpened
+              dropdownOpened
               searchable
               placeholder={searchPickerPlaceholder}
               data={hiddenItems.map(item => ({

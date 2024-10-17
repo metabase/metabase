@@ -174,9 +174,9 @@ export const SelectWeekday = ({
   const { weekdays } = getScheduleStrings();
   const label = useMemo(() => getScheduleComponentLabel("weekday"), []);
   return (
-    <AutoWidthSelect
+    <AutoWidthSelect<ScheduleDayType>
       value={schedule.schedule_day}
-      onChange={(value: ScheduleDayType) =>
+      onChange={(value: ScheduleDayType | null) =>
         updateSchedule("schedule_day", value)
       }
       data={weekdays}
@@ -238,10 +238,11 @@ export const SelectMinute = ({
   );
 };
 
-export const AutoWidthSelect = ({
+export const AutoWidthSelect = <Value extends string>({
   style,
+  value,
   ...props
-}: { style?: Partial<FontStyle> } & SelectProps) => {
+}: { style?: Partial<FontStyle>; value: Value } & SelectProps<Value>) => {
   const fontFamily = useSelector(state =>
     getSetting(state, "application-font"),
   );
@@ -269,6 +270,7 @@ export const AutoWidthSelect = ({
         },
         input: { paddingInlineEnd: 0, lineHeight: "2.5rem" },
       }}
+      value={value}
       {...props}
     />
   );
