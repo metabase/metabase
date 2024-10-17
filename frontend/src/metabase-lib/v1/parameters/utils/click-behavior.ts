@@ -151,6 +151,7 @@ function getTargetsForStructuredQuestion(question: Question): Target[] {
     const dimension: ClickBehaviorDimensionTarget["dimension"] = [
       "dimension",
       Lib.legacyRef(query, stageIndex, targetColumn),
+      { "stage-number": stageIndex },
     ];
     const id = JSON.stringify(dimension);
     const target: ClickBehaviorTarget = { type: "dimension", id, dimension };
