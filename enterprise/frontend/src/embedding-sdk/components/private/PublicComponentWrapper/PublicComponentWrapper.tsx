@@ -2,12 +2,10 @@ import React, { type CSSProperties } from "react";
 import { t } from "ttag";
 
 import { PublicComponentStylesWrapper } from "embedding-sdk/components/private/PublicComponentStylesWrapper";
+import { SdkError } from "embedding-sdk/components/private/PublicComponentWrapper/SdkError";
+import { SdkLoader } from "embedding-sdk/components/private/PublicComponentWrapper/SdkLoader";
 import { useSdkSelector } from "embedding-sdk/store";
 import { getLoginStatus, getUsageProblem } from "embedding-sdk/store/selectors";
-
-import { SdkError } from "../SdkError";
-
-import { SdkLoader } from "./SdkLoader";
 
 type PublicComponentWrapperProps = {
   children: React.ReactNode;
@@ -28,7 +26,7 @@ export const PublicComponentWrapper = React.forwardRef<
   }
 
   if (loginStatus.status === "validated") {
-    content = <SdkLoader />
+    content = <div>{t`JWT is valid.`}</div>;
   }
 
   if (loginStatus.status === "loading") {
@@ -36,10 +34,9 @@ export const PublicComponentWrapper = React.forwardRef<
   }
 
   if (loginStatus.status === "error") {
-    content = <SdkError {...loginStatus.data} />;
+    content = <SdkError message={loginStatus.error.message} />;
   }
 
-  // TODO: Put this in the errors?
   // The SDK components should not load if there is a license error.
   if (usageProblem?.severity === "error") {
     content = null;

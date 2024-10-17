@@ -61,7 +61,7 @@ const TestComponent = ({ config }: { config: SDKConfig }) => {
       data-testid="test-component"
       data-is-logged-in={isLoggedIn}
       data-login-status={loginStatus.status}
-      data-error-message={(loginStatus as LoginStatusError).data?.status}
+      data-error-message={(loginStatus as LoginStatusError).error?.message}
     >
       Test Component
       <button onClick={refreshToken}>Refresh Token</button>
@@ -209,15 +209,7 @@ describe("useInitData hook", () => {
     });
 
     it("should use a custom fetchRefreshToken function when specified", async () => {
-      let fetchRequestToken = jest.fn(
-        async () =>
-          ({
-            id: "foo",
-            exp: 10,
-            iat: 10,
-            status: "ok",
-          }) as const,
-      );
+      let fetchRequestToken = jest.fn(async () => ({ id: "foo", exp: 10 }));
 
       const { rerender } = setup({ isValidConfig: true, fetchRequestToken });
 
@@ -226,15 +218,7 @@ describe("useInitData hook", () => {
 
       // Pass in a new fetchRequestToken function
       // We expect the new function to be called when the "Refresh Token" button is clicked
-      fetchRequestToken = jest.fn(
-        async () =>
-          ({
-            id: "bar",
-            exp: 10,
-            iat: 10,
-            status: "ok",
-          }) as const,
-      );
+      fetchRequestToken = jest.fn(async () => ({ id: "bar", exp: 10 }));
 
       const config = createMockJwtConfig({
         jwtProviderUri: "http://TEST_URI/sso/metabase",
