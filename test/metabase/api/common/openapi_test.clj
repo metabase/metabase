@@ -1,5 +1,6 @@
 (ns metabase.api.common.openapi-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [compojure.core :refer [GET POST]]
    [malli.json-schema :as mjs]
@@ -71,12 +72,21 @@
          (#'openapi/path->openapi "/:model/:yyyy-mm"))))
 
 (deftest ^:parallel collect-routes-test
-  (is (=? [{:path "/export"}
-           {:path "/rename"}
-           {:path "/{id}"}
-           {:path "/{id}"}
-           {:path "/{id}/upload"}]
-          (sort-by :path (#'openapi/collect-routes #'routes)))))
+  (testing "can collect routes in simple case"
+    (is (=? [{:path "/export"}
+             {:path "/rename"}
+             {:path "/{id}"}
+             {:path "/{id}"}
+             {:path "/{id}/upload"}]
+            (sort-by :path (#'openapi/collect-routes #'routes)))))
+  (testing "every top-level route only uses middlewares which correctly pass metadata\n"
+    (doseq [route (-> #'routes/routes meta :routes)
+            :when (meta route)
+            :let  [m (meta route)]]
+      (testing (cond-> (:path m)
+                 (:doc m) (str " - " (some-> (:doc m) str/split-lines first)))
+        (is (or (:method m)
+                (some? (->> route meta :routes (some meta)))))))))
 
 (deftest ^:parallel defendpoint->openapi-test
   (is (=? {:get

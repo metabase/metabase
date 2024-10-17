@@ -180,7 +180,16 @@
         (is (= expected
                (mapv fixup
                      (mt/with-test-user :rasta
-                       (recent-views (mt/user->id :rasta))))))))))
+                       (recent-views (mt/user->id :rasta)))))))))
+  (testing "non admins can see tables in recents (#47420)"
+    (mt/dataset test-data
+      (let [products-id (mt/id :products)]
+        (assert (-> (mt/fetch-user :rasta) :is_superuser not) "User is a super user")
+        (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Table products-id :view)
+        (let [views (mt/with-test-user :rasta
+                      (recent-views (mt/user->id :rasta)))]
+          (is (contains? (into #{} (map (juxt :id :display_name :model)) views)
+                         [products-id "Products" :table])))))))
 
 (deftest update-users-recent-views!-duplicates-test
   (testing "`update-users-recent-views!` prunes duplicates of a certain model.`"
