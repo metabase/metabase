@@ -7,7 +7,6 @@
    [metabase-enterprise.sso.api.interface :as sso.i]
    [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
    [metabase-enterprise.sso.integrations.sso-utils :as sso-utils]
-   [metabase.api.common :as api]
    [metabase.api.session :as api.session]
    [metabase.embed.settings :as embed.settings]
    [metabase.integrations.common :as integrations.common]
@@ -100,21 +99,21 @@
 
 (defn- check-jwt-enabled []
   (when-not (sso-settings/jwt-enabled)
-        (throw
-          (ex-info "JWT SSO has not been enabled and/or configured"
-                   {:status "error-sso-jwt-disabled"}))))
+    (throw
+     (ex-info (tru "JWT SSO has not been enabled and/or configured")
+              {:status "error-sso-jwt-disabled"}))))
 
 (defn ^:private generate-response-token
   [session jwt-data]
   (if-not (embed.settings/enable-embedding-sdk)
-          (throw
-            (ex-info "SDK Embedding is disabled. Enable it in the Embedding settings."
-                     {:status "error-embedding-sdk-disabled"}))
-          (response/response
-           {:status :ok
-            :id     (:id session)
-            :exp    (:exp jwt-data)
-            :iat    (:iat jwt-data)})))
+    (throw
+     (ex-info (tru "SDK Embedding is disabled. Enable it in the Embedding settings.")
+              {:status "error-embedding-sdk-disabled"}))
+    (response/response
+     {:status :ok
+      :id     (:id session)
+      :exp    (:exp jwt-data)
+      :iat    (:iat jwt-data)})))
 
 (defn ^:private redirect-to-idp
   [idp redirect]
@@ -138,4 +137,4 @@
 
 (defmethod sso.i/sso-post :jwt
   [_]
-  (throw (ex-info "POST not valid for JWT SSO requests" {:status 'error-post-jwt-not-valid'})))
+  (throw (ex-info (tru "POST not valid for JWT SSO requests") {:status "error-post-jwt-not-valid"})))
