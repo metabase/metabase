@@ -1,11 +1,10 @@
 (ns metabase.pulse.test-util
   (:require
-   [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.channel.core :as channel]
    [metabase.integrations.slack :as slack]
    [metabase.notification.test-util :as notification.tu]
-   [metabase.pulse :as pulse]
+   [metabase.pulse.send :as pulse.send]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
@@ -21,13 +20,12 @@
                                                    :alert_condition "rows"}
                            :model/PulseCard _     {:pulse_id (:id pulse), :card_id (u/the-id card)}]
     (let [pulse-result       (atom nil)
-          orig-execute-pulse @#'pulse/execute-pulse]
-      (with-redefs [channel/send!               (fn [& _args]
-                                                  :noop)
-                    pulse/execute-pulse          (fn [& args]
-                                                   (u/prog1 (apply orig-execute-pulse args)
-                                                     (reset! pulse-result <>)))]
-        (pulse/send-pulse! pulse)
+          orig-execute-pulse @#'pulse.send/execute-pulse]
+      (with-redefs [channel/send!            (constantly :noop)
+                    pulse.send/execute-pulse (fn [& args]
+                                               (u/prog1 (apply orig-execute-pulse args)
+                                                 (reset! pulse-result <>)))]
+        (pulse.send/send-pulse! pulse)
         (qp.test-util/rows (:result (first @pulse-result)))))))
 
 (def card-name "Test card")
@@ -55,17 +53,10 @@
 (defn rasta-id []
   (mt/user->id :rasta))
 
-(defn realize-lazy-seqs
-  "It's possible when data structures contain lazy sequences that the database will be torn down before the lazy seq
-  is realized, causing the data returned to be nil. This function walks the datastructure, realizing all the lazy
-  sequences it finds"
-  [data]
-  (walk/postwalk identity data))
-
 (defn do-with-site-url!
-  [f]
+  [thunk]
   (mt/with-temporary-setting-values [site-url "https://metabase.com/testmb"]
-    (f)))
+    (thunk)))
 
 (defmacro email-test-setup!
   "Macro that ensures test-data is present and will use a fake inbox for emails"

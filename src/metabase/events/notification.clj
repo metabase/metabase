@@ -11,7 +11,7 @@
    [metabase.models.user :as user]
    [metabase.notification.core :as notification]
    [metabase.public-settings :as public-settings]
-   [metabase.pulse.render.style :as style]
+   [metabase.pulse.core :as pulse]
    [metabase.util.i18n :as i18n :refer [trs]]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
@@ -96,7 +96,7 @@
                  :site-name            (public-settings/site-name)
                  :site-url             (public-settings/site-url)
                  :admin-email          (public-settings/admin-email)
-                 :style                {:button (messages/button-style (style/primary-color))}
+                 :style                {:button (messages/button-style (pulse/primary-color))}
                  :extra                (extra-context topic event-info)}
    :event-info  (cond->> event-info
                   (some? (events.schema/topic->schema topic))

@@ -3,7 +3,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.channel.slack :as channel.slack]
-   [metabase.email.messages :as messages]
+   [metabase.email.result-attachment :as email.result-attachment]
    [metabase.models
     :refer [Card
             Collection
@@ -19,8 +19,8 @@
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.public-settings :as public-settings]
-   [metabase.pulse]
    [metabase.pulse.render.body :as body]
+   [metabase.pulse.send :as pulse.send]
    [metabase.pulse.test-util :as pulse.test-util]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -114,7 +114,7 @@
                           :channel/slack)
                         (pulse.test-util/with-captured-channel-send-messages!
                           (mt/with-temporary-setting-values [site-url "https://metabase.com/testmb"]
-                            (metabase.pulse/send-pulse! (t2/select-one :model/Pulse pulse-id)))))))
+                            (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id)))))))
                   (thunk []
                     (if fixture
                       (fixture {:dashboard-id dashboard-id,
@@ -239,7 +239,7 @@
                    DashboardCard _ {:dashboard_id dashboard-id :card_id card-id-1}
                    DashboardCard _ {:dashboard_id dashboard-id :card_id card-id-2}
                    User {user-id :id} {}]
-      (let [result (@#'metabase.pulse/execute-dashboard {:creator_id user-id} dashboard)]
+      (let [result (#'pulse.send/execute-dashboard {:creator_id user-id} dashboard)]
         (is (malli= [:sequential
                      {:min 2, :max 2}
                      [:map
@@ -261,7 +261,7 @@
                    DashboardCard _ {:dashboard_id dashboard-id :card_id card-id-3}
                    DashboardCard _ {:dashboard_id dashboard-id :card_id card-id-4}
                    User {user-id :id} {}]
-      (let [result (@#'metabase.pulse/execute-dashboard {:creator_id user-id} dashboard)]
+      (let [result (#'pulse.send/execute-dashboard {:creator_id user-id} dashboard)]
         (is (= 3 (count result)))))))
 
 (deftest ^:parallel execute-dashboard-test-3
@@ -274,7 +274,7 @@
                    DashboardCard _ {:dashboard_id dashboard-id :card_id card-id-2 :row 0 :col 1}
                    DashboardCard _ {:dashboard_id dashboard-id :card_id card-id-3 :row 0 :col 0}
                    User {user-id :id} {}]
-      (let [result (@#'metabase.pulse/execute-dashboard {:creator_id user-id} dashboard)]
+      (let [result (#'pulse.send/execute-dashboard {:creator_id user-id} dashboard)]
         (is (= [card-id-3 card-id-2 card-id-1]
                (map #(-> % :card :id) result)))))))
 
@@ -287,7 +287,7 @@
                                     :visualization_settings {:virtual_card {}, :text "test"}}
                    User {user-id :id} {}]
       (is (= [{:virtual_card {} :text "test" :type :text}]
-             (@#'metabase.pulse/execute-dashboard {:creator_id user-id} dashboard))))))
+             (#'pulse.send/execute-dashboard {:creator_id user-id} dashboard))))))
 
 (deftest basic-table-test
   (tests!
@@ -655,7 +655,7 @@
                                                                 :target       [:dimension [:field (mt/id :products :category) nil]]}]
                                           :card_id            mbql-card-id
                                           :dashboard_id       dashboard-id}]
-            (let [[mbql-results] (map :result (@#'metabase.pulse/execute-dashboard {:creator_id (mt/user->id :rasta)} dashboard))]
+            (let [[mbql-results] (map :result (#'pulse.send/execute-dashboard {:creator_id (mt/user->id :rasta)} dashboard))]
               (is (= [[2 "Small Marble Shoes"        "Doohickey"]
                       [3 "Synergistic Granite Chair" "Doohickey"]]
                      (mt/rows mbql-results))))))
@@ -682,7 +682,7 @@
                                                                 :target       [:dimension [:template-tag "category"]]}]
                                           :card_id            sql-card-id
                                           :dashboard_id       dashboard-id}]
-            (let [[results] (map :result (@#'metabase.pulse/execute-dashboard {:creator_id (mt/user->id :rasta)} dashboard))]
+            (let [[results] (map :result (#'pulse.send/execute-dashboard {:creator_id (mt/user->id :rasta)} dashboard))]
               (is (= [[1  "Rustic Paper Wallet"   "Gizmo"]
                       [10 "Mediocre Wooden Table" "Gizmo"]]
                      (mt/rows results))))))))))
@@ -700,7 +700,7 @@
                                     :dashboard_id       dashboard-id
                                     :visualization_settings {:text "{{foo}}"}}]
       (is (= [{:text "Doohickey and Gizmo" :type :text}]
-             (@#'metabase.pulse/execute-dashboard {:creator_id (mt/user->id :rasta)} dashboard))))))
+             (#'pulse.send/execute-dashboard {:creator_id (mt/user->id :rasta)} dashboard))))))
 
 (deftest no-native-perms-test
   (testing "A native query on a dashboard executes succesfully even if the subscription creator does not have native
@@ -714,7 +714,7 @@
                                       :card_id      card-id}]
         (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :no)
         (is (= [[1 "Red Medicine" 4 10.0646 -165.374 3]]
-               (-> (@#'metabase.pulse/execute-dashboard {:creator_id (mt/user->id :rasta)} dashboard)
+               (-> (#'pulse.send/execute-dashboard {:creator_id (mt/user->id :rasta)} dashboard)
                    first :result :data :rows)))))))
 
 (deftest actions-are-skipped-test
@@ -734,7 +734,7 @@
                                         :row                    3}]
       (is (=? [{:text "Markdown"}
                {:text "### [https://metabase.com](https://metabase.com)"}]
-              (@#'metabase.pulse/execute-dashboard {:creator_id (mt/user->id :rasta)} dashboard)))))
+              (#'pulse.send/execute-dashboard {:creator_id (mt/user->id :rasta)} dashboard)))))
 
   (testing "Link cards are returned and info should be newly fetched"
     (t2.with-temp/with-temp [Dashboard dashboard {:name "Test Dashboard"}]
@@ -761,13 +761,13 @@
                      {:text (format "### [New Card name](%s/question/%d)\nLinked card desc" site-url card-id)}
                      {:text (format "### [New Card name](%s/question/%d)\nLinked model desc" site-url model-id)}
                      {:text (format "### [https://metabase.com](https://metabase.com)")}]
-                    (@#'metabase.pulse/execute-dashboard {:creator_id collection-owner-id} dashboard))))
+                    (#'pulse.send/execute-dashboard {:creator_id collection-owner-id} dashboard))))
 
           (testing "it should filter out models that current users does not have permission to read"
             (is (=? [{:text (format "### [New Database name](%s/browse/%d)\nLinked database desc" site-url database-id)}
                      {:text (format "### [Linked table dname](%s/question?db=%d&table=%d)\nLinked table desc" site-url database-id table-id)}
                      {:text (format "### [https://metabase.com](https://metabase.com)")}]
-                    (@#'metabase.pulse/execute-dashboard {:creator_id (mt/user->id :lucky)} dashboard)))))))))
+                    (#'pulse.send/execute-dashboard {:creator_id (mt/user->id :lucky)} dashboard)))))))))
 
 (deftest iframe-cards-are-skipped-test
   (testing "iframe cards should be filtered out"
@@ -786,7 +786,7 @@
                                         :row                    3}]
       (is (=? [{:text "Markdown"}
                {:text "### [https://metabase.com](https://metabase.com)"}]
-              (@#'metabase.pulse/execute-dashboard {:creator_id (mt/user->id :rasta)} dashboard)))))
+              (#'pulse.send/execute-dashboard {:creator_id (mt/user->id :rasta)} dashboard)))))
 
   (testing "Link cards are returned and info should be newly fetched"
     (t2.with-temp/with-temp [Dashboard dashboard {:name "Test Dashboard"}]
@@ -813,13 +813,13 @@
                      {:text (format "### [New Card name](%s/question/%d)\nLinked card desc" site-url card-id)}
                      {:text (format "### [New Card name](%s/question/%d)\nLinked model desc" site-url model-id)}
                      {:text (format "### [https://metabase.com](https://metabase.com)")}]
-                    (@#'metabase.pulse/execute-dashboard {:creator_id collection-owner-id} dashboard))))
+                    (#'pulse.send/execute-dashboard {:creator_id collection-owner-id} dashboard))))
 
           (testing "it should filter out models that current users does not have permission to read"
             (is (=? [{:text (format "### [New Database name](%s/browse/%d)\nLinked database desc" site-url database-id)}
                      {:text (format "### [Linked table dname](%s/question?db=%d&table=%d)\nLinked table desc" site-url database-id table-id)}
                      {:text (format "### [https://metabase.com](https://metabase.com)")}]
-                    (@#'metabase.pulse/execute-dashboard {:creator_id (mt/user->id :lucky)} dashboard)))))))))
+                    (#'pulse.send/execute-dashboard {:creator_id (mt/user->id :lucky)} dashboard)))))))))
 
 (deftest execute-dashboard-with-tabs-test
   (t2.with-temp/with-temp
@@ -854,7 +854,7 @@
               {:text "The second tab", :type :tab-title}
               {:text "Card 1 tab-2", :type :text}
               {:text "Card 2 tab-2", :type :text}]
-             (@#'metabase.pulse/execute-dashboard {:creator_id (mt/user->id :rasta)} dashboard))))))
+             (#'pulse.send/execute-dashboard {:creator_id (mt/user->id :rasta)} dashboard))))))
 
 (deftest execute-dashboard-with-empty-tabs-test
   (testing "Dashboard with one tab."
@@ -878,7 +878,7 @@
       (testing "Tab title is omitted (#45123)"
         (is (= [{:text "Card 1 tab-1", :type :text}
                 {:text "Card 2 tab-1", :type :text}]
-               (@#'metabase.pulse/execute-dashboard {:creator_id (mt/user->id :rasta)} dashboard))))))
+               (#'pulse.send/execute-dashboard {:creator_id (mt/user->id :rasta)} dashboard))))))
   (testing "Dashboard with multiple tabs"
     (t2.with-temp/with-temp
       [Dashboard           {dashboard-id :id
@@ -900,7 +900,7 @@
       (testing "Tab title is omitted when only 1 tab contains cards."
         (is (= [{:text "Card 1 tab-1", :type :text}
                 {:text "Card 2 tab-1", :type :text}]
-               (@#'metabase.pulse/execute-dashboard {:creator_id (mt/user->id :rasta)} dashboard)))))))
+               (#'pulse.send/execute-dashboard {:creator_id (mt/user->id :rasta)} dashboard)))))))
 
 (deftest render-dashboard-with-tabs-test
   (tests!
@@ -988,7 +988,7 @@
   (when (seq rows)
     [(let [^java.io.ByteArrayOutputStream baos (java.io.ByteArrayOutputStream.)]
        (with-open [os baos]
-         (#'messages/stream-api-results-to-export-format os {:export-format :csv :format-rows? true} result)
+         (#'email.result-attachment/stream-api-results-to-export-format os {:export-format :csv :format-rows? true} result)
          (let [output-string (.toString baos "UTF-8")]
            {:type         :attachment
             :content-type :csv
@@ -1019,8 +1019,8 @@
                          PulseChannel  {pc-id :id} {:pulse_id pulse-id}
                          PulseChannelRecipient _ {:user_id          (pulse.test-util/rasta-id)
                                                   :pulse_channel_id pc-id}]
-            (with-redefs [messages/result-attachment result-attachment]
-              (metabase.pulse/send-pulse! pulse)
+            (with-redefs [email.result-attachment/result-attachment result-attachment]
+              (pulse.send/send-pulse! pulse)
               (is (= 1
                      (-> @mt/inbox
                          (get (:email (mt/fetch-user :rasta)))
@@ -1035,8 +1035,8 @@
 
 (deftest attachment-filenames-stay-readable-test
   (testing "Filenames remain human-readable (#41669)"
-    (let [tmp (#'messages/create-temp-file ".tmp")
-          {:keys [file-name]} (#'messages/create-result-attachment-map :csv "テストSQL質問" tmp)]
+    (let [tmp (#'email.result-attachment/create-temp-file ".tmp")
+          {:keys [file-name]} (#'email.result-attachment/create-result-attachment-map :csv "テストSQL質問" tmp)]
       (is (= "テストSQL質問" (first (str/split file-name #"_")))))))
 
 (deftest dashboard-description-markdown-test
@@ -1059,7 +1059,7 @@
                                             :pulse_channel_id pc-id}]
       (is (= "<h1>dashboard description</h1>"
              (->> (pulse.test-util/with-captured-channel-send-messages!
-                    (metabase.pulse/send-pulse! (t2/select-one :model/Pulse pulse-id)))
+                    (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id)))
                   :channel/email first :message first :content
                   (re-find #"<h1>dashboard description</h1>")))))))
 
@@ -1134,7 +1134,7 @@
                                                  ;; icon
                                                  pulse.test-util/png-attachment]})
                (-> (pulse.test-util/with-captured-channel-send-messages!
-                     (metabase.pulse/send-pulse! (t2/select-one :model/Pulse pulse-id)))
+                     (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id)))
                    :channel/email
                    first
                    (mt/summarize-multipart-single-email (re-pattern error-msg)))))))))
@@ -1168,7 +1168,7 @@
                                                ;; active card result
                                                pulse.test-util/png-attachment]})
              (-> (pulse.test-util/with-captured-channel-send-messages!
-                   (metabase.pulse/send-pulse! (t2/select-one :model/Pulse pulse-id)))
+                   (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id)))
                  :channel/email
                  first
                  (mt/summarize-multipart-single-email #"My Precious Card" #"Archived Card")))))))

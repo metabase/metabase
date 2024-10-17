@@ -11,7 +11,7 @@
    [hickory.select :as hik.s]
    [metabase.email :as email]
    [metabase.models :refer [Card Collection Dashboard DashboardCard Pulse PulseCard PulseChannel PulseChannelRecipient]]
-   [metabase.pulse]
+   [metabase.pulse.send :as pulse.send]
    [metabase.pulse.test-util :as pulse.test-util]
    [metabase.test :as mt]
    [metabase.util :as u]))
@@ -63,7 +63,7 @@
   (let [channel-messages (pulse.test-util/with-captured-channel-send-messages!
                            (with-redefs [email/bcc-enabled? (constantly false)]
                              (mt/with-test-user nil
-                               (metabase.pulse/send-pulse! pulse))))
+                               (pulse.send/send-pulse! pulse))))
         html-body  (-> channel-messages :channel/email first :message first :content)
         doc        (-> html-body hik/parse hik/as-hickory)
         data-tables (hik.s/select
@@ -188,7 +188,7 @@
   (with-redefs [email/bcc-enabled? (constantly false)]
     (->> (mt/with-test-user nil
            (pulse.test-util/with-captured-channel-send-messages!
-             (metabase.pulse/send-pulse! pulse)))
+             (pulse.send/send-pulse! pulse)))
          :channel/email
          first
          :message
@@ -571,7 +571,7 @@
           (let [attachment-name->cols (mt/with-fake-inbox
                                         (with-redefs [email/bcc-enabled? (constantly false)]
                                           (mt/with-test-user nil
-                                            (metabase.pulse/send-pulse! pulse)))
+                                            (pulse.send/send-pulse! pulse)))
                                         (->>
                                          (get-in @mt/inbox ["rasta@metabase.com" 0 :body])
                                          (keep
@@ -601,7 +601,7 @@
   (mt/with-fake-inbox
     (with-redefs [email/bcc-enabled? (constantly false)]
       (mt/with-test-user nil
-        (metabase.pulse/send-pulse! pulse)))
+        (pulse.send/send-pulse! pulse)))
     (let [html-body   (get-in @mt/inbox ["rasta@metabase.com" 0 :body 0 :content])
           doc         (-> html-body hik/parse hik/as-hickory)
           data-tables (hik.s/select
@@ -663,7 +663,7 @@
   (mt/with-fake-inbox
     (with-redefs [email/bcc-enabled? (constantly false)]
       (mt/with-test-user nil
-        (metabase.pulse/send-pulse! pulse)))
+        (pulse.send/send-pulse! pulse)))
     (when-some [html-body (get-in @mt/inbox ["rasta@metabase.com" 0 :body 0 :content])]
       (let [doc         (-> html-body hik/parse hik/as-hickory)
             data-tables (hik.s/select
@@ -814,7 +814,7 @@
             (mt/with-fake-inbox
               (with-redefs [email/bcc-enabled? (constantly false)]
                 (mt/with-test-user nil
-                  (metabase.pulse/send-pulse! pulse)))
+                  (pulse.send/send-pulse! pulse)))
               (let [html-body (get-in @mt/inbox ["rasta@metabase.com" 0 :body 0 :content])]
                 (let [data-tables (hik.s/select
                                    (hik.s/class "pulse-body")
@@ -846,7 +846,7 @@
             (mt/with-fake-inbox
               (with-redefs [email/bcc-enabled? (constantly false)]
                 (mt/with-test-user nil
-                  (metabase.pulse/send-pulse! pulse)))
+                  (pulse.send/send-pulse! pulse)))
               (let [html-body (get-in @mt/inbox ["rasta@metabase.com" 0 :body 0 :content])]
                 (is (false? (str/includes? html-body "An error occurred while displaying this card.")))))))))))
 
@@ -923,5 +923,5 @@
         (mt/with-fake-inbox
           (with-redefs [email/bcc-enabled? (constantly false)]
             (mt/with-test-user nil
-              (metabase.pulse/send-pulse! pulse)))
+              (pulse.send/send-pulse! pulse)))
           (is (string? (get-in @mt/inbox ["rasta@metabase.com" 0 :body 0 :content]))))))))

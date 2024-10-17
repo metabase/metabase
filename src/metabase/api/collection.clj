@@ -25,7 +25,7 @@
    [metabase.models.collection.root :as collection.root]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
-   [metabase.models.pulse :as pulse]
+   [metabase.models.pulse :as models.pulse]
    [metabase.models.revision.last-edit :as last-edit]
    [metabase.models.timeline :as timeline]
    [metabase.public-settings.premium-features
@@ -1113,9 +1113,10 @@
   users just as if they had be archived individually via the card API."
   [& {:keys [collection-before-update collection-updates actor]}]
   (when (api/column-will-change? :archived collection-before-update collection-updates)
-    (when-let [alerts (seq (pulse/retrieve-alerts-for-cards
-                            {:card-ids (t2/select-pks-set Card :collection_id (u/the-id collection-before-update))}))]
-      (card/delete-alert-and-notify-archived! {:alerts alerts :actor actor}))))
+    (when-let [alerts (not-empty (models.pulse/retrieve-alerts-for-cards
+                                  {:card-ids (t2/select-pks-set Card :collection_id (u/the-id collection-before-update))}))]
+      (t2/delete! :model/Pulse :id [:in (mapv u/the-id alerts)])
+      (events/publish-event! :event/card-update.alerts-deleted.card-archived {:alerts alerts, :actor actor}))))
 
 (defn- move-collection!
   "If input the `PUT /api/collection/:id` endpoint (`collection-updates`) specify that we should *move* a Collection, do

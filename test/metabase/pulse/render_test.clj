@@ -7,9 +7,9 @@
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models
     :refer [Card Dashboard DashboardCard DashboardCardSeries]]
-   [metabase.pulse :as pulse]
    [metabase.pulse.render :as render]
    [metabase.pulse.render.test-util :as render.tu]
+   [metabase.pulse.send :as pulse]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -33,7 +33,7 @@
       hik/parse
       hik/as-hickory))
 
-(deftest render-test
+(deftest ^:parallel render-test
   (testing "If the pulse renders correctly, it will have an img tag."
     (let [query {:database (mt/id)
                  :type     :query
@@ -49,28 +49,33 @@
                      (render-pulse-card card)
                      [:img _])))))))
 
-(deftest render-error-test
+(deftest ^:parallel render-error-test
   (testing "gives us a proper error if we have erroring card"
-    (let [rendered-card (render/render-pulse-card-for-display nil nil {:error "some error"})]
+    (let [rendered-card (render/render-pulse-card-for-display nil {:id 1} {:error "some error"})]
       (is (= "There was a problem with this question."
              (-> (render.tu/nodes-with-text rendered-card "There was a problem with this question.")
                  first
                  last))))))
 
-(deftest detect-pulse-chart-type-test
+(deftest ^:parallel detect-pulse-chart-type-test
   (testing "Currently unsupported chart types for static-viz return `nil`."
-    (is (= [nil nil nil]
-           (map #(render/detect-pulse-chart-type {:display %}
-                                                 {}
-                                                 {:cols [{:base_type :type/Number}]
-                                                  :rows [[2]]})
-                [:pin_map :state :country]))))
+    (are [tyype] (nil? (render/detect-pulse-chart-type {:display tyype}
+                                                       {}
+                                                       {:cols [{:base_type :type/Number}]
+                                                        :rows [[2]]}))
+      :pin_map
+      :state
+      :country)))
+
+(deftest ^:parallel detect-pulse-chart-type-test-2
   (testing "Queries resulting in no rows return `:empty`."
     (is (= :empty
            (render/detect-pulse-chart-type {:display :line}
                                            {}
                                            {:cols [{:base_type :type/Number}]
-                                            :rows [[nil]]}))))
+                                            :rows [[nil]]})))))
+
+(deftest ^:parallel detect-pulse-chart-type-test-3
   (testing "Unrecognized display-types with otherwise valid results return `:table`."
     (is (= :table
            (render/detect-pulse-chart-type {:display :unrecognized}
@@ -78,7 +83,9 @@
                                            {:cols [{:base_type :type/Text}
                                                    {:base_type :type/Number}]
                                             :rows [["A" 2]
-                                                   ["B" 4]]}))))
+                                                   ["B" 4]]})))))
+
+(deftest ^:parallel detect-pulse-chart-type-test-4
   (testing "Scalar and Smartscalar charts are correctly identified"
     (is (= :scalar
            (render/detect-pulse-chart-type {:display :line}
@@ -102,31 +109,45 @@
                                             :insights [{:name           "apples"
                                                         :last-value     3
                                                         :previous-value 2
-                                                        :last-change    50.0}]}))))
+                                                        :last-change    50.0}]})))))
+
+(deftest ^:parallel detect-pulse-chart-type-test-5
   (testing "Progress charts are correctly identified"
     (is (= :progress
            (render/detect-pulse-chart-type {:display :progress}
                                            {}
                                            {:cols [{:base_type :type/Number}]
-                                            :rows [[6]]}))))
+                                            :rows [[6]]})))))
+
+(deftest ^:parallel detect-pulse-chart-type-test-6
   (testing "The isomorphic display-types return correct chart-type."
-    (doseq [chart-type [:line :area :bar :combo]]
-      (is (= :javascript_visualization
-             (render/detect-pulse-chart-type {:display chart-type}
-                                             {}
-                                             {:cols [{:base_type :type/Text}
-                                                     {:base_type :type/Number}]
-                                              :rows [["A" 2]
-                                                     ["B" 3]]})))))
+    (are [chart-type] (= :javascript_visualization
+                         (render/detect-pulse-chart-type {:display chart-type}
+                                                         {}
+                                                         {:cols [{:base_type :type/Text}
+                                                                 {:base_type :type/Number}]
+                                                          :rows [["A" 2]
+                                                                 ["B" 3]]}))
+      :line
+      :area
+      :bar
+      :combo)))
+
+(deftest ^:parallel detect-pulse-chart-type-test-7
   (testing "Various Single-Series display-types return correct chart-types."
-    (doseq [chart-type [:row :funnel :progress :table]]
-      (is (= chart-type
-             (render/detect-pulse-chart-type {:display chart-type}
-                                             {}
-                                             {:cols [{:base_type :type/Text}
-                                                     {:base_type :type/Number}]
-                                              :rows [["A" 2]
-                                                     ["B" 3]]})))))
+    (are [chart-type] (= chart-type
+                         (render/detect-pulse-chart-type {:display chart-type}
+                                                         {}
+                                                         {:cols [{:base_type :type/Text}
+                                                                 {:base_type :type/Number}]
+                                                          :rows [["A" 2]
+                                                                 ["B" 3]]}))
+      :row
+      :funnel
+      :progress
+      :table)))
+
+(deftest ^:parallel detect-pulse-chart-type-test-8
   (testing "Pie charts are correctly identified and return `:javascript_visualization`."
     (is (= :javascript_visualization
            (render/detect-pulse-chart-type {:display :pie}
@@ -134,7 +155,9 @@
                                            {:cols [{:base_type :type/Text}
                                                    {:base_type :type/Number}]
                                             :rows [["apple" 3]
-                                                   ["banana" 4]]}))))
+                                                   ["banana" 4]]})))))
+
+(deftest ^:parallel detect-pulse-chart-type-test-9
   (testing "Dashboard Cards can return `:multiple`."
     (is (= :javascript_visualization
            (mt/with-temp [Card                card1 {:display :pie}
@@ -161,30 +184,32 @@
                                               :rows [[#t "2020" 2]
                                                      [#t "2021" 3]]}))))))
 
-(deftest make-description-if-needed-test
+(deftest ^:parallel make-description-if-needed-test
   (testing "Use Visualization Settings's description if it exists"
     (mt/with-temp [Card          card {:description "Card description"}
                    Dashboard     dashboard {}
                    DashboardCard dc1 {:dashboard_id (:id dashboard) :card_id (:id card)
                                       :visualization_settings {:card.description "Visualization description"}}]
-      (binding [render/*include-description* true]
-        (is (= "<p>Visualization description</p>\n" (last (:content (#'render/make-description-if-needed dc1 card))))))))
+      (is (= "<p>Visualization description</p>\n"
+             (last (:content (#'render/make-description-if-needed dc1 card {:pulse/include-description? true}))))))))
 
+(deftest ^:parallel make-description-if-needed-test-2
   (testing "Fallback to Card's description if Visualization Settings's description not exists"
     (mt/with-temp [Card          card {:description "Card description"}
                    Dashboard     dashboard {}
                    DashboardCard dc1 {:dashboard_id (:id dashboard) :card_id (:id card)}]
-      (binding [render/*include-description* true]
-        (is (= "<p>Card description</p>\n" (last (:content (#'render/make-description-if-needed dc1 card))))))))
+      (is (= "<p>Card description</p>\n"
+             (last (:content (#'render/make-description-if-needed dc1 card {:pulse/include-description? true}))))))))
 
+(deftest ^:parallel make-description-if-needed-test-3
   (testing "Test markdown converts to html"
     (mt/with-temp [Card          card {:description "# Card description"}
                    Dashboard     dashboard {}
                    DashboardCard dc1 {:dashboard_id (:id dashboard) :card_id (:id card)}]
-      (binding [render/*include-description* true]
-        (is (= "<h1>Card description</h1>\n" (last (:content (#'render/make-description-if-needed dc1 card)))))))))
+      (is (= "<h1>Card description</h1>\n"
+             (last (:content (#'render/make-description-if-needed dc1 card {:pulse/include-description? true}))))))))
 
-(deftest table-rendering-of-percent-types-test
+(deftest ^:parallel table-rendering-of-percent-types-test
   (testing "If a column is marked as a :type/Percentage semantic type it should render as a percent"
     (mt/dataset test-data
       (mt/with-temp [Card {base-card-id :id} {:dataset_query {:database (mt/id)
@@ -249,7 +274,11 @@
     (mt/with-temp [Card card {:name          "A Card"
                               :dataset_query (mt/mbql-query venues {:limit 1})}]
       (mt/with-temp-env-var-value! [mb-site-url "https://mb.com"]
-        (let [rendered-card-content (:content (binding [render/*include-title* true]
-                                                (render/render-pulse-card :inline (pulse/defaulted-timezone card) card nil (qp/process-query (:dataset_query card)))))]
+        (let [rendered-card-content (:content (render/render-pulse-card :inline
+                                                                        (pulse/defaulted-timezone card)
+                                                                        card
+                                                                        nil
+                                                                        (qp/process-query (:dataset_query card))
+                                                                        {:pulse/include-title? true}))]
           (is (some? (lib.util.match/match-one rendered-card-content
                        [:a (_ :guard #(= (format "https://mb.com/question/%d" (:id card)) (:href %))) "A Card"]))))))))
