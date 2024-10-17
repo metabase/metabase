@@ -95,12 +95,12 @@ const setup = ({
   return { clickSpy };
 };
 
-describe("InteractiveQuestion.NotebookButton", () => {
+describe("InteractiveQuestion.EditorButton", () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it("should render the notebook button", async () => {
+  it("should render the editor button", async () => {
     const shouldRenderSpy = jest.spyOn(QuestionNotebookButton, "shouldRender");
 
     setup({ isOpen: true });
