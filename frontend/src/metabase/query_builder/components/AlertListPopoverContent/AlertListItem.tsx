@@ -50,6 +50,7 @@ export const AlertListItem = ({
   const emailEnabled = emailChannel && emailChannel.enabled;
   const slackChannel = alert.channels.find(c => c.channel_type === "slack");
   const slackEnabled = slackChannel && slackChannel.enabled;
+  const httpChannels = alert.channels.filter(c => c.channel_type === "http");
 
   return (
     <li
@@ -91,17 +92,29 @@ export const AlertListItem = ({
             />
           </li>
           {isAdmin && emailEnabled && emailChannel.recipients && (
-            <li className={cx(CS.ml3, CS.flex, CS.alignCenter)}>
+            <li
+              className={cx(CS.ml3, CS.flex, CS.alignCenter)}
+              aria-label="email recipient count"
+            >
               <Icon name="mail" className={CS.mr1} />
               {emailChannel.recipients.length}
             </li>
           )}
           {isAdmin && slackEnabled && (
-            <li className={cx(CS.ml3, CS.flex, CS.alignCenter)}>
-              <Icon name="slack" size={16} className={CS.mr1} />
-              {(slackChannel.details &&
-                slackChannel.details.channel.replace("#", "")) ||
-                t`No channel`}
+            <li
+              className={cx(CS.ml3, CS.flex, CS.alignCenter)}
+              aria-label="slack channel count"
+            >
+              <Icon name="slack" size={16} className={CS.mr1} />1
+            </li>
+          )}
+          {isAdmin && httpChannels.length > 0 && (
+            <li
+              className={cx(CS.ml3, CS.flex, CS.alignCenter)}
+              aria-label="http channel count"
+            >
+              <Icon name="webhook" size={16} className={CS.mr1} />
+              {httpChannels.length}
             </li>
           )}
         </ul>
