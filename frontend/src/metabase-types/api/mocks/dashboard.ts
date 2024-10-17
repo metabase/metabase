@@ -40,6 +40,7 @@ export const createMockDashboard = (opts?: Partial<Dashboard>): Dashboard => ({
   embedding_params: null,
   initially_published_at: null,
   width: "fixed",
+  creator_id: 1,
   ...opts,
 });
 
@@ -176,6 +177,21 @@ export const createMockLinkDashboardCard = ({
         ...visualization_settings?.link,
         url: opts?.url ?? visualization_settings?.link?.url ?? "Link Text",
       },
+    },
+  });
+
+export const createMockIFrameDashboardCard = ({
+  visualization_settings,
+  ...opts
+}: VirtualDashboardCardOpts & { iframe?: string } = {}): VirtualDashboardCard =>
+  createMockVirtualDashCard({
+    ...opts,
+    card: createMockVirtualCard({ display: "iframe" }),
+    visualization_settings: {
+      iframe:
+        opts?.iframe ??
+        visualization_settings?.iframe ??
+        "<iframe src='https://example.com'></iframe>",
     },
   });
 

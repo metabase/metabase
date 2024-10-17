@@ -66,6 +66,7 @@
   compojure/compojure                       {:mvn/version "1.7.1"               ; HTTP Routing library built on Ring
                                              :exclusions  [ring/ring-codec]}
   crypto-random/crypto-random               {:mvn/version "1.2.1"}              ; library for generating cryptographically secure random bytes and strings
+  diehard/diehard                           {:mvn/version "0.11.12"}
   dk.ative/docjure                          {:mvn/version "1.19.0"              ; excel export
                                              :exclusions  [org.apache.poi/poi
                                                            org.apache.poi/poi-ooxml]}
@@ -79,7 +80,7 @@
   io.github.eerohele/pp                     {:git/tag "2024-01-04.60"           ; super fast pretty-printing library
                                              :git/sha "a428751"
                                              :git/url "https://github.com/eerohele/pp"}
-  io.github.metabase/macaw                  {:mvn/version "0.2.10"}             ; Parse native SQL queries
+  io.github.metabase/macaw                  {:mvn/version "0.2.15"}             ; Parse native SQL queries
   ;; The 2.X line of Resilience4j requires Java 17, so we cannot upgrade this dependency until that is our minimum JVM version
   io.github.resilience4j/resilience4j-retry {:mvn/version "1.7.1" #_"must be 1.7.1"} ; Support for retrying operations
   io.prometheus/simpleclient_hotspot        {:mvn/version "0.16.0"}             ; prometheus jvm collector
@@ -242,7 +243,7 @@
     djblue/portal                {:mvn/version "0.56.0"}                    ; ui for inspecting values
     hashp/hashp                  {:mvn/version "0.2.2"}                     ; debugging/spying utility
     io.github.camsaul/humane-are {:mvn/version "1.0.2"}
-    io.github.metabase/hawk      {:mvn/version "1.0.0"}
+    io.github.metabase/hawk      {:mvn/version "1.0.5"}
     jonase/eastwood              {:mvn/version "1.4.2"                      ; inspects namespaces and reports possible problems using tools.analyzer
                                   :exclusions
                                   [org.ow2.asm/asm-all]}
@@ -365,8 +366,7 @@
     cider/piggieback                   {:mvn/version "0.5.3"}
     cljs-bean/cljs-bean                {:mvn/version "1.9.0"}
     com.lambdaisland/glogi             {:mvn/version "1.3.169"}
-    io.github.metabase/hawk            {:git/url "https://github.com/metabase/hawk"
-                                        :git/sha "490c9b04fbf5861dbd47c0c5281dad2d113bd285"}
+    io.github.metabase/hawk            {:mvn/version "1.0.5"}
     org.clojars.mmb90/cljs-cache       {:mvn/version "0.1.4"}
     refactor-nrepl/refactor-nrepl      {:mvn/version "3.10.0"}
     thheller/shadow-cljs               {:mvn/version "2.28.12"}}}
@@ -387,8 +387,10 @@
   {:extra-paths
    ["modules/drivers/athena/test"
     "modules/drivers/bigquery-cloud-sdk/test"
+    "modules/drivers/databricks/test"
     "modules/drivers/druid/test"
     "modules/drivers/druid-jdbc/test"
+    "modules/drivers/hive-like/test"
     "modules/drivers/mongo/test"
     "modules/drivers/oracle/test"
     "modules/drivers/presto-jdbc/test"
@@ -443,10 +445,14 @@
     "modules/drivers/athena/test"
     "modules/drivers/bigquery-cloud-sdk/src"
     "modules/drivers/bigquery-cloud-sdk/test"
+    "modules/drivers/databricks/src"
+    "modules/drivers/databricks/test"
     "modules/drivers/druid-jdbc/src"
     "modules/drivers/druid-jdbc/test"
     "modules/drivers/druid/src"
     "modules/drivers/druid/test"
+    "modules/drivers/hive-like/src"
+    "modules/drivers/hive-like/test"
     "modules/drivers/mongo/src"
     "modules/drivers/mongo/test"
     "modules/drivers/oracle/src"
@@ -478,8 +484,10 @@
                 "enterprise/backend/src"
                 "modules/drivers/athena/src"
                 "modules/drivers/bigquery-cloud-sdk/src"
+                "modules/drivers/databricks/src"
                 "modules/drivers/druid/src"
                 "modules/drivers/druid-jdbc/src"
+                "modules/drivers/hive-like/src"
                 "modules/drivers/mongo/src"
                 "modules/drivers/oracle/src"
                 "modules/drivers/presto-jdbc/src"
@@ -500,8 +508,10 @@
                                  "enterprise/backend/src"
                                  "modules/drivers/athena/src"
                                  "modules/drivers/bigquery-cloud-sdk/src"
+                                 "modules/drivers/databricks/src"
                                  "modules/drivers/druid/src"
                                  "modules/drivers/druid-jdbc/src"
+                                 "modules/drivers/hive-like/src"
                                  "modules/drivers/mongo/src"
                                  "modules/drivers/oracle/src"
                                  "modules/drivers/presto-jdbc/src"
@@ -566,7 +576,7 @@
                                    "frontend/src/cljs"
                                    "frontend/test/metabase/lib/urls\\.unit\\.spec\\.js$"
                                    "frontend/test/metabase/lib/formatting\\.unit\\.spec\\.js$"
-                                   "src/metabase/shared/util/currency\\.cljc$"
+                                   "src/metabase/util/currency\\.cljc$"
                                    "test/metabase/pulse/render/png_test.clj"
                                    "#.+#$"
                                    "\\.transit\\.json$"]}}
@@ -622,6 +632,7 @@
                 ;; - https://github.com/weavejester/cljfmt/pull/347
                 ;; - https://github.com/weavejester/cljfmt/pull/348
                 ;; - https://github.com/weavejester/cljfmt/pull/350
+                ;; - https://github.com/weavejester/cljfmt/pull/352
                 io.github.camsaul/cljfmt
                 {:git/sha "77ede1e49c8718c9e1c9ac35cb6f34d0b02a65f3"}}
    :ns-default cljfmt.tool
@@ -781,6 +792,18 @@
                       "test/metabase/query_processor_test"
                       metabase-enterprise.advanced-permissions.models.permissions.block-permissions-test
                       metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions-test]}}
+
+
+  ;; test the notification system
+  ;;    clj -X:dev:ee:ee-dev:test:test/notification
+  :test/notification
+  {:exec-args {:only ["test/metabase/notification"
+                      "test/metabase/channel"
+                      metabase.api.channel-test
+                      metabase.events.notification-test
+                      metabase.models.channel-test
+                      metabase.models.notification-test
+                      metabase.task.notification-test]}}
 
   ;; test all MBQL related stuff: MLv2, the legacy shared `metabase.legacy-mbql` code, and the QP
   ;;

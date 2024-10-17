@@ -26,6 +26,7 @@ import {
   setupSubscriptionWithRecipients,
   sharingMenu,
   sidebar,
+  updateSetting,
   viewEmailPage,
   visitDashboard,
 } from "e2e/support/helpers";
@@ -51,8 +52,8 @@ describe("scenarios > dashboard > subscriptions", () => {
 
     openSharingMenu("Embed");
     getEmbedModalSharingPane().within(() => {
-      cy.findByText("Public embed").should("be.visible");
-      cy.findByText("Static embed").should("be.visible");
+      cy.findByText("public embedding").should("be.visible");
+      cy.findByText("Static embedding").should("be.visible");
     });
   });
 
@@ -310,13 +311,7 @@ describe("scenarios > dashboard > subscriptions", () => {
       assignRecipient();
       // This is extremely fragile
       // TODO: update test once changes from `https://github.com/metabase/metabase/pull/14121` are merged into `master`
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Attach results")
-        .parent()
-        .parent()
-        .next()
-        .find("input") // Toggle
-        .click();
+      cy.findByLabelText("Attach results").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Questions to attach").click();
       clickButton("Done");
@@ -759,9 +754,7 @@ function openSlackCreationForm() {
 }
 
 function openRecipientsWithUserVisibilitySetting(setting) {
-  cy.request("PUT", "/api/setting/user-visibility", {
-    value: setting,
-  });
+  updateSetting("user-visibility", setting);
   cy.signInAsNormalUser();
   openDashboardSubscriptions();
 

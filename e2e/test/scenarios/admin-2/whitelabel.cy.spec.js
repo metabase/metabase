@@ -9,6 +9,7 @@ import {
   restore,
   setTokenFeatures,
   undoToast,
+  updateSetting,
   visitDashboard,
   visitQuestion,
 } from "e2e/support/helpers";
@@ -72,9 +73,10 @@ describeEE("formatting > whitelabel", () => {
         cy.log("Add a logo");
         cy.readFile("e2e/support/assets/logo.jpeg", "base64").then(
           logo_data => {
-            cy.request("PUT", "/api/setting/application-logo-url", {
-              value: `data:image/jpeg;base64,${logo_data}`,
-            });
+            updateSetting(
+              "application-logo-url",
+              `data:image/jpeg;base64,${logo_data}`,
+            );
           },
         );
       });
@@ -101,9 +103,7 @@ describeEE("formatting > whitelabel", () => {
       it("should work for people that set favicon URL before we change the input to file input", () => {
         const faviconUrl =
           "https://cdn.ecosia.org/assets/images/ico/favicon.ico";
-        cy.request("PUT", "/api/setting/application-favicon-url", {
-          value: faviconUrl,
-        });
+        updateSetting("application-favicon-url", faviconUrl);
         checkFavicon(faviconUrl);
         cy.signInAsNormalUser();
         cy.visit("/");
@@ -535,6 +535,7 @@ describeEE("formatting > whitelabel", () => {
 
   describe("font", () => {
     const font = "Open Sans";
+
     beforeEach(() => {
       cy.log("Change Application Font");
       cy.signInAsAdmin();
@@ -730,9 +731,7 @@ function changeLoadingMessage(message) {
 }
 
 function setApplicationFontTo(font) {
-  cy.request("PUT", "/api/setting/application-font", {
-    value: font,
-  });
+  updateSetting("application-font", font);
 }
 
 const openSettingsMenu = () => appBar().icon("gear").click();

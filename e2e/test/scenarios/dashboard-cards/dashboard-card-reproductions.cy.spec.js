@@ -21,6 +21,7 @@ import {
   saveDashboard,
   showDashboardCardActions,
   sidebar,
+  updateSetting,
   visitDashboard,
 } from "e2e/support/helpers";
 import { createMockParameter } from "metabase-types/api/mocks";
@@ -869,11 +870,9 @@ describe("issues 27020 and 27105: static-viz fails to render for certain date fo
     // This is currently the default setting, anyway.
     // But we want to explicitly set it in case something changes in the future,
     // because it is a crucial step for this reproduction.
-    cy.request("PUT", "/api/setting/custom-formatting", {
-      value: {
-        "type/Temporal": {
-          date_style: "MMMM D, YYYY",
-        },
+    updateSetting("custom-formatting", {
+      "type/Temporal": {
+        date_style: "MMMM D, YYYY",
       },
     });
 
@@ -1096,15 +1095,17 @@ describe("issue 31628", () => {
   };
 
   const assertDescendantsNotOverflowDashcards = descendantsSelector => {
-    cy.findAllByTestId("dashcard").each((dashcard, dashcardIndex) => {
-      const descendants = dashcard.find(descendantsSelector);
+    cy.findAllByTestId("dashcard").should(dashcards => {
+      dashcards.each((dashcardIndex, dashcard) => {
+        const descendants = dashcard.querySelectorAll(descendantsSelector);
 
-      descendants.each((_descendantIndex, descendant) => {
-        assertDescendantNotOverflowsContainer(
-          descendant,
-          dashcard[0],
-          `dashcard[${dashcardIndex}] [data-testid="${descendant.dataset.testid}"]`,
-        );
+        descendants.forEach(descendant => {
+          assertDescendantNotOverflowsContainer(
+            descendant,
+            dashcard,
+            `dashcard[${dashcardIndex}] [data-testid="${descendant.dataset.testid}"]`,
+          );
+        });
       });
     });
   };

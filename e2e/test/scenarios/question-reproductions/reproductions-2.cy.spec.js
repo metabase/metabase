@@ -62,6 +62,7 @@ describe("issue 23023", () => {
       type: "query",
     },
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -157,6 +158,7 @@ describe("issue 25016", () => {
       "table.cell_column": "count",
     },
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -252,6 +254,7 @@ describe("issue 27104", () => {
     },
     display: "bar",
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -425,6 +428,7 @@ describe("issue 28874", () => {
       },
     },
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsNormalUser();
@@ -564,6 +568,7 @@ describe("issue 36669", () => {
   beforeEach(() => {
     restore();
     cy.signInAsNormalUser();
+    cy.intercept("GET", "/api/search*").as("search");
   });
 
   it("should be able to change question data source to raw data after selecting saved question (metabase#36669)", () => {
@@ -580,8 +585,12 @@ describe("issue 36669", () => {
     });
 
     entityPickerModal().within(() => {
-      cy.findByPlaceholderText("Search…").type("Orders 36669");
+      cy.findByPlaceholderText("Search this collection or everywhere…").type(
+        "Orders 36669",
+      );
+      cy.wait("@search");
 
+      cy.findByText("Everywhere").click();
       cy.findByRole("tabpanel").findByText("Orders 36669").click();
     });
 
@@ -732,6 +741,7 @@ describe("Custom columns visualization settings", () => {
       },
     },
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();

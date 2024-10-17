@@ -1,4 +1,4 @@
-(ns metabase.api.dataset-test
+(ns ^:mb/driver-tests metabase.api.dataset-test
   "Unit tests for /api/dataset endpoints. There are additional tests for downloading XLSX/CSV/JSON results generally in
   [[metabase.query-processor.streaming-test]] and specifically for each format
   in [[metabase.query-processor.streaming.csv-test]] etc."
@@ -726,8 +726,8 @@
           (is (= expected
                  (->> (mt/user-http-request
                        :crowberto :post 200
-                       (format "dataset/%s?format_rows=%s" (name export-format) apply-formatting?)
-                       :query (json/generate-string q))
+                       (format "dataset/%s" (name export-format))
+                       :query (json/generate-string (assoc q :middleware {:format-rows? apply-formatting?})))
                       ((get output-helper export-format))))))))))
 
 (deftest ^:parallel query-metadata-test

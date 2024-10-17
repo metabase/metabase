@@ -49,7 +49,8 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-athena-ee'
-        test-args: ":exclude-tags '[:mb/once]'"
+        test-args: >-
+          :only-tags [:mb/driver-tests]
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -82,7 +83,8 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-bigquery-cloud-sdk-ee'
-        test-args: ":exclude-tags '[:mb/once]'"
+        test-args: >-
+          :only-tags [:mb/driver-tests]
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -116,6 +118,38 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-druid-ee'
+        test-args: >-
+          :only-tags [:mb/driver-tests]
+    - name: Upload Test Results
+      uses: ./.github/actions/upload-test-results
+      if: always()
+      with:
+        input-path: ./target/junit/
+        output-name: ${{ github.job }}
+        bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
+        aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ vars.AWS_REGION }}
+        trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+
+  be-tests-databricks-ee:
+    needs: files-changed
+    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+    env:
+      CI: 'true'
+      DRIVERS: databricks
+      MB_DATABRICKS_TEST_HOST: ${{ secrets.MB_DATABRICKS_JDBC_TEST_HOST }}
+      MB_DATABRICKS_TEST_HTTP_PATH: ${{ secrets.MB_DATABRICKS_JDBC_TEST_HTTP_PATH }}
+      MB_DATABRICKS_TEST_TOKEN: ${{ secrets.MB_DATABRICKS_JDBC_TEST_TOKEN }}
+      MB_DATABRICKS_TEST_CATALOG: 'metabase_ci'
+    steps:
+    - uses: actions/checkout@v4
+    - name: Test Databricks driver
+      uses: ./.github/actions/test-driver
+      with:
+        junit-name: 'be-tests-databricks-ee'
         test-args: ":exclude-tags '[:mb/once]'"
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
@@ -150,7 +184,8 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-druid-jdbc-ee'
-        test-args: ":exclude-tags '[:mb/once]'"
+        test-args: >-
+          :only-tags [:mb/driver-tests]
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -168,6 +203,10 @@ jobs:
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        partition-index: [0, 1, 2, 3]
     env:
       CI: 'true'
       DRIVERS: mysql
@@ -188,6 +227,9 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-mariadb-10-2-ee'
+        test-args: >-
+          :partition/total 4
+          :partition/index ${{ matrix.partition-index }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -205,6 +247,10 @@ jobs:
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        partition-index: [0, 1, 2, 3]
     env:
       CI: 'true'
       DRIVERS: mysql
@@ -225,6 +271,9 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-mariadb-latest-ee'
+        test-args: >-
+          :partition/total 4
+          :partition/index ${{ matrix.partition-index }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -258,7 +307,9 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-mongo-4-4-ee'
-        test-args: ":exclude-tags '[:mb/once :mongo-sharded-cluster-tests]'"
+        test-args: >-
+          :exclude-tags [:mongo-sharded-cluster-tests]
+          :only-tags [:mb/driver-tests]
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -285,9 +336,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Spin up Mongo docker container
-        run: docker run -d -p 27017:27017 --name metamongo metabase/qa-databases:mongo-sample-4.4 mongod --dbpath /data/db2/ --tlsMode requireTLS --tlsCertificateKeyFile /etc/mongo/metamongo.pem --tlsCAFile /etc/mongo/metaca.crt
-      - name: Wait until the port 27017 is ready
-        run: while ! nc -z localhost 27017; do sleep 1; done
+        run: >-
+          docker run -d
+          -p 27017:27017
+          --name metamongo
+          metabase/qa-databases:mongo-sample-4.4
+          mongod
+          --dbpath /data/db2/
+          --tlsMode requireTLS
+          --tlsCertificateKeyFile /etc/mongo/metamongo.pem
+          --tlsCAFile /etc/mongo/metaca.crt
+      - uses: ./.github/actions/await-port
+        with:
+          port: 27017
         timeout-minutes: 5
       - name: Make SSL certificates for Mongo available
         run: |
@@ -299,12 +360,13 @@ jobs:
 
           curl https://raw.githubusercontent.com/metabase/metabase-qa/master/dbs/mongo/certificates/metaca.crt \
           -o ./test_resources/ssl/mongo/metaca.crt
-
       - name: Test MongoDB SSL driver (4.4)
         uses: ./.github/actions/test-driver
         with:
           junit-name: 'be-tests-mongo-4-4-ee'
-          test-args: ":exclude-tags '[:mb/once :mongo-sharded-cluster-tests]'"
+          test-args: >-
+            :exclude-tags [:mongo-sharded-cluster-tests]
+            :only-tags [:mb/driver-tests]
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
         if: always()
@@ -338,7 +400,9 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-mongo-5-0-ee'
-        test-args: ":exclude-tags '[:mb/once :mongo-sharded-cluster-tests]'"
+        test-args: >-
+          :exclude-tags [:mongo-sharded-cluster-tests]
+          :only-tags [:mb/driver-tests]
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -365,9 +429,19 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Spin up Mongo docker container
-      run: docker run -d -p 27017:27017 --name metamongo metabase/qa-databases:mongo-sample-5.0 mongod --dbpath /data/db2/ --tlsMode requireTLS --tlsCertificateKeyFile /etc/mongo/metamongo.pem --tlsCAFile /etc/mongo/metaca.crt
-    - name: Wait until the port 27017 is ready
-      run: while ! nc -z localhost 27017; do sleep 1; done
+      run: >-
+        docker run -d
+        -p 27017:27017
+        --name metamongo
+        metabase/qa-databases:mongo-sample-5.0
+        mongod
+        --dbpath /data/db2/
+        --tlsMode requireTLS
+        --tlsCertificateKeyFile /etc/mongo/metamongo.pem
+        --tlsCAFile /etc/mongo/metaca.crt
+    - uses: ./.github/actions/await-port
+      with:
+        port: 27017
       timeout-minutes: 5
     - name: Make SSL certificates for Mongo available
       run: |
@@ -379,12 +453,13 @@ jobs:
 
         curl https://raw.githubusercontent.com/metabase/metabase-qa/master/dbs/mongo/certificates/metaca.crt \
         -o ./test_resources/ssl/mongo/metaca.crt
-
     - name: Test MongoDB SSL driver (5.0)
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-mongo-5-0-ee'
-        test-args: ":exclude-tags '[:mb/once :mongo-sharded-cluster-tests]'"
+        test-args: >-
+          :exclude-tags [:mongo-sharded-cluster-tests]
+          :only-tags [:mb/driver-tests]
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -421,7 +496,9 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-mongo-latest-ee'
-        test-args: ":exclude-tags '[:mb/once :mongo-sharded-cluster-tests]'"
+        test-args: >-
+          :exclude-tags [:mongo-sharded-cluster-tests]
+          :only-tags [:mb/driver-tests]
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -471,6 +548,10 @@ jobs:
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        partition-index: [0, 1, 2, 3]
     env:
       CI: 'true'
       DRIVERS: mysql
@@ -491,12 +572,30 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-mysql-8-0-ee'
+        test-args: >-
+          :partition/total 4
+          :partition/index ${{ matrix.partition-index }}
+    - name: Upload Test Results
+      uses: ./.github/actions/upload-test-results
+      if: always()
+      with:
+        input-path: ./target/junit/
+        output-name: ${{ github.job }}
+        bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
+        aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ vars.AWS_REGION }}
+        trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
   be-tests-mysql-latest-ee:
     needs: files-changed
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        partition-index: [0, 1, 2, 3]
     env:
       CI: 'true'
       DRIVERS: mysql
@@ -532,6 +631,9 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-mysql-latest-ee'
+        test-args: >-
+          :partition/total 4
+          :partition/index ${{ matrix.partition-index }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -569,7 +671,8 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-oracle-18-4-ee'
-        test-args: ":exclude-tags '[:mb/once]'"
+        test-args: >-
+          :only-tags [:mb/driver-tests]
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -616,7 +719,8 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-oracle-21-3-ee'
-        test-args: ":exclude-tags '[:mb/once]'"
+        test-args: >-
+          :only-tags [:mb/driver-tests]
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -728,30 +832,37 @@ jobs:
           JAVA_TOOL_OPTIONS: "-Xmx2g"
     steps:
     - uses: actions/checkout@v4
-    - name: Wait for port ${{ env.MB_PRESTO_JDBC_TEST_PORT }} to be ready
-      run: while ! nc -z localhost ${{ env.MB_PRESTO_JDBC_TEST_PORT }}; do sleep 0.1; done
-      timeout-minutes: 15
+    - uses: ./.github/actions/await-port
+      with:
+         port: ${{ env.MB_PRESTO_JDBC_TEST_PORT }}
+      timeout-minutes: 5
     - name: Create temp cacerts file based on bundled JDK one
       run: cp $JAVA_HOME/lib/security/cacerts /tmp/cacerts-with-presto-ssl.jks
     - name: Capture Presto server self signed CA
       run: |
-          while [[ ! -s /tmp/presto-ssl-ca.pem ]];
-            do echo "Waiting to capture SSL CA" \
+          while [[ ! -s /tmp/presto-ssl-ca.pem ]]; do
+            echo "Waiting to capture SSL CA" \
               && openssl s_client -connect localhost:8443 2>/dev/null </dev/null | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' > /tmp/presto-ssl-ca.pem \
-              && sleep 1; done
+              && sleep 1;
+          done
     - name: Convert Presto CA from PEM to DER
       run: openssl x509 -outform der -in /tmp/presto-ssl-ca.pem -out /tmp/presto-ssl-ca.der
     - name: Add write permission on cacerts file
       run: chmod u+w /tmp/cacerts-with-presto-ssl.jks
     - name: Import Presto CA into temp cacerts file
-      run: |
-          keytool -noprompt -import -alias presto -keystore /tmp/cacerts-with-presto-ssl.jks \
-                  -storepass changeit -file /tmp/presto-ssl-ca.der -trustcacerts
+      run: >-
+        keytool -noprompt -import
+        -alias presto
+        -keystore /tmp/cacerts-with-presto-ssl.jks
+        -storepass changeit
+        -file /tmp/presto-ssl-ca.der
+        -trustcacerts
     - name: Test Presto JDBC driver
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-presto-jdbc-ee'
-        test-args: ":exclude-tags '[:mb/once]'"
+        test-args: >-
+          :only-tags [:mb/driver-tests]
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -782,7 +893,8 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-redshift-ee'
-        test-args: ":exclude-tags '[:mb/once]'"
+        test-args: >-
+          :only-tags [:mb/driver-tests]
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -820,7 +932,8 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-snowflake-ee'
-        test-args: ":exclude-tags '[:mb/once]'"
+        test-args: >-
+          :only-tags [:mb/driver-tests]
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -852,7 +965,8 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-sparksql-ee'
-        test-args: ":exclude-tags '[:mb/once]'"
+        test-args: >-
+          :only-tags [:mb/driver-tests]
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -879,7 +993,8 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-sqlite-ee'
-        test-args: ":exclude-tags '[:mb/once]'"
+        test-args: >-
+          :only-tags [:mb/driver-tests]
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -895,7 +1010,7 @@ jobs:
   be-tests-sqlserver-2017-ee:
     needs: files-changed
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-20.04
     timeout-minutes: 90
     env:
       CI: 'true'
@@ -918,7 +1033,8 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-sqlserver-ee'
-        test-args: ":exclude-tags '[:mb/once]'"
+        test-args: >-
+          :only-tags [:mb/driver-tests]
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -957,7 +1073,8 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-sqlserver-2022-ee'
-        test-args: ":exclude-tags '[:mb/once]'"
+        test-args: >-
+          :only-tags [:mb/driver-tests]
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -991,7 +1108,8 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-vertica-ee'
-        test-args: ":exclude-tags '[:mb/once]'"
+        test-args: >-
+          :only-tags [:mb/driver-tests]
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()

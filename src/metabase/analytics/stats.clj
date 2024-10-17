@@ -3,7 +3,10 @@
   (:require
    [cheshire.core :as json]
    [clj-http.client :as http]
+   [clojure.java.io :as io]
    [clojure.string :as str]
+   [clojure.walk :as walk]
+   [environ.core :as env]
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.analytics.snowplow :as snowplow]
@@ -11,19 +14,24 @@
    [metabase.db :as db]
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
+   [metabase.eid-translation :as eid-translation]
    [metabase.email :as email]
    [metabase.embed.settings :as embed.settings]
    [metabase.integrations.google :as google]
    [metabase.integrations.slack :as slack]
    [metabase.models
-    :refer [Card Collection Dashboard DashboardCard Database Field LegacyMetric
-            PermissionsGroup Pulse PulseCard PulseChannel QueryCache Segment
-            Table User]]
+    :refer [Card Collection Dashboard DashboardCard Database Field
+            LegacyMetric PermissionsGroup Pulse PulseCard PulseChannel
+            QueryCache Segment Table User]]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
+   [metabase.models.setting :as setting]
    [metabase.public-settings :as public-settings]
+   [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
+   [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -115,19 +123,27 @@
   []
   {:version                              (config/mb-version-info :tag)
    :running_on                           (environment-type)
-   :startup_time_millis                  (public-settings/startup-time-millis)
+   :startup_time_millis                  (int (public-settings/startup-time-millis))
    :application_database                 (config/config-str :mb-db-type)
    :check_for_updates                    (public-settings/check-for-updates)
    :report_timezone                      (driver/report-timezone)
-   ; We deprecated advanced humanization but have this here anyways
+   ;; We deprecated advanced humanization but have this here anyways
    :friendly_names                       (= (humanization/humanization-strategy) "advanced")
    :email_configured                     (email/email-configured?)
    :slack_configured                     (slack/slack-configured?)
    :sso_configured                       (google/google-auth-enabled)
    :instance_started                     (snowplow/instance-creation)
    :has_sample_data                      (t2/exists? Database, :is_sample true)
-   :enable_embedding                     (embed.settings/enable-embedding)
-   :embedding_app_origin_set             (boolean (embed.settings/embedding-app-origin))
+   :enable_embedding                     #_{:clj-kondo/ignore [:deprecated-var]} (embed.settings/enable-embedding)
+   :enable_embedding_sdk                 (embed.settings/enable-embedding-sdk)
+   :enable_embedding_interactive         (embed.settings/enable-embedding-interactive)
+   :enable_embedding_static              (embed.settings/enable-embedding-static)
+   :embedding_app_origin_set             (boolean
+                                          #_{:clj-kondo/ignore [:deprecated-var]}
+                                          (embed.settings/embedding-app-origin))
+   :embedding_app_origin_sdk_set         (boolean (let [sdk-origins (embed.settings/embedding-app-origins-sdk)]
+                                                    (and sdk-origins (not= "localhost:*" sdk-origins))))
+   :embedding_app_origin_interactive_set (embed.settings/embedding-app-origins-interactive)
    :appearance_site_name                 (not= (public-settings/site-name) "Metabase")
    :appearance_help_link                 (public-settings/help-link)
    :appearance_logo                      (not= (public-settings/application-logo-url) "app/assets/img/logo.svg")
@@ -348,16 +364,25 @@
 ;;; Execution Metrics
 
 (defn- execution-metrics-sql []
+  ;; Postgres automatically adjusts for daylight saving time when performing time calculations on TIMESTAMP WITH TIME
+  ;; ZONE. This can cause discrepancies when subtracting 30 days if the calculation crosses a DST boundary (e.g., in the
+  ;; Pacific/Auckland timezone). To avoid this, we ensure all date computations are done in UTC on Postgres to prevent
+  ;; any time shifts due to DST. See PR #48204
   (let [thirty-days-ago (case (db/db-type)
-                          :postgres "CURRENT_TIMESTAMP - INTERVAL '30 days'"
+                          :postgres "CURRENT_TIMESTAMP AT TIME ZONE 'UTC' - INTERVAL '30 days'"
                           :h2       "DATEADD('DAY', -30, CURRENT_TIMESTAMP)"
-                          :mysql    "CURRENT_TIMESTAMP - INTERVAL 30 DAY")]
+                          :mysql    "CURRENT_TIMESTAMP - INTERVAL 30 DAY")
+        started-at      (case (db/db-type)
+                          :postgres "started_at AT TIME ZONE 'UTC'"
+                          :h2       "started_at"
+                          :mysql    "started_at")
+        timestamp-where (str started-at " > " thirty-days-ago)]
     (str/join
      "\n"
      ["WITH user_executions AS ("
       "    SELECT executor_id, COUNT(*) AS num_executions"
       "    FROM query_execution"
-      "    WHERE started_at > " thirty-days-ago
+      "    WHERE " timestamp-where
       "    GROUP BY executor_id"
       "),"
       "query_stats_1 AS ("
@@ -374,7 +399,7 @@
       "        COALESCE(SUM(CASE WHEN running_time >= 1000000 AND running_time < 10000000 THEN 1 ELSE 0 END), 0) AS num_by_latency__1001_10000,"
       "        COALESCE(SUM(CASE WHEN running_time >= 10000000 THEN 1 ELSE 0 END), 0) AS num_by_latency__10000_plus"
       "    FROM query_execution"
-      "    WHERE started_at > " thirty-days-ago
+      "    WHERE " timestamp-where
       "),"
       "query_stats_2 AS ("
       "    SELECT"
@@ -424,7 +449,9 @@
   []
   (let [{:keys [length count]} (t2/select-one [QueryCache [[:avg [:length :results]] :length] [:%count.* :count]])]
     {:average_entry_size (int (or length 0))
-     :num_queries_cached (bin-small-number count)}))
+     :num_queries_cached (bin-small-number count)
+     ;; this value gets used in the snowplow ping 'metrics' section.
+     :num_queries_cached_unbinned count}))
 
 ;;; System Metrics
 
@@ -448,7 +475,7 @@
 
 ;;; Combined Stats & Logic for sending them in
 
-(defn anonymous-usage-stats
+(defn legacy-anonymous-usage-stats
   "generate a map of the usage stats for this instance"
   []
   (merge (instance-settings)
@@ -470,16 +497,393 @@
                       :table      (table-metrics)
                       :user       (user-metrics)}}))
 
-(defn- send-stats!
-  "send stats to Metabase tracking server"
+(defn- ^:deprecated send-stats-deprecated!
+  "Send stats to Metabase tracking server."
   [stats]
   (try
     (http/post metabase-usage-url {:form-params stats, :content-type :json, :throw-entire-message? true})
     (catch Throwable e
       (log/error e "Sending usage stats FAILED"))))
 
+(defn- in-docker?
+  "Is the current Metabase process running in a Docker container?"
+  []
+  (boolean
+   (or (.exists (io/file "/.dockerenv"))
+       (when (.exists (io/file "/proc/self/cgroup"))
+         (some #(re-find #"docker" %)
+               (line-seq (io/reader "/proc/self/cgroup")))))))
+
+(defn- deployment-model
+  []
+  (case
+   (premium-features/is-hosted?) "cloud"
+   (in-docker?) "docker"
+   :else "jar"))
+
+(def ^:private activation-days 3)
+
+(defn- sufficient-users?
+  "Returns a Boolean indicating whether the number of non-internal users created within `activation-days` is greater
+  than or equal to `num-users`"
+  [num-users]
+  (let [users-in-activation-period
+        (t2/count :model/User {:where [:and
+                                       [:<=
+                                        :date_joined
+                                        (t/plus (t/offset-date-time (setting/get :instance-creation))
+                                                (t/days activation-days))]
+                                       (mi/exclude-internal-content-hsql :model/User)]
+                               :limit (inc num-users)})]
+    (>= users-in-activation-period num-users)))
+
+(defn- sufficient-queries?
+  "Returns a Boolean indicating whether the number of queries recorded over non-sample content is greater than or equal
+  to `num-queries`"
+  [num-queries]
+  (let [sample-db-id (t2/select-one-pk :model/Database :is_sample true)
+        ;; QueryExecution can be large, so let's avoid counting everything
+        queries      (t2/select-fn-set :id :model/QueryExecution
+                                       {:where [:or
+                                                [:not= :database_id sample-db-id]
+                                                [:= :database_id nil]]
+                                        :limit (inc num-queries)})]
+    (>= (count queries) num-queries)))
+
+(defn- completed-activation-signals?
+  "If the current plan is Pro or Starter, returns a Boolean indicating whether the instance should be considered to have
+  completed activation signals. Returns nil for non-Pro or Starter plans."
+  []
+  (let [plan     (premium-features/plan-alias)
+        pro?     (when plan (str/starts-with? plan "pro"))
+        starter? (when plan (str/starts-with? plan "starter"))]
+    (cond
+      pro?
+      (or (sufficient-users? 4) (sufficient-queries? 201))
+
+      starter?
+      (or (sufficient-users? 2) (sufficient-queries? 101))
+
+      :else
+      nil)))
+
+(defn m->kv-vec
+  "Convert a map to a vector of key-value maps with keys 'key' and 'value' for each key-value pair in the map."
+  [m]
+  (mapv (fn [[k v]] {"key" (name k) "value" v}) m))
+
+(defn- snowplow-instance-attributes
+  [stats]
+  (let [system-stats (-> stats :stats :system)
+        instance-attributes
+        (merge
+         (dissoc system-stats :user_language)
+         {:metabase_plan                    (premium-features/plan-alias)
+          :metabase_version                 (-> stats :version)
+          :language                         (-> system-stats :user_language)
+          :report_timezone                  (-> stats :report_timezone)
+          :deployment_model                 (deployment-model)
+          :startup_time_millis              (-> stats :startup_time_millis)
+          :has_activation_signals_completed (completed-activation-signals?)})]
+    (m->kv-vec instance-attributes)))
+
+(mu/defn- get-translation-count
+  :- [:map [:ok :int] [:not-found :int] [:invalid-format :int] [:total :int]]
+  "Get and clear the entity-id translation counter. This is meant to be called during the daily stats collection process."
+  []
+  (let [counter (setting/get-value-of-type :json :entity-id-translation-counter)]
+    (merge counter {:total (apply + (vals counter))})))
+
+(mu/defn- clear-translation-count!
+  "We want to reset the eid translation count on every stat ping, so we do it here."
+  []
+  (u/prog1 eid-translation/default-counter
+    (setting/set-value-of-type! :json :entity-id-translation-counter <>)))
+
+(defn- categorize-query-execution [{client :embedding_client executor :executor_id}]
+  (cond
+    (= "embedding-sdk-react" client)                     "sdk_embed"
+    (and (= "embedding-iframe" client) (some? executor)) "interactive_embed"
+    (and (= "embedding-iframe" client) (nil? executor))  "static_embed"
+    (and (#{"" nil} client) (nil? executor))             "public_link"
+    :else                                                "internal"))
+
+(defn- ->one-day-ago []
+  (t/minus (t/offset-date-time) (t/days 1)))
+
+(defn- ->snowplow-grouped-metric-info []
+  {:query_executions (merge
+                      {"sdk_embed" 0 "interactive_embed" 0 "static_embed" 0 "public_link" 0 "internal" 0}
+                      (-> categorize-query-execution
+                          (group-by
+                           (t2/select [:model/QueryExecution :embedding_client :executor_id]))
+                          (update-vals count)))})
+
+(defn- snowplow-grouped-metrics [{query-executions :query_executions :as _snowplow-grouped-metric-info}]
+  (->> [{:name :query_executions_by_source
+         :values (mapv (fn [qe-group]
+                         {:group qe-group :value (get query-executions qe-group)})
+                       ["interactive_embed" "internal" "public_link" "sdk_embed" "static_embed"])
+         :tags ["embedding"]}]
+       (walk/postwalk (fn [x] (if (keyword? x) (-> x u/->snake_case_en name) x)))))
+
+(defn- ->snowplow-metric-info
+  "Collects Snowplow metrics data that is not in the legacy stats format. Also clears entity id translation count."
+  []
+  (let [one-day-ago (->one-day-ago)
+        total-translation-count (:total (get-translation-count))
+        _ (clear-translation-count!)]
+    {:models                  (t2/count :model/Card :type :model :archived false)
+     :new_embedded_dashboards (t2/count :model/Dashboard
+                                        :enable_embedding true
+                                        :archived false
+                                        :created_at [:>= one-day-ago])
+     :new_users_last_24h        (t2/count :model/User
+                                          :is_active true
+                                          :date_joined [:>= one-day-ago])
+     :pivot_tables              (t2/count :model/Card :display :pivot :archived false)
+     :query_executions_last_24h (t2/count :model/QueryExecution :started_at [:>= one-day-ago])
+     :entity_id_translations_last_24h total-translation-count}))
+
+(mu/defn- snowplow-metrics
+  [stats metric-info :- [:map
+                         [:models :int]
+                         [:new_embedded_dashboards :int]
+                         [:new_users_last_24h :int]
+                         [:pivot_tables :int]
+                         [:query_executions_last_24h :int]
+                         [:entity_id_translations_last_24h :int]]]
+  (mapv
+   (fn [[k v tags]]
+     (assert (every? string? tags) "Tags must be strings in snowplow metrics.")
+     (assert (some? v) "Cannot have a nil value in snowplow metrics.")
+     {"name" (name k) "value" v "tags" (-> tags sort vec)})
+   [[:above_goal_alerts               (get-in stats [:stats :alert :above_goal] 0)                    #{"alerts"}]
+    [:alerts                          (get-in stats [:stats :alert :alerts] 0)                        #{"alerts"}]
+    [:all_time_query_executions       (get-in stats [:stats :execution :executions] 0)                #{"query_executions"}]
+    [:analyzed_databases              (get-in stats [:stats :database :databases :analyzed] 0)        #{}]
+    [:cache_average_entry_size        (get-in stats [:stats :cache :average_entry_size] 0)            #{"cache"}]
+    [:cache_num_queries_cached        (get-in stats [:stats :cache :num_queries_cached_unbinned] 0)   #{"cache"}]
+    [:cards_in_collections            (get-in stats [:stats :collection :cards_in_collections] 0)     #{"collections"}]
+    [:cards_not_in_collections        (get-in stats [:stats :collection :cards_not_in_collections] 0) #{"collections"}]
+    [:collections                     (get-in stats [:stats :collection :collections] 0)              #{"collections"}]
+    [:connected_databases             (get-in stats [:stats :database :databases :total] 0)           #{"databases"}]
+    [:dashboards_with_params          (get-in stats [:stats :dashboard :with_params] 0)               #{"dashboards"}]
+    [:embedded_dashboards             (get-in stats [:stats :dashboard :embedded :total] 0)           #{"dashboards" "embedding"}]
+    [:embedded_questions              (get-in stats [:stats :question :embedded :total] 0)            #{"questions" "embedding"}]
+    [:entity_id_translations_last_24h (:entity_id_translations_last_24h metric-info 0)                #{"embedding"}]
+    [:first_time_only_alerts          (get-in stats [:stats :alert :first_time_only] 0)               #{"alerts"}]
+    [:metabase_fields                 (get-in stats [:stats :field :fields] 0)                        #{"fields"}]
+    [:metrics                         (get-in stats [:stats :metric :metrics] 0)                      #{"metrics"}]
+    [:models                          (:models metric-info 0)                                         #{}]
+    [:native_questions                (get-in stats [:stats :question :questions :native] 0)          #{"questions"}]
+    [:new_embedded_dashboards         (:new_embedded_dashboards metric-info 0)                        #{}]
+    [:new_users_last_24h              (:new_users_last_24h metric-info 0)                             #{"users"}]
+    [:permission_groups               (get-in stats [:stats :group :groups] 0)                        #{"permissions"}]
+    [:pivot_tables                    (:pivot_tables metric-info 0)                                   #{}]
+    [:public_dashboards               (get-in stats [:stats :dashboard :public :total] 0)             #{"dashboards"}]
+    [:public_dashboards_with_params   (get-in stats [:stats :dashboard :public :with_params] 0)       #{"dashboards"}]
+    [:public_questions                (get-in stats [:stats :question :public :total] 0)              #{"questions"}]
+    [:public_questions_with_params    (get-in stats [:stats :question :public :with_params] 0)        #{"questions"}]
+    [:query_builder_questions         (get-in stats [:stats :question :questions :total] 0)           #{"questions"}]
+    [:query_executions_last_24h       (:query_executions_last_24h metric-info 0)                      #{"query_executions"}]
+    [:questions                       (get-in stats [:stats :question :questions :total] 0)           #{"questions"}]
+    [:questions_with_params           (get-in stats [:stats :question :questions :with_params] 0)     #{"questions"}]
+    [:segments                        (get-in stats [:stats :segment :segments] 0)                    #{"segments"}]
+    [:tables                          (get-in stats [:stats :table :tables] 0)                        #{"tables"}]
+    [:users                           (get-in stats [:stats :user :users :total] 0)                   #{"users"}]]))
+
+(defn- whitelabeling-in-use?
+  "Are any whitelabeling settings set to values other than their default?"
+  []
+  (let [whitelabel-settings (filter
+                             (fn [setting] (= (:feature setting) :whitelabel))
+                             (vals @setting/registered-settings))]
+    (boolean
+     (some
+      (fn [setting]
+        (not= ((:getter setting))
+              (:default setting)))
+      whitelabel-settings))))
+
+(def csv-upload-version-availability
+  "Map from driver engines to the first version ([major minor]) which introduced support for CSV uploads"
+  {:postgres   [47 0]
+   :mysql      [47 0]
+   :redshift   [49 6]
+   :clickhouse [50 0]})
+
+(defn- csv-upload-available?
+  "Is CSV upload currently available to be used on this instance?"
+  []
+  (boolean
+   (let [major-version (config/current-major-version)
+         minor-version (config/current-minor-version)
+         engines       (t2/select-fn-set :engine :model/Database
+                                         {:where [:in :engine (map name (keys csv-upload-version-availability))]})]
+     (when (and major-version minor-version)
+       (some
+        (fn [engine]
+          (when-let [[required-major required-minor] (csv-upload-version-availability engine)]
+            (and (>= major-version required-major)
+                 (>= minor-version required-minor))))
+        engines)))))
+
+(defn- ee-snowplow-features-data'
+  []
+  (let [features [:sso-jwt :sso-saml :scim :sandboxes :email-allow-list]]
+    (map
+     (fn [feature]
+       {:name      feature
+        :available false
+        :enabled   false})
+     features)))
+
+(defenterprise ee-snowplow-features-data
+  "OSS values to use for features which require calling EE code to check whether they are available/enabled."
+  metabase-enterprise.stats
+  []
+  (ee-snowplow-features-data'))
+
+(defn- snowplow-features-data
+  []
+  [{:name      :email
+    :available true
+    :enabled   (email/email-configured?)}
+   {:name      :slack
+    :available true
+    :enabled   (slack/slack-configured?)}
+   {:name      :sso-google
+    :available true
+    :enabled   (google/google-auth-configured)}
+   {:name      :sso-ldap
+    :available true
+    :enabled   (public-settings/ldap-enabled?)}
+   {:name      :sample-data
+    :available true
+    :enabled   (t2/exists? Database, :is_sample true)}
+   {:name      :interactive-embedding
+    :available (premium-features/hide-embed-branding?)
+    :enabled   (and
+                (embed.settings/enable-embedding-interactive)
+                (boolean (embed.settings/embedding-app-origins-interactive))
+                (public-settings/sso-enabled?))}
+   {:name      :static-embedding
+    :available true
+    :enabled   (and
+                (embed.settings/enable-embedding-static)
+                (or
+                 (t2/exists? :model/Dashboard :enable_embedding true)
+                 (t2/exists? :model/Card :enable_embedding true)))}
+   {:name      :public-sharing
+    :available true
+    :enabled   (and
+                (public-settings/enable-public-sharing)
+                (or
+                 (t2/exists? :model/Dashboard :public_uuid [:not= nil])
+                 (t2/exists? :model/Card :public_uuid [:not= nil])))}
+   {:name      :whitelabel
+    :available (premium-features/enable-whitelabeling?)
+    :enabled   (whitelabeling-in-use?)}
+   {:name      :csv-upload
+    :available (csv-upload-available?)
+    :enabled   (t2/exists? :model/Database :uploads_enabled true)}
+   {:name      :mb-analytics
+    :available (premium-features/enable-audit-app?)
+    :enabled   (premium-features/enable-audit-app?)}
+   {:name      :advanced-permissions
+    :available (premium-features/enable-advanced-permissions?)
+    :enabled   (premium-features/enable-advanced-permissions?)}
+   {:name      :serialization
+    :available (premium-features/enable-serialization?)
+    :enabled   (premium-features/enable-serialization?)}
+   {:name      :official-collections
+    :available (premium-features/enable-official-collections?)
+    :enabled   (t2/exists? :model/Collection :authority_level "official")}
+   {:name      :cache-granular-controls
+    :available (premium-features/enable-cache-granular-controls?)
+    :enabled   (t2/exists? :model/CacheConfig)}
+   {:name      :attached-dwh
+    :available (premium-features/has-attached-dwh?)
+    :enabled   (premium-features/has-attached-dwh?)}
+   {:name      :database-auth-providers
+    :available (premium-features/enable-database-auth-providers?)
+    :enabled   (premium-features/enable-database-auth-providers?)}
+   {:name      :config-text-file
+    :available (premium-features/enable-config-text-file?)
+    :enabled   (some? (get env/env :mb-config-file-path))}
+   {:name      :content-verification
+    :available (premium-features/enable-content-verification?)
+    :enabled   (t2/exists? :model/ModerationReview)}
+   {:name      :dashboard-subscription-filters
+    :available (premium-features/enable-content-verification?)
+    :enabled   (t2/exists? :model/Pulse {:where [:not= :parameters "[]"]})}
+   {:name      :disable-password-login
+    :available (premium-features/can-disable-password-login?)
+    :enabled   (not (public-settings/enable-password-login))}
+   {:name      :email-restrict-recipients
+    :available (premium-features/enable-email-restrict-recipients?)
+    :enabled   (not= (setting/get-value-of-type :keyword :user-visibility) :all)}
+   {:name      :upload-management
+    :available (premium-features/enable-upload-management?)
+    :enabled   (t2/exists? :model/Table :is_upload true)}
+   {:name      :snippet-collections
+    :available (premium-features/enable-snippet-collections?)
+    :enabled   (t2/exists? :model/Collection :namespace "snippets")}])
+
+(defn- snowplow-features
+  []
+  (let [features (concat (snowplow-features-data) (ee-snowplow-features-data))]
+    (mapv
+     ;; Convert keys and feature names to strings to match expected Snowplow schema
+     (fn [feature]
+       (-> (update feature :name name)
+           (update :name u/->snake_case_en)
+           ;; Ensure that unavailable features are not reported as enabled
+           (update :enabled (fn [enabled?] (if-not (:available feature) false enabled?)))
+           (walk/stringify-keys)))
+     features)))
+
+(defn- snowplow-anonymous-usage-stats
+  "Send stats to Metabase's snowplow collector. Transforms stats into the format required by the Snowplow schema."
+  [stats]
+  (let [instance-attributes (snowplow-instance-attributes stats)
+        metrics             (snowplow-metrics stats (->snowplow-metric-info))
+        grouped-metrics     (snowplow-grouped-metrics (->snowplow-grouped-metric-info))
+        features            (snowplow-features)]
+    ;; grouped_metrics and settings are required in the json schema, but their data will be included in the next Milestone:
+    {:analytics_uuid      (snowplow/analytics-uuid)
+     :features            features
+     :grouped_metrics     grouped-metrics
+     :instance_attributes instance-attributes
+     :metrics             metrics
+     :settings             []}))
+
+(defn- generate-instance-stats!
+  "Generate stats for this instance as data"
+  []
+  (let [stats (legacy-anonymous-usage-stats)]
+    {:stats (-> stats
+                ;; `:num_queries_cached_unbinned` is added to [[legacy-anonymous-usage-stats]]'s return value to make
+                ;; computing [[snowplow-anonymous-usage-stats]] more efficient. It shouldn't be sent by
+                ;; [[send-stats-deprecited!]].
+                (update-in [:stats :stats :cache] dissoc :num_queries_cached_unbinned))
+     :snowplow-stats (snowplow-anonymous-usage-stats stats)}))
+
 (defn phone-home-stats!
   "Collect usage stats and phone them home"
   []
   (when (public-settings/anon-tracking-enabled)
-    (send-stats! (anonymous-usage-stats))))
+    (let [start-time-ms                  (System/currentTimeMillis)
+          {:keys [stats snowplow-stats]} (generate-instance-stats!)
+          end-time-ms                    (System/currentTimeMillis)
+          elapsed-secs                   (quot (- end-time-ms start-time-ms) 1000)
+          snowplow-data                  (assoc snowplow-stats
+                                                :metadata [{"key"   "stats_export_time_seconds"
+                                                            "value" elapsed-secs}])]
+      (assert (= #{:analytics_uuid :features :grouped_metrics :instance_attributes :metadata :metrics :settings}
+                 (set (keys snowplow-data)))
+              (str "Missing required keys in snowplow-data. got:" (sort (keys snowplow-data))))
+      #_{:clj-kondo/ignore [:deprecated-var]}
+      (send-stats-deprecated! stats)
+      (snowplow/track-event! ::snowplow/instance_stats snowplow-data))))

@@ -195,7 +195,7 @@
    dashboards k
    #(group-by :dashboard_id (t2/select :model/DashboardTab
                                        :dashboard_id [:in (map :id dashboards)]
-                                       {:order-by [[:dashboard_id :asc] [:position :asc]]}))
+                                       {:order-by [[:dashboard_id :asc] [:position :asc] [:id :asc]]}))
    :id
    {:default []}))
 
@@ -614,28 +614,34 @@
 (defmethod serdes/descendants "Dashboard" [_model-name id]
   (let [dashcards (t2/select ['DashboardCard :id :card_id :action_id :parameter_mappings :visualization_settings]
                              :dashboard_id id)
-        dashboard (t2/select-one Dashboard :id id)]
-    (set/union
-      ;; DashboardCards are inlined into Dashboards, but we need to capture what those those DashboardCards rely on
-      ;; here. So their actions, and their cards both direct, mentioned in their parameters viz settings, and related
-      ;; via dashboard card series.
-     (set (for [{:keys [card_id parameter_mappings]} dashcards
-                ;; Capture all card_ids in the parameters, plus this dashcard's card_id if non-nil.
-                card-id (cond-> (set (keep :card_id parameter_mappings))
-                          card_id (conj card_id))]
-            ["Card" card-id]))
+        dashboard (t2/select-one Dashboard :id id)
+        dash-id   id]
+    (merge-with
+     merge
+     ;; DashboardCards are inlined into Dashboards, but we need to capture what those those DashboardCards rely on
+     ;; here. So their actions, and their cards both direct, mentioned in their parameters viz settings, and related
+     ;; via dashboard card series.
+     (into {} (for [{:keys [id card_id parameter_mappings]} dashcards
+                    ;; Capture all card_ids in the parameters, plus this dashcard's card_id if non-nil.
+                    card-id (cond-> (set (keep :card_id parameter_mappings))
+                              card_id (conj card_id))]
+                {["Card" card-id] {"DashboardCard" id "Dashboard" dash-id}}))
      (when (not-empty dashcards)
-       (set (for [card-id (t2/select-fn-set :card_id :model/DashboardCardSeries :dashboardcard_id [:in (map :id dashcards)])]
-              ["Card" card-id])))
-     (set (for [{:keys [action_id]} dashcards
-                :when action_id]
-            ["Action" action_id]))
-     (reduce set/union #{}
-             (for [dc dashcards]
-               (serdes/visualization-settings-descendants (:visualization_settings dc))))
-      ;; parameter with values_source_type = "card" will depend on a card
-     (set (for [card-id (some->> dashboard :parameters (keep (comp :card_id :values_source_config)))]
-            ["Card" card-id])))))
+       (into {} (for [{:keys [id card_id dashboardcard_id]} (t2/select [:model/DashboardCardSeries :id :card_id :dashboardcard_id]
+                                                                       :dashboardcard_id [:in (map :id dashcards)])]
+                  {["Card" card_id] {"DashboardCardSeries" id
+                                     "DashboardCard"       dashboardcard_id
+                                     "Dashboard"           dash-id}})))
+     (into {} (for [{:keys [id action_id]} dashcards
+                    :when action_id]
+                {["Action" action_id] {"DashboardCard" id
+                                       "Dashboard"     dash-id}}))
+     (into {} (for [dc dashcards]
+                (serdes/visualization-settings-descendants (:visualization_settings dc) {"DashboardCard" id
+                                                                                         "Dashboard"     dash-id})))
+     ;; parameter with values_source_type = "card" will depend on a card
+     (into {} (for [card-id (some->> dashboard :parameters (keep (comp :card_id :values_source_config)))]
+                {["Card" card-id] {"Dashboard" dash-id}})))))
 
 ;;; ------------------------------------------------ Audit Log --------------------------------------------------------
 

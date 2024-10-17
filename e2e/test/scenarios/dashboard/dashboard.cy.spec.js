@@ -9,6 +9,7 @@ import {
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
+  addIFrameWhileEditing,
   addOrUpdateDashboardCard,
   appBar,
   assertDashboardFixedWidth,
@@ -18,7 +19,9 @@ import {
   collectionOnTheGoModal,
   commandPalette,
   commandPaletteButton,
+  createDashboard,
   createDashboardWithTabs,
+  createQuestionAndDashboard,
   dashboardHeader,
   describeEE,
   describeWithSnowplow,
@@ -128,7 +131,10 @@ describe("scenarios > dashboard", () => {
         .click();
 
       entityPickerModal().within(() => {
-        cy.findByPlaceholderText("Search…").type("Pro");
+        cy.findByPlaceholderText("Search this collection or everywhere…").type(
+          "Pro",
+        );
+        cy.findByText("Everywhere").click();
         cy.findByText("Products").click();
       });
 
@@ -320,6 +326,50 @@ describe("scenarios > dashboard", () => {
         }
       });
 
+      describe("iframe cards", () => {
+        it("should handle various iframe and URL inputs", () => {
+          const testCases = [
+            {
+              input: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+              expected: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+            },
+            {
+              input: "https://youtu.be/dQw4w9WgXcQ",
+              expected: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+            },
+            {
+              input: "https://www.loom.com/share/1234567890abcdef",
+              expected: "https://www.loom.com/embed/1234567890abcdef",
+            },
+            {
+              input: "https://vimeo.com/123456789",
+              expected: "https://player.vimeo.com/video/123456789",
+            },
+            {
+              input: "example.com",
+              expected: "https://example.com",
+            },
+            {
+              input: "https://example.com",
+              expected: "https://example.com",
+            },
+            {
+              input:
+                '<iframe src="https://example.com" onload="alert(\'XSS\')"></iframe>',
+              expected: "https://example.com",
+            },
+          ];
+
+          editDashboard();
+
+          testCases.forEach(({ input, expected }, index) => {
+            addIFrameWhileEditing(input);
+            cy.button("Done").click();
+            validateIFrame(expected, index);
+          });
+        });
+      });
+
       it("should hide personal collections when adding questions to a dashboard in public collection", () => {
         const collectionInRoot = {
           name: "Collection in root collection",
@@ -401,6 +451,57 @@ describe("scenarios > dashboard", () => {
         getDashboardCardMenu().click();
         popover().findByText("Edit question").should("be.visible").click();
         cy.findByRole("button", { name: "Visualize" }).should("be.visible");
+      });
+
+      it("should allow navigating to the model editor directly from a dashboard card", () => {
+        createQuestionAndDashboard({
+          questionDetails: {
+            name: "orders",
+            type: "model",
+            query: {
+              "source-table": ORDERS_ID,
+            },
+          },
+          dashboardDetails: {
+            name: "Dashboard",
+          },
+        }).then(({ body: { dashboard_id, card } }) => {
+          cy.wrap(`${card.id}-${card.name}`).as("slug");
+          visitDashboard(dashboard_id);
+        });
+
+        showDashboardCardActions();
+        getDashboardCardMenu().click();
+        popover().findByText("Edit model").should("be.visible").click();
+        cy.get("@slug").then(slug => {
+          cy.location("pathname").should("eq", `/model/${slug}/query`);
+        });
+      });
+
+      it("should allow navigating to the metric editor directly from a dashboard card", () => {
+        createQuestionAndDashboard({
+          questionDetails: {
+            name: "orders",
+            type: "metric",
+            query: {
+              "source-table": ORDERS_ID,
+              aggregation: [["count"]],
+            },
+          },
+          dashboardDetails: {
+            name: "Dashboard",
+          },
+        }).then(({ body: { dashboard_id, card } }) => {
+          cy.wrap(`${card.id}-${card.name}`).as("slug");
+          visitDashboard(dashboard_id);
+        });
+
+        showDashboardCardActions();
+        getDashboardCardMenu().click();
+        popover().findByText("Edit metric").should("be.visible").click();
+        cy.get("@slug").then(slug => {
+          cy.location("pathname").should("eq", `/metric/${slug}/query`);
+        });
       });
     });
 
@@ -1039,6 +1140,28 @@ describeWithSnowplow("scenarios > dashboard", () => {
     expectNoBadSnowplowEvents();
   });
 
+  it("should be possible to add an iframe card", () => {
+    createDashboard({ name: "iframe card" }).then(({ body: { id } }) => {
+      visitDashboard(id);
+
+      editDashboard();
+      addIFrameWhileEditing("https://example.com");
+      cy.findByTestId("dashboardcard-actions-panel").should("not.exist");
+      cy.button("Done").click();
+      getDashboardCards().eq(0).realHover();
+      cy.findByTestId("dashboardcard-actions-panel").should("be.visible");
+      validateIFrame("https://example.com");
+      saveDashboard();
+      validateIFrame("https://example.com");
+
+      expectGoodSnowplowEvent({
+        event: "new_iframe_card_created",
+        target_id: id,
+        event_detail: "example.com",
+      });
+    });
+  });
+
   it("saving a dashboard should track a 'dashboard_saved' snowplow event", () => {
     visitDashboard(ORDERS_DASHBOARD_ID);
     editDashboard();
@@ -1053,7 +1176,8 @@ describeWithSnowplow("scenarios > dashboard", () => {
   it("should allow users to add link cards to dashboards", () => {
     visitDashboard(ORDERS_DASHBOARD_ID);
     editDashboard();
-    cy.findByTestId("dashboard-header").icon("link").click();
+    cy.findByLabelText("Add a link or iframe").click();
+    popover().findByText("Link").click();
 
     cy.wait("@recentViews");
     cy.findByTestId("custom-edit-text-link").click().type("Orders");
@@ -1281,13 +1405,19 @@ describeEE("scenarios > dashboard > caching", () => {
       cy.log(
         "Check that the newly chosen cache invalidation policy - Duration - is now visible in the sidebar",
       );
-      cy.findByLabelText(/Caching policy/).should("contain", "Duration");
-      cy.findByLabelText(/Caching policy/).click();
+      cy.findByLabelText(/When to get new results/).should(
+        "contain",
+        "Duration",
+      );
+      cy.findByLabelText(/When to get new results/).click();
       adaptiveRadioButton().click();
       cy.findByLabelText(/Minimum query duration/).type("999");
       cy.findByRole("button", { name: /Save/ }).click();
       cy.wait("@putCacheConfig");
-      cy.findByLabelText(/Caching policy/).should("contain", "Adaptive");
+      cy.findByLabelText(/When to get new results/).should(
+        "contain",
+        "Adaptive",
+      );
     });
   });
 
@@ -1416,3 +1546,16 @@ describe("scenarios > dashboard > permissions", () => {
     cy.findByText("Sorry, you don’t have permission to see that.");
   });
 });
+
+function validateIFrame(src, index = 0) {
+  getDashboardCards()
+    .get("iframe")
+    .eq(index)
+    .should("have.attr", "src", src)
+    .and(
+      "have.attr",
+      "sandbox",
+      "allow-scripts allow-same-origin allow-forms allow-popups",
+    )
+    .and("not.have.attr", "onload");
+}

@@ -3,6 +3,7 @@ import {
   type DashboardDetails,
   type StructuredQuestionDetails,
   assertQueryBuilderRowCount,
+  assertTableData,
   createQuestion,
   createQuestionAndDashboard,
   dragField,
@@ -22,7 +23,6 @@ import {
   startNewQuestion,
   summarize,
   tableInteractive,
-  tableInteractiveBody,
   visitDashboard,
   visitEmbeddedPage,
   visitPublicDashboard,
@@ -272,6 +272,19 @@ function getNestedQuestionDetails(cardId: number) {
   };
 }
 
+// This is used in several places for the same query.
+function assertTableDataForFilteredTemporalBreakouts() {
+  assertTableData({
+    columns: ["Created At: Year", "Created At: Month", "Count"],
+    firstRows: [
+      ["2023", "March 2023", "256"],
+      ["2023", "April 2023", "238"],
+      ["2023", "May 2023", "271"],
+    ],
+  });
+  assertQueryBuilderRowCount(3);
+}
+
 describe("scenarios > question > multiple column breakouts", () => {
   beforeEach(() => {
     restore();
@@ -311,7 +324,7 @@ describe("scenarios > question > multiple column breakouts", () => {
             cy.findByText(tableName).click();
           });
           getNotebookStep("summarize")
-            .findByText("Pick the metric you want to see")
+            .findByText("Pick a function or metric")
             .click();
           popover().findByText("Count of rows").click();
           getNotebookStep("summarize")
@@ -776,16 +789,16 @@ describe("scenarios > question > multiple column breakouts", () => {
         });
         assertTableData({
           columns: [
-            "Created At",
-            "Created At",
+            "Created At: Year",
+            "Created At: Month",
             "Count",
             "Expression1",
             "Expression2",
           ],
           firstRows: [
             [
-              "January 1, 2022, 12:00 AM",
-              "April 1, 2022, 12:00 AM",
+              "2022",
+              "April 2022",
               "1",
               "January 1, 2023, 12:00 AM",
               "May 1, 2022, 12:00 AM",
@@ -955,15 +968,7 @@ describe("scenarios > question > multiple column breakouts", () => {
           column2MinValue: "March 1, 2023",
           column2MaxValue: "May 31, 2023",
         });
-        assertTableData({
-          columns: ["Created At", "Created At", "Count"],
-          firstRows: [
-            ["January 1, 2023, 12:00 AM", "March 1, 2023, 12:00 AM", "256"],
-            ["January 1, 2023, 12:00 AM", "April 1, 2023, 12:00 AM", "238"],
-            ["January 1, 2023, 12:00 AM", "May 1, 2023, 12:00 AM", "271"],
-          ],
-        });
-        assertQueryBuilderRowCount(3);
+        assertTableDataForFilteredTemporalBreakouts();
 
         cy.log("'num-bins' breakouts");
         testNumericPostAggregationFilter({
@@ -1285,15 +1290,7 @@ describe("scenarios > question > multiple column breakouts", () => {
           column2MinValue: "March 1, 2023",
           column2MaxValue: "May 31, 2023",
         });
-        assertTableData({
-          columns: ["Created At", "Created At", "Count"],
-          firstRows: [
-            ["January 1, 2023, 12:00 AM", "March 1, 2023, 12:00 AM", "256"],
-            ["January 1, 2023, 12:00 AM", "April 1, 2023, 12:00 AM", "238"],
-            ["January 1, 2023, 12:00 AM", "May 1, 2023, 12:00 AM", "271"],
-          ],
-        });
-        assertQueryBuilderRowCount(3);
+        assertTableDataForFilteredTemporalBreakouts();
 
         cy.log("'num-bins' breakouts");
         testNumericPostAggregationFilter({
@@ -1393,8 +1390,8 @@ describe("scenarios > question > multiple column breakouts", () => {
           questionDetails: multiStageQuestionWith2TemporalBreakoutsDetails,
           queryColumn1Name: "Created At: Year",
           queryColumn2Name: "Created At: Month",
-          tableColumn1Name: "Created At",
-          tableColumn2Name: "Created At",
+          tableColumn1Name: "Created At: Year",
+          tableColumn2Name: "Created At: Month",
         });
 
         cy.log("'num-bins' breakouts");
@@ -1564,15 +1561,7 @@ describe("scenarios > question > multiple column breakouts", () => {
           column2MinValue: "March 1, 2023",
           column2MaxValue: "May 31, 2023",
         });
-        assertTableData({
-          columns: ["Created At", "Created At", "Count"],
-          firstRows: [
-            ["January 1, 2023, 12:00 AM", "March 1, 2023, 12:00 AM", "256"],
-            ["January 1, 2023, 12:00 AM", "April 1, 2023, 12:00 AM", "238"],
-            ["January 1, 2023, 12:00 AM", "May 1, 2023, 12:00 AM", "271"],
-          ],
-        });
-        assertQueryBuilderRowCount(3);
+        assertTableDataForFilteredTemporalBreakouts();
 
         cy.log("'num-bins' breakouts");
         testNumericPostAggregationFilter({
@@ -1784,8 +1773,10 @@ describe("scenarios > question > multiple column breakouts", () => {
               visitQuestion: true,
             });
           });
+          const columnNameYear = columnName + ": Year";
+          const columnNameMonth = columnName + ": Month";
           assertTableData({
-            columns: [columnName, columnName, "Count"],
+            columns: [columnNameYear, columnNameMonth, "Count"],
           });
 
           cy.findByTestId("viz-settings-button").click();
@@ -1794,7 +1785,7 @@ describe("scenarios > question > multiple column breakouts", () => {
             .click();
           toggleColumn(columnName, 0, false);
           cy.wait("@dataset");
-          assertTableData({ columns: [columnName, "Count"] });
+          assertTableData({ columns: [columnNameMonth, "Count"] });
 
           toggleColumn(columnName, 1, false);
           cy.wait("@dataset");
@@ -1802,11 +1793,11 @@ describe("scenarios > question > multiple column breakouts", () => {
 
           toggleColumn(columnName, 0, true);
           cy.wait("@dataset");
-          assertTableData({ columns: ["Count", columnName] });
+          assertTableData({ columns: ["Count", columnNameYear] });
 
           toggleColumn(columnName, 1, true);
           assertTableData({
-            columns: ["Count", columnName, columnName],
+            columns: ["Count", columnNameYear, columnNameMonth],
           });
         }
 
@@ -1833,32 +1824,4 @@ function tableHeaderClick(
     .findAllByText(columnName)
     .eq(columnIndex)
     .trigger("mouseup");
-}
-
-function assertTableData({
-  columns = [],
-  firstRows = [],
-}: {
-  columns: string[];
-  firstRows?: string[][];
-}) {
-  tableInteractive()
-    .findAllByTestId("header-cell")
-    .should("have.length", columns.length);
-
-  columns.forEach((column, index) => {
-    tableInteractive()
-      .findAllByTestId("header-cell")
-      .eq(index)
-      .should("have.text", column);
-  });
-
-  firstRows.forEach((row, rowIndex) => {
-    row.forEach((cell, cellIndex) => {
-      tableInteractiveBody()
-        .findAllByTestId("cell-data")
-        .eq(columns.length * rowIndex + cellIndex)
-        .should("have.text", cell);
-    });
-  });
 }

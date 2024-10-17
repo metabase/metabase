@@ -69,7 +69,7 @@ describeEE("official collections", () => {
 
       createAndOpenOfficialCollection({ name: COLLECTION_NAME });
       cy.findByTestId("official-collection-marker");
-      assertSidebarIcon(COLLECTION_NAME, "badge");
+      assertSidebarIcon(COLLECTION_NAME, "official_collection");
 
       changeCollectionTypeTo("regular");
       cy.findByTestId("official-collection-marker").should("not.exist");
@@ -77,7 +77,7 @@ describeEE("official collections", () => {
 
       changeCollectionTypeTo("official");
       cy.findByTestId("official-collection-marker");
-      assertSidebarIcon(COLLECTION_NAME, "badge");
+      assertSidebarIcon(COLLECTION_NAME, "official_collection");
     });
 
     it("displays official badge throughout the application", () => {
@@ -144,6 +144,7 @@ describeEE("official collections", () => {
 
   context("token expired or removed", () => {
     beforeEach(() => setTokenFeatures("all"));
+
     it("should not display official collection icon anymore", () => {
       testOfficialBadgePresence(false);
     });
@@ -236,7 +237,7 @@ function testOfficialQuestionBadgeInRegularDashboard(expectBadge = true) {
   cy.findByText("Regular Dashboard").click();
 
   cy.findByTestId("dashboard-grid")
-    .icon("badge")
+    .icon("official_collection")
     .should(expectBadge ? "exist" : "not.exist");
 }
 
@@ -300,7 +301,9 @@ function assertSearchResultBadge(itemName, opts) {
     .parent()
     .first()
     .within(() => {
-      cy.icon("badge").should(expectBadge ? "exist" : "not.exist");
+      cy.icon("official_collection").should(
+        expectBadge ? "exist" : "not.exist",
+      );
     });
 }
 
@@ -309,9 +312,11 @@ const assertHasCollectionBadgeInNavbar = (expectBadge = true) => {
     .findByText(COLLECTION_NAME)
     .parent()
     .within(() => {
-      cy.icon("badge").should(expectBadge ? "exist" : "not.exist");
+      cy.icon("official_collection").should(
+        expectBadge ? "exist" : "not.exist",
+      );
       if (expectBadge) {
-        cy.icon("badge").should("be.visible");
+        cy.icon("official_collection").should("be.visible");
       }
     });
 };

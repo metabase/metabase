@@ -101,6 +101,7 @@ describe("issue 12928", () => {
       ],
     },
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -162,6 +163,7 @@ describe("issue 14793", () => {
     },
     display: "line",
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -199,6 +201,7 @@ describe("issue 14793", () => {
 
 describe("issue 15342", { tags: "@external" }, () => {
   const MYSQL_DB_NAME = "QA MySQL8";
+
   beforeEach(() => {
     restore("mysql-8");
     cy.signInAsAdmin();
@@ -236,6 +239,7 @@ describe("issue 15342", { tags: "@external" }, () => {
 
 describe("issue 15578", () => {
   const JOINED_QUESTION_NAME = "15578";
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -323,6 +327,7 @@ describe("issue 17767", () => {
       limit: 2,
     },
   };
+
   beforeEach(() => {
     cy.intercept("POST", "/api/dataset").as("dataset");
 
@@ -655,6 +660,7 @@ describe("issue 20519", () => {
       limit: 2,
     },
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -665,7 +671,7 @@ describe("issue 20519", () => {
 
   // Tightly related issue: metabase#17767
   it("should allow subsequent joins and nested query after summarizing on the implicit joins (metabase#20519)", () => {
-    cy.icon("add_data").last().click();
+    cy.findAllByLabelText("Custom column").last().click();
 
     enterCustomColumnDetails({
       formula: "1 + 1",
@@ -944,6 +950,7 @@ describe("issue 27873", () => {
     },
     display: "table",
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -1024,6 +1031,7 @@ describe("issue 30743", () => {
       },
     },
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -1081,6 +1089,7 @@ describe("issue 31769", () => {
     aggregation: [["count"]],
     breakout: [["field", PRODUCTS.CATEGORY, { "base-type": "type/Text" }]],
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();

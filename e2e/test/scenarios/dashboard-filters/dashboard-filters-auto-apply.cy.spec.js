@@ -1,6 +1,7 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  closeDashboardInfoSidebar,
+  closeDashboardSettingsSidebar,
+  dashboardHeader,
   dashboardParametersContainer,
   describeWithSnowplow,
   editDashboard,
@@ -9,7 +10,7 @@ import {
   expectNoBadSnowplowEvents,
   filterWidget,
   getDashboardCard,
-  openDashboardInfoSidebar,
+  openDashboardSettingsSidebar,
   popover,
   resetSnowplow,
   restore,
@@ -94,13 +95,13 @@ describe(
         cy.log(
           "parameter values should be preserved when disabling auto applying filters",
         );
-        openDashboardInfoSidebar();
+        openDashboardSettingsSidebar();
         sidesheet().within(() => {
           cy.findByText(filterToggleLabel).click();
           cy.wait("@updateDashboard");
           cy.findByLabelText(filterToggleLabel).should("not.be.checked");
         });
-        closeDashboardInfoSidebar();
+        closeDashboardSettingsSidebar();
         filterWidget().findByText("Gadget").should("be.visible");
         getDashboardCard().findByText("Rows 1-4 of 53").should("be.visible");
 
@@ -129,13 +130,13 @@ describe(
         filterWidget().findByText("Widget").should("be.visible");
         dashboardParametersContainer().button("Apply").should("be.visible");
 
-        openDashboardInfoSidebar();
+        openDashboardSettingsSidebar();
         sidesheet().within(() => {
           cy.findByText(filterToggleLabel).click();
           cy.wait("@updateDashboard");
           cy.findByLabelText(filterToggleLabel).should("be.checked");
         });
-        closeDashboardInfoSidebar();
+        closeDashboardSettingsSidebar();
 
         filterWidget().findByText("Widget").should("be.visible");
         getDashboardCard().findByText("Rows 1-4 of 54").should("be.visible");
@@ -150,13 +151,13 @@ describe(
           cy.button("Update filter").click();
         });
 
-        openDashboardInfoSidebar();
+        openDashboardSettingsSidebar();
         sidesheet().within(() => {
           cy.findByText(filterToggleLabel).click();
           cy.wait("@updateDashboard");
           cy.findByLabelText(filterToggleLabel).should("not.be.checked");
         });
-        closeDashboardInfoSidebar();
+        closeDashboardSettingsSidebar();
 
         filterWidget().findByText("2 selections").should("be.visible");
         cy.get("@cardQuery.all").should("have.length", 5);
@@ -240,20 +241,20 @@ describe(
 
       it("should handle toggling auto applying filters on and off", () => {
         openDashboard();
-        openDashboardInfoSidebar();
 
         getDashboardCard().findByText("Rows 1-4 of 53").should("be.visible");
 
         cy.log(
           "parameter with default value should still be applied after turning auto-apply filter off",
         );
+        openDashboardSettingsSidebar();
         sidesheet().within(() => {
           cy.findByLabelText(filterToggleLabel).should("be.checked");
           cy.findByText(filterToggleLabel).click();
           cy.wait("@updateDashboard");
           cy.findByLabelText(filterToggleLabel).should("not.be.checked");
         });
-        closeDashboardInfoSidebar();
+        closeDashboardSettingsSidebar();
 
         getDashboardCard().findByText("Rows 1-4 of 53").should("be.visible");
 
@@ -271,7 +272,7 @@ describe(
         cy.log(
           "should not use the default parameter after turning auto-apply filter on again since the parameter was manually updated",
         );
-        openDashboardInfoSidebar();
+        openDashboardSettingsSidebar();
         sidesheet().within(() => {
           cy.findByLabelText(filterToggleLabel).should("not.be.checked");
           cy.findAllByText(filterToggleLabel).click();
@@ -294,7 +295,7 @@ describe(
           cy.wait("@updateDashboard");
         });
 
-        openDashboardInfoSidebar();
+        openDashboardSettingsSidebar();
         sidesheet().findByLabelText(filterToggleLabel).should("not.be.checked");
         // Gadget
         const filterDefaultValue = FILTER_WITH_DEFAULT_VALUE.default[0];
@@ -327,9 +328,9 @@ describe(
           cy.wait("@updateDashboard");
         });
 
-        openDashboardInfoSidebar();
+        openDashboardSettingsSidebar();
         sidesheet().findByLabelText(filterToggleLabel).should("not.be.checked");
-        closeDashboardInfoSidebar();
+        closeDashboardSettingsSidebar();
         filterWidget().findByText("Gadget").should("be.visible");
         getDashboardCard().findByText("Rows 1-4 of 53").should("be.visible");
       });
@@ -405,8 +406,9 @@ describe(
         openDashboard();
         cy.wait("@cardQuery");
 
-        openDashboardInfoSidebar();
-        sidesheet().findByLabelText(filterToggleLabel).should("be.disabled");
+        // shouldn't even show settings as an option for this user
+        dashboardHeader().icon("ellipsis").click();
+        popover().findByText("Edit settings").should("not.exist");
       });
 
       it.skip("should not display a toast even when a dashboard takes longer than 15s to load", () => {
@@ -566,7 +568,7 @@ describe(
           // so to make sure callback in `setTimeout` is called, we need to advance the clock using cy.tick().
           cy.tick();
 
-          openDashboardInfoSidebar();
+          openDashboardSettingsSidebar();
           sidesheet()
             .findByLabelText(filterToggleLabel)
             .should("not.be.checked");
@@ -608,6 +610,7 @@ describe(
 
 describeWithSnowplow("scenarios > dashboards > filters > auto apply", () => {
   const NUMBERS_OF_GOOD_SNOWPLOW_EVENTS_BEFORE_DISABLING_AUTO_APPLY_FILTERS = 2;
+
   beforeEach(() => {
     restore();
     resetSnowplow();
@@ -625,7 +628,7 @@ describeWithSnowplow("scenarios > dashboards > filters > auto apply", () => {
     openDashboard();
     cy.wait("@cardQuery");
 
-    openDashboardInfoSidebar();
+    openDashboardSettingsSidebar();
     sidesheet().within(() => {
       expectGoodSnowplowEvents(
         NUMBERS_OF_GOOD_SNOWPLOW_EVENTS_BEFORE_DISABLING_AUTO_APPLY_FILTERS,
@@ -644,7 +647,7 @@ describeWithSnowplow("scenarios > dashboards > filters > auto apply", () => {
     openDashboard();
     cy.wait("@cardQuery");
 
-    openDashboardInfoSidebar();
+    openDashboardSettingsSidebar();
     sidesheet().within(() => {
       expectGoodSnowplowEvents(
         NUMBERS_OF_GOOD_SNOWPLOW_EVENTS_BEFORE_DISABLING_AUTO_APPLY_FILTERS,

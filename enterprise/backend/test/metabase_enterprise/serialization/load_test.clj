@@ -1,4 +1,4 @@
-(ns metabase-enterprise.serialization.load-test
+(ns ^:mb/driver-tests metabase-enterprise.serialization.load-test
   (:refer-clojure :exclude [load])
   (:require
    [clojure.data :as data]
@@ -25,10 +25,10 @@
             Table
             User]]
    [metabase.models.interface :as mi]
+   [metabase.models.visualization-settings :as mb.viz]
+   [metabase.models.visualization-settings-test :as mb.viz-test]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
-   [metabase.shared.models.visualization-settings :as mb.viz]
-   [metabase.shared.models.visualization-settings-test :as mb.viz-test]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
@@ -318,6 +318,7 @@
                          ;; same native form on one database, then it's likely they would on any, since that is
                          ;; orthogonal to the issues that serialization has when performing this roundtrip).
                          (disj :oracle    ; no bare table names allowed
+                               :databricks ; table name requires schema prefix with current implementation
                                :redshift  ; bare table name doesn't work; it's test_data_venues instead of venues
                                :snowflake ; bare table name doesn't work; it's test_data_venues instead of venues
                                :sqlserver ; ORDER BY not allowed not allowed in derived tables (subselects)

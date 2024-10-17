@@ -24,6 +24,7 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
       restore();
       cy.signInAsAdmin();
     });
+
     describe("from a scalar card", () => {
       const DASHBOARD_NAME = "Scalar Dash";
 

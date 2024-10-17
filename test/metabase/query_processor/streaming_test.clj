@@ -7,13 +7,13 @@
    [medley.core :as m]
    [metabase.api.embed-test :as embed-test]
    [metabase.models :refer [Card Dashboard DashboardCard]]
+   [metabase.models.visualization-settings :as mb.viz]
    [metabase.query-processor :as qp]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.query-processor.streaming.test-util :as streaming.test-util]
    [metabase.query-processor.streaming.xlsx-test :as xlsx-test]
    [metabase.server.protocols :as server.protocols]
-   [metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.pipeline :as t2.pipeline]
@@ -318,7 +318,7 @@
           card-defaults     {:dataset_query query, :public_uuid public-uuid, :enable_embedding true}
           user              (or user :rasta)]
       (mt/with-temporary-setting-values [enable-public-sharing true
-                                         enable-embedding      true]
+                                         enable-embedding-static true]
         (embed-test/with-new-secret-key!
           (t2.with-temp/with-temp [Card          card      (if viz-settings
                                                              (assoc card-defaults :visualization_settings viz-settings)
@@ -333,6 +333,7 @@
                   (let [results (mt/user-http-request user :post 200
                                                       (format "dataset/%s" (name export-format))
                                                       {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}}
+                                                      :format_rows true
                                                       :query query-json
                                                       :visualization_settings viz-settings-json)]
                     ((-> assertions export-format) results))
@@ -340,7 +341,8 @@
                   :card
                   (let [results (mt/user-http-request user :post 200
                                                       (format "card/%d/query/%s" (u/the-id card) (name export-format))
-                                                      {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}})]
+                                                      {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}}
+                                                      :format_rows true)]
                     ((-> assertions export-format) results))
 
                   :dashboard
@@ -350,12 +352,13 @@
                                                               (u/the-id dashcard)
                                                               (u/the-id card)
                                                               (name export-format))
-                                                      {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}})]
+                                                      {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}}
+                                                      :format_rows true)]
                     ((-> assertions export-format) results))
 
                   :public
                   (let [results (mt/user-http-request user :get 200
-                                                      (format "public/card/%s/query/%s" public-uuid (name export-format))
+                                                      (format "public/card/%s/query/%s?format_rows=true" public-uuid (name export-format))
                                                       {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}})]
                     ((-> assertions export-format) results))
 
@@ -507,6 +510,46 @@
                  :xlsx (fn [results]
                          (is (= [["ID" "Name" "Category ID" "Categories → Name"]
                                  [1.0 "Red Medicine" 4.0 "Asian"]]
+                                (xlsx-test/parse-xlsx-results results))))}}))
+
+(deftest self-join-export-test
+  (do-test!
+   "Export respects renamed self-joined columns #48046"
+   {:query {:database (mt/id)
+            :query
+            {:source-table (mt/id :venues)
+             :joins
+             [{:fields       "all",
+               :source-table (mt/id :venues)
+               :condition    ["="
+                              ["field" (mt/id :venues :id) nil]
+                              ["field" (mt/id :venues :id) {:join-alias "Venues"}]],
+               :alias        "Venues"}]
+             :order-by     [["asc" ["field" (mt/id :venues :id) nil]]]
+             :limit        1}
+            :type     "query"}
+
+    :viz-settings {:column_settings
+                   {"[\"name\",\"NAME\"]"   {:column_title "Left Name"}
+                    "[\"name\",\"NAME_2\"]" {:column_title "Right Name"}}
+                   :table.columns
+                   [{:name "ID", :fieldRef [:field (mt/id :venues :id) nil], :enabled true}
+                    {:name "NAME", :fieldRef [:field (mt/id :venues :name) nil], :enabled true}
+                    {:name "NAME_2", :fieldRef [:field (mt/id :venues :name) {:join-alias "Venues"}], :enabled true}]}
+
+    :assertions {:csv (fn [results]
+                        (is (= [["ID" "Left Name" "Right Name"]
+                                ["1" "Red Medicine" "Red Medicine"]]
+                               (parse-csv-results results))))
+
+                 :json (fn [results]
+                         (is (= [["ID" "Left Name" "Right Name"]
+                                 ["1" "Red Medicine" "Red Medicine"]]
+                                (parse-json-results results))))
+
+                 :xlsx (fn [results]
+                         (is (= [["ID" "Left Name" "Right Name"]
+                                 [1.0 "Red Medicine" "Red Medicine"]]
                                 (xlsx-test/parse-xlsx-results results))))}}))
 
 (deftest native-query-test

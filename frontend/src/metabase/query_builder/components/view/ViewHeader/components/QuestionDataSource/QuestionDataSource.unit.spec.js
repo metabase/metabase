@@ -3,9 +3,12 @@ import { Component } from "react";
 
 import { createMockMetadata } from "__support__/metadata";
 import { setupCardEndpoints } from "__support__/server-mocks/card";
-import { renderWithProviders, screen } from "__support__/ui";
+import { getIcon, renderWithProviders, screen } from "__support__/ui";
 import * as Urls from "metabase/lib/urls";
+import * as Lib from "metabase-lib";
+import { SAMPLE_METADATA } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
+import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import * as ML_Urls from "metabase-lib/v1/urls";
 import {
   createMockCard,
@@ -233,12 +236,14 @@ const SOURCE_CARD = createMockCard({ id: SOURCE_QUESTION_ID });
 
 function setup({
   card,
+  originalCard,
   subHead = false,
   isObjectDetail = false,
   hasPermissions = true,
 } = {}) {
   const metadata = hasPermissions ? getMetadata() : createMockMetadata({});
   const question = card && new Question(card, metadata);
+  const originalQuestion = originalCard && new Question(originalCard, metadata);
 
   setupCardEndpoints(SOURCE_CARD);
 
@@ -247,6 +252,7 @@ function setup({
     <ErrorBoundary onError={onError}>
       <QuestionDataSource
         question={question}
+        originalQuestion={originalQuestion}
         subHead={subHead}
         isObjectDetail={isObjectDetail}
       />
@@ -570,5 +576,37 @@ describe("QuestionDataSource", () => {
   it("should show info icon on a subheader", () => {
     setup({ card: SOURCE_CARD, subHead: true });
     expect(screen.queryByLabelText("More info")).not.toBeInTheDocument();
+  });
+
+  it("should show the correct icon when the original question is a native query", () => {
+    const metadataProvider = Lib.metadataProvider(
+      SAMPLE_DB_ID,
+      SAMPLE_METADATA,
+    );
+    const originalQuery = Lib.nativeQuery(
+      SAMPLE_DB_ID,
+      metadataProvider,
+      "SELECT * FROM ORDERS",
+    );
+    const originalQuestion = Question.create()
+      .setId(1)
+      .setDisplayName("SQL query")
+      .setQuery(originalQuery);
+    const newMetadata = createMockMetadata({
+      databases: [createSampleDatabase()],
+      questions: [originalQuestion.card()],
+    });
+    const newMetadataProvider = Lib.metadataProvider(SAMPLE_DB_ID, newMetadata);
+    const newQuery = Lib.queryFromTableOrCardMetadata(
+      newMetadataProvider,
+      Lib.tableOrCardMetadata(
+        newMetadataProvider,
+        getQuestionVirtualTableId(originalQuestion.id()),
+      ),
+    );
+    const newQuestion = Question.create().setQuery(newQuery);
+    setup({ card: newQuestion.card(), originalCard: originalQuestion.card() });
+    expect(screen.getByText("SQL query")).toBeInTheDocument();
+    expect(getIcon("table2")).toBeInTheDocument();
   });
 });

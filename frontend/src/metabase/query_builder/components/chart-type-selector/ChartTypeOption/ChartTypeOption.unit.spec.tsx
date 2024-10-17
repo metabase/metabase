@@ -14,63 +14,71 @@ import { ChartTypeOption, type ChartTypeOptionProps } from "./ChartTypeOption";
 
 registerVisualizations();
 
-const EXPECTED_VISUALIZATION_VALUES: Record<
-  CardDisplayType,
+const EXPECTED_VISUALIZATION_VALUES: Array<{
+  visualizationType: CardDisplayType;
+  displayName: string;
+  iconName: IconName | (string & unknown);
+}> = [
+  { visualizationType: "scalar", displayName: "Number", iconName: "number" },
   {
-    key: CardDisplayType;
-    displayName: string;
-    iconName: IconName | (string & unknown);
-  }
-> = {
-  scalar: { key: "scalar", displayName: "Number", iconName: "number" },
-  smartscalar: {
-    key: "smartscalar",
+    visualizationType: "smartscalar",
     displayName: "Trend",
     iconName: "smartscalar",
   },
-  progress: { key: "progress", displayName: "Progress", iconName: "progress" },
-  gauge: { key: "gauge", displayName: "Gauge", iconName: "gauge" },
-  table: { key: "table", displayName: "Table", iconName: "table2" },
-  line: { key: "line", displayName: "Line", iconName: "line" },
-  area: { key: "area", displayName: "Area", iconName: "area" },
-  bar: { key: "bar", displayName: "Bar", iconName: "bar" },
-  waterfall: {
-    key: "waterfall",
+  {
+    visualizationType: "progress",
+    displayName: "Progress",
+    iconName: "progress",
+  },
+  { visualizationType: "gauge", displayName: "Gauge", iconName: "gauge" },
+  { visualizationType: "table", displayName: "Table", iconName: "table2" },
+  { visualizationType: "line", displayName: "Line", iconName: "line" },
+  { visualizationType: "area", displayName: "Area", iconName: "area" },
+  { visualizationType: "bar", displayName: "Bar", iconName: "bar" },
+  {
+    visualizationType: "waterfall",
     displayName: "Waterfall",
     iconName: "waterfall",
   },
-  combo: { key: "combo", displayName: "Combo", iconName: "lineandbar" },
-  row: { key: "row", displayName: "Row", iconName: "horizontal_bar" },
-  scatter: { key: "scatter", displayName: "Scatter", iconName: "bubble" },
-  pie: { key: "pie", displayName: "Pie", iconName: "pie" },
-  map: { key: "map", displayName: "Map", iconName: "pinmap" },
-  funnel: { key: "funnel", displayName: "Funnel", iconName: "funnel" },
-  object: { key: "object", displayName: "Detail", iconName: "document" },
-  pivot: { key: "pivot", displayName: "Pivot Table", iconName: "pivot_table" },
-};
+  { visualizationType: "combo", displayName: "Combo", iconName: "lineandbar" },
+  { visualizationType: "row", displayName: "Row", iconName: "horizontal_bar" },
+  { visualizationType: "scatter", displayName: "Scatter", iconName: "bubble" },
+  { visualizationType: "pie", displayName: "Pie", iconName: "pie" },
+  { visualizationType: "map", displayName: "Map", iconName: "pinmap" },
+  { visualizationType: "funnel", displayName: "Funnel", iconName: "funnel" },
+  { visualizationType: "object", displayName: "Detail", iconName: "document" },
+  {
+    visualizationType: "pivot",
+    displayName: "Pivot Table",
+    iconName: "pivot_table",
+  },
+];
 
 const setup = ({
   selectedVisualization = "table",
   onSelectVisualization = jest.fn(),
   visualizationType = "bar",
+  onOpenSettings = jest.fn(),
 }: Partial<ChartTypeOptionProps> = {}) => {
   renderWithProviders(
     <ChartTypeOption
       selectedVisualization={selectedVisualization}
       onSelectVisualization={onSelectVisualization}
       visualizationType={visualizationType}
+      onOpenSettings={onOpenSettings}
     />,
   );
 
-  return { onSelectVisualization };
+  return { onSelectVisualization, onOpenSettings };
 };
 
 describe("ChartTypeOption", () => {
-  Object.entries(EXPECTED_VISUALIZATION_VALUES).forEach(
-    ([key, { iconName, displayName }]) => {
-      it(`should display a label and icon for ${key} visualization type`, () => {
+  describe.each(EXPECTED_VISUALIZATION_VALUES)(
+    "display and click behavior for each visualization",
+    ({ visualizationType, displayName, iconName }) => {
+      it(`should display a label and icon for ${visualizationType} visualization type`, () => {
         setup({
-          visualizationType: key as CardDisplayType,
+          visualizationType,
         });
 
         expect(
@@ -82,48 +90,76 @@ describe("ChartTypeOption", () => {
         );
       });
 
-      it("should call 'onClick' when the button is clicked", async () => {
+      it("should call 'onSelectVisualization' when the button is clicked and the visualization hasn't been selected", async () => {
         const { onSelectVisualization } = setup({
-          visualizationType: key as CardDisplayType,
+          visualizationType,
+          selectedVisualization: EXPECTED_VISUALIZATION_VALUES.find(
+            elem => elem.visualizationType !== visualizationType,
+          )?.visualizationType,
         });
 
         await userEvent.click(screen.getByTestId(`${displayName}-button`));
 
-        expect(onSelectVisualization).toHaveBeenCalledWith(key);
+        expect(onSelectVisualization).toHaveBeenCalledWith(visualizationType);
       });
 
-      //   TODO: include styles in the tests when component is migrated to Mantine
-      it("should have aria-selected attribute if selectedVisualization=visualizationType", () => {
-        setup({
-          selectedVisualization: key as CardDisplayType,
-          visualizationType: key as CardDisplayType,
+      it("should call 'onOpenSettings' when the button is clicked and the visualization has been selected", async () => {
+        const { onOpenSettings } = setup({
+          visualizationType,
+          selectedVisualization: visualizationType,
         });
 
-        expect(screen.getByTestId(`${displayName}-container`)).toHaveAttribute(
-          "aria-selected",
-          "true",
-        );
+        await userEvent.click(screen.getByTestId(`${displayName}-button`));
+
+        expect(onOpenSettings).toHaveBeenCalled();
+      });
+
+      it("should have aria-selected attribute if selectedVisualization=visualizationType", () => {
+        setup({
+          selectedVisualization: visualizationType,
+          visualizationType,
+        });
+
+        const displayContainer = screen.getByTestId(`${displayName}-container`);
+        expect(displayContainer).toHaveAttribute("aria-selected", "true");
+
+        expect(displayContainer).toHaveRole("option");
       });
     },
   );
 
-  it("should display a gear icon when hovering display type when selected", async () => {
-    const { onSelectVisualization } = setup({
-      visualizationType: "bar",
-      selectedVisualization: "bar",
+  describe("when onOpenSettings is set", () => {
+    it("should display a gear icon when the type is selected and user is hovering over it", async () => {
+      const { onOpenSettings } = setup({
+        visualizationType: "bar",
+        selectedVisualization: "bar",
+      });
+
+      expect(screen.getByTestId("Bar-button")).toBeInTheDocument();
+      await userEvent.hover(screen.getByTestId("Bar-button"));
+
+      await userEvent.click(getIcon("gear"));
+      expect(onOpenSettings).toHaveBeenCalled();
     });
 
-    expect(screen.getByTestId("Bar-button")).toBeInTheDocument();
-    await userEvent.hover(screen.getByTestId("Bar-button"));
+    it("should not display a gear icon when the type is not selected and the user is hovering over it", async () => {
+      setup({
+        visualizationType: "bar",
+        selectedVisualization: "table",
+      });
 
-    await userEvent.click(getIcon("gear"));
-    expect(onSelectVisualization).toHaveBeenCalled();
+      expect(screen.getByTestId("Bar-button")).toBeInTheDocument();
+      await userEvent.hover(screen.getByTestId("Bar-button"));
+
+      expect(queryIcon("gear")).not.toBeInTheDocument();
+    });
   });
 
-  it("should not display a gear icon when hovering display type when not selected", async () => {
+  it("should not display a gear icon when onOpenSettings is not set", async () => {
     setup({
       visualizationType: "bar",
       selectedVisualization: "table",
+      onOpenSettings: undefined,
     });
 
     expect(screen.getByTestId("Bar-button")).toBeInTheDocument();

@@ -1,7 +1,7 @@
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
-import { createMockModelResult } from "metabase/browse/test-utils";
+import { createMockModelResult } from "metabase/browse/models/test-utils";
 import {
   createMockCollection,
   createMockTokenFeatures,
@@ -50,7 +50,7 @@ describe("Collections plugin utils", () => {
 
     it("official collection", () => {
       const collection = createMockCollection({ authority_level: "official" });
-      expect(getCollectionType(collection).icon).toBe("badge");
+      expect(getCollectionType(collection).icon).toBe("official_collection");
     });
 
     it("instance analytics collection", () => {
@@ -69,9 +69,11 @@ describe("Collections plugin utils", () => {
     it("should return the default icon for a regular collection", () => {
       expect(getIcon({ model: "collection" })).toEqual({ name: "folder" });
     });
+
     it("should return the default icon for a regular dashboard", () => {
       expect(getIcon({ model: "dashboard" })).toEqual({ name: "dashboard" });
     });
+
     it("should return the default icon for a regular question", () => {
       expect(getIcon({ model: "card" })).toEqual({ name: "table" });
     });
@@ -86,7 +88,7 @@ describe("Collections plugin utils", () => {
       it("should return the correct icon for an official collection", () => {
         expect(
           getIcon({ model: "collection", authority_level: "official" }),
-        ).toEqual({ name: "badge", color: "saturated-yellow" });
+        ).toEqual({ name: "official_collection", color: "saturated-yellow" });
       });
 
       it("official collection in search", () => {
@@ -95,7 +97,7 @@ describe("Collections plugin utils", () => {
           collection_authority_level: "official",
           model: "collection" as const,
         };
-        expect(getIcon(collection).name).toBe("badge");
+        expect(getIcon(collection).name).toBe("official_collection");
       });
 
       it("should return the correct icon for an official model", () => {
@@ -114,6 +116,7 @@ describe("Collections plugin utils", () => {
         }),
       }),
     });
+
     beforeEach(() => {
       setupEnterprisePlugins();
     });

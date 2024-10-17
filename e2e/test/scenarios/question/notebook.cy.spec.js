@@ -66,7 +66,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
     // count orders by user id, filter to the one user with 46 orders
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Pick the metric").click();
+    cy.contains("Pick a function or metric").click();
     popover().within(() => {
       cy.findByText("Count of rows").click();
     });
@@ -125,7 +125,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("ID is between 96 and 97").click();
-    cy.findByDisplayValue("Between").click();
+    popover().findByText("Between").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Is not");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -312,7 +312,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     it("popover should not cover the button that invoked it (metabase#15502-2)", () => {
       // Initial summarize/metric popover usually renders initially without blocking the button
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Pick the metric you want to see").as("metric").click();
+      cy.findByText("Pick a function or metric").as("metric").click();
       // Click outside to close this popover
       cy.icon("gear").click();
       // Popover invoked again blocks the button making it impossible to click the button for the third time
@@ -330,7 +330,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     });
 
     it("should work on custom column with `case`", () => {
-      cy.icon("add_data").click();
+      cy.findByLabelText("Custom column").click();
 
       enterCustomColumnDetails({
         formula: "case([Subtotal] + Tax > 100, 'Big', 'Small')",
@@ -592,7 +592,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     });
 
     getNotebookStep("summarize")
-      .findByText("Pick the metric you want to see")
+      .findByText("Pick a function or metric")
       .click();
 
     popover().within(() => {
@@ -744,7 +744,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     }) {
       getNotebookStep(type).findByText(name).click();
       popover().within(() => {
-        moveDnDKitElement(cy.findByDisplayValue("Is"), {
+        moveDnDKitElement(cy.findByText("Is"), {
           horizontal,
           vertical,
         });

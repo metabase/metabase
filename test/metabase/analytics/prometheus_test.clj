@@ -164,13 +164,27 @@
                   (filter #(str/starts-with? % "metabase_email_"))
                   set))))))
 
-(deftest inc-test
+(defn- metric-value
+  "Return the value of `metric` in `system`'s registry."
+  [system metric]
+  (-> system :registry metric ops/read-value))
+
+(defn- approx=
+  "Check that `actual` is within `epsilon` of `expected`.
+
+  Useful for checking near-equality of floating-point values."
+  ([expected actual]
+   (approx= expected actual 0.001))
+  ([expected actual epsilon]
+   (< (abs (- actual expected)) epsilon)))
+
+(deftest inc!-test
   (testing "inc has no effect if system is not setup"
-    (prometheus/inc :metabase-email/messages)) ; << Does not throw.
+    (prometheus/inc! :metabase-email/messages)) ; << Does not throw.
   (testing "inc has no effect when called with unknown metric"
     (with-prometheus-system! [_ _system]
-      (prometheus/inc :metabase-email/unknown-metric))) ; << Does not throw.
+      (prometheus/inc! :metabase-email/unknown-metric))) ; << Does not throw.
   (testing "inc is recorded for known metrics"
     (with-prometheus-system! [_ system]
-      (prometheus/inc :metabase-email/messages)
-      (is (< 0 (-> system :registry :metabase-email/messages ops/read-value))))))
+      (prometheus/inc! :metabase-email/messages)
+      (is (approx= 1 (metric-value system :metabase-email/messages))))))

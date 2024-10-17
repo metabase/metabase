@@ -11,6 +11,7 @@ import {
   describeEE,
   entityPickerModal,
   entityPickerModalTab,
+  exportFromDashcard,
   getDashboardCard,
   getDashboardCardMenu,
   getNextUnsavedDashboardCardId,
@@ -532,7 +533,7 @@ describeEE("scenarios > embedding > full app", () => {
       cy.get("@postMessage").invoke("resetHistory");
       cy.findByTestId("app-bar").findByText("Our analytics").click();
 
-      cy.findByRole("heading", { name: "Metabase analytics" }).should(
+      cy.findByRole("heading", { name: "Usage analytics" }).should(
         "be.visible",
       );
       cy.get("@postMessage").should("have.been.calledWith", {
@@ -553,18 +554,17 @@ describeEE("scenarios > embedding > full app", () => {
           res.headers["X-Metabase-Anti-CSRF-Token"] = CSRF_TOKEN;
         });
       });
-      cy.intercept(
-        "POST",
-        "/api/dashboard/*/dashcard/*/card/*/query/csv?format_rows=true",
-      ).as("CsvDownload");
+      cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query/csv").as(
+        "CsvDownload",
+      );
       visitDashboardUrl({
         url: `/dashboard/${ORDERS_DASHBOARD_ID}`,
       });
 
       getDashboardCard().realHover();
       getDashboardCardMenu().click();
-      popover().findByText("Download results").click();
-      popover().findByText(".csv").click();
+
+      exportFromDashcard(".csv");
 
       cy.wait("@CsvDownload").then(interception => {
         expect(

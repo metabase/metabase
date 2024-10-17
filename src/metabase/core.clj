@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.tools.trace :as trace]
+   [environ.core :as env]
    [java-time.api :as t]
    [metabase.analytics.prometheus :as prometheus]
    [metabase.channel.core :as channel]
@@ -12,6 +13,7 @@
    [metabase.driver.h2]
    [metabase.driver.mysql]
    [metabase.driver.postgres]
+   [metabase.embed.settings :as embed.settings]
    [metabase.events :as events]
    [metabase.logger :as logger]
    [metabase.models.cloud-migration :as cloud-migration]
@@ -124,10 +126,9 @@
 
   (init-status/set-progress! 0.5)
   ;; Set up Prometheus
-  (when (prometheus/prometheus-server-port)
-    (log/info "Setting up prometheus metrics")
-    (prometheus/setup!)
-    (init-status/set-progress! 0.6))
+  (log/info "Setting up prometheus metrics")
+  (prometheus/setup!)
+  (init-status/set-progress! 0.6)
 
   (premium-features/airgap-check-user-count)
   (init-status/set-progress! 0.65)
@@ -155,6 +156,9 @@
 
   (ensure-audit-db-installed!)
   (init-status/set-progress! 0.95)
+
+  (embed.settings/check-and-sync-settings-on-startup! env/env)
+  (init-status/set-progress! 0.97)
 
   (settings/migrate-encrypted-settings!)
   ;; start scheduler at end of init!

@@ -192,13 +192,13 @@
       ;; clear out cached session tokens so next time we make an API request it log in & we'll know we have a valid
       ;; Session
       (test.users/clear-cached-session-tokens!)
-      (let [session-id       (test.users/username->token :rasta)
+      (let [session-id       (client/authenticate (test.users/user->credentials :rasta))
             login-history-id (t2/select-one-pk LoginHistory :session_id session-id)]
         (testing "LoginHistory should have been recorded"
           (is (integer? login-history-id)))
         ;; Ok, calling the logout endpoint should delete the Session in the DB. Don't worry, `test-users` will log back
         ;; in on the next API call
-        (mt/user-http-request :rasta :delete 204 "session")
+        (client/client session-id :delete 204 "session")
         ;; check whether it's still there -- should be GONE
         (is (= nil
                (t2/select-one Session :id session-id)))
@@ -453,6 +453,7 @@
     (testing "Includes user-local settings"
       (defsetting test-session-api-setting
         "test setting"
+        :encryption :no
         :user-local :only
         :type       :string
         :default    "FOO")

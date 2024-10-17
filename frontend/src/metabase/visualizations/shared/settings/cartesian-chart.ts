@@ -2,7 +2,10 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { isNotNull } from "metabase/lib/types";
-import { getMaxDimensionsSupported } from "metabase/visualizations";
+import {
+  getMaxDimensionsSupported,
+  getMaxMetricsSupported,
+} from "metabase/visualizations";
 import { getCardsColumns } from "metabase/visualizations/echarts/cartesian/model";
 import { dimensionIsNumeric } from "metabase/visualizations/lib/numeric";
 import { dimensionIsTimeseries } from "metabase/visualizations/lib/timeseries";
@@ -38,19 +41,19 @@ export function getDefaultMetricFilter(display: string) {
 }
 
 export function getAreDimensionsAndMetricsValid(rawSeries: RawSeries) {
-  return rawSeries.some(
-    ({ card, data }) =>
-      columnsAreValid(
-        card.visualization_settings["graph.dimensions"],
-        data,
-        getDefaultDimensionFilter(card.display),
-      ) &&
-      columnsAreValid(
-        card.visualization_settings["graph.metrics"],
-        data,
-        getDefaultMetricFilter(card.display),
-      ),
-  );
+  return rawSeries.some(({ card, data }) => {
+    const dimensions = card.visualization_settings["graph.dimensions"];
+    const metrics = card.visualization_settings["graph.metrics"];
+
+    const dimensionsFilter = getDefaultDimensionFilter(card.display);
+    const metricsFilter = getDefaultMetricFilter(card.display);
+
+    return (
+      columnsAreValid(dimensions, data, dimensionsFilter) &&
+      columnsAreValid(metrics, data, metricsFilter) &&
+      (metrics ?? []).length <= getMaxMetricsSupported(card.display)
+    );
+  });
 }
 
 export function getDefaultDimensions(
@@ -74,6 +77,7 @@ export function getDefaultMetrics(
   rawSeries: RawSeries,
   settings: ComputedVisualizationSettings,
 ) {
+  const [{ card }] = rawSeries;
   const prevMetrics = settings["graph.metrics"] ?? [];
   const defaultMetrics = getDefaultColumns(rawSeries).metrics;
   if (
@@ -83,8 +87,7 @@ export function getDefaultMetrics(
   ) {
     return prevMetrics;
   }
-
-  return defaultMetrics;
+  return defaultMetrics.slice(0, getMaxMetricsSupported(card.display));
 }
 
 export const STACKABLE_SERIES_DISPLAY_TYPES = new Set(["area", "bar"]);

@@ -16,6 +16,7 @@ import {
   entityPickerModalTab,
   expectGoodSnowplowEvent,
   expectNoBadSnowplowEvents,
+  exportFromDashcard,
   filterWidget,
   getDashboardCard,
   getDashboardCardMenu,
@@ -94,23 +95,120 @@ describe("scenarios > question > download", () => {
     });
   });
 
-  it("should allow downloading unformatted CSV data", () => {
-    const fieldRef = ["field", ORDERS.TOTAL, null];
-    const columnKey = `["ref",${JSON.stringify(fieldRef)}]`;
+  testCases.forEach(fileType => {
+    it(`should allow downloading unformatted ${fileType} data`, () => {
+      const fieldRef = ["field", ORDERS.TOTAL, null];
+      const columnKey = `["ref",${JSON.stringify(fieldRef)}]`;
+
+      createQuestion(
+        {
+          query: {
+            "source-table": ORDERS_ID,
+            fields: [fieldRef],
+          },
+          visualization_settings: {
+            column_settings: {
+              [columnKey]: {
+                currency: "USD",
+                currency_in_header: false,
+                currency_style: "code",
+                number_style: "currency",
+              },
+            },
+          },
+        },
+        { visitQuestion: true, wrapId: true },
+      );
+
+      queryBuilderMain().findByText("USD 39.72").should("exist");
+
+      cy.get("@questionId").then(questionId => {
+        const opts = { questionId, fileType };
+
+        downloadAndAssert(
+          {
+            ...opts,
+            enableFormatting: true,
+          },
+          sheet => {
+            expect(sheet["A1"].v).to.eq("Total");
+            expect(sheet["A2"].w).to.eq("USD 39.72");
+          },
+        );
+
+        downloadAndAssert(
+          {
+            ...opts,
+            enableFormatting: false,
+          },
+          sheet => {
+            expect(sheet["A1"].v).to.eq("Total");
+            expect(sheet["A2"].v).to.eq(39.718145389078366);
+          },
+        );
+      });
+    });
+  });
+
+  it("respects renamed columns in self-joins", () => {
+    const idLeftRef = [
+      "field",
+      ORDERS.ID,
+      {
+        "base-type": "type/BigInteger",
+      },
+    ];
+    const idRightRef = [
+      "field",
+      ORDERS.ID,
+      {
+        "base-type": "type/BigInteger",
+        "join-alias": "Orders",
+      },
+    ];
+    const totalLeftRef = [
+      "field",
+      ORDERS.TOTAL,
+      {
+        "base-type": "type/Float",
+      },
+    ];
+    const totalRightRef = [
+      "field",
+      ORDERS.TOTAL,
+      {
+        "base-type": "type/Float",
+        "join-alias": "Orders",
+      },
+    ];
+
+    const totalLeftColumnKey = '["name","TOTAL"]';
+    const totalRightColumnKey = '["name","TOTAL_2"]';
 
     createQuestion(
       {
         query: {
           "source-table": ORDERS_ID,
-          fields: [fieldRef],
+          fields: [totalLeftRef],
+          joins: [
+            {
+              fields: [totalRightRef],
+              strategy: "left-join",
+              alias: "Orders",
+              condition: ["=", idLeftRef, idRightRef],
+              "source-table": ORDERS_ID,
+            },
+          ],
+          "order-by": [["desc", totalLeftRef]],
+          limit: 1,
         },
         visualization_settings: {
           column_settings: {
-            [columnKey]: {
-              currency: "USD",
-              currency_in_header: false,
-              currency_style: "code",
-              number_style: "currency",
+            [totalLeftColumnKey]: {
+              column_title: "Left Total",
+            },
+            [totalRightColumnKey]: {
+              column_title: "Right Total",
             },
           },
         },
@@ -118,33 +216,26 @@ describe("scenarios > question > download", () => {
       { visitQuestion: true, wrapId: true },
     );
 
-    queryBuilderMain().findByText("USD 39.72").should("exist");
+    queryBuilderMain().findByText("Left Total").should("exist");
+    queryBuilderMain().findByText("Right Total").should("exist");
 
     cy.get("@questionId").then(questionId => {
-      const opts = { questionId, fileType: "csv" };
+      testCases.forEach(fileType => {
+        const opts = { questionId, fileType };
 
-      downloadAndAssert(
-        {
-          ...opts,
-          enableFormatting: true,
-        },
-        sheet => {
-          expect(sheet["A1"].v).to.eq("Total");
-          expect(sheet["A2"].v).to.eq("USD 39.72");
-        },
-      );
-
-      downloadAndAssert(
-        {
-          ...opts,
-          enableFormatting: false,
-        },
-        sheet => {
-          expect(sheet["A1"].v).to.eq("Total");
-          expect(sheet["A2"].v).to.eq(39.718145389078366);
-          expect(sheet["A2"].w).to.eq("39.718145389078366");
-        },
-      );
+        downloadAndAssert(
+          {
+            ...opts,
+            enableFormatting: true,
+          },
+          sheet => {
+            expect(sheet["A1"].v).to.eq("Left Total");
+            expect(sheet["A2"].v).to.closeTo(159.35, 0.01);
+            expect(sheet["B1"].v).to.eq("Right Total");
+            expect(sheet["B2"].v).to.closeTo(159.35, 0.01);
+          },
+        );
+      });
     });
   });
 
@@ -275,10 +366,7 @@ describe("scenarios > question > download", () => {
       getDashboardCard(0).findByText("Created At").should("be.visible");
       getDashboardCardMenu(0).click();
 
-      popover().within(() => {
-        cy.findByText("Download results").click();
-        cy.findByText(".png").click();
-      });
+      exportFromDashcard(".png");
 
       showDashboardCardActions(1);
       getDashboardCard(1).findByText("User ID").should("be.visible");
@@ -299,6 +387,7 @@ describe("scenarios > question > download", () => {
 
       popover().within(() => {
         cy.findByText(".png").click();
+        cy.findByTestId("download-results-button").click();
       });
 
       cy.verifyDownload(".png", { contains: true });
@@ -320,6 +409,7 @@ describe("scenarios > dashboard > download pdf", () => {
     cy.signInAsAdmin();
     cy.deleteDownloadsFolder();
   });
+
   it("should allow you to download a PDF of a dashboard", () => {
     const date = Date.now();
     cy.createDashboardWithQuestions({
@@ -374,10 +464,7 @@ describeWithSnowplow("[snowplow] scenarios > dashboard", () => {
     getDashboardCard(0).findByText("Created At").should("be.visible");
     getDashboardCardMenu(0).click();
 
-    popover().within(() => {
-      cy.findByText("Download results").click();
-      cy.findByText(".png").click();
-    });
+    exportFromDashcard(".png");
 
     expectGoodSnowplowEvent({
       event: "download_results_clicked",

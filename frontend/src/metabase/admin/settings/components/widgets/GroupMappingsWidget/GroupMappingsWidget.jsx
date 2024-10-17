@@ -11,7 +11,7 @@ import { FormSwitch } from "metabase/forms";
 import { isDefaultGroup } from "metabase/lib/groups";
 import { Icon } from "metabase/ui";
 
-import SettingToggle from "../SettingToggle";
+import { SettingToggle } from "../SettingToggle";
 
 import AddMappingRow from "./AddMappingRow";
 import {

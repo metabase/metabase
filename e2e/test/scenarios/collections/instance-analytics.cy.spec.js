@@ -8,6 +8,8 @@ import {
   newButton,
   onlyOnEE,
   onlyOnOSS,
+  openDashboardInfoSidebar,
+  openQuestionInfoSidesheet,
   popover,
   restore,
   setTokenFeatures,
@@ -18,7 +20,7 @@ import {
   visitQuestion,
 } from "e2e/support/helpers";
 
-const ANALYTICS_COLLECTION_NAME = "Metabase analytics";
+const ANALYTICS_COLLECTION_NAME = "Usage analytics";
 const CUSTOM_REPORTS_COLLECTION_NAME = "Custom reports";
 const PEOPLE_MODEL_NAME = "People";
 const METRICS_DASHBOARD_NAME = "Metabase metrics";
@@ -304,15 +306,14 @@ describe("question and dashboard links", () => {
       setTokenFeatures("all");
     });
 
-    it("should show a analytics link for questions", () => {
+    it("should show an analytics link for questions", () => {
       visitQuestion(ORDERS_QUESTION_ID);
 
       cy.intercept("GET", "/api/collection/**").as("collection");
 
-      cy.findByTestId("qb-header-action-panel")
-        .button(/\.\.\./)
+      openQuestionInfoSidesheet()
+        .findByRole("link", { name: /Insights/ })
         .click();
-      popover().findByText("Usage insights").click();
 
       cy.wait("@collection");
 
@@ -335,11 +336,13 @@ describe("question and dashboard links", () => {
         });
     });
 
-    it("should show a analytics link for dashboards", () => {
+    it("should show an analytics link for dashboards", () => {
       visitDashboard(ORDERS_DASHBOARD_ID);
       cy.intercept("GET", "/api/collection/**").as("collection");
-      cy.button("Move, trash, and more…").click();
-      popover().findByText("Usage insights").click();
+
+      openDashboardInfoSidebar()
+        .findByRole("link", { name: /Insights/ })
+        .click();
 
       cy.wait("@collection");
 
@@ -366,35 +369,36 @@ describe("question and dashboard links", () => {
       cy.signInAsNormalUser();
       visitQuestion(ORDERS_QUESTION_ID);
 
-      cy.findByTestId("qb-header-action-panel")
-        .button(/\.\.\./)
-        .click();
-      popover().findByText("Usage insights").should("not.exist");
+      openQuestionInfoSidesheet()
+        .findByRole("link", { name: /Insights/i })
+        .should("not.exist");
 
       visitDashboard(ORDERS_DASHBOARD_ID);
-
-      cy.button("Move, trash, and more…").click();
-      popover().findByText("Usage insights").should("not.exist");
+      openDashboardInfoSidebar()
+        .findByRole("link", { name: /Insights/i })
+        .should("not.exist");
     });
   });
+
   describe("oss", { tags: "@OSS" }, () => {
     beforeEach(() => {
       onlyOnOSS();
       restore();
       cy.signInAsAdmin();
     });
+
     it("should never appear in OSS", () => {
       visitQuestion(ORDERS_QUESTION_ID);
 
-      cy.findByTestId("qb-header-action-panel")
-        .button(/\.\.\./)
-        .click();
-      popover().findByText("Usage insights").should("not.exist");
+      openQuestionInfoSidesheet()
+        .findByRole("link", { name: /Insights/i })
+        .should("not.exist");
 
       visitDashboard(ORDERS_DASHBOARD_ID);
 
-      cy.button("Move, trash, and more…").click();
-      popover().findByText("Usage insights").should("not.exist");
+      openDashboardInfoSidebar()
+        .findByRole("link", { name: /Insights/i })
+        .should("not.exist");
     });
   });
 });

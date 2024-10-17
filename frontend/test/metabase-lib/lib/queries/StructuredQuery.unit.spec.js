@@ -184,20 +184,24 @@ describe("StructuredQuery", () => {
       it("Tables should return multiple tables", () => {
         expect(Array.isArray(query.tables())).toBe(true);
       });
+
       it("Tables should return a table map that includes fields", () => {
         expect(Array.isArray(query.tables()[0].fields)).toBe(true);
       });
     });
+
     describe("table", () => {
       it("Return the table wrapper object for the query", () => {
         expect(query.table()).toBe(ordersTable);
       });
     });
+
     describe("_databaseId", () => {
       it("returns the Database ID of the wrapped query", () => {
         expect(query._databaseId()).toBe(SAMPLE_DB_ID);
       });
     });
+
     describe("_database", () => {
       it("returns a dictionary with the underlying database of the wrapped query", () => {
         expect(query._database().id).toBe(SAMPLE_DB_ID);
@@ -213,6 +217,7 @@ describe("StructuredQuery", () => {
         ).toBe(ORDERS_ID);
       });
     });
+
     describe("_sourceTableId", () => {
       it("Return the right table id", () => {
         expect(query._sourceTableId()).toBe(ORDERS_ID);
@@ -225,9 +230,11 @@ describe("StructuredQuery", () => {
       it("should return an empty list for an empty query", () => {
         expect(query.aggregations().length).toBe(0);
       });
+
       it("should return a list of one item after adding an aggregation", () => {
         expect(query.aggregate(["count"]).aggregations().length).toBe(1);
       });
+
       it("should return an actual count aggregation after trying to add it", () => {
         expect(query.aggregate(["count"]).aggregations()[0][0]).toEqual(
           "count",
@@ -239,9 +246,11 @@ describe("StructuredQuery", () => {
       it("returns false if there are no aggregations", () => {
         expect(query.canRemoveAggregation()).toBe(false);
       });
+
       it("returns false for a single aggregation", () => {
         expect(query.aggregate(["count"]).canRemoveAggregation()).toBe(false);
       });
+
       it("returns true for two aggregations", () => {
         expect(
           query
@@ -256,6 +265,7 @@ describe("StructuredQuery", () => {
       it("is true for an empty query", () => {
         expect(query.isBareRows()).toBe(true);
       });
+
       it("is false for a count aggregation", () => {
         expect(query.aggregate(["count"]).isBareRows()).toBe(false);
       });
@@ -267,6 +277,7 @@ describe("StructuredQuery", () => {
           makeQueryWithAggregation(["count"]).aggregations()[0].displayName(),
         ).toBe("Count");
       });
+
       it("returns a standard aggregation name with field", () => {
         expect(
           makeQueryWithAggregation(["sum", ["field", ORDERS.TOTAL, null]])
@@ -274,6 +285,7 @@ describe("StructuredQuery", () => {
             .displayName(),
         ).toBe("Sum of Total");
       });
+
       it("returns a standard aggregation name with fk field", () => {
         expect(
           makeQueryWithAggregation([
@@ -284,6 +296,7 @@ describe("StructuredQuery", () => {
             .displayName(),
         ).toBe("Sum of Product → Title");
       });
+
       it("returns a custom expression description", () => {
         expect(
           makeQueryWithAggregation([
@@ -295,6 +308,7 @@ describe("StructuredQuery", () => {
             .displayName(),
         ).toBe("1 + Sum(Total)");
       });
+
       it("returns a named expression name", () => {
         expect(
           makeQueryWithAggregation([
@@ -426,6 +440,7 @@ describe("StructuredQuery", () => {
       it("returns correct count of foreign keys", () => {
         expect(query.fieldOptions().fks.length).toBe(2);
       });
+
       it("returns a correct count of fields", () => {
         expect(query.fieldOptions().count).toBe(30);
       });

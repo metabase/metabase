@@ -126,13 +126,15 @@ export const PulseEditChannels = ({
         alert={pulse}
         invalidRecipientText={invalidRecipientText}
       />
-      <SlackChannelEdit
-        user={user}
-        toggleChannel={toggleChannel}
-        onChannelPropertyChange={onChannelPropertyChange}
-        channelSpec={channels.slack}
-        alert={pulse}
-      />
+      {channels.slack.configured && (
+        <SlackChannelEdit
+          user={user}
+          toggleChannel={toggleChannel}
+          onChannelPropertyChange={onChannelPropertyChange}
+          channelSpec={channels.slack}
+          alert={pulse}
+        />
+      )}
       {notificationChannels.map(notification => (
         <WebhookChannelEdit
           key={`webhook-${notification.id}`}

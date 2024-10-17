@@ -95,7 +95,7 @@ describe("issue 4482", () => {
 });
 
 function pickMetric(metric) {
-  cy.contains("Pick the metric").click();
+  cy.contains("Pick a function or metric").click();
 
   cy.contains(metric).click();
   cy.findByText("Price");
@@ -353,7 +353,7 @@ describe("postgres > question > custom columns", { tags: "@external" }, () => {
 
   it("`Percentile` custom expression function should accept two parameters (metabase#15714)", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Pick the metric you want to see").click();
+    cy.findByText("Pick a function or metric").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Custom Expression").click();
     enterCustomColumnDetails({ formula: "Percentile([Subtotal], 0.1)" });
@@ -997,7 +997,9 @@ describe("issue 19341", () => {
       cy.findAllByRole("tab").should("not.exist");
 
       // Ensure the search doesn't list saved questions
-      cy.findByPlaceholderText("Search…").type("Ord");
+      cy.findByPlaceholderText("Search this database or everywhere…").type(
+        "Ord",
+      );
       cy.findByTestId("loading-indicator").should("not.exist");
 
       cy.findAllByTestId("result-item").then($result => {

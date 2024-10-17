@@ -308,6 +308,13 @@
     (instance? JobKey x) x
     (string? x)          (JobKey. ^String x)))
 
+(defn job-exists?
+  "Check whether there is a Job with the given key."
+  [job-key]
+  (boolean
+   (when-let [s (scheduler)]
+     (qs/get-job s (->job-key job-key)))))
+
 (defn job-info
   "Get info about a specific Job (`job-key` can be either a String or `JobKey`).
 
@@ -330,6 +337,11 @@
        (sort-by #(.getName ^JobKey %))
        (map job-info)
        (filter some?)))
+
+(defn existing-triggers
+  "Get the existing triggers for a job by key name, if it exists."
+  [job-key trigger-key]
+  (filter #(= (:key %) (.getName ^TriggerKey trigger-key)) (:triggers (job-info job-key))))
 
 (defn scheduler-info
   "Return raw data about all the scheduler and scheduled tasks (i.e. Jobs and Triggers). Primarily for debugging

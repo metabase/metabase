@@ -19,6 +19,10 @@ To see what's new, check out all the [major release announcements](https://www.m
 
 ## Metabase Enterprise Edition releases
 
+- [v1.50.30](https://github.com/metabase/metabase/releases/tag/v1.50.30)
+- [v1.50.29](https://github.com/metabase/metabase/releases/tag/v1.50.29)
+- [v1.50.28](https://github.com/metabase/metabase/releases/tag/v1.50.28)
+- [v1.50.27](https://github.com/metabase/metabase/releases/tag/v1.50.27)
 - [v1.50.26](https://github.com/metabase/metabase/releases/tag/v1.50.26)
 - [v1.50.25](https://github.com/metabase/metabase/releases/tag/v1.50.25)
 - [v1.50.24](https://github.com/metabase/metabase/releases/tag/v1.50.24)
@@ -205,6 +209,10 @@ To see what's new, check out all the [major release announcements](https://www.m
 
 ## Metabase Open Source Edition releases
 
+- [v0.50.30](https://github.com/metabase/metabase/releases/tag/v0.50.30)
+- [v0.50.29](https://github.com/metabase/metabase/releases/tag/v0.50.29)
+- [v0.50.28](https://github.com/metabase/metabase/releases/tag/v0.50.28)
+- [v0.50.27](https://github.com/metabase/metabase/releases/tag/v0.50.27)
 - [v0.50.26](https://github.com/metabase/metabase/releases/tag/v0.50.26)
 - [v0.50.25](https://github.com/metabase/metabase/releases/tag/v0.50.25)
 - [v0.50.24](https://github.com/metabase/metabase/releases/tag/v0.50.24)

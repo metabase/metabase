@@ -1,9 +1,3 @@
-.EditableTextContainer {
-  max-height: 19rem;
-  overflow: auto;
-  line-height: 1.38rem; /* magic number to keep line-height from changing in edit mode */
-}
-
 .BrandCircle {
   background-color: var(--mb-color-brand);
   color: var(--mb-color-text-white);
@@ -13,6 +7,6 @@
   padding: 1px;
 }
 
-.LinkIcon {
-  margin-top: 0.2rem;
+.IconMargin {
+  margin-top: 0.25rem;
 }

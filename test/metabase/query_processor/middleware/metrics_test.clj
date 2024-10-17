@@ -3,6 +3,7 @@
    [clojure.test :refer [deftest is testing]]
    [mb.hawk.assert-exprs.approximately-equal :as =?]
    [medley.core :as m]
+   [metabase.analytics.prometheus :as prometheus]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -59,6 +60,76 @@
 
 (def adjust
   (comp #'metrics/adjust #'fetch-source-query/resolve-source-cards))
+
+(defn- check-prometheus-metrics!
+  [& {expected-metrics-count  :metabase-query-processor/metrics
+      expected-metrics-errors :metabase-query-processor/metric-errors
+      metric-and-mp           :metric-and-mp
+      query-fn                :query-fn
+      check-fn                :check-fn}]
+  (let [[source-metric mp] (or metric-and-mp (mock-metric))
+        query              (if query-fn
+                             (query-fn mp source-metric)
+                             (lib/query mp source-metric))
+        metrics              (atom {})
+        read-metric          #(% @metrics 0)]
+    (with-redefs [prometheus/inc! #(swap! metrics update % (fnil inc 0))]
+      (check-fn query)
+      (is (= expected-metrics-count (read-metric :metabase-query-processor/metrics)))
+      (is (= expected-metrics-errors (read-metric :metabase-query-processor/metric-errors))))))
+
+(deftest adjust-prometheus-metrics-test
+  (testing "adjustment of query with no metrics does not increment either counter"
+    (check-prometheus-metrics!
+     :metabase-query-processor/metrics 0
+     :metabase-query-processor/metric-errors 0
+     :query-fn (fn [_mp _metric]
+                 (-> (lib/query meta/metadata-provider (meta/table-metadata :products))
+                     (lib/aggregate (lib/avg (meta/field-metadata :products :rating)))))
+     :check-fn #(is (=? {:stages [{:source-table (meta/id :products)
+                                   :aggregation  [[:avg {} [:field {} (meta/id :products :rating)]]]}]}
+                        (adjust %)))))
+  (testing "successful adjustment does not increment error counter"
+    (check-prometheus-metrics!
+     :metabase-query-processor/metrics 1
+     :metabase-query-processor/metric-errors 0
+     :check-fn #(is (=? {:stages [{:source-table (meta/id :products)
+                                   :aggregation  [[:avg {} [:field {} (meta/id :products :rating)]]]}]}
+                        (adjust %)))))
+  (testing "failure to adjust :metric clauses increments error counter"
+    (check-prometheus-metrics!
+     :metabase-query-processor/metrics 1
+     :metabase-query-processor/metric-errors 1
+     :check-fn (fn [query]
+                 (with-redefs [metrics/adjust-metric-stages (fn [_ _ stages] stages)]
+                   (is (thrown-with-msg?
+                        clojure.lang.ExceptionInfo
+                        #"Failed to replace metric"
+                        (adjust query)))))))
+  (testing "exceptions from other libs also increment error counter"
+    (check-prometheus-metrics!
+     :metabase-query-processor/metrics 1
+     :metabase-query-processor/metric-errors 1
+     :check-fn (fn [query]
+                 (with-redefs [lib.metadata/bulk-metadata-or-throw (fn [& _] (throw (Exception. "Test exception")))]
+                   (is (thrown-with-msg?
+                        java.lang.Exception
+                        #"Test exception"
+                        (adjust query)))))))
+  (testing "metric missing aggregation increments counter and throws exception"
+    (check-prometheus-metrics!
+     :metabase-query-processor/metrics 1
+     :metabase-query-processor/metric-errors 1
+     :metric-and-mp (mock-metric (-> (lib/query meta/metadata-provider (meta/table-metadata :products))))
+     :query-fn (fn [mp metric]
+                 (-> (lib/query mp (meta/table-metadata :products))
+                     (lib/aggregate (lib/+ (lib.options/ensure-uuid
+                                            [:metric {} (:id metric)]) 1))))
+     :check-fn (fn [query]
+                 (is (thrown-with-msg?
+                      clojure.lang.ExceptionInfo
+                      #"Source metric missing aggregation"
+                      (adjust query)))))))
 
 (deftest ^:parallel no-metric-should-result-in-exact-same-query
   (let [query (lib/query meta/metadata-provider (meta/table-metadata :products))]
@@ -273,8 +344,7 @@
                   (lib.tu/mock-metadata-provider
                    {:cards [model]}))
         metric-query (as-> (lib/query model-mp model) $q
-                       (lib/aggregate $q (lib/avg (m/find-first agg-col-fn (-> (lib/visible-columns $q)
-                                                                               #_(doto tap>))))))
+                       (lib/aggregate $q (lib/avg (m/find-first agg-col-fn (lib/visible-columns $q)))))
         metric {:lib/type :metadata/card
                 :id (fresh-card-id model-mp)
                 :database-id (meta/id)
@@ -299,7 +369,7 @@
                :expressions [[:+ {:lib/expression-name "foobar"} [:field {} (meta/id :orders :discount)] 1]]
                :fields [[:expression {} "foobar"]]}
               {:lib/type :mbql.stage/mbql,
-               :aggregation [[:avg {:name "Mock Metric"} [:field {} "foobar"]]]}]}
+               :aggregation [[:avg {:name "avg"} [:field {} "foobar"]]]}]}
             (adjust question)))))
 
 (deftest ^:parallel metric-question-on-aggregate-column-model-test
@@ -311,7 +381,7 @@
              [{:source-table (meta/id :orders)
                :aggregation [[:sum {} [:field {} (meta/id :orders :discount)]]]}
               {:lib/type :mbql.stage/mbql,
-               :aggregation [[:avg {:name "Mock Metric"} [:field {} "sum"]]]}]}
+               :aggregation [[:avg {:name "avg"} [:field {} "sum"]]]}]}
             (adjust question)))))
 
 (deftest ^:parallel metric-question-on-model-based-on-model-test
@@ -336,7 +406,7 @@
                [{:source-table (meta/id :orders)
                  :filters [[:> {} [:field {} (meta/id :orders :discount)] 3]]}
                 {}
-                {:aggregation [[:avg {:name "Mock Metric"} [:field {} "QUANTITY"]]]}]}
+                {:aggregation [[:avg {:name "avg"} [:field {} "QUANTITY"]]]}]}
               (adjust question))))))
 
 (deftest ^:parallel metric-question-on-multi-stage-model-test
@@ -351,7 +421,7 @@
              [{:source-table (meta/id :orders)
                :aggregation [[:sum {} [:field {} (meta/id :orders :discount)]]]}
               {:filters [[:> {} [:field {} "sum"] 2]]}
-              {:aggregation [[:avg {:name "Mock Metric"} [:field {} "sum"]]]}]}
+              {:aggregation [[:avg {:name "avg"} [:field {} "sum"]]]}]}
             (adjust question)))))
 
 (deftest ^:parallel metric-question-on-native-model-test
@@ -362,7 +432,7 @@
     (is (=? {:stages
              [{:lib/type :mbql.stage/native,
                :native "SELECT whatever"}
-              {:aggregation [[:avg {:name "Mock Metric"} [:field {} "sum"]]]}]}
+              {:aggregation [[:avg {:name "avg"} [:field {} "sum"]]]}]}
             (adjust question)))))
 
 (deftest ^:parallel maintain-aggregation-refs-test
@@ -487,7 +557,7 @@
 (deftest ^:parallel default-metric-names-test
   (let [[source-metric mp] (mock-metric)]
     (is (=?
-         {:stages [{:aggregation [[:avg {:display-name complement :name "Mock Metric"} some?]]}]}
+         {:stages [{:aggregation [[:avg {:display-name complement :name "avg"} some?]]}]}
          (adjust (-> (lib/query mp (meta/table-metadata :products))
                      (lib/aggregate (lib.metadata/metric mp (:id source-metric)))))))))
 
@@ -521,7 +591,7 @@
     (is (=?
          {:stages
           [{:source-table (meta/id :products)
-            :aggregation [[:avg {:name "Mock Metric"} [:field {} (meta/id :products :rating)]]]
+            :aggregation [[:avg {:name "avg"} [:field {} (meta/id :products :rating)]]]
             :filters [[:= {} [:field {} (meta/id :venues :name)] some?]]}]}
          (adjust (lib/query mp source-metric))))
     ;; Segments will be expanded in this case as the metric query that is spliced in needs to be processed
@@ -624,8 +694,8 @@
     (testing "model based metrics can be used in question based on that model"
       (is (=? {:stages [{:source-table (meta/id :products)
                          :filters [[:> {} [:field {} (meta/id :products :rating)] 2]]}
-                        {:aggregation [[:avg {:name "Mock Metric 1"} [:field {} "RATING"]]
-                                       [:count {:name "Mock Metric 2"}]]
+                        {:aggregation [[:avg {:name "avg"} [:field {} "RATING"]]
+                                       [:count {:name "count"}]]
                          :filters [[:< {} [:field {} "RATING"] [:value {} 5]]
                                    [:> {} [:field {} "RATING"] [:value {} 3]]]}]}
               (adjust query))))))
@@ -717,3 +787,19 @@
                 (mt/format-rows-by
                  [u.date/temporal-str->iso8601-str int int 3.0]
                  (mt/rows (qp/process-query query)))))))))
+
+(deftest ^:parallel ^:mb/once fetch-referenced-metrics-test
+  (testing "Metric's aggregation `:name` is used in expanded aggregation (#48625)"
+    (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+          metric-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                           (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :orders :total)))))]
+      (mt/with-temp [:model/Card metric {:dataset_query (lib.convert/->legacy-MBQL metric-query)
+                                         :database_id (mt/id)
+                                         :name "Orders, Count"
+                                         :type :metric}]
+        (let [query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                        (lib/aggregate (lib.metadata/metric mp (:id metric))))
+              stage (get-in query [:stages 0])]
+          (is (=  "sum"
+                  (get-in (#'metrics/fetch-referenced-metrics query stage)
+                          [(:id metric) :aggregation 1 :name]))))))))

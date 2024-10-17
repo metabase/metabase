@@ -3,8 +3,6 @@ import {
   getLastReleaseTag,
   getMilestoneName,
   getNextVersions,
-  isLatestVersion,
-  isValidVersionString,
 } from "./version-helpers";
 
 export const getMilestones = async ({
@@ -103,28 +101,6 @@ export const getMilestoneIssues = async ({
   });
 
   return (issues ?? []) as Issue[];
-};
-
-export const isLatestRelease = async ({
-  version,
-  github,
-  owner,
-  repo,
-}: ReleaseProps): Promise<boolean> => {
-  if (!isValidVersionString(version)) {
-    console.warn(`Invalid version string: ${version}`);
-    return false;
-  }
-  const releases = await github.rest.repos.listReleases({
-    owner,
-    repo,
-  });
-
-  const releaseNames = releases.data.map(
-    (r: { tag_name: string }) => r.tag_name,
-  );
-
-  return isLatestVersion(version, releaseNames);
 };
 
 export const hasBeenReleased = async ({
@@ -261,6 +237,7 @@ export async function getLatestGreenCommit({
   return null;
 }
 
+// note: only checks if the commit is the last one released for the major version
 export async function hasCommitBeenReleased({
   github,
   owner,
@@ -268,9 +245,12 @@ export async function hasCommitBeenReleased({
   ref,
   majorVersion,
 }: GithubProps & { ref: string, majorVersion: number }) {
+    // TODO: a better approach would be to fetch the ref and see if it has any release tags
     const lastTag = await getLastReleaseTag({
       github, owner, repo,
       version: `v0.${majorVersion}.0`,
+      ignorePatches: false,
+      ignorePreReleases: false,
     });
 
     const tagDetail = await github.rest.git.getRef({

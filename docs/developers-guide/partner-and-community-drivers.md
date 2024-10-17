@@ -56,11 +56,9 @@ If you have interest in becoming a partner, please fill the [partner form](https
 
 ## Community drivers
 
-> Note: Metabase Cloud doesn't support community drivers
+> You install these drivers at your own risk. The plugins run as part of your Metabase and will have access to anything your Metabase does. And since we can’t vet for them, we don’t make them available on [Metabase Cloud](https://www.metabase.com/cloud/).
 
 Anyone can build a community driver. These are the currently known third-party database drivers for Metabase.
-
-You install these drivers at your own risk. The plugins will run as part of your Metabase instance and, as such, will have access to anything it does.
 
 | Database                                                                               | GitHub Stars                                                                                         | Last release (_if available_)                                                                                                |
 |----------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------|
@@ -77,8 +75,9 @@ You install these drivers at your own risk. The plugins will run as part of your
 | [Netsuite SuiteAnalytics Connect](https://github.com/ericcj/metabase-netsuite-driver)  | ![GitHub stars](https://img.shields.io/github/stars/ericcj/metabase-netsuite-driver)                 | ![GitHub (Pre-)Release Date](https://img.shields.io/github/release-date-pre/ericcj/metabase-netsuite-driver)                 |
 | [Databend](https://github.com/databendcloud/metabase-databend-driver)                  | ![GitHub stars](https://img.shields.io/github/stars/databendcloud/metabase-databend-driver)          | ![GitHub (Pre-)Release Date](https://img.shields.io/github/release-date-pre/databendcloud/metabase-databend-driver)          |
 | [Peaka](https://github.com/peakacom/metabase-driver)                                   | ![GitHub stars](https://img.shields.io/github/stars/peakacom/metabase-driver)                        | ![GitHub (Pre-)Release Date](https://img.shields.io/github/release-date-pre/peakacom/metabase-driver)                        |
+| [GreptimeDB](https://github.com/greptimeteam/greptimedb-metabase-driver)               | ![GitHub stars](https://img.shields.io/github/stars/greptimeteam/greptimedb-metabase-driver)         | ![GitHub (Pre-)Release Date](https://img.shields.io/github/release-date-pre/greptimeteam/greptimedb-metabase-driver)         |
 
-If you don't see a driver for your database, then try looking in the comments of the [issue related to the database](https://github.com/metabase/metabase/labels/Database%2F). You might also find more by [searching on GitHub](https://github.com/search?q=metabase+driver).
+If you don't see a driver for your database, try looking in the comments of the [issue related to the database](https://github.com/metabase/metabase/labels/Database%2F). You might also find more drivers by searching on GitHub for "Metabase driver".
 
 If you are having problems installing or using a community driver, your best bet is to contact the author of the driver.
 

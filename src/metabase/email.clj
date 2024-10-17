@@ -23,12 +23,14 @@
 
 (defsetting email-from-address
   (deferred-tru "The email address you want to use for the sender of emails.")
+  :encryption :no
   :default    "notifications@metabase.com"
   :visibility :settings-manager
   :audit      :getter)
 
 (defsetting email-from-name
   (deferred-tru "The name you want to use for the sender of emails.")
+  :encryption :no
   :visibility :settings-manager
   :audit      :getter)
 
@@ -46,6 +48,7 @@
 
 (defsetting email-reply-to
   (deferred-tru "The email address you want the replies to go to, if different from the from address.")
+  :encryption :no
   :type       :json
   :visibility :settings-manager
   :audit      :getter
@@ -56,28 +59,33 @@
 
 (defsetting email-smtp-host
   (deferred-tru "The address of the SMTP server that handles your emails.")
+  :encryption :when-encryption-key-set
   :visibility :settings-manager
   :audit      :getter)
 
 (defsetting email-smtp-username
   (deferred-tru "SMTP username.")
+  :encryption :when-encryption-key-set
   :visibility :settings-manager
   :audit      :getter)
 
 (defsetting email-smtp-password
   (deferred-tru "SMTP password.")
+  :encryption :when-encryption-key-set
   :visibility :settings-manager
   :sensitive? true
   :audit      :getter)
 
 (defsetting email-smtp-port
   (deferred-tru "The port your SMTP server uses for outgoing emails.")
+  :encryption :when-encryption-key-set
   :type       :integer
   :visibility :settings-manager
   :audit      :getter)
 
 (defsetting email-smtp-security
   (deferred-tru "SMTP secure connection protocol. (tls, ssl, starttls, or none)")
+  :encryption :when-encryption-key-set
   :type       :keyword
   :default    :none
   :visibility :settings-manager
@@ -167,11 +175,11 @@
                     (when-let [reply-to (email-reply-to)]
                       {:reply-to reply-to}))))
     (catch Throwable e
-      (prometheus/inc :metabase-email/message-errors)
+      (prometheus/inc! :metabase-email/message-errors)
       (when (not= :smtp-host-not-set (:cause (ex-data e)))
         (throw e)))
     (finally
-      (prometheus/inc :metabase-email/messages))))
+      (prometheus/inc! :metabase-email/messages))))
 
 (mu/defn send-email-retrying!
   "Like [[send-message-or-throw!]] but retries sending on errors according to the retry settings."

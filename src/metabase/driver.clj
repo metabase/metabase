@@ -61,6 +61,7 @@
 
 (defsetting report-timezone
   (deferred-tru "Connection timezone to use when executing queries. Defaults to system timezone.")
+  :encryption :no
   :visibility :settings-manager
   :export?    true
   :audit      :getter
@@ -676,6 +677,11 @@
     ;; Does this driver support UUID type
     :uuid-type
 
+    ;; True if this driver requires `:temporal-unit :default` on all temporal field refs, even if no temporal
+    ;; bucketing was specified in the query.
+    ;; Generally false, but a few time-series based analytics databases (eg. Druid) require it.
+    :temporal/requires-default-unit
+
     ;; Does this driver support window functions like cumulative count and cumulative sum? (default: false)
     :window-functions/cumulative
 
@@ -684,7 +690,12 @@
     :window-functions/offset
 
     ;; Does this driver support parameterized sql, eg. in prepared statements?
-    :parameterized-sql})
+    :parameterized-sql
+
+    ;; Whether the driver supports loading dynamic test datasets on each test run. Eg. datasets with names like
+    ;; `checkins:4-per-minute` are created dynamically in each test run. This should be truthy for every driver we test
+    ;; against except for Athena and Databricks which currently require test data to be loaded separately.
+    :test/dynamic-dataset-loading})
 
 (defmulti database-supports?
   "Does this driver and specific instance of a database support a certain `feature`?
@@ -724,7 +735,8 @@
                               :schemas                                true
                               :test/jvm-timezone-setting              true
                               :fingerprint                            true
-                              :upload-with-auto-pk                    true}]
+                              :upload-with-auto-pk                    true
+                              :test/dynamic-dataset-loading           true}]
   (defmethod database-supports? [::driver feature] [_driver _feature _db] supported?))
 
 ;;; By default a driver supports `:native-parameter-card-reference` if it supports `:native-parameters` AND

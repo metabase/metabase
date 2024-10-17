@@ -1,7 +1,8 @@
-(ns metabase.models.permissions-group-test
+(ns ^:mb/once metabase.models.permissions-group-test
   (:require
    [clojure.test :refer :all]
    [metabase.api.permissions-test-util :as perm-test-util]
+   [metabase.config :as config]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.data-permissions.graph :as data-perms.graph]
    [metabase.models.database :refer [Database]]
@@ -140,7 +141,7 @@
     (doseq [db-id (t2/select-fn-set :id :model/Database)]
       (testing (str "testing data-graph-for-db with db-id: [" db-id "].")
         (let [graph (data-perms.graph/api-graph {:db-id db-id})]
-          (is (=? {:revision pos-int?}
+          (is (=? {:revision (every-pred int? (complement neg?))}
                   graph))
           (is (perm-test-util/validate-graph-api-groups (:groups graph)))
           ;; Only check this for dbs with permissions
@@ -175,3 +176,30 @@
                    :perms/manage-table-metadata :no
                    :perms/manage-database :no}}}
                 (data-perms/data-permissions-graph :group-id group-id :db-id db-id)))))))))
+
+(deftest hydrate-members-tests
+  (mt/with-temp [:model/PermissionsGroup           {group-id-1 :id}         {}
+                 :model/PermissionsGroup           {group-id-2 :id}         {}
+                 :model/User                       {user-1-g1 :id}          {:first_name "a"}
+                 :model/User                       {user-2-g1 :id}          {:first_name "b"}
+                 :model/User                       {user-3-g1-inacitve :id} {:is_active false}
+                 :model/User                       {user-1-g2 :id}          {}
+                 :model/PermissionsGroupMembership _                        {:user_id user-1-g1 :group_id group-id-1 :is_group_manager true}
+                 :model/PermissionsGroupMembership _                        {:user_id user-2-g1 :group_id group-id-1}
+                 :model/PermissionsGroupMembership _                        {:user_id user-3-g1-inacitve :group_id group-id-1}
+                 :model/PermissionsGroupMembership _                        {:user_id user-1-g2 :group_id group-id-2}]
+    (testing "hydrate members only return active users for each group"
+      (is (=? [[{:id user-1-g1}
+                {:id user-2-g1}]
+               [{:id user-1-g2}]]
+              (map :members (t2/hydrate (t2/select :model/PermissionsGroup :id [:in [group-id-1 group-id-2]])
+                                        :members)))))
+
+    (testing "return is_group_manager for each group if premium features are enabled"
+      (when config/ee-available?
+        (mt/with-premium-features #{:advanced-permissions}
+          (is (=? [[{:id user-1-g1 :is_group_manager true}
+                    {:id user-2-g1 :is_group_manager false}]
+                   [{:id user-1-g2 :is_group_manager false}]]
+                  (map :members (t2/hydrate (t2/select :model/PermissionsGroup :id [:in [group-id-1 group-id-2]])
+                                            :members)))))))))

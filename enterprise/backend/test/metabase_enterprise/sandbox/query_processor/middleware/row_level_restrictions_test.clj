@@ -1,4 +1,4 @@
-(ns metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions-test
+(ns ^:mb/driver-tests metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions-test
   (:require
    [clojure.core.async :as a]
    [clojure.string :as str]
@@ -185,8 +185,15 @@
         (is (=? (mt/query checkins
                   {:type  :query
                    :query {:source-query {:source-table                  $$checkins
-                                          :fields                        [$id !default.$date $user_id $venue_id]
+                                          :fields                        [$id $date $user_id $venue_id]
                                           :filter                        [:and
+                                                                          ;; This still gets :default bucketing!
+                                                                          ;; auto-bucket-datetimes puts :day bucketing
+                                                                          ;; on both parts of this filter, since it's
+                                                                          ;; matching a YYYY-mm-dd string. Then
+                                                                          ;; optimize-temporal-filters sees that the
+                                                                          ;; :type/Date column already has :day
+                                                                          ;; granularity, and switches both to :default
                                                                           [:> !default.date [:absolute-datetime
                                                                                              #t "2014-01-01"
                                                                                              :default]]

@@ -19,18 +19,17 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.lib.schema.temporal-bucketing
-    :as lib.schema.temporal-bucketing]
+   [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
-   [metabase.shared.util.i18n :as i18n]
-   [metabase.shared.util.time :as shared.ut]
    [metabase.util :as u]
    [metabase.util.humanization :as u.humanization]
+   [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.time :as u.time]))
 
 (mu/defn resolve-column-name-in-metadata :- [:maybe ::lib.schema.metadata/column]
   "Find the column with `column-name` in a sequence of `column-metadatas`."
@@ -95,6 +94,8 @@
                     {:effective-type effective-type})
                   (when-let [original-effective-type (::original-effective-type opts)]
                     {::original-effective-type original-effective-type})
+                  (when-let [original-temporal-unit (::original-temporal-unit opts)]
+                    {::original-temporal-unit original-temporal-unit})
                   ;; TODO -- some of the other stuff in `opts` probably ought to be merged in here as well. Also, if
                   ;; the Field is temporally bucketed, the base-type/effective-type would probably be affected, right?
                   ;; We should probably be taking that into consideration?
@@ -161,12 +162,12 @@
    metadata
    [_tag {source-uuid :lib/uuid :keys [base-type binning effective-type join-alias source-field temporal-unit], :as opts} :as field-ref]]
   (let [metadata (merge
-                  {:lib/type        :metadata/column
-                   :lib/source-uuid source-uuid}
+                  {:lib/type        :metadata/column}
                   metadata
                   {:display-name (or (:display-name opts)
                                      (lib.metadata.calculation/display-name query stage-number field-ref))})]
     (cond-> metadata
+      source-uuid    (assoc :lib/source-uuid source-uuid)
       base-type      (assoc :base-type base-type, :effective-type base-type)
       effective-type (assoc :effective-type effective-type)
       temporal-unit  (assoc ::temporal-unit temporal-unit)
@@ -324,13 +325,16 @@
 
 (defmethod lib.temporal-bucket/with-temporal-bucket-method :metadata/column
   [metadata unit]
-  (let [original-effective-type ((some-fn ::original-effective-type :effective-type :base-type) metadata)]
+  (let [original-effective-type ((some-fn ::original-effective-type :effective-type :base-type) metadata)
+        original-temporal-unit ((some-fn ::original-temporal-unit ::temporal-unit) metadata)]
     (if unit
-      (assoc metadata
-             ::temporal-unit unit
-             ::original-effective-type original-effective-type)
+      (-> metadata
+          (assoc ::temporal-unit unit
+                 ::original-effective-type original-effective-type)
+          (m/assoc-some ::original-temporal-unit original-temporal-unit))
       (cond-> (dissoc metadata ::temporal-unit ::original-effective-type)
-        original-effective-type (assoc :effective-type original-effective-type)))))
+        original-effective-type (assoc :effective-type original-effective-type)
+        original-temporal-unit  (assoc ::original-temporal-unit original-temporal-unit)))))
 
 (defmethod lib.temporal-bucket/available-temporal-buckets-method :field
   [query stage-number field-ref]
@@ -339,8 +343,8 @@
 (defn- fingerprint-based-default-unit [fingerprint]
   (u/ignore-exceptions
     (when-let [{:keys [earliest latest]} (-> fingerprint :type :type/DateTime)]
-      (let [days (shared.ut/day-diff (shared.ut/coerce-to-timestamp earliest)
-                                     (shared.ut/coerce-to-timestamp latest))]
+      (let [days (u.time/day-diff (u.time/coerce-to-timestamp earliest)
+                                  (u.time/coerce-to-timestamp latest))]
         (when-not (NaN? days)
           (condp > days
             1 :minute
@@ -348,25 +352,13 @@
             365 :week
             :month))))))
 
-(defn- mark-unit [options option-key unit]
-  (cond->> options
-    (some #(= (:unit %) unit) options)
-    (mapv (fn [option]
-            (cond-> option
-              (contains? option option-key) (dissoc option option-key)
-              (= (:unit option) unit)       (assoc option-key true))))))
-
 (defmethod lib.temporal-bucket/available-temporal-buckets-method :metadata/column
   [_query _stage-number field-metadata]
-  (let [effective-type ((some-fn :effective-type :base-type) field-metadata)
-        fingerprint-default (some-> field-metadata :fingerprint fingerprint-based-default-unit)]
-    (cond-> (cond
-              (isa? effective-type :type/DateTime) lib.temporal-bucket/datetime-bucket-options
-              (isa? effective-type :type/Date)     lib.temporal-bucket/date-bucket-options
-              (isa? effective-type :type/Time)     lib.temporal-bucket/time-bucket-options
-              :else                                [])
-      fingerprint-default              (mark-unit :default fingerprint-default)
-      (::temporal-unit field-metadata) (mark-unit :selected (::temporal-unit field-metadata)))))
+  (lib.temporal-bucket/available-temporal-buckets-for-type
+   ((some-fn :effective-type :base-type) field-metadata)
+   (or (some-> field-metadata :fingerprint fingerprint-based-default-unit)
+       :month)
+   (::temporal-unit field-metadata)))
 
 ;;; ---------------------------------------- Binning ---------------------------------------------
 
@@ -444,6 +436,8 @@
                                    {:temporal-unit temporal-unit})
                                  (when-let [original-effective-type (::original-effective-type metadata)]
                                    {::original-effective-type original-effective-type})
+                                 (when-let [original-temporal-unit (::original-temporal-unit metadata)]
+                                   {::original-temporal-unit original-temporal-unit})
                                  (when-let [binning (::binning metadata)]
                                    {:binning binning})
                                  (when-let [source-field-id (when-not inherited-column?

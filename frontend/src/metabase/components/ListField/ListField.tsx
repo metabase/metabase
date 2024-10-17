@@ -61,8 +61,6 @@ export const ListField = ({
   const [filter, setFilter] = useState("");
   const waitTime = useContext(waitTimeContext);
   const debouncedFilter = useDebouncedValue(filter, waitTime);
-  const isAll = selectedValues.size === sortedOptions.length;
-  const isNone = selectedValues.size === 0;
 
   const filteredOptions = useMemo(() => {
     const formattedFilter = debouncedFilter.trim().toLowerCase();
@@ -89,6 +87,12 @@ export const ListField = ({
     });
   }, [augmentedOptions, debouncedFilter, sortedOptions]);
 
+  const selectedFilteredOptions = filteredOptions.filter(([value]) =>
+    selectedValues.has(value),
+  );
+  const isAll = selectedFilteredOptions.length === filteredOptions.length;
+  const isNone = selectedFilteredOptions.length === 0;
+
   const shouldShowEmptyState =
     augmentedOptions.length > 0 && filteredOptions.length === 0;
 
@@ -114,14 +118,16 @@ export const ListField = ({
     setFilter(e.target.value);
 
   const handleToggleAll = () => {
-    if (isAll) {
-      setSelectedValues(new Set());
-      onChange([]);
-    } else {
-      const allValues = sortedOptions.map(([value]) => value);
-      setSelectedValues(new Set(allValues));
-      onChange(allValues);
-    }
+    const newSelectedValuesSet = new Set(selectedValues);
+    filteredOptions.forEach(([value]) => {
+      if (isAll) {
+        newSelectedValuesSet.delete(value);
+      } else {
+        newSelectedValuesSet.add(value);
+      }
+    });
+    onChange(Array.from(newSelectedValuesSet));
+    setSelectedValues(newSelectedValuesSet);
   };
 
   return (
@@ -145,16 +151,17 @@ export const ListField = ({
       )}
 
       <OptionsList isDashboardFilter={isDashboardFilter}>
-        <OptionContainer>
-          <Checkbox
-            variant="stacked"
-            label={isAll ? `Select none` : t`Select all`}
-            checked={isAll}
-            indeterminate={!isAll && !isNone}
-            fw="bold"
-            onChange={handleToggleAll}
-          />
-        </OptionContainer>
+        {filteredOptions.length > 0 && (
+          <OptionContainer>
+            <Checkbox
+              variant="stacked"
+              label={getToggleAllLabel(debouncedFilter, isAll)}
+              checked={isAll}
+              indeterminate={!isAll && !isNone}
+              onChange={handleToggleAll}
+            />
+          </OptionContainer>
+        )}
         {filteredOptions.map((option, index) => (
           <OptionContainer key={index}>
             <Checkbox
@@ -169,3 +176,11 @@ export const ListField = ({
     </>
   );
 };
+
+function getToggleAllLabel(searchValue: string, isAll: boolean) {
+  if (isAll) {
+    return t`Select none`;
+  } else {
+    return searchValue ? t`Select these` : t`Select all`;
+  }
+}

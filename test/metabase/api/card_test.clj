@@ -1,4 +1,4 @@
-(ns metabase.api.card-test
+(ns ^:mb/driver-tests metabase.api.card-test
   "Tests for /api/card endpoints."
   (:require
    [cheshire.core :as json]
@@ -885,7 +885,7 @@
     (testing "Ignore values of `enable_embedding` while creating a Card (this must be done via `PUT /api/card/:id` instead)"
       ;; should be ignored regardless of the value of the `enable-embedding` Setting.
       (doseq [enable-embedding? [true false]]
-        (mt/with-temporary-setting-values [enable-embedding enable-embedding?]
+        (mt/with-temporary-setting-values [enable-embedding-static enable-embedding?]
           (mt/with-model-cleanup [:model/Card]
             (is (=? {:enable_embedding false}
                     (mt/user-http-request :crowberto :post 200 "card" {:name                   "My Card"
@@ -1422,12 +1422,12 @@
   (testing "PUT /api/card/:id"
     (t2.with-temp/with-temp [:model/Card card]
       (testing "If embedding is disabled, even an admin should not be allowed to update embedding params"
-        (mt/with-temporary-setting-values [enable-embedding false]
+        (mt/with-temporary-setting-values [enable-embedding-static false]
           (is (= "Embedding is not enabled."
                  (mt/user-http-request :crowberto :put 400 (str "card/" (u/the-id card))
                                        {:embedding_params {:abc "enabled"}})))))
 
-      (mt/with-temporary-setting-values [enable-embedding true]
+      (mt/with-temporary-setting-values [enable-embedding-static true]
         (testing "Non-admin should not be allowed to update Card's embedding parms"
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :put 403 (str "card/" (u/the-id card))
@@ -2068,12 +2068,12 @@
     (with-temp-native-card! [_ card]
       (with-cards-in-readable-collection! card
         (is (= [{(keyword "COUNT(*)") "75"}]
-               (mt/user-http-request :rasta :post 200 (format "card/%d/query/json" (u/the-id card))))))))
+               (mt/user-http-request :rasta :post 200 (format "card/%d/query/json" (u/the-id card)) :format_rows true))))))
   (testing "with parameters"
     (with-temp-native-card-with-params! [_ card]
       (with-cards-in-readable-collection! card
         (is (= [{(keyword "COUNT(*)") "8"}]
-               (mt/user-http-request :rasta :post 200 (format "card/%d/query/json" (u/the-id card))
+               (mt/user-http-request :rasta :post 200 (format "card/%d/query/json" (u/the-id card)) :format_rows true
                                      :parameters encoded-params)))))))
 
 (deftest renamed-column-names-are-applied-to-json-test
@@ -2147,7 +2147,10 @@
                                                                                                              (mt/id :orders :id))
                                                                                                             {:column_title "IDENTIFIER"}}}}]
           (letfn [(col-names [card-id]
-                    (->> (mt/user-http-request :crowberto :post 200 (format "card/%d/query/json" card-id)) first keys (map name) set))]
+                    (->> (mt/user-http-request :crowberto :post 200
+                                               (format "card/%d/query/json" card-id)
+                                               :format_rows true)
+                         first keys (map name) set))]
             (testing "Renaming columns via viz settings is correctly applied to the CSV export"
               (is (= #{"THE_ID" "ORDER TAX" "Total Amount" "Discount Applied ($)" "Amount Ordered" "Effective Tax Rate"}
                      (col-names base-card-id))))
@@ -2208,7 +2211,8 @@
       (testing "Removing the time portion of the timestamp should only show the date"
         (is (= [["T"] ["2023-1-1"]]
                (parse-xlsx-results-to-strings
-                (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))))))))))
+                (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))
+                                      :format_rows true))))))))
 
 (deftest xlsx-default-currency-formatting-test
   (testing "The default currency is USD"
@@ -2222,7 +2226,8 @@
       (is (= [["MONEY"]
               ["[$$]123.45"]]
              (parse-xlsx-results-to-strings
-              (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card)))))))))
+              (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))
+                                    :format_rows true)))))))
 
 (deftest xlsx-default-currency-formatting-test-2
   (testing "Default localization settings take effect"
@@ -2238,7 +2243,8 @@
         (is (= [["MONEY"]
                 ["[$€]123.45"]]
                (parse-xlsx-results-to-strings
-                (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))))))))))
+                (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))
+                                      :format_rows true))))))))
 
 (deftest xlsx-currency-formatting-test
   (testing "Currencies are applied correctly in Excel files"
@@ -2260,7 +2266,8 @@
           (is (= [currencies
                   ["[$$]123.45" "[$CA$]123.45" "[$€]123.45" "[$¥]123.45"]]
                  (parse-xlsx-results-to-strings
-                  (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card)))))))))))
+                  (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))
+                                        :format_rows true)))))))))
 
 (deftest xlsx-full-formatting-test
   (testing "Formatting should be applied correctly for all types, including numbers, currencies, exponents, and times. (relates to #14393)"
@@ -2398,7 +2405,8 @@
                       ["Jan 1, 2023, 12:34 PM" "2023-1-1" "1-1-2023, 12:34:56.000" "Jan 1, 2023" "12:34 PM" "2,345.30" "[$$]2,345.30" "[$USD] 3456.30" "2,931.30 US dollars" "1.71806E+4" "8.02%" "0.000%"]
                       ["Jan 1, 2023, 12:34 PM" "2023-1-1" "1-1-2023, 12:34:56.000" "Jan 1, 2023" "12:34 PM" "3,456.00" "[$$]3,456.00" "[$USD] 2300.00" "2,250.00 US dollars" "12.7181E+4" "95.40%" "11.580%"]]
                      (parse-xlsx-results-to-strings
-                      (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))))))))))
+                      (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))
+                                            :format_rows true))))))))
       (testing "Global currency settings are applied correctly"
         (mt/with-temporary-setting-values [custom-formatting {:type/Temporal {:date_abbreviate true}
                                                               :type/Currency {:currency "EUR", :currency_style "symbol"}}]
@@ -2413,9 +2421,11 @@
                       ["Jan 1, 2023, 12:34 PM" "2023-1-1" "1-1-2023, 12:34:56.000" "Jan 1, 2023" "12:34 PM" "2,345.30" "[$€]2,345.30" "[$EUR] 3456.30" "2,931.30 euros" "1.71806E+4" "8.02%" "0.000%"]
                       ["Jan 1, 2023, 12:34 PM" "2023-1-1" "1-1-2023, 12:34:56.000" "Jan 1, 2023" "12:34 PM" "3,456.00" "[$€]3,456.00" "[$EUR] 2300.00" "2,250.00 euros" "12.7181E+4" "95.40%" "11.580%"]]
                      (parse-xlsx-results-to-strings
-                      (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card)))))))
+                      (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))
+                                            :format_rows true)))))
             (parse-xlsx-results-to-strings
-             (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))))))))))
+             (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))
+                                   :format_rows true))))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -2854,7 +2864,7 @@
 
 (deftest test-that-we-can-fetch-a-list-of-embeddable-cards
   (testing "GET /api/card/embeddable"
-    (mt/with-temporary-setting-values [enable-embedding true]
+    (mt/with-temporary-setting-values [enable-embedding-static true]
       (t2.with-temp/with-temp [:model/Card _ {:enable_embedding true}]
         (is (= [{:name true, :id true}]
                (for [card (mt/user-http-request :crowberto :get 200 "card/embeddable")]
@@ -3607,7 +3617,8 @@
             (is (= expected
                    (->> (mt/user-http-request
                          :crowberto :post 200
-                         (format "card/%s/query/%s?format_rows=%s" card-id (name export-format) apply-formatting?))
+                         (format "card/%s/query/%s" card-id (name export-format))
+                         :format_rows apply-formatting?)
                         ((get output-helper export-format)))))))))))
 
 (deftest ^:parallel can-restore
@@ -3830,7 +3841,8 @@
                               {:id (mt/id :orders :user_id)}
                               {:id (mt/id :people :source)}
                               {:id (mt/id :people :name)}])
-            :tables empty?
+            :tables (sort-by :id
+                             [{:id (str "card__" card-id-2)}])
             :databases [{:id (mt/id) :engine string?}]}
            (-> (mt/user-http-request :crowberto :get 200 (str "card/" card-id-2 "/query_metadata"))
                 ;; The output is so large, these help debugging
@@ -3847,3 +3859,49 @@
                                        false
                                        (apply original-can-read? args)))]
           (is (map? (mt/user-http-request :crowberto :get 200 (format "card/%d/query_metadata" (:id card))))))))))
+
+(deftest pivot-tables-with-model-sources-show-row-totals
+  (testing "Pivot Tables with a model source will return row totals (#46575)"
+    (mt/with-temp [:model/Card {model-id :id} {:type :model
+                                               :dataset_query
+                                               {:database (mt/id)
+                                                :type     :query
+                                                :query
+                                                {:source-table (mt/id :orders)
+                                                 :joins
+                                                 [{:fields       :all
+                                                   :strategy     :left-join
+                                                   :alias        "People - User"
+                                                   :condition
+                                                   [:=
+                                                    [:field (mt/id :orders :user_id) {:base-type :type/Integer}]
+                                                    [:field (mt/id :people :id) {:base-type :type/BigInteger :join-alias "People - User"}]]
+                                                   :source-table (mt/id :people)}]}}}
+                   :model/Card {pivot-id :id} {:display :pivot
+                                               :dataset_query
+                                               {:database (mt/id)
+                                                :type     :query
+                                                :query
+                                                {:aggregation  [[:sum [:field "TOTAL" {:base-type :type/Float}]]]
+                                                 :breakout
+                                                 [[:field "CREATED_AT" {:base-type :type/DateTime, :temporal-unit :month}]
+                                                  [:field "NAME" {:base-type :type/Text}]
+                                                  [:field (mt/id :products :category) {:base-type    :type/Text
+                                                                                       :source-field (mt/id :orders :product_id)}]]
+                                                 :source-table (format "card__%s" model-id)}}
+                                               :visualization_settings
+                                               {:pivot_table.column_split
+                                                {:rows
+                                                 [[:field "NAME" {:base-type :type/Text}]
+                                                  [:field "CREATED_AT" {:base-type :type/DateTime, :temporal-unit :month}]]
+                                                 :columns [[:field (mt/id :products :category) {:base-type    :type/Text
+                                                                                                :source-field (mt/id :orders :product_id)}]]
+                                                 :values  [[:aggregation 0]]}}}]
+      ;; pivot row totals have a pivot-grouping of 1 (the second-last column in these results)
+      ;; before fixing issue #46575, these rows would not be returned given the model + card setup
+      (is (= [nil "Abbey Satterfield" "Doohickey" 1 347.91]
+             (let [result (mt/user-http-request :rasta :post 202 (format "card/pivot/%d/query" pivot-id))
+                   totals (filter (fn [row]
+                                    (< 0 (second (reverse row))))
+                                  (get-in result [:data :rows]))]
+               (first totals)))))))
