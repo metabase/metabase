@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import { useHasModel } from "metabase/common/hooks";
 import EntityMenu from "metabase/components/EntityMenu";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -16,7 +17,6 @@ export interface NewItemMenuProps {
   trigger?: ReactNode;
   triggerIcon?: string;
   triggerTooltip?: string;
-  hasModels: boolean;
   hasDataAccess: boolean;
   hasNativeWrite: boolean;
   hasDatabaseWithJsonEngine: boolean;
@@ -40,7 +40,6 @@ const NewItemMenu = ({
   trigger,
   triggerIcon,
   triggerTooltip,
-  hasModels,
   hasDataAccess,
   hasNativeWrite,
   hasDatabaseWithJsonEngine,
@@ -52,6 +51,8 @@ const NewItemMenu = ({
   const lastUsedDatabaseId = useSelector(state =>
     getSetting(state, "last-used-native-database-id"),
   );
+
+  const hasModels = useHasModel();
 
   const menuItems = useMemo(() => {
     const items: NewMenuItem[] = [];

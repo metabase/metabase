@@ -36,6 +36,10 @@ export interface User extends BaseUser {
   } | null;
 }
 
+export interface CurrentUser extends User {
+  has_model: boolean;
+}
+
 export interface UserListResult {
   id: UserId;
   first_name: string | null;
