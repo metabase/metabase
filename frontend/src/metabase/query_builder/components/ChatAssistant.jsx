@@ -639,7 +639,24 @@ const ChatAssistant = ({ client, selectedMessages, selectedThreadId, setSelected
             }
         } catch (error) {
             console.error("Error during message processing:", error.message);
-        } finally {
+            setMessages((prev) => [
+                ...prev,
+                {
+                    id: Date.now() + Math.random(),
+                    sender: "server",
+                    text: "An error occurred while processing your request. Please try again later.",
+                    isLoading: false,
+                    showVisualization: false
+                },
+                {
+                    id: Date.now() + Math.random(),
+                    sender: "server",
+                    text: error.message,
+                    isLoading: false,
+                    showVisualization: false
+                },
+            ]);
+        }finally {
             setShouldRefetchHistory(true);
             setMessages((prev) =>
                 prev.map((msg) => ({
