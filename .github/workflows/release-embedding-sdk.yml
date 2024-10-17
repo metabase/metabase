@@ -50,15 +50,16 @@ jobs:
       - name: Get current SDK version
         id: current-sdk-version
         run: |
-          VERSION=$(cat ./enterprise/frontend/src/embedding-sdk/package.template.json | jq .version)
+          VERSION=$(cat ./enterprise/frontend/src/embedding-sdk/package.template.json | jq -r .version)
           echo "::set-output name=sdk_current_version::$VERSION"
 
       - name: Get next SDK patch version
         id: new-sdk-version
         uses: actions/github-script@v7
         with:
+          result-encoding: string
           script: |
-            const currentVersion = ${{ steps.current-sdk-version.outputs.sdk_current_version }};
+            const currentVersion = "${{ steps.current-sdk-version.outputs.sdk_current_version }}";
             const versionParts = currentVersion.split(".");
             versionParts[versionParts.length - 1] = parseInt(versionParts.at(-1)) + 1;
             const newVersion = versionParts.join(".");
@@ -70,8 +71,8 @@ jobs:
         run: |
           echo '**Derived inputs:**' >> $GITHUB_STEP_SUMMARY
           echo '' >> $GITHUB_STEP_SUMMARY
-          echo '- `current_version`: ${{ steps.current-sdk-version.outputs.sdk_current_version }}' >> $GITHUB_STEP_SUMMARY
-          echo '- `next_version`: ${{ steps.new-sdk-version.outputs.result }}' >> $GITHUB_STEP_SUMMARY
+          echo '- `current_version`: "${{ steps.current-sdk-version.outputs.sdk_current_version }}"' >> $GITHUB_STEP_SUMMARY
+          echo '- `next_version`: "${{ steps.new-sdk-version.outputs.result }}"' >> $GITHUB_STEP_SUMMARY
 
   check-git-tag:
     needs: determine-version
