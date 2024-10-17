@@ -34,6 +34,7 @@ jobs:
           echo 'triggered by: @${{ github.event.sender.login }}' >> $GITHUB_STEP_SUMMARY
 
   determine-version:
+    name: Determine SDK version
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     outputs:
@@ -64,6 +65,13 @@ jobs:
             console.log({currentVersion, newVersion});
 
             return newVersion
+
+      - name: Append workflow summary
+        run: |
+          echo '**Derived inputs:**' >> $GITHUB_STEP_SUMMARY
+          echo '' >> $GITHUB_STEP_SUMMARY
+          echo '- `current_version`: ${{ steps.current-sdk-version.outputs.sdk_current_version }}' >> $GITHUB_STEP_SUMMARY
+          echo '- `next_version`: ${{ steps.new-sdk-version.outputs.result }}' >> $GITHUB_STEP_SUMMARY
 
   check-git-tag:
     needs: determine-version
