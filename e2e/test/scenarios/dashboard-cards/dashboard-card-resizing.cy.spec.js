@@ -7,6 +7,7 @@ import {
   createQuestion,
   editDashboard,
   getDashboardCard,
+  openQuestionsSidebar,
   popover,
   resizeDashboardCard,
   restore,
@@ -214,10 +215,8 @@ describe(
       createDashboard().then(({ body: { id: dashId } }) => {
         visitDashboard(dashId);
 
-        cy.findByTestId("dashboard-header").within(() => {
-          cy.findByLabelText("Edit dashboard").click();
-          cy.findByLabelText("Add questions").click();
-        });
+        editDashboard();
+        openQuestionsSidebar();
 
         /**
          * Metabase sorts all questions in the sidebar alphabetically.

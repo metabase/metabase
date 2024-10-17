@@ -4,16 +4,18 @@ import type { Bookmark } from "metabase-types/api";
 
 import { appendSlug } from "./utils";
 
-function getBookmarkBasePath(bookmark: Bookmark) {
+function getBookmarkBasePath(bookmark: Pick<Bookmark, "type" | "card_type">) {
   if (bookmark.type === "card") {
     return bookmark.card_type;
   }
   return bookmark.type;
 }
 
-export function bookmark(bookmark: Bookmark) {
-  const [, itemId] = bookmark.id.split("-");
-  const basePath = getBookmarkBasePath(bookmark);
-  const itemPath = appendSlug(itemId, slugg(bookmark.name));
+export function bookmark(
+  bm: Pick<Bookmark, "id" | "type" | "card_type" | "name">,
+) {
+  const [, itemId] = bm.id.split("-");
+  const basePath = getBookmarkBasePath(bm);
+  const itemPath = appendSlug(itemId, slugg(bm.name));
   return `/${basePath}/${itemPath}`;
 }

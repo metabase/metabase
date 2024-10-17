@@ -138,6 +138,7 @@ export type SearchRequest = {
   search_native_query?: boolean | null;
   verified?: boolean | null;
   model_ancestors?: boolean | null;
+  include_dashboard_questions?: boolean | null;
 
   // this should be in ListCollectionItemsRequest but legacy code expects them here
   collection?: CollectionId;

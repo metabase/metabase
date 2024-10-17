@@ -13,6 +13,7 @@ import {
   popover,
   remapDisplayValueToFK,
   restore,
+  saveQuestionToCollection,
   summarize,
   tableHeaderClick,
   visitQuestion,
@@ -510,17 +511,13 @@ describe("scenarios > question > nested", () => {
     function saveQuestion() {
       cy.intercept("POST", "/api/card").as("cardCreated");
 
-      cy.findByText("Save").click({ force: true });
-      cy.findByTestId("save-question-modal").within(modal => {
-        cy.findByText("Save").click();
-      });
+      saveQuestionToCollection();
 
       cy.wait("@cardCreated").then(({ response: { body } }) => {
         expect(body.error).not.to.exist;
       });
 
       cy.button("Failed").should("not.exist");
-      cy.findByText("Not now").click();
     }
   });
 
@@ -553,7 +550,7 @@ describe("scenarios > question > nested", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Showing 100 rows");
 
-    saveQuestion();
+    saveQuestionToCollection();
 
     reloadQuestion();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -561,20 +558,6 @@ describe("scenarios > question > nested", () => {
 
     openNotebook();
     cy.findAllByTestId("notebook-cell-item").contains(/Users? → ID/);
-
-    function saveQuestion() {
-      cy.intercept("POST", "/api/card").as("cardCreated");
-
-      cy.findByText("Save").click();
-
-      cy.findByTestId("save-question-modal").then(modal => {
-        cy.findByLabelText("Name").type("Q").blur();
-        cy.findByTestId("save-question-button").click();
-      });
-
-      cy.wait("@cardCreated");
-      cy.findByText("Not now").click();
-    }
 
     function reloadQuestion() {
       cy.intercept("POST", "/api/card/*/query").as("cardQuery");
