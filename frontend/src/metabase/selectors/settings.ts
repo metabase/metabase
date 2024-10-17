@@ -47,8 +47,8 @@ export const getLearnUrl = (path = "") => {
 
 export type UtmProps = {
   utm_source?: string;
-  utm_medium: string;
-  utm_campaign: string;
+  utm_medium?: string;
+  utm_campaign?: string;
   utm_content?: string;
 };
 
