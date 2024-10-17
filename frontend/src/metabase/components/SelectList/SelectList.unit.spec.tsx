@@ -83,7 +83,7 @@ describe("Components > SelectList", () => {
           name="Item 1"
           icon="check"
           onSelect={_.noop}
-          rightSection="warning"
+          rightIcon="warning"
         />,
       );
 
@@ -97,7 +97,7 @@ describe("Components > SelectList", () => {
           name="Item 1"
           icon="check"
           onSelect={_.noop}
-          rightSection="warning"
+          rightIcon="warning"
           isSelected
         />,
       );

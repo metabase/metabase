@@ -1,48 +1,36 @@
-import {
-  type ComboboxOptionProps,
-  Select as MantineSelect,
-  type SelectProps as MantineSelectProps,
+import type {
+  ComboboxItem,
+  ComboboxItemGroup,
+  SelectProps as MantineSelectProps,
 } from "@mantine/core";
-import { forwardRef } from "react";
+import { Select as MantineSelect } from "@mantine/core";
 
-import { type LegacyComboboxData, normalizeComboboxData } from "../Combobox";
+import type { IconName } from "../../icons";
 
-export interface SelectProps
-  extends Omit<MantineSelectProps, "data" | "onChange" | "nothingFound"> {
-  data: LegacyComboboxData;
-  onChange?: (value: any) => void;
-  nothingFound?: string;
-  withinPortal?: boolean;
-  initiallyOpened?: boolean;
+export type ComboboxItemWithExtras<Value> = ComboboxItem & {
+  value: Value;
+  icon?: IconName;
+} & Record<string, any>;
+
+type SelectData<Value extends string | null> =
+  | ComboboxItemWithExtras<Value>[]
+  | ComboboxItemGroup<ComboboxItemWithExtras<Value>>[]
+  | Value[];
+
+/**
+ * Mantine v7 loosened up the value types for Select, removing the generics, which sucks
+ * This re-introduces the value generics to keep the type safety
+ */
+export interface SelectProps<Value extends string | null>
+  extends Omit<MantineSelectProps, "data" | "onChange" | "value"> {
+  data: SelectData<Value>;
+  value: Value;
+  onChange: (newValue: Value) => void;
 }
 
-/** A version of Select that can receive Mantine-v6-style props
- *
- * TODO: Update all the onChange handlers in all the Selects
- */
-export const Select = forwardRef<HTMLInputElement, SelectProps>(function Select(
-  {
-    data: legacySelectData,
-    onChange: legacyOnChangeHandler,
-    withinPortal,
-    initiallyOpened,
-    ...props
-  }: SelectProps,
-  ref,
-) {
-  const data: MantineSelectProps["data"] =
-    normalizeComboboxData(legacySelectData);
-  const onChange = (value: string | null, _option: ComboboxOptionProps) =>
-    value && legacyOnChangeHandler?.(value);
+export function Select<Value extends string | null>(props: SelectProps<Value>) {
   return (
-    <MantineSelect
-      {...props}
-      comboboxProps={{ withinPortal }}
-      onChange={onChange}
-      data={data}
-      nothingFoundMessage={props.nothingFound}
-      defaultDropdownOpened={initiallyOpened}
-      ref={ref}
-    />
+    // @ts-expect-error -- mine is better
+    <MantineSelect {...props} />
   );
-});
+}
