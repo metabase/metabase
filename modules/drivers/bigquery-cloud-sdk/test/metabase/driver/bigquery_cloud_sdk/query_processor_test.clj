@@ -1265,13 +1265,15 @@
 
 (deftest ^:parallel case-expression-with-default-Date-case-DateTime-test
   (mt/test-driver
-   :bigquery-cloud-sdk
-   (testing "Query with case expression with default Date and case DateTime is executable (#47888)"
-     (is (=? {:status :completed}
-             (mt/run-mbql-query
-              people
-              {:expressions {"asdfdsa"
-                             [:case
-                              [[[:= $name "Won"] [:datetime-add $created_at 0 :month]]]
-                              {:default [:datetime-add $birth_date 0 :month]}]}
-               :filter [:time-interval [:expression "asdfdsa"] -12 :month]}))))))
+    :bigquery-cloud-sdk
+    ;; Testing only whether query executes correctly, without underlying jdbc driver throwing an exception. This
+    ;; specific case was erroneous.
+    (testing "Query with case expression with default Date and case DateTime is executable (#47888)"
+      (is (=? {:status :completed}
+              (mt/run-mbql-query
+                people
+                {:expressions {"asdfdsa"
+                               [:case
+                                [[[:= $name "Won"] [:datetime-add $created_at 0 :month]]]
+                                {:default [:datetime-add $birth_date 0 :month]}]}
+                 :filter [:time-interval [:expression "asdfdsa"] -12 :month]}))))))
