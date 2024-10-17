@@ -6,6 +6,16 @@ import { t } from "ttag";
 import ChannelSetupMessage from "metabase/components/ChannelSetupMessage";
 import ModalContent from "metabase/components/ModalContent";
 import { Flex } from "metabase/ui";
+
+const formatChannelString = channels => {
+  const lastChannel = channels[channels.length - 1];
+  const restChannels = channels.slice(0, -1);
+
+  return restChannels.length > 0
+    ? `${restChannels.join(", ")} ${t` or `} ${lastChannel}`
+    : lastChannel;
+};
+
 export default class ChannelSetupModal extends Component {
   static propTypes = {
     onClose: PropTypes.func.isRequired,
@@ -26,12 +36,8 @@ export default class ChannelSetupModal extends Component {
         onClose={onClose}
         title={
           user.is_superuser
-            ? t`To send ${entityNamePlural}, you'll need to set up ${channels.join(
-                t` or `,
-              )} integration.`
-            : t`To send ${entityNamePlural}, an admin needs to set up ${channels.join(
-                t` or `,
-              )} integration.`
+            ? t`To send ${entityNamePlural}, you'll need to set up ${formatChannelString(channels)} integration.`
+            : t`To send ${entityNamePlural}, an admin needs to set up ${formatChannelString(channels)} integration.`
         }
       >
         <Flex justify="center">

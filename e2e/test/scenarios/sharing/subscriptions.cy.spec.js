@@ -90,8 +90,16 @@ describe("scenarios > dashboard > subscriptions", () => {
     it("should instruct user to connect email or slack", () => {
       openDashboardSubscriptions();
       // Look for the messaging about configuring slack and email
-      cy.findByRole("link", { name: /set up email/i });
-      cy.findByRole("link", { name: /configure Slack/i });
+      cy.findByRole("link", { name: /set up email/i }).should(
+        "have.attr",
+        "href",
+        "/admin/settings/email",
+      );
+      cy.findByRole("link", { name: /configure Slack/i }).should(
+        "have.attr",
+        "href",
+        "/admin/settings/notifications/slack",
+      );
     });
   });
 
