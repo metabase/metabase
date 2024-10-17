@@ -1,5 +1,4 @@
 import { createAction, createReducer } from "@reduxjs/toolkit";
-import { t } from "ttag";
 
 import type { EmbeddingSessionToken, FetchRequestTokenFn } from "embedding-sdk";
 import type { SdkEventHandlersConfig } from "embedding-sdk/lib/events";
@@ -55,6 +54,14 @@ export const getOrRefreshSession = createAsyncThunk(
   },
 );
 
+const safeStringify = (value: unknown) => {
+  try {
+    return JSON.stringify(value);
+  } catch (e) {
+    return value;
+  }
+};
+
 export const refreshTokenAsync = createAsyncThunk(
   REFRESH_TOKEN,
   async (url: string, { getState }): Promise<EmbeddingSessionToken | null> => {
@@ -64,16 +71,42 @@ export const refreshTokenAsync = createAsyncThunk(
       defaultGetRefreshTokenFn;
 
     try {
-      return await getRefreshToken(url);
-    } catch (errorCause) {
-      // As this function can be supplied by the SDK user,
-      // we have to handle possible errors in refreshing the token.
-      const error = new Error(t`failed to refresh the auth token`);
-      error.cause = errorCause;
+      // getRefreshToken is possibly user-provided, we should handle *any* error it could throw
+      // We should throw an error inside this try-catch, the catch will handle it by re-throwing (to make the thunk reject),
+      // logging it and making sure it's an `Error`
+      const response = await getRefreshToken(url);
 
-      setLoginStatus({ status: "error", error });
+      // if not an object throw right away, something is 100% wrong
+      if (!response || typeof response !== "object") {
+        const message = `"fetchRequestToken" must return an object with the shape {id:string, exp:number, iat:number, status:string}, got ${safeStringify(response)} instead`;
 
-      return null;
+        throw new Error(message);
+      }
+      if ("status" in response && response.status !== "ok") {
+        if ("message" in response && typeof response.message === "string") {
+          // For some errors, the BE gives us a message that explain it
+          throw new Error(response.message);
+        }
+        if ("status" in response && typeof response.status === "string") {
+          // other times it just returns an error code
+          throw new Error(
+            `Failed to refresh token, got status: ${response.status}`,
+          );
+        }
+      }
+
+      if (!("status" in response) || !("id" in response)) {
+        const message = `"fetchRequestToken" must return an object with the shape {id:string, exp:number, iat:number, status:string}, got ${safeStringify(response)} instead`;
+
+        throw new Error(message);
+      }
+      return response;
+    } catch (ex: unknown) {
+      // redux catches thrown errors to dispatch the .rejected action, we need to log them manually to show them in the browser console
+      // {cause: ex } makes the console show the original stack trace
+      console.error(new Error("Failed to refresh token.", { cause: ex }));
+
+      throw ex;
     }
   },
 );
@@ -113,26 +146,20 @@ export const sdk = createReducer(initialState, builder => {
     token: { ...state.token, loading: true },
   }));
 
-  builder.addCase(refreshTokenAsync.fulfilled, (state, action) => ({
-    ...state,
-    token: {
-      ...state.token,
+  builder.addCase(refreshTokenAsync.fulfilled, (state, action) => {
+    state.token = {
       token: action.payload,
+      loading: false,
       error: null,
-      loading: false,
-    },
-  }));
+    };
 
-  builder.addCase(refreshTokenAsync.rejected, (state, action) => ({
-    ...state,
-    isLoggedIn: false,
-    token: {
-      ...state.token,
-      token: null,
-      error: action.error,
-      loading: false,
-    },
-  }));
+    state.loginStatus = { status: "success" };
+  });
+
+  builder.addCase(refreshTokenAsync.rejected, (state, action) => {
+    const error = action.error as Error;
+    state.loginStatus = { status: "error", error };
+  });
 
   builder.addCase(setLoginStatus, (state, action) => ({
     ...state,

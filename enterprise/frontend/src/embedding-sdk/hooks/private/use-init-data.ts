@@ -79,21 +79,20 @@ export const useInitData = ({ config }: InitDataLoaderParameters) => {
             userResponse.meta.requestStatus === "rejected" ||
             siteSettingsResponse.meta.requestStatus === "rejected"
           ) {
-            dispatch(
-              setLoginStatus({
-                status: "error",
-                error: new Error(COULD_NOT_AUTHENTICATE_MESSAGE),
-              }),
-            );
+            // we should not need to dispatch anything here, the two thunks should have their own error handling
             return;
           }
 
           dispatch(setLoginStatus({ status: "success" }));
-        } catch (error) {
+        } catch (ex) {
+          const error = new Error(`${COULD_NOT_AUTHENTICATE_MESSAGE}`, {
+            cause: ex,
+          });
+          console.error(error);
           dispatch(
             setLoginStatus({
               status: "error",
-              error: new Error(COULD_NOT_AUTHENTICATE_MESSAGE),
+              error: error,
             }),
           );
         }
