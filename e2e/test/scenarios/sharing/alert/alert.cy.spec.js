@@ -30,7 +30,6 @@ describe("scenarios > alert", () => {
       visitQuestion(ORDERS_QUESTION_ID);
       openSharingMenu("Create alert");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       modal().within(() => {
         cy.findByText(
           "To send alerts, you'll need to set up email, Slack or Webhook integration.",
