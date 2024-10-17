@@ -15,8 +15,7 @@ body {
 .EmbedFrame,
 /* this is to make it work when exporting to pdfs, where the EmbedFrame is not part of the exported dom */
 .WithThemeBackground {
-  /* the dashboard background color is not set by default in the embedding sdk */
-  background-color: var(--mb-color-bg-dashboard, --mb-color-background);
+  background-color: var(--mb-color-bg-dashboard);
   border-color: var(--mb-color-border);
 }
 
