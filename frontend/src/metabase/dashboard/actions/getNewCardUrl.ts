@@ -9,6 +9,7 @@ import * as ML_Urls from "metabase-lib/v1/urls";
 import type {
   Card,
   Dashboard,
+  DatasetQuery,
   ParameterId,
   ParameterValueOrArray,
   QuestionDashboardCard,
@@ -42,26 +43,47 @@ export const getNewCardUrl = ({
 
   const previousQuestion = new Question(previousCard, metadata);
   const { isEditable } = Lib.queryDisplayInfo(previousQuestion.query());
-  const nextQuestion = isEditable
-    ? new Question(cardAfterClick, metadata)
-        .setDisplay(cardAfterClick.display || previousCard.display)
-        .setSettings(dashcard.card.visualization_settings)
-        .lockDisplay()
-    : new Question(dashcard.card, metadata).setDashboardProps({
-        dashboardId: dashboard.id,
-        dashcardId: dashcard.id,
-      });
-
   const parametersMappedToCard = getParametersMappedToDashcard(
     dashboard.parameters,
     dashcard,
   );
+
+  let nextQuestion: Question | undefined = undefined;
+
+  if (isEditable) {
+    nextQuestion = new Question(cardAfterClick, metadata);
+
+    const isDashcardTitleClick = Lib.areLegacyQueriesEqual(
+      nextCard.dataset_query as DatasetQuery,
+      previousCard.dataset_query as DatasetQuery,
+    );
+    const mightNeedFilterStage = parametersMappedToCard.some(
+      parameter => parameter.type !== "temporal-unit",
+    );
+
+    if (isDashcardTitleClick && mightNeedFilterStage) {
+      nextQuestion = nextQuestion.setQuery(
+        Lib.ensureFilterStage(nextQuestion.query()),
+      );
+    }
+
+    nextQuestion = nextQuestion
+      .setDisplay(cardAfterClick.display || previousCard.display)
+      .setSettings(dashcard.card.visualization_settings)
+      .lockDisplay();
+  } else {
+    nextQuestion = new Question(dashcard.card, metadata).setDashboardProps({
+      dashboardId: dashboard.id,
+      dashcardId: dashcard.id,
+    });
+  }
 
   // This try/catch block is a temporary workaround for metabase#43990.
   // Please remove it once the underlying issue is fixed.
   try {
     const url = ML_Urls.getUrlWithParameters(
       nextQuestion,
+      previousQuestion,
       parametersMappedToCard,
       parameterValues,
       {
@@ -80,18 +102,20 @@ export function getParametersMappedToDashcard(
   dashcard: QuestionDashboardCard,
 ): ParameterWithTarget[] {
   const { parameter_mappings } = dashcard;
-  return (parameters || [])
-    .map(parameter => {
-      const mapping = _.findWhere(parameter_mappings || [], {
-        parameter_id: parameter.id,
-      });
+  return (parameters || []).flatMap(parameter => {
+    const mapping = _.findWhere(parameter_mappings || [], {
+      parameter_id: parameter.id,
+    });
 
-      if (mapping) {
-        return {
-          ...parameter,
-          target: mapping.target,
-        };
-      }
-    })
-    .filter((parameter): parameter is ParameterWithTarget => parameter != null);
+    if (!mapping) {
+      return [];
+    }
+
+    return [
+      {
+        ...parameter,
+        target: mapping.target,
+      },
+    ];
+  });
 }

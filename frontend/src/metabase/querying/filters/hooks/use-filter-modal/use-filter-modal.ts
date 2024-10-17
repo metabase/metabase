@@ -2,23 +2,16 @@ import { useMemo, useRef, useState } from "react";
 
 import * as Lib from "metabase-lib";
 
+import { getGroupItems, hasFilters, removeFilters } from "../../utils";
+
 import { SEARCH_KEY } from "./constants";
-import {
-  appendStageIfAggregated,
-  getGroupItems,
-  hasFilters,
-  isSearchActive,
-  removeFilters,
-  searchGroupItems,
-} from "./utils";
+import { isSearchActive, searchGroupItems } from "./utils";
 
 export const useFilterModal = (
   initialQuery: Lib.Query,
   onSubmit: (newQuery: Lib.Query) => void,
 ) => {
-  const [query, setQuery] = useState(() =>
-    appendStageIfAggregated(initialQuery),
-  );
+  const [query, setQuery] = useState(() => Lib.ensureFilterStage(initialQuery));
   const queryRef = useRef(query);
   const [version, setVersion] = useState(1);
   const [isChanged, setIsChanged] = useState(false);
