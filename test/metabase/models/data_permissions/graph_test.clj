@@ -114,6 +114,14 @@
 
           {group-id-1
            {database-id-1
+            {:create-queries {"PUBLIC" {table-id-1 :query-builder-and-native}}}}}
+          {group-id-1
+           {database-id-1
+            {:perms/create-queries {"PUBLIC" {table-id-1 :query-builder-and-native}}
+             :perms/view-data {"PUBLIC" {table-id-1 :unrestricted}}}}}
+
+          {group-id-1
+           {database-id-1
             {:create-queries {"PUBLIC" {table-id-1 :no}}}}}
           {group-id-1
            {database-id-1

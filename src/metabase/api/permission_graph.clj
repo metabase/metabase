@@ -56,7 +56,7 @@
 (def ^:private Perms
   "Perms that get reused for TablePerms and SchemaPerms"
   [:enum
-   :all :segmented :none :full :limited :unrestricted :legacy-no-self-service :sandboxed :query-builder :no :blocked])
+   :all :segmented :none :full :limited :unrestricted :legacy-no-self-service :sandboxed :query-builder-and-native :query-builder :no :blocked])
 
 (def ^:private TablePerms
   [:or Perms [:map
@@ -114,7 +114,6 @@
      [:map
       [:view-data {:optional true} Schemas]
       [:create-queries {:optional true} Schemas]
-      [:data {:optional true} "StrictDataPerms"]
       [:download {:optional true} "StrictDataPerms"]
       [:data-model {:optional true} "StrictDataPerms"]
       [:details {:optional true} [:enum :yes :no]]]
@@ -128,7 +127,7 @@
   [:map
    [:groups [:map-of GroupId [:maybe StrictDbGraph]]]])
 
-(def StrictApiPermissionsGraph
+(def ApiDataPermissionsGraphph
   "Top level strict data graph schema expected over the API. Includes revision ID for avoiding concurrent updates."
   [:map
    [:groups [:map-of GroupId [:maybe StrictDbGraph]]]
