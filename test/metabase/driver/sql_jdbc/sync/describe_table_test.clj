@@ -153,7 +153,7 @@
   (testing "common metadata attributes"
     (mt/test-drivers (mt/normal-drivers-with-feature :actions)
       (is (=?
-           [[0 false true true]
+           [[0 false true (driver/database-supports? driver/*driver* :metadata/key-constraints (mt/db))]
             [1 false false false]
             [2 false false false]
             [3 false false false]
