@@ -230,6 +230,7 @@
      (fn [[idx ^Field field]]
        (let [database-position (or database-position idx)
              field-name (.getName field)
+             repeated? (= Field$Mode/REPEATED (.getMode field))
              [database-type base-type] (field->database+base-type field)]
          (into
           (cond-> {:name              field-name
@@ -237,10 +238,10 @@
                    :base-type         base-type
                    :database-position database-position}
             nfc-path (assoc :nfc-path nfc-path)
-            (= :type/Dictionary base-type) (assoc :nested-fields (set (fields->metabase-field-info
-                                                                       database-position
-                                                                       (conj (vec nfc-path) field-name)
-                                                                       (.getSubFields field)))))))))
+            (and (not repeated?) (= :type/Dictionary base-type)) (assoc :nested-fields (set (fields->metabase-field-info
+                                                                                             database-position
+                                                                                             (conj (vec nfc-path) field-name)
+                                                                                             (.getSubFields field)))))))))
     (m/indexed fields))))
 
 (def ^:private partitioned-time-field-name
@@ -301,7 +302,7 @@
                                   (let [new-path ((fnil conj []) nfc-path (:name col))
                                         nested-fields (get-in nested-column-lookup [(:table-name col) new-path])]
                                     (cond-> (assoc col :database-position root-database-position)
-                                      nested-fields
+                                      (and (= :type/Dictionary (:base-type col)) nested-fields)
                                       (assoc :nested-fields (into #{}
                                                                   (map #(maybe-add-nested-fields % new-path root-database-position))
                                                                   nested-fields)))))
