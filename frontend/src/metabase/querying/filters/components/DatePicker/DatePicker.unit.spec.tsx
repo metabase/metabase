@@ -8,13 +8,13 @@ import type { DatePickerValue } from "./types";
 interface SetupOpts {
   value?: DatePickerValue;
   isNew?: boolean;
-  canUseRelativeOffsets?: boolean;
+  canSetRelativeOffset?: boolean;
 }
 
 function setup({
   value,
   isNew = false,
-  canUseRelativeOffsets = false,
+  canSetRelativeOffset = false,
 }: SetupOpts = {}) {
   const onChange = jest.fn();
 
@@ -22,7 +22,7 @@ function setup({
     <DatePicker
       value={value}
       isNew={isNew}
-      canUseRelativeOffsets={canUseRelativeOffsets}
+      canSetRelativeOffset={canSetRelativeOffset}
       onChange={onChange}
     />,
   );

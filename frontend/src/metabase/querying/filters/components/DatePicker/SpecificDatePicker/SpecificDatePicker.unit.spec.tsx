@@ -11,6 +11,7 @@ interface SetupOpts {
   value?: SpecificDatePickerValue;
   availableOperators?: ReadonlyArray<DatePickerOperator>;
   isNew?: boolean;
+  canSetTime?: boolean;
 }
 
 const userEvent = _userEvent.setup({
@@ -21,6 +22,7 @@ function setup({
   value,
   availableOperators = DATE_PICKER_OPERATORS,
   isNew = false,
+  canSetTime = false,
 }: SetupOpts = {}) {
   const onChange = jest.fn();
   const onBack = jest.fn();
@@ -30,6 +32,7 @@ function setup({
       value={value}
       availableOperators={availableOperators}
       isNew={isNew}
+      canSetTime={canSetTime}
       onChange={onChange}
       onBack={onBack}
     />,

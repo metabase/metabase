@@ -20,13 +20,18 @@ export function DateFilterPicker({
     return Lib.displayInfo(query, stageIndex, column);
   }, [query, stageIndex, column]);
 
-  const { value, availableOperators, availableUnits, getFilterClause } =
-    useDateFilter({
-      query,
-      stageIndex,
-      column,
-      filter,
-    });
+  const {
+    value,
+    availableOperators,
+    availableUnits,
+    canSetTime,
+    getFilterClause,
+  } = useDateFilter({
+    query,
+    stageIndex,
+    column,
+    filter,
+  });
 
   const handleChange = (value: DatePickerValue) => {
     onChange(getFilterClause(value));
@@ -45,7 +50,8 @@ export function DateFilterPicker({
             </PopoverBackButton>
           )
         }
-        canUseRelativeOffsets
+        canSetTime={canSetTime}
+        canSetRelativeOffset
         isNew={isNew}
         onChange={handleChange}
       />

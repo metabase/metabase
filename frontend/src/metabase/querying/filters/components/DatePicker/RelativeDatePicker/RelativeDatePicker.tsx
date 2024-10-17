@@ -18,16 +18,16 @@ import {
 
 interface RelativeDatePickerProps {
   value: RelativeDatePickerValue | undefined;
-  canUseRelativeOffsets: boolean;
   isNew: boolean;
+  canSetRelativeOffset: boolean;
   onChange: (value: RelativeDatePickerValue) => void;
   onBack: () => void;
 }
 
 export function RelativeDatePicker({
   value: initialValue,
-  canUseRelativeOffsets,
   isNew,
+  canSetRelativeOffset,
   onChange,
   onBack,
 }: RelativeDatePickerProps) {
@@ -71,7 +71,7 @@ export function RelativeDatePicker({
             <DateIntervalPicker
               value={value}
               isNew={isNew}
-              canUseRelativeOffsets={canUseRelativeOffsets}
+              canSetRelativeOffset={canSetRelativeOffset}
               onChange={setValue}
               onSubmit={handleSubmit}
             />

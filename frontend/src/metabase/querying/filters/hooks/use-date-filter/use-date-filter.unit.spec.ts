@@ -104,6 +104,34 @@ describe("useDateFilter", () => {
     expect(availableOperators.length).toBeGreaterThan(0);
     expect(availableUnits.length).toBe(0);
   });
+
+  it("should allow to set time for datetime columns", () => {
+    const query = createQuery();
+    const findColumn = columnFinder(query, Lib.filterableColumns(query, -1));
+    const column = findColumn("PEOPLE", "CREATED_AT");
+    const { result } = renderHook(() =>
+      useDateFilter({
+        query,
+        stageIndex,
+        column,
+      }),
+    );
+    expect(result.current.canSetTime).toBe(true);
+  });
+
+  it("should not allow to set time for date only columns", () => {
+    const query = createQuery();
+    const findColumn = columnFinder(query, Lib.filterableColumns(query, -1));
+    const column = findColumn("PEOPLE", "BIRTH_DATE");
+    const { result } = renderHook(() =>
+      useDateFilter({
+        query,
+        stageIndex,
+        column,
+      }),
+    );
+    expect(result.current.canSetTime).toBe(false);
+  });
 });
 
 interface TestCase {

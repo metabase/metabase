@@ -14,6 +14,7 @@ const END_DATE_TIME = new Date(2020, 1, 9, 20, 30);
 interface SetupOpts {
   value?: DateRangePickerValue;
   isNew?: boolean;
+  canSetTime?: boolean;
 }
 
 const userEvent = _userEvent.setup({
@@ -23,6 +24,7 @@ const userEvent = _userEvent.setup({
 function setup({
   value = { dateRange: [START_DATE, END_DATE], hasTime: false },
   isNew = false,
+  canSetTime = false,
 }: SetupOpts = {}) {
   const onChange = jest.fn();
   const onSubmit = jest.fn();
@@ -31,6 +33,7 @@ function setup({
     <DateRangePicker
       value={value}
       isNew={isNew}
+      canSetTime={canSetTime}
       onChange={onChange}
       onSubmit={onSubmit}
     />,
@@ -65,6 +68,7 @@ describe("SingleDatePicker", () => {
         dateRange: [START_DATE_TIME, END_DATE_TIME],
         hasTime: true,
       },
+      canSetTime: true,
     });
 
     const calendars = screen.getAllByRole("table");
@@ -100,6 +104,7 @@ describe("SingleDatePicker", () => {
         dateRange: [START_DATE_TIME, END_DATE],
         hasTime: true,
       },
+      canSetTime: true,
     });
 
     const input = screen.getByLabelText("Start date");
@@ -135,6 +140,7 @@ describe("SingleDatePicker", () => {
         dateRange: [START_DATE, END_DATE_TIME],
         hasTime: true,
       },
+      canSetTime: true,
     });
 
     const input = screen.getByLabelText("End date");
@@ -149,7 +155,7 @@ describe("SingleDatePicker", () => {
   });
 
   it("should be able to add time", async () => {
-    const { onChange, onSubmit } = setup();
+    const { onChange, onSubmit } = setup({ canSetTime: true });
     expect(screen.queryByLabelText("Start time")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("End time")).not.toBeInTheDocument();
 
@@ -167,6 +173,7 @@ describe("SingleDatePicker", () => {
         dateRange: [START_DATE_TIME, END_DATE_TIME],
         hasTime: true,
       },
+      canSetTime: true,
     });
 
     const input = screen.getByLabelText("Start time");
@@ -186,6 +193,7 @@ describe("SingleDatePicker", () => {
         dateRange: [START_DATE_TIME, END_DATE_TIME],
         hasTime: true,
       },
+      canSetTime: true,
     });
 
     const input = screen.getByLabelText("End time");
@@ -205,6 +213,7 @@ describe("SingleDatePicker", () => {
         dateRange: [START_DATE_TIME, END_DATE_TIME],
         hasTime: true,
       },
+      canSetTime: true,
     });
 
     await userEvent.click(screen.getByText("Remove time"));
@@ -214,5 +223,16 @@ describe("SingleDatePicker", () => {
       hasTime: false,
     });
     expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it("should not allow to add time when it is not supported", () => {
+    setup({
+      value: {
+        dateRange: [START_DATE, END_DATE],
+        hasTime: false,
+      },
+      canSetTime: false,
+    });
+    expect(screen.queryByText("Add time")).not.toBeInTheDocument();
   });
 });

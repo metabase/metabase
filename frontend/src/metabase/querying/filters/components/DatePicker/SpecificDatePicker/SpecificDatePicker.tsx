@@ -25,6 +25,7 @@ interface SpecificDatePickerProps {
   value?: SpecificDatePickerValue;
   availableOperators: ReadonlyArray<DatePickerOperator>;
   isNew: boolean;
+  canSetTime: boolean;
   onChange: (value: SpecificDatePickerValue) => void;
   onBack: () => void;
 }
@@ -33,6 +34,7 @@ export function SpecificDatePicker({
   value: initialValue,
   availableOperators,
   isNew,
+  canSetTime,
   onChange,
   onBack,
 }: SpecificDatePickerProps) {
@@ -83,6 +85,7 @@ export function SpecificDatePicker({
             <DateRangePicker
               value={{ dateRange: value.values, hasTime: value.hasTime }}
               isNew={isNew}
+              canSetTime={canSetTime}
               onChange={handleDateRangeChange}
               onSubmit={handleSubmit}
             />
@@ -90,6 +93,7 @@ export function SpecificDatePicker({
             <SingleDatePicker
               value={{ date: getDate(value), hasTime: value.hasTime }}
               isNew={isNew}
+              canSetTime={canSetTime}
               onChange={handleDateChange}
               onSubmit={handleSubmit}
             />

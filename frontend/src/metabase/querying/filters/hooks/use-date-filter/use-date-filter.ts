@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-import type * as Lib from "metabase-lib";
+import * as Lib from "metabase-lib";
 
 import type { DatePickerValue } from "../../components/DatePicker";
 
@@ -40,6 +40,7 @@ export function useDateFilter({
     value,
     availableOperators,
     availableUnits,
+    canSetTime: !Lib.isDateWithoutTime(column),
     getFilterClause: (value: DatePickerValue) =>
       getFilterClause(query, stageIndex, column, value),
   };
