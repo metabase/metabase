@@ -210,7 +210,7 @@ export const WebhookForm = ({
             radius="0.5rem"
           >
             <Text>{jt`You can send the payload of any Alert to this destination whenever the Alert is triggered. ${(
-              <ExternalLink href={docsUrl}>
+              <ExternalLink key="link" href={docsUrl}>
                 {t`Learn about Alerts`}
               </ExternalLink>
             )}`}</Text>
