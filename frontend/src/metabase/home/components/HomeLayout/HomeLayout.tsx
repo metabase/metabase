@@ -66,7 +66,6 @@ export const HomeLayout = () => {
       setClient(clientInstance);
     };
     initializeClient();
-    toast.success('Feedback submitted!')
   }, []);
 
   const dispatch = useDispatch();
