@@ -44,12 +44,6 @@
           (uses-default-describe-fields? driver)))
     (descendants driver/hierarchy :sql-jdbc))))
 
-(deftest ^:parallel describe-fields-nested-field-columns-test
-  (testing (str "Drivers that support describe-fields should not support the nested field columns feature."
-                "It is possible to support both in the future but this has not been implemented yet.")
-    (is (empty? (filter #(driver.u/supports? % :describe-fields nil)
-                        (mt/normal-drivers-with-feature :nested-field-columns))))))
-
 (deftest ^:parallel describe-table-test
   (mt/test-driver :h2
     (assert (uses-default-describe-table? :h2)
@@ -148,6 +142,33 @@
                                             :schema-names [(:schema table)]
                                             :table-names [(:name table)]))
                (:fields (driver/describe-table driver db table))))))
+
+(deftest describe-fields-shared-attributes-test
+  (testing "common metadata attributes"
+    (mt/test-drivers (mt/normal-drivers-with-feature :actions)
+      (is (=?
+           [[0 false true (driver/database-supports? driver/*driver* :metadata/key-constraints (mt/db))]
+            [1 false false false]
+            [2 false false false]
+            [3 false false false]
+            [4 false false false]
+            [5 false false false]]
+           (sort-by
+            :first
+            (map (juxt :database-position :database-required :database-is-auto-increment (comp boolean :pk?))
+                 (describe-fields-for-table (mt/db) (t2/select-one Table :id (mt/id :venues))))))))
+    (mt/test-drivers (mt/normal-drivers-without-feature :actions)
+      (is (=?
+           [[0 (driver/database-supports? driver/*driver* :metadata/key-constraints (mt/db))]
+            [1 false]
+            [2 false]
+            [3 false]
+            [4 false]
+            [5 false]]
+           (sort-by
+            :first
+            (map (juxt :database-position (comp boolean :pk?))
+                 (describe-fields-for-table (mt/db) (t2/select-one Table :id (mt/id :venues))))))))))
 
 (deftest database-types-fallback-test
   (mt/test-drivers (apply disj (sql-jdbc-drivers-using-default-describe-table-or-fields-impl)
