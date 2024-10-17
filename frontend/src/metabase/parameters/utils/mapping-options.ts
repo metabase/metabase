@@ -46,7 +46,6 @@ function buildStructuredQuerySectionOptions(
   stageIndex: number,
   group: Lib.ColumnGroup,
   columns: Lib.ColumnMetadata[],
-  parameter: Parameter | undefined,
 ): StructuredQuerySectionOption[] {
   const groupInfo = Lib.displayInfo(query, stageIndex, group);
 
@@ -57,7 +56,7 @@ function buildStructuredQuerySectionOptions(
       sectionName: getGroupName(groupInfo, stageIndex) ?? t`Summaries`,
       name: columnInfo.displayName,
       icon: getColumnIcon(column),
-      target: buildColumnTarget(query, stageIndex, column, parameter),
+      target: buildColumnTarget(query, stageIndex, column),
       isForeign: columnInfo.isFromJoin || columnInfo.isImplicitlyJoinable,
     };
   });
@@ -175,7 +174,6 @@ export function getParameterMappingOptions(
             stageIndex,
             group,
             Lib.getColumnsFromColumnGroup(group),
-            parameter ?? undefined,
           ),
         );
       },
