@@ -49,16 +49,16 @@
          (lib.metadata/bulk-metadata-or-throw query :metadata/card)
          (into {}
                (map (fn [card-metadata]
-                      (let [unprocessed-metric-query (lib/query query (:dataset-query card-metadata))
-                            [_ {aggregation-name :name}] (first (lib/aggregations unprocessed-metric-query))
-                            metric-query (lib.convert/->pMBQL
+                      (let [metric-query (lib.convert/->pMBQL
                                           ((requiring-resolve 'metabase.query-processor.preprocess/preprocess)
-                                           unprocessed-metric-query))
+                                           (lib/query query (:dataset-query card-metadata))))
                             metric-name (:name card-metadata)]
                         (if-let [aggregation (first (lib/aggregations metric-query))]
                           [(:id card-metadata)
                            {:query metric-query
-                            :aggregation (assoc-in aggregation [1 :name] (or aggregation-name metric-name))
+                            ;; Aggregation inherits `:name` of original aggregation used in a metric query. The original
+                            ;; name is added in `preprocess` above if metric is defined using unnamed aggregation.
+                            :aggregation aggregation
                             :name metric-name}]
                           (throw (ex-info "Source metric missing aggregation" {:source metric-query})))))))
          not-empty)))
