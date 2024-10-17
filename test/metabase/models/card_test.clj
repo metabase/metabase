@@ -662,7 +662,7 @@
                    :model/Card card2 {:name "derived card"
                                       :dataset_query {:query {:source-table (str "card__" (:id card1))}}}]
       (is (empty? (serdes/descendants "Card" (:id card1))))
-      (is (= #{["Card" (:id card1)]}
+      (is (= {["Card" (:id card1)] {"Card" (:id card2)}}
              (serdes/descendants "Card" (:id card2)))))))
 
 (deftest ^:parallel descendants-test-3
@@ -676,7 +676,7 @@
                                                                :snippet-name "snippet"
                                                                :snippet-id   (:id snippet)}}
                                      :query "select * from products where {{snippet}}"}}}]
-      (is (= #{["NativeQuerySnippet" (:id snippet)]}
+      (is (= {["NativeQuerySnippet" (:id snippet)] {"Card" (:id card)}}
              (serdes/descendants "Card" (:id card)))))))
 
 (deftest ^:parallel descendants-test-4
@@ -687,7 +687,7 @@
                                                     :type                 "id"
                                                     :values_source_type   "card"
                                                     :values_source_config {:card_id (:id card1)}}]}]
-      (is (= #{["Card" (:id card1)]}
+      (is (= {["Card" (:id card1)] {"Card" (:id card2)}}
              (serdes/descendants "Card" (:id card2)))))))
 
 (deftest ^:parallel extract-test

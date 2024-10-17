@@ -967,7 +967,7 @@
                                             :type          :query
                                             :dataset_query (mt/mbql-query users {:limit 1})
                                             :database_id   (:id db)})]
-            (reset! serialized (into [] (serdes.extract/extract {})))
+            (reset! serialized (into [] (serdes.extract/extract {:no-settings true})))
             (let [action-serialized (first (filter (fn [{[{:keys [model id]}] :serdes/meta}]
                                                      (and (= model "Action") (= id eid)))
                                                    @serialized))]

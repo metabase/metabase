@@ -893,17 +893,16 @@
         template-tags      (some->> card :dataset_query :native :template-tags vals (keep :card-id))
         parameters-card-id (some->> card :parameters (keep (comp :card_id :values_source_config)))
         snippets           (some->> card :dataset_query :native :template-tags vals (keep :snippet-id))]
-    (set
-     (concat
-      (when (and (string? source-table)
-                 (str/starts-with? source-table "card__"))
-        [["Card" (parse-long (subs source-table 6))]])
-      (for [card-id template-tags]
-        ["Card" card-id])
-      (for [card-id parameters-card-id]
-        ["Card" card-id])
-      (for [snippet-id snippets]
-        ["NativeQuerySnippet" snippet-id])))))
+    (into {} (concat
+              (when (and (string? source-table)
+                         (str/starts-with? source-table "card__"))
+                {["Card" (parse-long (subs source-table 6))] {"Card" id}})
+              (for [card-id template-tags]
+                {["Card" card-id] {"Card" id}})
+              (for [card-id parameters-card-id]
+                {["Card" card-id] {"Card" id}})
+              (for [snippet-id snippets]
+                {["NativeQuerySnippet" snippet-id] {"Card" id}})))))
 
 ;;; ------------------------------------------------ Audit Log --------------------------------------------------------
 
