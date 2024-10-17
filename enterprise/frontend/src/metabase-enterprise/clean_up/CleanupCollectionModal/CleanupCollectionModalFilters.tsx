@@ -31,7 +31,7 @@ export const CleanupCollectionModalFilters = ({
       {c("{0} is a duration of time (e.g.: 2 months)").jt`Not used in over ${(
         <Select
           key="select"
-          icon={<Icon name="calendar" />}
+          leftSection={<Icon name="calendar" />}
           data={dateFilterOptions}
           value={dateFilter}
           onChange={option => {

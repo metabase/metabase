@@ -1,11 +1,6 @@
-import { Input, InputWrapper, getSize, rem } from "@mantine/core";
+import { Input, InputWrapper, rem } from "@mantine/core";
 
 import Styles from "./Input.module.css";
-
-const SIZES = {
-  xs: rem(32),
-  md: rem(40),
-};
 
 const PADDING = 12;
 const DEFAULT_ICON_WIDTH = 40;
@@ -18,18 +13,12 @@ export const inputOverrides = {
       size: "md",
     },
     classNames: {
+      wrapper: Styles.wrapper,
       input: Styles.input,
       section: Styles.section,
     },
-    vars: (
-      theme,
-      { size, radius, multiline, leftSection, rightSection, variant },
-    ) => ({
+    vars: (theme, { radius, leftSection, rightSection, variant }) => ({
       wrapper: {
-        "--input-height": multiline
-          ? "auto"
-          : getSize({ size: size, sizes: SIZES }),
-        "--input-min-height": getSize({ size: size, sizes: SIZES }),
         "--input-border-radius": radius ?? theme.radius.xs,
         "--input-padding-inline-start": leftSection
           ? rem(DEFAULT_ICON_WIDTH - BORDER_WIDTH)
@@ -41,7 +30,6 @@ export const inputOverrides = {
           variant === "unstyled"
             ? rem(UNSTYLED_ICON_WIDTH)
             : rem(DEFAULT_ICON_WIDTH),
-        "--inset-inline-end": 0,
       },
     }),
   }),
@@ -61,11 +49,6 @@ export const inputOverrides = {
     classNames: {
       label: Styles.label,
     },
-    vars: (theme, { size }) => ({
-      label: {
-        "--input-label-size": getSize({ size, sizes: theme.fontSizes }),
-      },
-    }),
   }),
   // styles: (
   //   theme,
