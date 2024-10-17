@@ -1,6 +1,7 @@
 (ns metabase.query-processor.middleware.metrics
   (:require
    [medley.core :as m]
+   [metabase.analytics.prometheus :as prometheus]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -8,7 +9,6 @@
    [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk :as lib.walk]
    [metabase.util :as u]
-   [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
 (defn- replace-metric-aggregation-refs [query stage-number lookup]
@@ -49,16 +49,16 @@
          (lib.metadata/bulk-metadata-or-throw query :metadata/card)
          (into {}
                (map (fn [card-metadata]
-                      (let [unprocessed-metric-query (lib/query query (:dataset-query card-metadata))
-                            [_ {aggregation-name :name}] (first (lib/aggregations unprocessed-metric-query))
-                            metric-query (lib.convert/->pMBQL
+                      (let [metric-query (lib.convert/->pMBQL
                                           ((requiring-resolve 'metabase.query-processor.preprocess/preprocess)
-                                           unprocessed-metric-query))
+                                           (lib/query query (:dataset-query card-metadata))))
                             metric-name (:name card-metadata)]
                         (if-let [aggregation (first (lib/aggregations metric-query))]
                           [(:id card-metadata)
                            {:query metric-query
-                            :aggregation (assoc-in aggregation [1 :name] (or aggregation-name metric-name))
+                            ;; Aggregation inherits `:name` of original aggregation used in a metric query. The original
+                            ;; name is added in `preprocess` above if metric is defined using unnamed aggregation.
+                            :aggregation aggregation
                             :name metric-name}]
                           (throw (ex-info "Source metric missing aggregation" {:source metric-query})))))))
          not-empty)))
@@ -114,7 +114,7 @@
                                  new-joins)]
     (lib.util/update-query-stage query-with-joins agg-stage-index add-join-aliases source-field->join-alias)))
 
-(defn splice-compatible-metrics
+(defn- splice-compatible-metrics
   "Splices in metric definitions that are compatible with the query."
   [query path expanded-stages]
   (let [agg-stage-index (aggregation-stage-index expanded-stages)]
@@ -230,6 +230,11 @@
       :else
       expanded-stages)))
 
+(defn- find-first-metric
+  [query]
+  (lib.util.match/match-one query
+    [:metric _ _] &match))
+
 (defn adjust
   "Looks for `[:metric {} id]` clause references and adjusts the query accordingly.
 
@@ -245,14 +250,20 @@
    2. Metric source cards can reference themselves.
       A query built from a `:source-card` of `:type :metric` can reference itself."
   [query]
-  (let [query (lib.walk/walk
-               query
-               (fn [_query path-type path stage-or-join]
-                 (when (= path-type :lib.walk/join)
-                   (update stage-or-join :stages #(adjust-metric-stages query path %)))))]
-    (u/prog1
-      (update query :stages #(adjust-metric-stages query nil %))
-      (when-let [metric (lib.util.match/match-one <>
-                          [:metric _ _] &match)]
-        (log/warn "Failed to replace metric"
-                  (pr-str {:metric metric}))))))
+  (if-not (find-first-metric query)
+    query
+    (do
+      (prometheus/inc! :metabase-query-processor/metrics)
+      (try
+        (let [query (lib.walk/walk
+                     query
+                     (fn [_query path-type path stage-or-join]
+                       (when (= path-type :lib.walk/join)
+                         (update stage-or-join :stages #(adjust-metric-stages query path %)))))]
+          (u/prog1
+            (update query :stages #(adjust-metric-stages query nil %))
+            (when-let [metric (find-first-metric <>)]
+              (throw (ex-info "Failed to replace metric" {:metric metric})))))
+        (catch Throwable e
+          (prometheus/inc! :metabase-query-processor/metric-errors)
+          (throw e))))))
