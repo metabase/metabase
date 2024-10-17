@@ -946,17 +946,32 @@ describeEE("scenarios > dashboard > dashboard cards > click behavior", () => {
         "have.text",
         "Created At is Jul 1–31, 2022",
       );
-      cy.location().should(({ hash, pathname }) => {
-        expect(pathname).to.equal("/question");
 
-        const card = deserializeCardFromUrl(hash);
-        expect(card.name).to.deep.equal(TARGET_QUESTION.name);
-        expect(card.display).to.deep.equal(TARGET_QUESTION.display);
-        expect(card.dataset_query.query).to.deep.equal({
-          ...TARGET_QUESTION.query,
-          filter: QUERY_FILTER_CREATED_AT,
-        });
-      });
+      cy.location("pathname").should("equal", "/question");
+      cy.findByTestId("app-bar").should(
+        "contain.text",
+        `Started from ${TARGET_QUESTION.name}`,
+      );
+
+      cy.findByTestId("viz-type-button").click();
+      cy.findByTestId("sidebar-content")
+        .findByTestId("Line-container")
+        .should("have.attr", "aria-selected", "true");
+      cy.findByTestId("viz-type-button").click();
+
+      openNotebook();
+
+      getNotebookStep("data").findByText("Orders").should("be.visible");
+      getNotebookStep("filter")
+        .findByText("Created At is Jul 1–31, 2022")
+        .should("be.visible");
+      getNotebookStep("summarize").findByText("Count").should("be.visible");
+      getNotebookStep("summarize")
+        .findByText("Created At: Month")
+        .should("be.visible");
+      getNotebookStep("limit")
+        .findByPlaceholderText("Enter a limit")
+        .should("have.value", "5");
 
       cy.go("back");
       testChangingBackToDefaultBehavior();
