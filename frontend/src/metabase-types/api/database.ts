@@ -55,7 +55,6 @@ export interface Database extends DatabaseData {
   uploads_schema_name: string | null;
   uploads_table_prefix: string | null;
   is_audit?: boolean;
-  company_name?: string;
   // Only appears in  GET /api/database/:id
   "can-manage"?: boolean;
   tables?: Table[];

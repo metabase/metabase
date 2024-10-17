@@ -949,3 +949,21 @@ See [fonts](../configuring-metabase/fonts.md).")
   :export?    true
   :type       :integer
   :doc false)
+
+(defsetting langchain-url
+  (deferred-tru "URL of the Langchain API.")
+  :visibility :authenticated
+  :type       :string
+  :audit      :getter
+  :default    (let [url (env/env :mb-langchain-url)]
+                (println "Setting LANGCHAIN_URL: " url)
+                url))
+
+(defsetting langchain-key
+  (deferred-tru "API key for Langchain.")
+  :visibility :authenticated
+  :type       :string
+  :audit      :getter
+  :default    (let [key (env/env :mb-langchain-key)]
+                (println "Setting LANGCHAIN_KEY: " key)
+                key))

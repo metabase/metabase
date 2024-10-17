@@ -1,5 +1,3 @@
-import type { ColorName } from "metabase/lib/colors/types";
-import type { IconName, IconProps } from "metabase/ui";
 import type {
   PaginationRequest,
   PaginationResponse,

@@ -167,3 +167,12 @@
 (def ^:dynamic *request-id*
   "A unique identifier for the current request. This is bound by `metabase.server.middleware.request-id/wrap-request-id`."
   nil)
+
+
+(def langchain-url
+  "URL for the Langchain API, retrieved from the environment variable MB_LANGCHAIN_URL."
+  (config-str :mb-langchain-url))
+
+(def langchain-key
+  "API key for the Langchain service, retrieved from the environment variable MB_LANGCHAIN_KEY."
+  (config-str :mb-langchain-key))

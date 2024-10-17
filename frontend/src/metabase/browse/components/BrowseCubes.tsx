@@ -1,16 +1,15 @@
 import { t } from "ttag";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 import NoResults from "assets/img/no_results.svg";
 import {
   useGetCubeDataQuery,
   useUpdateCubeDataMutation,
   useSyncDatabaseSchemaMutation,
-  useListDatabasesQuery,
   skipToken,
 } from "metabase/api";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import { Button, Box, Input } from "metabase/ui"; // Import Input component
+import { Button, Box, Input } from "metabase/ui";
 import { getUser } from "metabase/selectors/user";
 import {
   BrowseContainer,
@@ -22,21 +21,20 @@ import { CubeResult, CubeTable } from "./CubeTable";
 import { SingleCube } from "./CubeSql";
 import { CubeHeader } from "./CubeHeader";
 import { BrowseHeaderContent } from "./BrowseHeader.styled";
-import { CubeDataItem, GetCubeDataRequest } from "metabase-types/api";
+import { CubeDataItem } from "metabase-types/api";
 import { CubePreviewTable } from "metabase/components/Cube/CubePreviewTable";
 import { useSelector } from "react-redux";
 import {
   useListCubesRequestDetailsQuery,
   useUpdateCubesRequestDetailsMutation,
 } from "metabase/api/cubes_requests";
+import { useSetting } from "metabase/common/hooks";
 
 export const BrowseCubes = () => {
-  const {
-    data: dbData,
-    isLoading: dbLoading,
-    error: dbError,
-  } = useListDatabasesQuery();
-
+  const siteName = useSetting("site-name");
+  const formattedSiteName = siteName
+    ? siteName.replace(/\s+/g, "_").toLowerCase()
+    : "";
   const [updateCubesRequestDetails] = useUpdateCubesRequestDetailsMutation(); // Initialize the mutation hook
 
   const user = useSelector(getUser);
@@ -49,22 +47,11 @@ export const BrowseCubes = () => {
     refetch: refetchCubeRequests, // Add refetch to trigger fetch again
   } = useListCubesRequestDetailsQuery(); // Use the hook directly
 
-  const databases = dbData?.data;
-  const companyName = useMemo(() => {
-    if (databases) {
-      const cubeDatabase = databases.find(
-        database => database.is_cube === true,
-      );
-      return cubeDatabase ? cubeDatabase.company_name : "";
-    }
-    return "";
-  }, [databases]);
-
   const {
     data: cubeDataResponse,
     isLoading,
     error,
-  } = useGetCubeDataQuery(companyName ? { projectName: companyName } : skipToken); 
+  } = useGetCubeDataQuery(formattedSiteName ? { projectName: formattedSiteName } : skipToken);
   const [updateCubeData] = useUpdateCubeDataMutation();
   const [syncSChema] = useSyncDatabaseSchemaMutation();
   const [dbId, setDbId] = useState<number | null>(null);

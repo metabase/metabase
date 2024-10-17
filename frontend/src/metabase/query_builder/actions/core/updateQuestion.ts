@@ -29,8 +29,7 @@ import { onCloseQuestionInfo, setQueryBuilderMode, setUIControls } from "../ui";
 
 import { computeQuestionPivotTable } from "./pivot-table";
 import { getAdHocQuestionWithVizSettings } from "./utils";
-import { useMemo } from "react";
-import { useListDatabasesQuery } from "metabase/api";
+import { useSetting } from "metabase/common/hooks";
 import Databases from "metabase/entities/databases";
 
 function shouldTemplateTagEditorBeVisible({
@@ -205,13 +204,17 @@ export const setArchivedQuestion = createThunkAction(
       const assistant_url = process.env.REACT_APP_WEBSOCKET_SERVER;
       const ws = new WebSocket(assistant_url!);
       const databases = Databases.selectors.getList(getState());  
+      const siteName = useSetting("site-name");
+      const formattedSiteName = siteName
+        ? siteName.replace(/\s+/g, "_").toLowerCase()
+        : "";
       let companyName = '';
       let cubeDatabase = null;
   
       if (databases) {
         cubeDatabase = databases.find((database: { is_cube: boolean; }) => database.is_cube === true);
         if (cubeDatabase) {
-          companyName = cubeDatabase.company_name!;
+          companyName = formattedSiteName;
         }
       }
   

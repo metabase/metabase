@@ -1,11 +1,10 @@
 import { t } from "ttag";
-import { useEffect, useMemo, useState } from "react";
+import { useState } from "react";
 
 import NoResults from "assets/img/no_results.svg";
 import {
   skipToken,
   useGetCubeDataQuery,
-  useListDatabasesQuery,
 } from "metabase/api";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { Button, Box } from "metabase/ui";
@@ -17,33 +16,21 @@ import {
   BrowseSection,
   CenteredEmptyState,
 } from "./BrowseContainer.styled";
-import { BrowseSemanticHeader } from "./BrowseSemanticHeader";
 import { SemanticTable } from "./SemanticTable";
 import { MaybeItemLinkDataMap } from "metabase/components/ItemsTable/BaseItemsTable.styled";
-import { GetCubeDataRequest } from "metabase-types/api";
+
+import { useSetting } from "metabase/common/hooks";
 
 export const BrowseSemanticLayerTable = () => {
-  const {
-    data: dbData,
-    isLoading: dbLoading,
-    error: dbError,
-  } = useListDatabasesQuery();
-  const databases = dbData?.data;
-  const companyName = useMemo(() => {
-    if (databases) {
-      const cubeDatabase = databases.find(
-        database => database.is_cube === true,
-      );
-      return cubeDatabase ? cubeDatabase.company_name : "";
-    }
-    return "";
-  }, [databases]);
-
+  const siteName = useSetting("site-name");
+  const formattedSiteName = siteName
+    ? siteName.replace(/\s+/g, "_").toLowerCase()
+    : "";
   const {
     data: cubeData,
     isLoading,
     error,
-  } = useGetCubeDataQuery(companyName ? { projectName: companyName } : skipToken);
+  } = useGetCubeDataQuery(formattedSiteName ? { projectName: formattedSiteName } : skipToken);
 
   const [selectedCube, setSelectedCube] = useState(null);
 
@@ -74,7 +61,7 @@ export const BrowseSemanticLayerTable = () => {
 
   return (
     <BrowseContainer>
-   
+
       <BrowseMain>
         <BrowseSection>
           <div>

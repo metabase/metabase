@@ -39,7 +39,7 @@ import { updateUrl } from "../navigation";
 import { zoomInRow } from "../object-detail";
 import { clearQueryResult, runQuestionQuery } from "../querying";
 import { onCloseSidebars } from "../ui";
-
+import { useSetting } from "metabase/common/hooks";
 import { SOFT_RELOAD_CARD, API_UPDATE_QUESTION } from "./types";
 import { updateQuestion } from "./updateQuestion";
 
@@ -225,13 +225,17 @@ export const apiCreateQuestion = question => {
     const assistant_url = process.env.REACT_APP_WEBSOCKET_SERVER;
     const ws = new WebSocket(assistant_url);
 
+    const siteName = useSetting("site-name");
+    const formattedSiteName = siteName
+      ? siteName.replace(/\s+/g, "_").toLowerCase()
+      : "";
     let companyName = '';
     let cubeDatabase = null;
 
     if (databases) {
       cubeDatabase = databases.find(database => database.is_cube === true);
       if (cubeDatabase) {
-        companyName = cubeDatabase.company_name;
+        companyName = formattedSiteName;
       }
     }
 

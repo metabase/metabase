@@ -1,10 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { LayoutRoot, ContentContainer, ChatSection } from "./HomeLayout.styled";
 import { ChatGreeting } from "metabase/browse/components/ChatItems/Welcome";
-import { HomeInitialOptions } from "metabase/browse/components/ChatItems/InitialOptions";
 import ChatPrompt from "metabase/browse/components/ChatItems/Prompt";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { push } from "react-router-redux"; // Import the push method for navigation
 import {
   getInitialMessage,
   setInitialMessage,
@@ -21,13 +19,12 @@ import ChatHistory from "metabase/browse/components/ChatItems/ChatHistory";
 import { useListDatabasesQuery, useGetDatabaseMetadataWithoutParamsQuery, skipToken } from "metabase/api";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import { generateRandomId } from "metabase/lib/utils";
-import useWebSocket from "metabase/hooks/useWebSocket";
-import { t } from "ttag";
-import { getSuggestions, setSuggestions } from "metabase/redux/suggestionsSlice";
+import { getSuggestions } from "metabase/redux/suggestionsSlice";
 import { NoDatabaseError, SemanticError } from "metabase/components/ErrorPages";
 import { Client } from "@langchain/langgraph-sdk";
-import { Client as ClientSmith } from "langsmith/client"
+import { Client as ClientSmith } from "langsmith/client";
 import toast from 'react-hot-toast'; 
+import { useSetting } from "metabase/common/hooks";
 
 export const HomeLayout = () => {
   const initialMessage = useSelector(getInitialMessage);
@@ -51,12 +48,15 @@ export const HomeLayout = () => {
   const [showButton, setShowButton] = useState(false);
   const [insightDB, setInsightDB] = useState<number | null>(null);
   const [insightSchema, setInsightSchema] = useState<any[]>([]);
-  const langchain_url = "https://assistants-dev-7ca2258c0a7e5ea393441b5aca30fb7c.default.us.langgraph.app";
-  const langchain_key = "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";
+  const langchain_url = useSetting("langchain-url");
+  const langchain_key = useSetting("langchain-key");
   const [client, setClient] = useState<any>(null);
   const [clientSmith, setSmithClient] = useState<any>(null);
   const [shouldRefetchHistory, setShouldRefetchHistory] = useState(false); // State to trigger chat history refresh
-
+  const siteName = useSetting("site-name");
+  const formattedSiteName = siteName
+    ? siteName.replace(/\s+/g, "_").toLowerCase()
+    : "";
 
   useEffect(() => {
     const initializeClient = async () => {
@@ -91,9 +91,9 @@ export const HomeLayout = () => {
         setIsChatHistoryOpen(true);
         setShowButton(true);
         dispatch(setDBInputValue(cubeDatabase.id as number));
-        dispatch(setCompanyName(cubeDatabase.company_name as string));
+        dispatch(setCompanyName(formattedSiteName as string));
         setDbId(cubeDatabase.id as number)
-        setCompany(cubeDatabase.company_name as string)
+        setCompany(formattedSiteName as string)
       }
     }
   }, [databases]);

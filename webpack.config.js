@@ -313,10 +313,6 @@ const config = {
         process.env.REACT_APP_WEBSOCKET_SERVER || "wss://dev.chat.omniloy.com",
       REACT_APP_SEMANTIC:
         process.env.REACT_APP_SEMANTIC || "https://dev.semantic.omniloy.com",
-      REACT_APP_LANGCHAIN_URL:
-        process.env.REACT_APP_LANGCHAIN_URL || "https://assistants-dev-7ca2258c0a7e5ea393441b5aca30fb7c.default.us.langgraph.app",
-      REACT_APP_LANGCHAIN_KEY:
-        process.env.REACT_APP_LANGCHAIN_KEY || "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",
     }),
     // https://github.com/remarkjs/remark/discussions/903
     new webpack.ProvidePlugin({ process: "process/browser.js" }),

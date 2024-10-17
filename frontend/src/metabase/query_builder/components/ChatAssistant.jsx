@@ -23,10 +23,16 @@ import { SemanticError } from "metabase/components/ErrorPages";
 import { SpinnerIcon } from "metabase/components/LoadingSpinner/LoadingSpinner.styled";
 import { t } from "ttag";
 import toast from 'react-hot-toast'; 
+import { useSetting } from "metabase/common/hooks";
+
 
 const ChatAssistant = ({ client, clientSmith, selectedMessages, selectedThreadId, setSelectedThreadId, chatType, oldCardId, insights, initial_message, setMessages, setInputValue, setThreadId, threadId, inputValue, messages, isChatHistoryOpen, setIsChatHistoryOpen, setShowButton, setShouldRefetchHistory }) => {
+    const siteName = useSetting("site-name");
+    const formattedSiteName = siteName
+      ? siteName.replace(/\s+/g, "_").toLowerCase()
+      : "";
     const initialDbName = useSelector(getDBInputValue);
-    const initialCompanyName = useSelector(getCompanyName);
+    const initialCompanyName = formattedSiteName;
     const initialSchema = useSelector(getInitialSchema);
     const initialInsightDbName = useSelector(getInsightDBInputValue);
     const initialInsightSchema = useSelector(getInitialInsightSchema)
@@ -84,7 +90,7 @@ const ChatAssistant = ({ client, clientSmith, selectedMessages, selectedThreadId
                 setIsChatHistoryOpen(true);
                 setShowButton(true);
                 setDBInputValue(cubeDatabase.id);
-                setCompanyName(cubeDatabase.company_name)
+                setCompanyName(formattedSiteName)
             }
             if (rawDatabase) {
                 setInsightDB(rawDatabase.id);

@@ -295,6 +295,8 @@ interface PublicSettings {
   "hide-embed-branding?": boolean;
   "is-hosted?": boolean;
   "is-metabot-enabled": boolean;
+  "langchain-key": string;
+  "langchain-url": string;
   "ldap-configured?": boolean;
   "ldap-enabled": boolean;
   "ldap-port": number;
@@ -311,6 +313,7 @@ interface PublicSettings {
   "setup-token": string | null;
   "show-metabase-links": boolean;
   "show-metabot": boolean;
+  "site-name": string;
   "site-locale": string;
   "site-url": string;
   "snowplow-enabled": boolean;
