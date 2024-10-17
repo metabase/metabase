@@ -1,0 +1,48 @@
+.container {
+  width: 500px;
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  padding: 1.25rem;
+  border-radius: 18px;
+  border: 1px solid var(--mb-color-border);
+  display: flex;
+  align-items: center;
+  box-shadow:
+    0 calc(0.0625rem * 1) calc(0.1875rem * 1) rgba(0, 0, 0, 0.05),
+    rgba(0, 0, 0, 0.05) 0 calc(0.625rem * 1) calc(0.9375rem * 1)
+      calc(-0.3125rem * 1),
+    rgba(0, 0, 0, 0.04) 0 calc(0.4375rem * 1) calc(0.4375rem * 1)
+      calc(-0.3125rem * 1);
+  background: white;
+  z-index: 9999;
+}
+
+.message {
+  display: inline-block;
+  margin-top: 0.5rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+}
+
+.messageUser {
+  align-self: flex-end;
+  background: var(--mb-color-bg-medium);
+  text-align: right;
+  color: inherit;
+
+  & + & {
+    margin-top: 0.25rem;
+  }
+}
+
+.messageSystem {
+  align-self: flex-start;
+  color: white;
+  background: var(--mb-color-brand);
+  text-align: left;
+
+  & + & {
+    margin-top: 0.25rem;
+  }
+}
