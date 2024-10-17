@@ -122,16 +122,15 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
     "pie.rows": {
       hidden: true,
       getValue: _.memoize(
-        (rawSeries, settings) => {
-          return getPieRows(rawSeries, settings, (value, options) =>
+        (series, settings) => {
+          return getPieRows(series, settings, (value, options) =>
             String(formatValue(value, options)),
           );
         },
-        ([{ card, data }], settings) =>
+        ([{ json_query, started_at }], settings) =>
           JSON.stringify({
-            cols: data.cols,
-            rows: data.rows.length,
-            dataset_query: card.dataset_query,
+            json_query,
+            started_at,
             settings: _.pick(
               settings,
               ...pieRowsReadDeps,
