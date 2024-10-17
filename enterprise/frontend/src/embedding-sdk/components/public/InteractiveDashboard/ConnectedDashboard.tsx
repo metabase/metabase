@@ -5,6 +5,7 @@ import _ from "underscore";
 
 import type { SdkPluginsConfig } from "embedding-sdk";
 import {
+  SdkError,
   SdkLoader,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
 import * as dashboardActions from "metabase/dashboard/actions";
@@ -47,7 +48,6 @@ import {
 } from "metabase/selectors/user";
 import type { DashboardId } from "metabase-types/api";
 import type { State } from "metabase-types/store";
-import { SdkError } from "embedding-sdk/components/private/SdkError";
 
 const mapStateToProps = (state: State) => {
   return {
@@ -136,7 +136,7 @@ export const ConnectedDashboard = connector<
   }
 
   if (!dashboardId) {
-    return <SdkError status="dashboard-not-found" />;
+    return <SdkError message="ID not found" />;
   }
 
   return <ConnectedDashboardInner dashboardId={dashboardId} {...rest} />;

@@ -11,7 +11,6 @@ import type {
   SdkState,
   SdkStoreState,
 } from "embedding-sdk/store/types";
-import type { EmbeddingSessionTokenSuccess } from "embedding-sdk/types/refresh-token";
 import type { SdkUsageProblem } from "embedding-sdk/types/usage-problem";
 import { createAsyncThunk } from "metabase/lib/redux";
 
@@ -40,53 +39,44 @@ export const setFetchRefreshTokenFn = createAction<null | FetchRequestTokenFn>(
 const GET_OR_REFRESH_SESSION = "sdk/token/GET_OR_REFRESH_SESSION";
 const REFRESH_TOKEN = "sdk/token/REFRESH_TOKEN";
 
-const isValidEmbeddingToken = (
-  token?: Nullable<EmbeddingSessionToken>,
-): token is EmbeddingSessionTokenSuccess => {
-  if (!token) {
-    return false;
-  }
-  return token.status === "ok" && "id" in token;
-};
-
 export const getOrRefreshSession = createAsyncThunk(
   GET_OR_REFRESH_SESSION,
   async (url: string, { dispatch, getState }) => {
     const state = getSessionTokenState(getState() as SdkStoreState);
     const token = state?.token;
 
-    if (isValidEmbeddingToken(token)) {
-      const isTokenValid = token && token.exp * 1000 >= Date.now();
+    const isTokenValid = token && token.exp * 1000 >= Date.now();
 
-      if (state.loading || isTokenValid) {
-        return token;
-      }
+    if (state.loading || isTokenValid) {
+      return token;
     }
 
     return dispatch(refreshTokenAsync(url)).unwrap();
   },
 );
 
-export const refreshTokenAsync = createAsyncThunk<
-  EmbeddingSessionToken | null,
-  string
->(REFRESH_TOKEN, async (url, { getState }) => {
-  // The SDK user can provide a custom function to refresh the token.
-  const getRefreshToken =
-    getFetchRefreshTokenFn(getState() as SdkStoreState) ??
-    defaultGetRefreshTokenFn;
+export const refreshTokenAsync = createAsyncThunk(
+  REFRESH_TOKEN,
+  async (url: string, { getState }): Promise<EmbeddingSessionToken | null> => {
+    // The SDK user can provide a custom function to refresh the token.
+    const getRefreshToken =
+      getFetchRefreshTokenFn(getState() as SdkStoreState) ??
+      defaultGetRefreshTokenFn;
 
-  try {
-    return await getRefreshToken(url);
-  } catch (errorCause) {
-    // As this function can be supplied by the SDK user,
-    // we have to handle possible errors in refreshing the token.
-    const error = new Error();
-    error.cause = errorCause;
+    try {
+      return await getRefreshToken(url);
+    } catch (errorCause) {
+      // As this function can be supplied by the SDK user,
+      // we have to handle possible errors in refreshing the token.
+      const error = new Error(t`failed to refresh the auth token`);
+      error.cause = errorCause;
 
-    return null;
-  }
-});
+      setLoginStatus({ status: "error", error });
+
+      return null;
+    }
+  },
+);
 
 const SET_PLUGINS = "sdk/SET_PLUGINS";
 export const setPlugins = createAction<SdkPluginsConfig | null>(SET_PLUGINS);

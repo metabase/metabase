@@ -1,6 +1,6 @@
 import { P, match } from "ts-pattern";
 
-import type { SDKConfig } from "embedding-sdk";
+import type { EmbeddingSessionToken, SDKConfig } from "embedding-sdk";
 import {
   getOrRefreshSession,
   setLoginStatus,
@@ -10,7 +10,6 @@ import type {
   SDKConfigWithApiKey,
   SDKConfigWithJWT,
 } from "embedding-sdk/types";
-import type { EmbeddingSessionTokenSuccess } from "embedding-sdk/types/refresh-token";
 import api from "metabase/lib/api";
 import type { Dispatch } from "metabase-types/store";
 
@@ -19,10 +18,9 @@ const setupJwtAuth = (
   dispatch: SdkDispatch,
 ) => {
   api.onBeforeRequest = async () => {
-    const tokenState = await dispatch(
-      getOrRefreshSession(jwtProviderUri),
-    ).unwrap();
-    api.sessionToken = (tokenState as EmbeddingSessionTokenSuccess | null)?.id;
+    const tokenState = await dispatch(getOrRefreshSession(jwtProviderUri));
+
+    api.sessionToken = (tokenState.payload as EmbeddingSessionToken | null)?.id;
   };
 
   dispatch(setLoginStatus({ status: "validated" }));

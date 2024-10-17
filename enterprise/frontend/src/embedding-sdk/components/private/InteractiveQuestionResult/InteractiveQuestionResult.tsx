@@ -2,8 +2,10 @@ import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
 import { type ReactElement, type ReactNode, useState } from "react";
 import { match } from "ts-pattern";
+import { t } from "ttag";
 
 import {
+  SdkError,
   SdkLoader,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
 import { Box, Button, Group, Icon } from "metabase/ui";
@@ -16,7 +18,6 @@ import {
 } from "../util/FlexibleSizeComponent";
 
 import InteractiveQuestionS from "./InteractiveQuestionResult.module.css";
-import { SdkError } from "../SdkError";
 
 export interface InteractiveQuestionResultProps {
   withResetButton?: boolean;
@@ -68,7 +69,7 @@ export const InteractiveQuestionResult = ({
   }
 
   if (!question || !queryResults) {
-    return <SdkError status='question-not-found' />;
+    return <SdkError message={t`Question not found`} />;
   }
 
   return (

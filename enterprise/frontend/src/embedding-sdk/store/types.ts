@@ -3,7 +3,7 @@ import type {
   SerializedError,
   ThunkDispatch,
 } from "@reduxjs/toolkit";
-import type { JSX } from "react";
+import type { JSX, ReactNode } from "react";
 
 import type {
   EmbeddingSessionToken,
@@ -12,7 +12,6 @@ import type {
 } from "embedding-sdk";
 import type { SdkEventHandlersConfig } from "embedding-sdk/lib/events";
 import type { SdkPluginsConfig } from "embedding-sdk/lib/plugins";
-import type { EmbeddingSessionTokenWithError } from "embedding-sdk/types/refresh-token";
 import type { SdkUsageProblem } from "embedding-sdk/types/usage-problem";
 import type { State } from "metabase-types/store";
 
@@ -36,7 +35,7 @@ type LoginStatusLoading = {
 };
 export type LoginStatusError = {
   status: "error";
-  data: EmbeddingSessionTokenWithError;
+  error: Error;
 };
 
 export type LoginStatus =
@@ -48,26 +47,21 @@ export type LoginStatus =
 
 export type SdkDispatch = ThunkDispatch<SdkStoreState, void, AnyAction>;
 
-export type SdkErrorComponentProps = LoginStatusError["data"] & {
-  title: string;
-  description?: string;
-  link?: string;
-};
+export type SdkErrorComponentProps = { message: ReactNode };
 export type SdkErrorComponent = ({
-  status,
-  code,
+  message,
 }: SdkErrorComponentProps) => JSX.Element;
 
 export type SdkState = {
   metabaseInstanceUrl: SDKConfig["metabaseInstanceUrl"];
   token: EmbeddingSessionTokenState;
   loginStatus: LoginStatus;
-  plugins: Nullable<SdkPluginsConfig>;
-  eventHandlers: Nullable<SdkEventHandlersConfig>;
-  usageProblem: Nullable<SdkUsageProblem>;
-  loaderComponent: Nullable<() => JSX.Element>;
-  errorComponent: Nullable<SdkErrorComponent>;
-  fetchRefreshTokenFn: Nullable<FetchRequestTokenFn>;
+  plugins: null | SdkPluginsConfig;
+  eventHandlers: null | SdkEventHandlersConfig;
+  usageProblem: null | SdkUsageProblem;
+  loaderComponent: null | (() => JSX.Element);
+  errorComponent: null | SdkErrorComponent;
+  fetchRefreshTokenFn: null | FetchRequestTokenFn;
 };
 
 export interface SdkStoreState extends State {

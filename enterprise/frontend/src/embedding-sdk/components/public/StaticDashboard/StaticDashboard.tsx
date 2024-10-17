@@ -1,6 +1,7 @@
 import _ from "underscore";
 
 import {
+  SdkError,
   SdkLoader,
   withPublicComponentWrapper,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
@@ -16,7 +17,6 @@ import { useValidatedEntityId } from "metabase/lib/entity-id/hooks/use-validated
 import { PublicOrEmbeddedDashboard } from "metabase/public/containers/PublicOrEmbeddedDashboard/PublicOrEmbeddedDashboard";
 import type { PublicOrEmbeddedDashboardEventHandlersProps } from "metabase/public/containers/PublicOrEmbeddedDashboard/types";
 import { Box } from "metabase/ui";
-import { SdkError } from "embedding-sdk/components/private/SdkError";
 
 export type StaticDashboardProps = SdkDashboardDisplayProps &
   PublicOrEmbeddedDashboardEventHandlersProps;
@@ -87,7 +87,7 @@ const StaticDashboard = withPublicComponentWrapper<StaticDashboardProps>(
     });
 
     if (!id) {
-      return isLoading ? <SdkLoader /> : <SdkError status='dashboard-not-found' />;
+      return isLoading ? <SdkLoader /> : <SdkError message="ID not found" />;
     }
 
     return <StaticDashboardInner dashboardId={id} {...rest} />;

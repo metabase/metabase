@@ -3,6 +3,7 @@ import _ from "underscore";
 import type { SdkPluginsConfig } from "embedding-sdk";
 import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/InteractiveAdHocQuestion";
 import {
+  SdkError,
   SdkLoader,
   withPublicComponentWrapper,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
@@ -20,7 +21,6 @@ import type { PublicOrEmbeddedDashboardEventHandlersProps } from "metabase/publi
 import { Box } from "metabase/ui";
 
 import { InteractiveDashboardProvider } from "./context";
-import { SdkError } from "embedding-sdk/components/private/SdkError";
 
 export type InteractiveDashboardProps = {
   questionHeight?: number;
@@ -128,7 +128,7 @@ export const InteractiveDashboard =
       }
 
       if (!id) {
-        return <SdkError status="dashboard-not-found" />;
+        return <SdkError message="ID not found" />;
       }
 
       return <InteractiveDashboardInner dashboardId={id} {...rest} />;
