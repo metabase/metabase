@@ -84,23 +84,24 @@ interface DocsUrlProps {
   utm?: UtmProps;
 }
 
-export const getDocsUrl = createSelector(
-  (state: State, props: DocsUrlProps) => props,
-  (state: State) => getSetting(state, "version"),
-  (state: State, props: DocsUrlProps, version: Version | undefined) =>
-    getDocsUrlForVersion(state, version, props.page, props.anchor, props.utm),
-  (props, version, url) => url,
-);
+export const getDocsUrl = (state: State, props: DocsUrlProps) => {
+  const version = getSetting(state, "version");
+  const url = getDocsUrlForVersion(version, props.page, props.anchor);
+
+  if (!props.utm) {
+    return url;
+  }
+
+  return getUrlWithUtm(state, { url, ...props.utm });
+};
 
 export const getDocsSearchUrl = (query: Record<string, string>) =>
   `https://www.metabase.com/search?${new URLSearchParams(query)}`;
 
 const getDocsUrlForVersion = (
-  state: State,
   version: Version | undefined,
   page = "",
   anchor = "",
-  utm?: UtmProps,
 ) => {
   let tag = version?.tag;
   const matches = tag && tag.match(/v[01]\.(\d+)(?:\.\d+)?(-.*)?/);
@@ -131,13 +132,7 @@ const getDocsUrlForVersion = (
   }
 
   // eslint-disable-next-line no-unconditional-metabase-links-render -- This function is only used by this file and "metabase/lib/settings"
-  const url = `https://www.metabase.com/docs/${tag}/${page}${anchor}`;
-
-  if (!utm) {
-    return url;
-  }
-
-  return getUrlWithUtm(state, { url, ...utm });
+  return `https://www.metabase.com/docs/${tag}/${page}${anchor}`;
 };
 
 interface UpgradeUrlOpts {
