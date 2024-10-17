@@ -73,7 +73,7 @@ const QuestionEditorInner = () => {
         </Group>
 
         <Tabs.Panel value="editor" h="100%" style={{ overflow: "auto" }}>
-          <InteractiveQuestion.Notebook
+          <InteractiveQuestion.Editor
             onApply={() => setActiveTab("visualization")}
           />
         </Tabs.Panel>
