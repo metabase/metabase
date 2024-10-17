@@ -61,7 +61,7 @@ const _CleanupCollectionModal = ({
   };
 
   // filters
-  const [dateFilter, setDateFilter] = useState<DateFilter>("six-months");
+  const [dateFilter, setDateFilter] = useState<DateFilter>("three-months");
   const handleChangeDateFilter = (nextDateFilter: DateFilter) => {
     setDateFilter(nextDateFilter);
     pagination.resetPage();
