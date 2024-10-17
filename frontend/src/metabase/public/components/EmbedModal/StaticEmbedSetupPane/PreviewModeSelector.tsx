@@ -1,26 +1,29 @@
 import { t } from "ttag";
 
-import { Box, Center, Icon, SegmentedControl } from "metabase/ui";
+import { Box, Group, Icon, type IconName, SegmentedControl } from "metabase/ui";
 
 import type { ActivePreviewPane } from "./types";
 
+const ControlOptionItem = ({
+  label,
+  iconName,
+}: {
+  label: string;
+  iconName: IconName;
+}) => (
+  <Group noWrap px="sm" spacing="xs">
+    <Icon name={iconName} />
+    <Box>{label}</Box>
+  </Group>
+);
+
 const CODE_PREVIEW_CONTROL_OPTIONS = [
   {
-    label: (
-      <Center>
-        <Icon name="embed" />
-        <Box ml="0.5rem">{t`Code`}</Box>
-      </Center>
-    ),
+    label: <ControlOptionItem label={t`Code`} iconName="embed" />,
     value: "code",
   },
   {
-    label: (
-      <Center>
-        <Icon name="eye_filled" />
-        <Box ml="0.5rem">{t`Preview`}</Box>
-      </Center>
-    ),
+    label: <ControlOptionItem label={t`Preview`} iconName="eye_filled" />,
     value: "preview",
   },
 ];
