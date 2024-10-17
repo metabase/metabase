@@ -175,6 +175,14 @@
   :visibility :settings-manager
   :export?    true)
 
+(defsetting allowed-iframe-hosts
+  (deferred-tru "Allowed iframe hosts")
+  :encryption :no
+  :default    "Metabase"
+  :audit      :getter
+  :visibility :settings-manager
+  :export?    true)
+
 (defsetting custom-homepage
   (deferred-tru "Pick one of your dashboards to serve as homepage. Users without dashboard access will be directed to the default homepage.")
   :encryption :no

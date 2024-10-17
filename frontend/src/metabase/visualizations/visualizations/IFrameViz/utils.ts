@@ -142,3 +142,36 @@ export const getIframeUrl = (
 
   return null;
 };
+
+const matchesAllowedFrame = (hostname: string, allowedFrame: string) => {
+  const allowedUrl = new URL(allowedFrame);
+  const allowedHostname = allowedUrl.hostname;
+
+  if (allowedHostname.startsWith("*.")) {
+    const baseDomain = allowedHostname.slice(2);
+    return hostname === baseDomain || hostname.endsWith("." + baseDomain);
+  }
+
+  return hostname === allowedHostname;
+};
+
+export const isAllowedIframeUrl = (url: string, allowedIframesSetting = "") => {
+  try {
+    const allowedIframes = allowedIframesSetting
+      ?.split(",")
+      .map(host => host.trim());
+
+    const parsedUrl = new URL(url);
+    const hostname = parsedUrl.hostname;
+
+    for (const frame of allowedIframes) {
+      if (matchesAllowedFrame(hostname, frame)) {
+        return true;
+      }
+    }
+  } catch (e) {
+    console.error(`Invalid URL: ${e}`);
+  }
+
+  return false;
+};
