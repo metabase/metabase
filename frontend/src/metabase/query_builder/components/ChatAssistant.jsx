@@ -72,6 +72,7 @@ const ChatAssistant = ({ client, selectedMessages, selectedThreadId, setSelected
     const [requestedFields, setRequestedFields] = useState([]);
     const [pendingInfoMessage, setPendingInfoMessage] = useState(null);
     const [insightDB, setInsightDB] = useState(null);
+    const [chatDisabled, setChatDisabled] = useState(false);
 
     const databases = data?.data;
     useEffect(() => {
@@ -399,7 +400,8 @@ const ChatAssistant = ({ client, selectedMessages, selectedThreadId, setSelected
     
         // Clear the input field
         setInputValue("");
-    
+        setChatDisabled(true);
+        setChatLoading(true);
         let currentMessage = ""; // To accumulate partial chunks
         let isNewMessage = true; // Flag to track new message status
         let lastMessageId = tempMessageId; // Track last message to update its loading state
@@ -592,12 +594,14 @@ const ChatAssistant = ({ client, selectedMessages, selectedThreadId, setSelected
                             }
     
                             if (python_code && explanation) {
+                                removeExistingMessage("Please wait until we generate the response....")
                                 setInsightCellCode((prevCode) => [...prevCode, python_code]);
                                 setInsightsText((prevText) => [...prevText, explanation]);
                                 setInsightsCode((prevCode) => [...prevCode, python_code]);
                             }
     
                             if (result && result.outputs && result.outputs.length > 0) {
+                                removeExistingMessage("Please wait until we generate the response....")
                                 result.outputs.forEach((output) => {
                                     if (output.data && output.data['image/png']) {
                                         const generatedImages = output.data['image/png'];
@@ -636,6 +640,7 @@ const ChatAssistant = ({ client, selectedMessages, selectedThreadId, setSelected
                         isNewMessage = true;
                     }
                 }
+
                 if (event === "error" && data) {
                     removeExistingMessage("Please wait until we generate the response....")
                     setMessages((prev) => [
@@ -643,14 +648,20 @@ const ChatAssistant = ({ client, selectedMessages, selectedThreadId, setSelected
                         {
                             id: Date.now() + Math.random(),
                             sender: "server",
-                            text: data.message,
+                            text: "There was an error processing your request. Please contact team Omniloy for assistance.",
+                            typeMessage: 'error',
                             isLoading: false,
                             showVisualization: false,
+                            showSuggestionButton: false
                         },
                     ])
                 }
             }
+                setChatDisabled(false);
+                setChatLoading(false);
         } catch (error) {
+            setChatDisabled(false);
+            setChatLoading(false);
             console.error("Error during message processing:", error.message);
             setMessages((prev) => [
                 ...prev,
@@ -670,6 +681,8 @@ const ChatAssistant = ({ client, selectedMessages, selectedThreadId, setSelected
                 },
             ]);
         }finally {
+            setChatDisabled(false);
+            setChatLoading(false);
             setShouldRefetchHistory(true);
             setMessages((prev) =>
                 prev.map((msg) => ({
@@ -983,7 +996,7 @@ const ChatAssistant = ({ client, selectedMessages, selectedThreadId, setSelected
                                                 ref={inputRef}
                                                 value={inputValue}
                                                 onChange={handleInputChange}
-                                                disabled={!client || chatLoading || schema.length < 1 || selectedThreadId}
+                                                disabled={!client || chatLoading || schema.length < 1 || selectedThreadId || chatDisabled}
                                                 onKeyPress={handleKeyPress}
                                                 placeholder={t`Enter a prompt here...`}
                                                 style={{
@@ -1005,7 +1018,7 @@ const ChatAssistant = ({ client, selectedMessages, selectedThreadId, setSelected
                                             />
                                             <Button
                                                 variant="filled"
-                                                disabled={!client || schema.length < 1 || selectedThreadId}
+                                                disabled={!client || schema.length < 1 || selectedThreadId || chatDisabled}
                                                 onClick={chatLoading ? stopMessage : sendMessage}
                                                 style={{
                                                     position: "absolute",
