@@ -36,7 +36,6 @@ import {
   visitEmbeddedPage,
   visitIframe,
 } from "e2e/support/helpers";
-import { b64hash_to_utf8 } from "metabase/lib/encoding";
 import {
   createMockActionParameter,
   createMockDashboardCard,
@@ -146,25 +145,6 @@ const DASHBOARD_FILTER_TEXT_WITH_DEFAULT = createMockActionParameter({
   sectionId: "string",
   default: "Hello",
 });
-
-const QUERY_FILTER_CREATED_AT = [
-  "between",
-  [
-    "field",
-    ORDERS.CREATED_AT,
-    {
-      "base-type": "type/DateTime",
-    },
-  ],
-  "2022-07-01",
-  "2022-07-31",
-];
-
-const QUERY_FILTER_QUANTITY = [
-  "=",
-  ["field", ORDERS.QUANTITY, { "base-type": "type/Integer" }],
-  POINT_COUNT,
-];
 
 const URL = "https://metabase.com/";
 const URL_WITH_PARAMS = `${URL}{{${DASHBOARD_FILTER_TEXT.slug}}}/{{${COUNT_COLUMN_ID}}}/{{${CREATED_AT_COLUMN_ID}}}`;
@@ -1476,16 +1456,35 @@ describeEE("scenarios > dashboard > dashboard cards > click behavior", () => {
         cy.findByTestId("qb-filters-panel")
           .should("contain.text", "Created At is Jul 1–31, 2022")
           .should("contain.text", "Quantity is equal to 64");
-        cy.location().should(({ hash, pathname }) => {
-          expect(pathname).to.equal("/question");
-          const card = deserializeCardFromUrl(hash);
-          expect(card.name).to.deep.equal(TARGET_QUESTION.name);
-          expect(card.display).to.deep.equal(TARGET_QUESTION.display);
-          expect(card.dataset_query.query).to.deep.equal({
-            ...TARGET_QUESTION.query,
-            filter: ["and", QUERY_FILTER_CREATED_AT, QUERY_FILTER_QUANTITY],
-          });
-        });
+
+        cy.location("pathname").should("equal", "/question");
+        cy.findByTestId("app-bar").should(
+          "contain.text",
+          `Started from ${TARGET_QUESTION.name}`,
+        );
+
+        cy.findByTestId("viz-type-button").click();
+        cy.findByTestId("sidebar-content")
+          .findByTestId("Line-container")
+          .should("have.attr", "aria-selected", "true");
+        cy.findByTestId("viz-type-button").click();
+
+        openNotebook();
+
+        getNotebookStep("data").findByText("Orders").should("be.visible");
+        getNotebookStep("filter")
+          .findByText("Created At is Jul 1–31, 2022")
+          .should("be.visible");
+        getNotebookStep("filter")
+          .findByText("Quantity is equal to 64")
+          .should("be.visible");
+        getNotebookStep("summarize").findByText("Count").should("be.visible");
+        getNotebookStep("summarize")
+          .findByText("Created At: Month")
+          .should("be.visible");
+        getNotebookStep("limit")
+          .findByPlaceholderText("Enter a limit")
+          .should("have.value", "5");
       })();
     });
 
@@ -2443,15 +2442,6 @@ const onNextAnchorClick = callback => {
     };
   });
 };
-
-/**
- * Duplicated from metabase/lib/card because Cypress can't handle import from there.
- *
- * @param {string} value
- * @returns object
- */
-const deserializeCardFromUrl = serialized =>
-  JSON.parse(b64hash_to_utf8(serialized));
 
 const clickLineChartPoint = () => {
   cartesianChartCircle()
