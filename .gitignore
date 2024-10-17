@@ -33,7 +33,6 @@
 /classes
 /coverage
 /crate-*
-/cypress
 /deploy/artifacts/*
 /frontend/test/snapshots/*
 /e2e/snapshots/*
