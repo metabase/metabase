@@ -697,9 +697,10 @@ export const getRawSeries = createSelector(
       datasetQuery: lastRunDatasetQuery,
     });
     if (isShowingRawTable && rawSeries?.length > 0) {
-      const [{ card, data }] = rawSeries;
+      const [{ card, ...rest }] = rawSeries;
       return [
         {
+          ...rest,
           card: {
             ...card,
             display: "table",
@@ -708,7 +709,6 @@ export const getRawSeries = createSelector(
               "table.pivot": false,
             },
           },
-          data,
         },
       ];
     }

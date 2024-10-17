@@ -20,6 +20,8 @@ import {
   ChartSettingOrderedSimpleRoot,
 } from "./ChartSettingOrderedSimple.styled";
 
+export { SortableChartSettingOrderedItem };
+
 export interface SortableItem {
   key: string;
   enabled: boolean;
