@@ -1,3 +1,5 @@
+import { useMemo } from "react";
+
 import { useListRecentsQuery } from "metabase/api";
 import { Loader } from "metabase/ui";
 import type { CardId } from "metabase-types/api";
@@ -14,13 +16,21 @@ export function RecentsList({ onSelect, selectedCardIds }: RecentsListProps) {
     refetchOnMountOrArgChange: true,
   });
 
-  if (!data) {
+  const cardsOnlyData = useMemo(
+    () =>
+      data.filter(maybeCard =>
+        ["card", "dataset", "metric"].includes(maybeCard.model),
+      ),
+    [data],
+  );
+
+  if (!cardsOnlyData) {
     return <Loader />;
   }
 
   return (
     <ResultsList
-      items={data}
+      items={cardsOnlyData}
       onSelect={onSelect}
       selectedCardIds={selectedCardIds}
     />
