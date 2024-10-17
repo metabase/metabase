@@ -1,3 +1,12 @@
+## [1.52.1](https://github.com/metabase/metabase/compare/embedding-sdk-0.1.38...embedding-sdk-1.52.1) (2024-10-17)
+
+
+### Features
+
+* **sdk:** Add chart viz selection for `InteractiveQuestion` ([#47744](https://github.com/metabase/metabase/issues/47744)) ([a288c15](https://github.com/metabase/metabase/commit/a288c15e579975cd3ed783cd6c18f39a84445c41))
+
+
+
 ## [0.1.40](https://github.com/metabase/metabase/compare/embedding-sdk-0.1.39...embedding-sdk-0.1.40) (2024-10-17)
 
 
