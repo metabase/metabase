@@ -118,7 +118,7 @@
   ;; more info.
   (jdbc-get-tables driver metadata db-name-or-nil schema-or-nil "%"
                    ["TABLE" "PARTITIONED TABLE" "VIEW" "FOREIGN TABLE" "MATERIALIZED VIEW"
-                    "EXTERNAL TABLE" "DYNAMIC_TABLE"]))
+                    "EXTERNAL TABLE" "DYNAMIC_TABLE" "BASE TABLE"]))
 
 (defn- schema+table-with-select-privileges
   [driver conn]

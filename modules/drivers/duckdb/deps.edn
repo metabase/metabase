@@ -1,0 +1,7 @@
+{:paths
+ ["src" "resources"]
+
+ :deps
+ {org.duckdb/duckdb_jdbc {:local/root "duckdb_jdbc.jar"}}}
+ ;; Replace the line above if you don't have a DuckDB JAR
+ ;;{org.duckdb/duckdb_jdbc {:mvn/version "1.1.1"}}}
