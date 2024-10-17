@@ -102,7 +102,7 @@ export const QuestionPickerModal = ({
     {
       id: "questions-tab",
       displayName: t`Questions`,
-      model: "card" as const,
+      models: ["card" as const],
       folderModels: ["collection" as const],
       icon: "table",
       render: ({ onItemSelect }) => (
@@ -120,7 +120,7 @@ export const QuestionPickerModal = ({
     {
       id: "models-tab",
       displayName: t`Models`,
-      model: "dataset" as const,
+      models: ["dataset" as const],
       folderModels: ["collection" as const],
       icon: "model",
       render: ({ onItemSelect }) => (
@@ -138,7 +138,7 @@ export const QuestionPickerModal = ({
     {
       id: "metrics-tab",
       displayName: t`Metrics`,
-      model: "metric" as const,
+      models: ["metric" as const],
       folderModels: ["collection" as const],
       icon: "metric",
       render: ({ onItemSelect }) => (
@@ -155,8 +155,9 @@ export const QuestionPickerModal = ({
     },
   ];
 
-  const filteredTabs = tabs.filter(tab =>
-    models.includes(tab.model as QuestionPickerModel),
+  const filteredTabs = tabs.filter(
+    tab =>
+      tab.models.findIndex(m => models.includes(m as QuestionPickerModel)) >= 0,
   );
 
   return (

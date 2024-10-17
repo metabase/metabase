@@ -70,6 +70,7 @@ export type ListProps<
   options: Options;
   shouldDisableItem?: (item: Item) => boolean;
   shouldShowItem?: (item: Item) => boolean;
+  entity?: "collection" | "dashboard";
 };
 
 export type FilterItemsInPersonalCollection = "only" | "exclude";

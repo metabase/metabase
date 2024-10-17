@@ -50,7 +50,7 @@ import { TabsView } from "./TabsView";
 export type EntityPickerModalOptions = {
   showSearch?: boolean;
   hasConfirmButtons?: boolean;
-  confirmButtonText?: string | ((model: string) => string);
+  confirmButtonText?: string | ((model?: string) => string);
   cancelButtonText?: string;
   hasRecents?: boolean;
 };
@@ -83,7 +83,7 @@ export interface EntityPickerModalProps<
   initialValue?: Partial<Item>;
   canSelectItem: boolean;
   tabs: EntityPickerTab<Id, Model, Item>[];
-  options?: Partial<EntityPickerOptions<Item>>;
+  options?: Partial<EntityPickerOptions>;
   searchResultFilter?: (results: SearchResult[]) => SearchResult[];
   recentFilter?: (results: RecentItem[]) => RecentItem[];
   searchParams?: Partial<SearchRequest>;
@@ -179,14 +179,6 @@ export function EntityPickerModal<
     },
   );
 
-  // const tabModels = useMemo(
-  //   () =>
-  //     passedTabs
-  //       .flatMap(t => (t.additionalModels || []).concat(t.model || []))
-  //       .filter(Boolean),
-  //   [passedTabs],
-  // );
-
   const finalSearchResults = useMemo(() => {
     if (searchScope === "folder") {
       if (!scopedSearchResults) {
@@ -226,7 +218,7 @@ export function EntityPickerModal<
     if (hasRecentsTab || shouldOptimisticallyAddRecentsTabWhileLoading) {
       computedTabs.push({
         id: RECENTS_TAB_ID,
-        models: null,
+        models: [],
         folderModels: [],
         displayName: t`Recents`,
         icon: "clock",
@@ -246,7 +238,7 @@ export function EntityPickerModal<
     if (hasSearchTab) {
       computedTabs.push({
         id: SEARCH_TAB_ID,
-        models: null,
+        models: [],
         folderModels: [],
         displayName: getSearchTabText(finalSearchResults, searchQuery),
         icon: "search",
