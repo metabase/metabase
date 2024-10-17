@@ -36,15 +36,13 @@ WHERE dp.table_id IS NOT NULL
 GROUP BY dp.group_id, dp.db_id;
 
 -- Delete table-level permissions if a DB-level permission was created
-DELETE FROM data_permissions
-WHERE perm_value = 'query-builder'
-  AND table_id IS NOT NULL
-  AND EXISTS (
-      SELECT 1
-      FROM data_permissions dp2
-      WHERE dp2.group_id = data_permissions.group_id
-        AND dp2.db_id = data_permissions.db_id
-        AND dp2.schema_name IS NULL
-        AND dp2.table_id IS NULL
-        AND dp2.perm_value = 'query-builder'
-  );
+DELETE dp1
+FROM data_permissions dp1
+JOIN data_permissions dp2
+  ON dp1.group_id = dp2.group_id
+  AND dp1.db_id = dp2.db_id
+  AND dp2.schema_name IS NULL
+  AND dp2.table_id IS NULL
+  AND dp2.perm_value = 'query-builder'
+WHERE dp1.perm_value = 'query-builder'
+  AND dp1.table_id IS NOT NULL;
