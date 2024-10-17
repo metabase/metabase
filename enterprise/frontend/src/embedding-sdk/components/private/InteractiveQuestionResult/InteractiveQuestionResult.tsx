@@ -8,6 +8,7 @@ import {
   SdkError,
   SdkLoader,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
+import { SaveQuestionModal } from "metabase/containers/SaveQuestionModal";
 import { Box, Button, Group, Icon } from "metabase/ui";
 
 import { InteractiveQuestion } from "../../public/InteractiveQuestion";
@@ -58,10 +59,20 @@ export const InteractiveQuestionResult = ({
   const [questionView, setQuestionView] =
     useState<QuestionView>("visualization");
 
-  const { question, queryResults, isQuestionLoading } =
-    useInteractiveQuestionContext();
+  const {
+    question,
+    queryResults,
+    isQuestionLoading,
+    isSaveEnabled,
+    originalQuestion,
+    onCreate,
+    onSave,
+  } = useInteractiveQuestionContext();
 
   const [isChartSelectorOpen, { toggle: toggleChartTypeSelector }] =
+    useDisclosure(false);
+
+  const [isSaveModalOpen, { open: openSaveModal, close: closeSaveModal }] =
     useDisclosure(false);
 
   if (isQuestionLoading) {
@@ -104,6 +115,9 @@ export const InteractiveQuestionResult = ({
               )
             }
           />
+          {isSaveEnabled && (
+            <InteractiveQuestion.SaveButton onClick={openSaveModal} />
+          )}
         </Group>
       </Group>
 
@@ -147,6 +161,19 @@ export const InteractiveQuestionResult = ({
           />
         </Box>
       </Box>
+
+      {/* Refer to the SaveQuestionProvider for context on why we have to do it like this */}
+      {isSaveModalOpen && question && (
+        <SaveQuestionModal
+          question={question}
+          originalQuestion={originalQuestion ?? null}
+          opened
+          closeOnSuccess
+          onClose={closeSaveModal}
+          onCreate={onCreate}
+          onSave={onSave}
+        />
+      )}
     </FlexibleSizeComponent>
   );
 };
