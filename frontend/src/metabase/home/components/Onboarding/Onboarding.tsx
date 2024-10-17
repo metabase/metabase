@@ -206,10 +206,11 @@ export const Onboarding = () => {
                   <Text>
                     {jt`Hover over a table and click the yellow lightning bolt ${(
                       <Icon
-                        name="bolt_filled"
-                        size={14}
                         c="var(--mb-color-warning)"
                         className={S.inlineIcon}
+                        key="bolt_icon"
+                        name="bolt_filled"
+                        size={14}
                       />
                     )}. ${applicationName} will create a bunch of charts based on that data and arrange them on a dashboard.`}
                   </Text>
@@ -235,8 +236,10 @@ export const Onboarding = () => {
                     title="How to use the Notebook editor?"
                   />
                   <Text>
-                    {jt`Filter and summarize data, add custom columns, join data from other tables, and more - ${(<b>{t`all without SQL`}</b>)}. And when you build a chart with the query builder, people will be able to ${(
-                      <b>{t`drill-through the chart`}</b>
+                    {jt`Filter and summarize data, add custom columns, join data from other tables, and more - ${(
+                      <b key="no-sql">{t`all without SQL`}</b>
+                    )}. And when you build a chart with the query builder, people will be able to ${(
+                      <b key="drill-through">{t`drill-through the chart`}</b>
                     )} to explore the data further.`}
                   </Text>
                   <Link
@@ -262,9 +265,14 @@ export const Onboarding = () => {
                     title="How to use the SQL/Native query editor?"
                   />
                   <Text>
-                    {jt`Use the ${(<b>{t`native query editor`}</b>)} to query data with SQL or the query language native to your database. You can insert variables in your code to create ${
+                    {jt`Use the ${(
+                      <b key="native">{t`native query editor`}</b>
+                    )} to query data with SQL or the query language native to your database. You can insert variables in your code to create ${
                       showMetabaseLinks ? (
-                        <ExternalLink href="https://www.metabase.com/docs/latest/questions/native-editor/sql-parameters">{t`SQL templates`}</ExternalLink>
+                        <ExternalLink
+                          href="https://www.metabase.com/docs/latest/questions/native-editor/sql-parameters"
+                          key="sql-templates"
+                        >{t`SQL templates`}</ExternalLink>
                       ) : (
                         t`SQL templates`
                       )
@@ -295,7 +303,10 @@ export const Onboarding = () => {
                   <Text>
                     {jt`You can organize questions into a ${
                       showMetabaseLinks ? (
-                        <ExternalLink href="https://www.metabase.com/docs/latest/dashboards/introduction#dashboard-tabs">{t`dashboard with tabs`}</ExternalLink>
+                        <ExternalLink
+                          href="https://www.metabase.com/docs/latest/dashboards/introduction#dashboard-tabs"
+                          key="tabs"
+                        >{t`dashboard with tabs`}</ExternalLink>
                       ) : (
                         t`dashboard with tabs`
                       )
@@ -309,7 +320,7 @@ export const Onboarding = () => {
                     width="100%"
                   />
                   <Text>
-                    {jt`You can add ${(<b>{t`filters`}</b>)} to dashboards and connect them to fields on questions to narrow the results.`}
+                    {jt`You can add ${(<b key="filters">{t`filters`}</b>)} to dashboards and connect them to fields on questions to narrow the results.`}
                   </Text>
                   <VideoTutorial
                     id="dVNB-xJW0CY"
@@ -345,11 +356,29 @@ export const Onboarding = () => {
                   />
                   {shouldConfigureCommunicationChannels && (
                     <Text>
-                      {jt`${(<Link to="/admin/settings/email/smtp">{t`Set up email`}</Link>)} or ${(<Link to="/admin/settings/notifications">{t`Slack`}</Link>)} first.`}
+                      {jt`${(
+                        <Link
+                          key="subscription-email"
+                          to="/admin/settings/email/smtp"
+                        >{t`Set up email`}</Link>
+                      )} or ${(
+                        <Link
+                          key="subscription-slack"
+                          to="/admin/settings/notifications"
+                        >{t`Slack`}</Link>
+                      )} first.`}
                     </Text>
                   )}
                   <Text>
-                    {jt`To set up a subscription to a dashboard, click on the ${(<Icon name="subscription" className={S.inlineIcon} />)} ${(<i>{t`subscriptions`}</i>)} icon on the top bar. On a sidebar on the right set up a dashboard subscription via email or Slack.`}
+                    {jt`To set up a subscription to a dashboard, click on the ${(
+                      <Icon
+                        key="subscription-icon"
+                        name="subscription"
+                        className={S.inlineIcon}
+                      />
+                    )} ${(
+                      <i key="subscriptions">{t`subscriptions`}</i>
+                    )} icon on the top bar. On a sidebar on the right set up a dashboard subscription via email or Slack.`}
                   </Text>
                   <Link
                     to="/dashboard/1"
@@ -374,32 +403,59 @@ export const Onboarding = () => {
                   />
                   {shouldConfigureCommunicationChannels && (
                     <Text>
-                      {jt`${(<Link to="/admin/settings/email/smtp">{t`Set up email`}</Link>)} or ${(<Link to="/admin/settings/notifications">{t`Slack`}</Link>)} first.`}
+                      {jt`${(
+                        <Link
+                          key="alert-email"
+                          to="/admin/settings/email/smtp"
+                        >{t`Set up email`}</Link>
+                      )} or ${(
+                        <Link
+                          key="alert-slack"
+                          to="/admin/settings/notifications"
+                        >{t`Slack`}</Link>
+                      )} first.`}
                     </Text>
                   )}
                   <Text>
-                    {jt`Go to a question and click on the ${(<Icon name="alert" className={S.inlineIcon} />)} ${(<i>{t`bell`}</i>)} icon in the bottom right of the screen.`}
+                    {jt`Go to a question and click on the ${(
+                      <Icon
+                        className={S.inlineIcon}
+                        key="alert-icon"
+                        name="alert"
+                      />
+                    )} ${(
+                      <i key="bell">{t`bell`}</i>
+                    )} icon in the bottom right of the screen.`}
                   </Text>
                   <Text>
                     {t`There are three kinds of things you can get alerted about in ${applicationName}:`}
                     <ul className={S.list}>
                       <li>{jt`${
                         showMetabaseLinks ? (
-                          <ExternalLink href="https://www.metabase.com/docs/latest/questions/sharing/alerts#goal-line-alerts">{t`Goal line alerts`}</ExternalLink>
+                          <ExternalLink
+                            href="https://www.metabase.com/docs/latest/questions/sharing/alerts#goal-line-alerts"
+                            key="goal"
+                          >{t`Goal line alerts`}</ExternalLink>
                         ) : (
                           t`Goal line alerts`
                         )
                       }: when a time series crosses a goal line.`}</li>
                       <li>{jt`${
                         showMetabaseLinks ? (
-                          <ExternalLink href="https://www.metabase.com/docs/latest/questions/sharing/alerts#progress-bar-alerts">{t`Progress bar alerts`}</ExternalLink>
+                          <ExternalLink
+                            href="https://www.metabase.com/docs/latest/questions/sharing/alerts#progress-bar-alerts"
+                            key="progress"
+                          >{t`Progress bar alerts`}</ExternalLink>
                         ) : (
                           t`Progress bar alerts`
                         )
                       }: when a progress bar reaches or goes below its goal.`}</li>
                       <li>{jt`${
                         showMetabaseLinks ? (
-                          <ExternalLink href="https://www.metabase.com/docs/latest/questions/sharing/alerts#results-alerts">{t`Results alerts`}</ExternalLink>
+                          <ExternalLink
+                            href="https://www.metabase.com/docs/latest/questions/sharing/alerts#results-alerts"
+                            key="results"
+                          >{t`Results alerts`}</ExternalLink>
                         ) : (
                           t`Results alerts`
                         )
@@ -427,7 +483,10 @@ export const Onboarding = () => {
               {t`There are more tutorials and guides to explore.`}
               <br />
               {jt`${(
-                <ExternalLink href="https://www.youtube.com/playlist?list=PLzmftu0Z5MYGY0aA3rgIGwSCifECMeuG6">{t`Click here to continue learning`}</ExternalLink>
+                <ExternalLink
+                  href="https://www.youtube.com/playlist?list=PLzmftu0Z5MYGY0aA3rgIGwSCifECMeuG6"
+                  key="playlist"
+                >{t`Click here to continue learning`}</ExternalLink>
               )} about data visualization, modeling, and other advanced topics.`}
             </Text>
           </Box>
