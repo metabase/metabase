@@ -1,6 +1,7 @@
 (ns metabase.query-processor.middleware.metrics-test
   (:require
    [clojure.test :refer [deftest is testing]]
+   [java-time.api :as t]
    [mb.hawk.assert-exprs.approximately-equal :as =?]
    [medley.core :as m]
    [metabase.analytics.prometheus :as prometheus]
@@ -787,6 +788,30 @@
                 (mt/format-rows-by
                  [u.date/temporal-str->iso8601-str int int 3.0]
                  (mt/rows (qp/process-query query)))))))))
+
+(deftest ^:parallel expressions-from-metrics-are-spliced-to-correct-stage-test
+  (testing "Integration test: Expression is spliced into correct stage during metric expansion (#48722)"
+    (mt/with-temp [:model/Card source-model {:dataset_query (mt/mbql-query orders {})
+                                             :database_id (mt/id)
+                                             :name "source model"
+                                             :type :model}
+                   :model/Card metric {:dataset_query
+                                       (mt/mbql-query
+                                         orders
+                                         {:source-table (str "card__" (:id source-model))
+                                          :expressions {"somedays" [:datetime-diff
+                                                                    [:field "CREATED_AT" {:base-type :type/DateTime}]
+                                                                    (t/offset-date-time 2024 10 16 0 0 0)
+                                                                    :day]}
+                                          :aggregation [[:median [:expression "somedays" {:base-type :type/Integer}]]]})
+                                       :database_id (mt/id)
+                                       :name "somedays median"
+                                       :type :metric}]
+      (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+            query (-> (lib/query mp (lib.metadata/card mp (:id source-model)))
+                      (lib/aggregate (lib.metadata/metric mp (:id metric))))]
+        (is (= 2162
+               (ffirst (mt/rows (qp/process-query query)))))))))
 
 (deftest ^:parallel ^:mb/once fetch-referenced-metrics-test
   (testing "Metric's aggregation `:name` is used in expanded aggregation (#48625)"
