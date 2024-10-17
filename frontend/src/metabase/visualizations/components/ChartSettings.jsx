@@ -300,6 +300,9 @@ class ChartSettings extends Component {
         sections[widget.section].push(widget);
       }
     }
+    console.log({ sections });
+    console.log({ widgets });
+    // TODO: add Visualization type section here
 
     // Move settings from the "undefined" section in the first tab
     if (sections["undefined"] && Object.values(sections).length > 1) {
@@ -383,6 +386,8 @@ class ChartSettings extends Component {
       );
 
     // default layout with visualization
+
+    // TODO: if section is Viz type, then render chart type settings, else render current variant
     return (
       <ChartSettingsRoot className={className}>
         <ChartSettingsMenu data-testid="chartsettings-sidebar">

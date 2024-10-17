@@ -1,0 +1,9 @@
+.button {
+  padding-left: 10px !important;
+  padding-right: 10px !important;
+
+  &:hover {
+    background-color: var(--mb-color-brand) !important;
+    color: var(--mb-color-text-white) !important;
+  }
+}

@@ -85,7 +85,7 @@ export const Notebook = ({
           pos="relative"
           p={{ base: "1rem", sm: "2rem" }}
           direction="column"
-          style={{ overflowY: "auto" }}
+          style={{ overflowY: "auto", flex: 1 }}
         >
           <NotebookStepList
             updateQuestion={handleUpdateQuestion}
@@ -96,13 +96,19 @@ export const Notebook = ({
         </Flex>
         {hasVisualizeButton && isRunnable && (
           <Flex
-            p="sm"
+            pt="sm"
+            pb="sm"
+            pl="md"
             style={{
               borderTop:
                 "var(--border-size) var(--border-style) var(--mb-color-border)",
             }}
           >
-            <Button variant="filled" miw={220} onClick={visualize}>
+            <Button variant="filled"
+              radius="xl" size="sm"
+              pt={7}
+              pb={7}
+              miw={190} onClick={visualize}>
               {t`Visualize`}
             </Button>
           </Flex>
