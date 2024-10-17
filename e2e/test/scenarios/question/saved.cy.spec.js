@@ -1,3 +1,4 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ORDERS_COUNT_QUESTION_ID,
   ORDERS_QUESTION_ID,
@@ -11,9 +12,11 @@ import {
   addSummaryGroupingField,
   appBar,
   collectionOnTheGoModal,
+  createQuestion,
   entityPickerModal,
   entityPickerModalTab,
   getAlertChannel,
+  main,
   modal,
   openNotebook,
   openOrdersTable,
@@ -24,11 +27,14 @@ import {
   restore,
   rightSidebar,
   selectFilterOperator,
+  sidebar,
   sidesheet,
   summarize,
   tableHeaderClick,
   visitQuestion,
 } from "e2e/support/helpers";
+
+const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > question > saved", () => {
   beforeEach(() => {
@@ -315,6 +321,68 @@ describe("scenarios > question > saved", () => {
       cy.findByDisplayValue("Products - Modified", { timeout: 10 }).should(
         "not.exist",
       );
+    });
+  });
+
+  describe("with hidden tables", () => {
+    function hideTable(name) {
+      cy.visit("/admin/datamodel");
+      sidebar().findByText(name).click();
+      main().findByText("Hidden").click();
+    }
+
+    it("should show a View-only tag when the source table is hidden", () => {
+      cy.signInAsAdmin();
+      hideTable("Orders");
+
+      visitQuestion(ORDERS_QUESTION_ID);
+
+      queryBuilderHeader()
+        .findByText("View-only")
+        .should("be.visible")
+        .realHover();
+      popover()
+        .findByText(
+          "One of the administrators hid the source table “Orders”, making this question view-only.",
+        )
+        .should("be.visible");
+    });
+
+    it("should show a View-only tag when a joined table is hidden", () => {
+      cy.signInAsAdmin();
+      hideTable("Products");
+      createQuestion(
+        {
+          name: "Joined question",
+          query: {
+            "source-table": ORDERS_ID,
+            joins: [
+              {
+                "source-table": PRODUCTS_ID,
+                alias: "Orders",
+                condition: [
+                  "=",
+                  ["field", ORDERS.PRODUCT_ID, null],
+                  ["field", PRODUCTS.ID, { "join-alias": "Products" }],
+                ],
+                fields: "all",
+              },
+            ],
+          },
+        },
+        {
+          visitQuestion: true,
+        },
+      );
+      queryBuilderHeader()
+        .findByText("View-only")
+        .should("be.visible")
+        .realHover();
+      popover()
+        .findByText(
+          "One of the administrators hid the source table “Orders”, making this question view-only.",
+        )
+        .should("be.visible");
     });
   });
 });

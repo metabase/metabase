@@ -3,6 +3,7 @@ import fetchMock from "fetch-mock";
 import { Route } from "react-router";
 import _ from "underscore";
 
+import { setupCardQueryMetadataEndpoint } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
 import { fireEvent, renderWithProviders, screen } from "__support__/ui";
 import MetabaseSettings from "metabase/lib/settings";
@@ -12,7 +13,11 @@ import { COMMON_DATABASE_FEATURES } from "metabase-types/api/mocks";
 import {
   ORDERS,
   ORDERS_ID,
+  PRODUCTS,
+  PRODUCTS_ID,
   SAMPLE_DB_ID,
+  createOrdersTable,
+  createProductsTable,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
@@ -20,6 +25,12 @@ import { createMockState } from "metabase-types/store/mocks";
 import { ViewTitleHeader } from "./ViewTitleHeader";
 
 console.warn = jest.fn();
+console.error = jest.fn();
+
+const PRODUCTS_TABLE = createProductsTable();
+const HIDDEN_ORDERS_TABLE = createOrdersTable({
+  visibility_type: "hidden",
+});
 
 const BASE_GUI_QUESTION = {
   display: "table",
@@ -105,6 +116,7 @@ function setup({
   isAdditionalInfoVisible = true,
   isDirty = false,
   isRunnable = true,
+  hideOrdersTable = false,
   ...props
 } = {}) {
   mockSettings(settings);
@@ -126,6 +138,9 @@ function setup({
     entities: createMockEntitiesState({
       databases: [database],
       questions: [card],
+      tables: hideOrdersTable
+        ? [PRODUCTS_TABLE, HIDDEN_ORDERS_TABLE]
+        : undefined,
     }),
   });
 
@@ -134,6 +149,8 @@ function setup({
   const question = isSaved
     ? metadata.question(card.id)
     : new Question(card, metadata);
+
+  setupCardQueryMetadataEndpoint(card, metadata);
 
   renderWithProviders(
     <Route
@@ -185,6 +202,10 @@ function setupSavedNative(props = {}) {
 }
 
 describe("ViewTitleHeader", () => {
+  beforeEach(() => {
+    fetchMock.reset();
+  });
+
   const TEST_CASE = {
     SAVED_GUI_QUESTION: {
       card: getSavedGUIQuestionCard(),
@@ -571,5 +592,44 @@ describe("View Header | Read only permissions", () => {
   it("should disable the input field for the question title", () => {
     setup({ card: getSavedGUIQuestionCard({ can_write: false }) });
     expect(screen.queryByTestId("saved-question-header-title")).toBeDisabled();
+  });
+});
+
+describe("View Header | Hidden tables", () => {
+  it("should show the View-only badge when the source table is hidden", async () => {
+    setup({
+      hideOrdersTable: true,
+      card: getSavedGUIQuestionCard({ can_write: false }),
+    });
+    expect(await screen.findByText("View-only")).toBeInTheDocument();
+  });
+
+  it("should show the View-only badge when a joined table is hidden", async () => {
+    setup({
+      hideOrdersTable: true,
+      card: getSavedGUIQuestionCard({
+        can_write: false,
+        dataset_query: {
+          type: "query",
+          database: SAMPLE_DB_ID,
+          query: {
+            "source-table": PRODUCTS_ID,
+            joins: [
+              {
+                alias: "Orders",
+                fields: "all",
+                "source-table": ORDERS_ID,
+                condition: [
+                  "=",
+                  ["field", PRODUCTS.ID, null],
+                  ["field", ORDERS.PRODUCT_ID, null],
+                ],
+              },
+            ],
+          },
+        },
+      }),
+    });
+    expect(await screen.findByText("View-only")).toBeInTheDocument();
   });
 });
