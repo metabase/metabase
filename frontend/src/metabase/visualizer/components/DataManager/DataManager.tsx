@@ -1,19 +1,32 @@
-import { Box } from "metabase/ui";
-import type { Card } from "metabase-types/api";
+import { t } from "ttag";
 
-export type DataManagerProps = {
-  cards: Card[];
-};
+import { useSelector } from "metabase/lib/redux";
+import { Box, Center, Flex, Text } from "metabase/ui";
+import { selectCards } from "metabase/visualizer/visualizer.slice";
 
-export const DataManager = ({ cards }: DataManagerProps) => {
+import { DatasetList } from "./DatasetList";
+
+export const DataManager = () => {
+  const cards = useSelector(selectCards);
+
   return (
-    <Box>
-      Data manager
-      <ul>
-        {cards.map(card => (
-          <li key={card.id}>{card.name}</li>
-        ))}
-      </ul>
-    </Box>
+    <Flex
+      direction="column"
+      bg="white"
+      style={{ borderRadius: "var(--default-border-radius)", height: "100%" }}
+    >
+      <Box px={12} py={8}>
+        <Text fw="bold" mb={3}>
+          {t`Data`}
+        </Text>
+      </Box>
+      {cards.length > 0 ? (
+        <DatasetList />
+      ) : (
+        <Center h="100%" w="100%" mx="auto">
+          <Text>{t`Pick a dataset first`}</Text>
+        </Center>
+      )}
+    </Flex>
   );
 };

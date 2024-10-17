@@ -3,18 +3,21 @@ import { t } from "ttag";
 
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
-import { Box, TextInput } from "metabase/ui";
-import type { CardId } from "metabase-types/api";
+import { useDispatch, useSelector } from "metabase/lib/redux";
+import { Flex, TextInput } from "metabase/ui";
+import {
+  addCard,
+  removeCard,
+  selectCardIds,
+} from "metabase/visualizer/visualizer.slice";
 
 import { RecentsList } from "./RecentsList";
 import type { ResultsItem, ResultsListProps } from "./ResultsList";
 import { SearchResultsList } from "./SearchResultsList";
 
-interface DataImporterProps {
-  onSelect: (cardId: CardId) => void;
-}
-
-export const DataImporter = ({ onSelect }: DataImporterProps) => {
+export const DataImporter = () => {
+  const dispatch = useDispatch();
+  const selectedCardIds = useSelector(selectCardIds);
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebouncedValue(search, SEARCH_DEBOUNCE_DURATION);
 
@@ -23,9 +26,13 @@ export const DataImporter = ({ onSelect }: DataImporterProps) => {
       if (typeof item.id !== "number") {
         throw new Error(`Search item with invalid id: ${JSON.stringify(item)}`);
       }
-      onSelect(item.id);
+      if (selectedCardIds.has(item.id)) {
+        dispatch(removeCard(item.id));
+      } else {
+        dispatch(addCard(item.id));
+      }
     },
-    [onSelect],
+    [dispatch, selectedCardIds],
   );
 
   const handleSearchChange: React.ChangeEventHandler<HTMLInputElement> =
@@ -36,22 +43,38 @@ export const DataImporter = ({ onSelect }: DataImporterProps) => {
   const showRecents = search.trim() === "";
 
   return (
-    <Box p={12}>
+    <Flex
+      direction="column"
+      bg="white"
+      style={{ borderRadius: "var(--default-border-radius)", height: "100%" }}
+    >
       <TextInput
+        m={8}
         variant="filled"
         value={search}
         onChange={handleSearchChange}
         placeholder={t`Search for something`}
-        mb={8}
       />
-      {showRecents ? (
-        <RecentsList onSelect={handleCardSelect} />
-      ) : (
-        <SearchResultsList
-          search={debouncedSearch}
-          onSelect={handleCardSelect}
-        />
-      )}
-    </Box>
+      <Flex
+        direction="column"
+        px={8}
+        style={{
+          overflowY: "auto",
+        }}
+      >
+        {showRecents ? (
+          <RecentsList
+            onSelect={handleCardSelect}
+            selectedCardIds={selectedCardIds}
+          />
+        ) : (
+          <SearchResultsList
+            search={debouncedSearch}
+            onSelect={handleCardSelect}
+            selectedCardIds={selectedCardIds}
+          />
+        )}
+      </Flex>
+    </Flex>
   );
 };

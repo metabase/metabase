@@ -1,41 +1,29 @@
-import { useCallback } from "react";
-
-import { Box, Flex, Stack } from "metabase/ui";
-import type { CardId } from "metabase-types/api";
+import { Box, Flex } from "metabase/ui";
 
 import { DataImporter } from "../DataImporter";
 import { DataManager } from "../DataManager";
 import { VisualizationCanvas } from "../VisualizationCanvas";
 
 export const VisualizerPage = () => {
-  const handleSelectDataSource = useCallback((_cardId: CardId) => {
-    // load cards
-  }, []);
-
   return (
-    <Box style={{ height: "100%", display: "flex" }}>
-      <Flex style={{ flexGrow: 1, minHeight: "0" }}>
-        <Stack
-          mih={0}
-          w={320}
-          style={{
-            overflowY: "auto",
-          }}
-        >
-          <DataImporter onSelect={handleSelectDataSource} />
-          <DataManager cards={[]} />
-        </Stack>
-        <Box
-          component="main"
-          mih={0}
-          style={{
-            flexGrow: 1,
-            overflowY: "auto",
-          }}
-        >
-          <VisualizationCanvas />
+    <Flex style={{ height: "100%", overflow: "hidden" }}>
+      <Flex direction="column" w={320}>
+        <Box h="50%" p={10} pr={0} style={{ overflowY: "hidden" }}>
+          <DataImporter />
+        </Box>
+        <Box h="50%" pl={10} pb={10} style={{ overflowY: "auto" }}>
+          <DataManager />
         </Box>
       </Flex>
-    </Box>
+      <Box
+        component="main"
+        w="100%"
+        h="100%"
+        p={10}
+        style={{ overflowY: "hidden" }}
+      >
+        <VisualizationCanvas />
+      </Box>
+    </Flex>
   );
 };
