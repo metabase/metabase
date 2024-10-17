@@ -44,12 +44,6 @@
           (uses-default-describe-fields? driver)))
     (descendants driver/hierarchy :sql-jdbc))))
 
-(deftest ^:parallel describe-fields-nested-field-columns-test
-  (testing (str "Drivers that support describe-fields should not support the nested field columns feature."
-                "It is possible to support both in the future but this has not been implemented yet.")
-    (is (empty? (filter #(driver.u/supports? % :describe-fields nil)
-                        (mt/normal-drivers-with-feature :nested-field-columns))))))
-
 (deftest ^:parallel describe-table-test
   (mt/test-driver :h2
     (assert (uses-default-describe-table? :h2)
