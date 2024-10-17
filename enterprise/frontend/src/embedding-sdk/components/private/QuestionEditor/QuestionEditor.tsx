@@ -1,5 +1,6 @@
 import { useDisclosure } from "@mantine/hooks";
 import { useState } from "react";
+import { t } from "ttag";
 
 import { FlexibleSizeComponent } from "embedding-sdk";
 import { InteractiveQuestion } from "embedding-sdk/components/public/InteractiveQuestion";
@@ -23,8 +24,8 @@ const QuestionEditorInner = () => {
   } = useInteractiveQuestionContext();
 
   const [activeTab, setActiveTab] = useState<
-    "notebook" | "visualization" | (string & unknown) | null
-  >("notebook");
+    "editor" | "visualization" | (string & unknown) | null
+  >("editor");
   const [isSaveModalOpen, { open: openSaveModal, close: closeSaveModal }] =
     useDisclosure(false);
 
@@ -41,17 +42,17 @@ const QuestionEditorInner = () => {
       <Tabs
         value={activeTab}
         onTabChange={setActiveTab}
-        defaultValue="notebook"
+        defaultValue="editor"
         h="100%"
         display="flex"
         style={{ flexDirection: "column", overflow: "hidden" }}
       >
         <Group position="apart">
           <Tabs.List>
-            <Tabs.Tab value="notebook">Notebook</Tabs.Tab>
+            <Tabs.Tab value="editor">{t`Editor`}</Tabs.Tab>
             {queryResults && (
               <Tabs.Tab value="visualization" onClick={onOpenVisualizationTab}>
-                Visualization
+                {t`Visualization`}
               </Tabs.Tab>
             )}
           </Tabs.List>
@@ -60,7 +61,7 @@ const QuestionEditorInner = () => {
             <Group>
               <InteractiveQuestion.ResetButton
                 onClick={() => {
-                  setActiveTab("notebook");
+                  setActiveTab("editor");
                   closeSaveModal();
                 }}
               />
@@ -71,7 +72,7 @@ const QuestionEditorInner = () => {
           )}
         </Group>
 
-        <Tabs.Panel value="notebook" h="100%" style={{ overflow: "auto" }}>
+        <Tabs.Panel value="editor" h="100%" style={{ overflow: "auto" }}>
           <InteractiveQuestion.Notebook
             onApply={() => setActiveTab("visualization")}
           />
