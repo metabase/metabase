@@ -100,6 +100,10 @@ body {
     }
   }
 
+  .WithThemeBackground {
+    background-color: transparent;
+  }
+
   .EmbedFrameHeader,
   .EmbedFrameFooter {
     background-color: transparent;
