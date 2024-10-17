@@ -49,7 +49,7 @@ interface Props {
   onClose: () => void;
 }
 
-const QUESTION_PICKER_MODELS: CollectionItemModel[] = ["card"];
+const QUESTION_PICKER_MODELS: CollectionItemModel[] = ["card", "dashboard"];
 
 const MODEL_PICKER_MODELS: CollectionItemModel[] = ["dataset"];
 
@@ -145,7 +145,7 @@ export const DataPickerModal = ({
       computedTabs.push({
         id: "models-tab",
         displayName: t`Models`,
-        model: "dataset" as const,
+        models: ["dataset" as const],
         folderModels: ["collection" as const],
         icon: "model",
         render: ({ onItemSelect }) => (
@@ -167,7 +167,7 @@ export const DataPickerModal = ({
       computedTabs.push({
         id: "metrics-tab",
         displayName: t`Metrics`,
-        model: "metric" as const,
+        models: ["metric" as const],
         folderModels: ["collection" as const],
         icon: "metric",
         render: ({ onItemSelect }) => (
@@ -189,7 +189,7 @@ export const DataPickerModal = ({
       computedTabs.push({
         id: "tables-tab",
         displayName: t`Tables`,
-        model: "table" as const,
+        models: ["table" as const],
         folderModels: ["database" as const, "schema" as const],
         icon: "table",
         render: ({ onItemSelect }) => (
@@ -208,7 +208,7 @@ export const DataPickerModal = ({
       computedTabs.push({
         id: "questions-tab",
         displayName: t`Saved questions`,
-        model: "card" as const,
+        models: ["card" as const],
         folderModels: ["collection" as const],
         icon: "folder",
         render: ({ onItemSelect }) => (

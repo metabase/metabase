@@ -2,17 +2,16 @@ import type { Ref } from "react";
 import { forwardRef, useCallback, useImperativeHandle, useMemo } from "react";
 import { useDeepCompareEffect } from "react-use";
 
-import { isValidCollectionId } from "metabase/collections/utils";
-import { useCollectionQuery } from "metabase/common/hooks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/lib/redux";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
 import type { Collection } from "metabase-types/api";
 
 import { LoadingSpinner, NestedItemPicker } from "../../EntityPicker";
-import { useEnsureCollectionSelected } from "../hooks";
+import { useEnsureCollectionSelected, useGetInitialContainer } from "../hooks";
 import type {
   CollectionPickerItem,
+  CollectionPickerModel,
   CollectionPickerOptions,
   CollectionPickerStatePath,
 } from "../types";
@@ -21,7 +20,7 @@ import {
   getParentCollectionId,
   getPathLevelForItem,
   getStateFromIdPath,
-  isFolder,
+  isFolderFactory,
 } from "../utils";
 
 import { CollectionItemPickerResolver } from "./CollectionItemPickerResolver";
@@ -32,14 +31,17 @@ const defaultOptions: CollectionPickerOptions = {
 };
 
 interface CollectionPickerProps {
-  initialValue?: Partial<CollectionPickerItem>;
+  initialValue?: Pick<CollectionPickerItem, "id" | "model">;
   options?: CollectionPickerOptions;
   path: CollectionPickerStatePath | undefined;
   shouldDisableItem?: (item: CollectionPickerItem) => boolean;
   onInit: (item: CollectionPickerItem) => void;
   onItemSelect: (item: CollectionPickerItem) => void;
   onPathChange: (path: CollectionPickerStatePath) => void;
+  models?: CollectionPickerModel[];
 }
+
+const DEFAULT_MODELS: CollectionPickerModel[] = ["collection"];
 
 export const CollectionPickerInner = (
   {
@@ -50,6 +52,7 @@ export const CollectionPickerInner = (
     onInit,
     onItemSelect,
     onPathChange,
+    models = DEFAULT_MODELS,
   }: CollectionPickerProps,
   ref: Ref<unknown>,
 ) => {
@@ -57,17 +60,17 @@ export const CollectionPickerInner = (
     return getStateFromIdPath({
       idPath: ["root"],
       namespace: options.namespace,
+      models,
     });
-  }, [options.namespace]);
+  }, [options.namespace, models]);
   const path = pathProp ?? defaultPath;
 
   const {
-    data: currentCollection,
+    currentCollection,
+    currentDashboard,
     error,
     isLoading: loadingCurrentCollection,
-  } = useCollectionQuery({
-    id: isValidCollectionId(initialValue?.id) ? initialValue?.id : "root",
-  });
+  } = useGetInitialContainer(initialValue);
 
   const userPersonalCollectionId = useSelector(getUserPersonalCollectionId);
 
@@ -84,6 +87,7 @@ export const CollectionPickerInner = (
           isUserSubfolder,
         ),
         namespace: options.namespace,
+        models,
       });
       onItemSelect(folder);
       onPathChange(newPath);
@@ -94,6 +98,7 @@ export const CollectionPickerInner = (
       options.namespace,
       userPersonalCollectionId,
       path,
+      models,
     ],
   );
 
@@ -163,9 +168,41 @@ export const CollectionPickerInner = (
 
   useDeepCompareEffect(
     function setInitialPath() {
+      if (!pathProp && currentDashboard?.collection) {
+        const newPath = getStateFromIdPath({
+          idPath: getCollectionIdPath(
+            {
+              ...currentDashboard.collection,
+              location: currentDashboard.collection?.effective_location,
+              is_personal: currentDashboard.collection?.is_personal,
+            },
+            userPersonalCollectionId,
+          ),
+          namespace: options.namespace,
+          models,
+        });
+
+        const newSelectedItem = {
+          id: currentDashboard.id,
+          model: "dashboard" as const,
+          name: currentDashboard.name,
+        };
+
+        newPath[newPath.length - 1].selectedItem = newSelectedItem;
+
+        onPathChange(newPath);
+
+        if (currentDashboard.collection?.can_write) {
+          // start with the current item selected if we can
+          onItemSelect({
+            ...currentDashboard.collection,
+            model: "dashboard",
+          });
+        }
+      }
       // do not overwrite the previously selected item when the user switches
       // tabs; in this case the component is unmounted and this hook runs again
-      if (!pathProp && currentCollection?.id) {
+      else if (!pathProp && currentCollection?.id) {
         const newPath = getStateFromIdPath({
           idPath: getCollectionIdPath(
             {
@@ -176,6 +213,7 @@ export const CollectionPickerInner = (
             userPersonalCollectionId,
           ),
           namespace: options.namespace,
+          models,
         });
         onPathChange(newPath);
 
@@ -199,11 +237,14 @@ export const CollectionPickerInner = (
 
   useEnsureCollectionSelected({
     currentCollection,
+    currentDashboard,
     enabled: path === defaultPath,
     options,
     useRootCollection: initialValue?.id == null,
     onInit,
   });
+
+  const isFolder = useMemo(() => isFolderFactory(models), [models]);
 
   if (error) {
     return <LoadingAndErrorWrapper error={error} />;

@@ -50,7 +50,7 @@ import { TabsView } from "./TabsView";
 export type EntityPickerModalOptions = {
   showSearch?: boolean;
   hasConfirmButtons?: boolean;
-  confirmButtonText?: string;
+  confirmButtonText?: string | ((model: string) => string);
   cancelButtonText?: string;
   hasRecents?: boolean;
 };
@@ -69,6 +69,8 @@ export const DEFAULT_RECENTS_CONTEXT: RecentContexts[] = [
   "views",
 ];
 
+const DEFAULT_RECENTS_FILTER = (item: RecentItem[]) => item;
+
 const DEFAULT_SEARCH_RESULT_FILTER = (results: SearchResult[]) => results;
 
 export interface EntityPickerModalProps<
@@ -81,7 +83,7 @@ export interface EntityPickerModalProps<
   initialValue?: Partial<Item>;
   canSelectItem: boolean;
   tabs: EntityPickerTab<Id, Model, Item>[];
-  options?: Partial<EntityPickerOptions>;
+  options?: Partial<EntityPickerOptions<Item>>;
   searchResultFilter?: (results: SearchResult[]) => SearchResult[];
   recentFilter?: (results: RecentItem[]) => RecentItem[];
   searchParams?: Partial<SearchRequest>;
@@ -111,7 +113,7 @@ export function EntityPickerModal<
   options,
   actionButtons = [],
   searchResultFilter = DEFAULT_SEARCH_RESULT_FILTER,
-  recentFilter,
+  recentFilter = DEFAULT_RECENTS_FILTER,
   trapFocus = true,
   searchParams,
   defaultToRecentTab = true,
@@ -177,6 +179,14 @@ export function EntityPickerModal<
     },
   );
 
+  // const tabModels = useMemo(
+  //   () =>
+  //     passedTabs
+  //       .flatMap(t => (t.additionalModels || []).concat(t.model || []))
+  //       .filter(Boolean),
+  //   [passedTabs],
+  // );
+
   const finalSearchResults = useMemo(() => {
     if (searchScope === "folder") {
       if (!scopedSearchResults) {
@@ -200,10 +210,8 @@ export function EntityPickerModal<
       return searchModels.includes(recentItem.model);
     });
 
-    return recentFilter
-      ? recentFilter(relevantModelRecents)
-      : relevantModelRecents;
-  }, [recentItems, searchModels, recentFilter]);
+    return recentFilter(relevantModelRecents);
+  }, [recentItems, recentFilter, searchModels]);
 
   const tabs: EntityPickerTab<Id, Model, Item>[] = (function getTabs() {
     const computedTabs: EntityPickerTab<Id, Model, Item>[] = [];
@@ -218,7 +226,7 @@ export function EntityPickerModal<
     if (hasRecentsTab || shouldOptimisticallyAddRecentsTabWhileLoading) {
       computedTabs.push({
         id: RECENTS_TAB_ID,
-        model: null,
+        models: null,
         folderModels: [],
         displayName: t`Recents`,
         icon: "clock",
@@ -238,7 +246,7 @@ export function EntityPickerModal<
     if (hasSearchTab) {
       computedTabs.push({
         id: SEARCH_TAB_ID,
-        model: null,
+        models: null,
         folderModels: [],
         displayName: getSearchTabText(finalSearchResults, searchQuery),
         icon: "search",
@@ -404,7 +412,11 @@ export function EntityPickerModal<
                   onCancel={onClose}
                   canConfirm={canSelectItem}
                   actionButtons={showActionButtons ? actionButtons : []}
-                  confirmButtonText={options?.confirmButtonText}
+                  confirmButtonText={
+                    typeof options?.confirmButtonText === "function"
+                      ? options.confirmButtonText(selectedItem?.model)
+                      : options?.confirmButtonText
+                  }
                   cancelButtonText={options?.cancelButtonText}
                 />
               )}

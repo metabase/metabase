@@ -44,6 +44,21 @@ export const CollectionItemPickerResolver = ({
     );
   }
 
+  // if (entity === "dashboard") {
+  //   return (
+  //     <DashboardItemList
+  //       query={query}
+  //       onClick={onClick}
+  //       selectedItem={selectedItem}
+  //       isFolder={isFolder}
+  //       isCurrentLevel={isCurrentLevel}
+  //       shouldDisableItem={shouldDisableItem}
+  //       shouldShowItem={shouldShowItem}
+  //       options={options}
+  //     />
+  //   );
+  // }
+
   return (
     <CollectionItemList
       query={query}

@@ -21,6 +21,7 @@ export type PickerState<Item, Query> = PickerStateItem<Item, Query>[];
 export type PickerStateItem<Item, Query> = {
   query?: Query;
   selectedItem: Item | null;
+  entity?: "collection" | "dashboard";
 };
 
 export type EntityPickerOptions = EntityPickerModalOptions;
@@ -48,7 +49,7 @@ export type EntityPickerTab<
    * Recents & Search tabs don't have models associated with them - hence null
    * (they provide the same models as the other tabs combined).
    */
-  model: Model | null;
+  models: Model[];
   folderModels: Model[];
 };
 

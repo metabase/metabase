@@ -1,6 +1,8 @@
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
+import type { RecentItem } from "metabase-types/api";
+
 import type { EntityPickerTab } from "../../EntityPicker";
 import {
   EntityPickerModal,
@@ -28,6 +30,7 @@ interface QuestionPickerModalProps {
   options?: QuestionPickerOptions;
   value?: QuestionPickerValue;
   models?: QuestionPickerModel[];
+  recentFilter?: (items: RecentItem[]) => RecentItem[];
 }
 
 const canSelectItem = (
@@ -54,6 +57,7 @@ export const QuestionPickerModal = ({
   value = { model: "collection", id: "root" },
   options = defaultOptions,
   models = ["card", "dataset"],
+  recentFilter,
 }: QuestionPickerModalProps) => {
   options = { ...defaultOptions, ...options };
   const [selectedItem, setSelectedItem] = useState<QuestionPickerItem | null>(
@@ -175,6 +179,7 @@ export const QuestionPickerModal = ({
       }
       searchResultFilter={results => results}
       actionButtons={[]}
+      recentFilter={recentFilter}
     />
   );
 };
