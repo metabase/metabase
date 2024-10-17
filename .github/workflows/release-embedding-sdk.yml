@@ -44,8 +44,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ inputs.branch }}
-          fetch-depth: 0
-          fetch-tags: true
 
       - name: Get current SDK version
         id: current-sdk-version
