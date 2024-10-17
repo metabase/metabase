@@ -19,6 +19,11 @@ type AlertListItemProps = {
   onEdit: () => void;
 };
 
+// Used when a slack channel is present on an alert. This value is hardcoded
+// to 1 because each alert can only be sent to a single slack channel. Additional channels
+// would require their own alert.
+const SLACK_CHANNEL_COUNT = 1;
+
 export const AlertListItem = ({
   alert,
   highlight,
@@ -94,7 +99,7 @@ export const AlertListItem = ({
           {isAdmin && emailEnabled && emailChannel.recipients && (
             <li
               className={cx(CS.ml3, CS.flex, CS.alignCenter)}
-              aria-label="email recipient count"
+              aria-label={t`Number of email recipients`}
             >
               <Icon name="mail" className={CS.mr1} />
               {emailChannel.recipients.length}
@@ -103,15 +108,16 @@ export const AlertListItem = ({
           {isAdmin && slackEnabled && (
             <li
               className={cx(CS.ml3, CS.flex, CS.alignCenter)}
-              aria-label="slack channel count"
+              aria-label={t`Number of Slack channels`}
             >
-              <Icon name="slack" size={16} className={CS.mr1} />1
+              <Icon name="slack" size={16} className={CS.mr1} />
+              {SLACK_CHANNEL_COUNT}
             </li>
           )}
           {isAdmin && httpChannels.length > 0 && (
             <li
               className={cx(CS.ml3, CS.flex, CS.alignCenter)}
-              aria-label="http channel count"
+              aria-label={t`Number of HTTP channels`}
             >
               <Icon name="webhook" size={16} className={CS.mr1} />
               {httpChannels.length}

@@ -123,7 +123,7 @@ describe("scenarios > alert", () => {
 
       popover().within(() => {
         cy.findByText("You set up an alert").should("be.visible");
-        cy.findByRole("listitem", { name: "http channel count" })
+        cy.findByRole("listitem", { name: "Number of HTTP channels" })
           .should("contain.text", "2")
           .findByRole("img", { name: /webhook/i })
           .should("exist");
