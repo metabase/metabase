@@ -26,6 +26,8 @@ import { t } from "ttag";
 import { getSuggestions, setSuggestions } from "metabase/redux/suggestionsSlice";
 import { NoDatabaseError, SemanticError } from "metabase/components/ErrorPages";
 import { Client } from "@langchain/langgraph-sdk";
+import { Client as ClientSmith } from "langsmith/client"
+import toast from 'react-hot-toast'; 
 
 export const HomeLayout = () => {
   const initialMessage = useSelector(getInitialMessage);
@@ -52,15 +54,19 @@ export const HomeLayout = () => {
   const langchain_url = "https://assistants-dev-7ca2258c0a7e5ea393441b5aca30fb7c.default.us.langgraph.app";
   const langchain_key = "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";
   const [client, setClient] = useState<any>(null);
+  const [clientSmith, setSmithClient] = useState<any>(null);
   const [shouldRefetchHistory, setShouldRefetchHistory] = useState(false); // State to trigger chat history refresh
 
 
   useEffect(() => {
     const initializeClient = async () => {
-      const clientInstance = new Client({ apiUrl: langchain_url, apiKey: langchain_key });
+      const clientInstance = new Client({apiUrl: langchain_url, apiKey: langchain_key});
+      const clientSmithInstance = new ClientSmith({apiKey: langchain_key})
+      setSmithClient(clientSmithInstance)
       setClient(clientInstance);
     };
     initializeClient();
+    toast.success('Feedback submitted!')
   }, []);
 
   const dispatch = useDispatch();
@@ -330,6 +336,7 @@ export const HomeLayout = () => {
               >
                 <ChatAssistant
                   client={client}
+                  clientSmith={clientSmith}
                   selectedMessages={selectedChatHistory}
                   selectedThreadId={selectedThreadId}
                   chatType={selectedChatType}
