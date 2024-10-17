@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import Message from "./Message";
 import CS from "metabase/css/core/index.css";
 import cx from "classnames";
-import { Button, Icon, Loader } from "metabase/ui";
+import { Button, Icon, Loader, Input } from "metabase/ui";
 import VisualizationResult from "metabase/query_builder/components/VisualizationResult";
 import { MonospaceErrorDisplay } from "../ErrorDetails/ErrorDetails.styled";
 import { Skeleton } from "metabase/ui";
@@ -15,6 +15,7 @@ const ChatMessageList = ({
   messages,
   isLoading,
   onFeedbackClick,
+  onSendFeedback,
   approvalChangeButtons,
   onApproveClick,
   onDenyClick,
@@ -32,10 +33,13 @@ const ChatMessageList = ({
   progressShow,
   insightsText,
   finalMessages,
-  finalMessagesText
+  finalMessagesText,
+  isFeedbackVisible
 }) => {
   const messageEndRef = useRef(null);
   const [showCode, setShowCode] = useState(false);
+  const [feedbackData, setFeedbackData] = useState({ messageId: null, correctionText: '' });
+
 
   useEffect(() => {
     if (messageEndRef.current) {
@@ -46,6 +50,24 @@ const ChatMessageList = ({
   const handleShowCode = () => {
     setShowCode(!showCode);
   }
+
+  const handleThumbsDownClick = (messageId) => {
+    // Show text input for correction when thumbs down is clicked
+    setFeedbackData({ messageId, correctionText: '' });
+  };
+
+  const handleCorrectionChange = (e) => {
+    setFeedbackData({ ...feedbackData, correctionText: e.target.value });
+  };
+
+  const handleSubmitCorrection = () => {
+    if (feedbackData.correctionText.trim()) {
+      // Send correction feedback
+      onSendFeedback(0, feedbackData.messageId, feedbackData.correctionText);
+      // Reset the feedback data
+      setFeedbackData({ messageId: null, correctionText: '' });
+    }
+  };
 
   const formattedInsightText = finalMessagesText.join('\n\n');
   let formattedInsightResult = '';
@@ -89,6 +111,7 @@ const ChatMessageList = ({
                 onSuggestion={onSuggestion}
               />
             )}
+
 
             {progressShow && (
               <div
@@ -256,6 +279,36 @@ const ChatMessageList = ({
                   </>
                 )}
               </>
+            )}
+            {message.showFeedback && (
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '10px' }}>
+                <Icon
+                  name="thumbs_up"
+                  size={24}
+                  style={{ cursor: 'pointer', marginRight: '10px', color: '#4CAF50' }}
+                  onClick={() => onSendFeedback(1, message.id)} // Trigger feedback with score 1
+                />
+                <Icon
+                  name="thumbs_down"
+                  size={24}
+                  style={{ cursor: 'pointer', color: '#F44336' }}
+                  onClick={() => handleThumbsDownClick(message.id)} // Show correction input on thumbs down
+                />
+              </div>
+            )}
+
+            {feedbackData.messageId === message.id && (
+              <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                <Input
+                  placeholder="Describe the issue..."
+                  value={feedbackData.correctionText}
+                  onChange={handleCorrectionChange}
+                  style={{ width: '100%', marginBottom: '10px' }}
+                />
+                <Button variant="filled" onClick={handleSubmitCorrection}>
+                  Submit Correction
+                </Button>
+              </div>
             )}
           </div>
         );

@@ -22,9 +22,9 @@ import { useListDatabasesQuery, useGetDatabaseMetadataWithoutParamsQuery, skipTo
 import { SemanticError } from "metabase/components/ErrorPages";
 import { SpinnerIcon } from "metabase/components/LoadingSpinner/LoadingSpinner.styled";
 import { t } from "ttag";
+import toast from 'react-hot-toast'; 
 
-
-const ChatAssistant = ({ client, selectedMessages, selectedThreadId, setSelectedThreadId, chatType, oldCardId, insights, initial_message, setMessages, setInputValue, setThreadId, threadId, inputValue, messages, isChatHistoryOpen, setIsChatHistoryOpen, setShowButton, setShouldRefetchHistory }) => {
+const ChatAssistant = ({ client, clientSmith, selectedMessages, selectedThreadId, setSelectedThreadId, chatType, oldCardId, insights, initial_message, setMessages, setInputValue, setThreadId, threadId, inputValue, messages, isChatHistoryOpen, setIsChatHistoryOpen, setShowButton, setShouldRefetchHistory }) => {
     const initialDbName = useSelector(getDBInputValue);
     const initialCompanyName = useSelector(getCompanyName);
     const initialSchema = useSelector(getInitialSchema);
@@ -73,6 +73,7 @@ const ChatAssistant = ({ client, selectedMessages, selectedThreadId, setSelected
     const [pendingInfoMessage, setPendingInfoMessage] = useState(null);
     const [insightDB, setInsightDB] = useState(null);
     const [chatDisabled, setChatDisabled] = useState(false);
+    const [isFeedbackVisible, setIsFeedbackVisible] = useState(false);
 
     const databases = data?.data;
     useEffect(() => {
@@ -366,6 +367,7 @@ const ChatAssistant = ({ client, selectedMessages, selectedThreadId, setSelected
             visualizationIdx,
             showVisualization: false,
             isLoading: true,
+            showFeedback: false,
         };
     
         // Display temporary message during server response wait time
@@ -416,10 +418,11 @@ const ChatAssistant = ({ client, selectedMessages, selectedThreadId, setSelected
                 config: { recursion_limit: 25 },
                 streamMode: "messages",
             });
-    
             for await (const chunk of streamResponse) {
                 const { event, data } = chunk;
-    
+                if (event === "metadata") {
+                    setRunId(data.run_id)
+                }
                 // Handle partial messages
                 if (event === "messages/partial" && data.length > 0) {
                     const messageData = data[0];
@@ -685,17 +688,31 @@ const ChatAssistant = ({ client, selectedMessages, selectedThreadId, setSelected
             setChatLoading(false);
             setShouldRefetchHistory(true);
             setMessages((prev) =>
-                prev.map((msg) => ({
-                    ...msg,
-                    isLoading: false, // Set all messages' isLoading to false
-                }))
+                prev.map((msg, index) =>
+                    index === prev.length - 1
+                        ? { ...msg, isLoading: false, showFeedback: true }
+                        : msg
+                )
             );
-            setIsLoading(false);  // Ensure loading is turned off when the process finishes
+            setIsLoading(false);  
+            setIsFeedbackVisible(true); 
         }
     };
     
-
-
+    const handleSendFeedback = async (score, messageId, correctionText) => {
+        try {
+            if (score === 1) {
+                await clientSmith.createFeedback(runId, "user-score", { score: score });
+            } else {
+                await clientSmith.createFeedback(runId, "comment", { comment: correctionText });      
+            } 
+     
+        } catch (error) {
+          console.error("Error sending feedback:", error);
+        } finally {
+          toast.success('Feedback submitted!')
+        }
+      };
 
     function showCardGenerationMessage(chunkInterval = 50, tempMessageId) {
         const messages = [
@@ -959,12 +976,12 @@ const ChatAssistant = ({ client, selectedMessages, selectedThreadId, setSelected
                             }}
                         >
 
-                            <ChatMessageList messages={messages} isLoading={isLoading} onFeedbackClick={handleFeedbackDialogOpen}
+                            <ChatMessageList messages={messages} isLoading={isLoading} onFeedbackClick={handleFeedbackDialogOpen} isFeedbackVisible={isFeedbackVisible}
                                 approvalChangeButtons={approvalChangeButtons} onApproveClick={handleAccept} onDenyClick={handleDeny}
                                 card={card} defaultQuestion={defaultQuestion} result={result} openModal={openModal}
                                 showError={showError} insightsCode={insightsCode} showCubeEditButton={showCubeEditButton} sendAdminRequest={handleCubeRequestDialogOpen} onSuggestion={handleSuggestion}
                                 insightCellCode={insightCellCode} insightsImg={insightsImg} insightsPlan={inisghtPlan} progressShow={progressShow}
-                                insightsText={insightsText} finalMessages={finalMessages} finalMessagesText={finalMessagesText}
+                                insightsText={insightsText} finalMessages={finalMessages} finalMessagesText={finalMessagesText} onSendFeedback={handleSendFeedback}
                             />
                             <div
                                 style={{
