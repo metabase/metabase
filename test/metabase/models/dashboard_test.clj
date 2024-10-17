@@ -1006,22 +1006,23 @@
       [Field     field     {:name "A field"}
        Card      card      {:name "A card"}
        Dashboard dashboard {:name       "A dashboard"
-                            :parameters [{:id "abc"
-                                          :type "category"
-                                          :values_source_type "card"
+                            :parameters [{:id                   "abc"
+                                          :type                 "category"
+                                          :values_source_type   "card"
                                           :values_source_config {:card_id     (:id card)
                                                                  :value_field [:field (:id field) nil]}}]}]
-      (is (= #{["Card" (:id card)]}
+      (is (= {["Card" (:id card)] {"Dashboard" (:id dashboard)}}
              (serdes/descendants "Dashboard" (:id dashboard))))))
 
   (testing "dashboard which has a dashcard with an action"
     (mt/with-actions [{:keys [action-id]} {}]
       (mt/with-temp
-        [Dashboard dashboard {:name "A dashboard"}
-         DashboardCard _ {:action_id          action-id
-                          :dashboard_id       (:id dashboard)
-                          :parameter_mappings []}]
-        (is (= #{["Action" action-id]}
+        [Dashboard     dashboard {:name "A dashboard"}
+         DashboardCard dc        {:action_id          action-id
+                                  :dashboard_id       (:id dashboard)
+                                  :parameter_mappings []}]
+        (is (= {["Action" action-id] {"Dashboard"     (:id dashboard)
+                                      "DashboardCard" (:id dc)}}
                (serdes/descendants "Dashboard" (:id dashboard)))))))
 
   (testing "dashboard in which its dashcards has parameter_mappings to a card"
@@ -1032,13 +1033,15 @@
                                               :slug "category_name"
                                               :id   "_CATEGORY_NAME_"
                                               :type "category"}]}
-       DashboardCard _         {:card_id            (:id card1)
+       DashboardCard dc        {:card_id            (:id card1)
                                 :dashboard_id       (:id dashboard)
                                 :parameter_mappings [{:parameter_id "_CATEGORY_NAME_"
                                                       :card_id      (:id card2)
                                                       :target       [:dimension (mt/$ids $categories.name)]}]}]
-      (is (= #{["Card" (:id card1)]
-               ["Card" (:id card2)]}
+      (is (= {["Card" (:id card1)] {"Dashboard"     (:id dashboard)
+                                    "DashboardCard" (:id dc)}
+              ["Card" (:id card2)] {"Dashboard"     (:id dashboard)
+                                    "DashboardCard" (:id dc)}}
              (serdes/descendants "Dashboard" (:id dashboard))))))
 
   (testing "dashboard in which its dashcards have series"
@@ -1051,10 +1054,12 @@
                                                     :id   "_CATEGORY_NAME_"
                                                     :type "category"}]}
        DashboardCard       dashcard {:card_id (:id card1), :dashboard_id (:id dashboard)}
-       DashboardCardSeries _        {:dashboardcard_id (:id dashcard), :card_id (:id card2), :position 0}
-       DashboardCardSeries _        {:dashboardcard_id (:id dashcard), :card_id (:id card3), :position 1}]
-      (is (= (set (for [card [card1 card2 card3]]
-                    ["Card" (:id card)]))
+       DashboardCardSeries s2       {:dashboardcard_id (:id dashcard), :card_id (:id card2), :position 0}
+       DashboardCardSeries s3       {:dashboardcard_id (:id dashcard), :card_id (:id card3), :position 1}]
+      (is (= (into {} (for [[card series] [[card1 nil] [card2 s2] [card3 s3]]]
+                        [["Card" (:id card)] (cond-> {"Dashboard"           (:id dashboard)
+                                                      "DashboardCard"       (:id dashcard)}
+                                               series (assoc "DashboardCardSeries" (:id series)))]))
              (serdes/descendants "Dashboard" (:id dashboard)))))))
 
 (deftest ^:parallel hydrate-tabs-test
