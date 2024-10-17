@@ -695,15 +695,23 @@
   DashboardQuestions."
   [{:as card-before-update
     card-id :id
+    old-archived :archived
     old-dashboard-id :dashboard_id}
    {:as card-updates
-    new-dashboard-id :dashboard_id
-    new-archived :archived}
+    dashboard-id-update :dashboard_id
+    archived-update :archived}
    delete-old-dashcards?]
-  (let [on-dashboard-before? (boolean old-dashboard-id)
+  (let [dashboard-changes? (api/column-will-change? :dashboard_id card-before-update card-updates)
+        new-dashboard-id (if-not dashboard-changes?
+                           old-dashboard-id
+                           dashboard-id-update)
+        on-dashboard-before? (boolean old-dashboard-id)
         on-dashboard-after? (boolean new-dashboard-id)
-        on-same-dashboard? (= old-dashboard-id new-dashboard-id)
 
+        archived-changes? (api/column-will-change? :archived card-before-update card-updates)
+        new-archived (if-not archived-changes?
+                       old-archived
+                       archived-update)
         archived-after? (boolean new-archived)]
     ;; we'll end up unarchived and a dashboard card => make sure we autoplace
     (when (and on-dashboard-after? (not archived-after?))
@@ -715,7 +723,7 @@
            ;; we're moving from one dashboard to another dashboard
            (and on-dashboard-before?
                 on-dashboard-after?
-                (not on-same-dashboard?))
+                dashboard-changes?)
            ;; we're moving from a dashboard to a collection and the user has told us to delete
            (and on-dashboard-before?
                 (not on-dashboard-after?)
