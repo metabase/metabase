@@ -46,7 +46,7 @@ export class AlertEducationalScreen extends Component {
                 AlertModalsS.AlertModalsTextWidth,
               )}
             >{jt`When a raw data question ${(
-              <strong>{t`returns any results`}</strong>
+              <strong key="bold">{t`returns any results`}</strong>
             )}`}</p>
           </div>
           <div
@@ -73,7 +73,7 @@ export class AlertEducationalScreen extends Component {
                 AlertModalsS.AlertModalsTextWidth,
               )}
             >{jt`When a line or bar ${(
-              <strong>{t`crosses a goal line`}</strong>
+              <strong key="bold">{t`crosses a goal line`}</strong>
             )}`}</p>
           </div>
           <div
@@ -94,7 +94,7 @@ export class AlertEducationalScreen extends Component {
                 AlertModalsS.AlertModalsTextWidth,
               )}
             >{jt`When a progress bar ${(
-              <strong>{t`reaches its goal`}</strong>
+              <strong key="bold">{t`reaches its goal`}</strong>
             )}`}</p>
           </div>
         </div>
