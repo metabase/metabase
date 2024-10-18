@@ -30,7 +30,7 @@ export type EditableDashboardProps = {
 export const EditableDashboard = ({
   dashboardId,
   initialParameterValues = {},
-  withDownloads = true,
+  withDownloads = false,
   questionHeight,
   plugins,
   onLoad,

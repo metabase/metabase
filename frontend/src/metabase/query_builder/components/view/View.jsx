@@ -47,7 +47,7 @@ import {
 } from "./View.styled";
 import { ViewFooter } from "./ViewFooter";
 import ViewSidebar from "./ViewSidebar";
-import ChartSettingsSidebar from "./sidebars/ChartSettingsSidebar";
+import { ChartSettingsSidebar } from "./sidebars/ChartSettingsSidebar";
 import { ChartTypeSidebar } from "./sidebars/ChartTypeSidebar";
 import { QuestionInfoSidebar } from "./sidebars/QuestionInfoSidebar";
 import { QuestionSettingsSidebar } from "./sidebars/QuestionSettingsSidebar";

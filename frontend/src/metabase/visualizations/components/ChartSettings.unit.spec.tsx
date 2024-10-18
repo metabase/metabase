@@ -1,44 +1,43 @@
 import userEvent from "@testing-library/user-event";
 
 import { fireEvent, renderWithProviders, screen } from "__support__/ui";
-import ChartSettings from "metabase/visualizations/components/ChartSettings";
+import {
+  ChartSettings,
+  type ChartSettingsProps,
+  type Widget,
+} from "metabase/visualizations/components/ChartSettings";
 import registerVisualizations from "metabase/visualizations/register";
-import type { DashboardCard, Series } from "metabase-types/api";
 import {
   createMockCard,
   createMockDashboardCard,
+  createMockDataset,
   createMockVisualizationSettings,
 } from "metabase-types/api/mocks";
-
-import type { ComputedVisualizationSettings } from "../types";
 
 registerVisualizations();
 
 const DEFAULT_PROPS = {
   series: [
-    { card: { visualization_settings: {} }, data: { rows: [], cols: [] } },
+    {
+      card: createMockCard({ visualization_settings: {} }),
+      ...createMockDataset({ data: { rows: [], cols: [] } }),
+    },
   ],
   settings: {},
 };
 
-function widget(widget = {}) {
+function widget(widget: Partial<Widget> = {}): Widget {
   return {
     id: "id-" + Math.random(),
     title: "title-" + Math.random(),
     widget: () => null,
+    section: "section-" + Math.random(),
+    props: {},
     ...widget,
   };
 }
 
-// TODO Use ChartSettingsProps after ChartSettings is converted to TypeScript
-type SetupOpts = {
-  series?: Series;
-  settings?: ComputedVisualizationSettings;
-  dashcard?: DashboardCard;
-  widgets?: any[];
-  initial?: { section: string };
-  onChange?: (settings: ComputedVisualizationSettings) => void;
-};
+type SetupOpts = Partial<ChartSettingsProps>;
 
 const setup = (props: SetupOpts) => {
   return renderWithProviders(<ChartSettings {...DEFAULT_PROPS} {...props} />);

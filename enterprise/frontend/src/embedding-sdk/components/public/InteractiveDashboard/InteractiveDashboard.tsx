@@ -34,7 +34,7 @@ const InteractiveDashboardInner = ({
   initialParameterValues = {},
   withTitle = true,
   withCardTitle = true,
-  withDownloads = true,
+  withDownloads = false,
   hiddenParameters = [],
   questionHeight,
   plugins,
