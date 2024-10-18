@@ -22,9 +22,11 @@ export const metabot = createSlice({
   },
   extraReducers: builder => {
     builder.addMatcher(metabotAgent.matchPending, (state, action) => {
+      const args = action.meta.arg.originalArgs;
       state.chatHistory.push({
         source: "user",
-        ...action.meta.arg.originalArgs,
+        message: args.message,
+        context: args.context,
       });
     });
   },
