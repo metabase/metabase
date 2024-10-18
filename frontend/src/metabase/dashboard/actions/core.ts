@@ -1,6 +1,6 @@
-import { createAction } from "@reduxjs/toolkit";
 import { push } from "react-router-redux";
 
+import { createAction } from "metabase/lib/redux";
 import { getLocation } from "metabase/selectors/routing";
 import type {
   DashCardId,

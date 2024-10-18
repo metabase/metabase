@@ -17,6 +17,7 @@ export const TAG_TYPES = [
   "model-index",
   "parameter-values",
   "permissions-group",
+  "permissions-member",
   "persisted-info",
   "persisted-model",
   "revision",

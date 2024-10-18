@@ -1,9 +1,8 @@
 import { push, replace } from "react-router-redux";
-import { createAction } from "redux-actions";
 import { parse as parseUrl } from "url";
 
 import { isEqualCard } from "metabase/lib/card";
-import { createThunkAction } from "metabase/lib/redux";
+import { createAction, createThunkAction } from "metabase/lib/redux";
 import { equals } from "metabase/lib/utils";
 import { getLocation } from "metabase/selectors/routing";
 import * as Lib from "metabase-lib";

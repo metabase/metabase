@@ -90,7 +90,12 @@ export type StructuredParameterDimensionTarget = [
   ConcreteFieldReference | ExpressionReference,
 ];
 
-export type ParameterValueOrArray = string | number | Array<any>;
+export type ParameterValueOrArray =
+  | string
+  | number
+  | Array<any>
+  | null
+  | undefined;
 
 export type HumanReadableParameterValue = string;
 export type NotRemappedParameterValue = [RowValue];

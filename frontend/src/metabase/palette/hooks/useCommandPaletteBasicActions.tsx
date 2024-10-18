@@ -12,7 +12,7 @@ import Collections from "metabase/entities/collections/collections";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { openDiagnostics } from "metabase/redux/app";
-import { closeModal, setOpenModal } from "metabase/redux/ui";
+import { type NewModalKeys, closeModal, setOpenModal } from "metabase/redux/ui";
 import {
   getHasDataAccess,
   getHasDatabaseWithActionsEnabled,
@@ -43,7 +43,7 @@ export const useCommandPaletteBasicActions = ({
   const hasModels = models.length > 0;
 
   const openNewModal = useCallback(
-    (modalId: string) => {
+    (modalId: NewModalKeys) => {
       dispatch(closeModal());
       dispatch(setOpenModal(modalId));
     },

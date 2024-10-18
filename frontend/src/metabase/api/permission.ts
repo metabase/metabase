@@ -3,6 +3,8 @@ import type {
   Group,
   GroupId,
   GroupListQuery,
+  GroupUserMembership,
+  Member,
 } from "metabase-types/api";
 
 import { Api } from "./api";
@@ -10,6 +12,7 @@ import {
   idTag,
   invalidateTags,
   listTag,
+  providePermissionMemberTags,
   providePermissionsGroupListTags,
   providePermissionsGroupTags,
 } from "./tags";
@@ -60,6 +63,59 @@ export const permissionApi = Api.injectEndpoints({
         invalidateTags(error, [
           listTag("permissions-group"),
           idTag("permissions-group", id),
+        ]),
+    }),
+    getMemberships: builder.query<GroupUserMembership, void>({
+      query: () => ({
+        method: "GET",
+        url: "/api/permissions/membership",
+      }),
+      providesTags: memberships => [
+        ...providePermissionMemberTags(memberships ?? {}),
+        listTag("permissions-member"),
+      ],
+    }),
+    createMembership: builder.mutation<
+      Member[],
+      Pick<Member, "group_id" | "user_id">
+    >({
+      query: body => ({
+        method: "POST",
+        url: "/api/permissions/membership",
+        body,
+      }),
+      invalidatesTags: (_, error, member) =>
+        invalidateTags(error, [
+          listTag("permissions-member"),
+          idTag("permissions-group", member.group_id),
+        ]),
+    }),
+    deleteMembership: builder.mutation<
+      void,
+      Pick<Member, "membership_id" | "group_id">
+    >({
+      query: ({ membership_id }) => ({
+        method: "DELETE",
+        url: `/api/permissions/membership/${membership_id}`,
+      }),
+      invalidatesTags: (_, error, member) =>
+        invalidateTags(error, [
+          listTag("permissions-member"),
+          idTag("permissions-member", member.membership_id),
+          listTag("permissions-group"),
+          idTag("permissions-group", member.group_id),
+        ]),
+    }),
+    updateMembership: builder.mutation<void, Member>({
+      query: ({ membership_id, ...params }) => ({
+        method: "PUT",
+        url: `/api/permissions/membership/${membership_id}`,
+        params,
+      }),
+      invalidatesTags: (_, error, member) =>
+        invalidateTags(error, [
+          idTag("permissions-member", member.membership_id),
+          idTag("permissions-group", member.group_id),
         ]),
     }),
     clearGroupMembership: builder.mutation<void, GroupId>({

@@ -1,6 +1,6 @@
 import { arrayMove } from "@dnd-kit/sortable";
 import type { Draft } from "@reduxjs/toolkit";
-import { createAction, createReducer } from "@reduxjs/toolkit";
+import { createReducer } from "@reduxjs/toolkit";
 import { t } from "ttag";
 
 import {
@@ -9,6 +9,7 @@ import {
 } from "metabase/dashboard/actions/core";
 import Dashboards from "metabase/entities/dashboards";
 import { getPositionForNewDashCard } from "metabase/lib/dashboard_grid";
+import { createAction } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
 import { addUndo } from "metabase/redux/undo";
 import type {
