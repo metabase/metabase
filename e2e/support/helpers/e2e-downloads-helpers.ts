@@ -104,9 +104,17 @@ export function downloadAndAssert(
 
     cy.findByText(formattingButtonLabel).click();
 
-    if (enablePivoting) {
-      cy.findByText("Keep data pivoted").click();
-    }
+    cy.findByText("Keep data pivoted")
+      .as("keep-data-pivoted")
+      .parent()
+      .find('input[type="checkbox"]')
+      .then($checkbox => {
+        const isChecked = $checkbox.prop("checked");
+
+        if (enablePivoting !== isChecked) {
+          cy.get("@keep-data-pivoted").click();
+        }
+      });
 
     cy.findByTestId("download-results-button").click();
   });
