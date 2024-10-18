@@ -64,11 +64,12 @@ export const useInitData = ({ config }: InitDataLoaderParameters) => {
       setupSdkAuth(config, dispatch);
       dispatch(setLoginStatus({ status: "validated" }));
     })
-    .with("validated", () => {
+    .with("validated", async () => {
       if (config.jwtProviderUri) {
-        dispatch(getOrRefreshSession(config.jwtProviderUri))
+        await dispatch(getOrRefreshSession(config.jwtProviderUri))
           .unwrap()
           .then(response => {
+            console.log("getOrRefreshSession", response)
             if (!response) {
               handleServerError("error-fe-cannot-authenticate");
             } else if (response instanceof Response) {
@@ -95,6 +96,9 @@ export const useInitData = ({ config }: InitDataLoaderParameters) => {
         dispatch(refreshSiteSettings({})),
       ])
         .then(([userResponse, siteSettingsResponse]) => {
+          console.log({
+            userResponse,siteSettingsResponse
+          })
           if (
             userResponse.meta.requestStatus === "rejected" ||
             siteSettingsResponse.meta.requestStatus === "rejected"
