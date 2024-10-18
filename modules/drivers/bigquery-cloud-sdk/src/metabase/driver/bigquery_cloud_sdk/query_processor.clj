@@ -279,6 +279,16 @@
     base-type
     (base-type->temporal-type base-type)))
 
+(defmethod temporal-type :case
+  [[_case & rezt]]
+  ;; Following logic for picking a type is taken from
+  ;; the [[metabase.query-processor.middleware.annotate/infer-expression-type]].
+  (loop [[cond-or-else expr & rezt*] rezt]
+    (when (and expr (not= :else cond-or-else))
+      (if-some [t (temporal-type expr)]
+        t
+        (recur rezt*)))))
+
 (defmethod temporal-type :default
   [x]
   (:bigquery-cloud-sdk/temporal-type (meta x)))
