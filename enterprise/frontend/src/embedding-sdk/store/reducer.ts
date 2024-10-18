@@ -15,6 +15,7 @@ import type { SdkUsageProblem } from "embedding-sdk/types/usage-problem";
 import { createAsyncThunk } from "metabase/lib/redux";
 
 import { getFetchRefreshTokenFn, getSessionTokenState } from "./selectors";
+import { handleServerError } from "embedding-sdk/lib/error/error";
 
 const SET_LOGIN_STATUS = "sdk/SET_LOGIN_STATUS";
 const SET_METABASE_CLIENT_URL = "sdk/SET_METABASE_CLIENT_URL";
@@ -57,7 +58,7 @@ export const getOrRefreshSession = createAsyncThunk(
 
 export const refreshTokenAsync = createAsyncThunk(
   REFRESH_TOKEN,
-  async (url: string, { getState }): Promise<EmbeddingSessionToken | null> => {
+  async (url: string, { getState }): Promise<EmbeddingSessionToken | undefined> => {
     // The SDK user can provide a custom function to refresh the token.
     const getRefreshToken =
       getFetchRefreshTokenFn(getState() as SdkStoreState) ??
@@ -66,14 +67,7 @@ export const refreshTokenAsync = createAsyncThunk(
     try {
       return await getRefreshToken(url);
     } catch (errorCause) {
-      // As this function can be supplied by the SDK user,
-      // we have to handle possible errors in refreshing the token.
-      const error = new Error(t`failed to refresh the auth token`);
-      error.cause = errorCause;
-
-      setLoginStatus({ status: "error", error });
-
-      return null;
+      handleServerError("error-fe-cannot-refresh-token")
     }
   },
 );

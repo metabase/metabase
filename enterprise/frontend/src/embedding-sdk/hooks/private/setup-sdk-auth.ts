@@ -22,8 +22,6 @@ const setupJwtAuth = (
 
     api.sessionToken = (tokenState.payload as EmbeddingSessionToken | null)?.id;
   };
-
-  dispatch(setLoginStatus({ status: "validated" }));
 };
 
 const setupLocalApiKey = (
@@ -31,7 +29,6 @@ const setupLocalApiKey = (
   apiKey: SDKConfigWithApiKey["apiKey"],
 ) => {
   api.apiKey = apiKey;
-  dispatch(setLoginStatus({ status: "validated" }));
 };
 
 export const setupSdkAuth = (config: SDKConfig, dispatch: Dispatch) =>

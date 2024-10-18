@@ -5,4 +5,4 @@ export type EmbeddingSessionToken = {
 
 export type FetchRequestTokenFn = (
   url: string,
-) => Promise<EmbeddingSessionToken | null>;
+) => Promise<EmbeddingSessionToken>;

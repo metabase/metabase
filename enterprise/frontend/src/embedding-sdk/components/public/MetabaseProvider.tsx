@@ -12,6 +12,7 @@ import { getSdkStore } from "embedding-sdk/store";
 import {
   setErrorComponent,
   setEventHandlers,
+  setFetchRefreshTokenFn,
   setLoaderComponent,
   setMetabaseClientUrl,
   setPlugins,
@@ -87,6 +88,10 @@ export const MetabaseProviderInternal = ({
   useEffect(() => {
     store.dispatch(setMetabaseClientUrl(config.metabaseInstanceUrl));
   }, [store, config.metabaseInstanceUrl]);
+
+  useEffect(() => {
+    store.dispatch(setFetchRefreshTokenFn(config.fetchRequestToken ?? null));
+  }, [store, config.fetchRequestToken]);
 
   return (
     <EmotionCacheProvider>
