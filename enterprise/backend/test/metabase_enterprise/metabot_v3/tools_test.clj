@@ -5,4 +5,4 @@
 
 (deftest ^:parallel validate-tools-test
   (testing "Check that all tools are valid."
-    (is (seq (metabot-v3.tools/tools-metadata)))))
+    (is (seq (metabot-v3.tools/*tools-metadata*)))))

@@ -83,7 +83,6 @@
    [metabase.api.common :as api]
    [metabase.config :as config]
    [metabase.events :as events]
-   [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.models.setting.cache :as setting.cache]
    [metabase.plugins.classloader :as classloader]
@@ -159,9 +158,6 @@
   (derive :metabase/model))
 
 (methodical/defmethod t2/primary-keys :model/Setting [_model] [:key])
-
-(t2/deftransforms :model/Setting
-  {:key mi/transform-keyword})
 
 (defmethod serdes/hash-fields :model/Setting
   [_setting]
@@ -523,10 +519,7 @@
 (defn- db-is-set-up? []
   ;; this should never be hit. it is just overly cautious against a NPE here. But no way this cannot resolve
   (let [f (requiring-resolve 'metabase.db/db-is-set-up?)]
-    (u/prog1 (if f (f) false)
-      (when (and config/is-dev?
-                 (not <>))
-        (log/debug "Not returning Setting values from app DB because it is not yet initialized. Call metabase.db/setup-db! to set it up.")))))
+    (if f (f) false)))
 
 (defn- db-or-cache-value
   "Get the value, if any, of `setting-definition-or-name` from the DB (using / restoring the cache as needed)."
@@ -1205,13 +1198,13 @@
 
   Controls where this setting is visibile, and who can update it. Possible values are:
 
-    Visibility        | Who Can See It?              | Who Can Update It?
-    ----------------- | ---------------------------- | --------------------
-    :public           | The entire world             | Admins and Settings Managers
-    :authenticated    | Logged-in Users              | Admins and Settings Managers
-    :settings-manager | Admins and Settings Managers | Admins and Settings Managers
-    :admin            | Admins                       | Admins
-    :internal         | Nobody                       | No one (usually for env-var-only settings)
+    Visibility       | Who Can See It?              | Who Can Update It?
+    ---------------- | ---------------------------- | --------------------
+    :public          | The entire world             | Admins and Settings Managers
+    :authenticated   | Logged-in Users              | Admins and Settings Managers
+    :settings-manager| Admins and Settings Managers | Admins and Settings Managers
+    :admin           | Admins                       | Admins
+    :internal        | Nobody                       | No one (usually for env-var-only settings)
 
   'Settings Managers' are non-admin users with the 'settings' permission, which gives them access to the Settings page
   in the Admin Panel.

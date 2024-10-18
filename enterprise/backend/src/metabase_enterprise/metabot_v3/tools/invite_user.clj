@@ -5,12 +5,12 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
-(defmethod metabot-v3.tools.interface/tool-applicable? :metabot.tool/invite-user
+(defmethod metabot-v3.tools.interface/*tool-applicable?* :metabot.tool/invite-user
   [_tool-name _context]
   (log/warn "TODO -- only allow this tool if the current user has invite user permissions")
   true)
 
-(mu/defmethod metabot-v3.tools.interface/invoke-tool :metabot.tool/invite-user :- [:sequential ::metabot-v3.reactions/reaction]
+(mu/defmethod metabot-v3.tools.interface/*invoke-tool* :metabot.tool/invite-user :- [:sequential ::metabot-v3.reactions/reaction]
   [_tool-name {:keys [email], :as _argument-map}]
   (log/warnf "TODO -- invite %s" email)
   [{:type  :metabot.reaction/user-invite-sent
