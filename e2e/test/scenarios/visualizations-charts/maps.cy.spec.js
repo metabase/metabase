@@ -76,7 +76,7 @@ describe("scenarios > visualizations > maps", () => {
       { visitQuestion: true },
     );
 
-    cy.button("Visualization").click();
+    cy.findByTestId("viz-type-button").click();
     cy.findByTestId("display-options-sensible").as("sensibleOptions");
 
     cy.get("@sensibleOptions").within(() => {
@@ -206,8 +206,7 @@ describe("scenarios > visualizations > maps", () => {
     // Ensure chart is rendered
     cy.get(".leaflet-interactive");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Visualization").click();
+    cy.findByTestId("viz-type-button").click();
 
     // Ensure the Map visualization is sensible
     cy.findByTestId("display-options-sensible").as("sensibleOptions");

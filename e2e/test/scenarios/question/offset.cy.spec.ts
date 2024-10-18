@@ -11,6 +11,7 @@ import {
   entityPickerModal,
   entityPickerModalTab,
   getNotebookStep,
+  getStepPreviewButton,
   modal,
   openNotebook,
   openTable,
@@ -155,10 +156,10 @@ describe("scenarios > question > offset", () => {
       });
 
       cy.log("preview availability");
-      getNotebookStep("data").icon("play").should("be.visible");
-      getNotebookStep("expression").icon("play").should("not.be.visible");
-      getNotebookStep("sort").icon("play").should("be.visible");
-      getNotebookStep("limit").icon("play").should("be.visible");
+      getStepPreviewButton("data").should("be.visible");
+      getStepPreviewButton("expression").should("be.visible");
+      getStepPreviewButton("sort").should("be.visible");
+      getStepPreviewButton("limit").should("be.visible");
 
       visualize();
       verifyTableContent([
@@ -346,7 +347,7 @@ describe("scenarios > question > offset", () => {
       ]);
 
       openNotebook();
-      getNotebookStep("summarize").icon("play").should("be.visible");
+      getStepPreviewButton("summarize").should("be.visible");
     });
 
     it("works with a single breakout and sorting by breakout", () => {
@@ -655,7 +656,7 @@ describe("scenarios > question > offset", () => {
       ]);
 
       openNotebook();
-      getNotebookStep("summarize").icon("play").should("be.visible");
+      getStepPreviewButton("summarize").should("be.visible");
     });
 
     it("offset expression is in the first place in aggregation", () => {
@@ -713,7 +714,7 @@ describe("scenarios > question > offset", () => {
       ]);
 
       openNotebook();
-      getNotebookStep("summarize").icon("play").should("be.visible");
+      getStepPreviewButton("summarize").should("be.visible");
     });
 
     it("offset and avg function applied to custom column", () => {
@@ -792,6 +793,7 @@ describe("scenarios > question > offset", () => {
         addCustomColumn({
           formula: 'concat([Product → Category], " from products")',
           name: customColumnName,
+          actionButtonsGroup: "first",
         });
 
         addSummaryGroupingField({
@@ -815,7 +817,7 @@ describe("scenarios > question > offset", () => {
         ]);
 
         openNotebook();
-        getNotebookStep("summarize").icon("play").should("be.visible");
+        getStepPreviewButton("summarize").should("be.visible");
       });
 
       it("works with custom column that contains a column", () => {
@@ -835,6 +837,7 @@ describe("scenarios > question > offset", () => {
         addCustomColumn({
           formula: "[Product → Category]",
           name: customColumnName,
+          actionButtonsGroup: "first",
         });
 
         addSummaryGroupingField({
@@ -858,7 +861,7 @@ describe("scenarios > question > offset", () => {
         ]);
 
         openNotebook();
-        getNotebookStep("summarize").icon("play").should("be.visible");
+        getStepPreviewButton("summarize").should("be.visible");
       });
 
       it("works when custom column is a simple expression (metabase#47870)", () => {
@@ -919,7 +922,7 @@ describe("scenarios > question > offset", () => {
         ]);
 
         openNotebook();
-        getNotebookStep("summarize").icon("play").should("be.visible");
+        getStepPreviewButton("summarize").should("be.visible");
       });
 
       it("works when custom column is a simple expression with CC not in the first place", () => {
@@ -980,7 +983,7 @@ describe("scenarios > question > offset", () => {
         ]);
 
         openNotebook();
-        getNotebookStep("summarize").icon("play").should("be.visible");
+        getStepPreviewButton("summarize").should("be.visible");
       });
     });
 
@@ -1021,7 +1024,7 @@ describe("scenarios > question > offset", () => {
         ]);
 
         openNotebook();
-        getNotebookStep("summarize").icon("play").should("be.visible");
+        getStepPreviewButton("summarize").should("be.visible");
       });
 
       it("works with custom column that contains a column", () => {
@@ -1059,7 +1062,7 @@ describe("scenarios > question > offset", () => {
         ]);
 
         openNotebook();
-        getNotebookStep("summarize").icon("play").should("be.visible");
+        getStepPreviewButton("summarize").should("be.visible");
       });
 
       it("works when custom column is a simple expression", () => {
@@ -1098,7 +1101,7 @@ describe("scenarios > question > offset", () => {
         ]);
 
         openNotebook();
-        getNotebookStep("summarize").icon("play").should("be.visible");
+        getStepPreviewButton("summarize").should("be.visible");
       });
     });
   });
@@ -1222,6 +1225,7 @@ describe("scenarios > question > offset", () => {
     addCustomColumn({
       name: customColumnName,
       formula: "[Product → Rating]",
+      actionButtonsGroup: "first",
     });
 
     summarize({ mode: "notebook" });
@@ -1421,8 +1425,20 @@ function addSorting({
   }
 }
 
-function addCustomColumn({ name, formula }: { name: string; formula: string }) {
-  cy.findAllByLabelText("Custom column").last().click();
+function addCustomColumn({
+  name,
+  formula,
+  actionButtonsGroup = "last",
+}: {
+  name: string;
+  formula: string;
+  actionButtonsGroup?: "first" | "last";
+}) {
+  if (actionButtonsGroup === "first") {
+    cy.findAllByTestId("action-buttons").first().icon("add_data").click();
+  } else {
+    cy.findAllByTestId("action-buttons").last().icon("add_data").click();
+  }
 
   enterCustomColumnDetails({
     formula,
