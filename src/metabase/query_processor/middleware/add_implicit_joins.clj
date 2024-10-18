@@ -163,7 +163,7 @@
       (when source-query
         (recur source-query join))))
 
-;; TODO(BT) implement lib.equality style ref matching
+;; TODO(BT) implement lib.equality style ref matching or something like distinct-fields above
 (defn- join-provides-field
   [{:keys [fields source-metadata source-table] :as join} field-clause]
   (case fields
@@ -184,7 +184,7 @@
   (if (empty? source-query-fields)
     form
     (let [needed (->> (set (filter some? (map (comp ::needs meta) joins)))
-                      (filter (fn [field-clause]
+                      (remove (fn [field-clause]
                                 (some #(join-provides-field % field-clause) joins))))]
       (update-in form [:source-query :fields] (fn [existing-fields]
                                                 (distinct-fields (concat existing-fields needed)))))))
@@ -195,7 +195,7 @@
                                        [:field _ (_ :guard (fn [{:keys [join-alias]}]
                                                              (reused-join-alias? join-alias)))]
                                        &match))
-                                (filter (fn [field-clause]
+                                (remove (fn [field-clause]
                                           (some #(join-provides-field % field-clause) joins))))]
     (update-in form [:source-query :fields] (fn [existing-fields]
                                               (distinct-fields
