@@ -127,7 +127,7 @@ export function IFrameViz({
             />
           )}
           <Text color="text-medium">
-            {hasForbiddenIFrameUrl
+            {hasForbiddenIFrameUrl && isEditing
               ? t`The URL you entered is not on the list of allowed hosts, we'd recommend contacting your instance administrator to resolve this`
               : t`There was a problem loading your iframe`}
           </Text>
