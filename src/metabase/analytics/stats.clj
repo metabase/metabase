@@ -647,8 +647,7 @@
   "Collects Snowplow metrics data that is not in the legacy stats format. Also clears entity id translation count."
   []
   (let [one-day-ago (->one-day-ago)
-        total-translation-count (:total (get-translation-count))
-        _ (clear-translation-count!)]
+        total-translation-count (:total (get-translation-count))]
     {:models                          (t2/count :model/Card :type :model :archived false)
      :new_embedded_dashboards         (t2/count :model/Dashboard
                                                 :enable_embedding true
@@ -896,6 +895,9 @@
    (fn [x] (if (keyword? x) (-> x u/->snake_case_en name) x))
    data))
 
+(defn- stats-post-cleanup []
+  (clear-translation-count!))
+
 (defn phone-home-stats!
   "Collect usage stats and phone them home"
   []
@@ -913,4 +915,5 @@
               (str "Missing required keys in snowplow-data. got:" (sort (keys snowplow-data))))
       #_{:clj-kondo/ignore [:deprecated-var]}
       (send-stats-deprecated! stats)
-      (snowplow/track-event! ::snowplow/instance_stats snowplow-data))))
+      (snowplow/track-event! ::snowplow/instance_stats snowplow-data)
+      (stats-post-cleanup))))
