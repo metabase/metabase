@@ -138,7 +138,6 @@ export const PulseEditChannels = ({
       {notificationChannels.map(notification => (
         <WebhookChannelEdit
           key={`webhook-${notification.id}`}
-          user={user}
           toggleChannel={toggleChannel}
           channelSpec={channels.http}
           alert={pulse}
