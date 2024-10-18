@@ -1,9 +1,9 @@
 (ns metabase.search.postgres.index
   (:require
-   [cheshire.core :as json]
    [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
 (def ^:private active-table :search_index)
@@ -94,8 +94,8 @@
         :legacy_input
         :table_id
         :archived])
-      (update :display_data json/generate-string)
-      (update :legacy_input json/generate-string)
+      (update :display_data json/encode)
+      (update :legacy_input json/encode)
       (assoc
        :model_id      (:id entity)
        :search_vector [:to_tsvector

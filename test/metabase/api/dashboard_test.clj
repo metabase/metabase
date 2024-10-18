@@ -1,7 +1,6 @@
 (ns ^:mb/driver-tests metabase.api.dashboard-test
   "Tests for /api/dashboard endpoints."
   (:require
-   [cheshire.core :as json]
    [clojure.data.csv :as csv]
    [clojure.set :as set]
    [clojure.string :as str]
@@ -58,6 +57,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [ring.util.codec :as codec]
    [toucan2.core :as t2]
    [toucan2.protocols :as t2.protocols]
@@ -2466,7 +2466,7 @@
                                                  :description "something"
                                                  :cards       [{:series [8 9], :size_y 3, :size_x 5}]}}
                 :has_multiple_changes true
-                :description          "added a description and renamed it from \"b\" to \"c\", modified the cards and added some series to card 123."}
+                :description          "renamed this Dashboard from \"b\" to \"c\" and added a description, modified the cards and added some series to card 123."}
                {:is_reversion         false
                 :is_creation          true
                 :message              nil
@@ -3094,7 +3094,7 @@
                            :data :results_metadata :columns)]
           (is (seq metadata) "Did not get metadata")
           (t2/update! 'Card {:id model-id}
-                      {:result_metadata (json/generate-string
+                      {:result_metadata (json/encode
                                          (assoc-in metadata [0 :id]
                                                    (mt/id :products :category)))}))
         ;; ...so instead we create a question on top of this model (note that
@@ -3665,8 +3665,8 @@
                       (mt/user-real-request :rasta :post 200 url
                                             {:request-options {:as :byte-array}}
                                             :format_rows true
-                                            :parameters (json/generate-string [{:id    "_PRICE_"
-                                                                                :value 4}]))
+                                            :parameters (json/encode [{:id    "_PRICE_"
+                                                                       :value 4}]))
                       export-format))))))))))
 
 (defn- dashcard-pivot-query-endpoint [dashboard-id card-id dashcard-id]

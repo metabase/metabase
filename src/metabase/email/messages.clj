@@ -5,7 +5,6 @@
   NOTE: This namespace is deprecated, all of these emails will soon be converted to System Email Notifications."
   (:require
    [buddy.core.codecs :as codecs]
-   [cheshire.core :as json]
    [clojure.core.cache :as cache]
    [clojure.java.io :as io]
    [hiccup.core :refer [html]]
@@ -37,6 +36,7 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.encryption :as encryption]
    [metabase.util.i18n :as i18n :refer [trs tru]]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.urls :as urls]
@@ -301,7 +301,7 @@
   {:pre [(u/email? email)]}
   (let [encoded-info    (when blob
                           (-> blob
-                              json/generate-string
+                              json/encode
                               .getBytes
                               codecs/bytes->b64-str))
         context (merge (common-context)
@@ -335,9 +335,9 @@
   [pulse-id email]
   (codecs/bytes->hex
    (encryption/validate-and-hash-secret-key
-    (json/generate-string {:salt     (public-settings/site-uuid-for-unsubscribing-url)
-                           :email    email
-                           :pulse-id pulse-id}))))
+    (json/encode {:salt     (public-settings/site-uuid-for-unsubscribing-url)
+                  :email    email
+                  :pulse-id pulse-id}))))
 
 (defn- pulse-context [pulse dashboard non-user-email]
   (let [dashboard-id (:id dashboard)]

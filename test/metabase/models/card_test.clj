@@ -1,6 +1,5 @@
 (ns metabase.models.card-test
   (:require
-   [cheshire.core :as json]
    [clojure.set :as set]
    [clojure.test :refer :all]
    [java-time.api :as t]
@@ -19,6 +18,7 @@
    [metabase.test :as mt]
    [metabase.test.util :as tu]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -302,8 +302,8 @@
               ;; also check that normalization of already-normalized refs is idempotent
               original [original expected]
               ;; frontend uses JSON-serialized versions of the MBQL clauses as keys
-              :let     [original (json/generate-string original)
-                        expected (json/generate-string expected)]]
+              :let     [original (json/encode original)
+                        expected (json/encode expected)]]
         (testing (format "Viz settings field ref key %s should get normalized to %s"
                          (pr-str original)
                          (pr-str expected))
@@ -728,7 +728,7 @@
               :pie.percent_visibility "inside"}
              (-> (t2/select-one (t2/table-name :model/Card) {:where [:= :id card-id]})
                  :visualization_settings
-                 (json/parse-string keyword)))))))
+                 json/decode+kw))))))
 
 ;;; -------------------------------------------- Revision tests  --------------------------------------------
 
@@ -985,7 +985,7 @@
                   "database" (mt/id)
                   "stages"   [{"lib/type"     "mbql.stage/mbql"
                                "source-table" (mt/id :venues)}]}
-                 (json/parse-string (t2/select-one-fn :dataset_query (t2/table-name :model/Card) :id (u/the-id card))))))
+                 (json/decode (t2/select-one-fn :dataset_query (t2/table-name :model/Card) :id (u/the-id card))))))
         (testing "fetch from app DB"
           (is (=? {:dataset_query {:lib/type     :mbql/query
                                    :database     (mt/id)

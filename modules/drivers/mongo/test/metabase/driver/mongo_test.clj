@@ -1,7 +1,6 @@
 (ns ^:mb/driver-tests metabase.driver.mongo-test
   "Tests for Mongo driver."
   (:require
-   [cheshire.core :as json]
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.db.metadata-queries :as metadata-queries]
@@ -24,6 +23,7 @@
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.mongo :as tdm]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.xrays.automagic-dashboards.core :as magic]
    [taoensso.nippy :as nippy]
@@ -763,7 +763,7 @@
 
 (defn- json-from-file [^String filename]
   (with-open [rdr (java.io.FileReader. (java.io.File. filename))]
-    (json/parse-stream rdr true)))
+    (json/decode+kw rdr)))
 
 (defn- missing-fields-db []
   (create-database-from-row-maps!
