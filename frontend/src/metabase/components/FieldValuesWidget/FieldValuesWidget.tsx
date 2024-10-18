@@ -616,8 +616,10 @@ export function FieldValuesWidgetInner({
             placeholder={tokenFieldPlaceholder}
             shouldCreate={shouldCreate}
             autoFocus={autoFocus}
-            icon={prefix && <span data-testid="input-prefix">{prefix}</span>}
-            itemComponent={CustomItemComponent}
+            leftSection={
+              prefix && <span data-testid="input-prefix">{prefix}</span>
+            }
+            renderOption={CustomItemComponent}
           />
         ) : (
           <TokenField
