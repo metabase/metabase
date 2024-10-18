@@ -21,9 +21,10 @@ export type PickerState<Item, Query> = PickerStateItem<Item, Query>[];
 export type PickerStateItem<Item, Query> = {
   query?: Query;
   selectedItem: Item | null;
+  entity?: "collection" | "dashboard";
 };
 
-export type EntityPickerOptions = EntityPickerModalOptions;
+export type EntityPickerOptions<T> = EntityPickerModalOptions<T>;
 
 export type EntityPickerTabRenderProps<
   Id extends SearchResultId,
@@ -48,7 +49,8 @@ export type EntityPickerTab<
    * Recents & Search tabs don't have models associated with them - hence null
    * (they provide the same models as the other tabs combined).
    */
-  model: Model | null;
+  models: Model[] | null;
+  additionalModels?: Model[];
   folderModels: Model[];
 };
 
@@ -59,7 +61,7 @@ export type ListProps<
   Model extends string,
   Item extends TypeWithModel<Id, Model>,
   Query,
-  Options extends EntityPickerOptions,
+  Options extends EntityPickerOptions<Item>,
 > = {
   query?: Query;
   onClick: (val: Item) => void;
@@ -69,6 +71,7 @@ export type ListProps<
   options: Options;
   shouldDisableItem?: (item: Item) => boolean;
   shouldShowItem?: (item: Item) => boolean;
+  entity?: "collection" | "dashboard";
 };
 
 export type FilterItemsInPersonalCollection = "only" | "exclude";

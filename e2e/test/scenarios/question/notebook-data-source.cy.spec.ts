@@ -26,7 +26,7 @@ import {
   resetTestTable,
   restore,
   resyncDatabase,
-  saveQuestion,
+  saveQuestionToCollection,
   shouldDisplayTabs,
   startNewQuestion,
   tabsShouldBe,
@@ -176,7 +176,7 @@ describe("scenarios > notebook > data source", () => {
           cy.findByText(tableName).click();
         });
         visualize();
-        saveQuestion("Beasts");
+        saveQuestionToCollection("Beasts");
 
         openNotebook();
         cy.findByTestId("data-step-cell").should("contain", tableName).click();

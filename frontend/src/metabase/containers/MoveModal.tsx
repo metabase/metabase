@@ -7,6 +7,7 @@ import { isItemCollection } from "metabase/collections/utils";
 import {
   type CollectionPickerItem,
   CollectionPickerModal,
+  type CollectionPickerModel,
   type CollectionPickerValueItem,
 } from "metabase/common/components/CollectionPicker";
 import type {
@@ -22,6 +23,7 @@ interface MoveModalProps {
   onMove: OnMoveWithOneItem;
   initialCollectionId: CollectionId;
   movingCollectionId?: CollectionId;
+  canMoveToDashboard?: boolean;
 }
 
 const makeRecentFilter = (
@@ -48,6 +50,7 @@ export const MoveModal = ({
   onMove,
   initialCollectionId,
   movingCollectionId,
+  canMoveToDashboard = false,
 }: MoveModalProps) => {
   // if we are moving a collection, we can't move it into itself or any of its children
   const shouldDisableItem = movingCollectionId
@@ -64,10 +67,14 @@ export const MoveModal = ({
   const recentFilter = makeRecentFilter(shouldDisableItem);
 
   const handleMove = useCallback(
-    async (newCollection: CollectionPickerValueItem) =>
-      await onMove({ id: newCollection.id }),
+    (destination: CollectionPickerValueItem) =>
+      onMove({ id: destination.id, model: destination.model }),
     [onMove],
   );
+
+  const models: CollectionPickerModel[] = canMoveToDashboard
+    ? ["collection", "dashboard"]
+    : ["collection"];
 
   return (
     <CollectionPickerModal
@@ -77,6 +84,7 @@ export const MoveModal = ({
         model: "collection",
       }}
       onChange={handleMove}
+      models={models}
       options={{
         showSearch: true,
         allowCreateNew: true,
@@ -132,6 +140,15 @@ export const BulkMoveModal = ({
       ? t`Move ${selectedItems.length} items?`
       : t`Move "${selectedItems[0].name}"?`;
 
+  const canMoveToDashboard =
+    selectedItems.length === 1 &&
+    selectedItems[0].model === "card" &&
+    selectedItems[0].dashboard_count === 0;
+
+  const models: CollectionPickerModel[] = canMoveToDashboard
+    ? ["collection", "dashboard"]
+    : ["collection"];
+
   return (
     <CollectionPickerModal
       title={title}
@@ -139,7 +156,12 @@ export const BulkMoveModal = ({
         id: initialCollectionId,
         model: "collection",
       }}
-      onChange={newCollection => onMove({ id: newCollection.id })}
+      onChange={destination =>
+        onMove({
+          id: destination.id,
+          model: destination.model,
+        })
+      }
       options={{
         showSearch: true,
         allowCreateNew: true,
@@ -152,6 +174,7 @@ export const BulkMoveModal = ({
       searchResultFilter={searchResultFilter}
       recentFilter={recentFilter}
       onClose={onClose}
+      models={models}
     />
   );
 };

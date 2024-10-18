@@ -24,8 +24,7 @@ import { useSelector } from "metabase/lib/redux";
 import { Button, Icon } from "metabase/ui";
 import type { CollectionId } from "metabase-types/api";
 
-export interface FormCollectionPickerProps
-  extends HTMLAttributes<HTMLDivElement> {
+interface FormCollectionPickerProps extends HTMLAttributes<HTMLDivElement> {
   name: string;
   title?: string;
   placeholder?: string;

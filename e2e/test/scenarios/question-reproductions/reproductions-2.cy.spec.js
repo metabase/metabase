@@ -22,6 +22,7 @@ import {
   queryBuilderHeader,
   restore,
   saveQuestion,
+  saveQuestionToCollection,
   saveSavedQuestion,
   selectFilterOperator,
   startNewQuestion,
@@ -509,13 +510,7 @@ describe("issue 30165", () => {
   it("should not autorun native queries after updating a question (metabase#30165)", () => {
     openNativeEditor();
     cy.findByTestId("native-query-editor").type("SELECT * FROM ORDERS");
-    queryBuilderHeader().findByText("Save").click();
-    cy.findByTestId("save-question-modal").within(() => {
-      cy.findByLabelText("Name").clear().type("Q1");
-      cy.findByText("Save").click();
-    });
-    cy.wait("@createQuestion");
-    cy.button("Not now").click();
+    saveQuestionToCollection("Q1");
 
     cy.findByTestId("native-query-editor").type(" WHERE TOTAL < 20");
     queryBuilderHeader().findByText("Save").click();
@@ -549,7 +544,7 @@ describe("issue 30610", () => {
     openOrdersTable();
     openNotebook();
     removeSourceColumns();
-    saveQuestion("New orders");
+    saveQuestionToCollection("New orders");
     createAdHocQuestion("New orders");
     visualizeAndAssertColumns();
   });

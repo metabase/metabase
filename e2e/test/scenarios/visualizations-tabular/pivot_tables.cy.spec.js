@@ -15,6 +15,7 @@ import {
   popover,
   queryBuilderMain,
   restore,
+  saveQuestion,
   sidebar,
   visitDashboard,
   visitIframe,
@@ -1129,16 +1130,9 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
         });
       });
 
-      cy.findByTestId("qb-header-action-panel").within(() => {
-        cy.findByText("Save").click();
-      });
-
-      cy.findByTestId("save-question-modal").within(() => {
-        cy.findByText("Save").click();
-      });
-
-      cy.get("#QuestionSavedModal").within(() => {
-        cy.findByText("Not now").click();
+      saveQuestion(undefined, undefined, {
+        tab: "Browse",
+        path: ["Our analytics"],
       });
 
       cy.reload(); // reload to make sure the settings are persisted
@@ -1213,8 +1207,10 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
       "Showing 205 rows",
     );
 
-    cy.findByTestId("qb-header-action-panel").findByText("Save").click();
-    cy.findByTestId("save-question-modal").findByText("Save").click();
+    saveQuestion(undefined, undefined, {
+      tab: "Browse",
+      path: ["Our analytics"],
+    });
     cy.wait("@createCard");
     cy.url().should("include", "/question/");
     cy.intercept("POST", "/api/card/pivot/*/query").as("cardPivotQuery");

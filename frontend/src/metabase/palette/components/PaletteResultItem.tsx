@@ -94,6 +94,10 @@ export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
               fz="0.75rem"
               lh="1rem"
               fw="normal"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+              }}
             >
               — {subtext}
             </Text>

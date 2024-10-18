@@ -14,10 +14,10 @@ import {
   joinTable,
   openNotebook,
   openOrdersTable,
+  pickEntity,
   popover,
   queryBuilderMain,
   restore,
-  saveQuestion,
   selectFilterOperator,
   selectSavedQuestionsToJoin,
   startNewQuestion,
@@ -95,7 +95,15 @@ describe("scenarios > question > joined questions", () => {
     assertQueryBuilderRowCount(89);
 
     // Make sure UI overlay doesn't obstruct viewing results after we save this question (metabase#13468)
-    saveQuestion();
+    cy.findByTestId("save-question-modal")
+      .findByLabelText(/Where do you want to save this/)
+      .click();
+    pickEntity({
+      tab: "Browse",
+      path: ["Our analytics"],
+    });
+    entityPickerModal().findByText("Save in this collection").click();
+    cy.findByTestId("save-question-modal").button("Save").click();
 
     cy.findByTestId("qb-filters-panel").findByText(
       "Reviews - Product → Rating is equal to 2",
