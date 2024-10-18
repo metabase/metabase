@@ -559,12 +559,12 @@
             ;; Just assert that something was returned by the query and no exception was thrown
             (is (partial= [] (t2/query (str "SELECT 1 FROM " view-name))))))
         #_#_;; TODO: this is commented out temporarily because it flakes for MySQL (metabase#37884)
-            (migrate! :down 47)
-          (testing "Views should be removed when downgrading"
-            (doseq [view-name new-view-names]
-              (is (thrown?
-                   clojure.lang.ExceptionInfo
-                   (t2/query (str "SELECT 1 FROM " view-name))))))))))
+        (migrate! :down 47)
+        (testing "Views should be removed when downgrading"
+          (doseq [view-name new-view-names]
+            (is (thrown?
+                 clojure.lang.ExceptionInfo
+                 (t2/query (str "SELECT 1 FROM " view-name))))))))))
 
 (deftest activity-data-migration-test
   (testing "Migration v48.00-049"
@@ -2714,3 +2714,53 @@
           (is (= "1.2.3.4:5555" (t2/select-one-fn :value :model/Setting :key "embedding-app-origin")))
           (migrate!)
           (is (= "1.2.3.4:5555" (t2/select-one-fn :value :model/Setting :key "embedding-app-origins-interactive"))))))))
+
+(deftest table-level-native-perms-rollback-test
+  (impl/test-migrations "v52.2024-10-15T23:14:11" [migrate!]
+    (let [migrate-up!  (fn []
+                         (migrate!)
+                         (clear-permissions!))
+          group-id     (first (t2/insert-returning-pks! (t2/table-name PermissionsGroup) {:name "Test Group"}))
+          db-id        (first (t2/insert-returning-pks! (t2/table-name Database) {:name       "db"
+                                                                                  :engine     "postgres"
+                                                                                  :created_at :%now
+                                                                                  :updated_at :%now
+                                                                                  :details    "{}"}))
+          table-id-1   (first (t2/insert-returning-pks! (t2/table-name Table) {:db_id      db-id
+                                                                               :name       "Table 1"
+                                                                               :schema     "PUBLIC"
+                                                                               :created_at :%now
+                                                                               :updated_at :%now
+                                                                               :active     true}))
+          table-id-2   (first (t2/insert-returning-pks! (t2/table-name Table) {:db_id      db-id
+                                                                               :name       "Table 2"
+                                                                               :schema     "PUBLIC"
+                                                                               :created_at :%now
+                                                                               :updated_at :%now
+                                                                               :active     true}))
+          insert-perm! (fn [perm-type perm-value & [table-id]]
+                         (t2/insert! (t2/table-name :model/DataPermissions)
+                                     :db_id db-id
+                                     :group_id group-id
+                                     :table_id table-id
+                                     :schema_name "PUBLIC"
+                                     :perm_type perm-type
+                                     :perm_value perm-value))]
+      (testing "Test that table-level native create-queries permissions get correctly cleared when rolling back from 52->51"
+        ;; If all tables end up as `query-builder`, they're replaced with a DB-level perm
+        (migrate-up!)
+        (insert-perm! "perms/create-queries" "query-builder-and-native" table-id-1)
+        (insert-perm! "perms/create-queries" "query-builder" table-id-2)
+        (migrate! :down 51)
+        (is (= #{["query-builder" nil]}
+               (t2/select-fn-set (juxt :perm_value :table_id)
+                                 (t2/table-name :model/DataPermissions) :db_id db-id :group_id group-id)))
+
+        ;; If at least one table is `no`, we keep perms at the table-level
+        (migrate-up!)
+        (insert-perm! "perms/create-queries" "query-builder-and-native" table-id-1)
+        (insert-perm! "perms/create-queries" "no" table-id-2)
+        (migrate! :down 51)
+        (is (= #{["query-builder" table-id-1] ["no" table-id-2]}
+               (t2/select-fn-set (juxt :perm_value :table_id)
+                                 (t2/table-name :model/DataPermissions) :db_id db-id :group_id group-id)))))))
