@@ -149,11 +149,11 @@
 (mu/defmethod channel/render-notification
   [:channel/email :notification/system-event]
   [_channel-type
-   notification-info :- notification/NotificationInfo
-   template          :- models.channel/ChannelTemplate
-   recipients        :- [:sequential models.notification/NotificationRecipient]]
+   notification-payload :- notification/NotificationInfo
+   template             :- models.channel/ChannelTemplate
+   recipients           :- [:sequential models.notification/NotificationRecipient]]
   (assert (some? template) "Template is required for system event notifications")
-  (let [payload (:payload notification-info)]
+  (let [payload (:payload notification-payload)]
     [(construct-email (channel.params/substitute-params (-> template :details :subject) payload)
                       (notification-recipients->emails recipients payload)
                       [{:type    "text/html; charset=utf-8"

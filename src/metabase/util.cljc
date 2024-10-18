@@ -66,7 +66,9 @@
                         with-timeout
                         with-us-locale]
                        [u.str
-                        build-sentence]))
+                        build-sentence]
+                       [u.ns
+                        find-and-load-namespaces!]))
 
 (defmacro or-with
   "Like or, but determines truthiness with `pred`."

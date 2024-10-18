@@ -1,9 +1,9 @@
-(ns metabase.notification.core-test
+(ns metabase.notification.send-test
   (:require
    [clojure.test :refer :all]
    [metabase.channel.core :as channel]
    [metabase.models.notification :as models.notification]
-   [metabase.notification.core :as notification]
+   [metabase.notification.send :as notification.send]
    [metabase.notification.test-util :as notification.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -44,7 +44,7 @@
               (is (=? {:channel/metabase-test [{:type :notification-recipient/user :user_id (mt/user->id :crowberto)}
                                                {:type :notification-recipient/user :user_id (mt/user->id :rasta)}]}
                       (notification.tu/with-captured-channel-send!
-                        (notification/*send-notification!* notification-info)))))
+                        (notification.send/send-notification-sync! notification-info)))))
 
             (testing "render-notification is called on all handlers with the correct channel and template"
               (is (=? [{:channel-type (keyword notification.tu/test-channel-type)
@@ -67,7 +67,7 @@
                  :channel_id   (:id chn)
                  :recipients   [{:type :notification-recipient/user :user_id (mt/user->id :crowberto)}]}])]
         (t2/delete! :model/TaskHistory)
-        (notification/*send-notification!* n)
+        (notification.send/send-notification-sync! n)
         (is (=? [{:task         "notification-send"
                   :task_details {:notification_id (:id n)
                                  :notification_handlers [{:id           (mt/malli=? :int)
@@ -105,7 +105,7 @@
                                   (throw (Exception. "test-exception"))
                                   (reset! send-args args)))]
               (with-redefs [channel/send! send!]
-                (notification/*send-notification!* n))
+                (notification.send/send-notification-sync! n))
               (is (some? @send-args))
               (is (=? {:task "channel-send"
                        :task_details {:attempted_retries 1

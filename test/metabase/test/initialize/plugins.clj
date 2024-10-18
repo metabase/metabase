@@ -62,8 +62,7 @@
 
 (defn init! []
   (plugins/load-plugins!)
-  (load-plugin-manifests!)
-  (channel/find-and-load-metabase-channels!))
+  (load-plugin-manifests!))
 
 (defn init-test-drivers!
   "Explicitly initialize the given test `drivers` via plugin manifests. These manifests can live in test_modules (having

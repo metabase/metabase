@@ -1,8 +1,14 @@
 (ns metabase.util.namespaces
   "Potemkin is Java-only, so here's a basic function-importing macro that works for both CLJS and CLJ."
   (:require
+   [metabase.plugins.classloader :as classloader]
+   #_{:clj-kondo/ignore [:discouraged-namespace]}
+   [metabase.util.jvm :as u.jvm]
+   [metabase.util.log :as log]
    [net.cgrand.macrovich :as macros]
    [potemkin :as p]))
+
+(set! *warn-on-reflection* true)
 
 (defn- redef [target sym]
   (let [defn-name (or sym (symbol (name target)))]
@@ -35,3 +41,12 @@
                            target     (symbol (name target-ns) (name target-sym))]]
                  (redef target new-sym)))
     :clj  `(p/import-vars ~@spaces)))
+
+(defn find-and-load-namespaces!
+  "Find and load all sub-namespaces of `root-ns` that are part of the Metabase channel system."
+  [root-ns]
+  (assert (string? root-ns) "root-ns must be a string")
+  (doseq [ns-symb u.jvm/metabase-namespace-symbols
+          :when   (.startsWith (name ns-symb) root-ns)]
+    (log/infof "Loading namespace: %s" ns-symb)
+    (classloader/require ns-symb)))

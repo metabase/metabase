@@ -5,6 +5,7 @@
    [metabase.channel.core :as channel]
    [metabase.events.notification :as events.notification]
    [metabase.notification.core :as notification]
+   [metabase.notification.send :as notification.send]
    [metabase.test :as mt]
    [metabase.util :as u]))
 
@@ -33,7 +34,7 @@
 (defmacro with-send-notification-sync
   "Notifications are sent async by default, wrap the body in this macro to send them synchronously."
   [& body]
-  `(binding [notification/*send-notification!* #'notification/send-notification-sync!]
+  `(binding [notification/*send-notification!* #'notification.send/send-notification-sync!]
      ~@body))
 
 (defn do-with-captured-channel-send!
@@ -43,8 +44,8 @@
       (with-redefs
        [channel/send! (fn [channel message]
                         (swap! channel-messages update (:type channel) u/conjv message))]
-        (thunk)
-        @channel-messages))))
+       (thunk)
+       @channel-messages))))
 
 (defmacro with-captured-channel-send!
   "Macro that captures all messages sent to channels in the body of the macro.
@@ -106,17 +107,17 @@
                   :body    "Hello {{event-info.object.first_name}}! Welcome to {{settings.site-name}}!"}})
 
 ;; notification info
-(def notification-info-user-joined-event
-  "A notification-info of the user-joined system event notification that can be used
+#_(def notification-info-user-joined-event
+    "A notification-info of the user-joined system event notification that can be used
   to test [[channel/render-notification]]."
-  {:payload_type :notification/system-event
-   :payload      (#'events.notification/enriched-event-info
-                  :event/user-joined
-                  {:object
-                   {:email        "rasta@metabase.com"
-                    :first_name   "Rasta"
-                    :last_login   nil
-                    :is_qbnewb    true
-                    :is_superuser false
-                    :last_name    "Toucan"
-                    :common_name  "Rasta Toucan"}})})
+    {:payload_type :notification/system-event
+     :payload      (#'events.notification/enriched-event-info
+                    :event/user-joined
+                    {:object
+                     {:email        "rasta@metabase.com"
+                      :first_name   "Rasta"
+                      :last_login   nil
+                      :is_qbnewb    true
+                      :is_superuser false
+                      :last_name    "Toucan"
+                      :common_name  "Rasta Toucan"}})})

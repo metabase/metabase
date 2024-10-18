@@ -3,9 +3,7 @@
 
   The API is still in development and subject to change."
   (:require
-   [metabase.plugins.classloader :as classloader]
-   [metabase.util :as u]
-   [metabase.util.log :as log]))
+   [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
 
@@ -29,14 +27,14 @@
     channel-type))
 
 (defmulti render-notification
-  "Given a notification info, return a sequence of channel-specific messages.
+  "Given a notification payload, return a sequence of channel-specific messages.
 
   The message format is channel-specific, one requirement is that it should be the same format that
   the [[send!]] multimethod expects."
   {:added    "0.51.0"
-   :arglists '([channel-type notification-info template recipients])}
-  (fn [channel-type notification-info _template _recipients]
-    [channel-type (:payload_type notification-info)]))
+   :arglists '([channel-type notification-payload template recipients])}
+  (fn [channel-type notification-payload _template _recipients]
+    [channel-type (:payload_type notification-payload)]))
 
 (defmulti send!
   "Send a message to a channel."
@@ -46,13 +44,6 @@
     (:type channel)))
 
 ;; ------------------------------------------------------------------------------------------------;;
-;;                                             Utils                                               ;;
+;;                                    Load the implementations                                     ;;
 ;; ------------------------------------------------------------------------------------------------;;
-
-(defn find-and-load-metabase-channels!
-  "Load namespaces that start with `metabase.channel."
-  []
-  (doseq [ns-symb u/metabase-namespace-symbols
-          :when   (.startsWith (name ns-symb) "metabase.channel.")]
-    (log/info "Loading channel namespace:" (u/format-color :blue ns-symb))
-    (classloader/require ns-symb)))
+(u/find-and-load-namespaces! "metabase.channel")
