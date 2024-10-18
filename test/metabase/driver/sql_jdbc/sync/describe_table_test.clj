@@ -143,11 +143,23 @@
                                             :table-names [(:name table)]))
                (:fields (driver/describe-table driver db table))))))
 
+
+(defmethod driver/database-supports? [::driver/driver ::describe-pks]
+  [driver _feature database]
+  ;; This is a decent proxy for drivers that set the `pk?` metadata field.
+  (driver/database-supports? driver :metadata/key-constraints database))
+
+;; These drivers set the `:pk?` field even though they do no support key-constriants
+(doseq [driver [:mongo :sqlite]]
+  (defmethod driver/database-supports? [driver ::describe-pks]
+    [_driver _feature _database]
+    true))
+
 (deftest describe-fields-shared-attributes-test
   (testing "common metadata attributes"
     (mt/test-drivers (mt/normal-drivers-with-feature :actions)
       (is (=?
-           [[0 false true (driver/database-supports? driver/*driver* :metadata/key-constraints (mt/db))]
+           [[0 false true (driver/database-supports? driver/*driver* ::describe-pks (mt/db))]
             [1 false false false]
             [2 false false false]
             [3 false false false]
@@ -159,7 +171,7 @@
                  (describe-fields-for-table (mt/db) (t2/select-one Table :id (mt/id :venues))))))))
     (mt/test-drivers (mt/normal-drivers-without-feature :actions)
       (is (=?
-           [[0 (driver/database-supports? driver/*driver* :metadata/key-constraints (mt/db))]
+           [[0 (driver/database-supports? driver/*driver* ::describe-pks (mt/db))]
             [1 false]
             [2 false]
             [3 false]
