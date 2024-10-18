@@ -104,7 +104,7 @@ function ChartSettingsSidebarInner(props: ChartSettingsSidebarProps) {
     result && (
       <SidebarContent
         className={CS.fullHeight}
-        onDone={handleClose}
+        // onDone={handleClose}
         {...sidebarContentProps}
       >
         <ErrorBoundary>

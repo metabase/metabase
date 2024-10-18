@@ -376,7 +376,6 @@ class View extends Component {
           updateQuestion={this.props.updateQuestion}
           className={CS.flexNoShrink}
         />
-        <ViewFooter className={CS.flexNoShrink} />
       </QueryBuilderMain>
     );
   };
@@ -534,6 +533,9 @@ class View extends Component {
               {rightSidebar}
             </ViewSidebar>
           </QueryBuilderContentContainer>
+          {queryBuilderMode !== "notebook" && (
+            <ViewFooter className={CS.flexNoShrink} />
+          )}
         </QueryBuilderViewRoot>
 
         {isShowingNewbModal && (

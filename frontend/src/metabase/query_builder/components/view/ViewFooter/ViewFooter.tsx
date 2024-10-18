@@ -12,14 +12,13 @@ import * as Lib from "metabase-lib";
 
 import { ViewFooterRoot } from "../ViewFooter.styled";
 
-import { CenterViewFooterButtonGroup } from "./CenterViewFooterButtonGroup";
 import { LeftViewFooterButtonGroup } from "./LeftViewFooterButtonGroup";
 import { RightViewFooterButtonGroup } from "./RightViewFooterButtonGroup";
 
 type ViewFooterProps = { className?: string };
 
 export const ViewFooter = ({ className }: ViewFooterProps) => {
-  const isVisualized = useSelector(getIsVisualized);
+  // const isVisualized = useSelector(getIsVisualized);
   const question = useSelector(getQuestion);
   const result = useSelector(getFirstQueryResult);
 
@@ -37,8 +36,8 @@ export const ViewFooter = ({ className }: ViewFooterProps) => {
       data-testid="view-footer"
     >
       <Group position="apart" pos="relative" noWrap w="100%">
-        {!hideChartSettings && <LeftViewFooterButtonGroup />}
-        {isVisualized && <CenterViewFooterButtonGroup />}
+        {/* TODO: should we check on isVirtualized? */}
+        {!hideChartSettings && <LeftViewFooterButtonGroup question={question} />}
         <RightViewFooterButtonGroup />
       </Group>
     </ViewFooterRoot>

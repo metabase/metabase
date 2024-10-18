@@ -1,30 +1,33 @@
 import { t } from "ttag";
 
-import CS from "metabase/css/core/index.css";
+import { EditorViewControl } from "embedding-sdk/components/private/EditorViewControl";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
   onCloseChartSettings,
-  onCloseChartType,
   onOpenChartSettings,
-  onOpenChartType,
   setQueryBuilderMode,
+  setUIControls,
 } from "metabase/query_builder/actions";
-import ViewButton from "metabase/query_builder/components/view/ViewButton";
-import { FooterButtonGroup } from "metabase/query_builder/components/view/ViewFooter.styled";
-import { getUiControls } from "metabase/query_builder/selectors";
-import { Box, Flex, Group, Icon, Tooltip, rem } from "metabase/ui";
+// import ViewButton from "metabase/query_builder/components/view/ViewButton";
+// import { FooterButtonGroup } from "metabase/query_builder/components/view/ViewFooter.styled";
+import { getIsShowingRawTable, getUiControls } from "metabase/query_builder/selectors";
+import { Button, Flex, Icon, Tooltip } from "metabase/ui";
+import { getIconForVisualizationType } from "metabase/visualizations";
+import type Question from "metabase-lib/v1/Question";
 import type { QueryBuilderUIControls } from "metabase-types/store";
-import { Button } from "metabase/ui";
-import LS from "./LeftViewFooterButtonGroup.module.css"
-import { EditorViewControl } from "embedding-sdk/components/private/EditorViewControl";
 
-export const LeftViewFooterButtonGroup = () => {
+interface LeftViewFooterButtonGroupProps {
+  question: Question;
+}
+
+export const LeftViewFooterButtonGroup = ({ question }: LeftViewFooterButtonGroupProps) => {
   const {
-    isShowingChartSettingsSidebar,
-    isShowingChartTypeSidebar,
+    isShowingChartSettingsSidebar
   }: QueryBuilderUIControls = useSelector(getUiControls);
 
   const dispatch = useDispatch();
+  const isShowingRawTable = useSelector(getIsShowingRawTable);
+  const vizIcon = getIconForVisualizationType(question.display());
 
   const data = [
     {
@@ -35,23 +38,24 @@ export const LeftViewFooterButtonGroup = () => {
     },
     {
       value: "table",
-      label: <Tooltip label={t`Results`}><Icon name="table2" /></Tooltip>,
+      label: <Tooltip label={t`Results`}><Icon name="table2" onClick={() => {
+        dispatch(setUIControls({ isShowingRawTable: true }));
+      }} /></Tooltip>,
     },
     {
       value: "visualization",
-      // here icon should match visualization, which we'll get from props
       // also we need to add a spinner :boom:
-      label: <Tooltip label={t`Visualization`}><Icon name="line" /></Tooltip>,
+      label: <Tooltip label={t`Visualization`}><Icon name={vizIcon} onClick={() => {
+        dispatch(setUIControls({ isShowingRawTable: false }));
+      }} /></Tooltip>,
     },
   ];
 
 
   return (
-    <>
-      <EditorViewControl data={data} />
-      <Group className={CS.flex1}>
-        <FooterButtonGroup>
-          <ViewButton
+    <Flex gap="0.75rem">
+      <EditorViewControl value={isShowingRawTable ? "table" : "visualization"} data={data} />
+      {/* <ViewButton
             medium
             labelBreakpoint="sm"
             data-testid="viz-type-button"
@@ -63,8 +67,8 @@ export const LeftViewFooterButtonGroup = () => {
             }
           >
             {t`Visualization type`}
-          </ViewButton>
-          <ViewButton
+          </ViewButton> */}
+      {/* <ViewButton
             active={isShowingChartSettingsSidebar}
             icon="gear"
             iconSize={16}
@@ -77,9 +81,27 @@ export const LeftViewFooterButtonGroup = () => {
                 ? () => dispatch(onCloseChartSettings())
                 : () => dispatch(onOpenChartSettings())
             }
-          >{t`Settings`}</ViewButton>
-        </FooterButtonGroup>
-      </Group>
-    </>
+          >{isShowingChartSettingsSidebar ? t`Done` : t`Settings`}</ViewButton> */}
+      {/* TODO: mah is a hack for 32px height button */}
+      {!isShowingRawTable && <Button radius="xl" variant={isShowingChartSettingsSidebar ? "filled" : "default"} styles={
+        {
+          ...(!isShowingChartSettingsSidebar && {
+            root: {
+              backgroundColor: "var(--mb-color-brand-lighter)",
+              color: "var(--mb-color-brand)",
+              border: 0,
+
+              "&:hover": {
+                backgroundColor: "var(--mb-base-color-blue-20)",
+              }
+            }
+          })
+        }
+      } mah="xl" onClick={isShowingChartSettingsSidebar
+        ? () => dispatch(onCloseChartSettings())
+        : () => dispatch(onOpenChartSettings())
+      }>{isShowingChartSettingsSidebar ? t`Done` : t`Chart settings`}</Button>
+      }
+    </Flex>
   );
 };

@@ -126,6 +126,7 @@ export interface ChartSettingsProps {
   question?: Question;
   addField?: () => void;
   noPreview?: boolean;
+  chartTypeSettings?: React.ReactNode;
 }
 
 interface ChartSettingsState {

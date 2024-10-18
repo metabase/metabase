@@ -13,6 +13,7 @@ export interface QuestionDisplayToggleProps {
   onToggleRawTable: (isShowingRawTable: boolean) => void;
 }
 
+// TODO: not used, remove
 const QuestionDisplayToggle = ({
   className,
   question,
