@@ -30,12 +30,16 @@
                                    :recipients   [{:type    :notification-recipient/user
                                                    :user_id (mt/user->id :rasta)}]}])
               notification-info (assoc n :payload {:event-info  {:test true}
-                                                   :event-topic :event/test
-                                                   :context     {:test true}})
+                                                   :event-topic :event/test})
+              expected-notification-payload (mt/malli=?
+                                             [:map
+                                              [:payload_type [:= :notification/system-event]]
+                                              [:context :map]
+                                              [:payload :map]])
               renders           (atom [])]
-          (mt/with-dynamic-redefs [channel/render-notification (fn [channel-type notification template recipients]
+          (mt/with-dynamic-redefs [channel/render-notification (fn [channel-type notification-payload template recipients]
                                                                  (swap! renders conj {:channel-type channel-type
-                                                                                      :notification notification
+                                                                                      :notification-payload notification-payload
                                                                                       :template template
                                                                                       :recipients recipients})
                                                                  ;; rendered messages are recipients
@@ -48,11 +52,11 @@
 
             (testing "render-notification is called on all handlers with the correct channel and template"
               (is (=? [{:channel-type (keyword notification.tu/test-channel-type)
-                        :notification notification-info
+                        :notification-payload expected-notification-payload
                         :template     tmpl
                         :recipients   [{:type :notification-recipient/user :user_id (mt/user->id :crowberto)}]}
                        {:channel-type (keyword notification.tu/test-channel-type)
-                        :notification notification-info
+                        :notification-payload expected-notification-payload
                         :template     nil
                         :recipients   [{:type :notification-recipient/user :user_id (mt/user->id :rasta)}]}]
                       @renders)))))))))

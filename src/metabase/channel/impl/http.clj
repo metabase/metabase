@@ -1,4 +1,4 @@
-(ns metabase.channel.http
+(ns metabase.channel.impl.http
   (:require
    [cheshire.core :as json]
    [clj-http.client :as http]

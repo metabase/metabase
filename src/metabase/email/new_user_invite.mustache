@@ -12,38 +12,38 @@
           <td height="15" width="168"><img src="http://static.metabase.com/email_graph_right.png" width="168" height="15" style="display:block" /></td></tr>
         <tr><td colspan="3" height="46"><img src="http://static.metabase.com/email_graph_bottom.png" width="296" height="56" style="display:block" /></td></tr>
       </table>
-      <p style="line-height: 1.3rem; font-size: 12px; color: #949AAB;">{{event-info.object.first_name}}'s happiness and productivity over time</p>
+      <p style="line-height: 1.3rem; font-size: 12px; color: #949AAB;">{{payload.event-info.object.first_name}}'s happiness and productivity over time</p>
     </div>
-    {{#event-info.object.is_from_setup}}
+    {{#payload.event-info.object.is_from_setup}}
       <div style="max-width: 500px; margin-left: auto; margin-right: auto">
-        <h2 style="font-weight: bold; color: #4C5773; line-height: 2rem;">{{event-info.details.invitor.first_name}} could use your help setting up {{context.application-name}}</h2>
+        <h2 style="font-weight: bold; color: #4C5773; line-height: 2rem;">{{payload.event-info.details.invitor.first_name}} could use your help setting up {{context.application-name}}</h2>
       </div>
       <div style="max-width: 500px; margin-left: auto; margin-right: auto; line-height: 1.5rem; color: #4C5773;">
         <p>{{context.application-name}} is a simple and powerful analytics tool that lets you easily <strong>ask questions</strong> and <strong>get answers</strong> about your company’s data.
-        <p>Your {{context.application-name}} is up and running, but {{event-info.details.invitor.first_name}} needs you to connect your data. You'll probably need:
+        <p>Your {{context.application-name}} is up and running, but {{payload.event-info.details.invitor.first_name}} needs you to connect your data. You'll probably need:
         <ul>
           <li>Database type (Redshift, Snowflake, etc...)</li>
           <li>Host and port</li>
           <li>Username and password</li>
         </ul>
       </div>
-    {{/event-info.object.is_from_setup}}
-    {{^event-info.object.is_from_setup}}
+    {{/payload.event-info.object.is_from_setup}}
+    {{^payload.event-info.object.is_from_setup}}
       <div style="text-align: center">
-        <h2 style="font-weight: bold; color: #4C5773; line-height: 2rem;">{{event-info.details.invitor.first_name}} wants you to join them on {{context.application-name}}</h2>
+        <h2 style="font-weight: bold; color: #4C5773; line-height: 2rem;">{{payload.event-info.details.invitor.first_name}} wants you to join them on {{context.application-name}}</h2>
       </div>
       <div style="max-width: 500px; margin-left: auto; margin-right: auto; line-height: 1.5rem; color: #4C5773; text-align: center">
         <p>{{context.application-name}} is a simple and powerful analytics tool that lets you easily <strong>ask questions</strong> and <strong>get answers</strong> about your company’s data.
       </div>
-    {{/event-info.object.is_from_setup}}
+    {{/payload.event-info.object.is_from_setup}}
     <div style="padding: 1.25em 0 1em 0; text-align: center">
-      <a style="display: inline-block; box-sizing: border-box; text-decoration: none; font-size: 1rem; padding: 0.8rem 2.25rem; background: #FBFCFD; color: #444; cursor: pointer; text-decoration: none; font-weight: bold; border-radius: 6px; background-color: #509EE3; color: #fff;" href="{{context.extra.user-invited-join-url}}">Join now</a>
+      <a style="display: inline-block; box-sizing: border-box; text-decoration: none; font-size: 1rem; padding: 0.8rem 2.25rem; background: #FBFCFD; color: #444; cursor: pointer; text-decoration: none; font-weight: bold; border-radius: 6px; background-color: #509EE3; color: #fff;" href="{{payload.extra-context.user-invited-join-url}}">Join now</a>
     </div>
-    {{#event-info.object.is_from_setup}}
+    {{#payload.event-info.object.is_from_setup}}
       <div style="max-width: 500px; margin-left: auto; margin-right: auto; line-height: 1.5rem; color: #4C5773">
         <p>P.S. If you run into any issues, check out our <a href="https://www.metabase.com/docs/latest/databases/connecting">connection</a> and <a href="https://www.metabase.com/docs/latest/troubleshooting-guide/db-connection">troubleshooting</a> guides</p>
       </div>
-    {{/event-info.object.is_from_setup}}
+    {{/payload.event-info.object.is_from_setup}}
   </div>
 </div>
 </body>

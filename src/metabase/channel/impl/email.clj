@@ -1,4 +1,4 @@
-(ns metabase.channel.email
+(ns metabase.channel.impl.email
   (:require
    [metabase.channel.core :as channel]
    [metabase.channel.params :as channel.params]
@@ -120,7 +120,7 @@
 ;; ------------------------------------------------------------------------------------------------;;
 
 (defn- notification-recipients->emails
-  [recipients payload]
+  [recipients notification-payload]
   (into [] cat (for [recipient recipients
                      :let [details (:details recipient)
                            emails (case (:type recipient)
@@ -131,7 +131,7 @@
                                     :notification-recipient/external-email
                                     [(:email details)]
                                     :notification-recipient/template
-                                    [(not-empty (channel.params/substitute-params (:pattern details) payload :ignore-missing? (:is_optional details)))]
+                                    [(not-empty (channel.params/substitute-params (:pattern details) notification-payload :ignore-missing? (:is_optional details)))]
                                     nil)]
                      :let  [emails (filter some? emails)]
                      :when (seq emails)]
@@ -149,13 +149,12 @@
 (mu/defmethod channel/render-notification
   [:channel/email :notification/system-event]
   [_channel-type
-   notification-payload :- notification/NotificationInfo
+   notification-payload :- notification/NotificationPayload
    template             :- models.channel/ChannelTemplate
    recipients           :- [:sequential models.notification/NotificationRecipient]]
   (assert (some? template) "Template is required for system event notifications")
-  (let [payload (:payload notification-payload)]
-    [(construct-email (channel.params/substitute-params (-> template :details :subject) payload)
-                      (notification-recipients->emails recipients payload)
-                      [{:type    "text/html; charset=utf-8"
-                        :content (render-body template payload)}]
-                      (-> template :details :recipient-type keyword))]))
+  [(construct-email (channel.params/substitute-params (-> template :details :subject) notification-payload)
+                    (notification-recipients->emails recipients notification-payload)
+                    [{:type    "text/html; charset=utf-8"
+                      :content (render-body template notification-payload)}]
+                    (-> template :details :recipient-type keyword))])

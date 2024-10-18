@@ -2,7 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.channel.slack :as channel.slack]
+   [metabase.channel.impl.slack :as channel.slack]
    [metabase.email.messages :as messages]
    [metabase.models
     :refer [Card

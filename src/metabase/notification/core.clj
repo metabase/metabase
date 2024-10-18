@@ -12,7 +12,7 @@
 (p/import-vars
  [notification.payload
   notification-payload
-  NotificationInfo
+  Notification
   NotificationPayload])
 
 (def ^:dynamic *send-notification!*

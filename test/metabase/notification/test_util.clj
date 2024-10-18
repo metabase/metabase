@@ -5,6 +5,7 @@
    [metabase.channel.core :as channel]
    [metabase.events.notification :as events.notification]
    [metabase.notification.core :as notification]
+   [metabase.notification.payload.core :as notification.payload]
    [metabase.notification.send :as notification.send]
    [metabase.test :as mt]
    [metabase.util :as u]))
@@ -29,6 +30,10 @@
 (defmethod channel/render-notification [:channel/metabase-test :notification/testing]
   [_channel-type notification-info _template _recipients]
   [notification-info])
+
+(defmethod notification.payload/payload :notification/testing
+  [_notification]
+  {::payload? true})
 
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defmacro with-send-notification-sync

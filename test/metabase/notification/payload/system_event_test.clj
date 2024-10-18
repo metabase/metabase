@@ -1,4 +1,4 @@
-(ns metabase.notification.system-event-test
+(ns metabase.notification.payload.system-event-test
   (:require
    [clojure.test :refer :all]
    [metabase.events :as events]
@@ -27,8 +27,8 @@
       (notification.tu/with-send-notification-sync
         (mt/with-temp [:model/ChannelTemplate tmpl {:channel_type :channel/email
                                                     :details      {:type    :email/mustache-text
-                                                                   :subject "Welcome {{event-info.object.first_name}} to {{context.site-name}}"
-                                                                   :body    "Hello {{event-info.object.first_name}}! Welcome to {{context.site-name}}!"}}
+                                                                   :subject "Welcome {{payload.event-info.object.first_name}} to {{context.site-name}}"
+                                                                   :body    "Hello {{payload.event-info.object.first_name}}! Welcome to {{context.site-name}}!"}}
                        :model/User             {user-id :id} {:email "ngoc@metabase.com"}
                        :model/PermissionsGroup {group-id :id} {:name "Avengers"}
                        :model/PermissionsGroupMembership _ {:group_id group-id
@@ -65,7 +65,7 @@
       (notification.tu/with-send-notification-sync
         (mt/with-temp [:model/ChannelTemplate tmpl {:channel_type :channel/email
                                                     :details      {:type    :email/mustache-resource
-                                                                   :subject "Welcome {{event-info.object.first_name}} to {{context.site-name}}"
+                                                                   :subject "Welcome {{payload.event-info.object.first_name}} to {{context.site-name}}"
                                                                    :path    "notification/channel_template/hello_world"}}
                        :model/User             {user-id :id} {:email "ngoc@metabase.com"}
                        :model/PermissionsGroup {group-id :id} {:name "Avengers"}

@@ -1,47 +1,12 @@
 (ns metabase.notification.payload.system-event
   (:require
    [java-time.api :as t]
-   [malli.core :as mc]
-   [malli.transform :as mtx]
    [metabase.email.messages :as messages]
-   [metabase.events :as events]
    [metabase.models.user :as user]
    [metabase.notification.payload.core :as notification.payload]
    [metabase.public-settings :as public-settings]
    [metabase.util.i18n :as i18n :refer [trs]]
-   [metabase.util.malli :as mu]
-   [toucan2.core :as t2]))
-
-(def ^:private hydrate-transformer
-  (mtx/transformer
-   {:decoders {:map {:compile (fn [schema _]
-                                (let [hydrates (into {}
-                                                     (keep (fn [[k {:keys [hydrate] :as _p} _v]]
-                                                             (when hydrate
-                                                               [k hydrate])))
-                                                     (mc/children schema))]
-                                  (when (seq hydrates)
-                                    (fn [x]
-                                      (if (map? x)
-                                        (reduce-kv
-                                         (fn [_acc k {:keys [key model] :as _hydrate-prop}]
-                                           (assoc x key (t2/select-one model (get x k))))
-                                         x
-                                         hydrates)
-                                        x)))))}}}))
-
-(defn- hydrate!
-  "Given a schema and value, hydrate the keys that are marked as to-hydrate.
-  Hydrated keys have the :hydrate properties that can be added by [[metabase.events.schema/with-hydration]].
-
-    (hydrate! [:map
-                [:user_id {:hydrate {:key :user
-                                     :model [:model/User :email]}} :int]]
-              {:user_id 1})
-    ;; => {:user_id 1
-           :user    {:email \"ngoc@metabase.com\"}}"
-  [schema value]
-  (mc/decode schema value hydrate-transformer))
+   [metabase.util.malli :as mu]))
 
 (defn- join-url
   [new-user]
@@ -71,13 +36,8 @@
                                               (get messages/alert-condition-text))}
     {}))
 
-(mu/defmethod notification.payload/notification-payload* :notification/system-event
-  [notification-info :- notification.payload/NotificationInfo]
-  (update notification-info
-          :payload
-          (fn [{:keys [event-topic event-info]}]
-            {:event-topic event-topic
-             :event-info  (cond->> event-info
-                            (some? (events/topic->schema event-topic))
-                            (hydrate! (events/topic->schema event-topic)))
-             :extra-context (extra-context event-topic event-info)})))
+(mu/defmethod notification.payload/payload :notification/system-event
+  [notification-info :- notification.payload/Notification]
+  (let [payload                          (:payload notification-info)
+        {:keys [event-topic event-info]} payload]
+    (assoc payload :extra-context (extra-context event-topic event-info))))

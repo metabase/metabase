@@ -94,7 +94,7 @@
 
 (mu/defn send-notification-sync!
   "Send the notification to all handlers synchronously. Do not use this directly, use *send-notification!* instead."
-  [notification-info :- notification.payload/NotificationInfo]
+  [notification-info :- notification.payload/Notification]
   (try
     (let [noti-handlers        (hydrate-notification-handler
                                 (t2/select :model/NotificationHandler :notification_id (:id notification-info)))
@@ -127,7 +127,7 @@
 
 (mu/defn send-notification-async!
   "Send a notification asynchronously."
-  [notification :- notification.payload/NotificationInfo]
+  [notification :- notification.payload/Notification]
   (.submit ^ExecutorService @pool ^Callable
            (fn []
              (send-notification-sync! notification)))

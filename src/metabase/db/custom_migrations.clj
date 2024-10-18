@@ -1601,7 +1601,7 @@
                      {:name         "User joined Email template"
                       :channel_type "channel/email"
                       :details      (json/generate-string {:type           "email/mustache-resource"
-                                                           :subject        "{{context.extra.user-invited-email-subject}}"
+                                                           :subject        "{{payload.extra-context.user-invited-email-subject}}"
                                                            :path           "metabase/email/new_user_invite.mustache"
                                                            :recipient-type :cc})
                       :created_at   :%now
@@ -1614,7 +1614,7 @@
        :channel_id      nil
        :template_id     template-id
        :recipients      [{:type    "notification-recipient/template"
-                          :details (json/generate-string {:pattern "{{event-info.object.email}}"})}]}])))
+                          :details (json/generate-string {:pattern "{{payload.event-info.object.email}}"})}]}])))
 
 (define-migration CreateSystemNotificationAlertCreated
   (let [template-id (t2/insert-returning-pk!
@@ -1635,7 +1635,7 @@
        :channel_id      nil
        :template_id     template-id
        :recipients      [{:type    "notification-recipient/template"
-                          :details (json/generate-string {:pattern "{{event-info.user.email}}"})}]}])))
+                          :details (json/generate-string {:pattern "{{payload.event-info.user.email}}"})}]}])))
 
 (define-migration CreateSystemNotificationSlackTokenError
   (let [template-id (t2/insert-returning-pk!

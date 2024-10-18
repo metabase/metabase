@@ -1,4 +1,4 @@
 {{> metabase/email/_header }}
-    <p>This is just a confirmation that your alert about <a href="{{context.site-url}}/question/{{event-info.object.card.id}}">{{event-info.object.card.name}}</a> has been set up.</p>
-    <p>This alert will be sent {{context.extra.alert-create-condition-description}}.</p>
+    <p>This is just a confirmation that your alert about <a href="{{context.site-url}}/question/{{payload.event-info.object.card.id}}">{{payload.event-info.object.card.name}}</a> has been set up.</p>
+    <p>This alert will be sent {{payload.extra-context.alert-create-condition-description}}.</p>
 {{> metabase/email/_footer}}
