@@ -2,7 +2,8 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { Box, Button, Group, Stack, Text } from "metabase/ui";
+import { useSetting } from "metabase/common/hooks";
+import { Box, Button, Group, Icon, Stack, Text } from "metabase/ui";
 import type {
   Dashboard,
   VirtualDashboardCard,
@@ -15,7 +16,7 @@ import {
   StyledInput,
 } from "./IFrameViz.styled";
 import { settings } from "./IFrameVizSettings";
-import { getIframeUrl } from "./utils";
+import { getIframeUrl, isAllowedIframeUrl } from "./utils";
 
 export interface IFrameVizProps {
   dashcard: VirtualDashboardCard;
@@ -48,6 +49,7 @@ export function IFrameViz({
   const { iframe: iframeOrUrl } = settings;
   const isNew = !!dashcard?.justAdded;
 
+  const allowedHosts = useSetting("allowed-iframe-hosts");
   const iframeUrl = useMemo(() => getIframeUrl(iframeOrUrl), [iframeOrUrl]);
 
   const handleIFrameChange = useCallback(
@@ -98,9 +100,14 @@ export function IFrameViz({
     );
   }
 
+  const hasAllowedIFrameUrl =
+    iframeUrl && isAllowedIframeUrl(iframeUrl, allowedHosts);
+  const hasForbiddenIFrameUrl =
+    iframeUrl && !isAllowedIframeUrl(iframeUrl, allowedHosts);
+
   return (
     <IFrameWrapper data-testid="iframe-card" fade={isEditingParameter}>
-      {iframeUrl ? (
+      {hasAllowedIFrameUrl ? (
         <iframe
           data-testid="iframe-visualization"
           src={iframeUrl}
@@ -110,11 +117,20 @@ export function IFrameViz({
           sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
         />
       ) : (
-        <Box p={12} w="100%">
-          <Text
-            color="text-medium"
-            align={"center"}
-          >{t`There was a problem loading your iframe`}</Text>
+        <Box p={12} w="100%" style={{ textAlign: "center" }}>
+          {hasForbiddenIFrameUrl && (
+            <Icon
+              name="warning"
+              color="var(--mb-color-text-light)"
+              size={32}
+              mb="sm"
+            />
+          )}
+          <Text color="text-medium">
+            {hasForbiddenIFrameUrl
+              ? t`The URL you entered is not on the list of allowed hosts, we'd recommend contacting your instance administrator to resolve this`
+              : t`There was a problem loading your iframe`}
+          </Text>
         </Box>
       )}
     </IFrameWrapper>

@@ -145,7 +145,9 @@ export const getIframeUrl = (
 
 const matchesAllowedFrame = (hostname: string, allowedFrame: string) => {
   const allowedUrl = new URL(allowedFrame);
-  const allowedHostname = allowedUrl.hostname;
+
+  // `new URL` encodes "*.", so we need to decode it
+  const allowedHostname = decodeURIComponent(allowedUrl.hostname);
 
   if (allowedHostname.startsWith("*.")) {
     const baseDomain = allowedHostname.slice(2);
@@ -156,6 +158,9 @@ const matchesAllowedFrame = (hostname: string, allowedFrame: string) => {
 };
 
 export const isAllowedIframeUrl = (url: string, allowedIframesSetting = "") => {
+  if (allowedIframesSetting === "*") {
+    return true;
+  }
   try {
     const allowedIframes = allowedIframesSetting
       ?.split(",")
