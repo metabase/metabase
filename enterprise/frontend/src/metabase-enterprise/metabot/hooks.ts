@@ -31,7 +31,7 @@ export const useMetabotAgent = () => {
       const result = await sendMessage({
         message,
         context: {}, // TODO: add plugin that selects context from state
-        messages: history,
+        history,
       });
 
       if (result.error) {
