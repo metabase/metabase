@@ -119,6 +119,7 @@
    :metadata {:model "gpt-4o-mini", :usage {:total 439, :prompt 416, :completion 23}}}
 
   ;; request 2 (response 1 is added to end of history)
-  (*request* "cam@metabase.com" {} [{:content "Sorry I don't understand that. Could you please clarify what you would like to include in the email to Cam?",
+  (*request* "cam@metabase.com" {} [{:role :user, :content "Send an email to Cam"}
+                                    {:content "Sorry I don't understand that. Could you please clarify what you would like to include in the email to Cam?",
                                      :role :assistant
                                      :tool-calls []}]))

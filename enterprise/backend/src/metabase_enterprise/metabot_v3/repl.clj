@@ -58,7 +58,9 @@
              :message
              metabot-v3.handle-response/handle-response-message
              handle-reactions)
-         (recur (concat history (:new-history response))))))))
+         (recur (into (vec history)
+                      [{:role :user, :content input}
+                       (:message response)])))))))
 
 (defn user-repl-cli
   "CLI entrypoint for using the MetaBot REPL.
