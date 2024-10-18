@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import { Box, type BoxProps } from "@mantine/core";
+import { Box, type BoxProps, extractSystemStyles } from "@mantine/core";
 import cx from "classnames";
 import type { MouseEvent, ReactNode, SVGAttributes } from "react";
 import { forwardRef } from "react";
@@ -26,6 +26,7 @@ export const Icon = forwardRef<SVGSVGElement, IconProps>(function Icon(
 ) {
   const IconComponent = (Icons[name] ?? Icons["unknown"]).component;
 
+  const { systemStyles } = extractSystemStyles(restProps);
   const icon = (
     <Box
       component={IconComponent}
@@ -35,7 +36,7 @@ export const Icon = forwardRef<SVGSVGElement, IconProps>(function Icon(
       className={cx(`Icon Icon-${name}`, className)}
       width={size}
       height={size}
-      {...restProps}
+      {...systemStyles}
     />
   );
 
