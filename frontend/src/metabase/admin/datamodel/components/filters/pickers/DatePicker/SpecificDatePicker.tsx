@@ -74,7 +74,7 @@ const SpecificDatePicker = ({
               handleChange();
             }
           }}
-          rightSection={hasCalendar ? "calendar" : undefined}
+          rightIcon={hasCalendar ? "calendar" : undefined}
           onRightIconClick={() => setShowCalendar(!showCalendar)}
           rightIconTooltip={showCalendar ? t`Hide calendar` : t`Show calendar`}
         />

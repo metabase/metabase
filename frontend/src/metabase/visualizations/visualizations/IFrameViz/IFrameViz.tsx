@@ -113,7 +113,7 @@ export function IFrameViz({
         <Box p={12} w="100%">
           <Text
             color="text-medium"
-            align={"center"}
+            ta="center"
           >{t`There was a problem loading your iframe`}</Text>
         </Box>
       )}

@@ -100,7 +100,7 @@ export const QuestionList = memo(function QuestionList({
         <SearchInput
           fullWidth
           value={searchText}
-          leftSection="search"
+          leftIcon="search"
           placeholder={t`Search for a question`}
           onChange={e => setSearchText(e.target.value)}
         />
