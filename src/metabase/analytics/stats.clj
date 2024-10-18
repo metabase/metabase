@@ -885,7 +885,7 @@
                 ;; `:num_queries_cached_unbinned` is added to [[legacy-anonymous-usage-stats]]'s return value to make
                 ;; computing [[snowplow-anonymous-usage-stats]] more efficient. It shouldn't be sent by
                 ;; [[send-stats-deprecited!]].
-                (update-in [:stats :stats :cache] dissoc :num_queries_cached_unbinned))
+                (update-in [:stats :cache] dissoc :num_queries_cached_unbinned))
      :snowplow-stats (snowplow-anonymous-usage-stats stats)}))
 
 (defn- deep-string-keywords
