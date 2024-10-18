@@ -398,6 +398,51 @@ describe("scenarios > question > saved", () => {
           .should("be.visible");
       });
     });
+
+    function moveQuestionTo(newCollectionName, clickTab = false) {
+      openQuestionActions();
+      cy.findByTestId("move-button").click();
+      entityPickerModal().within(() => {
+        clickTab && cy.findByRole("tab", { name: /Collections/ }).click();
+        cy.findByText(newCollectionName).click();
+        cy.button("Move").click();
+      });
+    }
+
+    it("should show a View-only tag when one of the source cards is unavailable", () => {
+      createQuestion(
+        {
+          name: "Products Question + Orders",
+          query: {
+            "source-table": `card__${ORDERS_QUESTION_ID}`,
+            joins: [
+              {
+                "source-table": PRODUCTS_ID,
+                alias: "Orders Question",
+                fields: "all",
+                condition: [
+                  "=",
+                  ["field", PRODUCTS.PRODUCT_ID, null],
+                  ["field", ORDERS.ID, { "join-alias": "Orders" }],
+                ],
+              },
+            ],
+          },
+        },
+        {
+          wrapId: true,
+          idAlias: "questionId",
+        },
+      );
+
+      visitQuestion(ORDERS_QUESTION_ID);
+      moveQuestionTo(/Personal Collection/, true);
+
+      cy.signInAsNormalUser();
+      cy.get("@questionId").then(visitQuestion);
+
+      queryBuilderHeader().findByText("View-only").should("be.visible");
+    });
   });
 });
 

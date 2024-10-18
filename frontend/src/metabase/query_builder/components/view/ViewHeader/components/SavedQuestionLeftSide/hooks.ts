@@ -32,13 +32,16 @@ export function useHiddenSourceTables(
       metadataProvider,
       sourceTableId,
     );
-    const sourceTableInfo = Lib.displayInfo(query, -1, sourceTableMetadata);
-    joinTablesInfo.unshift(sourceTableInfo);
+    if (sourceTableMetadata) {
+      const sourceTableInfo = Lib.displayInfo(query, -1, sourceTableMetadata);
+      joinTablesInfo.unshift(sourceTableInfo);
+    }
   }
 
   return joinTablesInfo.filter(
     tableInfo =>
-      tableInfo.visibilityType !== null &&
-      tableInfo.visibilityType !== "normal",
+      !tableInfo.isSourceTable ||
+      (tableInfo.visibilityType !== null &&
+        tableInfo.visibilityType !== "normal"),
   );
 }
