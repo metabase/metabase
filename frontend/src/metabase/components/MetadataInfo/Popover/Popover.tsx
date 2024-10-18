@@ -5,7 +5,7 @@ import useSequencedContentCloseHandler from "metabase/hooks/use-sequenced-conten
 import type { HoverCardProps } from "metabase/ui";
 import { HoverCard, useDelayGroup } from "metabase/ui";
 
-export const POPOVER_DELAY: [number, number] = [250, 150];
+export const POPOVER_DELAY: [number, number] = [1000, 150];
 export const POPOVER_TRANSITION_DURATION = 150;
 
 import {
