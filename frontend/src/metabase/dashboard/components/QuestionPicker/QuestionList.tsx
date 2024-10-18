@@ -118,7 +118,7 @@ export function QuestionList({
                     size: item.model === "dataset" ? 18 : 16,
                   }}
                   onSelect={onSelect}
-                  rightSection={PLUGIN_MODERATION.getStatusIcon(
+                  rightIcon={PLUGIN_MODERATION.getStatusIcon(
                     item.moderated_status ?? undefined,
                   )}
                 />

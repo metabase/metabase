@@ -111,7 +111,7 @@ export const DropdownSidebarFilter = ({
           ) : (
             <GroupOverflowHidden wrap="nowrap">
               {iconName && <DropdownLabelIcon size={16} name={iconName} />}
-              <Text weight={700} truncate>
+              <Text fw={700} truncate>
                 {label()}
               </Text>
             </GroupOverflowHidden>

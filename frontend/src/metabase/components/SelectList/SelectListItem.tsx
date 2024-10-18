@@ -33,8 +33,8 @@ export function SelectListItem({
       {...otherProps}
       name={name}
       aria-label={name}
-      hasleftSection={!!icon}
-      hasrightSection={!!rightIcon}
+      hasLeftIcon={!!icon}
+      hasRightIcon={!!rightIcon}
     >
       {icon && <ItemIcon color="brand" {...iconProps} />}
       <ItemTitle data-testid="option-text">{name}</ItemTitle>

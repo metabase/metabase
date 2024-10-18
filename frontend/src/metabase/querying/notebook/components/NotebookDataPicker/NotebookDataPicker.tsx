@@ -123,6 +123,7 @@ export function NotebookDataPicker({
           c="inherit"
           fz="inherit"
           fw="inherit"
+          h="37px"
           p={NotebookCell.CONTAINER_PADDING}
           disabled={isDisabled}
           onClick={handleClick}

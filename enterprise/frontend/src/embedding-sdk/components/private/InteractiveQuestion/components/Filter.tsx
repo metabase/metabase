@@ -60,7 +60,7 @@ const FilterInner = ({
 
   return (
     <Stack w="100%" h="100%">
-      <Group position="right">
+      <Group justify="flex-end">
         <FilterModalHeader value={searchText} onChange={handleSearch} />
       </Group>
       <Box h="100%" className={cx(CS.flex1, CS.overflowHidden)}>

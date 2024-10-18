@@ -111,7 +111,7 @@ export function BreakoutColumnList({
           fullWidth
           placeholder={t`Find...`}
           value={searchQuery}
-          leftSection="search"
+          leftIcon="search"
           onResetClick={handleResetSearch}
           onChange={handleChangeSearchQuery}
         />

@@ -68,11 +68,7 @@ function getSdkDesignSystemCssVariables(theme: MantineTheme) {
            *
            * @see SDK_TO_MAIN_APP_COLORS_MAPPING
            */
-          const color = theme.fn.themeColor(
-            metabaseColorName,
-            undefined,
-            false,
-          );
+          const color = theme.fn.themeColor(metabaseColorName);
           const colorExist = color !== metabaseColorName;
 
           if (colorExist) {

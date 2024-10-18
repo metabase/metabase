@@ -4,27 +4,28 @@ import type {
   SelectProps as MantineSelectProps,
 } from "@mantine/core";
 import { Select as MantineSelect } from "@mantine/core";
+export { SelectItem } from "./SelectItem";
 
 import type { IconName } from "../../icons";
 
-export type ComboboxItemWithExtras<Value> = ComboboxItem & {
+export type SelectOption<Value> = ComboboxItem & {
   value: Value;
   icon?: IconName;
 } & Record<string, any>;
 
 type SelectData<Value extends string | null> =
-  | ComboboxItemWithExtras<Value>[]
-  | ComboboxItemGroup<ComboboxItemWithExtras<Value>>[]
+  | SelectOption<Value>[]
+  | ComboboxItemGroup<SelectOption<Value>>[]
   | Value[];
 
 /**
  * Mantine v7 loosened up the value types for Select, removing the generics, which sucks
  * This re-introduces the value generics to keep the type safety
  */
-export interface SelectProps<Value extends string | null>
+export interface SelectProps<Value extends string | null = string | null>
   extends Omit<MantineSelectProps, "data" | "onChange" | "value"> {
   data: SelectData<Value>;
-  value: Value;
+  value?: Value;
   onChange: (newValue: Value) => void;
 }
 

@@ -35,7 +35,7 @@ const PopoverDropdown = function PopoverDropdown(
 };
 
 PopoverDropdown.displayName = MantinePopoverDropdown.displayName;
-MantinePopover.Dropdown = PopoverDropdown as typeof MantinePopover.Dropdown;
+MantinePopover.Dropdown = PopoverDropdown;
 
 const Popover = MantinePopover;
 
