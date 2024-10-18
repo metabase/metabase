@@ -61,9 +61,8 @@ function withTransientSettingState(
     ChartSettingsProps,
     { settings?: VisualizationSettings }
   > {
-    static displayName = `withTransientSettingState[${
-      ComposedComponent.displayName || ComposedComponent.name
-    }]`;
+    static displayName = `withTransientSettingState[${ComposedComponent.displayName || ComposedComponent.name
+      }]`;
 
     constructor(props: ChartSettingsProps) {
       super(props);
@@ -351,6 +350,7 @@ class ChartSettings extends Component<ChartSettingsProps, ChartSettingsState> {
       dashboard,
       dashcard,
       isDashboard = false,
+      chartTypeSettings,
     } = this.props;
     const { popoverRef } = this.state;
 
@@ -368,8 +368,9 @@ class ChartSettings extends Component<ChartSettingsProps, ChartSettingsState> {
         sections[widget.section].push(widget);
       }
     }
-    console.log({ sections });
-    console.log({ widgets });
+    sections["Chart"] = [];
+    // console.log({ sections });
+    // console.log({ widgets });
     // TODO: add Visualization type section here
 
     // Move settings from the "undefined" section in the first tab
@@ -383,6 +384,7 @@ class ChartSettings extends Component<ChartSettingsProps, ChartSettingsState> {
 
     // This sorts the section radio buttons.
     const sectionSortOrder = [
+      "chart",
       "data",
       "display",
       "axes",
@@ -400,7 +402,7 @@ class ChartSettings extends Component<ChartSettingsProps, ChartSettingsState> {
       this.state.currentSection && sections[this.state.currentSection]
         ? this.state.currentSection
         : _.find(DEFAULT_TAB_PRIORITY, name => name in sections) ||
-          sectionNames[0];
+        sectionNames[0];
 
     const visibleWidgets = sections[currentSection] || [];
 
@@ -456,15 +458,18 @@ class ChartSettings extends Component<ChartSettingsProps, ChartSettingsState> {
     // default layout with visualization
 
     // TODO: if section is Viz type, then render chart type settings, else render current variant
+
+    const isChartPicker = currentSection === 'Chart';
+
     return (
       <ChartSettingsRoot className={className}>
         <ChartSettingsMenu data-testid="chartsettings-sidebar">
           {showSectionPicker && sectionPicker}
           <ChartSettingsListContainer className={CS.scrollShow}>
-            <ChartSettingsWidgetList
+            {isChartPicker ? chartTypeSettings : <ChartSettingsWidgetList
               widgets={visibleWidgets}
               extraWidgetProps={extraWidgetProps}
-            />
+            />}
           </ChartSettingsListContainer>
         </ChartSettingsMenu>
         {!noPreview && (

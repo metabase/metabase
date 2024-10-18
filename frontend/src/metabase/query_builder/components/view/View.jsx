@@ -63,24 +63,20 @@ const fadeIn = {
 class View extends Component {
   getLeftSidebar = () => {
     const {
-      question,
-      result,
       isShowingChartSettingsSidebar,
       isShowingChartTypeSidebar,
       onCloseChartSettings,
+      question,
+      result,
+      addField,
+      initialChartSetting,
+      onReplaceAllVisualizationSettings,
+      onOpenChartType,
+      visualizationSettings,
+      showSidebarTitle,
     } = this.props;
 
-    if (isShowingChartSettingsSidebar) {
-      const {
-        question,
-        result,
-        addField,
-        initialChartSetting,
-        onReplaceAllVisualizationSettings,
-        onOpenChartType,
-        visualizationSettings,
-        showSidebarTitle,
-      } = this.props;
+    if (isShowingChartSettingsSidebar || isShowingChartTypeSidebar) {
       return (
         <ChartSettingsSidebar
           question={question}
@@ -94,10 +90,6 @@ class View extends Component {
           onClose={onCloseChartSettings}
         />
       );
-    }
-
-    if (isShowingChartTypeSidebar) {
-      return <ChartTypeSidebar question={question} result={result} />;
     }
 
     return null;

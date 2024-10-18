@@ -46,39 +46,40 @@ export const LeftViewFooterButtonGroup = () => {
   ];
 
 
-  // return <EditorViewControl data={data} />
-
   return (
-    <Group className={CS.flex1}>
-      <FooterButtonGroup>
-        <ViewButton
-          medium
-          labelBreakpoint="sm"
-          data-testid="viz-type-button"
-          active={isShowingChartTypeSidebar}
-          onClick={
-            isShowingChartTypeSidebar
-              ? () => dispatch(onCloseChartType())
-              : () => dispatch(onOpenChartType())
-          }
-        >
-          {t`Visualization type`}
-        </ViewButton>
-        <ViewButton
-          active={isShowingChartSettingsSidebar}
-          icon="gear"
-          iconSize={16}
-          medium
-          iconWithText
-          labelBreakpoint="sm"
-          data-testid="viz-settings-button"
-          onClick={
-            isShowingChartSettingsSidebar
-              ? () => dispatch(onCloseChartSettings())
-              : () => dispatch(onOpenChartSettings())
-          }
-        >{t`Settings`}</ViewButton>
-      </FooterButtonGroup>
-    </Group>
+    <>
+      <EditorViewControl data={data} />
+      <Group className={CS.flex1}>
+        <FooterButtonGroup>
+          <ViewButton
+            medium
+            labelBreakpoint="sm"
+            data-testid="viz-type-button"
+            active={isShowingChartTypeSidebar}
+            onClick={
+              isShowingChartTypeSidebar
+                ? () => dispatch(onCloseChartType())
+                : () => dispatch(onOpenChartType())
+            }
+          >
+            {t`Visualization type`}
+          </ViewButton>
+          <ViewButton
+            active={isShowingChartSettingsSidebar}
+            icon="gear"
+            iconSize={16}
+            medium
+            iconWithText
+            labelBreakpoint="sm"
+            data-testid="viz-settings-button"
+            onClick={
+              isShowingChartSettingsSidebar
+                ? () => dispatch(onCloseChartSettings())
+                : () => dispatch(onOpenChartSettings())
+            }
+          >{t`Settings`}</ViewButton>
+        </FooterButtonGroup>
+      </Group>
+    </>
   );
 };

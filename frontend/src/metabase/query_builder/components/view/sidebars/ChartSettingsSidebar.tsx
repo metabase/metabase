@@ -3,14 +3,20 @@ import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import CS from "metabase/css/core/index.css";
+import { onOpenChartSettings, setUIControls, updateQuestion } from "metabase/query_builder/actions";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import visualizations from "metabase/visualizations";
 import {
   ChartSettings,
   type Widget,
 } from "metabase/visualizations/components/ChartSettings";
+import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type { Dataset, VisualizationSettings } from "metabase-types/api";
+import type { CardDisplayType, Dataset, VisualizationSettings } from "metabase-types/api";
+
+import { ChartTypeSettings, useChartTypeVisualizations } from "../../chart-type-selector";
+import { useDispatch } from "metabase/lib/redux";
+
 
 interface ChartSettingsSidebarProps {
   question: Question;
@@ -38,9 +44,9 @@ function ChartSettingsSidebarInner(props: ChartSettingsSidebarProps) {
   } = props;
   const sidebarContentProps = showSidebarTitle
     ? {
-        title: t`${visualizations.get(question.display())?.uiName} options`,
-        onBack: () => onOpenChartType(),
-      }
+      title: t`${visualizations.get(question.display())?.uiName} options`,
+      onBack: () => onOpenChartType(),
+    }
     : {};
 
   const handleClose = useCallback(() => {
@@ -57,6 +63,43 @@ function ChartSettingsSidebarInner(props: ChartSettingsSidebarProps) {
     ];
   }, [card, result.data]);
 
+  const dispatch = useDispatch();
+
+  const onUpdateQuestion = (newQuestion: Question) => {
+    if (question) {
+      dispatch(
+        updateQuestion(newQuestion, {
+          shouldUpdateUrl: Lib.queryDisplayInfo(question.query()).isEditable,
+        }),
+      );
+      dispatch(setUIControls({ isShowingRawTable: false }));
+    }
+  };
+
+  const handleSelectVisualization = (display: CardDisplayType) => {
+    updateQuestionVisualization(display);
+  };
+
+  const onOpenVizSettings = () => {
+    dispatch(
+      onOpenChartSettings({
+        initialChartSettings: { section: t`Data` },
+        showSidebarTitle: true,
+      }),
+    );
+  };
+
+  const {
+    selectedVisualization,
+    updateQuestionVisualization,
+    sensibleVisualizations,
+    nonSensibleVisualizations,
+  } = useChartTypeVisualizations({
+    question,
+    result,
+    onUpdateQuestion,
+  });
+
   return (
     result && (
       <SidebarContent
@@ -66,6 +109,16 @@ function ChartSettingsSidebarInner(props: ChartSettingsSidebarProps) {
       >
         <ErrorBoundary>
           <ChartSettings
+            chartTypeSettings={<ChartTypeSettings
+              selectedVisualization={selectedVisualization}
+              onSelectVisualization={handleSelectVisualization}
+              sensibleVisualizations={sensibleVisualizations}
+              nonSensibleVisualizations={nonSensibleVisualizations}
+              onOpenSettings={onOpenVizSettings}
+              spacing={0}
+              w="100%"
+              p="lg"
+            />}
             question={question}
             addField={addField}
             series={series}
