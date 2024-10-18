@@ -37,6 +37,7 @@ describe("order by", () => {
             longDisplayName: "Orders",
             isSourceTable: true,
             schema: "1:PUBLIC",
+            visibilityType: null,
           },
         }),
       );
@@ -62,6 +63,7 @@ describe("order by", () => {
             longDisplayName: "Products",
             isSourceTable: false,
             schema: "1:PUBLIC",
+            visibilityType: null,
           },
         }),
       );
