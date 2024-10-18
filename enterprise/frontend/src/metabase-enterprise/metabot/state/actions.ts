@@ -1,12 +1,9 @@
 import { createAsyncThunk } from "metabase/lib/redux";
-import { metabotAgent } from "metabase-enterprise/api";
 import type { MetabotAgentMessage } from "metabase-types/api";
 
 import { metabot } from "./reducer";
-import { getContext, getHistory } from "./selectors";
-import type { MetabotStoreState } from "./types";
 
-export const { addMessage } = metabot.actions;
+export const { addMessage, reset } = metabot.actions;
 
 export const processMetabotMessages = createAsyncThunk(
   "metabase-enterprise/metabot/processResponseMessages",
@@ -27,29 +24,5 @@ export const processMetabotMessages = createAsyncThunk(
         );
       }
     }
-  },
-);
-
-export const sendMessage = createAsyncThunk(
-  "metabase-enterprise/metabot/sendMessage",
-  async (message: string, { dispatch, getState }) => {
-    const state = getState() as MetabotStoreState;
-    const messages = getHistory(state);
-    const context = getContext(state);
-
-    dispatch(addMessage({ source: "user", message, context }));
-
-    const reqPayload = { message, messages, context };
-    const result = await dispatch(
-      metabotAgent.initiate(reqPayload, { fixedCacheKey: "metabot" }),
-    );
-
-    // TODO: work with design to find a way to present error messages
-    // for now this gets handled via console.error by the caller
-    if (result.error) {
-      throw result.error;
-    }
-
-    await dispatch(processMetabotMessages(result.data || []));
   },
 );

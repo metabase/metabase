@@ -1,26 +1,38 @@
 import { createSelector } from "@reduxjs/toolkit";
+import _ from "underscore";
 
-import { metabotAgent } from "metabase-enterprise/api";
-import type {
-  ChatMessage,
-  MetabotChatMessage,
-  UserChatMessage,
+import {
+  type ChatMessage,
+  type MetabotChatMessage,
+  type UserChatMessage,
+  isMetabotChatMessage,
+  isUserChatMessage,
 } from "metabase-types/api";
-import type { State } from "metabase-types/store";
 
 import type { MetabotStoreState } from "./types";
 
 export const getMetabot = (state: MetabotStoreState) =>
   state.plugins.metabotPlugin;
 
-export const getContext = createSelector(
-  getMetabot,
-  metabot => metabot.chat.context,
-);
-
 export const getHistory = createSelector(
   getMetabot,
-  metabot => metabot.chat.history,
+  metabot => metabot.chatHistory,
+);
+
+export const getLastMetabotChatMessages = createSelector(
+  getMetabot,
+  (metabot): MetabotChatMessage[] => {
+    const lastMessage = _.last(metabot.chatHistory);
+    if (lastMessage && isUserChatMessage(lastMessage)) {
+      return [];
+    } else {
+      const lastUserMessageIndex =
+        metabot.chatHistory.findLastIndex(isUserChatMessage);
+      return metabot.chatHistory
+        .slice(lastUserMessageIndex + 1)
+        .filter(isMetabotChatMessage);
+    }
+  },
 );
 
 export const getChatHistory = createSelector(
@@ -33,7 +45,3 @@ export const getChatHistory = createSelector(
     );
   },
 );
-
-export const getSendMessageReq = (state: State) =>
-  // @ts-expect-error - TODO: find / create State type with metaboat RTK data included
-  metabotAgent.select("metabot")(state);

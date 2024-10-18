@@ -18,3 +18,4 @@ export const metabotApi = EnterpriseApi.injectEndpoints({
 });
 
 export const { metabotAgent } = metabotApi.endpoints;
+export const { useMetabotAgentMutation } = metabotApi;
