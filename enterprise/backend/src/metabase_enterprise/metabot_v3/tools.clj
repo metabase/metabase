@@ -50,7 +50,11 @@
   (try
     (with-open [is (Files/newInputStream path (u/varargs OpenOption))
                 r  (java.io.InputStreamReader. is)]
-      (decode-tool-metadata (json/parse-stream r true)))
+      (u/prog1 (decode-tool-metadata (json/parse-stream r true))
+        (let [expected-filename (format "%s.json" (name (:name <>)))
+              actual-filename   (str (.getFileName path))]
+          (assert (= expected-filename actual-filename)
+                  (format "Tool filename should match tool name. Expected: '%s', got: '%s'" expected-filename actual-filename)))))
     (catch Throwable e
       (throw (ex-info (i18n/tru "Error reading tool metadata from file {0}: {1}"
                                 (str path)
