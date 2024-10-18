@@ -12,6 +12,7 @@ import type { DateRangePickerValue } from "./types";
 export interface DateRangePickerProps {
   value: DateRangePickerValue;
   isNew: boolean;
+  hasTimeToggle: boolean;
   onChange: (value: DateRangePickerValue) => void;
   onSubmit: () => void;
 }
@@ -19,6 +20,7 @@ export interface DateRangePickerProps {
 export function DateRangePicker({
   value: { dateRange, hasTime },
   isNew,
+  hasTimeToggle,
   onChange,
   onSubmit,
 }: DateRangePickerProps) {
@@ -50,8 +52,10 @@ export function DateRangePicker({
         />
       </Box>
       <Divider />
-      <Group p="sm" position="apart">
-        <TimeToggle hasTime={hasTime} onClick={handleTimeToggle} />
+      <Group p="sm" position={hasTimeToggle ? "apart" : "right"}>
+        {hasTimeToggle && (
+          <TimeToggle hasTime={hasTime} onClick={handleTimeToggle} />
+        )}
         <Button variant="filled" type="submit">
           {isNew ? t`Add filter` : t`Update filter`}
         </Button>

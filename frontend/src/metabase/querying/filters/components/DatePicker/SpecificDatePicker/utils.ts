@@ -2,6 +2,7 @@ import dayjs from "dayjs";
 
 import type {
   DatePickerOperator,
+  DatePickerUnit,
   DatePickerValue,
   SpecificDatePickerOperator,
   SpecificDatePickerValue,
@@ -50,6 +51,13 @@ export function getOperatorDefaultValue(
         hasTime: false,
       };
   }
+}
+
+export function canSetTime(
+  value: SpecificDatePickerValue,
+  availableUnits: ReadonlyArray<DatePickerUnit>,
+) {
+  return value.hasTime || availableUnits.includes("minute");
 }
 
 export function setOperator(

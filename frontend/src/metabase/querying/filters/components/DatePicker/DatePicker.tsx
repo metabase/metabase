@@ -50,6 +50,7 @@ export function DatePicker({
         <SpecificDatePicker
           value={value?.type === type ? value : undefined}
           availableOperators={availableOperators}
+          availableUnits={availableUnits}
           isNew={isNew}
           onChange={onChange}
           onBack={handleBack}
