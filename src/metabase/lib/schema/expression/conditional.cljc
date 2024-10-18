@@ -60,13 +60,14 @@
   [:default [:? [:schema [:ref ::expression/expression]]]])
 
 (defmethod expression/type-of-method :case
-  [[_tag _opts pred-expr-pairs default]]
-  (reduce
-   (fn [best-guess [_pred expr]]
-     (let [expr-type (expression/type-of expr)]
-       (best-return-type best-guess expr-type)))
-   (when (some? default)
-     (expression/type-of default))
+  [[_tag _opts pred-expr-pairs _default]]
+  ;; Following logic for picking a type is taken from
+  ;; the [[metabase.query-processor.middleware.annotate/infer-expression-type]].
+  (some
+   (fn [[_pred expr]]
+     (if-some [t (expression/type-of expr)]
+       t
+       ::expression/type.unknown))
    pred-expr-pairs))
 
 ;;; TODO -- add constraint that these types have to be compatible

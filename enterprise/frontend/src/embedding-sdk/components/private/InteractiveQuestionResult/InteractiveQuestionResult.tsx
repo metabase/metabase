@@ -25,7 +25,7 @@ export interface InteractiveQuestionResultProps {
   customTitle?: ReactNode;
 }
 
-type QuestionView = "notebook" | "filter" | "summarize" | "visualization";
+type QuestionView = "editor" | "filter" | "summarize" | "visualization";
 
 const ContentView = ({
   questionView,
@@ -41,8 +41,8 @@ const ContentView = ({
     .with("summarize", () => (
       <InteractiveQuestion.Summarize onClose={onReturnToVisualization} />
     ))
-    .with("notebook", () => (
-      <InteractiveQuestion.Notebook onApply={onReturnToVisualization} />
+    .with("editor", () => (
+      <InteractiveQuestion.Editor onApply={onReturnToVisualization} />
     ))
     .otherwise(() => <InteractiveQuestion.QuestionVisualization />);
 
@@ -96,11 +96,11 @@ export const InteractiveQuestionResult = ({
             onClose={() => setQuestionView("visualization")}
             isOpen={questionView === "summarize"}
           />
-          <InteractiveQuestion.NotebookButton
-            isOpen={questionView === "notebook"}
+          <InteractiveQuestion.EditorButton
+            isOpen={questionView === "editor"}
             onClick={() =>
               setQuestionView(
-                questionView === "notebook" ? "visualization" : "notebook",
+                questionView === "editor" ? "visualization" : "editor",
               )
             }
           />

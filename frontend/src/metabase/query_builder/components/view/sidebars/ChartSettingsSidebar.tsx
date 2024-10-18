@@ -57,11 +57,11 @@ function ChartSettingsSidebarInner(props: ChartSettingsSidebarProps) {
   const series = useMemo(() => {
     return [
       {
+        ...result,
         card,
-        data: result.data,
       },
     ];
-  }, [card, result.data]);
+  }, [card, result]);
 
   const dispatch = useDispatch();
 

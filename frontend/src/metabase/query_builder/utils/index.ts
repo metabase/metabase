@@ -158,11 +158,11 @@ export const createRawSeries = (options: {
   return (
     queryResult && [
       {
+        ...queryResult,
         card: {
           ...question.card(),
           ...(datasetQuery && { dataset_query: datasetQuery }),
         },
-        data: queryResult && queryResult.data,
       },
     ]
   );
