@@ -171,6 +171,12 @@ export const ADMIN_SETTINGS_SECTIONS = {
         display_name: t`Enable X-ray features`,
         type: "boolean",
       },
+      {
+        key: "allowed-iframe-hosts",
+        display_name: t`Allowed iframe hosts`,
+        type: "string",
+        placeholder: "https://example.com",
+      },
     ],
   },
   updates: {

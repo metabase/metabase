@@ -52,3 +52,4 @@ subscription-allowed-domains: null
 synchronous-batch-updates: null
 unaggregated-query-row-limit: null
 update-channel: null
+allowed-iframe-hosts: null
