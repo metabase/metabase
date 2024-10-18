@@ -461,3 +461,13 @@
 
       ;; make sure features are not duplicated
       (is (= (count included-features) (count included-features-set))))))
+
+(deftest snowplow-grouped-metric-info-test
+  (testing "query_executions"
+    (let [{:keys [query_executions query_executions_24h]} (#'stats/->snowplow-grouped-metric-info)]
+      (doseq [k (keys query_executions)]
+        (testing (str "> key " k))
+        (is (contains? query_executions_24h k))
+        (is (not (< (get query_executions k)
+                    (get query_executions_24h k)))
+            "There are never more query executions in the 24h version than all-of-time.")))))

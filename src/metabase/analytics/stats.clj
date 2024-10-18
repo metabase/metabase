@@ -612,20 +612,36 @@
   (t/minus (t/offset-date-time) (t/days 1)))
 
 (defn- ->snowplow-grouped-metric-info []
-  {:query_executions (merge
-                      {"sdk_embed" 0 "interactive_embed" 0 "static_embed" 0 "public_link" 0 "internal" 0}
-                      (-> categorize-query-execution
-                          (group-by
-                           (t2/select [:model/QueryExecution :embedding_client :executor_id]))
-                          (update-vals count)))})
+  (let [qe (t2/select [:model/QueryExecution :embedding_client :executor_id :started_at])
+        one-day-ago (->one-day-ago)
+        ;; reuse the query data:
+        qe-24h (filter (fn [{started-at :started_at}] (->> started-at (t/after? one-day-ago))) qe)]
+    {:query-executions (merge
+                        {"sdk_embed" 0 "interactive_embed" 0 "static_embed" 0 "public_link" 0 "internal" 0}
+                        (-> (group-by categorize-query-execution qe)
+                            (update-vals count)))
+     :query-executions-24h (merge
+                            {"sdk_embed" 0 "interactive_embed" 0 "static_embed" 0 "public_link" 0 "internal" 0}
+                            (-> (group-by categorize-query-execution qe-24h)
+                                (update-vals count)))
+     :eid-translations-24h (get-translation-count)}))
 
-(defn- snowplow-grouped-metrics [{query-executions :query_executions :as _snowplow-grouped-metric-info}]
-  (->> [{:name :query_executions_by_source
-         :values (mapv (fn [qe-group]
-                         {:group qe-group :value (get query-executions qe-group)})
-                       ["interactive_embed" "internal" "public_link" "sdk_embed" "static_embed"])
-         :tags ["embedding"]}]
-       (walk/postwalk (fn [x] (if (keyword? x) (-> x u/->snake_case_en name) x)))))
+(defn- snowplow-grouped-metrics [{:keys [eid-translations-24h
+                                         query-executions
+                                         query-executions-24h]
+                                  :as _snowplow-grouped-metric-info}]
+  [{:name :query_executions_by_source
+    :values (mapv (fn [qe-group]
+                    {:group qe-group :value (get query-executions qe-group)})
+                  ["interactive_embed" "internal" "public_link" "sdk_embed" "static_embed"])
+    :tags ["embedding"]}
+   {:name :query_executions_by_source_24h
+    :values (mapv (fn [qe-group] {:group qe-group :value (get query-executions-24h qe-group)})
+                  ["interactive_embed" "internal" "public_link" "sdk_embed" "static_embed"])
+    :tags ["embedding"]}
+   {:name :entity_id_translations_last_24h
+    :values eid-translations-24h
+    :tags ["embedding"]}])
 
 (defn- ->snowplow-metric-info
   "Collects Snowplow metrics data that is not in the legacy stats format. Also clears entity id translation count."
@@ -855,12 +871,12 @@
         grouped-metrics     (snowplow-grouped-metrics (->snowplow-grouped-metric-info))
         features            (snowplow-features)]
     ;; grouped_metrics and settings are required in the json schema, but their data will be included in the next Milestone:
-    {:analytics_uuid      (snowplow/analytics-uuid)
-     :features            features
-     :grouped_metrics     grouped-metrics
-     :instance_attributes instance-attributes
-     :metrics             metrics
-     :settings             []}))
+    {"analytics_uuid"      (snowplow/analytics-uuid)
+     "features"            features
+     "grouped_metrics"     grouped-metrics
+     "instance_attributes" instance-attributes
+     "metrics"             metrics
+     "settings"             []}))
 
 (defn- generate-instance-stats!
   "Generate stats for this instance as data"
@@ -873,6 +889,13 @@
                 (update-in [:stats :stats :cache] dissoc :num_queries_cached_unbinned))
      :snowplow-stats (snowplow-anonymous-usage-stats stats)}))
 
+(defn- deep-string-keywords
+  "Snowplow data will not work if you pass in keywords, but this will let use use keywords all over."
+  [data]
+  (walk/postwalk
+   (fn [x] (if (keyword? x) (-> x u/->snake_case_en name) x))
+   data))
+
 (defn phone-home-stats!
   "Collect usage stats and phone them home"
   []
@@ -881,10 +904,11 @@
           {:keys [stats snowplow-stats]} (generate-instance-stats!)
           end-time-ms                    (System/currentTimeMillis)
           elapsed-secs                   (quot (- end-time-ms start-time-ms) 1000)
-          snowplow-data                  (assoc snowplow-stats
-                                                :metadata [{"key"   "stats_export_time_seconds"
-                                                            "value" elapsed-secs}])]
-      (assert (= #{:analytics_uuid :features :grouped_metrics :instance_attributes :metadata :metrics :settings}
+          snowplow-data                  (-> snowplow-stats
+                                             (assoc "metadata" [{"key"   "stats_export_time_seconds"
+                                                                 "value" elapsed-secs}])
+                                             deep-string-keywords)]
+      (assert (= #{"analytics_uuid" "features" "grouped_metrics" "instance_attributes" "metadata" "metrics" "settings"}
                  (set (keys snowplow-data)))
               (str "Missing required keys in snowplow-data. got:" (sort (keys snowplow-data))))
       #_{:clj-kondo/ignore [:deprecated-var]}
