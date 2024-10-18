@@ -33,7 +33,9 @@ export function RelativeDatePicker({
   onChange,
   onBack,
 }: RelativeDatePickerProps) {
-  const [value, setValue] = useState(initialValue ?? DEFAULT_VALUE);
+  const [value, setValue] = useState<RelativeDatePickerValue | undefined>(
+    initialValue ?? DEFAULT_VALUE,
+  );
   const direction = getDirection(value);
 
   const handleTabChange = (tabValue: string | null) => {
@@ -44,7 +46,9 @@ export function RelativeDatePicker({
   };
 
   const handleSubmit = () => {
-    onChange(value);
+    if (value != null) {
+      onChange(value);
+    }
   };
 
   return (

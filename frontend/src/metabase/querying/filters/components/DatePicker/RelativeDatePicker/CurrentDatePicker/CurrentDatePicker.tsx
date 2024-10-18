@@ -10,10 +10,10 @@ import type {
 } from "../../types";
 import { formatDateRange } from "../utils";
 
-import { getUnitGroups } from "./utils";
+import { getCurrentValue, getUnitGroups } from "./utils";
 
 interface CurrentDatePickerProps {
-  value: RelativeDatePickerValue;
+  value: RelativeDatePickerValue | undefined;
   availableUnits: ReadonlyArray<DatePickerUnit>;
   onChange: (value: RelativeDatePickerValue) => void;
 }
@@ -26,11 +26,11 @@ export function CurrentDatePicker({
   const unitGroups = getUnitGroups(availableUnits);
 
   const getTooltipLabel = (unit: DatePickerTruncationUnit) => {
-    return formatDateRange({ ...value, unit });
+    return formatDateRange(getCurrentValue(unit));
   };
 
   const handleClick = (unit: DatePickerTruncationUnit) => {
-    onChange({ ...value, unit });
+    onChange(getCurrentValue(unit));
   };
 
   return (
@@ -43,7 +43,7 @@ export function CurrentDatePicker({
               label={t`Right now, this is ${getTooltipLabel(unit)}`}
             >
               <Button
-                variant={unit === value.unit ? "filled" : "default"}
+                variant={unit === value?.unit ? "filled" : "default"}
                 radius="xl"
                 onClick={() => handleClick(unit)}
               >
