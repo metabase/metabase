@@ -41,6 +41,7 @@ export function getFieldOptions(fieldValues: FieldValue[]): SelectOption[] {
 function getSelectedOptions(selectedValues: string[]): SelectOption[] {
   return selectedValues.map(value => ({
     value,
+    label: value,
   }));
 }
 
