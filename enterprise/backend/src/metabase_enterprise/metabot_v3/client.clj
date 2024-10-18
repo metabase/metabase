@@ -91,7 +91,7 @@
    context :- [:maybe ::metabot-v3.context/context]
    history :- [:maybe ::metabot-v3.client.schema/messages]]
   ;; TODO -- when `:metabot-v3` code goes live remove this check and check for the `:metabot-v3` feature specifically.
-  (assert (premium-features/has-any-features?) (i18n/tru                                                                                                      "You must have a valid enterprise token to use MetaBot."))
+  (assert (premium-features/has-any-features?) (i18n/tru "You must have a valid enterprise token to use MetaBot."))
   #_(premium-features/assert-has-feature :metabot-v3 "MetaBot")
   (let [url      (agent-endpoint-url)
         body     (build-request-body message context history)
