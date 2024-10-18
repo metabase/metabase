@@ -53,7 +53,11 @@ export function SimpleDatePicker({
           />
         )}
         {isRelativeValue(value) && !isIntervalValue(value) && (
-          <CurrentDatePicker value={value} onChange={setValue} />
+          <CurrentDatePicker
+            value={value}
+            availableUnits={availableUnits}
+            onChange={setValue}
+          />
         )}
         {isSpecificValue(value) && (
           <SimpleSpecificDatePicker value={value} onChange={setValue} />

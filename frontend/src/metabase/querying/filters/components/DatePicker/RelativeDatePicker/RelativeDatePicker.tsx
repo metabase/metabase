@@ -81,7 +81,11 @@ export function RelativeDatePicker({
             />
           ) : (
             <Box p="md">
-              <CurrentDatePicker value={value} onChange={onChange} />
+              <CurrentDatePicker
+                value={value}
+                availableUnits={availableUnits}
+                onChange={onChange}
+              />
             </Box>
           )}
         </Tabs.Panel>

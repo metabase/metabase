@@ -5,18 +5,26 @@ import * as Lib from "metabase-lib";
 
 import type {
   DatePickerTruncationUnit,
+  DatePickerUnit,
   RelativeDatePickerValue,
 } from "../../types";
 import { formatDateRange } from "../utils";
 
-import { UNIT_GROUPS } from "./constants";
+import { getUnitGroups } from "./utils";
 
 interface CurrentDatePickerProps {
   value: RelativeDatePickerValue;
+  availableUnits: ReadonlyArray<DatePickerUnit>;
   onChange: (value: RelativeDatePickerValue) => void;
 }
 
-export function CurrentDatePicker({ value, onChange }: CurrentDatePickerProps) {
+export function CurrentDatePicker({
+  value,
+  availableUnits,
+  onChange,
+}: CurrentDatePickerProps) {
+  const unitGroups = getUnitGroups(availableUnits);
+
   const getTooltipLabel = (unit: DatePickerTruncationUnit) => {
     return formatDateRange({ ...value, unit });
   };
@@ -27,7 +35,7 @@ export function CurrentDatePicker({ value, onChange }: CurrentDatePickerProps) {
 
   return (
     <Stack>
-      {UNIT_GROUPS.map((group, groupIndex) => (
+      {unitGroups.map((group, groupIndex) => (
         <Group key={groupIndex}>
           {group.map(unit => (
             <Tooltip
