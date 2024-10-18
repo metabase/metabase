@@ -22,6 +22,10 @@ Or `driver-methods _docs`.
 
 Print a list of all multimethods available for a driver to implement, optionally with their docstrings.
 
+## `config-template`
+
+Generates a Markdown file with documentation and an example configuration file in YAML. The YAML template includes Metabase settings and their defaults. Metabase will save the file as `docs/configuring-metabase/config-template.md`.
+
 ## `drop-entity-ids`
 
 Drop entity IDs for instances of serializable models. Useful for migrating from v1 serialization (x.46 and earlier) to v2 (x.47+).
