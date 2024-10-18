@@ -54,7 +54,7 @@
       (->> metabot-v3/routes
            +auth
          ;; TODO -- disabled for now until we add the `:metabot-v3` feature to EE tokens
-           #_(ee.api.common/+require-premium-feature :metabot-v3 (deferred-tru "MetaBot v3"))))
+           #_(ee.api.common/+require-premium-feature :metabot-v3 "MetaBot")))
     (context
       "/scim" []
       (ee.api.common/+require-premium-feature :scim (deferred-tru "SCIM configuration") scim/routes))
