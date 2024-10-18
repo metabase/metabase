@@ -38,14 +38,19 @@ export const Onboarding = () => {
   );
 
   const iframeRefs = {
-    database: useRef<HTMLIFrameElement>(null),
-    invite: useRef<HTMLIFrameElement>(null),
     "x-ray": useRef<HTMLIFrameElement>(null),
     notebook: useRef<HTMLIFrameElement>(null),
     sql: useRef<HTMLIFrameElement>(null),
     dashboard: useRef<HTMLIFrameElement>(null),
     subscription: useRef<HTMLIFrameElement>(null),
     alert: useRef<HTMLIFrameElement>(null),
+  };
+
+  type IframeKeys = keyof typeof iframeRefs;
+  const isValidIframeKey = (
+    key: ChecklistItemValue | null,
+  ): key is IframeKeys => {
+    return key !== null && Object.keys(iframeRefs).includes(key);
   };
 
   const [itemValue, setItemValue] = useState<ChecklistItemValue | null>(null);
@@ -76,7 +81,7 @@ export const Onboarding = () => {
     databaseId: lastUsedDatabaseId || undefined,
   });
 
-  const sendMessage = (command: string, value: ChecklistItemValue) => {
+  const sendMessage = (command: string, value: IframeKeys) => {
     const iframeRef = iframeRefs[value];
     if (iframeRef.current) {
       iframeRef.current?.contentWindow?.postMessage(
@@ -90,18 +95,18 @@ export const Onboarding = () => {
     }
   };
 
-  const stopVideo = (value: ChecklistItemValue) =>
-    sendMessage("stopVideo", value);
+  const stopVideo = (key: IframeKeys) => sendMessage("stopVideo", key);
 
   const handleValueChange = (newValue: ChecklistItemValue | null) => {
+    if (isValidIframeKey(itemValue)) {
+      stopVideo(itemValue);
+    }
+
     if (newValue !== null) {
       trackChecklistItemExpanded(newValue);
     }
 
-    const defaultItemInitiallyOpened = itemValue === null;
-
     setItemValue(newValue);
-    stopVideo(defaultItemInitiallyOpened ? DEFAULT_ITEM : itemValue);
   };
 
   return (
@@ -134,14 +139,17 @@ export const Onboarding = () => {
               </Accordion.Control>
               <Accordion.Panel>
                 <Stack spacing="lg">
-                  <VideoTutorial
-                    id="dVNB-xJW0CY"
-                    ref={iframeRefs["database"]}
-                    title="How to add a new database?"
+                  <img
+                    alt={`${applicationName} data stack`}
+                    className={S.image}
+                    loading="lazy"
+                    src="app/assets/img/onboarding_data_diagram.png"
+                    srcSet="app/assets/img/onboarding_data_diagram@2x.png 2x"
+                    width="100%"
                   />
 
                   <Text>
-                    {t`You can connect multiple databases, and query them directly with the query builder or the Native/SQL editor.`}
+                    {t`You can connect multiple databases, and query them directly with the query builder or the Native/SQL editor. ${applicationName} connects to more than 15 popular databases.`}
                   </Text>
                   <Link
                     to="/admin/databases/create"
@@ -158,10 +166,13 @@ export const Onboarding = () => {
               </Accordion.Control>
               <Accordion.Panel>
                 <Stack spacing="lg">
-                  <VideoTutorial
-                    id="dVNB-xJW0CY"
-                    ref={iframeRefs["invite"]}
-                    title={`How to invite your team mates to ${applicationName}`}
+                  <img
+                    alt={`Admin panel with the "Invite someone" button`}
+                    className={S.image}
+                    loading="lazy"
+                    src="app/assets/img/onboarding_invite.png"
+                    srcSet="app/assets/img/onboarding_invite@2x.png 2x"
+                    width="100%"
                   />
                   {/* TODO: different copy for different plans? */}
                   <Text>{t`Don't be shy with the invites.`}</Text>
@@ -289,47 +300,34 @@ export const Onboarding = () => {
             </Accordion.Item>
             <Accordion.Item value="dashboard">
               <Accordion.Control icon={<Icon name="dashboard" />}>
-                {t`Create and share a dashboard`}
+                {t`Create and filter a dashboard`}
               </Accordion.Control>
               <Accordion.Panel>
                 <Stack spacing="lg">
-                  <img
-                    alt={`${applicationName} dashboard with tabs`}
-                    loading="lazy"
-                    src="app/assets/img/onboarding_dashboard_tabs.png"
-                    srcSet="app/assets/img/onboarding_dashboard_tabs@2x.png 2x"
-                    width="100%"
-                  />
-                  <Text>
-                    {jt`You can organize questions into a ${
-                      showMetabaseLinks ? (
-                        <ExternalLink
-                          href="https://www.metabase.com/docs/latest/dashboards/introduction#dashboard-tabs"
-                          key="tabs"
-                        >{t`dashboard with tabs`}</ExternalLink>
-                      ) : (
-                        t`dashboard with tabs`
-                      )
-                    } and add text cards.`}
-                  </Text>
-                  <img
-                    alt={`${applicationName} dashboard with filters`}
-                    loading="lazy"
-                    src="app/assets/img/onboarding_dashboard_filters.png"
-                    srcSet="app/assets/img/onboarding_dashboard_filters@2x.png 2x"
-                    width="100%"
-                  />
-                  <Text>
-                    {jt`You can add ${(<b key="filters">{t`filters`}</b>)} to dashboards and connect them to fields on questions to narrow the results.`}
-                  </Text>
                   <VideoTutorial
-                    id="dVNB-xJW0CY"
+                    id="FAst1nabBck"
                     ref={iframeRefs["dashboard"]}
+                    si="yVMfXeh0tkr1Yt8_"
                     title="How to use dashboards?"
                   />
                   <Text>
-                    {t`You can drill-through your dashboard and charts to see more detailed data underneath.`}
+                    {t`You can:`}
+                    <ul className={S.list}>
+                      <li>{jt`organize questions into a ${
+                        showMetabaseLinks ? (
+                          <ExternalLink
+                            href="https://www.metabase.com/docs/latest/dashboards/introduction#dashboard-tabs"
+                            key="tabs"
+                          >{t`dashboard with tabs`}</ExternalLink>
+                        ) : (
+                          t`dashboard with tabs`
+                        )
+                      } and add text cards.`}</li>
+                      <li>{jt`add ${(<b key="filters">{t`filters`}</b>)} to dashboards and connect them to fields on questions to narrow the results.`}</li>
+                      <li>{t`drill-through your dashboard and charts to see more detailed data underneath.`}</li>
+                    </ul>
                   </Text>
+
                   <Link
                     to="/dashboard/1"
                     onClick={() => trackChecklistItemCTAClicked("dashboard")}
@@ -497,8 +495,8 @@ export const Onboarding = () => {
               <Title order={4}>{t`Need to talk with someone?`}</Title>
               <Text>{t`Reach out to engineers who can help with technical troubleshooting. Not your typical support agents.`}</Text>
             </Stack>
-            <Link to="mailto:help@metabase.com" key="support">
-              <Button variant="filled">{t`Contact Support`}</Button>
+            <Link to="mailto:help@metabase.com" key="help">
+              <Button variant="filled">{t`Get Help`}</Button>
             </Link>
           </Box>
         )}
@@ -516,7 +514,7 @@ const VideoTutorial = forwardRef(function VideoTutorial(
       className={S.video}
       loading="lazy"
       ref={ref}
-      src={`https://www.youtube.com/embed/${id}?si=${si}&enablejsapi=1`}
+      src={`https://www.youtube.com/embed/${id}?si=${si}&rel=0&enablejsapi=1`}
       title={title}
     />
   );
