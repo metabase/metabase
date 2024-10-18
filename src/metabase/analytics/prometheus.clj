@@ -198,7 +198,11 @@
   [(prometheus/counter :metabase-email/messages
                        {:description (trs "Number of emails sent.")})
    (prometheus/counter :metabase-email/message-errors
-                       {:description (trs "Number of errors when sending emails.")})])
+                       {:description (trs "Number of errors when sending emails.")})
+   (prometheus/counter :metabase-sdk/response-ok
+                       {:description (trs "Number of successful SDK requests.")})
+   (prometheus/counter :metabase-sdk/response-error
+                       {:description (trs "Number of errors when responding to SDK requests.")})])
 
 (defn- setup-metrics!
   "Instrument the application. Conditionally done when some setting is set. If [[prometheus-server-port]] is not set it
