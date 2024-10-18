@@ -67,8 +67,12 @@ export const getUrlWithUtm = createSelector(
 
     const url = new URL(props.url);
     url.searchParams.set("utm_source", utm_source);
-    url.searchParams.set("utm_medium", utm_medium);
-    url.searchParams.set("utm_campaign", utm_campaign);
+    if (utm_medium) {
+      url.searchParams.set("utm_medium", utm_medium);
+    }
+    if (utm_campaign) {
+      url.searchParams.set("utm_campaign", utm_campaign);
+    }
     if (utm_content) {
       url.searchParams.set("utm_content", utm_content);
     }
