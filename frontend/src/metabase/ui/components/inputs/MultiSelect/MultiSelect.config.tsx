@@ -11,12 +11,13 @@ export const multiSelectOverrides = {
       size: "md",
       variant: "default",
       maxDropdownHeight: 512,
+      hidePickedOptions: true,
       renderOption: props => (
         <SelectItem {...props.option} selected={props.checked} />
       ),
       withScrollArea: false,
       comboboxProps: {
-        withinPortal: true,
+        withinPortal: false,
         keepMounted: true,
       },
       clearButtonProps: {
