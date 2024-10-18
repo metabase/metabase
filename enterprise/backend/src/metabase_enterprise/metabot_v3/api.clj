@@ -16,7 +16,7 @@
 (mr/def ::response
   "Shape of the response for the backend agent endpoint."
   [:map
-   [:history    [:maybe ::metabot-v3.client/history]]
+   [:history    [:maybe #_::metabot-v3.client/history :any]]
    [:sequential ::metabot-v3.reactions/reaction]])
 
 (defn- encode-reactions [reactions]
@@ -27,7 +27,7 @@
 (mu/defn- request :- ::response
   [message :- :string
    context :- ::metabot-v3.context/context
-   history :- [:maybe ::metabot-v3.client/history]]
+   history :- [:maybe #_::metabot-v3.client/history :any]]
   (let [response (metabot-v3.client/*request* message context history)
         message  (:message response)]
     {:reactions (encode-reactions (metabot-v3.handle-response/handle-response-message message))
