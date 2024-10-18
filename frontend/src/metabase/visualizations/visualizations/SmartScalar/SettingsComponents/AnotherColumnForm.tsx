@@ -82,7 +82,6 @@ export function AnotherColumnForm({
             searchable
             onChange={handleChangeColumnKey}
             styles={{ dropdown: { width: "100%" } }}
-            withinPortal={false}
           />
           <TextInput
             value={label}
