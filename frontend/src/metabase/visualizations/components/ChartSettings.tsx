@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import { assocIn } from "icepick";
 import { Component } from "react";
 import * as React from "react";
@@ -23,7 +22,18 @@ import {
 import { getSettingDefinitionsForColumn } from "metabase/visualizations/lib/settings/column";
 import { keyForSingleSeries } from "metabase/visualizations/lib/settings/series";
 import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/settings/visualization";
+import type Question from "metabase-lib/v1/Question";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
+import type {
+  Dashboard,
+  DashboardCard,
+  DatasetColumn,
+  RawSeries,
+  Series,
+  VisualizationSettings,
+} from "metabase-types/api";
+
+import type { ComputedVisualizationSettings } from "../types";
 
 import {
   ChartSettingsFooterRoot,
@@ -44,20 +54,25 @@ const DEFAULT_TAB_PRIORITY = [t`Data`];
 /**
  * @deprecated HOCs are deprecated
  */
-const withTransientSettingState = ComposedComponent =>
-  class extends React.Component {
+function withTransientSettingState(
+  ComposedComponent: React.ComponentType<ChartSettingsProps>,
+) {
+  return class extends React.Component<
+    ChartSettingsProps,
+    { settings?: VisualizationSettings }
+  > {
     static displayName = `withTransientSettingState[${
       ComposedComponent.displayName || ComposedComponent.name
     }]`;
 
-    constructor(props) {
+    constructor(props: ChartSettingsProps) {
       super(props);
       this.state = {
         settings: props.settings,
       };
     }
 
-    UNSAFE_componentWillReceiveProps(nextProps) {
+    UNSAFE_componentWillReceiveProps(nextProps: ChartSettingsProps) {
       if (this.props.settings !== nextProps.settings) {
         this.setState({ settings: nextProps.settings });
       }
@@ -68,17 +83,61 @@ const withTransientSettingState = ComposedComponent =>
         <ComposedComponent
           {...this.props}
           settings={this.state.settings}
-          onChange={settings => this.setState({ settings })}
-          onDone={settings =>
-            this.props.onChange(settings || this.state.settings)
+          onChange={(settings: VisualizationSettings) =>
+            this.setState({ settings })
+          }
+          onDone={(settings: VisualizationSettings) =>
+            this.props.onChange?.(settings || this.state.settings)
           }
         />
       );
     }
   };
+}
 
-class ChartSettings extends Component {
-  constructor(props) {
+// this type is not full, we need to extend it later
+export interface Widget {
+  id: string;
+  section: string;
+  hidden?: boolean;
+  props: Record<string, unknown>;
+  title?: string;
+  widget: (() => JSX.Element | null) | undefined;
+}
+
+export interface ChartSettingsProps {
+  className?: string;
+  dashboard?: Dashboard;
+  dashcard?: DashboardCard;
+  initial?: { section: string; widget?: Widget };
+  onCancel?: () => void;
+  onDone?: (settings: VisualizationSettings) => void;
+  onReset?: () => void;
+  onChange?: (
+    settings: ComputedVisualizationSettings,
+    question?: Question,
+  ) => void;
+  onClose?: () => void;
+  rawSeries?: RawSeries[];
+  settings?: VisualizationSettings;
+  widgets?: Widget[];
+  series: Series;
+  computedSettings?: ComputedVisualizationSettings;
+  isDashboard?: boolean;
+  question?: Question;
+  addField?: () => void;
+  noPreview?: boolean;
+}
+
+interface ChartSettingsState {
+  currentSection: string | null;
+  currentWidget: Widget | null;
+  popoverRef?: HTMLElement | null;
+  warnings?: string[];
+}
+
+class ChartSettings extends Component<ChartSettingsProps, ChartSettingsState> {
+  constructor(props: ChartSettingsProps) {
     super(props);
     this.state = {
       currentSection: (props.initial && props.initial.section) || null,
@@ -86,7 +145,7 @@ class ChartSettings extends Component {
     };
   }
 
-  componentDidUpdate(prevProps) {
+  componentDidUpdate(prevProps: ChartSettingsProps) {
     const { initial } = this.props;
     if (!_.isEqual(initial, prevProps.initial)) {
       this.setState({
@@ -96,7 +155,7 @@ class ChartSettings extends Component {
     }
   }
 
-  handleShowSection = section => {
+  handleShowSection = (section: string) => {
     this.setState({
       currentSection: section,
       currentWidget: null,
@@ -104,7 +163,7 @@ class ChartSettings extends Component {
   };
 
   // allows a widget to temporarily replace itself with a different widget
-  handleShowWidget = (widget, ref) => {
+  handleShowWidget = (widget: Widget, ref: HTMLElement | null) => {
     this.setState({ popoverRef: ref, currentWidget: widget });
   };
 
@@ -115,32 +174,38 @@ class ChartSettings extends Component {
 
   handleResetSettings = () => {
     const originalCardSettings =
-      this.props.dashcard.card.visualization_settings;
+      this.props.dashcard?.card.visualization_settings;
     const clickBehaviorSettings = getClickBehaviorSettings(this._getSettings());
 
-    this.props.onChange({ ...originalCardSettings, ...clickBehaviorSettings });
+    this.props.onChange?.({
+      ...originalCardSettings,
+      ...clickBehaviorSettings,
+    });
   };
 
-  handleChangeSettings = (changedSettings, question) => {
-    this.props.onChange(
+  handleChangeSettings = (
+    changedSettings: VisualizationSettings,
+    question: Question,
+  ) => {
+    this.props.onChange?.(
       updateSettings(this._getSettings(), changedSettings),
       question,
     );
   };
 
-  handleChangeSeriesColor = (seriesKey, color) => {
-    this.props.onChange(
+  handleChangeSeriesColor = (seriesKey: string, color: string) => {
+    this.props.onChange?.(
       updateSeriesColor(this._getSettings(), seriesKey, color),
     );
   };
 
   handleDone = () => {
-    this.props.onDone(this._getSettings());
-    this.props.onClose();
+    this.props.onDone?.(this._getSettings());
+    this.props.onClose?.();
   };
 
   handleCancel = () => {
-    this.props.onClose();
+    this.props.onClose?.();
   };
 
   _getSettings() {
@@ -153,7 +218,7 @@ class ChartSettings extends Component {
     return this.props.computedSettings || {};
   }
 
-  _getWidgets() {
+  _getWidgets(): Widget[] {
     if (this.props.widgets) {
       return this.props.widgets;
     } else {
@@ -188,7 +253,7 @@ class ChartSettings extends Component {
     return transformedSeries;
   }
 
-  columnHasSettings(col) {
+  columnHasSettings(col: DatasetColumn) {
     const { series } = this.props;
     const settings = this._getSettings() || {};
     const settingsDefs = getSettingDefinitionsForColumn(series, col);
@@ -206,7 +271,7 @@ class ChartSettings extends Component {
     ).some(widget => !widget.hidden);
   }
 
-  getStyleWidget = widgets => {
+  getStyleWidget = (widgets: Widget[]): Widget | null => {
     const series = this._getTransformedSeries();
     const settings = this._getComputedSettings();
     const { currentWidget } = this.state;
@@ -235,7 +300,8 @@ class ChartSettings extends Component {
         },
       };
     } else if (currentWidget.props?.initialKey) {
-      const hasBreakouts = settings["graph.dimensions"]?.length > 1;
+      const hasBreakouts =
+        settings["graph.dimensions"] && settings["graph.dimensions"].length > 1;
 
       if (hasBreakouts) {
         return null;
@@ -244,7 +310,9 @@ class ChartSettings extends Component {
       const singleSeriesForColumn = series.find(single => {
         const metricColumn = single.data.cols[1];
         if (metricColumn) {
-          return getColumnKey(metricColumn) === currentWidget.props.initialKey;
+          return (
+            getColumnKey(metricColumn) === currentWidget?.props?.initialKey
+          );
         }
       });
 
@@ -262,7 +330,7 @@ class ChartSettings extends Component {
     return null;
   };
 
-  getFormattingWidget = widgets => {
+  getFormattingWidget = (widgets: Widget[]): Widget | null => {
     const { currentWidget } = this.state;
     const widget =
       currentWidget && widgets.find(widget => widget.id === currentWidget.id);
@@ -279,10 +347,10 @@ class ChartSettings extends Component {
       className,
       question,
       addField,
-      noPreview,
+      noPreview = false,
       dashboard,
       dashcard,
-      isDashboard,
+      isDashboard = false,
     } = this.props;
     const { popoverRef } = this.state;
 
@@ -290,8 +358,8 @@ class ChartSettings extends Component {
     const widgets = this._getWidgets();
     const rawSeries = this._getRawSeries();
 
-    const widgetsById = {};
-    const sections = {};
+    const widgetsById: Record<string, Widget> = {};
+    const sections: Record<string, Widget[]> = {};
 
     for (const widget of widgets) {
       widgetsById[widget.id] = widget;
@@ -341,7 +409,7 @@ class ChartSettings extends Component {
     // overriding the sidebar title.
     const currentSectionHasColumnSettings = (
       sections[currentSection] || []
-    ).some(widget => widget.id === "column_settings");
+    ).some((widget: Widget) => widget.id === "column_settings");
 
     const extraWidgetProps = {
       // NOTE: special props to support adding additional fields
@@ -350,8 +418,8 @@ class ChartSettings extends Component {
       onShowWidget: this.handleShowWidget,
       onEndShowWidget: this.handleEndShowWidget,
       currentSectionHasColumnSettings,
-      columnHasSettings: col => this.columnHasSettings(col),
-      onChangeSeriesColor: (seriesKey, color) =>
+      columnHasSettings: (col: DatasetColumn) => this.columnHasSettings(col),
+      onChangeSeriesColor: (seriesKey: string, color: string) =>
         this.handleChangeSeriesColor(seriesKey, color),
     };
 
@@ -414,7 +482,9 @@ class ChartSettings extends Component {
                 isSettings
                 showWarnings
                 onUpdateVisualizationSettings={this.handleChangeSettings}
-                onUpdateWarnings={warnings => this.setState({ warnings })}
+                onUpdateWarnings={(warnings: string[]) =>
+                  this.setState({ warnings })
+                }
               />
             </ChartSettingsVisualizationContainer>
             <ChartSettingsFooter
@@ -425,11 +495,11 @@ class ChartSettings extends Component {
           </ChartSettingsPreview>
         )}
         <ChartSettingsWidgetPopover
-          anchor={popoverRef}
+          anchor={popoverRef as HTMLElement}
           widgets={[
             this.getStyleWidget(widgets),
             this.getFormattingWidget(widgets),
-          ].filter(widget => !!widget)}
+          ].filter((widget): widget is Widget => !!widget)}
           handleEndShowWidget={this.handleEndShowWidget}
         />
       </ChartSettingsRoot>
@@ -437,7 +507,15 @@ class ChartSettings extends Component {
   }
 }
 
-const ChartSettingsFooter = ({ onDone, onCancel, onReset }) => (
+const ChartSettingsFooter = ({
+  onDone,
+  onCancel,
+  onReset,
+}: {
+  onDone: () => void;
+  onCancel: () => void;
+  onReset: (() => void) | null;
+}) => (
   <ChartSettingsFooterRoot>
     {onReset && (
       <Button
@@ -451,6 +529,6 @@ const ChartSettingsFooter = ({ onDone, onCancel, onReset }) => (
   </ChartSettingsFooterRoot>
 );
 
-export default ChartSettings;
+export { ChartSettings };
 
 export const ChartSettingsWithState = withTransientSettingState(ChartSettings);
