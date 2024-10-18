@@ -4,10 +4,10 @@
   All reactions must have a `:type` with the namespace `metabot.reaction`, but declaring a schema for it is optional.
   If you want to declare a schema, you can use [[defreaction]]."
   (:require
-   [clojure.spec.alpha :as s]
    [malli.core :as mc]
    [metabase.util :as u]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
 (mr/def ::reaction-type
@@ -20,21 +20,14 @@
           (= (namespace x) "metabot.reaction")))])
 
 ;;; TODO -- need Kondo hook that registers the keyword
-(defmacro defreaction
+(mu/defn defreaction
   "Declare a new reaction type and the schema for it.
 
   The schema name matches the reaction-name."
-  [reaction-name schema]
-  `(do
-     (derive ~reaction-name :metabot/registered-action)
-     (mr/def ~reaction-name
-       ~schema)))
-
-(s/fdef defreaction
-  :args (s/cat :tool-name (and qualified-keyword?
-                               #(= (namespace %) "metabot.reaction"))
-               :schema    any?)
-  :ret  any?)
+  [reaction-name :- ::reaction-type
+   schema]
+  (derive reaction-name :metabot/registered-action)
+  (mr/register! reaction-name schema))
 
 (defn- known-reaction-types
   "Reaction types with schemas that were declared with [[defreaction]]."
