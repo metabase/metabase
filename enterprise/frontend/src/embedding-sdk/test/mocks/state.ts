@@ -17,7 +17,7 @@ export const createMockLoginStatusState = ({
   status?: LoginStatus["status"];
 } & Partial<LoginStatus> = {}): LoginStatus => {
   if (status === "error") {
-    return { error: new Error("An error occurred"), status: "error", ...opts };
+    return { status: "error", data: { status: "error-unknown" }, ...opts };
   }
 
   return { status: status ?? "success", ...opts };
