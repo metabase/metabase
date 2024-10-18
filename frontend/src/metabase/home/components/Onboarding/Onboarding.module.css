@@ -103,7 +103,12 @@
 
 .video {
   aspect-ratio: 16 / 9;
-  border: 0;
+  border: 1px solid var(--mb-color-border);
   border-radius: 0.5rem;
   width: 100%;
+}
+
+.image {
+  border: 1px solid var(--mb-color-border);
+  border-radius: 0.5rem;
 }
