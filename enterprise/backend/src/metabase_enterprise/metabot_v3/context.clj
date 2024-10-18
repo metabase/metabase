@@ -1,11 +1,16 @@
 (ns metabase-enterprise.metabot-v3.context
   (:require
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
 ;;; TODO
 (mr/def ::context
-  [:map-of :keyword :any])
+  [:map-of
+   ;; TODO -- should this be recursive?
+   {:encode/api-request #(update-keys % u/->snake_case_en)}
+   :keyword
+   :any])
 
 (mu/defn hydrate-context
   "Hydrate context (about what the current user is currently looking at in the FE app), for example
