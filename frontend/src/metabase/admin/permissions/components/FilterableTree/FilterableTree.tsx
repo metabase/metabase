@@ -61,7 +61,7 @@ export const FilterableTree = ({
           fullWidth
           placeholder={placeholder}
           value={filter}
-          leftSection="search"
+          leftIcon="search"
           colorScheme="filter"
           onChange={handleFilterChange}
           onResetClick={() => setFilter("")}

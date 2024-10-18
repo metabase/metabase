@@ -21,7 +21,7 @@ const Template: StoryFn<any> = args => {
           id={item}
           name={item}
           icon={item}
-          rightSection={args.rightIcon}
+          rightIcon={args.rightIcon}
           isSelected={value === item}
           onSelect={() => setValue(item)}
         />

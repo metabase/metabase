@@ -92,7 +92,7 @@ export function ListPicker(props: ListPickerProps) {
       placeholder={placeholder}
       searchable={enableSearch}
       onKeyUp={blurOnCommitKey}
-      nothingFound={noResultsText}
+      nothingFoundMessage={noResultsText}
       onSearchChange={singleOnSearch}
       onDropdownOpen={onDropdownOpen}
       onDropdownClose={onDropdownClose}

@@ -20,7 +20,7 @@ export interface NumberInputProps
   > {
   value: number | "";
   defaultValue?: number | "";
-  onChange?: (value: number | "") => void;
+  onChange?: (value: number) => void;
   vars?: TextInputProps["vars"];
   classNames?: TextInputProps["classNames"];
   styles?: TextInputProps["styles"];
@@ -46,7 +46,7 @@ export const NumberInput = forwardRef(function NumberInput(
     setInputValue(newInputValue);
 
     const newValue = parseValue(newInputValue);
-    onChange?.(newValue);
+    onChange?.(newValue || 0);
   };
 
   const handleFocus = (event: FocusEvent<HTMLInputElement>) => {

@@ -9,4 +9,4 @@ export const PickerGrid = styled(Box)<BoxProps>`
   justify-content: center;
   align-items: center;
   gap: ${({ theme }) => theme.spacing.sm};
-`;
+` as unknown as typeof Box;

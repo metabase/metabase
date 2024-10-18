@@ -73,7 +73,7 @@ export function getThemeColors(): Record<string, ColorShades> {
 }
 
 export function themeColor(colorName: string, theme: MantineTheme): string {
-  return theme.colors[colorName][0];
+  return theme.colors[colorName][0] ?? "transparent";
 }
 
 /**
