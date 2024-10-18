@@ -90,10 +90,14 @@ export const InteractiveQuestionResult = ({
       className={cx(InteractiveQuestionS.Container, className)}
       style={style}
     >
-      <Group className={InteractiveQuestionS.TopBar} position="apart" p="md">
+      <Group
+        className={InteractiveQuestionS.TopBar}
+        justify="space-between"
+        p="md"
+      >
         <InteractiveQuestion.BackButton />
         {withTitle && (customTitle ?? <InteractiveQuestion.Title />)}
-        <Group spacing="xs">
+        <Group gap="xs">
           {withResetButton && <InteractiveQuestion.ResetButton />}
           <InteractiveQuestion.FilterButton
             onClick={() =>
@@ -124,7 +128,7 @@ export const InteractiveQuestionResult = ({
       <Group className={InteractiveQuestionS.MidBar} py={0} px="md">
         {questionView === "visualization" && (
           <Button
-            compact
+            size="compact-md"
             radius="xl"
             py="sm"
             px="md"
