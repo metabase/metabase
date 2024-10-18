@@ -329,63 +329,74 @@ describe("scenarios > question > saved", () => {
       cy.signInAsAdmin();
     });
 
-    function hideTable(name) {
+    const HIDDEN_TYPES = ["hidden", "technical", "cruft"];
+
+    function hideTable(name, visibilityType) {
       cy.visit("/admin/datamodel");
       sidebar().findByText(name).click();
       main().findByText("Hidden").click();
+
+      if (visibilityType === "technical") {
+        main().findByText("Technical Data").click();
+      }
+      if (visibilityType === "cruft") {
+        main().findByText("Irrelevant/Cruft").click();
+      }
     }
 
-    it("should show a View-only tag when the source table is hidden", () => {
-      hideTable("Orders");
+    HIDDEN_TYPES.forEach(visibilityType => {
+      it(`should show a View-only tag when the source table is marked as ${visibilityType}`, () => {
+        hideTable("Orders", visibilityType);
 
-      visitQuestion(ORDERS_QUESTION_ID);
+        visitQuestion(ORDERS_QUESTION_ID);
 
-      queryBuilderHeader()
-        .findByText("View-only")
-        .should("be.visible")
-        .realHover();
-      popover()
-        .findByText(
-          "One of the administrators hid the source table “Orders”, making this question view-only.",
-        )
-        .should("be.visible");
-    });
+        queryBuilderHeader()
+          .findByText("View-only")
+          .should("be.visible")
+          .realHover();
+        popover()
+          .findByText(
+            "One of the administrators hid the source table “Orders”, making this question view-only.",
+          )
+          .should("be.visible");
+      });
 
-    it("should show a View-only tag when a joined table is hidden", () => {
-      cy.signInAsAdmin();
-      hideTable("Products");
-      createQuestion(
-        {
-          name: "Joined question",
-          query: {
-            "source-table": ORDERS_ID,
-            joins: [
-              {
-                "source-table": PRODUCTS_ID,
-                alias: "Orders",
-                condition: [
-                  "=",
-                  ["field", ORDERS.PRODUCT_ID, null],
-                  ["field", PRODUCTS.ID, { "join-alias": "Products" }],
-                ],
-                fields: "all",
-              },
-            ],
+      it(`should show a View-only tag when a joined table is marked as ${visibilityType}`, () => {
+        cy.signInAsAdmin();
+        hideTable("Products", visibilityType);
+        createQuestion(
+          {
+            name: "Joined question",
+            query: {
+              "source-table": ORDERS_ID,
+              joins: [
+                {
+                  "source-table": PRODUCTS_ID,
+                  alias: "Orders",
+                  condition: [
+                    "=",
+                    ["field", ORDERS.PRODUCT_ID, null],
+                    ["field", PRODUCTS.ID, { "join-alias": "Products" }],
+                  ],
+                  fields: "all",
+                },
+              ],
+            },
           },
-        },
-        {
-          visitQuestion: true,
-        },
-      );
-      queryBuilderHeader()
-        .findByText("View-only")
-        .should("be.visible")
-        .realHover();
-      popover()
-        .findByText(
-          "One of the administrators hid the source table “Orders”, making this question view-only.",
-        )
-        .should("be.visible");
+          {
+            visitQuestion: true,
+          },
+        );
+        queryBuilderHeader()
+          .findByText("View-only")
+          .should("be.visible")
+          .realHover();
+        popover()
+          .findByText(
+            "One of the administrators hid the source table “Products”, making this question view-only.",
+          )
+          .should("be.visible");
+      });
     });
   });
 });
