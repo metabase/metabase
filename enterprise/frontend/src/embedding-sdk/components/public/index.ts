@@ -15,3 +15,5 @@ export type {
   CreateDashboardModalProps,
   CreateDashboardValues,
 } from "./CreateDashboardModal";
+
+export { defineEmbeddingSdkConfig } from "./defineEmbeddingSdkConfig";
