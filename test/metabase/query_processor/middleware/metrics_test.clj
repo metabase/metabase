@@ -1,6 +1,7 @@
 (ns metabase.query-processor.middleware.metrics-test
   (:require
    [clojure.test :refer [deftest is testing]]
+   [java-time.api :as t]
    [mb.hawk.assert-exprs.approximately-equal :as =?]
    [medley.core :as m]
    [metabase.analytics.prometheus :as prometheus]
@@ -369,7 +370,7 @@
                :expressions [[:+ {:lib/expression-name "foobar"} [:field {} (meta/id :orders :discount)] 1]]
                :fields [[:expression {} "foobar"]]}
               {:lib/type :mbql.stage/mbql,
-               :aggregation [[:avg {:name "Mock Metric"} [:field {} "foobar"]]]}]}
+               :aggregation [[:avg {:name "avg"} [:field {} "foobar"]]]}]}
             (adjust question)))))
 
 (deftest ^:parallel metric-question-on-aggregate-column-model-test
@@ -381,7 +382,7 @@
              [{:source-table (meta/id :orders)
                :aggregation [[:sum {} [:field {} (meta/id :orders :discount)]]]}
               {:lib/type :mbql.stage/mbql,
-               :aggregation [[:avg {:name "Mock Metric"} [:field {} "sum"]]]}]}
+               :aggregation [[:avg {:name "avg"} [:field {} "sum"]]]}]}
             (adjust question)))))
 
 (deftest ^:parallel metric-question-on-model-based-on-model-test
@@ -406,7 +407,7 @@
                [{:source-table (meta/id :orders)
                  :filters [[:> {} [:field {} (meta/id :orders :discount)] 3]]}
                 {}
-                {:aggregation [[:avg {:name "Mock Metric"} [:field {} "QUANTITY"]]]}]}
+                {:aggregation [[:avg {:name "avg"} [:field {} "QUANTITY"]]]}]}
               (adjust question))))))
 
 (deftest ^:parallel metric-question-on-multi-stage-model-test
@@ -421,7 +422,7 @@
              [{:source-table (meta/id :orders)
                :aggregation [[:sum {} [:field {} (meta/id :orders :discount)]]]}
               {:filters [[:> {} [:field {} "sum"] 2]]}
-              {:aggregation [[:avg {:name "Mock Metric"} [:field {} "sum"]]]}]}
+              {:aggregation [[:avg {:name "avg"} [:field {} "sum"]]]}]}
             (adjust question)))))
 
 (deftest ^:parallel metric-question-on-native-model-test
@@ -432,7 +433,7 @@
     (is (=? {:stages
              [{:lib/type :mbql.stage/native,
                :native "SELECT whatever"}
-              {:aggregation [[:avg {:name "Mock Metric"} [:field {} "sum"]]]}]}
+              {:aggregation [[:avg {:name "avg"} [:field {} "sum"]]]}]}
             (adjust question)))))
 
 (deftest ^:parallel maintain-aggregation-refs-test
@@ -557,7 +558,7 @@
 (deftest ^:parallel default-metric-names-test
   (let [[source-metric mp] (mock-metric)]
     (is (=?
-         {:stages [{:aggregation [[:avg {:display-name complement :name "Mock Metric"} some?]]}]}
+         {:stages [{:aggregation [[:avg {:display-name complement :name "avg"} some?]]}]}
          (adjust (-> (lib/query mp (meta/table-metadata :products))
                      (lib/aggregate (lib.metadata/metric mp (:id source-metric)))))))))
 
@@ -591,7 +592,7 @@
     (is (=?
          {:stages
           [{:source-table (meta/id :products)
-            :aggregation [[:avg {:name "Mock Metric"} [:field {} (meta/id :products :rating)]]]
+            :aggregation [[:avg {:name "avg"} [:field {} (meta/id :products :rating)]]]
             :filters [[:= {} [:field {} (meta/id :venues :name)] some?]]}]}
          (adjust (lib/query mp source-metric))))
     ;; Segments will be expanded in this case as the metric query that is spliced in needs to be processed
@@ -694,8 +695,8 @@
     (testing "model based metrics can be used in question based on that model"
       (is (=? {:stages [{:source-table (meta/id :products)
                          :filters [[:> {} [:field {} (meta/id :products :rating)] 2]]}
-                        {:aggregation [[:avg {:name "Mock Metric 1"} [:field {} "RATING"]]
-                                       [:count {:name "Mock Metric 2"}]]
+                        {:aggregation [[:avg {:name "avg"} [:field {} "RATING"]]
+                                       [:count {:name "count"}]]
                          :filters [[:< {} [:field {} "RATING"] [:value {} 5]]
                                    [:> {} [:field {} "RATING"] [:value {} 3]]]}]}
               (adjust query))))))
@@ -787,3 +788,43 @@
                 (mt/format-rows-by
                  [u.date/temporal-str->iso8601-str int int 3.0]
                  (mt/rows (qp/process-query query)))))))))
+
+(deftest ^:parallel expressions-from-metrics-are-spliced-to-correct-stage-test
+  (testing "Integration test: Expression is spliced into correct stage during metric expansion (#48722)"
+    (mt/with-temp [:model/Card source-model {:dataset_query (mt/mbql-query orders {})
+                                             :database_id (mt/id)
+                                             :name "source model"
+                                             :type :model}
+                   :model/Card metric {:dataset_query
+                                       (mt/mbql-query
+                                         orders
+                                         {:source-table (str "card__" (:id source-model))
+                                          :expressions {"somedays" [:datetime-diff
+                                                                    [:field "CREATED_AT" {:base-type :type/DateTime}]
+                                                                    (t/offset-date-time 2024 10 16 0 0 0)
+                                                                    :day]}
+                                          :aggregation [[:median [:expression "somedays" {:base-type :type/Integer}]]]})
+                                       :database_id (mt/id)
+                                       :name "somedays median"
+                                       :type :metric}]
+      (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+            query (-> (lib/query mp (lib.metadata/card mp (:id source-model)))
+                      (lib/aggregate (lib.metadata/metric mp (:id metric))))]
+        (is (= 2162
+               (ffirst (mt/rows (qp/process-query query)))))))))
+
+(deftest ^:parallel ^:mb/once fetch-referenced-metrics-test
+  (testing "Metric's aggregation `:name` is used in expanded aggregation (#48625)"
+    (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+          metric-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                           (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :orders :total)))))]
+      (mt/with-temp [:model/Card metric {:dataset_query (lib.convert/->legacy-MBQL metric-query)
+                                         :database_id (mt/id)
+                                         :name "Orders, Count"
+                                         :type :metric}]
+        (let [query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                        (lib/aggregate (lib.metadata/metric mp (:id metric))))
+              stage (get-in query [:stages 0])]
+          (is (=  "sum"
+                  (get-in (#'metrics/fetch-referenced-metrics query stage)
+                          [(:id metric) :aggregation 1 :name]))))))))

@@ -1198,7 +1198,7 @@
 
                        ;; Fourth dashboard where its parameter's source is another card
                        Collection   {coll4-id   :id
-                                     coll4-eid  :entity_id}    {:name     "Forth collection"}
+                                     _coll4-eid :entity_id}    {:name     "Forth collection"}
                        Card         {c4-id  :id
                                      c4-eid :entity_id}        {:name          "Question 4-1"
                                                                 :database_id   db-id
@@ -1376,17 +1376,14 @@
                         (map serdes/path)
                         set))))
 
-          (testing "select a collection where a dashboard contains parameter's source is card from another collection"
-            (is (=? #{[{:model "Collection"    :id coll4-eid :label "forth_collection"}]
-                      [{:model "Dashboard"     :id dash4-eid :label "dashboard_4"}]
-                      [{:model "Card"          :id c4-eid  :label "question_4_1"}]
-                      ;; card that parameter on dashboard linked to
-                      [{:model "Card"          :id c1-1-eid  :label "question_1_1"}]
-                      ;; card that the card on dashboard linked to
-                      [{:model "Card"          :id c1-2-eid  :label "question_1_2"}]}
-                    (->> (extract/extract {:targets [["Collection" coll4-id]] :no-settings true :no-data-model true})
-                         (map serdes/path)
-                         set)))))))))
+          (testing "depending on data from personal collections results in errors"
+            (mt/with-log-messages-for-level [messages [metabase-enterprise :warn]]
+              (extract/extract {:targets [["Collection" coll4-id]] :no-settings true :no-data-model true})
+              (let [msgs (into #{}
+                               (map :message)
+                               (messages))]
+                (is (some #(str/starts-with? % "Failed to export Dashboard") msgs))
+                (is (some #(str/starts-with? % "Failed to export Cards") msgs))))))))))
 
 (deftest field-references-test
   (mt/with-empty-h2-app-db
@@ -1422,13 +1419,26 @@
   (mt/with-empty-h2-app-db
     (ts/with-temp-dpc [Collection    {coll1-id :id} {:name "Some Collection"}
                        Collection    {coll2-id :id} {:name "Other Collection"}
+                       Collection    {coll3-id :id} {:name "Third Collection"}
                        Dashboard     {dash-id :id}  {:name "A Dashboard" :collection_id coll1-id}
                        Card          {card1-id :id} {:name "Some Card"}
                        DashboardCard _              {:card_id card1-id :dashboard_id dash-id}
                        Card          _              {:name          "Dependent Card"
                                                      :collection_id coll2-id
-                                                     :dataset_query {:query {:source-table (str "card__" card1-id)
-                                                                             :aggregation  [[:count]]}}}]
+                                                     :dataset_query {:query {:source-table (str "card__" card1-id)}}}
+                       User          user           {:email "dirk@kirk.ir"}
+                       Collection    pcoll          {:name              "Personal Collection"
+                                                     :personal_owner_id (:id user)}
+                       Card          pcard          {:name          "Personal Card"
+                                                     :collection_id (:id pcoll)}
+                       Card          _              {:name          "External Card"
+                                                     :dataset_query {:query {:source-table (str "card__" (:id pcard))}}}
+                       Card          _              {:name          "Card with parameters"
+                                                     :collection_id coll3-id
+                                                     :parameters    [{:id                   "abc"
+                                                                      :type                 "category"
+                                                                      :values_source_type   "card"
+                                                                      :values_source_config {:card_id card1-id}}]}]
       (testing "Complain about card not available for exporting"
         (mt/with-log-messages-for-level [messages [metabase-enterprise :warn]]
           (extract/extract {:targets       [["Collection" coll1-id]]
@@ -1438,15 +1448,34 @@
                     (into #{}
                           (map :message)
                           (messages))))))
-      (testing "Complain about card depending on an outside card"
-        (mt/with-log-messages-for-level [messages [metabase-enterprise :warn]]
-          (extract/extract {:targets       [["Collection" coll2-id]]
-                            :no-settings   true
-                            :no-data-model true})
-          (is (some #(str/starts-with? % "Failed to export Cards")
-                    (into #{}
-                          (map :message)
-                          (messages)))))))))
+      (testing "Complain about card depending on an outside card: "
+        (testing "when its :source-table"
+          (mt/with-log-messages-for-level [messages [metabase-enterprise :warn]]
+            (extract/extract {:targets       [["Collection" coll2-id]]
+                              :no-settings   true
+                              :no-data-model true})
+            (is (some #(str/starts-with? % "Failed to export Cards")
+                      (into #{}
+                            (map :message)
+                            (messages))))))
+        (testing "when it's :parameters"
+          (mt/with-log-messages-for-level [messages [metabase-enterprise :warn]]
+            (extract/extract {:targets       [["Collection" coll2-id]]
+                              :no-settings   true
+                              :no-data-model true})
+            (is (some #(str/starts-with? % "Failed to export Cards")
+                      (into #{}
+                            (map :message)
+                            (messages)))))))
+      (testing "When exporting all collections"
+        (testing "Complain about dependents in personal collections"
+          (mt/with-log-messages-for-level [messages [metabase-enterprise :warn]]
+            (extract/extract {:no-settings   true
+                              :no-data-model true})
+            (is (some #(str/starts-with? % "Failed to export Cards")
+                      (into #{}
+                            (map :message)
+                            (messages))))))))))
 
 (deftest recursive-colls-test
   (mt/with-empty-h2-app-db
