@@ -2,7 +2,8 @@ import _userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen } from "__support__/ui";
 
-import type { RelativeIntervalDirection } from "../../types";
+import { DATE_PICKER_UNITS } from "../../constants";
+import type { DatePickerUnit, RelativeIntervalDirection } from "../../types";
 import type { DateOffsetIntervalValue } from "../types";
 
 import { DateOffsetIntervalPicker } from "./DateOffsetIntervalPicker";
@@ -25,16 +26,22 @@ const userEvent = _userEvent.setup({
 
 interface SetupOpts {
   value: DateOffsetIntervalValue;
+  availableUnits?: ReadonlyArray<DatePickerUnit>;
   isNew?: boolean;
 }
 
-function setup({ value, isNew = false }: SetupOpts) {
+function setup({
+  value,
+  availableUnits = DATE_PICKER_UNITS,
+  isNew = false,
+}: SetupOpts) {
   const onChange = jest.fn();
   const onSubmit = jest.fn();
 
   renderWithProviders(
     <DateOffsetIntervalPicker
       value={value}
+      availableUnits={availableUnits}
       isNew={isNew}
       onChange={onChange}
       onSubmit={onSubmit}

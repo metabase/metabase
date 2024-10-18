@@ -59,6 +59,7 @@ export function DatePicker({
       return (
         <RelativeDatePicker
           value={value?.type === type ? value : undefined}
+          availableUnits={availableUnits}
           canUseRelativeOffsets={canUseRelativeOffsets}
           isNew={isNew}
           onChange={onChange}

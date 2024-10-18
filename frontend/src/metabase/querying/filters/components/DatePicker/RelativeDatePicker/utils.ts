@@ -3,6 +3,7 @@ import * as Lib from "metabase-lib";
 import { DATE_PICKER_TRUNCATION_UNITS } from "../constants";
 import type {
   DatePickerTruncationUnit,
+  DatePickerUnit,
   DatePickerValue,
   RelativeDatePickerValue,
   RelativeIntervalDirection,
@@ -103,10 +104,22 @@ export function setInterval(
   };
 }
 
-export function getUnitOptions(value: DateIntervalValue) {
+export function getAvailableTruncationUnits(
+  availableUnits: ReadonlyArray<DatePickerUnit>,
+) {
+  return DATE_PICKER_TRUNCATION_UNITS.filter(unit =>
+    availableUnits.includes(unit),
+  );
+}
+
+export function getUnitOptions(
+  value: DateIntervalValue,
+  availableUnits: ReadonlyArray<DatePickerUnit>,
+) {
+  const truncationUnits = getAvailableTruncationUnits(availableUnits);
   const interval = getInterval(value);
 
-  return DATE_PICKER_TRUNCATION_UNITS.map(unit => ({
+  return truncationUnits.map(unit => ({
     value: unit,
     label: Lib.describeTemporalUnit(unit, interval).toLowerCase(),
   }));

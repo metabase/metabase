@@ -2,19 +2,25 @@ import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen } from "__support__/ui";
 
-import { DATE_PICKER_OPERATORS } from "../constants";
-import type { DatePickerOperator, DatePickerValue } from "../types";
+import { DATE_PICKER_OPERATORS, DATE_PICKER_UNITS } from "../constants";
+import type {
+  DatePickerOperator,
+  DatePickerUnit,
+  DatePickerValue,
+} from "../types";
 
 import { SimpleDatePicker } from "./SimpleDatePicker";
 
 interface SetupOpts {
   value?: DatePickerValue;
   availableOperators?: ReadonlyArray<DatePickerOperator>;
+  availableUnits?: ReadonlyArray<DatePickerUnit>;
 }
 
 function setup({
   value,
   availableOperators = DATE_PICKER_OPERATORS,
+  availableUnits = DATE_PICKER_UNITS,
 }: SetupOpts = {}) {
   const onChange = jest.fn();
 
@@ -22,6 +28,7 @@ function setup({
     <SimpleDatePicker
       value={value}
       availableOperators={availableOperators}
+      availableUnits={availableUnits}
       onChange={onChange}
     />,
   );
