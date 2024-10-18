@@ -154,7 +154,10 @@ describe("issue 16334", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    cy.intercept("POST", "api/dataset").as("dataset");
+    cy.intercept("POST", "/api/dataset").as("dataset");
+    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
+      "dashcardQuery",
+    );
   });
 
   it("should not change the visualization type in a targetted question with mapped filter (metabase#16334)", () => {
@@ -186,6 +189,7 @@ describe("issue 16334", () => {
           });
 
           visitDashboard(dashboard_id);
+          cy.wait("@dashcardQuery");
         },
       );
     });
