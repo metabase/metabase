@@ -7,7 +7,7 @@ import { Box } from "metabase/ui";
 
 export interface FormProps
   extends BoxProps,
-    FormHTMLAttributes<HTMLFormElement> {
+    Omit<FormHTMLAttributes<HTMLFormElement>, "style"> {
   disabled?: boolean;
 }
 
