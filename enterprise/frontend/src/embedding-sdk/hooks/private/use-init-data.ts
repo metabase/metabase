@@ -6,6 +6,7 @@ import { setupSdkAuth } from "embedding-sdk/hooks";
 import { COULD_NOT_AUTHENTICATE_MESSAGE } from "embedding-sdk/lib/user-warnings";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
 import {
+  getOrRefreshSession,
   setFetchRefreshTokenFn,
   setLoginStatus,
 } from "embedding-sdk/store/reducer";
@@ -15,6 +16,12 @@ import api from "metabase/lib/api";
 import { refreshSiteSettings } from "metabase/redux/settings";
 import { refreshCurrentUser } from "metabase/redux/user";
 import registerVisualizations from "metabase/visualizations/register";
+import { useMount } from "react-use";
+import { match } from "ts-pattern";
+import {
+  handleServerError,
+  MetabaseSdkError,
+} from "embedding-sdk/lib/error/error";
 
 const registerVisualizationsOnce = _.once(registerVisualizations);
 
@@ -34,7 +41,7 @@ export const useInitData = ({ config }: InitDataLoaderParameters) => {
   const dispatch = useSdkDispatch();
   const loginStatus = useSdkSelector(getLoginStatus);
 
-  useEffect(() => {
+  useMount(() => {
     registerVisualizationsOnce();
 
     const EMBEDDING_SDK_VERSION = getEmbeddingSdkVersion();
@@ -50,56 +57,67 @@ export const useInitData = ({ config }: InitDataLoaderParameters) => {
         `Using Metabase Embedding SDK, version ${EMBEDDING_SDK_VERSION}`,
       );
     }
-  }, [allowConsoleLog]);
+  });
 
-  useEffect(() => {
-    dispatch(setFetchRefreshTokenFn(config.fetchRequestToken ?? null));
-  }, [dispatch, config.fetchRequestToken]);
-
-  useEffect(() => {
-    if (loginStatus.status !== "uninitialized") {
-      return;
-    }
-
-    setupSdkAuth(config, dispatch);
-  }, [config, dispatch, loginStatus.status]);
-
-  useEffect(() => {
-    if (loginStatus.status === "validated") {
-      const fetchData = async () => {
-        dispatch(setLoginStatus({ status: "loading" }));
-
-        try {
-          const [userResponse, siteSettingsResponse] = await Promise.all([
-            dispatch(refreshCurrentUser()),
-            dispatch(refreshSiteSettings({})),
-          ]);
-
+  match(loginStatus.status)
+    .with("uninitialized", () => {
+      setupSdkAuth(config, dispatch);
+      dispatch(setLoginStatus({ status: "validated" }));
+    })
+    .with("validated", () => {
+      if (config.jwtProviderUri) {
+        dispatch(getOrRefreshSession(config.jwtProviderUri))
+          .unwrap()
+          .then(response => {
+            if (!response) {
+              handleServerError("error-fe-cannot-authenticate");
+            } else if (response instanceof Response) {
+              handleServerError("error-fe-received-response-object");
+            } else if (!(response instanceof Object)) {
+              handleServerError("error-fe-received-non-json-object");
+            } else {
+              dispatch(setLoginStatus({ status: "loading" }));
+            }
+          })
+          .catch(e => {
+            dispatch(
+              setLoginStatus({
+                status: "error",
+                error: e,
+              }),
+            );
+          });
+      }
+    })
+    .with("loading", async () => {
+      Promise.all([
+        dispatch(refreshCurrentUser()),
+        dispatch(refreshSiteSettings({})),
+      ])
+        .then(([userResponse, siteSettingsResponse]) => {
           if (
             userResponse.meta.requestStatus === "rejected" ||
             siteSettingsResponse.meta.requestStatus === "rejected"
           ) {
-            dispatch(
-              setLoginStatus({
-                status: "error",
-                error: new Error(COULD_NOT_AUTHENTICATE_MESSAGE),
-              }),
-            );
-            return;
+            handleServerError("error-fe-cannot-authenticate");
           }
 
-          dispatch(setLoginStatus({ status: "success" }));
-        } catch (error) {
+          dispatch(
+            setLoginStatus({
+              status: "success",
+            }),
+          );
+        })
+        .catch(error => {
           dispatch(
             setLoginStatus({
               status: "error",
-              error: new Error(COULD_NOT_AUTHENTICATE_MESSAGE),
+              error: error,
             }),
           );
-        }
-      };
-
-      fetchData();
-    }
-  }, [dispatch, loginStatus.status]);
+        });
+    })
+    .with("error", () => {})
+    .with("success", () => {})
+    .exhaustive();
 };
