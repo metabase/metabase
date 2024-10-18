@@ -1,20 +1,34 @@
-import cx from "classnames";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { t } from "ttag";
 
-import { Box, Button, Flex, Input, Text } from "metabase/ui";
+import {
+  Box,
+  Flex,
+  Icon,
+  Input,
+  Transition,
+  UnstyledButton,
+} from "metabase/ui";
 
 import { MetabotIcon } from "../MetabotIcon";
 import { useMetabotAgent } from "../hooks";
 
 import Styles from "./MetabotChat.module.css";
 
-export const MetabotChat = () => {
+const slideIn = {
+  in: { opacity: 1, transform: "translate(0, 0)" },
+  out: { opacity: 0, transform: "translate(0, .5rem)" },
+  common: { transformOrigin: "top" },
+  transitionProperty: "transform, opacity",
+};
+
+export const MetabotChat = ({ onClose }: { onClose: () => void }) => {
   const [message, setMessage] = useState("");
-  const { chatHistory, sendMessage, sendMessageReq } = useMetabotAgent();
+  const { lastMetabotChatMessages, sendMessage, sendMessageReq, reset } =
+    useMetabotAgent();
 
   const handleSend = () => {
-    if (!message.length) {
+    if (!message.length || sendMessageReq.isLoading) {
       return;
     }
     setMessage("");
@@ -22,53 +36,61 @@ export const MetabotChat = () => {
     sendMessage(message).catch(err => console.error(err));
   };
 
+  const handleClose = () => {
+    reset();
+    setMessage("");
+    onClose();
+  };
+
+  // Cause an addition render for animated responses from Metabot
+  // so they can be transitioned in after being mounted
+  const [showMessages, setShowMessages] = useState(false);
+  useEffect(() => {
+    setShowMessages(lastMetabotChatMessages.length > 0);
+  }, [lastMetabotChatMessages]);
+
   return (
-    <Flex className={Styles.container}>
-      <Flex direction="column" w="100%">
-        <Flex gap=".75rem">
-          <Box w="33px" h="24px">
-            <MetabotIcon />
-          </Box>
-          <Text>How can I help you today?</Text>
-        </Flex>
-        <Flex direction="column">
-          {chatHistory.map(msg => (
-            <Box
-              // TODO: give messages unique ids
-              key={msg.message}
-              className={cx(
-                Styles.message,
-                msg.source === "user"
-                  ? Styles.messageUser
-                  : Styles.messageSystem,
-              )}
+    <Box className={Styles.container}>
+      {lastMetabotChatMessages.length > 0 && (
+        <Box className={Styles.responses}>
+          {lastMetabotChatMessages.map((msg, index) => (
+            <Transition
+              key={index}
+              mounted={showMessages}
+              transition={slideIn}
+              duration={150}
+              timingFunction="ease"
             >
-              {msg.message}
-            </Box>
+              {style => (
+                <Box className={Styles.response} style={style}>
+                  {msg.message}
+                </Box>
+              )}
+            </Transition>
           ))}
-        </Flex>
-        <Flex mt="1rem" gap="xs" w="100%">
-          <Input
-            w="100%"
-            value={message}
-            placeholder="Tell me to do something, or ask a question"
-            onChange={e => setMessage(e.target.value)}
-            onKeyDown={event => {
-              if (event.key === "Enter") {
-                handleSend();
-              }
-            }}
-          />
-          <Button
-            variant="filled"
-            style={{ flexShrink: 0 }}
-            onClick={handleSend}
-            disabled={sendMessageReq.isLoading}
-          >
-            {t`Send`}
-          </Button>
-        </Flex>
+        </Box>
+      )}
+      <Flex className={Styles.innerContainer}>
+        <Box w="33px" h="24px">
+          <MetabotIcon />
+        </Box>
+        <Input
+          w="100%"
+          value={message}
+          className={Styles.input}
+          styles={{ input: { border: "none" } }}
+          placeholder={t`Tell me to do something, or ask a question`}
+          onChange={e => setMessage(e.target.value)}
+          onKeyDown={event => {
+            if (event.key === "Enter") {
+              handleSend();
+            }
+          }}
+        />
+        <UnstyledButton h="1rem" onClick={handleClose}>
+          <Icon name="close" c="text-light" size="1rem" />
+        </UnstyledButton>
       </Flex>
-    </Flex>
+    </Box>
   );
 };

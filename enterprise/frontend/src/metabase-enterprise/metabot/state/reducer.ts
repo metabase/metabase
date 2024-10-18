@@ -1,28 +1,32 @@
 import { type PayloadAction, createSlice } from "@reduxjs/toolkit";
 
-import type { ChatMessage, MetabotAgentChatContext } from "metabase-types/api";
+import { metabotAgent } from "metabase-enterprise/api";
+import type { ChatMessage, MetabotMessage } from "metabase-types/api";
 
 export interface MetabotState {
-  chat: {
-    history: ChatMessage[];
-    context: MetabotAgentChatContext;
-  };
+  chatHistory: ChatMessage[];
 }
 
-const initialState = {
-  chat: {
-    history: [],
-    context: {},
-  },
-} satisfies MetabotState as MetabotState;
+const initialState: MetabotState = {
+  chatHistory: [],
+};
 
 export const metabot = createSlice({
   name: "metabase-enterprise/metabot",
   initialState,
   reducers: {
-    addMessage: (state, action: PayloadAction<ChatMessage>) => {
-      state.chat.history.push(action.payload);
+    addMessage: (state, action: PayloadAction<MetabotMessage>) => {
+      state.chatHistory.push(action.payload);
     },
+    reset: () => initialState,
+  },
+  extraReducers: builder => {
+    builder.addMatcher(metabotAgent.matchPending, (state, action) => {
+      state.chatHistory.push({
+        source: "user",
+        ...action.meta.arg.originalArgs,
+      });
+    });
   },
 });
 
