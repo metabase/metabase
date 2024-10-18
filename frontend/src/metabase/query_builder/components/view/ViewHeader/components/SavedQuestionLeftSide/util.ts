@@ -1,21 +1,44 @@
-import { useGetCardQueryMetadataQuery } from "metabase/api";
+import { useSelector } from "metabase/lib/redux";
+import { getMetadataUnfiltered } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type { Table } from "metabase-types/api";
 
-export function useHiddenSourceTables(question: Question): Table[] {
-  const query = question.query();
-  const { isEditable, isNative } = Lib.queryDisplayInfo(query);
+export function useHiddenSourceTables(
+  question: Question,
+): Lib.TableDisplayInfo[] {
+  const datasetQuery = question.datasetQuery();
+  const metadata = useSelector(getMetadataUnfiltered);
+  const metadataProvider = Lib.metadataProvider(
+    datasetQuery.database,
+    metadata,
+  );
+  const query = Lib.fromLegacyQuery(
+    datasetQuery.database,
+    metadataProvider,
+    datasetQuery,
+  );
 
-  const canHaveHiddenSourceTables = !isEditable && !isNative;
+  const sourceTableId = Lib.sourceTableOrCardId(query);
 
-  const { data } = useGetCardQueryMetadataQuery(question.id(), {
-    skip: !canHaveHiddenSourceTables,
-  });
+  const joinTablesInfo = Lib.stageIndexes(query).flatMap(stageIndex =>
+    Lib.joins(query, stageIndex)
+      .map(join => Lib.joinedThing(query, join))
+      .filter(joinTable => joinTable != null)
+      .map(joinTable => Lib.displayInfo(query, stageIndex, joinTable)),
+  );
 
-  if (!canHaveHiddenSourceTables) {
-    return [];
+  if (sourceTableId) {
+    const sourceTableMetadata = Lib.tableOrCardMetadata(
+      metadataProvider,
+      sourceTableId,
+    );
+    const sourceTableInfo = Lib.displayInfo(query, -1, sourceTableMetadata);
+    joinTablesInfo.unshift(sourceTableInfo);
   }
 
-  return data?.tables.filter(table => table.visibility_type === "hidden") ?? [];
+  return joinTablesInfo.filter(
+    tableInfo =>
+      tableInfo.visibilityType !== null &&
+      tableInfo.visibilityType !== "normal",
+  );
 }

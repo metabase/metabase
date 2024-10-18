@@ -126,11 +126,11 @@ export function ReadOnlyTag({ question }: { question: Question }) {
   const { isEditable } = Lib.queryDisplayInfo(question.query());
   const hiddenSourceTables = useHiddenSourceTables(question);
 
-  const tableName = hiddenSourceTables[0]?.display_name;
-
   if (isEditable) {
     return null;
   }
+
+  const tableName = hiddenSourceTables[0]?.displayName;
 
   return (
     <HoverCard position="bottom-start" disabled={!tableName}>
