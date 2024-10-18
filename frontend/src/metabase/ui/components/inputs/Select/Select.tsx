@@ -4,11 +4,11 @@ import type {
   SelectProps as MantineSelectProps,
 } from "@mantine/core";
 import { Select as MantineSelect } from "@mantine/core";
-export { SelectItem } from "./SelectItem";
+export * from "./SelectItem";
 
 import type { IconName } from "../../icons";
 
-export type SelectOption<Value> = ComboboxItem & {
+export type SelectOption<Value = string | null> = ComboboxItem & {
   value: Value;
   icon?: IconName;
 } & Record<string, any>;
