@@ -661,9 +661,11 @@
               (vreset! workbook-data wb)))
 
           (let [{:keys [workbook sheet]} @workbook-data
-                data-format              (. ^SXSSFWorkbook workbook createDataFormat)]
+                data-format              (. ^SXSSFWorkbook workbook createDataFormat)
+                cols                     (cond->> ordered-cols
+                                           pivot-grouping-key (m/remove-nth pivot-grouping-key))]
             (set-no-style-custom-helper sheet)
-            (vreset! cell-styles (compute-column-cell-styles workbook data-format viz-settings ordered-cols format-rows?))
+            (vreset! cell-styles (compute-column-cell-styles workbook data-format viz-settings cols format-rows?))
             (vreset! typed-cell-styles (compute-typed-cell-styles workbook data-format)))))
 
       (write-row! [_ row row-num ordered-cols {:keys [output-order] :as viz-settings}]
