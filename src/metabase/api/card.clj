@@ -524,9 +524,9 @@
   "Update a `Card`."
   [id delete_old_dashcards
    :as {{:keys [dataset_query description display name visualization_settings archived collection_id
-                   collection_position enable_embedding embedding_params result_metadata parameters
-                   cache_ttl collection_preview type dashboard_id]
-            :as   card-updates} :body}]
+                collection_position enable_embedding embedding_params result_metadata parameters
+                cache_ttl collection_preview type dashboard_id]
+         :as   card-updates} :body}]
   {id                     ms/PositiveInt
    name                   [:maybe ms/NonBlankString]
    parameters             [:maybe [:sequential ms/Parameter]]
