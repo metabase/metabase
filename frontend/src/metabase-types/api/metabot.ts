@@ -38,7 +38,7 @@ export type ChatMessage = UserChatMessage | MetabotMessage;
 export type MetabotAgentRequest = {
   message: string;
   context: MetabotAgentChatContext;
-  messages: ChatMessage[];
+  history: ChatMessage[];
 };
 
 export type MetabotAgentMessage = {
