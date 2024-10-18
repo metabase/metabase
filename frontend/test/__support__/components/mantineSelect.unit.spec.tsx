@@ -30,7 +30,7 @@ describe("viewMantineSelectOptions", () => {
     render(
       <>
         <Select
-          value="select1-option2"
+          value={"select1-option2"}
           data={[
             { value: "select1-option1", label: "First Select, option 1" },
             { value: "select1-option2", label: "First Select, option 2" },
