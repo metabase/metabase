@@ -19,19 +19,6 @@
 (mr/def ::role
   [:enum :system :user :assistant :tool])
 
-(mr/def ::message.tool-call.function
-  [:map
-   [:name      ::metabot-v3.tools.interface/metadata.name]
-   [:arguments [:map-of
-                {:decode/api-response (fn [x]
-                                        (cond-> x
-                                          (string? x) (json/parse-string true)))
-                 :encode/api-request  (fn [x]
-                                        (cond-> x
-                                          (not (string? x)) json/generate-string))}
-                :keyword
-                :any]]])
-
 (mr/def ::message.tool-call
   [:map
    [:id        {:description "Internal ID used by the LLM."} :string]
@@ -48,8 +35,6 @@
 
 (mr/def ::message
   [:map
-   {:decode/api-response #(update-keys % u/->kebab-case-en)
-    :encode/api-request  #(update-keys % u/->snake_case_en)}
    [:role    ::role]
    [:content [:maybe :string]]
    [:tool-calls {:optional true} [:maybe [:sequential ::message.tool-call]]]])

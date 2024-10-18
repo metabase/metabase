@@ -37,7 +37,8 @@
 (defn- encode-request-body [body]
   (mc/encode ::metabot-v3.client.schema/request body (mtx/transformer
                                                       (mtx/default-value-transformer)
-                                                      {:name :api-request})))
+                                                      {:name :api-request}
+                                                      (mtx/key-transformer {:encode u/->snake_case_en}))))
 
 (mu/defn- build-request-body
   [message :- :string
@@ -83,7 +84,8 @@
              response-body
              (mtx/transformer
               (mtx/json-transformer)
-              {:name :api-response})))
+              {:name :api-response}
+              (mtx/key-transformer {:decode u/->kebab-case-en}))))
 
 (mu/defn ^:dynamic *request* :- ::metabot-v3.client.schema/ai-proxy.response
   "Make a request to the AI Proxy."
