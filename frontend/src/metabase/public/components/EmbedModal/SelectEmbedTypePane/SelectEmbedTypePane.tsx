@@ -2,7 +2,7 @@ import cx from "classnames";
 import { useState } from "react";
 import { t } from "ttag";
 
-import { getPlan } from "metabase/common/utils/plan";
+import { useUrlWithUtm } from "metabase/common/hooks";
 import Link from "metabase/core/components/Link";
 import CS from "metabase/css/core/index.css";
 import { Badge } from "metabase/home/components/EmbedHomepage/Badge";
@@ -45,11 +45,16 @@ export function SelectEmbedTypePane({
 
   const interactiveEmbeddingCta = useInteractiveEmbeddingCta();
 
-  const plan = useSelector(state =>
-    getPlan(getSetting(state, "token-features")),
-  );
+  const utmTags = {
+    utm_content: "embed-modal",
+  };
 
-  const utmTags = `?utm_source=product&source_plan=${plan}&utm_content=embed-modal`;
+  const sdkUrl = useUrlWithUtm("https://metaba.se/sdk", utmTags);
+  const embeddingUrl = useUrlWithUtm(
+    // eslint-disable-next-line no-unconditional-metabase-links-render -- only visible to admins
+    "https://www.metabase.com/docs/latest/embedding/introduction#comparison-of-embedding-types",
+    utmTags,
+  );
 
   const isPublicSharingEnabled = useSelector(state =>
     getSetting(state, "enable-public-sharing"),
@@ -128,7 +133,7 @@ export function SelectEmbedTypePane({
 
         {/* REACT SDK */}
         <a
-          href={"https://metaba.se/sdk" + utmTags}
+          href={sdkUrl}
           style={{ height: "100%" }}
           target="_blank"
           rel="noreferrer"
@@ -174,11 +179,7 @@ export function SelectEmbedTypePane({
         <a
           className={cx(CS.link, CS.textBold)}
           style={{ display: "flex", alignItems: "center", gap: 4 }}
-          href={
-            // eslint-disable-next-line no-unconditional-metabase-links-render -- only visible to admins
-            "https://www.metabase.com/docs/latest/embedding/introduction#comparison-of-embedding-types" +
-            utmTags
-          }
+          href={embeddingUrl}
         >
           {t`Compare options`} <Icon name="share" />
         </a>
@@ -191,8 +192,15 @@ export const useInteractiveEmbeddingCta = () => {
   const isInteractiveEmbeddingEnabled = useSelector(
     PLUGIN_EMBEDDING.isInteractiveEmbeddingEnabled,
   );
-  const plan = useSelector(state =>
-    getPlan(getSetting(state, "token-features")),
+
+  const url = useUrlWithUtm(
+    `https://www.metabase.com/product/embedded-analytics`,
+    {
+      utm_source: "product",
+      utm_medium: "upsell",
+      utm_campaign: "embedding-interactive",
+      utm_content: "static-embed-popover",
+    },
   );
 
   if (isInteractiveEmbeddingEnabled) {
@@ -202,15 +210,7 @@ export const useInteractiveEmbeddingCta = () => {
   }
 
   return {
-    url: `https://www.metabase.com/product/embedded-analytics?${new URLSearchParams(
-      {
-        utm_source: "product",
-        utm_medium: "upsell",
-        utm_campaign: "embedding-interactive",
-        utm_content: "static-embed-popover",
-        source_plan: plan,
-      },
-    )}`,
+    url,
     target: "_blank",
   };
 };

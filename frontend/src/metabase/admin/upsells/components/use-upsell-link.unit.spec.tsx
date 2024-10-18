@@ -53,7 +53,7 @@ const setup = ({
 describe("Upsells > useUpsellLink", () => {
   it("should return a URL with the correct query parameters", () => {
     const props = {
-      url: "https://www.metabase.com",
+      url: "https://www.metabase.com/",
       campaign: "test-campaign",
       source: "test-source",
     };

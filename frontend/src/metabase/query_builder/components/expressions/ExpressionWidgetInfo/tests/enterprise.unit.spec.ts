@@ -17,7 +17,7 @@ describe("ExpressionWidgetInfo (EE without token)", () => {
       screen.getByRole("link", { name: "Open expressions documentation" }),
     ).toHaveProperty(
       "href",
-      "https://www.metabase.com/docs/latest/questions/query-builder/expressions.html",
+      "https://www.metabase.com/docs/latest/questions/query-builder/expressions.html?utm_source=product&utm_medium=docs&utm_campaign=custom-expressions&source_plan=oss",
     );
     await userEvent.hover(screen.getByLabelText("info icon"));
     expect(
@@ -34,7 +34,7 @@ describe("ExpressionWidgetInfo (EE without token)", () => {
       screen.getByRole("link", { name: "Open expressions documentation" }),
     ).toHaveProperty(
       "href",
-      "https://www.metabase.com/docs/latest/questions/query-builder/expressions.html",
+      "https://www.metabase.com/docs/latest/questions/query-builder/expressions.html?utm_source=product&utm_medium=docs&utm_campaign=custom-expressions&source_plan=oss",
     );
     await userEvent.hover(screen.getByLabelText("info icon"));
     expect(
