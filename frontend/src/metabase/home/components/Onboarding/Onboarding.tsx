@@ -133,7 +133,7 @@ export const Onboarding = () => {
           }
         >
           <Box mb={64}>
-            <Title order={2} mb={24}>{t`Set up your ${applicationName}`}</Title>
+            <Title order={2} mb="lg">{t`Set up your ${applicationName}`}</Title>
             <Accordion.Item value="database">
               <Accordion.Control icon={<Icon name="add_data" />}>
                 {t`Connect to your database`}
@@ -202,7 +202,7 @@ export const Onboarding = () => {
           </Box>
 
           <Box mb={64}>
-            <Title order={2} mb={24}>{t`Start visualizing your data`}</Title>
+            <Title order={2} mb="lg">{t`Start visualizing your data`}</Title>
             <Accordion.Item value="x-ray">
               <Accordion.Control icon={<Icon name="bolt" />}>
                 {t`Create automatic dashboards`}
@@ -340,7 +340,7 @@ export const Onboarding = () => {
             </Accordion.Item>
           </Box>
           <Box mb={64}>
-            <Title order={2} mb={24}>{t`Get email updates and alerts`}</Title>
+            <Title order={2} mb="lg">{t`Get email updates and alerts`}</Title>
             <Accordion.Item value="subscription">
               <Accordion.Control icon={<Icon name="subscription" />}>
                 {t`Get dashboard updates by email`}
@@ -473,7 +473,7 @@ export const Onboarding = () => {
           </Box>
         </Accordion>
         {showMetabaseLinks && (
-          <Box mb={32}>
+          <Box mb="xl">
             <Title
               order={2}
               mb={12}
@@ -491,8 +491,8 @@ export const Onboarding = () => {
           </Box>
         )}
         {shouldShowSupport && (
-          <Box p={24} className={S.support}>
-            <Stack spacing={4}>
+          <Box p="lg" className={S.support}>
+            <Stack spacing="xs">
               <Title order={4}>{t`Need to talk with someone?`}</Title>
               <Text>{t`Reach out to engineers who can help with technical troubleshooting. Not your typical support agents.`}</Text>
             </Stack>
