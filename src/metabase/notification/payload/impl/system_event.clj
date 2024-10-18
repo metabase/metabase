@@ -1,4 +1,4 @@
-(ns metabase.notification.payload.system-event
+(ns metabase.notification.payload.impl.system-event
   (:require
    [java-time.api :as t]
    [metabase.email.messages :as messages]

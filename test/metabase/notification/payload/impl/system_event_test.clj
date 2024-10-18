@@ -1,4 +1,4 @@
-(ns metabase.notification.payload.system-event-test
+(ns metabase.notification.payload.impl.system-event-test
   (:require
    [clojure.test :refer :all]
    [metabase.events :as events]
