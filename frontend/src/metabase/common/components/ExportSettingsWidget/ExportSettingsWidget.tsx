@@ -53,10 +53,13 @@ export const ExportSettingsWidget = ({
               <Radio value="false" label={t`Unformatted`} />
             </Group>
           </Radio.Group>
-          <Text
-            size="sm"
-            color="text-medium"
-          >{t`E.g. September 6, 2024 or $187.50, like in ${applicationName}`}</Text>
+          {isFormattingEnabled && (
+            <Text
+              data-testid="formatting-description"
+              size="sm"
+              color="text-medium"
+            >{t`E.g. September 6, 2024 or $187.50, like in ${applicationName}`}</Text>
+          )}
         </Stack>
       ) : null}
       {canConfigurePivoting ? (
