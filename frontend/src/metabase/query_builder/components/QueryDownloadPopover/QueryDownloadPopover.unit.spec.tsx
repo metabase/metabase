@@ -97,9 +97,9 @@ describe("QueryDownloadPopover", () => {
 
       await userEvent.click(screen.getByLabelText(`.${format}`));
       await userEvent.click(screen.getByLabelText("Unformatted"));
-      expect(
-        screen.queryByTestId("formatting-description"),
-      ).not.toBeInTheDocument();
+      expect(screen.queryByTestId("formatting-description")).toHaveTextContent(
+        `E.g. 2024-09-06 or 187.50, like in the database`,
+      );
       expect(
         screen.queryByLabelText("Keep data pivoted"),
       ).not.toBeInTheDocument();
