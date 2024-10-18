@@ -5,7 +5,6 @@ import { push } from "react-router-redux";
 
 import { useDispatch } from "metabase/lib/redux";
 import { PLUGIN_CACHING } from "metabase/plugins";
-import type { TabsValue } from "metabase/ui";
 import { Flex, Tabs } from "metabase/ui";
 
 import { PerformanceTabId } from "../types";
@@ -51,7 +50,7 @@ export const PerformanceApp = ({
   return (
     <Tabs
       value={tabId}
-      onTabChange={value => {
+      onChange={value => {
         if (isValidTabId(value)) {
           dispatch(
             push(

@@ -29,7 +29,7 @@ const argTypes = {
 const DefaultTemplate = (args: CardProps) => (
   <Box maw="20rem">
     <Card {...args}>
-      <Stack spacing="sm">
+      <Stack gap="sm">
         <Text fw="bold">{sampleArgs.title}</Text>
         <Text>{sampleArgs.description}</Text>
       </Stack>
@@ -46,7 +46,7 @@ const CardSectionTemplate = ({
       <Card.Section withBorder={withSectionBorder}>
         <Box bg="bg" h="10rem" />
       </Card.Section>
-      <Stack mt="md" spacing="sm">
+      <Stack mt="md" gap="sm">
         <Text fw="bold">{sampleArgs.title}</Text>
         <Text>{sampleArgs.description}</Text>
       </Stack>

@@ -80,10 +80,10 @@ export const QuestionInfoSidebar = ({
 
         <SidesheetTabPanelContainer>
           <Tabs.Panel value="overview">
-            <Stack spacing="lg">
+            <Stack gap="lg">
               <SidesheetCard pb="md">
-                <Stack spacing="sm">
-                  <Title lh={1} size="sm" color="text-light" pb={0}>
+                <Stack gap="sm">
+                  <Title lh={1} size="sm" c="text-light" pb={0}>
                     {t`Description`}
                   </Title>
                   <SidesheetEditableDescription

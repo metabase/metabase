@@ -70,7 +70,7 @@ export const LookAndFeelSettings = ({
       <StaticEmbedSetupPaneSettingsContentSection
         title={t`Customizing look and feel`}
       >
-        <Stack spacing="1rem">
+        <Stack gap="1rem">
           <Text>{jt`These options require changing the server code. You can play around with and preview the options here. Check out the ${(
             <ExternalLink
               key="doc"

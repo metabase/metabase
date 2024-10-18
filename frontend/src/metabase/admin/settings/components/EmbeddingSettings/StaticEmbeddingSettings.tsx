@@ -40,7 +40,7 @@ export function StaticEmbeddingSettings({
 
   return (
     <Box p="0.5rem 1rem 0">
-      <Stack spacing="2.5rem">
+      <Stack gap="2.5rem">
         <Breadcrumbs
           size="large"
           crumbs={[
