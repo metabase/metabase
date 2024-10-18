@@ -1,8 +1,8 @@
 import { isBreakoutSeries } from "./guards";
-import type { LegendItem, SeriesModel } from "./types";
+import type { BaseSeriesModel, LegendItem } from "./types";
 
 export const getLegendItems = (
-  seriesModels: SeriesModel[],
+  seriesModels: BaseSeriesModel[],
   showAllLegendItems: boolean = false,
 ): LegendItem[] => {
   if (

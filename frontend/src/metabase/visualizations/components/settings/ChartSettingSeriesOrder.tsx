@@ -4,11 +4,15 @@ import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import ColorSelector from "metabase/core/components/ColorSelector";
 import type { DragEndEvent } from "metabase/core/components/Sortable";
+import { color } from "metabase/lib/colors";
+import { getAccentColors } from "metabase/lib/colors/groups";
 import type { AccentColorOptions } from "metabase/lib/colors/types";
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
+import { getEventTarget } from "metabase/lib/dom";
 import { isEmpty } from "metabase/lib/validate";
-import { Button, Select } from "metabase/ui";
+import { Button, Flex, Group, Icon, Select, Text } from "metabase/ui";
 import type { Series } from "metabase-types/api";
 
 import {
@@ -28,13 +32,14 @@ export interface SortableItem {
   name: string;
   color?: string;
   hidden?: boolean;
+  hideSettings?: boolean;
 }
 
 interface ChartSettingSeriesOrderProps {
   onChange: (rows: SortableItem[]) => void;
   value: SortableItem[];
   onShowWidget: (
-    widget: { props: { seriesKey: string } },
+    widget: { id?: string; props?: { seriesKey: string } },
     ref: HTMLElement | undefined,
   ) => void;
   series: Series;
@@ -45,6 +50,11 @@ interface ChartSettingSeriesOrderProps {
   getItemColor?: (item: SortableChartSettingOrderedItem) => string | undefined;
   addButtonLabel?: string;
   searchPickerPlaceholder?: string;
+  groupedAfterIndex?: number;
+  otherColor?: string;
+  otherSettingWidgetId?: string;
+  onOtherColorChange?: (newColor: string) => void;
+  truncateAfter?: number;
 }
 
 export const ChartSettingSeriesOrder = ({
@@ -58,16 +68,43 @@ export const ChartSettingSeriesOrder = ({
   onSortEnd,
   getItemColor,
   accentColorOptions,
+  otherColor,
+  groupedAfterIndex = Infinity,
+  otherSettingWidgetId,
+  truncateAfter = Infinity,
+  onOtherColorChange,
 }: ChartSettingSeriesOrderProps) => {
+  const [isListTruncated, setIsListTruncated] = useState<boolean>(true);
   const [isSeriesPickerVisible, setSeriesPickerVisible] = useState(false);
 
-  const [visibleItems, hiddenItems] = useMemo(
+  const [items, hiddenItems] = useMemo(
     () =>
       _.partition(
         orderedItems.filter(item => !item.hidden),
         item => item.enabled,
       ),
     [orderedItems],
+  );
+  const itemsAfterGrouping = useMemo(() => {
+    return items.map((item, index) => {
+      if (index < groupedAfterIndex) {
+        return item;
+      }
+      return {
+        ...item,
+        color: undefined,
+        hideSettings: true,
+      };
+    });
+  }, [groupedAfterIndex, items]);
+
+  const [visibleItems, truncatedItems] = useMemo(
+    () =>
+      _.partition(
+        itemsAfterGrouping,
+        (_item, index) => !isListTruncated || index < truncateAfter,
+      ),
+    [isListTruncated, itemsAfterGrouping, truncateAfter],
   );
 
   const canAddSeries = hiddenItems.length > 0;
@@ -133,6 +170,52 @@ export const ChartSettingSeriesOrder = ({
 
   const getId = useCallback((item: SortableItem) => item.key, []);
 
+  const handleOtherSeriesSettingsClick = useCallback(
+    (e: React.MouseEvent) => {
+      onShowWidget({ id: otherSettingWidgetId }, getEventTarget(e));
+    },
+    [onShowWidget, otherSettingWidgetId],
+  );
+
+  const dividers = useMemo(() => {
+    return [
+      {
+        afterIndex: groupedAfterIndex,
+        renderFn: () => (
+          <Flex justify="space-between" px={4}>
+            <Group p={4} spacing="sm">
+              <ColorSelector
+                value={otherColor ?? color("text-light")}
+                colors={[
+                  ...getAccentColors(),
+                  color("text-light"),
+                  color("text-medium"),
+                  color("text-dark"),
+                ]}
+                onChange={onOtherColorChange}
+                pillSize="small"
+              />
+              <Text truncate fw="bold">{t`Other`}</Text>
+            </Group>
+            <Button
+              compact
+              color="text-medium"
+              variant="subtle"
+              leftIcon={<Icon name="gear" />}
+              aria-label={t`Other series settings`}
+              onClick={handleOtherSeriesSettingsClick}
+            />
+          </Flex>
+        ),
+      },
+    ];
+  }, [
+    groupedAfterIndex,
+    handleOtherSeriesSettingsClick,
+    onOtherColorChange,
+    otherColor,
+  ]);
+
   return (
     <ChartSettingOrderedSimpleRoot>
       {orderedItems.length > 0 ? (
@@ -149,7 +232,18 @@ export const ChartSettingSeriesOrder = ({
             removeIcon="close"
             accentColorOptions={accentColorOptions}
             getItemColor={getItemColor}
+            dividers={dividers}
           />
+          {truncatedItems.length > 0 ? (
+            <div>
+              <Button
+                variant="subtle"
+                onClick={() => setIsListTruncated(false)}
+              >
+                {t`${truncatedItems.length} more series`}
+              </Button>
+            </div>
+          ) : null}
           {canAddSeries && !isSeriesPickerVisible && (
             <Button
               variant="subtle"
