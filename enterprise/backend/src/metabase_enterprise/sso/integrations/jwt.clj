@@ -87,7 +87,10 @@
                          (jwt/unsign jwt (sso-settings/jwt-shared-secret)
                                      {:max-age three-minutes-in-seconds})
                          (catch Throwable e
-                           (throw (ex-info (ex-message e) {:status "error-jwt-bad-unsigning"}))))
+                           (throw
+                            (ex-info (ex-message e)
+                                     {:status      "error-jwt-bad-unsigning"
+                                      :status-code 400}))))
           login-attrs  (jwt-data->login-attributes jwt-data)
           email        (get jwt-data (jwt-attribute-email))
           first-name   (get jwt-data (jwt-attribute-firstname))
@@ -101,14 +104,15 @@
   (when-not (sso-settings/jwt-enabled)
     (throw
      (ex-info (tru "JWT SSO has not been enabled and/or configured")
-              {:status "error-sso-jwt-disabled"}))))
+              {:status "error-sso-jwt-disabled" :status-code 405}))))
 
 (defn ^:private generate-response-token
   [session jwt-data]
   (if-not (embed.settings/enable-embedding-sdk)
     (throw
      (ex-info (tru "SDK Embedding is disabled. Enable it in the Embedding settings.")
-              {:status "error-embedding-sdk-disabled"}))
+              {:status "error-embedding-sdk-disabled"
+               :status-code 405}))
     (response/response
      {:status :ok
       :id     (:id session)
@@ -137,4 +141,4 @@
 
 (defmethod sso.i/sso-post :jwt
   [_]
-  (throw (ex-info (tru "POST not valid for JWT SSO requests") {:status "error-post-jwt-not-valid"})))
+  (throw (ex-info (tru "POST not valid for JWT SSO requests") {:status "error-post-jwt-not-valid" :status-code 501})))
