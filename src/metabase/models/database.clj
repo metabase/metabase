@@ -139,7 +139,7 @@
 (defn check-and-schedule-tasks!
   "(Re)schedule sync operation tasks for any database which is not yet being synced regularly."
   []
-  (doseq [database (t2/select Database)]
+  (doseq [database (t2/select :model/Database)]
     (check-and-schedule-tasks-for-db! database)))
 
 ;; TODO - something like NSNotificationCenter in Objective-C would be really really useful here so things that want to
