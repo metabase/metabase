@@ -630,3 +630,33 @@ describe("View Header | Hidden tables", () => {
     expect(await screen.findByText("View-only")).toBeInTheDocument();
   });
 });
+
+describe("View Header | Inaccessible Cards", () => {
+  it("should show the View-only badge when the source question is inaccessible", async () => {
+    setup({
+      card: getSavedGUIQuestionCard({
+        can_write: false,
+        dataset_query: {
+          type: "query",
+          database: SAMPLE_DB_ID,
+          query: {
+            "source-table": "card_123",
+            joins: [
+              {
+                alias: "Orders",
+                fields: "all",
+                "source-table": ORDERS_ID,
+                condition: [
+                  "=",
+                  ["field", PRODUCTS.ID, null],
+                  ["field", ORDERS.PRODUCT_ID, null],
+                ],
+              },
+            ],
+          },
+        },
+      }),
+    });
+    expect(await screen.findByText("View-only")).toBeInTheDocument();
+  });
+});
