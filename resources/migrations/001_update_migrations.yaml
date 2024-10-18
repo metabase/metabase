@@ -9296,7 +9296,12 @@ databaseChangeLog:
         - sql: "SELECT 1" # do nothing on forward migration
       rollback:
         - sqlFile:
+            dbms: postgresql,h2
             path: permissions/rollback/table_level_native_perms.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: permissions/rollback/mysql_table_level_native_perms.sql
             relativeToChangelogFile: true
 
 
