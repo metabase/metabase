@@ -25,7 +25,8 @@
 (set! *warn-on-reflection* true)
 
 (def test-card
-  {:visualization_settings
+  {:id 1
+   :visualization_settings
    {:graph.metrics ["NumPurchased"]
     :graph.dimensions ["Price"]
     :table.column_formatting [{:columns       ["a"]

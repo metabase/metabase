@@ -3,7 +3,6 @@
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.email :as email]
-   [metabase.pulse]
    [metabase.task :as task]
    [metabase.util.log :as log]
    [metabase.util.urls :as urls]
