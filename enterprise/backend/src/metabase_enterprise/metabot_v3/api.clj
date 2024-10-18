@@ -2,6 +2,8 @@
   "`/api/ee/metabot-v3/` routes"
   (:require
    [compojure.core :refer [POST]]
+   [malli.core :as mc]
+   [malli.transform :as mtx]
    [metabase-enterprise.metabot-v3.client :as metabot-v3.client]
    [metabase-enterprise.metabot-v3.context :as metabot-v3.context]
    [metabase-enterprise.metabot-v3.handle-response :as metabot-v3.handle-response]
@@ -17,13 +19,18 @@
    [:history    [:maybe ::metabot-v3.client/history]]
    [:sequential ::metabot-v3.reactions/reaction]])
 
+(defn- encode-reactions [reactions]
+  (mc/encode [:sequential ::metabot-v3.reactions/reaction]
+             reactions
+             (mtx/transformer {:name :api-response})))
+
 (mu/defn- request :- ::response
   [message :- :string
    context :- ::metabot-v3.context/context
    history :- [:maybe ::metabot-v3.client/history]]
   (let [response (metabot-v3.client/*request* message context history)
         message  (:message response)]
-    {:reactions (metabot-v3.handle-response/handle-response-message message)
+    {:reactions (encode-reactions (metabot-v3.handle-response/handle-response-message message))
      :history   (conj (vec history) message)}))
 
 (api/defendpoint POST "/agent"

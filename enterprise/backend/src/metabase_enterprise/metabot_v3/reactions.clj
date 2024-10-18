@@ -50,6 +50,7 @@
   []
   [:and
    [:map
+    {:encode/api-response #(update-keys % u/->snake_case_en)}
     [:type ::reaction-type]]
    (into [:multi
           {:dispatch :type}
