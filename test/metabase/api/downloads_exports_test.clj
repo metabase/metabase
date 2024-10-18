@@ -158,8 +158,7 @@
                                                   :alert_condition "rows"}
                    :model/PulseCard _ (merge
                                        (when (= :csv  export-format) {:include_csv true})
-                                       (when (= :json export-format) {:include_json true})
-                                       (when (= :xlsx export-format) {:include_xlsx true})
+                                       (when (= :xlsx export-format) {:include_xls true})
                                        {:format_rows format-rows}
                                        {:pivot_results pivot}
                                        {:pulse_id pulse-id
@@ -183,8 +182,7 @@
                                                     :dashboard_id (:dashboard_id card-or-dashcard)}
                      :model/PulseCard _ (merge
                                          (when (= :csv  export-format) {:include_csv true})
-                                         (when (= :json export-format) {:include_json true})
-                                         (when (= :xlsx export-format) {:include_xlsx true})
+                                         (when (= :xlsx export-format) {:include_xls true})
                                          {:format_rows format-rows}
                                          {:pivot_results pivot}
                                          {:pulse_id          pulse-id
@@ -205,8 +203,7 @@
                                                     :dashboard_id dashboard-id}
                      :model/PulseCard _ (merge
                                          (when (= :csv  export-format) {:include_csv true})
-                                         (when (= :json export-format) {:include_json true})
-                                         (when (= :xlsx export-format) {:include_xlsx true})
+                                         (when (= :xlsx export-format) {:include_xls true})
                                          {:format_rows format-rows}
                                          {:pivot_results pivot}
                                          {:pulse_id          pulse-id
@@ -1031,3 +1028,41 @@
                 ["Doohickey" "January 1, 2016, 12:00 AM" "632.14"]
                 ["Doohickey" "January 1, 2017, 12:00 AM" "854.19"]]
                (take 3 (card-download card {:export-format :xlsx :format-rows false :pivot true}))))))))
+
+(deftest unformatted-downloads-and-exports-keep-numbers-as-numbers
+  (testing "Unformatted numbers in downloads remain numbers."
+    (mt/dataset test-data
+      (mt/with-temp [:model/Card card {:display       :table
+                                       :dataset_query {:database (mt/id)
+                                                       :type     :native
+                                                       :native   {:query "SELECT 1234.567 as A"}}}]
+        (testing "CSV downloads respect the formatted/unformatted setting"
+          (let [formatted-json-results   (all-downloads card {:export-format :csv :format-rows true})
+                unformatted-json-results (all-downloads card {:export-format :csv :format-rows false})]
+            (is (= {:unsaved-card-download    [["A"] ["1,234.57"]]
+                    :card-download            [["A"] ["1,234.57"]]
+                    :public-question-download [["A"] ["1,234.57"]]
+                    :dashcard-download        [["A"] ["1,234.57"]]
+                    :public-dashcard-download [["A"] ["1,234.57"]]}
+                   formatted-json-results))
+            (is (= {:unsaved-card-download    [["A"] ["1234.567"]]
+                    :card-download            [["A"] ["1234.567"]]
+                    :public-question-download [["A"] ["1234.567"]]
+                    :dashcard-download        [["A"] ["1234.567"]]
+                    :public-dashcard-download [["A"] ["1234.567"]]}
+                   unformatted-json-results))))
+        (testing "JSON downloads respect the formatted/unformatted setting"
+          (let [formatted-json-results   (all-downloads card {:export-format :json :format-rows true})
+                unformatted-json-results (all-downloads card {:export-format :json :format-rows false})]
+            (is (= {:unsaved-card-download    [["A"] ["1,234.57"]]
+                    :card-download            [["A"] ["1,234.57"]]
+                    :public-question-download [["A"] ["1,234.57"]]
+                    :dashcard-download        [["A"] ["1,234.57"]]
+                    :public-dashcard-download [["A"] ["1,234.57"]]}
+                   formatted-json-results))
+            (is (= {:unsaved-card-download    [["A"] [1234.567]]
+                    :card-download            [["A"] [1234.567]]
+                    :public-question-download [["A"] [1234.567]]
+                    :dashcard-download        [["A"] [1234.567]]
+                    :public-dashcard-download [["A"] [1234.567]]}
+                   unformatted-json-results))))))))
