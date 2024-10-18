@@ -9,6 +9,13 @@
 }
 
 .item:not([data-css-specificity-hack="🪗"]) {
+  &,
+  & + &,
+  &[data-active="true"] {
+    border: 0;
+    margin-top: 0;
+  }
+
   &:not(:last-child) {
     margin-bottom: 0.25rem;
   }
@@ -57,7 +64,12 @@
   }
 }
 
+.chevron:not([data-css-specificity-hack="🪗"]) {
+  border: 0;
+}
+
 .content:not([data-css-specificity-hack="🪗"]) {
+  border: 0;
   color: var(--mb-color-text-medium);
   padding-inline: 1rem;
   padding-top: 1.5rem;
