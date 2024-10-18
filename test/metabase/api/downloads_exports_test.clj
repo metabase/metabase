@@ -75,9 +75,9 @@
                                             :was-pivot (boolean pivot)
                                             :info {:visualization-settings (:visualization_settings card)}
                                             :middleware
-                                            {:format-rows?    format-rows
-                                             :pivot?          (boolean pivot)
-                                             :userland-query? true})))
+                                            {:userland-query? true}))
+                             :format_rows   format-rows
+                             :pivot_results (boolean pivot))
        (process-results pivot export-format)))
 
 (defn public-question-download

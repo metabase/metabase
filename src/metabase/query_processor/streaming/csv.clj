@@ -113,7 +113,7 @@
                                          (let [row-v (into [] row)]
                                            (into [] (for [i output-order] (row-v i))))
                                          row)
-              {:keys [pivot-grouping]} (:config @pivot-data)
+              {:keys [pivot-grouping]} (or (:config @pivot-data) @pivot-data)
               group                    (get ordered-row pivot-grouping)]
           (if (contains? @pivot-data :config)
             ;; if we're processing a pivot result, we don't write it out yet, just aggregate it

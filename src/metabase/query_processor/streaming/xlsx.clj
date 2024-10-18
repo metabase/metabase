@@ -678,7 +678,7 @@
                                    pivot-grouping-key (m/remove-nth pivot-grouping-key))
               {:keys [sheet]}    @workbook-data]
           (when (or (not group)
-                    (= group 0))
+                    (= qp.pivot.postprocess/NON_PIVOT_ROW_GROUP (int group)))
             (add-row! sheet (inc row-num) modified-row ordered-cols col-settings @cell-styles @typed-cell-styles)
             (when (= (inc row-num) *auto-sizing-threshold*)
               (autosize-columns! sheet)))))
