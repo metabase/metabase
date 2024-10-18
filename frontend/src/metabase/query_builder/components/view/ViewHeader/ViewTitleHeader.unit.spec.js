@@ -3,7 +3,6 @@ import fetchMock from "fetch-mock";
 import { Route } from "react-router";
 import _ from "underscore";
 
-import { setupCardQueryMetadataEndpoint } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
 import { fireEvent, renderWithProviders, screen } from "__support__/ui";
 import MetabaseSettings from "metabase/lib/settings";
@@ -149,8 +148,6 @@ function setup({
   const question = isSaved
     ? metadata.question(card.id)
     : new Question(card, metadata);
-
-  setupCardQueryMetadataEndpoint(card, metadata);
 
   renderWithProviders(
     <Route
