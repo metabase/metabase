@@ -178,9 +178,9 @@
 (defsetting allowed-iframe-hosts
   (deferred-tru "Allowed iframe hosts")
   :encryption :no
-  :default    "Metabase"
+  :default    "*"
   :audit      :getter
-  :visibility :settings-manager
+  :visibility :public
   :export?    true)
 
 (defsetting custom-homepage
