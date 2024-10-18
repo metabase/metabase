@@ -9,6 +9,7 @@
    [metabase-enterprise.metabot-v3.handle-response :as metabot-v3.handle-response]
    [metabase-enterprise.metabot-v3.reactions :as metabot-v3.reactions]
    [metabase.api.common :as api]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
@@ -19,10 +20,12 @@
    [:history    [:maybe #_::metabot-v3.client/history :any]]
    [:sequential ::metabot-v3.reactions/reaction]])
 
-(defn- encode-reactions [reactions]
+(mu/defn ^:private encode-reactions [reactions :- [:sequential ::metabot-v3.reactions/reaction]]
   (mc/encode [:sequential ::metabot-v3.reactions/reaction]
              reactions
-             (mtx/transformer {:name :api-response})))
+             (mtx/transformer
+              {:name :api-response}
+              (mtx/key-transformer {:encode u/->snake_case_en}))))
 
 (mu/defn- request :- ::response
   [input-message :- :string

@@ -22,9 +22,23 @@
                                            :properties {"email" {:type :string
                                                                  :description "A valid email address of the user to invite"}}
                                            :required   ["email"]
-                                           :additionalProperties false}}]
+                                           :additional_properties false}}]
             :instance_info {}}
            (#'metabot-v3.client/build-request-body "Hello" {} [])))))
+
+(deftest ^:parallel encode-request-body-test
+  (is (= {:messages [{:content    nil
+                      :role       :assistant
+                      :tool_calls [{:id "call_xsI6ygzaTnANYVxcmoAiRLRL"
+                                    :name :say-hello
+                                    :arguments "{\"name\":\"User\",\"greeting\":\"Hello!\"}"}]}]
+          :context    {}}
+         (#'metabot-v3.client/encode-request-body
+          {:messages [{:content     nil
+                       :role        :assistant
+                       :tool-calls [{:id "call_xsI6ygzaTnANYVxcmoAiRLRL"
+                                     :name :say-hello
+                                     :arguments {:name "User", :greeting "Hello!"}}]}]}))))
 
 (deftest ^:parallel decode-response-body-test
   (is (= {:message {:content    nil

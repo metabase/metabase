@@ -850,7 +850,11 @@
   ;;
   ;;    clj -X:ee:metabot-v3/repl
   :metabot-v3/repl
-  {:exec-fn metabase-enterprise.metabot-v3.repl/user-repl-cli}}
+  {:exec-fn metabase-enterprise.metabot-v3.repl/user-repl-cli}
+
+  ;; clj -X:dev:ee:ee-dev:test:test/metabot-v3
+  :test/metabot-v3
+  {:exec-args {:only "enterprise/backend/test/metabase_enterprise/metabot_v3"}}}
 
  ;; TODO -- consider creating an alias that includes the `./bin` build-drivers & release code as well so we can work
  ;; on them all from a single REPL process.
