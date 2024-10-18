@@ -26,37 +26,32 @@
     clause))
 
 (deftest ^:parallel case-type-of-test
-  (are [expr expected] (= expected
-                          (expression/type-of expr))
-    ;; easy, no ambiguity
-    (case-expr 1 1)
-    :type/Integer
+  (testing "In MLv2, case expression's type is the first non-nil type of its values, same approach as in qp"
+    ;; In qp: `annotate/infer-expression-type`
+    ;; In MLv2: `expression/type-of-method :case`
+    (are [expr expected] (= expected
+                            (expression/type-of expr))
 
-    ;; Ambiguous literal types
-    (case-expr "2023-03-08")
-    #{:type/Text :type/Date}
+      (case-expr 1 1)
+      :type/Integer
 
-    (case-expr "2023-03-08" "2023-03-08")
-    #{:type/Text :type/Date}
+      (case-expr "2023-03-08")
+      #{:type/Text :type/Date}
 
-    ;; Ambiguous literal types mixed with unambiguous types
-    (case-expr "2023-03-08" "abc")
-    :type/Text
+      (case-expr "2023-03-08" "2023-03-08")
+      #{:type/Text :type/Date}
 
-    ;; Literal types that are ambiguous in different ways! `:type/Text` is the only common type between them!
-    (case-expr "2023-03-08" "05:13")
-    :type/Text
+      (case-expr "2023-03-08" "abc")
+      #{:type/Text :type/Date}
 
-    ;; Confusion! The "2023-03-08T06:15" is #{:type/String :type/DateTime}, which is less specific than
-    ;; `:type/DateTimeWithLocalTZ`. Technically this should return `:type/DateTime`, since it's the most-specific
-    ;; common ancestor type compatible with all args! But calculating that stuff is way too hard! So this will have to
-    ;; do for now! -- Cam
-    (case-expr "2023-03-08T06:15" [:field {:lib/uuid (str (random-uuid)), :base-type :type/DateTimeWithLocalTZ} 1])
-    :type/DateTimeWithLocalTZ
+      (case-expr "2023-03-08" "05:13")
+      #{:type/Text :type/Date}
 
-    ;; Differing types with a common base type that is more specific than `:type/*`
-    (case-expr 1 1.1)
-    :type/Float))
+      (case-expr "2023-03-08T06:15" [:field {:lib/uuid (str (random-uuid)), :base-type :type/DateTimeWithLocalTZ} 1])
+      #{:type/Text :type/DateTime}
+
+      (case-expr 1 1.1)
+      :type/Integer)))
 
 (deftest ^:parallel coalesce-test
   (is (mc/validate
