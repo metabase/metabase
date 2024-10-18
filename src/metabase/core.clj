@@ -14,6 +14,7 @@
    [metabase.events :as events]
    [metabase.logger :as logger]
    [metabase.models.cloud-migration :as cloud-migration]
+   [metabase.models.database :as database]
    [metabase.models.setting :as settings]
    [metabase.plugins :as plugins]
    [metabase.plugins.classloader :as classloader]
@@ -158,6 +159,8 @@
   (settings/migrate-encrypted-settings!)
   ;; start scheduler at end of init!
   (task/start-scheduler!)
+  ;; In case we could not do this earlier (e.g. for DBs added via config file), because the scheduler was not up yet:
+  (database/check-and-schedule-tasks!)
   (init-status/set-complete!)
   (let [start-time (.getStartTime (ManagementFactory/getRuntimeMXBean))
         duration   (- (System/currentTimeMillis) start-time)]
