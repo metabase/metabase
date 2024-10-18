@@ -75,4 +75,4 @@ export const StyledLauncher = styled(
     align-items: stretch;
     gap: 0.5rem;
   }
-`;
+` as unknown as typeof Flex;

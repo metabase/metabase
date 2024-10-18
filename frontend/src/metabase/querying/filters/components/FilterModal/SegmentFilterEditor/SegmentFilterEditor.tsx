@@ -43,7 +43,7 @@ export function SegmentFilterEditor({
           data={data}
           value={value}
           placeholder={t`Filter segments`}
-          nothingFound={t`No matching segment found.`}
+          nothingFoundMessage={t`No matching segment found.`}
           aria-label={t`Filter segments`}
           searchable
           onChange={handleChange}

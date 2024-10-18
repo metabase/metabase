@@ -351,6 +351,7 @@ export function EntityPickerModal<
        * Height is specified here to make that assertion pass.
        */
       h="100vh"
+      w="100vw"
       trapFocus={trapFocus}
       closeOnEscape={false} // we're doing this manually in useWindowEvent
       xOffset="10vw"
@@ -358,7 +359,7 @@ export function EntityPickerModal<
       zIndex={ENTITY_PICKER_Z_INDEX} // needs to be above popovers and bulk actions
     >
       <Modal.Overlay />
-      <ModalContent h="100%">
+      <ModalContent h="100%" w="100%">
         <Modal.Header
           px="1.5rem"
           pt="1rem"
@@ -379,7 +380,7 @@ export function EntityPickerModal<
               />
             )}
           </GrowFlex>
-          <Modal.CloseButton size={21} pos="relative" top="1px" />
+          <Modal.CloseButton size={21} pos="relative" top="1px" c="text-dark" />
         </Modal.Header>
         <ModalBody p="0">
           {!isLoadingTabs && !isLoadingRecentItems ? (

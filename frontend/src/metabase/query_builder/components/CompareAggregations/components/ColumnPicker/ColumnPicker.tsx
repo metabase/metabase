@@ -9,7 +9,7 @@ import type { ColumnType, ComparisonType } from "../../types";
 import S from "./ColumnPicker.module.css";
 
 interface ItemType {
-  example: string;
+  example?: string;
   label: string;
   value: ColumnType;
 }
@@ -32,8 +32,8 @@ export const ColumnPicker = ({ value, onChange, comparisonType }: Props) => {
     <MultiSelect
       data={getColumnOptions(comparisonType)}
       data-testid="column-picker"
-      disableSelectedItemFiltering
-      itemComponent={Item}
+      hidePickedOptions={false}
+      renderOption={Item}
       label={t`Columns to create`}
       placeholder={t`Columns to create`}
       styles={{

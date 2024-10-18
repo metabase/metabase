@@ -42,7 +42,7 @@ export const FormBox = styled(Box)<
       : `
       padding-inline: 2.5rem;
   `}
-`;
+` as unknown as typeof Box;
 
 export const StyledFormButtonsGroup = styled(Group)<{ isInSidebar?: boolean }>`
   padding-block: 1rem;

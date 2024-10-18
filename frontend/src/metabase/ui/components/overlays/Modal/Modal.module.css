@@ -19,3 +19,19 @@
 .content {
   background-color: var(--mb-color-background);
 }
+
+.ModalCloseButton {
+  color: var(--mb-color-text-tertiary) !important;
+  padding: 0;
+  width: rem(18px);
+  height: rem(18px);
+
+  &:hover {
+    color: var(--mb-color-text-secondary) !important;
+  }
+
+  svg {
+    width: 20px !important;
+    height: 20px !important;
+  }
+}

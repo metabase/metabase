@@ -125,16 +125,16 @@ describe("Schedule utility functions", () => {
 
     it("should return an empty string if all objects have no labels", () => {
       const data: SelectProps["data"] = [
-        { value: "first" },
-        { value: "second" },
+        { value: "first", label: "first" },
+        { value: "second", label: "second" },
       ];
       const result = getLongestSelectLabel(data);
       expect(result).toBe("");
     });
 
-    it("should handle undefined labels in objects", () => {
+    it("should handle empty labels in objects", () => {
       const data: SelectProps["data"] = [
-        { value: "first", label: undefined },
+        { value: "first", label: "" },
         { value: "second", label: "valid label" },
       ];
       const result = getLongestSelectLabel(data);
