@@ -49,8 +49,8 @@
                         [:data :status-code]))))))
           (testing "When the `:llm-autodescription` feature is disabled, you get a 402 with message"
             (mt/with-premium-features #{}
-              (is (= "LLM Auto-description is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
-                     (mt/user-http-request :rasta :post 402 "ee/autodescribe/card/summarize" card))))))))))
+              (mt/assert-has-premium-feature-error "LLM Auto-description"
+                                                   (mt/user-http-request :rasta :post 402 "ee/autodescribe/card/summarize" card)))))))))
 
 (deftest summarize-dashboard-test
   (testing "POST /api/ee/autodescribe/dashboard/summarize/:id"
@@ -95,5 +95,5 @@
                         [:data :status-code]))))))
           (testing "When the `:llm-autodescription` feature is disabled, you get a 402 with message"
             (mt/with-premium-features #{}
-              (is (= "LLM Auto-description is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
-                     (mt/user-http-request :rasta :post 402 url))))))))))
+              (mt/assert-has-premium-feature-error "LLM Auto-description"
+                                                   (mt/user-http-request :rasta :post 402 url)))))))))
