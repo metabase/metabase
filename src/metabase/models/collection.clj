@@ -416,29 +416,19 @@
    ;; large
    :ttl/threshold (* 60 60 1000)))
 
-(mu/defn user->personal-collection-and-descendant-ids :- [:maybe [:sequential {:min 1} ms/PositiveInt]]
+(mu/defn user->personal-collection-and-descendant-ids :- [:sequential ms/PositiveInt]
   "Somewhat-optimized function that fetches the ID of a User's Personal Collection as well as the IDs of all descendants
   of that Collection. Exists because this needs to be known to calculate the Current User's permissions set, which is
   done for every API call; this function is an attempt to make fetching this information as efficient as reasonably
   possible."
   [user-or-id]
-  (when-let [personal-collection-id (user->personal-collection-id (u/the-id user-or-id))]
-    (cons personal-collection-id
-          ;; `descendant-ids` wants a CollectionWithLocationAndID, and luckily we know Personal Collections always go
-          ;; in Root, so we can pass it what it needs without actually having to fetch an entire CollectionInstance
-          (descendant-ids {:location "/", :id personal-collection-id}))))
-
-(mu/defn user->existing-personal-collection-and-descendant-ids :- [:maybe [:sequential {:min 1} ms/PositiveInt]]
-  "Fetches the ID of a user's personal collection as well as the IDs of all descendants of that collection. Similar to
-  the above, but please note that this version will not cache results, while
-  `user->personal-collection-and-descendant-ids` will."
-  [user-or-id]
-  (let [personal-collection-id (:id (user->existing-personal-collection user-or-id))]
-    (when personal-collection-id
-      (cons personal-collection-id
-            ;; `descendant-ids` wants a CollectionWithLocationAndID, and luckily we know Personal Collections always go
-            ;; in Root, so we can pass it what it needs without actually having to fetch an entire CollectionInstance
-            (descendant-ids {:location "/", :id personal-collection-id})))))
+  (into []
+        (when-let [personal-collection-id (user->personal-collection-id (u/the-id user-or-id))]
+          (conj
+           ;; `descendant-ids` wants a CollectionWithLocationAndID, and luckily we know Personal Collections always go
+           ;; in Root, so we can pass it what it needs without actually having to fetch an entire CollectionInstance
+           (descendant-ids {:location "/", :id personal-collection-id})
+           personal-collection-id))))
 
 (mi/define-batched-hydration-method include-personal-collection-ids
   :personal_collection_id
@@ -626,7 +616,8 @@
                                               {:select [[:c.*]]
                                                :from   [[:collection :c]]
                                                :where  [:= :type "trash"]}
-                                              (when-let [personal-collection-and-descendant-ids (user->personal-collection-and-descendant-ids current-user-id)]
+                                              (when-let [personal-collection-and-descendant-ids
+                                                         (seq (user->personal-collection-and-descendant-ids current-user-id))]
                                                 {:select [:c.*]
                                                  :from   [[:collection :c]]
                                                  :where  [:in :id personal-collection-and-descendant-ids]})])}
