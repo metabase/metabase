@@ -6,14 +6,14 @@ import { ExcludeDatePicker } from "./ExcludeDatePicker";
 import { RelativeDatePicker } from "./RelativeDatePicker";
 import { SpecificDatePicker } from "./SpecificDatePicker";
 import {
-  DATE_PICKER_EXTRACTION_UNITS,
   DATE_PICKER_OPERATORS,
   DATE_PICKER_SHORTCUTS,
+  DATE_PICKER_UNITS,
 } from "./constants";
 import type {
-  DatePickerExtractionUnit,
   DatePickerOperator,
   DatePickerShortcut,
+  DatePickerUnit,
   DatePickerValue,
 } from "./types";
 
@@ -21,7 +21,7 @@ interface DatePickerProps {
   value?: DatePickerValue;
   availableOperators?: ReadonlyArray<DatePickerOperator>;
   availableShortcuts?: ReadonlyArray<DatePickerShortcut>;
-  availableUnits?: ReadonlyArray<DatePickerExtractionUnit>;
+  availableUnits?: ReadonlyArray<DatePickerUnit>;
   canUseRelativeOffsets?: boolean;
   backButton?: ReactNode;
   isNew?: boolean;
@@ -32,7 +32,7 @@ export function DatePicker({
   value,
   availableOperators = DATE_PICKER_OPERATORS,
   availableShortcuts = DATE_PICKER_SHORTCUTS,
-  availableUnits = DATE_PICKER_EXTRACTION_UNITS,
+  availableUnits = DATE_PICKER_UNITS,
   canUseRelativeOffsets = false,
   isNew = value == null,
   backButton,
