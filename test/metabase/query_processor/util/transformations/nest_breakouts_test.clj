@@ -122,33 +122,34 @@
                          ;;
                          ;;    (metabase.driver/escape-alias :oracle "test_data_products__via__product_id")
                          ;;    =>
-                         ;;    "test_data_products__v_af2712b9"
-                         :joins [{:alias "test_data_products__v_af2712b9"
+                         ;;    "test_data_products__v_f27d7c58"
+                         :joins [{:alias "test_data_products__v_f27d7c58"
                                   :conditions [[:=
                                                 {}
                                                 [:field {} pos-int?]
                                                 [:field
-                                                 {:join-alias "test_data_products__v_af2712b9"}
+                                                 {:join-alias "test_data_products__v_f27d7c58"}
                                                  pos-int?]]]
                                   :stages     [{:lib/type :mbql.stage/mbql, :source-table pos-int?}]}]
                          :fields [[:field {} pos-int?]
-                                  [:field {:join-alias "test_data_products__v_af2712b9"} pos-int?]]
+                                  [:field {:join-alias "test_data_products__v_f27d7c58"} pos-int?]]
                          :filters [[:>
                                     {}
                                     [:field {} pos-int?]
                                     [:value {} 5000]]]}
                         ;; new second stage. Source column names are escaped:
                         ;;
-                        ;;    (metabase.driver/escape-alias :oracle "test_data_products__v_af2712b9__category")
+                        ;;    (metabase.driver/escape-alias :oracle "test_data_products__v_f27d7c58__category")
                         ;;    =>
-                        ;;    "test_data_products__v_f48e965c"
+                        ;;    "test_data_products__v_6cb1dd22"
                         {:breakout [[:field {} "created_at"]
                                     [:field {:join-alias   (symbol "nil #_\"key is not present.\"")
                                              :source-field (symbol "nil #_\"key is not present.\"")}
-                                     "test_data_products__v_f48e965c"]]
+                                     "test_data_products__v_6cb1dd22"]]
                          :aggregation [[:count {:name "count"}]
                                        [:cum-count {:name "count_2"}]]}]
                ;; unrelated TODO, but I think `:alias/escaped->original` should be a string -> string map not keyword ->
                ;; string
-               :info {:alias/escaped->original {:test-data-products--v-af2712b9 "test_data_products__via__product_id"}}}
+               :info {:alias/escaped->original {:test-data-products--v-f27d7c58
+                                                "test_data_products__via__product_id__of__test_data_orders"}}}
               (nest-breakouts/nest-breakouts-in-stages-with-window-aggregation preprocessed))))))
