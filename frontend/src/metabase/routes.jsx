@@ -32,6 +32,7 @@ import { DashboardAppConnected } from "metabase/dashboard/containers/DashboardAp
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { Route } from "metabase/hoc/Title";
 import { HomePage } from "metabase/home/components/HomePage";
+import { Onboarding } from "metabase/home/components/Onboarding";
 import { trackPageView } from "metabase/lib/analytics";
 import DatabaseMetabotApp from "metabase/metabot/containers/DatabaseMetabotApp";
 import ModelMetabotApp from "metabase/metabot/containers/ModelMetabotApp";
@@ -129,6 +130,14 @@ export const getRoutes = store => {
               }
             }}
           />
+
+          <Route
+            path="getting-started"
+            title={t`Getting Started`}
+            component={IsAdmin}
+          >
+            <IndexRoute component={Onboarding} />
+          </Route>
 
           <Route path="search" title={t`Search`} component={SearchApp} />
           {/* Send historical /archive route to trash - can remove in v52 */}
