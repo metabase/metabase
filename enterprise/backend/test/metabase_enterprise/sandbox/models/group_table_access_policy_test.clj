@@ -5,6 +5,7 @@
     :as sandboxes
     :refer [GroupTableAccessPolicy]]
    [metabase.models :refer [Card]]
+   [metabase.models.data-permissions :as data-perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.test :as mt]
@@ -166,3 +167,25 @@
                 {(u/the-id (perms-group/all-users))
                  {(mt/id)
                   {:view-data :unrestricted}}}))))))))
+
+(deftest saving-sandbox-disables-native-access
+  (mt/with-premium-features #{:sandboxes}
+    (mt/with-full-data-perms-for-all-users!
+      (testing "Saving a sandbox automatically disables native query access to the sandboxed table"
+        (mt/with-temp [:model/User                   user {}
+                       :model/GroupTableAccessPolicy _    {:table_id (mt/id :venues)
+                                                           :group_id (u/the-id (perms-group/all-users))}]
+          (is (= {(mt/id) {:perms/create-queries
+                           {(mt/id :venues)     :query-builder
+                            (mt/id :orders)     :query-builder-and-native
+                            (mt/id :users)      :query-builder-and-native
+                            (mt/id :categories) :query-builder-and-native
+                            (mt/id :checkins)   :query-builder-and-native
+                            (mt/id :products)   :query-builder-and-native
+                            (mt/id :people)     :query-builder-and-native
+                            (mt/id :reviews)    :query-builder-and-native}}}
+                 (data-perms/permissions-for-user (u/the-id user)
+                                                  :db-id
+                                                  (mt/id)
+                                                  :perm-type
+                                                  :perms/create-queries))))))))
