@@ -4,7 +4,8 @@ import { hasPremiumFeature } from "metabase-enterprise/settings";
 import { Metabot } from "./Metabot";
 import { metabotReducer } from "./state";
 
-if (hasPremiumFeature("metabot_v3")) {
+// TODO: not seeing feature enabled in my token...
+if (!!true || hasPremiumFeature("metabot_v3")) {
   PLUGIN_METABOT.Metabot = Metabot;
   PLUGIN_REDUCERS.metabotPlugin = metabotReducer;
 }
