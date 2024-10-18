@@ -234,6 +234,17 @@
                              [:and
                               [:= :bookmark.card_id :card.id]
                               [:= :bookmark.user_id (:current-user-id search-ctx)]])
+      (sql.helpers/where [:or
+                          ;; we'll *always* select non-dashboard questions
+                          [:= nil :card.dashboard_id]
+                          ;; when we want dashboard questions too, we *only* include those that have a DashboardCard.
+                          ;; A DashboardQuestion without a DashboardCard should effectively not exist: it's invisible
+                          ;; from the collection picker or when browsing, so it shouldn't be visible in search either.
+                          (when (:include-dashboard-questions? search-ctx)
+                            [:exists
+                             {:select 1
+                              :from [:report_dashboardcard]
+                              :where [:= :card_id :card.id]}])])
       (add-collection-join-and-where-clauses "card" search-ctx)
       (add-card-db-id-clause (:table-db-id search-ctx))
       (with-last-editing-info "card")
