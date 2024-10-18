@@ -76,8 +76,8 @@
     (let [known-files (set (.list (io/file api.serialization/parent-dir)))]
       (testing "Should require a token with `:serialization`"
         (mt/with-premium-features #{}
-          (is (= "Serialization is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
-                 (mt/user-http-request :rasta :post 402 "ee/serialization/export")))))
+          (mt/assert-has-premium-feature-error "Serialization"
+                                               (mt/user-http-request :rasta :post 402 "ee/serialization/export"))))
       (mt/with-premium-features #{:serialization}
         (testing "POST /api/ee/serialization/export"
           (mt/with-empty-h2-app-db

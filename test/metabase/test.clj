@@ -294,7 +294,8 @@
 
  [tu.public-setings
   with-premium-features
-  with-additional-premium-features]
+  with-additional-premium-features
+  assert-has-premium-feature-error]
 
  [u.random
   random-name
