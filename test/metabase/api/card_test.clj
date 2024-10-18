@@ -3958,6 +3958,21 @@
     (testing "We can't set the `type`"
       (is (mt/user-http-request :crowberto :put 400 (str "card/" card-id) {:type "model"})))))
 
+(deftest dashboard-questions-get-autoplaced-on-unarchive-or-placement
+  (mt/with-temp [:model/Collection {coll-id :id} {}
+                 :model/Dashboard {dash-id :id} {:collection_id coll-id}
+                 :model/Card {card-id :id} {}]
+    (let [dashcard-exists? #(t2/exists? :model/DashboardCard :dashboard_id dash-id :card_id card-id)]
+      ;; move it to the dashboard - now it has a dashcard (autoplacement)
+      (mt/user-http-request :crowberto :put 200 (str "card/" card-id) {:dashboard_id dash-id})
+      (is (dashcard-exists?))
+      ;; archive it and remove it from the dashboard
+      (mt/user-http-request :crowberto :put 200 (str "card/" card-id) {:archived true})
+      (t2/delete! :model/DashboardCard :card_id card-id :dashboard_id dash-id)
+      ;; unarchive it, it gets autoplaced
+      (mt/user-http-request :crowberto :put 200 (str "card/" card-id) {:archived false})
+      (is (dashcard-exists?)))))
+
 (deftest moving-dashboard-questions
   (testing "We can move a dashboard question to a collection"
     (mt/with-temp [:model/Collection {coll-id :id} {}

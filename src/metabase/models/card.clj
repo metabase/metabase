@@ -715,7 +715,7 @@
         archived-after? (boolean new-archived)]
     ;; we'll end up unarchived and a dashboard card => make sure we autoplace
     (when (and on-dashboard-after? (not archived-after?))
-      (autoplace-dashcard-for-card! (:dashboard_id card-updates) card-before-update)
+      (autoplace-dashcard-for-card! new-dashboard-id card-before-update)
       (events/publish-event! :event/dashboard-update {:object (t2/select-one :model/Dashboard new-dashboard-id)
                                                       :user-id api/*current-user-id*}))
 
