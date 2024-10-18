@@ -109,25 +109,26 @@
               (.flush writer)))))
 
       (write-row! [_ row _row-num _ {:keys [output-order]}]
-        (let [ordered-row (if output-order
-                            (let [row-v (into [] row)]
-                              (into [] (for [i output-order] (row-v i))))
-                            row)]
+        (let [ordered-row              (if output-order
+                                         (let [row-v (into [] row)]
+                                           (into [] (for [i output-order] (row-v i))))
+                                         row)
+              {:keys [pivot-grouping]} (:config @pivot-data)
+              group                    (get ordered-row pivot-grouping)]
           (if (contains? @pivot-data :config)
             ;; if we're processing a pivot result, we don't write it out yet, just aggregate it
             ;; so that we can post process the data in finish!
-            (when (= 0 (nth ordered-row (get-in @pivot-data [:config :pivot-grouping])))
-              (swap! pivot-data (fn [a] (qp.pivot.postprocess/add-row a ordered-row))))
+            (when (= qp.pivot.postprocess/NON_PIVOT_ROW_GROUP (int group))
+              (swap! pivot-data (fn [pivot-data] (qp.pivot.postprocess/add-row pivot-data ordered-row))))
 
-            (if-let [{:keys [pivot-grouping]} @pivot-data]
-              (let [group (get ordered-row pivot-grouping)]
-                (when (= 0 group)
-                  (let [formatted-row (->> (perf/mapv (fn [formatter r]
-                                                        (formatter (common/format-value r)))
-                                                      @ordered-formatters ordered-row)
-                                           (m/remove-nth pivot-grouping))]
-                    (write-csv writer [formatted-row])
-                    (.flush writer))))
+            (if group
+              (when (= qp.pivot.postprocess/NON_PIVOT_ROW_GROUP (int group))
+                (let [formatted-row (->> (perf/mapv (fn [formatter r]
+                                                      (formatter (common/format-value r)))
+                                                    @ordered-formatters ordered-row)
+                                         (m/remove-nth pivot-grouping))]
+                  (write-csv writer [formatted-row])
+                  (.flush writer)))
               (let [formatted-row (perf/mapv (fn [formatter r]
                                                (formatter (common/format-value r)))
                                              @ordered-formatters ordered-row)]
