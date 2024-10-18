@@ -1,7 +1,6 @@
 import { Modal } from "@mantine/core";
 import { t } from "ttag";
 
-// See `zIndex` prop at https://v6.mantine.dev/core/modal/?t=props
 export const DEFAULT_MODAL_Z_INDEX = 200;
 const DEFAULT_MODAL_SPACING = "lg";
 
@@ -17,6 +16,7 @@ export const modalOverrides = {
       title: Styles.title,
       overlay: Styles.overlay,
       content: Styles.content,
+      close: Styles.ModalCloseButton,
     },
   }),
 
