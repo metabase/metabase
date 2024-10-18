@@ -51,8 +51,7 @@
         (upload-test/with-uploads-enabled!
           (testing "Behind a feature flag"
             (mt/with-premium-features #{} ;; not :upload-management
-              (is (str/starts-with? (mt/user-http-request :crowberto :delete 402 (delete-url 1))
-                                    "Upload Management is a paid feature not currently available to your instance."))))
+              (mt/assert-has-premium-feature-error "Upload Management" (mt/user-http-request :crowberto :delete 402 (delete-url 1)))))
 
           (mt/with-premium-features #{:upload-management}
             (testing "Happy path\n"
