@@ -34,6 +34,7 @@ runs:
             ["dashboard", {} ],
             ["dashboard-cards", {} ],
             ["dashboard-filters", {} ],
+            ["dashboard-filters-2", {} ],
             ["embedding", {} ],
             ["embedding-sdk", { context: "embedding-sdk" } ],
             ["filters", {} ],

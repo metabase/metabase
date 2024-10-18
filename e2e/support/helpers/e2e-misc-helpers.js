@@ -307,9 +307,17 @@ export function interceptIfNotPreviouslyDefined({ method, url, alias } = {}) {
   }
 }
 
+/**
+ *
+ * @param {string=} name
+ * @param {Object=} options
+ * @param {boolean=} [options.addToDashboard]
+ * @param {boolean=} [options.wrapId]
+ * @param {string=} [options.idAlias]
+ */
 export function saveQuestion(
   name,
-  { wrapId = false, idAlias = "questionId" } = {},
+  { addToDashboard = false, wrapId = false, idAlias = "questionId" } = {},
 ) {
   cy.intercept("POST", "/api/card").as("saveQuestion");
   cy.findByTestId("qb-header").button("Save").click();
@@ -328,8 +336,13 @@ export function saveQuestion(
   });
 
   cy.get("#QuestionSavedModal").within(() => {
-    cy.findByText(/add this to a dashboard/i);
-    cy.findByText("Not now").click();
+    cy.findByText(/add this to a dashboard/i).should("be.visible");
+
+    if (addToDashboard) {
+      cy.button("Yes please!").click();
+    } else {
+      cy.button("Not now").click();
+    }
   });
 }
 
