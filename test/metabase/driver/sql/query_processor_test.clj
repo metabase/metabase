@@ -837,7 +837,7 @@
 (deftest ^:parallel join-against-query-with-implicit-joins-test
   (testing "Should be able to do subsequent joins against a query with implicit joins (#17767)"
     (qp.store/with-metadata-provider meta/metadata-provider
-      (is (= '{:select    [source.PRODUCTS__via__PRODUCT_ID__ID AS PRODUCTS__via__PRODUCT_ID__ID
+      (is (= '{:select    [source.PRODUCTS__via__PRODUCT_ID__of__ORDERS__ID AS PRODUCTS__via__PRODUCT_ID__of__ORDERS__ID
                            source.count                         AS count
                            Reviews.ID                           AS Reviews__ID
                            Reviews.PRODUCT_ID                   AS Reviews__PRODUCT_ID
@@ -845,16 +845,16 @@
                            Reviews.RATING                       AS Reviews__RATING
                            Reviews.BODY                         AS Reviews__BODY
                            Reviews.CREATED_AT                   AS Reviews__CREATED_AT]
-               :from      [{:select    [PRODUCTS__via__PRODUCT_ID.ID AS PRODUCTS__via__PRODUCT_ID__ID
+               :from      [{:select    [PRODUCTS__via__PRODUCT_ID__of__ORDERS.ID AS PRODUCTS__via__PRODUCT_ID__of__ORDERS__ID
                                         COUNT (*)                    AS count]
                             :from      [ORDERS]
-                            :left-join [PRODUCTS AS PRODUCTS__via__PRODUCT_ID
-                                        ON ORDERS.PRODUCT_ID = PRODUCTS__via__PRODUCT_ID.ID]
-                            :group-by  [PRODUCTS__via__PRODUCT_ID.ID]
-                            :order-by  [PRODUCTS__via__PRODUCT_ID.ID ASC]}
+                            :left-join [PRODUCTS AS PRODUCTS__via__PRODUCT_ID__of__ORDERS
+                                        ON ORDERS.PRODUCT_ID = PRODUCTS__via__PRODUCT_ID__of__ORDERS.ID]
+                            :group-by  [PRODUCTS__via__PRODUCT_ID__of__ORDERS.ID]
+                            :order-by  [PRODUCTS__via__PRODUCT_ID__of__ORDERS.ID ASC]}
                            AS source]
                :left-join [REVIEWS AS Reviews
-                           ON source.PRODUCTS__via__PRODUCT_ID__ID = Reviews.PRODUCT_ID]
+                           ON source.PRODUCTS__via__PRODUCT_ID__of__ORDERS__ID = Reviews.PRODUCT_ID]
                :limit     [1]}
              (sql.qp-test-util/query->sql-map
               (lib.tu.macros/mbql-query orders
