@@ -21,7 +21,7 @@ import { HeaderCollectionBadge } from "../HeaderCollectionBadge";
 import { QuestionDataSource } from "../QuestionDataSource";
 
 import CS from "./SavedQuestionLeftSide.module.css";
-import { useHiddenSourceTables } from "./util";
+import { useHiddenSourceTables } from "./hooks";
 
 interface SavedQuestionLeftSideProps {
   question: Question;
