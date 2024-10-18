@@ -1,4 +1,4 @@
-import { USER_GROUPS } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ORDERS_BY_YEAR_QUESTION_ID,
@@ -40,7 +40,7 @@ import {
   createMockActionParameter,
   createMockDashboardCard,
 } from "metabase-types/api/mocks";
-const { PRODUCTS, SAMPLE_DB_ID } = SAMPLE_DATABASE;
+const { PRODUCTS } = SAMPLE_DATABASE;
 
 const COUNT_COLUMN_ID = "count";
 const COUNT_COLUMN_NAME = "Count";
