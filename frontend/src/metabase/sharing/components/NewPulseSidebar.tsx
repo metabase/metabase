@@ -108,7 +108,7 @@ export function NewPulseSidebar({
                 jt`First, you'll have to ${(
                   <Link
                     key="link"
-                    to="/admin/settings/slack"
+                    to="/admin/settings/notifications/slack"
                     className={CS.link}
                   >
                     {t`configure Slack`}
