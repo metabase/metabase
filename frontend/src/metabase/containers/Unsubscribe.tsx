@@ -99,7 +99,9 @@ function SuccessfulUnsubscribe({
   return (
     <SuccessfulRequestWrapper
       text={jt`You've unsubscribed ${(
-        <ExternalLink href={`mailto:${email}`}>{email}</ExternalLink>
+        <ExternalLink key="link" href={`mailto:${email}`}>
+          {email}
+        </ExternalLink>
       )} from the "${alertTitle}" alert.`}
       buttonText={t`Undo`}
       action={action}
@@ -115,7 +117,9 @@ function SuccessfulResubscribe({
   return (
     <SuccessfulRequestWrapper
       text={jt`Okay, ${(
-        <ExternalLink href={`mailto:${email}`}>{email}</ExternalLink>
+        <ExternalLink key="link" href={`mailto:${email}`}>
+          {email}
+        </ExternalLink>
       )} is subscribed to the "${alertTitle}" alert again.`}
       buttonText={t`Unsubscribe`}
       action={action}

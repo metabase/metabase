@@ -1,5 +1,6 @@
 import PropTypes from "prop-types";
 import { isValidElement } from "react";
+import { match } from "ts-pattern";
 
 import { TableInfoIcon } from "metabase/components/MetadataInfo/TableInfoIcon/TableInfoIcon";
 import { isNotNull } from "metabase/lib/types";
@@ -142,4 +143,12 @@ function getTableURL(table) {
     return Urls.question({ id: cardId, name: table.displayName() });
   }
   return ML_Urls.getUrl(table.newQuestion());
+}
+
+export function getQuestionIcon(question) {
+  return match(question.type())
+    .with("question", () => "table2")
+    .with("model", () => "model")
+    .with("metric", () => "metric")
+    .exhaustive();
 }

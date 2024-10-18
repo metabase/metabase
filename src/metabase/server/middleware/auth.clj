@@ -65,15 +65,17 @@
 
   This variable only works for /api/notify/db/:id endpoint"
   [handler]
-  (fn [{:keys [static-metabase-api-key], :as request} respond raise]
-    (cond (str/blank? (static-api-key))
-          (respond key-not-set-response)
+  (with-meta
+   (fn [{:keys [static-metabase-api-key], :as request} respond raise]
+     (cond (str/blank? (static-api-key))
+           (respond key-not-set-response)
 
-          (not static-metabase-api-key)
-          (respond req.util/response-forbidden)
+           (not static-metabase-api-key)
+           (respond req.util/response-forbidden)
 
-          (= (static-api-key) static-metabase-api-key)
-          (handler request respond raise)
+           (= (static-api-key) static-metabase-api-key)
+           (handler request respond raise)
 
-          :else
-          (respond req.util/response-forbidden))))
+           :else
+           (respond req.util/response-forbidden)))
+   (meta handler)))

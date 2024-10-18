@@ -620,12 +620,12 @@
                           (update-vals count)))})
 
 (defn- snowplow-grouped-metrics [{query-executions :query_executions :as _snowplow-grouped-metric-info}]
-  [{:name :query_executions_by_source
-    :values (mapv (fn [qe-group]
-                    {:group qe-group
-                     :value (get query-executions qe-group)})
-                  ["interactive_embed" "internal" "public_link" "sdk_embed" "static_embed"])
-    :tags ["embedding"]}])
+  (->> [{:name :query_executions_by_source
+         :values (mapv (fn [qe-group]
+                         {:group qe-group :value (get query-executions qe-group)})
+                       ["interactive_embed" "internal" "public_link" "sdk_embed" "static_embed"])
+         :tags ["embedding"]}]
+       (walk/postwalk (fn [x] (if (keyword? x) (-> x u/->snake_case_en name) x)))))
 
 (defn- ->snowplow-metric-info
   "Collects Snowplow metrics data that is not in the legacy stats format. Also clears entity id translation count."
@@ -633,17 +633,20 @@
   (let [one-day-ago (->one-day-ago)
         total-translation-count (:total (get-translation-count))
         _ (clear-translation-count!)]
-    {:models                  (t2/count :model/Card :type :model :archived false)
-     :new_embedded_dashboards (t2/count :model/Dashboard
-                                        :enable_embedding true
-                                        :archived false
-                                        :created_at [:>= one-day-ago])
-     :new_users_last_24h        (t2/count :model/User
-                                          :is_active true
-                                          :date_joined [:>= one-day-ago])
-     :pivot_tables              (t2/count :model/Card :display :pivot :archived false)
-     :query_executions_last_24h (t2/count :model/QueryExecution :started_at [:>= one-day-ago])
-     :entity_id_translations_last_24h total-translation-count}))
+    {:models                          (t2/count :model/Card :type :model :archived false)
+     :new_embedded_dashboards         (t2/count :model/Dashboard
+                                                :enable_embedding true
+                                                :archived false
+                                                :created_at [:>= one-day-ago])
+     :new_users_last_24h              (t2/count :model/User
+                                                :is_active true
+                                                :date_joined [:>= one-day-ago])
+     :pivot_tables                    (t2/count :model/Card :display :pivot :archived false)
+     :query_executions_last_24h       (t2/count :model/QueryExecution :started_at [:>= one-day-ago])
+     :entity_id_translations_last_24h total-translation-count
+     :scim_users_last_24h             (t2/count :model/User :sso_source :scim
+                                                :is_active true
+                                                :date_joined [:>= one-day-ago])}))
 
 (mu/defn- snowplow-metrics
   [stats metric-info :- [:map
