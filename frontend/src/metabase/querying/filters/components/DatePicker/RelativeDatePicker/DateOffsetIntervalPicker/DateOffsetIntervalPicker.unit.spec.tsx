@@ -164,10 +164,17 @@ describe("DateOffsetIntervalPicker", () => {
           value: defaultValue,
           availableUnits: ["day", "year"],
         });
+
         await userEvent.click(screen.getByLabelText("Unit"));
         expect(screen.getByText("days")).toBeInTheDocument();
         expect(screen.getByText("years")).toBeInTheDocument();
         expect(screen.queryByText("months")).not.toBeInTheDocument();
+
+        const suffix = direction === "last" ? "ago" : "from now";
+        await userEvent.click(screen.getByLabelText("Starting from unit"));
+        expect(screen.getByText(`days ${suffix}`)).toBeInTheDocument();
+        expect(screen.getByText(`years ${suffix}`)).toBeInTheDocument();
+        expect(screen.queryByText(`months ${suffix}`)).not.toBeInTheDocument();
       });
 
       it("should change the offset interval", async () => {
