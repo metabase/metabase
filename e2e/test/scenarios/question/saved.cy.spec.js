@@ -325,6 +325,10 @@ describe("scenarios > question > saved", () => {
   });
 
   describe("with hidden tables", () => {
+    beforeEach(() => {
+      cy.signInAsAdmin();
+    });
+
     function hideTable(name) {
       cy.visit("/admin/datamodel");
       sidebar().findByText(name).click();
@@ -332,7 +336,6 @@ describe("scenarios > question > saved", () => {
     }
 
     it("should show a View-only tag when the source table is hidden", () => {
-      cy.signInAsAdmin();
       hideTable("Orders");
 
       visitQuestion(ORDERS_QUESTION_ID);
