@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import { assocIn } from "icepick";
 import { Component } from "react";
 import * as React from "react";
