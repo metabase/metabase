@@ -25,13 +25,15 @@
              (mtx/transformer {:name :api-response})))
 
 (mu/defn- request :- ::response
-  [message :- :string
-   context :- ::metabot-v3.context/context
-   history :- [:maybe #_::metabot-v3.client/history :any]]
-  (let [response (metabot-v3.client/*request* message context history)
-        message  (:message response)]
-    {:reactions (encode-reactions (metabot-v3.handle-response/handle-response-message message))
-     :history   (conj (vec history) message)}))
+  [input-message :- :string
+   context       :- ::metabot-v3.context/context
+   history       :- [:maybe ::metabot-v3.client.schema/messages]]
+  (let [response         (metabot-v3.client/*request* input-message context history)
+        response-message (:message response)]
+    {:reactions (encode-reactions (metabot-v3.handle-response/handle-response-message response-message))
+     :history   (into (vec history)
+                      [{:role :user, :content input-message}
+                       response-message])}))
 
 (api/defendpoint POST "/agent"
   "Send a chat message to the LLM via the AI Proxy."
