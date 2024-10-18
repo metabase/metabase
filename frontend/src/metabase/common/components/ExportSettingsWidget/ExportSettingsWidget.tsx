@@ -32,7 +32,7 @@ export const ExportSettingsWidget = ({
   return (
     <Stack>
       <Chip.Group value={selectedFormat} onChange={onChangeFormat}>
-        <Group spacing="xs" noWrap>
+        <Group gap="xs" noWrap>
           {formats.map(format => (
             <Chip
               key={format}
@@ -43,7 +43,7 @@ export const ExportSettingsWidget = ({
         </Group>
       </Chip.Group>
       {canConfigureFormatting ? (
-        <Stack spacing="xs">
+        <Stack gap="xs">
           <Radio.Group
             value={isFormattingEnabled ? "true" : "false"}
             onChange={() => onToggleFormatting()}

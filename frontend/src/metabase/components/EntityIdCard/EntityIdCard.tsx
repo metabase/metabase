@@ -64,7 +64,7 @@ export const EntityIdDisplay = ({
   ...props
 }: { entityId: string } & StackProps) => {
   return (
-    <Stack spacing="md" {...props}>
+    <Stack gap="md" {...props}>
       <EntityIdTitle />
       <Flex gap="sm">
         <Text lh="1rem">{entityId}</Text>

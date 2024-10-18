@@ -184,11 +184,11 @@ function SidebarOnboardingMenuItem({
 }: OnboaringMenuItemProps) {
   return (
     <Menu.Item
-      icon={<Icon name={icon} />}
+      leftSection={<Icon name={icon} />}
       style={{ alignItems: "flex-start" }}
       onClick={onClick}
     >
-      <Stack spacing="xs">
+      <Stack gap="xs">
         <Title c="inherit" order={4}>
           {title}
         </Title>
