@@ -129,7 +129,7 @@ const BaseButton = forwardRef(function BaseButton(
         {children && (
           <ButtonTextContainer
             hasIcon={!!icon}
-            hasrightSection={!!iconRight}
+            hasRightIcon={!!iconRight}
             iconVertical={iconVertical}
             className={
               labelBreakpoint === "sm" ? cx(CS.hide, CS.smShow) : undefined

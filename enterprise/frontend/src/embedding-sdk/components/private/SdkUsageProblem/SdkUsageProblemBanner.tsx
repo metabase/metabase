@@ -140,7 +140,7 @@ export const SdkUsageProblemBanner = ({
                   rightSection={<Icon name="external" size={10} />}
                   ff={fontFamily}
                   className={S.DocsButton}
-                  compact
+                  size="compact-md"
                 >
                   View documentation
                 </Button>

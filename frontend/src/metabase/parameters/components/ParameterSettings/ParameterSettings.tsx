@@ -85,7 +85,7 @@ export const ParameterSettings = ({
   const [tempLabelValue, setTempLabelValue] = useState(parameter.name);
   // TODO: sectionId should always be present, but current type definition presumes it's optional in the parameter.
   // so we might want to remove all checks related to absence of it
-  const sectionId = parameter.sectionId;
+  const sectionId = parameter.sectionId as ParameterSectionId;
 
   useLayoutEffect(() => {
     setTempLabelValue(parameter.name);

@@ -8,6 +8,7 @@ export { buttonOverrides } from "./Button.styled";
 export type ExtraButtonProps = {
   animate?: boolean;
   highlightOnHover?: boolean;
+  type?: "button" | "submit";
 };
 export type ButtonProps = MantineButtonProps &
   ExtraButtonProps &
