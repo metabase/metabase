@@ -185,10 +185,13 @@
         (update :display_name (partial format "%s → %s" (str/replace (:display_name source-col) #"(?i)\sid$" "")))
         (assoc :field_ref    [:field (:id dest-col) {:source-field (:id source-col)}]
                :fk_field_id  (:id source-col)
-               :source_alias (let [table-name (if (qp.store/initialized?)
-                                                (:name (lib.metadata/table (qp.store/metadata-provider) (data/id dest-table-kw)))
-                                                (t2/select-one-fn :name :model/Table :id (data/id dest-table-kw)))]
-                               (#'qp.add-implicit-joins/join-alias table-name (:name source-col)))))))
+               :source_alias (let [dest-table-name   (if (qp.store/initialized?)
+                                                       (:name (lib.metadata/table (qp.store/metadata-provider) (data/id dest-table-kw)))
+                                                       (t2/select-one-fn :name :model/Table :id (data/id dest-table-kw)))
+                                   source-table-name (if (qp.store/initialized?)
+                                                       (:name (lib.metadata/table (qp.store/metadata-provider) (data/id source-table-kw)))
+                                                       (t2/select-one-fn :name :model/Table :id (data/id source-table-kw)))]
+                               (#'qp.add-implicit-joins/join-alias dest-table-name (:name source-col) source-table-name))))))
 
 (declare cols)
 

@@ -105,8 +105,9 @@
 (defn- legacy-last-stage-number
   "Returns the canonical stage number of the last stage of the legacy `inner-query`."
   [inner-query]
-  (loop [{:keys [source-query]} inner-query, n 0]
-    (if-not source-query
+  (loop [{:keys [source-query qp/stage-had-source-card]} inner-query, n 0]
+    (if (or (nil? source-query)
+            stage-had-source-card)
       n
       (recur source-query (inc n)))))
 

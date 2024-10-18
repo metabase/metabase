@@ -149,7 +149,7 @@ export function buildColumnTarget(
     return ["dimension", fieldRef];
   }
 
-  return ["dimension", fieldRef, { "stage-number": fixedStageIndex }];
+  return ["dimension", fieldRef, { "stage-number": stageIndex }];
 }
 
 export function buildTemplateTagVariableTarget(
@@ -186,8 +186,8 @@ export function getParameterColumns(question: Question, parameter?: Parameter) {
   const availableColumns = getFilterableColumns(nextQuery);
   const columns = parameter
     ? availableColumns.filter(({ column, stageIndex }) =>
-        columnFilterForParameter(nextQuery, stageIndex, parameter)(column),
-      )
+      columnFilterForParameter(nextQuery, stageIndex, parameter)(column),
+    )
     : availableColumns;
 
   return { query: nextQuery, columns };
