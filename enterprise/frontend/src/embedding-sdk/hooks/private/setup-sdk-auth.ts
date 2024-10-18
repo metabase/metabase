@@ -1,50 +1,62 @@
-import { P, match } from "ts-pattern";
-
 import type { EmbeddingSessionToken, SDKConfig } from "embedding-sdk";
+import { COULD_NOT_AUTHENTICATE_MESSAGE } from "embedding-sdk/lib/user-warnings";
 import {
   getOrRefreshSession,
   setLoginStatus,
 } from "embedding-sdk/store/reducer";
 import type { SdkDispatch } from "embedding-sdk/store/types";
-import type {
-  SDKConfigWithApiKey,
-  SDKConfigWithJWT,
-} from "embedding-sdk/types";
 import api from "metabase/lib/api";
-import type { Dispatch } from "metabase-types/store";
+import { refreshSiteSettings } from "metabase/redux/settings";
+import { refreshCurrentUser } from "metabase/redux/user";
 
-const setupJwtAuth = (
-  jwtProviderUri: SDKConfigWithJWT["jwtProviderUri"],
+export const setupSdkAuth = async (
+  config: SDKConfig,
   dispatch: SdkDispatch,
 ) => {
-  api.onBeforeRequest = async () => {
-    const tokenState = await dispatch(getOrRefreshSession(jwtProviderUri));
+  if (config.jwtProviderUri && window.location.hostname) {
+    // JWT setup
+    api.onBeforeRequest = async () => {
+      const tokenState = await dispatch(
+        getOrRefreshSession(config.jwtProviderUri),
+      );
 
-    api.sessionToken = (tokenState.payload as EmbeddingSessionToken | null)?.id;
-  };
+      api.sessionToken = (
+        tokenState.payload as EmbeddingSessionToken | null
+      )?.id;
+    };
+  } else if (config.apiKey && window.location.hostname === "localhost") {
+    // API KEY setup
+    api.apiKey = config.apiKey;
+  }
 
-  dispatch(setLoginStatus({ status: "validated" }));
+  dispatch(setLoginStatus({ status: "loading" }));
+
+  try {
+    const [userResponse, siteSettingsResponse] = await Promise.all([
+      dispatch(refreshCurrentUser()),
+      dispatch(refreshSiteSettings({})),
+    ]);
+
+    if (
+      userResponse.meta.requestStatus === "rejected" ||
+      siteSettingsResponse.meta.requestStatus === "rejected"
+    ) {
+      dispatch(
+        setLoginStatus({
+          status: "error",
+          error: new Error(COULD_NOT_AUTHENTICATE_MESSAGE),
+        }),
+      );
+      return;
+    }
+
+    dispatch(setLoginStatus({ status: "success" }));
+  } catch (error) {
+    dispatch(
+      setLoginStatus({
+        status: "error",
+        error: new Error(COULD_NOT_AUTHENTICATE_MESSAGE),
+      }),
+    );
+  }
 };
-
-const setupLocalApiKey = (
-  dispatch: SdkDispatch,
-  apiKey: SDKConfigWithApiKey["apiKey"],
-) => {
-  api.apiKey = apiKey;
-  dispatch(setLoginStatus({ status: "validated" }));
-};
-
-export const setupSdkAuth = (config: SDKConfig, dispatch: Dispatch) =>
-  match<[SDKConfig, string], string | void>([config, window.location.hostname])
-    .with(
-      [
-        {
-          jwtProviderUri: P.select(P.nonNullable.and(P.string.minLength(1))),
-        },
-        P._,
-      ],
-      jwtProviderUri => setupJwtAuth(jwtProviderUri, dispatch),
-    )
-    .with([{ apiKey: P.select(P.nonNullable) }, "localhost"], apiKey => {
-      setupLocalApiKey(dispatch, apiKey);
-    });

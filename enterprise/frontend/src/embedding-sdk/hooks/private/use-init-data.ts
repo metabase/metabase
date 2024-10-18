@@ -1,20 +1,15 @@
 import { useEffect } from "react";
+import { useMount } from "react-use";
 import _ from "underscore";
 
 import { getEmbeddingSdkVersion } from "embedding-sdk/config";
-import { setupSdkAuth } from "embedding-sdk/hooks";
-import { COULD_NOT_AUTHENTICATE_MESSAGE } from "embedding-sdk/lib/user-warnings";
-import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
-import {
-  setFetchRefreshTokenFn,
-  setLoginStatus,
-} from "embedding-sdk/store/reducer";
-import { getLoginStatus } from "embedding-sdk/store/selectors";
+import { useSdkDispatch } from "embedding-sdk/store";
+import { setFetchRefreshTokenFn } from "embedding-sdk/store/reducer";
 import type { SDKConfig } from "embedding-sdk/types";
 import api from "metabase/lib/api";
-import { refreshSiteSettings } from "metabase/redux/settings";
-import { refreshCurrentUser } from "metabase/redux/user";
 import registerVisualizations from "metabase/visualizations/register";
+
+import { setupSdkAuth } from "./setup-sdk-auth";
 
 const registerVisualizationsOnce = _.once(registerVisualizations);
 
@@ -32,7 +27,6 @@ export const useInitData = ({ config }: InitDataLoaderParameters) => {
   }
 
   const dispatch = useSdkDispatch();
-  const loginStatus = useSdkSelector(getLoginStatus);
 
   useEffect(() => {
     registerVisualizationsOnce();
@@ -56,50 +50,8 @@ export const useInitData = ({ config }: InitDataLoaderParameters) => {
     dispatch(setFetchRefreshTokenFn(config.fetchRequestToken ?? null));
   }, [dispatch, config.fetchRequestToken]);
 
-  useEffect(() => {
-    if (loginStatus.status !== "uninitialized") {
-      return;
-    }
-
+  // init auth
+  useMount(() => {
     setupSdkAuth(config, dispatch);
-  }, [config, dispatch, loginStatus.status]);
-
-  useEffect(() => {
-    if (loginStatus.status === "validated") {
-      const fetchData = async () => {
-        dispatch(setLoginStatus({ status: "loading" }));
-
-        try {
-          const [userResponse, siteSettingsResponse] = await Promise.all([
-            dispatch(refreshCurrentUser()),
-            dispatch(refreshSiteSettings({})),
-          ]);
-
-          if (
-            userResponse.meta.requestStatus === "rejected" ||
-            siteSettingsResponse.meta.requestStatus === "rejected"
-          ) {
-            dispatch(
-              setLoginStatus({
-                status: "error",
-                error: new Error(COULD_NOT_AUTHENTICATE_MESSAGE),
-              }),
-            );
-            return;
-          }
-
-          dispatch(setLoginStatus({ status: "success" }));
-        } catch (error) {
-          dispatch(
-            setLoginStatus({
-              status: "error",
-              error: new Error(COULD_NOT_AUTHENTICATE_MESSAGE),
-            }),
-          );
-        }
-      };
-
-      fetchData();
-    }
-  }, [dispatch, loginStatus.status]);
+  });
 };
