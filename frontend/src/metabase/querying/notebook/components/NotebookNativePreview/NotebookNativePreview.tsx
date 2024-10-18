@@ -115,10 +115,10 @@ export const NotebookNativePreview = (): JSX.Element => {
           </NativeQueryEditorRoot>
         )}
       </Box>
-      <Box ta="end" p="1.5rem">
+      {/* we need to match height with the notebook editor */}
+      <Box ta="end" pb="md" pt={rem(14)} pr="md">
         <Button
           variant="subtle"
-          p={0}
           onClick={handleConvertClick}
           disabled={!showQuery}
         >
