@@ -135,7 +135,6 @@ export function buildColumnTarget(
   query: Lib.Query,
   stageIndex: number,
   column: Lib.ColumnMetadata,
-  parameter: Parameter | undefined,
 ): StructuredParameterDimensionTarget {
   const fieldRef = Lib.legacyRef(query, stageIndex, column);
 

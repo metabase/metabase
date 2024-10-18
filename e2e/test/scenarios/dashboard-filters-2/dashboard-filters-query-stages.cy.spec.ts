@@ -4,12 +4,21 @@ import {
   createDashboardWithTabs,
   createQuestion,
   editDashboard,
+  entityPickerModal,
+  entityPickerModalItem,
+  entityPickerModalTab,
   filterWidget,
   getDashboardCard,
+  getNotebookStep,
+  modal,
   popover,
   restore,
+  saveDashboard,
+  saveQuestion,
   sidebar,
+  startNewQuestion,
   visitDashboard,
+  visualize,
 } from "e2e/support/helpers";
 import type {
   Card,
@@ -1845,6 +1854,125 @@ describe("scenarios > dashboard > filters > query stages", () => {
           );
         });
       });
+    });
+  });
+});
+
+describe("scenarios > dashboard > filters > query stages + temporal unit parameters", () => {
+  describe("applies filter to the the dashcard and allows to drill via dashcard header", () => {
+    beforeEach(() => {
+      restore();
+      cy.signInAsAdmin();
+
+      cy.intercept("POST", "/api/dataset").as("dataset");
+    });
+
+    it("1st stage explicit join + unit of time parameter", () => {
+      startNewQuestion();
+
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Tables").click();
+        entityPickerModalItem(2, "Orders").click();
+      });
+
+      getNotebookStep("filter")
+        .findByText("Add filters to narrow your answer")
+        .click();
+      popover().within(() => {
+        cy.findByText("Orders").click();
+        cy.findByText("Product").click();
+        cy.findByText("Category").click();
+        cy.findByLabelText("Gizmo").click();
+        cy.findByLabelText("Doohickey").click();
+        cy.button("Add filter").click();
+      });
+
+      getNotebookStep("summarize")
+        .findByText("Pick a function or metric")
+        .click();
+      popover().findByText("Count of rows").click();
+      getNotebookStep("summarize").icon("add").click();
+      popover().within(() => {
+        cy.findByText("Sum of ...").click();
+        cy.findByText("Total").click();
+      });
+
+      getNotebookStep("summarize")
+        .findByText("Pick a column to group by")
+        .click();
+      popover()
+        .findByLabelText("Created At")
+        .findByLabelText("Temporal bucket")
+        .click();
+      popover().last().findByText("Week").click();
+      getNotebookStep("summarize")
+        .findByTestId("breakout-step")
+        .icon("add")
+        .click();
+      popover().within(() => {
+        cy.findByText("Orders").click();
+        cy.findByText("Product").click();
+        cy.findByText("Category").click();
+      });
+
+      cy.findAllByTestId("action-buttons").last().button("Summarize").click();
+      popover().findByText("Count of rows").click();
+      getNotebookStep("summarize", { stage: 1 })
+        .findByText("Pick a column to group by")
+        .click();
+      popover().findByLabelText("Created At: Week").click();
+
+      visualize(); // need to visualize because startNewQuestion does not set "display" property on a card
+      cy.wait("@dataset");
+      saveQuestion("test", { addToDashboard: true });
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Dashboards").click();
+        cy.button(/create a new dashboard/i).click();
+      });
+      modal()
+        .last()
+        .within(() => {
+          cy.findByPlaceholderText("My new dashboard").type("Dash");
+          cy.button("Create").click();
+        });
+      entityPickerModal().button("Select").click();
+
+      cy.findByLabelText("Add a filter or parameter").click();
+      popover().findByText("Text or Category").click();
+      getDashboardCard().findByText("Select…").click();
+      cy.findAllByText("Category").first().click();
+
+      cy.findByLabelText("Add a filter or parameter").click();
+      popover().findByText("Time grouping").click();
+      getDashboardCard().findByText("Select…").click();
+      popover().findByText("Created At: Week").click();
+
+      saveDashboard();
+      filterWidget().eq(0).click();
+      popover().within(() => {
+        cy.findByText("Gizmo").click();
+        cy.button("Add filter").click();
+      });
+
+      filterWidget().eq(1).click();
+      popover().findByText("Quarter").click();
+
+      getDashboardCard().findByText("Q1 2023").should("be.visible");
+      getDashboardCard().findByTestId("legend-caption-title").click();
+      cy.wait("@dataset");
+
+      // assert that new filter was applied
+      cy.findByTestId("qb-filters-panel").within(() => {
+        cy.findByText("Product → Category is 2 selections").should(
+          "be.visible",
+        );
+        cy.findByText("Product → Category is Gizmo").should("be.visible");
+      });
+
+      // assert that temporal unit parameter was applied
+      cy.findByTestId("chart-container")
+        .findByText("Q1 2023")
+        .should("be.visible");
     });
   });
 });

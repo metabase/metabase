@@ -12,9 +12,9 @@ import { getSetting } from "metabase/selectors/settings";
 import { ScrollArea } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 
-type NotebookProps = { onApply?: () => void };
+type EditorProps = { onApply?: () => void };
 
-export const Notebook = ({ onApply = () => {} }: NotebookProps) => {
+export const Editor = ({ onApply = () => {} }: EditorProps) => {
   // Loads databases and metadata so we can show notebook steps for the selected data source
   useDatabaseListQuery();
 

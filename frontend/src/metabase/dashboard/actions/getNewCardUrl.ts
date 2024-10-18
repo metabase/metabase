@@ -9,7 +9,6 @@ import * as ML_Urls from "metabase-lib/v1/urls";
 import type {
   Card,
   Dashboard,
-  DatasetQuery,
   ParameterId,
   ParameterValueOrArray,
   QuestionDashboardCard,
@@ -53,21 +52,8 @@ export const getNewCardUrl = ({
   if (isEditable) {
     nextQuestion = new Question(cardAfterClick, metadata);
 
-    const isDashcardTitleClick = Lib.areLegacyQueriesEqual(
-      nextCard.dataset_query as DatasetQuery,
-      previousCard.dataset_query as DatasetQuery,
-    );
-    const mightNeedFilterStage = parametersMappedToCard.some(
-      parameter => parameter.type !== "temporal-unit",
-    );
-
-    if (isDashcardTitleClick && mightNeedFilterStage) {
-      nextQuestion = nextQuestion.setQuery(
-        Lib.ensureFilterStage(nextQuestion.query()),
-      );
-    }
-
     nextQuestion = nextQuestion
+      .setQuery(Lib.ensureFilterStage(nextQuestion.query()))
       .setDisplay(cardAfterClick.display || previousCard.display)
       .setSettings(dashcard.card.visualization_settings)
       .lockDisplay();
