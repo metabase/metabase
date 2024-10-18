@@ -38,7 +38,10 @@
   (mc/encode ::metabot-v3.client.schema/request body (mtx/transformer
                                                       (mtx/default-value-transformer)
                                                       {:name :api-request}
-                                                      (mtx/key-transformer {:encode u/->snake_case_en}))))
+                                                      (mtx/key-transformer {:encode (fn [k]
+                                                                                      (if (#{:additionalProperties :additional-properties} k)
+                                                                                        :additionalProperties
+                                                                                        (u/->snake_case_en k)))}))))
 
 (mu/defn- build-request-body
   [message :- :string

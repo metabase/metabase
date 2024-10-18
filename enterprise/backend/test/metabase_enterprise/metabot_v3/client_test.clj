@@ -22,7 +22,7 @@
                                            :properties {"email" {:type :string
                                                                  :description "A valid email address of the user to invite"}}
                                            :required   ["email"]
-                                           :additional_properties false}}]
+                                           :additionalProperties false}}]
             :instance_info {}}
            (#'metabot-v3.client/build-request-body "Hello" {} [])))))
 
