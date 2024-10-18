@@ -142,12 +142,6 @@ export function buildColumnTarget(
     throw new Error(`Cannot build column target field reference: ${fieldRef}`);
   }
 
-  if (parameter && isTemporalUnitParameter(parameter)) {
-    // Temporal unit parameters apply only to the last stage.
-    // We don't attach "stage-number" to prevent BE from calling Lib.ensureFilterStage on the query.
-    return ["dimension", fieldRef];
-  }
-
   return ["dimension", fieldRef, { "stage-number": stageIndex }];
 }
 
@@ -185,8 +179,8 @@ export function getParameterColumns(question: Question, parameter?: Parameter) {
   const availableColumns = getFilterableColumns(nextQuery);
   const columns = parameter
     ? availableColumns.filter(({ column, stageIndex }) =>
-      columnFilterForParameter(nextQuery, stageIndex, parameter)(column),
-    )
+        columnFilterForParameter(nextQuery, stageIndex, parameter)(column),
+      )
     : availableColumns;
 
   return { query: nextQuery, columns };

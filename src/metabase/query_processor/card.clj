@@ -60,7 +60,7 @@
   stages are the same. By using -1 as stage number we make sure that the expansion of
   models/metrics doesn't cause the filter to be added at the wrong stage."
   [parameters]
-  (mapv (fn [{ :keys [target], :as parameter}]
+  (mapv (fn [{:keys [target], :as parameter}]
           (cond-> parameter
             (and (mbql.u/is-clause? :dimension target)
                  (some? (get-in target [2 :stage-number])))
