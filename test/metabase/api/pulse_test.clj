@@ -47,7 +47,8 @@
       (update :collection_id boolean)
       ;; why? these fields in this last assoc are from the PulseCard model and this function takes the Card model
       ;; because PulseCard is somewhat hidden behind the scenes
-      (assoc :include_csv false, :include_xls false, :dashboard_card_id nil, :dashboard_id nil, :format_rows true
+      (assoc :include_csv false :include_xls false :dashboard_card_id nil :dashboard_id nil
+             :format_rows true :pivot_results false
              :parameter_mappings nil)))
 
 (defn- pulse-channel-details [channel]
@@ -992,7 +993,8 @@
                                   pulse.test-util/png-attachment]
                         :message-type :attachments,
                         :recipients #{"rasta@metabase.com"}
-                        :subject "Daily Sad Toucans"}
+                        :subject "Daily Sad Toucans"
+                        :recipient-type nil}
                        (mt/summarize-multipart-single-email (-> channel-messages :channel/email first) #"Daily Sad Toucans")))))))))))
 
 (deftest send-test-alert-with-http-channel-test
@@ -1108,7 +1110,8 @@
                             pulse.test-util/png-attachment]
                   :message-type :attachments,
                   :recipients #{"rasta@metabase.com"}
-                  :subject "Daily Sad Toucans"}
+                  :subject "Daily Sad Toucans"
+                  :recipient-type nil}
                  (mt/summarize-multipart-single-email (-> channel-messages :channel/email first) #"Daily Sad Toucans"))))))))
 
 (deftest ^:parallel pulse-card-query-results-test

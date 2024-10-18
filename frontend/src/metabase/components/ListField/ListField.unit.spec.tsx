@@ -128,4 +128,17 @@ describe("ListField", () => {
     expect(onChange).toHaveBeenCalledWith(["Doohickey", "Widget"]);
     expect(screen.getByLabelText("Gadget")).not.toBeChecked();
   });
+
+  it("should not show the toggle all checkbox when search results are empty", async () => {
+    setup({
+      value: [],
+      options: allOptions,
+    });
+    await userEvent.type(
+      screen.getByPlaceholderText("Search the list"),
+      "Invalid",
+    );
+    expect(screen.queryByLabelText("Select all")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Select none")).not.toBeInTheDocument();
+  });
 });

@@ -1,0 +1,1 @@
+export { InsightsTab } from "./InsightsTab";

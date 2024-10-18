@@ -395,6 +395,7 @@ describe("issues 20845, 25031", () => {
       name: "25031",
       parameters: [dashboardFilter],
     };
+
     beforeEach(() => {
       cy.intercept("PUT", "/api/card/*").as("publishChanges");
 
@@ -673,6 +674,7 @@ describeEE("issue 30535", () => {
       limit: 10,
     },
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -747,6 +749,7 @@ describe("dashboard preview", () => {
     type: "string/=",
     sectionId: "string",
   };
+
   beforeEach(() => {
     cy.intercept("GET", "/api/preview_embed/dashboard/**").as(
       "previewDashboard",
@@ -947,6 +950,7 @@ describe("issue 40660", () => {
     name: "long dashboard",
     enable_embedding: true,
   };
+
   beforeEach(() => {
     cy.intercept("GET", "/api/preview_embed/dashboard/**").as(
       "previewDashboard",

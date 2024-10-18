@@ -11,7 +11,6 @@
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.util :as qp.util]
    [metabase.server.middleware.session :as mw.session]
-   [metabase.shared.util.i18n :refer [trs]]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -46,7 +45,7 @@ saved later when it is ready."
 (mu/defn- maybe-async-model-result-metadata :- ::maybe-async-result-metadata
   [{:keys [query metadata original-metadata valid-metadata?]} :- [:map
                                                                   [:valid-metadata? :any]]]
-  (log/debug (trs "Querying for metadata and blending model metadata"))
+  (log/debug "Querying for metadata and blending model metadata")
   (let [futur     (legacy-result-metadata-future query)
         metadata' (if valid-metadata?
                     (map mbql.normalize/normalize-source-metadata metadata)
@@ -64,7 +63,7 @@ saved later when it is ready."
 
 (mu/defn- maybe-async-recomputed-metadata :- ::maybe-async-result-metadata
   [query]
-  (log/debug (trs "Querying for metadata"))
+  (log/debug "Querying for metadata")
   (let [futur (legacy-result-metadata-future query)
         result (deref futur metadata-sync-wait-ms ::timed-out)]
     (if (= result ::timed-out)
@@ -100,14 +99,14 @@ saved later when it is ready."
             query
             valid-metadata?))
       (do
-        (log/debug (trs "Reusing provided metadata"))
+        (log/debug "Reusing provided metadata")
         {:metadata metadata})
 
       ;; frontend always sends query. But sometimes programatic don't (cypress, API usage). Returning an empty channel
       ;; means the metadata won't be updated at all.
       (nil? query)
       (do
-        (log/debug (trs "No query provided so not querying for metadata"))
+        (log/debug "No query provided so not querying for metadata")
         {:metadata nil})
 
       ;; datasets need to incorporate the metadata either passed in or already in the db. Query has changed so we

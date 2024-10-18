@@ -1,4 +1,8 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, screen } from "@testing-library/react";
+
+import { mockSettings } from "__support__/settings";
+import { renderWithProviders } from "__support__/ui";
+import { createMockState } from "metabase-types/store/mocks";
 
 import EmailAttachmentPicker from "./EmailAttachmentPicker";
 
@@ -9,12 +13,19 @@ function setup({ pulse = createPulse(), hasAttachments = false } = {}) {
     pulse.cards[0]["include_xls"] = true;
   }
 
-  render(
+  const state = createMockState({
+    settings: mockSettings({
+      "application-name": "Metabase",
+    }),
+  });
+
+  renderWithProviders(
     <EmailAttachmentPicker
       cards={pulse.cards}
       pulse={pulse}
       setPulse={setPulse}
     />,
+    { storeInitialState: state },
   );
 
   return { setPulse };

@@ -80,7 +80,7 @@
   io.github.eerohele/pp                     {:git/tag "2024-01-04.60"           ; super fast pretty-printing library
                                              :git/sha "a428751"
                                              :git/url "https://github.com/eerohele/pp"}
-  io.github.metabase/macaw                  {:mvn/version "0.2.10"}             ; Parse native SQL queries
+  io.github.metabase/macaw                  {:mvn/version "0.2.15"}             ; Parse native SQL queries
   ;; The 2.X line of Resilience4j requires Java 17, so we cannot upgrade this dependency until that is our minimum JVM version
   io.github.resilience4j/resilience4j-retry {:mvn/version "1.7.1" #_"must be 1.7.1"} ; Support for retrying operations
   io.prometheus/simpleclient_hotspot        {:mvn/version "0.16.0"}             ; prometheus jvm collector
@@ -576,7 +576,7 @@
                                    "frontend/src/cljs"
                                    "frontend/test/metabase/lib/urls\\.unit\\.spec\\.js$"
                                    "frontend/test/metabase/lib/formatting\\.unit\\.spec\\.js$"
-                                   "src/metabase/shared/util/currency\\.cljc$"
+                                   "src/metabase/util/currency\\.cljc$"
                                    "test/metabase/pulse/render/png_test.clj"
                                    "#.+#$"
                                    "\\.transit\\.json$"]}}
@@ -792,6 +792,18 @@
                       "test/metabase/query_processor_test"
                       metabase-enterprise.advanced-permissions.models.permissions.block-permissions-test
                       metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions-test]}}
+
+
+  ;; test the notification system
+  ;;    clj -X:dev:ee:ee-dev:test:test/notification
+  :test/notification
+  {:exec-args {:only ["test/metabase/notification"
+                      "test/metabase/channel"
+                      metabase.api.channel-test
+                      metabase.events.notification-test
+                      metabase.models.channel-test
+                      metabase.models.notification-test
+                      metabase.task.notification-test]}}
 
   ;; test all MBQL related stuff: MLv2, the legacy shared `metabase.legacy-mbql` code, and the QP
   ;;
