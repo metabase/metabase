@@ -121,11 +121,12 @@ export const Onboarding = () => {
         <Accordion
           defaultValue={DEFAULT_ITEM}
           classNames={{
-            item: S.item,
+            chevron: S.chevron,
             content: S.content,
             control: S.control,
-            label: S.label,
             icon: S.icon,
+            item: S.item,
+            label: S.label,
           }}
           onChange={(value: ChecklistItemValue | null) =>
             handleValueChange(value)
