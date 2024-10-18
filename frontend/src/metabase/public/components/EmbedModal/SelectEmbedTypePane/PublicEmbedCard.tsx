@@ -30,7 +30,7 @@ export const PublicEmbedCard = ({
   }, [publicEmbedCode, isOpen]);
 
   return (
-    <Group spacing="xs">
+    <Group gap="xs">
       <Text>
         {jt`Use ${(
           <Text span fw="bold" key="bold">

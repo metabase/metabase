@@ -371,7 +371,7 @@ export function EntityPickerModal<
             {hydratedOptions.showSearch && (
               <TextInput
                 type="search"
-                icon={<Icon name="search" size={16} />}
+                leftSection={<Icon name="search" size={16} />}
                 miw={400}
                 mr="2rem"
                 placeholder={getSearchInputPlaceholder(selectedFolder)}
