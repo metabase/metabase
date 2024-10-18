@@ -1,14 +1,12 @@
 import type React from "react";
 
 import CS from "metabase/css/core/index.css";
-import { Box, type MantineStyleSystemProps } from "metabase/ui";
-
-import { SidesheetCardTitle } from "./SidesheetCard";
+import { Box, type MantineStyleProps, Title } from "metabase/ui";
 
 interface SidesheetCardSectionProps {
   title?: string;
   children: React.ReactNode;
-  styleProps?: Partial<MantineStyleSystemProps>;
+  styleProps?: Partial<MantineStyleProps>;
 }
 
 export const SidesheetCardSection = ({

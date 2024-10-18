@@ -41,7 +41,7 @@ export function SectionLayoutPreview({ layout }: SectionLayoutPreviewProps) {
             layout={item}
             cellWidth={CELL_WIDTH}
             cellHeight={CELL_HEIGHT}
-            spacing={SPACING}
+            gap={SPACING}
           />
         ))}
       </Box>

@@ -86,7 +86,7 @@ export const EmbedHomepageView = (props: EmbedHomepageViewProps) => {
           {/* eslint-disable-next-line no-literal-metabase-strings -- only visible to admins */}
           {t`New in Metabase 0.51`}
         </Text>
-        <Group spacing="sm">
+        <Group gap="sm">
           <Text color="text-dark" fw="bold">{t`Embedded analytics SDK`}</Text>
           <Badge color="brand">{t`PRO & ENTERPRISE`}</Badge>
           <Badge color="gray">{t`Beta`}</Badge>
