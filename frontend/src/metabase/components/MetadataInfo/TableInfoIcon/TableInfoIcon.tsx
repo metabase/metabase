@@ -19,14 +19,13 @@ type TableInfoIconProps = TableInfoPopoverProps & {
 
 export function TableInfoIcon({
   className,
-  delay,
   table,
   size,
   icon = "table",
   ...props
 }: TableInfoIconProps) {
   return (
-    <TableInfoPopover {...props} table={table} delay={delay}>
+    <TableInfoPopover {...props} table={table}>
       <span aria-label={t`More info`}>
         <PopoverDefaultIcon name={icon} className={className} size={size} />
         <PopoverHoverTarget

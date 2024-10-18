@@ -8,7 +8,6 @@ export type QueryColumnInfoPopoverProps = QueryColumnInfoProps &
 
 export function QueryColumnInfoPopover({
   position,
-  delay,
   disabled,
   children,
   ...rest
@@ -16,7 +15,6 @@ export function QueryColumnInfoPopover({
   return (
     <Popover
       position={position}
-      delay={delay}
       disabled={disabled}
       content={<QueryColumnInfo {...rest} />}
     >
@@ -30,7 +28,6 @@ export type TableColumnInfoPopoverProps = TableColumnInfoProps &
 
 export function TableColumnInfoPopover({
   position,
-  delay,
   disabled,
   children,
   ...rest
@@ -38,7 +35,6 @@ export function TableColumnInfoPopover({
   return (
     <Popover
       position={position}
-      delay={delay}
       disabled={disabled}
       content={<TableColumnInfo {...rest} />}
     >

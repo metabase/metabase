@@ -15,7 +15,6 @@ export type TableInfoPopoverProps = Omit<PopoverProps, "content"> &
 
 export function TableInfoPopover({
   children,
-  delay,
   disabled,
   position,
   table,
@@ -30,7 +29,6 @@ export function TableInfoPopover({
   return (
     <Popover
       position={position}
-      delay={delay}
       disabled={disabled}
       content={<TableInfo tableId={table.id} {...rest} />}
     >
