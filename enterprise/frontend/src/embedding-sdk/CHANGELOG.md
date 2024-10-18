@@ -1,3 +1,22 @@
+## [0.1.40](https://github.com/metabase/metabase/compare/embedding-sdk-0.1.39...embedding-sdk-0.1.40) (2024-10-17)
+
+
+### Features
+
+* **sdk:** Add chart viz selection for `InteractiveQuestion` ([#47744](https://github.com/metabase/metabase/issues/47744)) ([#48823](https://github.com/metabase/metabase/issues/48823)) ([821f07d](https://github.com/metabase/metabase/commit/821f07d3c354d91d2096cc3e59ec7eb2d6818066))
+
+
+
+## [0.1.39](https://github.com/metabase/metabase/compare/embedding-sdk-1.51.0...embedding-sdk-0.1.39) (2024-10-16)
+
+
+### Bug Fixes
+
+* **sdk:** allow CLI to check React version without installing and allow continuing setup if React is missing ([#48491](https://github.com/metabase/metabase/issues/48491)) ([#48528](https://github.com/metabase/metabase/issues/48528)) ([dc8d95e](https://github.com/metabase/metabase/commit/dc8d95e8040940b0818a772a64487ad1335e6a75))
+* **sdk:** Attempt to fix resize observer issues ([#48227](https://github.com/metabase/metabase/issues/48227)) ([#48561](https://github.com/metabase/metabase/issues/48561)) ([b820e86](https://github.com/metabase/metabase/commit/b820e86620ce60263c2d5da6ae7c9bc7a859d68d))
+
+
+
 ## [0.1.38](https://github.com/metabase/metabase/compare/embedding-sdk-0.1.37...embedding-sdk-0.1.38) (2024-10-09)
 
 

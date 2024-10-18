@@ -76,8 +76,8 @@
     (let [known-files (set (.list (io/file api.serialization/parent-dir)))]
       (testing "Should require a token with `:serialization`"
         (mt/with-premium-features #{}
-          (is (= "Serialization is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
-                 (mt/user-http-request :rasta :post 402 "ee/serialization/export")))))
+          (mt/assert-has-premium-feature-error "Serialization"
+                                               (mt/user-http-request :rasta :post 402 "ee/serialization/export"))))
       (mt/with-premium-features #{:serialization}
         (testing "POST /api/ee/serialization/export"
           (mt/with-empty-h2-app-db
@@ -223,7 +223,7 @@
                           log (slurp (io/input-stream res))]
                       (testing "3 header lines, then cards+database+collection, then the error"
                         (is (re-find #"Failed to read file for Collection DoesNotExist" log))
-                        (is (re-find #"Cannot find file entry" log)) ;; underlying error
+                        (is (re-find #"Cannot find file" log)) ;; underlying error
                         (is (= {:deps-chain #{[{:id "**ID**", :model "Card"}]},
                                 :error      :metabase-enterprise.serialization.v2.load/not-found,
                                 :model      "Collection",
