@@ -10,7 +10,7 @@
 (set! *warn-on-reflection* true)
 
 (mr/def ::metadata.parameter.type
-  [:enum :string :null])
+  :keyword)
 
 (mr/def ::metadata.parameter.name
   [:and
@@ -22,19 +22,28 @@
                             (keyword (u/->kebab-case-en x)))}
    :keyword
    [:fn
-    {:error/message "PARSED parameter names should be kebab-case (in YAML files they should use snake_case)"}
+    {:error/message "PARSED parameter names should be kebab-case (in JSON files they should use camelCase)"}
     #(= (u/->kebab-case-en %) %)]])
 
 (mr/def ::metadata.parameter
   [:map
-   [:type     [:or
-               ::metadata.parameter.type
-               [:set ::metadata.parameter.type]]]
-   [:required [:boolean {:default false}]]
+   [:type [:or
+           ::metadata.parameter.type
+           [:set ::metadata.parameter.type]]]
    [:description {:optional true} [:maybe ::lib.schema.common/non-blank-string]]])
 
-(mr/def ::metadata.parameters
+(mr/def ::metadata.parameters.properties
   [:map-of ::metadata.parameter.name ::metadata.parameter])
+
+(mr/def ::metadata.parameters
+  [:map
+   {:decode/metadata-file #(update-keys % (comp keyword u/->kebab-case-en))
+    :decode/api-response  #(update-keys % (comp keyword u/->kebab-case-en))
+    :encode/api-request   #(update-keys % u/->camelCaseEn)}
+   [:type                  [:= {:decode/metadata-file keyword} :object]]
+   [:properties            ::metadata.parameters.properties]
+   [:required              {:optional true, :default []} [:sequential ::metadata.parameter.name]]
+   [:additional-properties {:optional true, :default false} :boolean]])
 
 (mr/def ::metadata.name
   [:and
@@ -49,7 +58,7 @@
    [:description ::lib.schema.common/non-blank-string]
    [:parameters  ::metadata.parameters]])
 
-(defmulti tool-applicable?
+(defmulti ^:dynamic *tool-applicable?*
   "Whether or not the current tool can possibly be applicable and passed to the AI Proxy. For example, an `invite-user`
   tool cannot be applicable if the current user does not have user invite permissions. We should error on the side of
   letting the LLM decide whether a tool is appropriate or not in cases where y
@@ -59,24 +68,24 @@
   (fn [tool-name _context]
     (keyword tool-name)))
 
-(defmethod tool-applicable? :default
+(defmethod *tool-applicable?* :default
   [_tool-name _context]
   true)
 
-(defmulti invoke-tool
+(defmulti ^:dynamic *invoke-tool*
   "Invoke a Metabot v3 tool, e.g. send an email to someone. This should return a vector of frontend reactions with a
   shape like
 
     [{:type    :reaction/display-message
       :message \"I need more info.\"}]
 
-  Different reactions should get bundled with different keys, for example `:reaction/display-message` should include
+  Different reactions should get bundled with different keys, for example `:metabot.reaction/message` should include
   `:message`. This should match what the frontend expects."
   {:arglists '([tool-name argument-map])}
   (fn [tool-name _argument-map]
     (keyword tool-name)))
 
-(mu/defmethod invoke-tool :default :- [:sequential ::metabot-v3.reactions/reaction]
+(mu/defmethod *invoke-tool* :default :- [:sequential ::metabot-v3.reactions/reaction]
   [tool-name argument-map]
   [{:type    :metabot.reaction/message
     :message (tru "Tool is not yet implemented: {0}"
