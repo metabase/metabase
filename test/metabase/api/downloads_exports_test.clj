@@ -1042,8 +1042,8 @@
                                                 :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]
                                                                [:field (mt/id :products :created_at) {:base-type :type/DateTime :temporal-unit :year}]]}}}]
         (is (= [["Category" "Created At" "Sum of Price"]
-                ["Doohickey" "2016" "632.14"]
-                ["Doohickey" "2017" "854.19"]]
+                ["Doohickey" "2016" "[$$]632.14"]
+                ["Doohickey" "2017" "[$$]854.19"]]
                (take 3 (card-download card {:export-format :xlsx :format-rows true :pivot true})))
             ;; Excel will apply a default format which is seen here. The 'actual' data in the cells is unformatted.
             (= [["Category" "Created At" "Sum of Price"]
