@@ -484,7 +484,7 @@ jobs:
       MB_MONGO_TEST_PASSWORD: metasample123
     services:
       mongodb:
-        image: circleci/mongo:latest
+        image: mongo:latest
         ports:
           - "27017:27017"
         env:
@@ -782,7 +782,7 @@ jobs:
       MB_POSTGRES_SSL_TEST_SSL_ROOT_CERT_PATH: 'test-resources/certificates/us-east-2-bundle.pem'
     services:
       postgres:
-        image: circleci/postgres:latest
+        image: postgres:latest
         ports:
           - "5432:5432"
         env:
