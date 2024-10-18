@@ -766,7 +766,7 @@
     :snippet    :model/NativeQuerySnippet
     :timeline   :model/Timeline))
 
-(defn- post-process-rows
+(defn post-process-rows
   "Post process any data. Have a chance to process all of the same type at once using
   `post-process-collection-children`. Must respect the order passed in."
   [options collection rows]

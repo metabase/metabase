@@ -4992,13 +4992,15 @@
     (mt/with-temp [:model/Dashboard {dash-id :id} {}
                    :model/Card {card-id :id} {}
                    :model/DashboardCard _ {:card_id card-id :dashboard_id dash-id}]
-      (is (= {:total 0 :data [] :models []}
+      (is (= {:total 0 :data [] :models [] :limit nil :offset nil}
              (mt/user-http-request :rasta :get 200 (str "dashboard/" dash-id "/items"))))))
   (testing "Dashboard items is present when the dashboard has DQs"
     (mt/with-temp [:model/Dashboard {dash-id :id} {}
                    :model/Card {card-id :id} {:dashboard_id dash-id}
                    :model/DashboardCard _ {:card_id card-id :dashboard_id dash-id}]
       (is (= {:total 1
+              :limit nil
+              :offset nil
               :data [{:id card-id}]
               :models ["card"]}
              (update (mt/user-http-request :rasta :get 200 (str "dashboard/" dash-id "/items"))
@@ -5011,10 +5013,23 @@
                    :model/DashboardCard _ {:card_id card-id :dashboard_id dash-id}]
       (is (= {:total 1
               :data [{:id card-id}]
+              :limit nil
+              :offset nil
               :models ["card"]}
              (update (mt/user-http-request :rasta :get 200 (str "dashboard/" dash-id "/items"))
                      :data
                      #(map (fn [card] (select-keys card [:id])) %)))))))
+
+(deftest dashboard-items-is-the-same-as-collection-items
+  (mt/with-temp [:model/Collection {coll-id :id} {}
+                 :model/Dashboard {dash-id :id} {}
+                 :model/Card _ {:collection_id coll-id}
+                 :model/Card {dq-id :id} {:dashboard_id dash-id}
+                 :model/DashboardCard _ {:card_id dq-id :dashboard_id dash-id}]
+    (is (= (set (keys (mt/user-http-request :rasta :get 200 (str "dashboard/" dash-id "/items"))))
+           (set (keys (mt/user-http-request :rasta :get 200 (str "collection/" coll-id "/items"))))))
+    (is (= (set (keys (first (:data (mt/user-http-request :rasta :get 200 (str "collection/" coll-id "/items"))))))
+           (set (keys (first (:data (mt/user-http-request :rasta :get 200 (str "dashboard/" dash-id "/items"))))))))))
 
 (defn- get-revisions-http-req [dash-id]
   (mt/user-http-request :rasta :get 200 (str "dashboard/" dash-id "/revisions")))

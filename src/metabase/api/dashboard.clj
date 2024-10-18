@@ -9,6 +9,7 @@
    [medley.core :as m]
    [metabase.actions.core :as actions]
    [metabase.analytics.snowplow :as snowplow]
+   [metabase.api.collection :as api.collection]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.api.dataset :as api.dataset]
@@ -511,12 +512,13 @@
   "Get Dashboard with ID."
   [id]
   {id ms/PositiveInt}
-  (api/read-check :model/Dashboard id)
   ;; query copied from metabase.api.collection to match the shape of api/collection/<:id|root>/items
-  (let [query      (merge
+  (let [dashboard  (api/read-check :model/Dashboard id)
+        query      (merge
                     {:select    (cond->
                                     [:c.id :c.name :c.description :c.entity_id :c.collection_position :c.display :c.collection_preview
-                                     :last_used_at :c.collection_id :c.archived_directly :c.archived :c.dataset_query :c.database_id
+                                     :last_used_at :c.collection_id :c.archived_directly :c.archived :c.database_id
+                                     [nil :location]
                                      [(h2x/literal "card")  :model]
                                      [{:select   [:status]
                                        :from     [:moderation_review]
@@ -542,9 +544,9 @@
                        :offset mw.offset-paging/*offset*}))
         cards      (mdb.query/query query)]
     {:total  (count cards)
-     :data   (into []
-                   (map #(update % :dataset_query (comp mbql.normalize/normalize json/parse-string)))
-                   (last-edit/with-last-edit-info cards :card))
+     :data   (api.collection/post-process-rows {}
+                                               (t2/select-one :model/Collection :id (:collection_id dashboard))
+                                               cards)
      :limit mw.offset-paging/*limit*
      :offset mw.offset-paging/*offset*
      :models (if (seq cards) ["card"] [])}))
