@@ -13,6 +13,7 @@ import CS from "metabase/css/core/index.css";
 import { useValidatedEntityId } from "metabase/lib/entity-id/hooks/use-validated-entity-id";
 import type { GenericErrorResponse } from "metabase/lib/errors";
 import { getResponseErrorMessage } from "metabase/lib/errors";
+import { defer } from "metabase/lib/promise";
 import { useSelector } from "metabase/lib/redux";
 import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
 import {
@@ -95,6 +96,8 @@ const StaticQuestionInner = ({
   });
 
   useEffect(() => {
+    const cancelDeferred = defer();
+
     async function loadCardData() {
       setState(prevState => ({
         ...prevState,
@@ -109,6 +112,7 @@ const StaticQuestionInner = ({
         const { card, result } = await loadStaticQuestion({
           questionId,
           parameterValues,
+          cancelDeferred,
         });
 
         setState(prevState => ({
@@ -134,6 +138,11 @@ const StaticQuestionInner = ({
     }
 
     loadCardData();
+
+    return () => {
+      // cancel pending requests upon unmount
+      cancelDeferred.resolve();
+    };
   }, [questionId, parameterValues]);
 
   const changeVisualization = (newQuestion: Question) => {
