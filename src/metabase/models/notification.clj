@@ -35,7 +35,9 @@
 
 (def notification-types
   "Set of valid notification types."
-  #{:notification/system-event})
+  #{:notification/system-event
+    ;; for testing only
+    :notification/testing})
 
 (t2/deftransforms :model/Notification
   {:payload_type (mi/transform-validator mi/transform-keyword (partial mi/assert-enum notification-types))})
@@ -60,16 +62,72 @@
    :id
    {:default nil}))
 
+(defn- delete-trigger-for-subscription!
+  [& args]
+  (apply (requiring-resolve 'metabase.task.notification/delete-trigger-for-subscription!) args))
+
+(t2/define-before-delete :model/Notification
+  [instance]
+  (doseq [subscription-ids (t2/select-pks-set :model/NotificationSubscription :notification_id (:id instance))]
+    (delete-trigger-for-subscription! subscription-ids))
+  instance)
+
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                               :model/NotificationSubscription                                   ;;
 ;; ------------------------------------------------------------------------------------------------;;
 
 (def ^:private subscription-types
-  #{:notification-subscription/system-event})
+  #{:notification-subscription/system-event
+    :notification-subscription/cron})
 
 (t2/deftransforms :model/NotificationSubscription
   {:type       (mi/transform-validator mi/transform-keyword (partial mi/assert-enum subscription-types))
    :event_name (mi/transform-validator mi/transform-keyword (partial mi/assert-namespaced "event"))})
+
+(def ^:private NotificationSubscription
+  [:merge [:map
+           [:type            (apply ms/enum-keywords-and-strings subscription-types)]]
+   [:multi {:dispatch (comp keyword :type)}
+    [:notification-subscription/system-event
+     [:map
+      [:type                           [:enum :notification-subscription/system-event]]
+      [:event_name                     [:or :keyword :string]]
+      [:cron_schedule {:optional true} nil?]]]
+    [:notification-subscription/cron
+     [:map
+      [:type                           [:enum :notification-subscription/cron]]
+      [:cron_schedule                  :string]
+      [:event_name    {:optional true} nil?]]]]])
+
+(defn- validate-subscription
+  "Validate a NotificationSubscription."
+  [subscription]
+  (mu/validate-throw NotificationSubscription subscription))
+
+(t2/define-before-insert :model/NotificationSubscription
+  [instance]
+  (validate-subscription instance)
+  instance)
+
+(defn- update-subscription-trigger!
+  [& args]
+  (apply (requiring-resolve 'metabase.task.notification/update-subscription-trigger!) args))
+
+(t2/define-after-insert :model/NotificationSubscription
+  [instance]
+  (update-subscription-trigger! instance)
+  instance)
+
+(t2/define-before-update :model/NotificationSubscription
+  [instance]
+  (validate-subscription instance)
+  (update-subscription-trigger! instance)
+  instance)
+
+(t2/define-before-delete :model/NotificationSubscription
+  [instance]
+  (delete-trigger-for-subscription! (:id instance))
+  instance)
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                  :model/NotificationHandler                                     ;;
@@ -221,12 +279,12 @@
 (defn create-notification!
   "Create a new notification with `subsciptions`.
   Return the created notification."
-  [notification subcriptions handlers+recipients]
+  [notification subscriptions handlers+recipients]
   (t2/with-transaction [_conn]
     (let [instance (t2/insert-returning-instance! :model/Notification notification)
           id       (:id instance)]
-      (when (seq subcriptions)
-        (t2/insert! :model/NotificationSubscription (map #(assoc % :notification_id id) subcriptions)))
+      (when (seq subscriptions)
+        (t2/insert! :model/NotificationSubscription (map #(assoc % :notification_id id) subscriptions)))
       (doseq [handler handlers+recipients]
         (let [recipients (:recipients handler)
               handler    (-> handler

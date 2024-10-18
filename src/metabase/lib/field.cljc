@@ -162,12 +162,12 @@
    metadata
    [_tag {source-uuid :lib/uuid :keys [base-type binning effective-type join-alias source-field temporal-unit], :as opts} :as field-ref]]
   (let [metadata (merge
-                  {:lib/type        :metadata/column
-                   :lib/source-uuid source-uuid}
+                  {:lib/type        :metadata/column}
                   metadata
                   {:display-name (or (:display-name opts)
                                      (lib.metadata.calculation/display-name query stage-number field-ref))})]
     (cond-> metadata
+      source-uuid    (assoc :lib/source-uuid source-uuid)
       base-type      (assoc :base-type base-type, :effective-type base-type)
       effective-type (assoc :effective-type effective-type)
       temporal-unit  (assoc ::temporal-unit temporal-unit)

@@ -26,7 +26,7 @@ export const StaticDashboardInner = ({
   initialParameterValues = {},
   withTitle = true,
   withCardTitle = true,
-  withDownloads = true,
+  withDownloads = false,
   hiddenParameters = [],
   onLoad,
   onLoadWithoutCards,

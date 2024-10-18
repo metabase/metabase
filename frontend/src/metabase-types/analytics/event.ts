@@ -26,7 +26,14 @@ export type NewsletterToggleClickedEvent = ValidateEvent<{
   event_detail: "opted-in" | "opted-out";
 }>;
 
+export type NewIFrameCardCreatedEvent = ValidateEvent<{
+  event: "new_iframe_card_created";
+  event_detail: string | null;
+  target_id: number | null;
+}>;
+
 export type SimpleEvent =
+  | NewIFrameCardCreatedEvent
   | NewsletterToggleClickedEvent
   | OnboardingCSVUploadClickedEvent
   | OnboardingDatabaseUploadClickedEvent;
