@@ -9,8 +9,8 @@ import { Button, Flex, Grid, Icon, Popover } from "metabase/ui";
 
 import {
   DatePicker,
-  type DatePickerExtractionUnit,
   type DatePickerOperator,
+  type DatePickerUnit,
   type DatePickerValue,
   type ShortcutOption,
 } from "../../DatePicker";
@@ -103,7 +103,7 @@ interface DateFilterPopoverProps {
   title: string | undefined;
   value: DatePickerValue | undefined;
   availableOperators: ReadonlyArray<DatePickerOperator>;
-  availableUnits: ReadonlyArray<DatePickerExtractionUnit>;
+  availableUnits: ReadonlyArray<DatePickerUnit>;
   isExpanded: boolean;
   onChange: (value: DatePickerValue | undefined) => void;
 }

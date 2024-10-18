@@ -2,7 +2,8 @@ import _userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen } from "__support__/ui";
 
-import type { RelativeDatePickerValue } from "../../types";
+import { DATE_PICKER_UNITS } from "../../constants";
+import type { DatePickerUnit, RelativeDatePickerValue } from "../../types";
 
 import { CurrentDatePicker } from "./CurrentDatePicker";
 
@@ -14,16 +15,26 @@ const DEFAULT_VALUE: RelativeDatePickerValue = {
 
 interface SetupOpts {
   value?: RelativeDatePickerValue;
+  availableUnits?: ReadonlyArray<DatePickerUnit>;
 }
 
 const userEvent = _userEvent.setup({
   advanceTimers: jest.advanceTimersByTime,
 });
 
-function setup({ value = DEFAULT_VALUE }: SetupOpts = {}) {
+function setup({
+  value = DEFAULT_VALUE,
+  availableUnits = DATE_PICKER_UNITS,
+}: SetupOpts = {}) {
   const onChange = jest.fn();
 
-  renderWithProviders(<CurrentDatePicker value={value} onChange={onChange} />);
+  renderWithProviders(
+    <CurrentDatePicker
+      value={value}
+      availableUnits={availableUnits}
+      onChange={onChange}
+    />,
+  );
 
   return { onChange };
 }

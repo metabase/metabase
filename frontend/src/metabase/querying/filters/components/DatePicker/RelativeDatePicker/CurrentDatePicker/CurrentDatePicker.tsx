@@ -5,29 +5,37 @@ import * as Lib from "metabase-lib";
 
 import type {
   DatePickerTruncationUnit,
+  DatePickerUnit,
   RelativeDatePickerValue,
 } from "../../types";
 import { formatDateRange } from "../utils";
 
-import { UNIT_GROUPS } from "./constants";
+import { getCurrentValue, getUnitGroups } from "./utils";
 
 interface CurrentDatePickerProps {
-  value: RelativeDatePickerValue;
+  value: RelativeDatePickerValue | undefined;
+  availableUnits: ReadonlyArray<DatePickerUnit>;
   onChange: (value: RelativeDatePickerValue) => void;
 }
 
-export function CurrentDatePicker({ value, onChange }: CurrentDatePickerProps) {
+export function CurrentDatePicker({
+  value,
+  availableUnits,
+  onChange,
+}: CurrentDatePickerProps) {
+  const unitGroups = getUnitGroups(availableUnits);
+
   const getTooltipLabel = (unit: DatePickerTruncationUnit) => {
-    return formatDateRange({ ...value, unit });
+    return formatDateRange(getCurrentValue(unit));
   };
 
   const handleClick = (unit: DatePickerTruncationUnit) => {
-    onChange({ ...value, unit });
+    onChange(getCurrentValue(unit));
   };
 
   return (
     <Stack>
-      {UNIT_GROUPS.map((group, groupIndex) => (
+      {unitGroups.map((group, groupIndex) => (
         <Group key={groupIndex}>
           {group.map(unit => (
             <Tooltip
@@ -35,7 +43,7 @@ export function CurrentDatePicker({ value, onChange }: CurrentDatePickerProps) {
               label={t`Right now, this is ${getTooltipLabel(unit)}`}
             >
               <Button
-                variant={unit === value.unit ? "filled" : "default"}
+                variant={unit === value?.unit ? "filled" : "default"}
                 radius="xl"
                 onClick={() => handleClick(unit)}
               >

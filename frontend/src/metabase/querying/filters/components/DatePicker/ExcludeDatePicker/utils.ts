@@ -5,6 +5,7 @@ import _ from "underscore";
 import type {
   DatePickerExtractionUnit,
   DatePickerOperator,
+  DatePickerUnit,
   ExcludeDatePickerOperator,
   ExcludeDatePickerValue,
 } from "../types";
@@ -18,7 +19,7 @@ import type {
 
 export function getExcludeUnitOptions(
   availableOperators: ReadonlyArray<DatePickerOperator>,
-  availableUnits: ReadonlyArray<DatePickerExtractionUnit>,
+  availableUnits: ReadonlyArray<DatePickerUnit>,
 ): ExcludeUnitOption[] {
   if (!availableOperators.includes("!=")) {
     return [];

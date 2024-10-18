@@ -2,7 +2,7 @@ import { useState } from "react";
 
 import { Box, Divider, Flex, PopoverBackButton, Tabs } from "metabase/ui";
 
-import type { RelativeDatePickerValue } from "../types";
+import type { DatePickerUnit, RelativeDatePickerValue } from "../types";
 
 import { CurrentDatePicker } from "./CurrentDatePicker";
 import { DateIntervalPicker } from "./DateIntervalPicker";
@@ -18,6 +18,7 @@ import {
 
 interface RelativeDatePickerProps {
   value: RelativeDatePickerValue | undefined;
+  availableUnits: ReadonlyArray<DatePickerUnit>;
   canUseRelativeOffsets: boolean;
   isNew: boolean;
   onChange: (value: RelativeDatePickerValue) => void;
@@ -26,12 +27,15 @@ interface RelativeDatePickerProps {
 
 export function RelativeDatePicker({
   value: initialValue,
+  availableUnits,
   canUseRelativeOffsets,
   isNew,
   onChange,
   onBack,
 }: RelativeDatePickerProps) {
-  const [value, setValue] = useState(initialValue ?? DEFAULT_VALUE);
+  const [value, setValue] = useState<RelativeDatePickerValue | undefined>(
+    initialValue ?? DEFAULT_VALUE,
+  );
   const direction = getDirection(value);
 
   const handleTabChange = (tabValue: string | null) => {
@@ -42,7 +46,9 @@ export function RelativeDatePicker({
   };
 
   const handleSubmit = () => {
-    onChange(value);
+    if (value != null) {
+      onChange(value);
+    }
   };
 
   return (
@@ -63,6 +69,7 @@ export function RelativeDatePicker({
           {isOffsetIntervalValue(value) ? (
             <DateOffsetIntervalPicker
               value={value}
+              availableUnits={availableUnits}
               isNew={isNew}
               onChange={setValue}
               onSubmit={handleSubmit}
@@ -70,6 +77,7 @@ export function RelativeDatePicker({
           ) : isIntervalValue(value) ? (
             <DateIntervalPicker
               value={value}
+              availableUnits={availableUnits}
               isNew={isNew}
               canUseRelativeOffsets={canUseRelativeOffsets}
               onChange={setValue}
@@ -77,7 +85,11 @@ export function RelativeDatePicker({
             />
           ) : (
             <Box p="md">
-              <CurrentDatePicker value={value} onChange={onChange} />
+              <CurrentDatePicker
+                value={value}
+                availableUnits={availableUnits}
+                onChange={onChange}
+              />
             </Box>
           )}
         </Tabs.Panel>

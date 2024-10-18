@@ -16,6 +16,7 @@ import { MIN_WIDTH } from "../constants";
 import type {
   DatePickerExtractionUnit,
   DatePickerOperator,
+  DatePickerUnit,
   ExcludeDatePickerOperator,
   ExcludeDatePickerValue,
 } from "../types";
@@ -33,7 +34,7 @@ import {
 export interface ExcludeDatePickerProps {
   value?: ExcludeDatePickerValue;
   availableOperators: ReadonlyArray<DatePickerOperator>;
-  availableUnits: ReadonlyArray<DatePickerExtractionUnit>;
+  availableUnits: ReadonlyArray<DatePickerUnit>;
   isNew: boolean;
   onChange: (value: ExcludeDatePickerValue) => void;
   onBack: () => void;
@@ -82,7 +83,7 @@ export function ExcludeDatePicker({
 interface ExcludeOptionPickerProps {
   value: ExcludeDatePickerValue | undefined;
   availableOperators: ReadonlyArray<DatePickerOperator>;
-  availableUnits: ReadonlyArray<DatePickerExtractionUnit>;
+  availableUnits: ReadonlyArray<DatePickerUnit>;
   onChange: (value: ExcludeDatePickerValue) => void;
   onSelectUnit: (unit: DatePickerExtractionUnit) => void;
   onBack: () => void;
