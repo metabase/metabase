@@ -1,13 +1,9 @@
 import { aliases, colors } from "metabase/lib/colors";
 import { checkNumber } from "metabase/lib/types";
-import type {
-  ColorGetter,
-  RenderingContext,
-} from "metabase/visualizations/types";
 
 const ACCENT_KEY_PREFIX = "accent";
 
-function getAccentNumberFromHex(hexColor: string) {
+export function createHexToAccentNumberMap() {
   const hexToAccentNumber = new Map<string, number>();
 
   for (const [key, hex] of Object.entries(colors)) {
@@ -35,24 +31,13 @@ function getAccentNumberFromHex(hexColor: string) {
     hexToAccentNumber.set(hex, accentNumber);
   }
 
-  return hexToAccentNumber.get(hexColor);
+  return hexToAccentNumber;
 }
 
-export function getColorForRing(
-  hexColor: string,
+export function getRingColorAlias(
+  accentColorNumber: number,
   ring: "inner" | "middle" | "outer",
-  hasMultipleRings: boolean,
-  renderingContext: RenderingContext,
 ) {
-  if (!hasMultipleRings) {
-    return hexColor;
-  }
-
-  const accentNumber = getAccentNumberFromHex(hexColor);
-  if (accentNumber == null) {
-    return hexColor;
-  }
-
   let suffix = "";
   if (ring === "inner") {
     suffix = "-dark";
@@ -60,24 +45,9 @@ export function getColorForRing(
     suffix = "-light";
   }
 
-  return renderingContext.getColor(
-    `${ACCENT_KEY_PREFIX}${accentNumber}${suffix}`,
-  );
+  return `${ACCENT_KEY_PREFIX}${accentColorNumber}${suffix}`;
 }
 
-export function getColorForPicker(
-  hexColor: string | undefined,
-  hasMultipleRings: boolean,
-  getColor: ColorGetter,
-) {
-  if (!hasMultipleRings || hexColor == null) {
-    return hexColor;
-  }
-
-  const accentNumber = getAccentNumberFromHex(hexColor);
-  if (accentNumber == null) {
-    return hexColor;
-  }
-
-  return getColor(`${ACCENT_KEY_PREFIX}${accentNumber}-dark`);
+export function getPickerColorAlias(accentNumber: number) {
+  return `${ACCENT_KEY_PREFIX}${accentNumber}-dark`;
 }
