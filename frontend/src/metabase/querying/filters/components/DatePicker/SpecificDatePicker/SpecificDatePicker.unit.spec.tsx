@@ -132,4 +132,33 @@ describe("SpecificDatePicker", () => {
       hasTime: false,
     });
   });
+
+  it("should not allow to add time when time units are not supported", async () => {
+    setup({ availableUnits: ["day", "month"] });
+    await userEvent.click(screen.getByText("On"));
+    expect(screen.queryByText("Add time")).not.toBeInTheDocument();
+  });
+
+  it("should allow to remove time even when time units are not supported", async () => {
+    const { onChange } = setup({
+      value: {
+        type: "specific",
+        operator: "=",
+        values: [new Date(2020, 0, 1, 10, 20)],
+        hasTime: true,
+      },
+      availableUnits: ["day", "month"],
+    });
+
+    await userEvent.click(screen.getByText("Remove time"));
+    await userEvent.click(screen.getByText("Update filter"));
+
+    expect(onChange).toHaveBeenCalledWith({
+      type: "specific",
+      operator: "=",
+      values: [new Date(2020, 0, 1)],
+      hasTime: false,
+    });
+    expect(screen.queryByText("Add time")).not.toBeInTheDocument();
+  });
 });

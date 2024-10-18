@@ -159,6 +159,17 @@ describe("DateOffsetIntervalPicker", () => {
         expect(onSubmit).not.toHaveBeenCalled();
       });
 
+      it("should allow to set only available units", async () => {
+        setup({
+          value: defaultValue,
+          availableUnits: ["day", "year"],
+        });
+        await userEvent.click(screen.getByLabelText("Unit"));
+        expect(screen.getByText("days")).toBeInTheDocument();
+        expect(screen.getByText("years")).toBeInTheDocument();
+        expect(screen.queryByText("months")).not.toBeInTheDocument();
+      });
+
       it("should change the offset interval", async () => {
         const { onChange, onSubmit } = setup({
           value: defaultValue,

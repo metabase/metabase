@@ -226,4 +226,12 @@ describe("SingleDatePicker", () => {
     });
     expect(onSubmit).not.toHaveBeenCalled();
   });
+
+  it("should not allow to add time when the time toggle is disabled", () => {
+    setup({
+      value: { dateRange: [START_DATE_TIME, END_DATE_TIME], hasTime: false },
+      hasTimeToggle: false,
+    });
+    expect(screen.queryByText("Add time")).not.toBeInTheDocument();
+  });
 });

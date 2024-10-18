@@ -155,6 +155,17 @@ describe("DateIntervalPicker", () => {
         expect(onSubmit).not.toHaveBeenCalled();
       });
 
+      it("should allow to set only available units", async () => {
+        setup({
+          value: defaultValue,
+          availableUnits: ["day", "month"],
+        });
+        await userEvent.click(screen.getByLabelText("Unit"));
+        expect(screen.getByText("days")).toBeInTheDocument();
+        expect(screen.getByText("months")).toBeInTheDocument();
+        expect(screen.queryByText("years")).not.toBeInTheDocument();
+      });
+
       it("should allow to include the current unit", async () => {
         const { onChange, onSubmit } = setup({
           value: defaultValue,

@@ -149,4 +149,12 @@ describe("SingleDatePicker", () => {
     });
     expect(onSubmit).not.toHaveBeenCalled();
   });
+
+  it("should not allow to add time when the time toggle is disabled", () => {
+    setup({
+      value: { date: DATE, hasTime: false },
+      hasTimeToggle: false,
+    });
+    expect(screen.queryByText("Add time")).not.toBeInTheDocument();
+  });
 });
