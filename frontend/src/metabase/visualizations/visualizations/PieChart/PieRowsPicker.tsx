@@ -1,10 +1,15 @@
+import { useMemo } from "react";
+
 import { color } from "metabase/lib/colors";
 import {
   ChartSettingSeriesOrder,
-  type SortableItem,
+  type SortableChartSettingOrderedItem,
 } from "metabase/visualizations/components/settings/ChartSettingSeriesOrder";
 import type { PieRow } from "metabase/visualizations/echarts/pie/model/types";
-import { getColorForPicker } from "metabase/visualizations/echarts/pie/util/colors";
+import {
+  createHexToAccentNumberMap,
+  getPickerColorAlias,
+} from "metabase/visualizations/echarts/pie/util/colors";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type { RawSeries } from "metabase-types/api";
 
@@ -22,9 +27,26 @@ export function PieRowsPicker({
   onShowWidget: (widget: any, ref: any) => void;
 }) {
   const pieRows = settings["pie.rows"];
+  const hasMultipleRings = numRings > 1;
+
+  const hexToAccentNumberMap = useMemo(() => createHexToAccentNumberMap(), []);
+
   if (pieRows == null) {
     return null;
   }
+
+  const handleGetColorForPicker = ({
+    color: hexColor,
+  }: SortableChartSettingOrderedItem) => {
+    if (!hasMultipleRings || hexColor == null) {
+      return hexColor;
+    }
+    const accentNumber = hexToAccentNumberMap.get(hexColor);
+    if (accentNumber == null) {
+      return hexColor;
+    }
+    return color(getPickerColorAlias(accentNumber));
+  };
 
   const onChangeSeriesColor = (sliceKey: string, color: string) =>
     onChangeSettings({
@@ -36,7 +58,7 @@ export function PieRowsPicker({
       }),
     });
 
-  const onSortEnd = (newPieRows: SortableItem[]) =>
+  const onSortEnd = (newPieRows: SortableChartSettingOrderedItem[]) =>
     onChangeSettings({
       "pie.sort_rows": false,
       "pie.rows": newPieRows as PieRow[],
@@ -56,7 +78,7 @@ export function PieRowsPicker({
           ? { dark: true, main: false, light: false, harmony: false }
           : undefined
       }
-      getItemColor={item => getColorForPicker(item.color, numRings > 1, color)}
+      getItemColor={handleGetColorForPicker}
     />
   );
 }
