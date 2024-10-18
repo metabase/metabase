@@ -142,7 +142,6 @@ describe("QueryDownloadPopover", () => {
 
       await userEvent.click(screen.getByLabelText(`.${format}`));
       await userEvent.click(screen.getByLabelText(`Unformatted`));
-      await userEvent.click(screen.getByLabelText("Keep data pivoted"));
       await userEvent.click(
         await screen.findByTestId("download-results-button"),
       );
