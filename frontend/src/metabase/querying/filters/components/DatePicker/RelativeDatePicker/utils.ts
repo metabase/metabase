@@ -45,6 +45,10 @@ export function getDirection(
   }
 }
 
+export function getDirectionDefaultValue(direction: RelativeIntervalDirection) {
+  return setDirectionAndCoerceUnit(DEFAULT_VALUE, direction);
+}
+
 export function setDirection(
   value: RelativeDatePickerValue = DEFAULT_VALUE,
   direction: RelativeIntervalDirection,
