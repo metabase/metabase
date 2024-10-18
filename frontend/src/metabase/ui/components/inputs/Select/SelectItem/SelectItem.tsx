@@ -1,9 +1,7 @@
 import { type BoxProps, Group, type MantineSize, Text } from "@mantine/core";
 import cx from "classnames";
-import { useEffect } from "react";
 import { type HTMLAttributes, type Ref, forwardRef } from "react";
 
-import useSequencedContentCloseHandler from "metabase/hooks/use-sequenced-content-close-handler";
 import { Icon, type IconName } from "metabase/ui";
 
 import S from "./SelectItem.module.css";
@@ -33,16 +31,6 @@ export const SelectItem = forwardRef(function SelectItem(
   }: SelectItemProps,
   ref: Ref<HTMLDivElement>,
 ) {
-  // FIXME: since we lost control over the dropdown component this is the only place we can
-  // use this hook which is terrible. We need to build a custom dropdown instead
-  const { setupCloseHandler, removeCloseHandler } =
-    useSequencedContentCloseHandler();
-
-  useEffect(() => {
-    setupCloseHandler(document.body, () => undefined);
-    return () => removeCloseHandler();
-  }, [setupCloseHandler, removeCloseHandler]);
-
   return (
     <Group
       ref={ref}
