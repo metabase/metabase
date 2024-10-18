@@ -1,5 +1,6 @@
 (ns metabase.test.util.dynamic-redefs
-  (:require [medley.core :as m])
+  (:require [medley.core :as m]
+            [metabase.util.log :as log])
   (:import (clojure.lang Var)))
 
 (set! *warn-on-reflection* true)
@@ -14,12 +15,40 @@
   (get *local-redefs* a-var
        (get (meta a-var) ::original)))
 
+(def ^:dynamic *already-called* #{})
+
+(def infinite-loop-error
+  "Infinite loop detected in `dynamic-redefs`. If you're trying to call the original,
+  non-rebound, function, see `metabase.test.util-test/with-dynamic-redefs-nested-binding-test`
+  for an example.
+
+  Specifically, instead of
+  ```
+  (let [orig the-original-fn]
+   (with-dynamic-redefs [the-original-fn (fn [...]
+                                          (something-else)
+                                          (orig ...))]
+     ...))
+  ```
+
+  You probably want:
+  ```
+  (with-dynamic-redefs [the-original-fn (fn [...]
+                                         (something-else)
+                                         ((dynamic-value the-original-fn) ...))])
+  ```")
+
 (defn- var->proxy
   "Build a proxy function to intercept the given var. The proxy checks the current scope for what to call."
   [a-var]
   (fn [& args]
     (let [current-f (dynamic-value a-var)]
-      (apply current-f args))))
+      (when (contains? *already-called* a-var)
+        ;; Log it as well as throwing it - this gives more user-friendly formatting.
+        (log/error infinite-loop-error)
+        (throw (ex-info infinite-loop-error {:var a-var})))
+      (binding [*already-called* (conj *already-called*)]
+        (apply current-f args)))))
 
 (defn patch-vars!
   "Rebind the given vars with proxies that wrap the original functions."
