@@ -1017,8 +1017,8 @@
                                                 :aggregation  [[:count] #_[:sum [:field (mt/id :products :price) {:base-type :type/Float}]]]
                                                 :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]]}}}]
         (let [result   (mt/user-http-request :crowberto :post 200
-                                           (format "card/%d/query/xlsx?format_rows=true" pivot-card-id)
-                                           {})
+                                             (format "card/%d/query/xlsx?format_rows=true" pivot-card-id)
+                                             {})
               data   (process-results false :xlsx result)]
           (is (= ["Doohickey" "4,200.00%"] (second data))))))))
 
