@@ -43,11 +43,11 @@ function ChartSettingsSidebar(props) {
   const series = useMemo(() => {
     return [
       {
+        ...result,
         card,
-        data: result.data,
       },
     ];
-  }, [card, result.data]);
+  }, [card, result]);
 
   return (
     result && (

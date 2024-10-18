@@ -6,6 +6,7 @@
   (:require
    [compojure.core :refer [GET POST]]
    [metabase-enterprise.scim.api :as scim]
+   [metabase.analytics.prometheus :as prometheus]
    [metabase.api.common :as api :refer [defendpoint]]
    [metabase.models.interface :as mi]
    [metabase.models.permissions-group :as perms-group]
@@ -106,6 +107,22 @@
    :body    object
    :headers {"Content-Type" "application/scim+json"}})
 
+(defn- do-with-prometheus-counters
+  [thunk]
+  (try
+    (let [response (thunk)]
+      (prometheus/inc! :metabase-scim/response-ok)
+      response)
+    (catch Throwable e
+      (prometheus/inc! :metabase-scim/response-error)
+      (throw e))))
+
+(defmacro with-prometheus-counters
+  "Macro to wrap SCIM endpoints and automatically increment Prometheus counters to track success and error API
+  responses."
+  [& body]
+  `(do-with-prometheus-counters (fn [] ~@body)))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               User operations                                                  |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -163,7 +180,8 @@
       :last_name  familyName
       :email      email
       :is_active  is-active?
-      :type       :personal}
+      :type       :personal
+      :sso_source "scim"}
      (when (and locale (i18n/available-locale? locale))
        {:locale locale}))))
 
@@ -188,98 +206,103 @@
   {start-index  [:maybe ms/PositiveInt]
    c            [:maybe ms/PositiveInt]
    filter-param [:maybe ms/NonBlankString]}
-  (let [limit          (or c default-pagination-limit)
-        ;; SCIM start-index is 1-indexed, so we need to decrement it here
-        offset         (if start-index (dec start-index) default-pagination-offset)
-        filter-param   (when filter-param (codec/url-decode filter-param))
-        where-clause   [:and [:= :type "personal"]
-                        (when filter-param (user-filter-clause filter-param))]
-        users          (t2/select (cons :model/User user-cols)
-                                  {:where    where-clause
-                                   :limit    limit
-                                   :offset   offset
-                                   :order-by [[:id :asc]]})
-        hydrated-users (t2/hydrate users :scim_user_group_memberships)
-        results-count  (count hydrated-users)
-        items-per-page (if (< results-count limit) results-count limit)
-        result         {:schemas      [list-schema-uri]
-                        :totalResults (t2/count :model/User {:where where-clause})
-                        :startIndex   (inc offset)
-                        :itemsPerPage items-per-page
-                        :Resources    (map mb-user->scim hydrated-users)}]
-    (scim-response result)))
+  (with-prometheus-counters
+    (let [limit          (or c default-pagination-limit)
+          ;; SCIM start-index is 1-indexed, so we need to decrement it here
+          offset         (if start-index (dec start-index) default-pagination-offset)
+          filter-param   (when filter-param (codec/url-decode filter-param))
+          where-clause   [:and [:= :type "personal"]
+                          (when filter-param (user-filter-clause filter-param))]
+          users          (t2/select (cons :model/User user-cols)
+                                    {:where    where-clause
+                                     :limit    limit
+                                     :offset   offset
+                                     :order-by [[:id :asc]]})
+          hydrated-users (t2/hydrate users :scim_user_group_memberships)
+          results-count  (count hydrated-users)
+          items-per-page (if (< results-count limit) results-count limit)
+          result         {:schemas      [list-schema-uri]
+                          :totalResults (t2/count :model/User {:where where-clause})
+                          :startIndex   (inc offset)
+                          :itemsPerPage items-per-page
+                          :Resources    (map mb-user->scim hydrated-users)}]
+      (scim-response result))))
 
 (defendpoint GET "/Users/:id"
   "Fetch a single user."
   [id]
   {id ms/NonBlankString}
-  (-> (get-user-by-entity-id id)
-      (t2/hydrate :scim_user_group_memberships)
-      mb-user->scim))
+  (with-prometheus-counters
+    (-> (get-user-by-entity-id id)
+        (t2/hydrate :scim_user_group_memberships)
+        mb-user->scim)))
 
 (defendpoint POST "/Users"
   "Create a single user."
   [:as {scim-user :body}]
   {scim-user SCIMUser}
-  (let [mb-user (scim-user->mb scim-user)
-        email   (:email mb-user)]
-    (when (t2/exists? :model/User :%lower.email (u/lower-case-en email))
-      (throw-scim-error 409 "Email address is already in use"))
-    (let [new-user (t2/with-transaction [_]
-                     (user/insert-new-user! mb-user)
-                     (-> (t2/select-one (cons :model/User user-cols)
-                                        :email (u/lower-case-en email))
-                         mb-user->scim))]
-      (scim-response new-user 201))))
+  (with-prometheus-counters
+    (let [mb-user (scim-user->mb scim-user)
+          email   (:email mb-user)]
+      (when (t2/exists? :model/User :%lower.email (u/lower-case-en email))
+        (throw-scim-error 409 "Email address is already in use"))
+      (let [new-user (t2/with-transaction [_]
+                       (user/insert-new-user! mb-user)
+                       (-> (t2/select-one (cons :model/User user-cols)
+                                          :email (u/lower-case-en email))
+                           mb-user->scim))]
+        (scim-response new-user 201)))))
 
 (defendpoint PUT "/Users/:id"
   "Update a user."
   [:as {scim-user :body {id :id} :params}]
   {scim-user SCIMUser}
-  (let [updates      (scim-user->mb scim-user)
-        email        (-> scim-user :emails first :value)
-        current-user (get-user-by-entity-id id)]
-    (if (not= email (:email current-user))
-      (throw-scim-error 400 "You may not update the email of an existing user.")
-      (try
-        (t2/with-transaction [_conn]
-          (t2/update! :model/User (u/the-id current-user) updates)
-          (let [user (-> (t2/select-one (cons :model/User user-cols)
-                                        :entity_id id)
-                         mb-user->scim)]
-            (scim-response user)))
-        (catch Exception e
-          (let [message (format "Error updating user: %s" (ex-message e))]
-            (throw (ex-info message
-                            {:schemas     [error-schema-uri]
-                             :detail      message
-                             :status      400
-                             :status-code 400}))))))))
+  (with-prometheus-counters
+    (let [updates      (scim-user->mb scim-user)
+          email        (-> scim-user :emails first :value)
+          current-user (get-user-by-entity-id id)]
+      (if (not= email (:email current-user))
+        (throw-scim-error 400 "You may not update the email of an existing user.")
+        (try
+          (t2/with-transaction [_conn]
+            (t2/update! :model/User (u/the-id current-user) updates)
+            (let [user (-> (t2/select-one (cons :model/User user-cols)
+                                          :entity_id id)
+                           mb-user->scim)]
+              (scim-response user)))
+          (catch Exception e
+            (let [message (format "Error updating user: %s" (ex-message e))]
+              (throw (ex-info message
+                              {:schemas     [error-schema-uri]
+                               :detail      message
+                               :status      400
+                               :status-code 400})))))))))
 
 (defendpoint PATCH "/Users/:id"
   "Activate or deactivate a user. Supports specific replace operations, but not arbitrary patches."
   [:as {patch-ops :body {id :id} :params}]
   {patch-ops UserPatch}
   {id ms/NonBlankString}
-  (t2/with-transaction [_conn]
-    (let [user    (get-user-by-entity-id id)
-          updates (reduce
-                   (fn [acc operation]
-                     (let [{:keys [op path value]} operation]
-                       (if (= (u/lower-case-en op) "replace")
-                         (case path
-                           "active"          (assoc acc :is_active (Boolean/valueOf (u/lower-case-en value)))
-                           "userName"        (assoc acc :email value)
-                           "name.givenName"  (assoc acc :first_name value)
-                           "name.familyName" (assoc acc :last_name value)
-                           (throw-scim-error 400 (format "Unsupported path: %s" path)))
-                         acc)))
-                   {}
-                   (:Operations patch-ops))]
-      (t2/update! :model/User (u/the-id user) updates)
-      (-> (get-user-by-entity-id id)
-          mb-user->scim
-          scim-response))))
+  (with-prometheus-counters
+    (t2/with-transaction [_conn]
+      (let [user    (get-user-by-entity-id id)
+            updates (reduce
+                     (fn [acc operation]
+                       (let [{:keys [op path value]} operation]
+                         (if (= (u/lower-case-en op) "replace")
+                           (case path
+                             "active"          (assoc acc :is_active (Boolean/valueOf (u/lower-case-en value)))
+                             "userName"        (assoc acc :email value)
+                             "name.givenName"  (assoc acc :first_name value)
+                             "name.familyName" (assoc acc :last_name value)
+                             (throw-scim-error 400 (format "Unsupported path: %s" path)))
+                           acc)))
+                     {}
+                     (:Operations patch-ops))]
+        (t2/update! :model/User (u/the-id user) updates)
+        (-> (get-user-by-entity-id id)
+            mb-user->scim
+            scim-response)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Group operations                                                  |
@@ -344,35 +367,37 @@
   {start-index  [:maybe ms/PositiveInt]
    c            [:maybe ms/PositiveInt]
    filter-param [:maybe ms/NonBlankString]}
-  (let [limit          (or c default-pagination-limit)
-        ;; SCIM start-index is 1-indexed, so we need to decrement it here
-        offset         (if start-index (dec start-index) default-pagination-offset)
-        filter-param   (when filter-param (codec/url-decode filter-param))
-        where-clause   [:and
-                        [:not= :id (:id perms-group/all-users)]
-                        [:not= :id (:id perms-group/admin)]
-                        (when filter-param (group-filter-clause filter-param))]
-        groups         (t2/select (cons :model/PermissionsGroup group-cols)
-                                  {:where    where-clause
-                                   :limit    limit
-                                   :offset   offset
-                                   :order-by [[:id :asc]]})
-        results-count  (count groups)
-        items-per-page (if (< results-count limit) results-count limit)
-        result         {:schemas      [list-schema-uri]
-                        :totalResults (t2/count :model/PermissionsGroup {:where where-clause})
-                        :startIndex   (inc offset)
-                        :itemsPerPage items-per-page
-                        :Resources    (map mb-group->scim groups)}]
-    (scim-response result)))
+  (with-prometheus-counters
+    (let [limit          (or c default-pagination-limit)
+          ;; SCIM start-index is 1-indexed, so we need to decrement it here
+          offset         (if start-index (dec start-index) default-pagination-offset)
+          filter-param   (when filter-param (codec/url-decode filter-param))
+          where-clause   [:and
+                          [:not= :id (:id perms-group/all-users)]
+                          [:not= :id (:id perms-group/admin)]
+                          (when filter-param (group-filter-clause filter-param))]
+          groups         (t2/select (cons :model/PermissionsGroup group-cols)
+                                    {:where    where-clause
+                                     :limit    limit
+                                     :offset   offset
+                                     :order-by [[:id :asc]]})
+          results-count  (count groups)
+          items-per-page (if (< results-count limit) results-count limit)
+          result         {:schemas      [list-schema-uri]
+                          :totalResults (t2/count :model/PermissionsGroup {:where where-clause})
+                          :startIndex   (inc offset)
+                          :itemsPerPage items-per-page
+                          :Resources    (map mb-group->scim groups)}]
+      (scim-response result))))
 
 (defendpoint GET "/Groups/:id"
   "Fetch a single group."
   [id]
   {id ms/NonBlankString}
-  (-> (get-group-by-entity-id id)
-      (t2/hydrate :scim_group_members)
-      mb-group->scim))
+  (with-prometheus-counters
+    (-> (get-group-by-entity-id id)
+        (t2/hydrate :scim_group_members)
+        mb-group->scim)))
 
 (defn- update-group-membership
   "Updates the membership of `group-id` to be the set of users in the collection `user-entity-ids`. Clears
@@ -389,41 +414,44 @@
   "Create a single group, and populates it if necessary."
   [:as {scim-group :body}]
   {scim-group SCIMGroup}
-  (let [group-name (:displayName scim-group)
-        entity-ids (map :value (:members scim-group))]
-    (when (t2/exists? :model/PermissionsGroup :%lower.name (u/lower-case-en group-name))
-      (throw-scim-error 409 "A group with that name already exists"))
-    (t2/with-transaction [_conn]
-      (let [new-group (first (t2/insert-returning-instances! :model/PermissionsGroup {:name group-name}))]
-        (when (seq entity-ids)
-          (update-group-membership (:id new-group) entity-ids))
-        (-> new-group
-            (t2/hydrate :scim_group_members)
-            mb-group->scim
-            (scim-response 201))))))
+  (with-prometheus-counters
+    (let [group-name (:displayName scim-group)
+          entity-ids (map :value (:members scim-group))]
+      (when (t2/exists? :model/PermissionsGroup :%lower.name (u/lower-case-en group-name))
+        (throw-scim-error 409 "A group with that name already exists"))
+      (t2/with-transaction [_conn]
+        (let [new-group (first (t2/insert-returning-instances! :model/PermissionsGroup {:name group-name}))]
+          (when (seq entity-ids)
+            (update-group-membership (:id new-group) entity-ids))
+          (-> new-group
+              (t2/hydrate :scim_group_members)
+              mb-group->scim
+              (scim-response 201)))))))
 
 (defendpoint PUT "/Groups/:id"
   "Update a group."
   [:as {scim-group :body {id :id} :params}]
   {scim-group SCIMGroup}
-  (let [group-name (:displayName scim-group)
-        entity-ids (map :value (:members scim-group))]
-    (t2/with-transaction [_conn]
-      (let [group (get-group-by-entity-id id)]
-        (t2/update! :model/PermissionsGroup (u/the-id group) {:name group-name})
-        (when (seq entity-ids)
-          (update-group-membership (u/the-id group) entity-ids))
-        (-> (get-group-by-entity-id id)
-            (t2/hydrate :scim_group_members)
-            mb-group->scim
-            scim-response)))))
+  (with-prometheus-counters
+    (let [group-name (:displayName scim-group)
+          entity-ids (map :value (:members scim-group))]
+      (t2/with-transaction [_conn]
+        (let [group (get-group-by-entity-id id)]
+          (t2/update! :model/PermissionsGroup (u/the-id group) {:name group-name})
+          (when (seq entity-ids)
+            (update-group-membership (u/the-id group) entity-ids))
+          (-> (get-group-by-entity-id id)
+              (t2/hydrate :scim_group_members)
+              mb-group->scim
+              scim-response))))))
 
 (defendpoint DELETE "/Groups/:id"
   "Delete a group."
   [id]
   {id ms/NonBlankString}
-  (let [group (get-group-by-entity-id id)]
-    (t2/delete! :model/PermissionsGroup (u/the-id group))
-    (scim-response nil 204)))
+  (with-prometheus-counters
+    (let [group (get-group-by-entity-id id)]
+      (t2/delete! :model/PermissionsGroup (u/the-id group))
+      (scim-response nil 204))))
 
 (api/define-routes)

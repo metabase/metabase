@@ -96,7 +96,10 @@ describe("QueryDownloadPopover", () => {
       const { onDownload } = setup();
 
       await userEvent.click(screen.getByLabelText(`.${format}`));
-      await userEvent.click(screen.getByLabelText(`Unformatted`));
+      await userEvent.click(screen.getByLabelText("Unformatted"));
+      expect(screen.queryByTestId("formatting-description")).toHaveTextContent(
+        `E.g. 2024-09-06 or 187.50, like in the database`,
+      );
       expect(
         screen.queryByLabelText("Keep data pivoted"),
       ).not.toBeInTheDocument();
@@ -107,6 +110,31 @@ describe("QueryDownloadPopover", () => {
       expect(onDownload).toHaveBeenCalledWith({
         type: format,
         enableFormatting: false,
+        enablePivot: false,
+      });
+    },
+  );
+
+  it.each(["csv", "json", "xlsx"])(
+    "should trigger formatted download for %s format",
+    async format => {
+      const { onDownload } = setup();
+
+      await userEvent.click(screen.getByLabelText(`.${format}`));
+      await userEvent.click(screen.getByLabelText("Formatted"));
+      expect(screen.queryByTestId("formatting-description")).toHaveTextContent(
+        `E.g. September 6, 2024 or $187.50, like in Metabase`,
+      );
+      expect(
+        screen.queryByLabelText("Keep data pivoted"),
+      ).not.toBeInTheDocument();
+      await userEvent.click(
+        await screen.findByTestId("download-results-button"),
+      );
+
+      expect(onDownload).toHaveBeenCalledWith({
+        type: format,
+        enableFormatting: true,
         enablePivot: false,
       });
     },
