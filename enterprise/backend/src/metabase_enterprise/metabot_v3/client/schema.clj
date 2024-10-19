@@ -17,7 +17,10 @@
    [:token :string]])
 
 (mr/def ::role
-  [:enum :system :user :assistant :tool])
+  [:enum
+   {:encode/api-request u/->snake_case_en
+    :decode/api-request keyword}
+   :system :user :assistant :tool])
 
 (mr/def ::message.tool-call
   [:map
