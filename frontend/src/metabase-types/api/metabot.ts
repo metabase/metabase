@@ -1,73 +1,93 @@
-// TODO: refer to docs - try to make naming consistent with BE
-
 export type MetabotFeedbackType =
   | "great"
   | "wrong_data"
   | "incorrect_result"
   | "invalid_sql";
 
-export type MetabotAgentChatContext = Record<string, any>;
+/* Metabot v3 - Base Types */
 
-export type UserChatMessage = {
-  source: "user";
-  message: string;
-  context: MetabotAgentChatContext;
-};
+export type MetabotMetabotChatContext = Record<string, any>;
 
 export type MetabotTool = {
   name: string; // TODO: make strictly typed - currently there's no tools
   parameters: Record<string, any>;
 };
 
-export type MetabotChatMessage = {
-  source: "llm";
-  llm_response_type: "message";
+export type MetabotHistoryUserMessageEntry = {
+  role: "user";
   message: string;
+  context: MetabotMetabotChatContext;
 };
 
-export type MetabotToolMessage = {
-  source: "llm";
-  llm_response_type: "tools";
+export type MetabotHistoryToolEntry = {
+  role: "assistant";
+  assistant_response_type: "tools";
   tools: MetabotTool[];
 };
 
-export type MetabotMessage = MetabotToolMessage | MetabotChatMessage;
-
-export type ChatMessage = UserChatMessage | MetabotMessage;
-
-export type MetabotAgentRequest = {
+export type MetabotHistoryMessageEntry = {
+  role: "assistant";
+  assistant_response_type: "message";
   message: string;
-  context: MetabotAgentChatContext;
-  history: ChatMessage[];
 };
 
-export type MetabotAgentMessage = {
+export type MetabotHistoryEntry =
+  | MetabotHistoryUserMessageEntry
+  | MetabotHistoryToolEntry
+  | MetabotHistoryMessageEntry;
+
+// export type MetabotHistory = MetabotHistoryEntry[];
+
+// TODO: temp - don't merge
+export type MetabotHistory = any;
+
+export type MetabotMessageReaction = {
   type: "metabot.reaction/message";
   message: string;
 };
 
-export type MetabotAgentResponse = MetabotAgentMessage[];
+export type MetabotReaction = MetabotMessageReaction;
 
-export const isMetabotToolMessage = (
-  message: ChatMessage,
-): message is MetabotToolMessage => {
-  return message.source === "llm" && message.llm_response_type === "tools";
+/* Metabot v3 - API Request Types */
+
+export type MetabotAgentRequest = {
+  message: string;
+  context: MetabotMetabotChatContext;
+  history: MetabotHistory[];
 };
 
-export const isMetabotChatMessage = (
-  message: ChatMessage,
-): message is MetabotChatMessage => {
-  return message.source === "llm" && message.llm_response_type === "message";
+export type MetabotAgentResponse = {
+  reactions: MetabotReaction[];
+  history: MetabotHistory[];
+};
+
+/* Metabot v3 - Type Guards */
+
+export const isMetabotMessageReaction = (
+  reaction: MetabotReaction,
+): reaction is MetabotMessageReaction => {
+  return reaction.type === "metabot.reaction/message";
+};
+
+export const isMetabotToolMessage = (
+  message: MetabotHistoryEntry,
+): message is MetabotHistoryToolEntry => {
+  return (
+    message.role === "assistant" && message.assistant_response_type === "tools"
+  );
+};
+
+export const isMetabotHistoryMessage = (
+  message: MetabotHistoryEntry,
+): message is MetabotHistoryMessageEntry => {
+  return (
+    message.role === "assistant" &&
+    message.assistant_response_type === "message"
+  );
 };
 
 export const isMetabotMessage = (
-  message: ChatMessage,
-): message is MetabotMessage => {
-  return message.source === "llm";
-};
-
-export const isUserChatMessage = (
-  message: ChatMessage,
-): message is UserChatMessage => {
-  return message.source === "user";
+  message: MetabotHistoryEntry,
+): message is MetabotHistoryMessageEntry => {
+  return message.role === "assistant";
 };

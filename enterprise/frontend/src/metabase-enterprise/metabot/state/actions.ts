@@ -1,26 +1,18 @@
 import { createAsyncThunk } from "metabase/lib/redux";
-import type { MetabotAgentMessage } from "metabase-types/api";
-
-import { metabot } from "./reducer";
-
-export const { addMessage, reset } = metabot.actions;
+import type { MetabotReaction } from "metabase-types/api";
 
 export const processMetabotMessages = createAsyncThunk(
   "metabase-enterprise/metabot/processResponseMessages",
-  async (messages: MetabotAgentMessage[], { dispatch }) => {
-    for (const message of messages) {
-      if (message.type === "metabot.reaction/message") {
-        await dispatch(
-          addMessage({
-            source: "llm",
-            llm_response_type: "message",
-            message: message.message,
-          }),
-        );
+  async (reactions: MetabotReaction[]) => {
+    for (const reaction of reactions) {
+      // NOTE: add handlers for new reactions here - dispatch other actions as needed
+      if (reaction.type === "metabot.reaction/message") {
+        // NOTE: do nothing for messages, they're handled automatically
+        continue;
       } else {
         console.error(
           "Encounted unexpected message type from Metabot",
-          message,
+          reaction,
         );
       }
     }
