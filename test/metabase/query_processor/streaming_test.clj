@@ -1,6 +1,5 @@
 (ns metabase.query-processor.streaming-test
   (:require
-   [cheshire.core :as json]
    [clojure.data.csv :as csv]
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -16,6 +15,7 @@
    [metabase.server.protocols :as server.protocols]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [toucan2.pipeline :as t2.pipeline]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
@@ -178,7 +178,7 @@
           (is (= "[{\"num_cans\":\"2\"}]"
                  (str/replace response-str #"\n+" "")))
           (is (= [{:num_cans "2"}]
-                 (json/parse-string response-str true))))))))
+                 (json/decode+kw response-str))))))))
 
 (defmulti ^:private first-row-map
   "Return the first row in `results` as a map with `col-names` as the keys."
@@ -312,8 +312,8 @@
   "Test helper to enable writing API-level export tests across multiple export endpoints and formats."
   [message {:keys [query viz-settings assertions endpoints user]}]
   (testing message
-    (let [query-json        (json/generate-string query)
-          viz-settings-json (json/generate-string viz-settings)
+    (let [query-json        (json/encode query)
+          viz-settings-json (json/encode viz-settings)
           public-uuid       (str (random-uuid))
           card-defaults     {:dataset_query query, :public_uuid public-uuid, :enable_embedding true}
           user              (or user :rasta)]

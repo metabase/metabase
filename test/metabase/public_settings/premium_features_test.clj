@@ -1,6 +1,5 @@
 (ns metabase.public-settings.premium-features-test
   (:require
-   [cheshire.core :as json]
    [clj-http.client :as http]
    [clj-http.fake :as http-fake]
    [clojure.test :refer :all]
@@ -14,6 +13,7 @@
     :as premium-features
     :refer [defenterprise defenterprise-schema]]
    [metabase.test :as mt]
+   [metabase.util.json :as json]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 

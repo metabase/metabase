@@ -1,6 +1,5 @@
 (ns ^:mb/driver-tests metabase.driver.mongo.parameters-test
   (:require
-   [cheshire.core :as json]
    [cheshire.generate :as json.generate]
    [clojure.set :as set]
    [clojure.string :as str]
@@ -11,6 +10,7 @@
    [metabase.models :refer [NativeQuerySnippet]]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
+   [metabase.util.json :as json]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
    (com.fasterxml.jackson.core JsonGenerator)))
@@ -271,7 +271,7 @@
               (qp/process-query
                (mt/query checkins
                  {:type       :native
-                  :native     {:query         (json/generate-string
+                  :native     {:query         (json/encode
                                                [{:$match (json-raw "{{date}}")}
                                                 {:$sort {:_id 1}}])
                                :collection    "checkins"
@@ -291,8 +291,8 @@
               (qp/process-query
                (mt/query categories
                  {:type       :native
-                  :native     {:query         (json/generate-string [{:$match (json-raw "{{id}}")}
-                                                                     {:$sort {:_id 1}}])
+                  :native     {:query         (json/encode [{:$match (json-raw "{{id}}")}
+                                                            {:$sort {:_id 1}}])
                                :collection    "categories"
                                :template-tags {"id" {:name         "id"
                                                      :display-name "ID"
@@ -308,7 +308,7 @@
               (qp/process-query
                (mt/query checkins
                  {:type   :native
-                  :native {:query         (json/generate-string
+                  :native {:query         (json/encode
                                            [{:$match (json-raw "{{date}}")}
                                             {:$sort {:_id 1}}
                                             {:$limit 1}])
@@ -326,7 +326,7 @@
                   (qp/process-query
                    (mt/query tips
                      {:type       :native
-                      :native     {:query         (json/generate-string
+                      :native     {:query         (json/encode
                                                    [{:$match (json-raw "{{username}}")}
                                                     {:$sort {:_id 1}}
                                                     {:$project {"username" "$source.username"
@@ -353,7 +353,7 @@
                       (qp/process-query
                        (mt/query tips
                          {:type       :native
-                          :native     {:query         (json/generate-string
+                          :native     {:query         (json/encode
                                                        [{:$match (json-raw "{{username}}")}
                                                         {:$sort {:_id 1}}
                                                         {:$project {"username" "$source.username"}}
@@ -378,7 +378,7 @@
                          (qp/process-query
                           (mt/query venues
                             {:type       :native
-                             :native     {:query         (json/generate-string
+                             :native     {:query         (json/encode
                                                           [{:$match (json-raw "{{price}}")}
                                                            {:$project {"price" "$price"}}
                                                            {:$sort {:_id 1}}
@@ -399,7 +399,7 @@
                                (qp/process-query
                                 (mt/query tips
                                   {:type       :native
-                                   :native     {:query         (json/generate-string
+                                   :native     {:query         (json/encode
                                                                 [{:$match (json-raw "{{username}}")}
                                                                  {:$sort {:_id 1}}
                                                                  {:$project {"username" "$source.username"}}
@@ -435,7 +435,7 @@
               (qp/process-query
                (mt/query categories
                  {:type       :native
-                  :native     {:query         (json/generate-string [{:$match (json-raw "{{snippet: first 3 checkins}}")}])
+                  :native     {:query         (json/encode [{:$match (json-raw "{{snippet: first 3 checkins}}")}])
                                :collection    "categories"
                                :template-tags {"snippet: first 3 checkins" {:name         "snippet: first 3 checkins"
                                                                             :display-name "Snippet: First 3 checkins"

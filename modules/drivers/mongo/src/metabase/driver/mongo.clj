@@ -1,7 +1,6 @@
 (ns metabase.driver.mongo
   "MongoDB Driver."
   (:require
-   [cheshire.core :as json]
    [cheshire.generate :as json.generate]
    [clojure.string :as str]
    [clojure.walk :as walk]
@@ -22,6 +21,7 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [taoensso.nippy :as nippy])
@@ -302,7 +302,7 @@
         data  (:data (qp/process-query {:database (:id db)
                                         :type     "native"
                                         :native   {:collection (:name table)
-                                                   :query      (json/generate-string query)}}))
+                                                   :query      (json/encode query)}}))
         cols  (map (comp keyword :name) (:cols data))]
     (map #(zipmap cols %) (:rows data))))
 
