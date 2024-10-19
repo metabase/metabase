@@ -98,19 +98,24 @@
   ;; TODO -- when `:metabot-v3` code goes live remove this check and check for the `:metabot-v3` feature specifically.
   (assert (premium-features/has-any-features?) (i18n/tru "You must have a valid enterprise token to use MetaBot."))
   #_(premium-features/assert-has-feature :metabot-v3 "MetaBot")
-  (let [url      (agent-endpoint-url)
-        body     (build-request-body message context history)
-        _        (log/debugf "Request to AI Proxy:\n%s" (u/pprint-to-str body))
-        options  (build-request-options body)
-        response (-> (http/post url options)
-                     maybe-parse-response-body-as-json)]
-    (log/debugf "Response from AI Proxy:\n%s" (u/pprint-to-str (select-keys response #{:body :status :headers})))
-    (if (= (:status response) 200)
-      (u/prog1 (decode-response-body (:body response))
-        (log/debugf "Response (decoded):\n%s" (u/pprint-to-str <>)))
-      (throw (ex-info (format "Error: unexpected status code: %d %s" (:status response) (:reason-phrase response))
-                      {:request (assoc options :body body)
-                       :response response})))))
+  (try
+    (let [url      (agent-endpoint-url)
+          body     (build-request-body message context history)
+          _        (log/debugf "Request to AI Proxy:\n%s" (u/pprint-to-str body))
+          options  (build-request-options body)
+          response (-> (http/post url options)
+                       maybe-parse-response-body-as-json)]
+      (log/debugf "Response from AI Proxy:\n%s" (u/pprint-to-str (select-keys response #{:body :status :headers})))
+      (if (= (:status response) 200)
+        (u/prog1 (decode-response-body (:body response))
+          (log/debugf "Response (decoded):\n%s" (u/pprint-to-str <>)))
+        (throw (ex-info (format "Error: unexpected status code: %d %s" (:status response) (:reason-phrase response))
+                        {:request (assoc options :body body)
+                         :response response}))))
+    (catch Throwable e
+      (throw (ex-info (format "Error in request to AI Proxy: %s" (ex-message e))
+                      {}
+                      e)))))
 
 ;;; Example flow. Copy this into the REPL to debug things
 (comment
@@ -124,5 +129,14 @@
               :metadata {:model "gpt-4o-mini", :usage {:total 439, :prompt 416, :completion 23}}})
     (let [history   [{:content message-1, :role :user}
                      (:message response-1)]
-          message-2 "Cam's email is cam@metabase.com"]
-      (*request* message-2 {} history))))
+          message-2 "Cam's email is cam@metabase.com"
+          response-2 (*request* message-2 {} history)]
+      ;; response 2 looks like:
+      (comment {:message
+                {:content "",
+                 :role :assistant,
+                 :tool-calls [{:id "call_DUTV9UW4s47fycBIjQ0Id0XM", :name :invite-user, :arguments {:email "cam@metabase.com"}}]},
+                :metadata {:model "gpt-4o-mini", :usage {:total 497, :prompt 478, :completion 19}}})
+      (let [history (conj (vec history) (:message response-2))
+            message-3 "Thank you!"]
+        (*request* message-3 {} history)))))

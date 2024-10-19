@@ -42,25 +42,31 @@
    (user-repl []))
 
   ([history]
-   (when-let [input (try
-                      #_{:clj-kondo/ignore [:discouraged-var]}
-                      (print "\n> ")
-                      (flush)
-                      (read-line)
-                      (catch Throwable _))]
-     #_{:clj-kondo/ignore [:discouraged-var]}
-     (println "🗨 " (u/colorize :blue input))
-     (when (and (not (#{"quit" "exit" "bye" "goodbye" "\\q"} input))
-                (not (str/blank? input)))
-       (let [context  {}
-             response (metabot-v3.client/*request* input context history)]
-         (-> response
-             :message
-             metabot-v3.handle-response/handle-response-message
-             handle-reactions)
-         (recur (into (vec history)
-                      [{:role :user, :content input}
-                       (:message response)])))))))
+   (when-let [history' (try
+                         (when-let [input (try
+                                            #_{:clj-kondo/ignore [:discouraged-var]}
+                                            (print "\n> ")
+                                            (flush)
+                                            (read-line)
+                                            (catch Throwable _))]
+                           #_{:clj-kondo/ignore [:discouraged-var]}
+                           (println "🗨 " (u/colorize :blue input))
+                           (when (and (not (#{"quit" "exit" "bye" "goodbye" "\\q"} input))
+                                      (not (str/blank? input)))
+                             (let [context  {}
+                                   response (metabot-v3.client/*request* input context history)]
+                               (-> response
+                                   :message
+                                   metabot-v3.handle-response/handle-response-message
+                                   handle-reactions)
+                               (into (vec history)
+                                     [{:role :user, :content input}
+                                      (:message response)]))))
+                         (catch Throwable e
+                           #_{:clj-kondo/ignore [:discouraged-var]}
+                           (println (u/pprint-to-str :red e))
+                           history))]
+     (recur history'))))
 
 (defn user-repl-cli
   "CLI entrypoint for using the MetaBot REPL.
