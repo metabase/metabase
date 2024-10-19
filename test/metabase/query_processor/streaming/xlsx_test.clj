@@ -638,6 +638,10 @@
  SampleNastyClass
  (fn [obj, ^JsonGenerator json-generator]
    (.writeString json-generator (str (:v obj)))))
+(json/add-encoder
+ SampleNastyClass
+ (fn [obj, ^JsonGenerator json-generator]
+   (.writeString json-generator (str (:v obj)))))
 
 (defrecord ^:private AnotherNastyClass [^String v])
 

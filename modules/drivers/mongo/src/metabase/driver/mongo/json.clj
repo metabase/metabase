@@ -19,3 +19,9 @@
 (cheshire.generate/add-encoder BSONTimestamp
                                (fn [^BSONTimestamp ts ^com.fasterxml.jackson.core.json.WriterBasedJsonGenerator generator]
                                  (cheshire.generate/encode-map {:time (.getTime ts) :inc (.getInc ts)} generator)))
+(json/add-encoder ObjectId
+                  (fn [^ObjectId oid ^com.fasterxml.jackson.core.json.WriterBasedJsonGenerator generator]
+                    (.writeString generator (.toString oid))))
+(json/add-encoder BSONTimestamp
+                  (fn [^BSONTimestamp ts ^com.fasterxml.jackson.core.json.WriterBasedJsonGenerator generator]
+                    (cheshire.generate/encode-map {:time (.getTime ts) :inc (.getInc ts)} generator)))
