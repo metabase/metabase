@@ -43,13 +43,35 @@
                                                                                         :additionalProperties
                                                                                         (u/->snake_case_en k)))}))))
 
+(mu/defn- add-placeholder-tool-call-results-entries :- [:maybe ::metabot-v3.client.schema/messages]
+  "We don't really currently support having the LLM invoke internal tools whose results we feed back into the LLM. But
+  the OpenAI API errors if we don't at least pretend that we invoked some tools. This code adds fake entries for now so
+  we can unblock ourselves. See https://metaboat.slack.com/archives/C06UF8TBYH2/p1729302982396889 for more info."
+  [history :- [:maybe ::metabot-v3.client.schema/messages]]
+  (if (empty? (:tool-calls (last history)))
+    history
+    (into (vec history)
+          (map (fn [tool-call]
+                 {:role         :tool
+                  :tool-call-id (:id tool-call)
+                  ;; :name         (:name tool-call)
+                  :content      "success"}))
+          (:tool-calls (last history)))))
+
+(mu/defn- build-messages :- ::metabot-v3.client.schema/messages
+  [message :- :string
+   history :- [:maybe ::metabot-v3.client.schema/messages]]
+  (-> history
+      add-placeholder-tool-call-results-entries
+      vec
+      (conj {:role :user, :content message})))
+
 (mu/defn- build-request-body
   [message :- :string
    context :- [:maybe ::metabot-v3.context/context]
    history :- [:maybe ::metabot-v3.client.schema/messages]]
   (encode-request-body
-   {:messages       (conj (vec history)
-                          {:role :user, :content message})
+   {:messages      (build-messages message history)
     :context       (metabot-v3.context/hydrate-context (or context {}))
     :tools         (metabot-v3.tools/*tools-metadata*)
     :instance-info (*instance-info*)}))
