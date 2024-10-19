@@ -28,19 +28,19 @@
 (mu/defmethod handle-response-message :tools :- [:sequential ::metabot-v3.reactions/reaction]
   [{tool-calls :tool-calls, :as _message} :- ::metabot-v3.client.schema/message]
   (letfn [(invoke-tool [{tool-name :name, :keys [arguments]}]
-            (cons
-             {:type               :metabot.reaction/message
-              :message            (pr-str (list '*invoke-tool* tool-name arguments))
-              :repl/message-color :cyan
-              :repl/message-emoji "🔧 🪛"}
-             (try
-               (metabot-v3.tools.interface/*invoke-tool* tool-name arguments)
-               (catch Throwable e
-                 (log/errorf e "Error invoking MetaBot tool: %s" (ex-message e))
-                 [{:type               :metabot.reaction/message
-                   :message            (format "Error invoking MetaBot tool: %s" (ex-message e))
-                   :repl/message-color :red
-                   :repl/message-emoji "⚠"}]))))]
+            #_(cons
+               {:type               :metabot.reaction/message
+                :message            (pr-str (list '*invoke-tool* tool-name arguments))
+                :repl/message-color :cyan
+                :repl/message-emoji "🔧 🪛"})
+            (try
+              (metabot-v3.tools.interface/*invoke-tool* tool-name arguments)
+              (catch Throwable e
+                (log/errorf e "Error invoking MetaBot tool: %s" (ex-message e))
+                [{:type               :metabot.reaction/message
+                  :message            (format "Error invoking MetaBot tool: %s" (ex-message e))
+                  :repl/message-color :red
+                  :repl/message-emoji "⚠"}])))]
     (into []
           (mapcat invoke-tool)
           tool-calls)))

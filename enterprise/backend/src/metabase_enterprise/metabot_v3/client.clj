@@ -112,19 +112,17 @@
                       {:request (assoc options :body body)
                        :response response})))))
 
-;;; Example flow.
+;;; Example flow. Copy this into the REPL to debug things
 (comment
   ;; request 1
-  (*request* "Send an email to Cam" {} [])
-
-  ;; response 1
-  {:message {:content "Sorry I don't understand that. Could you please clarify what you would like to include in the email to Cam?"
-             :role :assistant
-             :tool-calls []}
-   :metadata {:model "gpt-4o-mini", :usage {:total 439, :prompt 416, :completion 23}}}
-
-  ;; request 2 (response 1 is added to end of history)
-  (*request* "cam@metabase.com" {} [{:role :user, :content "Send an email to Cam"}
-                                    {:content "Sorry I don't understand that. Could you please clarify what you would like to include in the email to Cam?",
-                                     :role :assistant
-                                     :tool-calls []}]))
+  (let [message-1  "Send an email to Cam"
+        response-1 (*request* message-1 {} [])]
+    ;; response 1 looks something like:
+    (comment {:message {:content "Sorry I don't understand that. Could you please clarify what you would like to include in the email to Cam?"
+                        :role :assistant
+                        :tool-calls []}
+              :metadata {:model "gpt-4o-mini", :usage {:total 439, :prompt 416, :completion 23}}})
+    (let [history   [{:content message-1, :role :user}
+                     (:message response-1)]
+          message-2 "Cam's email is cam@metabase.com"]
+      (*request* message-2 {} history))))

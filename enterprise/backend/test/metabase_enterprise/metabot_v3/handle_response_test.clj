@@ -27,10 +27,7 @@
                                                               [{:type :metabot.reaction/message
                                                                 :message (format "Invoked %s" tool-name)}])]
       (testing "response forwarded to FE"
-        (is (=? [{:type               :metabot.reaction/message
-                  :message            "(*invoke-tool* :say-hello {:name \"User\", :greeting \"Hello!\"})"
-                  :repl/message-color :cyan}
-                 ;; this is the response from the tool itself
+        (is (=? [;; this is the response from the tool itself
                  {:type :metabot.reaction/message, :message "Invoked :say-hello"}]
                 (#'metabot-v3.handle-response/handle-response-message response))))
       (testing "invocations"
