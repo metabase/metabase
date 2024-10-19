@@ -727,9 +727,12 @@
   [instance json-generator]
   (json.generate/encode-map instance json-generator))
 
-(json.generate/add-encoder
- Instance
- #'to-json)
+;; Needed for json/add-encoder because Jsonista doesn't accept mutimethods.
+(defn- to-json-function [instance json-generator]
+  (to-json instance json-generator))
+
+(json.generate/add-encoder Instance #'to-json-function)
+(json/add-encoder Instance to-json-function)
 
 ;;;; etc
 

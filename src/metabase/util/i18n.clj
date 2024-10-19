@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [clojure.walk :as walk]
    [metabase.util.i18n.impl :as i18n.impl]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [net.cgrand.macrovich :as macros]
    [potemkin :as p]
@@ -103,6 +104,8 @@
 
 (json.generate/add-encoder UserLocalizedString localized-to-json)
 (json.generate/add-encoder SiteLocalizedString localized-to-json)
+(json/add-encoder SiteLocalizedString localized-to-json)
+(json/add-encoder SiteLocalizedString localized-to-json)
 
 (def LocalizedString
   "Schema for user and system localized string instances"
