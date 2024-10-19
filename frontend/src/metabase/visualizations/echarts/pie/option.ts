@@ -168,6 +168,88 @@ function getSliceLabel(
   return " ";
 }
 
+type Point = [number, number];
+
+const getCoordOnCircle = (radius: number, angle: number): Point => [
+  radius * Math.sin(angle),
+  radius * Math.cos(angle),
+];
+
+function findCircleIntersectionPoints(
+  radius: number,
+  horizontalY: number,
+): [] | [Point] | [Point, Point] {
+  // No intersection
+  if (Math.abs(horizontalY) > radius) {
+    return [];
+  }
+
+  // Tangent
+  if (Math.abs(horizontalY) === radius) {
+    return [[0, horizontalY]];
+  }
+
+  const x = Math.sqrt(radius * radius - horizontalY * horizontalY);
+  return [
+    [-x, horizontalY],
+    [x, horizontalY],
+  ];
+}
+
+const getChordLength = (radius: number, angle: number) =>
+  Math.sqrt(
+    2 * Math.pow(radius, 2) - 2 * Math.pow(radius, 2) * Math.cos(angle),
+  );
+
+const getMaxLabelLength = (
+  innerRadius: number,
+  outerRadius: number,
+  startAngle: number,
+  endAngle: number,
+) => {
+  if (innerRadius >= outerRadius) {
+    throw new Error(
+      `Outer radius must be bigger than inner. Outer: ${outerRadius} inner: ${innerRadius}`,
+    );
+  }
+
+  const arcAngle = endAngle - startAngle;
+
+  const midRadius = (innerRadius + outerRadius) / 2;
+  const midAngle = (startAngle + endAngle) / 2;
+
+  const midCordLength = getChordLength(midRadius, arcAngle);
+
+  const [_, sliceCenterY] = getCoordOnCircle(midRadius, midAngle);
+
+  const innerIntersection = findCircleIntersectionPoints(
+    innerRadius,
+    sliceCenterY,
+  );
+
+  const [outerIntersectionLeft, outerIntersectionRight] =
+    findCircleIntersectionPoints(outerRadius, sliceCenterY);
+
+  if (outerIntersectionLeft == null || outerIntersectionRight == null) {
+    throw new Error("Invalid state if outer radius > inner radius");
+  }
+
+  if (innerIntersection.length < 2) {
+    return Math.min(
+      outerIntersectionRight[0] - outerIntersectionLeft[0],
+      midCordLength,
+    );
+  }
+
+  const [innerIntersectionLeft] = innerIntersection;
+
+  // FIXME: not exactly right but maybe ok
+  return Math.min(
+    Math.abs(innerIntersectionLeft[0] - outerIntersectionLeft[0]),
+    midCordLength,
+  );
+};
+
 function getIsLabelVisible(
   label: string,
   slice: SliceTreeNode,
@@ -178,24 +260,6 @@ function getIsLabelVisible(
   ring: number,
   numRings: number,
 ) {
-  // We use the law of cosines to determine the length of the chord with the
-  // same endpoints as the arc. The label should be shorter than this chord, and
-  // it should be shorter than the donutWidth.
-  //
-  // See the following document for a more detailed explanation:
-  // https://www.notion.so/metabase/Pie-Chart-Label-Visibility-Explanation-4cf366a78c6a419d95763a431a36b175?pvs=4
-  let arcAngle = slice.startAngle - slice.endAngle;
-  arcAngle = Math.min(Math.abs(arcAngle), Math.PI - 0.001);
-
-  const donutWidth = (outerRadius - innerRadius) / numRings;
-  const ringInnerRadius = innerRadius + donutWidth * (ring - 1);
-
-  const innerCircleChordLength = Math.sqrt(
-    2 * ringInnerRadius * ringInnerRadius -
-      2 * ringInnerRadius * ringInnerRadius * Math.cos(arcAngle),
-  );
-  const maxLabelDimension = Math.min(innerCircleChordLength, donutWidth);
-
   const fontStyle = {
     size: fontSize,
     family: renderingContext.fontFamily,
@@ -204,16 +268,25 @@ function getIsLabelVisible(
   const labelWidth = renderingContext.measureText(label, fontStyle);
   const labelHeight = renderingContext.measureTextHeight(label, fontStyle);
 
-  if (ring === 1) {
+  if (numRings > 1) {
+    const arcAngle = slice.startAngle - slice.endAngle;
+
+    const donutWidth = (outerRadius - innerRadius) / numRings;
+    const ringInnerRadius = innerRadius + donutWidth * (ring - 1);
+
+    const innerCircleChord = getChordLength(ringInnerRadius, arcAngle);
+
     return (
-      labelWidth + DIMENSIONS.slice.label.padding <= maxLabelDimension &&
-      labelHeight + DIMENSIONS.slice.label.padding <= maxLabelDimension
+      labelWidth + DIMENSIONS.slice.label.padding <= donutWidth &&
+      labelHeight + DIMENSIONS.slice.label.padding <= innerCircleChord
     );
   }
 
-  return (
-    labelWidth + DIMENSIONS.slice.label.padding <= donutWidth &&
-    labelHeight + DIMENSIONS.slice.label.padding <= innerCircleChordLength
+  return getMaxLabelLength(
+    innerRadius,
+    outerRadius,
+    slice.startAngle,
+    slice.endAngle,
   );
 }
 
