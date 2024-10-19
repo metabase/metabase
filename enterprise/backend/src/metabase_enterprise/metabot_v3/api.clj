@@ -44,6 +44,10 @@
   {message ms/NonBlankString
    context [:map-of :keyword :any]
    history [:maybe [:sequential :map]]}
-  (request message context history))
+  (let [context (mc/decode ::metabot-v3.context/context
+                           context (mtx/transformer {:name :api-request}))
+        history (mc/decode [:maybe ::metabot-v3.client.schema/messages]
+                           history (mtx/transformer {:name :api-request}))]
+    (request message context history)))
 
 (api/define-routes)
