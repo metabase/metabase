@@ -49,6 +49,11 @@
   [:and
    {:encode/api-request   (fn [x]
                             (u/->snake_case_en (name x)))
+    :decode/api-request   (fn [x]
+                            (let [kw (keyword x)]
+                              (if (namespace kw)
+                                kw
+                                (keyword "metabot.tool" (name kw)))))
     :decode/api-response  (fn [x]
                             (keyword "metabot.tool" (name (u/->kebab-case-en x))))}
    :keyword
