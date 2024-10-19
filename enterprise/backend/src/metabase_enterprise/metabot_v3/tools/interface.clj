@@ -47,6 +47,10 @@
 
 (mr/def ::metadata.name
   [:and
+   {:encode/api-request   (fn [x]
+                            (u/->snake_case_en (name x)))
+    :decode/api-response  (fn [x]
+                            (keyword "metabot.tool" (name (u/->kebab-case-en x))))}
    :keyword
    [:fn
     {:error/message "Tool names should be kebab-case (both parsed and in YAML files)"}
