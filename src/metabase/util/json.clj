@@ -30,7 +30,9 @@
   "Create a new Jackson ObjectMapper object using the default global encoders. For supported options, see
   `jsonista.core/object-mapper`."
   [options-map]
-  (jsonista/object-mapper (assoc options-map :encoders @encoders)))
+  (jsonista/object-mapper (-> options-map
+                              (assoc :encoders @encoders)
+                              (update :do-not-fail-on-empty-beans #(if (nil? %) true %)))))
 
 (def ^:private global-mapper
   "Jsonista doesn't have a concept of a \"global\" object mapper like Cheshire does, so we simulate it here. The object
