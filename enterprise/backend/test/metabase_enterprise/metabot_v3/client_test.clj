@@ -53,3 +53,20 @@
                      :tool_calls [{:id "call_1drvrXfHb6q9Doxh8leujqKB"
                                    :name "say-hello"
                                    :arguments "{\"name\":\"User\",\"greeting\":\"Hello!\"}"}]}}))))
+
+(deftest ^:parallel add-placeholder-tool-call-results-entries-test
+  (is (= [{:content nil
+           :role :assistant
+           :tool-calls [{:id "call_1drvrXfHb6q9Doxh8leujqKB"
+                         :name :say-hello
+                         :arguments {:name "User", :greeting "Hello!"}}]}
+          {:role :tool
+           :tool-call-id "call_1drvrXfHb6q9Doxh8leujqKB"
+           :content "success"}]
+         (#'metabot-v3.client/add-placeholder-tool-call-results-entries
+          [{:content    nil
+            :role       :assistant
+            :tool-calls [{:id        "call_1drvrXfHb6q9Doxh8leujqKB"
+                          :name      :say-hello
+                          :arguments {:name "User"
+                                      :greeting "Hello!"}}]}]))))
