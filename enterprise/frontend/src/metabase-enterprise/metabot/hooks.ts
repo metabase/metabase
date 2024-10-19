@@ -1,13 +1,10 @@
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import { useMetabotAgentMutation } from "metabase-enterprise/api";
+import { useMemo } from "react";
 
-import {
-  type MetabotStoreState,
-  getHistory,
-  getLastMetabotChatMessages,
-  processMetabotMessages,
-  reset,
-} from "./state";
+import { useDispatch } from "metabase/lib/redux";
+import { useMetabotAgentMutation } from "metabase-enterprise/api";
+import { isMetabotMessageReaction } from "metabase-types/api";
+
+import { processMetabotMessages } from "./state";
 
 export const useMetabotAgent = () => {
   const dispatch = useDispatch();
@@ -16,29 +13,29 @@ export const useMetabotAgent = () => {
     fixedCacheKey: "metabot",
   });
 
-  // TODO: add a proper EnterpriseState defintion + useEnterpriseSelector fn
-  const history = useSelector(state => getHistory(state as MetabotStoreState));
-  const lastMetabotChatMessages = useSelector(state =>
-    getLastMetabotChatMessages(state as MetabotStoreState),
-  );
+  const messages = useMemo(() => {
+    const reactions = sendMessageReq.data?.reactions || [];
+    return reactions.filter(isMetabotMessageReaction);
+  }, [sendMessageReq]);
 
   return {
-    lastMetabotChatMessages,
-    reset: () => dispatch(reset()),
+    messages,
+    reset: sendMessageReq.reset,
     // TODO: need to handle not sending messages while we're
     // processing playing through response messages
     sendMessage: async (message: string) => {
       const result = await sendMessage({
         message,
         context: {}, // TODO: add plugin that selects context from state
-        history,
+        history: sendMessageReq.data?.history || [],
       });
 
       if (result.error) {
         throw result.error;
       }
 
-      await dispatch(processMetabotMessages(result.data || []));
+      const reactions = result.data?.reactions || [];
+      await dispatch(processMetabotMessages(reactions));
     },
     sendMessageReq,
   };

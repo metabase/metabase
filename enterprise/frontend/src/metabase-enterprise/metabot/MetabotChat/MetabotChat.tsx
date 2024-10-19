@@ -24,8 +24,7 @@ const slideIn = {
 
 export const MetabotChat = ({ onClose }: { onClose: () => void }) => {
   const [message, setMessage] = useState("");
-  const { lastMetabotChatMessages, sendMessage, sendMessageReq, reset } =
-    useMetabotAgent();
+  const { messages, sendMessage, sendMessageReq, reset } = useMetabotAgent();
 
   const handleSend = () => {
     if (!message.length || sendMessageReq.isLoading) {
@@ -46,14 +45,14 @@ export const MetabotChat = ({ onClose }: { onClose: () => void }) => {
   // so they can be transitioned in after being mounted
   const [showMessages, setShowMessages] = useState(false);
   useEffect(() => {
-    setShowMessages(lastMetabotChatMessages.length > 0);
-  }, [lastMetabotChatMessages]);
+    setShowMessages(messages.length > 0);
+  }, [messages]);
 
   return (
     <Box className={Styles.container}>
-      {lastMetabotChatMessages.length > 0 && (
+      {messages.length > 0 && (
         <Box className={Styles.responses}>
-          {lastMetabotChatMessages.map((msg, index) => (
+          {messages.map((msg, index) => (
             <Transition
               key={index}
               mounted={showMessages}
