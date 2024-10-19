@@ -1,12 +1,12 @@
 (ns metabase.channel.impl.http
   (:require
-   [cheshire.core :as json]
    [clj-http.client :as http]
    [java-time.api :as t]
    [metabase.channel.core :as channel]
    [metabase.channel.shared :as channel.shared]
    [metabase.pulse.core :as pulse]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.util.urls :as urls]))
@@ -49,7 +49,7 @@
                (= "header" auth-method)       (update :headers merge auth-info)
                (= "query-param" auth-method)  (update :query-params merge auth-info)))]
     (http/request (cond-> req
-                    (map? (:body req)) (update :body json/generate-string)))))
+                    (map? (:body req)) (update :body json/encode)))))
 
 (defmethod channel/can-connect? :channel/http
   [_channel-type details]

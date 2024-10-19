@@ -1,13 +1,13 @@
 (ns ^:mb/once metabase.task.creator-sentiment-emails-test
   (:require
    [buddy.core.codecs :as codecs]
-   [cheshire.core :as json]
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.email-test :as et :refer [inbox]]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.task.creator-sentiment-emails :as creator-sentiment-emails]
    [metabase.test :as mt]
+   [metabase.util.json :as json]
    [metabase.util.malli.schema :as ms]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -52,7 +52,7 @@
               (let [email-body (-> @inbox vals first first :body first :content)]
                 (is (string? email-body))
                 (let [[_ query-params] (re-find #"creator\?context=(.*)\"" email-body)
-                      decoded          (some-> query-params codecs/b64->str json/parse-string)]
+                      decoded          (some-> query-params codecs/b64->str json/decode)]
                   (is (=? {"instance" {"created_at"     (mt/malli=? ms/TemporalString)
                                        "plan"           (mt/malli=? :string)
                                        "version"        (mt/malli=? :string)

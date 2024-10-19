@@ -1,7 +1,6 @@
 (ns metabase.api.automagic-dashboards
   (:require
    [buddy.core.codecs :as codecs]
-   [cheshire.core :as json]
    [compojure.core :refer [GET]]
    [metabase.api.common :as api]
    [metabase.api.query-metadata :as api.query-metadata]
@@ -16,6 +15,7 @@
    [metabase.models.segment :refer [Segment]]
    [metabase.models.table :refer [Table]]
    [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.xrays :as xrays]
@@ -48,7 +48,7 @@
    (deferred-tru "invalid value for dashboard template name")))
 
 (def ^:private ^{:arglists '([s])} decode-base64-json
-  (comp #(json/decode % keyword) codecs/bytes->str codec/base64-decode))
+  (comp json/decode+kw codecs/bytes->str codec/base64-decode))
 
 (def ^:private Base64EncodedJSON
   (mu/with-api-error-message

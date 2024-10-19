@@ -1,6 +1,5 @@
 (ns metabase.analytics.snowplow-test
   (:require
-   [cheshire.core :as json]
    [clojure.test :refer :all]
    [clojure.walk :as walk]
    [metabase.analytics.snowplow :as snowplow]
@@ -10,6 +9,7 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
+   [metabase.util.json :as json]
    [toucan2.core :as t2])
   (:import
    (com.snowplowanalytics.snowplow.tracker.events SelfDescribing)
@@ -38,7 +38,7 @@
         ;; cases
         properties                         (-> (or (:ue_pr payload)
                                                    (u/decode-base64 (:ue_px payload)))
-                                               json/parse-string)
+                                               json/decode)
         subject                            (when-let [subject (.getSubject event)]
                                              (-> subject .getSubject normalize-map))
         [^SelfDescribingJson context-json] (.getContext event)

@@ -1,11 +1,11 @@
 (ns metabase.cmd.rotate-encryption-key
   (:require
-   [cheshire.core :as json]
    [metabase.db :as mdb]
    [metabase.models :refer [Database Secret Setting]]
    [metabase.models.setting.cache :as setting.cache]
    [metabase.util.encryption :as encryption]
    [metabase.util.i18n :refer [trs]]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 

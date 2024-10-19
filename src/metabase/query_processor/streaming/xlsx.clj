@@ -1,6 +1,5 @@
 (ns metabase.query-processor.streaming.xlsx
   (:require
-   [cheshire.core :as json]
    [clojure.java.io :as io]
    [clojure.string :as str]
    [dk.ative.docjure.spreadsheet :as spreadsheet]
@@ -15,7 +14,8 @@
    [metabase.util :as u]
    [metabase.util.currency :as currency]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.i18n :refer [tru]])
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.json :as json])
   (:import
    (java.io OutputStream)
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
@@ -368,8 +368,8 @@
   ;; stick the object in a JSON map and encode it, which will force conversion to a string. Then unparse that JSON and
   ;; use the resulting value as the cell's new String value.  There might be some more efficient way of doing this but
   ;; I'm not sure what it is.
-  (.setCellValue cell (str (-> (json/generate-string {:v value})
-                               (json/parse-string keyword)
+  (.setCellValue cell (str (-> (json/encode {:v value})
+                               json/decode+kw
                                :v))))
 
 (defmethod set-cell! nil [^Cell cell _value _styles _typed-styles]

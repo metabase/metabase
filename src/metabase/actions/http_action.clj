@@ -1,6 +1,5 @@
 (ns metabase.actions.http-action
   (:require
-   [cheshire.core :as json]
    [clj-http.client :as http]
    [clojure.string :as str]
    [metabase.driver.common.parameters :as params]
@@ -8,6 +7,7 @@
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.json :as json]
    [metabase.util.log :as log])
   (:import
    (com.fasterxml.jackson.databind ObjectMapper)
@@ -104,7 +104,7 @@
   ;; TODO this is pretty ineficient. We parse with `:as :json`, then reencode within a response
   ;; I couldn't find a way to get JSONNode out of cheshire, so we fall back to jackson.
   ;; Should jackson be added explicitly to deps.edn?
-  (let [json-node (.readTree ^ObjectMapper @object-mapper (json/generate-string object))
+  (let [json-node (.readTree ^ObjectMapper @object-mapper (json/encode object))
         vresults (volatile! [])
         output (ActionOutput. vresults)
         expr (JsonQuery/compile jq-query Versions/JQ_1_6)
@@ -135,7 +135,7 @@
           response (-> (http/request request)
                        (select-keys [:body :headers :status])
                        (update :body json/decode))
-          error (json/parse-string (apply-json-query response (or (:error_handle action) ".status >= 400")))]
+          error (json/decode (apply-json-query response (or (:error_handle action) ".status >= 400")))]
       (log/trace "Response before handle:" response)
       (if error
         {:status 400

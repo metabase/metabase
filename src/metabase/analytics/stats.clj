@@ -1,7 +1,6 @@
 (ns metabase.analytics.stats
   "Functions which summarize the usage of an instance"
   (:require
-   [cheshire.core :as json]
    [clj-http.client :as http]
    [clojure.java.io :as io]
    [clojure.string :as str]
@@ -30,6 +29,7 @@
    [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
@@ -326,7 +326,7 @@
                                         (-> db
                                             :dbms_version
                                             (assoc :engine (:engine db))
-                                            json/generate-string))
+                                            json/encode))
                                       databases))}))
 
 (defn- table-metrics

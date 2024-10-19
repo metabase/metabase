@@ -73,7 +73,6 @@
   See #14055 and #19399 for more information about and motivation behind User- and Database-local Settings."
   (:refer-clojure :exclude [get])
   (:require
-   [cheshire.core :as json]
    [clojure.core :as core]
    [clojure.data :as data]
    [clojure.data.csv :as csv]
@@ -92,6 +91,7 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.encryption :as encryption]
    [metabase.util.i18n :refer [deferred-trs deferred-tru trs tru]]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
@@ -419,7 +419,7 @@
     ;; Update the atom in *user-local-values* with the new value before writing to the DB. This ensures that
     ;; subsequent setting updates within the same API request will not overwrite this value.
     (swap! @*user-local-values* u/assoc-dissoc setting-name value)
-    (t2/update! 'User api/*current-user-id* {:settings (json/generate-string @@*user-local-values*)})))
+    (t2/update! 'User api/*current-user-id* {:settings (json/encode @@*user-local-values*)})))
 
 (def ^:dynamic *enforce-setting-access-checks*
   "A dynamic var that controls whether we should enforce checks on setting access. Defaults to false; should be
@@ -689,7 +689,7 @@
 
 (defmethod get-value-of-type :json
   [_setting-type setting-definition-or-name]
-  (get-raw-value setting-definition-or-name coll? #(json/parse-string-strict % true)))
+  (get-raw-value setting-definition-or-name coll? json/decode+kw))
 
 (defmethod get-value-of-type :csv
   [_setting-type setting-definition-or-name]
@@ -865,7 +865,7 @@
   [_setting-type setting-definition-or-name new-value]
   (set-value-of-type!
    :string setting-definition-or-name
-   (some-> new-value json/generate-string)))
+   (some-> new-value json/encode)))
 
 (defmethod set-value-of-type! :timestamp
   [_setting-type setting-definition-or-name new-value]

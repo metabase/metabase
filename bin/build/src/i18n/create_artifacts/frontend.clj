@@ -1,9 +1,9 @@
 (ns i18n.create-artifacts.frontend
   (:require
-   [cheshire.core :as json]
    [clojure.java.io :as io]
    [clojure.string :as str]
    [i18n.common :as i18n]
+   [jsonista.core :as jsonista]
    [metabuild-common.core :as u])
   (:import
    (java.io FileOutputStream OutputStreamWriter)
@@ -64,5 +64,5 @@
       (u/step "Write JSON"
         (with-open [os (FileOutputStream. (io/file target-file))
                     w  (OutputStreamWriter. os StandardCharsets/UTF_8)]
-          (json/generate-stream (i18n-map locale) w)))
+          (jsonista/write-value w (i18n-map locale))))
       (u/assert-file-exists target-file))))

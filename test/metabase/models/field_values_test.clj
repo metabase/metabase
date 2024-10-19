@@ -1,7 +1,6 @@
 (ns metabase.models.field-values-test
   "Tests for specific behavior related to FieldValues and functions in the [[metabase.models.field-values]] namespace."
   (:require
-   [cheshire.core :as json]
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [java-time.api :as t]
@@ -15,6 +14,7 @@
    [metabase.sync :as sync]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [next.jdbc :as next.jdbc]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
@@ -263,9 +263,9 @@
 (deftest normalize-human-readable-values-test
   (testing "If FieldValues were saved as a map, normalize them to a sequence on the way out"
     (t2.with-temp/with-temp [FieldValues fv {:field_id (mt/id :venues :id)
-                                             :values   (json/generate-string ["1" "2" "3"])}]
+                                             :values   (json/encode ["1" "2" "3"])}]
       (is (t2/query-one {:update :metabase_fieldvalues
-                         :set    {:human_readable_values (json/generate-string {"1" "a", "2" "b", "3" "c"})}
+                         :set    {:human_readable_values (json/encode {"1" "a", "2" "b", "3" "c"})}
                          :where  [:= :id (:id fv)]}))
       (is (= ["a" "b" "c"]
              (:human_readable_values (t2/select-one FieldValues :id (:id fv))))))))

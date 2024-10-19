@@ -22,11 +22,11 @@
   #?@
    (:clj
     [(:require
-      [cheshire.core :as json]
       [clojure.set :as set]
       [clojure.spec.alpha :as s]
       [medley.core :as m]
-      [metabase.legacy-mbql.normalize :as mbql.normalize])]
+      [metabase.legacy-mbql.normalize :as mbql.normalize]
+      [metabase.util.json :as json])]
     :cljs
     [(:require
       [clojure.set :as set]
@@ -165,7 +165,7 @@
   "Parse the given `json-str` to a map. In Clojure, this uses Cheshire. In Clojurescript, it calls `.parse` with
   `js/JSON` and threads that to `js->clj`."
   [json-str]
-  #?(:clj  (json/parse-string json-str)
+  #?(:clj  (json/decode json-str)
      :cljs (-> (.parse js/JSON json-str)
                js->clj)))
 

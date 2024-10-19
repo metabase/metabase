@@ -1,12 +1,12 @@
 (ns metabase.api.tiles-test
   "Tests for `/api/tiles` endpoints."
   (:require
-   [cheshire.core :as json]
    [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.api.tiles :as api.tiles]
    [metabase.query-processor.compile :as qp.compile]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.util.json :as json]))
 
 (defn- png? [s]
   (= [\P \N \G]
@@ -24,14 +24,14 @@
                  :crowberto :get 200 (format "tiles/1/1/1/%d/%d"
                                              (mt/id :venues :latitude)
                                              (mt/id :venues :longitude))
-                 :query (json/generate-string venues-query)))))
+                 :query (json/encode venues-query)))))
     (testing "Works on native queries"
       (let [native-query {:query (:query (qp.compile/compile venues-query))
                           :template-tags {}}]
         (is (png? (mt/user-http-request
                    :crowberto :get 200 (format "tiles/1/1/1/%s/%s"
                                                "LATITUDE" "LONGITUDE")
-                   :query (json/generate-string
+                   :query (json/encode
                            {:database (mt/id)
                             :type :native
                             :native native-query}))))))))
@@ -90,7 +90,7 @@
                       :crowberto :get 200 (format "tiles/7/30/49/%d/%d"
                                                   (mt/id :people :latitude)
                                                   (mt/id :people :longitude))
-                      :query (json/generate-string
+                      :query (json/encode
                               {:database (mt/id)
                                :type :query
                                :query {:source-table (mt/id :people)

@@ -1,6 +1,5 @@
 (ns metabase.search.postgres.core
   (:require
-   [cheshire.core :as json]
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
    [metabase.api.common :as api]
@@ -8,6 +7,7 @@
    [metabase.search.legacy :as search.legacy]
    [metabase.search.postgres.index :as search.index]
    [metabase.search.postgres.ingestion :as search.ingestion]
+   [metabase.util.json :as json]
    [toucan2.core :as t2])
   (:import
    (java.time OffsetDateTime)))
@@ -97,7 +97,7 @@
   (->> (assoc (search.index/search-query search-term) :select [:legacy_input])
        (t2/query)
        (map :legacy_input)
-       (map #(json/parse-string % keyword))
+       (map json/decode+kw)
        (map #(-> %
                  (update :created_at parse-datetime)
                  (update :updated_at parse-datetime)
@@ -123,7 +123,7 @@
         search-ctx)
        (t2/query)
        (map :legacy_input)
-       (map #(json/parse-string % keyword))
+       (map json/decode+kw)
        (map #(-> %
                  (update :created_at parse-datetime)
                  (update :updated_at parse-datetime)

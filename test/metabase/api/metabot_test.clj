@@ -1,6 +1,5 @@
 (ns metabase.api.metabot-test
   (:require
-   [cheshire.core :as json]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.db.query :as mdb.query]
@@ -9,6 +8,7 @@
    [metabase.metabot.util :as metabot-util]
    [metabase.models :refer [Card]]
    [metabase.test :as mt]
+   [metabase.util.json :as json]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (deftest metabot-only-works-on-models-test
@@ -204,7 +204,7 @@
             (with-redefs [metabot-client/*create-chat-completion-endpoint* (fn [_ _]
                                                                              (throw (ex-info
                                                                                      error-message
-                                                                                     {:body   (json/generate-string
+                                                                                     {:body   (json/encode
                                                                                                {:error {:message error-message
                                                                                                         :code    error-code}})
                                                                                       :status 400})))

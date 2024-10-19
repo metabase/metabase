@@ -1,7 +1,6 @@
 (ns ^:mb/driver-tests metabase.api.public-test
   "Tests for `api/public/` (public links) endpoints."
   (:require
-   [cheshire.core :as json]
    [clojure.data.csv :as csv]
    [clojure.set :as set]
    [clojure.string :as str]
@@ -26,6 +25,7 @@
    [metabase.query-processor.middleware.process-userland-query-test :as process-userland-query-test]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [throttle.core :as throttle]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
@@ -818,7 +818,7 @@
                 (is (= [[50]]
                        (-> (mt/user-http-request :crowberto
                                                  :get (dashcard-url dash card dashcard)
-                                                 :parameters (json/generate-string
+                                                 :parameters (json/encode
                                                               [{:type   :category
                                                                 :target [:variable [:template-tag :num]]
                                                                 :value  "50"
@@ -844,7 +844,7 @@
                   (is (= [[1]]
                          (-> (mt/user-http-request :crowberto
                                                    :get (dashcard-url dash card dashcard)
-                                                   :parameters (json/generate-string
+                                                   :parameters (json/encode
                                                                 [{:type   :id
                                                                   :target [:dimension [:field (mt/id :venues :id) nil]]
                                                                   :value  "50"
@@ -872,7 +872,7 @@
                     (is (= [[733]]
                            (-> (mt/user-http-request :crowberto
                                                      :get (dashcard-url dash card dashcard)
-                                                     :parameters (json/generate-string
+                                                     :parameters (json/encode
                                                                   [{:type   "date/all-options"
                                                                     :target [:dimension [:field (mt/id :checkins :date) nil]]
                                                                     :value  "~2015-01-01"
@@ -905,7 +905,7 @@
               (is (= [["World"]]
                      (-> (mt/user-http-request :crowberto
                                                :get (dashcard-url dash card dashcard)
-                                               :parameters (json/generate-string
+                                               :parameters (json/encode
                                                             [{:type    :category
                                                               :target  [:variable [:template-tag :msg]]
                                                               :value   "World"
