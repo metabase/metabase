@@ -20,11 +20,20 @@
 (defn- fallback-object-encoder [obj ^JsonGenerator generator]
   (.writeString generator (str obj)))
 
+(deftype RawJson [^String s])
+
+(defn- raw-json-encoder [^RawJson raw ^JsonGenerator generator]
+  (.writeRawValue generator ^String (.s raw)))
+
+(defn raw
+  "Wrap a string so it will be spliced directly into resulting JSON as-is. Analogous to HoneySQL `raw`."
+  [^String s]
+  (->RawJson s))
+
 (defonce ^:private encoders
   (atom {(Class/forName "[B") byte-array-encoder
-         IType fallback-object-encoder
-         ;; Object               fallback-object-encoder
-         }))
+         IType                fallback-object-encoder
+         RawJson              raw-json-encoder}))
 
 (defn object-mapper
   "Create a new Jackson ObjectMapper object using the default global encoders. For supported options, see

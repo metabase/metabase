@@ -254,13 +254,6 @@
     (is (= (strip (to-bson [{:$match {"price" {:$gt 2}}}]))
            (strip (substitute {"snippet: high price" (params/->ReferencedQuerySnippet 123 (to-bson {"price" {:$gt 2}}))}
                               ["[{$match: " (param "snippet: high price") "}]"]))))))
-(defn- json-raw
-  "Wrap a string so it will be spliced directly into resulting JSON as-is. Analogous to HoneySQL `raw`."
-  [^String s]
-  (reify json.generate/JSONable
-    (to-json [_ generator]
-      (.writeRawValue ^JsonGenerator generator s))))
-
 (deftest ^:parallel e2e-field-filter-test
   (mt/test-driver :mongo
     (testing "date ranges"
@@ -272,7 +265,7 @@
                (mt/query checkins
                  {:type       :native
                   :native     {:query         (json/encode
-                                               [{:$match (json-raw "{{date}}")}
+                                               [{:$match (json/raw "{{date}}")}
                                                 {:$sort {:_id 1}}])
                                :collection    "checkins"
                                :template-tags {"date" {:name         "date"
@@ -291,7 +284,7 @@
               (qp/process-query
                (mt/query categories
                  {:type       :native
-                  :native     {:query         (json/encode [{:$match (json-raw "{{id}}")}
+                  :native     {:query         (json/encode [{:$match (json/raw "{{id}}")}
                                                             {:$sort {:_id 1}}])
                                :collection    "categories"
                                :template-tags {"id" {:name         "id"
@@ -309,7 +302,7 @@
                (mt/query checkins
                  {:type   :native
                   :native {:query         (json/encode
-                                           [{:$match (json-raw "{{date}}")}
+                                           [{:$match (json/raw "{{date}}")}
                                             {:$sort {:_id 1}}
                                             {:$limit 1}])
                            :collection    "checkins"
@@ -327,7 +320,7 @@
                    (mt/query tips
                      {:type       :native
                       :native     {:query         (json/encode
-                                                   [{:$match (json-raw "{{username}}")}
+                                                   [{:$match (json/raw "{{username}}")}
                                                     {:$sort {:_id 1}}
                                                     {:$project {"username" "$source.username"
                                                                 "_id" 1}}
@@ -354,7 +347,7 @@
                        (mt/query tips
                          {:type       :native
                           :native     {:query         (json/encode
-                                                       [{:$match (json-raw "{{username}}")}
+                                                       [{:$match (json/raw "{{username}}")}
                                                         {:$sort {:_id 1}}
                                                         {:$project {"username" "$source.username"}}
                                                         {:$limit 1}])
@@ -379,7 +372,7 @@
                           (mt/query venues
                             {:type       :native
                              :native     {:query         (json/encode
-                                                          [{:$match (json-raw "{{price}}")}
+                                                          [{:$match (json/raw "{{price}}")}
                                                            {:$project {"price" "$price"}}
                                                            {:$sort {:_id 1}}
                                                            {:$limit 10}])
@@ -400,7 +393,7 @@
                                 (mt/query tips
                                   {:type       :native
                                    :native     {:query         (json/encode
-                                                                [{:$match (json-raw "{{username}}")}
+                                                                [{:$match (json/raw "{{username}}")}
                                                                  {:$sort {:_id 1}}
                                                                  {:$project {"username" "$source.username"}}
                                                                  {:$limit 20}])
@@ -435,7 +428,7 @@
               (qp/process-query
                (mt/query categories
                  {:type       :native
-                  :native     {:query         (json/encode [{:$match (json-raw "{{snippet: first 3 checkins}}")}])
+                  :native     {:query         (json/encode [{:$match (json/raw "{{snippet: first 3 checkins}}")}])
                                :collection    "categories"
                                :template-tags {"snippet: first 3 checkins" {:name         "snippet: first 3 checkins"
                                                                             :display-name "Snippet: First 3 checkins"

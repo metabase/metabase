@@ -101,23 +101,16 @@
     (str "_" table-or-field-name)
     table-or-field-name))
 
-(defn- json-raw
-  "Wrap a string so it will be spliced directly into resulting JSON as-is. Analogous to HoneySQL `raw`."
-  [^String s]
-  (reify json.generate/JSONable
-    (to-json [_ generator]
-      (.writeRawValue ^JsonGenerator generator s))))
-
 (deftest json-raw-test
-  (testing "Make sure the `json-raw` util fn actually works the way we expect it to"
+  (testing "Make sure the `json/raw` util fn actually works the way we expect it to"
     (is (= "{\"x\":{{param}}}"
-           (json/encode {:x (json-raw "{{param}}")})))))
+           (json/encode {:x (json/raw "{{param}}")})))))
 
 (defmethod tx/count-with-template-tag-query :mongo
   [_driver table-name field-name _param-type]
   {:projections [:count]
    :query       (json/encode
-                 [{:$match {(name field-name) (json-raw (format "{{%s}}" (name field-name)))}}
+                 [{:$match {(name field-name) (json/raw (format "{{%s}}" (name field-name)))}}
                   {:$group {"_id" nil, "count" {:$sum 1}}}
                   {:$sort {"_id" 1}}
                   {:$project {"_id" false, "count" true}}])
@@ -127,7 +120,7 @@
   [_driver table-name field-name]
   {:projections [:count]
    :query       (json/encode
-                 [{:$match (json-raw (format "{{%s}}" (name field-name)))}
+                 [{:$match (json/raw (format "{{%s}}" (name field-name)))}
                   {:$group {"_id" nil, "count" {:$sum 1}}}
                   {:$sort {"_id" 1}}
                   {:$project {"_id" false, "count" true}}])
