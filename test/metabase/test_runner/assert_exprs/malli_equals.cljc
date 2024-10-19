@@ -7,16 +7,17 @@
   #?(:cljs
      (:require-macros [metabase.test-runner.assert-exprs.malli-equals])))
 
-(defn malli=-report [message schema actuals]
-  (doseq [actual actuals]
-    (t/testing (str \newline (u/pprint-to-str actual))
-      (let [error (me/humanize (mc/explain schema actual))]
-        (t/do-report
-         {:type     (if error :fail :pass)
-          :message  message
-          :expected schema
-          :actual   actual
-          :diffs    [[actual [error nil]]]})))))
+(defmacro malli=-report [message schema actuals]
+  `(let [schema# ~schema]
+     (doseq [actual# ~actuals]
+       (t/testing (str \newline (u/pprint-to-str actual#))
+         (let [error# (me/humanize (mc/explain schema# actual#))]
+           (t/do-report
+            {:type     (if error# :fail :pass)
+             :message  ~message
+             :expected schema#
+             :actual   actual#
+             :diffs    [[actual# [error# nil]]]}))))))
 
 #?(:clj
    (do
