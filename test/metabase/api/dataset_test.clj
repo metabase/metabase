@@ -153,7 +153,7 @@
                                                     [:js-int-to-string?                 [:= true]]]]]]
                        [:database_id [:= (mt/id)]]
                        [:state       [:= "42000"]]
-                       [:class       [:= "class org.h2.jdbc.JdbcSQLSyntaxErrorException"]]]
+                       [:class       [:= "org.h2.jdbc.JdbcSQLSyntaxErrorException"]]]
                       result)))
         (testing "\nSaved QueryExecution"
           (is (malli=

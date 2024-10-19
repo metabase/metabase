@@ -47,7 +47,10 @@
 (defn- json-mw [handler]
   (fn [req]
     (-> req
-        (m/update-existing :body #(-> % slurp (json/parse-string true)))
+        (m/update-existing :body #(let [s (slurp %)]
+                                    ;; Empty string is not a valid JSON, don't pass it to Jsonista.
+                                    (when-not (str/blank? s)
+                                      (json/decode+kw s))))
         handler)))
 
 (def middlewares [json-mw wrap-params])

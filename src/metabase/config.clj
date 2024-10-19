@@ -159,7 +159,8 @@
   "Default user details provided as a JSON string at launch time for first-user setup flow."
   []
   (when-let [user-json (env/env :mb-user-defaults)]
-    (jsonista/read-value user-json (jsonista/object-mapper {:decode-key-fn true}))))
+    (when-not (str/blank? user-json)
+      (jsonista/read-value user-json (jsonista/object-mapper {:decode-key-fn true})))))
 
 (def ^:const internal-mb-user-id
   "The user-id of the internal metabase user.

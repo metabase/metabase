@@ -369,15 +369,11 @@
                     ((-> assertions export-format) results)))))))))))
 
 (defn- parse-json-results
-  "Convert JSON results into a convenient format for test assertions. Results are transformed into a nested list,
-  column titles in the first list as strings rather than keywords."
+  "Transform keyword keys in rows to strings."
   [results]
-  (let [col-titles (map name (keys (first results)))
-        values     (map vals results)]
-    (into values [col-titles])))
+  (mapv #(update-keys % name) results))
 
-(defn- parse-csv-results
-  [results]
+(defn- parse-csv-results [results]
   (if (map? results)
     (throw (ex-info "Error in CSV export" results))
     (csv/read-csv results)))
@@ -399,9 +395,10 @@
                                 (parse-csv-results results))))
 
                  :json (fn [results]
-                         (is (= [["ID" "Name" "Category ID" "Latitude" "Longitude" "Price"]
-                                 ["1" "Red Medicine" "4" "10.06460000° N" "165.37400000° W" "3"]
-                                 ["2" "Stout Burgers & Beers" "11" "34.09960000° N" "118.32900000° W" "2"]]
+                         (is (= [{"ID" "1", "Name" "Red Medicine", "Category ID" "4", "Latitude" "10.06460000° N",
+                                  "Longitude" "165.37400000° W" "Price" "3"}
+                                 {"ID" "2", "Name" "Stout Burgers & Beers", "Category ID" "11", "Latitude" "34.09960000° N",
+                                  "Longitude" "118.32900000° W" "Price" "2"}]
                                 (parse-json-results results))))
 
                  :xlsx (fn [results]
@@ -434,8 +431,7 @@
                                (parse-csv-results results))))
 
                  :json (fn [results]
-                         (is (= [["Name" "ID" "Category ID" "Price"]
-                                 ["Red Medicine" "1" "4" "3"]]
+                         (is (= [{"Name" "Red Medicine" "ID" "1" "Category ID" "4" "Price" "3"}]
                                 (parse-json-results results))))
 
                  :xlsx (fn [results]
@@ -461,8 +457,8 @@
                                             (parse-csv-results results))))
 
                              :json (fn [results]
-                                     (is (= [["ID" "Name" col-name "Latitude" "Longitude" "Price"]
-                                             ["1" "Red Medicine" "Asian" "10.06460000° N" "165.37400000° W" "3"]]
+                                     (is (= [{"ID" "1", "Name" "Red Medicine", col-name "Asian", "Latitude" "10.06460000° N",
+                                              "Longitude" "165.37400000° W" "Price" "3"}]
                                             (parse-json-results results))))
 
                              :xlsx (fn [results]
@@ -503,8 +499,7 @@
                                (parse-csv-results results))))
 
                  :json (fn [results]
-                         (is (= [["ID" "Name" "Category ID" "Categories → Name"]
-                                 ["1" "Red Medicine" "4" "Asian"]]
+                         (is (= [{"ID" "1" "Name" "Red Medicine" "Category ID" "4" "Categories → Name" "Asian"}]
                                 (parse-json-results results))))
 
                  :xlsx (fn [results]
@@ -543,8 +538,7 @@
                                (parse-csv-results results))))
 
                  :json (fn [results]
-                         (is (= [["ID" "Left Name" "Right Name"]
-                                 ["1" "Red Medicine" "Red Medicine"]]
+                         (is (= [{"ID" "1" "Left Name" "Red Medicine" "Right Name" "Red Medicine"}]
                                 (parse-json-results results))))
 
                  :xlsx (fn [results]
@@ -566,8 +560,7 @@
                    :json (fn [results]
                            ;; Second ID field is omitted since each col is stored in a JSON object rather than an array.
                            ;; TODO we should be able to include the second column if it is renamed.
-                           (is (= [["ID" "NAME"]
-                                   ["1" "Red Medicine"]]
+                           (is (= [{"ID" "1" "NAME" "Red Medicine"}]
                                   (parse-json-results results))))
 
                    :xlsx (fn [results]
