@@ -26,6 +26,7 @@ import {
   describeEE,
   describeWithSnowplow,
   editDashboard,
+  editIFrameWhileEditing,
   enableTracking,
   entityPickerModal,
   expectGoodSnowplowEvent,
@@ -54,6 +55,7 @@ import {
   sidebar,
   sidesheet,
   updateDashboardCards,
+  updateSetting,
   visitDashboard,
 } from "e2e/support/helpers";
 import { GRID_WIDTH } from "metabase/lib/dashboard_grid";
@@ -324,50 +326,6 @@ describe("scenarios > dashboard", () => {
             .and("contain", "Orders, Count")
             .and("contain", "18,760");
         }
-      });
-
-      describe("iframe cards", () => {
-        it("should handle various iframe and URL inputs", () => {
-          const testCases = [
-            {
-              input: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-              expected: "https://www.youtube.com/embed/dQw4w9WgXcQ",
-            },
-            {
-              input: "https://youtu.be/dQw4w9WgXcQ",
-              expected: "https://www.youtube.com/embed/dQw4w9WgXcQ",
-            },
-            {
-              input: "https://www.loom.com/share/1234567890abcdef",
-              expected: "https://www.loom.com/embed/1234567890abcdef",
-            },
-            {
-              input: "https://vimeo.com/123456789",
-              expected: "https://player.vimeo.com/video/123456789",
-            },
-            {
-              input: "example.com",
-              expected: "https://example.com",
-            },
-            {
-              input: "https://example.com",
-              expected: "https://example.com",
-            },
-            {
-              input:
-                '<iframe src="https://example.com" onload="alert(\'XSS\')"></iframe>',
-              expected: "https://example.com",
-            },
-          ];
-
-          editDashboard();
-
-          testCases.forEach(({ input, expected }, index) => {
-            addIFrameWhileEditing(input);
-            cy.button("Done").click();
-            validateIFrame(expected, index);
-          });
-        });
       });
 
       it("should hide personal collections when adding questions to a dashboard in public collection", () => {
@@ -696,6 +654,110 @@ describe("scenarios > dashboard", () => {
         getDashboardCards().eq(1).contains("bottom");
       },
     );
+  });
+
+  describe("iframe cards", () => {
+    it("should handle various iframe and URL inputs", () => {
+      const testCases = [
+        {
+          input: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+          expected: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+        },
+        {
+          input: "https://youtu.be/dQw4w9WgXcQ",
+          expected: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+        },
+        {
+          input: "https://www.loom.com/share/1234567890abcdef",
+          expected: "https://www.loom.com/embed/1234567890abcdef",
+        },
+        {
+          input: "https://vimeo.com/123456789",
+          expected: "https://player.vimeo.com/video/123456789",
+        },
+        {
+          input: "example.com",
+          expected: "https://example.com",
+        },
+        {
+          input: "https://example.com",
+          expected: "https://example.com",
+        },
+        {
+          input:
+            '<iframe src="https://example.com" onload="alert(\'XSS\')"></iframe>',
+          expected: "https://example.com",
+        },
+      ];
+
+      cy.createDashboard().then(({ body: { id } }) => {
+        visitDashboard(id);
+      });
+
+      editDashboard();
+
+      testCases.forEach(({ input, expected }, index) => {
+        addIFrameWhileEditing(input);
+        cy.button("Done").click();
+        validateIFrame(expected, index);
+      });
+    });
+
+    it("should respect allowed-iframe-hosts setting", () => {
+      const errorMessage = /can not be embedded in iframe cards/;
+
+      updateSetting(
+        "allowed-iframe-hosts",
+        [
+          "https://youtube.com",
+          "https://*.youtube.com",
+          "https://vimeo.com",
+          "https://*.loom.com",
+        ].join(","),
+      );
+
+      cy.createDashboard().then(({ body: { id } }) => visitDashboard(id));
+      editDashboard();
+
+      // Test allowed domain
+      addIFrameWhileEditing("https://youtube.com/watch?v=dQw4w9WgXcQ");
+      cy.button("Done").click();
+      validateIFrame("https://www.youtube.com/embed/dQw4w9WgXcQ");
+
+      // Test allowed subdomain
+      editIFrameWhileEditing(0, "https://youtube.com/watch?v=dQw4w9WgXcQ");
+      cy.button("Done").click();
+      validateIFrame("https://www.youtube.com/embed/dQw4w9WgXcQ");
+
+      // Test forbidden domain
+      editIFrameWhileEditing(0, "https://example.com");
+      cy.button("Done").click();
+      getDashboardCard().within(() => {
+        cy.findByText(errorMessage).should("be.visible");
+        cy.get("iframe").should("not.exist");
+      });
+
+      // Test forbidden domain
+      editIFrameWhileEditing(0, "https://example.com");
+      cy.button("Done").click();
+      getDashboardCard().within(() => {
+        cy.findByText(errorMessage).should("be.visible");
+        cy.get("iframe").should("not.exist");
+      });
+
+      // Test forbidden subdomain, but allowed domain
+      editIFrameWhileEditing(0, "https://player.vimeo.com/video/123456789");
+      cy.button("Done").click();
+      getDashboardCard().within(() => {
+        cy.findByText(errorMessage).should("be.visible");
+        cy.get("iframe").should("not.exist");
+      });
+
+      // Test forbidden domain, but allowed subdomain
+      editIFrameWhileEditing(0, "https://www.loom.com/share/1234567890abcdef");
+      cy.button("Done").click();
+      validateIFrame("https://www.loom.com/embed/1234567890abcdef");
+    });
   });
 
   it("should add a filter", () => {

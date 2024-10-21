@@ -6,6 +6,7 @@
    [clojure.test :refer :all]
    [metabase.config :as config]
    [metabase.embed.settings :as embed.settings]
+   [metabase.public-settings :as public-settings]
    [metabase.server.middleware.security :as mw.security]
    [metabase.test :as mt]
    [metabase.test.util :as tu]
@@ -55,6 +56,12 @@
                                          embedding-app-origin "https: http:"]
         (is (= "frame-ancestors 'none'"
                (csp-directive "frame-ancestors")))))))
+
+(deftest csp-header-iframe-hosts-tests
+  (testing "Allowed iframe hosts setting is used in the CSP frame-src directive."
+    (tu/with-temporary-setting-values [public-settings/allowed-iframe-hosts "https://www.wikipedia.org, https://www.metabase.com   https://clojure.org/"]
+      (is (= "frame-src https://www.wikipedia.org https://www.metabase.com https://clojure.org/"
+             (csp-directive "frame-src"))))))
 
 (deftest xframeoptions-header-tests
   (mt/with-premium-features #{:embedding}
