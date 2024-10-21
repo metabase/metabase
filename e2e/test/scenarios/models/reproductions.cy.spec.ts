@@ -1322,13 +1322,14 @@ describe("issue 20624", () => {
   });
 
   it("should reset the question's viz settings when converting to a model", () => {
+    cy.log("check that a column is renamed according to the viz settings");
     createQuestion(questionDetails, { visitQuestion: true });
     tableInteractive().within(() => {
       cy.findByText("Retailer").should("be.visible");
       cy.findByText("Vendor").should("not.exist");
     });
 
-    cy.log("check that viz settings are reset");
+    cy.log("check that viz settings are reset when converting to a model");
     openQuestionActions();
     popover().findByText("Turn into a model").click();
     modal().findByText("Turn this into a model").click();
@@ -1338,7 +1339,7 @@ describe("issue 20624", () => {
       cy.findByText("Retailer").should("not.exist");
     });
 
-    cy.log("achieve the same using model metadata");
+    cy.log("rename the column using the model's metadata");
     openQuestionActions();
     popover().findByText("Edit metadata").click();
     tableHeaderClick("Vendor");
