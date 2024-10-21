@@ -31,12 +31,12 @@
 (deftest ^:parallel fk-ids->join-infos-test
   (qp.store/with-metadata-provider meta/metadata-provider
     (is (= [{:source-table (meta/id :products)
-             :alias       "PRODUCTS__via__PRODUCT_ID__of__ORDERS"
+             :alias       "PRODUCTS__via__PRODUCT_ID"
              :fields      :none
              :strategy    :left-join
              :condition   [:=
                            [:field (meta/id :orders :product-id) nil]
-                           [:field (meta/id :products :id) {:join-alias "PRODUCTS__via__PRODUCT_ID__of__ORDERS"}]]
+                           [:field (meta/id :products :id) {:join-alias "PRODUCTS__via__PRODUCT_ID"}]]
              :fk-field-id (meta/id :orders :product-id)}]
            (#'qp.add-implicit-joins/fk-ids->join-infos #{(meta/id :orders :id)
                                                          (meta/id :orders :product-id)})))))
@@ -60,15 +60,15 @@
               {:source-query {:source-table $$orders
                               :fields       [$id
                                              &Products.products.title
-                                             [:field %products.title {:source-field %product-id, :join-alias "PRODUCTS__via__PRODUCT_ID__of__ORDERS"}]]
+                                             [:field %products.title {:source-field %product-id, :join-alias "PRODUCTS__via__PRODUCT_ID"}]]
                               :joins        [{:fields       :all
                                               :source-table $$products
                                               :condition    [:= $product-id &Products.products.id]
                                               :alias        "Products"}
                                              {:fields       :none
                                               :source-table $$products
-                                              :condition    [:= $product-id &PRODUCTS__via__PRODUCT_ID__of__ORDERS.products.id]
-                                              :alias        "PRODUCTS__via__PRODUCT_ID__of__ORDERS"
+                                              :condition    [:= $product-id &PRODUCTS__via__PRODUCT_ID.products.id]
+                                              :alias        "PRODUCTS__via__PRODUCT_ID"
                                               :fk-field-id  %product-id
                                               :strategy     :left-join}]
                               :order-by     [[:asc $id]]
@@ -87,11 +87,11 @@
   (testing "make sure `:joins` get added automatically for `:fk->` clauses"
     (is (= (lib.tu.macros/mbql-query venues
              {:source-table $$venues
-              :fields       [$name [:field %categories.name {:join-alias   "CATEGORIES__via__CATEGORY_ID__of__VENUES"
+              :fields       [$name [:field %categories.name {:join-alias   "CATEGORIES__via__CATEGORY_ID"
                                                              :source-field %category-id}]]
               :joins        [{:source-table $$categories
-                              :alias        "CATEGORIES__via__CATEGORY_ID__of__VENUES"
-                              :condition    [:= $category-id &CATEGORIES__via__CATEGORY_ID__of__VENUES.categories.id]
+                              :alias        "CATEGORIES__via__CATEGORY_ID"
+                              :condition    [:= $category-id &CATEGORIES__via__CATEGORY_ID.categories.id]
                               :strategy     :left-join
                               :fields       :none
                               :fk-field-id  %category-id}]})
@@ -105,11 +105,11 @@
     (is (= (lib.tu.macros/mbql-query venues
              {:source-query
               {:source-table $$venues
-               :fields       [$name [:field %categories.name {:join-alias "CATEGORIES__via__CATEGORY_ID__of__VENUES"
+               :fields       [$name [:field %categories.name {:join-alias "CATEGORIES__via__CATEGORY_ID"
                                                               :source-field %category-id}]]
                :joins        [{:source-table $$categories
-                               :alias        "CATEGORIES__via__CATEGORY_ID__of__VENUES"
-                               :condition    [:= $category-id &CATEGORIES__via__CATEGORY_ID__of__VENUES.categories.id]
+                               :alias        "CATEGORIES__via__CATEGORY_ID"
+                               :condition    [:= $category-id &CATEGORIES__via__CATEGORY_ID.categories.id]
                                :strategy     :left-join
                                :fields       :none
                                :fk-field-id  %category-id}]}})
@@ -141,13 +141,13 @@
     (is (= (lib.tu.macros/mbql-query venues
              {:source-query
               {:source-table $$venues
-               :fields       [$name [:field %categories.name {:join-alias   "CATEGORIES__via__CATEGORY_ID__of__VENUES"
+               :fields       [$name [:field %categories.name {:join-alias   "CATEGORIES__via__CATEGORY_ID"
                                                               :source-field %category-id}]]
                :joins        [{:source-table $$categories
-                               :alias        "CATEGORIES__via__CATEGORY_ID__of__VENUES"
-                               :condition    [:= $category-id &CATEGORIES__via__CATEGORY_ID__of__VENUES.categories.id]
+                               :alias        "CATEGORIES__via__CATEGORY_ID"
+                               :condition    [:= $category-id &CATEGORIES__via__CATEGORY_ID.categories.id]
                                :strategy     :left-join
-                               :fields       [[:field %categories.name {:join-alias   "CATEGORIES__via__CATEGORY_ID__of__VENUES"
+                               :fields       [[:field %categories.name {:join-alias   "CATEGORIES__via__CATEGORY_ID"
                                                                         :source-field %category-id}]]
                                :fk-field-id  %category-id}]}})
            (add-implicit-joins
@@ -156,10 +156,10 @@
                {:source-table $$venues
                 :fields       [$name $category-id->categories.name]
                 :joins        [{:source-table $$categories
-                                :alias        "CATEGORIES__via__CATEGORY_ID__of__VENUES"
-                                :condition    [:= $category-id &CATEGORIES__via__CATEGORY_ID__of__VENUES.categories.id]
+                                :alias        "CATEGORIES__via__CATEGORY_ID"
+                                :condition    [:= $category-id &CATEGORIES__via__CATEGORY_ID.categories.id]
                                 :strategy     :left-join
-                                :fields       [[:field %categories.name {:join-alias   "CATEGORIES__via__CATEGORY_ID__of__VENUES"
+                                :fields       [[:field %categories.name {:join-alias   "CATEGORIES__via__CATEGORY_ID"
                                                                          :source-field %category-id}]]
                                 :fk-field-id  %category-id}]}}))))))
 
@@ -213,18 +213,18 @@
                              {:source-table $$orders
                               :fields       [$id
                                              &Products.products.title
-                                             [:field %products.title {:join-alias   "PRODUCTS__via__PRODUCT_ID__of__ORDERS"
+                                             [:field %products.title {:join-alias   "PRODUCTS__via__PRODUCT_ID"
                                                                       :source-field %product_id}]]
                               :joins        [{:source-table $$products
                                               :alias        "Products"
                                               :fields       :all
                                               :condition    [:= $product_id &Products.products.id]}
                                              {:source-table $$products
-                                              :alias        "PRODUCTS__via__PRODUCT_ID__of__ORDERS"
+                                              :alias        "PRODUCTS__via__PRODUCT_ID"
                                               :strategy     :left-join
                                               :fields       :none
                                               :fk-field-id  %product_id
-                                              :condition    [:= $product_id &PRODUCTS__via__PRODUCT_ID__of__ORDERS.products.id]}]
+                                              :condition    [:= $product_id &PRODUCTS__via__PRODUCT_ID.products.id]}]
                               :order-by     [[:asc $id]]
                               :limit        2})
                            (mt/nest-query level))
@@ -238,18 +238,18 @@
                {:filter       [:> *count/Integer 5]
                 :fields       [$created-at
                                [:field %products.created-at {:source-field %product-id
-                                                             :join-alias   "PRODUCTS__via__PRODUCT_ID__of__ORDERS"}]
+                                                             :join-alias   "PRODUCTS__via__PRODUCT_ID"}]
                                *count/Integer]
                 :source-query {:source-table $$orders
                                :aggregation  [[:count]]
                                :breakout     [!month.created-at
                                               [:field %products.created-at {:source-field  %product-id
                                                                             :temporal-unit :month
-                                                                            :join-alias    "PRODUCTS__via__PRODUCT_ID__of__ORDERS"}]]
+                                                                            :join-alias    "PRODUCTS__via__PRODUCT_ID"}]]
                                :joins        [{:fields       :none
-                                               :alias        "PRODUCTS__via__PRODUCT_ID__of__ORDERS"
+                                               :alias        "PRODUCTS__via__PRODUCT_ID"
                                                :strategy     :left-join
-                                               :condition    [:= $product-id &PRODUCTS__via__PRODUCT_ID__of__ORDERS.products.id]
+                                               :condition    [:= $product-id &PRODUCTS__via__PRODUCT_ID.products.id]
                                                :source-table $$products
                                                :fk-field-id  %product-id}]}
                 :limit        5})
@@ -277,25 +277,25 @@
                                               $created-at
                                               $quantity
                                               [:field %products.category {:source-field %product-id
-                                                                          :join-alias   "PRODUCTS__via__PRODUCT_ID__of__ORDERS"}]]
+                                                                          :join-alias   "PRODUCTS__via__PRODUCT_ID"}]]
                                :filter       [:and
                                               [:= $user-id 1]
                                               [:=
                                                [:field %products.category {:source-field %product-id
-                                                                           :join-alias   "PRODUCTS__via__PRODUCT_ID__of__ORDERS"}]
+                                                                           :join-alias   "PRODUCTS__via__PRODUCT_ID"}]
                                                "Doohickey"]]
                                :joins        [{:source-table $$products
-                                               :alias        "PRODUCTS__via__PRODUCT_ID__of__ORDERS"
+                                               :alias        "PRODUCTS__via__PRODUCT_ID"
                                                :fields       :none
                                                :strategy     :left-join
                                                :fk-field-id  %product-id
-                                               :condition    [:= $product-id &PRODUCTS__via__PRODUCT_ID__of__ORDERS.products.id]}]}
+                                               :condition    [:= $product-id &PRODUCTS__via__PRODUCT_ID.products.id]}]}
                 :filter       [:=
                                [:field %products.category {:source-field %product-id
-                                                           :join-alias   "PRODUCTS__via__PRODUCT_ID__of__ORDERS"}]
+                                                           :join-alias   "PRODUCTS__via__PRODUCT_ID"}]
                                "Doohickey"]
                 :order-by     [[:asc [:field %products.category {:source-field %product-id
-                                                                 :join-alias   "PRODUCTS__via__PRODUCT_ID__of__ORDERS"}]]]
+                                                                 :join-alias   "PRODUCTS__via__PRODUCT_ID"}]]]
                 :limit        5})
              (add-implicit-joins
               (lib.tu.macros/mbql-query orders
@@ -312,16 +312,16 @@
     (is (= (lib.tu.macros/mbql-query orders
              {:source-query {:native "SELECT * FROM my_table"}
               :filter       [:= [:field %products.category {:source-field %product-id
-                                                            :join-alias   "PRODUCTS__via__PRODUCT_ID__of__ORDERS"}]
+                                                            :join-alias   "PRODUCTS__via__PRODUCT_ID"}]
                              "Doohickey"]
               :order-by     [[:asc [:field %products.category {:source-field %product-id
-                                                               :join-alias   "PRODUCTS__via__PRODUCT_ID__of__ORDERS"}]]]
+                                                               :join-alias   "PRODUCTS__via__PRODUCT_ID"}]]]
               :joins        [{:source-table $$products
-                              :alias        "PRODUCTS__via__PRODUCT_ID__of__ORDERS"
+                              :alias        "PRODUCTS__via__PRODUCT_ID"
                               :fields       :none
                               :strategy     :left-join
                               :fk-field-id  %product-id
-                              :condition    [:= $product-id &PRODUCTS__via__PRODUCT_ID__of__ORDERS.products.id]}]
+                              :condition    [:= $product-id &PRODUCTS__via__PRODUCT_ID.products.id]}]
               :limit        5})
            (add-implicit-joins
             (lib.tu.macros/mbql-query orders
@@ -351,11 +351,11 @@
              {:source-query
               {:source-query
                {:source-table $$venues
-                :fields       [$name [:field %categories.name {:join-alias "CATEGORIES__via__CATEGORY_ID__of__VENUES"
+                :fields       [$name [:field %categories.name {:join-alias "CATEGORIES__via__CATEGORY_ID"
                                                                :source-field %category-id}]]
                 :joins        [{:source-table $$categories
-                                :alias        "CATEGORIES__via__CATEGORY_ID__of__VENUES"
-                                :condition    [:= $category-id &CATEGORIES__via__CATEGORY_ID__of__VENUES.categories.id]
+                                :alias        "CATEGORIES__via__CATEGORY_ID"
+                                :condition    [:= $category-id &CATEGORIES__via__CATEGORY_ID.categories.id]
                                 :strategy     :left-join
                                 :fields       :none
                                 :fk-field-id  %category-id}]}}})
@@ -379,11 +379,11 @@
                                             $venue-id]
                              :filter       [:> $date "2014-01-01"]}
               :aggregation  [[:count]]
-              :breakout     [[:field %venues.price {:source-field %venue-id, :join-alias "VENUES__via__VENUE_ID__of__CHECKINS"}]]
-              :order-by     [[:asc [:field %venues.price {:source-field %venue-id, :join-alias "VENUES__via__VENUE_ID__of__CHECKINS"}]]]
+              :breakout     [[:field %venues.price {:source-field %venue-id, :join-alias "VENUES__via__VENUE_ID"}]]
+              :order-by     [[:asc [:field %venues.price {:source-field %venue-id, :join-alias "VENUES__via__VENUE_ID"}]]]
               :joins        [{:source-table $$venues
-                              :alias        "VENUES__via__VENUE_ID__of__CHECKINS"
-                              :condition    [:= $venue-id &VENUES__via__VENUE_ID__of__CHECKINS.venues.id]
+                              :alias        "VENUES__via__VENUE_ID"
+                              :condition    [:= $venue-id &VENUES__via__VENUE_ID.venues.id]
                               :strategy     :left-join
                               :fields       :none
                               :fk-field-id  %venue-id}]})
@@ -444,16 +444,16 @@
   (testing "Test that adding implicit joins still works correctly if the query also contains explicit joins"
     (is (= (lib.tu.macros/mbql-query checkins
              {:source-table $$checkins
-              :aggregation  [[:sum [:field %users.id {:join-alias   "USERS__via__USER_ID__of__CHECKINS"
+              :aggregation  [[:sum [:field %users.id {:join-alias   "USERS__via__USER_ID"
                                                       :source-field %user-id}]]]
               :breakout     [$id]
               :joins        [{:alias        "u"
                               :source-table $$users
                               :condition    [:= *user-id &u.users.id]}
                              {:source-table $$users
-                              :alias        "USERS__via__USER_ID__of__CHECKINS"
+                              :alias        "USERS__via__USER_ID"
                               :strategy     :left-join
-                              :condition    [:= $user-id &USERS__via__USER_ID__of__CHECKINS.users.id]
+                              :condition    [:= $user-id &USERS__via__USER_ID.users.id]
                               :fk-field-id  %checkins.user-id
                               :fields       :none}]
               :limit        10})
@@ -472,13 +472,13 @@
     (testing "in nested source queries"
       (is (= (lib.tu.macros/mbql-query checkins
                {:source-query {:source-table $$checkins
-                               :aggregation  [[:sum [:field %users.id {:join-alias   "USERS__via__USER_ID__of__CHECKINS"
+                               :aggregation  [[:sum [:field %users.id {:join-alias   "USERS__via__USER_ID"
                                                                        :source-field %user-id}]]]
                                :breakout     [$id]
                                :joins        [{:source-table $$users
-                                               :alias        "USERS__via__USER_ID__of__CHECKINS"
+                                               :alias        "USERS__via__USER_ID"
                                                :strategy     :left-join
-                                               :condition    [:= $user-id &USERS__via__USER_ID__of__CHECKINS.users.id]
+                                               :condition    [:= $user-id &USERS__via__USER_ID.users.id]
                                                :fk-field-id  %checkins.user-id
                                                :fields       :none}]}
                 :joins        [{:alias        "u"
@@ -500,8 +500,8 @@
     (is (query= (lib.tu.macros/mbql-query orders
                   {:source-query {:source-table $$orders
                                   :joins        [{:source-table $$products
-                                                  :alias        "PRODUCTS__via__PRODUCT_ID__of__ORDERS"
-                                                  :condition    [:= $product-id &PRODUCTS__via__PRODUCT_ID__of__ORDERS.products.id]
+                                                  :alias        "PRODUCTS__via__PRODUCT_ID"
+                                                  :condition    [:= $product-id &PRODUCTS__via__PRODUCT_ID.products.id]
                                                   :fields       :none
                                                   :strategy     :left-join
                                                   :fk-field-id  %product-id}]
@@ -511,13 +511,13 @@
                                                  [:field
                                                   %products.title
                                                   {:source-field %product-id
-                                                   :join-alias   "PRODUCTS__via__PRODUCT_ID__of__ORDERS"
+                                                   :join-alias   "PRODUCTS__via__PRODUCT_ID"
                                                    ::namespaced  true}]]}
                    :fields       [[:field %product-id {::namespaced true}]
                                   [:field
                                    %products.title
                                    {:source-field %product-id
-                                    :join-alias   "PRODUCTS__via__PRODUCT_ID__of__ORDERS"
+                                    :join-alias   "PRODUCTS__via__PRODUCT_ID"
                                     ::namespaced  true}]]})
                 (-> (lib.tu.macros/mbql-query orders
                       {:source-query    {:source-table $$orders
@@ -553,12 +553,12 @@
                   {:source-query {:source-table $$orders
                                   :fields       [$product-id]}
                    :joins        [{:source-table $$products
-                                   :alias        "PRODUCTS__via__PRODUCT_ID__of__ORDERS"
+                                   :alias        "PRODUCTS__via__PRODUCT_ID"
                                    :condition    [:=
                                                   $product-id
                                                   [:field
                                                    %products.id
-                                                   {:join-alias "PRODUCTS__via__PRODUCT_ID__of__ORDERS"}]]
+                                                   {:join-alias "PRODUCTS__via__PRODUCT_ID"}]]
                                    :fields       :none
                                    :strategy     :left-join
                                    :fk-field-id  %product-id}
@@ -567,7 +567,7 @@
                                    :condition    [:=
                                                   [:field
                                                    %products.category
-                                                   {:join-alias   "PRODUCTS__via__PRODUCT_ID__of__ORDERS"
+                                                   {:join-alias   "PRODUCTS__via__PRODUCT_ID"
                                                     :source-field %product-id}]
                                                   &Products.products.category]
                                    :fields       :none}]})
@@ -588,18 +588,18 @@
       (is (query= (lib.tu.macros/mbql-query orders
                     {:source-query {:source-table $$orders
                                     :joins        [{:source-table $$products
-                                                    :alias        "PRODUCTS__via__PRODUCT_ID__of__ORDERS"
+                                                    :alias        "PRODUCTS__via__PRODUCT_ID"
                                                     :condition    [:=
                                                                    $product-id
                                                                    [:field
                                                                     %products.id
-                                                                    {:join-alias "PRODUCTS__via__PRODUCT_ID__of__ORDERS"}]]
+                                                                    {:join-alias "PRODUCTS__via__PRODUCT_ID"}]]
                                                     :fields       :none
                                                     :strategy     :left-join
                                                     :fk-field-id  %product-id}]
                                     :breakout     [[:field
                                                     %products.category
-                                                    {:join-alias   "PRODUCTS__via__PRODUCT_ID__of__ORDERS"
+                                                    {:join-alias   "PRODUCTS__via__PRODUCT_ID"
                                                      :source-field %product-id}]]
                                     :aggregation  [[:count]]}
                      :joins        [{:source-table $$products
@@ -607,13 +607,13 @@
                                      :condition    [:=
                                                     [:field
                                                      %products.category
-                                                     {:join-alias   "PRODUCTS__via__PRODUCT_ID__of__ORDERS"
+                                                     {:join-alias   "PRODUCTS__via__PRODUCT_ID"
                                                       :source-field %product-id}]
                                                     &Products.products.category]
                                      :fields       :none}]
                      :fields       [[:field
                                      %products.category
-                                     {:join-alias   "PRODUCTS__via__PRODUCT_ID__of__ORDERS"
+                                     {:join-alias   "PRODUCTS__via__PRODUCT_ID"
                                       :source-field %product-id}]]})
                   (add-implicit-joins
                    (lib.tu.macros/mbql-query orders
@@ -645,29 +645,29 @@
         (is (= (lib.tu.macros/mbql-query products
                  {:source-query {:source-table $$orders
                                  :aggregation [[:count]]
-                                 :breakout [&PRODUCTS__via__PRODUCT_ID__of__ORDERS.$orders.product-id->category]
-                                 :joins [{:alias "PRODUCTS__via__PRODUCT_ID__of__ORDERS"
+                                 :breakout [&PRODUCTS__via__PRODUCT_ID.$orders.product-id->category]
+                                 :joins [{:alias "PRODUCTS__via__PRODUCT_ID"
                                           :fields :none
-                                          :condition [:= $orders.product-id &PRODUCTS__via__PRODUCT_ID__of__ORDERS.$id]
+                                          :condition [:= $orders.product-id &PRODUCTS__via__PRODUCT_ID.$id]
                                           :strategy :left-join
                                           :source-table $$products
                                           :fk-field-id %orders.product-id}]}
-                  :source-metadata [{:field_ref &PRODUCTS__via__PRODUCT_ID__of__ORDERS.$orders.product-id->category}]
+                  :source-metadata [{:field_ref &PRODUCTS__via__PRODUCT_ID.$orders.product-id->category}]
                   :joins [{:alias "Q2"
                            :condition [:=
-                                       &PRODUCTS__via__PRODUCT_ID__of__ORDERS.$orders.product-id->category
+                                       &PRODUCTS__via__PRODUCT_ID.$orders.product-id->category
                                        &Q2.$reviews.product-id->category]
                            :strategy :left-join
                            :source-query {:source-table $$reviews
                                           :aggregation [[:count]]
-                                          :breakout [&PRODUCTS__via__PRODUCT_ID__of__REVIEWS.$reviews.product-id->category]
-                                          :joins [{:alias "PRODUCTS__via__PRODUCT_ID__of__REVIEWS"
+                                          :breakout [&PRODUCTS__via__PRODUCT_ID.$reviews.product-id->category]
+                                          :joins [{:alias "PRODUCTS__via__PRODUCT_ID"
                                                    :fields :none
-                                                   :condition [:= $reviews.product-id &PRODUCTS__via__PRODUCT_ID__of__REVIEWS.$id]
+                                                   :condition [:= $reviews.product-id &PRODUCTS__via__PRODUCT_ID.$id]
                                                    :strategy :left-join
                                                    :source-table $$products
                                                    :fk-field-id %reviews.product-id}]}
-                           :source-metadata [{:field_ref &PRODUCTS__via__PRODUCT_ID__of__REVIEWS.$reviews.product-id->category}]}]})
+                           :source-metadata [{:field_ref &PRODUCTS__via__PRODUCT_ID.$reviews.product-id->category}]}]})
                (add-implicit-joins
                 (lib.tu.macros/mbql-query products
                   {:source-query {:source-table $$orders
@@ -695,14 +695,14 @@
                               :strategy :left-join
                               :source-query {:source-table $$orders
                                              :aggregation [[:count]]
-                                             :breakout [&PRODUCTS__via__PRODUCT_ID__of__ORDERS.$orders.product-id->category]
-                                             :joins [{:alias "PRODUCTS__via__PRODUCT_ID__of__ORDERS"
+                                             :breakout [&PRODUCTS__via__PRODUCT_ID.$orders.product-id->category]
+                                             :joins [{:alias "PRODUCTS__via__PRODUCT_ID"
                                                       :fields :none
                                                       :strategy :left-join
-                                                      :condition [:= $orders.product-id &PRODUCTS__via__PRODUCT_ID__of__ORDERS.$id]
+                                                      :condition [:= $orders.product-id &PRODUCTS__via__PRODUCT_ID.$id]
                                                       :source-table $$products
                                                       :fk-field-id %orders.product-id}]}
-                              :source-metadata [{:field_ref &PRODUCTS__via__PRODUCT_ID__of__ORDERS.$orders.product-id->category}]}]})
+                              :source-metadata [{:field_ref &PRODUCTS__via__PRODUCT_ID.$orders.product-id->category}]}]})
                   (add-implicit-joins
                    (lib.tu.macros/mbql-query products
                      {:source-table $$products
