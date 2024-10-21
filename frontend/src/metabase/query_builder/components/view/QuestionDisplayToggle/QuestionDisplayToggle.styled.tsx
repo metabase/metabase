@@ -27,4 +27,6 @@ export const ToggleIcon = styled.div<ToggleIconProps>`
   background-color: ${props => (props.active ? color("brand") : "transparent")};
   color: ${props => (props.active ? "var(--mb-color-text-white)" : "inherit")};
   border-radius: 99px;
+  align-items: center;
+  gap: 0.25rem;
 `;

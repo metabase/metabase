@@ -448,7 +448,10 @@ describe("scenarios > filters > bulk filtering", () => {
 
     it("can add a date shortcut filter from the popover", () => {
       filterField("Created At").findByLabelText("More options").click();
-      popover().contains("Last 3 months").findByText("Last 3 months").click();
+      popover()
+        .contains("Previous 3 months")
+        .findByText("Previous 3 months")
+        .click();
       modal().findByText("Previous 3 Months").should("be.visible");
       applyFilters();
 

@@ -190,7 +190,8 @@ describe("scenarios > question > custom column > expression shortcuts > extract"
     cy.button("Summarize").click();
     popover().findByText("Count of rows").click();
 
-    addCustomColumn();
+    // add custom column
+    cy.findAllByTestId("action-buttons").first().icon("add_data").click();
     selectExtractColumn();
 
     cy.findAllByTestId("dimension-list-item").contains("Created At").click();
@@ -348,7 +349,8 @@ describe("scenarios > question > custom column > expression shortcuts > combine"
 
     popover().findByText("Count of rows").click();
 
-    addCustomColumn();
+    // add custom column
+    cy.findAllByTestId("action-buttons").first().icon("add_data").click();
     selectCombineColumns();
 
     selectColumn(0, "User", "Email");

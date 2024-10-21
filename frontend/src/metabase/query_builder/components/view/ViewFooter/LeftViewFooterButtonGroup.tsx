@@ -36,14 +36,14 @@ export const LeftViewFooterButtonGroup = () => {
               : () => dispatch(onOpenChartType())
           }
         >
-          {t`Visualization`}
+          {t`Visualization type`}
         </ViewButton>
         <ViewButton
           active={isShowingChartSettingsSidebar}
           icon="gear"
           iconSize={16}
           medium
-          onlyIcon
+          iconWithText
           labelBreakpoint="sm"
           data-testid="viz-settings-button"
           onClick={
@@ -51,7 +51,7 @@ export const LeftViewFooterButtonGroup = () => {
               ? () => dispatch(onCloseChartSettings())
               : () => dispatch(onOpenChartSettings())
           }
-        />
+        >{t`Settings`}</ViewButton>
       </FooterButtonGroup>
     </Group>
   );

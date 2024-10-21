@@ -26,6 +26,7 @@ import { createMockSdkState } from "embedding-sdk/test/mocks/state";
 import { Api } from "metabase/api";
 import { UndoListing } from "metabase/containers/UndoListing";
 import { baseStyle } from "metabase/css/core/base.styled";
+import { NotebookProvider } from "metabase/querying/notebook/components/Notebook/context";
 import { mainReducers } from "metabase/reducers-main";
 import { publicReducers } from "metabase/reducers-public";
 import { ThemeProvider } from "metabase/ui";
@@ -54,6 +55,7 @@ export interface RenderWithProvidersOptions {
   withKBar?: boolean;
   withDND?: boolean;
   withUndos?: boolean;
+  withNotebook?: boolean;
   /** Token features to enable.
    *
    * Note: To keep tests isolated from another, don't change token features between tests in the same file. */
@@ -79,6 +81,7 @@ export function renderWithProviders(
     withKBar = false,
     withDND = false,
     withUndos = false,
+    withNotebook = false,
     withFeatures,
     shouldSetupEnterprisePlugins,
     customReducers,
@@ -186,6 +189,7 @@ export function renderWithProviders(
         withRouter={withRouter}
         withDND={withDND}
         withUndos={withUndos}
+        withNotebook={withNotebook}
         theme={theme}
         withKBar={withKBar}
       />
@@ -218,6 +222,7 @@ export function TestWrapper({
   withKBar,
   withDND,
   withUndos,
+  withNotebook,
   theme,
 }: {
   children: React.ReactElement;
@@ -227,6 +232,7 @@ export function TestWrapper({
   withKBar: boolean;
   withDND: boolean;
   withUndos?: boolean;
+  withNotebook: boolean;
   theme?: MantineThemeOverride;
 }): JSX.Element {
   return (
@@ -237,7 +243,9 @@ export function TestWrapper({
 
           <MaybeKBar hasKBar={withKBar}>
             <MaybeRouter hasRouter={withRouter} history={history}>
-              {children}
+              <MaybeNotebookProvider hasNotebook={withNotebook}>
+                {children}
+              </MaybeNotebookProvider>
             </MaybeRouter>
           </MaybeKBar>
           {withUndos && <UndoListing />}
@@ -273,6 +281,20 @@ function MaybeKBar({
     return children;
   }
   return <KBarProvider>{children}</KBarProvider>;
+}
+
+function MaybeNotebookProvider({
+  children,
+  hasNotebook,
+}: {
+  children: React.ReactElement;
+  hasNotebook: boolean;
+}) {
+  if (!hasNotebook) {
+    return children;
+  }
+
+  return <NotebookProvider>{children}</NotebookProvider>;
 }
 
 function MaybeDNDProvider({
