@@ -704,8 +704,7 @@ describe("scenarios > dashboard", () => {
     });
 
     it("should respect allowed-iframe-hosts setting", () => {
-      const errorMessage =
-        /The URL you entered is not on the list of allowed hosts/;
+      const errorMessage = /can not be embedded in iframe cards/;
 
       updateSetting(
         "allowed-iframe-hosts",

@@ -1,8 +1,10 @@
 import { useCallback, useMemo } from "react";
-import { t } from "ttag";
+import { jt, t } from "ttag";
 import _ from "underscore";
 
 import { useSetting } from "metabase/common/hooks";
+import { useSelector } from "metabase/lib/redux";
+import { getUserIsAdmin } from "metabase/selectors/user";
 import { Box, Button, Group, Icon, Stack, Text } from "metabase/ui";
 import type {
   Dashboard,
@@ -105,6 +107,13 @@ export function IFrameViz({
   const hasForbiddenIFrameUrl =
     iframeUrl && !isAllowedIframeUrl(iframeUrl, allowedHosts);
 
+  const renderError = () => {
+    if (hasForbiddenIFrameUrl && isEditing) {
+      return <ForbiddenDomainError url={iframeUrl} />;
+    }
+    return <GenericError />;
+  };
+
   return (
     <IFrameWrapper data-testid="iframe-card" fade={isEditingParameter}>
       {hasAllowedIFrameUrl ? (
@@ -117,23 +126,51 @@ export function IFrameViz({
           sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
         />
       ) : (
-        <Box p={12} w="100%" style={{ textAlign: "center" }}>
-          {hasForbiddenIFrameUrl && (
-            <Icon
-              name="warning"
-              color="var(--mb-color-text-light)"
-              size={32}
-              mb="sm"
-            />
-          )}
-          <Text color="text-medium">
-            {hasForbiddenIFrameUrl && isEditing
-              ? t`The URL you entered is not on the list of allowed hosts, we'd recommend contacting your instance administrator to resolve this`
-              : t`There was a problem loading your iframe`}
-          </Text>
-        </Box>
+        renderError()
       )}
     </IFrameWrapper>
+  );
+}
+
+function ForbiddenDomainError({ url }: { url: string }) {
+  const isAdmin = useSelector(getUserIsAdmin);
+
+  const domain = useMemo(() => {
+    try {
+      const { hostname } = new URL(url);
+      return hostname;
+    } catch {
+      return url;
+    }
+  }, [url]);
+
+  const message = isAdmin
+    ? t`If you’re sure you trust this domain, you can add it to your allowed domains list in admin settings.`
+    : t`If you’re sure you trust this domain, you can ask an admin to add it to the allowed domains list.`;
+
+  return (
+    <Box p={12} w="100%" style={{ textAlign: "center" }}>
+      <Icon name="lock" color="var(--mb-color-text-dark)" mb="s" />
+      <Text color="text-dark">
+        {jt`${(
+          <Text key="domain" fw="bold" display="inline">
+            {domain}
+          </Text>
+        )} can not be embedded in iframe cards.`}
+      </Text>
+      <Text color="text-dark">{message}</Text>
+    </Box>
+  );
+}
+
+function GenericError() {
+  return (
+    <Box p={12} w="100%" style={{ textAlign: "center" }}>
+      <Icon name="lock" color="var(--mb-color-text-dark)" mb="s" />
+      <Text color="text-dark">
+        {t`There was a problem rendering this content.`}
+      </Text>
+    </Box>
   );
 }
 
