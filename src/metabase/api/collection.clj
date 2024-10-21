@@ -551,7 +551,18 @@
                    [:u.email :last_edit_email]
                    [:u.first_name :last_edit_first_name]
                    [:u.last_name :last_edit_last_name]
-                   [:r.timestamp :last_edit_timestamp]]
+                   [:r.timestamp :last_edit_timestamp]
+                   [{:select   [:status]
+                     :from     [:moderation_review]
+                     :where    [:and
+                                [:= :moderated_item_type "dashboard"]
+                                [:= :moderated_item_id :d.id]
+                                [:= :most_recent true]]
+                                ;; limit 1 to ensure that there is only one result but this invariant should hold true, just
+                                ;; protecting against potential bugs
+                     :order-by [[:id :desc]]
+                     :limit    1}
+                    :moderated_status]]
        :from      [[:report_dashboard :d]]
        :left-join [[:revision :r] [:and
                                    [:= :r.model_id :d.id]
@@ -582,7 +593,7 @@
       (update :archived api/bit->boolean)
       (update :archived_directly api/bit->boolean)
       (t2/hydrate :can_write :can_restore :can_delete)
-      (dissoc :display :authority_level :moderated_status :icon :personal_owner_id :collection_preview
+      (dissoc :display :authority_level :icon :personal_owner_id :collection_preview
               :dataset_query :table_id :query_type :is_upload)))
 
 (defmethod post-process-collection-children :dashboard

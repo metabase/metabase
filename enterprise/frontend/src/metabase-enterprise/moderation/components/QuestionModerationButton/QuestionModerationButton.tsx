@@ -1,9 +1,7 @@
 import * as React from "react";
-import { connect } from "react-redux";
 import { t } from "ttag";
 
 import { useEditItemVerificationMutation } from "metabase/api";
-import { getIsModerator } from "metabase-enterprise/moderation/selectors";
 import {
   MODERATION_STATUS,
   getLatestModerationReview,
@@ -11,13 +9,15 @@ import {
   isItemVerified,
 } from "metabase-enterprise/moderation/service";
 import type Question from "metabase-lib/v1/Question";
-import type { State } from "metabase-types/store";
+import { entityIsDashboard, type Dashboard } from "metabase-types/api";
 
 import { getVerifyQuestionTitle } from "../../utils";
 import { VerifyButton as DefaultVerifyButton } from "../QuestionModerationSection/QuestionModerationSection.styled";
+import { useSelector } from "metabase/lib/redux";
+import { getUserIsAdmin } from "metabase/selectors/user";
 
 interface Props {
-  question: Question;
+  question: Question | Dashboard;
   verifyCard: (id: number) => void;
   removeCardReview: (id: number) => void;
   isModerator: boolean;
@@ -25,42 +25,45 @@ interface Props {
   verifyButtonProps: any;
 }
 
-const mapStateToProps = (state: State, props: Props) => ({
-  isModerator: getIsModerator(state, props),
-});
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default connect(mapStateToProps)(QuestionModerationButton);
-
 const { name: verifiedIconName } = getStatusIcon(MODERATION_STATUS.verified);
 
-function QuestionModerationButton({
+export function QuestionModerationButton({
   question,
-  isModerator,
   VerifyButton = DefaultVerifyButton,
   verifyButtonProps = {},
 }: Props) {
+  const isModerator = useSelector(getUserIsAdmin);
   const [editItemVerification] = useEditItemVerificationMutation();
+
+  const isDashboard = entityIsDashboard(question);
+
+  const { moderated_item_id, moderated_item_type } = React.useMemo(() => {
+    return {
+      moderated_item_type: isDashboard
+        ? ("dashboard" as const)
+        : ("card" as const),
+      moderated_item_id: isDashboard ? (question.id as number) : question.id(),
+    };
+  }, [isDashboard, question]);
+
   const latestModerationReview = getLatestModerationReview(
-    question.getModerationReviews(),
+    isDashboard ? question.moderation_reviews : question.getModerationReviews(),
   );
   const isVerified = isItemVerified(latestModerationReview);
 
   const onVerify = () => {
-    const id = question.id();
     editItemVerification({
       status: "verified",
-      moderated_item_id: id,
-      moderated_item_type: "card",
+      moderated_item_id,
+      moderated_item_type,
     });
   };
 
   const onRemoveModerationReview = () => {
-    const id = question.id();
     editItemVerification({
       status: null,
-      moderated_item_id: id,
-      moderated_item_type: "card",
+      moderated_item_id,
+      moderated_item_type,
     });
   };
 

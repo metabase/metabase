@@ -110,6 +110,7 @@
                   :can_write
                   :param_fields
                   :param_values
+                  [:moderation_reviews :moderator_details]
                   [:collection :is_personal]))))
 
 (api/defendpoint POST "/"
