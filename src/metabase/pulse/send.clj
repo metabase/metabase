@@ -286,7 +286,7 @@
 
 (defn- channel-send!
   [& args]
-  ((requiring-resolve 'metabase.channel.core/send!) args))
+  (apply (requiring-resolve 'metabase.channel.core/send!) args))
 
 (defn- send-retrying!
   [pulse-id channel message]
@@ -338,7 +338,7 @@
 
 (defn- channel-render-notification
   [& args]
-  ((requiring-resolve 'metabase.channel.core/render-notification) args))
+  (apply (requiring-resolve 'metabase.channel.core/render-notification) args))
 
 (defn- pc->channel
   "Given a pulse channel, return the channel object.
