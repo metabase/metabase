@@ -1756,15 +1756,26 @@ describe("issue 48878", () => {
     cy.intercept("POST", "/api/action").as("createAction");
     cy.intercept("GET", "/api/dashboard/*").as("getDashboard");
     cy.intercept("PUT", "/api/dashboard/*").as("updateDashboard");
+
+    let fetchCardRequestsCount = 0;
+
+    cy.intercept("GET", "/api/card/*", request => {
+      // we only want to simulate the race condition 4th time this request is triggered
+      if (fetchCardRequestsCount === 2) {
+        request.continue(
+          () => new Promise(resolve => setTimeout(resolve, 2000)),
+        );
+      } else {
+        request.continue();
+      }
+
+      ++fetchCardRequestsCount;
+    }).as("fetchCard");
     setup();
   });
 
   // I could only reproduce this issue in Cypress when I didn't use any helpers like createQuestion, etc.
   it("does not crash the action button viz (metabase#48878)", () => {
-    cy.intercept("GET", "/api/card/*", request => {
-      request.continue(() => new Promise(resolve => setTimeout(resolve, 2000)));
-    }).as("fetchCard");
-
     cy.reload();
     cy.wait("@fetchCard");
     getDashboardCard(0).findByText("Click Me").should("be.visible");
@@ -1838,6 +1849,7 @@ describe("issue 48878", () => {
     });
     cy.button("Save").click();
     cy.wait("@updateDashboard");
+    cy.wait("@fetchCard");
   }
 
   function createModel({ name, query }) {
@@ -1857,5 +1869,6 @@ describe("issue 48878", () => {
       cy.button("Save").click();
       cy.wait("@saveQuestion");
     });
+    cy.wait("@fetchCard");
   }
 });
