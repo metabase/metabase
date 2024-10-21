@@ -146,8 +146,8 @@
                                           (dissoc :constraints)
                                           (update :middleware #(-> %
                                                                    (dissoc :add-default-userland-constraints? :js-int-to-string?)
-                                                                   (assoc :format-rows?           (or format_rows false)
-                                                                          :pivot?                 (or pivot_results false)
+                                                                   (assoc :format-rows?          (or format_rows false)
+                                                                          :pivot?                (or pivot_results false)
                                                                           :process-viz-settings? true
                                                                           :skip-results-metadata? true))))]
     (run-streaming-query
