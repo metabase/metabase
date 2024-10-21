@@ -90,7 +90,7 @@
                            (throw
                             (ex-info (ex-message e)
                                      {:status      "error-jwt-bad-unsigning"
-                                      :status-code 400}))))
+                                      :status-code 401}))))
           login-attrs  (jwt-data->login-attributes jwt-data)
           email        (get jwt-data (jwt-attribute-email))
           first-name   (get jwt-data (jwt-attribute-firstname))
@@ -104,7 +104,7 @@
   (when-not (sso-settings/jwt-enabled)
     (throw
      (ex-info (tru "JWT SSO has not been enabled and/or configured")
-              {:status "error-sso-jwt-disabled" :status-code 405}))))
+              {:status "error-sso-jwt-disabled" :status-code 402}))))
 
 (defn ^:private generate-response-token
   [session jwt-data]

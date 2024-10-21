@@ -81,28 +81,40 @@
            (testing "SSO requests fail if they don't have a valid premium-features token"
              (with-default-jwt-config!
                (mt/with-premium-features #{}
-                 (is (= "SSO has not been enabled and/or configured"
-                        (client/client :get 400 "/auth/sso"))))))))
+                 (is (partial= {:cause "SSO has not been enabled and/or configured",
+                                :data {:status "error-sso-disabled", :status-code 400},
+                                :message "SSO has not been enabled and/or configured",
+                                :status "error-sso-disabled"}
+                               (client/client :get 400 "/auth/sso"))))))))
 
        (testing "SSO requests fail if JWT is enabled but hasn't been configured"
          (mt/with-temporary-setting-values [jwt-enabled               true
                                             jwt-identity-provider-uri nil]
-           (is (= "SSO has not been enabled and/or configured"
-                  (client/client :get 400 "/auth/sso")))))
+           (is (partial= {:cause "SSO has not been enabled and/or configured",
+                          :data {:status "error-sso-disabled", :status-code 400},
+                          :message "SSO has not been enabled and/or configured",
+                          :status "error-sso-disabled"}
+                         (client/client :get 400 "/auth/sso")))))
 
        (testing "SSO requests fail if JWT is configured but hasn't been enabled"
          (mt/with-temporary-setting-values [jwt-enabled               false
                                             jwt-identity-provider-uri default-idp-uri
                                             jwt-shared-secret         default-jwt-secret]
-           (is (= "SSO has not been enabled and/or configured"
-                  (client/client :get 400 "/auth/sso")))))
+           (is (partial= {:cause "SSO has not been enabled and/or configured",
+                          :data {:status "error-sso-disabled", :status-code 400},
+                          :message "SSO has not been enabled and/or configured",
+                          :status "error-sso-disabled"}
+                         (client/client :get 400 "/auth/sso")))))
 
        (testing "The JWT Shared Secret must also be included for SSO to be configured"
          (mt/with-temporary-setting-values [jwt-enabled               true
                                             jwt-identity-provider-uri default-idp-uri
                                             jwt-shared-secret         nil]
-           (is (= "SSO has not been enabled and/or configured"
-                  (client/client :get 400 "/auth/sso")))))))))
+           (is (partial= {:cause "SSO has not been enabled and/or configured",
+                          :data {:status "error-sso-disabled", :status-code 400},
+                          :message "SSO has not been enabled and/or configured",
+                          :status "error-sso-disabled"}
+                         (client/client :get 400 "/auth/sso")))))))))
 
 (deftest redirect-test
   (testing "with JWT configured, a GET request should result in a redirect to the IdP"
