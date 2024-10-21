@@ -17,7 +17,7 @@ export const SidesheetCardSection = ({
   return (
     <Box {...styleProps}>
       {title && (
-        <Title mb="sm" size="sm" c="text-light">
+        <Title mb="sm" c="text-light" order={4}>
           {title}
         </Title>
       )}
