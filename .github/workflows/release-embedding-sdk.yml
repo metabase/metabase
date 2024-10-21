@@ -27,11 +27,13 @@ jobs:
     steps:
       - name: Generate workflow summary
         run: |
-          echo '**Inputs:**' >> $GITHUB_STEP_SUMMARY
-          echo '' >> $GITHUB_STEP_SUMMARY
-          echo '- `branch`: ${{ inputs.branch }}' >> $GITHUB_STEP_SUMMARY
-          echo '' >> $GITHUB_STEP_SUMMARY
-          echo 'triggered by: @${{ github.event.sender.login }}' >> $GITHUB_STEP_SUMMARY
+          tee -a $GITHUB_STEP_SUMMARY << EOF
+          **Inputs:**
+
+          - \`branch\`: ${{ inputs.branch }}
+
+          triggered by: @${{ github.event.sender.login }}
+          EOF
 
   determine-version:
     name: Determine SDK version
@@ -66,10 +68,12 @@ jobs:
 
       - name: Append workflow summary
         run: |
-          echo '**Derived inputs:**' >> $GITHUB_STEP_SUMMARY
-          echo '' >> $GITHUB_STEP_SUMMARY
-          echo '- `current_version`: "${{ steps.current-sdk-version.outputs.sdk_current_version }}"' >> $GITHUB_STEP_SUMMARY
-          echo '- `next_version`: "${{ steps.new-sdk-version.outputs.result }}"' >> $GITHUB_STEP_SUMMARY
+          tee -a $GITHUB_STEP_SUMMARY << EOF
+          **Derived inputs:**
+
+          - \`current_version\`: "${{ steps.current-sdk-version.outputs.sdk_current_version }}"
+          - \`next_version\`: "${{ steps.new-sdk-version.outputs.result }}"
+          EOF
 
   check-git-tag:
     needs: determine-version
