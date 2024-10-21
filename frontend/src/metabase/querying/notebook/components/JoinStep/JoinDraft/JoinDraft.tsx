@@ -33,7 +33,6 @@ export function JoinDraft({
   isReadOnly,
   onJoinChange,
 }: JoinDraftProps) {
-  const databaseId = Lib.databaseID(query);
   const sourceTableId = Lib.sourceTableOrCardId(query);
   const [strategy, setStrategy] = useState(
     () => initialStrategy ?? getDefaultJoinStrategy(query, stageIndex),
@@ -99,7 +98,7 @@ export function JoinDraft({
   const handleResetRef = useLatest(handleReset);
   useLayoutEffect(
     () => handleResetRef.current(),
-    [databaseId, sourceTableId, handleResetRef],
+    [sourceTableId, handleResetRef],
   );
 
   return (
