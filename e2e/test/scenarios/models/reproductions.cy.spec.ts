@@ -1329,7 +1329,7 @@ describe("issue 20624", () => {
       cy.findByText("Vendor").should("not.exist");
     });
 
-    cy.log("check that viz settings are reset when converting to a model");
+    cy.log("check that the viz settings are reset when converting to a model");
     openQuestionActions();
     popover().findByText("Turn into a model").click();
     modal().findByText("Turn this into a model").click();
