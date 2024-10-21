@@ -6,6 +6,7 @@ import {
   assertEChartsTooltip,
   cartesianChartCircle,
   chartPathWithFillColor,
+  dashboardGrid,
   getDashboardCards,
   main,
   popover,
@@ -364,6 +365,46 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
     );
     cy.findByTestId("dashboard-grid").should("have.css", "max-width", "1048px");
   });
+
+  it("should render all cards without errors (metabase#48519)", () => {
+    cy.intercept("POST", "/api/dataset").as("dataset");
+
+    cy.visit(`/auto/dashboard/table/${ORDERS_ID}`);
+    // There're 8 questions on the Orders x-ray dashboard
+    cy.wait(Array(8).fill("@dataset"), { timeout: 60 * 1000 });
+
+    getDashcardByTitle("Total transactions")
+      .findByText("18,760")
+      .should("exist");
+    getDashcardByTitle("Transactions in the last 30 days")
+      .findByTestId("scalar-value")
+      .should("exist"); // not asserting a value as it's dynamic
+    getDashcardByTitle("Average quantity per month").within(() => {
+      cy.findByText("Average of Quantity").should("exist");
+      cy.findByText("Created At").should("exist");
+    });
+    getDashcardByTitle("Sales per source").within(() => {
+      cy.findByText("Organic").should("exist");
+      cy.findByText("Affiliate").should("exist");
+      cy.findByText("Count").should("exist");
+      cy.findByText("Created At").should("exist");
+    });
+    getDashcardByTitle("Sales per product").within(() => {
+      cy.findByText("Product → Title").should("exist");
+      cy.findByText("Aerodynamic Bronze Hat").should("exist");
+    });
+    getDashcardByTitle("Sales for each product category").within(() => {
+      cy.findByText("Product → Category").should("exist");
+      cy.findByText("Doohickey").should("exist");
+      cy.findByText("Count").should("exist");
+    });
+    getDashcardByTitle("Sales per state")
+      .findAllByTestId("choropleth-feature")
+      .should("have.length", 50); // 50 states
+    getDashcardByTitle("Sales by coordinates")
+      .findByText("Leaflet")
+      .should("exist");
+  });
 });
 
 function waitForSatisfyingResponse(
@@ -382,4 +423,8 @@ function waitForSatisfyingResponse(
       waitForSatisfyingResponse(alias, partialResponse, maxRequests, level + 1);
     }
   });
+}
+
+function getDashcardByTitle(title) {
+  return dashboardGrid().findByText(title).closest("[data-testid='dashcard']");
 }

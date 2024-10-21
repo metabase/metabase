@@ -52,10 +52,9 @@ const GoogleAuthForm = ({
     return { ...values, [ENABLED_KEY]: true };
   }, [settingValues]);
 
-  const { url: docsUrl } = useDocsUrl(
-    "people-and-groups/google-and-ldap",
-    "enabling-google-sign-in",
-  );
+  const { url: docsUrl } = useDocsUrl("people-and-groups/google-and-ldap", {
+    anchor: "enabling-google-sign-in",
+  });
 
   return (
     <FormProvider
