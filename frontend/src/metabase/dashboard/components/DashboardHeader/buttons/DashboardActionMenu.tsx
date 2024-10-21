@@ -3,8 +3,10 @@ import { t } from "ttag";
 
 import EntityMenu from "metabase/components/EntityMenu";
 import type { DashboardFullscreenControls } from "metabase/dashboard/types";
-import { PLUGIN_DASHBOARD_HEADER } from "metabase/plugins";
+import { PLUGIN_DASHBOARD_HEADER, PLUGIN_MODERATION } from "metabase/plugins";
 import type { Dashboard } from "metabase-types/api";
+import { useRefreshDashboard } from "metabase/dashboard/hooks";
+import { Location } from "history";
 
 export const DashboardActionMenu = (props: { items: any[] }) => (
   <EntityMenu
@@ -27,6 +29,7 @@ export const getExtraButtons = ({
   canEdit,
   pathname,
   openSettingsSidebar,
+  location,
 }: DashboardFullscreenControls & {
   canResetFilters: boolean;
   onResetFilters: () => void;
@@ -34,7 +37,14 @@ export const getExtraButtons = ({
   canEdit: boolean;
   pathname: string;
   openSettingsSidebar: () => void;
+  location: Location;
 }) => {
+  const { refreshDashboard } = useRefreshDashboard({
+    dashboardId: dashboard.id,
+    parameterQueryParams: location.query,
+    refetchData: false,
+  });
+
   const extraButtons = [];
 
   if (canResetFilters) {
@@ -57,6 +67,14 @@ export const getExtraButtons = ({
       icon: "gear",
       action: openSettingsSidebar,
     });
+
+    const moderationItems = PLUGIN_MODERATION.useMenuItems(
+      dashboard,
+      canEdit,
+      refreshDashboard,
+    );
+
+    extraButtons.push(...moderationItems);
 
     extraButtons.push({
       separator: true,

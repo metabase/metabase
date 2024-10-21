@@ -173,6 +173,7 @@ export const dashboardActionButtons: Record<
             canEdit,
             pathname: location?.pathname,
             openSettingsSidebar,
+            location,
           })}
         />
       ),

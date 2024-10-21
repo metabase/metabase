@@ -3,14 +3,24 @@ import type Question from "metabase-lib/v1/Question";
 import ModerationReviewIcon from "../../containers/ModerationReviewIcon";
 import { getLatestModerationReview } from "../../service";
 
+import {
+  entityIsDashboard,
+  ModerationReview,
+  type Dashboard,
+} from "metabase-types/api";
+
 export interface QuestionModerationIconProps {
-  question: Question;
+  question: Question | Dashboard;
 }
 
 const QuestionModerationIcon = ({
-  question,
+  question: entity,
 }: QuestionModerationIconProps): JSX.Element | null => {
-  const review = getLatestModerationReview(question.getModerationReviews());
+  const entityReviews = entityIsDashboard(entity)
+    ? entity.moderation_reviews
+    : (entity.getModerationReviews() as ModerationReview[]);
+
+  const review = getLatestModerationReview(entityReviews);
 
   if (review) {
     return <ModerationReviewIcon review={review} />;
