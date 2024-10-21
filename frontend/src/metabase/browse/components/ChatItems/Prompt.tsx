@@ -28,10 +28,9 @@ const ChatPrompt = ({
   inputValue = "",
   setInputValue,
   onSendMessage,
-  isClientSetup,
 }: any) => {
   const inputRef = useRef<any>(null);
-  const canSubmit = isClientSetup && inputValue.length > 0;
+  const canSubmit = inputValue.length > 0;
 
   const handleKeyPress = (e: any) => {
     if (e.key === "Enter" && !e.shiftKey && inputValue.trim()) {
