@@ -333,6 +333,9 @@ export const PLUGIN_COLLECTIONS = {
     _canWrite: boolean,
   ): CleanUpMenuItem[] => [],
   cleanUpRoute: null as React.ReactElement | null,
+  cleanUpAlert: (() => null) as (props: {
+    collection: Collection;
+  }) => JSX.Element | null,
 };
 
 export type CollectionAuthorityLevelIcon = ComponentType<
