@@ -7,11 +7,12 @@ import NoResults from "assets/img/no_results.svg";
 import { createNewGraphData, CubeData, FieldData, MapData, newExtractAllJoins } from "./utils";
 import CustomNode from "./CubeNode";
 import { getLayoutedElements } from "./LayoutedElements";
-import { skipToken, useGetCubeDataQuery, useListDatabasesQuery } from "metabase/api";
+import { skipToken, useGetCubeDataQuery } from "metabase/api";
 import LoadingAndErrorWrapper from "../LoadingAndErrorWrapper";
 import { BrowseContainer, BrowseHeader, BrowseSection, CenteredEmptyState } from "metabase/browse/components/BrowseContainer.styled";
 import { Box } from "@mantine/core";
 import { CubeDataItem } from "metabase-types/api";
+import { useSetting } from "metabase/common/hooks";
 
 const nodeTypes = {
   custom: CustomNode,
@@ -108,25 +109,12 @@ const extractingField = (arr: any[], extractedKeys: any[], cubeNameArr: any[], t
 
 
 const CubeFlow = () => {
-  const {
-    data: dbData,
-    isLoading: dbLoading,
-    error: dbError,
-  } = useListDatabasesQuery();
-  const databases = dbData?.data;
-  const companyName = useMemo(() => {
-    if (databases) {
-      const cubeDatabase = databases.find(
-        database => database.is_cube === true,
-      );
-      return cubeDatabase ? cubeDatabase.company_name : "";
-    }
-    return "";
-  }, [databases]);
-
-
+  const siteName = useSetting("site-name");
+  const formattedSiteName = siteName
+    ? siteName.replace(/\s+/g, "_").toLowerCase()
+    : "";
   const { data: cubeDataResponse, isLoading, error } = useGetCubeDataQuery(
-    companyName ? { projectName: companyName } : skipToken,
+    formattedSiteName ? { projectName: formattedSiteName } : skipToken,
   );
 
   const [showDefinition, setShowDefinition] = useState<boolean>(false);

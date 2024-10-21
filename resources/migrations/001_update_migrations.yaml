@@ -9264,6 +9264,19 @@ databaseChangeLog:
                   remarks: Array of requested fields for the cube request
                   constraints:
                     nullable: true
+  - changeSet:
+      id: v56.2024-10-16T12:00:00
+      author: jordigiron
+      comment: Remove column company_name from metabase_database
+      preConditions:
+        - onFail: MARK_RAN
+        - columnExists:
+            tableName: metabase_database
+            columnName: company_name
+      changes:
+        - dropColumn:
+            tableName: metabase_database
+            columnName: company_name
 
 
   
