@@ -238,16 +238,16 @@ Once installed, you need to import `MetabaseProvider` and provide it with a `con
 
 ```typescript jsx
 import React from "react";
-import {MetabaseProvider} from "@metabase/embedding-sdk-react";
+import {MetabaseProvider, defineEmbeddingSdkConfig, defineEmbeddingSdkTheme} from "@metabase/embedding-sdk-react";
 
 // Configuration
-const config = {
+const config = defineEmbeddingSdkConfig({
     metabaseInstanceUrl: "https://metabase.example.com", // Required: Your Metabase instance URL
     jwtProviderUri: "https://app.example.com/sso/metabase", // Required: An endpoint in your app that returns signs the user in and delivers a token
-};
+});
 
 // See the "Customizing appearance" section for more information
-const theme = {
+const theme = defineEmbeddingSdkTheme({
     // Optional: Specify a font to use from the set of fonts supported by Metabase
     fontFamily: "Lato",
 
@@ -258,7 +258,7 @@ const theme = {
         "text-secondary": "#696E7B",
         "text-tertiary": "#949AAB",
     },
-};
+});
 
 export default function App() {
     return (
@@ -286,9 +286,9 @@ To inherit the height from the parent container, you can pass `100%` to the heig
 
 ```typescript jsx
 import React from "react";
-import {MetabaseProvider, StaticQuestion} from "@metabase/embedding-sdk-react";
+import {MetabaseProvider, StaticQuestion, defineEmbeddingSdkConfig} from "@metabase/embedding-sdk-react";
 
-const config = {...}
+const config = defineEmbeddingSdkConfig({...})
 
 export default function App() {
     const questionId = 1; // This is the question ID you want to embed
@@ -336,9 +336,9 @@ _Note: Only enabled when `isSaveEnabled = true`_
 
 ```typescript jsx
 import React from "react";
-import {MetabaseProvider, InteractiveQuestion} from "@metabase/embedding-sdk-react";
+import {MetabaseProvider, InteractiveQuestion,defineEmbeddingSdkConfig} from "@metabase/embedding-sdk-react";
 
-const config = {...}
+const config = defineEmbeddingSdkConfig({...})
 
 export default function App() {
     const questionId = 1; // This is the question ID you want to embed
@@ -448,9 +448,9 @@ After the SDK is configured, you can embed your dashboard using the `StaticDashb
 
 ```typescript jsx
 import React from "react";
-import {MetabaseProvider, StaticDashboard} from "@metabase/embedding-sdk-react";
+import {MetabaseProvider, StaticDashboard,defineEmbeddingSdkConfig} from "@metabase/embedding-sdk-react";
 
-const config = {...}
+const config = defineEmbeddingSdkConfig({...})
 
 export default function App() {
     const dashboardId = 1; // This is the dashboard ID you want to embed
@@ -504,9 +504,9 @@ After the SDK is configured, you can embed your dashboard using the `Interactive
 
 ```typescript jsx
 import React from "react";
-import {MetabaseProvider, InteractiveDashboard} from "@metabase/embedding-sdk-react";
+import {MetabaseProvider, InteractiveDashboard,defineEmbeddingSdkConfig} from "@metabase/embedding-sdk-react";
 
-const config = {...}
+const config = defineEmbeddingSdkConfig({...})
 
 export default function App() {
     const dashboardId = 1; // This is the dashboard ID you want to embed
@@ -546,9 +546,9 @@ _Note: Only enabled when `isSaveEnabled = true`_
 - **onSave**: `() => void` (optional) – A callback function that triggers when a user saves the question
 ```tsx
 import React from "react";
-import {MetabaseProvider, CreateQuestion} from "@metabase/embedding-sdk-react";
+import {MetabaseProvider, CreateQuestion, defineEmbeddingSdkConfig} from "@metabase/embedding-sdk-react";
 
-const config = {...}
+const config = defineEmbeddingSdkConfig({...})
 
 export default function App() {
     return (
@@ -582,9 +582,9 @@ _Note: Only enabled when `isSaveEnabled = true`_
 - **onSave**: `() => void` (optional) – A callback function that triggers when a user saves the question
 ```tsx
 import React from "react";
-import {MetabaseProvider, ModifyQuestion} from "@metabase/embedding-sdk-react";
+import {MetabaseProvider, ModifyQuestion, defineEmbeddingSdkConfig} from "@metabase/embedding-sdk-react";
 
-const config = {...}
+const config = defineEmbeddingSdkConfig({...})
 
 export default function App() {
     return (
@@ -714,7 +714,8 @@ You can provide a theme object to the `MetabaseProvider` to customize the look a
 Here is the full list of theme properties supported. All of them are optional.
 
 ```ts
-const theme = {
+import {defineEmbeddingSdkTheme} from "@metabase/embedding-sdk-react";
+const theme = defineEmbeddingSdkTheme({
     // Specify a font to use from the set of fonts supported by Metabase.
     // You can set the font to "Custom" to use the custom font
     // configured in your Metabase instance.
@@ -870,7 +871,7 @@ const theme = {
             zIndex: 4,
         },
     },
-};
+});
 ```
 
 ### Plugins
@@ -1167,6 +1168,7 @@ You can customize how the SDK fetches the refresh token by specifying the `fetch
 prop:
 
 ```typescript jsx
+import {defineEmbeddingSdkConfig} from "@metabase/embedding-sdk-react";
 /**
  * This is the default implementation used in the SDK.
  * You can customize this function to fit your needs, such as adding headers or excluding cookies.
@@ -1186,7 +1188,7 @@ async function fetchRequestToken(url) {
 
 // Pass this configuration to MetabaseProvider.
 // Wrap the fetchRequestToken function in useCallback if it has dependencies to prevent re-renders.
-const config = {fetchRequestToken};
+const config = defineEmbeddingSdkConfig({fetchRequestToken});
 ```
 
 ### Using with Next.js
@@ -1198,9 +1200,9 @@ Create a component that imports the `MetabaseProvider` and mark it a React Clien
 ```typescript jsx
 "use client";
 
-import { MetabaseProvider, StaticQuestion } from "@metabase/embedding-sdk-react";
+import { MetabaseProvider, StaticQuestion, defineEmbeddingSdkConfig } from "@metabase/embedding-sdk-react";
 
-const config = {...}; // Your Metabase SDK configuration
+const config = defineEmbeddingSdkConfig({...}); // Your Metabase SDK configuration
 
 export default function MetabaseComponents() {
   return (
@@ -1292,10 +1294,11 @@ export async function GET() {
 
 And pass this `config` to `MetabaseProvider`
 ```ts
-const config = {
+import {defineEmbeddingSdkConfig} from "@metabase/embedding-sdk-react";
+const config = defineEmbeddingSdkConfig({
   metabaseInstanceUrl: "https://metabase.example.com", // Required: Your Metabase instance URL
   jwtProviderUri: "/sso/metabase", // Required: An endpoint in your app that returns signs the user in and delivers a token
-};
+});
 ```
 
 #### Using Pages Router
@@ -1346,10 +1349,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
 And pass this `config` to `MetabaseProvider`
 ```ts
-const config = {
+import {defineEmbeddingSdkConfig} from "@metabase/embedding-sdk-react";
+const config = defineEmbeddingSdkConfig({
   metabaseInstanceUrl: "https://metabase.example.com", // Required: Your Metabase instance URL
   jwtProviderUri: "/api/sso/metabase", // Required: An endpoint in your app that returns signs the user in and delivers a token
-};
+});
 ```
 
 # Development
