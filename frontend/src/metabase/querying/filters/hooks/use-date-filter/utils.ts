@@ -1,14 +1,14 @@
 import * as Lib from "metabase-lib";
 
 import {
-  type DatePickerExtractionUnit,
   type DatePickerOperator,
+  type DatePickerUnit,
   type DatePickerValue,
   type ExcludeDatePickerValue,
   type RelativeDatePickerValue,
   type SpecificDatePickerValue,
-  isDatePickerExtractionUnit,
   isDatePickerOperator,
+  isDatePickerUnit,
 } from "../../components/DatePicker";
 
 export function getPickerValue(
@@ -163,8 +163,8 @@ export function getPickerUnits(
   query: Lib.Query,
   stageIndex: number,
   column: Lib.ColumnMetadata,
-): DatePickerExtractionUnit[] {
+): DatePickerUnit[] {
   return Lib.availableTemporalBuckets(query, stageIndex, column)
     .map(operator => Lib.displayInfo(query, stageIndex, operator).shortName)
-    .filter(isDatePickerExtractionUnit);
+    .filter(isDatePickerUnit);
 }
