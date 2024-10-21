@@ -1,6 +1,7 @@
 import { type Ref, forwardRef, useRef, useState } from "react";
 import { jt, t } from "ttag";
 
+import { useSetting } from "metabase/common/hooks";
 import { getPlan } from "metabase/common/utils/plan";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import Link from "metabase/core/components/Link";
@@ -36,6 +37,8 @@ export const Onboarding = () => {
   const plan = useSelector(state =>
     getPlan(getSetting(state, "token-features")),
   );
+
+  const exampleDashboardId = useSetting("example-dashboard-id");
 
   const iframeRefs = {
     "x-ray": useRef<HTMLIFrameElement>(null),
@@ -334,12 +337,14 @@ export const Onboarding = () => {
                     </ul>
                   </Text>
 
-                  <Link
-                    to="/dashboard/1"
-                    onClick={() => trackChecklistItemCTAClicked("dashboard")}
-                  >
-                    <Button variant="outline">{t`Edit a sample dashboard`}</Button>
-                  </Link>
+                  {exampleDashboardId && (
+                    <Link
+                      to={`/dashboard/${exampleDashboardId}`}
+                      onClick={() => trackChecklistItemCTAClicked("dashboard")}
+                    >
+                      <Button variant="outline">{t`Edit a sample dashboard`}</Button>
+                    </Link>
+                  )}
                 </Stack>
               </Accordion.Panel>
             </Accordion.Item>
