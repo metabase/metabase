@@ -54,7 +54,7 @@
      "  TABLE_NAME as name,"
      "  TABLE_SCHEMA as schema,"
      "  COMMENT description"
-     "  from information_schema.tables"
+     "  from system.information_schema.tables"
      "  where TABLE_CATALOG = ?"
      "    AND TABLE_SCHEMA <> 'information_schema'"])
    catalog])
@@ -87,7 +87,7 @@
                         [:c.table_name :table-name]
                         [[:case [:= :cs.constraint_type [:inline "PRIMARY KEY"]] true :else false] :pk?]
                         [[:case [:not= :c.comment [:inline ""]] :c.comment :else nil] :field-comment]]
-               :from [[:information_schema.columns :c]]
+               :from [[:system.information_schema.columns :c]]
                ;; Following links contains contains diagram of `information_schema`:
                ;; https://docs.databricks.com/en/sql/language-manual/sql-ref-information-schema.html
                :left-join [[{:select   [[:tc.table_catalog :table_catalog]
@@ -95,8 +95,8 @@
                                         [:tc.table_name :table_name]
                                         [:ccu.column_name :column_name]
                                         [:tc.constraint_type :constraint_type]]
-                             :from     [[:information_schema.table_constraints :tc]]
-                             :join     [[:information_schema.constraint_column_usage :ccu]
+                             :from     [[:system.information_schema.table_constraints :tc]]
+                             :join     [[:system.information_schema.constraint_column_usage :ccu]
                                         [:and
                                          [:= :tc.constraint_catalog :ccu.constraint_catalog]
                                          [:= :tc.constraint_schema :ccu.constraint_schema]
@@ -136,13 +136,13 @@
                          :pk_kcu.table_schema  "pk-table-schema"
                          :pk_kcu.table_name    "pk-table-name"
                          :pk_kcu.column_name   "pk-column-name"})
-               :from [[:information_schema.key_column_usage :fk_kcu]]
-               :join [[:information_schema.referential_constraints :rc]
+               :from [[:system.information_schema.key_column_usage :fk_kcu]]
+               :join [[:system.information_schema.referential_constraints :rc]
                       [:and
                        [:= :fk_kcu.constraint_catalog :rc.constraint_catalog]
                        [:= :fk_kcu.constraint_schema :rc.constraint_schema]
                        [:= :fk_kcu.constraint_name :rc.constraint_name]]
-                      [:information_schema.key_column_usage :pk_kcu]
+                      [:system.information_schema.key_column_usage :pk_kcu]
                       [[:and
                         [:= :pk_kcu.constraint_catalog :rc.unique_constraint_catalog]
                         [:= :pk_kcu.constraint_schema :rc.unique_constraint_schema]
