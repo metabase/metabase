@@ -8,7 +8,7 @@ import { HoverCard, useDelayGroup } from "metabase/ui";
 const POPOVER_TRANSITION_DURATION = 150;
 
 // Initially, the user will have to hover for this long to open the popover
-const POPOVER_SLOW_OPEN_DELAY = 1000;
+const POPOVER_SLOW_OPEN_DELAY = 500;
 
 // When an item in the same delay group is already open, we want to open the
 // popover immediately, without waiting for the user to hover for POPOVER_SLOW_OPEN_DELAY.
