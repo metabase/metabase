@@ -31,8 +31,10 @@ export const ELEVATED_ENGINES = [
 ];
 
 export const ENGINE_LOGO: Record<string, string> = {
+  athena: "athena.svg",
   bigquery: "bigquery.svg",
   "bigquery-cloud-sdk": "bigquery.svg",
+  databricks: "databricks.svg",
   druid: "druid.svg",
   h2: "h2.svg",
   mongo: "mongo.svg",
