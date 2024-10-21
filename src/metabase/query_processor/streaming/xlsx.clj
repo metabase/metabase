@@ -439,8 +439,8 @@
 (defmethod add-row! org.apache.poi.xssf.streaming.SXSSFSheet
   ([^SXSSFSheet sheet values cols col-settings cell-styles typed-cell-styles]
    (let [row-num (if (= 0 (.getPhysicalNumberOfRows sheet))
-                  0
-                  (inc (.getLastRowNum sheet)))]
+                   0
+                   (inc (.getLastRowNum sheet)))]
      (add-row! ^SXSSFSheet sheet row-num values cols col-settings cell-styles typed-cell-styles)))
   ([^SXSSFSheet sheet row-num values cols col-settings cell-styles typed-cell-styles]
    (let [row     (.createRow sheet ^Integer row-num)
@@ -473,8 +473,8 @@
 (defmethod add-row! org.apache.poi.xssf.usermodel.XSSFSheet
   ([^XSSFSheet sheet values cols col-settings cell-styles typed-cell-styles]
    (let [row-num (if (= 0 (.getPhysicalNumberOfRows sheet))
-                  0
-                  (inc (.getLastRowNum sheet)))]
+                   0
+                   (inc (.getLastRowNum sheet)))]
      (add-row! ^XSSFSheet sheet row-num values cols col-settings cell-styles typed-cell-styles)))
   ([^XSSFSheet sheet row-num values cols col-settings cell-styles typed-cell-styles]
    (let [row     (.createRow sheet ^Integer row-num)
@@ -661,9 +661,11 @@
               (vreset! workbook-data wb)))
 
           (let [{:keys [workbook sheet]} @workbook-data
-                data-format              (. ^SXSSFWorkbook workbook createDataFormat)]
+                data-format              (. ^SXSSFWorkbook workbook createDataFormat)
+                cols                     (cond->> ordered-cols
+                                           pivot-grouping-key (m/remove-nth pivot-grouping-key))]
             (set-no-style-custom-helper sheet)
-            (vreset! cell-styles (compute-column-cell-styles workbook data-format viz-settings ordered-cols))
+            (vreset! cell-styles (compute-column-cell-styles workbook data-format viz-settings cols))
             (vreset! typed-cell-styles (compute-typed-cell-styles workbook data-format)))))
 
       (write-row! [_ row row-num ordered-cols {:keys [output-order] :as viz-settings}]
@@ -678,7 +680,7 @@
                                    pivot-grouping-key (m/remove-nth pivot-grouping-key))
               {:keys [sheet]}    @workbook-data]
           (when (or (not group)
-                    (= group 0))
+                    (= qp.pivot.postprocess/NON_PIVOT_ROW_GROUP (int group)))
             (add-row! sheet (inc row-num) modified-row ordered-cols col-settings @cell-styles @typed-cell-styles)
             (when (= (inc row-num) *auto-sizing-threshold*)
               (autosize-columns! sheet)))))

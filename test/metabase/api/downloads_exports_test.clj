@@ -813,3 +813,47 @@
                      (first data)))
               (is (= 2
                      (count (second data)))))))))))
+
+(deftest unpivoted-pivot-results-use-correct-formatters-in-xlsx
+  (testing "If a pivot question is downloaded or exported unpivoted as XLSX, the formatters are set up properly (#48158)"
+    (mt/dataset test-data
+      (mt/with-temp [:model/Card {pivot-card-id :id}
+                     {:display                :pivot
+                      :visualization_settings {:pivot_table.column_split
+                                               {:rows    []
+                                                :columns [[:field (mt/id :products :category) {:base-type :type/Text}]]
+                                                :values  [[:aggregation 0]]}
+                                               :column_settings {"[\"name\",\"count\"]" {:number_style "percent"}}}
+                      :dataset_query          {:database (mt/id)
+                                               :type     :query
+                                               :query
+                                               {:source-table (mt/id :products)
+                                                :aggregation  [[:count] #_[:sum [:field (mt/id :products :price) {:base-type :type/Float}]]]
+                                                :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]]}}}]
+        (let [result   (mt/user-http-request :crowberto :post 200
+                                             (format "card/%d/query/xlsx?format_rows=true" pivot-card-id)
+                                             {})
+              data   (process-results :xlsx result)]
+          (is (= ["Doohickey" "4,200.00%"] (second data))))))))
+
+(deftest unformatted-downloads-and-exports-keep-numbers-as-numbers
+  (testing "Unformatted numbers in downloads remain numbers."
+    (mt/dataset test-data
+      (mt/with-temp [:model/Card card {:display       :table
+                                       :dataset_query {:database (mt/id)
+                                                       :type     :native
+                                                       :native   {:query "SELECT 1234.567 as A"}}}]
+        (testing "CSV downloads respect the formatted/unformatted setting"
+          (let [formatted-json-results   (card-download card :csv true)
+                unformatted-json-results (card-download card :csv false)]
+            (is (= [["A"] ["1,234.57"]]
+                   formatted-json-results))
+            (is (= [["A"] ["1234.567"]]
+                   unformatted-json-results))))
+        (testing "JSON downloads respect the formatted/unformatted setting"
+          (let [formatted-json-results   (card-download card :json true)
+                unformatted-json-results (card-download card :json false)]
+            (is (= [["A"] ["1,234.57"]]
+                   formatted-json-results))
+            (is (= [["A"] [1234.567]]
+                   unformatted-json-results))))))))
