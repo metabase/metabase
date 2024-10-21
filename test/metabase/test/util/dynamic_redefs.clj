@@ -47,7 +47,7 @@
         ;; Log it as well as throwing it - this gives more user-friendly formatting.
         (log/error infinite-loop-error)
         (throw (ex-info infinite-loop-error {:var a-var})))
-      (binding [*already-called* (conj *already-called*)]
+      (binding [*already-called* (conj *already-called* a-var)]
         (apply current-f args)))))
 
 (defn patch-vars!
