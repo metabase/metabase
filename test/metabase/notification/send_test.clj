@@ -29,8 +29,8 @@
                                    :channel_id   (:id chn-2)
                                    :recipients   [{:type    :notification-recipient/user
                                                    :user_id (mt/user->id :rasta)}]}])
-              notification-info (assoc n :payload {:event-info  {:test true}
-                                                   :event-topic :event/test})
+              notification-info (assoc n :payload {:event_info  {:test true}
+                                                   :event_topic :event/test})
               expected-notification-payload (mt/malli=?
                                              [:map
                                               [:payload_type [:= :notification/system-event]]

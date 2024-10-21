@@ -40,8 +40,8 @@
             [notification/*send-notification!*      (fn [notification] (swap! sent-notis conj notification))
              events.notification/supported-topics #{:event/test-notification}]
             (events/publish-event! topic {::hi true})
-            (is (=? [[(:id n-1) {:event-info {::hi true}}]
-                     [(:id n-2) {:event-info {::hi true}}]]
+            (is (=? [[(:id n-1) {:event_info {::hi true}}]
+                     [(:id n-2) {:event_info {::hi true}}]]
                     (->> @sent-notis
                          (map (juxt :id :payload))
                          (sort-by first))))))))))

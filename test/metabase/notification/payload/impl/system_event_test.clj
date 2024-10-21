@@ -27,8 +27,8 @@
       (notification.tu/with-send-notification-sync
         (mt/with-temp [:model/ChannelTemplate tmpl {:channel_type :channel/email
                                                     :details      {:type    :email/mustache-text
-                                                                   :subject "Welcome {{payload.event-info.object.first_name}} to {{context.site-name}}"
-                                                                   :body    "Hello {{payload.event-info.object.first_name}}! Welcome to {{context.site-name}}!"}}
+                                                                   :subject "Welcome {{payload.event_info.object.first_name}} to {{context.site_name}}"
+                                                                   :body    "Hello {{payload.event_info.object.first_name}}! Welcome to {{context.site_name}}!"}}
                        :model/User             {user-id :id} {:email "ngoc@metabase.com"}
                        :model/PermissionsGroup {group-id :id} {:name "Avengers"}
                        :model/PermissionsGroupMembership _ {:group_id group-id
@@ -65,7 +65,7 @@
       (notification.tu/with-send-notification-sync
         (mt/with-temp [:model/ChannelTemplate tmpl {:channel_type :channel/email
                                                     :details      {:type    :email/mustache-resource
-                                                                   :subject "Welcome {{payload.event-info.object.first_name}} to {{context.site-name}}"
+                                                                   :subject "Welcome {{payload.event_info.object.first_name}} to {{context.site_name}}"
                                                                    :path    "notification/channel_template/hello_world"}}
                        :model/User             {user-id :id} {:email "ngoc@metabase.com"}
                        :model/PermissionsGroup {group-id :id} {:name "Avengers"}

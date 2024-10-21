@@ -10029,57 +10029,6 @@ databaseChangeLog:
                   constraints:
                     nullable: true
 
-  - changeSet:
-      id: v52.2024-10-21T08:00:00
-      author: qnkhuat
-      comment: replace payload.extra-context.user-invited-email-subject with context.extra.user-invited-email-subject in channel_template.details
-      rollback:
-        - sql:
-          sql: >-
-            UPDATE channel_template
-            SET details = REPLACE(details, 'payload.extra-context.user-invited-email-subject', 'context.extra.user-invited-email-subject')
-            WHERE details LIKE '%payload.extra-context.user-invited-email-subject%';
-      changes:
-        - sql:
-          sql: >-
-            UPDATE channel_template
-            SET details = REPLACE(details, 'context.extra.user-invited-email-subject', 'payload.extra-context.user-invited-email-subject')
-            WHERE details LIKE '%context.extra.user-invited-email-subject%';
-
-  - changeSet:
-      id: v52.2024-10-21T08:00:01
-      author: qnkhuat
-      comment: replace event-info.object.email with payload.event-info.object.email in notification_recipient.details
-      rollback:
-        - sql:
-          sql: >-
-            UPDATE notification_recipient
-            SET details = REPLACE(details, 'payload.event-info.object.email', 'event-info.object.email')
-            WHERE details LIKE '%payload.event-info.object.email%';
-      changes:
-        - sql:
-          sql: >-
-            UPDATE notification_recipient
-            SET details = REPLACE(details, 'event-info.object.email', 'payload.event-info.object.email')
-            WHERE details LIKE '%event-info.object.email%';
-
-  - changeSet:
-      id: v52.2024-10-21T08:00:02
-      author: qnkhuat
-      comment: replace event-info.user.email with payload.event-info.user.email in notification_recipient.details
-      rollback:
-        - sql:
-          sql: >-
-            UPDATE notification_recipient
-            SET details = REPLACE(details, 'payload.event-info.user.email', 'event-info.user.email')
-            WHERE details LIKE '%payload.event-info.user.email%';
-      changes:
-        - sql:
-          sql: >-
-            UPDATE notification_recipient
-            SET details = REPLACE(details, 'event-info.user.email', 'payload.event-info.user.email')
-            WHERE details LIKE '%event-info.user.email%';
-
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

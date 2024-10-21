@@ -24,8 +24,8 @@
                                  [:payload
                                   [:map {:closed true}
                                    ;; TODO: event-info schema for each event type
-                                   [:event-topic [:fn #(= "event" (-> % keyword namespace))]]
-                                   [:event-info  [:maybe :map]]]]]]
+                                   [:event_topic [:fn #(= "event" (-> % keyword namespace))]]
+                                   [:event_info  [:maybe :map]]]]]]
 
     ;; for testing only
     [:notification/testing       :map]]])
@@ -43,19 +43,19 @@
                                  ;; override the payload with extra context
                                  [:payload
                                   [:map {:closed true}
-                                   [:event-topic                    [:fn #(= "event" (-> % keyword namespace))]]
-                                   [:event-info                     [:maybe :map]]
-                                   [:extra-context {:optional true} [:maybe :map]]]]]]
+                                   [:event_topic                   [:fn #(= "event" (-> % keyword namespace))]]
+                                   [:event_info                    [:maybe :map]]
+                                   [:custom       {:optional true} [:maybe :map]]]]]]
     [:notification/testing       :map]]])
 
 (defn- default-context
   []
   ;; DO NOT delete or rename these fields, they are used in the notification templates
-  {:application-name     (public-settings/application-name)
-   :application-logo-url (messages/logo-url)
-   :site-name            (public-settings/site-name)
-   :site-url             (public-settings/site-url)
-   :admin-email          (public-settings/admin-email)
+  {:application_name     (public-settings/application-name)
+   :application_logo_url (messages/logo-url)
+   :site_name            (public-settings/site-name)
+   :site_url             (public-settings/site-url)
+   :admin_email          (public-settings/admin-email)
    :style                {:button (messages/button-style (pulse/primary-color))}})
 
 (defmulti payload
