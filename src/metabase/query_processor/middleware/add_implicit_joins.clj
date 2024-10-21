@@ -10,6 +10,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.join.util :as lib.join.u]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -33,8 +34,8 @@
          (when-not (some #{:source-metadata} &parents)
            &match))))
 
-(defn- join-alias [dest-table-name source-fk-field-name source-table-name]
-  (str dest-table-name "__via__" source-fk-field-name "__of__" source-table-name))
+(defn- join-alias [dest-table-name source-fk-field-name]
+  (lib.join.u/format-implicit-join-name dest-table-name source-fk-field-name))
 
 (def ^:private JoinInfo
   [:map
@@ -54,18 +55,15 @@
           target-field-ids (into #{} (keep :fk-target-field-id) fk-fields)
           target-fields    (when (seq target-field-ids)
                              (lib.metadata/bulk-metadata-or-throw (qp.store/metadata-provider) :metadata/column target-field-ids))
-          target-table-ids (into #{} (keep :table-id) target-fields)
-          fk-table-ids     (into #{} (keep :table-id) fk-fields)]
+          target-table-ids (into #{} (keep :table-id) target-fields)]
       ;; this is for cache-warming purposes.
       (when (seq target-table-ids)
-        (lib.metadata/bulk-metadata-or-throw (qp.store/metadata-provider) :metadata/table (concat target-table-ids
-                                                                                                  fk-table-ids)))
-      (for [{fk-name :name, fk-field-id :id, pk-id :fk-target-field-id, fk-table :table-id} fk-fields
-            :when                                                                              pk-id]
+        (lib.metadata/bulk-metadata-or-throw (qp.store/metadata-provider) :metadata/table target-table-ids))
+      (for [{fk-name :name, fk-field-id :id, pk-id :fk-target-field-id} fk-fields
+            :when                                                       pk-id]
         (let [{source-table :table-id} (lib.metadata.protocols/field (qp.store/metadata-provider) pk-id)
               {table-name :name}       (lib.metadata.protocols/table (qp.store/metadata-provider) source-table)
-              {fk-table-name :name}    (lib.metadata.protocols/table (qp.store/metadata-provider) fk-table)
-              alias-for-join           (join-alias table-name fk-name fk-table-name)]
+              alias-for-join           (join-alias table-name fk-name)]
           (-> {:source-table source-table
                :alias        alias-for-join
                :fields       :none

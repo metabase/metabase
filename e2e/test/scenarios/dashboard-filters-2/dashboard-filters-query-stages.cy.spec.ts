@@ -2169,7 +2169,7 @@ function createQ7Query(source: Card): StructuredQuery {
       ],
       [
         "field",
-        "PRODUCTS__via__PRODUCT_ID__of__ORDERS__CATEGORY",
+        "PRODUCTS__via__PRODUCT_ID__CATEGORY",
         {
           "base-type": "type/Text",
         },
