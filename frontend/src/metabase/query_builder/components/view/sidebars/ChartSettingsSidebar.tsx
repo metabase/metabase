@@ -1,22 +1,30 @@
-/* eslint-disable react/prop-types */
-import { memo, useCallback, useMemo, useState } from "react";
+import { memo, useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import CS from "metabase/css/core/index.css";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import visualizations from "metabase/visualizations";
-import ChartSettings from "metabase/visualizations/components/ChartSettings";
+import {
+  ChartSettings,
+  type Widget,
+} from "metabase/visualizations/components/ChartSettings";
+import type Question from "metabase-lib/v1/Question";
+import type { Dataset, VisualizationSettings } from "metabase-types/api";
 
-function ChartSettingsSidebar(props) {
-  const [sidebarPropsOverride, setSidebarPropsOverride] = useState(null);
-  const handleSidebarPropsOverride = useCallback(
-    sidebarPropsOverride => {
-      setSidebarPropsOverride(sidebarPropsOverride);
-    },
-    [setSidebarPropsOverride],
-  );
+interface ChartSettingsSidebarProps {
+  question: Question;
+  result: Dataset;
+  addField: () => void;
+  initialChartSetting: { section: string; widget?: Widget };
+  onReplaceAllVisualizationSettings: (settings: VisualizationSettings) => void;
+  onClose: () => void;
+  onOpenChartType: () => void;
+  visualizationSettings: VisualizationSettings;
+  showSidebarTitle?: boolean;
+}
 
+function ChartSettingsSidebarInner(props: ChartSettingsSidebarProps) {
   const {
     question,
     result,
@@ -30,7 +38,7 @@ function ChartSettingsSidebar(props) {
   } = props;
   const sidebarContentProps = showSidebarTitle
     ? {
-        title: t`${visualizations.get(question.display()).uiName} options`,
+        title: t`${visualizations.get(question.display())?.uiName} options`,
         onBack: () => onOpenChartType(),
       }
     : {};
@@ -55,7 +63,6 @@ function ChartSettingsSidebar(props) {
         className={CS.fullHeight}
         onDone={handleClose}
         {...sidebarContentProps}
-        {...sidebarPropsOverride}
       >
         <ErrorBoundary>
           <ChartSettings
@@ -66,7 +73,6 @@ function ChartSettingsSidebar(props) {
             onClose={handleClose}
             noPreview
             initial={initialChartSetting}
-            setSidebarPropsOverride={handleSidebarPropsOverride}
             computedSettings={visualizationSettings}
           />
         </ErrorBoundary>
@@ -75,4 +81,4 @@ function ChartSettingsSidebar(props) {
   );
 }
 
-export default memo(ChartSettingsSidebar);
+export const ChartSettingsSidebar = memo(ChartSettingsSidebarInner);
