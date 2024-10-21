@@ -204,17 +204,22 @@
 
 (deftest ^:parallel filter-nested-queries-test
   (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters :nested-queries)
-    (testing "We should be able to apply filters to queries that use native queries with parameters as their source (#9802)"
-      (t2.with-temp/with-temp [Card {card-id :id} {:dataset_query (mt/native-query (qp.compile/compile (mt/mbql-query checkins)))}]
-        (let [query (assoc (mt/mbql-query nil
-                             {:source-table (format "card__%d" card-id)})
-                           :parameters [{:type   :date/all-options
-                                         :target [:dimension (mt/$ids *checkins.date)] ; expands to appropriate field-literal form
-                                         :value  "2014-01-06"}])]
+    (t2.with-temp/with-temp [Card {card-id :id} {:dataset_query (mt/native-query (qp.compile/compile (mt/mbql-query checkins)))}]
+      (let [query (assoc (mt/mbql-query nil
+                           {:source-table (format "card__%d" card-id)})
+                         :parameters [{:type   :date/all-options
+                                       :target [:dimension (mt/$ids *checkins.date)] ; expands to appropriate field-literal form
+                                       :value  "2014-01-06"}])]
+        (testing "We should be able to apply filters to queries that use native queries with parameters as their source (#9802)"
           (is (= [[182 "2014-01-06T00:00:00Z" 5 31]]
                  (mt/formatted-rows
                   :checkins
-                  (qp/process-query query)))))))))
+                  (qp/process-query query)))))
+        (testing "We should be able to apply filters explicitly targeting nested native stages (#48258)"
+          (is (= [[182 "2014-01-06T00:00:00Z" 5 31]]
+                 (mt/formatted-rows
+                  :checkins
+                  (qp/process-query (assoc-in query [:parameters 0 :target 2] {:stage-number 0}))))))))))
 
 (deftest ^:parallel string-escape-test
   ;; test `:sql` drivers that support native parameters

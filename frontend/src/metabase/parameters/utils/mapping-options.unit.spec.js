@@ -99,6 +99,7 @@ describe("parameters/utils/mapping-options", () => {
             target: [
               "dimension",
               ["field", "CREATED_AT", { "base-type": "type/DateTime" }],
+              { "stage-number": -1 },
             ],
           },
         ]);
@@ -155,6 +156,7 @@ describe("parameters/utils/mapping-options", () => {
             target: [
               "dimension",
               ["field", REVIEWS.CREATED_AT, { "base-type": "type/DateTime" }],
+              { "stage-number": -1 },
             ],
             isForeign: false,
           },
@@ -172,6 +174,7 @@ describe("parameters/utils/mapping-options", () => {
                   "source-field": REVIEWS.PRODUCT_ID,
                 },
               ],
+              { "stage-number": -1 },
             ],
             isForeign: true,
           },
@@ -211,6 +214,7 @@ describe("parameters/utils/mapping-options", () => {
             target: [
               "dimension",
               ["field", ORDERS.CREATED_AT, { "base-type": "type/DateTime" }],
+              { "stage-number": -1 },
             ],
             isForeign: false,
           },
@@ -225,6 +229,7 @@ describe("parameters/utils/mapping-options", () => {
                 PRODUCTS.CREATED_AT,
                 { "base-type": "type/DateTime", "join-alias": "Product" },
               ],
+              { "stage-number": -1 },
             ],
             isForeign: true,
           },
@@ -242,6 +247,7 @@ describe("parameters/utils/mapping-options", () => {
                   "source-field": ORDERS.USER_ID,
                 },
               ],
+              { "stage-number": -1 },
             ],
             isForeign: true,
           },
@@ -259,6 +265,7 @@ describe("parameters/utils/mapping-options", () => {
                   "source-field": ORDERS.USER_ID,
                 },
               ],
+              { "stage-number": -1 },
             ],
             isForeign: true,
           },
@@ -278,12 +285,24 @@ describe("parameters/utils/mapping-options", () => {
         );
         expect(options).toEqual([
           {
+            sectionName: "Products",
+            name: "Created At",
+            icon: "calendar",
+            target: [
+              "dimension",
+              ["field", PRODUCTS.CREATED_AT, { "base-type": "type/DateTime" }],
+              { "stage-number": -2 },
+            ],
+            isForeign: false,
+          },
+          {
             sectionName: "Summaries",
             name: "Created At",
             icon: "calendar",
             target: [
               "dimension",
               ["field", "CREATED_AT", { "base-type": "type/DateTime" }],
+              { "stage-number": -1 },
             ],
             isForeign: false,
           },
