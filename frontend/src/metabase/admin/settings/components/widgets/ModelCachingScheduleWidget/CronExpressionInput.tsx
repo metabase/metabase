@@ -1,7 +1,7 @@
 import cx from "classnames";
 import type * as React from "react";
 import { useCallback, useState } from "react";
-import { jt, t } from "ttag";
+import { jt, msgid, ngettext, t } from "ttag";
 
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 import ExternalLink from "metabase/core/components/ExternalLink";
@@ -91,12 +91,15 @@ function Input({
 }
 
 function CronFormatPopover({ children }: { children: React.ReactElement }) {
+  // some of these have to be plural because they're plural elsewhere and the same strings cannot be used as both
+  // singular message IDs and plural message IDs
   const descriptions = [
     t`Minutes` + ": 0-59 , - * /",
     t`Hours` + ": 0-23 , - * /",
-    t`Day of month` + ": 1-31 , - * ? / L W",
-    t`Month` + ": 1-12 or JAN-DEC , - * /",
-    t`Day of week` + ": 1-7 or SUN-SAT , - * ? / L #",
+    ngettext(msgid`Day of month`, `Days of month`, 1) + ": 1-31 , - * ? / L W",
+    ngettext(msgid`Month`, `Months`, 1) + ": 1-12 or JAN-DEC , - * /",
+    ngettext(msgid`Day of week`, `Days of week`, 1) +
+      ": 1-7 or SUN-SAT , - * ? / L #",
   ];
 
   return (

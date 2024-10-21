@@ -25,6 +25,7 @@ describe("ExpressionEditorHelpText (EE with token)", () => {
 
   describe("Metabase links", () => {
     const helpText = getHelpText("concat", database, "UTC");
+
     it("should show a help link when `show-metabase-links: true`", async () => {
       await setup({ helpText, showMetabaseLinks: true });
 

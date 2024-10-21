@@ -16,5 +16,12 @@ interface UpsellLinkProps {
 export const useUpsellLink = ({ url, campaign, source }: UpsellLinkProps) => {
   const plan = getPlan(useSetting("token-features"));
 
-  return `${url}?utm_source=product&utm_medium=upsell&utm_campaign=${campaign}&utm_content=${source}&source_plan=${plan}`;
+  const queryString = new URLSearchParams({
+    utm_source: "product",
+    utm_medium: "upsell",
+    utm_campaign: campaign,
+    utm_content: source,
+    source_plan: plan,
+  }).toString();
+  return `${url}?${queryString}`;
 };

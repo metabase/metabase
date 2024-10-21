@@ -146,6 +146,7 @@ describe("data model utils", () => {
 
         expect(checkCanBeModel(question)).toBe(true);
       });
+
       it("returns true when 'card' variables are used", () => {
         const card = createSavedNativeCard({
           tags: {
@@ -285,6 +286,7 @@ describe("data model utils", () => {
 
     states.forEach(state => {
       const canRefresh = testCases[state];
+
       it(`returns '${canRefresh}' for '${state}' caching state`, () => {
         const info = getMockModelCacheInfo({ state });
         expect(checkCanRefreshModelCache(info)).toBe(canRefresh);

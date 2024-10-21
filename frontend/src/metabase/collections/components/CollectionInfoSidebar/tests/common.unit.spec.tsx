@@ -32,6 +32,7 @@ describe("CollectionInfoSidebar (OSS)", () => {
       screen.queryByText("entity_id_of_normal_collection"),
     ).not.toBeInTheDocument();
   });
+
   it("should render properly for an official collection", async () => {
     setup({
       collection: officialCollection,

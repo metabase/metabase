@@ -26,3 +26,4 @@ export type {
 } from "./types/theme";
 
 export type { Dashboard } from "metabase-types/api";
+export { FlexibleSizeComponent } from "embedding-sdk/components/private/util/FlexibleSizeComponent";

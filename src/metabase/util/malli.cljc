@@ -2,8 +2,7 @@
   (:refer-clojure :exclude [fn defn defn- defmethod])
   (:require
    #?@(:clj
-       ([metabase.util.i18n]
-        [metabase.util.malli.defn :as mu.defn]
+       ([metabase.util.malli.defn :as mu.defn]
         [metabase.util.malli.fn :as mu.fn]
         [net.cgrand.macrovich :as macros]
         [potemkin :as p]))
@@ -12,12 +11,12 @@
    [malli.destructure]
    [malli.error :as me]
    [malli.util :as mut]
-   [metabase.shared.util.i18n :as i18n])
+   [metabase.util.i18n :as i18n])
   #?(:cljs (:require-macros [metabase.util.malli])))
 
 #?(:clj
    (p/import-vars
-    [mu.fn fn]
+    [mu.fn fn instrument-ns?]
     [mu.defn defn defn-]))
 
 (core/defn humanize-include-value
@@ -39,7 +38,7 @@
 (def localized-string-schema
   "Schema for localized string."
   #?(:clj  [:fn {:error/message "must be a localized string"}
-            metabase.util.i18n/localized-string?]
+            i18n/localized-string?]
      ;; TODO Is there a way to check if a string is being localized in CLJS, by the `ttag`?
      ;; The compiler seems to just inline the translated strings with no annotation or wrapping.
      :cljs :string))

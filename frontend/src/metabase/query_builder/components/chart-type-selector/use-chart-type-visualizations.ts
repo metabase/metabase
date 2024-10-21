@@ -14,29 +14,31 @@ import {
 import { DEFAULT_VIZ_ORDER } from "./viz-order";
 
 export type UseChartTypeVisualizationsProps = {
-  question: Question;
+  question?: Question;
   onUpdateQuestion: (question: Question) => void;
-};
+} & GetSensibleVisualizationsProps;
 
 export const useChartTypeVisualizations = ({
   question,
   onUpdateQuestion,
   result,
-}: UseChartTypeVisualizationsProps & GetSensibleVisualizationsProps) => {
-  const selectedVisualization = question.display();
+}: UseChartTypeVisualizationsProps) => {
+  const selectedVisualization = question?.display() ?? "table";
 
   const updateQuestionVisualization = useCallback(
     (display: CardDisplayType) => {
-      let newQuestion = question.setDisplay(display).lockDisplay(); // prevent viz auto-selection
-      const visualization = visualizations.get(display);
-      if (visualization?.onDisplayUpdate) {
-        const updatedSettings = visualization.onDisplayUpdate(
-          newQuestion.settings(),
-        );
-        newQuestion = newQuestion.setSettings(updatedSettings);
-      }
+      if (question) {
+        let newQuestion = question.setDisplay(display).lockDisplay(); // prevent viz auto-selection
+        const visualization = visualizations.get(display);
+        if (visualization?.onDisplayUpdate) {
+          const updatedSettings = visualization.onDisplayUpdate(
+            newQuestion.settings(),
+          );
+          newQuestion = newQuestion.setSettings(updatedSettings);
+        }
 
-      onUpdateQuestion(newQuestion);
+        onUpdateQuestion(newQuestion);
+      }
     },
     [onUpdateQuestion, question],
   );

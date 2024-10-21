@@ -270,9 +270,12 @@ export function resizeDashboardCard({
   });
 }
 
+/** Opens the dashboard info sidesheet */
 export function openDashboardInfoSidebar() {
   dashboardHeader().icon("info").click();
+  return sidesheet();
 }
+/** Closes the dashboard info sidesheet */
 export function closeDashboardInfoSidebar() {
   sidesheet().findByLabelText("Close").click();
 }

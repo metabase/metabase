@@ -375,6 +375,7 @@ describe("[OSS] embedding settings", () => {
         })
       ).history;
     });
+
     describe("interactive embedding", () => {
       it("should show info about interactive embedding", async () => {
         const withinInteractiveEmbeddingCard = within(

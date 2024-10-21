@@ -192,6 +192,7 @@ describe("issue 35711", () => {
       .should("not.exist");
     cy.get("[data-testid=cell-data]").should("contain", "37.65");
   }
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();

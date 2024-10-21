@@ -674,6 +674,7 @@ describe("QB Actions > updateQuestion", () => {
 
     describe("native models", () => {
       const { getCard } = TEST_CASE.NATIVE_MODEL;
+
       it("doesn't open tags editor bar after adding a variable tag", async () => {
         const { setTemplateTagEditorVisibleSpy } = await setupTemplateTags({
           card: getCard(),

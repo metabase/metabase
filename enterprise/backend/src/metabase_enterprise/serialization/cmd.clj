@@ -138,11 +138,11 @@
                             :error_count   (count (:errors report))
                             :success       (nil? @err)
                             :error_message (when @err
-                                             (serdes/strip-error @err nil))})
+                                             (u/strip-error @err nil))})
     (when @err
       (if (:full-stacktrace opts)
         (log/error @err "Error during deserialization")
-        (log/error (serdes/strip-error @err "Error during deserialization")))
+        (log/error (u/strip-error @err "Error during deserialization")))
       (throw (ex-info (ex-message @err) {:cmd/exit true})))
     imported))
 
@@ -275,11 +275,11 @@
                             :secrets         (boolean (:include-database-secrets opts))
                             :success         (nil? @err)
                             :error_message   (when @err
-                                               (serdes/strip-error @err nil))})
+                                               (u/strip-error @err nil))})
     (when @err
       (if (:full-stacktrace opts)
         (log/error @err "Error during serialization")
-        (log/error (serdes/strip-error @err "Error during deserialization")))
+        (log/error (u/strip-error @err "Error during deserialization")))
       (throw (ex-info (ex-message @err) {:cmd/exit true})))
     (log/info (format "Export to '%s' complete!" path) (u/emoji "🚛💨 📦"))
     report))

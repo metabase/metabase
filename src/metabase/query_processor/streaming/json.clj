@@ -8,10 +8,10 @@
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.formatter :as formatter]
+   [metabase.models.visualization-settings :as mb.viz]
    [metabase.query-processor.pivot.postprocess :as qp.pivot.postprocess]
    [metabase.query-processor.streaming.common :as common]
    [metabase.query-processor.streaming.interface :as qp.si]
-   [metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.util.date-2 :as u.date])
   (:import
    (com.fasterxml.jackson.core JsonGenerator)

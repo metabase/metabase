@@ -305,12 +305,12 @@
       "viz-settings": {
         "graph.show_goal": false,
         "graph.show_values": false,
-        "metabase.shared.models.visualization-settings/column-settings": {
-          "{:metabase.shared.models.visualization-settings/column-name \"avg\"}": {
-            "metabase.shared.models.visualization-settings/prefix": "[",
-            "metabase.shared.models.visualization-settings/scale": 15,
-            "metabase.shared.models.visualization-settings/number-separators": ".’",
-            "metabase.shared.models.visualization-settings/suffix": "]"
+        "metabase.models.visualization-settings/column-settings": {
+          "{:metabase.models.visualization-settings/column-name \"avg\"}": {
+            "metabase.models.visualization-settings/prefix": "[",
+            "metabase.models.visualization-settings/scale": 15,
+            "metabase.models.visualization-settings/number-separators": ".’",
+            "metabase.models.visualization-settings/suffix": "]"
           }
         },
         "graph.series_order_dimension": "CATEGORY",
@@ -344,7 +344,7 @@
             "name": "Widget"
           }
         ],
-        "metabase.shared.models.visualization-settings/global-column-settings": {},
+        "metabase.models.visualization-settings/global-column-settings": {},
         "series_settings": {
           "Gizmo": {
             "display": "bar",

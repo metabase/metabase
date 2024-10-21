@@ -184,6 +184,16 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
     assertOrderDetailView({ id: FIRST_ORDER_ID });
   });
 
+  it("calculates a row after scrolling correctly (metabase#48323)", () => {
+    openOrdersTable();
+    cy.get(".ReactVirtualized__Grid").eq(1).scrollTo(0, 15000);
+    cy.icon("expand").first().click();
+    cy.findByRole("dialog")
+      .should("contain", "418")
+      .and("contain", "58")
+      .and("contain", "February 14, 2026, 10:12 AM");
+  });
+
   it("handles browsing records by FKs (metabase#21756)", () => {
     openOrdersTable();
 
