@@ -1,26 +1,21 @@
 import React, { useMemo } from "react";
-import { MetabaseProvider, StaticDashboard } from "sdk";
-// } from "@metabase/embedding-sdk-react";
+import { MetabaseProvider, StaticDashboard } from "embedding-sdk";
+import { JWT_PROVIDER_URL, METABASE_INSTANCE_URL, mockJwtProvider } from "../cypress/support/sdk-mocks";
 
-const HelloWorld = () => {
-  const hello = useMemo(() => "Hello World", []);
-  return (
-    <div>
-      <h1>{hello}</h1>
-    </div>
-  );
-};
 
 describe("SDK Tests", () => {
+  beforeEach(() => {
+    mockJwtProvider();
+  });
+
   it("should render a dashboard 1", () => {
     cy.mount(
       <div>
         <h1>cypress component tests</h1>
-        <HelloWorld />
         <MetabaseProvider
           config={{
-            jwtProviderUri: "http://localhost:8888/api/sso",
-            metabaseInstanceUrl: "http://localhost:3000",
+            jwtProviderUri: JWT_PROVIDER_URL,
+            metabaseInstanceUrl: METABASE_INSTANCE_URL,
           }}
         >
           <h2>inside MetabaseProvider 1</h2>
@@ -37,11 +32,10 @@ describe("SDK Tests", () => {
     cy.mount(
       <div>
         <h1>cypress component tests</h1>
-        <HelloWorld />
         <MetabaseProvider
           config={{
-            jwtProviderUri: "http://localhost:8888/api/sso",
-            metabaseInstanceUrl: "http://localhost:3000",
+            jwtProviderUri: JWT_PROVIDER_URL,
+            metabaseInstanceUrl: METABASE_INSTANCE_URL,
           }}
         >
           <h2>inside MetabaseProvider 2</h2>

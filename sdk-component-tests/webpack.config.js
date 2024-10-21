@@ -7,10 +7,13 @@ module.exports = {
   stats: "verbose", // This will make Webpack more verboseNODE
   resolve: {
     alias: {
-      sdk: path.resolve(
+      "embedding-sdk": path.resolve(
         __dirname,
         "../resources/embedding-sdk/dist/main.bundle.js"
       ),
+      // Make sure we use the same react version as the embedding-sdk
+      // without this, we would get a different version of react -> invalid hook calls
+      // or in some scenarios, even an error about "useMemo" not found on undefined
       react: path.resolve(__dirname, "../node_modules/react"),
       "react-dom": path.resolve(
         __dirname,

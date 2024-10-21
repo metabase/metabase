@@ -1,25 +1,36 @@
 /* eslint-disable no-unscoped-text-selectors */
 import React from 'react';
 import { mount } from 'cypress/react';
-import { MetabaseProvider, StaticQuestion } from 'sdk';
+import { MetabaseProvider, StaticQuestion } from 'embedding-sdk';
+import { JWT_PROVIDER_URL, METABASE_INSTANCE_URL, mockJwtProvider } from '../cypress/support/sdk-mocks';
 // import {
 //   ORDERS_QUESTION_ID,
 //   JWT_SHARED_SECRET,
 //   setupJwt,
 // } from "e2e/support/helpers";
 
-const ORDERS_QUESTION_ID = 1;
-const JWT_SHARED_SECRET = "0000000000000000000000000000000000000000000000000000000000000000";
-const setupJwt = () => { };
-const METABASE_BASE_URL = "http://localhost:3000";
+const QUESTION_ID = 1;
 
+
+const wrapDefaultBrowserFontFamilyValue = () => {
+  mount(<h1>default browser font family</h1>)
+
+  return cy.findByText("default browser font family").should(
+    "have.css",
+    "font-family"
+  ).then((fontFamily) => {
+    return cy.wrap(fontFamily).as("defaultBrowserFontFamily")
+  });
+}
 
 describe('SDK Style Leaks', () => {
   beforeEach(() => {
-    setupJwt();
+    mockJwtProvider();
   });
 
   it('should use the default fonts outside of our components, and Lato on our components in success scenario', () => {
+    wrapDefaultBrowserFontFamilyValue()
+
     mount(
       <div>
         <h1>No styles applied anywhere, should use browser default</h1>
@@ -28,24 +39,18 @@ describe('SDK Style Leaks', () => {
         </div>
 
         <MetabaseProvider config={{
-          jwtProviderUri: "http://localhost:8888/api/sso",
-          metabaseInstanceUrl: METABASE_BASE_URL,
+          jwtProviderUri: JWT_PROVIDER_URL,
+          metabaseInstanceUrl: METABASE_INSTANCE_URL,
         }}>
           <div style={{ border: "1px solid black" }}>
             <h1>This is inside of the provider</h1>
           </div>
 
-          <StaticQuestion questionId={ORDERS_QUESTION_ID} />
+          <StaticQuestion questionId={QUESTION_ID} />
         </MetabaseProvider>
       </div>
     );
 
-    cy.findByText("This is outside of the provider").should(
-      "have.css",
-      "font-family"
-    ).then((fontFamily) => {
-      cy.wrap(fontFamily).as("defaultBrowserFontFamily");
-    });
 
     cy.get("@defaultBrowserFontFamily").then(defaultBrowserFontFamily => {
       cy.findByText("This is outside of the provider").should(
@@ -67,6 +72,8 @@ describe('SDK Style Leaks', () => {
   });
 
   it('should use the default fonts outside of our components, and Lato on our components in error scenario', () => {
+    wrapDefaultBrowserFontFamilyValue()
+
     mount(
       <div>
         <h1>No styles applied anywhere, should use browser default</h1>
@@ -75,14 +82,14 @@ describe('SDK Style Leaks', () => {
         </div>
 
         <MetabaseProvider config={{
-          jwtProviderUri: "http://localhost:8888/api/sso",
+          jwtProviderUri: JWT_PROVIDER_URL,
           metabaseInstanceUrl: "http://fake-host:1234",
         }}>
           <div style={{ border: "1px solid black" }}>
             <h1>This is inside of the provider</h1>
           </div>
 
-          <StaticQuestion questionId={ORDERS_QUESTION_ID} />
+          <StaticQuestion questionId={QUESTION_ID} />
         </MetabaseProvider>
       </div>
     );
@@ -116,12 +123,12 @@ describe('SDK Style Leaks', () => {
       <div>
         <MetabaseProvider
           config={{
-            jwtProviderUri: "http://localhost:8888/api/sso",
-            metabaseInstanceUrl: METABASE_BASE_URL,
+            jwtProviderUri: JWT_PROVIDER_URL,
+            metabaseInstanceUrl: METABASE_INSTANCE_URL,
           }}
           theme={{ fontFamily: "Impact" }}
         >
-          <StaticQuestion questionId={ORDERS_QUESTION_ID} />
+          <StaticQuestion questionId={QUESTION_ID} />
         </MetabaseProvider>
       </div>
     );
@@ -132,5 +139,4 @@ describe('SDK Style Leaks', () => {
       "Impact",
     );
   });
-
 });
