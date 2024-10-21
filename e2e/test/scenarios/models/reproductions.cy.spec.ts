@@ -1321,7 +1321,7 @@ describe("issue 20624", () => {
     cy.intercept("PUT", "/api/card/*").as("updateCard");
   });
 
-  it("should reset the question's viz settings when converting to a model", () => {
+  it("should reset the question's viz settings when converting to a model (metabase#20624)", () => {
     cy.log("check that a column is renamed via the viz settings");
     createQuestion(questionDetails, { visitQuestion: true });
     tableInteractive().within(() => {
