@@ -2,7 +2,10 @@ import { useCallback, useMemo } from "react";
 import { jt, t } from "ttag";
 import _ from "underscore";
 
-import { useSetting } from "metabase/common/hooks";
+import { useDocsUrl, useSetting } from "metabase/common/hooks";
+import ExternalLink from "metabase/core/components/ExternalLink";
+import Link from "metabase/core/components/Link";
+import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Box, Button, Group, Icon, Stack, Text } from "metabase/ui";
@@ -15,6 +18,7 @@ import type {
 import {
   IFrameEditWrapper,
   IFrameWrapper,
+  InteractiveText,
   StyledInput,
 } from "./IFrameViz.styled";
 import { settings } from "./IFrameVizSettings";
@@ -134,6 +138,9 @@ export function IFrameViz({
 
 function ForbiddenDomainError({ url }: { url: string }) {
   const isAdmin = useSelector(getUserIsAdmin);
+  const { url: docsUrl, showMetabaseLinks } = useDocsUrl(
+    "admin-guide/iframe-cards",
+  );
 
   const domain = useMemo(() => {
     try {
@@ -144,9 +151,14 @@ function ForbiddenDomainError({ url }: { url: string }) {
     }
   }, [url]);
 
-  const message = isAdmin
-    ? t`If you’re sure you trust this domain, you can add it to your allowed domains list in admin settings.`
-    : t`If you’re sure you trust this domain, you can ask an admin to add it to the allowed domains list.`;
+  const renderMessage = () => {
+    if (isAdmin) {
+      return jt`If you’re sure you trust this domain, you can add it to your ${(<Link key="link" className={CS.link} to="/admin/settings/general#allowed-iframe-hosts" target="_blank">{t`allowed domains list`}</Link>)} in admin settings.`;
+    }
+    return showMetabaseLinks
+      ? jt`If you’re sure you trust this domain, you can ask an admin to add it to the ${(<ExternalLink key="link" className={CS.link} href={docsUrl}>{t`allowed domains list`}</ExternalLink>)}.`
+      : t`If you’re sure you trust this domain, you can ask an admin to add it to the allowed domains list.`;
+  };
 
   return (
     <Box p={12} w="100%" style={{ textAlign: "center" }}>
@@ -158,7 +170,7 @@ function ForbiddenDomainError({ url }: { url: string }) {
           </Text>
         )} can not be embedded in iframe cards.`}
       </Text>
-      <Text color="text-dark">{message}</Text>
+      <InteractiveText color="text-dark">{renderMessage()}</InteractiveText>
     </Box>
   );
 }
