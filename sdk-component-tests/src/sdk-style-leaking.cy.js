@@ -1,19 +1,13 @@
 /* eslint-disable no-unscoped-text-selectors */
 import React from 'react';
-import { mount } from 'cypress/react';
 import { MetabaseProvider, StaticQuestion } from 'embedding-sdk';
 import { JWT_PROVIDER_URL, METABASE_INSTANCE_URL, mockJwtProvider } from '../cypress/support/sdk-mocks';
-// import {
-//   ORDERS_QUESTION_ID,
-//   JWT_SHARED_SECRET,
-//   setupJwt,
-// } from "e2e/support/helpers";
 
 const QUESTION_ID = 1;
 
 
 const wrapDefaultBrowserFontFamilyValue = () => {
-  mount(<h1>default browser font family</h1>)
+  cy.mount(<h1>default browser font family</h1>)
 
   return cy.findByText("default browser font family").should(
     "have.css",
@@ -31,7 +25,7 @@ describe('SDK Style Leaks', () => {
   it('should use the default fonts outside of our components, and Lato on our components in success scenario', () => {
     wrapDefaultBrowserFontFamilyValue()
 
-    mount(
+    cy.mount(
       <div>
         <h1>No styles applied anywhere, should use browser default</h1>
         <div style={{ border: "1px solid black" }}>
@@ -74,7 +68,7 @@ describe('SDK Style Leaks', () => {
   it('should use the default fonts outside of our components, and Lato on our components in error scenario', () => {
     wrapDefaultBrowserFontFamilyValue()
 
-    mount(
+    cy.mount(
       <div>
         <h1>No styles applied anywhere, should use browser default</h1>
         <div style={{ border: "1px solid black" }}>
@@ -119,7 +113,7 @@ describe('SDK Style Leaks', () => {
   });
 
   it('should use the font from the theme if set', () => {
-    mount(
+    cy.mount(
       <div>
         <MetabaseProvider
           config={{
