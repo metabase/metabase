@@ -37,11 +37,13 @@ export const OverviewSettings = ({
   );
 
   // eslint-disable-next-line no-unconditional-metabase-links-render -- This links only shows for admins.
-  const { url: docsUrl } = useDocsUrl("embedding/static-embedding", undefined, {
-    utm_source: "product",
-    utm_medium: "docs",
-    utm_campaign: "embedding-static",
-    utm_content: "static-embed-settings-overview",
+  const { url: docsUrl } = useDocsUrl("embedding/static-embedding", {
+    utm: {
+      utm_source: "product",
+      utm_medium: "docs",
+      utm_campaign: "embedding-static",
+      utm_content: "static-embed-settings-overview",
+    },
   });
 
   useEffect(() => {

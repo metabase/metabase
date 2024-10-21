@@ -42,16 +42,15 @@ export const LookAndFeelSettings = ({
   onChangeDisplayOptions,
 }: AppearanceSettingsProps): JSX.Element => {
   // eslint-disable-next-line no-unconditional-metabase-links-render -- Only appear to admins
-  const { url: docsUrl } = useDocsUrl(
-    "embedding/static-embedding",
-    "customizing-the-appearance-of-static-embeds",
-    {
+  const { url: docsUrl } = useDocsUrl("embedding/static-embedding", {
+    anchor: "customizing-the-appearance-of-static-embeds",
+    utm: {
       utm_source: "product",
       utm_medium: "docs",
       utm_campaign: "embedding-static",
       utm_content: "static-embed-settings-look-and-feel",
     },
-  );
+  });
   const upgradePageUrl = useSelector(state =>
     getUpgradeUrl(state, {
       utm_campaign: "embedding-static-font",

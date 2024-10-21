@@ -74,8 +74,7 @@ export function EmbeddingSdkSettings({
 
   const { url: switchMetabaseBinariesUrl } = useDocsUrl(
     "paid-features/activating-the-enterprise-edition",
-    undefined,
-    utmTags,
+    { utm: utmTags },
   );
 
   const implementJwtUrl = useUrlWithUtm(

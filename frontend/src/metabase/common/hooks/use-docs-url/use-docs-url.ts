@@ -8,8 +8,13 @@ type DocsUtmProps = Omit<UtmProps, "utm_medium"> & {
 
 export const useDocsUrl = (
   page: string,
-  anchor?: string,
-  utm?: DocsUtmProps,
+  {
+    anchor,
+    utm,
+  }: {
+    anchor?: string;
+    utm?: DocsUtmProps;
+  } = {},
 ) => {
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
   const url = useSelector(state =>

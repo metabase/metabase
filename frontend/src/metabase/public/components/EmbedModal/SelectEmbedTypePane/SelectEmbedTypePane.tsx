@@ -52,11 +52,10 @@ export function SelectEmbedTypePane({
   const sdkUrl = useUrlWithUtm("https://metaba.se/sdk", utmTags);
 
   // eslint-disable-next-line no-unconditional-metabase-links-render -- only visible to admins
-  const { url: embeddingUrl } = useDocsUrl(
-    "embedding/introduction",
-    "comparison-of-embedding-types",
-    utmTags,
-  );
+  const { url: embeddingUrl } = useDocsUrl("embedding/introduction", {
+    anchor: "comparison-of-embedding-types",
+    utm: utmTags,
+  });
 
   const isPublicSharingEnabled = useSelector(state =>
     getSetting(state, "enable-public-sharing"),
