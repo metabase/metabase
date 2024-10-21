@@ -62,7 +62,7 @@ const ActionComponent = ({
   isEditingDashcard,
 }: ActionProps) => {
   const { data: card } = useGetCardQuery(
-    dashcard.action?.model_id ? { id: dashcard.action?.model_id } : skipToken,
+    dashcard.action?.model_id ? { id: dashcard.action.model_id } : skipToken,
   );
   const metadata = useSelector(getMetadata);
   const model = card ? new Question(card, metadata) : undefined;
