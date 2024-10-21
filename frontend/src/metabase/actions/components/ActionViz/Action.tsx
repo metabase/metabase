@@ -65,7 +65,10 @@ const ActionComponent = ({
     dashcard.action?.model_id ? { id: dashcard.action.model_id } : skipToken,
   );
   const metadata = useSelector(getMetadata);
-  const model = card ? new Question(card, metadata) : undefined;
+  const model = useMemo(
+    () => (card ? new Question(card, metadata) : undefined),
+    [card, metadata],
+  );
 
   const actionSettings = dashcard.action?.visualization_settings;
   const actionDisplayType =
