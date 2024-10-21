@@ -61,7 +61,6 @@ jobs:
             const versionParts = currentVersion.split(".");
             versionParts[versionParts.length - 1] = parseInt(versionParts.at(-1)) + 1;
             const newVersion = versionParts.join(".");
-            console.log({currentVersion, newVersion});
 
             return newVersion
 
