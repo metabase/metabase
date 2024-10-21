@@ -28,7 +28,7 @@ export function getMetabaseCssVariables(theme: MantineTheme) {
       /* Semantic colors */
       --mb-color-brand: ${theme.colors.brand[0]};
       --mb-color-summarize: ${theme.colors.summarize[0]};
-      --mb-color-filter: ${theme.colors.summarize[0]};
+      --mb-color-filter: ${theme.colors.filter[0]};
       ${getThemeSpecificCssVariables(theme)}
     }
   `;

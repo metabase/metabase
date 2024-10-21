@@ -2,11 +2,15 @@ import { useCallback, useState } from "react";
 import { useMount } from "react-use";
 import { t } from "ttag";
 
-import { Sidesheet, SidesheetCard } from "metabase/common/components/Sidesheet";
+import {
+  Sidesheet,
+  SidesheetCard,
+  SidesheetCardTitle,
+} from "metabase/common/components/Sidesheet";
 import { SidesheetEditableDescription } from "metabase/common/components/Sidesheet/components/SidesheetEditableDescription";
 import { EntityIdCard } from "metabase/components/EntityIdCard";
 import { PLUGIN_COLLECTION_COMPONENTS } from "metabase/plugins";
-import { Stack, Title } from "metabase/ui";
+import { Stack } from "metabase/ui";
 import type { Collection } from "metabase-types/api";
 
 export const CollectionInfoSidebar = ({
@@ -50,9 +54,7 @@ export const CollectionInfoSidebar = ({
         <SidesheetCard pb="md">
           <Stack gap="md">
             <Stack gap="xs">
-              <Title lh={1} fz="sm" c="text-light" pb={0}>
-                {t`Description`}
-              </Title>
+              <SidesheetCardTitle>{t`Description`}</SidesheetCardTitle>
               <SidesheetEditableDescription
                 description={description}
                 onChange={handleChangeDescription}
