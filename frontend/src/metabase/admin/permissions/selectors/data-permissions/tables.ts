@@ -1,10 +1,7 @@
 import _ from "underscore";
 
 import { getNativePermissionDisabledTooltip } from "metabase/admin/permissions/selectors/data-permissions/shared";
-import {
-  getSchemasPermission,
-  getTablesPermission,
-} from "metabase/admin/permissions/utils/graph";
+import { getTablesPermission } from "metabase/admin/permissions/utils/graph";
 import {
   PLUGIN_ADMIN_PERMISSIONS_TABLE_OPTIONS,
   PLUGIN_ADVANCED_PERMISSIONS,
@@ -16,14 +13,13 @@ import type { Group, GroupsPermissions } from "metabase-types/api";
 import { DATA_PERMISSION_OPTIONS } from "../../constants/data-permissions";
 import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "../../constants/messages";
 import { navigateToGranularPermissions } from "../../permissions";
-import type { PermissionSectionConfig, SchemaEntityId } from "../../types";
-import {
-  DataPermission,
-  DataPermissionType,
+import type {
   DataPermissionValue,
+  PermissionSectionConfig,
+  SchemaEntityId,
 } from "../../types";
+import { DataPermission, DataPermissionType } from "../../types";
 import {
-  getBlockWarning,
   getPermissionWarning,
   getPermissionWarningModal,
   getViewDataPermissionsTooRestrictiveWarningModal,
@@ -59,25 +55,13 @@ const buildAccessPermission = (
     DataPermission.VIEW_DATA,
   );
 
-  const dbValue = getSchemasPermission(
-    permissions,
-    groupId,
-    entityId,
-    DataPermission.VIEW_DATA,
-  );
-
-  const permissionWarning = getPermissionWarning(
+  const warning = getPermissionWarning(
     value,
     defaultGroupValue,
     "tables",
     defaultGroup,
     groupId,
   );
-
-  const blockWarning = getBlockWarning(dbValue, value);
-
-  // permissionWarning should always trump a blockWarning
-  const warning = permissionWarning || blockWarning;
 
   const confirmations = (newValue: DataPermissionValue) => [
     getPermissionWarningModal(
@@ -129,13 +113,6 @@ const buildNativePermission = (
   accessPermissionValue: DataPermissionValue,
   database: Database,
 ): PermissionSectionConfig => {
-  const dbValue = getSchemasPermission(
-    permissions,
-    groupId,
-    { databaseId: entityId.databaseId },
-    DataPermission.CREATE_QUERIES,
-  );
-
   const value = getTablesPermission(
     permissions,
     groupId,
@@ -156,8 +133,7 @@ const buildNativePermission = (
     isHighlighted: isAdmin,
     value,
     options: _.compact([
-      dbValue === DataPermissionValue.QUERY_BUILDER_AND_NATIVE &&
-        DATA_PERMISSION_OPTIONS.queryBuilderAndNative,
+      DATA_PERMISSION_OPTIONS.queryBuilderAndNative,
       DATA_PERMISSION_OPTIONS.queryBuilder,
       DATA_PERMISSION_OPTIONS.controlled,
       DATA_PERMISSION_OPTIONS.no,

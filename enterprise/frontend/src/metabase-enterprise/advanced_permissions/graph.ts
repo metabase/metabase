@@ -5,13 +5,9 @@ import {
   DataPermission,
   DataPermissionValue,
 } from "metabase/admin/permissions/types";
-import {
-  isSchemaEntityId,
-  isTableEntityId,
-} from "metabase/admin/permissions/utils/data-entity-id";
+import { isTableEntityId } from "metabase/admin/permissions/utils/data-entity-id";
 import {
   getEntityPermission,
-  getSchemasPermission,
   hasPermissionValueInSubgraph,
   updateEntityPermission,
 } from "metabase/admin/permissions/utils/graph";
@@ -26,29 +22,18 @@ export function shouldRestrictNativeQueryPermissions(
   value: DataPermissionValue,
   _database: Database,
 ) {
-  const currDbNativePermission = getSchemasPermission(
+  const createQueriesPermissions = getEntityPermission(
     permissions,
     groupId,
-    { databaseId: entityId.databaseId },
+    entityId,
     DataPermission.CREATE_QUERIES,
   );
 
-  if (isTableEntityId(entityId)) {
-    return (
-      (value === DataPermissionValue.SANDBOXED ||
-        value === DataPermissionValue.BLOCKED) &&
-      currDbNativePermission === DataPermissionValue.QUERY_BUILDER_AND_NATIVE
-    );
-  }
-
-  if (isSchemaEntityId(entityId)) {
-    return (
-      value === DataPermissionValue.BLOCKED &&
-      currDbNativePermission === DataPermissionValue.QUERY_BUILDER_AND_NATIVE
-    );
-  }
-
-  return false;
+  return (
+    (value === DataPermissionValue.SANDBOXED ||
+      value === DataPermissionValue.BLOCKED) &&
+    createQueriesPermissions === DataPermissionValue.QUERY_BUILDER_AND_NATIVE
+  );
 }
 
 export function upgradeViewPermissionsIfNeeded(
@@ -58,23 +43,17 @@ export function upgradeViewPermissionsIfNeeded(
   value: NativePermissions,
   database: Database,
 ) {
-  // get permission for item up one level or db if we're already at the top most entity:
-  // table -> schema, schema -> database, database -> database
-  const parentOrDbEntityId = isTableEntityId(entityId)
-    ? _.pick(entityId, ["databaseId", "schemaName"])
-    : _.pick(entityId, ["databaseId"]);
-
-  const parentOrDbPermission = getEntityPermission(
+  const viewDataPermission = getEntityPermission(
     permissions,
     groupId,
-    parentOrDbEntityId,
+    entityId,
     DataPermission.VIEW_DATA,
   );
 
   const isGrantingNativeQueryAccessWithoutProperViewAccess =
     value === DataPermissionValue.QUERY_BUILDER_AND_NATIVE &&
-    parentOrDbPermission !== DataPermissionValue.UNRESTRICTED &&
-    parentOrDbPermission !== DataPermissionValue.IMPERSONATED;
+    viewDataPermission !== DataPermissionValue.UNRESTRICTED &&
+    viewDataPermission !== DataPermissionValue.IMPERSONATED;
 
   const isGrantingQueryAccessWithBlockedChild =
     value !== DataPermissionValue.NO &&
@@ -95,7 +74,7 @@ export function upgradeViewPermissionsIfNeeded(
     permissions = updateEntityPermission(
       permissions,
       groupId,
-      parentOrDbEntityId,
+      entityId,
       DataPermissionValue.UNRESTRICTED,
       database,
       DataPermission.VIEW_DATA,

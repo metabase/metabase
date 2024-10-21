@@ -131,7 +131,7 @@
   {body :map
    skip-graph [:maybe :boolean]}
   (api/check-superuser)
-  (let [new-graph (mc/decode api.permission-graph/StrictApiPermissionsGraph
+  (let [new-graph (mc/decode api.permission-graph/ApiDataPermissionsGraphph
                              body
                              (mtx/transformer
                               mtx/string-transformer
