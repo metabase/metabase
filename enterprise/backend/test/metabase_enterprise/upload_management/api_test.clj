@@ -1,6 +1,5 @@
 (ns metabase-enterprise.upload-management.api-test
   (:require
-   [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.api.table-test :as oss-test]
