@@ -7,7 +7,6 @@ export const NewButton = styled(Button)`
   display: flex;
   align-items: center;
   height: 2.25rem;
-  padding: 0.5rem;
 
   ${Button.TextContainer} {
     margin-left: 0;
