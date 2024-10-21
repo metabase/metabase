@@ -36,6 +36,7 @@ export const ENGINE_LOGO: Record<string, string> = {
   "bigquery-cloud-sdk": "bigquery.svg",
   databricks: "databricks.svg",
   druid: "druid.svg",
+  "druid-jdbc": "druid.svg",
   h2: "h2.svg",
   mongo: "mongo.svg",
   mysql: "mysql.svg",
