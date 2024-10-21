@@ -1,12 +1,12 @@
+import type { Location } from "history";
 import type { MouseEvent } from "react";
 import { t } from "ttag";
 
 import EntityMenu from "metabase/components/EntityMenu";
+import { useRefreshDashboard } from "metabase/dashboard/hooks";
 import type { DashboardFullscreenControls } from "metabase/dashboard/types";
 import { PLUGIN_DASHBOARD_HEADER, PLUGIN_MODERATION } from "metabase/plugins";
 import type { Dashboard } from "metabase-types/api";
-import { useRefreshDashboard } from "metabase/dashboard/hooks";
-import { Location } from "history";
 
 export const DashboardActionMenu = (props: { items: any[] }) => (
   <EntityMenu
@@ -20,7 +20,7 @@ export const DashboardActionMenu = (props: { items: any[] }) => (
   />
 );
 
-export const getExtraButtons = ({
+export const useGetExtraButtons = ({
   canResetFilters,
   onResetFilters,
   onFullscreenChange,
@@ -45,6 +45,12 @@ export const getExtraButtons = ({
     refetchData: false,
   });
 
+  const moderationItems = PLUGIN_MODERATION.useMenuItems(
+    dashboard,
+    canEdit,
+    refreshDashboard,
+  );
+
   const extraButtons = [];
 
   if (canResetFilters) {
@@ -67,12 +73,6 @@ export const getExtraButtons = ({
       icon: "gear",
       action: openSettingsSidebar,
     });
-
-    const moderationItems = PLUGIN_MODERATION.useMenuItems(
-      dashboard,
-      canEdit,
-      refreshDashboard,
-    );
 
     extraButtons.push(...moderationItems);
 
@@ -109,5 +109,5 @@ export const getExtraButtons = ({
     });
   }
 
-  return extraButtons;
+  return { extraButtons };
 };
