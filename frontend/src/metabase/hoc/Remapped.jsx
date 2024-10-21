@@ -27,18 +27,24 @@ export default ComposedComponent =>
         (ComposedComponent.displayName || ComposedComponent.name) +
         "]";
 
-      UNSAFE_componentWillMount() {
-        if (this.props.column) {
-          this.props.fetchRemapping(this.props.value, this.props.column.id);
+      constructor(props) {
+        super(props);
+        this.fetchRemappingByProps(props);
+      }
+
+      componentDidUpdate(prevProps) {
+        if (
+          this.props.column &&
+          (prevProps.value !== this.props.value ||
+            prevProps.column !== this.props.column)
+        ) {
+          this.fetchRemappingByProps(this.props);
         }
       }
-      UNSAFE_componentWillReceiveProps(nextProps) {
-        if (
-          nextProps.column &&
-          (this.props.value !== nextProps.value ||
-            this.props.column !== nextProps.column)
-        ) {
-          this.props.fetchRemapping(nextProps.value, nextProps.column.id);
+
+      fetchRemappingByProps(props) {
+        if (props.column) {
+          props.fetchRemapping(props.value, props.column.id);
         }
       }
 
