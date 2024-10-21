@@ -13,8 +13,10 @@ import {
   getCollectionIcon,
 } from "metabase/entities/collections";
 import { isSmallScreen } from "metabase/lib/dom";
+import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { WhatsNewNotification } from "metabase/nav/components/WhatsNewNotification";
+import { getApplicationName } from "metabase/selectors/whitelabel";
 import type { IconName, IconProps } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { Bookmark, Collection, User } from "metabase-types/api";
@@ -32,6 +34,7 @@ import {
 } from "../MainNavbar.styled";
 import { SidebarCollectionLink, SidebarLink } from "../SidebarItems";
 import { SidebarOnboardingSection } from "../SidebarItems/SidebarOnboardingSection";
+import { trackOnboardingChecklistOpened } from "../SidebarItems/SidebarOnboardingSection/analytics";
 import type { SelectedItem } from "../types";
 
 import BookmarkList from "./BookmarkList";
@@ -111,6 +114,9 @@ export function MainNavbarView({
     [collections],
   );
 
+  const ONBOARDING_URL = "/getting-started";
+  const applicationName = useSelector(getApplicationName);
+
   return (
     <ErrorBoundary>
       <SidebarContentRoot>
@@ -124,6 +130,16 @@ export function MainNavbarView({
             >
               {t`Home`}
             </PaddedSidebarLink>
+            {currentUser.is_superuser && (
+              <PaddedSidebarLink
+                icon="learn"
+                url={ONBOARDING_URL}
+                isSelected={nonEntityItem?.url === ONBOARDING_URL}
+                onClick={() => trackOnboardingChecklistOpened()}
+              >
+                {t`How to use ${applicationName}`}
+              </PaddedSidebarLink>
+            )}
           </SidebarSection>
 
           {bookmarks.length > 0 && (
