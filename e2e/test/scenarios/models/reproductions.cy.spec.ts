@@ -1327,6 +1327,8 @@ describe("issue 20624", () => {
       cy.findByText("Retailer").should("be.visible");
       cy.findByText("Vendor").should("not.exist");
     });
+
+    cy.log("check that viz settings are reset");
     openQuestionActions();
     popover().findByText("Turn into a model").click();
     modal().findByText("Turn this into a model").click();
@@ -1334,6 +1336,18 @@ describe("issue 20624", () => {
     tableInteractive().within(() => {
       cy.findByText("Vendor").should("be.visible");
       cy.findByText("Retailer").should("not.exist");
+    });
+
+    cy.log("achieve the same using model metadata");
+    openQuestionActions();
+    popover().findByText("Edit metadata").click();
+    tableHeaderClick("Vendor");
+    cy.findByLabelText("Display name").clear().type("Retailer");
+    cy.button("Save changes").should("be.enabled").click();
+    cy.wait("@updateCard");
+    tableInteractive().within(() => {
+      cy.findByText("Retailer").should("be.visible");
+      cy.findByText("Vendor").should("not.exist");
     });
   });
 });
