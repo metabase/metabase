@@ -1,5 +1,4 @@
 import { push } from "react-router-redux";
-import { createAction } from "redux-actions";
 import _ from "underscore";
 
 import { updateSetting } from "metabase/admin/settings/settings";
@@ -8,6 +7,7 @@ import { getDefaultEngineKey } from "metabase/databases/utils/engine";
 import Databases from "metabase/entities/databases";
 import {
   combineReducers,
+  createAction,
   createThunkAction,
   handleActions,
 } from "metabase/lib/redux";

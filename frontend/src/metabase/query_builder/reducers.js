@@ -8,6 +8,14 @@ import {
 } from "metabase/dashboard/actions";
 import TimelineEvents from "metabase/entities/timeline-events";
 import { copy } from "metabase/lib/utils";
+import {
+  CLOSED_NATIVE_EDITOR_SIDEBARS,
+  DEFAULT_DASHBOARD_STATE,
+  DEFAULT_LOADING_CONTROLS,
+  DEFAULT_QUERY_STATUS,
+  DEFAULT_UI_CONTROLS,
+  UI_CONTROLS_SIDEBAR_DEFAULTS,
+} from "metabase/query_builder/defaults";
 
 import {
   API_CREATE_QUESTION,
@@ -64,57 +72,6 @@ import {
   onOpenQuestionSettings,
   onOpenTimelines,
 } from "./actions";
-
-const DEFAULT_UI_CONTROLS = {
-  dataReferenceStack: null,
-  isModifiedFromNotebook: false,
-  isShowingDataReference: false,
-  isShowingTemplateTagsEditor: false,
-  isShowingNewbModal: false,
-  isRunning: false,
-  isQueryComplete: false,
-  isShowingSummarySidebar: false,
-  isShowingChartTypeSidebar: false,
-  isShowingChartSettingsSidebar: false,
-  isShowingQuestionInfoSidebar: false,
-  isShowingTimelineSidebar: false,
-  isNativeEditorOpen: false,
-  initialChartSetting: null,
-  isShowingRawTable: false, // table/viz toggle
-  queryBuilderMode: false, // "view" | "notebook" | "dataset"
-  previousQueryBuilderMode: false,
-  snippetCollectionId: null,
-  datasetEditorTab: "query", // "query" / "metadata"
-};
-
-const DEFAULT_LOADING_CONTROLS = {
-  showLoadCompleteFavicon: false,
-  documentTitle: "",
-  timeoutId: "",
-};
-
-const DEFAULT_DASHBOARD_STATE = {
-  dashboardId: null,
-  isEditing: false,
-};
-
-const DEFAULT_QUERY_STATUS = "idle";
-
-const UI_CONTROLS_SIDEBAR_DEFAULTS = {
-  isShowingSummarySidebar: false,
-  isShowingChartSettingsSidebar: false,
-  isShowingChartTypeSidebar: false,
-  isShowingTimelineSidebar: false,
-  isShowingQuestionInfoSidebar: false,
-};
-
-// this is used to close other sidebar when one is updated
-const CLOSED_NATIVE_EDITOR_SIDEBARS = {
-  isShowingTemplateTagsEditor: false,
-  isShowingSnippetSidebar: false,
-  isShowingDataReference: false,
-  isShowingTimelineSidebar: false,
-};
 
 function setUIControls(state, changes) {
   const { queryBuilderMode: currentQBMode, ...currentState } = state;

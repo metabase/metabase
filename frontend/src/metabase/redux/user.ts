@@ -1,8 +1,8 @@
-import { createAction, createReducer } from "@reduxjs/toolkit";
+import { createReducer } from "@reduxjs/toolkit";
 
 import Dashboards from "metabase/entities/dashboards";
 import Users from "metabase/entities/users";
-import { createAsyncThunk } from "metabase/lib/redux";
+import { createAction, createAsyncThunk } from "metabase/lib/redux";
 import { CLOSE_QB_NEWB_MODAL } from "metabase/query_builder/actions";
 import { UserApi } from "metabase/services";
 import type { User } from "metabase-types/api";

@@ -169,16 +169,18 @@ const Fields = createEntity({
     ),
 
     addRemappings: createAction(ADD_REMAPPINGS, ({ id }, remappings) => ({
-      fieldId: id,
-      remappings,
+      payload: {
+        fieldId: id,
+        remappings,
+      },
     })),
   },
 
   actions: {
     addParamValues: createAction(ADD_PARAM_VALUES),
-    addFields: createAction(ADD_FIELDS, fields =>
-      normalize(fields, [FieldSchema]),
-    ),
+    addFields: createAction(ADD_FIELDS, fields => ({
+      payload: normalize(fields, [FieldSchema]),
+    })),
   },
 
   // ADDITIONAL REDUCER
