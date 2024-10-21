@@ -175,10 +175,32 @@
   :visibility :settings-manager
   :export?    true)
 
+(def ^:private default-allowed-iframe-hosts
+  "youtube.com,
+loom.com,
+vimeo.com,
+docs.google.com,
+calendar.google.com,
+airtable.com,
+typeform.com,
+canva.com,
+codepen.io,
+figma.com,
+grafana.com,
+miro.com,
+excalidraw.com,
+notion.com,
+atlassian.com,
+trello.com,
+asana.com,
+gist.github.com,
+linkedin.com,
+twitter.com")
+
 (defsetting allowed-iframe-hosts
   (deferred-tru "Allowed iframe hosts")
   :encryption :no
-  :default    "*"
+  :default    default-allowed-iframe-hosts
   :audit      :getter
   :visibility :public
   :export?    true)
