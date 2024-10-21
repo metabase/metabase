@@ -10,8 +10,15 @@ body {
 
 .EmbedFrame {
   color: var(--mb-color-text-primary);
-  background-color: var(--mb-color-bg-dashboard);
 }
+
+.EmbedFrame,
+/* this is to make it work when exporting to pdfs, where the EmbedFrame is not part of the exported dom */
+.WithThemeBackground {
+  background-color: var(--mb-color-bg-dashboard);
+  border-color: var(--mb-color-border);
+}
+
 /* A temporary solution until we migrated all colors in visualization to use semantic colors
    e.g. `text-primary`, `text-secondary`, `text-tertiary`. */
 .EmbedFrame svg text {
@@ -60,14 +67,6 @@ body {
   --mb-color-background-disabled: var(--mb-base-color-gray-70);
   --mb-color-background-brand: var(--mb-base-color-brand-60);
 
-  .EmbedFrame,
-    /* this is to make it work when exporting to pdfs,
-  where the EmbedFrame is not part of the exported dom */
-      .WithThemeBackground {
-    background-color: var(--mb-color-bg-dashboard);
-    border-color: var(--mb-color-border);
-  }
-
   .EmbedFrameHeader,
   .EmbedFrameFooter {
     background-color: var(--mb-color-bg-dashboard);
@@ -99,6 +98,10 @@ body {
     .DashCard .Card {
       background-color: transparent;
     }
+  }
+
+  .WithThemeBackground {
+    background-color: transparent;
   }
 
   .EmbedFrameHeader,
