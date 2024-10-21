@@ -72,7 +72,8 @@
 
 (def ^:private channel-template-details-type
   #{:email/mustache-text
-    :email/mustache-resource})
+    :email/mustache-resource
+    :email/django-resource})
 
 (def ^:private ChannelTemplateEmailDetails
   [:merge
@@ -86,7 +87,8 @@
       [:path string?]]]
     [:email/mustache-text
      [:map
-      [:body string?]]]]])
+      [:body string?]]]
+    [::mc/default :map]]])
 
 (def ChannelTemplate
   "Channel Template schema."

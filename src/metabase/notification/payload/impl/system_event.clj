@@ -1,6 +1,5 @@
 (ns metabase.notification.payload.impl.system-event
   (:require
-   [java-time.api :as t]
    [metabase.email.messages :as messages]
    [metabase.models.user :as user]
    [metabase.notification.payload.core :as notification.payload]
@@ -26,8 +25,7 @@
   [topic event-info]
   (case topic
     :event/user-invited
-    {:user_invited_today         (t/format "MMM'&nbsp;'dd,'&nbsp;'yyyy" (t/zoned-date-time))
-     :user_invited_email_subject (trs "You''re invited to join {0}''s {1}" (public-settings/site-name) (messages/app-name-trs))
+    {:user_invited_email_subject (trs "You''re invited to join {0}''s {1}" (public-settings/site-name) (messages/app-name-trs))
      :user_invited_join_url      (join-url (:object event-info))}
 
     :event/alert-create

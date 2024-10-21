@@ -12,6 +12,7 @@
    [metabase.util.i18n :refer [trs]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [selmer.parser :as selmer]
    [stencil.core :as stencil]))
 
 (def ^:private EmailMessage
@@ -144,7 +145,12 @@
     (stencil/render-file (:path details) payload)
     :email/mustache-text
     (stencil/render-string (:body details) payload)
+    :email/django-resource
+    (selmer/render-file (:path details) payload)
     nil))
+
+#_(dev.render-png/open-html (selmer/render-file "metabase/email/new_user_invite.html" notification-payload))
+#_(dev.render-png/open-html (render-body template notification-payload))
 
 (mu/defmethod channel/render-notification
   [:channel/email :notification/system-event]
@@ -153,6 +159,8 @@
    template             :- models.channel/ChannelTemplate
    recipients           :- [:sequential models.notification/NotificationRecipient]]
   (assert (some? template) "Template is required for system event notifications")
+  (def notification-payload notification-payload)
+  (def template template)
   [(construct-email (channel.params/substitute-params (-> template :details :subject) notification-payload)
                     (notification-recipients->emails recipients notification-payload)
                     [{:type    "text/html; charset=utf-8"

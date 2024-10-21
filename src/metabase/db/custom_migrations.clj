@@ -1600,9 +1600,9 @@
                      :channel_template
                      {:name         "User joined Email template"
                       :channel_type "channel/email"
-                      :details      (json/generate-string {:type           "email/mustache-resource"
+                      :details      (json/generate-string {:type           "email/django-resource"
                                                            :subject        "{{payload.custom.user_invited_email_subject}}"
-                                                           :path           "metabase/email/new_user_invite.mustache"
+                                                           :path           "metabase/email/new_user_invite.html"
                                                            :recipient-type :cc})
                       :created_at   :%now
                       :updated_at   :%now})]
