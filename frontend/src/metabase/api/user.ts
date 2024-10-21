@@ -1,5 +1,7 @@
+import { updateCurrentUser } from "metabase/redux/user";
 import type {
   CreateUserRequest,
+  CurrentUser,
   ListUsersRequest,
   ListUsersResponse,
   UpdatePasswordRequest,
@@ -42,6 +44,20 @@ export const userApi = Api.injectEndpoints({
         url: `/api/user/${id}`,
       }),
       providesTags: user => (user ? provideUserTags(user) : []),
+    }),
+    getCurrentUser: builder.query<CurrentUser, void>({
+      query: () => ({
+        method: "GET",
+        url: "/api/user/current",
+      }),
+      providesTags: user => (user ? provideUserTags(user) : []),
+      onCacheEntryAdded: async (_, { dispatch, cacheDataLoaded }) => {
+        // lots of stuff relies on the currentUser global state, so let's also update it there
+        const response = await cacheDataLoaded;
+        if (response.data) {
+          dispatch(updateCurrentUser(response.data));
+        }
+      },
     }),
     createUser: builder.mutation<User, CreateUserRequest>({
       query: body => ({
@@ -92,6 +108,7 @@ export const {
   useListUsersQuery,
   useListUserRecipientsQuery,
   useGetUserQuery,
+  useGetCurrentUserQuery,
   useCreateUserMutation,
   useUpdatePasswordMutation,
   useDeactivateUserMutation,
