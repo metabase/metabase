@@ -8,7 +8,7 @@ import { HoverCard, useDelayGroup } from "metabase/ui";
 const POPOVER_TRANSITION_DURATION = 150;
 
 // Initially, the user will have to hover for this long to open the popover
-const POPOVER_SLOW_OPEN_DELAY = 500;
+const POPOVER_SLOW_OPEN_DELAY = 250;
 
 // When an item in the same delay group is already open, we want to open the
 // popover immediately, without waiting for the user to hover for POPOVER_SLOW_OPEN_DELAY.
@@ -34,12 +34,14 @@ export type PopoverProps = Pick<
 > & {
   width?: number;
   content: ReactNode;
+  openDelay?: number;
 };
 
 export function Popover({
   position = "bottom-start",
   disabled,
   content,
+  openDelay = POPOVER_SLOW_OPEN_DELAY,
   width,
   children,
 }: PopoverProps) {
@@ -65,9 +67,7 @@ export function Popover({
     <HoverCard
       position={position}
       disabled={disabled}
-      openDelay={
-        group.shouldDelay ? POPOVER_SLOW_OPEN_DELAY : POPOVER_FAST_OPEN_DELAY
-      }
+      openDelay={group.shouldDelay ? openDelay : POPOVER_FAST_OPEN_DELAY}
       closeDelay={POPOVER_CLOSE_DELAY}
       onOpen={handleOpen}
       onClose={handleClose}

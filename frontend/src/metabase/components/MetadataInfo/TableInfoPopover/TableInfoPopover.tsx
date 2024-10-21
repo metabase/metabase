@@ -17,6 +17,7 @@ export function TableInfoPopover({
   children,
   disabled,
   position,
+  openDelay,
   table,
   ...rest
 }: TableInfoPopoverProps) {
@@ -30,6 +31,7 @@ export function TableInfoPopover({
     <Popover
       position={position}
       disabled={disabled}
+      openDelay={openDelay}
       content={<TableInfo tableId={table.id} {...rest} />}
     >
       {children}
