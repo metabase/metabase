@@ -1777,8 +1777,8 @@ describe("issue 48878", () => {
     cy.log("create dummy model");
 
     // Create a dummy model so that GET /api/search does not return the model want to test.
-    // That would put card object with dataset_query attribute in redux store (entity framework) which
-    // would prevent the issue from happening.
+    // If we don't do this, GET /api/search will return and put card object with dataset_query
+    // attribute in the redux store (entity framework) which would prevent the issue from happening.
     cy.visit("/model/new");
     createModel({
       name: "Dummy model",
