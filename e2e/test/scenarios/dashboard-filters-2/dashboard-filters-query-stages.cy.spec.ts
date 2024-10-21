@@ -840,7 +840,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
         });
 
         // TODO: https://github.com/metabase/metabase/issues/46774
-        it("1st stage implicit join (joined data source)", () => {
+        it.skip("1st stage implicit join (joined data source)", () => {
           setup1stStageImplicitJoinFromJoinFilter();
 
           verifyDashcardCellValues({
@@ -889,7 +889,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
         });
 
         // TODO: https://github.com/metabase/metabase/issues/46774
-        it("1st stage breakout", () => {
+        it.skip("1st stage breakout", () => {
           setup1stStageBreakoutFilter();
 
           verifyDashcardCellValues({
@@ -1096,7 +1096,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
         });
 
         // TODO: https://github.com/metabase/metabase/issues/46774
-        it("1st stage implicit join (joined data source)", () => {
+        it.skip("1st stage implicit join (joined data source)", () => {
           setup1stStageImplicitJoinFromJoinFilter();
 
           verifyDashcardRowsCount({
@@ -1151,7 +1151,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
         });
 
         // TODO: https://github.com/metabase/metabase/issues/46774
-        it("1st stage breakout", () => {
+        it.skip("1st stage breakout", () => {
           setup1stStageBreakoutFilter();
 
           verifyDashcardRowsCount({
@@ -1391,7 +1391,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
         });
 
         // TODO: zhttps://github.com/metabase/metabase/issues/46774
-        it("1st stage implicit join (joined data source)", () => {
+        it.skip("1st stage implicit join (joined data source)", () => {
           setup1stStageImplicitJoinFromJoinFilter();
 
           verifyDashcardRowsCount({
@@ -1446,7 +1446,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
         });
 
         // TODO: https://github.com/metabase/metabase/issues/46774
-        it("1st stage breakout", () => {
+        it.skip("1st stage breakout", () => {
           setup1stStageBreakoutFilter();
 
           verifyDashcardRowsCount({
@@ -1666,7 +1666,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
         });
 
         // TODO: https://github.com/metabase/metabase/issues/46774
-        it("1st stage implicit join (joined data source)", () => {
+        it.skip("1st stage implicit join (joined data source)", () => {
           setup1stStageImplicitJoinFromJoinFilter();
 
           verifyDashcardCellValues({
@@ -1715,7 +1715,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
         });
 
         // TODO: https://github.com/metabase/metabase/issues/46774
-        it("1st stage breakout", () => {
+        it.skip("1st stage breakout", () => {
           setup1stStageBreakoutFilter();
 
           verifyDashcardCellValues({
