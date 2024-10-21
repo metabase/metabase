@@ -21,14 +21,12 @@ import { SettingTextInput } from "../widgets/SettingTextInput";
 
 import type { AdminSettingComponentProps } from "./types";
 
-function useAddUtmToLink(url: string) {
-  return useUrlWithUtm(url, {
-    utm_source: "product",
-    utm_medium: "docs",
-    utm_campaign: "embedding-sdk",
-    utm_content: "embedding-sdk-admin",
-  });
-}
+const utmTags = {
+  utm_source: "product",
+  utm_medium: "docs",
+  utm_campaign: "embedding-sdk",
+  utm_content: "embedding-sdk-admin",
+};
 
 export function EmbeddingSdkSettings({
   updateSetting,
@@ -74,18 +72,22 @@ export function EmbeddingSdkSettings({
     updateSetting({ key: "enable-embedding-sdk" }, value);
   }
 
-  const { url: activationUrl } = useDocsUrl(
+  const { url: switchMetabaseBinariesUrl } = useDocsUrl(
     "paid-features/activating-the-enterprise-edition",
+    undefined,
+    utmTags,
   );
 
-  const switchMetabaseBinariesUrl = useAddUtmToLink(activationUrl);
-
-  const implementJwtUrl = useAddUtmToLink(
+  const implementJwtUrl = useUrlWithUtm(
     getLearnUrl("metabase-basics/embedding/securing-embeds"),
+    utmTags,
   );
 
-  const quickStartUrl = useAddUtmToLink("https://metaba.se/sdk-quick-start");
-  const documentationUrl = useAddUtmToLink("https://metaba.se/sdk-docs");
+  const quickStartUrl = useUrlWithUtm(
+    "https://metaba.se/sdk-quick-start",
+    utmTags,
+  );
+  const documentationUrl = useUrlWithUtm("https://metaba.se/sdk-docs", utmTags);
 
   const apiKeyBannerText = match({
     isOSS: !isEE && !isHosted,
