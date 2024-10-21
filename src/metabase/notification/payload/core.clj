@@ -3,7 +3,7 @@
    [metabase.email.messages :as messages]
    [metabase.models.notification :as models.notification]
    [metabase.public-settings :as public-settings]
-   [metabase.pulse.render.style :as style]
+   [metabase.pulse.core :as pulse]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]))
@@ -56,7 +56,7 @@
    :site-name            (public-settings/site-name)
    :site-url             (public-settings/site-url)
    :admin-email          (public-settings/admin-email)
-   :style                {:button (messages/button-style (style/primary-color))}})
+   :style                {:button (messages/button-style (pulse/primary-color))}})
 
 (defmulti payload
   "Given a notification info, return the notification payload."
