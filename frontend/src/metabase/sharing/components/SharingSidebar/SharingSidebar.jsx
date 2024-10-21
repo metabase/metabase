@@ -29,6 +29,7 @@ import {
 } from "metabase/sharing/components/AddEditSidebar/AddEditSidebar";
 import { NewPulseSidebar } from "metabase/sharing/components/NewPulseSidebar";
 import PulsesListSidebar from "metabase/sharing/components/PulsesListSidebar";
+import { isVirtualCardDisplayType } from "metabase-types/api/visualization";
 
 export const CHANNEL_ICONS = {
   email: "mail",
@@ -66,9 +67,9 @@ const cardsFromDashboard = dashboard => {
   }));
 };
 
-const getSupportedCardsForSubscriptions = dashboard => {
+export const getSupportedCardsForSubscriptions = dashboard => {
   return cardsFromDashboard(dashboard).filter(
-    card => !["text", "heading", "action", "link"].includes(card.display),
+    card => !isVirtualCardDisplayType(card.display),
   );
 };
 

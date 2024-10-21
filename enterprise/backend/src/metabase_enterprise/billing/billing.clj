@@ -32,7 +32,7 @@
                   (json/parse-string keyword))
           (catch JsonParseException _
             {:content nil})))
-   :ttl/threshold (u/hours->ms 5)))
+   :ttl/threshold (u/minutes->ms 5)))
 
 (defn- valid-thru []
   (some->> (premium-features/premium-embedding-token)
