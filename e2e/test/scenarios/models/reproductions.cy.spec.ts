@@ -1322,7 +1322,7 @@ describe("issue 20624", () => {
   });
 
   it("should reset the question's viz settings when converting to a model", () => {
-    cy.log("check that a column is renamed according to the viz settings");
+    cy.log("check that a column is renamed via the viz settings");
     createQuestion(questionDetails, { visitQuestion: true });
     tableInteractive().within(() => {
       cy.findByText("Retailer").should("be.visible");
