@@ -22,7 +22,7 @@ const DatabaseSslKeyDescription = (): JSX.Element | null => {
   return (
     <>
       {jt`If you have a PEM SSL client key, you can convert that key to the PKCS-8/DER format using OpenSSL. ${(
-        <ExternalLink href={docsUrl}>{t`Learn more`}</ExternalLink>
+        <ExternalLink key="link" href={docsUrl}>{t`Learn more`}</ExternalLink>
       )}.`}
     </>
   );

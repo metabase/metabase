@@ -5,6 +5,7 @@ import {
 } from "e2e/support/cypress_sample_instance_data";
 import {
   mockSlackConfigured,
+  modal,
   openSharingMenu,
   popover,
   restore,
@@ -29,10 +30,27 @@ describe("scenarios > alert", () => {
       visitQuestion(ORDERS_QUESTION_ID);
       openSharingMenu("Create alert");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(
-        "To send alerts, you'll need to set up email or Slack integration.",
-      );
+      modal().within(() => {
+        cy.findByText(
+          "To send alerts, you'll need to set up email, Slack or Webhook integration.",
+        );
+
+        cy.findByRole("link", { name: "Configure email" }).should(
+          "have.attr",
+          "href",
+          "/admin/settings/email",
+        );
+        cy.findByRole("link", { name: "Configure Slack" }).should(
+          "have.attr",
+          "href",
+          "/admin/settings/notifications/slack",
+        );
+        cy.findByRole("link", { name: "Configure webhook" }).should(
+          "have.attr",
+          "href",
+          "/admin/settings/notifications",
+        );
+      });
     });
 
     it("should say to non-admins that admin must add email credentials", () => {
@@ -123,6 +141,10 @@ describe("scenarios > alert", () => {
 
       popover().within(() => {
         cy.findByText("You set up an alert").should("be.visible");
+        cy.findByRole("listitem", { name: "Number of HTTP channels" })
+          .should("contain.text", "2")
+          .findByRole("img", { name: /webhook/i })
+          .should("exist");
         cy.findByText("Edit").click();
       });
 

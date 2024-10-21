@@ -111,6 +111,7 @@ const DeleteDatabaseModal = ({
               <Alert icon="info">
                 {jt`If you’re trying to migrate from a development DB to a production one, you don’t need to do this. You can just ${(
                   <Button
+                    key="button"
                     onlyText
                     onClick={handleEditConnectionDetailsClick}
                   >{t`edit your connection details.`}</Button>
@@ -146,7 +147,7 @@ const DeleteDatabaseModal = ({
           >
             <p>
               {jt`If you’re sure, please type ${(
-                <strong>{database.name}</strong>
+                <strong key="name">{database.name}</strong>
               )} in this box:`}
             </p>
             <DatabaseNameInputContainer>
