@@ -24,7 +24,7 @@ export function useLoadStaticQuestion(
     error: null,
   });
 
-  const changeVisualization = (newQuestion: Question) =>
+  const updateQuestion = (newQuestion: Question) =>
     setQuestionState(state => ({
       ...state,
       card: newQuestion.card(),
@@ -77,5 +77,5 @@ export function useLoadStaticQuestion(
     };
   }, [questionId, parameterValues]);
 
-  return { ...questionState, changeVisualization };
+  return { ...questionState, updateQuestion };
 }

@@ -78,7 +78,7 @@ const StaticQuestionInner = ({
 
   const metadata = useSelector(getMetadata);
 
-  const { card, loading, result, error, changeVisualization } =
+  const { card, loading, result, error, updateQuestion } =
     useLoadStaticQuestion(questionId, parameterValues);
 
   const isLoading = loading || (!result && !error) || isValidatingEntityId;
@@ -109,7 +109,7 @@ const StaticQuestionInner = ({
           <StaticQuestionVisualizationSelector
             question={question}
             result={result}
-            onUpdateQuestion={changeVisualization}
+            onUpdateQuestion={updateQuestion}
           />
         )}
         <QueryVisualization
