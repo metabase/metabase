@@ -62,7 +62,7 @@ export const InsightsLink = ({
     <Flex
       className={SidesheetS.InsightsTab}
       p="11px 8px"
-      c="var(--mb-color-text-dark)"
+      c="text-dark"
       fw="bold"
       lh="1rem"
     >
