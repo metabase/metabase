@@ -23,7 +23,6 @@ import { getSuggestions } from "metabase/redux/suggestionsSlice";
 import { NoDatabaseError, SemanticError } from "metabase/components/ErrorPages";
 import { Client } from "@langchain/langgraph-sdk";
 import { Client as ClientSmith } from "langsmith/client";
-import toast from 'react-hot-toast'; 
 import { useSetting } from "metabase/common/hooks";
 
 export const HomeLayout = () => {
@@ -40,7 +39,6 @@ export const HomeLayout = () => {
   const [insights, setInsights] = useState([]);
   const [hasDatabases, setHasDatabases] = useState<boolean>(false)
   const [dbId, setDbId] = useState<number | null>(null)
-  const [company, setCompany] = useState<string | null>(null)
   const [schema, setSchema] = useState<any[]>([]);
   const [messages, setMessages] = useState([]);
   const [threadId, setThreadId] = useState('')
@@ -52,6 +50,7 @@ export const HomeLayout = () => {
   const langchain_key = useSetting("langchain-key");
   const [client, setClient] = useState<any>(null);
   const [clientSmith, setSmithClient] = useState<any>(null);
+  const [isClientSetup, setIsClientSetup] = useState<boolean>(false);
   const [shouldRefetchHistory, setShouldRefetchHistory] = useState(false); // State to trigger chat history refresh
   const siteName = useSetting("site-name");
   const formattedSiteName = siteName
@@ -60,13 +59,17 @@ export const HomeLayout = () => {
 
   useEffect(() => {
     const initializeClient = async () => {
-      const clientInstance = new Client({apiUrl: langchain_url, apiKey: langchain_key});
-      const clientSmithInstance = new ClientSmith({apiKey: langchain_key})
+      const clientInstance = new Client({ apiUrl: langchain_url, apiKey: langchain_key });
+      const clientSmithInstance = new ClientSmith({ apiKey: langchain_key })
       setSmithClient(clientSmithInstance)
       setClient(clientInstance);
     };
-    initializeClient();
-  }, []);
+    if (langchain_url !== null && langchain_key !== null) {
+      initializeClient();
+      setIsClientSetup(true);
+    }
+
+  }, [langchain_url, langchain_key]);
 
   const dispatch = useDispatch();
   const {
@@ -92,7 +95,6 @@ export const HomeLayout = () => {
         dispatch(setDBInputValue(cubeDatabase.id as number));
         dispatch(setCompanyName(formattedSiteName as string));
         setDbId(cubeDatabase.id as number)
-        setCompany(formattedSiteName as string)
       }
     }
   }, [databases]);
@@ -247,6 +249,7 @@ export const HomeLayout = () => {
                             inputValue={inputValue}
                             setInputValue={setInputValue}
                             onSendMessage={handleSendMessage}
+                            isClientSetup={isClientSetup}
                           />
                         </ChatSection>
                       ) : (
