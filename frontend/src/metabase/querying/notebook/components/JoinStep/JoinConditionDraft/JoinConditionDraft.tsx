@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useLayoutEffect, useState } from "react";
 
 import { Box, Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -76,6 +76,13 @@ export function JoinConditionDraft({
     setRhsColumn(newRhsColumn);
     handleColumnChange(lhsColumn, newRhsColumn);
   };
+
+  useLayoutEffect(() => {
+    setLhsColumn(undefined);
+    setRhsColumn(undefined);
+    setIsLhsOpened(true);
+    setIsRhsOpened(false);
+  }, [joinable]);
 
   return (
     <JoinConditionRoot>
