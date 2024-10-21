@@ -104,7 +104,7 @@ const ActionComponent = ({
     shouldConfirm
   );
 
-  const canWrite = model?.canWriteActions();
+  const canWrite = Boolean(model?.canWriteActions());
 
   const onSubmit = useCallback(
     async (parameters: ParametersForActionExecution) => {
