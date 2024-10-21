@@ -2358,3 +2358,11 @@
   > **Code health:** Healthy"
   [a-query]
   (lib.core/ensure-filter-stage a-query))
+
+(defn ^:export display-name-attempt
+  "Adjust display name for FE purposes"
+  [column-metadata]
+  ;; following need query that's not accessible in that lib1 code
+  #_(prn column-metadata)
+  (:display_name (lib.core/ensure-temporal-unit-in-display-name
+                  (js->clj column-metadata :keywordize-keys true))))

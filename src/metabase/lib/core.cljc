@@ -323,6 +323,7 @@
   describe-temporal-unit
   describe-temporal-interval
   describe-relative-datetime
+  ensure-temporal-unit-in-display-name
   available-temporal-buckets
   available-temporal-units
   raw-temporal-bucket

@@ -8,6 +8,7 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
+   [metabase.lib.util :as lib.util]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
@@ -302,3 +303,20 @@
                     original-temporal-unit
                     (assoc :metabase.lib.field/original-temporal-unit original-temporal-unit))]
       [tag options id-or-name])))
+
+(defn ensure-temporal-unit-in-display-name
+  "Adjust `:display_name` to contain temporal_unit"
+  [column-metadata]
+  (let [res (if-some [temporal-unit (or (:unit column-metadata)
+                                        (get-in column-metadata [:field_ref 2 :temporal-unit]))]
+              (let [temporal-unit-for-humans (describe-temporal-unit temporal-unit)
+                    display-name (:display_name column-metadata)]
+                (if (or (= :default temporal-unit)
+                        (str/ends-with? display-name temporal-unit-for-humans))
+                  column-metadata
+                  (update column-metadata :display_name (partial lib.util/format "%s: %s") temporal-unit-for-humans)))
+              column-metadata)]
+    #?(:cljs (do (.log js/console "ensure-temporal-unit-in-display-name")
+                 (.log js/console column-metadata)
+                 (.log js/console res)))
+    res))

@@ -235,7 +235,8 @@
   [metadata]
   ;; TODO -- can we make this whole thing a lazy seq?
   (when-let [metadata (not-empty (json-out-with-keywordization metadata))]
-    (seq (map mbql.normalize/normalize-source-metadata metadata))))
+    (seq (->> (map mbql.normalize/normalize-source-metadata metadata)
+              (map metabase.lib.temporal-bucket/ensure-temporal-unit-in-display-name)))))
 
 (def transform-result-metadata
   "Transform for card.result_metadata like columns."
