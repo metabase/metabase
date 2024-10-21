@@ -389,13 +389,13 @@
 (deftest ^:parallel json-query-test
   (let [boop-identifier (h2x/identifier :field "boop" "bleh -> meh")]
     (testing "Transforming MBQL query with JSON in it to postgres query works"
-      (let [boop-field {:nfc-path [:bleh :meh] :database-type "bigint"}]
+      (let [boop-field {:nfc-path [:bleh :meh] :database-type "decimal"}]
         (is (= [::postgres/json-query
                 [::h2x/identifier :field ["boop" "bleh"]]
-                "bigint"
+                "decimal"
                 [:meh]]
                (#'sql.qp/json-query :postgres boop-identifier boop-field)))
-        (is (= ["(boop.bleh#>> array[?]::text[])::bigint" "meh"]
+        (is (= ["(boop.bleh#>> array[?]::text[])::decimal" "meh"]
                (sql/format-expr (#'sql.qp/json-query :postgres boop-identifier boop-field))))))
     (testing "What if types are weird and we have lists"
       (let [weird-field {:nfc-path [:bleh "meh" :foobar 1234] :database-type "bigint"}]
@@ -561,7 +561,7 @@
           (mt/with-db database
             (sync-tables/sync-tables-and-database! database)
             (is (= #{{:name              "trivial_json → a",
-                      :database-type     "bigint",
+                      :database-type     "decimal",
                       :base-type         :type/Integer,
                       :database-position 0,
                       :json-unfolding    false,
@@ -586,7 +586,7 @@
           (mt/with-db database
             (sync-tables/sync-tables-and-database! database)
             (is (= #{{:name              "trivial_json → a",
-                      :database-type     "bigint",
+                      :database-type     "decimal",
                       :base-type         :type/Integer,
                       :database-position 0,
                       :json-unfolding    false,

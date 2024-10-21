@@ -13,7 +13,7 @@ import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
 import { getMetadata } from "metabase/selectors/metadata";
-import type { Card, Settings } from "metabase-types/api";
+import type { Card, Settings, User } from "metabase-types/api";
 import {
   createMockCard,
   createMockSettings,
@@ -28,14 +28,16 @@ export interface SetupOpts {
   card?: Card;
   settings?: Settings;
   hasEnterprisePlugins?: boolean;
+  user?: Partial<User>;
 }
 
 export const setup = async ({
   card = createMockCard(),
   settings = createMockSettings(),
+  user,
   hasEnterprisePlugins,
-}: SetupOpts) => {
-  const currentUser = createMockUser();
+}: SetupOpts = {}) => {
+  const currentUser = createMockUser(user);
   setupCardEndpoints(card);
   setupUsersEndpoints([currentUser]);
   setupRevisionsEndpoints([]);

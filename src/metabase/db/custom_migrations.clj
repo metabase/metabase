@@ -1260,8 +1260,11 @@
                   (t2/query {:insert-into table-name :values values})))
               (let [group-id (:id (t2/query-one {:select :id :from :permissions_group :where [:= :name "All Users"]}))]
                 (t2/query {:insert-into :permissions
-                           :values      [{:object   (format "/collection/%s/" example-collection-id)
-                                          :group_id group-id}]}))
+                           :values      [{:object        (format "/collection/%s/" example-collection-id)
+                                          :group_id      group-id
+                                          :perm_type     "perms/collection-access"
+                                          :perm_value    "read-and-write"
+                                          :collection_id example-collection-id}]}))
               (t2/query {:insert-into :setting
                          :values      [{:key   "example-dashboard-id"
                                         :value (str example-dashboard-id)}]})))))))
