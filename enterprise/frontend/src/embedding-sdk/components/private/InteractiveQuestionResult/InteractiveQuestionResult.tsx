@@ -115,7 +115,7 @@ export const InteractiveQuestionResult = ({
               )
             }
           />
-          {isSaveEnabled && (
+          {isSaveEnabled && !isSaveModalOpen && (
             <InteractiveQuestion.SaveButton onClick={openSaveModal} />
           )}
         </Group>
