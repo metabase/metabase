@@ -3,13 +3,8 @@ import { Link } from "react-router";
 
 import Card from "metabase/components/Card";
 
-import { BrowseGrid } from "../components/BrowseContainer.styled";
-
-export const DatabaseGrid = styled(BrowseGrid)``;
-
 export const DatabaseCard = styled(Card)`
   padding: 1.5rem;
-  margin-bottom: 1rem;
   box-shadow: none;
 
   &:hover {
