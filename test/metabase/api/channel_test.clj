@@ -1,11 +1,15 @@
 (ns metabase.api.channel-test
   (:require
    [clojure.test :refer :all]
+   [metabase.channel.core :as channel]
    [metabase.channel.http-test :as channel.http-test]
    [metabase.notification.test-util :as notification.tu]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
+
+#_{:clj-kondo/ignore [:metabase/validate-deftest]}
+(use-fixtures :once (fn [& _args] (channel/find-and-load-metabase-channels!)))
 
 (set! *warn-on-reflection* true)
 

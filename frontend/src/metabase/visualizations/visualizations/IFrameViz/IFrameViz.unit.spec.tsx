@@ -61,6 +61,7 @@ describe("IFrameViz", () => {
       "allow-scripts allow-same-origin allow-forms allow-popups",
     );
   });
+
   it("should render iframe input in editing mode", () => {
     setup({ isEditing: true });
 

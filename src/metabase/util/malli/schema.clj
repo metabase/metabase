@@ -59,6 +59,14 @@
        maps-schema]
       (deferred-tru "value must be seq of maps in which {0}s are unique" (name k))))))
 
+(defn enum-keywords-and-strings
+  "Returns an enum schema that accept both keywords and strings.
+    (enum-keywords-and-strings :foo :bar)
+    ;; => [:enum :foo :bar \"foo\" \"bar\"]"
+  [& keywords]
+  (assert (every? keyword? keywords))
+  (vec (concat [:enum] keywords (map u/qualified-name keywords))))
+
 ;;; -------------------------------------------------- Schemas --------------------------------------------------
 
 (def NonBlankString

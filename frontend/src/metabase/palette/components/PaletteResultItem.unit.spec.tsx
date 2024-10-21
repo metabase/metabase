@@ -109,6 +109,7 @@ describe("Mouse/keyboard interactions", () => {
   const initialLocation = {
     pathname: "/",
   };
+
   describe("The 'Search documentation for...' command palette item", () => {
     const searchDocs: Partial<PaletteActionImpl> = {
       id: "search_docs",

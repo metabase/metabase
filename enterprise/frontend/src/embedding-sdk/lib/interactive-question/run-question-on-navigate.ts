@@ -3,7 +3,7 @@ import type {
   NavigateToNewCardParams,
   SdkQuestionState,
 } from "embedding-sdk/types/question";
-import { loadCard } from "metabase/lib/card";
+import { loadCard } from "metabase/query_builder/actions/core/card";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/utils";

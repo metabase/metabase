@@ -16,16 +16,21 @@
 
 (def ^:private EmailMessage
   [:map
-   [:subject      :string]
-   [:recipients   [:sequential ms/Email]]
-   [:message-type [:enum :attachments :html :text]]
-   [:message      :any]])
+   [:subject                         :string]
+   [:recipients                      [:sequential ms/Email]]
+   [:message-type                    [:enum :attachments :html :text]]
+   [:message                         :any]
+   [:recipient-type {:optional true} [:maybe (ms/enum-keywords-and-strings :cc :bcc)]]])
 
-(defn- construct-email [subject recipients message]
-  {:subject      subject
-   :recipients   recipients
-   :message-type :attachments
-   :message      message})
+(defn- construct-email
+  ([subject recipients message]
+   (construct-email subject recipients message nil))
+  ([subject recipients message recipient-type]
+   {:subject        subject
+    :recipients     recipients
+    :message-type   :attachments
+    :message        message
+    :recipient-type recipient-type}))
 
 (defn- recipients->emails
   [recipients]
@@ -52,12 +57,14 @@
     nil))
 
 (mu/defmethod channel/send! :channel/email
-  [_channel {:keys [subject recipients message-type message]} :- EmailMessage]
+  [_channel {:keys [subject recipients message-type message recipient-type]} :- EmailMessage]
   (email/send-message-or-throw! {:subject      subject
                                  :recipients   recipients
                                  :message-type message-type
                                  :message      message
-                                 :bcc?         (email/bcc-enabled?)}))
+                                 :bcc?         (if recipient-type
+                                                 (= :bcc recipient-type)
+                                                 (email/bcc-enabled?))}))
 
 (mu/defmethod channel/render-notification [:channel/email :notification/alert] :- [:sequential EmailMessage]
   [_channel-type {:keys [card pulse payload pulse-channel]} _template recipients]
@@ -113,25 +120,31 @@
 ;; ------------------------------------------------------------------------------------------------;;
 
 (defn- notification-recipients->emails
-  [recipients]
+  [recipients payload]
   (into [] cat (for [recipient recipients
-                     :let [emails (case (:type recipient)
+                     :let [details (:details recipient)
+                           emails (case (:type recipient)
                                     :notification-recipient/user
                                     [(-> recipient :user :email)]
                                     :notification-recipient/group
                                     (->> recipient :permissions_group :members (map :email))
                                     :notification-recipient/external-email
-                                    [(-> recipient :details :email)])]
+                                    [(:email details)]
+                                    :notification-recipient/template
+                                    [(not-empty (channel.params/substitute-params (:pattern details) payload :ignore-missing? (:is_optional details)))]
+                                    nil)]
+                     :let  [emails (filter some? emails)]
                      :when (seq emails)]
                  emails)))
 
 (defn- render-body
   [{:keys [details] :as _template} payload]
   (case (keyword (:type details))
-    :email/resource
+    :email/mustache-resource
     (stencil/render-file (:path details) payload)
-    :email/mustache
-    (stencil/render-string (:body details) payload)))
+    :email/mustache-text
+    (stencil/render-string (:body details) payload)
+    nil))
 
 (mu/defmethod channel/render-notification
   [:channel/email :notification/system-event]
@@ -142,6 +155,7 @@
   (assert (some? template) "Template is required for system event notifications")
   (let [payload (:payload notification-info)]
     [(construct-email (channel.params/substitute-params (-> template :details :subject) payload)
-                      (notification-recipients->emails recipients)
+                      (notification-recipients->emails recipients payload)
                       [{:type    "text/html; charset=utf-8"
-                        :content (render-body template payload)}])]))
+                        :content (render-body template payload)}]
+                      (-> template :details :recipient-type keyword))]))

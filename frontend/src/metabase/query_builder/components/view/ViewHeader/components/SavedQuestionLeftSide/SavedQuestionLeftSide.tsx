@@ -11,12 +11,11 @@ import {
   ViewHeaderLeftSubHeading,
   ViewHeaderMainLeftContentContainer,
 } from "metabase/query_builder/components/view/ViewHeader/ViewTitleHeader.styled";
-import {
-  HeadBreadcrumbs,
-  QuestionDataSource,
-} from "metabase/query_builder/components/view/ViewHeader/components";
-import { HeaderCollectionBadge } from "metabase/query_builder/components/view/ViewHeader/components/HeaderCollectionBadge/HeaderCollectionBadge";
 import type Question from "metabase-lib/v1/Question";
+
+import { HeadBreadcrumbs } from "../HeaderBreadcrumbs";
+import { HeaderCollectionBadge } from "../HeaderCollectionBadge";
+import { QuestionDataSource } from "../QuestionDataSource";
 
 interface SavedQuestionLeftSideProps {
   question: Question;

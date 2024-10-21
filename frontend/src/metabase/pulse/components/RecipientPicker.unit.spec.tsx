@@ -30,6 +30,7 @@ describe("recipient picker", () => {
       expect(await screen.findByText("Barb")).toBeInTheDocument();
       expect(await screen.findByText("Dustin")).toBeInTheDocument();
     });
+
     it("should not be focused if there are existing recipients", () => {
       renderWithProviders(
         <RecipientPicker

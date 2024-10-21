@@ -33,6 +33,7 @@ import type {
   ModelFilterControlsProps,
   ModelFilterSettings,
 } from "metabase/browse/models";
+import type { LinkProps } from "metabase/core/components/Link";
 import { getIconBase } from "metabase/lib/icon";
 import PluginPlaceholder from "metabase/plugins/components/PluginPlaceholder";
 import type { SearchFilterComponent } from "metabase/search/types";
@@ -547,8 +548,21 @@ export const PLUGIN_QUERY_BUILDER_HEADER = {
   extraButtons: (_question: Question) => [],
 };
 
+export type InsightsLinkProps = (
+  | {
+      question: Pick<Question, "id" | "collection">;
+      dashboard?: never;
+    }
+  | {
+      question?: never;
+      dashboard: Pick<Dashboard, "id" | "collection">;
+    }
+) &
+  Omit<LinkProps, "to">;
+
 export const PLUGIN_AUDIT = {
   isAuditDb: (_db: DatabaseType) => false,
+  InsightsLink: PluginPlaceholder as ComponentType<InsightsLinkProps>,
 };
 
 export const PLUGIN_UPLOAD_MANAGEMENT = {

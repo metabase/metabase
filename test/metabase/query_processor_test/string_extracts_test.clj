@@ -1,6 +1,7 @@
 (ns ^:mb/driver-tests metabase.query-processor-test.string-extracts-test
   (:require
    [clojure.test :refer :all]
+   [metabase.driver :as driver]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.test.data :as data]))
@@ -70,9 +71,30 @@
 
 (deftest ^:parallel test-concat
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
-    (is (= "foobar" (test-string-extract [:concat "foo" "bar"])))
+    (testing "Does concat work with 2 strings"
+      (is (= "foobar" (test-string-extract [:concat "foo" "bar"]))))
     (testing "Does concat work with >2 args"
-      (is (= "foobar" (test-string-extract [:concat "f" "o" "o" "b" "a" "r"]))))))
+      (is (= "foobar" (test-string-extract [:concat "f" "o" "o" "b" "a" "r"]))))
+    (testing "Does concat work with nested concat expressions"
+      (is (= "foobar" (test-string-extract [:concat [:concat "f" "o" "o"] [:concat "b" "a" "r"]]))))))
+
+(defmethod driver/database-supports? [::driver/driver ::concat-non-string-args]
+  [_driver _feature _database]
+  true)
+
+;; These drivers do not support concat with non-string args
+(doseq [driver [:athena :mongo :presto-jdbc :vertica]]
+  (defmethod driver/database-supports? [driver ::concat-non-string-args]
+    [_driver _feature _database]
+    false))
+
+(deftest ^:parallel test-concat-non-string-args
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions ::concat-non-string-args)
+    (testing "Does concat work with non-string args"
+      (is (= "1234" (test-string-extract [:concat 123 [:+ 1 3]])))))
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions ::concat-non-string-args :temporal-extract)
+    (testing "Does concat work with nested temporal-extraction expressions"
+      (is (= "2024Q4" (test-string-extract [:concat [:get-year "2024-10-08"] "Q" [:get-quarter "2024-10-08"]]))))))
 
 (deftest ^:parallel test-regex-match-first
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions :regex)

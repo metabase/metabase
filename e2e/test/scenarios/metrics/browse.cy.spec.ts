@@ -111,11 +111,24 @@ describe("scenarios > browse > metrics", () => {
 
     it("should show the empty metrics page", () => {
       cy.visit("/browse/metrics");
-      main()
-        .findByText(
+      main().within(() => {
+        cy.findByText(
           "Create Metrics to define the official way to calculate important numbers for your team",
-        )
-        .should("be.visible");
+        ).should("be.visible");
+        cy.findByText("Create metric").should("be.visible").click();
+      });
+      cy.location("pathname").should("eq", "/metric/query");
+    });
+
+    it("should not show the create metric button if the user does not have data access", () => {
+      cy.signInAsSandboxedUser();
+      cy.visit("/browse/metrics");
+      main().within(() => {
+        cy.findByText(
+          "Create Metrics to define the official way to calculate important numbers for your team",
+        ).should("be.visible");
+        cy.findByText("Create metric").should("not.exist");
+      });
     });
   });
 

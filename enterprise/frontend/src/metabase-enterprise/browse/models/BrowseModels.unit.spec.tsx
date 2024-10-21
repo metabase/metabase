@@ -190,6 +190,7 @@ describe("BrowseModels", () => {
     ).toBeInTheDocument();
     expect(screen.queryByText("instance analytics")).not.toBeInTheDocument();
   });
+
   it("displays recently viewed models when there are enough models", async () => {
     setup(9);
     const recentModelsGrid = await screen.findByRole("grid", {
@@ -197,6 +198,7 @@ describe("BrowseModels", () => {
     });
     expect(recentModelsGrid).toBeInTheDocument();
   });
+
   it("displays no recently viewed models when there are fewer than 9 models", async () => {
     setup(8);
     const recentModelsGrid = screen.queryByRole("grid", {

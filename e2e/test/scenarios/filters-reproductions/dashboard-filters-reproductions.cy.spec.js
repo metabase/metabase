@@ -276,6 +276,7 @@ describe("issue 12720, issue 47172", () => {
       },
     },
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -371,6 +372,7 @@ describe("issue 12985 > dashboard filter dropdown/search", () => {
   };
 
   const dashboardDetails = { parameters: [categoryFilter] };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -687,6 +689,7 @@ describe("issue 17211", () => {
   const dashboardDetails = {
     parameters: [filter],
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -840,6 +843,7 @@ describe("issue 17775", () => {
   ];
 
   const dashboardDetails = { parameters };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -923,6 +927,7 @@ describe("issue 19494", () => {
   function checkAppliedFilter(name, value) {
     cy.findByText(name).closest("fieldset").contains(value);
   }
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -1624,6 +1629,7 @@ describe("issue 25322", () => {
 
     cy.intercept(matcher, req => req.on("response", res => res.setDelay(100)));
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -2455,6 +2461,7 @@ describe("issue 31662", () => {
     name: "Dashboard",
     parameters: [parameterDetails],
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -2480,6 +2487,7 @@ describe("issue 31662", () => {
     });
   });
 });
+
 describe("issue 38245", () => {
   function filterPanel() {
     return cy.findByTestId("edit-dashboard-parameters-widget-container");
@@ -2506,6 +2514,7 @@ describe("issue 38245", () => {
     slug: "filter-text",
     type: "string/contains",
   });
+
   beforeEach(() => {
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
     restore();
@@ -2611,6 +2620,7 @@ describe("issue 43154", () => {
       cy.button("Add filter").click();
     });
   }
+
   beforeEach(() => {
     restore();
     cy.signInAsNormalUser();

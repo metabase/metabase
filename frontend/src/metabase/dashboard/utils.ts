@@ -145,11 +145,9 @@ export function showVirtualDashCardInfoText(
 
 export function getAllDashboardCards(dashboard: Dashboard) {
   const results = [];
-  if (dashboard) {
-    for (const dashcard of dashboard.dashcards) {
-      const cards = [dashcard.card].concat((dashcard as any).series || []);
-      results.push(...cards.map(card => ({ card, dashcard })));
-    }
+  for (const dashcard of dashboard.dashcards) {
+    const cards = [dashcard.card].concat((dashcard as any).series || []);
+    results.push(...cards.map(card => ({ card, dashcard })));
   }
   return results;
 }

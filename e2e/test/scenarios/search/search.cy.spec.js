@@ -278,6 +278,7 @@ describe.skip("issue 16785", () => {
 
 describe("issue 28788", () => {
   const LONG_STRING = "01234567890ABCDEFGHIJKLMNOPQRSTUVXYZ0123456789";
+
   beforeEach(() => {
     restore();
     cy.signInAsNormalUser();

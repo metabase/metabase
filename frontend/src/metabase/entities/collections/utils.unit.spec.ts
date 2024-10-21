@@ -378,6 +378,7 @@ describe("entities > collections > utils", () => {
     describe("OSS", () => {
       testCasesOSS.forEach(testCase => {
         const { name, collection, expectedIcon } = testCase;
+
         it(`returns '${expectedIcon}' for '${name}'`, () => {
           expect(getCollectionIcon(collection)).toMatchObject({
             name: expectedIcon,
@@ -393,6 +394,7 @@ describe("entities > collections > utils", () => {
 
       testCasesEE.forEach(testCase => {
         const { name, collection, expectedIcon } = testCase;
+
         it(`returns '${expectedIcon}' for '${name}'`, () => {
           expect(getCollectionIcon(collection)).toMatchObject({
             name: expectedIcon,

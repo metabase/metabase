@@ -144,6 +144,7 @@ describeEE("official collections", () => {
 
   context("token expired or removed", () => {
     beforeEach(() => setTokenFeatures("all"));
+
     it("should not display official collection icon anymore", () => {
       testOfficialBadgePresence(false);
     });

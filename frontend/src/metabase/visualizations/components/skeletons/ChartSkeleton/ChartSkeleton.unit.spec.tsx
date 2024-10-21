@@ -61,6 +61,7 @@ const setup = ({
     />,
   );
 };
+
 describe("ChartSkeleton", () => {
   beforeAll(() => {
     jest.unmock("metabase/components/Popover");

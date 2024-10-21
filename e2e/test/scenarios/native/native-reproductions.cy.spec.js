@@ -49,6 +49,7 @@ describe("issue 12439", () => {
     },
     display: "line",
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -101,6 +102,7 @@ describe("issue 16886", () => {
   const highlightSelectedText = "{shift}{rightarrow}".repeat(
     SELECTED_TEXT.length,
   );
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -218,6 +220,7 @@ describe("issue 17060", () => {
 
 describe("issue 18148", () => {
   const dbName = "sqlite";
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -256,6 +259,7 @@ describe("issue 18418", () => {
     name: "REVIEWS SQL",
     native: { query: "select REVIEWER from REVIEWS LIMIT 1" },
   };
+
   beforeEach(() => {
     cy.intercept("POST", "/api/card").as("cardCreated");
 
@@ -305,6 +309,7 @@ describe("issue 19451", () => {
     },
     display: "scalar",
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -338,6 +343,7 @@ describe("issue 20044", () => {
       query: "select 1",
     },
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -633,6 +639,7 @@ describe("issue 35344", () => {
     name: "REVIEWS SQL",
     native: { query: "select REVIEWER from REVIEWS" },
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsNormalUser();
@@ -683,6 +690,7 @@ describe("issue 35785", () => {
       },
     },
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsNormalUser();

@@ -43,23 +43,23 @@
                                                     template)))]
       (testing "template is a mustache template"
         (testing "success"
-          (is (some? (insert! {:details {:type    "email/mustache"
+          (is (some? (insert! {:details {:type    "email/mustache-text"
                                          :subject "Hello {{name}}"
                                          :body    "Welcome {{name}}"}}))))
 
         (testing "invalid template"
           (is (thrown? Exception
-                       (insert! {:details {:type    "email/mustache"
+                       (insert! {:details {:type    "email/mustache-text"
                                            :subject "Hello {{name}"
                                            :body    nil}})))))
 
       (testing "template is a resource path"
         (testing "success"
-          (is (some? (insert! {:details {:type    "email/resource"
+          (is (some? (insert! {:details {:type    "email/mustache-resource"
                                          :subject "Hello {{name}}"
                                          :path    "/path/to/resource"}}))))
         (testing "invalid template"
           (is (thrown? Exception
-                       (insert! {:details {:type    "email/resource"
+                       (insert! {:details {:type    "email/mustache-resource"
                                            :subject "Hello {{name}}"
                                            :path    nil}}))))))))

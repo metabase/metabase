@@ -11,10 +11,10 @@
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.timezone :as qp.timezone]
-   [metabase.shared.util.time :as shared.ut]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli :as mu])
+   [metabase.util.malli :as mu]
+   [metabase.util.time :as u.time])
   (:import
    (java.time.temporal Temporal)))
 
@@ -473,7 +473,7 @@
   "Generate offset datetime from `date-str` with respect to qp's `results-timezone`."
   [date-str]
   (when date-str
-    (let [[y M d h m s] (shared.ut/yyyyMMddhhmmss->parts date-str)]
+    (let [[y M d h m s] (u.time/yyyyMMddhhmmss->parts date-str)]
       (try (.toOffsetDateTime (t/zoned-date-time y M d h m s 0 (t/zone-id (qp.timezone/results-timezone-id))))
            (catch Throwable _
              (t/offset-date-time y M d h m s 0 (t/zone-offset (qp.timezone/results-timezone-id))))))))
@@ -482,7 +482,7 @@
   "Return appropriate function for interval end adjustments in [[exclusive-datetime-range-end]]."
   [date-str]
   (when date-str
-    (if (re-matches shared.ut/local-date-regex date-str)
+    (if (re-matches u.time/local-date-regex date-str)
       t/days
       t/minutes)))
 

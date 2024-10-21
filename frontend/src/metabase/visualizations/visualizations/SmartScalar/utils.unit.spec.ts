@@ -74,6 +74,7 @@ describe("SmartScalar > utils", () => {
       const settings = {
         "scalar.field": FIELD_NAME,
       };
+
       it("should return previous value as default if no dateUnit", () => {
         const rows = [
           ["2019-10-01", 100],

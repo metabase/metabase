@@ -7,8 +7,7 @@
    "Field"
    "Segment"
    "Table"
-   "Channel"
-   "ChannelTemplate"])
+   "Channel"])
 
 (def content
   "Content model types"
@@ -45,6 +44,7 @@
    "BookmarkOrdering"
    "CacheConfig"
    "CardBookmark"
+   "ChannelTemplate"
    "CloudMigration"
    "CollectionBookmark"
    "CollectionPermissionGraphRevision"
