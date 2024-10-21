@@ -526,6 +526,14 @@
   :type       :boolean
   :default    true)
 
+(defsetting trial-banner-dismissal-timestamp
+  (deferred-tru "The last time a user dismissed the trial banner.")
+  :user-local :only
+  :export?    false
+  :visibility :authenticated
+  :type       :integer
+  :default    nil)
+
 ;;; ## ------------------------------------------ AUDIT LOG ------------------------------------------
 
 (defmethod audit-log/model-details :model/User
