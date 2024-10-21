@@ -1,12 +1,10 @@
 .root {
-  /* TODO: change all usages of compact to compact-md */
-
   --button-height-md: calc(2.5rem * var(--mantine-scale));
   --button-height-compact-md: calc(1.5rem * var(--mantine-scale));
 
   padding-inline: rem(15px);
   overflow: hidden;
-  line-height: 1.15; /* mimic line-height ration from mantine v6 */
+  line-height: 1.15; /* mimic line-height ratio from mantine v6 */
   font-size: var(--mantine-font-size-md);
 
   &:active {
@@ -50,7 +48,7 @@
     background-color: var(--mb-color-bg-white);
 
     &:hover {
-      background-color: var(--button-hover);
+      background-color: var(--mb-color-bg-light);
     }
   }
 
