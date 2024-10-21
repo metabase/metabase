@@ -48,15 +48,16 @@
   the OpenAI API errors if we don't at least pretend that we invoked some tools. This code adds fake entries for now so
   we can unblock ourselves. See https://metaboat.slack.com/archives/C06UF8TBYH2/p1729302982396889 for more info."
   [history :- [:maybe ::metabot-v3.client.schema/messages]]
-  (if (empty? (:tool-calls (last history)))
-    history
-    (into (vec history)
-          (map (fn [tool-call]
-                 {:role         :tool
-                  :tool-call-id (:id tool-call)
-                  ;; :name         (:name tool-call)
-                  :content      "success"}))
-          (:tool-calls (last history)))))
+  (mapcat (fn [{:keys [tool-calls] :as hist-entry}]
+            (if-not (seq tool-calls)
+              [hist-entry]
+              (into [hist-entry]
+                    (map (fn [tool-call]
+                           {:role :tool
+                            :tool-call-id (:id tool-call)
+                            :content "success"})
+                         tool-calls))))
+          history))
 
 (mu/defn- build-messages :- ::metabot-v3.client.schema/messages
   [message :- :string
