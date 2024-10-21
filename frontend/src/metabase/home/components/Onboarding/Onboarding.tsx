@@ -175,8 +175,13 @@ export const Onboarding = () => {
                     srcSet="app/assets/img/onboarding_invite@2x.png 2x"
                     width="100%"
                   />
-                  {/* TODO: different copy for different plans? */}
-                  <Text>{t`Don't be shy with the invites.`}</Text>
+                  {plan === "oss" ? (
+                    // eslint-disable-next-line no-literal-metabase-strings -- OSS doesn't have whitelabeling option
+                    <Text>{t`Don't be shy with invites. Metabase makes self-service analytics easy.`}</Text>
+                  ) : (
+                    // eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins
+                    <Text>{t`Don't be shy with invites. Metabase Starter plan includes 5 users, and Pro includes 10 users without the need to pay additionally.`}</Text>
+                  )}
 
                   <Group spacing={0}>
                     <Link
@@ -371,13 +376,21 @@ export const Onboarding = () => {
                   <Text>
                     {jt`To set up a subscription to a dashboard, click on the ${(
                       <Icon
+                        key="sharing-icon"
+                        name="share"
+                        className={S.inlineIcon}
+                      />
+                    )} ${(
+                      <i key="sharing">{t`sharing`}</i>
+                    )} icon on the top bar, then click on ${(
+                      <Icon
                         key="subscription-icon"
                         name="subscription"
                         className={S.inlineIcon}
                       />
                     )} ${(
-                      <i key="subscriptions">{t`subscriptions`}</i>
-                    )} icon on the top bar. On a sidebar on the right set up a dashboard subscription via email or Slack.`}
+                      <b key="subscriptions">{t`Subscriptions`}</b>
+                    )}. On a sidebar on the right set up a dashboard subscription via email or Slack.`}
                   </Text>
                   <Link
                     to="/dashboard/1"
@@ -418,13 +431,17 @@ export const Onboarding = () => {
                   <Text>
                     {jt`Go to a question and click on the ${(
                       <Icon
+                        key="sharing-icon"
+                        name="share"
+                        className={S.inlineIcon}
+                      />
+                    )} icon on the top bar, then ${(
+                      <Icon
                         className={S.inlineIcon}
                         key="alert-icon"
                         name="alert"
                       />
-                    )} ${(
-                      <i key="bell">{t`bell`}</i>
-                    )} icon in the bottom right of the screen.`}
+                    )} ${(<b key="create-alert">{t`Create alert`}</b>)}.`}
                   </Text>
                   <Text>
                     {t`There are three kinds of things you can get alerted about in ${applicationName}:`}
