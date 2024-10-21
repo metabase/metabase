@@ -2,7 +2,6 @@
   "Code related to sending Pulses (Alerts or Dashboard Subscriptions)."
   (:require
    [metabase.api.common :as api]
-   [metabase.channel.core :as channel]
    [metabase.events :as events]
    [metabase.models.dashboard :as dashboard :refer [Dashboard]]
    [metabase.models.dashboard-card :as dashboard-card]
@@ -285,6 +284,10 @@
     (str (name type) " " id)
     (name type)))
 
+(defn- channel-send!
+  [& args]
+  (apply (requiring-resolve 'metabase.channel.core/send!) args))
+
 (defn- send-retrying!
   [pulse-id channel message]
   (try
@@ -297,7 +300,7 @@
                           :retry_errors       @retry-errors})
           send!        (fn []
                          (try
-                           (channel/send! channel message)
+                           (channel-send! channel message)
                            (catch Exception e
                              (vswap! retry-errors conj e)
                              ;; Token errors have already been logged and we should not retry.
@@ -333,6 +336,10 @@
           :when part]
       part)))
 
+(defn- channel-render-notification
+  [& args]
+  (apply (requiring-resolve 'metabase.channel.core/render-notification) args))
+
 (defn- pc->channel
   "Given a pulse channel, return the channel object.
 
@@ -360,7 +367,7 @@
         (u/prog1 (doseq [pulse-channel channels]
                    (try
                      (let [channel  (pc->channel pulse-channel)
-                           messages (channel/render-notification (:type channel)
+                           messages (channel-render-notification (:type channel)
                                                                  (get-notification-info pulse parts pulse-channel)
                                                                  nil
                                                                  (channel-recipients pulse-channel))]

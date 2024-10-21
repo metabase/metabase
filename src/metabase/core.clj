@@ -5,7 +5,6 @@
    [environ.core :as env]
    [java-time.api :as t]
    [metabase.analytics.prometheus :as prometheus]
-   [metabase.channel.core :as channel]
    [metabase.config :as config]
    [metabase.core.config-from-file :as config-from-file]
    [metabase.core.initialization-status :as init-status]
@@ -166,8 +165,6 @@
   (task/start-scheduler!)
   ;; In case we could not do this earlier (e.g. for DBs added via config file), because the scheduler was not up yet:
   (database/check-and-schedule-tasks!)
-  ;; load the channels
-  (channel/find-and-load-metabase-channels!)
   (init-status/set-complete!)
   (let [start-time (.getStartTime (ManagementFactory/getRuntimeMXBean))
         duration   (- (System/currentTimeMillis) start-time)]

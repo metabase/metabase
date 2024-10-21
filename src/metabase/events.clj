@@ -19,7 +19,12 @@
    [metabase.util.methodical.null-cache :as u.methodical.null-cache]
    [metabase.util.methodical.unsorted-dispatcher
     :as u.methodical.unsorted-dispatcher]
-   [methodical.core :as methodical]))
+   [methodical.core :as methodical]
+   [potemkin :as p]))
+
+(p/import-vars
+ [events.schema
+  topic->schema])
 
 (set! *warn-on-reflection* true)
 

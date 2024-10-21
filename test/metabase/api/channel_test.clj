@@ -8,8 +8,8 @@
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
-#_{:clj-kondo/ignore [:metabase/validate-deftest]}
-(use-fixtures :once (fn [& _args] (channel/find-and-load-metabase-channels!)))
+(comment
+  channel/keep-me)
 
 (set! *warn-on-reflection* true)
 
