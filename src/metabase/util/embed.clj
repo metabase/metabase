@@ -3,7 +3,6 @@
   (:require
    [buddy.core.codecs :as codecs]
    [buddy.sign.jwt :as jwt]
-   [cheshire.core :as json]
    [clojure.string :as str]
    [hiccup.core :refer [html]]
    [metabase.config :as config]
@@ -12,6 +11,7 @@
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru trs tru]]
+   [metabase.util.json :as json]
    [ring.util.codec :as codec]))
 
 (set! *warn-on-reflection* true)
@@ -71,7 +71,7 @@
   "Parse a JWT `message` and return the header portion."
   [^String message]
   (let [[header] (str/split message #"\.")]
-    (json/parse-string (codecs/bytes->str (codec/base64-decode header)) keyword)))
+    (json/decode+kw (codecs/bytes->str (codec/base64-decode header)))))
 
 (defn- check-valid-alg
   "Check that the JWT `alg` isn't `none`. `none` is valid per the standard, but for obvious reasons we want to make sure

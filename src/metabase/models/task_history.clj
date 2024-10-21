@@ -6,6 +6,7 @@
    [metabase.models.permissions :as perms]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
@@ -157,6 +158,10 @@
 ;; TaskHistory can contain an exception for logging purposes, so use the built-in
 ;; serialization of a `Throwable->map` to make this something that can be JSON encoded.
 (add-encoder
+ Throwable
+ (fn [throwable json-generator]
+   (encode-map (Throwable->map throwable) json-generator)))
+(json/add-encoder
  Throwable
  (fn [throwable json-generator]
    (encode-map (Throwable->map throwable) json-generator)))

@@ -1,7 +1,6 @@
 (ns ^:mb/driver-tests metabase.driver.druid.query-processor-test
   "Some tests to make sure the Druid Query Processor is generating sane Druid queries when compiling MBQL."
   (:require
-   [cheshire.core :as json]
    [clojure.test :refer :all]
    [clojure.tools.macro :as tools.macro]
    [java-time.api :as t]
@@ -15,6 +14,7 @@
    [metabase.test :as mt]
    [metabase.timeseries-query-processor-test.util :as tqpt]
    [metabase.util.date-2 :as u.date]
+   [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
 (defn- str->absolute-dt [s]
@@ -263,7 +263,7 @@
                    (table-rows-sample)))))))))
 
 (def ^:private native-query-1
-  (json/generate-string
+  (json/encode
    {:queryType   :scan
     :dataSource  :checkins
     :intervals   ["1900-01-01/2100-01-01"]
@@ -288,45 +288,51 @@
     (is (partial=
          {:row_count 2
           :status    :completed
-          :data      {:rows             [[931 "Simcha Yan" 1 "Kinaree Thai Bistro"       1]
-                                         [285 "Kfir Caj"   2 "Ruen Pair Thai Restaurant" 1]]
-                      :cols             [{:name         "id"
-                                          :source       :native
-                                          :display_name "id"
-                                          :field_ref    [:field "id" {:base-type :type/Integer}]
-                                          :base_type    :type/Integer
-                                          :effective_type :type/Integer}
-                                         {:name         "user_name"
-                                          :source       :native
-                                          :display_name "user_name"
-                                          :base_type    :type/Text
-                                          :effective_type :type/Text
-                                          :field_ref    [:field "user_name" {:base-type :type/Text}]}
-                                         {:name         "venue_price"
-                                          :source       :native
-                                          :display_name "venue_price"
-                                          :base_type    :type/Integer
-                                          :effective_type :type/Integer
-                                          :field_ref    [:field "venue_price" {:base-type :type/Integer}]}
-                                         {:name         "venue_name"
-                                          :source       :native
-                                          :display_name "venue_name"
-                                          :base_type    :type/Text
-                                          :effective_type :type/Text
-                                          :field_ref    [:field "venue_name" {:base-type :type/Text}]}
-                                         {:name         "count"
-                                          :source       :native
-                                          :display_name "count"
-                                          :base_type    :type/Integer
-                                          :effective_type :type/Integer
-                                          :field_ref    [:field "count" {:base-type :type/Integer}]}]
+          :data      {:rows             [["Kinaree Thai Bistro" 1 931 1 "Simcha Yan"]
+                                         ["Ruen Pair Thai Restaurant" 2 285 1 "Kfir Caj"]]
+                      :cols             [{:base_type :type/Text,
+                                          :display_name "venue_name",
+                                          :effective_type :type/Text,
+                                          :field_ref [:field
+                                                      "venue_name"
+                                                      {:base-type :type/Text}],
+                                          :name "venue_name",
+                                          :source :native}
+                                         {:base_type :type/Integer,
+                                          :display_name "venue_price",
+                                          :effective_type :type/Integer,
+                                          :field_ref [:field
+                                                      "venue_price"
+                                                      {:base-type :type/Integer}],
+                                          :name "venue_price",
+                                          :source :native}
+                                         {:base_type :type/Integer,
+                                          :display_name "id",
+                                          :effective_type :type/Integer,
+                                          :field_ref [:field "id" {:base-type :type/Integer}],
+                                          :name "id",
+                                          :source :native}
+                                         {:base_type :type/Integer,
+                                          :display_name "count",
+                                          :effective_type :type/Integer,
+                                          :field_ref [:field "count" {:base-type :type/Integer}],
+                                          :name "count",
+                                          :source :native}
+                                         {:base_type :type/Text,
+                                          :display_name "user_name",
+                                          :effective_type :type/Text,
+                                          :field_ref [:field
+                                                      "user_name"
+                                                      {:base-type :type/Text}],
+                                          :name "user_name",
+                                          :source :native}]
                       :native_form      {:query native-query-1}
                       :results_timezone "UTC"}}
          (-> (process-native-query native-query-1)
              (m/dissoc-in [:data :insights]))))))
 
 (def ^:private native-query-2
-  (json/generate-string
+  (json/encode
    {:intervals    ["1900-01-01/2100-01-01"]
     :granularity  {:type     :period
                    :period   :P1M

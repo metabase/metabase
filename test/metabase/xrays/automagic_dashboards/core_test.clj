@@ -1,6 +1,5 @@
 (ns ^:mb/once metabase.xrays.automagic-dashboards.core-test
   (:require
-   [cheshire.core :as json]
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -16,6 +15,7 @@
    [metabase.sync :as sync]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.xrays.automagic-dashboards.combination :as combination]
    [metabase.xrays.automagic-dashboards.comparison :as comparison]
@@ -1166,7 +1166,7 @@
                            [:field (mt/id :products :created_at) {:temporal-unit "year"}]
                            "2017-01-01T00:00:00Z"]
                 ->base-64 (fn [x]
-                            (codec/base64-encode (.getBytes (json/generate-string x) "UTF-8")))]
+                            (codec/base64-encode (.getBytes (json/encode x) "UTF-8")))]
             (is (=? {:description "A closer look at the metrics and dimensions used in this saved question."}
                     (mt/user-http-request
                      :crowberto :get 200
