@@ -6,7 +6,7 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
 import * as Urls from "metabase/lib/urls";
-import { Box, Icon, Title } from "metabase/ui";
+import { Box, Icon, SimpleGrid, Title } from "metabase/ui";
 
 import {
   BrowseContainer,
@@ -16,11 +16,7 @@ import {
 } from "../components/BrowseContainer.styled";
 import { BrowseDataHeader } from "../components/BrowseDataHeader";
 
-import {
-  DatabaseCard,
-  DatabaseCardLink,
-  DatabaseGrid,
-} from "./BrowseDatabases.styled";
+import { DatabaseCard, DatabaseCardLink } from "./BrowseDatabases.styled";
 
 export const BrowseDatabases = () => {
   const { data, isLoading, error } = useListDatabasesQuery();
@@ -52,9 +48,14 @@ export const BrowseDatabases = () => {
       <BrowseDataHeader />
       <BrowseMain>
         <BrowseSection>
-          <DatabaseGrid data-testid="database-browser">
+          <SimpleGrid
+            data-testid="database-browser"
+            cols={{ base: 1, md: 2, lg: 3 }}
+            spacing="md"
+            w="100%"
+          >
             {databases.map(database => (
-              <div key={database.id}>
+              <Box key={database.id}>
                 <DatabaseCardLink to={Urls.browseDatabase(database)}>
                   <DatabaseCard>
                     <Icon
@@ -68,9 +69,9 @@ export const BrowseDatabases = () => {
                     </Title>
                   </DatabaseCard>
                 </DatabaseCardLink>
-              </div>
+              </Box>
             ))}
-          </DatabaseGrid>
+          </SimpleGrid>
         </BrowseSection>
       </BrowseMain>
     </BrowseContainer>
