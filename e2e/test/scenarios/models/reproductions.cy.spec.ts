@@ -8,57 +8,42 @@ import {
   type NativeQuestionDetails,
   type StructuredQuestionDetails,
   assertQueryBuilderRowCount,
-  assertQueryBuilderRowCount,
   createNativeQuestion,
   createQuestion,
   describeEE,
-  describeEE,
-  editDashboard,
   editDashboard,
   enterCustomColumnDetails,
   entityPickerModal,
   entityPickerModalTab,
   getNotebookStep,
   getPinnedSection,
-  getPinnedSection,
   hovercard,
   join,
   mapColumnTo,
   modal,
   navigationSidebar,
-  navigationSidebar,
-  newButton,
   newButton,
   openColumnOptions,
   openNotebook,
   openQuestionActions,
   popover,
   questionInfoButton,
-  questionInfoButton,
   renameColumn,
   restore,
-  rightSidebar,
   rightSidebar,
   saveMetadataChanges,
   saveQuestion,
   setDropdownFilterType,
-  setDropdownFilterType,
-  setFilter,
   setFilter,
   setTokenFeatures,
-  setTokenFeatures,
-  sidebar,
   sidebar,
   sidesheet,
   startNewModel,
   startNewQuestion,
   summarize,
-  summarize,
   tableHeaderClick,
   tableInteractive,
-  tableInteractive,
   undoToast,
-  visitDashboard,
   visitDashboard,
   visitModel,
   visualize,
@@ -1313,5 +1298,42 @@ describe("issue 46221", () => {
     cy.findByTestId("head-crumbs-container")
       .should("contain", "First collection")
       .and("contain", modelDetails.name);
+  });
+});
+
+describe("issue 20624", () => {
+  const questionDetails: StructuredQuestionDetails = {
+    name: "Question",
+    type: "question",
+    query: {
+      "source-table": PRODUCTS_ID,
+    },
+    visualization_settings: {
+      column_settings: {
+        '["name","VENDOR"]': { column_title: "Retailer" },
+      },
+    },
+  };
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+    cy.intercept("PUT", "/api/card/*").as("updateCard");
+  });
+
+  it("should reset the question's viz settings when converting to a model", () => {
+    createQuestion(questionDetails, { visitQuestion: true });
+    tableInteractive().within(() => {
+      cy.findByText("Retailer").should("be.visible");
+      cy.findByText("Vendor").should("not.exist");
+    });
+    openQuestionActions();
+    popover().findByText("Turn into a model").click();
+    modal().findByText("Turn this into a model").click();
+    cy.wait("@updateCard");
+    tableInteractive().within(() => {
+      cy.findByText("Vendor").should("be.visible");
+      cy.findByText("Retailer").should("not.exist");
+    });
   });
 });
