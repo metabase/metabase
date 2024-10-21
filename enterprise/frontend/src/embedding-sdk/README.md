@@ -236,36 +236,40 @@ yarn add @metabase/embedding-sdk-react
 
 Once installed, you need to import `MetabaseProvider` and provide it with a `config` object.
 
-```typescript jsx
+```tsx
 import React from "react";
-import {MetabaseProvider, defineEmbeddingSdkConfig, defineEmbeddingSdkTheme} from "@metabase/embedding-sdk-react";
+import {
+  MetabaseProvider,
+  defineEmbeddingSdkConfig,
+  defineEmbeddingSdkTheme,
+} from "@metabase/embedding-sdk-react";
 
 // Configuration
 const config = defineEmbeddingSdkConfig({
-    metabaseInstanceUrl: "https://metabase.example.com", // Required: Your Metabase instance URL
-    jwtProviderUri: "https://app.example.com/sso/metabase", // Required: An endpoint in your app that returns signs the user in and delivers a token
+  metabaseInstanceUrl: "https://metabase.example.com", // Required: Your Metabase instance URL
+  jwtProviderUri: "https://app.example.com/sso/metabase", // Required: An endpoint in your app that returns signs the user in and delivers a token
 });
 
 // See the "Customizing appearance" section for more information
 const theme = defineEmbeddingSdkTheme({
-    // Optional: Specify a font to use from the set of fonts supported by Metabase
-    fontFamily: "Lato",
+  // Optional: Specify a font to use from the set of fonts supported by Metabase
+  fontFamily: "Lato",
 
-    // Optional: Match your application's color scheme
-    colors: {
-        brand: "#9B5966",
-        "text-primary": "#4C5773",
-        "text-secondary": "#696E7B",
-        "text-tertiary": "#949AAB",
-    },
+  // Optional: Match your application's color scheme
+  colors: {
+    brand: "#9B5966",
+    "text-primary": "#4C5773",
+    "text-secondary": "#696E7B",
+    "text-tertiary": "#949AAB",
+  },
 });
 
 export default function App() {
-    return (
-        <MetabaseProvider config={config} theme={theme} className="optional-class">
-            Hello World!
-        </MetabaseProvider>
-    );
+  return (
+    <MetabaseProvider config={config} theme={theme} className="optional-class">
+      Hello World!
+    </MetabaseProvider>
+  );
 }
 ```
 
@@ -284,20 +288,29 @@ To inherit the height from the parent container, you can pass `100%` to the heig
   - the string ID found in the `entity_id` key of the question object when using the API directly or using the SDK
     Collection Browser to return data
 
-```typescript jsx
+```tsx
 import React from "react";
-import {MetabaseProvider, StaticQuestion,defineEmbeddingSdkConfig} from "@metabase/embedding-sdk-react";
+import {
+  MetabaseProvider,
+  StaticQuestion,
+  defineEmbeddingSdkConfig,
+} from "@metabase/embedding-sdk-react";
 
-const config = defineEmbeddingSdkConfig({...})
+const config = defineEmbeddingSdkConfig({
+  //...
+});
 
 export default function App() {
-    const questionId = 1; // This is the question ID you want to embed
+  const questionId = 1; // This is the question ID you want to embed
 
-    return (
-        <MetabaseProvider config={config}>
-            <StaticQuestion questionId={questionId} showVisualizationSelector={false}/>
-        </MetabaseProvider>
-    );
+  return (
+    <MetabaseProvider config={config}>
+      <StaticQuestion
+        questionId={questionId}
+        showVisualizationSelector={false}
+      />
+    </MetabaseProvider>
+  );
 }
 ```
 
@@ -334,23 +347,28 @@ _Note: Only enabled when `isSaveEnabled = true`_
 - **onBeforeSave**: `() => void` (optional) – A callback function that triggers before saving.
 - **onSave**: `() => void` (optional) – A callback function that triggers when a user saves the question
 
-```typescript jsx
+```tsx
 import React from "react";
-import {MetabaseProvider, InteractiveQuestion, defineEmbeddingSdkConfig} from "@metabase/embedding-sdk-react";
+import {
+  MetabaseProvider,
+  InteractiveQuestion,
+  defineEmbeddingSdkConfig,
+} from "@metabase/embedding-sdk-react";
 
-const config = defineEmbeddingSdkConfig({...})
+const config = defineEmbeddingSdkConfig({
+  //...
+});
 
 export default function App() {
-    const questionId = 1; // This is the question ID you want to embed
+  const questionId = 1; // This is the question ID you want to embed
 
-    return (
-        <MetabaseProvider config={config}>
-            <InteractiveQuestion questionId={questionId}/>
-        </MetabaseProvider>
-    );
+  return (
+    <MetabaseProvider config={config}>
+      <InteractiveQuestion questionId={questionId} />
+    </MetabaseProvider>
+  );
 }
 const questionId = 1; // This is the question ID you want to embed
-
 ```
 
 #### _Customizing Interactive Questions_
@@ -362,45 +380,45 @@ make your application unique. Therefore, we've added the ability to customize th
 
 Using the `InteractiveQuestion` with its default layout looks like this:
 
-```typescript jsx
-<InteractiveQuestion questionId={95}/>
+```tsx
+<InteractiveQuestion questionId={95} />
 ```
 
 To customize the layout, use namespaced components within the `InteractiveQuestion`. For example:
 
-```typescript jsx
+```tsx
 <InteractiveQuestion questionId={95}>
-    <div
-        style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-        }}
-    >
-        <div style={{display: "grid", placeItems: "center"}}>
-            <InteractiveQuestion.Title/>
-            <InteractiveQuestion.ResetButton/>
-        </div>
-        <div
-            style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "flex-start",
-                overflow: "hidden",
-            }}
-        >
-            <div style={{width: "100%"}}>
-                <InteractiveQuestion.QuestionVisualization/>
-            </div>
-            <div style={{display: "flex", flex: 1, overflow: "scroll"}}>
-                <InteractiveQuestion.Summarize/>
-            </div>
-        </div>
-        <div style={{display: "flex", flexDirection: "column"}}>
-            <InteractiveQuestion.Filter/>
-        </div>
+  <div
+    style={{
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      justifyContent: "center",
+    }}
+  >
+    <div style={{ display: "grid", placeItems: "center" }}>
+      <InteractiveQuestion.Title />
+      <InteractiveQuestion.ResetButton />
     </div>
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "flex-start",
+        overflow: "hidden",
+      }}
+    >
+      <div style={{ width: "100%" }}>
+        <InteractiveQuestion.QuestionVisualization />
+      </div>
+      <div style={{ display: "flex", flex: 1, overflow: "scroll" }}>
+        <InteractiveQuestion.Summarize />
+      </div>
+    </div>
+    <div style={{ display: "flex", flexDirection: "column" }}>
+      <InteractiveQuestion.Filter />
+    </div>
+  </div>
 </InteractiveQuestion>
 ```
 
@@ -446,30 +464,36 @@ After the SDK is configured, you can embed your dashboard using the `StaticDashb
   but without its cards - at this stage dashboard title, tabs and cards grid is rendered, but cards content is not yet
   loaded.
 
-```typescript jsx
+```tsx
 import React from "react";
-import {MetabaseProvider, StaticDashboard,defineEmbeddingSdkConfig} from "@metabase/embedding-sdk-react";
+import {
+  MetabaseProvider,
+  StaticDashboard,
+  defineEmbeddingSdkConfig,
+} from "@metabase/embedding-sdk-react";
 
-const config = defineEmbeddingSdkConfig({...})
+const config = defineEmbeddingSdkConfig({
+  //...
+});
 
 export default function App() {
-    const dashboardId = 1; // This is the dashboard ID you want to embed
-    const initialParameterValues = {}; // Define your query parameters here
+  const dashboardId = 1; // This is the dashboard ID you want to embed
+  const initialParameterValues = {}; // Define your query parameters here
 
-    // choose parameter names that are in your dashboard
-    const hiddenParameters = ["location", "city"]
+  // choose parameter names that are in your dashboard
+  const hiddenParameters = ["location", "city"];
 
-    return (
-        <MetabaseProvider config={config}>
-            <StaticDashboard
-                dashboardId={dashboardId}
-                initialParameterValues={initialParameterValues}
-                withTitle={false}
-                withDownloads={false}
-                hiddenParameters={hideParameters}
-            />
-        </MetabaseProvider>
-    );
+  return (
+    <MetabaseProvider config={config}>
+      <StaticDashboard
+        dashboardId={dashboardId}
+        initialParameterValues={initialParameterValues}
+        withTitle={false}
+        withDownloads={false}
+        hiddenParameters={hideParameters}
+      />
+    </MetabaseProvider>
+  );
 }
 ```
 
@@ -502,30 +526,36 @@ After the SDK is configured, you can embed your dashboard using the `Interactive
   but without its cards - at this stage dashboard title, tabs and cards grid is rendered, but cards content is not yet
   loaded.
 
-```typescript jsx
+```tsx
 import React from "react";
-import {MetabaseProvider, InteractiveDashboard,defineEmbeddingSdkConfig} from "@metabase/embedding-sdk-react";
+import {
+  MetabaseProvider,
+  InteractiveDashboard,
+  defineEmbeddingSdkConfig,
+} from "@metabase/embedding-sdk-react";
 
-const config = defineEmbeddingSdkConfig({...})
+const config = defineEmbeddingSdkConfig({
+  //...
+});
 
 export default function App() {
-    const dashboardId = 1; // This is the dashboard ID you want to embed
-    const initialParameterValues = {}; // Define your query parameters here
+  const dashboardId = 1; // This is the dashboard ID you want to embed
+  const initialParameterValues = {}; // Define your query parameters here
 
-    // choose parameter names that are in your dashboard
-    const hiddenParameters = ["location", "city"]
+  // choose parameter names that are in your dashboard
+  const hiddenParameters = ["location", "city"];
 
-    return (
-        <MetabaseProvider config={config}>
-            <InteractiveDashboard
-                dashboardId={dashboardId}
-                initialParameterValues={initialParameterValues}
-                withTitle={false}
-                withDownloads={false}
-                hiddenParameters={hideParameters}
-            />
-        </MetabaseProvider>
-    );
+  return (
+    <MetabaseProvider config={config}>
+      <InteractiveDashboard
+        dashboardId={dashboardId}
+        initialParameterValues={initialParameterValues}
+        withTitle={false}
+        withDownloads={false}
+        hiddenParameters={hideParameters}
+      />
+    </MetabaseProvider>
+  );
 }
 ```
 
@@ -547,18 +577,23 @@ _Note: Only enabled when `isSaveEnabled = true`_
 
 ```tsx
 import React from "react";
-import {MetabaseProvider, CreateQuestion, defineEmbeddingSdkConfig} from "@metabase/embedding-sdk-react";
+import {
+  MetabaseProvider,
+  CreateQuestion,
+  defineEmbeddingSdkConfig,
+} from "@metabase/embedding-sdk-react";
 
-const config = defineEmbeddingSdkConfig({...})
+const config = defineEmbeddingSdkConfig({
+  //...
+});
 
 export default function App() {
-    return (
-        <MetabaseProvider config={config}>
-            <CreateQuestion/>
-        </MetabaseProvider>
-    );
+  return (
+    <MetabaseProvider config={config}>
+      <CreateQuestion />
+    </MetabaseProvider>
+  );
 }
-
 ```
 
 ### Modifying a Question
@@ -584,18 +619,23 @@ _Note: Only enabled when `isSaveEnabled = true`_
 
 ```tsx
 import React from "react";
-import {MetabaseProvider, ModifyQuestion, defineEmbeddingSdkConfig} from "@metabase/embedding-sdk-react";
+import {
+  MetabaseProvider,
+  ModifyQuestion,
+  defineEmbeddingSdkConfig,
+} from "@metabase/embedding-sdk-react";
 
-const config = defineEmbeddingSdkConfig({...})
+const config = defineEmbeddingSdkConfig({
+  //...
+});
 
 export default function App() {
-    return (
-        <MetabaseProvider config={config}>
-            <ModifyQuestion questionId={1}/>
-        </MetabaseProvider>
-    );
+  return (
+    <MetabaseProvider config={config}>
+      <ModifyQuestion questionId={1} />
+    </MetabaseProvider>
+  );
 }
-
 ```
 
 ### Editing dashboards
@@ -637,16 +677,16 @@ Supported parameters:
 - **collectionId**: `number | 'root' | 'personal' | null` - collection where to create a new dashboard. You can use
   predefined system values like `root` or `personal`.
 
-```typescript jsx
-const {createDashboard} = useCreateDashboardApi();
+```tsx
+const { createDashboard } = useCreateDashboardApi();
 
 const handleDashboardCreate = async () => {
-    const dashboard = await createDashboard(props);
+  const dashboard = await createDashboard(props);
 
-    // do something with created empty dashboard, e.g. use it in EditableDashboard component
+  // do something with created empty dashboard, e.g. use it in EditableDashboard component
 };
 
-return <Button onClick={handleDashboardCreate}>Create new dashboard</Button>
+return <Button onClick={handleDashboardCreate}>Create new dashboard</Button>;
 ```
 
 #### Component
@@ -658,16 +698,14 @@ Supported props:
 - **onCreate**: `(dashboard: Dashboard) => void`; - handler to react on dashboard creation.
 - **onClose?**: `() => void`; - handler to close modal component
 
-```typescript jsx
+```tsx
 const [dashboard, setDashboard] = useState<Dashboard | null>(null);
 
 if (dashboard) {
-    return <EditableDashboard dashboardId={dashboard.id}/>;
+  return <EditableDashboard dashboardId={dashboard.id} />;
 }
 
-return (
-    <CreateDashboardModal onClose={handleClose} onCreate={setDashboard}/>
-);
+return <CreateDashboardModal onClose={handleClose} onCreate={setDashboard} />;
 ```
 
 ### Embedding the collection browser
@@ -884,26 +922,31 @@ component.
 
 To use a plugin globally, add the plugin to the `MetabaseProvider`'s `pluginsConfig` prop:
 
-```typescript jsx
+```tsx
 <MetabaseProvider
-    config={config}
-    theme={theme}
-    pluginsConfig={{
-        mapQuestionClickActions: [...] // Add your custom actions here
-    }}
+  config={config}
+  theme={theme}
+  pluginsConfig={{
+    mapQuestionClickActions: [
+      // ...
+      // Add your custom actions here
+    ],
+  }}
 >
-    {children}
+  {children}
 </MetabaseProvider>
 ```
 
 To use a plugin on a per-component basis, pass the plugin as a prop to the component:
 
-```typescript jsx
+```tsx
 <InteractiveQuestion
-    questionId={1}
-    plugins={{
-        mapQuestionClickActions: [...],
-    }}
+  questionId={1}
+  plugins={{
+    mapQuestionClickActions: [
+      //..
+    ],
+  }}
 />
 ```
 
@@ -915,59 +958,59 @@ This plugin allows you to add custom actions to
 the click-through menu of an interactive question. You can add and
 customize the appearance and behavior of the custom actions.
 
-```typescript jsx
+```tsx
 // You can provide a custom action with your own `onClick` logic.
 const createCustomAction = clicked => ({
-    buttonType: "horizontal",
-    name: "client-custom-action",
-    section: "custom",
-    type: "custom",
-    icon: "chevronright",
-    title: "Hello from the click app!!!",
-    onClick: ({closePopover}) => {
-        alert(`Clicked ${clicked.column?.name}: ${clicked.value}`);
-        closePopover();
-    },
+  buttonType: "horizontal",
+  name: "client-custom-action",
+  section: "custom",
+  type: "custom",
+  icon: "chevronright",
+  title: "Hello from the click app!!!",
+  onClick: ({ closePopover }) => {
+    alert(`Clicked ${clicked.column?.name}: ${clicked.value}`);
+    closePopover();
+  },
 });
 
 // Or customize the appearance of the custom action to suit your need.
 const createCustomActionWithView = clicked => ({
-    name: "client-custom-action-2",
-    section: "custom",
-    type: "custom",
-    view: ({closePopover}) => (
-        <button
-            className="tw-text-base tw-text-yellow-900 tw-bg-slate-400 tw-rounded-lg"
-            onClick={() => {
-                alert(`Clicked ${clicked.column?.name}: ${clicked.value}`);
-                closePopover();
-            }}
-        >
-            Custom element
-        </button>
-    ),
+  name: "client-custom-action-2",
+  section: "custom",
+  type: "custom",
+  view: ({ closePopover }) => (
+    <button
+      className="tw-text-base tw-text-yellow-900 tw-bg-slate-400 tw-rounded-lg"
+      onClick={() => {
+        alert(`Clicked ${clicked.column?.name}: ${clicked.value}`);
+        closePopover();
+      }}
+    >
+      Custom element
+    </button>
+  ),
 });
 
 const plugins = {
-    /**
-     * You will have access to default `clickActions` that Metabase render by default.
-     * So you could decide if you want to add custom actions, remove certain actions, etc.
-     */
-    mapQuestionClickActions: (clickActions, clicked) => {
-        return [
-            ...clickActions,
-            createCustomAction(clicked),
-            createCustomActionWithView(clicked),
-        ];
-    },
+  /**
+   * You will have access to default `clickActions` that Metabase render by default.
+   * So you could decide if you want to add custom actions, remove certain actions, etc.
+   */
+  mapQuestionClickActions: (clickActions, clicked) => {
+    return [
+      ...clickActions,
+      createCustomAction(clicked),
+      createCustomActionWithView(clicked),
+    ];
+  },
 };
 
 const questionId = 1; // This is the question ID you want to embed
 
 return (
-    <MetabaseProvider config={config} pluginsConfig={plugins}>
-        <InteractiveQuestion questionId={questionId}/>
-    </MetabaseProvider>
+  <MetabaseProvider config={config} pluginsConfig={plugins}>
+    <InteractiveQuestion questionId={questionId} />
+  </MetabaseProvider>
 );
 ```
 
@@ -980,7 +1023,7 @@ appears as a dropdown menu on the top right corner of the card.
 
 The plugin's default configuration looks like this:
 
-```typescript jsx
+```tsx
 const plugins = {
   dashboard: {
     dashcardMenu: {
@@ -994,14 +1037,14 @@ const plugins = {
 
 and can be used in the InteractiveDashboard like this:
 
-```typescript jsx
+```tsx
 <InteractiveDashboard
-    questionId={1}
-    plugins={{
-        dashboard: {
-            dashcardMenu: null,
-        },
-    }}
+  questionId={1}
+  plugins={{
+    dashboard: {
+      dashcardMenu: null,
+    },
+  }}
 />
 ```
 
@@ -1012,7 +1055,7 @@ Take a look below to see how you can customize the plugin:
 To remove the download button from the dashcard menu, set `withDownloads` to `false`. To remove the edit link from the
 dashcard menu, set `withEditLink` to `false`.
 
-```typescript jsx
+```tsx
 const plugins = {
   dashboard: {
     dashcardMenu: {
@@ -1029,7 +1072,7 @@ const plugins = {
 You can add custom actions to the dashcard menu by adding an object to the `customItems` array. Each element can either
 be an object or a function that takes in the dashcard's question, and outputs a list of custom items in the form of:
 
-```typescript jsx
+```tsx
 {
     iconName: string;
     label: string;
@@ -1038,7 +1081,7 @@ be an object or a function that takes in the dashcard's question, and outputs a 
 }
 ```
 
-```typescript jsx
+```tsx
 const plugins: SdkPluginsConfig = {
   dashboard: {
     dashcardMenu: {
@@ -1070,13 +1113,13 @@ const plugins: SdkPluginsConfig = {
 If you want to replace the existing menu with your own component, you can do so by providing a function that returns a
 React component. This function also can receive the question as an argument.
 
-```typescript jsx
+```tsx
 const plugins: SdkPluginsConfig = {
-    dashboard: {
-        dashcardMenu: ({question}) => (
-            <button onClick={() => console.log(question.name)}>Click me</button>
-        ),
-    },
+  dashboard: {
+    dashcardMenu: ({ question }) => (
+      <button onClick={() => console.log(question.name)}>Click me</button>
+    ),
+  },
 };
 ```
 
@@ -1092,20 +1135,20 @@ Currently, we support:
 - `onDashboardLoadWithoutCards?: (dashboard: Dashboard | null) => void;` - triggers after dashboard loads, but without
   its cards - at this stage dashboard title, tabs and cards grid is rendered, but cards content is not yet loaded
 
-```typescript jsx
+```tsx
 const handleDashboardLoad: SdkDashboardLoadEvent = dashboard => {
-    /* do whatever you need to do - e.g. send analytics events, show notifications */
+  /* do whatever you need to do - e.g. send analytics events, show notifications */
 };
 
 const eventHandlers = {
-    onDashboardLoad: handleDashboardLoad,
-    onDashboardLoadWithoutCards: handleDashboardLoad,
+  onDashboardLoad: handleDashboardLoad,
+  onDashboardLoadWithoutCards: handleDashboardLoad,
 };
 
 return (
-    <MetabaseProvider config={config} eventHandlers={eventHandlers}>
-        {children}
-    </MetabaseProvider>
+  <MetabaseProvider config={config} eventHandlers={eventHandlers}>
+    {children}
+  </MetabaseProvider>
 );
 ```
 
@@ -1134,7 +1177,7 @@ In case you need to reload a Metabase component, for example, your users modify 
 used to render a question in Metabase. If you embed this question and want to force Metabase to reload the question to
 show the latest data, you can do so by using the `key` prop to force a component to reload.
 
-```typescript jsx
+```tsx
 // Inside your application component
 const [data, setData] = useState({});
 // This is used to force reloading Metabase components
@@ -1142,26 +1185,26 @@ const [counter, setCounter] = useState(0);
 
 // This ensures we only change the `data` reference when it's actually changed
 const handleDataChange = newData => {
-    setData(prevData => {
-        if (isEqual(prevData, newData)) {
-            return prevData;
-        }
+  setData(prevData => {
+    if (isEqual(prevData, newData)) {
+      return prevData;
+    }
 
-        return newData;
-    });
+    return newData;
+  });
 };
 
 useEffect(() => {
-    /**
-     * When you set `data` as the `useEffect` hook's dependency, it will trigger the effect
-     * and increment the counter which is used in a Metabase component's `key` prop, forcing it to reload.
-     */
-    if (data) {
-        setCounter(counter => counter + 1);
-    }
+  /**
+   * When you set `data` as the `useEffect` hook's dependency, it will trigger the effect
+   * and increment the counter which is used in a Metabase component's `key` prop, forcing it to reload.
+   */
+  if (data) {
+    setCounter(counter => counter + 1);
+  }
 }, [data]);
 
-return <InteractiveQuestion key={counter} questionId={yourQuestionId}/>;
+return <InteractiveQuestion key={counter} questionId={yourQuestionId} />;
 ```
 
 ### Customizing JWT authentication
@@ -1169,7 +1212,7 @@ return <InteractiveQuestion key={counter} questionId={yourQuestionId}/>;
 You can customize how the SDK fetches the refresh token by specifying the `fetchRefreshToken` function in the `config`
 prop:
 
-```typescript jsx
+```tsx
 import { defineEmbeddingSdkConfig } from "@metabase/embedding-sdk-react";
 /**
  * This is the default implementation used in the SDK.
@@ -1199,12 +1242,14 @@ const config = defineEmbeddingSdkConfig({ fetchRequestToken });
 
 Create a component that imports the `MetabaseProvider` and mark it a React Client component with "use client";
 
-```typescript jsx
+```tsx
 "use client";
 
 import { MetabaseProvider, StaticQuestion, defineEmbeddingSdkConfig } from "@metabase/embedding-sdk-react";
 
-const config = defineEmbeddingSdkConfig({...}); // Your Metabase SDK configuration
+const config = defineEmbeddingSdkConfig({
+//...
+}); // Your Metabase SDK configuration
 
 export default function MetabaseComponents() {
   return (
@@ -1218,12 +1263,15 @@ Make sure to use default export, as named export is not supported with this setu
 
 Then, import this component in your page:
 
-```typescript jsx
+```tsx
 // page.tsx
 
-const MetabaseComponentsNoSsr = dynamic(() => import("@/components/MetabaseComponents"), {
-  ssr: false
-});
+const MetabaseComponentsNoSsr = dynamic(
+  () => import("@/components/MetabaseComponents"),
+  {
+    ssr: false,
+  },
+);
 
 export default function HomePage() {
   return (
@@ -1239,7 +1287,7 @@ export default function HomePage() {
 
 This won't work:
 
-```typescript jsx
+```tsx
 const DynamicAnalytics = dynamic(
   () =>
     import("@/components/MetabaseComponents").then(
