@@ -88,7 +88,7 @@ describe("ModelCacheManagementSection", () => {
     expect(
       await screen.findByText("Waiting to create the first model cache"),
     ).toBeInTheDocument();
-    expect(screen.queryByLabelText("refresh icon")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("refresh icon")).toBeInTheDocument();
   });
 
   it("displays 'refreshing' state correctly", async () => {

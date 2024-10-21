@@ -59,6 +59,11 @@ export function ModelCacheManagementSection({ model }: Props) {
   const isError = persistedModel?.state === "error";
   const lastRefreshTime = moment(persistedModel?.refresh_end).fromNow();
 
+  const canRefreshCache =
+    persistedModel && checkCanRefreshModelCache(persistedModel);
+  const refreshTooltip =
+    persistedModel?.state === "creating" ? t`Create now` : t`Refresh now`;
+
   return (
     <>
       {
@@ -81,9 +86,9 @@ export function ModelCacheManagementSection({ model }: Props) {
               </LastRefreshTimeLabel>
             )}
           </div>
-          {checkCanRefreshModelCache(persistedModel) && (
+          {canRefreshCache && (
             <IconButton onClick={() => onRefresh(model.id())}>
-              <RefreshIcon name="refresh" tooltip={t`Refresh now`} />
+              <RefreshIcon name="refresh" tooltip={refreshTooltip} />
             </IconButton>
           )}
         </Row>
