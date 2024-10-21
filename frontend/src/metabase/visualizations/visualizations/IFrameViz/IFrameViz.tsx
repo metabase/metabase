@@ -139,7 +139,8 @@ export function IFrameViz({
 function ForbiddenDomainError({ url }: { url: string }) {
   const isAdmin = useSelector(getUserIsAdmin);
   const { url: docsUrl, showMetabaseLinks } = useDocsUrl(
-    "admin-guide/iframe-cards",
+    "configuring-metabase/settings",
+    "allowed-iframe-hosts",
   );
 
   const domain = useMemo(() => {
