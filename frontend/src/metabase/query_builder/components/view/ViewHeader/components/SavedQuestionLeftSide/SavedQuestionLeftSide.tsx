@@ -11,11 +11,14 @@ import {
   ViewHeaderLeftSubHeading,
   ViewHeaderMainLeftContentContainer,
 } from "metabase/query_builder/components/view/ViewHeader/ViewTitleHeader.styled";
+import { Flex } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 
 import { HeadBreadcrumbs } from "../HeaderBreadcrumbs";
 import { HeaderCollectionBadge } from "../HeaderCollectionBadge";
 import { QuestionDataSource } from "../QuestionDataSource";
+
+import { ViewOnlyTag } from "./ViewOnly";
 
 interface SavedQuestionLeftSideProps {
   question: Question;
@@ -68,25 +71,29 @@ export function SavedQuestionLeftSide({
     >
       <ViewHeaderMainLeftContentContainer>
         <SavedQuestionHeaderButtonContainer isModelOrMetric={isModelOrMetric}>
-          <HeadBreadcrumbs
-            divider={<HeaderDivider>/</HeaderDivider>}
-            parts={[
-              ...(isAdditionalInfoVisible && isModelOrMetric
-                ? [
-                    <HeaderCollectionBadge
-                      key="collection"
-                      question={question}
-                    />,
-                  ]
-                : []),
+          <Flex align="center" gap="sm">
+            <HeadBreadcrumbs
+              divider={<HeaderDivider>/</HeaderDivider>}
+              parts={[
+                ...(isAdditionalInfoVisible && isModelOrMetric
+                  ? [
+                      <HeaderCollectionBadge
+                        key="collection"
+                        question={question}
+                      />,
+                    ]
+                  : []),
 
-              <SavedQuestionHeaderButton
-                key={question.displayName()}
-                question={question}
-                onSave={onHeaderChange}
-              />,
-            ]}
-          />
+                <SavedQuestionHeaderButton
+                  key={question.displayName()}
+                  question={question}
+                  onSave={onHeaderChange}
+                />,
+              ]}
+            />
+
+            <ViewOnlyTag question={question} />
+          </Flex>
         </SavedQuestionHeaderButtonContainer>
       </ViewHeaderMainLeftContentContainer>
       {isAdditionalInfoVisible && (
