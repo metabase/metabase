@@ -129,7 +129,8 @@
    [:table-db-id                         {:optional true} ms/PositiveInt]
    ;; true to search for verified items only, nil will return all items
    [:verified                            {:optional true} true?]
-   [:ids                                 {:optional true} [:set {:min 1} ms/PositiveInt]]])
+   [:ids                                 {:optional true} [:set {:min 1} ms/PositiveInt]]
+   [:include-dashboard-questions?        {:optional true} :boolean]])
 
 (def all-search-columns
   "All columns that will appear in the search results, and the types of those columns. The generated search query is a
@@ -174,6 +175,8 @@
    :last_editor_id      :integer
    :moderated_status    :text
    :display             :text
+
+   :dashboard_id        :integer
    ;; returned for Metric and Segment
    :table_id            :integer
    :table_schema        :text
@@ -294,7 +297,7 @@
 
 (defmethod columns-for-model "card"
   [_]
-  (conj default-columns :collection_id :archived_directly :collection_position :dataset_query :display :creator_id
+  (conj default-columns :collection_id :archived_directly :collection_position :dataset_query :display :creator_id :dashboard_id
         [:collection.name :collection_name]
         [:collection.type :collection_type]
         [:collection.location :collection_location]

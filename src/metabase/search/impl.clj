@@ -254,7 +254,8 @@
    [:model-ancestors?                    {:optional true} [:maybe boolean?]]
    [:verified                            {:optional true} [:maybe true?]]
    [:ids                                 {:optional true} [:maybe [:set ms/PositiveInt]]]
-   [:calculate-available-models?         {:optional true} [:maybe :boolean]]])
+   [:calculate-available-models?         {:optional true} [:maybe :boolean]]
+   [:include-dashboard-questions?        {:optional true} [:maybe boolean?]]])
 
 (mu/defn search-context :- SearchContext
   "Create a new search context that you can pass to other functions like [[search]]."
@@ -266,6 +267,7 @@
            current-user-perms
            filter-items-in-personal-collection
            ids
+           include-dashboard-questions?
            is-superuser?
            last-edited-at
            last-edited-by
@@ -304,6 +306,7 @@
                  (some? offset)                              (assoc :offset-int offset)
                  (some? search-native-query)                 (assoc :search-native-query search-native-query)
                  (some? verified)                            (assoc :verified verified)
+                 (some? include-dashboard-questions?)        (assoc :include-dashboard-questions? include-dashboard-questions?)
                  (seq ids)                                   (assoc :ids ids))]
     (when (and (seq ids)
                (not= (count models) 1))
