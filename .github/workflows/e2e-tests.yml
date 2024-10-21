@@ -97,7 +97,7 @@ jobs:
         uses: ./.github/actions/prepare-backend
         with:
           m2-cache-key: uberjar
-          java-version: "${{ needs.get-build-requirements.outputs.java_version || 21 }}"
+          java-version: "${{ needs.get-build-requirements.outputs.java_version || 11 }}"
 
       - name: Build uberjar with ./bin/build.sh
         run: ./bin/build.sh
