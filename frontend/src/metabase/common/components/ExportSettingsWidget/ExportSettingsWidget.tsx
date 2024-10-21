@@ -67,6 +67,7 @@ export const ExportSettingsWidget = ({
       ) : null}
       {canConfigurePivoting ? (
         <Checkbox
+          data-testid="keep-data-pivoted"
           label={t`Keep data pivoted`}
           checked={isPivotingEnabled}
           onChange={() => onTogglePivoting()}
