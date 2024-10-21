@@ -8,13 +8,17 @@ import {
   createQuestion,
   cypressWaitAll,
   echartsContainer,
+  echartsTooltip,
   getDraggableElements,
   getValueLabels,
   leftSidebar,
   modal,
   moveDnDKitElement,
+  openNotebook,
+  otherSeriesChartPaths,
   popover,
   queryBuilderHeader,
+  queryBuilderMain,
   restore,
   sidebar,
   visitDashboard,
@@ -751,6 +755,186 @@ describe("scenarios > visualizations > bar chart", () => {
       ],
     });
     resetHoverState();
+  });
+
+  it.only("should allow grouping series into a single 'Other' series", () => {
+    const AK_SERIES_COLOR = "#509EE3";
+
+    const USER_STATE_FIELD_REF = [
+      "field",
+      PEOPLE.STATE,
+      { "source-field": ORDERS.USER_ID },
+    ];
+    const ORDER_CREATED_AT_FIELD_REF = [
+      "field",
+      ORDERS.CREATED_AT,
+      { "temporal-unit": "month" },
+    ];
+
+    function setMaxCategories(value, { viaBreakoutSettings = false } = {}) {
+      if (viaBreakoutSettings) {
+        leftSidebar().findByTestId("settings-STATE").click();
+      } else {
+        leftSidebar().findByLabelText("Other series settings").click();
+      }
+      popover()
+        .findByTestId("graph-max-categories-input")
+        .type(`{selectAll}${value}`)
+        .blur();
+      cy.wait(500); // wait for viz to re-render
+    }
+
+    function setOtherCategoryAggregationFn(fnName) {
+      leftSidebar().findByLabelText("Other series settings").click();
+      popover()
+        .findByTestId("graph-other-category-aggregation-fn-picker")
+        .click();
+      popover().last().findByText(fnName).click();
+    }
+
+    visitQuestionAdhoc({
+      display: "bar",
+      dataset_query: {
+        type: "query",
+        database: SAMPLE_DB_ID,
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [USER_STATE_FIELD_REF, ORDER_CREATED_AT_FIELD_REF],
+          filter: [
+            "and",
+            [
+              "between",
+              ORDER_CREATED_AT_FIELD_REF,
+              "2022-09-01T00:00Z",
+              "2023-02-01T00:00Z",
+            ],
+            [
+              "=",
+              USER_STATE_FIELD_REF,
+              "AK",
+              "AL",
+              "AR",
+              "AZ",
+              "CA",
+              "CO",
+              "CT",
+              "DE",
+              "FL",
+              "GA",
+              "IA",
+              "ID",
+              "IL",
+              "KY",
+            ],
+          ],
+        },
+      },
+    });
+
+    // Test 'Other' series renders
+    otherSeriesChartPaths().should("have.length", 6);
+
+    // Test drill-through is disabled for 'Other' series
+    otherSeriesChartPaths().first().click();
+    cy.findByTestId("click-actions-view").should("not.exist");
+
+    // Test drill-through is enabled for regular series
+    chartPathWithFillColor(AK_SERIES_COLOR).first().click();
+    cy.findByTestId("click-actions-view").should("exist");
+
+    // Test legend and series visibility toggling
+    queryBuilderMain()
+      .findAllByTestId("legend-item")
+      .should("have.length", 9)
+      .last()
+      .as("other-series-legend-item");
+    cy.get("@other-series-legend-item").findByLabelText("Hide series").click();
+    otherSeriesChartPaths().should("have.length", 0);
+    cy.get("@other-series-legend-item").findByLabelText("Show series").click();
+    otherSeriesChartPaths().should("have.length", 6);
+
+    // Test tooltips
+    chartPathWithFillColor(AK_SERIES_COLOR).first().realHover();
+    assertEChartsTooltip({ rows: [{ name: "Other", value: "9" }] });
+    otherSeriesChartPaths().first().realHover();
+    assertEChartsTooltip({
+      header: "September 2022",
+      rows: [
+        { name: "IA", value: "3" },
+        { name: "KY", value: "2" },
+        { name: "FL", value: "1" },
+        { name: "GA", value: "1" },
+        { name: "ID", value: "1" },
+        { name: "IL", value: "1" },
+      ],
+      footer: { name: "Total", value: "9" },
+    });
+
+    // Test "graph.max_categories" change
+    cy.findByTestId("viz-settings-button").click();
+    setMaxCategories(4);
+    chartPathWithFillColor(AK_SERIES_COLOR).first().realHover();
+    echartsTooltip().find("tr").should("have.length", 5);
+    queryBuilderMain().findAllByTestId("legend-item").should("have.length", 5);
+
+    // Test "graph.max_categories" removes "Other" altogether
+    setMaxCategories(0);
+    chartPathWithFillColor(AK_SERIES_COLOR).first().realHover();
+    echartsTooltip().find("tr").should("have.length", 14);
+    queryBuilderMain().findAllByTestId("legend-item").should("have.length", 14);
+    otherSeriesChartPaths().should("not.exist");
+
+    // Test "graph.other_category_aggregation_fn" is hidden for MBQL queries
+    setMaxCategories(8, { viaBreakoutSettings: true });
+    cy.findByTestId("graph-other-category-aggregation-fn-picker").should(
+      "not.exist",
+    );
+
+    // Test "graph.other_category_aggregation_fn" for native queries
+    openNotebook();
+    queryBuilderHeader().button("View the SQL").click();
+    cy.findByTestId("native-query-preview-sidebar")
+      .button("Convert this question to SQL")
+      .click();
+    cy.wait("@dataset");
+    queryBuilderMain().findByTestId("visibility-toggler").click();
+
+    cy.findByTestId("viz-settings-button").click();
+    setOtherCategoryAggregationFn("Average");
+
+    chartPathWithFillColor(AK_SERIES_COLOR).first().realHover();
+    assertEChartsTooltip({ rows: [{ name: "Other", value: "1.5" }] });
+
+    otherSeriesChartPaths().first().realHover();
+    assertEChartsTooltip({
+      header: "September 2022",
+      rows: [
+        { name: "IA", value: "3" },
+        { name: "KY", value: "2" },
+        { name: "FL", value: "1" },
+        { name: "GA", value: "1" },
+        { name: "ID", value: "1" },
+        { name: "IL", value: "1" },
+      ],
+      footer: { name: "Average", value: "1.5" },
+    });
+
+    setOtherCategoryAggregationFn("Min");
+
+    chartPathWithFillColor(AK_SERIES_COLOR).first().realHover();
+    assertEChartsTooltip({ rows: [{ name: "Other", value: "1" }] });
+
+    otherSeriesChartPaths().first().realHover();
+    assertEChartsTooltip({ footer: { name: "Min", value: "1" } });
+
+    setOtherCategoryAggregationFn("Max");
+
+    chartPathWithFillColor(AK_SERIES_COLOR).first().realHover();
+    assertEChartsTooltip({ rows: [{ name: "Other", value: "3" }] });
+
+    otherSeriesChartPaths().first().realHover();
+    assertEChartsTooltip({ footer: { name: "Max", value: "3" } });
   });
 });
 
