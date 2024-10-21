@@ -10,6 +10,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.join.util :as lib.join.u]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -34,7 +35,7 @@
            &match))))
 
 (defn- join-alias [dest-table-name source-fk-field-name]
-  (str dest-table-name "__via__" source-fk-field-name))
+  (lib.join.u/format-implicit-join-name dest-table-name source-fk-field-name))
 
 (def ^:private JoinInfo
   [:map
@@ -53,7 +54,7 @@
     (let [fk-fields        (lib.metadata/bulk-metadata-or-throw (qp.store/metadata-provider) :metadata/column fk-field-ids)
           target-field-ids (into #{} (keep :fk-target-field-id) fk-fields)
           target-fields    (when (seq target-field-ids)
-                             (lib.metadata/bulk-metadata-or-throw (qp.store/metadata-provider) :metadata/column fk-field-ids))
+                             (lib.metadata/bulk-metadata-or-throw (qp.store/metadata-provider) :metadata/column target-field-ids))
           target-table-ids (into #{} (keep :table-id) target-fields)]
       ;; this is for cache-warming purposes.
       (when (seq target-table-ids)
@@ -153,11 +154,26 @@
 
 (defn- already-has-join?
   "Whether the current query level already has a join with the same alias."
-  [{:keys [joins source-query]} {join-alias :alias, :as join}]
-  (or (some #(= (:alias %) join-alias)
+  [{:keys [joins source-query]} {join-alias :alias, :keys [fk-field-id], :as join}]
+  (or (some #(and (= (:alias %) join-alias)
+                  (= (:fk-field-id %) fk-field-id))
             joins)
       (when source-query
         (recur source-query join))))
+
+;; TODO(BT) implement lib.equality style ref matching or something like distinct-fields above
+(defn- join-provides-field
+  [{:keys [fields source-metadata source-table] :as join} field-clause]
+  (case fields
+    :all (let [cols (or source-metadata
+                        (lib.metadata.protocols/fields (qp.store/metadata-provider) source-table))]
+           (when (some (comp #{field-clause} :field-ref) cols)
+             join))
+
+    :none nil
+
+    (when (some #{field-clause} fields)
+      join)))
 
 (defn- add-condition-fields-to-source
   "Add any fields that are needed for newly-added join conditions to source query `:fields` if they're not already
@@ -165,16 +181,20 @@
   [{{source-query-fields :fields} :source-query, :keys [joins], :as form}]
   (if (empty? source-query-fields)
     form
-    (let [needed (set (filter some? (map (comp ::needs meta) joins)))]
+    (let [needed (->> (set (filter some? (map (comp ::needs meta) joins)))
+                      (remove (fn [field-clause]
+                                (some #(join-provides-field % field-clause) joins))))]
       (update-in form [:source-query :fields] (fn [existing-fields]
                                                 (distinct-fields (concat existing-fields needed)))))))
 
-(defn- add-referenced-fields-to-source [form reused-joins]
+(defn- add-referenced-fields-to-source [{:keys [joins] :as form} reused-joins]
   (let [reused-join-alias? (set (map :alias reused-joins))
-        referenced-fields  (set (lib.util.match/match (dissoc form :source-query :joins)
-                                  [:field _ (_ :guard (fn [{:keys [join-alias]}]
-                                                        (reused-join-alias? join-alias)))]
-                                  &match))]
+        referenced-fields  (->> (set (lib.util.match/match (dissoc form :source-query :joins)
+                                       [:field _ (_ :guard (fn [{:keys [join-alias]}]
+                                                             (reused-join-alias? join-alias)))]
+                                       &match))
+                                (remove (fn [field-clause]
+                                          (some #(join-provides-field % field-clause) joins))))]
     (update-in form [:source-query :fields] (fn [existing-fields]
                                               (distinct-fields
                                                (concat existing-fields referenced-fields))))))

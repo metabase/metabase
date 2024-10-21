@@ -845,14 +845,14 @@ describe("scenarios > dashboard > filters > query stages", () => {
 
           verifyDashcardCellValues({
             dashcardIndex: 0,
-            values: ["4,449", "17,722"],
+            values: ["4,447", "17,714"],
           });
 
           goBackToDashboard();
 
           verifyDashcardCellValues({
             dashcardIndex: 1,
-            values: ["4,449", "17,722"],
+            values: ["4,447", "17,714"],
           });
         });
 
@@ -894,14 +894,14 @@ describe("scenarios > dashboard > filters > query stages", () => {
 
           verifyDashcardCellValues({
             dashcardIndex: 0,
-            values: ["4,449", "17,722"],
+            values: ["4,447", "17,714"],
           });
 
           goBackToDashboard();
 
           verifyDashcardCellValues({
             dashcardIndex: 1,
-            values: ["4,449", "17,722"],
+            values: ["4,447", "17,714"],
           });
         });
 
@@ -938,7 +938,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
         });
 
         // TODO: https://github.com/metabase/metabase/issues/48339
-        it.skip("2nd stage aggregation", () => {
+        it("2nd stage aggregation", () => {
           setup2ndStageAggregationFilter();
 
           verifyDashcardNoResults({ dashcardIndex: 0 });
@@ -1820,7 +1820,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
         });
 
         // TODO: https://github.com/metabase/metabase/issues/48339
-        it.skip("3rd stage aggregation", () => {
+        it("3rd stage aggregation", () => {
           setup3rdStageAggregationFilter();
 
           getDashboardCard(0)
