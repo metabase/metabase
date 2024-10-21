@@ -3,10 +3,10 @@ import fs from "fs/promises";
 import { input } from "@inquirer/prompts";
 
 import { isEmail } from "metabase/lib/email";
+import { generatePassword } from "metabase/lib/security";
 
 import type { CliStepMethod } from "../types/cli";
 import { addFileToGitIgnore } from "../utils/add-file-to-git-ignore";
-import { generateRandomDemoPassword } from "../utils/generate-password";
 import {
   OUTPUT_STYLES,
   printEmptyLines,
@@ -24,7 +24,8 @@ export const generateCredentials: CliStepMethod = async state => {
       OUTPUT_STYLES.error("Please enter a valid email address."),
   });
 
-  const password = generateRandomDemoPassword();
+  const password = generatePassword();
+  console.log(`[debug] Password is ${password}`);
 
   const credentialFile = "METABASE_LOGIN.json";
 

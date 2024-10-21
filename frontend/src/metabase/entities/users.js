@@ -77,7 +77,9 @@ const Users = createEntity({
       if (!MetabaseSettings.isEmailConfigured()) {
         user = {
           ...user,
-          password: generatePassword(),
+          password: generatePassword(
+            MetabaseSettings.passwordComplexityRequirements(),
+          ),
         };
       }
       const result = await thunkCreator(user)(dispatch, getState);
@@ -112,7 +114,12 @@ const Users = createEntity({
         dispatch({ type: PASSWORD_RESET_EMAIL });
       },
     resetPasswordManual:
-      async ({ id }, password = generatePassword()) =>
+      async (
+        { id },
+        password = generatePassword(
+          MetabaseSettings.passwordComplexityRequirements(),
+        ),
+      ) =>
       async dispatch => {
         await entityCompatibleQuery(
           { id, password },

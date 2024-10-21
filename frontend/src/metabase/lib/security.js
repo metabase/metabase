@@ -1,12 +1,9 @@
 import passwordGenerator from "password-generator";
 
-import MetabaseSettings from "metabase/lib/settings";
-
 // generate a password that satisfies `complexity` requirements, by default the ones that come back in the
 // `password-complexity` Setting; must be a map like {total: 6, number: 1}
 export const generatePassword = complexity => {
-  complexity =
-    complexity || MetabaseSettings.passwordComplexityRequirements() || {};
+  complexity = complexity || {};
   // generated password must be at least `complexity.total`, but can be longer
   // so hard code a minimum of 14
   const len = Math.max(complexity.total || 0, 14);
