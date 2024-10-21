@@ -61,8 +61,9 @@ const fadeIn = {
 };
 
 const ViewHeaderContainer = props => {
-  const query = props.question.query();
-  const card = props.question.card();
+  const { question, onUnarchive, onMove, onDeletePermanently } = props;
+  const query = question.query();
+  const card = question.card();
   const { isNative } = Lib.queryDisplayInfo(query);
 
   const isNewQuestion = !isNative && Lib.sourceTableOrCardId(query) === null;
@@ -76,9 +77,9 @@ const ViewHeaderContainer = props => {
           canWrite={card.can_write}
           canRestore={card.can_restore}
           canDelete={card.can_delete}
-          onUnarchive={() => props.onUnarchive(props.question)}
-          onMove={collection => props.onMove(props.question, collection)}
-          onDeletePermanently={() => props.onDeletePermanently(card.id)}
+          onUnarchive={() => onUnarchive(question)}
+          onMove={collection => onMove(question, collection)}
+          onDeletePermanently={() => onDeletePermanently(card.id)}
         />
       )}
 
@@ -98,14 +99,26 @@ const ViewHeaderContainer = props => {
 };
 
 const ViewMainContainer = props => {
-  if (props.queryBuilderMode === "notebook") {
+  const {
+    queryBuilderMode,
+    mode,
+    question,
+    showLeftSidebar,
+    showRightSidebar,
+    parameters,
+    setParameterValue,
+    isLiveResizable,
+    updateQuestion,
+  } = props;
+
+  if (queryBuilderMode === "notebook") {
     // we need to render main only in view mode
     return;
   }
 
-  const queryMode = props.mode && props.mode.queryMode();
-  const { isNative } = Lib.queryDisplayInfo(props.question.query());
-  const isSidebarOpen = props.showLeftSidebar || props.showRightSidebar;
+  const queryMode = mode && mode.queryMode();
+  const { isNative } = Lib.queryDisplayInfo(question.query());
+  const isSidebarOpen = showLeftSidebar || showRightSidebar;
 
   return (
     <QueryBuilderMain
@@ -116,13 +129,13 @@ const ViewMainContainer = props => {
         <ViewNativeQueryEditor {...props} />
       ) : (
         <StyledSyncedParametersList
-          parameters={props.parameters}
-          setParameterValue={props.setParameterValue}
+          parameters={parameters}
+          setParameterValue={setParameterValue}
           commitImmediately
         />
       )}
 
-      <StyledDebouncedFrame enabled={!props.isLiveResizable}>
+      <StyledDebouncedFrame enabled={!isLiveResizable}>
         <QueryVisualization
           {...props}
           noHeader
@@ -131,8 +144,8 @@ const ViewMainContainer = props => {
         />
       </StyledDebouncedFrame>
       <TimeseriesChrome
-        question={props.question}
-        updateQuestion={props.updateQuestion}
+        question={question}
+        updateQuestion={updateQuestion}
         className={CS.flexNoShrink}
       />
       <ViewFooter className={CS.flexNoShrink} />
@@ -184,7 +197,17 @@ const ViewLeftSidebarContainer = ({
     .otherwise(() => null);
 
 const ViewNativeQueryEditor = props => {
-  const legacyQuery = props.question.legacyQuery();
+  const {
+    question,
+    height,
+    isDirty,
+    isNativeEditorOpen,
+    card,
+    setParameterValueToDefault,
+    onSetDatabaseId,
+  } = props;
+
+  const legacyQuery = question.legacyQuery();
 
   // Normally, when users open native models,
   // they open an ad-hoc GUI question using the model as a data source
@@ -193,8 +216,8 @@ const ViewNativeQueryEditor = props => {
   // So the model is opened as an underlying native question and the query editor becomes visible
   // This check makes it hide the editor in this particular case
   // More details: https://github.com/metabase/metabase/pull/20161
-  const { isEditable } = Lib.queryDisplayInfo(props.question.query());
-  if (props.question.type() === "model" && !isEditable) {
+  const { isEditable } = Lib.queryDisplayInfo(question.query());
+  if (question.type() === "model" && !isEditable) {
     return null;
   }
 
@@ -203,31 +226,96 @@ const ViewNativeQueryEditor = props => {
       <NativeQueryEditor
         {...props}
         query={legacyQuery}
-        viewHeight={props.height}
-        isOpen={legacyQuery.isEmpty() || props.isDirty}
-        isInitiallyOpen={props.isNativeEditorOpen}
-        datasetQuery={props.card && props.card.dataset_query}
-        setParameterValueToDefault={props.setParameterValueToDefault}
-        onSetDatabaseId={props.onSetDatabaseId}
+        viewHeight={height}
+        isOpen={legacyQuery.isEmpty() || isDirty}
+        isInitiallyOpen={isNativeEditorOpen}
+        datasetQuery={card && card.dataset_query}
+        setParameterValueToDefault={setParameterValueToDefault}
+        onSetDatabaseId={onSetDatabaseId}
       />
     </NativeQueryEditorContainer>
   );
 };
 
 const ViewRightSidebarContainer = props => {
-  const { isNative } = Lib.queryDisplayInfo(props.question.query());
+  const {
+    question,
+    deselectTimelineEvents,
+    hideTimelineEvents,
+    isShowingQuestionInfoSidebar,
+    isShowingQuestionSettingsSidebar,
+    isShowingSummarySidebar,
+    isShowingTimelineSidebar,
+    onCloseQuestionInfo,
+    onCloseSummary,
+    onCloseTimelines,
+    onOpenModal,
+    onSave,
+    selectTimelineEvents,
+    selectedTimelineEventIds,
+    showTimelineEvents,
+    timelines,
+    updateQuestion,
+    visibleTimelineEventIds,
+    xDomain,
+  } = props;
+
+  const { isNative } = Lib.queryDisplayInfo(question.query());
 
   return !isNative ? (
-    <StructuredQueryRightSidebar {...props} />
+    <StructuredQueryRightSidebar
+      deselectTimelineEvents={deselectTimelineEvents}
+      hideTimelineEvents={hideTimelineEvents}
+      isShowingQuestionInfoSidebar={isShowingQuestionInfoSidebar}
+      isShowingQuestionSettingsSidebar={isShowingQuestionSettingsSidebar}
+      isShowingSummarySidebar={isShowingSummarySidebar}
+      isShowingTimelineSidebar={isShowingTimelineSidebar}
+      onCloseQuestionInfo={onCloseQuestionInfo}
+      onCloseSummary={onCloseSummary}
+      onCloseTimelines={onCloseTimelines}
+      onOpenModal={onOpenModal}
+      onSave={onSave}
+      question={question}
+      selectTimelineEvents={selectTimelineEvents}
+      selectedTimelineEventIds={selectedTimelineEventIds}
+      showTimelineEvents={showTimelineEvents}
+      timelines={timelines}
+      updateQuestion={updateQuestion}
+      visibleTimelineEventIds={visibleTimelineEventIds}
+      xDomain={xDomain}
+    />
   ) : (
     <NativeQueryRightSidebar {...props} />
   );
 };
 
-const StructuredQueryRightSidebar = props =>
+const StructuredQueryRightSidebar = ({
+  deselectTimelineEvents,
+  hideTimelineEvents,
+  isShowingQuestionInfoSidebar,
+  isShowingQuestionSettingsSidebar,
+  isShowingSummarySidebar,
+  isShowingTimelineSidebar,
+  onCloseQuestionInfo,
+  onCloseSummary,
+  onCloseTimelines,
+  onOpenModal,
+  onSave,
+  question,
+  selectTimelineEvents,
+  selectedTimelineEventIds,
+  showTimelineEvents,
+  timelines,
+  updateQuestion,
+  visibleTimelineEventIds,
+  xDomain,
+}) =>
   match({
-    isSaved: props.question.isSaved(),
-    ...props,
+    isSaved: question.isSaved(),
+    isShowingSummarySidebar,
+    isShowingTimelineSidebar,
+    isShowingQuestionInfoSidebar,
+    isShowingQuestionSettingsSidebar,
   })
     .with(
       {
@@ -235,31 +323,31 @@ const StructuredQueryRightSidebar = props =>
       },
       () => (
         <SummarizeSidebar
-          query={props.question.query()}
+          query={question.query()}
           onQueryChange={nextQuery => {
             const datesetQuery = Lib.toLegacyQuery(nextQuery);
-            const nextQuestion = props.question.setDatasetQuery(datesetQuery);
-            props.updateQuestion(nextQuestion.setDefaultDisplay(), {
+            const nextQuestion = question.setDatasetQuery(datesetQuery);
+            updateQuestion(nextQuestion.setDefaultDisplay(), {
               run: true,
             });
           }}
-          onClose={props.onCloseSummary}
+          onClose={onCloseSummary}
         />
       ),
     )
     .with({ isShowingTimelineSidebar: true }, () => (
       <TimelineSidebar
-        question={props.question}
-        timelines={props.timelines}
-        visibleTimelineEventIds={props.visibleTimelineEventIds}
-        selectedTimelineEventIds={props.selectedTimelineEventIds}
-        xDomain={props.xDomain}
-        onShowTimelineEvents={props.showTimelineEvents}
-        onHideTimelineEvents={props.hideTimelineEvents}
-        onSelectTimelineEvents={props.selectTimelineEvents}
-        onDeselectTimelineEvents={props.deselectTimelineEvents}
-        onOpenModal={props.onOpenModal}
-        onClose={props.onCloseTimelines}
+        question={question}
+        timelines={timelines}
+        visibleTimelineEventIds={visibleTimelineEventIds}
+        selectedTimelineEventIds={selectedTimelineEventIds}
+        xDomain={xDomain}
+        onShowTimelineEvents={showTimelineEvents}
+        onHideTimelineEvents={hideTimelineEvents}
+        onSelectTimelineEvents={selectTimelineEvents}
+        onDeselectTimelineEvents={deselectTimelineEvents}
+        onOpenModal={onOpenModal}
+        onClose={onCloseTimelines}
       />
     ))
     .with(
@@ -269,9 +357,9 @@ const StructuredQueryRightSidebar = props =>
       },
       () => (
         <QuestionInfoSidebar
-          question={props.question}
-          onSave={props.onSave}
-          onClose={props.onCloseQuestionInfo}
+          question={question}
+          onSave={onSave}
+          onClose={onCloseQuestionInfo}
         />
       ),
     )
@@ -280,47 +368,76 @@ const StructuredQueryRightSidebar = props =>
         isSaved: true,
         isShowingQuestionSettingsSidebar: true,
       },
-      () => <QuestionSettingsSidebar question={props.question} />,
+      () => <QuestionSettingsSidebar question={question} />,
     )
     .otherwise(() => null);
 
-const NativeQueryRightSidebar = props =>
-  match(props)
+const NativeQueryRightSidebar = props => {
+  const {
+    question,
+    toggleTemplateTagsEditor,
+    toggleDataReference,
+    toggleSnippetSidebar,
+    showTimelineEvent,
+    showTimelineEvents,
+    hideTimelineEvents,
+    selectTimelineEvents,
+    deselectTimelineEvents,
+    onCloseTimelines,
+    onSave,
+    onCloseQuestionInfo,
+    isShowingTemplateTagsEditor,
+    isShowingDataReference,
+    isShowingSnippetSidebar,
+    isShowingTimelineSidebar,
+    isShowingQuestionInfoSidebar,
+    isShowingQuestionSettingsSidebar,
+  } = props;
+
+  return match({
+    isShowingTemplateTagsEditor,
+    isShowingDataReference,
+    isShowingSnippetSidebar,
+    isShowingTimelineSidebar,
+    isShowingQuestionInfoSidebar,
+    isShowingQuestionSettingsSidebar,
+  })
     .with({ isShowingTemplateTagsEditor: true }, () => (
       <TagEditorSidebar
         {...props}
-        query={props.question.legacyQuery()}
-        onClose={props.toggleTemplateTagsEditor}
+        query={question.legacyQuery()}
+        onClose={toggleTemplateTagsEditor}
       />
     ))
     .with({ isShowingDataReference: true }, () => (
-      <DataReference {...props} onClose={props.toggleDataReference} />
+      <DataReference {...props} onClose={toggleDataReference} />
     ))
     .with({ isShowingSnippetSidebar: true }, () => (
-      <SnippetSidebar {...props} onClose={props.toggleSnippetSidebar} />
+      <SnippetSidebar {...props} onClose={toggleSnippetSidebar} />
     ))
     .with({ isShowingTimelineSidebar: true }, () => (
       <TimelineSidebar
         {...props}
-        onShowTimelineEvent={props.showTimelineEvent}
-        onShowTimelineEvents={props.showTimelineEvents}
-        onHideTimelineEvents={props.hideTimelineEvents}
-        onSelectTimelineEvents={props.selectTimelineEvents}
-        onDeselectTimelineEvents={props.deselectTimelineEvents}
-        onClose={props.onCloseTimelines}
+        onShowTimelineEvent={showTimelineEvent}
+        onShowTimelineEvents={showTimelineEvents}
+        onHideTimelineEvents={hideTimelineEvents}
+        onSelectTimelineEvents={selectTimelineEvents}
+        onDeselectTimelineEvents={deselectTimelineEvents}
+        onClose={onCloseTimelines}
       />
     ))
     .with({ isShowingQuestionInfoSidebar: true }, () => (
       <QuestionInfoSidebar
-        question={props.question}
-        onSave={props.onSave}
-        onClose={props.onCloseQuestionInfo}
+        question={question}
+        onSave={onSave}
+        onClose={onCloseQuestionInfo}
       />
     ))
     .with({ isShowingQuestionSettingsSidebar: true }, () => (
-      <QuestionSettingsSidebar question={props.question} />
+      <QuestionSettingsSidebar question={question} />
     ))
     .otherwise(() => null);
+};
 
 const View = props => {
   const {
