@@ -112,7 +112,7 @@
     (throw
      (ex-info (tru "SDK Embedding is disabled. Enable it in the Embedding settings.")
               {:status "error-embedding-sdk-disabled"
-               :status-code 405}))
+               :status-code 402}))
     (response/response
      {:status :ok
       :id     (:id session)

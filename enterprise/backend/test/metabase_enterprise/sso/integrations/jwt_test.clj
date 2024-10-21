@@ -75,7 +75,10 @@
          (mt/with-temporary-setting-values [jwt-enabled               false
                                             jwt-identity-provider-uri nil
                                             jwt-shared-secret         nil]
-           (is (= "SSO has not been enabled and/or configured"
+                                           (is (partial= {:cause "SSO has not been enabled and/or configured",
+                                                          :data {:status "error-sso-disabled", :status-code 400},
+                                                          :message "SSO has not been enabled and/or configured",
+                                                          :status "error-sso-disabled"}
                   (client/client :get 400 "/auth/sso")))
 
            (testing "SSO requests fail if they don't have a valid premium-features token"
