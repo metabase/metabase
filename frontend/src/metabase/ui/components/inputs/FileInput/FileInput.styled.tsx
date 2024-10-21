@@ -1,13 +1,12 @@
-import type { MantineThemeOverride } from "@mantine/core";
+import { FileInput } from "@mantine/core";
 
 import { FileInputValue } from "./FileInputValue";
 
-export const getFileInputOverrides =
-  (): MantineThemeOverride["components"] => ({
-    FileInput: {
-      defaultProps: {
-        size: "md",
-        valueComponent: FileInputValue,
-      },
+export const fileInputOverrides = {
+  FileInput: FileInput.extend({
+    defaultProps: {
+      size: "md",
+      valueComponent: FileInputValue,
     },
-  });
+  }),
+};

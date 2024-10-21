@@ -60,14 +60,14 @@ export function IFrameViz({
   if (isEditing && !isEditingParameter && !isPreviewing) {
     return (
       <IFrameEditWrapper>
-        <Stack h="100%" spacing="sm">
-          <Group align="center" noWrap>
+        <Stack h="100%" gap="sm">
+          <Group align="center" wrap="nowrap">
             <Text fw="bold" truncate>
               {t`Paste your snippet here`}
             </Text>{" "}
             <Box ml="auto">
               <Button
-                compact
+                size="compact-md"
                 variant="filled"
                 style={{ pointerEvents: "all" }}
                 onClick={onTogglePreviewing}
@@ -113,7 +113,7 @@ export function IFrameViz({
         <Box p={12} w="100%">
           <Text
             color="text-medium"
-            align={"center"}
+            ta="center"
           >{t`There was a problem loading your iframe`}</Text>
         </Box>
       )}

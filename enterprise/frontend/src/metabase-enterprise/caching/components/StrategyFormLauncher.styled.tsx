@@ -31,7 +31,7 @@ export const PolicyToken = styled(Button)<
   ${breakpointMaxSmall} {
     flex: 1;
   }
-`;
+` as unknown as typeof Button;
 PolicyToken.defaultProps = { radius: "sm" };
 
 export const StyledLauncher = styled(
@@ -75,4 +75,4 @@ export const StyledLauncher = styled(
     align-items: stretch;
     gap: 0.5rem;
   }
-`;
+` as unknown as typeof Flex;

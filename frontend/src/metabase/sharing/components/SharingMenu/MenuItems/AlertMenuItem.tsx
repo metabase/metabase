@@ -32,14 +32,14 @@ export function AlertMenuItem({
       <Menu.Item
         data-testid="question-alert-menu-item"
         my="sm"
-        icon={
+        leftSection={
           <Center mr="xs">
             <Icon name={hasAlerts ? "alert_filled" : "alert"} />
           </Center>
         }
         onClick={onClick}
       >
-        <Title order={4} color="inherit">
+        <Title order={4} c="inherit">
           {hasAlerts ? t`Edit alerts` : t`Create alert`}
         </Title>
       </Menu.Item>
