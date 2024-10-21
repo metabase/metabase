@@ -49,8 +49,8 @@
       (with-redefs
        [channel/send! (fn [channel message]
                         (swap! channel-messages update (:type channel) u/conjv message))]
-        (thunk)
-        @channel-messages))))
+       (thunk)
+       @channel-messages))))
 
 (defmacro with-captured-channel-send!
   "Macro that captures all messages sent to channels in the body of the macro.
@@ -101,28 +101,3 @@
    :details     {:return-type  "return-value"
                  :return-value true}
    :active      true})
-
-;; :model/ChannelTemplate
-
-(def channel-template-email-with-mustache-body
-  "A :model/ChannelTemplate for email channels that has a :event/mustache template."
-  {:channel_type :channel/email
-   :details      {:type    :email/mustache-text
-                  :subject "Welcome {{event-info.object.first_name}} to {{settings.site-name}}"
-                  :body    "Hello {{event-info.object.first_name}}! Welcome to {{settings.site-name}}!"}})
-
-;; notification info
-#_(def notification-info-user-joined-event
-    "A notification-info of the user-joined system event notification that can be used
-  to test [[channel/render-notification]]."
-    {:payload_type :notification/system-event
-     :payload      (#'events.notification/enriched-event-info
-                    :event/user-joined
-                    {:object
-                     {:email        "rasta@metabase.com"
-                      :first_name   "Rasta"
-                      :last_login   nil
-                      :is_qbnewb    true
-                      :is_superuser false
-                      :last_name    "Toucan"
-                      :common_name  "Rasta Toucan"}})})
