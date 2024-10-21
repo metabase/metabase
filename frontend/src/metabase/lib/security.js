@@ -1,7 +1,10 @@
 import passwordGenerator from "password-generator";
 
-// generate a password that satisfies `complexity` requirements, by default the ones that come back in the
-// `password-complexity` Setting; must be a map like {total: 6, number: 1}
+/**
+ * generates a password that satisfies `complexity` requirements,
+ * @param complexity a map like {total: 6, number: 1}
+ * @returns {string}
+ */
 export const generatePassword = complexity => {
   complexity = complexity || {};
   // generated password must be at least `complexity.total`, but can be longer
