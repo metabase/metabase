@@ -24,6 +24,7 @@ import { SpinnerIcon } from "metabase/components/LoadingSpinner/LoadingSpinner.s
 import { t } from "ttag";
 import toast from 'react-hot-toast'; 
 import { useSetting } from "metabase/common/hooks";
+import { string } from "yup";
 
 
 const ChatAssistant = ({ client, clientSmith, selectedMessages, selectedThreadId, setSelectedThreadId, chatType, oldCardId, insights, initial_message, setMessages, setInputValue, setThreadId, threadId, inputValue, messages, isChatHistoryOpen, setIsChatHistoryOpen, setShowButton, setShouldRefetchHistory }) => {
@@ -426,14 +427,12 @@ const ChatAssistant = ({ client, clientSmith, selectedMessages, selectedThreadId
             });
             for await (const chunk of streamResponse) {
                 const { event, data } = chunk;
-                if (event === "metadata") {
-                    setRunId(data.run_id)
-                }
-                // Handle partial messages
                 if (event === "messages/partial" && data.length > 0) {
+                   
                     const messageData = data[0];
-                    const { content, type, tool_calls, response_metadata } = messageData;
-    
+
+                    const { content, type, tool_calls, response_metadata, id } = messageData;
+                    setRunId(id)
                     if (messageData && messageData.content) {
                         const partialText = messageData.content; // Current text chunk
     
@@ -704,13 +703,17 @@ const ChatAssistant = ({ client, clientSmith, selectedMessages, selectedThreadId
             setIsFeedbackVisible(true); 
         }
     };
+
+    const removeRunPrefix = (str) => {
+        return str.startsWith("run-") ? str.replace("run-", "") : str;
+    }
     
     const handleSendFeedback = async (score, messageId, correctionText) => {
         try {
             if (score === 1) {
-                await clientSmith.createFeedback(runId, "user-score", { score: score });
+                await clientSmith.createFeedback(removeRunPrefix(runId), "user-score", { score: score });
             } else {
-                await clientSmith.createFeedback(runId, "comment", { comment: correctionText });      
+                await clientSmith.createFeedback(removeRunPrefix(runId), "comment", { comment: correctionText });      
             } 
      
         } catch (error) {
