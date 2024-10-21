@@ -576,11 +576,9 @@ describe("Notebook Editor > Join Step", () => {
     );
     await waitForLoaderToBeRemoved();
     await userEvent.click(within(newEntityPickerModal).getByText("Orders"));
-    const newLhsColumn = screen.getByLabelText("Left column");
-    expect(
-      within(newLhsColumn).getByText("Pick a column…"),
-    ).toBeInTheDocument();
-    expect(within(newLhsColumn).queryByText("ID")).not.toBeInTheDocument();
+    const lhsColumn = screen.getByLabelText("Left column");
+    expect(within(lhsColumn).getByText("Pick a column…")).toBeInTheDocument();
+    expect(within(lhsColumn).queryByText("ID")).not.toBeInTheDocument();
   });
 
   describe("join strategies", () => {

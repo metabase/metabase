@@ -88,10 +88,13 @@ export function JoinDraft({
   };
 
   const handleReset = () => {
-    setStrategy(getDefaultJoinStrategy(query, stageIndex));
-    setRhsTable(undefined);
-    setRhsTableColumns([]);
-    setSelectedRhsTableColumns([]);
+    const rhsTableColumns = initialRhsTable
+      ? Lib.joinableColumns(query, stageIndex, initialRhsTable)
+      : [];
+    setStrategy(initialStrategy ?? getDefaultJoinStrategy(query, stageIndex));
+    setRhsTable(initialRhsTable);
+    setRhsTableColumns(rhsTableColumns);
+    setSelectedRhsTableColumns(rhsTableColumns);
     setLhsColumn(undefined);
   };
 
