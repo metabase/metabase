@@ -316,16 +316,18 @@ jobs:
         name: metabase-${{ matrix.edition }}-uberjar
     - name: Move the Uberjar to the context dir
       run: mv ./metabase.jar bin/docker/.
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v3
     - name: Set up Docker Buildx
       id: buildx
-      uses: docker/setup-buildx-action@v2
+      uses: docker/setup-buildx-action@v3
       with:
         driver-opts: network=host
     - name: Build ${{ matrix.edition }} container
-      uses: docker/build-push-action@v3
+      uses: docker/build-push-action@v6
       with:
         context: bin/docker/.
-        platforms: linux/amd64
+        platforms: linux/amd64,linux/arm64/v8
         network: host
         tags: localhost:5000/local-metabase:${{ steps.canonical_version.outputs.result }}
         no-cache: true
