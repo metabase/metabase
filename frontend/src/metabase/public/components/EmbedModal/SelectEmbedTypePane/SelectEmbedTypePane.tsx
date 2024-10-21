@@ -2,7 +2,7 @@ import cx from "classnames";
 import { useState } from "react";
 import { t } from "ttag";
 
-import { useUrlWithUtm } from "metabase/common/hooks";
+import { useDocsUrl, useUrlWithUtm } from "metabase/common/hooks";
 import Link from "metabase/core/components/Link";
 import CS from "metabase/css/core/index.css";
 import { Badge } from "metabase/home/components/EmbedHomepage/Badge";
@@ -50,9 +50,11 @@ export function SelectEmbedTypePane({
   };
 
   const sdkUrl = useUrlWithUtm("https://metaba.se/sdk", utmTags);
-  const embeddingUrl = useUrlWithUtm(
-    // eslint-disable-next-line no-unconditional-metabase-links-render -- only visible to admins
-    "https://www.metabase.com/docs/latest/embedding/introduction#comparison-of-embedding-types",
+
+  // eslint-disable-next-line no-unconditional-metabase-links-render -- only visible to admins
+  const { url: embeddingUrl } = useDocsUrl(
+    "embedding/introduction",
+    "comparison-of-embedding-types",
     utmTags,
   );
 
