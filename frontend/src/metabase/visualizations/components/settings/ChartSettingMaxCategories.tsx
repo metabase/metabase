@@ -56,15 +56,25 @@ export const ChartSettingMaxCategories = ({
         {...props}
         data-testid="graph-max-categories-input"
       />
-      {canChangeAggregationFunction && (
-        <Select
-          value={aggregationFunction}
-          data={AGGREGATION_FN_OPTIONS}
-          onChange={handleAggregationFunctionChange}
-          data-testid="graph-other-category-aggregation-fn-picker"
-        />
-      )}
       <Text>{t`Series after this number will be grouped into "Other"`}</Text>
+      {canChangeAggregationFunction && (
+        <div>
+          <Text
+            component="label"
+            htmlFor="aggregationFunction"
+            color="var(--mb-color-text-dark)"
+            fz="sm"
+            mb="sm"
+          >{t`Aggregation method for Other group`}</Text>
+          <Select
+            name="aggregationFunction"
+            value={aggregationFunction}
+            data={AGGREGATION_FN_OPTIONS}
+            onChange={handleAggregationFunctionChange}
+            data-testid="graph-other-category-aggregation-fn-picker"
+          />
+        </div>
+      )}
     </Stack>
   );
 };
