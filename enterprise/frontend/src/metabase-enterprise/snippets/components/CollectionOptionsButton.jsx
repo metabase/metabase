@@ -3,20 +3,25 @@ import { Component } from "react";
 import { t } from "ttag";
 
 import { canonicalCollectionId } from "metabase/collections/utils";
-import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import AccordionList from "metabase/core/components/AccordionList";
 import CS from "metabase/css/core/index.css";
-import { Icon } from "metabase/ui";
+import { Icon, Popover } from "metabase/ui";
 
 const ICON_SIZE = 16;
 
 export default class CollectionOptionsButton extends Component {
+  constructor() {
+    super();
+    this.state = { popoverOpen: false };
+  }
+
   render() {
     const items = this.popoverOptions();
     if (items.length === 0) {
       return null;
     }
     const { className } = this.props;
+    const { popoverOpen } = this.state;
 
     return (
       <div
@@ -26,21 +31,26 @@ export default class CollectionOptionsButton extends Component {
         // cap the large ellipsis so it doesn't increase the row height
         style={{ height: ICON_SIZE }}
       >
-        <TippyPopoverWithTrigger
-          triggerClasses={CS.hoverChild}
-          triggerContent={<Icon name="ellipsis" size={20} />}
-          placement="bottom-end"
-          popoverContent={({ closePopover }) => (
+        <Popover opened={popoverOpen}>
+          <Popover.Target>
+            <Icon
+              className={CS.hoverChild}
+              name="ellipsis"
+              size={20}
+              onClick={() => this.setState({ popoverOpen: true })}
+            />
+          </Popover.Target>
+          <Popover.Dropdown>
             <AccordionList
               className={CS.textBrand}
               sections={[{ items }]}
               onChange={item => {
                 item.onClick(item);
-                closePopover();
+                this.setState({ popoverOpen: false });
               }}
             />
-          )}
-        />
+          </Popover.Dropdown>
+        </Popover>
       </div>
     );
   }

@@ -3,11 +3,11 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { getInputTypes } from "metabase/actions/constants";
-import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import Input from "metabase/core/components/Input";
 import Radio from "metabase/core/components/Radio";
 import Toggle from "metabase/core/components/Toggle";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
+import { Popover } from "metabase/ui";
 import type {
   FieldSettings,
   FieldType,
@@ -34,24 +34,25 @@ export function FieldSettingsPopover({
   onChange,
 }: FieldSettingsPopoverProps) {
   return (
-    <TippyPopoverWithTrigger
-      placement="bottom-end"
-      triggerContent={
+    <Popover position="bottom-end" width={400} closeOnClickOutside>
+      <Popover.Target>
         <SettingsTriggerIcon
           name="gear"
           size={16}
           tooltip={t`Change field settings`}
           aria-label={t`Field settings`}
+          style={{
+            cursor: "pointer",
+          }}
         />
-      }
-      maxWidth={400}
-      popoverContent={() => (
+      </Popover.Target>
+      <Popover.Dropdown>
         <FormCreatorPopoverBody
           fieldSettings={fieldSettings}
           onChange={onChange}
         />
-      )}
-    />
+      </Popover.Dropdown>
+    </Popover>
   );
 }
 
