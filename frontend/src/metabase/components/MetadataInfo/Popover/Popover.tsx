@@ -5,8 +5,22 @@ import useSequencedContentCloseHandler from "metabase/hooks/use-sequenced-conten
 import type { HoverCardProps } from "metabase/ui";
 import { HoverCard, useDelayGroup } from "metabase/ui";
 
-export const POPOVER_DELAY: [number, number] = [250, 150];
-export const POPOVER_TRANSITION_DURATION = 150;
+const POPOVER_TRANSITION_DURATION = 150;
+
+// Initially, the user will have to hover for this long to open the popover
+const POPOVER_SLOW_OPEN_DELAY = 250;
+
+// When an item in the same delay group is already open, we want to open the
+// popover immediately, without waiting for the user to hover for POPOVER_SLOW_OPEN_DELAY.
+// This way the user can move the cursor between hover targets and get feedback immediately.
+//
+// When opening fast, we still delay a little bit to avoid a flickering popover
+// when the target is being clicked.
+const POPOVER_FAST_OPEN_DELAY = 150;
+
+// When switching to another hover target in the same delay group,
+// we don't close immediately but delay by a short amount to avoid flicker.
+const POPOVER_CLOSE_DELAY = POPOVER_FAST_OPEN_DELAY + 30;
 
 import {
   Dropdown,
@@ -14,24 +28,20 @@ import {
   WidthBound,
 } from "./Popover.styled";
 
-// When switching to another hover target in the same delay group,
-// we don't close immediately but delay by a short amount to avoid flicker.
-export const POPOVER_CLOSE_DELAY = 20;
-
 export type PopoverProps = Pick<
   HoverCardProps,
   "children" | "position" | "disabled"
 > & {
-  delay?: [number, number];
   width?: number;
   content: ReactNode;
+  openDelay?: number;
 };
 
 export function Popover({
   position = "bottom-start",
   disabled,
-  delay = POPOVER_DELAY,
   content,
+  openDelay = POPOVER_SLOW_OPEN_DELAY,
   width,
   children,
 }: PopoverProps) {
@@ -57,8 +67,8 @@ export function Popover({
     <HoverCard
       position={position}
       disabled={disabled}
-      openDelay={group.shouldDelay ? delay[0] : 0}
-      closeDelay={group.shouldDelay ? delay[1] : POPOVER_CLOSE_DELAY}
+      openDelay={group.shouldDelay ? openDelay : POPOVER_FAST_OPEN_DELAY}
+      closeDelay={POPOVER_CLOSE_DELAY}
       onOpen={handleOpen}
       onClose={handleClose}
       transitionProps={{
