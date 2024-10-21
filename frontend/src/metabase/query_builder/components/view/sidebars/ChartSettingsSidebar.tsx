@@ -11,11 +11,13 @@ import {
 } from "metabase/visualizations/components/ChartSettings";
 import type Question from "metabase-lib/v1/Question";
 import type { Dataset, VisualizationSettings } from "metabase-types/api";
+import { useDispatch, useSelector } from "metabase/lib/redux";
+import { getUiControls } from "metabase/query_builder/selectors";
+import { onCloseChartSettings } from "metabase/query_builder/actions";
 
 interface ChartSettingsSidebarProps {
   question: Question;
   result: Dataset;
-  addField: () => void;
   initialChartSetting: { section: string; widget?: Widget };
   onReplaceAllVisualizationSettings: (settings: VisualizationSettings) => void;
   onClose: () => void;
@@ -24,18 +26,19 @@ interface ChartSettingsSidebarProps {
   showSidebarTitle?: boolean;
 }
 
-function ChartSettingsSidebarInner(props: ChartSettingsSidebarProps) {
-  const {
-    question,
-    result,
-    addField,
-    initialChartSetting,
-    onReplaceAllVisualizationSettings,
-    onClose,
-    onOpenChartType,
-    visualizationSettings,
-    showSidebarTitle = false,
-  } = props;
+function ChartSettingsSidebarInner({
+  onClose,
+  onOpenChartType,
+  onReplaceAllVisualizationSettings,
+  question,
+  result,
+  visualizationSettings,
+}: ChartSettingsSidebarProps) {
+
+  const dispatch = useDispatch()
+
+  const { initialChartSetting, showSidebarTitle = false } = useSelector(getUiControls);
+
   const sidebarContentProps = showSidebarTitle
     ? {
         title: t`${visualizations.get(question.display())?.uiName} options`,
@@ -44,7 +47,7 @@ function ChartSettingsSidebarInner(props: ChartSettingsSidebarProps) {
     : {};
 
   const handleClose = useCallback(() => {
-    onClose();
+    dispatch(onCloseChartSettings());
   }, [onClose]);
 
   const card = question.card();
@@ -67,7 +70,6 @@ function ChartSettingsSidebarInner(props: ChartSettingsSidebarProps) {
         <ErrorBoundary>
           <ChartSettings
             question={question}
-            addField={addField}
             series={series}
             onChange={onReplaceAllVisualizationSettings}
             onClose={handleClose}
