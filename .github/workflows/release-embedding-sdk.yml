@@ -48,7 +48,7 @@ jobs:
       - name: Get current SDK version
         id: current-sdk-version
         run: |
-          VERSION=$(cat ./enterprise/frontend/src/embedding-sdk/package.template.json | jq -r .version)
+          VERSION=$(jq -r .version ./enterprise/frontend/src/embedding-sdk/package.template.json)
           echo "::set-output name=sdk_current_version::$VERSION"
 
       - name: Get next SDK patch version
