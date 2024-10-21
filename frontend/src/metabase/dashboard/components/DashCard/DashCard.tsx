@@ -76,7 +76,7 @@ export interface DashCardProps {
   navigateToNewCardFromDashboard?: (
     opts: NavigateToNewCardFromDashboardOpts,
   ) => void;
-  onReplaceAllVisualizationSettings: (
+  onReplaceAllDashCardVisualizationSettings: (
     dashcardId: DashCardId,
     settings: VisualizationSettings,
   ) => void;
@@ -114,7 +114,7 @@ function DashCardInner({
   showClickBehaviorSidebar,
   onChangeLocation,
   onUpdateVisualizationSettings,
-  onReplaceAllVisualizationSettings,
+  onReplaceAllDashCardVisualizationSettings,
   downloadsEnabled,
 }: DashCardProps) {
   const dashcardData = useSelector(state =>
@@ -326,8 +326,8 @@ function DashCardInner({
             onRemove={onRemove}
             onReplaceCard={onReplaceCard}
             onUpdateVisualizationSettings={onUpdateVisualizationSettings}
-            onReplaceAllVisualizationSettings={
-              onReplaceAllVisualizationSettings
+            onReplaceAllDashCardVisualizationSettings={
+              onReplaceAllDashCardVisualizationSettings
             }
             showClickBehaviorSidebar={handleShowClickBehaviorSidebar}
             onPreviewToggle={handlePreviewToggle}

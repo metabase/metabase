@@ -36,7 +36,7 @@ interface Props {
   onRemove: (dashcard: DashboardCard) => void;
   onAddSeries: (dashcard: DashboardCard) => void;
   onReplaceCard: (dashcard: DashboardCard) => void;
-  onReplaceAllVisualizationSettings: (
+  onReplaceAllDashCardVisualizationSettings: (
     dashcardId: DashCardId,
     settings: VisualizationSettings,
   ) => void;
@@ -60,7 +60,7 @@ function DashCardActionsPanelInner({
   onRemove,
   onAddSeries,
   onReplaceCard,
-  onReplaceAllVisualizationSettings,
+  onReplaceAllDashCardVisualizationSettings,
   onUpdateVisualizationSettings,
   showClickBehaviorSidebar,
   onPreviewToggle,
@@ -95,9 +95,9 @@ function DashCardActionsPanelInner({
         return;
       }
 
-      onReplaceAllVisualizationSettings(dashcard.id, settings);
+      onReplaceAllDashCardVisualizationSettings(dashcard.id, settings);
     },
-    [dashcard, onReplaceAllVisualizationSettings],
+    [dashcard, onReplaceAllDashCardVisualizationSettings],
   );
 
   const handleReplaceCard = useCallback(() => {
