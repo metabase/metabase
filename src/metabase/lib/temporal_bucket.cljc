@@ -307,16 +307,12 @@
 (defn ensure-temporal-unit-in-display-name
   "Adjust `:display_name` to contain temporal_unit"
   [column-metadata]
-  (let [res (if-some [temporal-unit (or (:unit column-metadata)
-                                        (get-in column-metadata [:field_ref 2 :temporal-unit]))]
-              (let [temporal-unit-for-humans (describe-temporal-unit temporal-unit)
-                    display-name (:display_name column-metadata)]
-                (if (or (= :default temporal-unit)
-                        (str/ends-with? display-name temporal-unit-for-humans))
-                  column-metadata
-                  (update column-metadata :display_name (partial lib.util/format "%s: %s") temporal-unit-for-humans)))
-              column-metadata)]
-    #?(:cljs (do (.log js/console "ensure-temporal-unit-in-display-name")
-                 (.log js/console column-metadata)
-                 (.log js/console res)))
-    res))
+  (if-some [temporal-unit (or (:unit column-metadata)
+                              (get-in column-metadata [:field_ref 2 :temporal-unit]))]
+    (let [temporal-unit-for-humans (describe-temporal-unit temporal-unit)
+          display-name (:display_name column-metadata)]
+      (if (or (= :default temporal-unit)
+              (str/ends-with? display-name temporal-unit-for-humans))
+        column-metadata
+        (update column-metadata :display_name (partial lib.util/format "%s: %s") temporal-unit-for-humans)))
+    column-metadata))
