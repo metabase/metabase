@@ -7,6 +7,7 @@ import type {
   DatePickerExtractionUnit,
   DatePickerOperator,
   DatePickerTruncationUnit,
+  DatePickerUnit,
 } from "./types";
 
 export function isDatePickerOperator(
@@ -16,16 +17,20 @@ export function isDatePickerOperator(
   return operators.includes(operator);
 }
 
-export function isDatePickerExtractionUnit(
-  unit: string,
-): unit is DatePickerExtractionUnit {
-  const units: ReadonlyArray<string> = DATE_PICKER_EXTRACTION_UNITS;
-  return units.includes(unit);
+export function isDatePickerUnit(unit: string): unit is DatePickerUnit {
+  return isDatePickerTruncationUnit(unit) || isDatePickerExtractionUnit(unit);
 }
 
 export function isDatePickerTruncationUnit(
   unit: string,
 ): unit is DatePickerTruncationUnit {
   const units: ReadonlyArray<string> = DATE_PICKER_TRUNCATION_UNITS;
+  return units.includes(unit);
+}
+
+export function isDatePickerExtractionUnit(
+  unit: string,
+): unit is DatePickerExtractionUnit {
+  const units: ReadonlyArray<string> = DATE_PICKER_EXTRACTION_UNITS;
   return units.includes(unit);
 }
