@@ -24,7 +24,8 @@ export interface AppBreadCrumbs {
 export type TempStorage = {};
 
 export type TempStorageKey = keyof TempStorage;
-export type TempStorageValue<Key extends TempStorageKey> = TempStorage[Key];
+export type TempStorageValue<Key extends TempStorageKey = TempStorageKey> =
+  TempStorage[Key];
 
 export interface AppState {
   errorPage: AppErrorDescriptor | null;
