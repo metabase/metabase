@@ -261,9 +261,13 @@ const ChatAssistant = ({ client, clientSmith, selectedMessages, selectedThreadId
     };
 
     const openModal = (cardData, cardIndex) => {
-        setSelectedHash(cardData.hash)
-        setSelectedIndex(cardIndex)
-        setIsModalOpen(true);
+        // setSelectedHash(cardData.hash)
+        // setSelectedIndex(cardIndex)
+        // setIsModalOpen(true);
+        if (cardData.hash) {
+            dispatch(push(`/question#${cardData.hash}`));
+            // const deletedCard = await CardApi.delete({ id: id });
+        }
     };
 
     const closeModal = () => {

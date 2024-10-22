@@ -34,8 +34,7 @@ const ChatMessageList = ({
   insightsText,
   finalMessages,
   finalMessagesText,
-  isFeedbackVisible,
-  redirect
+  isFeedbackVisible
 }) => {
   const messageEndRef = useRef(null);
   const [showCode, setShowCode] = useState(false);
@@ -270,7 +269,7 @@ const ChatMessageList = ({
                         <Button
                           variant="outlined"
                           style={{ width: "auto", cursor: "pointer", border: "1px solid #E0E0E0", borderRadius: "8px", marginBottom: "1rem", color: "#FFF", marginLeft: "auto", marginRight: 0, backgroundColor: "#8A64DF", display: "flex", alignItems: "center", padding: "0.5rem 1rem", lineHeight: "1" }}
-                          onClick={redirect}
+                          onClick={() => openModal(card[visualizationIdx], visualizationIdx)}
                         >
                           <Icon size={18} name="bookmark" style={{ marginRight: "0.5rem" }} />
                           <span style={{ fontSize: "18px", fontWeight: "lighter" }}>Verify & Save</span>
