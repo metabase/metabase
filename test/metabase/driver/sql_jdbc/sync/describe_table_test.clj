@@ -143,7 +143,6 @@
                                             :table-names [(:name table)]))
                (:fields (driver/describe-table driver db table))))))
 
-
 (defmethod driver/database-supports? [::driver/driver ::describe-pks]
   [driver _feature database]
   ;; This is a decent proxy for drivers that set the `pk?` metadata field.

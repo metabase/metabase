@@ -833,7 +833,7 @@
      (fn [db]
        (testing "check that we can actually fetch the enum types from a DB"
          (is (= #{(keyword "bird type") :bird_status}
-                (#'postgres/enum-types :postgres db))))
+                (#'postgres/enum-types db))))
 
        (testing "check that describe-table properly describes the database & base types of the enum fields"
          (is (=? [{:table-schema               "public"
