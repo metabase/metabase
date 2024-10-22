@@ -1989,11 +1989,9 @@ describe("pivot tables", () => {
     createBaseQuestions();
 
     cy.intercept("POST", "/api/dataset").as("dataset");
+    cy.intercept("POST", "/api/dataset/pivot").as("datasetPivot");
     cy.intercept("GET", "/api/dashboard/**").as("getDashboard");
-    cy.intercept("PUT", "/api/dashboard/**").as("updateDashboard");
-    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
-      "dashboardData",
-    );
+    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
 
     cy.then(function () {
       createQuestion({
@@ -2050,6 +2048,8 @@ describe("pivot tables", () => {
   });
 
   it("does not use extra filtering stage for pivot tables", () => {
+    cy.log("dashboard parameters mapping");
+
     editDashboard();
 
     cy.log("## date columns");
@@ -2065,6 +2065,25 @@ describe("pivot tables", () => {
     verifyNumberMappingOptions();
 
     cy.button("Save").click();
+
+    cy.log("filter modal");
+
+    getDashboardCard(QUESTION_PIVOT_INDEX)
+      .findByTestId("legend-caption-title")
+      .click();
+    cy.wait("@datasetPivot");
+    cy.button("Filter").click();
+    modal().findByText("Summaries").should("not.exist");
+
+    cy.go("back");
+    cy.go("back");
+
+    getDashboardCard(QUESTION_PIVOTED_TABLE_INDEX)
+      .findByTestId("legend-caption-title")
+      .click();
+    cy.wait("@cardQuery");
+    cy.button("Filter").click();
+    modal().findByText("Summaries").should("not.exist");
 
     function verifyDateMappingOptions() {
       verifyDashcardMappingOptions(QUESTION_PIVOT_INDEX, [
