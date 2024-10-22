@@ -59,8 +59,8 @@
 
 (deftest csp-header-iframe-hosts-tests
   (testing "Allowed iframe hosts setting is used in the CSP frame-src directive."
-    (tu/with-temporary-setting-values [public-settings/allowed-iframe-hosts "https://www.wikipedia.org, https://www.metabase.com   https://clojure.org/"]
-      (is (= "frame-src https://www.wikipedia.org https://www.metabase.com https://clojure.org/"
+    (tu/with-temporary-setting-values [public-settings/allowed-iframe-hosts "https://www.wikipedia.org, https://www.metabase.com   https://clojure.org"]
+      (is (= "frame-src https://www.wikipedia.org https://www.metabase.com https://clojure.org https://*.clojure.org"
              (csp-directive "frame-src"))))))
 
 (deftest xframeoptions-header-tests
