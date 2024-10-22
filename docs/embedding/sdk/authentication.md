@@ -6,7 +6,7 @@ title: Embedded analytics SDK - authentication
 
 {% include beta-blockquote.html %}
 
-{% include plans-blockquote.html feature="Embedding SDK" %}
+{% include plans-blockquote.html feature="Embedded analytics SDK" %}
 
 Notes on handling authentication when working with the SDK.
 

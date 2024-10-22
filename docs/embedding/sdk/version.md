@@ -4,6 +4,10 @@ title: Embedded analytics SDK - versions
 
 # Embedded analytics SDK - versions
 
+{% include beta-blockquote.html %}
+
+{% include plans-blockquote.html feature="Embedded analytics SDK" %}
+
 The SDK version tracks with the Metabase version.
 
 So, for example, if you're on Metabase version `1.51.0`, you should use the SDK `1.51.0`.

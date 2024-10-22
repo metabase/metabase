@@ -4,6 +4,10 @@ title: Embedded analytics SDK - plugins
 
 # Embedded analytics SDK - plugins
 
+{% include beta-blockquote.html %}
+
+{% include plans-blockquote.html feature="Embedded analytics SDK" %}
+
 The Metabase Embedding SDK supports plugins to customize the behavior of components. These plugins can be used in a global context or on a per-component basis.
 
 ## Global plugins
