@@ -23,6 +23,8 @@ For an introduction to expressions, check out the [overview of custom expression
   - [Sum](#sum)
   - [SumIf](./expressions/sumif.md)
   - [Variance](#variance)
+  - [CumulativeSum](./expressions/cumulative.md)
+  - [CumulativeCount](./expressions/cumulative.md)
 
 - Functions
 
@@ -84,9 +86,9 @@ For an introduction to expressions, check out the [overview of custom expression
     - [year](#year)
 
   - [Window functions](#window-functions)
-    - [Offset](#offset)
-    - [CumulativeCount](#cumulativecount)
-    - [CumulativeSum](#cumulativesum)
+    - [Offset](./expressions/offset.md)
+    - [CumulativeCount](./expressions/cumulative.md)
+    - [CumulativeSum](./expressions/cumulative.md)
 
 - [Limitations](#limitations)
   - [Database limitations](#database-limitations)
@@ -720,7 +722,7 @@ Window functions can only be used in the **Summarize** section. They cannot be u
 
 ### CumulativeCount
 
-For more info, check out our page on [`CumulativeCount`](./expressions/cumulative.md).
+For more info, check out our page on [cumulative functions](./expressions/cumulative.md).
 
 The additive total of rows across a breakout.
 
@@ -730,7 +732,7 @@ Example: `CumulativeCount`.
 
 ### CumulativeSum
 
-For more info, check out our page on [`CumulativeSum`](./expressions/cumulative.md).
+For more info, check out our page on [cumulative functions](./expressions/cumulative.md).
 
 The rolling sum of a column across a breakout.
 
@@ -744,7 +746,7 @@ Related: [Sum](#sum) and [SumIf](#sumif).
 
 > ⚠️ The `Offset` function is currently unavailable for MySQL/MariaDB.
 
-For more info, check out our page on [`Offset`](./expressions/offset.md).
+For more info, check out our page on [Offset](./expressions/offset.md).
 
 Returns the value of an expression in a different row. `Offset` can only be used in the query builder's Summarize step (you cannot use `Offset` to create a custom column).
 
@@ -777,11 +779,13 @@ Limitations are noted for each aggregation and function above, and here there ar
 
 **MongoDB**: `regexextract`
 
-**MariaDB**: `Median`, `Percentile`.
+**MariaDB**: `Median`, `Percentile`, `Offset`.
 
-**MySQL**: `Median`, `Percentile`.
+**MySQL**: `Median`, `Percentile`, `Offset`.
 
 **Presto**: Only provides _approximate_ results for `Median` and `Percentile`.
+
+**Redshift**: `Average` will return [integer results for integer columns](https://docs.aws.amazon.com/redshift/latest/dg/r_AVG.html#r_AVG-data-types).
 
 **SQL Server**: `Median`, `Percentile` and `regexextract`
 
