@@ -878,6 +878,20 @@ describe("scenarios > visualizations > bar chart", () => {
     echartsTooltip().find("tr").should("have.length", 5);
     queryBuilderMain().findAllByTestId("legend-item").should("have.length", 5);
 
+    // Test can move series in/out of "Other" series
+    moveDnDKitElement(getDraggableElements().eq(3), { vertical: 150 }); // Move AZ into "Other"
+    moveDnDKitElement(getDraggableElements().eq(6), { vertical: -150 }); // Move CT out of "Other"
+
+    queryBuilderMain().findAllByTestId("legend-item").should("have.length", 5);
+    queryBuilderMain()
+      .findAllByTestId("legend-item")
+      .contains("AZ")
+      .should("not.exist");
+    queryBuilderMain()
+      .findAllByTestId("legend-item")
+      .contains("CT")
+      .should("exist");
+
     // Test "graph.max_categories" removes "Other" altogether
     setMaxCategories(0);
     chartPathWithFillColor(AK_SERIES_COLOR).first().realHover();

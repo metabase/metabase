@@ -108,19 +108,15 @@ export const getCartesianChartModel = (
     settings["graph.x_axis.scale"],
     showWarning,
   );
-  const scaledDataset = scaleDataset(dataset, unsortedSeriesModels, settings);
 
-  const {
-    ungroupedSeriesModels: unsortedUngroupedSeriesModels,
-    groupedSeriesModels: unsortedGroupedSeriesModels,
-  } = groupSeriesIntoOther(unsortedSeriesModels, settings);
+  const sortedSeriesModels = hasMultipleCards
+    ? unsortedSeriesModels
+    : getSortedSeriesModels(unsortedSeriesModels, settings);
 
-  const seriesModels = hasMultipleCards
-    ? unsortedUngroupedSeriesModels
-    : getSortedSeriesModels(unsortedUngroupedSeriesModels, settings);
-  const groupedSeriesModels = hasMultipleCards
-    ? unsortedGroupedSeriesModels
-    : getSortedSeriesModels(unsortedGroupedSeriesModels, settings);
+  const scaledDataset = scaleDataset(dataset, sortedSeriesModels, settings);
+
+  const { ungroupedSeriesModels: seriesModels, groupedSeriesModels } =
+    groupSeriesIntoOther(sortedSeriesModels, settings);
 
   const [sampleGroupedModel] = groupedSeriesModels;
   if (sampleGroupedModel) {
