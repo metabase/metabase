@@ -173,7 +173,6 @@ const ChatAssistant = ({ client, clientSmith, selectedMessages, selectedThreadId
 
     useEffect(() => {
         if (client && selectedMessages && selectedThreadId && selectedMessages.length > 0) {
-            console.log("selectedMessages: ", selectedMessages)
             // Clear existing messages
             setMessages([]);
             let visualizationIdx = 0;
@@ -191,7 +190,6 @@ const ChatAssistant = ({ client, clientSmith, selectedMessages, selectedThreadId
                     let card_id = null;
                     try {
                         const parsedContent = JSON.parse(message.content);
-                        console.log("parsedContent: ", parsedContent)
                         if (parsedContent.card_id) {
                             card_id = parsedContent.card_id;
                         }
@@ -989,7 +987,7 @@ const ChatAssistant = ({ client, clientSmith, selectedMessages, selectedThreadId
 
                             <ChatMessageList messages={messages} isLoading={isLoading} onFeedbackClick={handleFeedbackDialogOpen} isFeedbackVisible={isFeedbackVisible}
                                 approvalChangeButtons={approvalChangeButtons} onApproveClick={handleAccept} onDenyClick={handleDeny}
-                                card={card} defaultQuestion={defaultQuestion} result={result} openModal={openModal}
+                                card={card} defaultQuestion={defaultQuestion} result={result} openModal={openModal} redirect={redirect}
                                 showError={showError} insightsCode={insightsCode} showCubeEditButton={showCubeEditButton} sendAdminRequest={handleCubeRequestDialogOpen} onSuggestion={handleSuggestion}
                                 insightCellCode={insightCellCode} insightsImg={insightsImg} insightsPlan={inisghtPlan} progressShow={progressShow}
                                 insightsText={insightsText} finalMessages={finalMessages} finalMessagesText={finalMessagesText} onSendFeedback={handleSendFeedback}
