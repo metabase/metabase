@@ -1,6 +1,10 @@
 (ns metabase.db.liquibase
   "High-level Clojure wrapper around relevant parts of the Liquibase API."
   (:require
+   ;; We need to use the lower level API which lets us provide our own reader.
+   #_{:clj-kondo/ignore [:discouraged-namespace]}
+   [clj-yaml.core :as yaml]
+   [clojure.java.io :as io]
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [metabase.config :as config]
@@ -345,6 +349,25 @@
   [s]
   (map #(Integer/parseInt %) (re-seq #"\d+" s)))
 
+(defn- record-legacy-changelogs!
+  "Create records for all the legacy migrations that were aggregated, so that we will not attempt to re-run them."
+  [conn]
+  (let [liquibase-table-name (changelog-table-name conn)]
+    (when-not (some-> (jdbc/query {:connection conn} [(str "SELECT ID FROM " liquibase-table-name " WHERE ID = '1'")]) seq)
+      (with-open [rdr (io/reader (io/resource "migrations/000_legacy_migrations.yaml"))]
+        (let [legacy-migrations (->> rdr yaml/parse-stream :databaseChangeLog (keep :changeSet))
+              insert-statement  (format "INSERT INTO %s (ID, AUTHOR, FILENAME, DATEEXECUTED, ORDEREXECUTED, EXECTYPE) VALUES (?, ?, ?, CURRENT_TIMESTAMP, ?, ?)" liquibase-table-name)
+              next-executed     (inc (val (ffirst (jdbc/query {:connection conn} [(str "SELECT MAX(ORDEREXECUTED) FROM " liquibase-table-name)]))))]
+          (doseq [migration (map-indexed #(assoc %2 :order-executed (+ %1 next-executed)) legacy-migrations)]
+            (jdbc/execute!
+             {:connection conn}
+             [insert-statement
+              (:id migration)
+              (:author migration)
+              "migrations/000_migrations.yaml"
+              (:order-executed migration)
+              "EXECUTED"])))))))
+
 (defn rollback-major-version
   "Roll back migrations later than given Metabase major version"
   ;; default rollback to previous version
@@ -364,7 +387,10 @@
          ;; IDs in changesets do not include the leading 0/1 digit, so the major version is the first number
          ids-to-drop     (drop-while #(not= (inc target-version) (first (extract-numbers %))) changeset-ids)]
      (log/infof "Rolling back app database schema to version %d" target-version)
-     (.rollback liquibase (count ids-to-drop) ""))))
+     (.rollback liquibase (count ids-to-drop) "")
+     ;; See https://github.com/metabase/metabase/issues/47232
+     (when (< target-version 48)
+       (record-legacy-changelogs! conn)))))
 
 (defn latest-applied-major-version
   "Gets the latest version that was applied to the database."
