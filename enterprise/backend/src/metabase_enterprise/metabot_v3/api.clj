@@ -44,10 +44,18 @@
   {message ms/NonBlankString
    context [:map-of :keyword :any]
    history [:maybe [:sequential :map]]}
-  (let [context (mc/decode ::metabot-v3.context/context
-                           context (mtx/transformer {:name :api-request}))
-        history (mc/decode [:maybe ::metabot-v3.client.schema/messages]
-                           history (mtx/transformer {:name :api-request}))]
-    (request message context history)))
+  ;; HACK: for the demo, let's catch any exceptions that occur and just respond with something semi-reasonable
+  (try
+    (let [context (mc/decode ::metabot-v3.context/context
+                             context (mtx/transformer {:name :api-request}))
+          history (mc/decode [:maybe ::metabot-v3.client.schema/messages]
+                             history (mtx/transformer {:name :api-request}))]
+      (request message context history))
+    (catch Exception _
+      {:reactions [{:type               :metabot.reaction/message
+                    :message            "I'm sorry, I messed up and something went wrong! Not sure what happened, but I'll try not to do it again."
+                    :repl/message-color :red
+                    :repl/message-emoji "⚠"}]
+       :history history})))
 
 (api/define-routes)
