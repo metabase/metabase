@@ -355,7 +355,7 @@ const ChatAssistant = ({ client, clientSmith, selectedMessages, selectedThreadId
     const redirect = async () => {
         if (selectedHash) {
             dispatch(push(`/question#${selectedHash}`));
-            const deletedCard = await CardApi.delete({ id: id });
+            // const deletedCard = await CardApi.delete({ id: id });
         }
     }
 
@@ -987,7 +987,7 @@ const ChatAssistant = ({ client, clientSmith, selectedMessages, selectedThreadId
 
                             <ChatMessageList messages={messages} isLoading={isLoading} onFeedbackClick={handleFeedbackDialogOpen} isFeedbackVisible={isFeedbackVisible}
                                 approvalChangeButtons={approvalChangeButtons} onApproveClick={handleAccept} onDenyClick={handleDeny}
-                                card={card} defaultQuestion={defaultQuestion} result={result} openModal={openModal}
+                                card={card} defaultQuestion={defaultQuestion} result={result} openModal={openModal} redirect={redirect}
                                 showError={showError} insightsCode={insightsCode} showCubeEditButton={showCubeEditButton} sendAdminRequest={handleCubeRequestDialogOpen} onSuggestion={handleSuggestion}
                                 insightCellCode={insightCellCode} insightsImg={insightsImg} insightsPlan={inisghtPlan} progressShow={progressShow}
                                 insightsText={insightsText} finalMessages={finalMessages} finalMessagesText={finalMessagesText} onSendFeedback={handleSendFeedback}
