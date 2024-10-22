@@ -289,13 +289,15 @@
   "Returns a set of table identifiers that (may) be referenced in the given card's query.
   Errs on the side of optimism: i.e., it may return tables that are *not* in the query, and is unlikely to fail
   to return tables that are in the query."
-  [driver query & {:keys [mode] :or {mode :ast-walker-1}}]
+  [driver query & {:keys [mode] :or {mode :basic-select}}]
   (let [db-id        (:database query)
         macaw-opts   (nqa.impl/macaw-options driver)
         table-opts   (assoc macaw-opts :mode mode)
         sql-string   (:query (nqa.sub/replace-tags query))
-        parsed-query (macaw/query->tables sql-string table-opts)]
-    (table-refs-for-query parsed-query db-id)))
+        tables       (macaw/query->tables sql-string table-opts)]
+    (if (keyword? tables)
+      tables
+      (table-refs-for-query tables db-id))))
 
 ;; Keeping this multimethod private for now, need some hammock time on what to expose to drivers.
 (defmulti ^:private tables-for-native*
