@@ -8,7 +8,7 @@
   bottom: 1.5rem;
   box-shadow: 0 2px 13.8px -1px #1871bf52;
   border-radius: 22px;
-  z-index: 9999;
+  z-index: 199; /* -1 of the default 200 for modals */
 }
 
 .innerContainer {
