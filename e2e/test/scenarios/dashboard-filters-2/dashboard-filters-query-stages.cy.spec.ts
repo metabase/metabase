@@ -1979,10 +1979,8 @@ describe("scenarios > dashboard > filters > query stages + temporal unit paramet
 });
 
 describe("pivot tables", () => {
-  const QUESTION_BASED_QUESTION_PIVOT_VIZ_INDEX = 0;
-  const MODEL_BASED_QUESTION_PIVOT_VIZ_INDEX = 1;
-  const QUESTION_BASED_QUESTION_PIVOTED_TABLE_INDEX = 2;
-  const MODEL_BASED_QUESTION_PIVOTED_TABLE_INDEX = 3;
+  const QUESTION_PIVOT_INDEX = 0;
+  const QUESTION_PIVOTED_TABLE_INDEX = 1;
 
   beforeEach(() => {
     restore();
@@ -2001,40 +1999,23 @@ describe("pivot tables", () => {
       createQuestion({
         type: "question",
         query: createPivotableQuery(this.baseQuestion),
-        name: "Question-based Question - pivot viz",
+        name: "Question - pivot viz",
         display: "pivot",
-      }).then(response => cy.wrap(response.body).as("qbqp"));
-
-      createQuestion({
-        type: "question",
-        query: createPivotableQuery(this.baseModel),
-        name: "Model-based Question - pivot viz",
-        display: "pivot",
-      }).then(response => cy.wrap(response.body).as("mbqp"));
+      }).then(response => cy.wrap(response.body).as("pivot"));
 
       createQuestion({
         type: "question",
         query: createPivotableQuery(this.baseQuestion),
-        name: "Question-based Question - pivoted table",
+        name: "Question - pivoted table",
         visualization_settings: {
           "table.cell_column": "count",
           "table.pivot_column": "PRODUCTS__via__PRODUCT_ID__CATEGORY",
         },
-      }).then(response => cy.wrap(response.body).as("qbqpt"));
-
-      createQuestion({
-        type: "question",
-        query: createPivotableQuery(this.baseModel),
-        name: "Model-based Question - pivoted table",
-        visualization_settings: {
-          "table.cell_column": "count",
-          "table.pivot_column": "PRODUCTS__via__PRODUCT_ID__CATEGORY",
-        },
-      }).then(response => cy.wrap(response.body).as("mbqpt"));
+      }).then(response => cy.wrap(response.body).as("pivotedTable"));
     });
 
     cy.then(function () {
-      const cards = [this.qbqp, this.mbqp, this.qbqpt, this.mbqpt];
+      const cards = [this.pivot, this.pivotedTable];
       createAndVisitDashboard(cards);
     });
 
@@ -2068,7 +2049,7 @@ describe("pivot tables", () => {
     changeSynchronousBatchUpdateSetting(false);
   });
 
-  it("allows to map to all relevant columns and does not allow mapping to extra filtering stage", () => {
+  it("does not use extra filtering stage for pivot tables", () => {
     editDashboard();
 
     cy.log("## date columns");
@@ -2083,30 +2064,17 @@ describe("pivot tables", () => {
     getFilter("Number").click();
     verifyNumberMappingOptions();
 
+    cy.button("Save").click();
+
     function verifyDateMappingOptions() {
-      verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_PIVOT_VIZ_INDEX, [
+      verifyDashcardMappingOptions(QUESTION_PIVOT_INDEX, [
         ["Base Orders Question", ORDERS_DATE_COLUMNS],
         ["Reviews", REVIEWS_DATE_COLUMNS],
         ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
         ["User", PEOPLE_DATE_COLUMNS],
       ]);
-      verifyDashcardMappingOptions(MODEL_BASED_QUESTION_PIVOT_VIZ_INDEX, [
-        ["Base Orders Model", ORDERS_DATE_COLUMNS],
-        ["Reviews", REVIEWS_DATE_COLUMNS],
-        ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
-        ["User", PEOPLE_DATE_COLUMNS],
-      ]);
-      verifyDashcardMappingOptions(
-        QUESTION_BASED_QUESTION_PIVOTED_TABLE_INDEX,
-        [
-          ["Base Orders Question", ORDERS_DATE_COLUMNS],
-          ["Reviews", REVIEWS_DATE_COLUMNS],
-          ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
-          ["User", PEOPLE_DATE_COLUMNS],
-        ],
-      );
-      verifyDashcardMappingOptions(MODEL_BASED_QUESTION_PIVOTED_TABLE_INDEX, [
-        ["Base Orders Model", ORDERS_DATE_COLUMNS],
+      verifyDashcardMappingOptions(QUESTION_PIVOTED_TABLE_INDEX, [
+        ["Base Orders Question", ORDERS_DATE_COLUMNS],
         ["Reviews", REVIEWS_DATE_COLUMNS],
         ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
         ["User", PEOPLE_DATE_COLUMNS],
@@ -2114,25 +2082,12 @@ describe("pivot tables", () => {
     }
 
     function verifyTextMappingOptions() {
-      verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_PIVOT_VIZ_INDEX, [
+      verifyDashcardMappingOptions(QUESTION_PIVOT_INDEX, [
         ["Reviews", REVIEWS_TEXT_COLUMNS],
         ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
         ["User", PEOPLE_TEXT_COLUMNS],
       ]);
-      verifyDashcardMappingOptions(MODEL_BASED_QUESTION_PIVOT_VIZ_INDEX, [
-        ["Reviews", REVIEWS_TEXT_COLUMNS],
-        ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
-        ["User", PEOPLE_TEXT_COLUMNS],
-      ]);
-      verifyDashcardMappingOptions(
-        QUESTION_BASED_QUESTION_PIVOTED_TABLE_INDEX,
-        [
-          ["Reviews", REVIEWS_TEXT_COLUMNS],
-          ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
-          ["User", PEOPLE_TEXT_COLUMNS],
-        ],
-      );
-      verifyDashcardMappingOptions(MODEL_BASED_QUESTION_PIVOTED_TABLE_INDEX, [
+      verifyDashcardMappingOptions(QUESTION_PIVOTED_TABLE_INDEX, [
         ["Reviews", REVIEWS_TEXT_COLUMNS],
         ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
         ["User", PEOPLE_TEXT_COLUMNS],
@@ -2140,29 +2095,14 @@ describe("pivot tables", () => {
     }
 
     function verifyNumberMappingOptions() {
-      verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_PIVOT_VIZ_INDEX, [
+      verifyDashcardMappingOptions(QUESTION_PIVOT_INDEX, [
         ["Base Orders Question", [...ORDERS_NUMBER_COLUMNS, "Net"]],
         ["Reviews", REVIEWS_NUMBER_COLUMNS],
         ["Product", [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
         ["User", PEOPLE_NUMBER_COLUMNS],
       ]);
-      verifyDashcardMappingOptions(MODEL_BASED_QUESTION_PIVOT_VIZ_INDEX, [
-        ["Base Orders Model", [...ORDERS_NUMBER_COLUMNS, "Net"]],
-        ["Reviews", REVIEWS_NUMBER_COLUMNS],
-        ["Product", [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
-        ["User", PEOPLE_NUMBER_COLUMNS],
-      ]);
-      verifyDashcardMappingOptions(
-        QUESTION_BASED_QUESTION_PIVOTED_TABLE_INDEX,
-        [
-          ["Base Orders Question", [...ORDERS_NUMBER_COLUMNS, "Net"]],
-          ["Reviews", REVIEWS_NUMBER_COLUMNS],
-          ["Product", [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
-          ["User", PEOPLE_NUMBER_COLUMNS],
-        ],
-      );
-      verifyDashcardMappingOptions(MODEL_BASED_QUESTION_PIVOTED_TABLE_INDEX, [
-        ["Base Orders Model", [...ORDERS_NUMBER_COLUMNS, "Net"]],
+      verifyDashcardMappingOptions(QUESTION_PIVOTED_TABLE_INDEX, [
+        ["Base Orders Question", [...ORDERS_NUMBER_COLUMNS, "Net"]],
         ["Reviews", REVIEWS_NUMBER_COLUMNS],
         ["Product", [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
         ["User", PEOPLE_NUMBER_COLUMNS],
