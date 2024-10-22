@@ -90,7 +90,7 @@
    [:filters        [:maybe [:vector [:map
                                       [:field :string]
                                       [:operator [:enum "<" "<=" ">" ">=" "=" "!=" "contains" "does-not-contain" "starts-with"]]
-                                      [:value [:or :string :number]]]]]]
+                                      [:value [:or number? :string]]]]]]
    [:summarizations [:maybe [:vector [:map
                                       [:fieldName [:maybe :string]]
                                       [:metrics [:enum "sum" "count" "avg"]]]]]]
