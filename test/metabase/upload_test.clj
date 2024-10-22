@@ -583,6 +583,14 @@
               (is (= (header-with-auto-pk ["Dirección" "País"])
                      (column-display-names-for-table table))))))))))
 
+(deftest detect-charset-test
+  (doseq [filename ["csv/48945-1.csv"
+                    "csv/48945-2.csv"
+                    "csv/48945-3.csv"]]
+    (testing (str "Correct charset detected for " filename)
+      (prn filename)
+      (is (= "UTF-8" (#'upload/detect-charset (io/file (io/resource filename))))))))
+
 (deftest infer-separator-catch-exception-test
   (testing "errors in [[upload/infer-separator]] should not prevent the upload (#44034)"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
