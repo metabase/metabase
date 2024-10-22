@@ -79,7 +79,8 @@
                       e)))))
 
 (defmethod sql-jdbc.sync/describe-fields-sql :databricks
-  [driver & {:keys [schema-names table-names]}]
+  [driver & {:keys [schema-names table-names catalog]}]
+  (assert (string? (not-empty catalog)) "`catalog` is required for sync.")
   (sql/format {:select [[:c.column_name :name]
                         [:c.full_data_type :database-type]
                         [:c.ordinal_position :database-position]
@@ -117,6 +118,7 @@
                             [:= :c.table_name :cs.table_name]
                             [:= :c.column_name :cs.column_name]]]
                :where [:and
+                       [:= :c.table_catalog [:inline catalog]]
                        ;; Ignore `timestamp_ntz` type columns. Columns of this type are not recognizable from
                        ;; `timestamp` columns when fetching the data. This exception should be removed when the problem
                        ;; is resolved by Databricks in underlying jdbc driver.
@@ -127,8 +129,14 @@
                :order-by [:table-schema :table-name :database-position]}
               :dialect (sql.qp/quote-style driver)))
 
+(defmethod driver/describe-fields :sql-jdbc
+  [driver database & {:as args}]
+  (let [catalog (get-in database [:details :catalog])]
+    (sql-jdbc.sync/describe-fields driver database (assoc args :catalog catalog))))
+
 (defmethod sql-jdbc.sync/describe-fks-sql :databricks
-  [driver & {:keys [schema-names table-names]}]
+  [driver & {:keys [schema-names table-names catalog]}]
+  (assert (string? (not-empty catalog)) "`catalog` is required for sync.")
   (sql/format {:select (vec
                         {:fk_kcu.table_schema  "fk-table-schema"
                          :fk_kcu.table_name    "fk-table-name"
@@ -148,11 +156,17 @@
                         [:= :pk_kcu.constraint_schema :rc.unique_constraint_schema]
                         [:= :pk_kcu.constraint_name :rc.unique_constraint_name]]]]
                :where [:and
+                       [:= :fk_kcu.table_catalog [:inline catalog]]
                        [:not [:in :fk_kcu.table_schema ["information_schema"]]]
                        (when table-names [:in :fk_kcu.table_name table-names])
                        (when schema-names [:in :fk_kcu.table_schema schema-names])]
                :order-by [:fk-table-schema :fk-table-name]}
               :dialect (sql.qp/quote-style driver)))
+
+(defmethod driver/describe-fks :sql-jdbc
+  [driver database & {:as args}]
+  (let [catalog (get-in database [:details :catalog])]
+    (sql-jdbc.sync/describe-fks driver database (assoc args :catalog catalog))))
 
 (defmethod sql-jdbc.execute/set-timezone-sql :databricks
   [_driver]
