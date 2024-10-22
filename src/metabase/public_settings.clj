@@ -177,6 +177,7 @@
 
 (def ^:private default-allowed-iframe-hosts
   "youtube.com,
+youtu.be,
 loom.com,
 vimeo.com,
 docs.google.com,
@@ -195,7 +196,8 @@ trello.com,
 asana.com,
 gist.github.com,
 linkedin.com,
-twitter.com")
+twitter.com,
+x.com")
 
 (defsetting allowed-iframe-hosts
   (deferred-tru "Allowed iframe hosts")

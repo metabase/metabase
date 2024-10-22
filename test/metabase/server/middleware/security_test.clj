@@ -225,3 +225,58 @@
                                                           (embed.settings/enable-embedding-sdk)
                                                           (embed.settings/embedding-app-origins-sdk))
                       "Access-Control-Allow-Origin"))))))))
+
+(deftest allowed-iframe-hosts-test
+  (testing "The allowed iframe hosts parse in the expected way."
+    (let [default-hosts @#'public-settings/default-allowed-iframe-hosts
+          other-hosts   "localhost, http://localhost:8000,    my.domain.local:9876"
+          invalid-hosts "asdf/wasd/:8000 */localhost:*"]
+      (is (= ["youtube.com"
+              "*.youtube.com"
+              "youtu.be"
+              "*.youtu.be"
+              "loom.com"
+              "*.loom.com"
+              "vimeo.com"
+              "*.vimeo.com"
+              "docs.google.com"
+              "calendar.google.com"
+              "airtable.com"
+              "*.airtable.com"
+              "typeform.com"
+              "*.typeform.com"
+              "canva.com"
+              "*.canva.com"
+              "codepen.io"
+              "*.codepen.io"
+              "figma.com"
+              "*.figma.com"
+              "grafana.com"
+              "*.grafana.com"
+              "miro.com"
+              "*.miro.com"
+              "excalidraw.com"
+              "*.excalidraw.com"
+              "notion.com"
+              "*.notion.com"
+              "atlassian.com"
+              "*.atlassian.com"
+              "trello.com"
+              "*.trello.com"
+              "asana.com"
+              "*.asana.com"
+              "gist.github.com"
+              "linkedin.com"
+              "*.linkedin.com"
+              "twitter.com"
+              "*.twitter.com"
+              "x.com"
+              "*.x.com"]
+             (mw.security/parse-allowed-iframe-hosts default-hosts)))
+      (is (= ["localhost"
+              "http://localhost:8000"
+              "my.domain.local:9876"]
+             (mw.security/parse-allowed-iframe-hosts other-hosts)))
+      (testing "invalid hosts are not included"
+        (is (= []
+               (mw.security/parse-allowed-iframe-hosts invalid-hosts)))))))

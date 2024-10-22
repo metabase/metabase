@@ -55,6 +55,56 @@
   the original request was HTTPS; if sent in response to an HTTP request, this is simply ignored)"
   {"Strict-Transport-Security" "max-age=31536000"})
 
+(defn parse-url
+  "Returns an object with protocol, domain and port for the given url"
+  [url]
+  (if (= url "*")
+    {:protocol nil :domain "*" :port "*"}
+    (let [pattern #"^(?:(https?)://)?([^:/]+)(?::(\d+|\*))?$"
+          matches (re-matches pattern url)]
+      (if-not matches
+        (do (log/errorf "Invalid URL: %s" url) nil)
+        (let [[_ protocol domain port] matches]
+          {:protocol protocol
+           :domain domain
+           :port port})))))
+
+(defn- add-wildcard-entries
+  "Adds a wildcard prefix `.*` to the domain part of the given `domain-or-url` string.
+
+  Only adds the wildcard entry when the given domain does not have a subdomain already,
+  with the exception of single name domains like 'localhost' which should not have the wildcard prefix.
+
+  This is done because we won't know if the typical iframe src URL will include a www or not.
+
+  For example,
+  youtube.com typically won't work because the iframe src is https://www.youtube.com/whatever. So we add *.youtube.com to cover this case.
+  But, *.twitter.com won't work for the inverse reason; the iframe src is https://twitter.com/whatever and adding the wildcard fails to match.
+
+  So, we'll double things up and include both the wildcard and non-wildcard entry. We still keep the logic of not adding a wildcard when a
+  subdomain is already specified because we want to treat this case as the user being more specific and thus intentionally less permissive."
+  [domain-or-url]
+  (let [{:keys [protocol domain port]} (parse-url domain-or-url)]
+    (when domain
+      (let [split-domain (str/split domain #"\.")
+            new-domains  (if (= (count split-domain) 2)
+                           [domain (format "*.%s" domain)]
+                           [domain])]
+        (for [new-domain new-domains]
+          (str (when protocol (format "%s://" protocol))
+               new-domain
+               (when port (format ":%s" port))))))))
+
+(defn parse-allowed-iframe-hosts
+  "Parse the string of allowed iframe hosts, adding wildcard prefixes as needed."
+  [hosts-string]
+  (try
+    (->> (str/split hosts-string #"[ ,\s\r\n]+")
+         (remove str/blank?)
+         (mapcat add-wildcard-entries)
+         vec)
+    (catch Exception e (ex-message e))))
+
 (defn- content-security-policy-header
   "`Content-Security-Policy` header. See https://content-security-policy.com for more details."
   [nonce]
@@ -93,9 +143,7 @@
                                  (when config/is-dev?
                                    "http://localhost:9630")
                                  "https://accounts.google.com"]
-                  :frame-src    (->> (str/split (public-settings/allowed-iframe-hosts) #"[+ ,\s\r\n]")
-                                     (remove str/blank?)
-                                     vec)
+                  :frame-src    (parse-allowed-iframe-hosts (public-settings/allowed-iframe-hosts))
                   :font-src     ["*"]
                   :img-src      ["*"
                                  "'self' data:"]
@@ -125,20 +173,6 @@
                                                                     (embed.settings/embedding-app-origins-interactive))]
                                                     eao
                                                     "'none'")))))
-
-(defn parse-url
-  "Returns an object with protocol, domain and port for the given url"
-  [url]
-  (if (= url "*")
-    {:protocol nil :domain "*" :port "*"}
-    (let [pattern #"^(?:(https?)://)?([^:/]+)(?::(\d+|\*))?$"
-          matches (re-matches pattern url)]
-      (if-not matches
-        (do (log/errorf "Invalid URL: %s" url) nil)
-        (let [[_ protocol domain port] matches]
-          {:protocol protocol
-           :domain domain
-           :port port})))))
 
 (defn approved-domain?
   "Checks if the domain is compatible with the reference one"
