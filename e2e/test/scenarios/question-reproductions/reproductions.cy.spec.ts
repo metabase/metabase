@@ -273,7 +273,7 @@ describe("issue 47793", () => {
 
   beforeEach(() => {
     restore("mongo-5");
-    cy.signInAsNormalUser();
+    cy.signInAsAdmin();
   });
 
   it(
