@@ -54,6 +54,13 @@
                 (contains? (get target 2) :stage-number)))
          parameters)))
 
+(defn- pivot-query?
+  [{:keys [display visualization_settings]}]
+  (or (= display :pivot)
+      (and (= display :table)
+           ((every-pred :table.pivot_column :table.cell_column)
+            visualization_settings))))
+
 (defn- point-parameters-to-last-stage
   "Points temporal-unit parameters to the last stage.
   This function is normally called for models or metrics, where the first and the last
@@ -88,6 +95,8 @@
     card-type     :type
     :as           card} parameters constraints middleware & [ids]]
   (let [explicit-stage-numbers? (uses-explict-stages? parameters)
+        filter-stage-needed? (and explicit-stage-numbers?
+                                  (not (pivot-query? card)))
         parameters (cond-> parameters
                      ;; models are not transparent (questions and metrics are)
                      (and explicit-stage-numbers? (= card-type :model))
@@ -98,7 +107,7 @@
                 ;; parameters refer to stages as if a new stage was appended.
                 ;; This is so that we can distinguish if a filter should be applied
                 ;; before of after summarizing.
-                explicit-stage-numbers? lib/ensure-filter-stage)
+                filter-stage-needed? lib/ensure-filter-stage)
         query (-> query
                   ;; don't want default constraints overridding anything that's already there
                   (m/dissoc-in [:middleware :add-default-userland-constraints?])
