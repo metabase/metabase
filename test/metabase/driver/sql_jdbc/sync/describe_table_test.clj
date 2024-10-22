@@ -5,6 +5,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [medley.core :as m]
    [metabase.db.metadata-queries :as metadata-queries]
    [metabase.driver :as driver]
    [metabase.driver.mysql :as mysql]
@@ -137,10 +138,11 @@
   (let [driver (driver.u/database->driver db)]
     (sort-by :database-position
              (if (driver.u/supports? driver :describe-fields db)
-               (vec (driver/describe-fields driver
-                                            db
-                                            :schema-names [(:schema table)]
-                                            :table-names [(:name table)]))
+               (vec (m/mapply driver/describe-fields
+                              driver
+                              db
+                              (cond-> {:table-names [(:name table)]}
+                                (:schema table) (assoc :schema-names [(:schema table)]))))
                (:fields (driver/describe-table driver db table))))))
 
 (defmethod driver/database-supports? [::driver/driver ::describe-pks]
@@ -166,7 +168,10 @@
             [5 false false false]]
            (sort-by
             :first
-            (map (juxt :database-position :database-required :database-is-auto-increment (comp boolean :pk?))
+            (map (juxt :database-position
+                       :database-required
+                       :database-is-auto-increment
+                       (comp boolean :pk?))
                  (describe-fields-for-table (mt/db) (t2/select-one Table :id (mt/id :venues))))))))
     (mt/test-drivers (mt/normal-drivers-without-feature :actions)
       (is (=?
