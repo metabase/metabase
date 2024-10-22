@@ -194,7 +194,10 @@
                [:display :string]
                [:parent_collection ::pc]
                [:moderated_status ::verified]]]
-     [:dashboard [:map [:parent_collection ::pc]]]
+     [:dashboard
+      [:map
+       [:parent_collection ::pc]
+       [:moderated_status ::verified]]]
      [:table [:map
               [:display_name :string]
               [:table_schema [:maybe :string]]
