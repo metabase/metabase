@@ -40,9 +40,11 @@ export const InfoIcon = styled(Icon)`
 `;
 
 export const PopoverContent = styled.div`
-  background-color: #222;
-  padding: 18px;
+  padding: 0.5rem;
   color: var(--mb-color-text-white);
+  font-weight: normal;
+  font-size: 14px;
+  line-height: 1rem;
 `;
 
 export const PopoverTitle = styled.span`

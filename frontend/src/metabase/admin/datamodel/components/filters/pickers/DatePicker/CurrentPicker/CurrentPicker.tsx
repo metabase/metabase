@@ -1,14 +1,10 @@
-import TippyPopover from "metabase/components/Popover/TippyPopover";
+import { Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Filter from "metabase-lib/v1/queries/structured/Filter";
 
 import { DATE_PERIODS } from "../RelativeDatePicker";
 
-import {
-  CurrentButton,
-  CurrentContainer,
-  CurrentPopover,
-} from "./CurrentPicker.styled";
+import { CurrentButton, CurrentContainer } from "./CurrentPicker.styled";
 import { periodPopoverText } from "./periodPopoverText";
 
 type CurrentPickerProps = {
@@ -31,13 +27,11 @@ export default function CurrentPicker(props: CurrentPickerProps) {
       {DATE_PERIODS.map((periods, index) => (
         <CurrentContainer key={periods.length} first={index === 0}>
           {periods.map(period => (
-            <TippyPopover
+            <Tooltip
               key={period}
-              placement="bottom"
-              delay={[500, null]}
-              content={
-                <CurrentPopover>{periodPopoverText(period)}</CurrentPopover>
-              }
+              position="bottom"
+              openDelay={500}
+              label={periodPopoverText(period)}
             >
               <CurrentButton
                 key={period}
@@ -49,7 +43,7 @@ export default function CurrentPicker(props: CurrentPickerProps) {
               >
                 {Lib.describeTemporalUnit(period, 1)}
               </CurrentButton>
-            </TippyPopover>
+            </Tooltip>
           ))}
         </CurrentContainer>
       ))}

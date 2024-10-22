@@ -77,6 +77,7 @@ const searchResultsStyles = `
   border-radius: 6px;
   box-shadow: 0 7px 20px var(--mb-color-shadow);
   pointer-events: all;
+  max-width: 500px;
 `;
 
 export const SearchResultsContainer = styled.div`

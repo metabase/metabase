@@ -2,11 +2,11 @@ import { useEffect, useState } from "react";
 import { usePrevious } from "react-use";
 import _ from "underscore";
 
-import TippyPopover from "metabase/components/Popover/TippyPopover";
 import Search from "metabase/entities/search";
 import { useToggle } from "metabase/hooks/use-toggle";
 import { getUrlTarget } from "metabase/lib/dom";
 import { SearchResults } from "metabase/nav/components/search/SearchResults";
+import { Popover } from "metabase/ui";
 import type {
   LinkCardSettings,
   SearchModel,
@@ -141,10 +141,27 @@ function LinkVizInner({
   if (isEditing && !isEditingParameter) {
     return (
       <EditLinkCardWrapper data-testid="custom-edit-text-link">
-        <TippyPopover
-          visible={inputIsFocused && !isUrlString(url)}
-          content={
-            !url?.trim?.().length && !entity ? (
+        <Popover
+          opened={inputIsFocused && !isUrlString(url)}
+          position="bottom-start"
+          width="500px"
+        >
+          <Popover.Target>
+            <StyledInput
+              fullWidth
+              value={url ?? ""}
+              autoFocus={autoFocus}
+              placeholder={"https://example.com"}
+              onChange={e => handleLinkChange(e.target.value)}
+              onFocus={onFocusInput}
+              // we need to debounce this or it may close the popover before the click event can fire
+              onBlur={_.debounce(onBlurInput, 100)}
+              // the dashcard really wants to turn all mouse events into drag events
+              onMouseDown={e => e.stopPropagation()}
+            />
+          </Popover.Target>
+          <Popover.Dropdown>
+            {!url?.trim?.().length && !entity ? (
               <StyledRecentsList onClick={handleEntitySelect} />
             ) : (
               <SearchResultsContainer>
@@ -155,23 +172,9 @@ function LinkVizInner({
                   models={MODELS_TO_SEARCH}
                 />
               </SearchResultsContainer>
-            )
-          }
-          placement="bottom"
-        >
-          <StyledInput
-            fullWidth
-            value={url ?? ""}
-            autoFocus={autoFocus}
-            placeholder={"https://example.com"}
-            onChange={e => handleLinkChange(e.target.value)}
-            onFocus={onFocusInput}
-            // we need to debounce this or it may close the popover before the click event can fire
-            onBlur={_.debounce(onBlurInput, 100)}
-            // the dashcard really wants to turn all mouse events into drag events
-            onMouseDown={e => e.stopPropagation()}
-          />
-        </TippyPopover>
+            )}
+          </Popover.Dropdown>
+        </Popover>
       </EditLinkCardWrapper>
     );
   }

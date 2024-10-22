@@ -7,11 +7,11 @@ import {
 } from "metabase/admin/databases/database";
 import { useDocsUrl, useSetting } from "metabase/common/hooks";
 import ActionButton from "metabase/components/ActionButton";
-import TippyPopover from "metabase/components/Popover/TippyPopover";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import { useDispatch } from "metabase/lib/redux";
 import { MetabaseApi } from "metabase/services";
+import { HoverCard } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
 import { getModelCacheSchemaName } from "metabase-lib/v1/metadata/utils/models";
 
@@ -101,12 +101,14 @@ function ModelCachingControl({ database }: Props) {
           successText={t`Done`}
           actionFn={handleCachingChange}
         />
-        <TippyPopover
-          placement="right-end"
-          content={<FeatureDescription schemaName={cacheSchemaName} />}
-        >
-          <HoverableIcon name="info" />
-        </TippyPopover>
+        <HoverCard position="right-end">
+          <HoverCard.Target>
+            <HoverableIcon name="info" />
+          </HoverCard.Target>
+          <HoverCard.Dropdown>
+            <FeatureDescription schemaName={cacheSchemaName} />
+          </HoverCard.Dropdown>
+        </HoverCard>
       </ControlContainer>
       {error && <ErrorMessage>{error}</ErrorMessage>}
     </div>

@@ -3,11 +3,11 @@ import type * as React from "react";
 import { useCallback, useState } from "react";
 import { jt, msgid, ngettext, t } from "ttag";
 
-import TippyPopover from "metabase/components/Popover/TippyPopover";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import FormS from "metabase/css/components/form.module.css";
 import CS from "metabase/css/core/index.css";
 import { validateCronExpression } from "metabase/lib/cron";
+import { Tooltip } from "metabase/ui";
 
 import {
   CustomScheduleLabel,
@@ -103,9 +103,10 @@ function CronFormatPopover({ children }: { children: React.ReactElement }) {
   ];
 
   return (
-    <TippyPopover
-      placement="top"
-      content={
+    <Tooltip
+      position="top"
+      withArrow={false}
+      label={
         <PopoverContent>
           <PopoverTitle>{t`Allowed values`}</PopoverTitle>
           {descriptions.map((text, i) => (
@@ -115,7 +116,7 @@ function CronFormatPopover({ children }: { children: React.ReactElement }) {
       }
     >
       {children}
-    </TippyPopover>
+    </Tooltip>
   );
 }
 

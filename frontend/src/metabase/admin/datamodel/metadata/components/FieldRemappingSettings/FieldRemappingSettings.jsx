@@ -1,16 +1,16 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
-import { Component, createRef } from "react";
+import { Component } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
 import ButtonWithStatus from "metabase/components/ButtonWithStatus";
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import Select from "metabase/core/components/Select";
 import CS from "metabase/css/core/index.css";
 import Fields from "metabase/entities/fields";
 import { getMetadataUnfiltered } from "metabase/selectors/metadata";
+import { Popover } from "metabase/ui";
 import {
   getFieldTargetId,
   hasSourceField,
@@ -35,14 +35,13 @@ const MAP_OPTIONS = {
 
 class FieldRemappingSettings extends Component {
   state = {
+    fkPopoverOpen: false,
     isChoosingInitialFkTarget: false,
     dismissedInitialFkTargetPopover: false,
   };
 
   constructor(props, context) {
     super(props, context);
-
-    this.fkPopover = createRef();
   }
 
   getMappingTypeForField = field => {
@@ -165,6 +164,7 @@ class FieldRemappingSettings extends Component {
     const { field, updateFieldDimension } = this.props;
 
     this.clearEditingStates();
+    this.setState({ fkPopoverOpen: false });
 
     if (hasSourceField(foreignKeyClause)) {
       await updateFieldDimension(
@@ -175,8 +175,6 @@ class FieldRemappingSettings extends Component {
           human_readable_field_id: getFieldTargetId(foreignKeyClause),
         },
       );
-
-      this.fkPopover.current?.close();
     } else {
       throw new Error(t`The selected field isn't a foreign key`);
     }
@@ -198,6 +196,8 @@ class FieldRemappingSettings extends Component {
     if (isChoosingInitialFkTarget) {
       this.setState({ dismissedInitialFkTargetPopover: true });
     }
+
+    this.setState({ fkPopoverOpen: false });
   };
 
   render() {
@@ -206,6 +206,7 @@ class FieldRemappingSettings extends Component {
       isChoosingInitialFkTarget,
       hasChanged,
       dismissedInitialFkTargetPopover,
+      fkPopoverOpen,
     } = this.state;
 
     const remapping = new Map(field.remappedValues());
@@ -232,13 +233,17 @@ class FieldRemappingSettings extends Component {
           {mappingType === MAP_OPTIONS.foreign && (
             <>
               <FieldSeparator />
-              <PopoverWithTrigger
+              <Popover
                 key="foreignKeyName"
-                ref={this.fkPopover}
-                triggerElement={
+                onClose={this.onFkPopoverDismiss}
+                opened={isChoosingInitialFkTarget || fkPopoverOpen}
+              >
+                <Popover.Target>
                   <FieldSelectButton
                     hasValue={hasFKMappingValue}
                     hasError={dismissedInitialFkTargetPopover}
+                    fullWidth={false}
+                    onClick={() => this.setState({ fkPopoverOpen: true })}
                   >
                     {fkMappingField ? (
                       fkMappingField.display_name
@@ -246,22 +251,21 @@ class FieldRemappingSettings extends Component {
                       <span className={CS.textMedium}>{t`Choose a field`}</span>
                     )}
                   </FieldSelectButton>
-                }
-                isInitiallyOpen={isChoosingInitialFkTarget}
-                onClose={this.onFkPopoverDismiss}
-              >
-                <ForeignKeyList
-                  field={fkMappingField}
-                  fieldOptions={{
-                    count: 0,
-                    dimensions: [],
-                    fks: this.getForeignKeys(),
-                  }}
-                  table={table}
-                  onFieldChange={this.onForeignKeyFieldChange}
-                  hideSingleSectionTitle
-                />
-              </PopoverWithTrigger>
+                </Popover.Target>
+                <Popover.Dropdown>
+                  <ForeignKeyList
+                    field={fkMappingField}
+                    fieldOptions={{
+                      count: 0,
+                      dimensions: [],
+                      fks: this.getForeignKeys(),
+                    }}
+                    table={table}
+                    onFieldChange={this.onForeignKeyFieldChange}
+                    hideSingleSec
+                  />
+                </Popover.Dropdown>
+              </Popover>
               {dismissedInitialFkTargetPopover && (
                 <div
                   className={cx(CS.textError, CS.ml2)}

@@ -19,6 +19,7 @@ export const HoverableIcon = styled(Icon)`
 
 export const PopoverContent = styled.div`
   padding: 1.5rem;
+  width: 500px;
 `;
 
 export const FeatureTitle = styled.h4`

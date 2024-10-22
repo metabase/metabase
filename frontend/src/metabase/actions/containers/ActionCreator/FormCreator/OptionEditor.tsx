@@ -2,9 +2,8 @@ import type * as React from "react";
 import { useEffect, useState } from "react";
 import { t } from "ttag";
 
-import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import Button from "metabase/core/components/Button";
-import { Icon } from "metabase/ui";
+import { Icon, Popover } from "metabase/ui";
 import type { FieldType, FieldValueOptions } from "metabase-types/api";
 
 import {
@@ -60,6 +59,7 @@ export const OptionPopover = ({
 }: OptionEditorProps) => {
   const [text, setText] = useState(optionsToText(options));
   const [error, setError] = useState<string | null>(null);
+  const [isOpen, setIsOpen] = useState<boolean>(false);
 
   const hasOptions = text.length > 0;
   const isDirty = text !== optionsToText(options);
@@ -83,7 +83,7 @@ export const OptionPopover = ({
     }
   };
 
-  const handleSave = (closePopover: () => void) => {
+  const handleSave = () => {
     setError(null);
 
     const nextOptions = transformOptionsIfNeeded(
@@ -96,18 +96,21 @@ export const OptionPopover = ({
       setError(error);
     } else {
       onChange(nextOptions);
-      closePopover();
+      setIsOpen(false);
     }
   };
 
   return (
-    <TippyPopoverWithTrigger
-      placement="bottom-end"
-      triggerContent={
-        <Icon name="list" size={20} tooltip={t`Change options`} />
-      }
-      maxWidth={400}
-      popoverContent={({ closePopover }) => (
+    <Popover opened={isOpen} position="bottom-end" width={400}>
+      <Popover.Target>
+        <Icon
+          name="list"
+          size={20}
+          tooltip={t`Change options`}
+          onClick={() => setIsOpen(true)}
+        />
+      </Popover.Target>
+      <Popover.Dropdown>
         <OptionEditorContainer>
           <TextArea
             value={text}
@@ -118,15 +121,11 @@ export const OptionPopover = ({
             {t`Press enter to add another option`}
           </AddMorePrompt>
           {hasError && <ErrorMessage>{error}</ErrorMessage>}
-          <Button
-            disabled={!canSave}
-            onClick={() => handleSave(closePopover)}
-            small
-          >
+          <Button disabled={!canSave} onClick={handleSave} small>
             {t`Save`}
           </Button>
         </OptionEditorContainer>
-      )}
-    />
+      </Popover.Dropdown>
+    </Popover>
   );
 };

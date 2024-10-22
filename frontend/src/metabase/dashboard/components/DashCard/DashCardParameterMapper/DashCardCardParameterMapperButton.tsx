@@ -1,11 +1,10 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import TippyPopover from "metabase/components/Popover/TippyPopover";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
-import DeprecatedTooltip from "metabase/core/components/Tooltip";
 import ParameterTargetList from "metabase/parameters/components/ParameterTargetList";
 import type { ParameterMappingOption } from "metabase/parameters/utils/mapping-options";
+import { Popover, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { Card, ParameterTarget } from "metabase-types/api";
@@ -130,12 +129,37 @@ export const DashCardCardParameterMapperButton = ({
     ]);
 
   return (
-    <DeprecatedTooltip tooltip={buttonTooltip}>
-      <TippyPopover
-        visible={isDropdownVisible && !isDisabled && hasPermissionsToMap}
-        onClickOutside={() => setIsDropdownVisible(false)}
-        placement="bottom-start"
-        content={
+    <Tooltip label={buttonTooltip} withArrow={false}>
+      <Popover
+        opened={isDropdownVisible && !isDisabled && hasPermissionsToMap}
+        onClose={() => setIsDropdownVisible(false)}
+        position="bottom-start"
+      >
+        <Popover.Target>
+          <TargetButton
+            variant={buttonVariant}
+            aria-label={buttonTooltip ?? undefined}
+            aria-haspopup="listbox"
+            aria-expanded={isDropdownVisible}
+            aria-disabled={isDisabled || !hasPermissionsToMap}
+            onClick={() => {
+              setIsDropdownVisible(true);
+            }}
+            onKeyDown={e => {
+              if (e.key === "Enter") {
+                setIsDropdownVisible(true);
+              }
+            }}
+          >
+            {buttonText && (
+              <TargetButtonText>
+                <Ellipsified>{buttonText}</Ellipsified>
+              </TargetButtonText>
+            )}
+            {buttonIcon}
+          </TargetButton>
+        </Popover.Target>
+        <Popover.Dropdown>
           <ParameterTargetList
             onChange={(target: ParameterTarget) => {
               handleChangeTarget(target);
@@ -144,32 +168,9 @@ export const DashCardCardParameterMapperButton = ({
             target={target}
             mappingOptions={mappingOptions}
           />
-        }
-      >
-        <TargetButton
-          variant={buttonVariant}
-          aria-label={buttonTooltip ?? undefined}
-          aria-haspopup="listbox"
-          aria-expanded={isDropdownVisible}
-          aria-disabled={isDisabled || !hasPermissionsToMap}
-          onClick={() => {
-            setIsDropdownVisible(true);
-          }}
-          onKeyDown={e => {
-            if (e.key === "Enter") {
-              setIsDropdownVisible(true);
-            }
-          }}
-        >
-          {buttonText && (
-            <TargetButtonText>
-              <Ellipsified>{buttonText}</Ellipsified>
-            </TargetButtonText>
-          )}
-          {buttonIcon}
-        </TargetButton>
-      </TippyPopover>
-    </DeprecatedTooltip>
+        </Popover.Dropdown>
+      </Popover>
+    </Tooltip>
   );
 };
 
