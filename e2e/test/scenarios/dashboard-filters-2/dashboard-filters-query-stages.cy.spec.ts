@@ -1,5 +1,6 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
+  type StructuredQuestionDetails,
   changeSynchronousBatchUpdateSetting,
   createDashboardWithTabs,
   createQuestion,
@@ -1977,6 +1978,199 @@ describe("scenarios > dashboard > filters > query stages + temporal unit paramet
   });
 });
 
+describe("pivot tables", () => {
+  const QUESTION_BASED_QUESTION_PIVOT_VIZ_INDEX = 0;
+  const MODEL_BASED_QUESTION_PIVOT_VIZ_INDEX = 1;
+  const QUESTION_BASED_QUESTION_PIVOTED_TABLE_INDEX = 2;
+  const MODEL_BASED_QUESTION_PIVOTED_TABLE_INDEX = 3;
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+    changeSynchronousBatchUpdateSetting(true); // prevent last_used_param_values from breaking test isolation
+    createBaseQuestions();
+
+    cy.intercept("POST", "/api/dataset").as("dataset");
+    cy.intercept("GET", "/api/dashboard/**").as("getDashboard");
+    cy.intercept("PUT", "/api/dashboard/**").as("updateDashboard");
+    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
+      "dashboardData",
+    );
+
+    cy.then(function () {
+      createQuestion({
+        type: "question",
+        query: createPivotableQuery(this.baseQuestion),
+        name: "Question-based Question - pivot viz",
+        display: "pivot",
+      }).then(response => cy.wrap(response.body).as("qbqp"));
+
+      createQuestion({
+        type: "question",
+        query: createPivotableQuery(this.baseModel),
+        name: "Model-based Question - pivot viz",
+        display: "pivot",
+      }).then(response => cy.wrap(response.body).as("mbqp"));
+
+      createQuestion({
+        type: "question",
+        query: createPivotableQuery(this.baseQuestion),
+        name: "Question-based Question - pivoted table",
+        visualization_settings: {
+          "table.cell_column": "count",
+          "table.pivot_column": "PRODUCTS__via__PRODUCT_ID__CATEGORY",
+        },
+      }).then(response => cy.wrap(response.body).as("qbqpt"));
+
+      createQuestion({
+        type: "question",
+        query: createPivotableQuery(this.baseModel),
+        name: "Model-based Question - pivoted table",
+        visualization_settings: {
+          "table.cell_column": "count",
+          "table.pivot_column": "PRODUCTS__via__PRODUCT_ID__CATEGORY",
+        },
+      }).then(response => cy.wrap(response.body).as("mbqpt"));
+    });
+
+    cy.then(function () {
+      const cards = [this.qbqp, this.mbqp, this.qbqpt, this.mbqpt];
+      createAndVisitDashboard(cards);
+    });
+
+    function createPivotableQuery(source: Card): StructuredQuery {
+      return {
+        ...createQ1Query(source),
+        aggregation: [["count"]],
+        breakout: [
+          [
+            "field",
+            ORDERS.CREATED_AT,
+            {
+              "base-type": "type/DateTime",
+              "temporal-unit": "month",
+            },
+          ],
+          [
+            "field",
+            PRODUCTS.CATEGORY,
+            {
+              "base-type": "type/Text",
+              "source-field": ORDERS.PRODUCT_ID,
+            },
+          ],
+        ],
+      };
+    }
+  });
+
+  afterEach(() => {
+    changeSynchronousBatchUpdateSetting(false);
+  });
+
+  it("allows to map to all relevant columns and does not allow mapping to extra filtering stage", () => {
+    editDashboard();
+
+    cy.log("## date columns");
+    getFilter("Date").click();
+    verifyDateMappingOptions();
+
+    cy.log("## text columns");
+    getFilter("Text").click();
+    verifyTextMappingOptions();
+
+    cy.log("## number columns");
+    getFilter("Number").click();
+    verifyNumberMappingOptions();
+
+    function verifyDateMappingOptions() {
+      verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_PIVOT_VIZ_INDEX, [
+        ["Base Orders Question", ORDERS_DATE_COLUMNS],
+        ["Reviews", REVIEWS_DATE_COLUMNS],
+        ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
+        ["User", PEOPLE_DATE_COLUMNS],
+      ]);
+      verifyDashcardMappingOptions(MODEL_BASED_QUESTION_PIVOT_VIZ_INDEX, [
+        ["Base Orders Model", ORDERS_DATE_COLUMNS],
+        ["Reviews", REVIEWS_DATE_COLUMNS],
+        ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
+        ["User", PEOPLE_DATE_COLUMNS],
+      ]);
+      verifyDashcardMappingOptions(
+        QUESTION_BASED_QUESTION_PIVOTED_TABLE_INDEX,
+        [
+          ["Base Orders Question", ORDERS_DATE_COLUMNS],
+          ["Reviews", REVIEWS_DATE_COLUMNS],
+          ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
+          ["User", PEOPLE_DATE_COLUMNS],
+        ],
+      );
+      verifyDashcardMappingOptions(MODEL_BASED_QUESTION_PIVOTED_TABLE_INDEX, [
+        ["Base Orders Model", ORDERS_DATE_COLUMNS],
+        ["Reviews", REVIEWS_DATE_COLUMNS],
+        ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
+        ["User", PEOPLE_DATE_COLUMNS],
+      ]);
+    }
+
+    function verifyTextMappingOptions() {
+      verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_PIVOT_VIZ_INDEX, [
+        ["Reviews", REVIEWS_TEXT_COLUMNS],
+        ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
+        ["User", PEOPLE_TEXT_COLUMNS],
+      ]);
+      verifyDashcardMappingOptions(MODEL_BASED_QUESTION_PIVOT_VIZ_INDEX, [
+        ["Reviews", REVIEWS_TEXT_COLUMNS],
+        ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
+        ["User", PEOPLE_TEXT_COLUMNS],
+      ]);
+      verifyDashcardMappingOptions(
+        QUESTION_BASED_QUESTION_PIVOTED_TABLE_INDEX,
+        [
+          ["Reviews", REVIEWS_TEXT_COLUMNS],
+          ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
+          ["User", PEOPLE_TEXT_COLUMNS],
+        ],
+      );
+      verifyDashcardMappingOptions(MODEL_BASED_QUESTION_PIVOTED_TABLE_INDEX, [
+        ["Reviews", REVIEWS_TEXT_COLUMNS],
+        ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
+        ["User", PEOPLE_TEXT_COLUMNS],
+      ]);
+    }
+
+    function verifyNumberMappingOptions() {
+      verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_PIVOT_VIZ_INDEX, [
+        ["Base Orders Question", [...ORDERS_NUMBER_COLUMNS, "Net"]],
+        ["Reviews", REVIEWS_NUMBER_COLUMNS],
+        ["Product", [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
+        ["User", PEOPLE_NUMBER_COLUMNS],
+      ]);
+      verifyDashcardMappingOptions(MODEL_BASED_QUESTION_PIVOT_VIZ_INDEX, [
+        ["Base Orders Model", [...ORDERS_NUMBER_COLUMNS, "Net"]],
+        ["Reviews", REVIEWS_NUMBER_COLUMNS],
+        ["Product", [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
+        ["User", PEOPLE_NUMBER_COLUMNS],
+      ]);
+      verifyDashcardMappingOptions(
+        QUESTION_BASED_QUESTION_PIVOTED_TABLE_INDEX,
+        [
+          ["Base Orders Question", [...ORDERS_NUMBER_COLUMNS, "Net"]],
+          ["Reviews", REVIEWS_NUMBER_COLUMNS],
+          ["Product", [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
+          ["User", PEOPLE_NUMBER_COLUMNS],
+        ],
+      );
+      verifyDashcardMappingOptions(MODEL_BASED_QUESTION_PIVOTED_TABLE_INDEX, [
+        ["Base Orders Model", [...ORDERS_NUMBER_COLUMNS, "Net"]],
+        ["Reviews", REVIEWS_NUMBER_COLUMNS],
+        ["Product", [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
+        ["User", PEOPLE_NUMBER_COLUMNS],
+      ]);
+    }
+  });
+});
+
 function createBaseQuestions() {
   createQuestion({
     type: "question",
@@ -2209,30 +2403,37 @@ function createQ9Query(source: Card): StructuredQuery {
 
 type CreateQuery = (source: Card) => StructuredQuery;
 
-function createAndVisitDashboardWithCardMatrix(createQuery: CreateQuery) {
+function createAndVisitDashboardWithCardMatrix(
+  createQuery: CreateQuery,
+  questionDetails?: Partial<StructuredQuestionDetails>,
+) {
   cy.then(function () {
     createQuestion({
       type: "question",
       query: createQuery(this.baseQuestion),
       name: "Question-based Question",
+      ...questionDetails,
     }).then(response => cy.wrap(response.body).as("qbq"));
 
     createQuestion({
       type: "question",
       query: createQuery(this.baseModel),
       name: "Model-based Question",
+      ...questionDetails,
     }).then(response => cy.wrap(response.body).as("mbq"));
 
     createQuestion({
       type: "model",
       name: "Question-based Model",
       query: createQuery(this.baseQuestion),
+      ...questionDetails,
     }).then(response => cy.wrap(response.body).as("qbm"));
 
     createQuestion({
       type: "model",
       name: "Model-based Model",
       query: createQuery(this.baseModel),
+      ...questionDetails,
     }).then(response => cy.wrap(response.body).as("mbm"));
   });
 
