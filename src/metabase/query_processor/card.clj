@@ -89,7 +89,8 @@
     :as           card} parameters constraints middleware & [ids]]
   (let [explicit-stage-numbers? (uses-explict-stages? parameters)
         parameters (cond-> parameters
-                     (and explicit-stage-numbers? (not= card-type :question))
+                     ;; models are not transparent (questions and metrics are)
+                     (and explicit-stage-numbers? (= card-type :model))
                      point-parameters-to-last-stage)
         query (cond-> dataset-query
                 (and explicit-stage-numbers? (not= card-type :question)) nest-query
