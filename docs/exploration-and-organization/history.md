@@ -10,7 +10,8 @@ For questions, dashboards, and models, Metabase keeps a version history for the 
 
 1. Go to your question, dashboard, or model.
 2. Click the info icon.
-3. A sidebar will pop up with a history of up to 15 versions.
+3. Click on the **History** tab.
+4. The History tab will display the item's history of up to 15 versions.
 
 Metabase will keep track of a version each time you [save](../questions/sharing/answers.md#how-to-save-a-question), [move](../questions/sharing/answers.md#editing-your-question), [revert](#reverting-to-previous-versions), [move to Trash](./delete-and-restore.md), or [verify](./exploration.md#verified-items) an item.
 

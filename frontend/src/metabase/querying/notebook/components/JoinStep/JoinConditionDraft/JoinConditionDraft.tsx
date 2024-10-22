@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useLayoutEffect, useState } from "react";
 
 import { Box, Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -16,6 +16,7 @@ interface JoinConditionDraftProps {
   stageIndex: number;
   joinable: Lib.JoinOrJoinable;
   lhsTableName: string;
+  rhsTable?: Lib.Joinable;
   rhsTableName: string | undefined;
   isReadOnly: boolean;
   isRemovable: boolean;
@@ -29,6 +30,7 @@ export function JoinConditionDraft({
   stageIndex,
   joinable,
   lhsTableName,
+  rhsTable,
   rhsTableName,
   isReadOnly,
   isRemovable,
@@ -76,6 +78,13 @@ export function JoinConditionDraft({
     setRhsColumn(newRhsColumn);
     handleColumnChange(lhsColumn, newRhsColumn);
   };
+
+  useLayoutEffect(() => {
+    setLhsColumn(undefined);
+    setRhsColumn(undefined);
+    setIsLhsOpened(true);
+    setIsRhsOpened(false);
+  }, [rhsTable]);
 
   return (
     <JoinConditionRoot>
