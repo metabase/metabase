@@ -1,6 +1,5 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  type StructuredQuestionDetails,
   changeSynchronousBatchUpdateSetting,
   createDashboardWithTabs,
   createQuestion,
@@ -2362,37 +2361,30 @@ function createQ9Query(source: Card): StructuredQuery {
 
 type CreateQuery = (source: Card) => StructuredQuery;
 
-function createAndVisitDashboardWithCardMatrix(
-  createQuery: CreateQuery,
-  questionDetails?: Partial<StructuredQuestionDetails>,
-) {
+function createAndVisitDashboardWithCardMatrix(createQuery: CreateQuery) {
   cy.then(function () {
     createQuestion({
       type: "question",
       query: createQuery(this.baseQuestion),
       name: "Question-based Question",
-      ...questionDetails,
     }).then(response => cy.wrap(response.body).as("qbq"));
 
     createQuestion({
       type: "question",
       query: createQuery(this.baseModel),
       name: "Model-based Question",
-      ...questionDetails,
     }).then(response => cy.wrap(response.body).as("mbq"));
 
     createQuestion({
       type: "model",
       name: "Question-based Model",
       query: createQuery(this.baseQuestion),
-      ...questionDetails,
     }).then(response => cy.wrap(response.body).as("qbm"));
 
     createQuestion({
       type: "model",
       name: "Model-based Model",
       query: createQuery(this.baseModel),
-      ...questionDetails,
     }).then(response => cy.wrap(response.body).as("mbm"));
   });
 
