@@ -1808,7 +1808,7 @@ describe("issue 48878", () => {
     cy.log("create model action");
 
     cy.findByTestId("qb-header-info-button").click();
-    modal().findByText("See more about this model").click();
+    cy.findByTestId("sidebar-right").findByText("Model details").click();
 
     cy.findByRole("tab", { name: "Actions" }).click();
     cy.findByTestId("model-actions-header").findByText("New action").click();
