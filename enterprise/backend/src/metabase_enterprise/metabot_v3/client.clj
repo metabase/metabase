@@ -21,11 +21,12 @@
   :type       :string
   :encryption :no
   :visibility :internal
+  :setter     :none
   :export?    false
-  ;; TODO -- getter/setter should do URL validation and strip of trailing slashes
-  :default   (if (premium-features/is-hosted?)
-               "https://ai-proxy.coredev.metabase.com"
-               "http://localhost:8000"))
+  :getter     (fn []
+                (if (premium-features/is-hosted?)
+                  "https://ai-proxy.coredev.metabase.com"
+                  "http://localhost:8000")))
 
 (set! *warn-on-reflection* true)
 
