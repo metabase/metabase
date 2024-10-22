@@ -43,20 +43,20 @@ export default class SegmentActionSelect extends Component {
           <ul className={AdminS.UserActionsSelect}>
             <li>
               <ActionLink to={`/admin/datamodel/segment/${object.id}`}>
-                {t`Edit segment`}
+                {t`Edit Segment`}
               </ActionLink>
             </li>
             <li>
               <ActionLink
                 to={`/admin/datamodel/segment/${object.id}/revisions`}
               >
-                {t`Revision history`}
+                {t`Revision History`}
               </ActionLink>
             </li>
             <li className={cx(CS.mt1, CS.borderTop)}>
               <ModalWithTrigger
                 ref={this.retireModal}
-                triggerElement={t`Retire segment`}
+                triggerElement={t`Retire Segment`}
                 triggerClasses={cx(
                   CS.block,
                   CS.p2,
