@@ -5,6 +5,7 @@
    [clojure.test :refer :all]
    [honey.sql :as sql]
    [metabase.actions.error :as actions.error]
+   [metabase.config :as config]
    [metabase.db.metadata-queries :as metadata-queries]
    [metabase.driver :as driver]
    [metabase.driver.mysql :as mysql]
@@ -450,14 +451,14 @@
 
 (deftest mysql-connect-with-ssl-and-pem-cert-test
   (mt/test-driver :mysql
-    (if (System/getenv "MB_MYSQL_SSL_TEST_SSL_CERT")
+    (if (config/config-bool :mb-mysql-ssl-test-ssl)
       (testing "MySQL with SSL connectivity using PEM certificate"
         (mt/with-env-keys-renamed-by #(str/replace-first % "mb-mysql-ssl-test" "mb-mysql-test")
           (string-extracts-test/test-breakout)))
       (log/info (u/format-color 'yellow
                                 "Skipping %s because %s env var is not set"
                                 "mysql-connect-with-ssl-and-pem-cert-test"
-                                "MB_MYSQL_SSL_TEST_SSL_CERT")))))
+                                "MB_MYSQL_SSL_TEST_SSL")))))
 
 (deftest ^:parallel json-query-test
   (let [boop-identifier (h2x/identifier :field "boop" "bleh -> meh")]
