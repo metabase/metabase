@@ -65,7 +65,8 @@ export const login = createAsyncThunk(
   LOGIN,
   async ({ data }: LoginPayload, { dispatch, rejectWithValue }) => {
     try {
-      await SessionApi.create(data);
+      const sessionCreated  = await SessionApi.create(data);
+      localStorage.setItem("metabase_id_back", sessionCreated.id)
       await dispatch(refreshSession()).unwrap();
       trackLogin();
       if (!isSmallScreen()) {

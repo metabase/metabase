@@ -28,6 +28,7 @@ import { useSetting } from "metabase/common/hooks";
 export const HomeLayout = () => {
   const initialMessage = useSelector(getInitialMessage);
   const suggestions = useSelector(getSuggestions);
+  const metabase_id_back = localStorage.getItem("metabase_id_back")
   const [inputValue, setInputValue] = useState("");
   const [showChatAssistant, setShowChatAssistant] = useState(false);
   const [selectedChatHistory, setSelectedChatHistory] = useState([]);
@@ -336,6 +337,7 @@ const langchain_key = "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";
                 }}
               >
                 <ChatAssistant
+                metabase_id_back={metabase_id_back}
                   client={client}
                   clientSmith={clientSmith}
                   selectedMessages={selectedChatHistory}
