@@ -6,6 +6,7 @@ import {
   EntityPickerModal,
   defaultOptions as defaultEntityPickerOptions,
 } from "../../EntityPicker";
+import { EntityPicker } from "../../EntityPicker/components/EntityPicker";
 import { useLogRecentItem } from "../../EntityPicker/hooks/use-log-recent-item";
 import type {
   QuestionPickerItem,
@@ -102,7 +103,7 @@ export const QuestionPickerModal = ({
       folderModels: ["collection" as const],
       icon: "table",
       render: ({ onItemSelect }) => (
-        <QuestionPicker
+        <EntityPicker
           initialValue={value}
           models={["card"]}
           options={options}

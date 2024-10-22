@@ -7,6 +7,7 @@ import type { RecentItem, SearchResult } from "metabase-types/api";
 
 import type { EntityPickerTab } from "../../EntityPicker";
 import { EntityPickerModal, defaultOptions } from "../../EntityPicker";
+import { EntityPicker } from "../../EntityPicker/components/EntityPicker";
 import { useLogRecentItem } from "../../EntityPicker/hooks/use-log-recent-item";
 import type {
   CollectionPickerItem,
@@ -15,7 +16,6 @@ import type {
   CollectionPickerValueItem,
 } from "../types";
 
-import { CollectionPicker } from "./CollectionPicker";
 import { NewCollectionDialog } from "./NewCollectionDialog";
 
 export interface CollectionPickerModalProps {
@@ -125,11 +125,12 @@ export const CollectionPickerModal = ({
       folderModels: ["collection" as const],
       icon: "folder",
       render: ({ onItemSelect }) => (
-        <CollectionPicker
+        <EntityPicker
           initialValue={value}
           options={options}
           path={collectionsPath}
-          ref={pickerRef}
+          models={["collection"]}
+          //ref={pickerRef}
           shouldDisableItem={shouldDisableItem}
           onInit={handleInit}
           onItemSelect={onItemSelect}

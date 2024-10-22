@@ -10,6 +10,7 @@ import {
   EntityPickerModal,
   defaultOptions as defaultEntityPickerOptions,
 } from "../../EntityPicker";
+import { EntityPicker } from "../../EntityPicker/components/EntityPicker";
 import { useLogRecentItem } from "../../EntityPicker/hooks/use-log-recent-item";
 import type {
   DashboardPickerInitialValueItem,
@@ -21,7 +22,7 @@ import type {
 import { getCollectionId } from "../utils";
 
 import {
-  DashboardPicker,
+  // DashboardPicker,
   defaultOptions as defaultDashboardPickerOptions,
 } from "./DashboardPicker";
 import { NewDashboardDialog } from "./NewDashboardDialog";
@@ -140,12 +141,12 @@ export const DashboardPickerModal = ({
       folderModels: ["collection" as const],
       icon: "dashboard",
       render: ({ onItemSelect }) => (
-        <DashboardPicker
+        <EntityPicker
           initialValue={value}
           models={["dashboard"]}
           options={options}
           path={dashboardsPath}
-          ref={pickerRef}
+          // ref={pickerRef}
           shouldDisableItem={shouldDisableItem}
           onItemSelect={onItemSelect}
           onPathChange={handleDashboardsPathChange}
