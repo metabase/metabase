@@ -3,7 +3,6 @@
    [clj-bom.core :as bom]
    [clojure.data :as data]
    [clojure.data.csv :as csv]
-   [clojure.java.io :as io]
    [clojure.string :as str]
    [flatland.ordered.map :as ordered-map]
    [java-time.api :as t]
@@ -284,18 +283,7 @@
 
 (defn- detect-charset ^String [file]
   (try
-    (let [detector (UniversalDetector.)
-          buffer   (byte-array 8192)]
-      (with-open [input-stream (io/input-stream file)]
-        (loop []
-          (let [bytes-read (.read input-stream buffer)]
-            (if (pos? bytes-read)
-              (do
-                (.handleData detector buffer 0 bytes-read)
-                (when-not (.isDone detector)
-                  (recur)))
-              (.dataEnd detector)))))
-      (.getDetectedCharset detector))
+    (UniversalDetector/detectCharset (bom/bom-input-stream file))
     (catch Exception _)))
 
 (defn- ->reader ^Reader [^File file]
