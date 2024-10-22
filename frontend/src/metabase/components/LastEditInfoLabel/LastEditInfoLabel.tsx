@@ -9,7 +9,7 @@ import type { NamedUser } from "metabase/lib/user";
 import { getFullName } from "metabase/lib/user";
 import { getUser } from "metabase/selectors/user";
 import type { TooltipProps } from "metabase/ui";
-import { Tooltip } from "metabase/ui";
+import { Text, Tooltip } from "metabase/ui";
 import type { User } from "metabase-types/api";
 
 export type ItemWithLastEditInfo = {
@@ -93,14 +93,26 @@ function LastEditInfoLabel({
 
   return (
     <Tooltip disabled={!timeLabel} {...tooltipProps}>
-      <TextButton
-        size="small"
-        className={className}
-        onClick={onClick}
-        data-testid="revision-history-button"
-      >
-        {children}
-      </TextButton>
+      {onClick ? (
+        <TextButton
+          className={className}
+          size="small"
+          onClick={onClick}
+          data-testid="revision-history-button"
+        >
+          {children}
+        </TextButton>
+      ) : (
+        <Text
+          className={className}
+          size="sm"
+          fw="bold"
+          c="var(--mb-color-text-secondary)"
+          data-testid="revision-history-text"
+        >
+          {children}
+        </Text>
+      )}
     </Tooltip>
   );
 }

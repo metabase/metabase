@@ -3,6 +3,7 @@ import * as Lib from "metabase-lib";
 import { DATE_PICKER_TRUNCATION_UNITS } from "../constants";
 import type {
   DatePickerTruncationUnit,
+  DatePickerUnit,
   DatePickerValue,
   RelativeDatePickerValue,
   RelativeIntervalDirection,
@@ -12,48 +13,51 @@ import { DEFAULT_VALUE } from "./constants";
 import type { DateIntervalValue, DateOffsetIntervalValue } from "./types";
 
 export function isRelativeValue(
-  value?: DatePickerValue,
+  value: DatePickerValue | undefined,
 ): value is RelativeDatePickerValue {
-  return value?.type === "relative";
+  return value != null && value.type === "relative";
 }
 
 export function isIntervalValue(
-  value: RelativeDatePickerValue,
+  value: RelativeDatePickerValue | undefined,
 ): value is DateIntervalValue {
-  return value.value !== "current";
+  return value != null && value.value !== "current";
 }
 
 export function isOffsetIntervalValue(
-  value: RelativeDatePickerValue,
+  value: RelativeDatePickerValue | undefined,
 ): value is DateOffsetIntervalValue {
   return (
+    value != null &&
     isIntervalValue(value) &&
     value.offsetValue != null &&
     value.offsetUnit != null
   );
 }
 
-export function getDirectionDefaultValue(direction: RelativeIntervalDirection) {
-  return setDirectionAndCoerceUnit(DEFAULT_VALUE, direction);
-}
-
 export function getDirection(
-  value: RelativeDatePickerValue,
+  value: RelativeDatePickerValue | undefined,
 ): RelativeIntervalDirection {
-  if (value.value === "current") {
+  if (value == null || value.value === "current") {
     return "current";
   } else {
     return value.value < 0 ? "last" : "next";
   }
 }
 
+export function getDirectionDefaultValue(direction: RelativeIntervalDirection) {
+  return setDirectionAndCoerceUnit(DEFAULT_VALUE, direction);
+}
+
 export function setDirection(
-  value: RelativeDatePickerValue,
+  value: RelativeDatePickerValue = DEFAULT_VALUE,
   direction: RelativeIntervalDirection,
-  fallbackUnit: DatePickerTruncationUnit = "hour",
-): RelativeDatePickerValue {
+  fallbackUnit?: DatePickerTruncationUnit,
+): RelativeDatePickerValue | undefined {
   if (direction === "current") {
-    return { type: "relative", value: "current", unit: fallbackUnit };
+    return fallbackUnit
+      ? { type: "relative", value: "current", unit: fallbackUnit }
+      : undefined;
   }
 
   const sign = direction === "last" ? -1 : 1;
@@ -103,10 +107,22 @@ export function setInterval(
   };
 }
 
-export function getUnitOptions(value: DateIntervalValue) {
+export function getAvailableTruncationUnits(
+  availableUnits: ReadonlyArray<DatePickerUnit>,
+) {
+  return DATE_PICKER_TRUNCATION_UNITS.filter(unit =>
+    availableUnits.includes(unit),
+  );
+}
+
+export function getUnitOptions(
+  value: DateIntervalValue,
+  availableUnits: ReadonlyArray<DatePickerUnit>,
+) {
+  const truncationUnits = getAvailableTruncationUnits(availableUnits);
   const interval = getInterval(value);
 
-  return DATE_PICKER_TRUNCATION_UNITS.map(unit => ({
+  return truncationUnits.map(unit => ({
     value: unit,
     label: Lib.describeTemporalUnit(unit, interval).toLowerCase(),
   }));

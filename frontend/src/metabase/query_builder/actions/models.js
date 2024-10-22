@@ -24,7 +24,7 @@ export const onCancelCreateNewModel = () => async dispatch => {
   await dispatch(push("/"));
 };
 
-export const turnQuestionIntoDataset = () => async (dispatch, getState) => {
+export const turnQuestionIntoModel = () => async (dispatch, getState) => {
   const question = getQuestion(getState());
 
   await dispatch(
@@ -32,7 +32,12 @@ export const turnQuestionIntoDataset = () => async (dispatch, getState) => {
       {
         id: question.id(),
       },
-      question.setType("model").setPinned(true).setDisplay("table").card(),
+      question
+        .setType("model")
+        .setPinned(true)
+        .setDisplay("table")
+        .setSettings({})
+        .card(),
     ),
   );
 

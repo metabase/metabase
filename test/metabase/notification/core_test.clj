@@ -6,11 +6,14 @@
    [metabase.notification.core :as notification]
    [metabase.notification.test-util :as notification.tu]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
+
+(use-fixtures :once (fixtures/initialize :web-server))
 
 (deftest send-notification!*-test
   (testing "sending a ntoification will call render on all of its handlers"
-    (mt/with-model-cleanup [:model/Notification]
+    (notification.tu/with-notification-testing-setup
       (mt/with-temp [:model/Channel         chn-1 notification.tu/default-can-connect-channel
                      :model/Channel         chn-2 (assoc notification.tu/default-can-connect-channel :name "Channel 2")
                      :model/ChannelTemplate tmpl  {:channel_type notification.tu/test-channel-type}]

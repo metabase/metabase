@@ -327,7 +327,7 @@
                     :visibility-type :normal,
                     :nfc-path [:json_bit "genres"]}
                    {:name "json_bit → 1234",
-                    :database-type "bigint",
+                    :database-type "decimal",
                     :base-type :type/Integer,
                     :database-position 0,
                     :json-unfolding false,
@@ -521,7 +521,7 @@
                     :visibility-type   :normal
                     :nfc-path          [:jsoncol "mybool"]}
                    {:name              "jsoncol → myint"
-                    :database-type     "double precision"
+                    :database-type     "decimal"
                     :base-type         :type/Number
                     :database-position 0
                     :json-unfolding    false
@@ -586,7 +586,7 @@
                                (t2/select-one Table :db_id (mt/id) :name "json_with_pk")))))
               (testing "if table doesn't have pk, we fail to detect the change in type but it still syncable"
                 (is (= [{:name              "json_col → int_turn_string"
-                         :database-type     "bigint"
+                         :database-type     "decimal"
                          :base-type         :type/Integer
                          :database-position 0
                          :json-unfolding    false

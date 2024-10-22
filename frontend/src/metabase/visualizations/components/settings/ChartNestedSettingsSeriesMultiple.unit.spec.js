@@ -2,7 +2,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen, within } from "__support__/ui";
-import ChartSettings from "metabase/visualizations/components/ChartSettings";
+import { ChartSettings } from "metabase/visualizations/components/ChartSettings";
 import registerVisualizations from "metabase/visualizations/register";
 
 registerVisualizations();

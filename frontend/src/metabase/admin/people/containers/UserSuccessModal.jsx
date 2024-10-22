@@ -53,9 +53,10 @@ const EmailSuccess = ({ user, isSsoEnabled }) => {
   if (isSsoEnabled) {
     return (
       <div>{jt`We’ve sent an invite to ${(
-        <strong>{user.email}</strong>
+        <strong key="email">{user.email}</strong>
       )} with instructions to log in. If this user is unable to authenticate then you can ${(
         <Link
+          key="link"
           to={`/admin/people/${user.id}/reset`}
           className={CS.link}
         >{t`reset their password.`}</Link>
@@ -64,7 +65,7 @@ const EmailSuccess = ({ user, isSsoEnabled }) => {
   }
   return (
     <div>{jt`We’ve sent an invite to ${(
-      <strong>{user.email}</strong>
+      <strong key="email">{user.email}</strong>
     )} with instructions to set their password.`}</div>
   );
 };
@@ -73,7 +74,7 @@ const PasswordSuccess = ({ user, temporaryPassword }) => (
   <div>
     <PasswordSuccessMessage>
       {jt`We couldn’t send them an email invitation, so make sure to tell them to log in using ${(
-        <strong>{user.email}</strong>
+        <strong key="email">{user.email}</strong>
       )} and this password we’ve generated for them:`}
     </PasswordSuccessMessage>
 
@@ -83,7 +84,11 @@ const PasswordSuccess = ({ user, temporaryPassword }) => (
       className={cx(CS.pt4, CS.textCentered)}
     >
       {jt`If you want to be able to send email invites, just go to the ${(
-        <Link to="/admin/settings/email" className={cx(CS.link, CS.textBold)}>
+        <Link
+          key="link"
+          to="/admin/settings/email"
+          className={cx(CS.link, CS.textBold)}
+        >
           Email Settings
         </Link>
       )} page.`}
