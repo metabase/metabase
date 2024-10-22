@@ -5,6 +5,7 @@
    [malli.core :as mc]
    [malli.transform :as mtx]
    [metabase-enterprise.metabot-v3.tools.apply-visualizations]
+   [metabase-enterprise.metabot-v3.tools.goto-question]
    [metabase-enterprise.metabot-v3.tools.interface :as metabot-v3.tools.interface]
    [metabase-enterprise.metabot-v3.tools.invite-user]
    [metabase-enterprise.metabot-v3.tools.who-is-your-favorite]

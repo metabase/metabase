@@ -97,3 +97,8 @@
    [:groups         [:maybe [:vector [:map
                                       [:fieldName [:maybe :string]]
                                       [:granularity [:maybe [:enum "day" "week" "month" "year"]]]]]]]])
+
+(defreaction :metabot.reaction/goto-question
+  [:map
+   [:type [:= :metabot.reaction/goto-question]]
+   [:question_id :integer]])
