@@ -1,6 +1,5 @@
 import { assocIn } from "icepick";
 import { useCallback, useMemo, useState } from "react";
-import * as React from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -42,52 +41,6 @@ import type { ChartSettingsProps, Widget } from "./types";
 
 // section names are localized
 const DEFAULT_TAB_PRIORITY = [t`Data`];
-
-/**
- * @deprecated HOCs are deprecated
- */
-function withTransientSettingState(
-  ComposedComponent: React.ComponentType<ChartSettingsProps>,
-) {
-  return class extends React.Component<
-    ChartSettingsProps,
-    {
-      settings?: VisualizationSettings;
-    }
-  > {
-    static displayName = `withTransientSettingState[${
-      ComposedComponent.displayName || ComposedComponent.name
-    }]`;
-
-    constructor(props: ChartSettingsProps) {
-      super(props);
-      this.state = {
-        settings: props.settings,
-      };
-    }
-
-    UNSAFE_componentWillReceiveProps(nextProps: ChartSettingsProps) {
-      if (this.props.settings !== nextProps.settings) {
-        this.setState({ settings: nextProps.settings });
-      }
-    }
-
-    render() {
-      return (
-        <ComposedComponent
-          {...this.props}
-          settings={this.state.settings}
-          onChange={(settings: VisualizationSettings) =>
-            this.setState({ settings })
-          }
-          onDone={(settings: VisualizationSettings) =>
-            this.props.onChange?.(settings || this.state.settings)
-          }
-        />
-      );
-    }
-  };
-}
 
 export const ChartSettings = (props: ChartSettingsProps) => {
   const [currentSection, setCurrentSection] = useState<string | null>(
@@ -354,8 +307,8 @@ export const ChartSettings = (props: ChartSettingsProps) => {
   };
 
   const onResetToDefault =
-    !_.isEqual(props.settings, {}) &&
-    (props.settings || {}).virtual_card == null // resetting virtual cards wipes the text and broke the UI (metabase#14644)
+    // resetting virtual cards wipes the text and broke the UI (metabase#14644)
+    !_.isEqual(chartSettings, {}) && (chartSettings || {}).virtual_card == null
       ? handleResetSettings
       : null;
 
@@ -429,4 +382,18 @@ export const ChartSettings = (props: ChartSettingsProps) => {
   );
 };
 
-export const ChartSettingsWithState = withTransientSettingState(ChartSettings);
+export const ChartSettingsWithState = (props: ChartSettingsProps) => {
+  const [tempSettings, setTempSettings] = useState(props.settings);
+
+  const onDone = (settings: VisualizationSettings) =>
+    props.onChange?.(settings || tempSettings);
+
+  return (
+    <ChartSettings
+      {...props}
+      onChange={setTempSettings}
+      onDone={onDone}
+      settings={tempSettings}
+    />
+  );
+};
