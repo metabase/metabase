@@ -45,102 +45,112 @@
           (is (contains? (:tables actual-tables) {:name "bird", :schema "bird-flocks", :description nil})))))))
 
 (deftest ^:parallel describe-fields-test
-  (testing "`describe-fields` returns expected values"
-    (mt/test-driver
-      :databricks
-      (is (= #{{:table-schema "test-data"
-                :table-name "orders"
-                :pk? true
-                :name "id"
-                :database-type "int"
-                :database-position 0
-                :base-type :type/Integer
-                :json-unfolding false}
-               {:table-schema "test-data"
-                :table-name "orders"
-                :pk? false
-                :name "user_id"
-                :database-type "int"
-                :database-position 1
-                :base-type :type/Integer
-                :json-unfolding false}
-               {:table-schema "test-data"
-                :table-name "orders"
-                :pk? false
-                :name "product_id"
-                :database-type "int"
-                :database-position 2
-                :base-type :type/Integer
-                :json-unfolding false}
-               {:table-schema "test-data"
-                :table-name "orders"
-                :pk? false
-                :name "subtotal"
-                :database-type "double"
-                :database-position 3
-                :base-type :type/Float
-                :json-unfolding false}
-               {:table-schema "test-data"
-                :table-name "orders"
-                :pk? false
-                :name "tax"
-                :database-type "double"
-                :database-position 4
-                :base-type :type/Float
-                :json-unfolding false}
-               {:table-schema "test-data"
-                :table-name "orders"
-                :pk? false
-                :name "total"
-                :database-type "double"
-                :database-position 5
-                :base-type :type/Float
-                :json-unfolding false}
-               {:table-schema "test-data"
-                :table-name "orders"
-                :pk? false
-                :name "discount"
-                :database-type "double"
-                :database-position 6
-                :base-type :type/Float
-                :json-unfolding false}
-               {:table-schema "test-data"
-                :table-name "orders"
-                :pk? false
-                :name "created_at"
-                :database-type "timestamp"
-                :database-position 7
-                :base-type :type/DateTimeWithLocalTZ
-                :json-unfolding false}
-               {:table-schema "test-data"
-                :table-name "orders"
-                :pk? false
-                :name "quantity"
-                :database-type "int"
-                :database-position 8
-                :base-type :type/Integer
-                :json-unfolding false}}
-             (reduce conj #{} (driver/describe-fields :databricks (mt/db) {:schema-names ["test-data"]
-                                                                           :table-names ["orders"]})))))))
+  (mt/test-driver
+    :databricks
+    (let [fields (vec (driver/describe-fields :databricks (mt/db) {:schema-names ["test-data"]
+                                                                   :table-names ["orders"]}))]
+      ;; Currently we have `test-data` in `metabase_ci` and `metabase_drivers`. Ensure the underlying sql query
+      ;; does not waste resources by returning for both.
+      (testing "Underlying query returns only fields from selected catalog"
+        (is (= 9 (count fields))))
+      (testing "Expected fields are returned"
+        (is (= #{{:table-schema "test-data"
+                  :table-name "orders"
+                  :pk? true
+                  :name "id"
+                  :database-type "int"
+                  :database-position 0
+                  :base-type :type/Integer
+                  :json-unfolding false}
+                 {:table-schema "test-data"
+                  :table-name "orders"
+                  :pk? false
+                  :name "user_id"
+                  :database-type "int"
+                  :database-position 1
+                  :base-type :type/Integer
+                  :json-unfolding false}
+                 {:table-schema "test-data"
+                  :table-name "orders"
+                  :pk? false
+                  :name "product_id"
+                  :database-type "int"
+                  :database-position 2
+                  :base-type :type/Integer
+                  :json-unfolding false}
+                 {:table-schema "test-data"
+                  :table-name "orders"
+                  :pk? false
+                  :name "subtotal"
+                  :database-type "double"
+                  :database-position 3
+                  :base-type :type/Float
+                  :json-unfolding false}
+                 {:table-schema "test-data"
+                  :table-name "orders"
+                  :pk? false
+                  :name "tax"
+                  :database-type "double"
+                  :database-position 4
+                  :base-type :type/Float
+                  :json-unfolding false}
+                 {:table-schema "test-data"
+                  :table-name "orders"
+                  :pk? false
+                  :name "total"
+                  :database-type "double"
+                  :database-position 5
+                  :base-type :type/Float
+                  :json-unfolding false}
+                 {:table-schema "test-data"
+                  :table-name "orders"
+                  :pk? false
+                  :name "discount"
+                  :database-type "double"
+                  :database-position 6
+                  :base-type :type/Float
+                  :json-unfolding false}
+                 {:table-schema "test-data"
+                  :table-name "orders"
+                  :pk? false
+                  :name "created_at"
+                  :database-type "timestamp"
+                  :database-position 7
+                  :base-type :type/DateTimeWithLocalTZ
+                  :json-unfolding false}
+                 {:table-schema "test-data"
+                  :table-name "orders"
+                  :pk? false
+                  :name "quantity"
+                  :database-type "int"
+                  :database-position 8
+                  :base-type :type/Integer
+                  :json-unfolding false}}
+               (set fields)))))))
 
 (deftest ^:parallel describe-fks-test
-  (testing "`describe-fks` returns expected values"
-    (mt/test-driver
-      :databricks
-      (is (= #{{:fk-table-schema "test-data"
-                :fk-table-name "orders"
-                :fk-column-name "product_id"
-                :pk-table-schema "test-data"
-                :pk-table-name "products"
-                :pk-column-name "id"}
-               {:fk-table-schema "test-data"
-                :fk-table-name "orders"
-                :fk-column-name "user_id"
-                :pk-table-schema "test-data"
-                :pk-table-name "people"
-                :pk-column-name "id"}}
-             (reduce conj #{} (driver/describe-fks :databricks (mt/db) {:schema-names ["test-data"]
-                                                                        :table-names ["orders"]})))))))
+  (mt/test-driver
+    :databricks
+    (let [fks (vec (driver/describe-fks :databricks (mt/db) {:schema-names ["test-data"]
+                                                             :table-names ["orders"]}))]
+      ;; Currently we have `test-data` in `metabase_ci` and `metabase_drivers`. Ensure the underlying sql query
+      ;; does not waste resources by returning for both.
+      (testing "Only fks from current catalog are registered"
+        (is (= 2 (count fks))))
+      (testing "Expected fks are returned"
+        (is (= #{{:fk-table-schema "test-data"
+                  :fk-table-name "orders"
+                  :fk-column-name "product_id"
+                  :pk-table-schema "test-data"
+                  :pk-table-name "products"
+                  :pk-column-name "id"}
+                 {:fk-table-schema "test-data"
+                  :fk-table-name "orders"
+                  :fk-column-name "user_id"
+                  :pk-table-schema "test-data"
+                  :pk-table-name "people"
+                  :pk-column-name "id"}}
+               (set fks)))))))
 
 (mt/defdataset dataset-with-ntz
   [["table_with_ntz" [{:field-name "timestamp"
