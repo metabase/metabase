@@ -2,11 +2,11 @@
   "Namespaces that uses the Nashorn javascript engine to invoke some shared javascript code that we use to determine
   the background color of pulse table cells"
   (:require
-   [cheshire.core :as json]
    [clojure.java.io :as io]
    [metabase.formatter]
    [metabase.pulse.render.js-engine :as js]
    [metabase.util.i18n :refer [trs]]
+   [metabase.util.json :as json]
    [metabase.util.malli :as mu])
   (:import
    (metabase.formatter NumericWrapper)))
@@ -48,8 +48,8 @@
   ;; code
   (js/execute-fn-name (js-engine) "makeCellBackgroundGetter"
                       rows
-                      (json/generate-string cols)
-                      (json/generate-string viz-settings)))
+                      (json/encode cols)
+                      (json/encode viz-settings)))
 
 (defn get-background-color
   "Get the correct color for a cell in a pulse table. Returns color as string suitable for use CSS, e.g. a hex string or

@@ -1,7 +1,6 @@
 (ns metabase.xrays.automagic-dashboards.util
   (:require
    [buddy.core.codecs :as codecs]
-   [cheshire.core :as json]
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.analyze :as analyze]
@@ -12,6 +11,7 @@
    [metabase.models.field :refer [Field]]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]

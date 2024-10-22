@@ -138,7 +138,7 @@
             (throw (ex-info "test" {:reason :test}))))
         (is (=? {:status       :failed
                  :task_details {:status        "failed"
-                                :exception     "class clojure.lang.ExceptionInfo"
+                                :exception     "clojure.lang.ExceptionInfo"
                                 :message       "test"
                                 :stacktrace    (mt/malli=? :any)
                                 :ex-data       {:reason "test"}
