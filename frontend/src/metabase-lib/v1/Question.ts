@@ -324,6 +324,22 @@ class Question {
     return this.setDisplay(display).updateSettings(settings);
   }
 
+  /**
+   * This function is used to conditionally avoid calling Lib.ensureFilterStage for pivoted questions.
+   * Pivot tables cannot work when there is an extra stage added on top of breakouts and aggregations.
+   */
+  isPivoted(): boolean {
+    const display = this.display();
+    const settings = this.settings();
+    const isPivotViz = display === "pivot";
+    const isPivotedTableViz =
+      display === "table" &&
+      settings["table.pivot_column"] != null &&
+      settings["table.cell_column"] != null;
+
+    return isPivotViz || isPivotedTableViz;
+  }
+
   settings(): VisualizationSettings {
     return (this._card && this._card.visualization_settings) || {};
   }
