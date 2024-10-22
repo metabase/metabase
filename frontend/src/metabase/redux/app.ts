@@ -107,6 +107,8 @@ const isErrorDiagnosticsOpen = handleActions(
   false,
 );
 
+export const SET_TEMP_SETTING = "metabase/app/SET_TEMP_SETTING";
+
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default combineReducers({
   errorPage,

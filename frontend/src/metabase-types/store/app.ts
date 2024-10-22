@@ -14,9 +14,20 @@ export interface AppBreadCrumbs {
   show: boolean;
 }
 
-export interface AppState {
+/**
+ * Storage for non-critical, ephemeral user preferences.
+ * Think of it as a sessionStorage alternative implemented in Redux.
+ * Only specific key/value pairs can be stored here,
+ * and then later used with the `use-temp-storage` hook.
+ */
+// eslint-disable-next-line @typescript-eslint/ban-types
+export type TempStorage = {};
+
+interface BaseAppState {
   errorPage: AppErrorDescriptor | null;
   isNavbarOpen: boolean;
   isDndAvailable: boolean;
   isErrorDiagnosticsOpen: boolean;
 }
+
+export type AppState = BaseAppState & TempStorage;
