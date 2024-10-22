@@ -42,7 +42,7 @@
 
 (use-fixtures
   :once
-  (fixtures/initialize :test-users-personal-collections))
+  (fixtures/initialize :test-users))
 
 (comment
   ;; this has to be loaded for the Google Auth tests to work

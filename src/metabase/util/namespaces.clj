@@ -1,9 +1,8 @@
 (ns metabase.util.namespaces
   "Potemkin is Java-only, so here's a basic function-importing macro that works for both CLJS and CLJ."
+  #_{:clj-kondo/ignore [:discouraged-namespace]}
   (:require
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.plugins.classloader :as classloader]
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
    [net.cgrand.macrovich :as macros]

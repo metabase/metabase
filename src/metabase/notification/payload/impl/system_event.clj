@@ -10,6 +10,7 @@
 
 (defn- join-url
   [new-user]
+  ;; TODO: the reset token should come from the event-info, not generated here!
   (let [reset-token               (user/set-password-reset-token! (:id new-user))
         should-link-to-login-page (and (public-settings/sso-enabled?)
                                        (not (public-settings/enable-password-login)))]
