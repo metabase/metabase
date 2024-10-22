@@ -477,7 +477,6 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS = {
       return {
         isEnabled: settings["graph.max_categories_enabled"],
         aggregationFunction: settings["graph.other_category_aggregation_fn"],
-        canChangeAggregationFunction: card.dataset_query.type === "native",
       };
     },
     readDependencies: [

@@ -16,13 +16,11 @@ export interface ChartSettingMaxCategoriesProps
   extends ChartSettingWidgetProps<number> {
   isEnabled?: boolean;
   aggregationFunction: AggregationFunction;
-  canChangeAggregationFunction: boolean;
 }
 
 export const ChartSettingMaxCategories = ({
   isEnabled,
   aggregationFunction,
-  canChangeAggregationFunction = false,
   ...props
 }: ChartSettingMaxCategoriesProps) => {
   const { onChangeSettings } = props;
@@ -57,24 +55,22 @@ export const ChartSettingMaxCategories = ({
         data-testid="graph-max-categories-input"
       />
       <Text>{t`Series after this number will be grouped into "Other"`}</Text>
-      {canChangeAggregationFunction && (
-        <div>
-          <Text
-            component="label"
-            htmlFor="aggregationFunction"
-            color="var(--mb-color-text-dark)"
-            fz="sm"
-            mb="sm"
-          >{t`Aggregation method for Other group`}</Text>
-          <Select
-            name="aggregationFunction"
-            value={aggregationFunction}
-            data={AGGREGATION_FN_OPTIONS}
-            onChange={handleAggregationFunctionChange}
-            data-testid="graph-other-category-aggregation-fn-picker"
-          />
-        </div>
-      )}
+      <div>
+        <Text
+          component="label"
+          htmlFor="aggregationFunction"
+          color="var(--mb-color-text-dark)"
+          fz="sm"
+          mb="sm"
+        >{t`Aggregation method for Other group`}</Text>
+        <Select
+          name="aggregationFunction"
+          value={aggregationFunction}
+          data={AGGREGATION_FN_OPTIONS}
+          onChange={handleAggregationFunctionChange}
+          data-testid="graph-other-category-aggregation-fn-picker"
+        />
+      </div>
     </Stack>
   );
 };

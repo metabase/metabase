@@ -878,6 +878,7 @@ describe("scenarios > visualizations > bar chart", () => {
 
     // Test "graph.max_categories" change
     setMaxCategories(4);
+    queryBuilderMain().click(); // close popover
     chartPathWithFillColor(AK_SERIES_COLOR).first().realHover();
     echartsTooltip().find("tr").should("have.length", 5);
     queryBuilderMain().findAllByTestId("legend-item").should("have.length", 5);
@@ -902,12 +903,7 @@ describe("scenarios > visualizations > bar chart", () => {
     echartsTooltip().find("tr").should("have.length", 14);
     queryBuilderMain().findAllByTestId("legend-item").should("have.length", 14);
     otherSeriesChartPaths().should("not.exist");
-
-    // Test "graph.other_category_aggregation_fn" is hidden for MBQL queries
     setMaxCategories(8, { viaBreakoutSettings: true });
-    cy.findByTestId("graph-other-category-aggregation-fn-picker").should(
-      "not.exist",
-    );
 
     // Test "graph.other_category_aggregation_fn" for native queries
     openNotebook();
