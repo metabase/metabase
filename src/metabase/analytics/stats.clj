@@ -626,22 +626,36 @@
                                 (update-vals count)))
      :eid-translations-24h (get-translation-count)}))
 
-(defn- snowplow-grouped-metrics [{:keys [eid-translations-24h
-                                         query-executions
-                                         query-executions-24h]
-                                  :as _snowplow-grouped-metric-info}]
-  [{:name :query_executions_by_source
-    :values (mapv (fn [qe-group]
-                    {:group qe-group :value (get query-executions qe-group)})
-                  ["interactive_embed" "internal" "public_link" "sdk_embed" "static_embed"])
-    :tags ["embedding"]}
-   {:name :query_executions_by_source_24h
-    :values (mapv (fn [qe-group] {:group qe-group :value (get query-executions-24h qe-group)})
-                  ["interactive_embed" "internal" "public_link" "sdk_embed" "static_embed"])
-    :tags ["embedding"]}
-   {:name :entity_id_translations_last_24h
-    :values eid-translations-24h
-    :tags ["embedding"]}])
+(defn- deep-string-keywords
+  "Snowplow data will not work if you pass in keywords, but this will let use use keywords all over."
+  [data]
+  (walk/postwalk
+   (fn [x] (if (keyword? x) (-> x u/->snake_case_en name) x))
+   data))
+
+(mu/defn- snowplow-grouped-metrics
+  :- [:sequential
+      [:map
+       ["name" :string]
+       ["values" [:sequential [:map ["group" :string] ["value" :int]]]]
+       ["tags" [:sequential :string]]]]
+  [{:keys [eid-translations-24h
+           query-executions
+           query-executions-24h]
+    :as _snowplow-grouped-metric-info}]
+  (deep-string-keywords
+   [{:name :query_executions_by_source
+     :values (mapv (fn [qe-group]
+                     {:group qe-group :value (get query-executions qe-group)})
+                   ["interactive_embed" "internal" "public_link" "sdk_embed" "static_embed"])
+     :tags ["embedding"]}
+    {:name :query_executions_by_source_24h
+     :values (mapv (fn [qe-group] {:group qe-group :value (get query-executions-24h qe-group)})
+                   ["interactive_embed" "internal" "public_link" "sdk_embed" "static_embed"])
+     :tags ["embedding"]}
+    {:name :entity_id_translations_last_24h
+     :values (mapv (fn [[k v]] {:group k :value v}) eid-translations-24h)
+     :tags ["embedding"]}]))
 
 (defn- ->snowplow-metric-info
   "Collects Snowplow metrics data that is not in the legacy stats format. Also clears entity id translation count."
@@ -887,13 +901,6 @@
                 ;; [[send-stats-deprecited!]].
                 (update-in [:stats :cache] dissoc :num_queries_cached_unbinned))
      :snowplow-stats (snowplow-anonymous-usage-stats stats)}))
-
-(defn- deep-string-keywords
-  "Snowplow data will not work if you pass in keywords, but this will let use use keywords all over."
-  [data]
-  (walk/postwalk
-   (fn [x] (if (keyword? x) (-> x u/->snake_case_en name) x))
-   data))
 
 (defn- stats-post-cleanup []
   (clear-translation-count!))
