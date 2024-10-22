@@ -1,4 +1,8 @@
-import { createAction } from "@reduxjs/toolkit";
+import {
+  type PayloadAction,
+  createAction,
+  createSlice,
+} from "@reduxjs/toolkit";
 import { LOCATION_CHANGE, push } from "react-router-redux";
 
 import {
@@ -112,24 +116,23 @@ const isErrorDiagnosticsOpen = handleActions(
   false,
 );
 
-export const SET_TEMP_SETTING = "metabase/app/SET_TEMP_SETTING";
-const tempStorageReducer = (
-  state: TempStorage = {},
-  action: {
-    type: typeof SET_TEMP_SETTING;
-    payload: { key: TempStorageKey; value: TempStorageValue<TempStorageKey> };
+const tempStorageSlice = createSlice({
+  name: "tempStorage",
+  initialState: {} as TempStorage,
+  reducers: {
+    setTempSetting: (
+      state,
+      action: PayloadAction<{
+        key: TempStorageKey;
+        value: TempStorageValue<TempStorageKey>;
+      }>,
+    ) => {
+      state[action.payload.key] = action.payload.value;
+    },
   },
-): TempStorage => {
-  switch (action.type) {
-    case SET_TEMP_SETTING:
-      return {
-        ...state,
-        [action.payload.key]: action.payload.value,
-      };
-    default:
-      return state;
-  }
-};
+});
+
+export const { setTempSetting } = tempStorageSlice.actions;
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default combineReducers({
@@ -142,5 +145,5 @@ export default combineReducers({
     return true;
   },
   isErrorDiagnosticsOpen,
-  tempStorage: tempStorageReducer,
+  tempStorage: tempStorageSlice.reducer,
 });
