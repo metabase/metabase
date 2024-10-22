@@ -3,6 +3,7 @@ import {
   commandPaletteSearch,
   describeEE,
   getCollectionActions,
+  getPartialPremiumFeatureError,
   navigationSidebar,
   openCollectionMenu,
   openNewCollectionItemFlowFor,
@@ -39,8 +40,8 @@ describeEE("official collections", () => {
           authority_level: "official",
         },
       }).then(({ body, status, statusText }) => {
-        expect(body).to.eq(
-          "Official Collections is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/",
+        expect(body).to.deep.include(
+          getPartialPremiumFeatureError("Official Collections"),
         );
         expect(status).to.eq(402);
         expect(statusText).to.eq("Payment Required");
