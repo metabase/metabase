@@ -209,8 +209,7 @@
 (defn- enum-types
   [database]
   (into #{}
-        (comp (mapcat get-typenames)
-              (map keyword))
+        (mapcat get-typenames)
         (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec database)
                     [(str "SELECT nspname, typname "
                           "FROM pg_type t JOIN pg_namespace n ON n.oid = t.typnamespace "
@@ -280,19 +279,7 @@
   {:tables (into #{} (describe-syncable-tables database))})
 
 (defmethod sql-jdbc.sync/describe-fields-sql :postgres
-  ;; The implementation is based on `getColumns` in https://github.com/aws/amazon-redshift-jdbc-driver/blob/master/src/main/java/com/amazon/redshift/jdbc/RedshiftDatabaseMetaData.java
-  ;; The `database-is-auto-increment` and `database-required` columns are currently missing because they are only
-  ;; needed for actions, which redshift doesn't support yet.
-  #_[default            (.getString rs "COLUMN_DEF")
-     no-default?        (contains? #{nil "NULL" "null"} default)
-     nullable           (.getInt rs "NULLABLE")
-     not-nullable?      (= 0 nullable)
-   ;; IS_AUTOINCREMENT could return nil
-     auto-increment     (.getString rs "IS_AUTOINCREMENT")
-     auto-increment?    (= "YES" auto-increment)
-     no-auto-increment? (= "NO" auto-increment)
-     column-name        (.getString rs "COLUMN_NAME")
-     required?          (and no-default? not-nullable? no-auto-increment?)]
+  ;; The implementation is based on `getColumns` in https://github.com/pgjdbc/pgjdbc/blob/fcc13e70e6b6bb64b848df4b4ba6b3566b5e95a3/pgjdbc/src/main/java/org/postgresql/jdbc/PgDatabaseMetaData.java
   [driver & {:keys [schema-names table-names]}]
   (sql/format {:select [[:c.column_name :name]
                         [:c.udt_name :database-type]
@@ -375,7 +362,7 @@
     (eduction
      (map (fn [{:keys [database-type] :as col}]
             (cond-> col
-              (contains? enums (keyword database-type))
+              (contains? enums database-type)
               (assoc :base-type :type/PostgresEnum))))
      (apply (get-method driver/describe-fields :sql-jdbc) driver database args))))
 
