@@ -173,6 +173,7 @@ const ChatAssistant = ({ client, clientSmith, selectedMessages, selectedThreadId
 
     useEffect(() => {
         if (client && selectedMessages && selectedThreadId && selectedMessages.length > 0) {
+            console.log("selectedMessages: ", selectedMessages)
             // Clear existing messages
             setMessages([]);
             let visualizationIdx = 0;
@@ -190,6 +191,7 @@ const ChatAssistant = ({ client, clientSmith, selectedMessages, selectedThreadId
                     let card_id = null;
                     try {
                         const parsedContent = JSON.parse(message.content);
+                        console.log("parsedContent: ", parsedContent)
                         if (parsedContent.card_id) {
                             card_id = parsedContent.card_id;
                         }
@@ -355,7 +357,7 @@ const ChatAssistant = ({ client, clientSmith, selectedMessages, selectedThreadId
     const redirect = async () => {
         if (selectedHash) {
             dispatch(push(`/question#${selectedHash}`));
-            const deletedCard = await CardApi.delete({ id: id });
+            // const deletedCard = await CardApi.delete({ id: id });
         }
     }
 
