@@ -73,9 +73,8 @@
       ;; required for the DB.
       (m :guard (every-pred map? :native))
       (try
-        (let [refs      (nqa/references-for-native (assoc m :database (:database query)))
+        (let [refs      (nqa/tables-for-native (assoc m :database (:database query)))
               table-ids (->> refs
-                             :tables
                              (map :table-id)
                              (filter some?))]
           (if (seq table-ids)
