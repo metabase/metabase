@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 
 import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
 
 import { getGroupItems, hasFilters, removeFilters } from "../../utils";
 
@@ -8,10 +9,14 @@ import { SEARCH_KEY } from "./constants";
 import { isSearchActive, searchGroupItems } from "./utils";
 
 export const useFilterModal = (
-  initialQuery: Lib.Query,
+  question: Question,
   onSubmit: (newQuery: Lib.Query) => void,
 ) => {
-  const [query, setQuery] = useState(() => Lib.ensureFilterStage(initialQuery));
+  const [query, setQuery] = useState(() =>
+    question.isPivoted()
+      ? question.query()
+      : Lib.ensureFilterStage(question.query()),
+  );
   const queryRef = useRef(query);
   const [version, setVersion] = useState(1);
   const [isChanged, setIsChanged] = useState(false);

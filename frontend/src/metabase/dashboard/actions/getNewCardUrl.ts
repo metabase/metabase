@@ -52,8 +52,13 @@ export const getNewCardUrl = ({
   if (isEditable) {
     nextQuestion = new Question(cardAfterClick, metadata);
 
+    if (!nextQuestion.isPivoted()) {
+      nextQuestion = nextQuestion.setQuery(
+        Lib.ensureFilterStage(nextQuestion.query()),
+      );
+    }
+
     nextQuestion = nextQuestion
-      .setQuery(Lib.ensureFilterStage(nextQuestion.query()))
       .setDisplay(cardAfterClick.display || previousCard.display)
       .setSettings(dashcard.card.visualization_settings)
       .lockDisplay();

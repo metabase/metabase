@@ -11,11 +11,13 @@ import {
 } from "__support__/ui";
 import * as Lib from "metabase-lib";
 import {
+  SAMPLE_METADATA,
   columnFinder,
   createQuery,
   createQueryWithClauses,
 } from "metabase-lib/test-helpers";
-import { createMockField } from "metabase-types/api/mocks";
+import Question from "metabase-lib/v1/Question";
+import { createMockCard, createMockField } from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
   SAMPLE_DB_FIELD_VALUES,
@@ -31,11 +33,14 @@ interface SetupOpts {
 function setup({ query }: SetupOpts) {
   const onSubmit = jest.fn();
   const onClose = jest.fn();
+  const question = new Question(createMockCard(), SAMPLE_METADATA).setQuery(
+    query,
+  );
 
   setupFieldsValuesEndpoints(SAMPLE_DB_FIELD_VALUES);
 
   renderWithProviders(
-    <FilterModal query={query} onSubmit={onSubmit} onClose={onClose} />,
+    <FilterModal question={question} onSubmit={onSubmit} onClose={onClose} />,
   );
 
   const getNextQuery = () => {
