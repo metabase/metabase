@@ -3,7 +3,6 @@ name: Release Metabase Embedding SDK for React
 on:
   workflow_dispatch:
     inputs:
-      # TODO: Add a version validation, so the workflow won't fail when publishing to npm
       branch:
         description: "Branch we want to release the SDK from"
         type: choice
