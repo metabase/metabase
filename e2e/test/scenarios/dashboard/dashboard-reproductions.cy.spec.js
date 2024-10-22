@@ -505,7 +505,11 @@ describe("issue 17879", () => {
       cy.findByText("Created At").click();
 
       popover().within(() => {
-        cy.findByText("Created At").click();
+        cy.findByText(
+          "Created At: " +
+            sourceDateUnit[0].toUpperCase() +
+            sourceDateUnit.slice(1),
+        ).click();
       });
 
       cy.findByText("Done").click();
