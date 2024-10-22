@@ -4,6 +4,7 @@ import { onUpdateVisualizationSettings } from "metabase/query_builder/actions";
 import type { LegacyDrill } from "metabase/visualizations/types";
 import * as Lib from "metabase-lib";
 import { findColumnSettingIndexesForColumns } from "metabase-lib/v1/queries/utils/dataset";
+import type { VisualizationSettings } from "metabase-types/api";
 
 export const HideColumnAction: LegacyDrill = ({
   question,
@@ -48,6 +49,23 @@ export const HideColumnAction: LegacyDrill = ({
           };
         }
 
+        const updateVisualizationSettings = clicked?.extraData
+          ?.onUpdateVisualizationSettings as (
+          settings: VisualizationSettings,
+        ) => void;
+
+        updateVisualizationSettings?.({
+          "table.columns": columnSettingsCopy,
+        });
+
+        console.trace("HideColumnAction.action()", {
+          question,
+          clicked,
+          settings,
+          updateVisualizationSettings,
+        });
+
+        // TODO: to remove
         return onUpdateVisualizationSettings({
           "table.columns": columnSettingsCopy,
         });

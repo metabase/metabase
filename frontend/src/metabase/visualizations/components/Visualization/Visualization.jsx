@@ -220,6 +220,7 @@ class Visualization extends PureComponent {
       isRawTable,
       getExtraDataForClick = () => ({}),
       rawSeries,
+      onUpdateVisualizationSettings,
     } = this.props;
 
     const card =
@@ -236,6 +237,14 @@ class Visualization extends PureComponent {
             extraData: {
               ...getExtraDataForClick(clicked),
               isRawTable,
+              onUpdateVisualizationSettings(settings) {
+                console.log(
+                  "Visualizations>getClickActions.onUpdateVisualizationSettings",
+                  { settings, clicked, mode, onUpdateVisualizationSettings },
+                );
+
+                onUpdateVisualizationSettings(settings);
+              },
             },
           },
           this.state.computedSettings,
@@ -542,7 +551,14 @@ class Visualization extends PureComponent {
               onChangeCardAndRun={this.handleOnChangeCardAndRun}
               onClose={this.hideActions}
               series={series}
-              onUpdateVisualizationSettings={onUpdateVisualizationSettings}
+              onUpdateVisualizationSettings={(settings, question) => {
+                console.log(
+                  "Visualization.jsx > onUpdateVisualizationSettings",
+                  { settings, question },
+                );
+
+                onUpdateVisualizationSettings(settings, question);
+              }}
             />
           )}
         </VisualizationRoot>

@@ -46,6 +46,12 @@ export const QuestionVisualization = () => {
       mode={mode}
       navigateToNewCardInsideQB={navigateToNewCard}
       onNavigateBack={onNavigateBack}
+      onUpdateVisualizationSettings={(settings: any) => {
+        console.log(
+          `SDK>InteractiveQuestion>QuestionVisualization.onUpdateVisualizationSettings`,
+          { settings },
+        );
+      }}
     />
   );
 };

@@ -10,8 +10,14 @@ import {
 import { updateQuestion } from "./core";
 
 export const updateCardVisualizationSettings =
-  settings => async (dispatch, getState) => {
-    const question = getQuestion(getState());
+  (settings, _question) => async (dispatch, getState) => {
+    console.log("visualization-settings > updateCardVisualizationSettings", {
+      settings,
+      _question,
+    });
+
+    const question = _question || getQuestion(getState());
+
     const previousQueryBuilderMode = getPreviousQueryBuilderMode(getState());
     const queryBuilderMode = getQueryBuilderMode(getState());
     const datasetEditorTab = getDatasetEditorTab(getState());

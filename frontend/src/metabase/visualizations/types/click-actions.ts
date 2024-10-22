@@ -132,7 +132,11 @@ export type ClickAction =
   | CustomClickAction
   | CustomClickActionWithCustomView;
 
-export type LegacyDrill = (options: ClickActionProps) => ClickAction[];
+type LegacyDrillProps = ClickActionProps & {
+  updateVisualizationSettings?: (settings: VisualizationSettings) => void;
+};
+
+export type LegacyDrill = (options: LegacyDrillProps) => ClickAction[];
 
 type OnChangeCardAndRunOpts = {
   previousCard?: Card;

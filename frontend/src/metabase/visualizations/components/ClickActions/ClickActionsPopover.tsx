@@ -11,7 +11,7 @@ import type {
   RegularClickAction,
 } from "metabase/visualizations/types";
 import { isPopoverClickAction } from "metabase/visualizations/types";
-import type { Series } from "metabase-types/api";
+import type { Series, VisualizationSettings } from "metabase-types/api";
 import type { Dispatch } from "metabase-types/store";
 
 import { FlexTippyPopover } from "./ClickActionsPopover.styled";
@@ -23,7 +23,7 @@ interface ChartClickActionsProps {
   series: Series;
   dispatch: Dispatch;
   onChangeCardAndRun: OnChangeCardAndRun;
-  onUpdateVisualizationSettings: () => void;
+  onUpdateVisualizationSettings: (settings: VisualizationSettings) => void;
   onClose?: () => void;
 }
 
@@ -49,14 +49,24 @@ export class ClickActionsPopover extends Component<
   };
 
   handleClickAction = (action: RegularClickAction) => {
-    const { dispatch, onChangeCardAndRun } = this.props;
+    const { dispatch, onChangeCardAndRun, onUpdateVisualizationSettings } =
+      this.props;
+
+    console.log("ClickActionsPopover.handleClickAction", {
+      action,
+      isPopoverClickAction: isPopoverClickAction(action),
+    });
+
     if (isPopoverClickAction(action)) {
       this.setState({ popoverAction: action });
     } else {
+      console.log("ClickActionsPopover.performAction");
+
       const didPerform = performAction(action, {
         dispatch,
         onChangeCardAndRun,
       });
+
       if (didPerform) {
         this.close();
       } else {
@@ -109,7 +119,14 @@ export class ClickActionsPopover extends Component<
             this.close();
           }}
           series={series}
-          onUpdateVisualizationSettings={onUpdateVisualizationSettings}
+          onUpdateVisualizationSettings={settings => {
+            console.log(
+              "ClickActionsPopover.onUpdateVisualizationSettings",
+              settings,
+            );
+
+            onUpdateVisualizationSettings(settings);
+          }}
         />
       );
     }
