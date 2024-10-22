@@ -27,9 +27,10 @@ export const LastRefreshTimeLabel = styled.span`
   margin-top: 4px;
 `;
 
-export const IconButton = styled.button`
+export const CreateOrRefreshButton = styled.button`
   display: flex;
   cursor: pointer;
+  color: var(--mb-color-text-medium);
 `;
 
 export const ErrorIcon = styled(Icon)`

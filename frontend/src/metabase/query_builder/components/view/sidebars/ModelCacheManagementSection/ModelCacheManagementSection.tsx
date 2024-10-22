@@ -12,8 +12,8 @@ import { checkCanRefreshModelCache } from "metabase-lib/v1/metadata/utils/models
 import type { ModelCacheRefreshStatus } from "metabase-types/api";
 
 import {
+  CreateOrRefreshButton,
   ErrorIcon,
-  IconButton,
   LastRefreshTimeLabel,
   RefreshIcon,
   Row,
@@ -61,8 +61,17 @@ export function ModelCacheManagementSection({ model }: Props) {
 
   const canRefreshCache =
     persistedModel && checkCanRefreshModelCache(persistedModel);
-  const refreshTooltip =
-    persistedModel?.state === "creating" ? t`Create now` : t`Refresh now`;
+
+  const refreshButton =
+    persistedModel?.state === "creating" ? (
+      <CreateOrRefreshButton
+        onClick={() => onRefresh(model.id())}
+      >{t`Create now`}</CreateOrRefreshButton>
+    ) : (
+      <CreateOrRefreshButton onClick={() => onRefresh(model.id())}>
+        <RefreshIcon name="refresh" tooltip={t`Refresh now`} />
+      </CreateOrRefreshButton>
+    );
 
   return (
     <>
@@ -86,11 +95,7 @@ export function ModelCacheManagementSection({ model }: Props) {
               </LastRefreshTimeLabel>
             )}
           </div>
-          {canRefreshCache && (
-            <IconButton onClick={() => onRefresh(model.id())}>
-              <RefreshIcon name="refresh" tooltip={refreshTooltip} />
-            </IconButton>
-          )}
+          {canRefreshCache && refreshButton}
         </Row>
       )}
     </>
