@@ -7,6 +7,10 @@ import { getQuestion } from "metabase/query_builder/selectors";
 import * as Lib from "metabase-lib";
 import type { MetabotReaction } from "metabase-types/api";
 
+import { metabot } from "./reducer";
+
+export const { setVisible } = metabot.actions;
+
 (window as any).ordersOverTimeQuestionId = 110;
 (window as any).demoStep = -1;
 
@@ -94,6 +98,8 @@ export const processMetabotMessages = createAsyncThunk(
     }
 
     // incremental (window as any).demoStepping to fake demo
-    (window as any).demoStep++;
+    if ((window as any).demoStep > -1) {
+      (window as any).demoStep++;
+    }
   },
 );

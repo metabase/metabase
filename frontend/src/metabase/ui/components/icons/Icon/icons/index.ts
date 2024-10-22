@@ -239,6 +239,8 @@ import mail_component from "./mail.svg?component";
 import mail_source from "./mail.svg?source";
 import mail_filled_component from "./mail_filled.svg?component";
 import mail_filled_source from "./mail_filled.svg?source";
+import metabot_component from "./metabot.svg?component";
+import metabot_source from "./metabot.svg?source";
 import metric_component from "./metric.svg?component";
 import metric_source from "./metric.svg?source";
 import model_component from "./model.svg?component";
@@ -880,6 +882,10 @@ export const Icons = {
   mail_filled: {
     component: mail_filled_component,
     source: mail_filled_source,
+  },
+  metabot: {
+    component: metabot_component,
+    source: metabot_source,
   },
   metric: {
     component: metric_component,

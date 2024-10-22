@@ -1,20 +1,28 @@
-import { useState } from "react";
+import { useEffect } from "react";
+// TODO: integrate our custom hooks with tinykeys
+import { tinykeys } from "tinykeys";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 
 import { MetabotChat } from "./MetabotChat";
-import { MetabotStartChatButton } from "./MetabotStartChatButton";
+import { useMetabotAgent } from "./hooks";
 
 export const Metabot = () => {
-  const [expanded, setExpanded] = useState(false);
+  const { visible, setVisible } = useMetabotAgent();
+
+  useEffect(() => {
+    return tinykeys(window, {
+      "$mod+b": () => setVisible(!visible),
+    });
+  }, [visible, setVisible]);
+
+  if (!visible) {
+    return null;
+  }
 
   return (
     <ErrorBoundary errorComponent={() => null}>
-      {expanded ? (
-        <MetabotChat onClose={() => setExpanded(false)} />
-      ) : (
-        <MetabotStartChatButton onClick={() => setExpanded(true)} />
-      )}
+      <MetabotChat onClose={() => setVisible(false)} />
     </ErrorBoundary>
   );
 };
