@@ -28,7 +28,7 @@ import {
 } from "../constants";
 import { getDimensionFormatter } from "../format";
 import { getArrayFromMapValues } from "../util";
-import { getColorForRing } from "../util/colors";
+import { createHexToAccentNumberMap, getRingColorAlias } from "../util/colors";
 
 import type {
   PieChartModel,
@@ -317,6 +317,23 @@ export function getPieChartModel(
     return currTotal + value;
   }, 0);
 
+  const hexToAccentColorMap = createHexToAccentNumberMap();
+
+  function getColorForRing(
+    hexColor: string,
+    ring: "inner" | "middle" | "outer",
+    hasMultipleRings: boolean,
+  ) {
+    if (!hasMultipleRings) {
+      return hexColor;
+    }
+    const accentNumber = hexToAccentColorMap.get(hexColor);
+    if (accentNumber == null) {
+      return hexColor;
+    }
+    return renderingContext.getColor(getRingColorAlias(accentNumber, ring));
+  }
+
   // Create sliceTree, fill out the innermost slice ring
   const sliceTree: SliceTree = new Map();
   const [sliceTreeNodes, others] = _.chain(pieRowsWithValues)
@@ -335,7 +352,6 @@ export function getPieChartModel(
           color,
           "inner",
           colDescs.middleDimensionDesc != null,
-          renderingContext,
         ),
         visible,
         children: new Map(),
@@ -403,7 +419,7 @@ export function getPieChartModel(
         colDescs.middleDimensionDesc,
         formatMiddleDimensionValue,
         dimensionNode,
-        getColorForRing(dimensionNode.color, "middle", true, renderingContext),
+        getColorForRing(dimensionNode.color, "middle", true),
         index,
         total,
         colDescs.outerDimensionDesc == null ? showWarning : undefined,
@@ -423,7 +439,7 @@ export function getPieChartModel(
         colDescs.outerDimensionDesc,
         formatOuterDimensionValue,
         middleDimensionNode,
-        getColorForRing(dimensionNode.color, "outer", true, renderingContext),
+        getColorForRing(dimensionNode.color, "outer", true),
         index,
         total,
         showWarning,
