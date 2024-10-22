@@ -1,10 +1,11 @@
+import dayjs from "dayjs";
 import type { MouseEvent } from "react";
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-import { useUserSetting } from "metabase/common/hooks";
+import { useSetting, useUserSetting } from "metabase/common/hooks";
 import { useIsAtHomepageDashboard } from "metabase/common/hooks/use-is-at-homepage-dashboard";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import { Tree } from "metabase/components/tree";
@@ -117,6 +118,18 @@ export function MainNavbarView({
   const ONBOARDING_URL = "/getting-started";
   const applicationName = useSelector(getApplicationName);
 
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const instanceCreated = useSetting("instance-creation");
+
+  useEffect(() => {
+    const daysSinceCreation = dayjs().diff(dayjs(instanceCreated), "days");
+    const isNewInstance = daysSinceCreation <= 30;
+
+    if (isNewInstance) {
+      setShowOnboarding(true);
+    }
+  }, [instanceCreated]);
+
   return (
     <ErrorBoundary>
       <SidebarContentRoot>
@@ -130,7 +143,7 @@ export function MainNavbarView({
             >
               {t`Home`}
             </PaddedSidebarLink>
-            {currentUser.is_superuser && (
+            {currentUser.is_superuser && showOnboarding && (
               <PaddedSidebarLink
                 icon="learn"
                 url={ONBOARDING_URL}
