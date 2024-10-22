@@ -8,7 +8,10 @@ import {
   addOrUpdateDashboardCard,
   cartesianChartCircle,
   chartPathWithFillColor,
+  createDashboard,
   createDashboardWithTabs,
+  createQuestion,
+  createQuestionAndDashboard,
   dashboardHeader,
   describeEE,
   editDashboard,
@@ -2023,6 +2026,112 @@ describeEE("scenarios > dashboard > dashboard cards > click behavior", () => {
       cy.findByRole("heading", { name: TARGET_DASHBOARD.name }).should(
         "be.visible",
       );
+    });
+  });
+
+  describe("multi-stage questions as target destination", () => {
+    const questionDetails = QUESTION_TABLE;
+
+    it("should allow setting dashboard and saved question as custom destination for different columns", () => {
+      createQuestion(TARGET_QUESTION);
+      createDashboard(
+        {
+          ...TARGET_DASHBOARD,
+          parameters: [DASHBOARD_FILTER_TEXT, DASHBOARD_FILTER_TIME],
+          dashcards: [
+            createMockDashboardCard({
+              card_id: ORDERS_QUESTION_ID,
+              parameter_mappings: [
+                createTextFilterMapping({ card_id: ORDERS_QUESTION_ID }),
+                createTimeFilterMapping({ card_id: ORDERS_QUESTION_ID }),
+              ],
+            }),
+          ],
+        },
+        {
+          wrapId: true,
+          idAlias: "targetDashboardId",
+        },
+      );
+      createQuestionAndDashboard({ questionDetails }).then(({ body: card }) => {
+        visitDashboard(card.dashboard_id);
+      });
+
+      editDashboard();
+
+      getDashboardCard().realHover().icon("click").click();
+
+      (function addCustomQuestionDestination() {
+        cy.log(
+          "custom destination (question) behavior for 'Created at' column",
+        );
+
+        getCreatedAtToQuestionMapping().should("not.exist");
+        cy.get("aside").findByText(CREATED_AT_COLUMN_NAME).click();
+        addSavedQuestionDestination();
+
+        cy.get("aside")
+          .findByTestId("click-mappings")
+          .findByText("Created At: Month")
+          .click();
+        popover().findByText(CREATED_AT_COLUMN_NAME).click();
+        cy.get("aside")
+          .findByTestId("click-mappings")
+          .findByText("Count")
+          .click();
+        popover().findByText(COUNT_COLUMN_NAME).click();
+        cy.get("aside")
+          .findByRole("textbox")
+          .type(`Created at: {{${CREATED_AT_COLUMN_ID}}} - {{count}}`, {
+            parseSpecialCharSequences: false,
+          });
+
+        cy.icon("chevronleft").click();
+        getCreatedAtToQuestionMapping().should("exist");
+      })();
+
+      cy.get("aside").button("Done").click();
+      saveDashboard({ waitMs: 250 });
+
+      (function testQuestionDestinationClick() {
+        cy.log("it handles 'Created At: Month' column click");
+
+        getDashboardCard().findByText("Created at: May 2022 - 19").click();
+
+        cy.wait("@dataset");
+        cy.findByTestId("qb-filters-panel")
+          .should("contain.text", "Created At: Month is May 1–31, 2022")
+          .should("contain.text", "Count is equal to 19");
+
+        cy.location("pathname").should("equal", "/question");
+        cy.findByTestId("app-bar").should(
+          "contain.text",
+          `Started from ${TARGET_QUESTION.name}`,
+        );
+
+        cy.findByTestId("viz-type-button").click();
+        cy.findByTestId("sidebar-content")
+          .findByTestId("Line-container")
+          .should("have.attr", "aria-selected", "true");
+        cy.findByTestId("viz-type-button").click();
+
+        openNotebook();
+
+        getNotebookStep("data").findByText("Orders").should("be.visible");
+        getNotebookStep("summarize").findByText("Count").should("be.visible");
+        getNotebookStep("summarize")
+          .findByText("Created At: Month")
+          .should("be.visible");
+        getNotebookStep("limit")
+          .findByPlaceholderText("Enter a limit")
+          .should("have.value", "5");
+        getNotebookStep("filter", { stage: 1 })
+          .findByText("Created At: Month is May 1–31, 2022")
+          .should("be.visible");
+        getNotebookStep("filter", { stage: 1 })
+          .findByText("Count is equal to 19")
+          .should("be.visible");
+      })();
     });
   });
 
