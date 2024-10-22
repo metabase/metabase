@@ -2,9 +2,13 @@
 title: "Embedded analytics SDK - dashboards"
 ---
 
-## Embedded analytics SDK - Dashboards
+## Embedded analytics SDK - dashboards
 
-You can embed an interactive or static dashboard.
+{% include beta-blockquote.html %}
+
+{% include plans-blockquote.html feature="Embedding SDK" %}
+
+You can embed an interactive, editable, or static dashboard.
 
 ## Embedding a dashboard
 
@@ -60,7 +64,7 @@ export default function App() {
 }
 ```
 
-## Interactive dashboard plugins
+## Dashboard plugins
 
 ### `dashcardMenu`
 
@@ -153,8 +157,7 @@ const plugins: SdkPluginsConfig = {
 
 #### Replacing the existing menu with your own component
 
-If you want to replace the existing menu with your own component, you can do so by providing a function that returns a
-React component. This function also can receive the question as an argument.
+If you want to replace the existing menu with your own component, you can do so by providing a function that returns a React component. This function also can receive the question as an argument.
 
 ```typescript jsx
 const plugins: SdkPluginsConfig = {

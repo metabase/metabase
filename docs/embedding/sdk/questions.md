@@ -4,7 +4,16 @@ title: "Embedded analytics SDK - components"
 
 # Embedded analytics SDK - questions
 
-You can embed both static and interactive questions.
+{% include beta-blockquote.html %}
+
+{% include plans-blockquote.html feature="Embedding SDK" %}
+
+There are different ways you can embed questions:
+
+- [`StaticQuestion`](#embedding-a-static-question). Embeds a chart. Clicking on the chart doesn't do anything.
+- [`InteractiveQuestion`](#embedding-an-interactive-question). Clicking on the chart gives you the drill-through menu.
+- [`CreateQuestion`]()
+- [`ModifyQuestion`](#embedding-an-editable-question). Embeds the interactive question and the query builder.
 
 ## Embedding a static question
 
@@ -82,7 +91,7 @@ Here's an example of using the `InteractiveQuestion` component with its default 
 <InteractiveQuestion questionId={95} />
 ```
 
-To customize the layout, use namespaced components within the `InteractiveQuestion`. For example:
+To customize the layout, use namespaced components within the `InteractiveQuestion` component. For example:
 
 ```typescript jsx
 <InteractiveQuestion questionId={95}>
@@ -132,6 +141,7 @@ These components are available via the `InteractiveQuestion` namespace (e.g., `<
 | `FilterButton`          | The button used in the default layout to open the Filter pane. You can replace this button with your own implementation.     |
 | `ResetButton`           | The button used to reset the question after the question has been modified with filters/aggregations/etc                     |
 | `Title`                 | The question's title                                                                                                         |
+| `SaveButton`            | Button for saving the question.                                                                                              |
 | `Summarize`             | The Summarize pane containing all possible aggregations                                                                      |
 | `SummarizeButton`       | The button used in the default layout to open the Summarize pane. You can replace this button with your own implementation.  |
 | `Notebook`              | The Notebook editor that allows for more filter, aggregation, and custom steps                                               |
@@ -181,7 +191,7 @@ const createCustomActionWithView = clicked => ({
 
 const plugins = {
   /**
-   * You will have access to default `clickActions` that Metabase render by default.
+   * You will have access to default `clickActions` that Metabase renders by default.
    * So you could decide if you want to add custom actions, remove certain actions, etc.
    */
   mapQuestionClickActions: (clickActions, clicked) => {
@@ -221,7 +231,7 @@ export default function App() {
 }
 ```
 
-## Editing a question
+## Embedding an editable question
 
 With the `ModifyQuestion` component, you can edit an existing question using the query builder by passing the question's ID.
 

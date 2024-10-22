@@ -4,6 +4,10 @@ title: Embedded analytics SDK - collections
 
 ## Embedded analytics SDK - collections
 
+{% include beta-blockquote.html %}
+
+{% include plans-blockquote.html feature="Embedding SDK" %}
+
 You can embed Metabase's collection browser so that people can explore items in your Metabase from your application.
 
 ## `CollectionBrowser` props
@@ -18,7 +22,7 @@ You can embed Metabase's collection browser so that people can explore items in 
 
 ```tsx
 import React from "react";
-import { CollectionBrowser } from "metabase-types/api";
+import { CollectionBrowser } from "@metabase/embedding-sdk-react"
 
 export default function App() {
   const collectionId = 123; // This is the collection ID you want to browse
@@ -27,7 +31,7 @@ export default function App() {
   };
 
   // Define the collection item types you want to be visible
-  const visibleEntityTypes = ["dashboard", "question"];
+  const visibleEntityTypes = ["dashboard", "question", "collection"];
 
   return (
     <CollectionBrowser
