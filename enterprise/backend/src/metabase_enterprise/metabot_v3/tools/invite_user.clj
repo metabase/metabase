@@ -13,5 +13,5 @@
 (mu/defmethod metabot-v3.tools.interface/*invoke-tool* :metabot.tool/invite-user :- [:sequential ::metabot-v3.reactions/reaction]
   [_tool-name {:keys [email], :as _argument-map}]
   (log/warnf "TODO -- invite %s" email)
-  [{:type  :metabot.reaction/user-invite-sent
-    :email email}])
+  [{:type  :metabot.reaction/message
+    :message "Nice, just sent them an invite!"}])
