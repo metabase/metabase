@@ -7,7 +7,6 @@
    [metabase.email.messages :as messages]
    [metabase.models.channel :as models.channel]
    [metabase.models.notification :as models.notification]
-   [metabase.notification.core :as notification]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.malli :as mu]
@@ -149,7 +148,7 @@
 (mu/defmethod channel/render-notification
   [:channel/email :notification/system-event]
   [_channel-type
-   notification-payload :- notification/NotificationPayload
+   notification-payload #_:- #_notification/NotificationPayload
    template             :- models.channel/ChannelTemplate
    recipients           :- [:sequential models.notification/NotificationRecipient]]
   (assert (some? template) "Template is required for system event notifications")
