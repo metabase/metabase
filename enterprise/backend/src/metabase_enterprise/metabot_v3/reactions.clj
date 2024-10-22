@@ -89,7 +89,9 @@
    [:display        [:maybe [:enum "pie" "table" "bar" "line" "row" "area" "scalar"]]]
    [:filters        [:maybe [:vector [:map
                                       [:field :string]
-                                      [:operator [:enum "=" "!=" "contains" "does-not-contain" "starts-with"]]
+                                      [:operator [:enum "=" "!=" "contains" "does-not-contain" "starts-with" "<" ">"
+                                                  ;; todo: do we want these variants?
+                                                  "<="  ">="]]
                                       [:value [:enum "string" "number"]]]]]]
    [:summarizations [:maybe [:vector [:map
                                       [:fieldName [:maybe :string]]
