@@ -166,10 +166,12 @@ export const calcAvailableDonutSliceLabelLength = (
     outerRadius,
   );
 
+  const cordLengthLimit =
+    arcAngle < Math.PI ? innerCordLength : 2 * innerRadius;
   const sliceConstraint =
-    arcAngle < Math.PI && isNearXAxis(midAngle) && innerCordLength > fontSize
+    isNearXAxis(midAngle) && innerCordLength > fontSize
       ? donutThickness
-      : innerCordLength;
+      : cordLengthLimit;
 
   return Math.min(maxRectLength, sliceConstraint);
 };
