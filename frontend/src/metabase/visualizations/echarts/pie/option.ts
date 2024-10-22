@@ -236,14 +236,6 @@ function getSeriesDataFromSlices(
       return [];
     }
 
-    let ringBorderWidth = borderWidth;
-    if (ring === 2) {
-      ringBorderWidth = DIMENSIONS.slice.twoRingBorderWidth;
-    }
-    if (ring === 3) {
-      ringBorderWidth = DIMENSIONS.slice.threeRingBorderWidth;
-    }
-
     return slices.map(s => {
       const labelColor = getTextColorForBackground(
         s.color,
@@ -272,11 +264,11 @@ function getSeriesDataFromSlices(
           : undefined,
         value: s.value,
         name,
-        itemStyle: { color: s.color, borderWidth: ringBorderWidth },
+        itemStyle: { color: s.color, borderWidth },
         label: {
           color: labelColor,
           formatter: () => (isLabelVisible ? label : " "),
-          rotate: ring === 1 ? 0 : "radial",
+          rotate: chartModel.numRings === 1 ? 0 : "radial",
         },
         emphasis: {
           itemStyle: {
@@ -308,6 +300,14 @@ function getSeriesDataFromSlices(
   );
 }
 
+const getBorderWidth = (innerSideLength: number, ringsCount = 1) => {
+  if (ringsCount === 1) {
+    // arc length formula: s = 2πr(θ/360°), we want border to be 1 degree
+    return (Math.PI * innerSideLength) / DIMENSIONS.slice.borderProportion;
+  }
+  return 1;
+};
+
 export function getPieChartOption(
   chartModel: PieChartModel,
   formatters: PieChartFormatters,
@@ -327,8 +327,7 @@ export function getPieChartOption(
     chartModel,
   );
 
-  const borderWidth =
-    (Math.PI * innerSideLength) / DIMENSIONS.slice.borderProportion; // arc length formula: s = 2πr(θ/360°), we want border to be 1 degree
+  const borderWidth = getBorderWidth(innerSideLength, chartModel.numRings);
 
   const fontSize =
     chartModel.numRings > 1

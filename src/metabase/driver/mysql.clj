@@ -19,6 +19,7 @@
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.driver.sql-jdbc.quoting :refer [quote-columns]]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor.util :as sql.qp.u]
@@ -796,7 +797,7 @@
         (let [tsvs    (map (partial row->tsv driver (count column-names)) values)
               dialect (sql.qp/quote-style driver)
               sql     (sql/format {::load   [file-path (keyword table-name)]
-                                   :columns (sql-jdbc.common/quote-columns dialect column-names)}
+                                   :columns (quote-columns driver column-names)}
                                   :quoted true
                                   :dialect dialect)]
           (with-open [^java.io.Writer writer (jio/writer file-path)]
