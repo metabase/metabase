@@ -1,5 +1,6 @@
 import { Flex, Modal } from "metabase/ui";
 import type * as Lib from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
 
 import { useFilterModal } from "../../hooks/use-filter-modal";
 
@@ -10,16 +11,12 @@ import { FilterModalHeader } from "./FilterModalHeader";
 import { getModalTitle, getModalWidth } from "./utils";
 
 export interface FilterModalProps {
-  query: Lib.Query;
+  question: Question;
   onSubmit: (newQuery: Lib.Query) => void;
   onClose: () => void;
 }
 
-export function FilterModal({
-  query: initialQuery,
-  onSubmit,
-  onClose,
-}: FilterModalProps) {
+export function FilterModal({ question, onSubmit, onClose }: FilterModalProps) {
   const {
     query,
     version,
@@ -36,7 +33,7 @@ export function FilterModal({
     handleReset,
     handleSubmit,
     handleSearch,
-  } = useFilterModal(initialQuery, onSubmit);
+  } = useFilterModal(question, onSubmit);
 
   const onSubmitFilters = () => {
     handleSubmit();
