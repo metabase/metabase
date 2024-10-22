@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { getQuestion } from "metabase/query_builder/selectors";
 import { useMetabotAgentMutation } from "metabase-enterprise/api";
 import { isMetabotMessageReaction } from "metabase-types/api";
 
@@ -12,6 +13,7 @@ import {
 
 export const useMetabotAgent = () => {
   const dispatch = useDispatch();
+  const question = useSelector(getQuestion);
 
   const [sendMessage, sendMessageReq] = useMetabotAgentMutation({
     fixedCacheKey: "metabot",
@@ -37,7 +39,23 @@ export const useMetabotAgent = () => {
     sendMessage: async (message: string) => {
       const result = await sendMessage({
         message,
-        context: {}, // TODO: add plugin that selects context from state
+        context: {
+          // TODO: add plugin that selects context from state
+          ...(question
+            ? {
+                question_id: question.id() || null,
+                question_display_type: question.display(),
+                available_fields: question
+                  .metadata()
+                  .fieldsList()
+                  .map(field => ({
+                    name: field.name,
+                    data_type: field.base_type,
+                    description: field.description,
+                  })),
+              }
+            : {}),
+        },
         history: sendMessageReq.data?.history || [],
       });
 
