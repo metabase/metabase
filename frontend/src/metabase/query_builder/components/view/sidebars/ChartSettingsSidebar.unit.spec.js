@@ -2,7 +2,6 @@ import { fireEvent, screen } from "@testing-library/react";
 
 import { createMockMetadata } from "__support__/metadata";
 import { renderWithProviders } from "__support__/ui";
-import { ChartSettingsSidebar } from "metabase/query_builder/components/view/sidebars/ChartSettingsSidebar";
 import registerVisualizations from "metabase/visualizations/register";
 import {
   SAMPLE_DB_ID,
@@ -13,6 +12,8 @@ import {
   createMockQueryBuilderUIControlsState,
   createMockState,
 } from "metabase-types/store/mocks";
+
+import { ChartSettingsSidebar } from "./ChartSettingsSidebar";
 
 registerVisualizations();
 
