@@ -290,14 +290,14 @@
   Errs on the side of optimism: i.e., it may return tables that are *not* in the query, and is unlikely to fail
   to return tables that are in the query."
   [driver query & {:keys [mode] :or {mode :basic-select}}]
-  (let [db-id        (:database query)
-        macaw-opts   (nqa.impl/macaw-options driver)
-        table-opts   (assoc macaw-opts :mode mode)
-        sql-string   (:query (nqa.sub/replace-tags query))
-        tables       (macaw/query->tables sql-string table-opts)]
-    (if (keyword? tables)
-      tables
-      (table-refs-for-query tables db-id))))
+  (let [db-id         (:database query)
+        macaw-opts    (nqa.impl/macaw-options driver)
+        table-opts    (assoc macaw-opts :mode mode)
+        sql-string    (:query (nqa.sub/replace-tags query))
+        tables-or-err (macaw/query->tables sql-string table-opts)]
+    (if (keyword? tables-or-err)
+      tables-or-err
+      (table-refs-for-query tables-or-err db-id))))
 
 ;; Keeping this multimethod private for now, need some hammock time on what to expose to drivers.
 (defmulti ^:private tables-for-native*
