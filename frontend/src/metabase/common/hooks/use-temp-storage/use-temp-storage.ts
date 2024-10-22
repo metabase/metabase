@@ -2,17 +2,18 @@ import { useCallback } from "react";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { SET_TEMP_SETTING } from "metabase/redux/app";
-import type { State, TempStorage } from "metabase-types/store";
-
-type TempStorageKey = keyof TempStorage;
-type TempStorageValue<Key extends TempStorageKey> = TempStorage[Key];
+import type {
+  State,
+  TempStorageKey,
+  TempStorageValue,
+} from "metabase-types/store";
 
 export const useTempStorage = <Key extends TempStorageKey>(
   key: Key,
 ): [TempStorageValue<Key>, (newValue: TempStorageValue<Key>) => void] => {
   const dispatch = useDispatch();
 
-  const value = useSelector((state: State) => state.app[key]);
+  const value = useSelector((state: State) => state.app.tempStorage[key]);
 
   const setValue = useCallback(
     (newValue: TempStorageValue<Key>) => {

@@ -23,11 +23,13 @@ export interface AppBreadCrumbs {
 // eslint-disable-next-line @typescript-eslint/ban-types
 export type TempStorage = {};
 
-interface BaseAppState {
+export type TempStorageKey = keyof TempStorage;
+export type TempStorageValue<Key extends TempStorageKey> = TempStorage[Key];
+
+export interface AppState {
   errorPage: AppErrorDescriptor | null;
   isNavbarOpen: boolean;
   isDndAvailable: boolean;
   isErrorDiagnosticsOpen: boolean;
+  tempStorage: TempStorage;
 }
-
-export type AppState = BaseAppState & TempStorage;

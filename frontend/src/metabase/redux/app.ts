@@ -7,7 +7,12 @@ import {
   shouldOpenInBlankWindow,
 } from "metabase/lib/dom";
 import { combineReducers, handleActions } from "metabase/lib/redux";
-import type { Dispatch } from "metabase-types/store";
+import type {
+  Dispatch,
+  TempStorage,
+  TempStorageKey,
+  TempStorageValue,
+} from "metabase-types/store";
 
 interface LocationChangeAction {
   type: string; // "@@router/LOCATION_CHANGE"
@@ -108,6 +113,23 @@ const isErrorDiagnosticsOpen = handleActions(
 );
 
 export const SET_TEMP_SETTING = "metabase/app/SET_TEMP_SETTING";
+const tempStorageReducer = (
+  state: TempStorage = {},
+  action: {
+    type: typeof SET_TEMP_SETTING;
+    payload: { key: TempStorageKey; value: TempStorageValue<TempStorageKey> };
+  },
+): TempStorage => {
+  switch (action.type) {
+    case SET_TEMP_SETTING:
+      return {
+        ...state,
+        [action.payload.key]: action.payload.value,
+      };
+    default:
+      return state;
+  }
+};
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default combineReducers({
@@ -120,4 +142,5 @@ export default combineReducers({
     return true;
   },
   isErrorDiagnosticsOpen,
+  tempStorage: tempStorageReducer,
 });
