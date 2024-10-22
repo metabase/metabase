@@ -78,3 +78,22 @@
   [:map
    [:type  [:= :metabot.reaction/user-invite-sent]]
    [:email :string]])
+
+(defreaction :metabot.reaction/your-favorite
+  [:map
+   [:type [:= :metabot.reaction/your-favorite]]])
+
+(defreaction :metabot.reaction/apply-visualizations
+  [:map
+   [:type           [:= :metabot.reaction/apply-visualizations]]
+   [:display        [:maybe [:enum "pie" "table" "bar" "line" "row" "area" "scalar"]]]
+   [:filters        [:maybe [:vector [:map
+                                      [:field :string]
+                                      [:operator [:enum "=" "!=" "contains" "does-not-contain" "starts-with"]]
+                                      [:value [:enum "string" "number"]]]]]]
+   [:summarizations [:maybe [:vector [:map
+                                      [:fieldName [:maybe :string]]
+                                      [:metrics [:enum "sum" "count" "avg"]]]]]]
+   [:groups         [:maybe [:vector [:map
+                                      [:fieldName [:maybe :string]]
+                                      [:granularity [:maybe [:enum "day" "week" "month" "year"]]]]]]]])
