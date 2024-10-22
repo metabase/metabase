@@ -53,7 +53,7 @@
       (request message context history))
     (catch Exception _
       {:reactions [{:type               :metabot.reaction/message
-                    :message            "I'm sorry, I messed up and something went wrong! Not sure what happened, but I'll try not to do it again."
+                    :message            "Sorry, something went wrong."
                     :repl/message-color :red
                     :repl/message-emoji "⚠"}]
        :history history})))
