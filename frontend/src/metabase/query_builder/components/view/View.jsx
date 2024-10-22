@@ -159,6 +159,7 @@ const ViewLeftSidebarContainer = ({
   isShowingChartSettingsSidebar,
   isShowingChartTypeSidebar,
   onCloseChartSettings,
+  addField,
   initialChartSetting,
   onReplaceAllVisualizationSettings,
   onOpenChartType,
@@ -177,6 +178,7 @@ const ViewLeftSidebarContainer = ({
         <ChartSettingsSidebar
           question={question}
           result={result}
+          addField={addField}
           initialChartSetting={initialChartSetting}
           onReplaceAllVisualizationSettings={onReplaceAllVisualizationSettings}
           onOpenChartType={onOpenChartType}
