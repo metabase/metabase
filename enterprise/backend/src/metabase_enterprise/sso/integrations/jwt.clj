@@ -7,7 +7,6 @@
    [metabase-enterprise.sso.api.interface :as sso.i]
    [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
    [metabase-enterprise.sso.integrations.sso-utils :as sso-utils]
-   [metabase.api.common :as api]
    [metabase.api.session :as api.session]
    [metabase.embed.settings :as embed.settings]
    [metabase.integrations.common :as integrations.common]
@@ -25,7 +24,9 @@
   "Returns a session map for the given `email`. Will create the user if needed."
   [first-name last-name email user-attributes]
   (when-not (sso-settings/jwt-enabled)
-    (throw (IllegalArgumentException. (str (tru "Can't create new JWT user when JWT is not configured")))))
+    (throw
+     (IllegalArgumentException.
+      (str (tru "Can't create new JWT user when JWT is not configured")))))
   (let [user {:first_name       first-name
               :last_name        last-name
               :email            email
@@ -35,10 +36,14 @@
         (sso-utils/check-user-provisioning :jwt)
         (sso-utils/create-new-sso-user! user))))
 
-(def ^:private ^{:arglists '([])} jwt-attribute-email     (comp keyword sso-settings/jwt-attribute-email))
-(def ^:private ^{:arglists '([])} jwt-attribute-firstname (comp keyword sso-settings/jwt-attribute-firstname))
-(def ^:private ^{:arglists '([])} jwt-attribute-lastname  (comp keyword sso-settings/jwt-attribute-lastname))
-(def ^:private ^{:arglists '([])} jwt-attribute-groups    (comp keyword sso-settings/jwt-attribute-groups))
+(def ^:private ^{:arglists '([])} jwt-attribute-email
+  (comp keyword sso-settings/jwt-attribute-email))
+(def ^:private ^{:arglists '([])} jwt-attribute-firstname
+  (comp keyword sso-settings/jwt-attribute-firstname))
+(def ^:private ^{:arglists '([])} jwt-attribute-lastname
+  (comp keyword sso-settings/jwt-attribute-lastname))
+(def ^:private ^{:arglists '([])} jwt-attribute-groups
+  (comp keyword sso-settings/jwt-attribute-groups))
 
 (def ^:private registered-claims
   "Registered claims in the JWT standard which we should not interpret as login attributes"
@@ -59,8 +64,9 @@
 (defn- group-names->ids
   "Translate a user's group names to a set of MB group IDs using the configured mappings"
   [group-names]
-  (set (mapcat (sso-settings/jwt-group-mappings)
-               (map keyword group-names))))
+  (set
+   (mapcat (sso-settings/jwt-group-mappings)
+           (map keyword group-names))))
 
 (defn- all-mapped-group-ids
   "Returns the set of all MB group IDs that have configured mappings"
@@ -88,9 +94,10 @@
                          (jwt/unsign jwt (sso-settings/jwt-shared-secret)
                                      {:max-age three-minutes-in-seconds})
                          (catch Throwable e
-                           (throw (ex-info (ex-message e)
-                                           (assoc (ex-data e) :status-code 401)
-                                           e))))
+                           (throw
+                            (ex-info (ex-message e)
+                                     {:status      "error-jwt-bad-unsigning"
+                                      :status-code 401}))))
           login-attrs  (jwt-data->login-attributes jwt-data)
           email        (get jwt-data (jwt-attribute-email))
           first-name   (get jwt-data (jwt-attribute-firstname))
@@ -101,22 +108,38 @@
       {:session session, :redirect-url redirect-url, :jwt-data jwt-data})))
 
 (defn- check-jwt-enabled []
-  (api/check (sso-settings/jwt-enabled)
-             [400 (tru "JWT SSO has not been enabled and/or configured")]))
+  (when-not (sso-settings/jwt-configured)
+    (throw
+     (ex-info (tru "JWT SSO has not been configured")
+              {:status      "error-sso-jwt-not-configured"
+               :status-code 402})))
+  (when-not (sso-settings/jwt-enabled)
+    (throw
+     (ex-info (tru "JWT SSO has not been enabled")
+              {:status      "error-sso-jwt-disabled"
+               :status-code 402})))
+  true)
 
 (defn ^:private generate-response-token
   [session jwt-data]
-  (api/check (embed.settings/enable-embedding-sdk)
-             [402 (tru "SDK Embedding is not enabled.")])
-  (response/response {:id  (:id session)
-                      :exp (:exp jwt-data)
-                      :iat (:iat jwt-data)}))
+  (if-not (embed.settings/enable-embedding-sdk)
+    (throw
+     (ex-info (tru "SDK Embedding is disabled. Enable it in the Embedding settings.")
+              {:status      "error-embedding-sdk-disabled"
+               :status-code 402}))
+    (response/response
+     {:status :ok
+      :id     (:id session)
+      :exp    (:exp jwt-data)
+      :iat    (:iat jwt-data)})))
 
 (defn ^:private redirect-to-idp
   [idp redirect]
   (let [return-to-param (if (str/includes? idp "?") "&return_to=" "?return_to=")]
-    (response/redirect (str idp (when redirect
-                                  (str return-to-param redirect))))))
+    (response/redirect
+     (str idp
+          (when redirect
+            (str return-to-param redirect))))))
 
 (defn ^:private handle-jwt-authentication
   [{:keys [session redirect-url jwt-data]} token request]
@@ -134,4 +157,6 @@
 
 (defmethod sso.i/sso-post :jwt
   [_]
-  (throw (ex-info "POST not valid for JWT SSO requests" {:status-code 400})))
+  (throw
+   (ex-info (tru "POST not valid for JWT SSO requests")
+            {:status "error-post-jwt-not-valid" :status-code 501})))
