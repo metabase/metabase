@@ -38,7 +38,7 @@
               (catch Throwable e
                 (log/errorf e "Error invoking MetaBot tool: %s" (ex-message e))
                 [{:type               :metabot.reaction/message
-                  :message            (format "Error invoking MetaBot tool: %s" (ex-message e))
+                  :message            "I'm sorry, I messed up! Maybe try again later..."
                   :repl/message-color :red
                   :repl/message-emoji "⚠"}])))]
     (into []
