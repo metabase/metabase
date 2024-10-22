@@ -1,6 +1,5 @@
 (ns metabase-enterprise.stale.api-test
-  (:require  [clojure.string :as str]
-             [clojure.test :refer [deftest testing is]]
+  (:require  [clojure.test :refer [deftest testing is]]
              [metabase.analytics.snowplow-test :as snowplow-test]
              [metabase.models.collection :as collection]
              [metabase.models.collection-test :refer [with-collection-hierarchy!]]
