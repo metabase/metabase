@@ -1,7 +1,7 @@
 import { useInteractiveQuestionContext } from "embedding-sdk/components/private/InteractiveQuestion/context";
 import { QuestionNotebookButton } from "metabase/query_builder/components/view/ViewHeader/components";
 
-export const NotebookButton = ({
+export const EditorButton = ({
   isOpen,
   onClick,
 }: {

@@ -77,6 +77,7 @@ function transformSingleSeries(s, series, seriesIndex) {
     }
 
     return breakoutValues.map(breakoutValue => ({
+      ...s,
       card: {
         ...card,
         // if multiseries include the card title as well as the breakout value
@@ -133,6 +134,7 @@ function transformSingleSeries(s, series, seriesIndex) {
         .join(": ");
 
       return {
+        ...s,
         card: {
           ...card,
           name: name,

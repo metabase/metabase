@@ -12,6 +12,11 @@ import {
 export function ExpressionWidgetInfo() {
   const { url: docsUrl, showMetabaseLinks } = useDocsUrl(
     "questions/query-builder/expressions",
+    {
+      utm: {
+        utm_campaign: "custom-expressions",
+      },
+    },
   );
 
   return showMetabaseLinks ? (

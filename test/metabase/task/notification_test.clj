@@ -4,7 +4,6 @@
    [metabase.channel.core :as channel]
    [metabase.models.notification :as models.notification]
    [metabase.notification.test-util :as notification.tu]
-   [metabase.pulse]
    [metabase.task :as task]
    [metabase.task.notification :as task.notification]
    [metabase.test :as mt]
