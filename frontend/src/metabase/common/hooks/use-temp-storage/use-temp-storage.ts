@@ -16,14 +16,7 @@ export const useTempStorage = <Key extends TempStorageKey>(
 
   const setValue = useCallback(
     (newValue: TempStorageValue<Key>) => {
-      try {
-        dispatch({ type: SET_TEMP_SETTING, payload: { key, value: newValue } });
-      } catch (error) {
-        console.error(
-          `Failed to write to app storage for key "${key}":`,
-          error,
-        );
-      }
+      dispatch({ type: SET_TEMP_SETTING, payload: { key, value: newValue } });
     },
     [dispatch, key],
   );
