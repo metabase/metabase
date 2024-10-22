@@ -92,7 +92,7 @@
                                       [:operator [:enum "<" "<=" ">" ">=" "=" "!=" "contains" "does-not-contain" "starts-with"]]
                                       [:value [:or number? :string]]]]]]
    [:summarizations [:maybe [:vector [:map
-                                      [:fieldName [:maybe :string]]
+                                      [:fieldName {:optional true} [:maybe :string]]
                                       [:metrics [:enum "sum" "count" "avg"]]]]]]
    [:groups         [:maybe [:vector [:map
                                       [:fieldName [:maybe :string]]
@@ -101,4 +101,4 @@
 (defreaction :metabot.reaction/goto-question
   [:map
    [:type [:= :metabot.reaction/goto-question]]
-   [:question_id :integer]])
+   [:question_id integer?]])
