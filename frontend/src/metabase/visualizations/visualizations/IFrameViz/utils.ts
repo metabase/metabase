@@ -143,37 +143,30 @@ export const getIframeUrl = (
   return null;
 };
 
-const matchesAllowedFrame = (hostname: string, allowedFrame: string) => {
-  const allowedUrl = new URL(allowedFrame);
-
-  // `new URL` encodes "*.", so we need to decode it
-  const allowedHostname = decodeURIComponent(allowedUrl.hostname);
-
-  if (allowedHostname.startsWith("*.")) {
-    const baseDomain = allowedHostname.slice(2);
-    return hostname === baseDomain || hostname.endsWith("." + baseDomain);
-  }
-
-  return hostname === allowedHostname;
-};
-
 export const isAllowedIframeUrl = (url: string, allowedIframesSetting = "") => {
   if (allowedIframesSetting === "*") {
     return true;
   }
-  try {
-    const allowedIframes = allowedIframesSetting
-      ?.split(",")
-      .map(host => host.trim());
 
-    const parsedUrl = new URL(url);
+  try {
+    const allowedDomains = allowedIframesSetting
+      .replaceAll(",", "")
+      .split("\n")
+      .map(host => {
+        const { hostname } = new URL(normalizeUrl(host.trim()));
+        return hostname;
+      });
+
+    const parsedUrl = new URL(normalizeUrl(url));
     const hostname = parsedUrl.hostname;
 
-    for (const frame of allowedIframes) {
-      if (matchesAllowedFrame(hostname, frame)) {
-        return true;
+    return allowedDomains.some(domain => {
+      if (domain.startsWith("*.")) {
+        const baseDomain = domain.slice(2);
+        return hostname.endsWith("." + baseDomain);
       }
-    }
+      return hostname.endsWith(domain);
+    });
   } catch (e) {
     console.error(`Invalid URL: ${e}`);
   }

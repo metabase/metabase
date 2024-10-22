@@ -690,6 +690,8 @@ describe("scenarios > dashboard", () => {
         },
       ];
 
+      updateSetting("allowed-iframe-hosts", "*");
+
       cy.createDashboard().then(({ body: { id } }) => {
         visitDashboard(id);
       });
@@ -708,28 +710,41 @@ describe("scenarios > dashboard", () => {
 
       updateSetting(
         "allowed-iframe-hosts",
-        [
-          "https://youtube.com",
-          "https://*.youtube.com",
-          "https://vimeo.com",
-          "https://*.loom.com",
-        ].join(","),
+        ["youtube.com", "player.videos.com"].join("\n"),
       );
 
       cy.createDashboard().then(({ body: { id } }) => visitDashboard(id));
       editDashboard();
 
-      // Test allowed domain
+      // Test allowed domain with subdomains
       addIFrameWhileEditing("https://youtube.com/watch?v=dQw4w9WgXcQ");
       cy.button("Done").click();
       validateIFrame("https://www.youtube.com/embed/dQw4w9WgXcQ");
 
-      // Test allowed subdomain
       editIFrameWhileEditing(0, "https://youtube.com/watch?v=dQw4w9WgXcQ");
       cy.button("Done").click();
       validateIFrame("https://www.youtube.com/embed/dQw4w9WgXcQ");
 
-      // Test forbidden domain
+      // Test allowed subdomain, but no other domains
+      editIFrameWhileEditing(0, "player.videos.com/video/123456789");
+      cy.button("Done").click();
+      validateIFrame("https://player.videos.com/video/123456789");
+
+      editIFrameWhileEditing(0, "videos.com/video/123456789");
+      cy.button("Done").click();
+      getDashboardCard().within(() => {
+        cy.findByText(errorMessage).should("be.visible");
+        cy.get("iframe").should("not.exist");
+      });
+
+      editIFrameWhileEditing(0, "www.videos.com/video");
+      cy.button("Done").click();
+      getDashboardCard().within(() => {
+        cy.findByText(errorMessage).should("be.visible");
+        cy.get("iframe").should("not.exist");
+      });
+
+      // Test forbidden domain and subdomains
       editIFrameWhileEditing(0, "https://example.com");
       cy.button("Done").click();
       getDashboardCard().within(() => {
@@ -737,26 +752,12 @@ describe("scenarios > dashboard", () => {
         cy.get("iframe").should("not.exist");
       });
 
-      // Test forbidden domain
-      editIFrameWhileEditing(0, "https://example.com");
+      editIFrameWhileEditing(0, "www.example.com");
       cy.button("Done").click();
       getDashboardCard().within(() => {
         cy.findByText(errorMessage).should("be.visible");
         cy.get("iframe").should("not.exist");
       });
-
-      // Test forbidden subdomain, but allowed domain
-      editIFrameWhileEditing(0, "https://player.vimeo.com/video/123456789");
-      cy.button("Done").click();
-      getDashboardCard().within(() => {
-        cy.findByText(errorMessage).should("be.visible");
-        cy.get("iframe").should("not.exist");
-      });
-
-      // Test forbidden domain, but allowed subdomain
-      editIFrameWhileEditing(0, "https://www.loom.com/share/1234567890abcdef");
-      cy.button("Done").click();
-      validateIFrame("https://www.loom.com/embed/1234567890abcdef");
     });
   });
 
