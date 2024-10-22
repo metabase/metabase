@@ -1,4 +1,6 @@
 import { push } from "react-router-redux";
+import { match } from "ts-pattern";
+import _ from "underscore";
 
 import { createAsyncThunk } from "metabase/lib/redux";
 import { setUIControls, updateQuestion } from "metabase/query_builder/actions";
@@ -11,8 +13,10 @@ import { metabot } from "./reducer";
 
 export const { setVisible } = metabot.actions;
 
-(window as any).ordersOverTimeQuestionId = 110;
-(window as any).demoStep = -1;
+const makeGetFieldRef = (fields: any[]) => (fieldName: string) => {
+  const field = fields?.find(field => field.name === fieldName);
+  return ["field", field?.id, { "base-type": field?.base_type }];
+};
 
 export const processMetabotMessages = createAsyncThunk(
   "metabase-enterprise/metabot/processResponseMessages",
@@ -20,86 +24,71 @@ export const processMetabotMessages = createAsyncThunk(
     for (const reaction of reactions) {
       const state = getState();
 
-      // NOTE: add handlers for new reactions here - dispatch other actions as needed
-      if (reaction.type === "metabot.reaction/message") {
+      match(reaction)
         // NOTE: do nothing for messages, they're handled automatically
+        .with({ type: "metabot.reaction/message" }, _.noop)
+        .with({ type: "metabot.reaction/apply-visualizations" }, reaction => {
+          const { display, filters, summarizations } = reaction;
+          const question = getQuestion(state);
+          const getFieldRef = makeGetFieldRef(
+            question?.metadata().fieldsList() || [],
+          );
 
-        // HACK: all code below should be their own reactions...
-        // reacting on message allows
-        const { demoStep } = window as any;
-        if (demoStep === -1) {
-          continue;
-        }
+          if (!question) {
+            console.error("TODO: something went wrong", { question });
+            // TODO: handle error case - user isn't on the qb page i guess?
+            return;
+          }
 
-        // NOTE: SHOULD BE INPUTS FROM METABOT
-        if (demoStep === 0) {
-          const questionUrl = `/question/${(window as any).ordersOverTimeQuestionId}`;
-          dispatch(push(questionUrl) as any);
-          continue;
-        }
+          let newQuestion = question;
 
-        const question = getQuestion(state);
+          if (display) {
+            newQuestion = setQuestionDisplayType(question, display);
+          }
 
-        if (!question) {
-          console.error("TODO: something went wrong", { question });
-          // TODO: handle error case - user isn't on the qb page i guess?
-          return;
-        }
+          if (filters && filters.length) {
+            // TODO: only works with a single filter right now
+            const queryFilters = _.first(
+              filters.map((filter: any) => [
+                filter.operator,
+                getFieldRef(filter.field),
+                filter.value,
+              ]),
+            );
+            const query = newQuestion.query();
+            const newQuery = Lib.filter(query, 0, queryFilters as any);
+            const newLegacyQuery = Lib.toLegacyQuery(newQuery);
+            newQuestion = question.setDatasetQuery(newLegacyQuery);
+          }
 
-        const display = demoStep === 1 ? "bar" : undefined;
-        const filters =
-          demoStep === 2
-            ? [">", ["field", 42, { "base-type": "type/Float" }], 100]
-            : undefined;
-        const aggregation =
-          demoStep === 3
-            ? ["sum", ["field", 42, { "base-type": "type/Float" }]]
-            : undefined;
+          if (summarizations && summarizations.length) {
+            const query = newQuestion.datasetQuery();
+            const summarization = _.first(summarizations);
+            const fieldRef = getFieldRef(summarization.field_name);
+            const aggregation = [summarization.metrics, fieldRef];
+            newQuestion = question.setDatasetQuery({
+              ...query,
+              // @ts-expect-error - temp: use lib to make modifications
+              query: { ...query.query, aggregation: [aggregation] },
+            });
+          }
 
-        let newQuestion = question;
+          dispatch(
+            updateQuestion(newQuestion, {
+              run: true,
+              shouldUpdateUrl:
+                !!display && Lib.queryDisplayInfo(question.query()).isEditable,
+            }),
+          );
 
-        if (display) {
-          newQuestion = setQuestionDisplayType(question, display);
-        }
-
-        if (filters) {
-          const query = newQuestion.query();
-          const newQuery = Lib.filter(query, 0, filters as any);
-          const newLegacyQuery = Lib.toLegacyQuery(newQuery);
-          newQuestion = question.setDatasetQuery(newLegacyQuery);
-        }
-
-        if (aggregation) {
-          // TODO: can't figure out how to use Lib to do this same change with serialized data
-          const query = newQuestion.datasetQuery();
-          newQuestion = question.setDatasetQuery({
-            ...query,
-            // @ts-expect-error - temp: use lib to make modifications
-            query: { ...query.query, aggregation: [aggregation] },
-          });
-        }
-
-        dispatch(
-          updateQuestion(newQuestion, {
-            run: true,
-            shouldUpdateUrl:
-              !!display && Lib.queryDisplayInfo(question.query()).isEditable,
-          }),
-        );
-        if (display) {
-          dispatch(setUIControls({ isShowingRawTable: false }) as any);
-        }
-      } else {
-        console.error(
-          "Encounted unexpected message type from Metabot",
-          reaction,
-        );
-      }
-    }
-
-    // incremental (window as any).demoStepping to fake demo
-    if ((window as any).demoStep > -1) {
-      (window as any).demoStep++;
+          if (display) {
+            dispatch(setUIControls({ isShowingRawTable: false }) as any);
+          }
+        })
+        .with({ type: "metabot.reaction/goto-question" }, reaction => {
+          dispatch(push(`/question/${reaction.question_id}`) as any);
+        })
+        .exhaustive(); // TODO: handle error thrown...
     }
   },
 );
