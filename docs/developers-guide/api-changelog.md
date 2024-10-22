@@ -20,6 +20,9 @@ title: API changelog
 
    The `/api/legacy-metric` endpoints have been removed.
 
+- `POST /api/session/pulse/unsubscribe` and `POST /api/session/pulse/unsubscribe/undo` have been moved to `POST
+  /api/pulse/unsubscribe` and `POST /api/pulse/unsubscribe/undo` respectively.
+
 ## Metabase 0.50.0
 
 - `GET /api/collection/tree` and `GET /api/collection/:id/items`

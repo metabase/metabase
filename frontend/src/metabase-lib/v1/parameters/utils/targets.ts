@@ -162,8 +162,7 @@ export function getParameterColumns(question: Question, parameter?: Parameter) {
     question.type() !== "question"
       ? question.composeQuestionAdhoc().query()
       : question.query();
-
-  const nextQuery = Lib.ensureFilterStage(query);
+  const nextQuery = question.isPivoted() ? query : Lib.ensureFilterStage(query);
 
   if (parameter && isTemporalUnitParameter(parameter)) {
     const needsFilterStage = Lib.stageCount(query) < Lib.stageCount(nextQuery);

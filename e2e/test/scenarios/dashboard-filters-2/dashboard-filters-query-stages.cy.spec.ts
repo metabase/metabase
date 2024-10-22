@@ -1977,6 +1977,158 @@ describe("scenarios > dashboard > filters > query stages + temporal unit paramet
   });
 });
 
+describe("pivot tables", () => {
+  const QUESTION_PIVOT_INDEX = 0;
+  const QUESTION_PIVOTED_TABLE_INDEX = 1;
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+    changeSynchronousBatchUpdateSetting(true); // prevent last_used_param_values from breaking test isolation
+    createBaseQuestions();
+
+    cy.intercept("POST", "/api/dataset").as("dataset");
+    cy.intercept("POST", "/api/dataset/pivot").as("datasetPivot");
+    cy.intercept("GET", "/api/dashboard/**").as("getDashboard");
+    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+
+    cy.then(function () {
+      createQuestion({
+        type: "question",
+        query: createPivotableQuery(this.baseQuestion),
+        name: "Question - pivot viz",
+        display: "pivot",
+      }).then(response => cy.wrap(response.body).as("pivot"));
+
+      createQuestion({
+        type: "question",
+        query: createPivotableQuery(this.baseQuestion),
+        name: "Question - pivoted table",
+        visualization_settings: {
+          "table.cell_column": "count",
+          "table.pivot_column": "PRODUCTS__via__PRODUCT_ID__CATEGORY",
+        },
+      }).then(response => cy.wrap(response.body).as("pivotedTable"));
+    });
+
+    cy.then(function () {
+      const cards = [this.pivot, this.pivotedTable];
+      createAndVisitDashboard(cards);
+    });
+
+    function createPivotableQuery(source: Card): StructuredQuery {
+      return {
+        ...createQ1Query(source),
+        aggregation: [["count"]],
+        breakout: [
+          [
+            "field",
+            ORDERS.CREATED_AT,
+            {
+              "base-type": "type/DateTime",
+              "temporal-unit": "month",
+            },
+          ],
+          [
+            "field",
+            PRODUCTS.CATEGORY,
+            {
+              "base-type": "type/Text",
+              "source-field": ORDERS.PRODUCT_ID,
+            },
+          ],
+        ],
+      };
+    }
+  });
+
+  afterEach(() => {
+    changeSynchronousBatchUpdateSetting(false);
+  });
+
+  it("does not use extra filtering stage for pivot tables", () => {
+    cy.log("dashboard parameters mapping");
+
+    editDashboard();
+
+    cy.log("## date columns");
+    getFilter("Date").click();
+    verifyDateMappingOptions();
+
+    cy.log("## text columns");
+    getFilter("Text").click();
+    verifyTextMappingOptions();
+
+    cy.log("## number columns");
+    getFilter("Number").click();
+    verifyNumberMappingOptions();
+
+    cy.button("Save").click();
+
+    cy.log("filter modal");
+
+    getDashboardCard(QUESTION_PIVOT_INDEX)
+      .findByTestId("legend-caption-title")
+      .click();
+    cy.wait("@datasetPivot");
+    cy.button("Filter").click();
+    modal().findByText("Summaries").should("not.exist");
+
+    cy.go("back");
+    cy.go("back");
+
+    getDashboardCard(QUESTION_PIVOTED_TABLE_INDEX)
+      .findByTestId("legend-caption-title")
+      .click();
+    cy.wait("@cardQuery");
+    cy.button("Filter").click();
+    modal().findByText("Summaries").should("not.exist");
+
+    function verifyDateMappingOptions() {
+      verifyDashcardMappingOptions(QUESTION_PIVOT_INDEX, [
+        ["Base Orders Question", ORDERS_DATE_COLUMNS],
+        ["Reviews", REVIEWS_DATE_COLUMNS],
+        ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
+        ["User", PEOPLE_DATE_COLUMNS],
+      ]);
+      verifyDashcardMappingOptions(QUESTION_PIVOTED_TABLE_INDEX, [
+        ["Base Orders Question", ORDERS_DATE_COLUMNS],
+        ["Reviews", REVIEWS_DATE_COLUMNS],
+        ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
+        ["User", PEOPLE_DATE_COLUMNS],
+      ]);
+    }
+
+    function verifyTextMappingOptions() {
+      verifyDashcardMappingOptions(QUESTION_PIVOT_INDEX, [
+        ["Reviews", REVIEWS_TEXT_COLUMNS],
+        ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
+        ["User", PEOPLE_TEXT_COLUMNS],
+      ]);
+      verifyDashcardMappingOptions(QUESTION_PIVOTED_TABLE_INDEX, [
+        ["Reviews", REVIEWS_TEXT_COLUMNS],
+        ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
+        ["User", PEOPLE_TEXT_COLUMNS],
+      ]);
+    }
+
+    function verifyNumberMappingOptions() {
+      verifyDashcardMappingOptions(QUESTION_PIVOT_INDEX, [
+        ["Base Orders Question", [...ORDERS_NUMBER_COLUMNS, "Net"]],
+        ["Reviews", REVIEWS_NUMBER_COLUMNS],
+        ["Product", [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
+        ["User", PEOPLE_NUMBER_COLUMNS],
+      ]);
+      verifyDashcardMappingOptions(QUESTION_PIVOTED_TABLE_INDEX, [
+        ["Base Orders Question", [...ORDERS_NUMBER_COLUMNS, "Net"]],
+        ["Reviews", REVIEWS_NUMBER_COLUMNS],
+        ["Product", [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
+        ["User", PEOPLE_NUMBER_COLUMNS],
+      ]);
+    }
+  });
+});
+
 function createBaseQuestions() {
   createQuestion({
     type: "question",

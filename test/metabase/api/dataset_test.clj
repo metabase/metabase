@@ -727,7 +727,8 @@
                  (->> (mt/user-http-request
                        :crowberto :post 200
                        (format "dataset/%s" (name export-format))
-                       :query (json/generate-string (assoc q :middleware {:format-rows? apply-formatting?})))
+                       :query (json/generate-string q)
+                       :format_rows apply-formatting?)
                       ((get output-helper export-format))))))))))
 
 (deftest ^:parallel query-metadata-test
