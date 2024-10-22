@@ -13,14 +13,9 @@ import {
 import { updateQuestion } from "./core";
 
 export const onUpdateVisualizationSettings =
-  (settings: VisualizationSettings, _question?: Question) =>
+  (settings: VisualizationSettings) =>
   async (dispatch: Dispatch, getState: GetState) => {
-    console.log("visualization-settings > updateCardVisualizationSettings", {
-      settings,
-      _question,
-    });
-
-    const question = _question || getQuestion(getState());
+    const question = getQuestion(getState());
 
     const previousQueryBuilderMode = getPreviousQueryBuilderMode(getState());
     const queryBuilderMode = getQueryBuilderMode(getState());
@@ -29,16 +24,11 @@ export const onUpdateVisualizationSettings =
       queryBuilderMode === "dataset" && datasetEditorTab === "metadata";
     const wasJustEditingModel =
       previousQueryBuilderMode === "dataset" && queryBuilderMode !== "dataset";
-    const changedSettings = Object.keys(settings);
-    const isColumnWidthResetEvent =
-      changedSettings.length === 1 &&
-      changedSettings.includes("table.column_widths") &&
-      settings["table.column_widths"] === undefined;
 
     if (
       !question ||
       ((isEditingDatasetMetadata || wasJustEditingModel) &&
-        isColumnWidthResetEvent)
+        !shouldUpdateVisualizationSettings(settings))
     ) {
       return;
     }
@@ -68,3 +58,16 @@ export const onReplaceAllVisualizationSettings =
       }),
     );
   };
+
+export const shouldUpdateVisualizationSettings = (
+  settings: VisualizationSettings,
+): boolean => {
+  const changedSettings = Object.keys(settings);
+
+  const isColumnWidthResetEvent =
+    changedSettings.length === 1 &&
+    changedSettings.includes("table.column_widths") &&
+    settings["table.column_widths"] === undefined;
+
+  return !isColumnWidthResetEvent;
+};
