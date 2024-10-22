@@ -148,6 +148,7 @@ export function JoinDraft({
               stageIndex={stageIndex}
               joinable={rhsTable}
               lhsTableName={lhsTableName}
+              rhsTable={rhsTable}
               rhsTableName={rhsTableName}
               isReadOnly={isReadOnly}
               isRemovable={false}

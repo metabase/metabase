@@ -16,6 +16,7 @@ interface JoinConditionDraftProps {
   stageIndex: number;
   joinable: Lib.JoinOrJoinable;
   lhsTableName: string;
+  rhsTable?: Lib.Joinable;
   rhsTableName: string | undefined;
   isReadOnly: boolean;
   isRemovable: boolean;
@@ -29,6 +30,7 @@ export function JoinConditionDraft({
   stageIndex,
   joinable,
   lhsTableName,
+  rhsTable,
   rhsTableName,
   isReadOnly,
   isRemovable,
@@ -82,7 +84,7 @@ export function JoinConditionDraft({
     setRhsColumn(undefined);
     setIsLhsOpened(true);
     setIsRhsOpened(false);
-  }, [joinable]);
+  }, [rhsTable]);
 
   return (
     <JoinConditionRoot>
