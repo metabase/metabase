@@ -19,9 +19,10 @@ import { transitions } from "./utils";
 export const MetabotChat = ({ onClose }: { onClose: () => void }) => {
   const [message, setMessage] = useState("");
   const { messages, sendMessage, sendMessageReq } = useMetabotAgent();
+  const { isLoading } = sendMessageReq;
 
   const handleSend = () => {
-    if (!message.length || sendMessageReq.isLoading) {
+    if (!message.length || isLoading) {
       return;
     }
     setMessage("");
@@ -83,7 +84,7 @@ export const MetabotChat = ({ onClose }: { onClose: () => void }) => {
           )}
           <Flex className={Styles.innerContainer}>
             <Box w="33px" h="24px">
-              <MetabotIcon />
+              <MetabotIcon isLoading={isLoading} />
             </Box>
             <Input
               w="100%"
@@ -91,7 +92,11 @@ export const MetabotChat = ({ onClose }: { onClose: () => void }) => {
               value={message}
               className={Styles.input}
               styles={{ input: { border: "none" } }}
-              placeholder={t`Tell me to do something, or ask a question`}
+              placeholder={
+                isLoading
+                  ? t`Doing science...`
+                  : t`Tell me to do something, or ask a question`
+              }
               onChange={e => setMessage(e.target.value)}
               onKeyDown={event => {
                 if (event.key === "Enter") {
