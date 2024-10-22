@@ -171,7 +171,9 @@ function ForbiddenDomainError({ url }: { url: string }) {
           </Text>
         )} can not be embedded in iframe cards.`}
       </Text>
-      <InteractiveText color="text-dark">{renderMessage()}</InteractiveText>
+      <InteractiveText color="text-dark" px="lg" mt="md">
+        {renderMessage()}
+      </InteractiveText>
     </Box>
   );
 }
