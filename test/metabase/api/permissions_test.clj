@@ -302,9 +302,8 @@
   (testing "PUT /api/permissions/graph"
     (testing "make sure an error is thrown if the :sandboxes key is included in an OSS request"
       (mt/with-premium-features #{}
-        (is (= "Sandboxes is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
-               (mt/user-http-request :crowberto :put 402 "permissions/graph"
-                                     (assoc (data-perms.graph/api-graph) :sandboxes [{:card_id 1}]))))))))
+        (mt/assert-has-premium-feature-error "Sandboxes" (mt/user-http-request :crowberto :put 402 "permissions/graph"
+                                                                               (assoc (data-perms.graph/api-graph) :sandboxes [{:card_id 1}])))))))
 
 (deftest get-group-membership-test
   (testing "GET /api/permissions/membership"
