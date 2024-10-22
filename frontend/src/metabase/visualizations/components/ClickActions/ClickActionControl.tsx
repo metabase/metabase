@@ -35,8 +35,6 @@ export const ClickActionControl = ({
 }: Props): JSX.Element | null => {
   const dispatch = useDispatch();
 
-  console.log("ClickActionControl.render", { action });
-
   if (
     !isRegularClickAction(action) &&
     !isCustomClickAction(action) &&

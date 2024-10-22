@@ -230,26 +230,23 @@ class Visualization extends PureComponent {
     const question = this._getQuestionForCardCached(metadata, card);
     const mode = this.getMode(this.props.mode, question);
 
-    return mode
-      ? mode.actionsForClick(
-          {
-            ...clicked,
-            extraData: {
-              ...getExtraDataForClick(clicked),
-              isRawTable,
-              onUpdateVisualizationSettings(settings) {
-                console.log(
-                  "Visualizations>getClickActions.onUpdateVisualizationSettings",
-                  { settings, clicked, mode, onUpdateVisualizationSettings },
-                );
+    if (!mode) {
+      return [];
+    }
 
-                onUpdateVisualizationSettings(settings);
-              },
-            },
-          },
-          this.state.computedSettings,
-        )
-      : [];
+    const extraData = {
+      ...getExtraDataForClick(clicked),
+      isRawTable,
+
+      // The embedding sdk does not store the question in the query builder store,
+      // therefore we must update the visualization settings in the React context.
+      onUpdateVisualizationSettingsSdk: onUpdateVisualizationSettings,
+    };
+
+    return mode.actionsForClick(
+      { ...clicked, extraData },
+      this.state.computedSettings,
+    );
   }
 
   visualizationIsClickable = clicked => {
@@ -551,14 +548,7 @@ class Visualization extends PureComponent {
               onChangeCardAndRun={this.handleOnChangeCardAndRun}
               onClose={this.hideActions}
               series={series}
-              onUpdateVisualizationSettings={(settings, question) => {
-                console.log(
-                  "Visualization.jsx > onUpdateVisualizationSettings",
-                  { settings, question },
-                );
-
-                onUpdateVisualizationSettings(settings, question);
-              }}
+              onUpdateVisualizationSettings={onUpdateVisualizationSettings}
             />
           )}
         </VisualizationRoot>

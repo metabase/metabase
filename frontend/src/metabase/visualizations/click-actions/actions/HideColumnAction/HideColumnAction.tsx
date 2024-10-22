@@ -49,26 +49,18 @@ export const HideColumnAction: LegacyDrill = ({
           };
         }
 
-        const updateVisualizationSettings = clicked?.extraData
-          ?.onUpdateVisualizationSettings as (
+        const vizSettings = { "table.columns": columnSettingsCopy };
+
+        const updateVisualizationSettingsSdk = clicked?.extraData
+          ?.onUpdateVisualizationSettingsSdk as (
           settings: VisualizationSettings,
         ) => void;
 
-        updateVisualizationSettings?.({
-          "table.columns": columnSettingsCopy,
-        });
+        // The embedding sdk does not store the question in the query builder store,
+        // therefore we must update the visualization settings in the React context.
+        updateVisualizationSettingsSdk?.(vizSettings);
 
-        console.trace("HideColumnAction.action()", {
-          question,
-          clicked,
-          settings,
-          updateVisualizationSettings,
-        });
-
-        // TODO: to remove
-        return onUpdateVisualizationSettings({
-          "table.columns": columnSettingsCopy,
-        });
+        return onUpdateVisualizationSettings(vizSettings);
       },
     },
   ];

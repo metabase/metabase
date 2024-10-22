@@ -26,8 +26,6 @@ export const ClickActionsView = ({
 
   return (
     <Container>
-      <div style={{ color: "#ff0000" }}>Start of ClickActionsView.tsx</div>
-
       {sections.map(([sectionKey, actions]) => {
         const sectionTitle = getSectionTitle(sectionKey, actions);
         const contentDirection = getSectionContentDirection(
@@ -51,13 +49,7 @@ export const ClickActionsView = ({
                 key={action.name}
                 action={action}
                 close={close}
-                onClick={() => {
-                  console.log("ClickActionsView > ClickActionControl.onClick", {
-                    action,
-                  });
-
-                  onClick(action);
-                }}
+                onClick={() => onClick(action)}
               />
             ))}
             {withBottomDivider && <Divider />}
