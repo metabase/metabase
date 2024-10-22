@@ -21,7 +21,7 @@ if (!!true || hasPremiumFeature("metabot_v3")) {
     {
       title: (
         <Flex align="center" justify="space-between" gap="md">
-          <div>{t`Ask Metabot`}</div>
+          <div>{t`Metabot request`}</div>
           <Text fz="sm" c="text-light">
             {METAKEY} + B
           </Text>
