@@ -31,6 +31,7 @@
    [metabase.server.middleware.session :as mw.session]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
+   [metabase.test.fixtures :as fixtures]
    [metabase.test.integrations.ldap :as ldap.test]
    [metabase.util :as u]
    [metabase.util.password :as u.password]
@@ -38,6 +39,10 @@
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures
+  :once
+  (fixtures/initialize :test-users-personal-collections))
 
 (comment
   ;; this has to be loaded for the Google Auth tests to work
@@ -194,12 +199,12 @@
                          (-> (invite-user-accept-and-check-inboxes! :google-auth? true)
                              (select-keys ["crowberto@metabase.com" "some_other_admin@metabase.com"])))))))))))
 
-    (testing "if sso enabled and password login is disabled, email should send a link to sso login"
-      (mt/with-premium-features #{:disable-password-login}
-        (mt/with-temporary-setting-values [enable-password-login false]
-          (ldap.test/with-ldap-server!
-            (invite-user-accept-and-check-inboxes! :invitor default-invitor , :accept-invite? false)
-            (is (seq (mt/regex-email-bodies #"/auth/login")))))))))
+   (testing "if sso enabled and password login is disabled, email should send a link to sso login"
+     (mt/with-premium-features #{:disable-password-login}
+       (mt/with-temporary-setting-values [enable-password-login false]
+         (ldap.test/with-ldap-server!
+           (invite-user-accept-and-check-inboxes! :invitor default-invitor , :accept-invite? false)
+           (is (seq (mt/regex-email-bodies #"/auth/login")))))))))
 
 (deftest ldap-user-passwords-test
   (testing (str "LDAP users should not persist their passwords. Check that if somehow we get passed an LDAP user "

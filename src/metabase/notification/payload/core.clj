@@ -72,4 +72,5 @@
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                    Load the implementations                                     ;;
 ;; ------------------------------------------------------------------------------------------------;;
-(u/find-and-load-namespaces! "metabase.notification.payload.impl")
+(when-not *compile-files*
+  (u/find-and-load-namespaces! "metabase.notification.payload.impl"))

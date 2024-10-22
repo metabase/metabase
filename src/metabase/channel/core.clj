@@ -46,4 +46,5 @@
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                    Load the implementations                                     ;;
 ;; ------------------------------------------------------------------------------------------------;;
-(u/find-and-load-namespaces! "metabase.channel.impl")
+(when-not *compile-files*
+  (u/find-and-load-namespaces! "metabase.channel.impl"))
