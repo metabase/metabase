@@ -1,10 +1,14 @@
 import { useMemo } from "react";
 
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { useMetabotAgentMutation } from "metabase-enterprise/api";
 import { isMetabotMessageReaction } from "metabase-types/api";
 
-import { processMetabotMessages } from "./state";
+import {
+  getMetabotVisisble,
+  processMetabotMessages,
+  setVisible,
+} from "./state";
 
 export const useMetabotAgent = () => {
   const dispatch = useDispatch();
@@ -19,8 +23,15 @@ export const useMetabotAgent = () => {
   }, [sendMessageReq]);
 
   return {
+    visible: useSelector(getMetabotVisisble as any),
+    setVisible: (isVisible: boolean) => {
+      if (!isVisible) {
+        sendMessageReq.reset();
+      }
+
+      dispatch(setVisible(isVisible));
+    },
     messages,
-    reset: sendMessageReq.reset,
     // TODO: need to handle not sending messages while we're
     // processing playing through response messages
     sendMessage: async (message: string) => {

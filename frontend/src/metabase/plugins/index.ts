@@ -588,3 +588,7 @@ export const PLUGIN_RESOURCE_DOWNLOADS = {
 export const PLUGIN_METABOT = {
   Metabot: () => null as React.ReactElement | null,
 };
+
+export const PLUGIN_GO_MENU = {
+  getMenuItems: (_dispatch: any) => [] as Array<any>,
+};
