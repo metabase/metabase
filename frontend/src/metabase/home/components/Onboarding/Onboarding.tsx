@@ -1,7 +1,7 @@
 import { type Ref, forwardRef, useRef, useState } from "react";
 import { jt, t } from "ttag";
 
-import { useSetting } from "metabase/common/hooks";
+import { useSetting, useTempStorage } from "metabase/common/hooks";
 import { getPlan } from "metabase/common/utils/plan";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import Link from "metabase/core/components/Link";
@@ -98,6 +98,10 @@ export const Onboarding = () => {
     }
   };
 
+  const [lastItemOpened, setLastItemOpened] = useTempStorage(
+    "last-opened-onboarding-checklist-item",
+  );
+
   const stopVideo = (key: IframeKeys) => sendMessage("stopVideo", key);
 
   const handleValueChange = (newValue: ChecklistItemValue | null) => {
@@ -106,6 +110,7 @@ export const Onboarding = () => {
     }
 
     if (newValue !== null) {
+      setLastItemOpened(newValue);
       trackChecklistItemExpanded(newValue);
     }
 
@@ -122,7 +127,7 @@ export const Onboarding = () => {
     >
       <Box maw={592}>
         <Accordion
-          defaultValue={DEFAULT_ITEM}
+          defaultValue={lastItemOpened || DEFAULT_ITEM}
           classNames={{
             chevron: S.chevron,
             content: S.content,
