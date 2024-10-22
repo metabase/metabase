@@ -410,17 +410,7 @@
                     [:u.first_name :last_edit_first_name]
                     [:u.last_name :last_edit_last_name]
                     [:r.timestamp :last_edit_timestamp]
-                    [{:select   [:status]
-                      :from     [:moderation_review]
-                      :where    [:and
-                                 [:= :moderated_item_type "card"]
-                                 [:= :moderated_item_id :c.id]
-                                 [:= :most_recent true]]
-                       ;; limit 1 to ensure that there is only one result but this invariant should hold true, just
-                       ;; protecting against potential bugs
-                      :order-by [[:id :desc]]
-                      :limit    1}
-                     :moderated_status]]
+                    [:mr.status :moderated_status]]
                     (#{:question :model} card-type)
                     (conj :c.database_id))
        :from      [[:report_card :c]]
@@ -428,6 +418,10 @@
                                    [:= :r.model_id :c.id]
                                    [:= :r.most_recent true]
                                    [:= :r.model (h2x/literal "Card")]]
+                   [:moderation_review :mr] [:and
+                                             [:= :mr.moderated_item_id :c.id]
+                                             [:= :mr.most_recent true]
+                                             [:= :mr.moderated_item_type (h2x/literal "card")]]
                    [:core_user :u] [:= :u.id :r.user_id]]
        :where     [:and
                    (collection/visible-collection-filter-clause :collection_id
@@ -552,19 +546,13 @@
                    [:u.first_name :last_edit_first_name]
                    [:u.last_name :last_edit_last_name]
                    [:r.timestamp :last_edit_timestamp]
-                   [{:select   [:status]
-                     :from     [:moderation_review]
-                     :where    [:and
-                                [:= :moderated_item_type "dashboard"]
-                                [:= :moderated_item_id :d.id]
-                                [:= :most_recent true]]
-                                ;; limit 1 to ensure that there is only one result but this invariant should hold true, just
-                                ;; protecting against potential bugs
-                     :order-by [[:id :desc]]
-                     :limit    1}
-                    :moderated_status]]
+                   [:mr.status :moderated_status]]
        :from      [[:report_dashboard :d]]
-       :left-join [[:revision :r] [:and
+       :left-join [[:moderation_review :mr] [:and
+                                             [:= :mr.moderated_item_id :d.id]
+                                             [:= :mr.most_recent true]
+                                             [:= :mr.moderated_item_type (h2x/literal "dashboard")]]
+                   [:revision :r] [:and
                                    [:= :r.model_id :d.id]
                                    [:= :r.most_recent true]
                                    [:= :r.model (h2x/literal "Dashboard")]]
