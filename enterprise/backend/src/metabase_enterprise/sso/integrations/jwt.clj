@@ -100,11 +100,16 @@
       (sync-groups! user jwt-data)
       {:session session, :redirect-url redirect-url, :jwt-data jwt-data})))
 
-(defn- check-jwt-enabled []
-  (when-not (sso-settings/jwt-enabled)
-    (throw
-     (ex-info (tru "JWT SSO has not been enabled and/or configured")
-              {:status "error-sso-jwt-disabled" :status-code 402}))))
+(defn- check-jwt-enabled
+  (when-not (sso-settings/jwt-configured?)
+    (throw (ex-info (tru "JWT SSO has not been configured")
+                    {:status "error-sso-jwt-not-configured"
+                     :status-code 402})))
+  (when-not (sso-settings/jwt-enabled?)
+    (throw (ex-info (tru "JWT SSO has not been enabled")
+                    {:status "error-sso-jwt-disabled"
+                     :status-code 402})))
+  true)
 
 (defn ^:private generate-response-token
   [session jwt-data]
