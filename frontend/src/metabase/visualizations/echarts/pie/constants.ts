@@ -20,7 +20,7 @@ export const DIMENSIONS = {
     multiRingFontSize: 12,
     label: {
       fontWeight: 700,
-      padding: 4,
+      padding: 2,
     },
   },
   total: {
