@@ -6,7 +6,7 @@
         "properties": {
             "display": {
                 "title": "Visualization Display Type",
-                "description": "Change the visualization. When summarization is used, this should be set appropriately with preference to line. For numeric results, scalar is preferred. For showing",
+                "description": "Change the visualization. When summarization is used, this should be set appropriately with preference to line. For numeric results, scalar is preferred. When filtering, leave it `null` to avoid changing the display type.",
                 "type": ["string", "null"],
                 "enum": [
                     "pie",
