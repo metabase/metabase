@@ -37,49 +37,59 @@ import {
   SectionContainer,
   SectionWarnings,
 } from "./ChartSettings.styled";
-import type { ChartSettingsProps, Widget } from "./types";
+import type {
+  ChartSettingsProps,
+  ChartSettingsWithStateProps,
+  Widget,
+} from "./types";
 
 // section names are localized
 const DEFAULT_TAB_PRIORITY = [t`Data`];
 
-export const ChartSettings = (props: ChartSettingsProps) => {
+export const ChartSettings = ({
+  initial,
+  settings: propSettings,
+  series,
+  computedSettings: propComputedSettings,
+  onChange,
+  isDashboard = false,
+  noPreview = false,
+  dashboard,
+  dashcard,
+  onDone,
+  onClose,
+  question,
+  className,
+}: ChartSettingsProps) => {
   const [currentSection, setCurrentSection] = useState<string | null>(
-    (props.initial && props.initial.section) || null,
+    initial?.section || null,
   );
   const [currentWidget, setCurrentWidget] = useState<Widget | null>(
-    (props.initial && props.initial.widget) || null,
+    initial?.widget || null,
   );
   const [popoverRef, setPopoverRef] = useState<HTMLElement | null>();
   const [warnings, setWarnings] = useState();
 
   const chartSettings = useMemo(
-    () => props.settings || props.series[0].card.visualization_settings,
-    [props.series, props.settings],
+    () => propSettings || series[0].card.visualization_settings,
+    [series, propSettings],
   );
 
   const computedSettings = useMemo(
-    () => props.computedSettings || {},
-    [props.computedSettings],
+    () => propComputedSettings || {},
+    [propComputedSettings],
   );
 
   const handleChangeSettings = useCallback(
     (changedSettings: VisualizationSettings, question: Question) => {
-      props.onChange?.(
-        updateSettings(chartSettings, changedSettings),
-        question,
-      );
+      onChange?.(updateSettings(chartSettings, changedSettings), question);
     },
-    [chartSettings, props],
+    [chartSettings, onChange],
   );
 
   const chartSettingsRawSeries = useMemo(
-    () =>
-      assocIn(
-        props.series,
-        [0, "card", "visualization_settings"],
-        chartSettings,
-      ),
-    [chartSettings, props.series],
+    () => assocIn(series, [0, "card", "visualization_settings"], chartSettings),
+    [chartSettings, series],
   );
 
   const transformedSeries = useMemo(() => {
@@ -91,26 +101,19 @@ export const ChartSettings = (props: ChartSettingsProps) => {
 
   const widgets = useMemo(
     () =>
-      props.widgets ||
       getSettingsWidgetsForSeries(
         transformedSeries,
         handleChangeSettings,
-        props.isDashboard,
-        { dashboardId: props.dashboard?.id },
+        isDashboard,
+        { dashboardId: dashboard?.id },
       ),
-    [
-      handleChangeSettings,
-      props.dashboard?.id,
-      props.isDashboard,
-      props.widgets,
-      transformedSeries,
-    ],
+    [handleChangeSettings, dashboard?.id, isDashboard, transformedSeries],
   );
 
   const columnHasSettings = useCallback(
     (col: DatasetColumn) => {
       const settings = chartSettings || {};
-      const settingsDefs = getSettingDefinitionsForColumn(props.series, col);
+      const settingsDefs = getSettingDefinitionsForColumn(series, col);
       const getComputedSettingsResult = getComputedSettings(
         settingsDefs,
         col,
@@ -124,11 +127,11 @@ export const ChartSettings = (props: ChartSettingsProps) => {
         col,
         _.noop,
         {
-          series: props.series,
+          series: series,
         },
       ).some(widget => !widget.hidden);
     },
-    [chartSettings, props.series],
+    [chartSettings, series],
   );
 
   const styleWidget = useMemo(() => {
@@ -220,30 +223,30 @@ export const ChartSettings = (props: ChartSettingsProps) => {
   }, []);
 
   const handleResetSettings = useCallback(() => {
-    const originalCardSettings = props.dashcard?.card.visualization_settings;
+    const originalCardSettings = dashcard?.card.visualization_settings;
     const clickBehaviorSettings = getClickBehaviorSettings(chartSettings);
 
-    props.onChange?.({
+    onChange?.({
       ...originalCardSettings,
       ...clickBehaviorSettings,
     });
-  }, [chartSettings, props]);
+  }, [chartSettings, dashcard?.card.visualization_settings, onChange]);
 
   const handleChangeSeriesColor = useCallback(
     (seriesKey: string, color: string) => {
-      props.onChange?.(updateSeriesColor(chartSettings, seriesKey, color));
+      onChange?.(updateSeriesColor(chartSettings, seriesKey, color));
     },
-    [chartSettings, props],
+    [chartSettings, onChange],
   );
 
   const handleDone = useCallback(() => {
-    props.onDone?.(chartSettings);
-    props.onClose?.();
-  }, [props, chartSettings]);
+    onDone?.(chartSettings);
+    onClose?.();
+  }, [chartSettings, onClose, onDone]);
 
   const handleCancel = useCallback(() => {
-    props.onClose?.();
-  }, [props]);
+    onClose?.();
+  }, [onClose]);
 
   const sections: Record<string, Widget[]> = useMemo(() => {
     const sectionObj: Record<string, Widget[]> = {};
@@ -297,8 +300,7 @@ export const ChartSettings = (props: ChartSettingsProps) => {
 
   const extraWidgetProps = {
     // NOTE: special props to support adding additional fields
-    question: props.question,
-    addField: props.addField,
+    question,
     onShowWidget: handleShowWidget,
     onEndShowWidget: handleEndShowWidget,
     currentSectionHasColumnSettings,
@@ -324,10 +326,10 @@ export const ChartSettings = (props: ChartSettingsProps) => {
     );
 
   return (
-    <ChartSettingsRoot className={props.className}>
+    <ChartSettingsRoot className={className}>
       <ChartSettingsMenu data-testid="chartsettings-sidebar">
         {showSectionPicker && (
-          <SectionContainer isDashboard={props.isDashboard ?? false}>
+          <SectionContainer isDashboard={false}>
             <Radio
               value={chartSettingCurrentSection ?? undefined}
               onChange={handleShowSection}
@@ -346,7 +348,7 @@ export const ChartSettings = (props: ChartSettingsProps) => {
           />
         </ChartSettingsListContainer>
       </ChartSettingsMenu>
-      {!props.noPreview && (
+      {!noPreview && (
         <ChartSettingsPreview>
           <SectionWarnings warnings={warnings} size={20} />
           <ChartSettingsVisualizationContainer>
@@ -356,8 +358,8 @@ export const ChartSettings = (props: ChartSettingsProps) => {
               showTitle
               isEditing
               isDashboard
-              dashboard={props.dashboard}
-              dashcard={props.dashcard}
+              dashboard={dashboard}
+              dashcard={dashcard}
               isSettings
               showWarnings
               onUpdateVisualizationSettings={handleChangeSettings}
@@ -382,7 +384,7 @@ export const ChartSettings = (props: ChartSettingsProps) => {
   );
 };
 
-export const ChartSettingsWithState = (props: ChartSettingsProps) => {
+export const ChartSettingsWithState = (props: ChartSettingsWithStateProps) => {
   const [tempSettings, setTempSettings] = useState(props.settings);
 
   const onDone = (settings: VisualizationSettings) =>

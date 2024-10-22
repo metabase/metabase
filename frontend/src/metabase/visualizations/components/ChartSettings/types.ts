@@ -3,7 +3,6 @@ import type Question from "metabase-lib/v1/Question";
 import type {
   Dashboard,
   DashboardCard,
-  RawSeries,
   Series,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -18,36 +17,28 @@ export type Widget = {
   widget: (() => JSX.Element | null) | undefined;
 };
 
-export type ChartSettingsProps = {
+export type ChartSettingsWithStateProps = {
   className?: string;
+  isDashboard?: boolean;
   dashboard?: Dashboard;
   dashcard?: DashboardCard;
   initial?: {
     section: string;
     widget?: Widget;
   };
-  onCancel?: () => void;
-  onDone?: (settings: VisualizationSettings) => void;
-  onReset?: () => void;
+  onClose?: () => void;
+  series: Series;
+  computedSettings?: ComputedVisualizationSettings;
+  question?: Question;
+  noPreview?: boolean;
+
   onChange?: (
     settings: ComputedVisualizationSettings,
     question?: Question,
   ) => void;
-  onClose?: () => void;
-  rawSeries?: RawSeries[];
   settings?: VisualizationSettings;
-  widgets?: Widget[];
-  series: Series;
-  computedSettings?: ComputedVisualizationSettings;
-  isDashboard?: boolean;
-  question?: Question;
-  addField?: () => void;
-  noPreview?: boolean;
 };
 
-export type ChartSettingsState = {
-  currentSection: string | null;
-  currentWidget: Widget | null;
-  popoverRef?: HTMLElement | null;
-  warnings?: string[];
+export type ChartSettingsProps = ChartSettingsWithStateProps & {
+  onDone?: (settings: VisualizationSettings) => void;
 };
