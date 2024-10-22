@@ -215,6 +215,7 @@
         "timestamp": "2024-10-04T14:53:50.464787+01:00"
       },
       "visualization_settings": {
+        "graph.max_categories_enabled": true,
         "graph.max_categories": 8,
         "graph.dimensions": ["CREATED_AT", "STATE"],
         "graph.series_order": [

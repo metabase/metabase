@@ -832,6 +832,11 @@ describe("scenarios > visualizations > bar chart", () => {
       },
     });
 
+    // Enable 'Other' series
+    cy.findByTestId("viz-settings-button").click();
+    leftSidebar().findByTestId("settings-STATE").click();
+    popover().findByLabelText("Enforce maximum number of series").click();
+
     // Test 'Other' series renders
     otherSeriesChartPaths().should("have.length", 6);
 
@@ -872,7 +877,6 @@ describe("scenarios > visualizations > bar chart", () => {
     });
 
     // Test "graph.max_categories" change
-    cy.findByTestId("viz-settings-button").click();
     setMaxCategories(4);
     chartPathWithFillColor(AK_SERIES_COLOR).first().realHover();
     echartsTooltip().find("tr").should("have.length", 5);

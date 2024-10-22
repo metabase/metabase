@@ -460,9 +460,7 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS = {
   },
   "graph.max_categories_enabled": {
     hidden: true,
-    getDefault: (series, settings) => {
-      return canHaveMaxCategoriesSetting(series, settings);
-    },
+    getDefault: () => false,
     isValid: (series, settings) => {
       return canHaveMaxCategoriesSetting(series, settings);
     },

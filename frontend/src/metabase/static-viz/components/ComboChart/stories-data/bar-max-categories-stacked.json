@@ -216,6 +216,7 @@
         "email": "anton@metabase.test"
       },
       "visualization_settings": {
+        "graph.max_categories_enabled": true,
         "graph.max_categories": 4,
         "graph.dimensions": ["CREATED_AT", "STATE"],
         "graph.series_order": [
