@@ -1,3 +1,5 @@
+import type { CardDisplayType } from "./visualization";
+
 export type MetabotFeedbackType =
   | "great"
   | "wrong_data"
@@ -46,7 +48,23 @@ export type MetabotMessageReaction = {
   message: string;
 };
 
-export type MetabotReaction = MetabotMessageReaction;
+export type MetabotApplyVisualizationsReaction = {
+  type: "metabot.reaction/apply-visualizations";
+  display: CardDisplayType;
+  filters: any; // TODO:
+  summarizations: any; // TODO:
+  groups: any; // TODO:
+};
+
+export type MetabotGoToQuestionReaction = {
+  type: "metabot.reaction/goto-question";
+  question_id: number | null;
+};
+
+export type MetabotReaction =
+  | MetabotMessageReaction
+  | MetabotApplyVisualizationsReaction
+  | MetabotGoToQuestionReaction;
 
 /* Metabot v3 - API Request Types */
 
