@@ -57,7 +57,7 @@ export const MetabotChat = ({ onClose }: { onClose: () => void }) => {
       mounted={mounted}
       onEntered={() => setEntered(true)}
       transition={transitions.chatBarSlideIn}
-      duration={300}
+      duration={150}
       timingFunction="ease"
     >
       {style => (
