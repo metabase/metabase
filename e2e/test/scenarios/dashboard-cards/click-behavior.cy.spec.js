@@ -991,20 +991,12 @@ describeEE("scenarios > dashboard > dashboard cards > click behavior", () => {
 
       openNotebook();
 
-      getNotebookStep("data").findByText("Orders").should("be.visible");
-      getNotebookStep("filter")
-        .findByText("Created At is Jul 1–31, 2022")
-        .should("be.visible");
-      getNotebookStep("filter")
-        .findByText("Quantity is equal to 64")
-        .should("be.visible");
-      getNotebookStep("summarize").findByText("Count").should("be.visible");
-      getNotebookStep("summarize")
-        .findByText("Created At: Month")
-        .should("be.visible");
-      getNotebookStep("limit")
-        .findByPlaceholderText("Enter a limit")
-        .should("have.value", "5");
+      verifyNotebookQuery("Orders", {
+        filters: ["Created At is Jul 1–31, 2022", "Quantity is equal to 64"],
+        aggregations: ["Count"],
+        breakouts: ["Created At: Month"],
+        limit: 5,
+      });
     });
 
     it("does not allow setting saved question as custom destination if user has no permissions to it", () => {
@@ -1459,20 +1451,12 @@ describeEE("scenarios > dashboard > dashboard cards > click behavior", () => {
 
         openNotebook();
 
-        getNotebookStep("data").findByText("Orders").should("be.visible");
-        getNotebookStep("filter")
-          .findByText("Created At is Jul 1–31, 2022")
-          .should("be.visible");
-        getNotebookStep("filter")
-          .findByText("Quantity is equal to 64")
-          .should("be.visible");
-        getNotebookStep("summarize").findByText("Count").should("be.visible");
-        getNotebookStep("summarize")
-          .findByText("Created At: Month")
-          .should("be.visible");
-        getNotebookStep("limit")
-          .findByPlaceholderText("Enter a limit")
-          .should("have.value", "5");
+        verifyNotebookQuery("Orders", {
+          filters: ["Created At is Jul 1–31, 2022", "Quantity is equal to 64"],
+          aggregations: ["Count"],
+          breakouts: ["Created At: Month"],
+          limit: 5,
+        });
       })();
     });
 
