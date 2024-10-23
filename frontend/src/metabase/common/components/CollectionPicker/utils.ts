@@ -115,6 +115,8 @@ export const getPathLevelForItem = (
   >,
   userPersonalCollectionId?: CollectionId,
 ): number => {
+  console.log({ item, path, userPersonalCollectionId });
+
   if (item.id === userPersonalCollectionId) {
     return 0;
   }
@@ -122,6 +124,8 @@ export const getPathLevelForItem = (
   const parentCollectionId =
     item.collection_id ??
     getParentCollectionId(item?.effective_location ?? item?.location);
+
+  console.log({ parentCollectionId });
 
   // set selected item at the correct level
   const pathLevel = path.findIndex(

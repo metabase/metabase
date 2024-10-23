@@ -226,7 +226,7 @@ describe("scenarios > dashboard", () => {
       },
     );
 
-    it("adding question to one dashboard shouldn't affect previously visited unrelated dashboards (metabase#26826)", () => {
+    it.only("adding question to one dashboard shouldn't affect previously visited unrelated dashboards (metabase#26826)", () => {
       cy.intercept("POST", "/api/card").as("saveQuestion");
 
       visitDashboard(ORDERS_DASHBOARD_ID);

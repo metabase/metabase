@@ -26,6 +26,7 @@ import {
   defaultOptions as defaultDashboardPickerOptions,
 } from "./DashboardPicker";
 import { NewDashboardDialog } from "./NewDashboardDialog";
+import { InitialValue } from "metabase/components/TextWidget/TextWidget.stories";
 
 interface DashboardPickerModalProps {
   title?: string;
@@ -146,7 +147,7 @@ export const DashboardPickerModal = ({
           models={["dashboard"]}
           options={options}
           path={dashboardsPath}
-          // ref={pickerRef}
+          ref={pickerRef}
           shouldDisableItem={shouldDisableItem}
           onItemSelect={onItemSelect}
           onPathChange={handleDashboardsPathChange}
@@ -156,7 +157,12 @@ export const DashboardPickerModal = ({
   ];
 
   const handleNewDashboardCreate = (newDashboard: DashboardPickerItem) => {
-    pickerRef.current?.onNewDashboard(newDashboard);
+    pickerRef.current?.onNewItem({
+      id: newDashboard.id,
+      name: newDashboard.name,
+      collection_id: newDashboard.collection_id || "root",
+      model: "dashboard",
+    });
   };
 
   const parentCollectionId = getCollectionId(selectedItem || value);

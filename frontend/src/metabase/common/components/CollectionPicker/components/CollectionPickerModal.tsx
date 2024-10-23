@@ -72,7 +72,7 @@ export const CollectionPickerModal = ({
   ] = useToggle(false);
 
   const pickerRef = useRef<{
-    onNewCollection: (item: CollectionPickerItem) => void;
+    onNewCollection: ({ folder }: { folder: CollectionPickerItem }) => void;
   }>();
 
   const handleInit = useCallback((item: CollectionPickerItem) => {
@@ -130,7 +130,7 @@ export const CollectionPickerModal = ({
           options={options}
           path={collectionsPath}
           models={["collection"]}
-          //ref={pickerRef}
+          ref={pickerRef}
           shouldDisableItem={shouldDisableItem}
           onInit={handleInit}
           onItemSelect={onItemSelect}
@@ -141,7 +141,7 @@ export const CollectionPickerModal = ({
   ];
 
   const handleNewCollectionCreate = (newCollection: CollectionPickerItem) => {
-    pickerRef.current?.onNewCollection(newCollection);
+    pickerRef.current?.onNewItem(newCollection);
   };
 
   const composedSearchResultFilter = useCallback(
