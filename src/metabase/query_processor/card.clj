@@ -49,8 +49,8 @@
   [parameters]
   (into #{}
         (keep (fn [{:keys [target]}]
-          (when (mbql.u/is-clause? :dimension target)
-            (get-in target [2 :stage-number]))))
+                (when (mbql.u/is-clause? :dimension target)
+                  (get-in target [2 :stage-number]))))
         parameters))
 
 (defn- point-parameters-to-last-stage
