@@ -67,8 +67,14 @@
                        [:= :pulse.archived false]
                        [:= :pulse.dashboard_id :report_dashboard.id]]
                :collection [:= :collection.id :report_dashboard.collection_id]]
+               :moderation_review [:and
+                                   [:= :moderation_review.moderated_item_id :report_dashboard.id]
+                                   [:= :moderation_review.moderated_item_type (h2x/literal "dashboard")]
+                                   [:= :moderation_review.most_recent true]
+                                   [:= :moderation_review.status (h2x/literal "verified")]]]
    :where [:and
            [:= :pulse.id nil]
+           [:= :moderation_review.id nil]
            [:= :report_dashboard.archived false]
            [:<= :report_dashboard.last_viewed_at (-> args :cutoff-date)]
            ;; find things only in regular collections, not the `instance-analytics` collection.
