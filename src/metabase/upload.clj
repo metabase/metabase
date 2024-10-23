@@ -281,14 +281,23 @@
 (defn- file-mime-type [^File file]
   (.detect tika file))
 
-(defn- detect-charset ^String [file]
-  (try
-    (UniversalDetector/detectCharset (bom/bom-input-stream file))
-    (catch Exception _)))
+(def ^:private supported-charsets
+  #{"UTF-8"
+    "UTF-16" "UTF-16BE" "UTF-16LE"
+    "UTF-32" "UTF-32BE" "UTF-32LE"
+    "WINDOWS-1252"})
+
+(defn- detect-charset ^String [^File file]
+  (or
+   (try
+     ;; If its not a first-class supported encoding, just treat it as the default encoding.
+     (supported-charsets (UniversalDetector/detectCharset file))
+     ;; If we can't detect the encoding, use the default, and live with unrecognized characters.
+     (catch Exception _))
+   "UTF-8"))
 
 (defn- ->reader ^Reader [^File file]
-  ;; If we can't detect the encoding, just live with unrecognized characters.
-  (let [charset (or (detect-charset file) "UTF-8")]
+  (let [charset (detect-charset file)]
     (-> (bom/bom-input-stream file)
         (InputStreamReader. charset))))
 

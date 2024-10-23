@@ -584,12 +584,15 @@
                      (column-display-names-for-table table))))))))))
 
 (deftest detect-charset-test
-  (doseq [filename ["csv/48945-1.csv"
-                    "csv/48945-2.csv"
-                    "csv/48945-3.csv"]]
+  (doseq [[encoding filename] [["UTF-8" "csv/utf-8.csv"]
+                               ["UTF-8" "csv/48945-1.csv"]
+                               ["UTF-8" "csv/48945-2.csv"]
+                               ["UTF-8" "csv/48945-3.csv"]
+                               ["UTF-16BE" "csv/utf-16.csv"]
+                               ;; Hmm, https://stackoverflow.com/a/19111140
+                               ["WINDOWS-1252" "csv/iso-8859-1.csv"]]]
     (testing (str "Correct charset detected for " filename)
-      (prn filename)
-      (is (= "UTF-8" (#'upload/detect-charset (io/file (io/resource filename))))))))
+      (is (= encoding (#'upload/detect-charset (io/file (io/resource filename))))))))
 
 (deftest infer-separator-catch-exception-test
   (testing "errors in [[upload/infer-separator]] should not prevent the upload (#44034)"
