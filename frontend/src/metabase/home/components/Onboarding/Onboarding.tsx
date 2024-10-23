@@ -1,4 +1,12 @@
-import { type Ref, forwardRef, useRef, useState } from "react";
+import {
+  type Ref,
+  createRef,
+  forwardRef,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { jt, t } from "ttag";
 
 import { useSetting, useTempStorage } from "metabase/common/hooks";
@@ -40,21 +48,25 @@ export const Onboarding = () => {
 
   const exampleDashboardId = useSetting("example-dashboard-id");
 
-  const iframeRefs = {
-    "x-ray": useRef<HTMLIFrameElement>(null),
-    notebook: useRef<HTMLIFrameElement>(null),
-    sql: useRef<HTMLIFrameElement>(null),
-    dashboard: useRef<HTMLIFrameElement>(null),
-    subscription: useRef<HTMLIFrameElement>(null),
-    alert: useRef<HTMLIFrameElement>(null),
-  };
+  const iframeRefs = useMemo(() => {
+    return {
+      "x-ray": createRef<HTMLIFrameElement>(),
+      notebook: createRef<HTMLIFrameElement>(),
+      sql: createRef<HTMLIFrameElement>(),
+      dashboard: createRef<HTMLIFrameElement>(),
+      subscription: createRef<HTMLIFrameElement>(),
+      alert: createRef<HTMLIFrameElement>(),
+    };
+  }, []);
 
   type IframeKeys = keyof typeof iframeRefs;
-  const isValidIframeKey = (
-    key: ChecklistItemValue | null,
-  ): key is IframeKeys => {
-    return key !== null && Object.keys(iframeRefs).includes(key);
-  };
+
+  const isValidIframeKey = useCallback(
+    (key: ChecklistItemValue | null): key is IframeKeys => {
+      return key !== null && Object.keys(iframeRefs).includes(key);
+    },
+    [iframeRefs],
+  );
 
   const [itemValue, setItemValue] = useState<ChecklistItemValue | null>(null);
 
@@ -101,6 +113,15 @@ export const Onboarding = () => {
   const [lastItemOpened, setLastItemOpened] = useTempStorage(
     "last-opened-onboarding-checklist-item",
   );
+
+  useEffect(() => {
+    if (lastItemOpened && isValidIframeKey(lastItemOpened)) {
+      iframeRefs[lastItemOpened]?.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    }
+  }, [iframeRefs, lastItemOpened, isValidIframeKey]);
 
   const stopVideo = (key: IframeKeys) => sendMessage("stopVideo", key);
 
