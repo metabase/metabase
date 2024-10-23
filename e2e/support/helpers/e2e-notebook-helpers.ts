@@ -224,7 +224,6 @@ export function selectFilterOperator(operatorName: string) {
   cy.findByRole("menu").findByText(operatorName).click();
 }
 
-// TODO: assert items count
 // TODO: joins
 type Stage = {
   filters?: string[];
@@ -238,34 +237,105 @@ export function verifyNotebookQuery(dataSource: string, ...stages: Stage[]) {
 
   for (let stageIndex = 0; stageIndex < stages.length; ++stageIndex) {
     const {
-      filters = [],
+      filters,
       aggregations = [],
       breakouts = [],
       limit,
     } = stages[stageIndex];
 
-    for (const filter of filters) {
+    verifyNotebookFilters(stageIndex, filters);
+    verifyNotebookAggregations(stageIndex, aggregations, breakouts);
+    verifyNotebookBreakouts(stageIndex, aggregations, breakouts);
+    verifyNotebookLimit(stageIndex, limit);
+  }
+}
+
+function verifyNotebookFilters(
+  stageIndex: number,
+  filters: string[] | undefined,
+) {
+  if (Array.isArray(filters)) {
+    getNotebookStep("filter", { stage: stageIndex })
+      .findAllByTestId("notebook-cell-item")
+      .should("have.length", filters.length + 1); // 1 because of add button
+
+    for (let index = 0; index < filters.length; ++index) {
       getNotebookStep("filter", { stage: stageIndex })
-        .findByText(filter)
-        .should("be.visible");
+        .findAllByTestId("notebook-cell-item")
+        .eq(index)
+        .should("have.text", filters[index]);
     }
+  } else {
+    getNotebookStep("filter", { stage: stageIndex }).should("not.exist");
+  }
+}
 
-    for (const aggregation of aggregations) {
+function verifyNotebookAggregations(
+  stageIndex: number,
+  aggregations: string[] | undefined,
+  breakouts: string[] | undefined,
+) {
+  if (Array.isArray(aggregations)) {
+    getNotebookStep("summarize", { stage: stageIndex })
+      .findByTestId("aggregate-step")
+      .findAllByTestId("notebook-cell-item")
+      .should("have.length", aggregations.length + 1); // 1 because of add button
+
+    for (let index = 0; index < aggregations.length; ++index) {
       getNotebookStep("summarize", { stage: stageIndex })
-        .findByText(aggregation)
-        .should("be.visible");
+        .findByTestId("aggregate-step")
+        .findAllByTestId("notebook-cell-item")
+        .eq(index)
+        .should("have.text", aggregations[index]);
     }
-
-    for (const breakout of breakouts) {
+  } else {
+    if (Array.isArray(breakouts)) {
       getNotebookStep("summarize", { stage: stageIndex })
-        .findByText(breakout)
-        .should("be.visible");
+        .findByTestId("aggregate-step")
+        .findAllByTestId("notebook-cell-item")
+        .should("have.length", 1); // 1 because of add button
+    } else {
+      getNotebookStep("summarize", { stage: stageIndex }).should("not.exist");
     }
+  }
+}
 
-    if (limit) {
-      getNotebookStep("limit", { stage: stageIndex })
-        .findByPlaceholderText("Enter a limit")
-        .should("have.value", String(limit));
+function verifyNotebookBreakouts(
+  stageIndex: number,
+  aggregations: string[] | undefined,
+  breakouts: string[] | undefined,
+) {
+  if (Array.isArray(breakouts)) {
+    getNotebookStep("summarize", { stage: stageIndex })
+      .findByTestId("breakout-step")
+      .findAllByTestId("notebook-cell-item")
+      .should("have.length", breakouts.length + 1); // +1 because of add button
+
+    for (let index = 0; index < breakouts.length; ++index) {
+      getNotebookStep("summarize", { stage: stageIndex })
+        .findByTestId("breakout-step")
+        .findAllByTestId("notebook-cell-item")
+        .eq(index)
+        .should("have.text", breakouts[index]);
     }
+  } else {
+    if (Array.isArray(aggregations)) {
+      getNotebookStep("summarize", { stage: stageIndex })
+        .findByTestId("breakout-step")
+        .findAllByTestId("notebook-cell-item")
+        .should("have.length", 1); // 1 because of add button
+    } else {
+      getNotebookStep("summarize", { stage: stageIndex }).should("not.exist");
+    }
+  }
+}
+
+function verifyNotebookLimit(stageIndex: number, limit: number | undefined) {
+  if (limit) {
+    getNotebookStep("limit", { stage: stageIndex })
+      .findByPlaceholderText("Enter a limit")
+      .should("have.value", String(limit));
+  } else {
+    getNotebookStep("limit", { stage: stageIndex }).should("not.exist");
   }
 }
