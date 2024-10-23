@@ -11,7 +11,10 @@ import { convertSavedQuestionToVirtualTable } from "metabase-lib/v1/metadata/uti
 import type { Card, NormalizedTable } from "metabase-types/api";
 import { createMockCard, createMockSettings } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
-import { createMockState } from "metabase-types/store/mocks";
+import {
+  createMockQueryBuilderState,
+  createMockState,
+} from "metabase-types/store/mocks";
 
 import { QuestionSources } from "./QuestionSources";
 
@@ -25,6 +28,7 @@ const setup = async ({
   sourceCard,
 }: SetupOpts = {}) => {
   const state = createMockState({
+    qb: createMockQueryBuilderState({ card }),
     settings: mockSettings(createMockSettings()),
     entities: createMockEntitiesState({
       databases: [createSampleDatabase()],
@@ -64,6 +68,7 @@ const setup = async ({
     />,
     {
       withRouter: true,
+      storeInitialState: state,
     },
   );
 };
@@ -140,6 +145,40 @@ describe("QuestionSources", () => {
     expect(questionLink).toHaveAttribute(
       "href",
       "/question/2-my-source-question",
+    );
+  });
+
+  it("shows source information for a model (its database and table)", async () => {
+    const model = createMockCard({
+      name: "My Model",
+      type: "model",
+    });
+
+    await setup({ card: model });
+
+    const databaseLink = await screen.findByRole("link", {
+      name: /Sample Database/i,
+    });
+
+    expect(
+      await within(databaseLink).findByLabelText("database icon"),
+    ).toBeInTheDocument();
+    expect(databaseLink).toHaveAttribute(
+      "href",
+      "/browse/databases/1-sample-database",
+    );
+
+    expect(screen.getByText("/")).toBeInTheDocument();
+
+    expect(screen.getByText("/")).toBeInTheDocument();
+    const tableLink = await screen.findByRole("link", { name: /Products/i });
+    expect(tableLink).toBeInTheDocument();
+    expect(
+      await within(tableLink).findByLabelText(`table icon`),
+    ).toBeInTheDocument();
+    expect(tableLink).toHaveAttribute(
+      "href",
+      expect.stringMatching(/^\/question#[a-zA-Z0-9]{20}/),
     );
   });
 });
