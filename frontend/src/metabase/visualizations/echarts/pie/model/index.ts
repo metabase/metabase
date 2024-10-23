@@ -177,9 +177,13 @@ function aggregateChildrenSlices(
 
   if (others.length > 1 && otherTotal > 0) {
     const otherSliceChildren: SliceTree = new Map();
-    others.forEach(o => {
-      otherSliceChildren.set(String(o.key), { ...o, color: "" });
-      node.children.delete(String(o.key));
+    others.forEach(otherChildSlice => {
+      otherSliceChildren.set(String(otherChildSlice.key), {
+        ...otherChildSlice,
+        normalizedPercentage: otherChildSlice.value / otherTotal,
+        color: "",
+      });
+      node.children.delete(String(otherChildSlice.key));
     });
 
     node.children.set(OTHER_SLICE_KEY, {
@@ -456,10 +460,11 @@ export function getPieChartModel(
   const otherTotal = others.reduce((currTotal, o) => currTotal + o.value, 0);
   if (otherTotal > 0) {
     const children: SliceTree = new Map();
-    others.forEach(node => {
-      children.set(String(node.key), {
-        ...node,
+    others.forEach(otherChildSlice => {
+      children.set(String(otherChildSlice.key), {
+        ...otherChildSlice,
         color: "",
+        normalizedPercentage: otherChildSlice.value / otherTotal,
       });
     });
     const visible = !hiddenSlices.includes(OTHER_SLICE_KEY);
