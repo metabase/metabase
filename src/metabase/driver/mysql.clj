@@ -935,6 +935,7 @@
   [driver & {:keys [table-names]}]
   (sql/format {:select [[:c.column_name :name]
                         [[:- :c.ordinal_position [:inline 1]] :database-position]
+                        [nil :table-schema]
                         [:c.table_name :table-name]
                         [:c.data_type :database-type]
                         [[:= :c.extra [:inline "auto_increment"]] :database-is-auto-increment]
