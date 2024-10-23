@@ -265,17 +265,7 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
     };
 
     const openModal = (cardData, cardIndex) => {
-        // setSelectedHash(cardData.hash)
-        // setSelectedIndex(cardIndex)
-        // setIsModalOpen(true);
-        if (cardData.typeQuery === "query") {
-            if (cardData.hash) {
-                dispatch(push(`/question#${cardData.hash}`));
-                // const deletedCard = await CardApi.delete({ id: id });
-            }
-        } else {
-            dispatch(push(`/question/${cardData.id}`));
-        }
+        dispatch(push(`/question/${cardData.id}`));
     };
 
     const closeModal = () => {
