@@ -247,9 +247,18 @@
                              (str join-display-name " → " field-display-name)
                              field-display-name)
         temporal-format    (fn [display-name]
-                             (lib.util/format "%s: %s" display-name (-> (name temporal-unit)
-                                                                        (str/replace \- \space)
-                                                                        u/capitalize-en)))
+                             ;; the modification here is temporary hack
+                             ;; currently the problem is that temporal unit is slapped onto display_name multiple
+                             ;; times.
+                             ;; Eg. field ref -> column meta -> field ref -> column meta by multiple calls to display-name-method,
+                             ;; for every column meta this
+                             ;; function adds that again!
+                             ;; TODO: why that is not the case for year?
+                             (if (lib.temporal-bucket/ends-with-pretty-temporal-unit? display-name)
+                               display-name
+                               (lib.util/format "%s: %s" display-name (-> (name temporal-unit)
+                                                                          (str/replace \- \space)
+                                                                          u/capitalize-en))))
         bin-format         (fn [display-name]
                              (lib.util/format "%s: %s" display-name (lib.binning/binning-display-name binning field-metadata)))]
     ;; temporal unit and binning formatting are only applied if they haven't been applied yet
