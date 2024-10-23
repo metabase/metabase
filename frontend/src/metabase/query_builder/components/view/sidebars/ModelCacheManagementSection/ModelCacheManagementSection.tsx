@@ -13,6 +13,8 @@ import type { ModelCacheRefreshStatus } from "metabase-types/api";
 
 import {
   CreateOrRefreshButton,
+  DisabledLastRefreshTimeLabel,
+  DisabledStatusLabel,
   ErrorIcon,
   LastRefreshTimeLabel,
   RefreshIcon,
@@ -73,6 +75,24 @@ export function ModelCacheManagementSection({ model }: Props) {
       </CreateOrRefreshButton>
     );
 
+  const canManageDB = model.canManageDB();
+  const statusMessage = persistedModel ? getStatusMessage(persistedModel) : "";
+  const statusLabel = canManageDB ? (
+    <StatusLabel>{statusMessage}</StatusLabel>
+  ) : (
+    <DisabledStatusLabel>{statusMessage}</DisabledStatusLabel>
+  );
+
+  const lastRefreshLabel = t`Last attempt ${lastRefreshTime}`;
+  const lastRefreshTimeLabel = canManageDB ? (
+    <LastRefreshTimeLabel> {lastRefreshLabel} </LastRefreshTimeLabel>
+  ) : (
+    <DisabledLastRefreshTimeLabel>
+      {" "}
+      {lastRefreshLabel}{" "}
+    </DisabledLastRefreshTimeLabel>
+  );
+
   return (
     <>
       {
@@ -86,16 +106,12 @@ export function ModelCacheManagementSection({ model }: Props) {
         <Row data-testid="model-cache-section">
           <div>
             <StatusContainer>
-              <StatusLabel>{getStatusMessage(persistedModel)}</StatusLabel>
+              {statusLabel}
               {isError && <ErrorIcon name="warning" />}
             </StatusContainer>
-            {isError && (
-              <LastRefreshTimeLabel>
-                {t`Last attempt ${lastRefreshTime}`}
-              </LastRefreshTimeLabel>
-            )}
+            {isError && lastRefreshTimeLabel}
           </div>
-          {canRefreshCache && refreshButton}
+          {canRefreshCache && canManageDB && refreshButton}
         </Row>
       )}
     </>

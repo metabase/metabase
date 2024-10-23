@@ -36,9 +36,10 @@ export function ModelCacheToggle({
 
   const isPersisted = persistedModel && persistedModel.state !== "off";
   const modelId = model.id();
-  const canPersist = database?.settings?.["persist-models-enabled"];
+  const canManage = model.canManageDB();
+  const canPersistDatabase = database?.settings?.["persist-models-enabled"];
 
-  if (!canPersist) {
+  if (!canPersistDatabase) {
     return (
       <Tooltip label={t`Model persistence is disabled for this database`}>
         <div>
@@ -48,6 +49,23 @@ export function ModelCacheToggle({
             label={t`Persist model data`}
             size="sm"
             checked={false}
+            disabled
+          />
+        </div>
+      </Tooltip>
+    );
+  }
+
+  if (!canManage) {
+    return (
+      <Tooltip label={t`You don't have permission to modify model persistence`}>
+        <div>
+          {" "}
+          {/* need this element so that disabled input doesn't swallow pointer events */}
+          <Switch
+            label={t`Persist model data`}
+            size="sm"
+            checked={isPersisted}
             disabled
           />
         </div>
@@ -65,7 +83,7 @@ export function ModelCacheToggle({
       size="sm"
       checked={isPersisted}
       onChange={toggleModelPersistence}
-      disabled={!canPersist}
+      disabled={false}
     />
   );
 }

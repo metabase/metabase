@@ -19,12 +19,21 @@ export const StatusLabel = styled.span`
   color: var(--mb-color-text-dark);
 `;
 
+export const DisabledStatusLabel = styled.span`
+  font-size: 0.875rem;
+  color: var(--mb-color-text-light);
+`;
+
 export const LastRefreshTimeLabel = styled.span`
   display: block;
   font-size: 0.875rem;
   font-weight: 400;
   color: var(--mb-color-text-medium);
   margin-top: 4px;
+`;
+
+export const DisabledLastRefreshTimeLabel = styled(LastRefreshTimeLabel)`
+  color: var(--mb-color-text-light);
 `;
 
 export const CreateOrRefreshButton = styled.button`
