@@ -42,7 +42,6 @@ import {
   createMockActionParameter,
   createMockDashboardCard,
 } from "metabase-types/api/mocks";
-const { PRODUCTS } = SAMPLE_DATABASE;
 
 const COUNT_COLUMN_ID = "count";
 const COUNT_COLUMN_NAME = "Count";
@@ -74,7 +73,8 @@ const FIRST_TAB = { id: 900, name: "first" };
 const SECOND_TAB = { id: 901, name: "second" };
 const THIRD_TAB = { id: 902, name: "third" };
 
-const { ORDERS_ID, ORDERS, PEOPLE } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PEOPLE, PRODUCTS, REVIEWS, REVIEWS_ID } =
+  SAMPLE_DATABASE;
 
 const TARGET_DASHBOARD = {
   name: "Target dashboard",
@@ -1992,9 +1992,13 @@ describeEE("scenarios > dashboard > dashboard cards > click behavior", () => {
 
   describe("multi-stage questions as target destination", () => {
     const questionDetails = QUESTION_TABLE;
+    const targetQuestion = {
+      name: "Target question",
+      query: createMultiStageQuery(),
+    };
 
     it("should allow navigating to questions with filters applied in every stage", () => {
-      createQuestion(TARGET_QUESTION);
+      createQuestion(targetQuestion);
       createQuestionAndDashboard({ questionDetails }).then(({ body: card }) => {
         visitDashboard(card.dashboard_id);
       });
@@ -2003,34 +2007,24 @@ describeEE("scenarios > dashboard > dashboard cards > click behavior", () => {
       getDashboardCard().realHover().icon("click").click();
 
       (function addCustomQuestionDestination() {
-        cy.log(
-          "custom destination (question) behavior for 'Created at' column",
-        );
-
         getCreatedAtToQuestionMapping().should("not.exist");
         cy.get("aside").findByText(CREATED_AT_COLUMN_NAME).click();
         addSavedQuestionDestination();
 
         getClickMapping("Created At: Month").click();
         popover().findByText(CREATED_AT_COLUMN_NAME).click();
-
         getClickMapping("Count").click();
         popover().findByText(COUNT_COLUMN_NAME).click();
 
         customizeLinkText(
           `Created at: {{${CREATED_AT_COLUMN_ID}}} - {{count}}`,
         );
-
-        cy.icon("chevronleft").click();
-        getCreatedAtToQuestionMapping().should("exist");
       })();
 
       cy.get("aside").button("Done").click();
       saveDashboard({ waitMs: 250 });
 
       (function testQuestionDestinationClick() {
-        cy.log("it handles 'Created At: Month' column click");
-
         getDashboardCard().findByText("Created at: May 2022 - 19").click();
 
         cy.wait("@dataset");
@@ -2041,7 +2035,7 @@ describeEE("scenarios > dashboard > dashboard cards > click behavior", () => {
         cy.location("pathname").should("equal", "/question");
         cy.findByTestId("app-bar").should(
           "contain.text",
-          `Started from ${TARGET_QUESTION.name}`,
+          `Started from ${targetQuestion.name}`,
         );
         verifyVizTypeIsLine();
 
@@ -2725,4 +2719,170 @@ function verifyVizTypeIsLine() {
     .findByTestId("Line-container")
     .should("have.attr", "aria-selected", "true");
   cy.findByTestId("viz-type-button").click();
+}
+
+function createMultiStageQuery() {
+  return {
+    "source-query": {
+      "source-table": ORDERS_ID,
+      joins: [
+        {
+          strategy: "left-join",
+          alias: "Reviews - Product",
+          condition: [
+            "=",
+            [
+              "field",
+              ORDERS.PRODUCT_ID,
+              {
+                "base-type": "type/Integer",
+              },
+            ],
+            [
+              "field",
+              "PRODUCT_ID",
+              {
+                "base-type": "type/Integer",
+                "join-alias": "Reviews - Product",
+              },
+            ],
+          ],
+          "source-table": REVIEWS_ID,
+        },
+      ],
+      expressions: {
+        Net: [
+          "-",
+          [
+            "field",
+            ORDERS.TOTAL,
+            {
+              "base-type": "type/Float",
+            },
+          ],
+          [
+            "field",
+            ORDERS.TAX,
+            {
+              "base-type": "type/Float",
+            },
+          ],
+        ],
+      },
+      aggregation: [
+        ["count"],
+        [
+          "sum",
+          [
+            "field",
+            ORDERS.TOTAL,
+            {
+              "base-type": "type/Float",
+            },
+          ],
+        ],
+      ],
+      breakout: [
+        [
+          "field",
+          ORDERS.CREATED_AT,
+          {
+            "base-type": "type/DateTime",
+            "temporal-unit": "month",
+          },
+        ],
+        [
+          "field",
+          PRODUCTS.CATEGORY,
+          {
+            "base-type": "type/Text",
+            "source-field": ORDERS.PRODUCT_ID,
+          },
+        ],
+        [
+          "field",
+          PEOPLE.CREATED_AT,
+          {
+            "base-type": "type/DateTime",
+            "temporal-unit": "year",
+            "source-field": ORDERS.USER_ID,
+            "original-temporal-unit": "month",
+          },
+        ],
+      ],
+    },
+    joins: [
+      {
+        strategy: "left-join",
+        alias: "Reviews - Created At: Month",
+        condition: [
+          "=",
+          [
+            "field",
+            "CREATED_AT",
+            {
+              "base-type": "type/DateTime",
+              "temporal-unit": "month",
+              "original-temporal-unit": "month",
+            },
+          ],
+          [
+            "field",
+            REVIEWS.CREATED_AT,
+            {
+              "base-type": "type/DateTime",
+              "temporal-unit": "month",
+              "join-alias": "Reviews - Created At: Month",
+              "original-temporal-unit": "month",
+            },
+          ],
+        ],
+        "source-table": REVIEWS_ID,
+      },
+    ],
+    expressions: {
+      "5 * Count": [
+        "*",
+        5,
+        [
+          "field",
+          "count",
+          {
+            "base-type": "type/Integer",
+          },
+        ],
+      ],
+    },
+    aggregation: [
+      ["count"],
+      [
+        "sum",
+        [
+          "field",
+          REVIEWS.RATING,
+          {
+            "base-type": "type/Integer",
+            "join-alias": "Reviews - Created At: Month",
+          },
+        ],
+      ],
+    ],
+    breakout: [
+      [
+        "field",
+        "PRODUCTS__via__PRODUCT_ID__CATEGORY",
+        {
+          "base-type": "type/Text",
+        },
+      ],
+      [
+        "field",
+        REVIEWS.CREATED_AT,
+        {
+          "base-type": "type/Text",
+          "join-alias": "Reviews - Created At: Month",
+        },
+      ],
+    ],
+  };
 }
