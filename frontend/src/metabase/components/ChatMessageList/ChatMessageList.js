@@ -272,7 +272,7 @@ const ChatMessageList = ({
                           onClick={() => openModal(card[visualizationIdx], visualizationIdx)}
                         >
                           <Icon size={18} name="bookmark" style={{ marginRight: "0.5rem" }} />
-                          <span style={{ fontSize: "18px", fontWeight: "lighter" }}>Verify & Save</span>
+                          <span style={{ fontSize: "18px", fontWeight: "lighter" }}>Verify</span>
                         </Button>
                       </div>
                     )}
