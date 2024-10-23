@@ -255,15 +255,13 @@ function verifyNotebookFilters(
   filters: string[] | undefined,
 ) {
   if (Array.isArray(filters)) {
-    getFilterStepNotebookItems(stageIndex).should(
+    getFilterItems(stageIndex).should(
       "have.length",
       filters.length + 1, // 1 because of add button
     );
 
     for (let index = 0; index < filters.length; ++index) {
-      getFilterStepNotebookItems(stageIndex)
-        .eq(index)
-        .should("have.text", filters[index]);
+      getFilterItems(stageIndex).eq(index).should("have.text", filters[index]);
     }
   } else {
     getNotebookStep("filter", { stage: stageIndex }).should("not.exist");
@@ -276,19 +274,19 @@ function verifyNotebookAggregations(
   breakouts: string[] | undefined,
 ) {
   if (Array.isArray(aggregations)) {
-    getSummarizeStepNotebookItems(stageIndex, "aggregate").should(
+    getSummarizeItems(stageIndex, "aggregate").should(
       "have.length",
       aggregations.length + 1, // 1 because of add button
     );
 
     for (let index = 0; index < aggregations.length; ++index) {
-      getSummarizeStepNotebookItems(stageIndex, "aggregate")
+      getSummarizeItems(stageIndex, "aggregate")
         .eq(index)
         .should("have.text", aggregations[index]);
     }
   } else {
     if (Array.isArray(breakouts)) {
-      getSummarizeStepNotebookItems(stageIndex, "aggregate").should(
+      getSummarizeItems(stageIndex, "aggregate").should(
         "have.length",
         1, // 1 because of add button
       );
@@ -304,19 +302,19 @@ function verifyNotebookBreakouts(
   breakouts: string[] | undefined,
 ) {
   if (Array.isArray(breakouts)) {
-    getSummarizeStepNotebookItems(stageIndex, "breakout").should(
+    getSummarizeItems(stageIndex, "breakout").should(
       "have.length",
       breakouts.length + 1, // +1 because of add button
     );
 
     for (let index = 0; index < breakouts.length; ++index) {
-      getSummarizeStepNotebookItems(stageIndex, "breakout")
+      getSummarizeItems(stageIndex, "breakout")
         .eq(index)
         .should("have.text", breakouts[index]);
     }
   } else {
     if (Array.isArray(aggregations)) {
-      getSummarizeStepNotebookItems(stageIndex, "breakout").should(
+      getSummarizeItems(stageIndex, "breakout").should(
         "have.length",
         1, // 1 because of add button
       );
@@ -336,13 +334,13 @@ function verifyNotebookLimit(stageIndex: number, limit: number | undefined) {
   }
 }
 
-function getFilterStepNotebookItems(stageIndex: number) {
+function getFilterItems(stageIndex: number) {
   return getNotebookStep("filter", { stage: stageIndex }).findAllByTestId(
     "notebook-cell-item",
   );
 }
 
-function getSummarizeStepNotebookItems(
+function getSummarizeItems(
   stageIndex: number,
   stepType: Extract<NotebookStepType, "aggregate" | "breakout">,
 ) {
