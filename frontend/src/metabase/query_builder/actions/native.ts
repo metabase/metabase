@@ -1,7 +1,7 @@
-import { createAction } from "redux-actions";
+import { createAction } from "@reduxjs/toolkit";
 
 import Questions from "metabase/entities/questions";
-import { createThunkAction } from "metabase/lib/redux";
+import { createAsyncThunk, createThunkAction } from "metabase/lib/redux";
 import { updateUserSetting } from "metabase/redux/settings";
 import { getMetadata } from "metabase/selectors/metadata";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
@@ -12,7 +12,11 @@ import type {
   Parameter,
   TemplateTag,
 } from "metabase-types/api";
-import type { Dispatch, GetState } from "metabase-types/store";
+import type {
+  Dispatch,
+  GetState,
+  QueryBuilderUIControls,
+} from "metabase-types/store";
 
 import {
   getDataReferenceStack,
@@ -29,7 +33,9 @@ export const TOGGLE_DATA_REFERENCE = "metabase/qb/TOGGLE_DATA_REFERENCE";
 export const toggleDataReference = createAction(TOGGLE_DATA_REFERENCE);
 
 export const SET_DATA_REFERENCE_STACK = "metabase/qb/SET_DATA_REFERENCE_STACK";
-export const setDataReferenceStack = createAction(SET_DATA_REFERENCE_STACK);
+export const setDataReferenceStack = createAction<
+  QueryBuilderUIControls["dataReferenceStack"]
+>(SET_DATA_REFERENCE_STACK);
 
 export const POP_DATA_REFERENCE_STACK = "metabase/qb/POP_DATA_REFERENCE_STACK";
 export const popDataReferenceStack = createThunkAction(
@@ -53,9 +59,9 @@ export const pushDataReferenceStack = createThunkAction(
 
 export const OPEN_DATA_REFERENCE_AT_QUESTION =
   "metabase/qb/OPEN_DATA_REFERENCE_AT_QUESTION";
-export const openDataReferenceAtQuestion = createThunkAction(
+export const openDataReferenceAtQuestion = createAsyncThunk<any, CardId>(
   OPEN_DATA_REFERENCE_AT_QUESTION,
-  (id: CardId) => async (dispatch: Dispatch, getState: GetState) => {
+  async (id, { dispatch, getState }) => {
     const action = await dispatch(
       Questions.actions.fetch(
         { id },
@@ -81,15 +87,18 @@ export const toggleTemplateTagsEditor = createAction(
 
 export const SET_IS_SHOWING_TEMPLATE_TAGS_EDITOR =
   "metabase/qb/SET_IS_SHOWING_TEMPLATE_TAGS_EDITOR";
-export const setIsShowingTemplateTagsEditor = (
-  isShowingTemplateTagsEditor: boolean,
-) => ({
-  type: SET_IS_SHOWING_TEMPLATE_TAGS_EDITOR,
-  isShowingTemplateTagsEditor,
-});
+
+export const setIsShowingTemplateTagsEditor = createAction(
+  SET_IS_SHOWING_TEMPLATE_TAGS_EDITOR,
+  (isShowingTemplateTagsEditor: boolean) => ({
+    payload: { isShowingTemplateTagsEditor },
+  }),
+);
 
 export const TOGGLE_SNIPPET_SIDEBAR = "metabase/qb/TOGGLE_SNIPPET_SIDEBAR";
-export const toggleSnippetSidebar = createAction(TOGGLE_SNIPPET_SIDEBAR);
+export const toggleSnippetSidebar = createAction<
+  Pick<QueryBuilderUIControls, "isShowingSnippetSidebar">
+>(TOGGLE_SNIPPET_SIDEBAR);
 
 export const SET_IS_SHOWING_SNIPPET_SIDEBAR =
   "metabase/qb/SET_IS_SHOWING_SNIPPET_SIDEBAR";
@@ -107,22 +116,29 @@ export const setIsNativeEditorOpen = (isNativeEditorOpen: boolean) => ({
 
 export const SET_NATIVE_EDITOR_SELECTED_RANGE =
   "metabase/qb/SET_NATIVE_EDITOR_SELECTED_RANGE";
-export const setNativeEditorSelectedRange = createAction(
-  SET_NATIVE_EDITOR_SELECTED_RANGE,
-);
+export const setNativeEditorSelectedRange = createAction<
+  QueryBuilderUIControls["nativeEditorSelectedRange"]
+>(SET_NATIVE_EDITOR_SELECTED_RANGE);
 
 export const SET_MODAL_SNIPPET = "metabase/qb/SET_MODAL_SNIPPET";
-export const setModalSnippet = createAction(SET_MODAL_SNIPPET);
+export const setModalSnippet =
+  createAction<QueryBuilderUIControls["modalSnippet"]>(SET_MODAL_SNIPPET);
 
 export const SET_SNIPPET_COLLECTION_ID =
   "metabase/qb/SET_SNIPPET_COLLECTION_ID";
-export const setSnippetCollectionId = createAction(SET_SNIPPET_COLLECTION_ID);
+export const setSnippetCollectionId = createAction<
+  QueryBuilderUIControls["snippetCollectionId"]
+>(SET_SNIPPET_COLLECTION_ID);
 
 export const openSnippetModalWithSelectedText =
   () => (dispatch: Dispatch, getState: GetState) => {
     const state = getState();
-    const content = getNativeEditorSelectedText(state);
-    const collection_id = getSnippetCollectionId(state);
+    const content = getNativeEditorSelectedText(
+      state,
+    ) as NativeQuerySnippet["content"];
+    const collection_id = getSnippetCollectionId(
+      state,
+    ) as NativeQuerySnippet["collection_id"];
     dispatch(setModalSnippet({ content, collection_id }));
   };
 

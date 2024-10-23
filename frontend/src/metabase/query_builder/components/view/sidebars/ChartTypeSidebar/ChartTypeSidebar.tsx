@@ -62,7 +62,7 @@ export const ChartTypeSidebar = ({
   const onOpenVizSettings = () => {
     dispatch(
       onOpenChartSettings({
-        initialChartSettings: { section: t`Data` },
+        initialChartSetting: { section: t`Data` },
         showSidebarTitle: true,
       }),
     );

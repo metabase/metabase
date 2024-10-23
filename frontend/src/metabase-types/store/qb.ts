@@ -1,14 +1,28 @@
+import type { Ace } from "ace-builds";
+
+import type { Widget } from "metabase/visualizations/components/ChartSettings";
+import type Question from "metabase-lib/v1/Question";
+import type Database from "metabase-lib/v1/metadata/Database";
+import type Schema from "metabase-lib/v1/metadata/Schema";
+import type Table from "metabase-lib/v1/metadata/Table";
 import type {
   Card,
   DashboardId,
   Dataset,
   Field,
+  NativeQuerySnippet,
   ParameterValueOrArray,
 } from "metabase-types/api";
 
 export type QueryBuilderMode = "view" | "notebook" | "dataset";
 export type DatasetEditorTab = "query" | "metadata";
 export type QueryBuilderQueryStatus = "idle" | "running" | "complete";
+export type DataReferenceStack =
+  | { type: "database"; item: Database }
+  | { type: "schema"; item: Schema }
+  | { type: "table"; item: Table }
+  | { type: "question"; item: Question }
+  | { type: "field"; item: Field };
 
 export type ForeignKeyReference = {
   status: number;
@@ -19,6 +33,7 @@ export interface QueryBuilderUIControls {
   isModifiedFromNotebook: boolean;
   isShowingDataReference: boolean;
   isShowingTemplateTagsEditor: boolean;
+  isShowingSnippetSidebar: boolean;
   isShowingNewbModal: boolean;
   isRunning: boolean;
   isQueryComplete: boolean;
@@ -28,14 +43,20 @@ export interface QueryBuilderUIControls {
   isShowingQuestionDetailsSidebar: boolean;
   isShowingTimelineSidebar: boolean;
   isNativeEditorOpen: boolean;
-  initialChartSetting: null;
+  initialChartSetting: { section: string; widget?: Widget } | null;
   isShowingRawTable: boolean;
-  queryBuilderMode: QueryBuilderMode;
-  previousQueryBuilderMode: boolean;
+  queryBuilderMode: QueryBuilderMode | null;
+  isShowingQuestionInfoSidebar: boolean;
+  isShowingQuestionSettingsSidebar: boolean;
+  previousQueryBuilderMode: QueryBuilderMode | null;
   snippetCollectionId: number | null;
+  modalSnippet: Partial<NativeQuerySnippet> | null;
   datasetEditorTab: DatasetEditorTab;
   isShowingNotebookNativePreview: boolean;
   notebookNativePreviewSidebarWidth: number | null;
+  dataReferenceStack: DataReferenceStack | null;
+  nativeEditorSelectedRange: Ace.Range | null;
+  showSidebarTitle: boolean;
 }
 
 export interface QueryBuilderLoadingControls {

@@ -1,6 +1,6 @@
-import { createAction } from "redux-actions";
+import { createAction } from "@reduxjs/toolkit";
 
-import { createThunkAction } from "metabase/lib/redux";
+import { createAsyncThunk } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
 import { getOriginalCard } from "metabase/query_builder/selectors";
 import { updateUserSetting } from "metabase/redux/settings";
@@ -9,13 +9,15 @@ import type {
   Dispatch,
   GetState,
   QueryBuilderMode,
+  QueryBuilderUIControls,
 } from "metabase-types/store";
 
 import { updateUrl } from "./navigation";
 import { cancelQuery } from "./querying";
 
 export const SET_UI_CONTROLS = "metabase/qb/SET_UI_CONTROLS";
-export const setUIControls = createAction(SET_UI_CONTROLS);
+export const setUIControls =
+  createAction<Partial<QueryBuilderUIControls>>(SET_UI_CONTROLS);
 
 export const RESET_UI_CONTROLS = "metabase/qb/RESET_UI_CONTROLS";
 export const resetUIControls = createAction(RESET_UI_CONTROLS);
@@ -54,9 +56,9 @@ export const setQueryBuilderMode =
 export const onEditSummary = createAction("metabase/qb/EDIT_SUMMARY");
 export const onCloseSummary = createAction("metabase/qb/CLOSE_SUMMARY");
 
-export const onOpenChartSettings = createAction(
-  "metabase/qb/OPEN_CHART_SETTINGS",
-);
+export const onOpenChartSettings = createAction<
+  Pick<QueryBuilderUIControls, "initialChartSetting" | "showSidebarTitle">
+>("metabase/qb/OPEN_CHART_SETTINGS");
 export const onCloseChartSettings = createAction(
   "metabase/qb/CLOSE_CHART_SETTINGS",
 );
@@ -83,16 +85,20 @@ export const onCloseChartType = createAction("metabase/qb/CLOSE_CHART_TYPE");
 export const onCloseSidebars = createAction("metabase/qb/CLOSE_SIDEBARS");
 
 export const CLOSE_QB_NEWB_MODAL = "metabase/qb/CLOSE_QB_NEWB_MODAL";
-export const closeQbNewbModal = createThunkAction(CLOSE_QB_NEWB_MODAL, () => {
-  return async (_dispatch, getState) => {
+export const closeQbNewbModal = createAsyncThunk(
+  CLOSE_QB_NEWB_MODAL,
+  async (_, { getState }) => {
     // persist the fact that this user has seen the NewbModal
     const { currentUser } = getState();
     await UserApi.update_qbnewb({ id: checkNotNull(currentUser).id });
-  };
-});
+  },
+);
 
 export const SHOW_CHART_SETTINGS = "metabase/qb/SHOW_CHART_SETTINGS";
-export const showChartSettings = createAction(SHOW_CHART_SETTINGS);
+export const showChartSettings =
+  createAction<QueryBuilderUIControls["initialChartSetting"]>(
+    SHOW_CHART_SETTINGS,
+  );
 
 export const NAVIGATE_BACK_TO_DASHBOARD =
   "metabase/qb/NAVIGATE_BACK_TO_DASHBOARD";

@@ -1,3 +1,4 @@
+import { createAction } from "@reduxjs/toolkit";
 import type { LocationDescriptorObject } from "history";
 import querystring from "querystring";
 
@@ -28,6 +29,7 @@ import { isSavedCard } from "metabase-types/guards";
 import type {
   Dispatch,
   GetState,
+  QueryBuilderState,
   QueryBuilderUIControls,
 } from "metabase-types/store";
 
@@ -205,6 +207,8 @@ export function parseHash(hash?: string) {
 }
 
 export const INITIALIZE_QB = "metabase/qb/INITIALIZE_QB";
+export const initializeQBAction =
+  createAction<QueryBuilderState>(INITIALIZE_QB);
 
 /**
  * Updates the template tag names in the query

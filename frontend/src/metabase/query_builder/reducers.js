@@ -17,75 +17,28 @@ import {
   CLEAR_OBJECT_DETAIL_FK_REFERENCES,
   CLEAR_QUERY_RESULT,
   CLOSE_QB,
-  CLOSE_QB_NEWB_MODAL,
   DESELECT_TIMELINE_EVENTS,
   HIDE_TIMELINE_EVENTS,
   INITIALIZE_QB,
   LOAD_OBJECT_DETAIL_FK_REFERENCES,
-  OPEN_DATA_REFERENCE_AT_QUESTION,
   QUERY_COMPLETED,
   QUERY_ERRORED,
   RELOAD_CARD,
   RESET_QB,
   RESET_ROW_ZOOM,
-  RESET_UI_CONTROLS,
   RUN_QUERY,
   SELECT_TIMELINE_EVENTS,
   SET_CARD_AND_RUN,
   SET_CURRENT_STATE,
-  SET_DATA_REFERENCE_STACK,
   SET_DOCUMENT_TITLE,
   SET_DOCUMENT_TITLE_TIMEOUT_ID,
-  SET_IS_SHOWING_TEMPLATE_TAGS_EDITOR,
   SET_METADATA_DIFF,
-  SET_MODAL_SNIPPET,
-  SET_NATIVE_EDITOR_SELECTED_RANGE,
   SET_PARAMETER_VALUE,
   SET_SHOW_LOADING_COMPLETE_FAVICON,
-  SET_SNIPPET_COLLECTION_ID,
-  SET_UI_CONTROLS,
-  SHOW_CHART_SETTINGS,
   SHOW_TIMELINE_EVENTS,
-  TOGGLE_DATA_REFERENCE,
-  TOGGLE_SNIPPET_SIDEBAR,
-  TOGGLE_TEMPLATE_TAGS_EDITOR,
   ZOOM_IN_ROW,
-  onCloseChartSettings,
-  onCloseChartType,
-  onCloseQuestionInfo,
-  onCloseQuestionSettings,
-  onCloseSidebars,
-  onCloseSummary,
   onCloseTimelines,
-  onEditSummary,
-  onOpenChartSettings,
-  onOpenChartType,
-  onOpenQuestionInfo,
-  onOpenQuestionSettings,
-  onOpenTimelines,
 } from "./actions";
-
-const DEFAULT_UI_CONTROLS = {
-  dataReferenceStack: null,
-  isModifiedFromNotebook: false,
-  isShowingDataReference: false,
-  isShowingTemplateTagsEditor: false,
-  isShowingNewbModal: false,
-  isRunning: false,
-  isQueryComplete: false,
-  isShowingSummarySidebar: false,
-  isShowingChartTypeSidebar: false,
-  isShowingChartSettingsSidebar: false,
-  isShowingQuestionInfoSidebar: false,
-  isShowingTimelineSidebar: false,
-  isNativeEditorOpen: false,
-  initialChartSetting: null,
-  isShowingRawTable: false, // table/viz toggle
-  queryBuilderMode: false, // "view" | "notebook" | "dataset"
-  previousQueryBuilderMode: false,
-  snippetCollectionId: null,
-  datasetEditorTab: "query", // "query" / "metadata"
-};
 
 const DEFAULT_LOADING_CONTROLS = {
   showLoadCompleteFavicon: false,
@@ -99,225 +52,6 @@ const DEFAULT_DASHBOARD_STATE = {
 };
 
 const DEFAULT_QUERY_STATUS = "idle";
-
-const UI_CONTROLS_SIDEBAR_DEFAULTS = {
-  isShowingSummarySidebar: false,
-  isShowingChartSettingsSidebar: false,
-  isShowingChartTypeSidebar: false,
-  isShowingTimelineSidebar: false,
-  isShowingQuestionInfoSidebar: false,
-};
-
-// this is used to close other sidebar when one is updated
-const CLOSED_NATIVE_EDITOR_SIDEBARS = {
-  isShowingTemplateTagsEditor: false,
-  isShowingSnippetSidebar: false,
-  isShowingDataReference: false,
-  isShowingTimelineSidebar: false,
-};
-
-function setUIControls(state, changes) {
-  const { queryBuilderMode: currentQBMode, ...currentState } = state;
-  const { queryBuilderMode: nextQBMode, ...nextStateChanges } = changes;
-
-  const isChangingQBMode = nextQBMode && currentQBMode !== nextQBMode;
-  const isOpeningEditingQBMode = isChangingQBMode && nextQBMode !== "view";
-
-  const queryBuilderMode = nextQBMode || currentQBMode;
-  const previousQueryBuilderMode = isChangingQBMode
-    ? currentQBMode
-    : state.previousQueryBuilderMode;
-
-  // Close all the sidebars when entering notebook/dataset QB modes
-  const extraState = isOpeningEditingQBMode ? UI_CONTROLS_SIDEBAR_DEFAULTS : {};
-
-  return {
-    ...currentState,
-    ...extraState,
-    ...nextStateChanges,
-    queryBuilderMode,
-    previousQueryBuilderMode,
-  };
-}
-
-export const uiControls = handleActions(
-  {
-    [SET_UI_CONTROLS]: {
-      next: (state, { payload }) => setUIControls(state, payload),
-    },
-
-    [RESET_UI_CONTROLS]: {
-      next: (state, { payload }) => DEFAULT_UI_CONTROLS,
-    },
-
-    [INITIALIZE_QB]: {
-      next: (state, { payload }) => {
-        return {
-          ...state,
-          ...DEFAULT_UI_CONTROLS,
-          ...CLOSED_NATIVE_EDITOR_SIDEBARS,
-          ...payload.uiControls,
-        };
-      },
-    },
-
-    [TOGGLE_DATA_REFERENCE]: {
-      next: (state, { payload }) => ({
-        ...state,
-        ...CLOSED_NATIVE_EDITOR_SIDEBARS,
-        isShowingDataReference: !state.isShowingDataReference,
-      }),
-    },
-    [SET_DATA_REFERENCE_STACK]: {
-      next: (state, { payload }) => ({
-        ...state,
-        dataReferenceStack: payload,
-      }),
-    },
-    [OPEN_DATA_REFERENCE_AT_QUESTION]: {
-      next: (state, { payload }) => {
-        return payload
-          ? {
-              ...state,
-              dataReferenceStack: payload,
-              isShowingDataReference: true,
-            }
-          : state;
-      },
-    },
-    [TOGGLE_TEMPLATE_TAGS_EDITOR]: {
-      next: (state, { payload }) => ({
-        ...state,
-        ...CLOSED_NATIVE_EDITOR_SIDEBARS,
-        isShowingTemplateTagsEditor: !state.isShowingTemplateTagsEditor,
-      }),
-    },
-    [TOGGLE_SNIPPET_SIDEBAR]: {
-      next: (state, { payload }) => ({
-        ...state,
-        ...CLOSED_NATIVE_EDITOR_SIDEBARS,
-        isShowingSnippetSidebar: !state.isShowingSnippetSidebar,
-        snippetCollectionId: null,
-      }),
-    },
-    [SET_IS_SHOWING_TEMPLATE_TAGS_EDITOR]: {
-      next: (state, { isShowingTemplateTagsEditor }) => ({
-        ...state,
-        ...CLOSED_NATIVE_EDITOR_SIDEBARS,
-        isShowingTemplateTagsEditor,
-      }),
-    },
-    [SET_NATIVE_EDITOR_SELECTED_RANGE]: (state, { payload }) => ({
-      ...state,
-      nativeEditorSelectedRange: payload,
-    }),
-    [SET_MODAL_SNIPPET]: (state, { payload }) => ({
-      ...state,
-      modalSnippet: payload,
-    }),
-    [SET_SNIPPET_COLLECTION_ID]: (state, { payload }) => ({
-      ...state,
-      snippetCollectionId: payload,
-    }),
-    [CLOSE_QB_NEWB_MODAL]: {
-      next: (state, { payload }) => ({ ...state, isShowingNewbModal: false }),
-    },
-
-    [RUN_QUERY]: state => ({
-      ...state,
-      isRunning: true,
-    }),
-    [CANCEL_QUERY]: {
-      next: (state, { payload }) => ({ ...state, isRunning: false }),
-    },
-    [QUERY_COMPLETED]: {
-      next: (state, { payload }) => ({
-        ...state,
-        isRunning: false,
-      }),
-    },
-    [QUERY_ERRORED]: {
-      next: (state, { payload }) => ({ ...state, isRunning: false }),
-    },
-
-    [SHOW_CHART_SETTINGS]: {
-      next: (state, { payload }) => ({
-        ...state,
-        ...UI_CONTROLS_SIDEBAR_DEFAULTS,
-        isShowingChartSettingsSidebar: true,
-        initialChartSetting: payload,
-      }),
-    },
-    // AGGREGATION
-    [onEditSummary]: state => ({
-      ...state,
-      ...UI_CONTROLS_SIDEBAR_DEFAULTS,
-      isShowingSummarySidebar: true,
-    }),
-    [onCloseSummary]: state => ({
-      ...state,
-      ...UI_CONTROLS_SIDEBAR_DEFAULTS,
-    }),
-    [onOpenChartSettings]: (
-      state,
-      { payload: { initialChartSettings, showSidebarTitle = false } = {} },
-    ) => ({
-      ...state,
-      ...UI_CONTROLS_SIDEBAR_DEFAULTS,
-      isShowingChartSettingsSidebar: true,
-      initialChartSetting: initialChartSettings,
-      showSidebarTitle: showSidebarTitle,
-    }),
-    [onCloseChartSettings]: state => ({
-      ...state,
-      ...UI_CONTROLS_SIDEBAR_DEFAULTS,
-    }),
-    [onOpenChartType]: state => ({
-      ...state,
-      ...UI_CONTROLS_SIDEBAR_DEFAULTS,
-      isShowingChartTypeSidebar: true,
-    }),
-    [onCloseChartType]: state => ({
-      ...state,
-      ...UI_CONTROLS_SIDEBAR_DEFAULTS,
-    }),
-    [onOpenQuestionInfo]: state =>
-      setUIControls(state, {
-        ...UI_CONTROLS_SIDEBAR_DEFAULTS,
-        isShowingQuestionInfoSidebar: true,
-        queryBuilderMode: "view",
-      }),
-    [onCloseQuestionInfo]: state => ({
-      ...state,
-      isShowingQuestionInfoSidebar: false,
-    }),
-    [onOpenQuestionSettings]: state =>
-      setUIControls(state, {
-        ...UI_CONTROLS_SIDEBAR_DEFAULTS,
-        isShowingQuestionSettingsSidebar: true,
-        queryBuilderMode: "view",
-      }),
-    [onCloseQuestionSettings]: state => ({
-      ...state,
-      isShowingQuestionSettingsSidebar: false,
-    }),
-    [onOpenTimelines]: state => ({
-      ...state,
-      ...UI_CONTROLS_SIDEBAR_DEFAULTS,
-      ...CLOSED_NATIVE_EDITOR_SIDEBARS,
-      isShowingTimelineSidebar: true,
-    }),
-    [onCloseTimelines]: state => ({
-      ...state,
-      ...UI_CONTROLS_SIDEBAR_DEFAULTS,
-    }),
-    [onCloseSidebars]: state => ({
-      ...state,
-      ...UI_CONTROLS_SIDEBAR_DEFAULTS,
-    }),
-  },
-  DEFAULT_UI_CONTROLS,
-);
 
 export const loadingControls = handleActions(
   {

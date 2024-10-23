@@ -7,8 +7,8 @@ import {
 } from "metabase/dashboard/actions";
 import {
   API_UPDATE_QUESTION,
-  INITIALIZE_QB,
   RESET_QB,
+  initializeQBAction,
 } from "metabase/query_builder/actions";
 import type { ParameterValuesCache } from "metabase-types/store/parameters";
 
@@ -31,7 +31,7 @@ export const parameterValuesCache = handleActions<
     [UPDATE_DASHBOARD_AND_CARDS]: { next: () => ({}) },
     [RESET]: { next: () => ({}) },
     // query builder
-    [INITIALIZE_QB]: { next: () => ({}) },
+    [initializeQBAction.type]: { next: () => ({}) },
     [API_UPDATE_QUESTION]: { next: () => ({}) },
     [RESET_QB]: { next: () => ({}) },
   },
