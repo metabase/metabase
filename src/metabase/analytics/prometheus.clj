@@ -110,19 +110,19 @@
 
 (def ^:private label-translation
   {:maxPoolSize        {:label       "c3p0_max_pool_size"
-                        :description (deferred-trs "C3P0 Max pool size")}
+                        :description "C3P0 Max pool size"}
    :minPoolSize        {:label       "c3p0_min_pool_size"
-                        :description (deferred-trs "C3P0 Minimum pool size")}
+                        :description "C3P0 Minimum pool size"}
    :numConnections     {:label       "c3p0_num_connections"
-                        :description (deferred-trs "C3P0 Number of connections")}
+                        :description "C3P0 Number of connections"}
    :numIdleConnections {:label       "c3p0_num_idle_connections"
-                        :description (deferred-trs "C3P0 Number of idle connections")}
+                        :description "C3P0 Number of idle connections"}
    :numBusyConnections {:label       "c3p0_num_busy_connections"
-                        :description (deferred-trs "C3P0 Number of busy connections")}
+                        :description "C3P0 Number of busy connections"}
 
    :numThreadsAwaitingCheckoutDefaultUser
    {:label       "c3p0_num_threads_awaiting_checkout_default_user"
-    :description (deferred-trs "C3P0 Number of threads awaiting checkout")}})
+    :description "C3P0 Number of threads awaiting checkout"}})
 
 (defn- stats->prometheus
   "Create an ArrayList of GaugeMetricFamily objects containing measurements from the c3p0 stats. Stats are grouped by
@@ -133,7 +133,7 @@
       (if-let [{gauge-label :label desc :description} (label-translation raw-label)]
         (let [gauge (GaugeMetricFamily.
                      ^String gauge-label
-                     ^String (str desc) ;; site-localized becomes string
+                     ^String desc
                      (List/of "database"))]
           (doseq [m measurements]
             (.addMetric gauge (List/of (:label m)) (:value m)))

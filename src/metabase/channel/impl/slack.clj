@@ -1,4 +1,4 @@
-(ns metabase.channel.slack
+(ns metabase.channel.impl.slack
   (:require
    [clojure.string :as str]
    [metabase.channel.core :as channel]
