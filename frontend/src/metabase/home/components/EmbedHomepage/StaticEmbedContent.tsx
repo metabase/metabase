@@ -5,6 +5,8 @@ import { t } from "ttag";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { Box, Button, Group, Text } from "metabase/ui";
 
+import { trackEmbeddingHomepageExampleDashboardClick } from "./analytics";
+
 type StaticEmbedContentProps = {
   exampleDashboardLink?: string;
   learnMoreStaticEmbedUrl: string;
@@ -33,7 +35,10 @@ export const StaticEmbedContent = ({
     />
     <Group spacing="md">
       {exampleDashboardLink && (
-        <Link to={exampleDashboardLink}>
+        <Link
+          to={exampleDashboardLink}
+          onClick={trackEmbeddingHomepageExampleDashboardClick}
+        >
           <Button variant="outline">{t`Embed an example dashboard`}</Button>
         </Link>
       )}
