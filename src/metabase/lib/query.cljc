@@ -421,3 +421,12 @@
   [a-query stage-number card-id f & args]
   (let [{q :query, n :stage-number} (wrap-native-query-with-mbql a-query stage-number card-id)]
     (apply f q n args)))
+
+(defn serializable
+  "Given a query, ensure it doesn't have any keys or structures that aren't safe for serialization.
+
+  For example, any Atoms or Delays or should be removed."
+  [a-query]
+  (-> a-query
+      (dissoc a-query :lib/metadata)
+      lib.cache/discard-query-cache))
