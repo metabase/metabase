@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import { Box, Text, ScrollArea, Title, Divider } from "metabase/ui";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
-
+import { useSetting } from "metabase/common/hooks";
 import dayjs from "dayjs";
 
 interface ChatHistoryProps {
@@ -48,16 +48,26 @@ const ChatHistory = ({
   const [hasMore, setHasMore] = useState(true); // Track if there is more data to load
   const [loading, setLoading] = useState(true); // Add a loading state
   const scrollContainerRef = useRef<HTMLDivElement | null>(null); // Ref for scroll area
-  const [activeMenu, setActiveMenu] = useState<string | null>(null); // State for showing menu
+  const siteName = useSetting("site-name");
+  const formattedSiteName = siteName
+    ? siteName.replace(/\s+/g, "_").toLowerCase()
+    : "";
+  const initialCompanyName = formattedSiteName;
 
   const initializeClientAndThreads = async () => {
     try {
       setLoading(true); // Set loading to true while fetching data
       setCreatedThread([]); // Clear the existing threads
       const threads = await client.threads.search();
-      const filteredThreads = threads.filter(
-        (thread: any) => thread.metadata && thread.metadata.graph_id === "get_data_agent"
-      );
+  
+      const filteredThreads = threads.filter((thread: any) => {
+        const hasValidGraphId = thread.metadata && thread.metadata.graph_id === "get_data_agent";
+        const hasValues = thread.values && thread.values.company_name;
+        const isCompanyMatch = hasValues && thread.values.company_name === initialCompanyName;
+        
+        return hasValidGraphId && isCompanyMatch;
+      });
+  
       setCreatedThread(filteredThreads); // Set the new fetched threads
       setLoading(false); // Set loading to false after fetching
     } catch (error) {
@@ -65,10 +75,12 @@ const ChatHistory = ({
       setLoading(false); // Set loading to false if there's an error
     }
   };
-
+  
   useEffect(() => {
     initializeClientAndThreads();
   }, []);
+  
+  
 
   // Refetch threads when `shouldRefetchHistory` is true
   useEffect(() => {
