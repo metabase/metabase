@@ -372,16 +372,18 @@ describe("scenarios > visualizations > bar chart", () => {
     });
 
     cy.findByTestId("viz-settings-button").click();
+    leftSidebar().button("90 more series").click();
     cy.get("[data-testid^=draggable-item]").should("have.length", 100);
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("ID is less than 101").click();
-    cy.findByDisplayValue("101").type("{backspace}2");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Update filter").click();
+    cy.findByTestId("qb-filters-panel")
+      .findByText("ID is less than 101")
+      .click();
+    popover().within(() => {
+      cy.findByDisplayValue("101").type("{backspace}2");
+      cy.button("Update filter").click();
+    });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(
+    queryBuilderMain().findByText(
       "This chart type doesn't support more than 100 series of data.",
     );
     cy.get("[data-testid^=draggable-item]").should("have.length", 0);
