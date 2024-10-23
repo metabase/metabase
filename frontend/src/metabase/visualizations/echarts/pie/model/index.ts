@@ -167,9 +167,8 @@ function calculatePercentageAndIsOther(
   );
 }
 
-function aggregateSlices(
+function aggregateChildrenSlices(
   node: SliceTreeNode,
-  total: number,
   renderingContext: RenderingContext,
 ) {
   const children = getArrayFromMapValues(node.children);
@@ -188,7 +187,7 @@ function aggregateSlices(
       name: OTHER_SLICE_NAME,
       value: otherTotal,
       displayValue: otherTotal,
-      normalizedPercentage: otherTotal / total,
+      normalizedPercentage: otherTotal / node.value,
       color: renderingContext.getColor("text-light"),
       children: otherSliceChildren,
       visible: true,
@@ -200,7 +199,7 @@ function aggregateSlices(
     others[0].isOther = false;
   }
 
-  children.forEach(child => aggregateSlices(child, total, renderingContext));
+  children.forEach(child => aggregateChildrenSlices(child, renderingContext));
 }
 
 function computeSliceAngles(
@@ -485,7 +484,7 @@ export function getPieChartModel(
 
   // Aggregate slices in middle and outer ring into "other" slices
   sliceTreeNodes.forEach(node =>
-    aggregateSlices(node, total, renderingContext),
+    aggregateChildrenSlices(node, renderingContext),
   );
 
   // We increase the size of small slices, but only for the first ring, because
