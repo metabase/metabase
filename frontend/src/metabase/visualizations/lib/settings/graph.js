@@ -70,7 +70,7 @@ const areAllBars = (series, settings) =>
   getSeriesDisplays(series, settings).every(display => display === "bar");
 
 const canHaveMaxCategoriesSetting = (series, settings) => {
-  return areAllBars(series, settings) && series.length >= 2;
+  return Boolean(series && areAllBars(series, settings) && series.length >= 2);
 };
 
 export const GRAPH_DATA_SETTINGS = {
