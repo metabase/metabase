@@ -165,8 +165,7 @@ export function getParameterColumns(question: Question, parameter?: Parameter) {
   const nextQuery = question.isPivoted() ? query : Lib.ensureFilterStage(query);
 
   if (parameter && isTemporalUnitParameter(parameter)) {
-    const needsFilterStage = Lib.stageCount(query) < Lib.stageCount(nextQuery);
-    const stageIndex = needsFilterStage ? -2 : -1;
+    const stageIndex = Lib.stageCount(query) - 1;
     const availableColumns = getTemporalColumns(nextQuery, stageIndex);
     const columns = availableColumns.filter(({ column, stageIndex }) => {
       return columnFilterForParameter(nextQuery, stageIndex, parameter)(column);
