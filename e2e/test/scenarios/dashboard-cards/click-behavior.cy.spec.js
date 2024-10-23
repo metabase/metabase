@@ -1991,7 +1991,39 @@ describeEE("scenarios > dashboard > dashboard cards > click behavior", () => {
   });
 
   describe("multi-stage questions as target destination", () => {
-    const questionDetails = QUESTION_TABLE;
+    const questionDetails = {
+      name: "Table",
+      query: {
+        aggregation: [["count"]],
+        breakout: [
+          [
+            "field",
+            ORDERS.CREATED_AT,
+            { "base-type": "type/DateTime", "temporal-unit": "month" },
+          ],
+          [
+            "field",
+            PRODUCTS.CATEGORY,
+            { "base-type": "type/Text", "source-field": ORDERS.PRODUCT_ID },
+          ],
+          ["field", ORDERS.ID, { "base-type": "type/BigInteger" }],
+          [
+            "field",
+            PEOPLE.LONGITUDE,
+            {
+              "base-type": "type/Float",
+              binning: {
+                strategy: "default",
+              },
+              "source-field": ORDERS.USER_ID,
+            },
+          ],
+        ],
+        "source-table": ORDERS_ID,
+        limit: 5,
+      },
+    };
+
     const targetQuestion = {
       name: "Target question",
       query: createMultiStageQuery(),
@@ -2010,6 +2042,80 @@ describeEE("scenarios > dashboard > dashboard cards > click behavior", () => {
         getCreatedAtToQuestionMapping().should("not.exist");
         cy.get("aside").findByText(CREATED_AT_COLUMN_NAME).click();
         addSavedQuestionDestination();
+
+        verifyAvailableClickTargetColumns([
+          // Orders
+          "ID",
+          "User ID",
+          "Product ID",
+          "Subtotal",
+          "Tax",
+          "Total",
+          "Discount",
+          "Created At",
+          "Quantity",
+          // Custom columns
+          "Net",
+          // Reviews #1 (explicit join)
+          "Reviews - Product → ID",
+          "Reviews - Product → Product ID",
+          "Reviews - Product → Reviewer",
+          "Reviews - Product → Rating",
+          "Reviews - Product → Body",
+          "Reviews - Product → Created At",
+          // Products (implicit join with Orders)
+          "Product → ID",
+          "Product → Ean",
+          "Product → Title",
+          "Product → Category",
+          "Product → Vendor",
+          "Product → Price",
+          "Product → Rating",
+          "Product → Created At",
+          // People (implicit join with Orders)
+          "User → ID",
+          "User → Address",
+          "User → Email",
+          "User → Password",
+          "User → Name",
+          "User → City",
+          "User → Longitude",
+          "User → State",
+          "User → Source",
+          "User → Birth Date",
+          "User → Zip",
+          "User → Latitude",
+          "User → Created At",
+          // Products (implicit join with reviews)
+          "Product → ID",
+          "Product → Ean",
+          "Product → Title",
+          "Product → Category",
+          "Product → Vendor",
+          "Product → Price",
+          "Product → Rating",
+          "Product → Created At",
+          // Aggregations & breakouts
+          "Created At: Month",
+          "Category",
+          "Created At: Year",
+          "Count",
+          "Sum of Total",
+          // Custom columns
+          "5 * Count",
+          // Reviews #2 (explicit join)
+          "Reviews - Created At: Month → ID",
+          "Reviews - Created At: Month → Product ID",
+          "Reviews - Created At: Month → Reviewer",
+          "Reviews - Created At: Month → Rating",
+          "Reviews - Created At: Month → Body",
+          "Reviews - Created At: Month → Created At",
+          // Aggregations & breakouts
+          "Category",
+          "Created At",
+          "Count",
+          "Sum of Rating",
+        ]);
 
         getClickMapping("Created At: Month").click();
         popover().findByText(CREATED_AT_COLUMN_NAME).click();
@@ -2719,6 +2825,21 @@ function verifyVizTypeIsLine() {
     .findByTestId("Line-container")
     .should("have.attr", "aria-selected", "true");
   cy.findByTestId("viz-type-button").click();
+}
+
+function verifyAvailableClickTargetColumns(columns) {
+  cy.get("aside").within(() => {
+    for (let index = 0; index < columns.length; ++index) {
+      cy.findAllByTestId("click-target-column")
+        .eq(index)
+        .should("have.text", columns[index]);
+    }
+
+    cy.findAllByTestId("click-target-column").should(
+      "have.length",
+      columns.length,
+    );
+  });
 }
 
 function createMultiStageQuery() {

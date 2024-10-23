@@ -182,7 +182,9 @@ function TargetWithoutSource({
   return (
     <Select
       key={id}
-      triggerElement={<TargetTrigger>{name}</TargetTrigger>}
+      triggerElement={
+        <TargetTrigger data-testid="click-target-column">{name}</TargetTrigger>
+      }
       value={null}
       sections={Object.entries(sourceOptions).map(([sourceType, items]) => ({
         name: {
