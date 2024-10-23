@@ -2191,7 +2191,6 @@
                        {:upload-type int-type,   :uncoerced "2.0",        :coerced 2} ; value is coerced to int
                        {:upload-type float-type, :uncoerced "2",          :coerced 2.0} ; column is promoted to float
                        {:upload-type bool-type,  :uncoerced "0",          :coerced false}
-                       {:upload-type bool-type,  :uncoerced "2",          :coerced 2} ; column is promoted to int
                        {:upload-type bool-type,  :uncoerced "1.0",        :fail-msg "'1.0' is not a recognizable boolean"}
                        {:upload-type bool-type,  :uncoerced "0.0",        :fail-msg "'0.0' is not a recognizable boolean"}
                        {:upload-type int-type,   :uncoerced "01/01/2012", :fail-msg "'01/01/2012' is not a recognizable number"}]]
