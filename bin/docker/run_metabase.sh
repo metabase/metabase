@@ -49,8 +49,6 @@ docker_setup_env() {
     file_env 'MB_LDAP_PASSWORD'
     file_env 'MB_LDAP_BIND_DN'
     file_env 'REACT_APP_SEMANTIC'
-    file_env 'REACT_APP_WEBSOCKET_SERVER'
-    file_env 'HOSTNAME_APP'
 }
 
 # detect if the container is started as root or not
