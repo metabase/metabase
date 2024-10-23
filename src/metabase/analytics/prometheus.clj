@@ -207,10 +207,10 @@
                        {:description "Number of successful responses from SCIM endpoints"})
    (prometheus/counter :metabase-scim/response-error
                        {:description "Number of error responses from SCIM endpoints"})
-   (prometheus/counter :metabase-query-processor/metrics
-                       {:description "Number of queries consuming metrics processed by the query processor."})
-   (prometheus/counter :metabase-query-processor/metric-errors
-                       {:description "Number of errors when processing metrics."})])
+   (prometheus/counter :metabase-query-processor/metrics-adjust
+                       {:description "Number of queries with metrics processed by the metrics adjust middleware."})
+   (prometheus/counter :metabase-query-processor/metrics-adjust-errors
+                       {:description "Number of errors when processing metrics in the metrics adjust middleware."})])
 
 (defn- setup-metrics!
   "Instrument the application. Conditionally done when some setting is set. If [[prometheus-server-port]] is not set it
