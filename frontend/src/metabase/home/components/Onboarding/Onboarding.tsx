@@ -20,6 +20,7 @@ import {
   getApplicationName,
   getShowMetabaseLinks,
 } from "metabase/selectors/whitelabel";
+import { getIsHosted } from "metabase/setup/selectors";
 import {
   Accordion,
   Box,
@@ -72,8 +73,8 @@ export const Onboarding = () => {
 
   const DEFAULT_ITEM = "database";
 
-  const shouldConfigureCommunicationChannels =
-    plan === "oss" || plan === "pro-self-hosted";
+  const isHosted = useSelector(getIsHosted);
+  const shouldConfigureCommunicationChannels = !isHosted;
 
   const shouldShowSupport = plan !== "oss";
 
@@ -205,7 +206,7 @@ export const Onboarding = () => {
         >
           <Box mb={64}>
             <Title order={2} mb="lg">{t`Set up your ${applicationName}`}</Title>
-            <Accordion.Item value="database">
+            <Accordion.Item value="database" data-testid="database-item">
               <Accordion.Control icon={<Icon name="add_data" />}>
                 {t`Connect to your database`}
               </Accordion.Control>
@@ -223,16 +224,18 @@ export const Onboarding = () => {
                   <Text>
                     {t`You can connect multiple databases, and query them directly with the query builder or the Native/SQL editor. ${applicationName} connects to more than 15 popular databases.`}
                   </Text>
-                  <Link
-                    to="/admin/databases/create"
-                    onClick={() => trackChecklistItemCTAClicked("database")}
-                  >
-                    <Button variant="outline">{t`Add Database`}</Button>
-                  </Link>
+                  <Box data-testid="database-cta">
+                    <Link
+                      to="/admin/databases/create"
+                      onClick={() => trackChecklistItemCTAClicked("database")}
+                    >
+                      <Button variant="outline">{t`Add Database`}</Button>
+                    </Link>
+                  </Box>
                 </Stack>
               </Accordion.Panel>
             </Accordion.Item>
-            <Accordion.Item value="invite">
+            <Accordion.Item value="invite" data-testid="invite-item">
               <Accordion.Control icon={<Icon name="group" />}>
                 {t`Invite people`}
               </Accordion.Control>
@@ -254,7 +257,7 @@ export const Onboarding = () => {
                     <Text>{t`Don't be shy with invites. Metabase Starter plan includes 5 users, and Pro includes 10 users without the need to pay additionally.`}</Text>
                   )}
 
-                  <Group spacing={0}>
+                  <Group spacing={0} data-testid="invite-cta">
                     <Link
                       to="/admin/people"
                       onClick={() =>
@@ -279,7 +282,7 @@ export const Onboarding = () => {
 
           <Box mb={64}>
             <Title order={2} mb="lg">{t`Start visualizing your data`}</Title>
-            <Accordion.Item value="x-ray">
+            <Accordion.Item value="x-ray" data-testid="x-ray-item">
               <Accordion.Control icon={<Icon name="bolt" />}>
                 {t`Create automatic dashboards`}
               </Accordion.Control>
@@ -302,16 +305,18 @@ export const Onboarding = () => {
                       />
                     )}. ${applicationName} will create a bunch of charts based on that data and arrange them on a dashboard.`}
                   </Text>
-                  <Link
-                    to="/browse/databases"
-                    onClick={() => trackChecklistItemCTAClicked("x-ray")}
-                  >
-                    <Button variant="outline">{t`Browse data`}</Button>
-                  </Link>
+                  <Box data-testid="x-ray-cta">
+                    <Link
+                      to="/browse/databases"
+                      onClick={() => trackChecklistItemCTAClicked("x-ray")}
+                    >
+                      <Button variant="outline">{t`Browse data`}</Button>
+                    </Link>
+                  </Box>
                 </Stack>
               </Accordion.Panel>
             </Accordion.Item>
-            <Accordion.Item value="notebook">
+            <Accordion.Item value="notebook" data-testid="notebook-item">
               <Accordion.Control icon={<Icon name="notebook" />}>
                 {t`Make an interactive chart with the query builder`}
               </Accordion.Control>
@@ -330,17 +335,19 @@ export const Onboarding = () => {
                       <b key="drill-through">{t`drill-through the chart`}</b>
                     )} to explore the data further.`}
                   </Text>
-                  <Link
-                    to={newQuestionUrl}
-                    onClick={() => trackChecklistItemCTAClicked("notebook")}
-                  >
-                    <Button variant="outline">{t`New question`}</Button>
-                  </Link>
+                  <Box data-testid="notebook-cta">
+                    <Link
+                      to={newQuestionUrl}
+                      onClick={() => trackChecklistItemCTAClicked("notebook")}
+                    >
+                      <Button variant="outline">{t`New question`}</Button>
+                    </Link>
+                  </Box>
                 </Stack>
               </Accordion.Panel>
             </Accordion.Item>
 
-            <Accordion.Item value="sql">
+            <Accordion.Item value="sql" data-testid="sql-item">
               <Accordion.Control icon={<Icon name="sql" />}>
                 {t`Query with SQL`}
               </Accordion.Control>
@@ -368,16 +375,18 @@ export const Onboarding = () => {
                       )
                     }, and reference the results of models or other saved question in your code.`}
                   </Text>
-                  <Link
-                    to={newNativeQuestionUrl}
-                    onClick={() => trackChecklistItemCTAClicked("sql")}
-                  >
-                    <Button variant="outline">{t`New native query`}</Button>
-                  </Link>
+                  <Box data-testid="sql-cta">
+                    <Link
+                      to={newNativeQuestionUrl}
+                      onClick={() => trackChecklistItemCTAClicked("sql")}
+                    >
+                      <Button variant="outline">{t`New native query`}</Button>
+                    </Link>
+                  </Box>
                 </Stack>
               </Accordion.Panel>
             </Accordion.Item>
-            <Accordion.Item value="dashboard">
+            <Accordion.Item value="dashboard" data-testid="dashboard-item">
               <Accordion.Control icon={<Icon name="dashboard" />}>
                 {t`Create and filter a dashboard`}
               </Accordion.Control>
@@ -407,12 +416,16 @@ export const Onboarding = () => {
                   </Text>
 
                   {exampleDashboardId && (
-                    <Link
-                      to={`/dashboard/${exampleDashboardId}`}
-                      onClick={() => trackChecklistItemCTAClicked("dashboard")}
-                    >
-                      <Button variant="outline">{t`Edit a sample dashboard`}</Button>
-                    </Link>
+                    <Box data-testid="dashboard-cta">
+                      <Link
+                        to={`/dashboard/${exampleDashboardId}`}
+                        onClick={() =>
+                          trackChecklistItemCTAClicked("dashboard")
+                        }
+                      >
+                        <Button variant="outline">{t`Edit a sample dashboard`}</Button>
+                      </Link>
+                    </Box>
                   )}
                 </Stack>
               </Accordion.Panel>
@@ -420,7 +433,10 @@ export const Onboarding = () => {
           </Box>
           <Box mb={64}>
             <Title order={2} mb="lg">{t`Get email updates and alerts`}</Title>
-            <Accordion.Item value="subscription">
+            <Accordion.Item
+              value="subscription"
+              data-testid="subscription-item"
+            >
               <Accordion.Control icon={<Icon name="subscription" />}>
                 {t`Get dashboard updates by email`}
               </Accordion.Control>
@@ -433,7 +449,7 @@ export const Onboarding = () => {
                     title="How to create a dashboard email subscription?"
                   />
                   {shouldConfigureCommunicationChannels && (
-                    <Text>
+                    <Text data-testid="subscription-communication-setup">
                       {jt`${(
                         <Link
                           key="subscription-email"
@@ -466,16 +482,22 @@ export const Onboarding = () => {
                       <b key="subscriptions">{t`Subscriptions`}</b>
                     )}. On a sidebar on the right set up a dashboard subscription via email or Slack.`}
                   </Text>
-                  <Link
-                    to="/dashboard/1"
-                    onClick={() => trackChecklistItemCTAClicked("subscription")}
-                  >
-                    <Button variant="outline">{t`Set up subscriptions for a sample dashboard`}</Button>
-                  </Link>
+                  {exampleDashboardId && (
+                    <Box data-testid="subscription-cta">
+                      <Link
+                        to="/dashboard/1"
+                        onClick={() =>
+                          trackChecklistItemCTAClicked("subscription")
+                        }
+                      >
+                        <Button variant="outline">{t`Set up subscriptions for a sample dashboard`}</Button>
+                      </Link>
+                    </Box>
+                  )}
                 </Stack>
               </Accordion.Panel>
             </Accordion.Item>
-            <Accordion.Item value="alert">
+            <Accordion.Item value="alert" data-testid="alert-item">
               <Accordion.Control icon={<Icon name="alert" />}>
                 {t`Get alerts when metrics behave unexpectedly`}
               </Accordion.Control>
@@ -488,7 +510,7 @@ export const Onboarding = () => {
                     title="How to create an alert?"
                   />
                   {shouldConfigureCommunicationChannels && (
-                    <Text>
+                    <Text data-testid="alert-communication-setup">
                       {jt`${(
                         <Link
                           key="alert-email"
@@ -554,44 +576,50 @@ export const Onboarding = () => {
                       }: when a question returns any result.`}</li>
                     </ul>
                   </Text>
-                  <Link
-                    to="/question/12"
-                    onClick={() => trackChecklistItemCTAClicked("alert")}
-                  >
-                    <Button variant="outline">{t`Set up alert for a sample question`}</Button>
-                  </Link>
+                  <Box data-testid="alert-cta">
+                    <Link
+                      to="/question/12"
+                      onClick={() => trackChecklistItemCTAClicked("alert")}
+                    >
+                      <Button variant="outline">{t`Set up alert for a sample question`}</Button>
+                    </Link>
+                  </Box>
                 </Stack>
               </Accordion.Panel>
             </Accordion.Item>
           </Box>
         </Accordion>
-        {showMetabaseLinks && (
-          <Box mb="xl">
-            <Title
-              order={2}
-              mb={12}
-            >{t`Get the most out of ${applicationName}`}</Title>
-            <Text>
-              {t`There are more tutorials and guides to explore.`}
-              <br />
-              {jt`${(
-                <ExternalLink
-                  href="https://www.youtube.com/playlist?list=PLzmftu0Z5MYGY0aA3rgIGwSCifECMeuG6"
-                  key="playlist"
-                >{t`Click here to continue learning`}</ExternalLink>
-              )} about data visualization, modeling, and other advanced topics.`}
-            </Text>
-          </Box>
-        )}
-        {shouldShowSupport && (
-          <Box p="lg" className={S.support}>
-            <Stack spacing="xs">
-              <Title order={4}>{t`Need to talk with someone?`}</Title>
-              <Text>{t`Reach out to engineers who can help with technical troubleshooting. Not your typical support agents.`}</Text>
-            </Stack>
-            <Link to="mailto:help@metabase.com" key="help">
-              <Button variant="filled">{t`Get Help`}</Button>
-            </Link>
+        {(showMetabaseLinks || shouldShowSupport) && (
+          <Box component="footer">
+            {showMetabaseLinks && (
+              <Box data-testid="learning-section" mb="xl">
+                <Title
+                  order={2}
+                  mb={12}
+                >{t`Get the most out of ${applicationName}`}</Title>
+                <Text>
+                  {t`There are more tutorials and guides to explore.`}
+                  <br />
+                  {jt`${(
+                    <ExternalLink
+                      href="https://www.youtube.com/playlist?list=PLzmftu0Z5MYGY0aA3rgIGwSCifECMeuG6"
+                      key="playlist"
+                    >{t`Click here to continue learning`}</ExternalLink>
+                  )} about data visualization, modeling, and other advanced topics.`}
+                </Text>
+              </Box>
+            )}
+            {shouldShowSupport && (
+              <Box className={S.support} data-testid="help-section" p="lg">
+                <Stack spacing="xs">
+                  <Title order={4}>{t`Need to talk with someone?`}</Title>
+                  <Text>{t`Reach out to engineers who can help with technical troubleshooting. Not your typical support agents.`}</Text>
+                </Stack>
+                <Link to="mailto:help@metabase.com" key="help">
+                  <Button variant="filled">{t`Get Help`}</Button>
+                </Link>
+              </Box>
+            )}
           </Box>
         )}
       </Box>
