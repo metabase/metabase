@@ -12,7 +12,7 @@ export const NeedMoreInfoCard = ({
   embeddingDocsUrl,
   analyticsDocsUrl,
 }: NeedMoreInfoCardProps) => (
-  <Card>
+  <Card px="xl">
     <Text
       lh={1.57}
       color="text-dark"
