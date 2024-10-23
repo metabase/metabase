@@ -252,7 +252,7 @@ function verifyNotebookFilters(
   if (Array.isArray(filters)) {
     getFilterItems(stageIndex).should(
       "have.length",
-      filters.length + 1, // 1 because of add button
+      filters.length + 1, // +1 because of add button
     );
 
     for (let index = 0; index < filters.length; ++index) {
@@ -271,7 +271,7 @@ function verifyNotebookAggregations(
   if (Array.isArray(aggregations)) {
     getSummarizeItems(stageIndex, "aggregate").should(
       "have.length",
-      aggregations.length + 1, // 1 because of add button
+      aggregations.length + 1, // +1 because of add button
     );
 
     for (let index = 0; index < aggregations.length; ++index) {
