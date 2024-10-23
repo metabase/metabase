@@ -41,8 +41,10 @@
 (defn- refs [sql]
   (-> (mt/native-query {:query sql})
       (#'nqa/references-for-native)
+      (select-keys [:tables :columns :source-columns])
       (update-vals
-       (partial sort-by (juxt :schema :table :column)))))
+       (partial sort-by (juxt :schema :table :column)))
+      not-empty))
 
 (defn- field-refs [sql]
   (:fields (refs sql)))
