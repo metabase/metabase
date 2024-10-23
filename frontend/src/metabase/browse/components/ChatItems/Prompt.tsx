@@ -28,6 +28,7 @@ const ChatPrompt = ({
   inputValue = "",
   setInputValue,
   onSendMessage,
+  client
 }: any) => {
   const inputRef = useRef<any>(null);
   const canSubmit = inputValue.length > 0;
@@ -68,7 +69,7 @@ const ChatPrompt = ({
           value={inputValue}
           onChange={e => setInputValue(e.target.value)}
           onKeyPress={handleKeyPress}
-          placeholder={t`Enter a prompt here...`}
+          placeholder={client ? t`Enter a prompt here...` : t`There was a problem with the chat server, please try again later or contact support.`}
           style={{
             width: "100%",
             resize: "none",
@@ -85,34 +86,37 @@ const ChatPrompt = ({
             backgroundColor: "transparent",
           }}
         />
-        <Button
-          variant="filled"
-          disabled={!canSubmit}
-          onClick={onSendMessage}
-          style={{
-            position: "absolute",
-            right: "10px",
-            bottom: "10px",
-            borderRadius: "8px",
-            width: "30px",
-            height: "30px",
-            padding: "0",
-            minWidth: "0",
-            backgroundColor: canSubmit ? "#8A64DF" : "#F1EBFF",
-            color: "#FFF",
-            border: "none",
-            cursor: canSubmit ? "pointer" : "not-allowed",
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-          }}
-        >
-          <Icon
-            size={18}
-            name="sendChat"
-            style={{ paddingTop: "2px", paddingLeft: "2px" }}
-          />
-        </Button>
+        {client && (
+          <Button
+            variant="filled"
+            disabled={!canSubmit}
+            onClick={onSendMessage}
+            style={{
+              position: "absolute",
+              right: "10px",
+              bottom: "10px",
+              borderRadius: "8px",
+              width: "30px",
+              height: "30px",
+              padding: "0",
+              minWidth: "0",
+              backgroundColor: canSubmit ? "#8A64DF" : "#F1EBFF",
+              color: "#FFF",
+              border: "none",
+              cursor: canSubmit ? "pointer" : "not-allowed",
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+            }}
+          >
+            <Icon
+              size={18}
+              name="sendChat"
+              style={{ paddingTop: "2px", paddingLeft: "2px" }}
+            />
+          </Button>
+        )}
+
       </div>
     </div>
   );

@@ -81,6 +81,7 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
     const [insightDB, setInsightDB] = useState(null);
     const [chatDisabled, setChatDisabled] = useState(false);
     const [isFeedbackVisible, setIsFeedbackVisible] = useState(false);
+    const [loading, setLoading] = useState(true); 
 
     const databases = data?.data;
     useEffect(() => {
@@ -149,12 +150,17 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
                 setThread(createdThread);
             } catch (error) {
                 console.error("Error initializing Client or creating thread:", error.message);
-            }
+            } finally {
+                setLoading(false); // Set loading to false after thread is created
+              }
         };
 
-        initializeClientAndThread();
-    }, []);
+        if (client) {
+            initializeClientAndThread();
+          }
+        }, [client, chatType]);
 
+ 
 
     useEffect(() => {
         setMessages([])
@@ -241,9 +247,7 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
             // Call the processMessages function to handle the logic
             processMessages();
         }
-    }, [client, selectedMessages, selectedThreadId]);
-
-
+    }, [client, selectedMessages, selectedThreadId, setMessages, setThreadId]);
 
     useEffect(() => {
         if (inputRef.current) {
@@ -311,7 +315,8 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
                 type: "question",
             };
             const hash = adhocQuestionHash(itemToHash);
-    
+            console.log("🚀 ~ handleGetDatasetQuery ~ hash:", hash)
+            
             // Append new values safely by ensuring prevCard is always an array
             setCard((prevCard) => Array.isArray(prevCard) ? [...prevCard, { ...fetchedCard, hash }] : [{ ...fetchedCard, hash }]);
             setDefaultQuestion((prevDefaultQuestion) => Array.isArray(prevDefaultQuestion) ? [...prevDefaultQuestion, newQuestion] : [newQuestion]);
@@ -961,158 +966,163 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
                     width: "100%",
                 }}
             >
-                {chatType === "default" && dbInputValue === '' ? (
-                    <SemanticError />
-                ) : (
-                    <>
-                        <Button
-                            variant="outlined"
-                            style={{
-                                position: "absolute",
-                                top: "16px",
-                                right: "16px",
-                                cursor: "pointer",
-                                padding: "8px",
-                                color: "#FFF",
-                                borderRadius: "50%",
-                            }}
-                            onClick={() => setIsDBModalOpen(true)}
-                        >
-                        </Button>
-                        <div
-                            style={{
-                                flex: "1 1 auto",
-                                overflowY: "auto",
-                                padding: "16px",
-                                borderRadius: "12px",
-                                marginBottom: "150px", // Adjust this value based on the input area height
-                            }}
-                        >
-
-                            <ChatMessageList messages={messages} isLoading={isLoading} onFeedbackClick={handleFeedbackDialogOpen} isFeedbackVisible={isFeedbackVisible}
-                                approvalChangeButtons={approvalChangeButtons} onApproveClick={handleAccept} onDenyClick={handleDeny}
-                                card={card} defaultQuestion={defaultQuestion} result={result} openModal={openModal} redirect={redirect}
-                                showError={showError} insightsCode={insightsCode} showCubeEditButton={showCubeEditButton} sendAdminRequest={handleCubeRequestDialogOpen} onSuggestion={handleSuggestion}
-                                insightCellCode={insightCellCode} insightsImg={insightsImg} insightsPlan={inisghtPlan} progressShow={progressShow}
-                                insightsText={insightsText} finalMessages={finalMessages} finalMessagesText={finalMessagesText} onSendFeedback={handleSendFeedback}
-                            />
+                {loading ? (
+                    <></>
+                ):(
+                    chatType === "default" && dbInputValue === '' ? (
+                        <SemanticError />
+                    ) : (
+                        <>
+                            <Button
+                                variant="outlined"
+                                style={{
+                                    position: "absolute",
+                                    top: "16px",
+                                    right: "16px",
+                                    cursor: "pointer",
+                                    padding: "8px",
+                                    color: "#FFF",
+                                    borderRadius: "50%",
+                                }}
+                                onClick={() => setIsDBModalOpen(true)}
+                            >
+                            </Button>
                             <div
                                 style={{
-                                    display: "flex",
-                                    justifyContent: "center", // Center horizontally
-                                    width: "100%",            // Take full width
-                                    maxWidth: `calc(100% - ${isChatHistoryOpen ? "800px" : "500px"})`, // Adjust the width based on the chat history visibility
-                                    backgroundColor: "#FFF",
-                                    position: "fixed",
-                                    bottom: "5rem"
+                                    flex: "1 1 auto",
+                                    overflowY: "auto",
+                                    padding: "16px",
+                                    borderRadius: "12px",
+                                    marginBottom: "150px", // Adjust this value based on the input area height
                                 }}
                             >
+    
+                                <ChatMessageList messages={messages} isLoading={isLoading} onFeedbackClick={handleFeedbackDialogOpen} isFeedbackVisible={isFeedbackVisible}
+                                    approvalChangeButtons={approvalChangeButtons} onApproveClick={handleAccept} onDenyClick={handleDeny}
+                                    card={card} defaultQuestion={defaultQuestion} result={result} openModal={openModal} redirect={redirect}
+                                    showError={showError} insightsCode={insightsCode} showCubeEditButton={showCubeEditButton} sendAdminRequest={handleCubeRequestDialogOpen} onSuggestion={handleSuggestion}
+                                    insightCellCode={insightCellCode} insightsImg={insightsImg} insightsPlan={inisghtPlan} progressShow={progressShow}
+                                    insightsText={insightsText} finalMessages={finalMessages} finalMessagesText={finalMessagesText} onSendFeedback={handleSendFeedback}
+                                />
                                 <div
                                     style={{
                                         display: "flex",
-                                        alignItems: "center",
-                                        width: "100%",
-                                        height: `${selectedThreadId ? "70px" : ""}`,
-                                        padding: "8px",
-                                        border: "1px solid #E0E0E0",
-                                        borderRadius: "8px",
-                                        backgroundColor: "#F8FAFD",
-                                        position: "relative", // Important for absolute positioning inside this div
+                                        justifyContent: "center", // Center horizontally
+                                        width: "100%",            // Take full width
+                                        maxWidth: `calc(100% - ${isChatHistoryOpen ? "800px" : "500px"})`, // Adjust the width based on the chat history visibility
+                                        backgroundColor: "#FFF",
+                                        position: "fixed",
+                                        bottom: "5rem"
                                     }}
                                 >
-                                    {!selectedThreadId ? (
-                                        <>
-                                            <TextArea
-                                                ref={inputRef}
-                                                value={inputValue}
-                                                onChange={handleInputChange}
-                                                disabled={!client || chatLoading || schema.length < 1 || selectedThreadId || chatDisabled}
-                                                onKeyPress={handleKeyPress}
-                                                placeholder={t`Enter a prompt here...`}
-                                                style={{
-                                                    width: "100%",
-                                                    resize: "none",
-                                                    overflowY: "auto",
-                                                    height: "100px",
-                                                    minHeight: "100px",
-                                                    maxHeight: "220px",
-                                                    padding: "12px",
-                                                    paddingRight: "50px", // Space for the send button
-                                                    lineHeight: "24px",
-                                                    border: "none",
-                                                    outline: "none",
-                                                    boxSizing: "border-box",
-                                                    borderRadius: "8px",
-                                                    backgroundColor: "transparent",
-                                                }}
-                                            />
+                                    <div
+                                        style={{
+                                            display: "flex",
+                                            alignItems: "center",
+                                            width: "100%",
+                                            height: `${selectedThreadId ? "70px" : ""}`,
+                                            padding: "8px",
+                                            border: "1px solid #E0E0E0",
+                                            borderRadius: "8px",
+                                            backgroundColor: "#F8FAFD",
+                                            position: "relative", // Important for absolute positioning inside this div
+                                        }}
+                                    >
+                                        {!selectedThreadId ? (
+                                            <>
+                                                <TextArea
+                                                    ref={inputRef}
+                                                    value={inputValue}
+                                                    onChange={handleInputChange}
+                                                    disabled={!client || chatLoading || schema.length < 1 || selectedThreadId || chatDisabled}
+                                                    onKeyPress={handleKeyPress}
+                                                    placeholder={t`Enter a prompt here...`}
+                                                    style={{
+                                                        width: "100%",
+                                                        resize: "none",
+                                                        overflowY: "auto",
+                                                        height: "100px",
+                                                        minHeight: "100px",
+                                                        maxHeight: "220px",
+                                                        padding: "12px",
+                                                        paddingRight: "50px", // Space for the send button
+                                                        lineHeight: "24px",
+                                                        border: "none",
+                                                        outline: "none",
+                                                        boxSizing: "border-box",
+                                                        borderRadius: "8px",
+                                                        backgroundColor: "transparent",
+                                                    }}
+                                                />
+                                                <Button
+                                                    variant="filled"
+                                                    disabled={!client || schema.length < 1 || selectedThreadId || chatDisabled}
+                                                    onClick={chatLoading ? stopMessage : sendMessage}
+                                                    style={{
+                                                        position: "absolute",
+                                                        right: "10px",
+                                                        bottom: "10px",
+                                                        borderRadius: "8px",
+                                                        width: "30px",
+                                                        height: "30px",
+                                                        padding: "0",
+                                                        minWidth: "0",
+                                                        backgroundColor: client && schema.length > 0 ? "#8A64DF" : "#F1EBFF",
+                                                        color: "#FFF",
+                                                        border: "none",
+                                                        cursor: client && schema.length > 0 ? "pointer" : "not-allowed",
+                                                        display: "flex",
+                                                        justifyContent: "center",
+                                                        alignItems: "center",
+                                                    }}
+                                                >
+                                                    {chatLoading ? (
+                                                        <SpinnerIcon
+                                                            iconSize={18}
+                                                            borderWidth={2}
+                                                        />
+                                                    ) : (
+                                                        <Icon size={18} name="sendChat" style={{ paddingTop: "2px", paddingLeft: "2px" }} />
+                                                    )}
+                                                </Button>
+                                            </>
+    
+                                        ) : (
                                             <Button
                                                 variant="filled"
-                                                disabled={!client || schema.length < 1 || selectedThreadId || chatDisabled}
-                                                onClick={chatLoading ? stopMessage : sendMessage}
+                                                disabled={!client}
+                                                onClick={newChat}
                                                 style={{
                                                     position: "absolute",
                                                     right: "10px",
                                                     bottom: "10px",
                                                     borderRadius: "8px",
-                                                    width: "30px",
-                                                    height: "30px",
+                                                    width: "200px",
+                                                    height: "50px",
                                                     padding: "0",
                                                     minWidth: "0",
-                                                    backgroundColor: client && schema.length > 0 ? "#8A64DF" : "#F1EBFF",
+                                                    backgroundColor: client ? "#8A64DF" : "#F1EBFF",
                                                     color: "#FFF",
                                                     border: "none",
-                                                    cursor: client && schema.length > 0 ? "pointer" : "not-allowed",
+                                                    cursor: client ? "pointer" : "not-allowed",
                                                     display: "flex",
                                                     justifyContent: "center",
                                                     alignItems: "center",
                                                 }}
                                             >
-                                                {chatLoading ? (
-                                                    <SpinnerIcon
-                                                        iconSize={18}
-                                                        borderWidth={2}
-                                                    />
-                                                ) : (
-                                                    <Icon size={18} name="sendChat" style={{ paddingTop: "2px", paddingLeft: "2px" }} />
-                                                )}
+                                                Generate new chat
                                             </Button>
-                                        </>
-
-                                    ) : (
-                                        <Button
-                                            variant="filled"
-                                            disabled={!client}
-                                            onClick={newChat}
-                                            style={{
-                                                position: "absolute",
-                                                right: "10px",
-                                                bottom: "10px",
-                                                borderRadius: "8px",
-                                                width: "200px",
-                                                height: "50px",
-                                                padding: "0",
-                                                minWidth: "0",
-                                                backgroundColor: client ? "#8A64DF" : "#F1EBFF",
-                                                color: "#FFF",
-                                                border: "none",
-                                                cursor: client ? "pointer" : "not-allowed",
-                                                display: "flex",
-                                                justifyContent: "center",
-                                                alignItems: "center",
-                                            }}
-                                        >
-                                            Generate new chat
-                                        </Button>
-                                    )}
-
+                                        )}
+    
+                                    </div>
                                 </div>
+    
+    
                             </div>
-
-
-                        </div>
-                    </>
+                        </>
+                    )
                 )}
+               
             </Box>
 
             {isDBModalOpen && (

@@ -218,6 +218,7 @@ const langchain_key = "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";
                     {schema.length > 0 ? (
                       <ChatSection>
                         <ChatPrompt
+                        client={client}
                           chatType={selectedChatType}
                           inputValue={inputValue}
                           setInputValue={setInputValue}
@@ -246,6 +247,7 @@ const langchain_key = "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";
                       {schema.length > 0 ? (
                         <ChatSection>
                           <ChatPrompt
+                          client={client}
                             chatType={selectedChatType}
                             inputValue={inputValue}
                             setInputValue={setInputValue}
