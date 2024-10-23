@@ -398,19 +398,18 @@
   [query]
   (let [inner-query (:query query)]
     (cond-> query
-      (and (:aggregation inner-query)
-           (:breakout inner-query))
+      (:breakout inner-query)
       (assoc :query {:source-query inner-query}))))
 
 (defn ensure-filter-stage
-  "Adds an empty stage to `query` if its last stage contains both breakouts and aggregations.
+  "Adds an empty stage to `query` if its last stage contains breakouts.
 
-  This is so that parameters can address both the stage before and after the aggregation.
-  Adding filters to the result at stage -1 will filter after the summary, filters added at
-  stage -2 filter before the summary."
+  This is so that parameters can address both the stage before and after the breakouts.
+  Adding filters to the result at stage -1 will filter after the breakouts. Filters added at
+  stage -2 filter before the breakouts."
   [query]
   (if (#{:query :native} (lib.util/normalized-query-type query))
     (ensure-legacy-filter-stage query)
     (cond-> query
-      (and (lib.breakout/breakouts query) (lib.aggregation/aggregations query))
+      (lib.breakout/breakouts query)
       append-stage)))
