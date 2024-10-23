@@ -20,7 +20,6 @@ import {
   getDashboardCard,
   getHeadingCardDetails,
   getLinkCardDetails,
-  getNotebookStep,
   getTextCardDetails,
   modal,
   multiAutocompleteInput,
@@ -34,6 +33,7 @@ import {
   setTokenFeatures,
   updateDashboardCards,
   updateSetting,
+  verifyNotebookQuery,
   visitDashboard,
   visitEmbeddedPage,
   visitIframe,
@@ -2732,42 +2732,3 @@ const createDashboardWithTabsLocal = ({
     });
   });
 };
-
-// TODO: assert items count
-// TODO: joins
-function verifyNotebookQuery(dataSource, ...stages) {
-  getNotebookStep("data").findByText(dataSource).should("be.visible");
-
-  for (let stageIndex = 0; stageIndex < stages.length; ++stageIndex) {
-    const {
-      filters = [],
-      aggregations = [],
-      breakouts = [],
-      limit,
-    } = stages[stageIndex];
-
-    for (const filter of filters) {
-      getNotebookStep("filter", { stage: stageIndex })
-        .findByText(filter)
-        .should("be.visible");
-    }
-
-    for (const aggregation of aggregations) {
-      getNotebookStep("summarize", { stage: stageIndex })
-        .findByText(aggregation)
-        .should("be.visible");
-    }
-
-    for (const breakout of breakouts) {
-      getNotebookStep("summarize", { stage: stageIndex })
-        .findByText(breakout)
-        .should("be.visible");
-    }
-
-    if (limit) {
-      getNotebookStep("limit", { stage: stageIndex })
-        .findByPlaceholderText("Enter a limit")
-        .should("have.value", String(limit));
-    }
-  }
-}

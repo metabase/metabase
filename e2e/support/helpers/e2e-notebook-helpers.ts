@@ -223,3 +223,49 @@ export function selectFilterOperator(operatorName: string) {
   cy.findByLabelText("Filter operator").click();
   cy.findByRole("menu").findByText(operatorName).click();
 }
+
+// TODO: assert items count
+// TODO: joins
+type Stage = {
+  filters?: string[];
+  aggregations?: string[];
+  breakouts?: string[];
+  limit?: number;
+};
+
+export function verifyNotebookQuery(dataSource: string, ...stages: Stage[]) {
+  getNotebookStep("data").findByText(dataSource).should("be.visible");
+
+  for (let stageIndex = 0; stageIndex < stages.length; ++stageIndex) {
+    const {
+      filters = [],
+      aggregations = [],
+      breakouts = [],
+      limit,
+    } = stages[stageIndex];
+
+    for (const filter of filters) {
+      getNotebookStep("filter", { stage: stageIndex })
+        .findByText(filter)
+        .should("be.visible");
+    }
+
+    for (const aggregation of aggregations) {
+      getNotebookStep("summarize", { stage: stageIndex })
+        .findByText(aggregation)
+        .should("be.visible");
+    }
+
+    for (const breakout of breakouts) {
+      getNotebookStep("summarize", { stage: stageIndex })
+        .findByText(breakout)
+        .should("be.visible");
+    }
+
+    if (limit) {
+      getNotebookStep("limit", { stage: stageIndex })
+        .findByPlaceholderText("Enter a limit")
+        .should("have.value", String(limit));
+    }
+  }
+}
