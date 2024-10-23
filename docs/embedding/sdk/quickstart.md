@@ -24,9 +24,9 @@ We're going to do some setup in Metabase, and in the sample application.
 2. [Enable embedding](#enable-embedding-in-metabase)
 3. [Enable SSO with JWT](#enable-sso-with-jwt)
 
-### Set up the sample application
+### Start up the sample application
 
-4. [Get the sample application](#get-the-sample-application).
+4. [Get the sample application](#set-up-the-sample-application).
 5. [Set up the application environment](#set-up-the-application-environment).
 6. [Run the app server](#set-up-the-application-server) to handle authentication with JWT and server the embedded Metabase components.
 7. [Run the client application](#set-up-the-client-application) that will contain Metabase components built with the SDK.
