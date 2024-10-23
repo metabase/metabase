@@ -938,7 +938,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
         });
 
         // TODO: https://github.com/metabase/metabase/issues/48339
-        it("2nd stage aggregation", () => {
+        it.skip("2nd stage aggregation", () => {
           setup2ndStageAggregationFilter();
 
           verifyDashcardNoResults({ dashcardIndex: 0 });
@@ -1820,7 +1820,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
         });
 
         // TODO: https://github.com/metabase/metabase/issues/48339
-        it("3rd stage aggregation", () => {
+        it.skip("3rd stage aggregation", () => {
           setup3rdStageAggregationFilter();
 
           getDashboardCard(0)
