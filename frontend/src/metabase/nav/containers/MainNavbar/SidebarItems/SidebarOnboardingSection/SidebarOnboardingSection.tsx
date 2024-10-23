@@ -138,7 +138,7 @@ export function SidebarOnboardingSection({
           <Menu position={isMobileSafe ? "right-end" : "top"} shadow="md">
             <Menu.Target>
               <Button
-                leftIcon={<Icon name="add_data" />}
+                leftSection={<Icon name="add_data" />}
                 fullWidth
               >{t`Add data`}</Button>
             </Menu.Target>
