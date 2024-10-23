@@ -225,7 +225,8 @@ export function selectFilterOperator(operatorName: string) {
 }
 
 type Stage = {
-  // TODO: support joins - feel free to add them if you need them here
+  // TODO: support joins - feel free to add them
+  // TODO: support custom columns - feel free to add them
   filters?: string[];
   aggregations?: string[];
   breakouts?: string[];
