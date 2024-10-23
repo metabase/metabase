@@ -154,7 +154,7 @@ describe("IFrameViz", () => {
       screen.queryByTestId("iframe-visualization"),
     ).not.toBeInTheDocument();
     expect(
-      screen.getByText("There was a problem loading your iframe"),
+      screen.getByText("There was a problem rendering this content."),
     ).toBeInTheDocument();
   });
 
@@ -189,7 +189,7 @@ describe("IFrameViz", () => {
       screen.queryByTestId("iframe-visualization"),
     ).not.toBeInTheDocument();
     expect(
-      screen.getByText("There was a problem loading your iframe"),
+      screen.getByText("There was a problem rendering this content."),
     ).toBeInTheDocument();
   });
 });
