@@ -693,6 +693,28 @@ export const getOtherSeriesTooltipModel = (
       ],
     }));
 
+  rows.push({
+    name: getOtherSeriesAggregationLabel(
+      settings["graph.other_category_aggregation_fn"],
+    ),
+    values: [
+      String(
+        formatValueForTooltip({
+          isAlreadyScaled: true,
+          value: getAggregatedOtherSeriesValue(
+            groupedSeriesModels,
+            settings["graph.other_category_aggregation_fn"],
+            datum,
+          ),
+          settings,
+          column:
+            chartModel.leftAxisModel?.column ??
+            chartModel.rightAxisModel?.column,
+        }),
+      ),
+    ],
+  });
+
   return {
     header: String(
       formatValueForTooltip({
@@ -702,27 +724,6 @@ export const getOtherSeriesTooltipModel = (
       }),
     ),
     rows,
-    footer: {
-      name: getOtherSeriesAggregationLabel(
-        settings["graph.other_category_aggregation_fn"],
-      ),
-      values: [
-        String(
-          formatValueForTooltip({
-            isAlreadyScaled: true,
-            value: getAggregatedOtherSeriesValue(
-              groupedSeriesModels,
-              settings["graph.other_category_aggregation_fn"],
-              datum,
-            ),
-            settings,
-            column:
-              chartModel.leftAxisModel?.column ??
-              chartModel.rightAxisModel?.column,
-          }),
-        ),
-      ],
-    },
   };
 };
 

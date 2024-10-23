@@ -872,8 +872,8 @@ describe("scenarios > visualizations > bar chart", () => {
         { name: "GA", value: "1" },
         { name: "ID", value: "1" },
         { name: "IL", value: "1" },
+        { name: "Total", value: "9" },
       ],
-      footer: { name: "Total", value: "9" },
     });
 
     // Test "graph.max_categories" change
@@ -930,8 +930,8 @@ describe("scenarios > visualizations > bar chart", () => {
         { name: "GA", value: "1" },
         { name: "ID", value: "1" },
         { name: "IL", value: "1" },
+        { name: "Average", value: "1.5" },
       ],
-      footer: { name: "Average", value: "1.5" },
     });
 
     setOtherCategoryAggregationFn("Min");
@@ -940,7 +940,7 @@ describe("scenarios > visualizations > bar chart", () => {
     assertEChartsTooltip({ rows: [{ name: "Other", value: "1" }] });
 
     otherSeriesChartPaths().first().realHover();
-    assertEChartsTooltip({ footer: { name: "Min", value: "1" } });
+    assertEChartsTooltip({ rows: [{ name: "Min", value: "1" }] });
 
     setOtherCategoryAggregationFn("Max");
 
@@ -948,7 +948,7 @@ describe("scenarios > visualizations > bar chart", () => {
     assertEChartsTooltip({ rows: [{ name: "Other", value: "3" }] });
 
     otherSeriesChartPaths().first().realHover();
-    assertEChartsTooltip({ footer: { name: "Max", value: "3" } });
+    assertEChartsTooltip({ rows: [{ name: "Max", value: "3" }] });
   });
 });
 
