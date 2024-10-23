@@ -274,7 +274,7 @@ describe("data model utils", () => {
 
   describe("checkCanRefreshModelCache", () => {
     const testCases = {
-      creating: false,
+      creating: true,
       refreshing: false,
       persisted: true,
       error: true,
