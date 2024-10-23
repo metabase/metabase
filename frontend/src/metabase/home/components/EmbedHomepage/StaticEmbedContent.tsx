@@ -31,7 +31,6 @@ export const StaticEmbedContent = ({
     <StaticEmbedImage
       src="/app/assets/img/static-embedding-example.png"
       alt="Static embedding example"
-      // style={{ width: "100%", marginBottom: "1rem" }}
     />
     <Group spacing="md">
       {exampleDashboardLink && (
