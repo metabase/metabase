@@ -53,6 +53,7 @@
 (defn- basic-table-refs [sql]
   (->> (mt/native-query {:query sql})
        (nqa/tables-for-native)
+       :tables
        (sort-by (juxt :schema :table))))
 
 (defn- table-reference [table]
