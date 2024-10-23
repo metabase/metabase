@@ -1,7 +1,7 @@
 (ns metabase.channel.slack-test
   (:require
    [clojure.test :refer :all]
-   [metabase.channel.slack :as channel.slack]
+   [metabase.channel.impl.slack :as channel.slack]
    [metabase.integrations.slack :as slack]))
 
 (deftest create-and-upload-slack-attachments!-test

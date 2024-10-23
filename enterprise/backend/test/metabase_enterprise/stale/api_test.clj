@@ -1,6 +1,5 @@
 (ns metabase-enterprise.stale.api-test
-  (:require  [clojure.string :as str]
-             [clojure.test :refer [deftest testing is]]
+  (:require  [clojure.test :refer [deftest testing is]]
              [metabase.analytics.snowplow-test :as snowplow-test]
              [metabase.models.collection :as collection]
              [metabase.models.collection-test :refer [with-collection-hierarchy!]]
@@ -16,8 +15,7 @@
   (mt/with-premium-features #{}
     (stale.test/with-stale-items [:model/Card _ {}
                                   :model/Dashboard _ {}]
-      (is (str/starts-with? (mt/user-http-request :crowberto :get 402 "ee/stale/root")
-                            "Collection Cleanup is a paid feature")))))
+      (mt/assert-has-premium-feature-error "Collection Cleanup" (mt/user-http-request :crowberto :get 402 "ee/stale/root")))))
 
 (defn- stale-url [collection-or-id]
   (str "ee/stale/" (u/the-id collection-or-id)))

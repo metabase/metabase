@@ -11,8 +11,7 @@
     (testing "GET /api/ee/advanced-permissions/application/graph"
       (mt/with-premium-features #{}
         (testing "Should require a token with `:advanced-permissions`"
-          (is (= "Advanced Permissions is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
-                 (mt/user-http-request :crowberto :get 402 "ee/advanced-permissions/application/graph")))))
+          (mt/assert-has-premium-feature-error "Advanced Permissions" (mt/user-http-request :crowberto :get 402 "ee/advanced-permissions/application/graph"))))
 
       (mt/with-premium-features #{:advanced-permissions}
         (testing "have to be a superuser"
@@ -42,8 +41,8 @@
 
         (mt/with-premium-features #{}
           (testing "Should require a token with `:advanced-permissions`"
-            (is (= "Advanced Permissions is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
-                   (mt/user-http-request :crowberto :put 402 "ee/advanced-permissions/application/graph" new-graph)))))
+            (mt/assert-has-premium-feature-error "Advanced Permissions"
+                                                 (mt/user-http-request :crowberto :put 402 "ee/advanced-permissions/application/graph" new-graph))))
 
         (mt/with-premium-features #{:advanced-permissions}
           (testing "have to be a superuser"
