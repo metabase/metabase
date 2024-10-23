@@ -5,6 +5,7 @@ import {
   commandPaletteSearch,
   createModerationReview,
   describeEE,
+  getPartialPremiumFeatureError,
   openCommandPalette,
   openQuestionActions,
   popover,
@@ -34,8 +35,8 @@ describeEE("scenarios > premium > content verification", () => {
           moderated_item_type: "card",
         },
       }).then(({ body, status, statusText }) => {
-        expect(body).to.eq(
-          "Content verification is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/",
+        expect(body).to.deep.include(
+          getPartialPremiumFeatureError("Content verification"),
         );
         expect(status).to.eq(402);
         expect(statusText).to.eq("Payment Required");

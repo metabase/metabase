@@ -15,6 +15,6 @@ export const HackyInvisibleTargetFiller = styled.div`
   position: absolute;
   width: 100%;
   top: -10px;
-  min-height: 5px;
+  min-height: 10px;
   z-index: -1;
 `;
