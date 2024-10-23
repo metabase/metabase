@@ -4916,3 +4916,16 @@
       (is (= (mt/$ids orders !year.$created_at)
              (t2/select-one-fn #(get-in % [:parameter_mappings 0 :target 1])
                                :model/DashboardCard :id dashcard-id))))))
+(deftest querying-a-dashboard-returns-moderated_status
+    (mt/dataset test-data
+      (mt/with-temp [:model/Dashboard {dashboard-id :id} {:last_viewed_at #t "2000-01-01"}
+                     :model/ModerationReview _ {:moderated_item_id dashboard-id
+                                                :moderated_item_type "dashboard"
+                                                :moderator_id (mt/user->id :crowberto)
+                                                :most_recent true
+                                                :status "verified"}]
+        (is (malli= [:sequential
+                     [:map
+                      [:most_recent [:= true]]
+                      [:moderator_id [:= (mt/user->id :crowberto)]]]]
+               (:moderation_reviews (mt/user-http-request :crowberto :get 200 (str "dashboard/" dashboard-id))))))))
