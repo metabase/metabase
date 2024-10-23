@@ -50,15 +50,11 @@
 (defn- table-refs [sql]
   (:tables (refs sql)))
 
-(defn- sort-tables [tables-or-err]
-  (if (keyword? tables-or-err)
-    tables-or-err
-    (sort-by (juxt :schema :table) tables-or-err)))
-
 (defn- basic-table-refs [sql]
   (->> (mt/native-query {:query sql})
        (nqa/tables-for-native)
-       sort-tables))
+       :tables
+       (sort-by (juxt :schema :table))))
 
 (defn- table-reference [table]
   (let [reference (nqa/table-reference (mt/id) table)]
