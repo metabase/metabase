@@ -85,21 +85,29 @@ const calcMaxRectLengthWithinDonut = (
   innerRadius: number,
   outerRadius: number,
 ): number => {
-  const [topLeft, topRight] = getDonutHorizontalChordCoords(
-    topY,
-    innerRadius,
-    outerRadius,
-  );
-  const [bottomLeft, bottomRight] = getDonutHorizontalChordCoords(
-    bottomY,
-    innerRadius,
-    outerRadius,
-  );
+  try {
+    const [topLeft, topRight] = getDonutHorizontalChordCoords(
+      topY,
+      innerRadius,
+      outerRadius,
+    );
+    const [bottomLeft, bottomRight] = getDonutHorizontalChordCoords(
+      bottomY,
+      innerRadius,
+      outerRadius,
+    );
 
-  const leftX = Math.max(topLeft[0], bottomLeft[0]);
-  const rightX = Math.min(topRight[0], bottomRight[0]);
+    const leftX = Math.max(topLeft[0], bottomLeft[0]);
+    const rightX = Math.min(topRight[0], bottomRight[0]);
 
-  return rightX - leftX;
+    return rightX - leftX;
+  } catch {
+    console.warn(
+      `Could not calculate max rectangle length for innerRadius=${innerRadius} outerRadius=${outerRadius} topY=${topY} bottomY=${bottomY}`,
+    );
+
+    return 0;
+  }
 };
 
 /**
@@ -129,7 +137,6 @@ const isNearXAxis = (
  * @param fontSize - The font size of the label.
  * @param labelPosition - The position of the label, either "horizontal" or "radial".
  * @returns The available length for the label.
- * @throws Error if the outer radius is not bigger than the inner radius.
  */
 export const calcAvailableDonutSliceLabelLength = (
   innerRadius: number,
@@ -139,13 +146,19 @@ export const calcAvailableDonutSliceLabelLength = (
   fontSize: number,
   labelPosition: "horizontal" | "radial",
 ): number => {
-  if (innerRadius >= outerRadius) {
-    throw new Error(
-      `Outer radius must be bigger than inner. Outer: ${outerRadius} inner: ${innerRadius}`,
-    );
+  const donutThickness = outerRadius - innerRadius;
+  if (donutThickness <= 2 * fontSize) {
+    return 0;
   }
 
-  const donutThickness = outerRadius - innerRadius;
+  if (innerRadius >= outerRadius) {
+    console.warn(
+      `Outer radius must be bigger than inner. Outer: ${outerRadius} inner: ${innerRadius}`,
+    );
+
+    return 0;
+  }
+
   const arcAngle = endAngle - startAngle;
   const innerCordLength = calcChordLength(innerRadius, arcAngle);
 
