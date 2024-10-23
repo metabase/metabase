@@ -51,7 +51,7 @@ jobs:
       id: canonical_version
       with:
         script: | # js
-          const { isValidVersionString, getCanonicalVersion, hasBeenReleased, getMajorVersion } = require('${{ github.workspace }}/release/dist/index.cjs');
+          const { isValidVersionString, getCanonicalVersion, hasBeenReleased } = require('${{ github.workspace }}/release/dist/index.cjs');
 
           const version = '${{ inputs.version }}';
 
@@ -59,13 +59,9 @@ jobs:
             throw new Error("The version format is invalid! It must start with either 'v0.' or 'v1.'.");
           }
 
-          const currentVersion = '${{ vars.CURRENT_VERSION }}';
-          const majorVersion = getMajorVersion(version);
-
           const versions = {
             ee: getCanonicalVersion(version, 'ee'),
             oss: getCanonicalVersion(version, 'oss'),
-            isCurrentMajorVersion: majorVersion === Number(currentVersion) ? 'true' : 'false',
           };
 
           const ossReleased = await hasBeenReleased({
