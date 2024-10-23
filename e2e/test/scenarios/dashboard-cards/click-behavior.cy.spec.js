@@ -2044,7 +2044,7 @@ describeEE("scenarios > dashboard > dashboard cards > click behavior", () => {
         addSavedQuestionDestination();
 
         verifyAvailableClickTargetColumns([
-          // Orders
+          // 1st stage - Orders
           "ID",
           "User ID",
           "Product ID",
@@ -2054,16 +2054,16 @@ describeEE("scenarios > dashboard > dashboard cards > click behavior", () => {
           "Discount",
           "Created At",
           "Quantity",
-          // Custom columns
+          // 1st stage - Custom columns
           "Net",
-          // Reviews #1 (explicit join)
+          // 1st stage - Reviews #1 (explicit join)
           "Reviews - Product → ID",
           "Reviews - Product → Product ID",
           "Reviews - Product → Reviewer",
           "Reviews - Product → Rating",
           "Reviews - Product → Body",
           "Reviews - Product → Created At",
-          // Products (implicit join with Orders)
+          // 1st stage - Products (implicit join with Orders)
           "Product → ID",
           "Product → Ean",
           "Product → Title",
@@ -2072,7 +2072,7 @@ describeEE("scenarios > dashboard > dashboard cards > click behavior", () => {
           "Product → Price",
           "Product → Rating",
           "Product → Created At",
-          // People (implicit join with Orders)
+          // 1st stage - People (implicit join with Orders)
           "User → ID",
           "User → Address",
           "User → Email",
@@ -2086,7 +2086,7 @@ describeEE("scenarios > dashboard > dashboard cards > click behavior", () => {
           "User → Zip",
           "User → Latitude",
           "User → Created At",
-          // Products (implicit join with reviews)
+          // 1st stage - Products (implicit join with Reviews)
           "Product → ID",
           "Product → Ean",
           "Product → Title",
@@ -2095,32 +2095,58 @@ describeEE("scenarios > dashboard > dashboard cards > click behavior", () => {
           "Product → Price",
           "Product → Rating",
           "Product → Created At",
-          // Aggregations & breakouts
+          // 1st stage - Aggregations & breakouts
           "Created At: Month",
           "Category",
           "Created At: Year",
           "Count",
           "Sum of Total",
-          // Custom columns
+          // 2nd stage - Custom columns
           "5 * Count",
-          // Reviews #2 (explicit join)
+          // 2nd stage - Reviews #2 (explicit join)
           "Reviews - Created At: Month → ID",
           "Reviews - Created At: Month → Product ID",
           "Reviews - Created At: Month → Reviewer",
           "Reviews - Created At: Month → Rating",
           "Reviews - Created At: Month → Body",
           "Reviews - Created At: Month → Created At",
-          // Aggregations & breakouts
+          // 2nd stage - Aggregations & breakouts
           "Category",
           "Created At",
           "Count",
           "Sum of Rating",
         ]);
 
-        getClickMapping("Created At: Month").click();
-        popover().findByText(CREATED_AT_COLUMN_NAME).click();
-        getClickMapping("Count").click();
-        popover().findByText(COUNT_COLUMN_NAME).click();
+        // 1st stage - Orders
+        getClickMapping("ID").click();
+        popover().findByText("ID").click();
+        // 1st stage - Custom columns
+        getClickMapping("Net").click();
+        popover().findByText("User → Longitude").click();
+        // 1st stage - Reviews #1 (explicit join)
+        getClickMapping("Reviews - Product → Reviewer").click();
+        popover().findByText("Product → Category").click();
+        // 1st stage - Products (implicit join with Orders)
+        getClickMapping("Product → Title").first().click();
+        popover().findByText("Product → Category").click();
+        // 1st stage - People (implicit join with Orders)
+        getClickMapping("User → Longitude").click();
+        popover().findByText("User → Longitude").click();
+        // 1st stage - Products (implicit join with Reviews)
+        getClickMapping("Product → Vendor").last().click();
+        popover().findByText("Product → Category").click();
+        // 1st stage - Aggregations & breakouts
+        getClickMapping("Category").first().click();
+        popover().findByText("Product → Category").click();
+        // 2nd stage - Custom columns
+        getClickMapping("5 * Count").click();
+        popover().findByText("Count").click();
+        // 2nd stage - Reviews #2 (explicit join)
+        getClickMapping("Reviews - Created At: Month → Rating").click();
+        popover().findByText("ID").click();
+        // 2nd stage - Aggregations & breakouts
+        getClickMapping("Count").last().click();
+        popover().findByText("User → Longitude").click();
 
         customizeLinkText(
           `Created at: {{${CREATED_AT_COLUMN_ID}}} - {{count}}`,
@@ -2788,7 +2814,10 @@ const getCountToDashboardFilterMapping = () => {
 };
 
 function getClickMapping(columnName) {
-  return cy.get("aside").findByTestId("click-mappings").findByText(columnName);
+  return cy
+    .get("aside")
+    .findAllByTestId("click-target-column")
+    .filter(`:contains(${columnName})`);
 }
 
 function customizeLinkText(text) {
