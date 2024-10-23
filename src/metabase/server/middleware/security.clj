@@ -91,8 +91,8 @@
     (when domain
       (let [split-domain (str/split domain #"\.")
             new-domains  (cond-> (if (= (count split-domain) 2)
-                                  [domain (format "*.%s" domain)]
-                                  [domain])
+                                   [domain (format "*.%s" domain)]
+                                   [domain])
                            (str/includes? domain-or-url "www.") (conj (format "www.%s" domain)))]
         (for [new-domain new-domains]
           (str (when protocol (format "%s://" protocol))
