@@ -2032,7 +2032,7 @@ describeEE("scenarios > dashboard > dashboard cards > click behavior", () => {
   describe("multi-stage questions as target destination", () => {
     const questionDetails = QUESTION_TABLE;
 
-    it("should allow setting dashboard and saved question as custom destination for different columns", () => {
+    it("should allow navigating to questions with filters applied in every stage", () => {
       createQuestion(TARGET_QUESTION);
       createDashboard(
         {
