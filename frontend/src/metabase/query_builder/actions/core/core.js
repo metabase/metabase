@@ -220,61 +220,6 @@ export const apiCreateQuestion = question => {
     // Saving a card, locks in the current display as though it had been
     // selected in the UI.
     const card = createdQuestion.lockDisplay().card();
-    const cardId = card.id
-    const name = card.name
-    const assistant_url = process.env.REACT_APP_WEBSOCKET_SERVER;
-    const ws = new WebSocket(assistant_url);
-
-    const siteName = useSetting("site-name");
-    const formattedSiteName = siteName
-      ? siteName.replace(/\s+/g, "_").toLowerCase()
-      : "";
-    let companyName = '';
-    let cubeDatabase = null;
-
-    if (databases) {
-      cubeDatabase = databases.find(database => database.is_cube === true);
-      if (cubeDatabase) {
-        companyName = formattedSiteName;
-      }
-    }
-
-    if (cubeDatabase) {
-      ws.onopen = () => {
-        console.log("WebSocket connection opened.");
-        console.log("Websocket:", companyName);
-        ws.send(
-          JSON.stringify({
-            type: "addDocuments",
-            data: {
-              company_name: companyName,
-              pageContents: [name],
-              metadata: [{
-                databaseID: cubeDatabase.id,
-                id: cardId,
-                type: "card"
-              }],
-              docId: [cardId],
-            },
-          })
-        );
-        ws.close();
-      };
-    }
-
-    ws.onmessage = (e) => {
-      console.log("WebSocket Message:", e.data);
-    };
-
-    ws.onerror = (error) => {
-      console.error("WebSocket Error: ", error);
-    };
-
-    ws.onclose = () => {
-      console.log("WebSocket connection closed.");
-    };
-
-    //ws.close();
     dispatch({ type: API_CREATE_QUESTION, payload: card });
 
     await dispatch(loadMetadataForCard(card));

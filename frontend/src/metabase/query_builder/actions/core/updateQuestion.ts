@@ -201,52 +201,6 @@ export const setArchivedQuestion = createThunkAction(
           run: true,
         }),
       );
-      const assistant_url = process.env.REACT_APP_WEBSOCKET_SERVER;
-      const ws = new WebSocket(assistant_url!);
-      const databases = Databases.selectors.getList(getState());  
-      const siteName = useSetting("site-name");
-      const formattedSiteName = siteName
-        ? siteName.replace(/\s+/g, "_").toLowerCase()
-        : "";
-      let companyName = '';
-      let cubeDatabase = null;
-  
-      if (databases) {
-        cubeDatabase = databases.find((database: { is_cube: boolean; }) => database.is_cube === true);
-        if (cubeDatabase) {
-          companyName = formattedSiteName;
-        }
-      }
-  
-      if (cubeDatabase) {
-      ws.onopen = () => {
-        console.log("WebSocket connection opened.");
-        console.log("Websocket :" ,companyName)
-        ws.send(
-          JSON.stringify({
-            type: "deleteDocuments",
-            data: {
-              company_name: companyName,
-              databaseID: cubeDatabase.id,
-              ids: [question.card().id]
-            },
-          })
-        );
-        ws.close();
-      };
-
-      ws.onmessage = (e) => {
-        console.log("WebSocket Message:", e.data);
-      };
-
-      ws.onerror = (error) => {
-        console.error("WebSocket Error: ", error);
-      };
-
-      ws.onclose = () => {
-        console.log("WebSocket connection closed.");
-      };
-    }
 
       if (archived) {
         dispatch(setUIControls({ isNativeEditorOpen: false }));

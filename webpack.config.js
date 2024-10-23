@@ -309,8 +309,6 @@ const config = {
     new webpack.EnvironmentPlugin({
       WEBPACK_BUNDLE: "development",
       MB_LOG_ANALYTICS: "false",
-      REACT_APP_WEBSOCKET_SERVER:
-        process.env.REACT_APP_WEBSOCKET_SERVER || "wss://dev.chat.omniloy.com",
       REACT_APP_SEMANTIC:
         process.env.REACT_APP_SEMANTIC || "https://dev.semantic.omniloy.com",
     }),
