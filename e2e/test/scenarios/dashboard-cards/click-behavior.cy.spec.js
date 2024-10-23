@@ -942,18 +942,12 @@ describeEE("scenarios > dashboard > dashboard cards > click behavior", () => {
       cy.findByTestId("viz-type-button").click();
 
       openNotebook();
-
-      getNotebookStep("data").findByText("Orders").should("be.visible");
-      getNotebookStep("filter")
-        .findByText("Created At is Jul 1–31, 2022")
-        .should("be.visible");
-      getNotebookStep("summarize").findByText("Count").should("be.visible");
-      getNotebookStep("summarize")
-        .findByText("Created At: Month")
-        .should("be.visible");
-      getNotebookStep("limit")
-        .findByPlaceholderText("Enter a limit")
-        .should("have.value", "5");
+      verifyNotebookQuery("Orders", {
+        filters: ["Created At is Jul 1–31, 2022"],
+        aggregations: ["Count"],
+        breakouts: ["Created At: Month"],
+        limit: 5,
+      });
 
       cy.go("back");
       testChangingBackToDefaultBehavior();
@@ -2081,7 +2075,6 @@ describeEE("scenarios > dashboard > dashboard cards > click behavior", () => {
         cy.findByTestId("viz-type-button").click();
 
         openNotebook();
-
         verifyNotebookQuery(
           "Orders",
           {
@@ -2756,6 +2749,8 @@ const createDashboardWithTabsLocal = ({
   });
 };
 
+// TODO: assert items count
+// TODO: joins
 function verifyNotebookQuery(dataSource, ...stages) {
   getNotebookStep("data").findByText(dataSource).should("be.visible");
 
