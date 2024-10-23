@@ -4,6 +4,10 @@ title: API changelog
 
 # Breaking changes to the API interface
 
+## Metabase 0.52.0
+
+- `POST /api/user/:id/send_invite` has been removed.
+
 ## Metabase 0.51.0
 
 - `GET /api/dashboard/:id/query_metadata`
