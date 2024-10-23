@@ -22,7 +22,7 @@ import { useListDatabasesQuery, useGetDatabaseMetadataWithoutParamsQuery, skipTo
 import { SemanticError } from "metabase/components/ErrorPages";
 import { SpinnerIcon } from "metabase/components/LoadingSpinner/LoadingSpinner.styled";
 import { t } from "ttag";
-import toast from 'react-hot-toast'; 
+import toast from 'react-hot-toast';
 import { useSetting } from "metabase/common/hooks";
 import { string } from "yup";
 
@@ -30,8 +30,8 @@ import { string } from "yup";
 const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages, selectedThreadId, setSelectedThreadId, chatType, oldCardId, insights, initial_message, setMessages, setInputValue, setThreadId, threadId, inputValue, messages, isChatHistoryOpen, setIsChatHistoryOpen, setShowButton, setShouldRefetchHistory }) => {
     const siteName = useSetting("site-name");
     const formattedSiteName = siteName
-      ? siteName.replace(/\s+/g, "_").toLowerCase()
-      : "";
+        ? siteName.replace(/\s+/g, "_").toLowerCase()
+        : "";
     const initialDbName = useSelector(getDBInputValue);
     const initialCompanyName = formattedSiteName;
     const initialSchema = useSelector(getInitialSchema);
@@ -81,7 +81,7 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
     const [insightDB, setInsightDB] = useState(null);
     const [chatDisabled, setChatDisabled] = useState(false);
     const [isFeedbackVisible, setIsFeedbackVisible] = useState(false);
-    const [loading, setLoading] = useState(true); 
+    const [loading, setLoading] = useState(true);
 
     const databases = data?.data;
     useEffect(() => {
@@ -129,22 +129,24 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
     useEffect(() => {
         const initializeClientAndThread = async () => {
             try {
-
-
                 // Search for assistants
                 const assistants = await client.assistants.search({ metadata: null, limit: 10, offset: 0 });
-                let selectedAgent = assistants[0];
-                for (let i = 0; i < assistants.length; i++) {
-                    if (
-                        (chatType === 'insights' && assistants[i].name === 'get_insight_agent') ||
-                        (chatType !== 'insights' && assistants[i].name === 'get_data_agent')
-                    ) {
-                        selectedAgent = assistants[i];
-                        break;
-                    }
+                let selectedAgent;
+    
+                if (chatType === 'insights') {
+                    selectedAgent = assistants.find(assistant => assistant.assistant_id === '5723ee2c-871d-4b4b-9005-bb436639c87f');
+                } else {
+                    selectedAgent = assistants.find(assistant => assistant.assistant_id === '118b7708-de63-4ac1-8151-5ea54fcd4850');
                 }
+    
+                // Fallback to first assistant if none match
+                if (!selectedAgent) {
+                    selectedAgent = assistants[0];
+                }
+    
+                
                 setAgent(selectedAgent);
-
+    
                 // Create a new thread
                 const createdThread = await client.threads.create();
                 setThread(createdThread);
@@ -152,15 +154,13 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
                 console.error("Error initializing Client or creating thread:", error.message);
             } finally {
                 setLoading(false); // Set loading to false after thread is created
-              }
+            }
         };
-
+    
         if (client) {
             initializeClientAndThread();
-          }
-        }, [client, chatType]);
-
- 
+        }
+    }, [client, chatType]);
 
     useEffect(() => {
         setMessages([])
@@ -277,16 +277,16 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
     const handleGetDatasetQuery = async (cardId) => {
         try {
             setIsLoading(true); // Show loading state
-            
+
             // Fetch the card details using the provided cardId
             const fetchedCard = await CardApi.get({ cardId });
             const queryCard = await CardApi.query({ cardId });
             const getDatasetQuery = fetchedCard?.dataset_query;
-    
+
             if (!getDatasetQuery) {
                 throw new Error("No dataset query found for this card.");
             }
-    
+
             // Create a new question object based on the fetched card's dataset query
             const newQuestion = Question.create({
                 databaseId: getDatasetQuery.database,
@@ -296,7 +296,7 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
                 visualization_settings: {},
                 dataset_query: getDatasetQuery,
             });
-    
+
             // Generate a unique hash for this question
             const itemToHash = {
                 dataset_query: {
@@ -311,17 +311,17 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
             };
             const hash = adhocQuestionHash(itemToHash);
             // Append new values safely by ensuring prevCard is always an array
-            setCard((prevCard) => Array.isArray(prevCard) ? [...prevCard, { ...fetchedCard, hash, typeQuery: getDatasetQuery.type }] : [{ ...fetchedCard, hash, typeQuery: getDatasetQuery.type}]);
+            setCard((prevCard) => Array.isArray(prevCard) ? [...prevCard, { ...fetchedCard, hash, typeQuery: getDatasetQuery.type }] : [{ ...fetchedCard, hash, typeQuery: getDatasetQuery.type }]);
             setDefaultQuestion((prevDefaultQuestion) => Array.isArray(prevDefaultQuestion) ? [...prevDefaultQuestion, newQuestion] : [newQuestion]);
             setResult((prevResult) => Array.isArray(prevResult) ? [...prevResult, queryCard] : [queryCard]);
             setCardHash((prevCardHash) => Array.isArray(prevCardHash) ? [...prevCardHash, hash] : [hash]);
-    
+
             // Handle code query if needed
             setCodeQuery((prevCodeQuery) => {
                 const query = queryCard?.data?.native_form?.query ?? "Sorry, query was not retrieved properly.";
                 return Array.isArray(prevCodeQuery) ? [...prevCodeQuery, query] : [query];
             });
-    
+
         } catch (error) {
             console.error("Error fetching card content:", error);
             setShowError(true);
@@ -330,8 +330,8 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
             setIsLoading(false);
         }
     };
-    
-    
+
+
 
     useEffect(() => {
         if (pendingInfoMessage && visualizationIndex >= 0) {
@@ -363,10 +363,10 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
 
     const sendMessage = async () => {
         if (!inputValue.trim() || !client || !agent || !thread) return;
-    
+
         setIsLoading(true);  // Set loading to true when the message is sent
         let visualizationIdx = messages.filter((msg) => msg.showVisualization).length;
-    
+
         // Prepare the user message to be sent
         let messagesToSend = [{ role: "human", content: inputValue }];
         const userMessage = {
@@ -378,11 +378,11 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
             isLoading: true,
             showFeedback: false,
         };
-    
+
         // Display temporary message during server response wait time
         const tempMessageId = Date.now() + Math.random();
         let tempMessage;
-    
+
         if (chatType !== 'insights') {
             tempMessage = {
                 id: tempMessageId,
@@ -391,10 +391,10 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
                 isLoading: true,
                 isTemporary: true, // Marking as a temporary message
             };
-    
+
             // Append the user message and the temporary server message to the state
             setMessages((prev) => [...prev, userMessage, tempMessage]);
-    
+
             // Call emulateDataStream to show a waiting message while we fetch the first chunk
             emulateDataStream(50, tempMessageId);
         } else {
@@ -408,7 +408,7 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
             };
             setMessages((prev) => [...prev, userMessage, tempMessage]);
         }
-    
+
         // Clear the input field
         setInputValue("");
         setChatDisabled(true);
@@ -418,7 +418,7 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
         let lastMessageId = tempMessageId; // Track last message to update its loading state
         let cardGenerated = false; // Track if the card has been generated
         let finalMessageProcessed = false; // Track if the final message has been appended
-    
+
         try {
             const schema = chatType === 'insights' ? initialInsightSchema : initialSchema.schema;
             const databaseID = chatType === 'insights' ? initialInsightDbName : initialDbName;
@@ -430,14 +430,14 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
             for await (const chunk of streamResponse) {
                 const { event, data } = chunk;
                 if (event === "messages/partial" && data.length > 0) {
-                   
+
                     const messageData = data[0];
 
                     const { content, type, tool_calls, response_metadata, id } = messageData;
                     setRunId(id)
                     if (messageData && messageData.content) {
                         const partialText = messageData.content; // Current text chunk
-    
+
                         // Check if the current chunk contains the previous message or it's a new message
                         if (chatType !== 'insights') {
                             if (isNewMessage || !partialText.startsWith(currentMessage)) {
@@ -451,7 +451,7 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
                                     isTemporary: true,
                                 };
                                 setMessages((prev) => [...prev, newTempMessage]);
-    
+
                                 // Set flag to false after first chunk of the new message
                                 isNewMessage = false;
                                 lastMessageId = newTempMessageId;  // Track the new message ID
@@ -460,7 +460,7 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
                                 setMessages((prev) => {
                                     const updatedMessages = [...prev];
                                     const lastMessageIndex = updatedMessages.findIndex(msg => msg.id === lastMessageId);
-    
+
                                     // Replace text of the last message with the new partial content
                                     if (lastMessageIndex >= 0 && updatedMessages[lastMessageIndex].isTemporary) {
                                         updatedMessages[lastMessageIndex].text = partialText; // Replace with the full message
@@ -486,11 +486,11 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
                                 return updatedText;
                             });
                         }
-    
+
                         // Store the current message to ensure the final text is updated correctly
                         currentMessage = partialText;
                     }
-    
+
                     // Handle tool calls (like card generation)
                     if (tool_calls.length > 0 && response_metadata && response_metadata.finish_reason === 'stop') {
                         if (tool_calls[0].name === "IdentifyFieldsOutput") {
@@ -512,7 +512,7 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
                             setProgressShow(true);
                         } else if (tool_calls[0].name === "GenerateCardOutput") {
                             const { card_id } = tool_calls[0].args;
-    
+
                             const cardMessageId = Date.now() + Math.random();
                             const cardTempMessage = {
                                 id: cardMessageId,
@@ -521,16 +521,16 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
                                 isLoading: true,
                                 isTemporary: true,
                             };
-    
+
                             // Append the card generation message
                             setMessages((prev) => [...prev, cardTempMessage]);
-    
+
                             // Show the card generation progress message
                             showCardGenerationMessage(50, cardMessageId);
-    
+
                             // Fetch the dataset and show visualization
                             await handleGetDatasetQuery(card_id);
-    
+
                             setMessages((prev) => {
                                 const visualizationMessage = {
                                     id: Date.now() + Math.random(),
@@ -540,15 +540,15 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
                                     visualizationIdx,
                                     isLoading: false,
                                 };
-    
+
                                 return [...prev, visualizationMessage]; // Append visualization message without removing others
                             });
-    
+
                             cardGenerated = true;
                         }
                     }
                 }
-    
+
                 // Handle complete messages
                 if (event === "messages/complete" && data.length > 0) {
                     setFinalMessages((prevFinalMessages) => {
@@ -560,17 +560,17 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
                             ...prevFinalMessagesText,
                             lastChunk,
                         ]);
-    
+
                         return prevFinalMessages;
                     });
                     const messageData = data[0];
-    
+
                     // Handle tool type messages
                     if (messageData && messageData.type === "tool") {
                         try {
                             const parsedContent = JSON.parse(messageData.content);
                             const { card_id, explanation, python_code, result } = parsedContent;
-    
+
                             if (card_id) {
                                 const cardMessageId = Date.now() + Math.random();
                                 const cardTempMessage = {
@@ -580,13 +580,13 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
                                     isLoading: true,
                                     isTemporary: true,
                                 };
-    
+
                                 // Append the card generation message
                                 setMessages((prev) => [...prev, cardTempMessage]);
-    
+
                                 // Fetch the dataset and append the card
                                 await handleGetDatasetQuery(card_id);
-    
+
                                 setMessages((prev) => {
                                     const visualizationMessage = {
                                         id: Date.now() + Math.random(),
@@ -596,20 +596,20 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
                                         visualizationIdx,
                                         isLoading: false,
                                     };
-    
+
                                     return [...prev, visualizationMessage];
                                 });
-    
+
                                 cardGenerated = true;
                             }
-    
+
                             if (python_code && explanation) {
                                 removeExistingMessage("Please wait until we generate the response....")
                                 setInsightCellCode((prevCode) => [...prevCode, python_code]);
                                 setInsightsText((prevText) => [...prevText, explanation]);
                                 setInsightsCode((prevCode) => [...prevCode, python_code]);
                             }
-    
+
                             if (result && result.outputs && result.outputs.length > 0) {
                                 removeExistingMessage("Please wait until we generate the response....")
                                 result.outputs.forEach((output) => {
@@ -632,7 +632,7 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
                     } else if (messageData && typeof messageData.content === 'string' && !finalMessageProcessed) {
                         // Avoid duplication by ensuring the final message is only appended once
                         finalMessageProcessed = true;
-    
+
                         setMessages((prev) => [
                             ...prev,
                             {
@@ -644,7 +644,7 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
                                 completedAfterCard: cardGenerated, // Flag to show it came after card generation
                             },
                         ]);
-    
+
                         // Reset the state for the next message
                         currentMessage = "";
                         isNewMessage = true;
@@ -667,8 +667,8 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
                     ])
                 }
             }
-                setChatDisabled(false);
-                setChatLoading(false);
+            setChatDisabled(false);
+            setChatLoading(false);
         } catch (error) {
             setChatDisabled(false);
             setChatLoading(false);
@@ -690,7 +690,7 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
                     showVisualization: false
                 },
             ]);
-        }finally {
+        } finally {
             setChatDisabled(false);
             setChatLoading(false);
             setShouldRefetchHistory(true);
@@ -701,29 +701,29 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
                         : msg
                 )
             );
-            setIsLoading(false);  
-            setIsFeedbackVisible(true); 
+            setIsLoading(false);
+            setIsFeedbackVisible(true);
         }
     };
 
     const removeRunPrefix = (str) => {
         return str.startsWith("run-") ? str.replace("run-", "") : str;
     }
-    
+
     const handleSendFeedback = async (score, messageId, correctionText) => {
         try {
             if (score === 1) {
                 await clientSmith.createFeedback(removeRunPrefix(runId), "user-score", { score: score });
             } else {
-                await clientSmith.createFeedback(removeRunPrefix(runId), "comment", { comment: correctionText });      
-            } 
-     
+                await clientSmith.createFeedback(removeRunPrefix(runId), "comment", { comment: correctionText });
+            }
+
         } catch (error) {
-          console.error("Error sending feedback:", error);
+            console.error("Error sending feedback:", error);
         } finally {
-          toast.success('Feedback submitted!')
+            toast.success('Feedback submitted!')
         }
-      };
+    };
 
     function showCardGenerationMessage(chunkInterval = 50, tempMessageId) {
         const messages = [
@@ -961,7 +961,7 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
             >
                 {loading ? (
                     <></>
-                ):(
+                ) : (
                     chatType === "default" && dbInputValue === '' ? (
                         <SemanticError />
                     ) : (
@@ -989,7 +989,7 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
                                     marginBottom: "150px", // Adjust this value based on the input area height
                                 }}
                             >
-    
+
                                 <ChatMessageList messages={messages} isLoading={isLoading} onFeedbackClick={handleFeedbackDialogOpen} isFeedbackVisible={isFeedbackVisible}
                                     approvalChangeButtons={approvalChangeButtons} onApproveClick={handleAccept} onDenyClick={handleDeny}
                                     card={card} defaultQuestion={defaultQuestion} result={result} openModal={openModal} redirect={redirect}
@@ -1079,7 +1079,7 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
                                                     )}
                                                 </Button>
                                             </>
-    
+
                                         ) : (
                                             <Button
                                                 variant="filled"
@@ -1106,16 +1106,16 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
                                                 Generate new chat
                                             </Button>
                                         )}
-    
+
                                     </div>
                                 </div>
-    
-    
+
+
                             </div>
                         </>
                     )
                 )}
-               
+
             </Box>
 
             {isDBModalOpen && (
