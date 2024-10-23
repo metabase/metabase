@@ -934,12 +934,7 @@ describeEE("scenarios > dashboard > dashboard cards > click behavior", () => {
         "contain.text",
         `Started from ${TARGET_QUESTION.name}`,
       );
-
-      cy.findByTestId("viz-type-button").click();
-      cy.findByTestId("sidebar-content")
-        .findByTestId("Line-container")
-        .should("have.attr", "aria-selected", "true");
-      cy.findByTestId("viz-type-button").click();
+      verifyVizTypeIsLine();
 
       openNotebook();
       verifyNotebookQuery("Orders", [
@@ -984,15 +979,9 @@ describeEE("scenarios > dashboard > dashboard cards > click behavior", () => {
         "contain.text",
         `Started from ${TARGET_QUESTION.name}`,
       );
-
-      cy.findByTestId("viz-type-button").click();
-      cy.findByTestId("sidebar-content")
-        .findByTestId("Line-container")
-        .should("have.attr", "aria-selected", "true");
-      cy.findByTestId("viz-type-button").click();
+      verifyVizTypeIsLine();
 
       openNotebook();
-
       verifyNotebookQuery("Orders", [
         {
           filters: ["Created At is Jul 1–31, 2022", "Quantity is equal to 64"],
@@ -1446,15 +1435,9 @@ describeEE("scenarios > dashboard > dashboard cards > click behavior", () => {
           "contain.text",
           `Started from ${TARGET_QUESTION.name}`,
         );
-
-        cy.findByTestId("viz-type-button").click();
-        cy.findByTestId("sidebar-content")
-          .findByTestId("Line-container")
-          .should("have.attr", "aria-selected", "true");
-        cy.findByTestId("viz-type-button").click();
+        verifyVizTypeIsLine();
 
         openNotebook();
-
         verifyNotebookQuery("Orders", [
           {
             filters: [
@@ -2060,12 +2043,7 @@ describeEE("scenarios > dashboard > dashboard cards > click behavior", () => {
           "contain.text",
           `Started from ${TARGET_QUESTION.name}`,
         );
-
-        cy.findByTestId("viz-type-button").click();
-        cy.findByTestId("sidebar-content")
-          .findByTestId("Line-container")
-          .should("have.attr", "aria-selected", "true");
-        cy.findByTestId("viz-type-button").click();
+        verifyVizTypeIsLine();
 
         openNotebook();
         verifyNotebookQuery("Orders", [
@@ -2740,3 +2718,11 @@ const createDashboardWithTabsLocal = ({
     });
   });
 };
+
+function verifyVizTypeIsLine() {
+  cy.findByTestId("viz-type-button").click();
+  cy.findByTestId("sidebar-content")
+    .findByTestId("Line-container")
+    .should("have.attr", "aria-selected", "true");
+  cy.findByTestId("viz-type-button").click();
+}
