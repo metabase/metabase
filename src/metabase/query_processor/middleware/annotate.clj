@@ -592,7 +592,13 @@
   [query {cols-returned-by-driver :cols, :as result} :- [:maybe :map]]
   (->> (merge-cols-returned-by-driver (column-info query result) cols-returned-by-driver)
        (deduplicate-cols-names)
-       (map lib.temporal-bucket/ensure-temporal-unit-in-display-name)))
+       (map lib.temporal-bucket/ensure-temporal-unit-in-display-name)
+       ;; tmp resolves some failures -- but this is prone to produce even more failures! embedding-linked-filters.cy.spec.js
+       (map #(m/update-existing % :display_name (fn [display-name]
+                                                  (if (and (string? display-name)
+                                                           (= display-name (u/lower-case-en display-name)))
+                                                    (str/capitalize display-name)
+                                                    display-name))))))
 
 (defn base-type-inferer
   "Native queries don't have the type information from the original `Field` objects used in the query.
