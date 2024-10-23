@@ -15,7 +15,7 @@ export const SDKContent = ({
   sdkDocsUrl,
 }: SDKContentProps) => (
   <Box>
-    <Group spacing="xs" align="center" mb="sm">
+    <Group spacing="sm" align="center" mb="sm">
       <Text lh={1.57} fw="bold" size="lg" color="text-medium">
         {t`Embedded analytics SDK`}
       </Text>
