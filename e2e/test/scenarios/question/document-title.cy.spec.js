@@ -1,6 +1,7 @@
 import { restore, visitQuestionAdhoc } from "e2e/support/helpers";
 
 const PG_DB_ID = 2;
+
 describe("question loading changes document title", () => {
   beforeEach(() => {
     restore("postgres-12");

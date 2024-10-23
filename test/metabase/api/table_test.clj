@@ -1,4 +1,4 @@
-(ns metabase.api.table-test
+(ns ^:mb/driver-tests metabase.api.table-test
   "Tests for /api/table endpoints."
   (:require
    [clojure.test :refer :all]

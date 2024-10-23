@@ -59,10 +59,8 @@ export default {
 
 export const Default = {
   render: DefaultTemplate,
-  name: "Default",
 };
 
 export const Sizes = {
   render: SizeTemplate,
-  name: "Sizes",
 };

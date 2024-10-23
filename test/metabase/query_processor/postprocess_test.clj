@@ -1,4 +1,4 @@
-(ns metabase.query-processor.postprocess-test
+(ns ^:mb/driver-tests metabase.query-processor.postprocess-test
   (:require
    [clojure.test :refer :all]
    [metabase.query-processor.postprocess :as qp.postprocess]

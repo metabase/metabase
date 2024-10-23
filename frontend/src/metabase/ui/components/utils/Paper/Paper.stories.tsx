@@ -71,17 +71,14 @@ export default {
 
 export const Default = {
   render: DefaultTemplate,
-  name: "Default",
 };
 
 export const NoBorder = {
   render: GridTemplate,
-  name: "No border",
 };
 
 export const Border = {
   render: GridTemplate,
-  name: "Border",
   args: {
     withBorder: true,
   },

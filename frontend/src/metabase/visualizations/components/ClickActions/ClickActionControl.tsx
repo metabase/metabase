@@ -1,4 +1,5 @@
 import Tooltip from "metabase/core/components/Tooltip";
+import { useDispatch } from "metabase/lib/redux";
 import type { IconName } from "metabase/ui";
 import { Button, Icon } from "metabase/ui";
 import {
@@ -32,6 +33,8 @@ export const ClickActionControl = ({
   close,
   onClick,
 }: Props): JSX.Element | null => {
+  const dispatch = useDispatch();
+
   if (
     !isRegularClickAction(action) &&
     !isCustomClickAction(action) &&
@@ -42,11 +45,15 @@ export const ClickActionControl = ({
 
   const handleClick =
     isCustomClickAction(action) && action.onClick
-      ? () => (action as CustomClickAction).onClick?.({ closePopover: close })
+      ? () =>
+          (action as CustomClickAction).onClick?.({
+            dispatch,
+            closePopover: close,
+          })
       : () => onClick(action);
 
   if (isCustomClickActionWithView(action)) {
-    return action.view({ closePopover: close });
+    return action.view({ dispatch, closePopover: close });
   }
 
   const { buttonType } = action;

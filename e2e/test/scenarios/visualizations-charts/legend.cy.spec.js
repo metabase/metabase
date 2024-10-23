@@ -344,14 +344,14 @@ describe("scenarios > visualizations > legend", () => {
       pieSlices().should("have.length", 3);
       cy.findByText("18,760").should("not.exist");
       cy.findByText("17,418").should("exist");
-      getPieChartLegendItemPercentage("TX").should("not.exist");
+      getPieChartLegendItemPercentage("TX").should("have.text", "");
 
       hideSeries(3); // "Other" slice
 
       pieSlices().should("have.length", 2);
       cy.findByText("17,418").should("not.exist");
       cy.findByText("1,660").should("exist");
-      getPieChartLegendItemPercentage("Other").should("not.exist");
+      getPieChartLegendItemPercentage("Other").should("have.text", "");
       getPieChartLegendItemPercentage("MT").should("have.text", "52.5%");
       getPieChartLegendItemPercentage("MN").should("have.text", "47.5%");
 

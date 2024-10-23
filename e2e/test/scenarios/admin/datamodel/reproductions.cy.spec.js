@@ -85,6 +85,7 @@ describe("issue 18384", () => {
 
 describe("issue 21984", () => {
   const reviewsDataModelPage = `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${REVIEWS_ID}`;
+
   beforeEach(() => {
     cy.intercept("GET", "/api/table/*/query_metadata?**").as("tableMetadata");
 

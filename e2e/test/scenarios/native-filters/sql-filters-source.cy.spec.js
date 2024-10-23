@@ -16,6 +16,7 @@ import {
   setFilterQuestionSource,
   setSearchBoxFilterType,
   setTokenFeatures,
+  updateSetting,
   visitEmbeddedPage,
   visitPublicQuestion,
   visitQuestion,
@@ -48,7 +49,7 @@ describe("scenarios > filters > sql filters > values source", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    cy.request("PUT", "/api/setting/enable-public-sharing", { value: true });
+    updateSetting("enable-public-sharing", true);
     cy.intercept("POST", "/api/dataset").as("dataset");
     cy.intercept("GET", "/api/session/properties").as("sessionProperties");
     cy.intercept("PUT", "/api/card/*").as("updateQuestion");
@@ -616,7 +617,7 @@ describe("scenarios > filters > sql filters > values source > number parameter",
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    cy.request("PUT", "/api/setting/enable-public-sharing", { value: true });
+    updateSetting("enable-public-sharing", true);
     cy.intercept("POST", "/api/dataset").as("dataset");
     cy.intercept("GET", "/api/session/properties").as("sessionProperties");
     cy.intercept("PUT", "/api/card/*").as("updateQuestion");

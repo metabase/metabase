@@ -5,10 +5,14 @@ import {
 } from "e2e/support/cypress_sample_instance_data";
 import {
   mockSlackConfigured,
+  modal,
   openSharingMenu,
+  popover,
   restore,
+  setupNotificationChannel,
   setupSMTP,
   sharingMenuButton,
+  toggleAlertChannel,
   visitModel,
   visitQuestion,
 } from "e2e/support/helpers";
@@ -26,10 +30,27 @@ describe("scenarios > alert", () => {
       visitQuestion(ORDERS_QUESTION_ID);
       openSharingMenu("Create alert");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(
-        "To send alerts, you'll need to set up email or Slack integration.",
-      );
+      modal().within(() => {
+        cy.findByText(
+          "To send alerts, you'll need to set up email, Slack or Webhook integration.",
+        );
+
+        cy.findByRole("link", { name: "Configure email" }).should(
+          "have.attr",
+          "href",
+          "/admin/settings/email",
+        );
+        cy.findByRole("link", { name: "Configure Slack" }).should(
+          "have.attr",
+          "href",
+          "/admin/settings/notifications/slack",
+        );
+        cy.findByRole("link", { name: "Configure webhook" }).should(
+          "have.attr",
+          "href",
+          "/admin/settings/notifications",
+        );
+      });
     });
 
     it("should say to non-admins that admin must add email credentials", () => {
@@ -89,6 +110,53 @@ describe("scenarios > alert", () => {
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("The wide world of alerts").should("not.exist");
       });
+    });
+  });
+
+  describe("with a webhook", { tags: ["@external"] }, () => {
+    beforeEach(() => {
+      setupNotificationChannel({
+        name: "Foo Hook",
+        description: "This is a hook",
+      });
+      setupNotificationChannel({
+        name: "Bar Hook",
+        description: "This is another hook",
+      });
+      cy.setCookie("metabase.SEEN_ALERT_SPLASH", "true");
+    });
+
+    it("should be able to create and delete alerts with webhooks enabled", () => {
+      visitQuestion(ORDERS_QUESTION_ID);
+      openSharingMenu("Create alert");
+
+      //Disable Email
+      toggleAlertChannel("Email");
+      toggleAlertChannel("Foo Hook");
+      toggleAlertChannel("Bar Hook");
+
+      cy.findByRole("button", { name: "Done" }).click();
+
+      openSharingMenu("Edit alerts");
+
+      popover().within(() => {
+        cy.findByText("You set up an alert").should("be.visible");
+        cy.findByRole("listitem", { name: "Number of HTTP channels" })
+          .should("contain.text", "2")
+          .findByRole("img", { name: /webhook/i })
+          .should("exist");
+        cy.findByText("Edit").click();
+      });
+
+      cy.findByRole("button", { name: "Delete this alert" }).click();
+
+      cy.log(
+        "Webhooks should render with their given names in delete modal metabase#48428",
+      );
+      cy.findByRole("checkbox", { name: /Channel Foo Hook/ }).click();
+      cy.findByRole("checkbox", { name: /Channel Bar Hook/ }).click();
+
+      cy.findByRole("button", { name: "Delete this alert" }).click();
     });
   });
 

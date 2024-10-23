@@ -23,6 +23,7 @@ const setup = (value: TypeFilterProps) => {
 
   render(<TypeFilterDisplay {...props} />);
 };
+
 describe("TypeFilterDisplay", () => {
   it("should display title when no type is selected", () => {
     setup([]);

@@ -6,6 +6,7 @@ import {
   popover,
   restore,
   setTokenFeatures,
+  updateSetting,
 } from "e2e/support/helpers";
 
 const PG_DB_ID = 2;
@@ -107,9 +108,7 @@ describe(
     });
 
     it("should not update the setting when the same database is selected again", () => {
-      cy.request("PUT", "/api/setting/last-used-native-database-id", {
-        value: SAMPLE_DB_ID,
-      });
+      updateSetting("last-used-native-database-id", SAMPLE_DB_ID);
 
       startNativeQuestion();
       cy.findByTestId("selected-database")
@@ -247,6 +246,7 @@ describe("mongo as the default database", { tags: "@mongo" }, () => {
 
 describe("scenatios > question > native > mysql", { tags: "@external" }, () => {
   const MYSQL_DB_NAME = "QA MySQL8";
+
   beforeEach(() => {
     cy.intercept("POST", "/api/card").as("createQuestion");
     cy.intercept("POST", "/api/dataset").as("dataset");

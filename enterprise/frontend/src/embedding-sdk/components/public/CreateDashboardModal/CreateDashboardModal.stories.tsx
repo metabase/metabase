@@ -59,7 +59,7 @@ const HookTemplate: StoryFn<
   );
 };
 
-export const useCreateDashboardApiHook = {
+export const UseCreateDashboardApiHook = {
   render: HookTemplate,
 };
 

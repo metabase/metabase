@@ -80,7 +80,6 @@ export default {
 
 export const Default = {
   render: VariantTemplate,
-  name: "Default",
 };
 
 export const EmptyMd = {

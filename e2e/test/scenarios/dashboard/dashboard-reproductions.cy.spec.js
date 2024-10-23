@@ -69,6 +69,7 @@ describe("issue 12578", () => {
       "source-table": ORDERS_ID,
     },
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -254,6 +255,7 @@ describe("issue 13736", () => {
       aggregation: [["count"]],
     },
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -319,6 +321,7 @@ describe("issue 16559", () => {
   const dashboardDetails = {
     name: "16559 Dashboard",
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -790,7 +793,8 @@ describe("issue 31274", () => {
       editDashboard(dashboard.id);
     });
 
-    cy.icon("link").click();
+    cy.findByLabelText("Add a link or iframe").click();
+    popover().findByText("Link").click();
     cy.findByPlaceholderText("https://example.com").realHover();
 
     cy.log(
@@ -872,6 +876,7 @@ describe("issue 31766", () => {
     restore();
     cy.signInAsAdmin();
   });
+
   it("should not corrupt dashboard data (metabase#31766)", () => {
     const questionDetails = {
       name: "Orders",
@@ -1058,6 +1063,7 @@ describe("should not redirect users to other pages when linking an entity (metab
     });
 
     cy.icon("link").click();
+    popover().findByText("Link").click();
     cy.wait("@recentViews");
 
     cy.findByTestId("recents-list-container").within(() => {
@@ -1088,6 +1094,7 @@ describe("should not redirect users to other pages when linking an entity (metab
     });
 
     cy.icon("link").click();
+    popover().findByText("Link").click();
     cy.findByTestId("custom-edit-text-link").type(TEST_QUESTION_NAME);
     cy.findByTestId("search-results-list").within(() => {
       cy.findByText(TEST_QUESTION_NAME).click();

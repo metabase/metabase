@@ -12,9 +12,9 @@
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.driver :as driver]
-   [metabase.models.pulse :as pulse]
+   [metabase.models.pulse :as models.pulse]
    [metabase.models.task-history :as task-history]
-   [metabase.pulse]
+   [metabase.pulse.core :as pulse]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.task :as task]
    [metabase.util.cron :as u.cron]
@@ -52,9 +52,9 @@
     (task-history/with-task-history {:task         "send-pulse"
                                      :task_details {:pulse-id    pulse-id
                                                     :channel-ids (seq channel-ids)}}
-      (when-let [pulse (pulse/retrieve-notification pulse-id :archived false)]
+      (when-let [pulse (models.pulse/retrieve-notification pulse-id :archived false)]
         (log/debugf "Starting Pulse Execution: %d" pulse-id)
-        (metabase.pulse/send-pulse! pulse :channel-ids channel-ids)
+        (pulse/send-pulse! pulse :channel-ids channel-ids)
         (log/debugf "Finished Pulse Execution: %d" pulse-id)
         :done))
     (catch Throwable e
@@ -100,14 +100,19 @@
   "Delete PulseChannels that have no recipients and no channel set for a pulse, returns the channel ids that were deleted."
   [pulse-id]
   (when-let [ids-to-delete (seq
-                            (for [channel (t2/select [:model/PulseChannel :id :details]
+                            (for [channel (t2/select [:model/PulseChannel :id :details :channel_id :channel_type]
                                                      :pulse_id pulse-id
                                                      :id [:not-in {:select   [[:pulse_channel_id :id]]
                                                                    :from     :pulse_channel_recipient
                                                                    :group-by [:pulse_channel_id]
                                                                    :having   [:>= :%count.* [:raw 1]]}])
-                                  :when (and (empty? (get-in channel [:details :emails]))
-                                             (not (get-in channel [:details :channel])))]
+                                  :when  (case (:channel_type channel)
+                                           :email
+                                           (empty? (get-in channel [:details :emails]))
+                                           :slack
+                                           (empty? (get-in channel [:details :channel]))
+                                           :http
+                                           (nil? (:channel_id channel)))]
                               (:id channel)))]
     (log/infof "Deleting %d PulseChannels with id: %s due to having no recipients" (count ids-to-delete) (str/join ", " ids-to-delete))
     (t2/delete! :model/PulseChannel :id [:in ids-to-delete])
@@ -177,7 +182,7 @@
   ^{:doc
     "Find all active pulse Channels, group them by pulse-id and schedule time and create a trigger for each.
 
-    This is basically a migraiton in disguise to move from the old SendPulses job to the new SendPulse job.
+    This is basically a migration in disguise to move from the old SendPulses job to the new SendPulse job.
 
     Context: prior to this, SendPulses is a single job that runs hourly and send all Pulses that are scheduled for that
     hour.

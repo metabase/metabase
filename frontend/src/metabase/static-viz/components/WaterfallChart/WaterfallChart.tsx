@@ -7,8 +7,6 @@ import { getChartMeasurements } from "metabase/visualizations/echarts/cartesian/
 import { getWaterfallChartModel } from "metabase/visualizations/echarts/cartesian/waterfall/model";
 import { getWaterfallChartOption } from "metabase/visualizations/echarts/cartesian/waterfall/option";
 
-import { computeStaticWaterfallChartSettings } from "./settings";
-
 registerEChartsModules();
 
 const WIDTH = 540;
@@ -16,24 +14,21 @@ const HEIGHT = 360;
 
 export function WaterfallChart({
   rawSeries,
+  settings,
   renderingContext,
   width = WIDTH,
   height = HEIGHT,
   isStorybook = false,
 }: StaticChartProps) {
-  const computedVisualizationSettings = computeStaticWaterfallChartSettings(
-    rawSeries,
-    renderingContext,
-  );
   const chartModel = getWaterfallChartModel(
     rawSeries,
-    computedVisualizationSettings,
+    settings,
     [],
     renderingContext,
   );
   const chartMeasurements = getChartMeasurements(
     chartModel,
-    computedVisualizationSettings,
+    settings,
     false,
     width,
     height,
@@ -45,7 +40,7 @@ export function WaterfallChart({
     chartMeasurements,
     null,
     [],
-    computedVisualizationSettings,
+    settings,
     false,
     renderingContext,
   );

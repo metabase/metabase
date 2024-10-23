@@ -63,3 +63,8 @@
                 prev-col  (lib.equality/find-matching-column query -2 (lib.ref/ref column) prev-cols)]
             (when prev-col
               (recur (update query :stages pop) prev-col))))))))
+
+(mu/defn has-aggregation-or-breakout?
+  "Whether the `query` has an aggregation or breakout clause in some query stage."
+  [query :- ::lib.schema/query]
+  (some? (pop-until-aggregation-or-breakout query)))

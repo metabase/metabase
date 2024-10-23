@@ -9,6 +9,13 @@ import { ForgotPassword } from "metabase/auth/components/ForgotPassword";
 import { Login } from "metabase/auth/components/Login";
 import { Logout } from "metabase/auth/components/Logout";
 import { ResetPassword } from "metabase/auth/components/ResetPassword";
+import {
+  BrowseDatabases,
+  BrowseMetrics,
+  BrowseModels,
+  BrowseSchemas,
+  BrowseTables,
+} from "metabase/browse";
 import CollectionLanding from "metabase/collections/components/CollectionLanding";
 import { MoveCollectionModal } from "metabase/collections/components/MoveCollectionModal";
 import { TrashCollectionLanding } from "metabase/collections/components/TrashCollectionLanding";
@@ -50,11 +57,6 @@ import SearchApp from "metabase/search/containers/SearchApp";
 import { Setup } from "metabase/setup/components/Setup";
 import getCollectionTimelineRoutes from "metabase/timelines/collections/routes";
 
-import { BrowseDatabases } from "./browse/components/BrowseDatabases";
-import { BrowseMetrics } from "./browse/components/BrowseMetrics";
-import { BrowseModels } from "./browse/components/BrowseModels";
-import BrowseSchemas from "./browse/components/BrowseSchemas";
-import { BrowseTables } from "./browse/components/BrowseTables";
 import {
   CanAccessMetabot,
   CanAccessSettings,

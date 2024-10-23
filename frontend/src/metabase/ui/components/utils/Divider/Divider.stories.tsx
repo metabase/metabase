@@ -28,9 +28,7 @@ export default {
   argTypes,
 };
 
-export const Default = {
-  name: "Default",
-};
+export const Default = {};
 
 export const VerticalOrientation = {
   render: VerticalTemplate,

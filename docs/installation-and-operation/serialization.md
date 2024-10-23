@@ -53,9 +53,10 @@ Metabase will only include some artifacts in its exports:
 - Saved questions
 - Actions
 - Models
+- Metrics
 - SQL Snippets
 - Data model and table metadata
-- Segments and Metrics defined in the Table Metadata
+- Segments
 - Public sharing settings for questions and dashboards
 - [General Metabase settings](#general-metabase-settings-that-are-exported)
 - Events and timelines

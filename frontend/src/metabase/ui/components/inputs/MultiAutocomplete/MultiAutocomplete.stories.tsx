@@ -79,7 +79,6 @@ export default {
 
 export const Default = {
   render: DefaultTemplate,
-  name: "Default",
   args: {
     data: sampleArgs.data,
   },

@@ -6,6 +6,7 @@ import {
   setTokenFeatures,
   setupLdap,
   typeAndBlurUsingLabel,
+  updateSetting,
 } from "e2e/support/helpers";
 
 import {
@@ -188,7 +189,7 @@ describeEE(
 
     it("should show the login form when ldap is enabled but password login isn't (metabase#25661)", () => {
       setupLdap();
-      cy.request("PUT", "/api/setting/enable-password-login", { value: false });
+      updateSetting("enable-password-login", false);
       cy.signOut();
       cy.visit("/auth/login");
 

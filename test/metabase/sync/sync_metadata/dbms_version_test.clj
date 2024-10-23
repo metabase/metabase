@@ -1,4 +1,4 @@
-(ns metabase.sync.sync-metadata.dbms-version-test
+(ns ^:mb/driver-tests metabase.sync.sync-metadata.dbms-version-test
   (:require
    [clojure.test :refer :all]
    [malli.core :as mc]

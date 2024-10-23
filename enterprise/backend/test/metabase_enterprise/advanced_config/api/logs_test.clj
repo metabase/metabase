@@ -52,5 +52,4 @@
                  (mt/user-http-request :crowberto :get 200 "ee/logs/query_execution/2023-02")))))
       (testing "only works when `:audit-app` feature is available."
         (mt/with-premium-features #{}
-          (is (= "Audit app is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
-                 (mt/user-http-request :crowberto :get 402 "ee/logs/query_execution/2023-02"))))))))
+          (mt/assert-has-premium-feature-error "Audit app" (mt/user-http-request :crowberto :get 402 "ee/logs/query_execution/2023-02")))))))

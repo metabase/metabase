@@ -84,16 +84,23 @@
       clean-stage-schema-errors
       clean-stage-ref-errors))
 
+(def ^:dynamic *clean-query*
+  "If true (this is the default), the query is cleaned.
+  When converting queries at later stages of the preprocessing pipeline, this cleaning might not be desirable."
+  true)
+
 (defn- clean [almost-query]
-  (loop [almost-query almost-query
-         stage-index 0]
-    (let [current-stage (nth (:stages almost-query) stage-index)
-          new-stage (clean-stage current-stage)]
-      (if (= current-stage new-stage)
-        (if (= stage-index (dec (count (:stages almost-query))))
-          almost-query
-          (recur almost-query (inc stage-index)))
-        (recur (update almost-query :stages assoc stage-index new-stage) stage-index)))))
+  (if-not *clean-query*
+    almost-query
+    (loop [almost-query almost-query
+           stage-index 0]
+      (let [current-stage (nth (:stages almost-query) stage-index)
+            new-stage (clean-stage current-stage)]
+        (if (= current-stage new-stage)
+          (if (= stage-index (dec (count (:stages almost-query))))
+            almost-query
+            (recur almost-query (inc stage-index)))
+          (recur (update almost-query :stages assoc stage-index new-stage) stage-index))))))
 
 (defmulti ->pMBQL
   "Coerce something to pMBQL (the version of MBQL manipulated by Metabase Lib v2) if it's not already pMBQL."
@@ -352,17 +359,18 @@
   `:effective-type`, which is not used in options maps in legacy MBQL."
   [m]
   (not-empty
-   (into {}
-         (comp (disqualify)
-               (remove (fn [[k _v]]
-                         (= k :effective-type))))
-         ;; Following construct ensures that transformation mbql -> pmbql -> mbql, does not add base-type where those
-         ;; were not present originally. Base types are adeed in [[metabase.lib.query/add-types-to-fields]].
-         (if (contains? m :metabase.lib.query/transformation-added-base-type)
-           (dissoc m
-                   :metabase.lib.query/transformation-added-base-type
-                   :base-type)
-           m))))
+   (-> (into {}
+             (comp (disqualify)
+                   (remove (fn [[k _v]]
+                             (= k :effective-type))))
+             ;; Following construct ensures that transformation mbql -> pmbql -> mbql, does not add base-type where
+             ;; those were not present originally. Base types are adeed in [[metabase.lib.query/add-types-to-fields]].
+             (if (contains? m :metabase.lib.query/transformation-added-base-type)
+               (dissoc m
+                       :metabase.lib.query/transformation-added-base-type
+                       :base-type)
+               m))
+       (m/assoc-some :original-temporal-unit (:metabase.lib.field/original-temporal-unit m)))))
 
 (defmulti ^:private aggregation->legacy-MBQL
   {:arglists '([aggregation-clause])}
@@ -522,7 +530,7 @@
 
 (defmethod ->legacy-MBQL :mbql/join [join]
   (let [base (cond-> (disqualify join)
-               (str/starts-with? (:alias join) legacy-default-join-alias) (dissoc :alias))]
+               (and *clean-query* (str/starts-with? (:alias join) legacy-default-join-alias)) (dissoc :alias))]
     (merge (-> base
                (dissoc :stages :conditions)
                (update-vals ->legacy-MBQL))

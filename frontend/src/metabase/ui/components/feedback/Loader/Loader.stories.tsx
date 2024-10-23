@@ -37,11 +37,8 @@ export default {
   argTypes,
 };
 
-export const Default = {
-  name: "Default",
-};
+export const Default = {};
 
 export const Sizes = {
   render: SizeTemplate,
-  name: "Sizes",
 };

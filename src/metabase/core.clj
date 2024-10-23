@@ -2,9 +2,9 @@
   (:require
    [clojure.string :as str]
    [clojure.tools.trace :as trace]
+   [environ.core :as env]
    [java-time.api :as t]
    [metabase.analytics.prometheus :as prometheus]
-   [metabase.channel.core :as channel]
    [metabase.config :as config]
    [metabase.core.config-from-file :as config-from-file]
    [metabase.core.initialization-status :as init-status]
@@ -12,9 +12,11 @@
    [metabase.driver.h2]
    [metabase.driver.mysql]
    [metabase.driver.postgres]
+   [metabase.embed.settings :as embed.settings]
    [metabase.events :as events]
    [metabase.logger :as logger]
    [metabase.models.cloud-migration :as cloud-migration]
+   [metabase.models.database :as database]
    [metabase.models.setting :as settings]
    [metabase.plugins :as plugins]
    [metabase.plugins.classloader :as classloader]
@@ -124,10 +126,9 @@
 
   (init-status/set-progress! 0.5)
   ;; Set up Prometheus
-  (when (prometheus/prometheus-server-port)
-    (log/info "Setting up prometheus metrics")
-    (prometheus/setup!)
-    (init-status/set-progress! 0.6))
+  (log/info "Setting up prometheus metrics")
+  (prometheus/setup!)
+  (init-status/set-progress! 0.6)
 
   (premium-features/airgap-check-user-count)
   (init-status/set-progress! 0.65)
@@ -156,11 +157,14 @@
   (ensure-audit-db-installed!)
   (init-status/set-progress! 0.95)
 
+  (embed.settings/check-and-sync-settings-on-startup! env/env)
+  (init-status/set-progress! 0.97)
+
   (settings/migrate-encrypted-settings!)
   ;; start scheduler at end of init!
   (task/start-scheduler!)
-  ;; load the channels
-  (channel/find-and-load-metabase-channels!)
+  ;; In case we could not do this earlier (e.g. for DBs added via config file), because the scheduler was not up yet:
+  (database/check-and-schedule-tasks!)
   (init-status/set-complete!)
   (let [start-time (.getStartTime (ManagementFactory/getRuntimeMXBean))
         duration   (- (System/currentTimeMillis) start-time)]

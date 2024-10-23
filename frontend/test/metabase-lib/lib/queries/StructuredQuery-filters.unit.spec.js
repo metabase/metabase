@@ -24,6 +24,7 @@ describe("StructuredQuery", () => {
       const f = q.filters()[0];
       expect(JSON.stringify(f)).toEqual(JSON.stringify(FILTER));
     });
+
     describe("dimension()", () => {
       it("should return the correct dimension", () => {
         const q = ordersTable
@@ -33,6 +34,7 @@ describe("StructuredQuery", () => {
         expect(f.dimension().mbql()).toEqual(["field", ORDERS.TOTAL, null]);
       });
     });
+
     describe("field()", () => {
       it("should return the correct field", () => {
         const q = ordersTable
@@ -42,6 +44,7 @@ describe("StructuredQuery", () => {
         expect(f.field().id).toEqual(ORDERS.TOTAL);
       });
     });
+
     describe("operator()", () => {
       it("should return the correct operator", () => {
         const q = ordersTable
@@ -51,6 +54,7 @@ describe("StructuredQuery", () => {
         expect(f.operator().name).toEqual("=");
       });
     });
+
     describe("filterOperators", () => {
       it("should return the valid operators for number filter", () => {
         const q = ordersTable
@@ -61,6 +65,7 @@ describe("StructuredQuery", () => {
         expect(f.filterOperators()[0].name).toEqual("=");
       });
     });
+
     describe("isOperator", () => {
       it("should return true for the same operator", () => {
         const q = ordersTable
@@ -70,6 +75,7 @@ describe("StructuredQuery", () => {
         expect(f.isOperator("=")).toBe(true);
         expect(f.isOperator(f.filterOperators()[0])).toBe(true);
       });
+
       it("should return false for different operators", () => {
         const q = ordersTable
           .legacyQuery({ useStructuredQuery: true })
@@ -79,6 +85,7 @@ describe("StructuredQuery", () => {
         expect(f.isOperator(f.filterOperators()[1])).toBe(false);
       });
     });
+
     describe("isDimension", () => {
       it("should return true for the same dimension", () => {
         const q = ordersTable
@@ -90,6 +97,7 @@ describe("StructuredQuery", () => {
           f.isDimension(Dimension.parseMBQL(["field", ORDERS.TOTAL, null])),
         ).toBe(true);
       });
+
       it("should return false for different dimensions", () => {
         const q = ordersTable
           .legacyQuery({ useStructuredQuery: true })

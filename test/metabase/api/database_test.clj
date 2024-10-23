@@ -1,4 +1,4 @@
-(ns metabase.api.database-test
+(ns ^:mb/driver-tests metabase.api.database-test
   "Tests for /api/database endpoints."
   (:require
    [clojure.string :as str]
@@ -83,7 +83,7 @@
    (merge
     (mt/object-defaults Database)
     (select-keys db [:created_at :id :details :updated_at :timezone :name :dbms_version
-                     :metadata_sync_schedule :cache_field_values_schedule])
+                     :metadata_sync_schedule :cache_field_values_schedule :uploads_enabled])
     {:engine               (u/qualified-name (:engine db))
      :settings             {}
      :features             (map u/qualified-name (driver.u/features driver db))
@@ -953,7 +953,7 @@
       (tu/with-temporary-setting-values [enable-nested-queries false]
         (is (every? some? (:data (mt/user-http-request :lucky :get 200 "database?saved=true"))))))))
 
-(deftest ^:parallel fetch-databases-with-invalid-driver-test
+(deftest fetch-databases-with-invalid-driver-test
   (testing "GET /api/database"
     (testing "\nEndpoint should still work even if there is a Database saved with a invalid driver"
       (t2.with-temp/with-temp [Database {db-id :id} {:engine "my-invalid-driver"}]

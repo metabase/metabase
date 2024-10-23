@@ -2,7 +2,6 @@ import type { StoryFn } from "@storybook/react";
 
 import { color } from "metabase/lib/colors";
 import { data } from "metabase/static-viz/components/WaterfallChart/stories-data";
-import { formatStaticValue } from "metabase/static-viz/lib/format";
 import {
   measureTextHeight,
   measureTextWidth,
@@ -11,25 +10,23 @@ import { DEFAULT_VISUALIZATION_THEME } from "metabase/visualizations/shared/util
 import type { RenderingContext } from "metabase/visualizations/types";
 
 import type { StaticChartProps } from "../StaticVisualization";
-
-import { WaterfallChart } from "./WaterfallChart";
+import { StaticVisualization } from "../StaticVisualization";
 
 export default {
   title: "static-viz/WaterfallChart",
-  component: WaterfallChart,
+  component: StaticVisualization,
 };
 
 const Template: StoryFn<StaticChartProps> = args => {
   return (
     <div style={{ border: "1px solid black", display: "inline-block" }}>
-      <WaterfallChart {...args} isStorybook />
+      <StaticVisualization {...args} isStorybook />
     </div>
   );
 };
 
 const renderingContext: RenderingContext = {
   getColor: color,
-  formatValue: formatStaticValue as any,
   measureText: (text, style) =>
     measureTextWidth(text, Number(style.size), Number(style.weight)),
   measureTextHeight: (_, style) => measureTextHeight(Number(style.size)),

@@ -54,13 +54,34 @@ These are additional settings you can fill in to pass user attributes to Metabas
 
 You can send additional user attributes to Metabase by adding the attributes as key/value pairs to your JWT. These attributes will be synced on every login.
 
-## Group schema
+## Configure group mappings
 
-You can use your JWT to assign Metabase users to custom groups by following these steps:
+You can use your JWT to assign Metabase users to custom groups.
 
-1. Add this to your JWT: `groups: ["group_name"]`
-2. In the Admin Panel in Metabase, go to the Authentication tab of the Settings section and click the Configure button on JWT. On this screen, turn on the toggle under "SYNCHRONIZE GROUP MEMBERSHIPS".
-3. Next, click Edit Mappings. In this modal, type in the name of one of your groups as defined in the JWT, then click Add. In the row that appears, click the dropdown to pick the Metabase group that this should map to. Repeat this for each of the groups you want to map.
+1. Add groups to your JWT: `groups: ["group_name"]`.
+1. In Metabase, go to the Admin panel and switch to **Setting > Authentication** tab.
+1. Click the **Configure** button under JWT.
+1. Under **Group Schema**, turn on the toggle **Synchronize Group Memberships**
+1. Click **New mapping** and add the name of a JWT group.
+1. In the row that appears, click the dropdown to pick the Metabase group(s) that this should map to.
+   ![Metabase JWT group mappings](./images/jwt-groups.png)
+1. Repeat this for each of the groups you want to map.
+
+Alternatively, you can define the mappings between JWT and Metabase groups using the [environment variable `MB_JWT_GROUP_MAPPINGS`](../configuring-metabase/environment-variables.md#mb_jwt_group_mappings). It accepts a JSON object where the keys are JWT groups and the values are lists of Metabase groups IDs. For example:
+
+```
+MB_JWT_GROUP_MAPPINGS='{"extHR":[7], "extSales":[3,4]}'
+```
+
+where `extHR`, `extSales` are names of JWT groups and 3,4,7 are IDs of Metabase groups.
+
+You can find Metabase Group ID in the URL for the group page, like `http://your-metabase-url/admin/people/groups/<ID>`. "All Users" group has ID 1 and "Administrators" group has ID 2.
+
+You can also use the [environment variable `MB_JWT_GROUP_SYNC`](../configuring-metabase/environment-variables.md#mb_jwt_group_sync) to turn group sync on or off.
+
+```
+MB_JWT_GROUP_SYNC=true
+```
 
 ## Creating Metabase accounts with SSO
 

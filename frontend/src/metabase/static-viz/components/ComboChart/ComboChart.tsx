@@ -12,8 +12,6 @@ import { getCartesianChartOption } from "metabase/visualizations/echarts/cartesi
 import { Legend } from "../Legend";
 import { calculateLegendRows } from "../Legend/utils";
 
-import { computeStaticComboChartSettings } from "./settings";
-
 const WIDTH = 540;
 const HEIGHT = 360;
 const LEGEND_PADDING = 8;
@@ -22,6 +20,7 @@ registerEChartsModules();
 
 export const ComboChart = ({
   rawSeries,
+  settings,
   renderingContext,
   width = WIDTH,
   height = HEIGHT,
@@ -34,20 +33,15 @@ export const ComboChart = ({
     height,
   });
 
-  const computedVisualizationSettings = computeStaticComboChartSettings(
-    rawSeries,
-    renderingContext,
-  );
-
   const chartModel = getCartesianChartModel(
     rawSeries,
-    computedVisualizationSettings,
+    settings,
     [],
     renderingContext,
   );
 
   const legendItems = getLegendItems(chartModel.seriesModels);
-  const isReversed = computedVisualizationSettings["legend.is_reversed"];
+  const isReversed = settings["legend.is_reversed"];
   const { height: legendHeight, items: legendLayoutItems } =
     calculateLegendRows({
       items: legendItems,
@@ -59,7 +53,7 @@ export const ComboChart = ({
 
   const chartMeasurements = getChartMeasurements(
     chartModel,
-    computedVisualizationSettings,
+    settings,
     false,
     width,
     height,
@@ -71,7 +65,7 @@ export const ComboChart = ({
     chartMeasurements,
     null,
     [],
-    computedVisualizationSettings,
+    settings,
     WIDTH,
     false,
     renderingContext,

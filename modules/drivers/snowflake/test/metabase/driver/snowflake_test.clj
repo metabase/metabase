@@ -1,4 +1,4 @@
-(ns metabase.driver.snowflake-test
+(ns ^:mb/driver-tests metabase.driver.snowflake-test
   (:require
    [clojure.data.json :as json]
    [clojure.java.jdbc :as jdbc]

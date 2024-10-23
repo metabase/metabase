@@ -354,6 +354,12 @@ export const PulseApi = {
   unsubscribe: DELETE("/api/pulse/:id/subscription"),
 };
 
+/// this in unauthenticated, for letting people who are not logged in unsubscribe from Alerts/DashboardSubscriptions
+export const PulseUnsubscribeApi = {
+  unsubscribe: POST("/api/pulse/unsubscribe"),
+  undo_unsubscribe: POST("/api/pulse/unsubscribe/undo"),
+};
+
 export const SegmentApi = {
   list: GET("/api/segment"),
   create: POST("/api/segment"),
@@ -387,8 +393,6 @@ export const SessionApi = {
   properties: GET("/api/session/properties"),
   forgot_password: POST("/api/session/forgot_password"),
   reset_password: POST("/api/session/reset_password"),
-  unsubscribe: POST("/api/session/pulse/unsubscribe"),
-  undo_unsubscribe: POST("/api/session/pulse/unsubscribe/undo"),
 };
 
 export const SettingsApi = {

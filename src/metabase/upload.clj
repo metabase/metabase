@@ -3,7 +3,6 @@
    [clj-bom.core :as bom]
    [clojure.data :as data]
    [clojure.data.csv :as csv]
-   [clojure.java.io :as io]
    [clojure.string :as str]
    [flatland.ordered.map :as ordered-map]
    [java-time.api :as t]
@@ -99,9 +98,10 @@
   [driver raw-name]
   (if (str/blank? raw-name)
     "unnamed_column"
-    (u/slugify (str/trim raw-name)
-               ;; since slugified names contain only ASCII characters, we can conflate bytes and length here.
-               {:max-length (max-column-bytes driver)})))
+    (u/lower-case-en
+     (u/slugify (str/trim raw-name)
+                ;; since slugified names contain only ASCII characters, we can conflate bytes and length here.
+                {:max-length (max-column-bytes driver)}))))
 
 (def auto-pk-column-name
   "The lower-case name of the auto-incrementing PK column. The actual name in the database could be in upper-case."
@@ -281,25 +281,23 @@
 (defn- file-mime-type [^File file]
   (.detect tika file))
 
-(defn- detect-charset ^String [file]
-  (try
-    (let [detector (UniversalDetector.)
-          buffer   (byte-array 8192)]
-      (with-open [input-stream (io/input-stream file)]
-        (loop []
-          (let [bytes-read (.read input-stream buffer)]
-            (if (pos? bytes-read)
-              (do
-                (.handleData detector buffer 0 bytes-read)
-                (when-not (.isDone detector)
-                  (recur)))
-              (.dataEnd detector)))))
-      (.getDetectedCharset detector))
-    (catch Exception _)))
+(def ^:private supported-charsets
+  #{"UTF-8"
+    "UTF-16" "UTF-16BE" "UTF-16LE"
+    "UTF-32" "UTF-32BE" "UTF-32LE"
+    "WINDOWS-1252"})
+
+(defn- detect-charset ^String [^File file]
+  (or
+   (try
+     ;; If its not a first-class supported encoding, just treat it as the default encoding.
+     (supported-charsets (UniversalDetector/detectCharset file))
+     ;; If we can't detect the encoding, use the default, and live with unrecognized characters.
+     (catch Exception _))
+   "UTF-8"))
 
 (defn- ->reader ^Reader [^File file]
-  ;; If we can't detect the encoding, just live with unrecognized characters.
-  (let [charset (or (detect-charset file) "UTF-8")]
+  (let [charset (detect-charset file)]
     (-> (bom/bom-input-stream file)
         (InputStreamReader. charset))))
 
@@ -756,18 +754,17 @@
               [header & rows]    (cond-> (parse reader)
                                    auto-pk?
                                    without-auto-pk-columns)
-              normed-name->field (m/index-by #(normalize-column-name driver (:name %))
-                                             (t2/select :model/Field :table_id (:id table) :active true))
+              name->field        (m/index-by :name (t2/select :model/Field :table_id (:id table) :active true))
               column-names       (for [h header] (normalize-column-name driver h))
               display-names      (for [h header] (normalize-display-name h))
               create-auto-pk?    (and
                                   auto-pk?
                                   (driver/create-auto-pk-with-append-csv? driver)
-                                  (not (contains? normed-name->field auto-pk-column-name)))
-              normed-name->field (cond-> normed-name->field auto-pk? (dissoc auto-pk-column-name))
-              _                  (check-schema normed-name->field column-names)
+                                  (not (contains? name->field auto-pk-column-name)))
+              name->field        (cond-> name->field auto-pk? (dissoc auto-pk-column-name))
+              _                  (check-schema name->field column-names)
               settings           (upload-parsing/get-settings)
-              old-types          (map (comp upload-types/base-type->upload-type :base_type normed-name->field) column-names)
+              old-types          (map (comp upload-types/base-type->upload-type :base_type name->field) column-names)
               ;; in the happy, and most common, case all the values will match the existing types
               ;; for now we just plan for the worst and perform a fairly expensive operation to detect any type changes
               ;; we can come back and optimize this to an optimistic-with-fallback approach later.

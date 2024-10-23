@@ -13,7 +13,7 @@ export type NotificationRecipient = {
 
 export type Channel = {
   channel_type: string;
-  details: Record<string, string>;
+  details?: Record<string, string>;
   enabled?: boolean;
   recipients?: User[];
   channel_id?: number;

@@ -60,21 +60,23 @@
     (testing "consistent results with minimal implementations\n"
       (doseq [term example-terms]
         (testing term
-          (is (= (hybrid term)
-                 (#'search.postgres/minimal term))))))))
+          ;; there is no ranking, so order is non-deterministic
+          (is (= (set (hybrid term))
+                 (set (#'search.postgres/minimal term)))))))))
 
 (deftest minimal-with-perms-test
   (with-setup
     (testing "consistent results with minimal implementations\n"
       (doseq [term (take 1 example-terms)]
         (testing term
-          (is (= (hybrid term)
-                 (#'search.postgres/minimal-with-perms
-                  term
-                  {:current-user-id    (mt/user->id :crowberto)
-                   :is-superuser?      true
-                   :archived?          false
-                   :current-user-perms #{"/"}
-                   :model-ancestors?   false
-                   :models             search/all-models
-                   :search-string      term}))))))))
+          ;; there is no ranking, so order is non-deterministic
+          (is (= (set (hybrid term))
+                 (set (#'search.postgres/minimal-with-perms
+                       term
+                       {:current-user-id    (mt/user->id :crowberto)
+                        :is-superuser?      true
+                        :archived?          false
+                        :current-user-perms #{"/"}
+                        :model-ancestors?   false
+                        :models             search/all-models
+                        :search-string      term})))))))))

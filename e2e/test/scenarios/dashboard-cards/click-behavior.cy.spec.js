@@ -28,6 +28,7 @@ import {
   saveDashboard,
   setTokenFeatures,
   updateDashboardCards,
+  updateSetting,
   visitDashboard,
   visitEmbeddedPage,
   visitIframe,
@@ -227,6 +228,37 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
       clickLineChartPoint();
       assertDrillThroughMenuOpen();
+    });
+
+    it("should open drill-through menu for native query based dashcard", () => {
+      cy.createNativeQuestionAndDashboard({
+        questionDetails: {
+          name: "Native Question",
+          display: "line",
+          native: {
+            query: `
+              SELECT
+                DATE_TRUNC('month', CREATED_AT) AS "Created At",
+                COUNT(*) AS "count"
+              FROM
+                ORDERS
+              GROUP BY
+                DATE_TRUNC('month', CREATED_AT)
+              LIMIT
+                5
+            `,
+          },
+        },
+        dashboardDetails: {
+          name: "Dashboard",
+        },
+      }).then(({ body: card }) => {
+        visitDashboard(card.dashboard_id);
+      });
+
+      clickLineChartPoint();
+      // TODO: fix it, currently we drill down to the quesiton on dot click
+      // assertDrillThroughMenuOpen();
     });
 
     it("allows setting dashboard without filters as custom destination and changing it back to default click behavior", () => {
@@ -1807,9 +1839,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
     });
 
     it("allows opening custom URL destination that is not a Metabase instance URL using link (metabase#33379)", () => {
-      cy.request("PUT", "/api/setting/site-url", {
-        value: "https://localhost:4000/subpath",
-      });
+      updateSetting("site-url", "https://localhost:4000/subpath");
       const dashboardDetails = {
         enable_embedding: true,
       };

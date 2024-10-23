@@ -23,14 +23,17 @@ import {
   type EntityId,
   type PermissionSubject,
 } from "metabase/admin/permissions/types";
+import { InteractiveEmbeddingSettings } from "metabase/admin/settings/components/EmbeddingSettings/InteractiveEmbeddingSettings";
 import type { ADMIN_SETTINGS_SECTIONS } from "metabase/admin/settings/selectors";
 import type {
-  ActualModelFilters,
-  AvailableModelFilters,
   MetricFilterControlsProps,
   MetricFilterSettings,
+} from "metabase/browse/metrics";
+import type {
   ModelFilterControlsProps,
-} from "metabase/browse/utils";
+  ModelFilterSettings,
+} from "metabase/browse/models";
+import type { LinkProps } from "metabase/core/components/Link";
 import { getIconBase } from "metabase/lib/icon";
 import PluginPlaceholder from "metabase/plugins/components/PluginPlaceholder";
 import type { SearchFilterComponent } from "metabase/search/types";
@@ -54,7 +57,6 @@ import type {
   GroupsPermissions,
   ModelCacheRefreshStatus,
   Revision,
-  SearchResult,
   User,
   UserListResult,
 } from "metabase-types/api";
@@ -93,6 +95,10 @@ export const PLUGIN_ADMIN_TOOLS = {
 export const PLUGIN_ADMIN_TROUBLESHOOTING = {
   EXTRA_ROUTES: [] as ReactNode[],
   GET_EXTRA_NAV: (): ReactNode[] => [],
+};
+
+export const PLUGIN_ADMIN_SETTINGS = {
+  InteractiveEmbeddingSettings: InteractiveEmbeddingSettings,
 };
 
 // functions that update the sections
@@ -192,7 +198,7 @@ export const PLUGIN_LDAP_FORM_FIELDS = {
       [setting: string]: {
         display_name?: string | undefined;
         warningMessage?: string | undefined;
-        description?: string | undefined;
+        description?: string | ReactNode | undefined;
         note?: string | undefined;
       };
     };
@@ -290,6 +296,10 @@ type GetCollectionIdType = (
   sourceCollectionId?: CollectionId | null,
 ) => CollectionId | null;
 
+export type CollectionAuthorityLevelDisplayProps = {
+  collection: Collection;
+};
+
 export const PLUGIN_COLLECTIONS = {
   AUTHORITY_LEVEL: {
     [JSON.stringify(AUTHORITY_LEVEL_REGULAR.type)]: AUTHORITY_LEVEL_REGULAR,
@@ -351,6 +361,8 @@ export const PLUGIN_COLLECTION_COMPONENTS = {
     PluginPlaceholder as FormCollectionAuthorityLevelPicker,
   CollectionInstanceAnalyticsIcon:
     PluginPlaceholder as CollectionInstanceAnalyticsIcon,
+  CollectionAuthorityLevelDisplay:
+    PluginPlaceholder as ComponentType<CollectionAuthorityLevelDisplayProps>,
 };
 
 export type RevisionOrModerationEvent = {
@@ -505,22 +517,23 @@ export const PLUGIN_EMBEDDING = {
   isInteractiveEmbeddingEnabled: (_state: State) => false,
 };
 
+export const PLUGIN_EMBEDDING_SDK = {
+  isEnabled: () => false,
+};
+
 export const PLUGIN_CONTENT_VERIFICATION = {
+  contentVerificationEnabled: false,
   VerifiedFilter: {} as SearchFilterComponent<"verified">,
-  availableModelFilters: {} as AvailableModelFilters,
-  ModelFilterControls: (() => null) as ComponentType<ModelFilterControlsProps>,
-  sortModelsByVerification: (_a: SearchResult, _b: SearchResult) => 0,
   sortCollectionsByVerification: (
     _a: CollectionEssentials,
     _b: CollectionEssentials,
   ) => 0,
-  useModelFilterSettings: () =>
-    [{}, _.noop] as [
-      ActualModelFilters,
-      Dispatch<SetStateAction<ActualModelFilters>>,
-    ],
 
-  contentVerificationEnabled: false,
+  ModelFilterControls: (_props: ModelFilterControlsProps) => null,
+  getDefaultModelFilters: (_state: State): ModelFilterSettings => ({
+    verified: false,
+  }),
+
   getDefaultMetricFilters: (_state: State): MetricFilterSettings => ({
     verified: false,
   }),
@@ -535,8 +548,21 @@ export const PLUGIN_QUERY_BUILDER_HEADER = {
   extraButtons: (_question: Question) => [],
 };
 
+export type InsightsLinkProps = (
+  | {
+      question: Pick<Question, "id" | "collection">;
+      dashboard?: never;
+    }
+  | {
+      question?: never;
+      dashboard: Pick<Dashboard, "id" | "collection">;
+    }
+) &
+  Omit<LinkProps, "to">;
+
 export const PLUGIN_AUDIT = {
   isAuditDb: (_db: DatabaseType) => false,
+  InsightsLink: PluginPlaceholder as ComponentType<InsightsLinkProps>,
 };
 
 export const PLUGIN_UPLOAD_MANAGEMENT = {

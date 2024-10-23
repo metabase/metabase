@@ -7,7 +7,7 @@
    [compojure.core :as compojure]
    [medley.core :as m]
    [metabase.channel.core :as channel]
-   [metabase.pulse :as pulse]
+   [metabase.task.send-pulses :as task.send-pulses]
    [metabase.test :as mt]
    [metabase.util.i18n :refer [deferred-tru]]
    [ring.adapter.jetty :as jetty]
@@ -328,10 +328,10 @@
          :model/Channel      {chn-id :id}  {:type    :channel/http
                                             :details {:url         (str url (:path receive-route))
                                                       :auth-method "none"}}
-         :model/PulseChannel _             {:pulse_id     pulse-id
+         :model/PulseChannel {pc-id :id}   {:pulse_id     pulse-id
                                             :channel_type "http"
                                             :channel_id   chn-id}]
-        (pulse/send-pulse! pulse)
+        (#'task.send-pulses/send-pulse!* pulse-id [pc-id])
         (is (=? {:body {:type               "alert"
                         :alert_id           pulse-id
                         :alert_creator_id   (mt/malli=? int?)

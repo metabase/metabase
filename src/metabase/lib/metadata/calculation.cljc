@@ -15,8 +15,8 @@
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
-   [metabase.shared.util.i18n :as i18n]
    [metabase.util :as u]
+   [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
@@ -399,7 +399,8 @@
   [query stage-number table]
   (merge (default-display-info query stage-number table)
          {:is-source-table (= (lib.util/source-table-id query) (:id table))
-          :schema (:schema table)}))
+          :schema (:schema table)
+          :visibility-type (:visibility-type table)}))
 
 (def ColumnMetadataWithSource
   "Schema for the column metadata that should be returned by [[metadata]]."
@@ -574,9 +575,10 @@
 (mu/defn primary-keys :- [:sequential ::lib.schema.metadata/column]
   "Returns a list of primary keys for the source table of this query."
   [query        :- ::lib.schema/query]
-  (if-let [table-id (lib.util/source-table-id query)]
-    (filter lib.types.isa/primary-key? (lib.metadata/fields query table-id))
-    []))
+  (into [] (filter lib.types.isa/primary-key?)
+        (if-let [table-id (lib.util/source-table-id query)]
+          (lib.metadata/fields query table-id)
+          (returned-columns query))))
 
 (defn implicitly-joinable-columns
   "Columns that are implicitly joinable from some other columns in `column-metadatas`. To be joinable, the column has to

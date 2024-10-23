@@ -248,7 +248,7 @@ Identify when new versions of Metabase are available.
 - Type: boolean
 - Default: `true`
 
-Whether to sync newly created Databases during config-from-file initialization. By default, true, but you can disable
+Whether to (asynchronously) sync newly created Databases during config-from-file initialization. By default, true, but you can disable
   this behavior if you want to sync it manually or use SerDes to populate its data model.
 
 ### `MB_CUSTOM_FORMATTING`
@@ -488,6 +488,13 @@ Allow users to explore data using X-rays.
 - Default: `60`
 
 Enumerated field values with cardinality at or below this point are treated as enums in the pseudo-ddl used in some model prompts.
+
+### `MB_EXPERIMENTAL_FULLTEXT_SEARCH_ENABLED`
+
+- Type: boolean
+- Default: `false`
+
+Enables search engines which are still in the experimental stage.
 
 ### `MB_FOLLOW_UP_EMAIL_SENT`
 
@@ -1330,7 +1337,7 @@ Enable typeahead search in the Metabase navbar?
 
 ### `MB_SEND_NEW_SSO_USER_ADMIN_EMAIL`
 
-- Type: string
+- Type: boolean
 - Default: `null`
 - [Configuration file name](./config-file.md): `send-new-sso-user-admin-email`
 
@@ -1570,6 +1577,15 @@ Maximum number of rows to return specifically on :rows type queries via the API.
 Must be less than 1048575, and less than the number configured in MB_AGGREGATED_QUERY_ROW_LIMIT.
         This environment variable also affects how many rows Metabase returns in dashboard subscription attachments.
         See also MB_AGGREGATED_QUERY_ROW_LIMIT.
+
+### `MB_UPDATE_CHANNEL`
+
+- Type: string
+- Default: `latest`
+- [Exported as](../installation-and-operation/serialization.md): `update-channel`.
+- [Configuration file name](./config-file.md): `update-channel`
+
+Metabase will notify you when a new release is available for the channel you select.
 
 ### `MB_UPLOADS_SETTINGS`
 

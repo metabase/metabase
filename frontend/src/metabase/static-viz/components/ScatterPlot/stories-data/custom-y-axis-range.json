@@ -1349,10 +1349,10 @@
       ],
       "viz-settings": {
         "graph.y_axis.title_text": "Attack Stat",
-        "metabase.shared.models.visualization-settings/column-settings": {
-          "{:metabase.shared.models.visualization-settings/field-id 1491}": {},
-          "{:metabase.shared.models.visualization-settings/field-id 1475}": {},
-          "{:metabase.shared.models.visualization-settings/field-id 1493}": {}
+        "metabase.models.visualization-settings/column-settings": {
+          "{:metabase.models.visualization-settings/field-id 1491}": {},
+          "{:metabase.models.visualization-settings/field-id 1475}": {},
+          "{:metabase.models.visualization-settings/field-id 1493}": {}
         },
         "graph.y_axis.max": 255,
         "graph.series_order_dimension": null,
@@ -1361,7 +1361,7 @@
         "graph.metrics": ["attack"],
         "graph.y_axis.axis_enabled": true,
         "graph.series_order": null,
-        "metabase.shared.models.visualization-settings/global-column-settings": {},
+        "metabase.models.visualization-settings/global-column-settings": {},
         "series_settings": { "attack": { "color": "#509EE3" } },
         "graph.y_axis.auto_range": false,
         "graph.dimensions": ["type_1"],

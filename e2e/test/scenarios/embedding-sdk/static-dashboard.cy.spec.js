@@ -23,6 +23,9 @@ describeSDK("scenarios > embedding-sdk > static-dashboard", () => {
     cy.signInAsAdmin();
     setTokenFeatures("all");
     setupJwt();
+    cy.request("PUT", "/api/setting", {
+      "enable-embedding-sdk": true,
+    });
 
     const textCard = getTextCardDetails({ col: 16, text: "Text text card" });
     const questionCard = {

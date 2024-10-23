@@ -9,8 +9,8 @@ type Value = string | null;
 export interface SettingInputProps {
   setting: {
     key: string;
-    value: string | null;
-    default?: string;
+    value?: string | null;
+    default?: string | null;
     placeholder?: string;
   };
   onChange: (value: Value) => void;
@@ -20,6 +20,7 @@ export interface SettingInputProps {
   id?: string;
   type: "text" | "password";
   normalize?: (value: Value) => Value;
+  disabled?: boolean;
 }
 
 const identity = (value: Value) => value;
@@ -32,6 +33,7 @@ export const SettingTextInput = ({
   id,
   type = "text",
   normalize = identity,
+  disabled,
 }: SettingInputProps) => {
   const [valueState, setValueState] = useState<string>(setting.value ?? "");
   const changeHandler = (e: { target: HTMLInputElement }) => {
@@ -59,6 +61,7 @@ export const SettingTextInput = ({
       placeholder={setting.placeholder}
       onBlur={changeHandler}
       autoFocus={autoFocus}
+      disabled={disabled}
     />
   );
 };

@@ -38,8 +38,8 @@ Additionally, this Usage analytics collection has a default sub-collection calle
 To view usage analytics for a question, dashboard, or model:
 
 - Visit the item.
-- Click on the dot menu (**...**).
-- Select **Usage insights**.
+- Click on the info button in the upper right.
+- Click **Insights**.
 
 Metabase will take you to the relevant usage dashboard and plug in the item's ID.
 

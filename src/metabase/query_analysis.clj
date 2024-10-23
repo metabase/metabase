@@ -144,9 +144,7 @@
               success?         (some? references)]
 
           (if-not success?
-            (do
-              (log/errorf "Failed to analyze query for card %s" card-id)
-              (t2/update! :model/QueryAnalysis analysis-id {:status "failed"}))
+            (t2/update! :model/QueryAnalysis analysis-id {:status "failed"})
             (do
               (t2/insert! :model/QueryField (map field->row (:fields references)))
               (t2/insert! :model/QueryTable (map table->row (:tables references)))
@@ -225,7 +223,7 @@
         card-id (:id card)]
     (cond
       (not card)       (log/warnf "Card not found: %s" card-id)
-      (:archived card) (log/warnf "Skipping archived card: %s" card-id)
+      (:archived card) (log/debugf "Skipping archived card: %s" card-id)
       :else            (do
                          (log/debugf "Performing query analysis for card %s" card-id)
                          (update-query-analysis-for-card! card)))))

@@ -249,6 +249,5 @@ If Metabase supports JSON unfolding for your database, you can decide whether to
 
 ## Further reading
 
-- [Segments and metrics](./segments-and-metrics.md)
 - [Keeping your analytics organized](https://www.metabase.com/learn/administration/same-page)
 - [Data modeling tutorials](https://www.metabase.com/learn/data-modeling/models)

@@ -24,6 +24,7 @@ import {
   restore,
   setTokenFeatures,
   undoToast,
+  updateSetting,
   visitDashboard,
   visitQuestion,
 } from "e2e/support/helpers";
@@ -245,6 +246,7 @@ describe("scenarios > home > custom homepage", () => {
     beforeEach(() => {
       restore();
       cy.signInAsAdmin();
+      cy.intercept("GET", "/api/search*").as("search");
     });
 
     it("should give you the option to set a custom home page in settings", () => {
@@ -357,6 +359,7 @@ describe("scenarios > home > custom homepage", () => {
         //Ensure that child dashboards of personal collections do not
         //appear in search
         cy.findByPlaceholderText(/search/i).type("das{enter}");
+        cy.wait("@search");
         cy.findByText("Orders in a dashboard").should("exist");
         cy.findByText("nested dash").should("not.exist");
 
@@ -384,10 +387,8 @@ describe("scenarios > home > custom homepage", () => {
     beforeEach(() => {
       restore();
       cy.signInAsAdmin();
-      cy.request("PUT", "/api/setting/custom-homepage", { value: true });
-      cy.request("PUT", "/api/setting/custom-homepage-dashboard", {
-        value: ORDERS_DASHBOARD_ID,
-      });
+      updateSetting("custom-homepage", true);
+      updateSetting("custom-homepage-dashboard", ORDERS_DASHBOARD_ID);
     });
 
     it("should not flash the homescreen before redirecting (#37089)", () => {

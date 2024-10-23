@@ -32,6 +32,15 @@ const argTypes = {
   source: {
     control: { type: "text" },
   },
+  large: {
+    control: { type: "boolean" },
+  },
+  maxWidth: {
+    control: { type: "number" },
+  },
+  fullWidth: {
+    control: { type: "boolean" },
+  },
 };
 
 const DefaultTemplate = (args: UpsellCardProps) => (
@@ -51,11 +60,34 @@ export default {
 
 export const WithImage = {
   render: DefaultTemplate,
-  name: "With Image",
 };
 
 export const WithoutImage = {
   render: DefaultTemplate,
-  name: "Without Image",
   args: { ...args, illustrationSrc: null },
+};
+
+export const LargeVariant = {
+  render: DefaultTemplate,
+  args: { ...args, large: true },
+};
+
+export const MaxWidth500Variant = {
+  render: DefaultTemplate,
+  args: { ...args, maxWidth: 500 },
+};
+
+export const FullWidthVariant = {
+  render: DefaultTemplate,
+  args: { ...args, fullWidth: true },
+};
+
+export const LargeMaxWidth500Variant = {
+  render: DefaultTemplate,
+  args: { ...args, large: true, maxWidth: 500 },
+};
+
+export const LargeFullWidthVariant = {
+  render: DefaultTemplate,
+  args: { ...args, large: true, fullWidth: true },
 };

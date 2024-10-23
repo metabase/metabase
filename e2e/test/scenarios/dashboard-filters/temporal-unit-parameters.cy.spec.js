@@ -24,6 +24,7 @@ import {
   undoToast,
   undoToastList,
   updateDashboardCards,
+  updateSetting,
   visitDashboard,
   visitEmbeddedPage,
 } from "e2e/support/helpers";
@@ -998,7 +999,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
   describe("embedding", () => {
     beforeEach(() => {
       cy.signInAsAdmin();
-      cy.request("PUT", "/api/setting/enable-public-sharing", { value: true });
+      updateSetting("enable-public-sharing", true);
     });
 
     it("should be able to use temporal unit parameters in a public dashboard", () => {

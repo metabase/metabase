@@ -18,6 +18,7 @@
    [metabase.models.params.custom-values :as custom-values]
    [metabase.models.persisted-info :as persisted-info]
    [metabase.models.table :refer [Table]]
+   [metabase.models.visualization-settings :as mb.viz]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
@@ -25,7 +26,6 @@
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.query-processor.util :as qp.util]
-   [metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -129,12 +129,13 @@
 
 (api/defendpoint POST ["/:export-format", :export-format export-format-regex]
   "Execute a query and download the result data as a file in the specified format."
-  [export-format :as {{:keys [query visualization_settings format_rows]
+  [export-format :as {{:keys [query visualization_settings pivot_results format_rows]
                        :or   {visualization_settings "{}"}} :params}]
   {query                  ms/JSONString
    visualization_settings ms/JSONString
-   format_rows            [:maybe :boolean]
-   export-format          (into [:enum] export-formats)}
+   format_rows            [:maybe ms/BooleanValue]
+   pivot_results          [:maybe ms/BooleanValue]
+   export-format          ExportFormat}
   (let [{:keys [was-pivot] :as query} (json/parse-string query keyword)
         query                         (dissoc query :was-pivot)
         viz-settings                  (-> (json/parse-string visualization_settings viz-setting-key-fn)
@@ -145,9 +146,10 @@
                                           (dissoc :constraints)
                                           (update :middleware #(-> %
                                                                    (dissoc :add-default-userland-constraints? :js-int-to-string?)
-                                                                   (assoc :process-viz-settings? true
-                                                                          :skip-results-metadata? true
-                                                                          :format-rows? format_rows))))]
+                                                                   (assoc :format-rows?          (or format_rows false)
+                                                                          :pivot?                (or pivot_results false)
+                                                                          :process-viz-settings? true
+                                                                          :skip-results-metadata? true))))]
     (run-streaming-query
      (qp/userland-query query)
      :export-format export-format

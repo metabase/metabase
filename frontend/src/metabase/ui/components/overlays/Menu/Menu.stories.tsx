@@ -145,7 +145,6 @@ export default {
 
 export const Default = {
   render: DefaultTemplate,
-  name: "Default",
 };
 
 export const RightSection = {
@@ -155,7 +154,6 @@ export const RightSection = {
 
 export const Icons = {
   render: IconsTemplate,
-  name: "Icons",
 };
 
 export const LabelsAndDividers = {

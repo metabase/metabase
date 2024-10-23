@@ -1,24 +1,27 @@
 import { useMemo } from "react";
 
-import type { SchemaName } from "metabase-types/api";
+import type { DatabaseId, SchemaName } from "metabase-types/api";
 
 import { ItemList, ListBox } from "../../EntityPicker";
-import { useAutoSelectOnlyItem } from "../hooks";
-import type { NotebookDataPickerFolderItem } from "../types";
+import type { DataPickerFolderItem } from "../types";
 import { getSchemaDisplayName } from "../utils";
 
 interface Props {
+  dbId: DatabaseId;
+  dbName: string | undefined;
   error: unknown;
   isCurrentLevel: boolean;
   isLoading: boolean;
   schemas: SchemaName[] | undefined;
-  selectedItem: NotebookDataPickerFolderItem | null;
-  onClick: (item: NotebookDataPickerFolderItem) => void;
+  selectedItem: DataPickerFolderItem | null;
+  onClick: (item: DataPickerFolderItem) => void;
 }
 
 const isFolder = () => true;
 
 export const SchemaList = ({
+  dbId,
+  dbName,
   error,
   isCurrentLevel,
   isLoading,
@@ -26,19 +29,18 @@ export const SchemaList = ({
   selectedItem,
   onClick,
 }: Props) => {
-  const items: NotebookDataPickerFolderItem[] | undefined = useMemo(() => {
+  const items: DataPickerFolderItem[] | undefined = useMemo(() => {
     return schemas?.map(schema => ({
       id: schema,
       model: "schema",
       name: getSchemaDisplayName(schema),
+      isOnlySchema: schemas.length === 1,
+      dbName,
+      dbId,
     }));
-  }, [schemas]);
+  }, [schemas, dbId, dbName]);
 
-  const hasOnly1Item = useAutoSelectOnlyItem({
-    disabled: Boolean(selectedItem),
-    items,
-    onChange: onClick,
-  });
+  const hasOnly1Item = items?.length === 1;
 
   if (!isLoading && !error && hasOnly1Item) {
     return null;

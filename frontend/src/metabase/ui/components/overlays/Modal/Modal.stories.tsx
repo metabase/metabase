@@ -151,7 +151,6 @@ export const SentenceCaseTitles = {
 
 export const Confirmation = {
   render: ConfirmationTemplate,
-  name: "Confirmation",
 };
 
 export const SingleButton = {

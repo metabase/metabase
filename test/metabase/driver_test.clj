@@ -1,4 +1,4 @@
-(ns metabase.driver-test
+(ns ^:mb/driver-tests metabase.driver-test
   (:require
    [cheshire.core :as json]
    [clojure.set :as set]

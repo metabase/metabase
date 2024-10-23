@@ -14,6 +14,7 @@ import type { Table } from "./table";
 import type { UserInfo } from "./user";
 import type { CardDisplayType, VisualizationDisplay } from "./visualization";
 import type { SmartScalarComparison } from "./visualization-settings";
+
 export type CardType = "model" | "question" | "metric";
 
 type CreatorInfo = Pick<
@@ -150,6 +151,15 @@ export type VisualizationSettings = {
   "graph.show_values"?: boolean;
   "stackable.stack_type"?: StackType;
   "graph.show_stack_values"?: StackValuesDisplay;
+  "graph.max_categories_enabled"?: boolean;
+  "graph.max_categories"?: number;
+  "graph.other_category_aggregation_fn"?:
+    | "sum"
+    | "avg"
+    | "min"
+    | "max"
+    | "stddev"
+    | "median";
 
   // Table
   "table.columns"?: TableColumnOrderSetting[];
@@ -214,18 +224,25 @@ export type VisualizationSettings = {
   "scalar.compact_primary_number"?: boolean;
 
   // Pie Settings
-  "pie.dimension"?: string;
+  "pie.dimension"?: string | string[];
+  "pie.middle_dimension"?: string;
+  "pie.outer_dimension"?: string;
   "pie.rows"?: PieRow[];
   "pie.metric"?: string;
   "pie.sort_rows"?: boolean;
   "pie.show_legend"?: boolean;
   "pie.show_total"?: boolean;
+  "pie.show_labels"?: boolean;
   "pie.percent_visibility"?: "off" | "legend" | "inside" | "both";
   "pie.decimal_places"?: number;
   "pie.slice_threshold"?: number;
   "pie.colors"?: Record<string, string>;
 
   [key: string]: any;
+} & EmbedVisualizationSettings;
+
+export type EmbedVisualizationSettings = {
+  iframe?: string;
 };
 
 export interface ModerationReview {
@@ -301,6 +318,9 @@ export interface UpdateCardRequest {
   collection_preview?: boolean;
 }
 
+export type UpdateCardKeyRequest<PropertyKey extends keyof UpdateCardRequest> =
+  Required<Pick<UpdateCardRequest, "id" | PropertyKey>>;
+
 export type CardError = {
   field?: string;
   table: string;
@@ -343,3 +363,7 @@ export type CardQueryRequest = {
   ignore_cache?: boolean;
   parameters?: unknown[];
 };
+
+export type GetPublicCard = Pick<Card, "id" | "name" | "public_uuid">;
+
+export type GetEmbeddableCard = Pick<Card, "id" | "name">;

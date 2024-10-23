@@ -73,6 +73,24 @@
   :audit   :getter
   :default true)
 
+(defn- set-update-channel! [new-channel]
+  (let [valid-channels #{"latest" "beta" "nightly"}]
+    (when-not (valid-channels new-channel)
+      (throw (IllegalArgumentException.
+              (tru "Invalid update channel ''{0}''. Valid channels are: {1}"
+                   new-channel valid-channels))))
+    (setting/set-value-of-type! :string :update-channel new-channel)))
+
+(defsetting update-channel
+  (deferred-tru "We'll notify you here when there's a new version of this type of release.")
+  :visibility :admin
+  :type       :string
+  :encryption :no
+  :export?    true
+  :audit      :getter
+  :setter     set-update-channel!
+  :default    "latest")
+
 (defsetting site-uuid
   ;; Don't i18n this docstring because it's not user-facing! :)
   "Unique identifier used for this instance of {0}. This is set once and only once the first time it is fetched via
@@ -815,6 +833,7 @@ See [fonts](../configuring-metabase/fonts.md).")
                       :audit_app                      (premium-features/enable-audit-app?)
                       :cache_granular_controls        (premium-features/enable-cache-granular-controls?)
                       :collection_cleanup             (premium-features/enable-collection-cleanup?)
+                      :database_auth_providers        (premium-features/enable-database-auth-providers?)
                       :config_text_file               (premium-features/enable-config-text-file?)
                       :content_verification           (premium-features/enable-content-verification?)
                       :dashboard_subscription_filters (premium-features/enable-dashboard-subscription-filters?)
@@ -828,6 +847,7 @@ See [fonts](../configuring-metabase/fonts.md).")
                       :query_reference_validation     (premium-features/enable-query-reference-validation?)
                       :sandboxes                      (premium-features/enable-sandboxes?)
                       :scim                           (premium-features/enable-scim?)
+                      :serialization                  (premium-features/enable-serialization?)
                       :session_timeout_config         (premium-features/enable-session-timeout-config?)
                       :snippet_collections            (premium-features/enable-snippet-collections?)
                       :sso_google                     (premium-features/enable-sso-google?)

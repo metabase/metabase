@@ -314,7 +314,6 @@
 (defmethod search-query-for-model "table"
   [model {:keys [current-user-perms table-db-id], :as search-ctx}]
   (when (seq current-user-perms)
-
     (-> (base-query-for-model model search-ctx)
         (add-table-db-id-clause table-db-id)
         (sql.helpers/left-join :metabase_database [:= :table.db_id :metabase_database.id]))))

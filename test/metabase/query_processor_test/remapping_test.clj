@@ -1,4 +1,4 @@
-(ns metabase.query-processor-test.remapping-test
+(ns ^:mb/driver-tests metabase.query-processor-test.remapping-test
   "Tests for the remapping results"
   (:require
    [clojure.test :refer :all]

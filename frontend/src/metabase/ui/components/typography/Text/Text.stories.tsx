@@ -77,12 +77,10 @@ export default {
 
 export const Default = {
   render: DefaultTemplate,
-  name: "Default",
 };
 
 export const Sizes = {
   render: SizeTemplate,
-  name: "Sizes",
   args: {
     children: sampleArgs.shortText,
   },
@@ -90,7 +88,6 @@ export const Sizes = {
 
 export const Multiline = {
   render: SizeTemplate,
-  name: "Multiline",
   args: {
     children: sampleArgs.longText,
   },
@@ -98,7 +95,6 @@ export const Multiline = {
 
 export const Truncated = {
   render: SizeTemplate,
-  name: "Truncated",
   args: {
     children: sampleArgs.longText,
     lineClamp: 2,

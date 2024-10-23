@@ -48,13 +48,10 @@ export default {
   argTypes,
 };
 
-export const Default = {
-  name: "Default",
-};
+export const Default = {};
 
 export const Label = {
   render: StateTemplate,
-  name: "Label",
 };
 
 export const LabelLeftPosition = {
@@ -65,7 +62,6 @@ export const LabelLeftPosition = {
 
 export const Description = {
   render: StateTemplate,
-  name: "Description",
   args: {
     description: "Every type of cheese will be consumed, regardless of stink.",
   },
