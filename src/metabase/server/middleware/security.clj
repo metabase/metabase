@@ -84,26 +84,31 @@
   So, we'll double things up and include both the wildcard and non-wildcard entry. We still keep the logic of not adding a wildcard when a
   subdomain is already specified because we want to treat this case as the user being more specific and thus intentionally less permissive."
   [domain-or-url]
-  (let [{:keys [protocol domain port]} (parse-url domain-or-url)]
+  (let [cleaned-domain (-> domain-or-url
+                           (str/replace #"/$" "")
+                           (str/replace #"www." ""))
+        {:keys [protocol domain port]} (parse-url cleaned-domain)]
     (when domain
       (let [split-domain (str/split domain #"\.")
-            new-domains  (if (= (count split-domain) 2)
-                           [domain (format "*.%s" domain)]
-                           [domain])]
+            new-domains  (cond-> (if (= (count split-domain) 2)
+                                  [domain (format "*.%s" domain)]
+                                  [domain])
+                           (str/includes? domain-or-url "www.") (conj (format "www.%s" domain)))]
         (for [new-domain new-domains]
           (str (when protocol (format "%s://" protocol))
                new-domain
-               (when port (format ":%s" port))))))))
+               (when (and port (not= domain "*")) (format ":%s" port))))))))
 
-(defn parse-allowed-iframe-hosts
-  "Parse the string of allowed iframe hosts, adding wildcard prefixes as needed."
+(defn- parse-allowed-iframe-hosts*
   [hosts-string]
-  (try
-    (->> (str/split hosts-string #"[ ,\s\r\n]+")
-         (remove str/blank?)
-         (mapcat add-wildcard-entries)
-         vec)
-    (catch Exception e (ex-message e))))
+  (->> (str/split hosts-string #"[ ,\s\r\n]+")
+       (remove str/blank?)
+       (mapcat add-wildcard-entries)
+       vec))
+
+(def ^{:doc "Parse the string of allowed iframe hosts, adding wildcard prefixes as needed."}
+  parse-allowed-iframe-hosts
+  (memoize parse-allowed-iframe-hosts*))
 
 (defn- content-security-policy-header
   "`Content-Security-Policy` header. See https://content-security-policy.com for more details."
@@ -117,14 +122,14 @@
                                   "https://accounts.google.com"
                                   (when (public-settings/anon-tracking-enabled)
                                     "https://www.google-analytics.com")
-                                   ;; for webpack hot reloading
+                                  ;; for webpack hot reloading
                                   (when config/is-dev?
                                     "http://localhost:8080")
-                                   ;; for react dev tools to work in Firefox until resolution of
-                                   ;; https://github.com/facebook/react/issues/17997
+                                  ;; for react dev tools to work in Firefox until resolution of
+                                  ;; https://github.com/facebook/react/issues/17997
                                   (when config/is-dev?
                                     "'unsafe-inline'")]
-                                  ;; CLJS REPL
+                                 ;; CLJS REPL
                                  (when config/is-dev?
                                    ["'unsafe-eval'"
                                     "http://localhost:9630"])
