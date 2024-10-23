@@ -307,16 +307,15 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
             const itemToHash = {
                 dataset_query: {
                     database: getDatasetQuery.database,
-                    type: "query",
-                    query: getDatasetQuery.query,
+                    type: getDatasetQuery.type,
+                    query: getDatasetQuery.type === "query" ? getDatasetQuery.query : getDatasetQuery.native,
                 },
+
                 display: fetchedCard.display,
                 visualization_settings: {},
                 type: "question",
             };
             const hash = adhocQuestionHash(itemToHash);
-            console.log("🚀 ~ handleGetDatasetQuery ~ hash:", hash)
-            
             // Append new values safely by ensuring prevCard is always an array
             setCard((prevCard) => Array.isArray(prevCard) ? [...prevCard, { ...fetchedCard, hash }] : [{ ...fetchedCard, hash }]);
             setDefaultQuestion((prevDefaultQuestion) => Array.isArray(prevDefaultQuestion) ? [...prevDefaultQuestion, newQuestion] : [newQuestion]);
