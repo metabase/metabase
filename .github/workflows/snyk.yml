@@ -16,6 +16,8 @@ on:
 
 jobs:
   monitor:
+    # don't run this workflow on a cron for forks
+    if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
     name: Generate Snyk report
     runs-on: ubuntu-22.04
     steps:

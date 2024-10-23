@@ -1,4 +1,4 @@
-import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
@@ -10,7 +10,9 @@ import {
   cypressWaitAll,
   echartsContainer,
   editDashboard,
+  focusNativeEditor,
   getDashboardCard,
+  modal,
   openNavigationSidebar,
   pieSlices,
   popover,
@@ -19,6 +21,7 @@ import {
   restore,
   resyncDatabase,
   saveDashboard,
+  setActionsEnabledForDB,
   showDashboardCardActions,
   sidebar,
   updateSetting,
@@ -1739,4 +1742,133 @@ describe("issue 43219", () => {
       cy.findByText("Series 10").should("be.visible");
     });
   });
+});
+
+describe("issue 48878", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+    setActionsEnabledForDB(SAMPLE_DB_ID);
+
+    cy.signInAsNormalUser();
+    cy.intercept("POST", "/api/dataset").as("dataset");
+    cy.intercept("POST", "/api/card").as("saveQuestion");
+    cy.intercept("POST", "/api/action").as("createAction");
+    cy.intercept("GET", "/api/dashboard/*").as("getDashboard");
+    cy.intercept("PUT", "/api/dashboard/*").as("updateDashboard");
+
+    let fetchCardRequestsCount = 0;
+
+    cy.intercept("GET", "/api/card/*", request => {
+      // we only want to simulate the race condition 4th time this request is triggered
+      if (fetchCardRequestsCount === 2) {
+        request.continue(
+          () => new Promise(resolve => setTimeout(resolve, 2000)),
+        );
+      } else {
+        request.continue();
+      }
+
+      ++fetchCardRequestsCount;
+    }).as("fetchCard");
+    setup();
+  });
+
+  // I could only reproduce this issue in Cypress when I didn't use any helpers like createQuestion, etc.
+  it("does not crash the action button viz (metabase#48878)", () => {
+    cy.reload();
+    cy.wait("@fetchCard");
+    getDashboardCard(0).findByText("Click Me").should("be.visible");
+  });
+
+  function setup() {
+    cy.log("create dummy model");
+
+    // Create a dummy model so that GET /api/search does not return the model want to test.
+    // If we don't do this, GET /api/search will return and put card object with dataset_query
+    // attribute in the redux store (entity framework) which would prevent the issue from happening.
+    cy.visit("/model/new");
+    createModel({
+      name: "Dummy model",
+      query: "select 1",
+    });
+
+    cy.log("create model");
+
+    cy.button("New").click();
+    popover().findByText("Model").click();
+    createModel({
+      name: "SQL Model",
+      query: "select * from orders limit 5",
+    });
+
+    cy.log("create model action");
+
+    cy.findByTestId("qb-header-info-button").click();
+    modal().findByText("See more about this model").click();
+
+    cy.findByRole("tab", { name: "Actions" }).click();
+    cy.findByTestId("model-actions-header").findByText("New action").click();
+
+    modal().within(() => {
+      focusNativeEditor().type("UPDATE orders SET plan = {{ plan ", {
+        parseSpecialCharSequences: false,
+      });
+      cy.button("Save").click();
+    });
+
+    modal()
+      .last()
+      .within(() => {
+        cy.findByPlaceholderText("My new fantastic action").type("Test action");
+        cy.button("Create").click();
+        cy.wait("@createAction");
+      });
+
+    cy.visit("/");
+
+    cy.log("create dashoard");
+
+    cy.button("New").click();
+    popover().findByText("Dashboard").click();
+
+    modal().within(() => {
+      cy.findByPlaceholderText("What is the name of your dashboard?").type(
+        "Dash",
+      );
+      cy.button("Create").click();
+      cy.wait("@getDashboard");
+    });
+
+    cy.button("Add action").click();
+    cy.button("Pick an action").click();
+    modal().within(() => {
+      cy.findByText("SQL Model").click();
+      cy.findByText("Test action").click();
+      cy.button("Done").click();
+    });
+    cy.button("Save").click();
+    cy.wait("@updateDashboard");
+    cy.wait("@fetchCard");
+  }
+
+  function createModel({ name, query }) {
+    cy.findByTestId("new-model-options")
+      .findByText("Use a native query")
+      .click();
+
+    focusNativeEditor().type(query);
+    cy.findByTestId("native-query-editor-sidebar")
+      .findByTestId("run-button")
+      .click();
+    cy.wait("@dataset");
+    cy.button("Save").click();
+
+    modal().within(() => {
+      cy.findByPlaceholderText("What is the name of your model?").type(name);
+      cy.button("Save").click();
+      cy.wait("@saveQuestion");
+    });
+    cy.wait("@fetchCard");
+  }
 });
