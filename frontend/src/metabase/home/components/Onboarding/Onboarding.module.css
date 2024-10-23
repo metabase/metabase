@@ -21,6 +21,11 @@
   }
 }
 
+.label:not([data-css-specificity-hack="🪗"]) {
+  color: var(--mb-color-text-dark);
+  font-weight: normal;
+}
+
 .control:not([data-css-specificity-hack="🪗"]) {
   background: linear-gradient(
     to right,
