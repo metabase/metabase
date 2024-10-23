@@ -268,9 +268,13 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
         // setSelectedHash(cardData.hash)
         // setSelectedIndex(cardIndex)
         // setIsModalOpen(true);
-        if (cardData.hash) {
-            dispatch(push(`/question#${cardData.hash}`));
-            // const deletedCard = await CardApi.delete({ id: id });
+        if (cardData.typeQuery === "query") {
+            if (cardData.hash) {
+                dispatch(push(`/question#${cardData.hash}`));
+                // const deletedCard = await CardApi.delete({ id: id });
+            }
+        } else {
+            dispatch(push(`/question/${cardData.id}`));
         }
     };
 
@@ -308,7 +312,7 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
                 dataset_query: {
                     database: getDatasetQuery.database,
                     type: getDatasetQuery.type,
-                    query: getDatasetQuery.type === "query" ? getDatasetQuery.query : getDatasetQuery.native,
+                    query: getDatasetQuery.query
                 },
 
                 display: fetchedCard.display,
@@ -317,7 +321,7 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
             };
             const hash = adhocQuestionHash(itemToHash);
             // Append new values safely by ensuring prevCard is always an array
-            setCard((prevCard) => Array.isArray(prevCard) ? [...prevCard, { ...fetchedCard, hash }] : [{ ...fetchedCard, hash }]);
+            setCard((prevCard) => Array.isArray(prevCard) ? [...prevCard, { ...fetchedCard, hash, typeQuery: getDatasetQuery.type }] : [{ ...fetchedCard, hash, typeQuery: getDatasetQuery.type}]);
             setDefaultQuestion((prevDefaultQuestion) => Array.isArray(prevDefaultQuestion) ? [...prevDefaultQuestion, newQuestion] : [newQuestion]);
             setResult((prevResult) => Array.isArray(prevResult) ? [...prevResult, queryCard] : [queryCard]);
             setCardHash((prevCardHash) => Array.isArray(prevCardHash) ? [...prevCardHash, hash] : [hash]);
