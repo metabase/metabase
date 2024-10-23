@@ -326,7 +326,7 @@ function verifyNotebookBreakouts(
 }
 
 function verifyNotebookLimit(stageIndex: number, limit: number | undefined) {
-  if (limit) {
+  if (typeof limit === "number") {
     getNotebookStep("limit", { stage: stageIndex }).scrollIntoView();
     getNotebookStep("limit", { stage: stageIndex })
       .findByPlaceholderText("Enter a limit")
