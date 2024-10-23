@@ -159,7 +159,7 @@ describe("isAllowedIframeUrl", () => {
     "youtube.com",
     "*.vimeo.com",
     "docs.google.com",
-    "localhost",
+    "localhost:*",
   ].join("\n");
 
   const _isAllowedIframeUrl = (url: string) =>
@@ -169,6 +169,18 @@ describe("isAllowedIframeUrl", () => {
     expect(isAllowedIframeUrl("youtube.com", "*")).toBe(true);
     expect(isAllowedIframeUrl("http://localhost:3000", "*")).toBe(true);
     expect(isAllowedIframeUrl("https://example.com", "*")).toBe(true);
+  });
+
+  it("should return true for all ports on an URL if allowed", () => {
+    expect(
+      isAllowedIframeUrl("http://localhost:3000", "http://localhost:*"),
+    ).toBe(true);
+  });
+
+  it("should return false if ports do not match", () => {
+    expect(
+      isAllowedIframeUrl("http://localhost:3000", "http://localhost:3001"),
+    ).toBe(false);
   });
 
   it("should return true for allowed domains", () => {
