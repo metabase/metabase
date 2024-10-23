@@ -251,7 +251,6 @@ function verifyNotebookFilters(
   filters: string[] | undefined,
 ) {
   if (Array.isArray(filters)) {
-    getNotebookStep("filter", { stage: stageIndex }).scrollIntoView();
     getFilterItems(stageIndex).should(
       "have.length",
       filters.length + 1, // +1 because of add button
@@ -284,7 +283,6 @@ function verifyNotebookAggregations(
     }
   } else {
     if (Array.isArray(breakouts)) {
-      getNotebookStep("summarize", { stage: stageIndex }).scrollIntoView();
       getSummarizeItems(stageIndex, "aggregate").should(
         "have.length",
         1, // 1 because of add button
@@ -301,7 +299,6 @@ function verifyNotebookBreakouts(
   breakouts: string[] | undefined,
 ) {
   if (Array.isArray(breakouts)) {
-    getNotebookStep("summarize", { stage: stageIndex }).scrollIntoView();
     getSummarizeItems(stageIndex, "breakout").should(
       "have.length",
       breakouts.length + 1, // +1 because of add button
@@ -314,7 +311,6 @@ function verifyNotebookBreakouts(
     }
   } else {
     if (Array.isArray(aggregations)) {
-      getNotebookStep("summarize", { stage: stageIndex }).scrollIntoView();
       getSummarizeItems(stageIndex, "breakout").should(
         "have.length",
         1, // 1 because of add button
@@ -327,7 +323,6 @@ function verifyNotebookBreakouts(
 
 function verifyNotebookLimit(stageIndex: number, limit: number | undefined) {
   if (typeof limit === "number") {
-    getNotebookStep("limit", { stage: stageIndex }).scrollIntoView();
     getNotebookStep("limit", { stage: stageIndex })
       .findByPlaceholderText("Enter a limit")
       .should("have.value", String(limit));
