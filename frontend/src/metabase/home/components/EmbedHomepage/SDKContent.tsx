@@ -15,8 +15,8 @@ export const SDKContent = ({
   sdkDocsUrl,
 }: SDKContentProps) => (
   <Box>
-    <Group spacing="sm" align="center" mb="sm">
-      <Text lh={1.57} fw="bold" size="lg" color="text-medium">
+    <Group gap="sm" align="center" mb="sm">
+      <Text lh={1.57} fw="bold" size="lg" c="text-medium">
         {t`Embedded analytics SDK`}
       </Text>
       <Badge
@@ -30,7 +30,7 @@ export const SDKContent = ({
     <Text lh={1.57} mb="md">
       {t`Embed individual components like charts, dashboards, the query builder, and more with React. Get advanced customization with CSS styling and manage granular access and interactivity per component.`}
     </Text>
-    <Group spacing="md">
+    <Group gap="md">
       <ExternalLink href={sdkQuickstartUrl}>
         <Button variant="outline">{t`Check out the Quick Start`}</Button>
       </ExternalLink>
