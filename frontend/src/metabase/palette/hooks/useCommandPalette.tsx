@@ -294,6 +294,7 @@ export const getSearchResultSubtext = (wrappedSearchResult: any) => {
   if (wrappedSearchResult.model === "indexed-entity") {
     return jt`a record in ${(
       <Icon
+        key="icon"
         name="model"
         style={{
           verticalAlign: "bottom",

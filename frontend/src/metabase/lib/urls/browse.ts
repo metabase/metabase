@@ -18,7 +18,7 @@ export function browseDatabase(database: DatabaseV1 | Database) {
 
 export function browseSchema(table: {
   db_id?: Table["db_id"];
-  schema_name: Table["schema_name"] | null;
+  schema_name?: Table["schema_name"] | null;
   db?: Pick<DatabaseV1, "id">;
 }) {
   const databaseId = table.db?.id || table.db_id;

@@ -55,7 +55,7 @@ type DashboardHeaderViewProps = {
   collection: Collection;
   isBadgeVisible: boolean;
   isLastEditInfoVisible: boolean;
-  onLastEditInfoClick: () => void;
+  onLastEditInfoClick?: () => void;
 } & DashboardFullscreenControls &
   DashboardRefreshPeriodControls &
   DashboardNightModeControls;
