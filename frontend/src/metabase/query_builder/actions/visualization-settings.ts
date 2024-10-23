@@ -48,18 +48,20 @@ export const onUpdateVisualizationSettings =
   };
 
 export const onReplaceAllVisualizationSettings =
-  (settings: VisualizationSettings, newQuestion: Question) =>
+  (settings: VisualizationSettings, newQuestion?: Question) =>
   async (dispatch: Dispatch, getState: GetState) => {
-    const oldQuestion = getQuestion(getState());
-    const updatedQuestion = (newQuestion ?? oldQuestion).setSettings(settings);
-    const { isEditable } = Lib.queryDisplayInfo(updatedQuestion.query());
-    const hasWritePermissions = isEditable;
+    const question = newQuestion ?? getQuestion(getState());
+    if (question) {
+      const updatedQuestion = question.setSettings(settings);
+      const { isEditable } = Lib.queryDisplayInfo(updatedQuestion.query());
+      const hasWritePermissions = isEditable;
 
-    await dispatch(
-      updateQuestion(updatedQuestion, {
-        // rerun the query when it is changed alongside settings
-        run: newQuestion != null && hasWritePermissions,
-        shouldUpdateUrl: hasWritePermissions,
-      }),
-    );
+      await dispatch(
+        updateQuestion(updatedQuestion, {
+          // rerun the query when it is changed alongside settings
+          run: newQuestion != null && hasWritePermissions,
+          shouldUpdateUrl: hasWritePermissions,
+        }),
+      );
+    }
   };
