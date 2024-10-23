@@ -1,3 +1,4 @@
+import type { QueryModalType } from "metabase/query_builder/constants";
 import type {
   Card,
   DashboardId,
@@ -37,6 +38,8 @@ export interface QueryBuilderUIControls {
   isShowingNotebookNativePreview: boolean;
   notebookNativePreviewSidebarWidth: number | null;
   showSidebarTitle: boolean;
+  modal: QueryModalType;
+  modalContext: number;
 }
 
 export interface QueryBuilderLoadingControls {
