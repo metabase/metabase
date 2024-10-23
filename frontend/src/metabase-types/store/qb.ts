@@ -38,8 +38,8 @@ export interface QueryBuilderUIControls {
   isShowingNotebookNativePreview: boolean;
   notebookNativePreviewSidebarWidth: number | null;
   showSidebarTitle: boolean;
-  modal: QueryModalType;
-  modalContext: number;
+  modal: QueryModalType | null;
+  modalContext: number | null;
 }
 
 export interface QueryBuilderLoadingControls {
