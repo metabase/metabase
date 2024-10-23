@@ -685,23 +685,6 @@ jobs:
     uses: ./.github/workflows/release-tag.yml
     secrets: inherit
     with:
-      # we only want to tag the current version on the nightly channel, but we
-      # need this job to run even if we don't tag, so we send through a skip flag
-      skip: ${{ needs.check-version.outputs.isCurrentMajorVersion == 'true' }}
-      version: ${{ inputs.version }}
-      tag_name: ${{ inputs.release-channel }}
-      tag_rollout: 100
-      tag_ee: true
-      tag_oss: true
-
-  set-release-channel:
-    if: ${{ !inputs.auto }}
-    needs: [push-tags, verify-docker-pull, verify-s3-download, publish-version-info]
-    uses: ./.github/workflows/release-tag.yml
-    secrets: inherit
-    with:
-      # we need this job to run even if we don't tag, so we send through a skip flag
-      skip: ${{ inputs.release-channel == 'none' }}
       version: ${{ inputs.version }}
       tag_name: ${{ inputs.release-channel }}
       tag_rollout: 100
