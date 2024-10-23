@@ -201,9 +201,16 @@ class SettingsEditor extends Component {
   }
 
   renderSettingsSections() {
-    const { sections, activeSectionName, newVersionAvailable } = this.props;
+    const { sections, activeSectionName, newVersionAvailable, settingValues } =
+      this.props;
 
-    const renderedSections = Object.entries(sections).map(
+    const sections_to_show = { ...sections };
+    // do not show Cloud section to airgapped instances
+    if (settingValues["airgap-enabled"] === true) {
+      delete sections_to_show["cloud"];
+    }
+
+    const renderedSections = Object.entries(sections_to_show).map(
       ([slug, section], idx) => {
         // HACK - This is used to hide specific items in the sidebar and is currently
         // only used as a way to fake the multi page auth settings pages without
