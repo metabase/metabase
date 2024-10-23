@@ -8,7 +8,6 @@ import {
   addOrUpdateDashboardCard,
   cartesianChartCircle,
   chartPathWithFillColor,
-  createDashboard,
   createDashboardWithTabs,
   createQuestion,
   createQuestionAndDashboard,
@@ -1386,11 +1385,7 @@ describeEE("scenarios > dashboard > dashboard cards > click behavior", () => {
         cy.get("aside").findByText("No available targets").should("not.exist");
         addTextParameter();
         addTimeParameter();
-        cy.get("aside")
-          .findByRole("textbox")
-          .type(`Count: {{${COUNT_COLUMN_ID}}}`, {
-            parseSpecialCharSequences: false,
-          });
+        customizeLinkText(`Count: {{${COUNT_COLUMN_ID}}}`);
 
         cy.icon("chevronleft").click();
 
@@ -1410,11 +1405,7 @@ describeEE("scenarios > dashboard > dashboard cards > click behavior", () => {
         addSavedQuestionDestination();
         addSavedQuestionCreatedAtParameter();
         addSavedQuestionQuantityParameter();
-        cy.get("aside")
-          .findByRole("textbox")
-          .type(`Created at: {{${CREATED_AT_COLUMN_ID}}}`, {
-            parseSpecialCharSequences: false,
-          });
+        customizeLinkText(`Created at: {{${CREATED_AT_COLUMN_ID}}}`);
 
         cy.icon("chevronleft").click();
 
@@ -2034,31 +2025,11 @@ describeEE("scenarios > dashboard > dashboard cards > click behavior", () => {
 
     it("should allow navigating to questions with filters applied in every stage", () => {
       createQuestion(TARGET_QUESTION);
-      createDashboard(
-        {
-          ...TARGET_DASHBOARD,
-          parameters: [DASHBOARD_FILTER_TEXT, DASHBOARD_FILTER_TIME],
-          dashcards: [
-            createMockDashboardCard({
-              card_id: ORDERS_QUESTION_ID,
-              parameter_mappings: [
-                createTextFilterMapping({ card_id: ORDERS_QUESTION_ID }),
-                createTimeFilterMapping({ card_id: ORDERS_QUESTION_ID }),
-              ],
-            }),
-          ],
-        },
-        {
-          wrapId: true,
-          idAlias: "targetDashboardId",
-        },
-      );
       createQuestionAndDashboard({ questionDetails }).then(({ body: card }) => {
         visitDashboard(card.dashboard_id);
       });
 
       editDashboard();
-
       getDashboardCard().realHover().icon("click").click();
 
       (function addCustomQuestionDestination() {
@@ -2070,21 +2041,15 @@ describeEE("scenarios > dashboard > dashboard cards > click behavior", () => {
         cy.get("aside").findByText(CREATED_AT_COLUMN_NAME).click();
         addSavedQuestionDestination();
 
-        cy.get("aside")
-          .findByTestId("click-mappings")
-          .findByText("Created At: Month")
-          .click();
+        getClickMapping("Created At: Month").click();
         popover().findByText(CREATED_AT_COLUMN_NAME).click();
-        cy.get("aside")
-          .findByTestId("click-mappings")
-          .findByText("Count")
-          .click();
+
+        getClickMapping("Count").click();
         popover().findByText(COUNT_COLUMN_NAME).click();
-        cy.get("aside")
-          .findByRole("textbox")
-          .type(`Created at: {{${CREATED_AT_COLUMN_ID}}} - {{count}}`, {
-            parseSpecialCharSequences: false,
-          });
+
+        customizeLinkText(
+          `Created at: {{${CREATED_AT_COLUMN_ID}}} - {{count}}`,
+        );
 
         cy.icon("chevronleft").click();
         getCreatedAtToQuestionMapping().should("exist");
@@ -2117,20 +2082,20 @@ describeEE("scenarios > dashboard > dashboard cards > click behavior", () => {
 
         openNotebook();
 
-        getNotebookStep("data").findByText("Orders").should("be.visible");
-        getNotebookStep("summarize").findByText("Count").should("be.visible");
-        getNotebookStep("summarize")
-          .findByText("Created At: Month")
-          .should("be.visible");
-        getNotebookStep("limit")
-          .findByPlaceholderText("Enter a limit")
-          .should("have.value", "5");
-        getNotebookStep("filter", { stage: 1 })
-          .findByText("Created At: Month is May 1–31, 2022")
-          .should("be.visible");
-        getNotebookStep("filter", { stage: 1 })
-          .findByText("Count is equal to 19")
-          .should("be.visible");
+        verifyNotebookQuery(
+          "Orders",
+          {
+            aggregations: ["Count"],
+            breakouts: ["Created At: Month"],
+            limit: 5,
+          },
+          {
+            filters: [
+              "Created At: Month is May 1–31, 2022",
+              "Count is equal to 19",
+            ],
+          },
+        );
       })();
     });
   });
@@ -2759,6 +2724,16 @@ const getCountToDashboardFilterMapping = () => {
   return cy.get("aside").contains(`${COUNT_COLUMN_NAME} updates 1 filter`);
 };
 
+function getClickMapping(columnName) {
+  return cy.get("aside").findByTestId("click-mappings").findByText(columnName);
+}
+
+function customizeLinkText(text) {
+  cy.get("aside")
+    .findByRole("textbox")
+    .type(text, { parseSpecialCharSequences: false });
+}
+
 const createDashboardWithTabsLocal = ({
   dashboard: dashboardDetails,
   tabs,
@@ -2780,3 +2755,40 @@ const createDashboardWithTabsLocal = ({
     });
   });
 };
+
+function verifyNotebookQuery(dataSource, ...stages) {
+  getNotebookStep("data").findByText(dataSource).should("be.visible");
+
+  for (let stageIndex = 0; stageIndex < stages.length; ++stageIndex) {
+    const {
+      filters = [],
+      aggregations = [],
+      breakouts = [],
+      limit,
+    } = stages[stageIndex];
+
+    for (const filter of filters) {
+      getNotebookStep("filter", { stage: stageIndex })
+        .findByText(filter)
+        .should("be.visible");
+    }
+
+    for (const aggregation of aggregations) {
+      getNotebookStep("summarize", { stage: stageIndex })
+        .findByText(aggregation)
+        .should("be.visible");
+    }
+
+    for (const breakout of breakouts) {
+      getNotebookStep("summarize", { stage: stageIndex })
+        .findByText(breakout)
+        .should("be.visible");
+    }
+
+    if (limit) {
+      getNotebookStep("limit", { stage: stageIndex })
+        .findByPlaceholderText("Enter a limit")
+        .should("have.value", String(limit));
+    }
+  }
+}
