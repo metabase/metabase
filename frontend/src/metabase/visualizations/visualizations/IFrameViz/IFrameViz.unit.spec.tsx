@@ -61,6 +61,7 @@ describe("IFrameViz", () => {
       "allow-scripts allow-same-origin allow-forms allow-popups",
     );
   });
+
   it("should render iframe input in editing mode", () => {
     setup({ isEditing: true });
 
@@ -154,7 +155,7 @@ describe("IFrameViz", () => {
       screen.queryByTestId("iframe-visualization"),
     ).not.toBeInTheDocument();
     expect(
-      screen.getByText("There was a problem loading your iframe"),
+      screen.getByText("There was a problem rendering this content."),
     ).toBeInTheDocument();
   });
 
@@ -189,7 +190,7 @@ describe("IFrameViz", () => {
       screen.queryByTestId("iframe-visualization"),
     ).not.toBeInTheDocument();
     expect(
-      screen.getByText("There was a problem loading your iframe"),
+      screen.getByText("There was a problem rendering this content."),
     ).toBeInTheDocument();
   });
 });

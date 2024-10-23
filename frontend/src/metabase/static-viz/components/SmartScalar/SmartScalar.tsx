@@ -1,29 +1,24 @@
 import type { CSSProperties } from "react";
 
-import type {
-  RenderingContext,
-  StaticVisualizationProps,
-} from "metabase/visualizations/types";
+import type { RenderingContext } from "metabase/visualizations/types";
 import {
   CHANGE_TYPE_OPTIONS,
   computeTrend,
 } from "metabase/visualizations/visualizations/SmartScalar/compute";
 import { formatChange } from "metabase/visualizations/visualizations/SmartScalar/utils";
 
-import { computeSmartScalarSettings } from "./settings";
+import type { StaticChartProps } from "../StaticVisualization";
 
 export function SmartScalar({
   rawSeries,
+  settings,
   renderingContext,
-}: StaticVisualizationProps) {
-  const { fontFamily, formatValue, getColor } = renderingContext;
+}: StaticChartProps) {
+  const { fontFamily, getColor } = renderingContext;
   const [{ card, data }] = rawSeries;
   const { insights } = data;
 
-  const settings = computeSmartScalarSettings(rawSeries);
-
   const { trend, error } = computeTrend(rawSeries, insights, settings, {
-    formatValue,
     getColor,
   });
 

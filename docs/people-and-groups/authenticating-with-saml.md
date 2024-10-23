@@ -10,6 +10,7 @@ redirect_from:
 
 Integrating your SSO with Metabase allows you to:
 
+- Provision a Metabase account when someone logs in to Metabase.
 - Automatically pass user attributes from your SSO to Metabase in order to power [data sandboxes](../permissions/data-sandboxes.md).
 - Let people access Metabase without re-authenticating.
 
@@ -19,7 +20,7 @@ Before setting up SAML, make sure you know the password for your Metabase admin 
 
 ## Setting up SAML with your IdP in Metabase
 
-Once you've [confirmed the password to your Metabase admin account](#confirm-the-password-for-your-metabase-admin-account), head over to the **Settings** section of the Admin Panel, then click on the **Authentication** tab. Click the **Configure** button in the SAML section of the Authentication page, and you'll see this form:
+Once you've [confirmed the password to your Metabase admin account](#confirm-the-password-for-your-metabase-admin-account), head over to the **Settings** section of the Admin Panel, then click on the **Authentication** tab. Click the **Set up** button in the SAML section of the Authentication page, and you'll see this form:
 
 ![SAML form](images/saml-form.png)
 
@@ -28,6 +29,8 @@ The form includes three sections:
 1. [Metabase info that you'll have to input into your identity provider (IdP)](#generic-saml-configuration).
 2. [IdP info that you'll need to tell Metabase about](#enabling-saml-authentication-in-metabase).
 3. [Signing SSO requests (optional)](#settings-for-signing-sso-requests-optional).
+
+## SAML guides
 
 First you'll need to make sure things are configured correctly with your IdP. Each IdP handles SAML setup differently.
 
@@ -44,6 +47,12 @@ If you don't see your IdP listed here:
 - Refer to your IdP's reference docs on configuring SAML. You'll be looking for something like this [OneLogin SAML guide](https://onelogin.service-now.com/support?id=kb_article&sys_id=83f71bc3db1e9f0024c780c74b961970).
 - Using the information found on the Metabase SAML form, fill out your IdP's SAML form.
 - For more information, see the next section on [Generic SAML configuration](#generic-saml-configuration).
+
+## User provisioning
+
+By default, Metabase will create accounts for people who don't yet have a Metabase account but who are able to log in via SAML SSO.
+
+If you've set up [User provisioning with SCIM](./user-provisioning.md), you'll want to turn this setting off so that Metabase doesn't automatically create a new account for anyone who authenticates successfully, as you may want to use SCIM to determine who can and can't create an account in Metabase.
 
 ## Generic SAML configuration
 
@@ -181,7 +190,7 @@ Metabase accounts created with an external identity provider login don't have pa
 
 ## Disabling password logins
 
-> **Avoid locking yourself out of your Metabase!** Turning off password logins applies to all Metabase accounts, _including your Metabase admin account_. We recommend that you keep password authentication **enabled**.
+> **Avoid locking yourself out of your Metabase!** Turning off password logins applies to all Metabase accounts, _including your Metabase admin account_. Before turning off password logins, make sure you can log in to your admin account using SSO.
 
 To _require_ people to log in with SSO, disable password authentication from **Admin settings** > **Authentication**. Turn off the **Enable Password Authentication** toggle.
 

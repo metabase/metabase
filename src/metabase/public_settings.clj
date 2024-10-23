@@ -82,7 +82,7 @@
     (setting/set-value-of-type! :string :update-channel new-channel)))
 
 (defsetting update-channel
-  (deferred-tru "Metabase will notify you when a new release is available for the channel you select.")
+  (deferred-tru "We'll notify you here when there's a new version of this type of release.")
   :visibility :admin
   :type       :string
   :encryption :no
@@ -173,6 +173,38 @@
   :default    "Metabase"
   :audit      :getter
   :visibility :settings-manager
+  :export?    true)
+
+(def ^:private default-allowed-iframe-hosts
+  "youtube.com,
+youtu.be,
+loom.com,
+vimeo.com,
+docs.google.com,
+calendar.google.com,
+airtable.com,
+typeform.com,
+canva.com,
+codepen.io,
+figma.com,
+grafana.com,
+miro.com,
+excalidraw.com,
+notion.com,
+atlassian.com,
+trello.com,
+asana.com,
+gist.github.com,
+linkedin.com,
+twitter.com,
+x.com")
+
+(defsetting allowed-iframe-hosts
+  (deferred-tru "Allowed iframe hosts")
+  :encryption :no
+  :default    default-allowed-iframe-hosts
+  :audit      :getter
+  :visibility :public
   :export?    true)
 
 (defsetting custom-homepage

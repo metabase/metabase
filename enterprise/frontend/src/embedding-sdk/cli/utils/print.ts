@@ -7,6 +7,7 @@ export const OUTPUT_STYLES = {
   version: chalk.hex("#509EE3"),
   link: chalk.underline.blueBright,
   error: chalk.red.bold,
+  warning: chalk.yellow.bold,
   success: chalk.green.bold,
   info: chalk.bold,
 };
@@ -36,6 +37,9 @@ export const printLink = (text: string) => _print(OUTPUT_STYLES.link, text);
 
 export const printError = (message: string) =>
   console.error(OUTPUT_STYLES.error(message));
+
+export const printWarning = (message: string) =>
+  console.warn(OUTPUT_STYLES.warning(message));
 
 export const printSuccess = (message: string) =>
   _print(OUTPUT_STYLES.success, message);

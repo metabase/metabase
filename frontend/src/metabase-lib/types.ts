@@ -7,6 +7,7 @@ import type {
   RowValue,
   SchemaId,
   TableId,
+  TableVisibilityType,
   TemporalUnit,
 } from "metabase-types/api";
 
@@ -135,6 +136,7 @@ export type TableDisplayInfo = {
   isQuestion?: boolean;
   isModel?: boolean;
   isMetric?: boolean;
+  visibilityType?: TableVisibilityType;
 };
 
 export type CardDisplayInfo = TableDisplayInfo;
@@ -574,6 +576,12 @@ export type DrillThruDisplayInfo =
   | ZoomTimeseriesDrillThruInfo;
 
 export type FilterDrillDetails = {
+  query: Query;
+  stageIndex: number;
+  column: ColumnMetadata;
+};
+
+export type CombineColumnsDrillDetails = {
   query: Query;
   stageIndex: number;
   column: ColumnMetadata;

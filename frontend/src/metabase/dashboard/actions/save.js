@@ -14,7 +14,11 @@ import { trackDashboardSaved } from "../analytics";
 import { getDashboardBeforeEditing } from "../selectors";
 
 import { setEditingDashboard } from "./core";
-import { hasDashboardChanged, haveDashboardCardsChanged } from "./utils";
+import {
+  hasDashboardChanged,
+  haveDashboardCardsChanged,
+  trackAddedIFrameDashcards,
+} from "./utils";
 
 export const UPDATE_DASHBOARD_AND_CARDS =
   "metabase/dashboard/UPDATE_DASHBOARD_AND_CARDS";
@@ -95,6 +99,8 @@ export const updateDashboardAndCards = createThunkAction(
           .filter(dc => dc.card.isDirty)
           .map(async dc => CardApi.update(dc.card)),
       );
+
+      trackAddedIFrameDashcards(dashboard);
 
       const dashcardsToUpdate = dashboard.dashcards
         .filter(dc => !dc.isRemoved)

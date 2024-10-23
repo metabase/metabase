@@ -2,7 +2,6 @@
   (:require
    [clojure.java.io :as io]
    [clojure.tools.reader.edn :as edn]
-   [metabase.channel.core :as channel]
    [metabase.plugins :as plugins]
    [metabase.plugins.initialize :as plugins.init]
    [metabase.test.data.env.impl :as tx.env.impl]
@@ -62,8 +61,7 @@
 
 (defn init! []
   (plugins/load-plugins!)
-  (load-plugin-manifests!)
-  (channel/find-and-load-metabase-channels!))
+  (load-plugin-manifests!))
 
 (defn init-test-drivers!
   "Explicitly initialize the given test `drivers` via plugin manifests. These manifests can live in test_modules (having

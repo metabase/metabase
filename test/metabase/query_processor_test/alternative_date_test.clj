@@ -1,4 +1,4 @@
-(ns metabase.query-processor-test.alternative-date-test
+(ns ^:mb/driver-tests metabase.query-processor-test.alternative-date-test
   "Tests for columns that mimic dates: integral types as UNIX timestamps and string columns as ISO8601DateTimeString and
   related types."
   (:require

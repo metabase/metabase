@@ -63,7 +63,7 @@ export interface Collection {
   can_delete: boolean;
   archived: boolean;
   children?: Collection[];
-  authority_level?: "official" | null;
+  authority_level?: CollectionAuthorityLevel;
   type?: "instance-analytics" | "trash" | null;
 
   parent_id?: CollectionId | null;
@@ -121,6 +121,7 @@ export interface CollectionItem {
   "last-edit-info"?: LastEditInfo;
   location?: string;
   effective_location?: string;
+  authority_level?: CollectionAuthorityLevel;
   getIcon: () => IconProps;
   getUrl: (opts?: Record<string, unknown>) => string;
   setArchived?: (isArchived: boolean, opts?: Record<string, unknown>) => void;

@@ -4,10 +4,10 @@
    [cheshire.core :as json]
    [cheshire.generate :as json.generate]
    [clojure.string :as str]
-   [flatland.ordered.map :as ordered-map]
+   [clojure.walk :as walk]
+   [medley.core :as m]
    [metabase.db.metadata-queries :as metadata-queries]
    [metabase.driver :as driver]
-   [metabase.driver.common :as driver.common]
    [metabase.driver.mongo.connection :as mongo.connection]
    [metabase.driver.mongo.database :as mongo.db]
    [metabase.driver.mongo.execute :as mongo.execute]
@@ -18,9 +18,12 @@
    [metabase.driver.util :as driver.u]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.query-processor :as qp]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [taoensso.nippy :as nippy])
   (:import
    (com.mongodb.client MongoClient MongoDatabase)
@@ -95,89 +98,10 @@
 
 ;;; ### Syncing
 
-(declare update-field-attrs)
-
 (defmethod driver/sync-in-context :mongo
   [_ database do-sync-fn]
   (mongo.connection/with-mongo-client [_ database]
     (do-sync-fn)))
-
-(defn- val->semantic-type [field-value]
-  (cond
-    ;; 1. url?
-    (and (string? field-value)
-         (u/url? field-value))
-    :type/URL
-
-    ;; 2. json?
-    (and (string? field-value)
-         (or (str/starts-with? field-value "{")
-             (str/starts-with? field-value "[")))
-    (when-let [j (u/ignore-exceptions (json/parse-string field-value))]
-      (when (or (map? j)
-                (sequential? j))
-        :type/SerializedJSON))))
-
-(defn- find-nested-fields [field-value nested-fields]
-  (loop [[k & more-keys] (keys field-value)
-         fields nested-fields]
-    (if-not k
-      fields
-      (recur more-keys (update fields k (partial update-field-attrs (k field-value)))))))
-
-(defn- update-field-attrs [field-value field-def]
-  (-> field-def
-      (update :count u/safe-inc)
-      (update :len #(if (string? field-value)
-                      (+ (or % 0) (count field-value))
-                      %))
-      (update :types (fn [types]
-                       (update types (type field-value) u/safe-inc)))
-      (update :semantic-types (fn [semantic-types]
-                                (if-let [st (val->semantic-type field-value)]
-                                  (update semantic-types st u/safe-inc)
-                                  semantic-types)))
-      (update :nested-fields (fn [nested-fields]
-                               (if (map? field-value)
-                                 (find-nested-fields field-value nested-fields)
-                                 nested-fields)))))
-
-(defn- most-common-object-type
-  "Given a sequence of tuples like [Class <number-of-occurances>] return the Class with the highest number of
-  occurances. The basic idea here is to take a sample of values for a Field and then determine the most common type
-  for its values, and use that as the Metabase base type. For example if we have a Field called `zip_code` and it's a
-  number 90% of the time and a string the other 10%, we'll just call it a `:type/Number`."
-  ^Class [field-types]
-  (when (seq field-types)
-    (first (apply max-key second field-types))))
-
-(defn- class->base-type [^Class klass]
-  (if (isa? klass org.bson.types.ObjectId)
-    :type/MongoBSONID
-    (driver.common/class->base-type klass)))
-
-(defn- describe-table-field [field-kw field-info idx]
-  (let [most-common-object-type  (most-common-object-type (:types field-info))
-        [nested-fields idx-next]
-        (reduce
-         (fn [[nested-fields idx] nested-field]
-           (let [[nested-field idx-next] (describe-table-field nested-field
-                                                               (nested-field (:nested-fields field-info))
-                                                               idx)]
-             [(conj nested-fields nested-field) idx-next]))
-         [#{} (inc idx)]
-         (keys (:nested-fields field-info)))]
-    [(cond-> {:name              (name field-kw)
-              :database-type     (some-> most-common-object-type .getName)
-              :base-type         (class->base-type most-common-object-type)
-              :database-position idx}
-       (= :_id field-kw)           (assoc :pk? true)
-       (:semantic-types field-info) (assoc :semantic-type (->> (:semantic-types field-info)
-                                                               (filterv #(some? (first %)))
-                                                               (sort-by second)
-                                                               last
-                                                               first))
-       (:nested-fields field-info) (assoc :nested-fields nested-fields)) idx-next]))
 
 (defmethod driver/dbms-version :mongo
   [_driver database]
@@ -218,45 +142,255 @@
                     :value %}))
            set))))
 
-(defn- sample-documents [^MongoDatabase db table sort-direction]
-  (let [coll (mongo.util/collection db (:name table))]
-    (mongo.util/do-find coll {:keywordize true
-                              :limit metadata-queries/nested-field-sample-limit
-                              :skip 0
-                              :sort-criteria [[:_id sort-direction]]
-                              :batch-size 256})))
+(defn- describe-table-query-step
+  "A single reduction step in the [[describe-table-query]] pipeline.
+  At the end of each step the output is a combination of 'result' and 'item' objects. There is one 'result' for each
+  path which has the most common type for that path. 'item' objects have yet to be aggregated into 'result' objects.
+  Each object has the following keys:
+  - result: true means the object represents a 'result', false means it represents a 'item' to be further processed.
+  - path:   The path to the field in the document.
+  - type:   If 'item', the type of the field's value. If 'result', the most common type for the field.
+  - index:  If 'item', the index of the field in the parent object. If 'result', it is the minimum of such indices.
+  - object: If 'item', the value of the field if it's an object. If 'result', it is null."
+  [max-depth depth]
+  [{"$facet"
+    (cond-> {"results"    [{"$match" {"result" true}}]
+             "newResults" [{"$match" {"result" false}}
+                           {"$group" {"_id"   {"type" "$type"
+                                               "path" "$path"}
+                                      ;; count is zero if type is "null" so we only select "null" as the type if there
+                                      ;; is no other type for the path
+                                      "count" {"$sum" {"$cond" {"if"   {"$eq" ["$type" "null"]}
+                                                                "then" 0
+                                                                "else" 1}}}
+                                      "index" {"$min" "$index"}}}
+                           {"$sort" {"count" -1}}
+                           {"$group" {"_id"      "$_id.path"
+                                      "type"     {"$first" "$_id.type"}
+                                      "index"    {"$min" "$index"}}}
+                           {"$project" {"path"   "$_id"
+                                        "type"   1
+                                        "result" {"$literal" true}
+                                        "object" nil
+                                        "index"  1}}]}
+      (not= depth max-depth)
+      (assoc "nextItems" [{"$match" {"result" false, "object" {"$ne" nil}}}
+                          {"$project" {"path" 1
+                                       "kvs"  {"$map" {"input" {"$objectToArray" "$object"}
+                                                       "as"    "item"
+                                                       "in"    {"k"      "$$item.k"
+                                                                ;; we only need v in the next step it's an object
+                                                                "object" {"$cond" {"if"   {"$eq" [{"$type" "$$item.v"} "object"]}
+                                                                                   "then" "$$item.v"
+                                                                                   "else" nil}}
+                                                                "type"   {"$type" "$$item.v"}}}}}}
+                          {"$unwind" {"path" "$kvs", "includeArrayIndex" "index"}}
+                          {"$project" {"path"   {"$concat" ["$path" "." "$kvs.k"]}
+                                       "type"   "$kvs.type"
+                                       "result" {"$literal" false}
+                                       "index"  1
+                                       "object" "$kvs.object"}}]))}
+   {"$project" {"acc" {"$concatArrays" (cond-> ["$results" "$newResults"]
+                                         (not= depth max-depth)
+                                         (conj "$nextItems"))}}}
+   {"$unwind" "$acc"}
+   {"$replaceRoot" {"newRoot" "$acc"}}])
 
-(defn- table-sample-column-info
-  "Sample the rows (i.e., documents) in `table` and return a map of information about the column keys we found in that
-   sample. The results will look something like:
+(defn- describe-table-query
+  "To understand how this works, see the comment block below for a rough translation of this query into Clojure."
+  [& {:keys [collection-name sample-size max-depth]}]
+  (let [start-n       (quot sample-size 2)
+        end-n         (- sample-size start-n)
+        sample        [{"$sort" {"_id" 1}}
+                       {"$limit" start-n}
+                       {"$unionWith"
+                        {"coll" collection-name
+                         "pipeline" [{"$sort" {"_id" -1}}
+                                     {"$limit" end-n}]}}]
+        initial-items [{"$project" {"path" "$ROOT"
+                                    "kvs" {"$map" {"input" {"$objectToArray" "$$ROOT"}
+                                                   "as"    "item"
+                                                   "in"    {"k"      "$$item.k"
+                                                            "object" {"$cond" {"if"   {"$eq" [{"$type" "$$item.v"} "object"]}
+                                                                               "then" "$$item.v"
+                                                                               "else" nil}}
+                                                            "type"   {"$type" "$$item.v"}}}}}}
+                       {"$unwind" {"path" "$kvs", "includeArrayIndex" "index"}}
+                       {"$project" {"path"   "$kvs.k"
+                                    "result" {"$literal" false}
+                                    "type"   "$kvs.type"
+                                    "index"  1
+                                    "object" "$kvs.object"}}]]
+    (concat sample
+            initial-items
+            (mapcat #(describe-table-query-step max-depth %) (range (inc max-depth)))
+            [{"$project" {"_id" 0, "path" "$path", "type" "$type", "index" "$index"}}])))
 
-      {:_id      {:count 200, :len nil, :types {java.lang.Long 200}, :semantic-types nil, :nested-fields nil},
-       :severity {:count 200, :len nil, :types {java.lang.Long 200}, :semantic-types nil, :nested-fields nil}}"
-  [^MongoDatabase db table]
-  (try
-    (reduce
-     (fn [field-defs row]
-       (loop [[k & more-keys] (keys row), fields field-defs]
-         (if-not k
-           fields
-           (recur more-keys (update fields k (partial update-field-attrs (k row)))))))
-     (ordered-map/ordered-map)
-     (concat (sample-documents db table 1) (sample-documents db table -1)))
-    (catch Throwable t
-      (log/error (format "Error introspecting collection: %s" (:name table)) t))))
+(comment
+  ;; `describe-table-clojure` is a reference implementation for [[describe-table-query]] in Clojure.
+  ;; It is almost logically equivalent, excluding minor details like how the sample is taken, and dealing with null
+  ;; values. It is arguably easier to understand the Clojure version and translate it into MongoDB query language
+  ;; than to understand the MongoDB query version directly.
+  (defn describe-table-clojure [sample-data max-depth]
+    (let [;; initial items is a list of maps, each map a field in a document in the sample
+          initial-items (mapcat (fn [x]
+                                  (for [[i [k v]] (map vector (range) x)]
+                                    {:path   (name k)
+                                     :object (if (map? v) v nil)
+                                     :index  i
+                                     :type   (type v)}))
+                                sample-data)
+          most-common (fn [xs]
+                        (key (apply max-key val (frequencies xs))))]
+      (:results (reduce
+                 (fn [{:keys [results next-items]} depth]
+                   {:results    (concat results
+                                        (for [[path group] (group-by :path next-items)]
+                                          {:path  path
+                                           :type  (most-common (map :type group))
+                                           :index (apply min (map :index group))}))
+                    :next-items (when (not= depth max-depth)
+                                  (->> (keep :object next-items)
+                                       (mapcat (fn [x]
+                                                 (for [[i [k v]] (map vector (range) x)]
+                                                   {:path   (str (:path x) "." (name k))
+                                                    :object (if (map? v) v nil)
+                                                    :index  i
+                                                    :type   (type v)})))))})
+                 {:results [], :next-items initial-items}
+                 (range (inc max-depth))))))
+  ;; Example:
+  (def sample-data
+    [{:a 1 :b {:c "hello" :d [1 2 3]}}
+     {:a 2 :b {:c "world"}}])
+  (describe-table-clojure sample-data 0)
+  ;; => ({:path "a", :type java.lang.Long, :index 0}
+  ;;     {:path "b", :type clojure.lang.PersistentArrayMap, :index 1})
+  (describe-table-clojure sample-data 1)
+  ;; => ({:path "a", :type java.lang.Long, :index 0}
+  ;;     {:path "b", :type clojure.lang.PersistentArrayMap, :index 1}
+  ;;     {:path ".c", :type java.lang.String, :index 0}
+  ;;     {:path ".d", :type clojure.lang.PersistentVector, :index 1})
+  )
+
+(def describe-table-query-depth
+  "The depth of nested objects that [[describe-table-query]] will execute to. If set to 0, the query will only return the
+  fields at the root level of the document. If set to K, the query will return fields at K levels of nesting beyond that.
+  Setting its value involves a trade-off: the lower it is, the faster describe-table-query executes, but the more queries we might
+  have to execute."
+  ;; Cal 2024-09-15: I chose 100 as the limit because it's a pretty safe bet it won't be exceeded (the documents we've
+  ;; seen on cloud are all <20 levels deep)
+  ;; Case 2024-10-04: Sharded clusters seem to run into exponentially more work the bigger this is. Over 20 and this
+  ;; risks never finishing.
+  ;; From arakaki:
+  ;;  > I think we can pick a max-depth that works well. I know that some other related tools set limits of 7 nested levels.
+  ;;  > And that would be definitely ok for most.
+  ;;  > If people have problems with that, I think we can make it configurable.
+  7)
+
+(mu/defn- describe-table :- [:sequential
+                             [:map {:closed true}
+                              [:path  ::lib.schema.common/non-blank-string]
+                              [:type  ::lib.schema.common/non-blank-string]
+                              [:index :int]]]
+  "Queries the database, returning a list of maps with metadata for each field in the table (aka collection).
+  Like `driver/describe-table` but the data is directly from the [[describe-table-query]] and needs further processing."
+  [db table]
+  (let [query (describe-table-query {:collection-name (:name table)
+                                     :sample-size     (* metadata-queries/nested-field-sample-limit 2)
+                                     :max-depth       describe-table-query-depth})
+        data  (:data (qp/process-query {:database (:id db)
+                                        :type     "native"
+                                        :native   {:collection (:name table)
+                                                   :query      (json/generate-string query)}}))
+        cols  (map (comp keyword :name) (:cols data))]
+    (map #(zipmap cols %) (:rows data))))
+
+(defn- type-alias->base-type [type-alias]
+  ;; Mongo types from $type aggregation operation
+  ;; https://www.mongodb.com/docs/manual/reference/operator/aggregation/type/#available-types
+  (get {"double"     :type/Float
+        "string"     :type/Text
+        "object"     :type/Dictionary
+        "array"      :type/Array
+        "binData"    :type/*
+        "objectId"   :type/MongoBSONID
+        "bool"       :type/Boolean
+        "date"       :type/Instant
+        "null"       :type/*
+        "regex"      :type/*
+        "dbPointer"  :type/*
+        "javascript" :type/*
+        "symbol"     :type/Text
+        "int"        :type/Integer
+        "timestamp"  :type/Instant
+        "long"       :type/Integer
+        "decimal"    :type/Decimal}
+       type-alias :type/*))
+
+(defn- add-database-position
+  "Adds :database-position to all fields. It starts at 0 and is ordered by a depth-first traversal of nested fields."
+  [fields i]
+  (->> fields
+       ;; Previously database-position was set with Clojure according to the logic in this imperative pseudocode:
+       ;; i = 0
+       ;; for each row in sample:
+       ;;   for each k,v in row:
+       ;;     field.database-position = i
+       ;;     i = i + 1
+       ;;     for each k,v in field.nested-fields:
+       ;;       field.database-position = i
+       ;;       i = i + 1
+       ;;       etc.
+       ;; We can't match this logic exactly with a MongoDB query. We can get close though: index is the minimum index
+       ;; of the key in the object over all documents in the sample. however, there can be more than one key that has
+       ;; the same index. so name is used to keep the order stable.
+       (sort-by (juxt :index :name))
+       (reduce (fn [[fields i] field]
+                 (let [field             (assoc field :database-position i)
+                       i                 (inc i)
+                       nested-fields     (:nested-fields field)
+                       [nested-fields i] (if nested-fields
+                                           (add-database-position nested-fields i)
+                                           [nested-fields i])
+                       field             (-> field
+                                             (m/assoc-some :nested-fields nested-fields)
+                                             (dissoc :index))]
+                   [(conj fields field) i]))
+               [#{} i])))
 
 (defmethod driver/describe-table :mongo
-  [_ database table]
-  (mongo.connection/with-mongo-database [^MongoDatabase db database]
-    (let [column-info (table-sample-column-info db table)]
-      {:schema nil
-       :name   (:name table)
-       :fields (first
-                (reduce (fn [[fields idx] [field info]]
-                          (let [[described-field new-idx] (describe-table-field field info idx)]
-                            [(conj fields described-field) new-idx]))
-                        [#{} 0]
-                        column-info))})))
+  [_driver database table]
+  (let [fields (->> (describe-table database table)
+                    (map (fn [x]
+                           (let [path (str/split (:path x) #"\.")
+                                 name (last path)]
+                             (cond-> {:name              name
+                                      :database-type     (:type x)
+                                      :base-type         (type-alias->base-type (:type x))
+                                      ; index is used by `set-database-position`, and not present in final result
+                                      :index             (:index x)
+                                      ; path is used to nest fields, and not present in final result
+                                      :path              path}
+                               (= name "_id")
+                               (assoc :pk? true))))))
+        ;; convert the flat list of fields into deeply-nested map.
+        ;; `fields` and `:nested-fields` values are maps from name to field
+        fields (reduce
+                (fn [acc field]
+                  (assoc-in acc (interpose :nested-fields (:path field)) (dissoc field :path)))
+                {}
+                fields)
+        ;; replace maps from name to field with sets of fields
+        fields (walk/postwalk (fn [x]
+                                (cond-> x
+                                  (map? x)
+                                  (m/update-existing :nested-fields #(set (vals %)))))
+                              (set (vals fields)))
+        [fields _] (add-database-position fields 0)]
+    {:schema nil
+     :name   (:name table)
+     :fields fields}))
 
 (doseq [[feature supported?] {:basic-aggregations              true
                               :expression-aggregations         true

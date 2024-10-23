@@ -199,3 +199,7 @@ For common issues, go to [Troubleshooting SAML][troubleshooting-saml].
 [saml-doc]: ./authenticating-with-saml.md
 [site-url]: ../configuring-metabase/settings.md#site-url
 [troubleshooting-saml]: ../troubleshooting-guide/saml.md
+
+## Further reading
+
+- [User provisioning](./user-provisioning.md)

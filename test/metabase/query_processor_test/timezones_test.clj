@@ -1,4 +1,4 @@
-(ns metabase.query-processor-test.timezones-test
+(ns ^:mb/driver-tests metabase.query-processor-test.timezones-test
   (:require
    [clojure.set :as set]
    [clojure.string :as str]

@@ -18,8 +18,6 @@ import {
   CLEAR_QUERY_RESULT,
   CLOSE_QB,
   CLOSE_QB_NEWB_MODAL,
-  CREATE_PUBLIC_LINK,
-  DELETE_PUBLIC_LINK,
   DESELECT_TIMELINE_EVENTS,
   HIDE_TIMELINE_EVENTS,
   INITIALIZE_QB,
@@ -48,13 +46,9 @@ import {
   SET_UI_CONTROLS,
   SHOW_CHART_SETTINGS,
   SHOW_TIMELINE_EVENTS,
-  SOFT_RELOAD_CARD,
   TOGGLE_DATA_REFERENCE,
   TOGGLE_SNIPPET_SIDEBAR,
   TOGGLE_TEMPLATE_TAGS_EDITOR,
-  UPDATE_EMBEDDING_PARAMS,
-  UPDATE_ENABLE_EMBEDDING,
-  UPDATE_QUESTION,
   ZOOM_IN_ROW,
   onCloseChartSettings,
   onCloseChartType,
@@ -366,55 +360,6 @@ export const zoomedRowObjectId = handleActions(
   null,
 );
 
-// the card that is actively being worked on
-export const card = handleActions(
-  {
-    [RESET_QB]: { next: (state, { payload }) => null },
-    [INITIALIZE_QB]: {
-      next: (state, { payload }) => (payload ? payload.card : null),
-    },
-    [SOFT_RELOAD_CARD]: { next: (state, { payload }) => payload },
-    [RELOAD_CARD]: { next: (state, { payload }) => payload },
-    [SET_CARD_AND_RUN]: { next: (state, { payload }) => payload.card },
-    [API_CREATE_QUESTION]: { next: (state, { payload }) => payload },
-    [API_UPDATE_QUESTION]: { next: (state, { payload }) => payload },
-
-    [CANCEL_QUESTION_CHANGES]: { next: (state, { payload }) => payload.card },
-
-    [UPDATE_QUESTION]: (state, { payload: { card } }) => card,
-
-    [QUERY_COMPLETED]: {
-      next: (state, { payload: { card } }) => ({
-        ...state,
-        display: card.display,
-        result_metadata: card.result_metadata,
-        visualization_settings: card.visualization_settings,
-      }),
-    },
-
-    [CREATE_PUBLIC_LINK]: {
-      next: (state, { payload }) => ({ ...state, public_uuid: payload.uuid }),
-    },
-    [DELETE_PUBLIC_LINK]: {
-      next: (state, { payload }) => ({ ...state, public_uuid: null }),
-    },
-    [UPDATE_ENABLE_EMBEDDING]: {
-      next: (state, { payload }) => ({
-        ...state,
-        enable_embedding: payload.enable_embedding,
-      }),
-    },
-    [UPDATE_EMBEDDING_PARAMS]: {
-      next: (state, { payload }) => ({
-        ...state,
-        embedding_params: payload.embedding_params,
-        initially_published_at: payload.initially_published_at,
-      }),
-    },
-  },
-  null,
-);
-
 // a copy of the card being worked on at it's last known saved state.  if the card is NEW then this should be null.
 // NOTE: we use JSON serialization/deserialization to ensure a deep clone of the object which is required
 //       because we can't have any links between the active card being modified and the "originalCard" for testing dirtiness
@@ -593,3 +538,5 @@ export const selectedTimelineEventIds = handleActions(
   },
   [],
 );
+
+export * from "./reducers-typed";

@@ -14,6 +14,7 @@ import type { Table } from "./table";
 import type { UserInfo } from "./user";
 import type { CardDisplayType, VisualizationDisplay } from "./visualization";
 import type { SmartScalarComparison } from "./visualization-settings";
+
 export type CardType = "model" | "question" | "metric";
 
 type CreatorInfo = Pick<
@@ -38,6 +39,7 @@ export interface Card<Q extends DatasetQuery = DatasetQuery>
   can_write: boolean;
   can_restore: boolean;
   can_delete: boolean;
+  can_manage_db: boolean;
   initially_published_at: string | null;
 
   database_id?: DatabaseId;
@@ -150,6 +152,15 @@ export type VisualizationSettings = {
   "graph.show_values"?: boolean;
   "stackable.stack_type"?: StackType;
   "graph.show_stack_values"?: StackValuesDisplay;
+  "graph.max_categories_enabled"?: boolean;
+  "graph.max_categories"?: number;
+  "graph.other_category_aggregation_fn"?:
+    | "sum"
+    | "avg"
+    | "min"
+    | "max"
+    | "stddev"
+    | "median";
 
   // Table
   "table.columns"?: TableColumnOrderSetting[];
@@ -308,6 +319,9 @@ export interface UpdateCardRequest {
   collection_preview?: boolean;
 }
 
+export type UpdateCardKeyRequest<PropertyKey extends keyof UpdateCardRequest> =
+  Required<Pick<UpdateCardRequest, "id" | PropertyKey>>;
+
 export type CardError = {
   field?: string;
   table: string;
@@ -351,7 +365,6 @@ export type CardQueryRequest = {
   parameters?: unknown[];
 };
 
-export type GetPublicOrEmbeddableCard = Pick<
-  Card,
-  "id" | "name" | "public_uuid"
->;
+export type GetPublicCard = Pick<Card, "id" | "name" | "public_uuid">;
+
+export type GetEmbeddableCard = Pick<Card, "id" | "name">;

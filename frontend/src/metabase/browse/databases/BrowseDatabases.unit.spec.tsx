@@ -21,6 +21,7 @@ describe("BrowseDatabases", () => {
       expect(await screen.findByText(`Database ${i}`)).toBeInTheDocument();
     }
   });
+
   it("displays a 'no databases' message in the Databases tab when no databases exist", async () => {
     renderBrowseDatabases(0);
     expect(

@@ -74,6 +74,7 @@ const setup = ({
     storeInitialState: state,
   });
 };
+
 describe("QuestionPublicLinkPopover", () => {
   it("should display a question-specific public url", async () => {
     setup();

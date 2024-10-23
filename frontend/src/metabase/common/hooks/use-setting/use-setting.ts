@@ -1,12 +1,19 @@
 import { useCallback, useMemo } from "react";
 import _ from "underscore";
 
+// Don't touch this import or the auth page will break. referring to the barrel doesn't work right now
+import { getAdminSettingDefinitions } from "metabase/admin/settings/selectors/typed-selectors";
+import type { SettingElement } from "metabase/admin/settings/types";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { updateUserSetting } from "metabase/redux/settings";
 import { getSetting } from "metabase/selectors/settings";
-import type { Settings, UserSettings } from "metabase-types/api";
+import type {
+  SettingDefinition,
+  SettingKey,
+  UserSettings,
+} from "metabase-types/api";
 
-export const useSetting = <SettingName extends keyof Settings>(
+export const useSetting = <SettingName extends SettingKey>(
   settingName: SettingName,
 ) => {
   return useSelector(state => getSetting(state, settingName));
@@ -39,4 +46,22 @@ export const useUserSetting = <T extends keyof UserSettings>(
     [setter, debounceTimeout, debounceOnLeadingEdge],
   );
   return [currentValue, shouldDebounce ? debouncedSetter : setter];
+};
+
+export const useMergeSetting = <Key extends SettingKey>(
+  displaySetting: SettingElement<Key>,
+): SettingElement<Key> => {
+  const settingDefinitions = useSelector(getAdminSettingDefinitions);
+  const apiSetting = settingDefinitions.find(
+    (setting: SettingDefinition) => setting.key === displaySetting.key,
+  ) as SettingDefinition<Key> | undefined;
+
+  const mergedSetting: SettingElement<Key> = useMemo(() => {
+    return {
+      ...(apiSetting ?? {}),
+      ...displaySetting,
+    };
+  }, [apiSetting, displaySetting]);
+
+  return mergedSetting;
 };

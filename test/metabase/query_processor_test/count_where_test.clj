@@ -1,4 +1,4 @@
-(ns metabase.query-processor-test.count-where-test
+(ns ^:mb/driver-tests metabase.query-processor-test.count-where-test
   (:require
    [clojure.test :refer :all]
    [metabase.models.card :refer [Card]]

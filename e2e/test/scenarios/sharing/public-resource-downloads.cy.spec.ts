@@ -45,7 +45,7 @@ describeWithSnowplowEE(
 
         popover()
           .findByTestId("public-link-input")
-          .should("not.have.value", "")
+          .should("contain.value", "/public/")
           .invoke("val")
           .then(url => {
             publicLink = url as string;
@@ -126,6 +126,7 @@ describeWithSnowplowEE(
 
         popover()
           .findByTestId("public-link-input")
+          .should("contain.value", "/public/")
           .invoke("val")
           .then(url => {
             publicLink = url as string;
@@ -146,7 +147,10 @@ describeWithSnowplowEE(
         waitLoading();
 
         cy.findByTestId("download-button").click();
-        popover().findByText(".png").click();
+        popover().within(() => {
+          cy.findByText(".png").click();
+          cy.findByTestId("download-results-button").click();
+        });
 
         cy.verifyDownload(".png", { contains: true });
 

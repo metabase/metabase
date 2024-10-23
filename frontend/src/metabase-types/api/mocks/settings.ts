@@ -5,6 +5,7 @@ import type {
   EngineSource,
   FontFile,
   SettingDefinition,
+  SettingKey,
   Settings,
   TokenFeatures,
   TokenStatus,
@@ -129,13 +130,14 @@ export const createMockTokenFeatures = (
   ...opts,
 });
 
-export const createMockSettingDefinition = (
-  opts?: Partial<SettingDefinition>,
-): SettingDefinition => ({
-  key: "key",
+export const createMockSettingDefinition = <
+  Key extends SettingKey = SettingKey,
+>(
+  opts: SettingDefinition<Key>,
+): SettingDefinition<Key> => ({
   env_name: "",
   is_env_setting: false,
-  value: null,
+  value: opts.value,
   ...opts,
 });
 
@@ -143,6 +145,7 @@ export const createMockSettings = (
   opts?: Partial<Settings | EnterpriseSettings>,
 ): EnterpriseSettings => ({
   "admin-email": "admin@metabase.test",
+  "allowed-iframe-hosts": "*",
   "anon-tracking-enabled": false,
   "application-colors": {},
   "application-font": "Lato",
@@ -169,7 +172,12 @@ export const createMockSettings = (
   "email-smtp-username": null,
   "email-smtp-password": null,
   "embedding-app-origin": "",
+  "embedding-app-origins-sdk": "",
+  "embedding-app-origins-interactive": "",
   "enable-embedding": false,
+  "enable-embedding-static": false,
+  "enable-embedding-sdk": false,
+  "enable-embedding-interactive": false,
   "enable-enhancements?": false,
   "enable-nested-queries": true,
   "expand-browse-in-nav": true,
@@ -212,6 +220,7 @@ export const createMockSettings = (
   "report-timezone-long": "Europe/London",
   "saml-configured": false,
   "saml-enabled": false,
+  "saml-identity-provider-uri": null,
   "scim-enabled": false,
   "scim-base-url": "http://localhost:3000/api/ee/scim/v2/",
   "snowplow-url": "",
@@ -252,7 +261,6 @@ export const createMockSettings = (
   "last-acknowledged-version": "v1",
   "last-used-native-database-id": 1,
   "embedding-homepage": "hidden",
-  "setup-embedding-autoenabled": false,
   "setup-license-active-at-setup": false,
   "notebook-native-preview-shown": false,
   "notebook-native-preview-sidebar-width": null,

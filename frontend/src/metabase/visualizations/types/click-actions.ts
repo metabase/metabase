@@ -85,7 +85,10 @@ type UrlClickActionBase = {
 
 export type UrlClickAction = ClickActionBase & UrlClickActionBase;
 
-type CustomClickActionContext = { closePopover: () => void };
+type CustomClickActionContext = {
+  dispatch: Dispatch;
+  closePopover: () => void;
+};
 
 type CustomClickActionBase = {
   name: ClickActionBase["name"];

@@ -1,4 +1,4 @@
-(ns metabase.query-processor-test.explicit-joins-test
+(ns ^:mb/driver-tests metabase.query-processor-test.explicit-joins-test
   (:require
    [clojure.set :as set]
    [clojure.string :as str]

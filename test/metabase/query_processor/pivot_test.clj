@@ -1,4 +1,4 @@
-(ns metabase.query-processor.pivot-test
+(ns ^:mb/driver-tests metabase.query-processor.pivot-test
   "Tests for pivot table actions for the query processor"
   (:require
    [clj-time.core :as time]

@@ -1,4 +1,4 @@
-(ns metabase.driver.sql-jdbc.connection-test
+(ns ^:mb/driver-tests metabase.driver.sql-jdbc.connection-test
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]

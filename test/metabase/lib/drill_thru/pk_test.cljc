@@ -106,7 +106,7 @@
             (testing "Should add one filter for each PK column (#36426)"
               (is (=? {:stages [{:filters [[:= {} [:field {} (meta/id :orders :id)] 100]
                                            [:= {} [:field {} (meta/id :orders :product-id)] 200]]}]}
-                      (lib/drill-thru query -1 drill)))))))
+                      (lib/drill-thru query drill)))))))
       (testing "only one PK has a value: ignore the PK without a value"
         (let [context (context-with-values 10 100 nil)
               drill   (find-drill query context)]
@@ -117,7 +117,7 @@
                   drill))
           (testing "\nShould add one filter for each PK column (#36426)"
             (is (=? {:stages [{:filters [[:= {} [:field {} (meta/id :orders :id)] 100]]}]}
-                    (lib/drill-thru query -1 drill))))))
+                    (lib/drill-thru query drill))))))
       (testing "neither PK has a value: don't return a drill at all"
         (let [context (context-with-values 10 nil nil)]
           (is (nil? (find-drill query context)))))

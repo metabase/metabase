@@ -1,4 +1,4 @@
-(ns metabase.query-processor-test.nested-queries-test
+(ns ^:mb/driver-tests metabase.query-processor-test.nested-queries-test
   "Tests for handling queries with nested expressions."
   (:require
    [clojure.set :as set]

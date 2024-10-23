@@ -1,4 +1,4 @@
-(ns metabase.actions-test
+(ns ^:mb/driver-tests metabase.actions-test
   (:require
    [clojure.test :refer :all]
    [metabase.actions :as actions]

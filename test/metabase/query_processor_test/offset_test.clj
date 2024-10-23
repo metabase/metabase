@@ -1,4 +1,4 @@
-(ns metabase.query-processor-test.offset-test
+(ns ^:mb/driver-tests metabase.query-processor-test.offset-test
   "Tests for the new :offset window function clause (#9393)."
   (:require
    [clojure.test :refer :all]

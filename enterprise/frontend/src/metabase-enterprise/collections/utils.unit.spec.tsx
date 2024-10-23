@@ -69,9 +69,11 @@ describe("Collections plugin utils", () => {
     it("should return the default icon for a regular collection", () => {
       expect(getIcon({ model: "collection" })).toEqual({ name: "folder" });
     });
+
     it("should return the default icon for a regular dashboard", () => {
       expect(getIcon({ model: "dashboard" })).toEqual({ name: "dashboard" });
     });
+
     it("should return the default icon for a regular question", () => {
       expect(getIcon({ model: "card" })).toEqual({ name: "table" });
     });
@@ -114,6 +116,7 @@ describe("Collections plugin utils", () => {
         }),
       }),
     });
+
     beforeEach(() => {
       setupEnterprisePlugins();
     });

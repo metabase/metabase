@@ -14,6 +14,8 @@
   "enterprise/backend"
   "bin/build"
   "modules/drivers"
+  ".clj-kondo/src"
+  ".clj-kondo/test"
   #_"dev"]
 
  ;; See https://github.com/weavejester/cljfmt/blob/master/cljfmt/resources/cljfmt/indents/clojure.clj for the default
@@ -193,11 +195,6 @@
   metabase.sample-data-test/with-temp-sample-database-db                               [[:block 1]]
   metabase.server.middleware.session/as-admin                                          [[:block 0]]
   metabase.server.middleware.session/with-current-user                                 [[:inner 0]]
-  metabase.shared.util.i18n/trs                                                        [[:default]]
-  metabase.shared.util.i18n/trsn                                                       [[:default]]
-  metabase.shared.util.i18n/tru                                                        [[:default]]
-  metabase.shared.util.i18n/trun                                                       [[:default]]
-  metabase.shared.util.namespaces/import-fns                                           [[:default]]
   metabase.sync.fetch-metadata/log-if-error                                            [[:block 1]]
   metabase.sync.sync-metadata.fields-test/with-test-db                                 [[:block 0]]
   metabase.sync.util/do-with-start-and-finish-debug-logging                            [[:default]]
@@ -284,13 +281,16 @@
   metabase.util.i18n/deferred-trs                                                      [[:default]]
   metabase.util.i18n/deferred-tru                                                      [[:default]]
   metabase.util.i18n/trs                                                               [[:default]]
+  metabase.util.i18n/trsn                                                              [[:default]]
   metabase.util.i18n/tru                                                               [[:default]]
+  metabase.util.i18n/trun                                                              [[:default]]
   metabase.util.jvm/auto-retry                                                         [[:block 1]]
   metabase.util.jvm/varargs                                                            [[:block 1]]
   metabase.util.jvm/with-us-locale                                                     [[:block 0]]
   metabase.util.malli/disable-enforcement                                              [[:block 0]]
   metabase.util.malli/with                                                             [[:default]]
   metabase.util.malli/with-api-error-message                                           [[:default]]
+  metabase.util.namespaces/import-fns                                                  [[:default]]
   metabuild-common.core/exit-when-finished-nonzero-on-exception                        [[:block 0]]
   metabuild-common.core/step                                                           [[:block 1]]
   metabuild-common.entrypoint/exit-when-finished-nonzero-on-exception                  [[:block 0]]

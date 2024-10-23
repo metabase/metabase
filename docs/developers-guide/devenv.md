@@ -358,7 +358,7 @@ You can see that this looks in the environment for:
 
 The function names indicate if they throw or not (although in this instance the ones that would throw are also supplied default values).
 
-The `(tx/db-test-env-var :postgresql :password)` will look in the env/env map for `:mb-postgres-test-password` which will be set by the environmental variable `MB_POSTGRESQL_TEST_PASSWORD`.
+The `(tx/db-test-env-var :postgresql :password)` will look in the env/env map for `:mb-postgresql-test-password` which will be set by the environmental variable `MB_POSTGRESQL_TEST_PASSWORD`.
 
 ```clojure
 some-ns=> (take 10 (keys environ.core/env))

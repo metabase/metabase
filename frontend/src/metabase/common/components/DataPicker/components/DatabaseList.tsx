@@ -3,16 +3,15 @@ import { useMemo } from "react";
 import type { Database } from "metabase-types/api";
 
 import { ItemList, ListBox } from "../../EntityPicker";
-import { useAutoSelectOnlyItem } from "../hooks";
-import type { NotebookDataPickerFolderItem } from "../types";
+import type { DataPickerFolderItem } from "../types";
 
 interface Props {
   databases: Database[] | undefined;
   error: unknown;
   isCurrentLevel: boolean;
   isLoading: boolean;
-  selectedItem: NotebookDataPickerFolderItem | null;
-  onClick: (item: NotebookDataPickerFolderItem) => void;
+  selectedItem: DataPickerFolderItem | null;
+  onClick: (item: DataPickerFolderItem) => void;
 }
 
 const isFolder = () => true;
@@ -25,7 +24,7 @@ export const DatabaseList = ({
   selectedItem,
   onClick,
 }: Props) => {
-  const items: NotebookDataPickerFolderItem[] | undefined = useMemo(() => {
+  const items: DataPickerFolderItem[] | undefined = useMemo(() => {
     return databases?.map(database => ({
       id: database.id,
       model: "database",
@@ -33,11 +32,7 @@ export const DatabaseList = ({
     }));
   }, [databases]);
 
-  const hasOnly1Item = useAutoSelectOnlyItem({
-    disabled: Boolean(selectedItem),
-    items,
-    onChange: onClick,
-  });
+  const hasOnly1Item = items?.length === 1;
 
   if (!isLoading && !error && hasOnly1Item) {
     return null;

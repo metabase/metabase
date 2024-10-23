@@ -29,12 +29,15 @@ describe("StrategyEditorForDatabases", () => {
   beforeEach(() => {
     setup();
   });
+
   afterEach(() => {
     fetchMock.restore();
   });
+
   it("lets user override root strategy on enterprise instance", async () => {
     expect(PLUGIN_CACHING.canOverrideRootStrategy).toBe(true);
   });
+
   it("should show strategy form launchers", async () => {
     const rootStrategyHeading = await screen.findByText("Default policy");
     expect(rootStrategyHeading).toBeInTheDocument();

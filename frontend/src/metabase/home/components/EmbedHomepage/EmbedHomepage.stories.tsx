@@ -28,15 +28,12 @@ export const Default: Story = {
       <EmbedHomepageView
         {...args}
         exampleDashboardId={args.hasExampleDashboard ? 1 : null}
-        key={args.initialTab}
       />
     );
   },
   args: {
-    embeddingAutoEnabled: true,
     hasExampleDashboard: true,
     licenseActiveAtSetup: true,
-    initialTab: "interactive",
     interactiveEmbeddingQuickstartUrl:
       "https://www.metabase.com/docs/latest/embedding/interactive-embedding-quick-start-guide.html",
     embeddingDocsUrl:

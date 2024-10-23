@@ -28,6 +28,7 @@ describe("parameters/utils/mbql", () => {
         "day",
       ]);
     });
+
     it("should parse past30days~", () => {
       expect(dateParameterValueToMBQL("past30days~", null)).toEqual([
         "time-interval",
@@ -37,6 +38,7 @@ describe("parameters/utils/mbql", () => {
         { "include-current": true },
       ]);
     });
+
     it("should parse past30days-from-3years", () => {
       expect(dateParameterValueToMBQL("past30days-from-3years", null)).toEqual([
         "between",
@@ -45,6 +47,7 @@ describe("parameters/utils/mbql", () => {
         ["relative-datetime", 0, "day"],
       ]);
     });
+
     it("should parse next2years", () => {
       expect(dateParameterValueToMBQL("next2years", null)).toEqual([
         "time-interval",
@@ -53,6 +56,7 @@ describe("parameters/utils/mbql", () => {
         "year",
       ]);
     });
+
     it("should parse next2years~", () => {
       expect(dateParameterValueToMBQL("next2years~", null)).toEqual([
         "time-interval",
@@ -62,6 +66,7 @@ describe("parameters/utils/mbql", () => {
         { "include-current": true },
       ]);
     });
+
     it("should parse next2years-from-3months", () => {
       expect(dateParameterValueToMBQL("next2years-from-3months", null)).toEqual(
         [
@@ -72,6 +77,7 @@ describe("parameters/utils/mbql", () => {
         ],
       );
     });
+
     it("should parse thisday", () => {
       expect(dateParameterValueToMBQL("thisday", null)).toEqual([
         "time-interval",
@@ -80,6 +86,7 @@ describe("parameters/utils/mbql", () => {
         "day",
       ]);
     });
+
     it("should parse ~2017-05-01", () => {
       expect(dateParameterValueToMBQL("~2017-05-01", null)).toEqual([
         "<",
@@ -87,6 +94,7 @@ describe("parameters/utils/mbql", () => {
         "2017-05-01",
       ]);
     });
+
     it("should parse 2017-05-01~", () => {
       expect(dateParameterValueToMBQL("2017-05-01~", null)).toEqual([
         ">",
@@ -94,6 +102,7 @@ describe("parameters/utils/mbql", () => {
         "2017-05-01",
       ]);
     });
+
     it("should parse 2017-05", () => {
       expect(dateParameterValueToMBQL("2017-05", null)).toEqual([
         "=",
@@ -101,6 +110,7 @@ describe("parameters/utils/mbql", () => {
         "2017-05-01",
       ]);
     });
+
     it("should parse Q1-2017", () => {
       expect(dateParameterValueToMBQL("Q1-2017", null)).toEqual([
         "=",
@@ -108,6 +118,7 @@ describe("parameters/utils/mbql", () => {
         "2017-01-01",
       ]);
     });
+
     it("should parse 2017-05-01", () => {
       expect(dateParameterValueToMBQL("2017-05-01", null)).toEqual([
         "=",
@@ -115,6 +126,7 @@ describe("parameters/utils/mbql", () => {
         "2017-05-01",
       ]);
     });
+
     it("should parse 2017-05-01~2017-05-02", () => {
       expect(dateParameterValueToMBQL("2017-05-01~2017-05-02", null)).toEqual([
         "between",
@@ -123,6 +135,7 @@ describe("parameters/utils/mbql", () => {
         "2017-05-02",
       ]);
     });
+
     it("should parse exclude-hours-0", () => {
       expect(dateParameterValueToMBQL("exclude-hours-0", null)).toEqual([
         "!=",
@@ -130,6 +143,7 @@ describe("parameters/utils/mbql", () => {
         0,
       ]);
     });
+
     it("should parse exclude-hours-0-23", () => {
       expect(dateParameterValueToMBQL("exclude-hours-0-23", null)).toEqual([
         "!=",
@@ -138,6 +152,7 @@ describe("parameters/utils/mbql", () => {
         23,
       ]);
     });
+
     it("should parse exclude-quarters-1", () => {
       expect(dateParameterValueToMBQL("exclude-quarters-1", null)).toEqual([
         "!=",
@@ -145,6 +160,7 @@ describe("parameters/utils/mbql", () => {
         date().quarter(1).format("YYYY-MM-DD"),
       ]);
     });
+
     it("should parse exclude-quarters-1-2", () => {
       expect(dateParameterValueToMBQL("exclude-quarters-1-2", null)).toEqual([
         "!=",
@@ -153,6 +169,7 @@ describe("parameters/utils/mbql", () => {
         date().quarter(2).format("YYYY-MM-DD"),
       ]);
     });
+
     it("should parse exclude-months-Feb-Mar", () => {
       expect(dateParameterValueToMBQL("exclude-months-Feb-Mar", null)).toEqual([
         "!=",
@@ -161,6 +178,7 @@ describe("parameters/utils/mbql", () => {
         date().date(1).month(2).format("YYYY-MM-DD"),
       ]);
     });
+
     it("should parse exclude-days-Mon-Fri", () => {
       expect(dateParameterValueToMBQL("exclude-days-Mon-Fri", null)).toEqual([
         "!=",

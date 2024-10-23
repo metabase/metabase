@@ -67,6 +67,10 @@ Create keys to authenticate API calls.
 [saml-keycloak]: ./saml-keycloak.md
 [sso-def]: https://www.metabase.com/glossary/sso
 
+## [User provisioning](./user-provisioning.md)
+
+Metabase supports user provisioning via the SCIM protocol.
+
 ## [Accessibility](./accessibility.md)
 
 Notes on Metabase's accessibility.

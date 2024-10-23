@@ -120,6 +120,7 @@ describe("scenarios > filters > sql filters > field filter > Date", () => {
 
 describe("scenarios > filters > sql filters > field filter > Number", () => {
   const numericFilters = Object.entries(NUMBER_FILTER_SUBTYPES);
+
   beforeEach(() => {
     restore();
     cy.intercept("POST", "api/dataset").as("dataset");
@@ -178,6 +179,7 @@ describe("scenarios > filters > sql filters > field filter > Number", () => {
 
 describe("scenarios > filters > sql filters > field filter > String", () => {
   const stringFilters = Object.entries(STRING_FILTER_SUBTYPES);
+
   beforeEach(() => {
     restore();
     cy.intercept("POST", "api/dataset").as("dataset");

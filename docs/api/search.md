@@ -90,6 +90,12 @@ Get the set of models that a search query will return.
 
 -  **`table-db-id`** nullable value must be an integer greater than zero.
 
+## `POST /api/search/force-reindex`
+
+If fulltext search is enabled, this will trigger a synchronous reindexing operation.
+
+You must be a superuser to do this.
+
 ---
 
 [<< Back to API index](../api-documentation.md)

@@ -1,4 +1,4 @@
-(ns metabase.api.dashboard-test
+(ns ^:mb/driver-tests metabase.api.dashboard-test
   "Tests for /api/dashboard endpoints."
   (:require
    [cheshire.core :as json]
@@ -48,7 +48,7 @@
    [metabase.models.params.chain-filter-test :as chain-filter-test]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
-   [metabase.models.pulse :as pulse]
+   [metabase.models.pulse :as models.pulse]
    [metabase.models.revision :as revision]
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.query-processor :as qp]
@@ -2622,7 +2622,7 @@
 (deftest fetch-embeddable-dashboards-test
   (testing "GET /api/dashboard/embeddable"
     (testing "Test that we can fetch a list of embeddable-accessible dashboards"
-      (mt/with-temporary-setting-values [enable-embedding true]
+      (mt/with-temporary-setting-values [enable-embedding-static true]
         (t2.with-temp/with-temp [Dashboard _ {:enable_embedding true}]
           (is (= [{:name true, :id true}]
                  (for [dash (mt/user-http-request :crowberto :get 200 "dashboard/embeddable")]
@@ -3664,6 +3664,7 @@
                      (parse-export-format-results
                       (mt/user-real-request :rasta :post 200 url
                                             {:request-options {:as :byte-array}}
+                                            :format_rows true
                                             :parameters (json/generate-string [{:id    "_PRICE_"
                                                                                 :value 4}]))
                       export-format))))))))))
@@ -4364,7 +4365,7 @@
             (testing "Pulse starts as unarchived"
               (is (false? (:archived bad-pulse))))
             (testing "Pulse is now archived"
-              (is (true? (:archived (pulse/update-pulse! {:id bad-pulse-id :archived true})))))))))))
+              (is (true? (:archived (models.pulse/update-pulse! {:id bad-pulse-id :archived true})))))))))))
 
 (deftest handle-broken-subscriptions-due-to-bad-parameters-test
   (testing "When a subscriptions is broken, archive it and notify the dashboard and subscription creator (#30100)"
@@ -4506,7 +4507,8 @@
             (is (= expected
                    (->> (mt/user-http-request
                          :crowberto :post 200
-                         (format "/dashboard/%s/dashcard/%s/card/%s/query/%s?format_rows=%s"                                   dashboard-id dashcard-id card-id (name export-format) apply-formatting?))
+                         (format "/dashboard/%s/dashcard/%s/card/%s/query/%s" dashboard-id dashcard-id card-id (name export-format))
+                         :format_rows apply-formatting?)
                         ((get output-helper export-format)))))))))))
 (deftest can-restore
   (let [can-restore? (fn [dash-id user]
@@ -4600,13 +4602,17 @@
                             {:id (mt/id :orders :user_id)}
                             {:id (mt/id :people :source)}
                             {:id (mt/id :people :name)}])
-          :tables (sort-by :id [{:id (mt/id :categories)}
-                                {:id (mt/id :users)}
-                                {:id (mt/id :checkins)}
-                                {:id (mt/id :reviews)}
-                                {:id (mt/id :products)
-                                 :fields sequential?}
-                                {:id (mt/id :venues)}])
+          :tables (concat (sort-by :id
+                                   [{:id (mt/id :categories)}
+                                    {:id (mt/id :users)}
+                                    {:id (mt/id :checkins)}
+                                    {:id (mt/id :reviews)}
+                                    {:id (mt/id :products)
+                                     :fields sequential?}
+                                    {:id (mt/id :venues)}])
+                          (sort-by :id
+                                   [{:id (str "card__" card-id-2)
+                                     :fields sequential?}]))
           :cards [{:id link-card}]
           :databases [{:id (mt/id) :engine string?}]
           :dashboards [{:id link-dash}]}

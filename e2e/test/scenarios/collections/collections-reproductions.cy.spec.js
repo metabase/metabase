@@ -24,6 +24,7 @@ import {
 describe("issue 20911", () => {
   const COLLECTION_ACCESS_PERMISSION_INDEX = 0;
   const FIRST_COLLECTION = "First collection";
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();

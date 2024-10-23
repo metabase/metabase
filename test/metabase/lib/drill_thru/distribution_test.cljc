@@ -69,63 +69,44 @@
      {:click-type     :header
       :column-name    "USER_ID"
       :query-type     :unaggregated
+      :query-kinds    [:native]
       :drill-type     :drill-thru/distribution
       :expected       {:type   :drill-thru/distribution
                        :column {:name "USER_ID"}}
-      :expected-query {:stages [{:source-table (meta/id :orders)
-                                 :aggregation  [[:count {}]]
+      :expected-query {:stages [{:aggregation  [[:count {}]]
                                  :breakout     [[:field
                                                  {:binning (symbol "nil #_\"key is not present.\"")}
-                                                 (meta/id :orders :user-id)]]}]}})))
+                                                 (lib.drill-thru.tu/field-key=
+                                                  "USER_ID" (meta/id :orders :user-id))]]}]}})))
 
 (deftest ^:parallel apply-to-column-types-test
   (testing "distribution drill"
-    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
-                    (lib/order-by (meta/field-metadata :orders :subtotal))
-                    (lib/limit 100))]
+    (let [query     (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                        (lib/order-by (meta/field-metadata :orders :subtotal))
+                        (lib/limit 100))
+          test-case (fn [col-name exp-column]
+                      {:click-type     :header
+                       :custom-query   query
+                       :custom-native  (lib.drill-thru.tu/->native-wrapped query)
+                       :column-name    col-name
+                       :query-type     :unaggregated
+                       :drill-type     :drill-thru/distribution
+                       :expected       {:type   :drill-thru/distribution
+                                        :column {:name col-name}}
+                       ;; Limit and order-by get removed, then COUNT broken out by the clicked column.
+                       ;; Numeric columns use default binning; Datetimes get month bucketing.
+                       ;; Other columns get no special handling - including FKs even though they're numeric.
+                       :expected-query {:stages [{:breakout    [exp-column]
+                                                  :aggregation [[:count {}]]}]}})]
       (testing "on numeric columns uses default binning"
         (lib.drill-thru.tu/test-drill-application
-         {:click-type     :header
-          :custom-query   query
-          :column-name    "QUANTITY"
-          :query-type     :unaggregated
-          :drill-type     :drill-thru/distribution
-          :expected       {:type   :drill-thru/distribution
-                           :column {:name "QUANTITY"}}
-          :expected-query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
-                               ;; Limit and order-by get removed, then COUNT broken out by the clicked column.
-                               ;; Numeric columns use default binning.
-                              (lib/breakout (lib/with-binning
-                                             (meta/field-metadata :orders :quantity)
-                                             {:strategy :default}))
-                              (lib/aggregate (lib/count)))}))
+         (test-case "QUANTITY" [:field {:binning {:strategy :default}}
+                                (lib.drill-thru.tu/field-key= "QUANTITY" (meta/id :orders :quantity))])))
       (testing "on date columns uses month bucketing"
         (lib.drill-thru.tu/test-drill-application
-         {:click-type     :header
-          :custom-query   query
-          :column-name    "CREATED_AT"
-          :query-type     :unaggregated
-          :drill-type     :drill-thru/distribution
-          :expected       {:type   :drill-thru/distribution
-                           :column {:name "CREATED_AT"}}
-          :expected-query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
-                               ;; Limit and order-by get removed, then COUNT broken out by the clicked column.
-                               ;; Datetime columns use month bucketing.
-                              (lib/breakout (lib/with-temporal-bucket
-                                              (meta/field-metadata :orders :created-at)
-                                              :month))
-                              (lib/aggregate (lib/count)))}))
+         (test-case "CREATED_AT" [:field {:temporal-unit :month}
+                                  (lib.drill-thru.tu/field-key= "CREATED_AT" (meta/id :orders :created-at))])))
       (testing "on other columns does no extra bucketing"
         (lib.drill-thru.tu/test-drill-application
-         {:click-type     :header
-          :custom-query   query
-          :column-name    "PRODUCT_ID"
-          :query-type     :unaggregated
-          :drill-type     :drill-thru/distribution
-          :expected       {:type   :drill-thru/distribution
-                           :column {:name "PRODUCT_ID"}}
-          :expected-query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
-                               ;; Limit and order-by get removed, then COUNT broken out by the clicked column.
-                               ;; Other columns get no bucketing (including FKs, despite being numeric).
-                              (lib/breakout (meta/field-metadata :orders :product-id))
-                              (lib/aggregate (lib/count)))})))))
+         (test-case "PRODUCT_ID" [:field {}
+                                  (lib.drill-thru.tu/field-key= "PRODUCT_ID" (meta/id :orders :product-id))]))))))

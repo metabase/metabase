@@ -1,4 +1,4 @@
-(ns ^:once metabase-enterprise.upload-test
+(ns ^:mb/driver-tests ^:once metabase-enterprise.upload-test
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.test :as met]

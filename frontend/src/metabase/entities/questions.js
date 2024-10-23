@@ -17,7 +17,7 @@ import {
   undo,
 } from "metabase/lib/entities";
 import { compose, withAction, withNormalize } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
+import * as Urls from "metabase/lib/urls/questions";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import {
   API_UPDATE_QUESTION,

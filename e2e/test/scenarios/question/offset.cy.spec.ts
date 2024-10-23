@@ -270,7 +270,7 @@ describe("scenarios > question > offset", () => {
       openNotebook();
       cy.button("Summarize").click();
       getNotebookStep("summarize")
-        .findByText("Pick the metric you want to see")
+        .findByText("Pick a function or metric")
         .click();
       popover().findByText("Custom Expression").click();
       enterCustomColumnDetails({ formula: prefix, blur: false });
@@ -570,7 +570,7 @@ describe("scenarios > question > offset", () => {
         table: "Product",
         field: "Category",
       });
-      cy.icon("add_data").last().click();
+      cy.findAllByLabelText("Custom column").last().click();
 
       enterCustomColumnDetails({
         formula: `[${OFFSET_SUM_TOTAL_AGGREGATION_NAME}] * 2`,
@@ -1302,7 +1302,7 @@ function addCustomAggregation({
   if (!isOpened) {
     if (isFirst) {
       getNotebookStep("summarize")
-        .findByText("Pick the metric you want to see")
+        .findByText("Pick a function or metric")
         .click();
     } else {
       getNotebookStep("summarize").icon("add").first().click();
@@ -1422,7 +1422,7 @@ function addSorting({
 }
 
 function addCustomColumn({ name, formula }: { name: string; formula: string }) {
-  cy.icon("add_data").last().click();
+  cy.findAllByLabelText("Custom column").last().click();
 
   enterCustomColumnDetails({
     formula,

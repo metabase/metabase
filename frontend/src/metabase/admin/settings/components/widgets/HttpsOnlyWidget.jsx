@@ -2,7 +2,7 @@
 import { Component } from "react";
 import { t } from "ttag";
 
-import SettingToggle from "./SettingToggle";
+import { SettingToggle } from "./SettingToggle";
 
 const VERIFIED = "verified";
 const CHECKING = "checking";

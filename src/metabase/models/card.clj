@@ -11,7 +11,6 @@
    [metabase.audit :as audit]
    [metabase.config :as config]
    [metabase.db.query :as mdb.query]
-   [metabase.email.messages :as messages]
    [metabase.events :as events]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.core :as lib]
@@ -22,13 +21,14 @@
    [metabase.models.audit-log :as audit-log]
    [metabase.models.card.metadata :as card.metadata]
    [metabase.models.collection :as collection]
+   [metabase.models.data-permissions :as data-perms]
    [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
    [metabase.models.moderation-review :as moderation-review]
    [metabase.models.parameter-card :as parameter-card :refer [ParameterCard]]
    [metabase.models.params :as params]
    [metabase.models.permissions :as perms]
-   [metabase.models.pulse :as pulse]
+   [metabase.models.pulse :as models.pulse]
    [metabase.models.query :as query]
    [metabase.models.query.permissions :as query-perms]
    [metabase.models.revision :as revision]
@@ -193,6 +193,20 @@
   "Hydrate can_run_adhoc_query onto cards"
   [cards]
   (with-can-run-adhoc-query cards))
+
+;; note: perms lookup here in the course of fetching a card/model should hit a cache pre-warmed by
+;; the `:can_run_adhoc_query` above
+(mi/define-batched-hydration-method add-can-manage-db
+  :can_manage_db
+  "Hydrate can_manage_db onto cards. Indicates whether the current user has access to the database admin page for the
+  database powering this card."
+  [cards]
+  (map
+   (fn [card]
+     (assoc card
+            :can_manage_db
+            (data-perms/user-has-permission-for-database? api/*current-user-id* :perms/manage-database :yes (:database_id card))))
+   cards))
 
 (methodical/defmethod t2/batched-hydrate [:model/Card :parameter_usage_count]
   [_model k cards]
@@ -693,39 +707,24 @@
        (< 1 (count (get-in new-card [:dataset_query :query :breakout])))))
 
 (defn- delete-alert-and-notify!
-  "Removes all of the alerts and notifies all of the email recipients of the alerts change via `NOTIFY-FN!`"
-  [& {:keys [notify-fn! alerts actor]}]
-  (t2/delete! :model/Pulse :id [:in (map :id alerts)])
-  (doseq [{:keys [channels] :as alert} alerts
-          :let [email-channel (m/find-first #(= :email (:channel_type %)) channels)]]
-    (doseq [recipient (:recipients email-channel)]
-      (notify-fn! alert recipient actor))))
-
-(defn delete-alert-and-notify-archived!
-  "Removes all alerts and will email each recipient letting them know"
-  [& {:keys [alerts actor]}]
-  (delete-alert-and-notify! {:notify-fn! messages/send-alert-stopped-because-archived-email!
-                             :alerts     alerts
-                             :actor      actor}))
-
-(defn- delete-alert-and-notify-changed! [& {:keys [alerts actor]}]
-  (delete-alert-and-notify! {:notify-fn! messages/send-alert-stopped-because-changed-email!
-                             :alerts     alerts
-                             :actor      actor}))
+  "Removes all of the alerts and notifies all of the email recipients of the alerts change."
+  [topic actor alerts]
+  (t2/delete! :model/Pulse :id [:in (mapv u/the-id alerts)])
+  (events/publish-event! topic {:alerts alerts, :actor actor}))
 
 (defn- delete-alerts-if-needed! [& {:keys [old-card new-card actor]}]
   ;; If there are alerts, we need to check to ensure the card change doesn't invalidate the alert
-  (when-let [alerts (binding [pulse/*allow-hydrate-archived-cards* true]
-                      (seq (pulse/retrieve-alerts-for-cards {:card-ids [(:id new-card)]})))]
+  (when-let [alerts (binding [models.pulse/*allow-hydrate-archived-cards* true]
+                      (not-empty (models.pulse/retrieve-alerts-for-cards {:card-ids [(u/the-id new-card)]})))]
     (cond
 
       (card-archived? old-card new-card)
-      (delete-alert-and-notify-archived! :alerts alerts, :actor actor)
+      (delete-alert-and-notify! :event/card-update.alerts-deleted.card-archived actor alerts)
 
       (or (display-change-broke-alert? old-card new-card)
           (goal-missing? old-card new-card)
           (multiple-breakouts? new-card))
-      (delete-alert-and-notify-changed! :alerts alerts, :actor actor)
+      (delete-alert-and-notify! :event/card-update.alerts-deleted.card-became-invalid actor alerts)
 
       ;; The change doesn't invalidate the alert, do nothing
       :else
@@ -893,17 +892,16 @@
         template-tags      (some->> card :dataset_query :native :template-tags vals (keep :card-id))
         parameters-card-id (some->> card :parameters (keep (comp :card_id :values_source_config)))
         snippets           (some->> card :dataset_query :native :template-tags vals (keep :snippet-id))]
-    (set
-     (concat
-      (when (and (string? source-table)
-                 (str/starts-with? source-table "card__"))
-        [["Card" (parse-long (subs source-table 6))]])
-      (for [card-id template-tags]
-        ["Card" card-id])
-      (for [card-id parameters-card-id]
-        ["Card" card-id])
-      (for [snippet-id snippets]
-        ["NativeQuerySnippet" snippet-id])))))
+    (into {} (concat
+              (when (and (string? source-table)
+                         (str/starts-with? source-table "card__"))
+                {["Card" (parse-long (subs source-table 6))] {"Card" id}})
+              (for [card-id template-tags]
+                {["Card" card-id] {"Card" id}})
+              (for [card-id parameters-card-id]
+                {["Card" card-id] {"Card" id}})
+              (for [snippet-id snippets]
+                {["NativeQuerySnippet" snippet-id] {"Card" id}})))))
 
 ;;; ------------------------------------------------ Audit Log --------------------------------------------------------
 

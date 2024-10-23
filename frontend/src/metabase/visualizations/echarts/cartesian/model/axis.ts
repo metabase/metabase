@@ -3,6 +3,7 @@ import dayjs from "dayjs";
 import _ from "underscore";
 
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
+import { formatValue } from "metabase/lib/formatting";
 import type { OptionsType } from "metabase/lib/formatting/types";
 import {
   getObjectEntries,
@@ -42,10 +43,7 @@ import {
   tryGetDate,
 } from "metabase/visualizations/echarts/cartesian/utils/timeseries";
 import { computeNumericDataInverval } from "metabase/visualizations/lib/numeric";
-import type {
-  ComputedVisualizationSettings,
-  RenderingContext,
-} from "metabase/visualizations/types";
+import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type {
   DatasetColumn,
   DateTimeAbsoluteUnit,
@@ -407,17 +405,18 @@ const getYAxisFormatter = (
   column: DatasetColumn,
   settings: ComputedVisualizationSettings,
   stackType: StackType,
-  renderingContext: RenderingContext,
   formattingOptions?: OptionsType,
 ): AxisFormatter => {
   const isNormalized = stackType === "normalized";
 
   if (isNormalized) {
     return (value: RowValue) =>
-      renderingContext.formatValue(value, {
-        column,
-        number_style: "percent",
-      });
+      String(
+        formatValue(value, {
+          column,
+          number_style: "percent",
+        }),
+      );
   }
 
   return (value: RowValue) => {
@@ -432,7 +431,7 @@ const getYAxisFormatter = (
       ...(settings.column?.(column) ?? {}),
       ...formattingOptions,
     });
-    return renderingContext.formatValue(value, options);
+    return String(formatValue(value, options));
   };
 };
 
@@ -519,7 +518,6 @@ export function getYAxisModel(
   settings: ComputedVisualizationSettings,
   columnByDataKey: Record<DataKey, DatasetColumn>,
   stackType: StackType,
-  renderingContext: RenderingContext,
   formattingOptions?: OptionsType,
 ): YAxisModel | null {
   if (seriesKeys.length === 0) {
@@ -538,7 +536,6 @@ export function getYAxisModel(
     column,
     settings,
     stackType,
-    renderingContext,
     formattingOptions,
   );
 
@@ -561,7 +558,6 @@ export function getYAxesModels(
   isAutoSplitSupported: boolean,
   stackModels: StackModel[],
   isCompactFormatting: boolean,
-  renderingContext: RenderingContext,
 ) {
   const seriesDataKeys = seriesModels.map(seriesModel => seriesModel.dataKey);
   const extents = getDatasetExtents(seriesDataKeys, dataset);
@@ -606,7 +602,6 @@ export function getYAxesModels(
       settings,
       columnByDataKey,
       settings["stackable.stack_type"] ?? null,
-      renderingContext,
       { compact: isCompactFormatting },
     ),
     rightAxisModel: getYAxisModel(
@@ -619,7 +614,6 @@ export function getYAxesModels(
       settings["stackable.stack_type"] === "normalized"
         ? null
         : (settings["stackable.stack_type"] ?? null),
-      renderingContext,
       { compact: isCompactFormatting },
     ),
   };
@@ -653,7 +647,6 @@ export function getTimeSeriesXAxisModel(
   dataset: ChartDataset,
   settings: ComputedVisualizationSettings,
   label: string | undefined,
-  renderingContext: RenderingContext,
   showWarning?: ShowWarning,
 ): TimeSeriesXAxisModel {
   const xValues = dataset.map(datum => datum[X_AXIS_DATA_KEY]);
@@ -689,7 +682,7 @@ export function getTimeSeriesXAxisModel(
       column,
     };
 
-    return renderingContext.formatValue(value, params);
+    return String(formatValue(value, params));
   };
 
   // ECharts, when selecting chart ticks, can use either the browser timezone or UTC when `useUTC` is true.
@@ -729,7 +722,6 @@ function getNumericXAxisModel(
   settings: ComputedVisualizationSettings,
   label: string | undefined,
   isPadded: boolean,
-  renderingContext: RenderingContext,
 ): NumericXAxisModel {
   const axisTransforms = getAxisTransforms(scale);
   const dimensionColumn = dimensionModel.column;
@@ -745,11 +737,13 @@ function getNumericXAxisModel(
     computeNumericDataInverval(xValues);
 
   const formatter = (value: RowValue) =>
-    renderingContext.formatValue(value, {
-      column: dimensionColumn,
-      ...(settings.column?.(dimensionColumn) ?? {}),
-      compact: settings["graph.x_axis.axis_enabled"] === "compact",
-    });
+    String(
+      formatValue(value, {
+        column: dimensionColumn,
+        ...(settings.column?.(dimensionColumn) ?? {}),
+        compact: settings["graph.x_axis.axis_enabled"] === "compact",
+      }),
+    );
 
   const intervalsCount = (extent[1] - extent[0]) / interval;
   const ticksMaxInterval = dimensionColumn.binning_info?.bin_width;
@@ -778,7 +772,6 @@ export function getXAxisModel(
   rawSeries: RawSeries,
   dataset: ChartDataset,
   settings: ComputedVisualizationSettings,
-  renderingContext: RenderingContext,
   showWarning?: ShowWarning,
 ): XAxisModel {
   const label = settings["graph.x_axis.labels_enabled"]
@@ -795,7 +788,6 @@ export function getXAxisModel(
       dataset,
       settings,
       label,
-      renderingContext,
       showWarning,
     );
   }
@@ -808,7 +800,6 @@ export function getXAxisModel(
       settings,
       label,
       !isScatter,
-      renderingContext,
     );
   }
 
@@ -820,12 +811,14 @@ export function getXAxisModel(
       return NULL_DISPLAY_VALUE;
     }
 
-    return renderingContext.formatValue(value, {
-      column: dimensionColumn,
-      ...(settings.column?.(dimensionColumn) ?? {}),
-      compact: settings["graph.x_axis.axis_enabled"] === "compact",
-      noRange: isHistogram,
-    });
+    return String(
+      formatValue(value, {
+        column: dimensionColumn,
+        ...(settings.column?.(dimensionColumn) ?? {}),
+        compact: settings["graph.x_axis.axis_enabled"] === "compact",
+        noRange: isHistogram,
+      }),
+    );
   };
 
   const histogramInterval = isHistogram

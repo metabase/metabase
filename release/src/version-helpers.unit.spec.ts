@@ -442,13 +442,25 @@ describe("version-helpers", () => {
       expect(latest).toBe('v0.13.0');
     });
 
-    it('should not ignore pre releases', () => {
+    it('should not ignore pre releases by default', () => {
       const latest = getLastReleaseFromTags({ tags: [
         { ref: 'refs/tags/v0.12.0' },
         { ref: 'refs/tags/v0.12.1' },
         { ref: 'refs/tags/v0.12.2-RC99' },
-        { ref: 'refs/tags/v0.12.1-beta' },
+        { ref: 'refs/tags/v0.12.3-alpha' },
+        { ref: 'refs/tags/v0.12.4-beta' },
       ] as Tag[]});
+      expect(latest).toBe('v0.12.4-beta');
+    });
+
+    it('should ignore pre releases with a flag passeed', () => {
+      const latest = getLastReleaseFromTags({ tags: [
+        { ref: 'refs/tags/v0.12.0' },
+        { ref: 'refs/tags/v0.12.1' },
+        { ref: 'refs/tags/v0.12.2-RC99' },
+        { ref: 'refs/tags/v0.12.3-alpha' },
+        { ref: 'refs/tags/v0.12.4-beta' },
+      ] as Tag[], ignorePreReleases: true });
       expect(latest).toBe('v0.12.1');
     });
   });

@@ -222,7 +222,9 @@
 (defn query-jdbc-db
   "Execute a SQL query against a JDBC database. Useful for testing SQL syntax locally.
 
-    (query-jdbc-db :oracle SELECT to_date('1970-01-01', 'YYYY-MM-DD') FROM dual\")
+    (query-jdbc-db :oracle \"SELECT to_date('1970-01-01', 'YYYY-MM-DD') FROM dual\")
+
+    (query-jdbc-db :h2 \"SELECT name FROM people WHERE name LIKE '%Ken%'\")
 
   `sql-args` can be either a SQL string or a tuple with a SQL string followed by any prepared statement args. By
   default this method uses the same methods to set prepared statement args and read columns from results as used by
@@ -279,7 +281,11 @@
 
     ;; use it with raw SQL
     (t2/query (t2/select-one Database :engine :postgres, :name \"test-data\")
-              \"SELECT * FROM venues;\")"
+              \"SELECT * FROM venues;\")
+
+    ;; use it with the Sample Database
+    (t2/query (t2/select-one Database :engine :h2, :name \"Sample Database\")
+              \"SELECT * FROM people LIMIT 1;\")"
   [database f]
   (t2.connection/do-with-connection (sql-jdbc.conn/db->pooled-connection-spec database) f))
 

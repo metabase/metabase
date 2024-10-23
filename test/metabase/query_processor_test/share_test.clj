@@ -1,4 +1,4 @@
-(ns metabase.query-processor-test.share-test
+(ns ^:mb/driver-tests metabase.query-processor-test.share-test
   "Tests for the `:share` aggregation."
   (:require
    [clojure.test :refer :all]
