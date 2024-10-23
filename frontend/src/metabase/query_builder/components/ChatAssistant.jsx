@@ -132,21 +132,21 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
                 // Search for assistants
                 const assistants = await client.assistants.search({ metadata: null, limit: 10, offset: 0 });
                 let selectedAgent;
-    
+
                 if (chatType === 'insights') {
                     selectedAgent = assistants.find(assistant => assistant.assistant_id === '5723ee2c-871d-4b4b-9005-bb436639c87f');
                 } else {
                     selectedAgent = assistants.find(assistant => assistant.assistant_id === '118b7708-de63-4ac1-8151-5ea54fcd4850');
                 }
-    
+
                 // Fallback to first assistant if none match
                 if (!selectedAgent) {
                     selectedAgent = assistants[0];
                 }
-    
-                
+
+
                 setAgent(selectedAgent);
-    
+
                 // Create a new thread
                 const createdThread = await client.threads.create();
                 setThread(createdThread);
@@ -156,7 +156,7 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
                 setLoading(false); // Set loading to false after thread is created
             }
         };
-    
+
         if (client) {
             initializeClientAndThread();
         }
@@ -430,13 +430,16 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
             for await (const chunk of streamResponse) {
                 const { event, data } = chunk;
                 if (event === "messages/partial" && data.length > 0) {
-
                     const messageData = data[0];
-
                     const { content, type, tool_calls, response_metadata, id } = messageData;
+                    let partialText = "";
+                    if (typeof content === "string") {
+                        partialText = content; // If it's a simple string
+                    } else if (Array.isArray(content) && content.length > 0 && content[0].text) {
+                        partialText = content[0].text; // Extract text from the first object in the array
+                    }
                     setRunId(id)
-                    if (messageData && messageData.content) {
-                        const partialText = messageData.content; // Current text chunk
+                    if (messageData && partialText) {
 
                         // Check if the current chunk contains the previous message or it's a new message
                         if (chatType !== 'insights') {
