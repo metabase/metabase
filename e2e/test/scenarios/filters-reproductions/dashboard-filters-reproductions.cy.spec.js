@@ -3550,20 +3550,13 @@ describe("issue 44790", () => {
       });
     });
 
-    cy.log(
-      "wrong value for id filter should be handled and card should not hang",
-    );
-
+    cy.log("wrong value for id filter should be ignored");
     visitDashboard("@dashboardId", {
       params: {
         [idFilter.slug]: "{{test}}",
       },
     });
-
-    getDashboardCard().should(
-      "contain",
-      "There was a problem displaying this chart.",
-    );
+    getDashboardCard().should("contain", "borer-hudson@yahoo.com");
 
     cy.log("wrong value for number filter should be ignored");
     visitDashboard("@dashboardId", {
@@ -3572,7 +3565,6 @@ describe("issue 44790", () => {
         [idFilter.slug]: "1",
       },
     });
-
     getDashboardCard().should("contain", "borer-hudson@yahoo.com");
   });
 });
