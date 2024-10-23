@@ -670,6 +670,15 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
                     ])
                 }
             }
+            const list = await client.runs.list(thread.thread_id);
+            if(list && list.length > 0 && thread.thread_id) {
+                setRunId(list[0].run_id)
+                const streamStatus = await client.runs.get(thread.thread_id, list[0].run_id);
+                if(streamStatus && streamStatus.status !== 'pending') {
+                    setChatDisabled(false);
+                    setChatLoading(false);
+                }
+            }
             setChatDisabled(false);
             setChatLoading(false);
         } catch (error) {
@@ -894,26 +903,17 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
         // setApprovalChangeButtons(false);
     };
 
-    const stopStream = async () => {
-        // const thread_id = codeInterpreterThreadId;
-        // const run_id = runId;
-        // ws.send(
-        //     JSON.stringify({
-        //         type: "stopStreaming",
-        //         data: {
-        //             codeInterpreterThreadId: thread_id,
-        //             runId: run_id,
-        //         },
-        //     })
-        // );
-        // setRunId('');
-        // setCodeInterpreterThreadId('');
-        // setChatLoading(false);
+    const stopStream = async (runId) => {
+        setChatLoading(false);
+        setChatDisabled(false);
+        client.runs.cancel(thread.thread_id, runId);
     };
 
     const stopMessage = async () => {
-        if (runId && codeInterpreterThreadId) {
-            await stopStream();
+        const list = await client.runs.list(thread.thread_id);
+        if(list && list.length > 0 && thread.thread_id) {
+            setRunId(list[0].run_id)
+            await stopStream(list[0].run_id);
         }
     }
 
@@ -1052,7 +1052,7 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
                                                 />
                                                 <Button
                                                     variant="filled"
-                                                    disabled={!client || schema.length < 1 || selectedThreadId || chatDisabled}
+                                                    disabled={!client || schema.length < 1 || selectedThreadId}
                                                     onClick={chatLoading ? stopMessage : sendMessage}
                                                     style={{
                                                         position: "absolute",
