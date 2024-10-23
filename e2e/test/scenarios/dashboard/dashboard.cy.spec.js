@@ -721,7 +721,7 @@ describe("scenarios > dashboard", () => {
       cy.button("Done").click();
       validateIFrame("https://www.youtube.com/embed/dQw4w9WgXcQ");
 
-      editIFrameWhileEditing(0, "https://youtube.com/watch?v=dQw4w9WgXcQ");
+      editIFrameWhileEditing(0, "https://www.youtube.com/watch?v=dQw4w9WgXcQ");
       cy.button("Done").click();
       validateIFrame("https://www.youtube.com/embed/dQw4w9WgXcQ");
 
