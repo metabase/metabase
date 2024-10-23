@@ -62,9 +62,15 @@
    :from :report_dashboard
    :left-join [:pulse [:and
                        [:= :pulse.archived false]
-                       [:= :pulse.dashboard_id :report_dashboard.id]]]
+                       [:= :pulse.dashboard_id :report_dashboard.id]]
+               :moderation_review [:and
+                                   [:= :moderation_review.moderated_item_id :report_dashboard.id]
+                                   [:= :moderation_review.moderated_item_type (h2x/literal "dashboard")]
+                                   [:= :moderation_review.most_recent true]
+                                   [:= :moderation_review.status (h2x/literal "verified")]]]
    :where [:and
            [:= :pulse.id nil]
+           [:= :moderation_review.id nil]
            [:= :report_dashboard.archived false]
            [:<= :report_dashboard.last_viewed_at (-> args :cutoff-date)]
            (when (embed.settings/some-embedding-enabled?)
