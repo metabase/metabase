@@ -1204,6 +1204,7 @@ describeWithSnowplow("scenarios > dashboard", () => {
   });
 
   it("should be possible to add an iframe card", () => {
+    updateSetting("allowed-iframe-hosts", "*");
     createDashboard({ name: "iframe card" }).then(({ body: { id } }) => {
       visitDashboard(id);
 
