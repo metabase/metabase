@@ -85,8 +85,7 @@
 (def ^:private allowed-promotions
   "A mapping of which types a column can be implicitly relaxed to, based on the content of appended values.
   If we require a relaxation which is not allowlisted here, we will reject the corresponding file."
-  {::int    #{::float}
-   ::bolean #{::int}})
+  {::int #{::float}})
 
 (def ^:private column-type->coercible-value-types
   "A mapping of which value types should be coerced to the given existing type, rather than triggering promotion."
