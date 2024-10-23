@@ -75,6 +75,7 @@
       (try
         (let [refs      (nqa/tables-for-native (assoc m :database (:database query)))
               table-ids (->> refs
+                             :tables
                              (map :table-id)
                              (filter some?))]
           (if (seq table-ids)
