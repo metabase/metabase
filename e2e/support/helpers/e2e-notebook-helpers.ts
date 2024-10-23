@@ -232,16 +232,11 @@ type Stage = {
   limit?: number;
 };
 
-export function verifyNotebookQuery(dataSource: string, ...stages: Stage[]) {
+export function verifyNotebookQuery(dataSource: string, stages: Stage[]) {
   getNotebookStep("data").findByText(dataSource).should("be.visible");
 
   for (let stageIndex = 0; stageIndex < stages.length; ++stageIndex) {
-    const {
-      filters,
-      aggregations = [],
-      breakouts = [],
-      limit,
-    } = stages[stageIndex];
+    const { filters, aggregations, breakouts, limit } = stages[stageIndex];
 
     verifyNotebookFilters(stageIndex, filters);
     verifyNotebookAggregations(stageIndex, aggregations, breakouts);

@@ -942,12 +942,14 @@ describeEE("scenarios > dashboard > dashboard cards > click behavior", () => {
       cy.findByTestId("viz-type-button").click();
 
       openNotebook();
-      verifyNotebookQuery("Orders", {
-        filters: ["Created At is Jul 1–31, 2022"],
-        aggregations: ["Count"],
-        breakouts: ["Created At: Month"],
-        limit: 5,
-      });
+      verifyNotebookQuery("Orders", [
+        {
+          filters: ["Created At is Jul 1–31, 2022"],
+          aggregations: ["Count"],
+          breakouts: ["Created At: Month"],
+          limit: 5,
+        },
+      ]);
 
       cy.go("back");
       testChangingBackToDefaultBehavior();
@@ -991,12 +993,14 @@ describeEE("scenarios > dashboard > dashboard cards > click behavior", () => {
 
       openNotebook();
 
-      verifyNotebookQuery("Orders", {
-        filters: ["Created At is Jul 1–31, 2022", "Quantity is equal to 64"],
-        aggregations: ["Count"],
-        breakouts: ["Created At: Month"],
-        limit: 5,
-      });
+      verifyNotebookQuery("Orders", [
+        {
+          filters: ["Created At is Jul 1–31, 2022", "Quantity is equal to 64"],
+          aggregations: ["Count"],
+          breakouts: ["Created At: Month"],
+          limit: 5,
+        },
+      ]);
     });
 
     it("does not allow setting saved question as custom destination if user has no permissions to it", () => {
@@ -1451,12 +1455,17 @@ describeEE("scenarios > dashboard > dashboard cards > click behavior", () => {
 
         openNotebook();
 
-        verifyNotebookQuery("Orders", {
-          filters: ["Created At is Jul 1–31, 2022", "Quantity is equal to 64"],
-          aggregations: ["Count"],
-          breakouts: ["Created At: Month"],
-          limit: 5,
-        });
+        verifyNotebookQuery("Orders", [
+          {
+            filters: [
+              "Created At is Jul 1–31, 2022",
+              "Quantity is equal to 64",
+            ],
+            aggregations: ["Count"],
+            breakouts: ["Created At: Month"],
+            limit: 5,
+          },
+        ]);
       })();
     });
 
@@ -2059,8 +2068,7 @@ describeEE("scenarios > dashboard > dashboard cards > click behavior", () => {
         cy.findByTestId("viz-type-button").click();
 
         openNotebook();
-        verifyNotebookQuery(
-          "Orders",
+        verifyNotebookQuery("Orders", [
           {
             aggregations: ["Count"],
             breakouts: ["Created At: Month"],
@@ -2072,7 +2080,7 @@ describeEE("scenarios > dashboard > dashboard cards > click behavior", () => {
               "Count is equal to 19",
             ],
           },
-        );
+        ]);
       })();
     });
   });
