@@ -255,13 +255,13 @@ function verifyNotebookFilters(
   filters: string[] | undefined,
 ) {
   if (Array.isArray(filters)) {
-    getNotebookStep("filter", { stage: stageIndex })
-      .findAllByTestId("notebook-cell-item")
-      .should("have.length", filters.length + 1); // 1 because of add button
+    getFilterStepNotebookItems(stageIndex).should(
+      "have.length",
+      filters.length + 1, // 1 because of add button
+    );
 
     for (let index = 0; index < filters.length; ++index) {
-      getNotebookStep("filter", { stage: stageIndex })
-        .findAllByTestId("notebook-cell-item")
+      getFilterStepNotebookItems(stageIndex)
         .eq(index)
         .should("have.text", filters[index]);
     }
@@ -276,24 +276,22 @@ function verifyNotebookAggregations(
   breakouts: string[] | undefined,
 ) {
   if (Array.isArray(aggregations)) {
-    getNotebookStep("summarize", { stage: stageIndex })
-      .findByTestId("aggregate-step")
-      .findAllByTestId("notebook-cell-item")
-      .should("have.length", aggregations.length + 1); // 1 because of add button
+    getSummarizeStepNotebookItems(stageIndex, "aggregate").should(
+      "have.length",
+      aggregations.length + 1, // 1 because of add button
+    );
 
     for (let index = 0; index < aggregations.length; ++index) {
-      getNotebookStep("summarize", { stage: stageIndex })
-        .findByTestId("aggregate-step")
-        .findAllByTestId("notebook-cell-item")
+      getSummarizeStepNotebookItems(stageIndex, "aggregate")
         .eq(index)
         .should("have.text", aggregations[index]);
     }
   } else {
     if (Array.isArray(breakouts)) {
-      getNotebookStep("summarize", { stage: stageIndex })
-        .findByTestId("aggregate-step")
-        .findAllByTestId("notebook-cell-item")
-        .should("have.length", 1); // 1 because of add button
+      getSummarizeStepNotebookItems(stageIndex, "aggregate").should(
+        "have.length",
+        1, // 1 because of add button
+      );
     } else {
       getNotebookStep("summarize", { stage: stageIndex }).should("not.exist");
     }
@@ -306,24 +304,22 @@ function verifyNotebookBreakouts(
   breakouts: string[] | undefined,
 ) {
   if (Array.isArray(breakouts)) {
-    getNotebookStep("summarize", { stage: stageIndex })
-      .findByTestId("breakout-step")
-      .findAllByTestId("notebook-cell-item")
-      .should("have.length", breakouts.length + 1); // +1 because of add button
+    getSummarizeStepNotebookItems(stageIndex, "breakout").should(
+      "have.length",
+      breakouts.length + 1, // +1 because of add button
+    );
 
     for (let index = 0; index < breakouts.length; ++index) {
-      getNotebookStep("summarize", { stage: stageIndex })
-        .findByTestId("breakout-step")
-        .findAllByTestId("notebook-cell-item")
+      getSummarizeStepNotebookItems(stageIndex, "breakout")
         .eq(index)
         .should("have.text", breakouts[index]);
     }
   } else {
     if (Array.isArray(aggregations)) {
-      getNotebookStep("summarize", { stage: stageIndex })
-        .findByTestId("breakout-step")
-        .findAllByTestId("notebook-cell-item")
-        .should("have.length", 1); // 1 because of add button
+      getSummarizeStepNotebookItems(stageIndex, "breakout").should(
+        "have.length",
+        1, // 1 because of add button
+      );
     } else {
       getNotebookStep("summarize", { stage: stageIndex }).should("not.exist");
     }
@@ -338,4 +334,19 @@ function verifyNotebookLimit(stageIndex: number, limit: number | undefined) {
   } else {
     getNotebookStep("limit", { stage: stageIndex }).should("not.exist");
   }
+}
+
+function getFilterStepNotebookItems(stageIndex: number) {
+  return getNotebookStep("filter", { stage: stageIndex }).findAllByTestId(
+    "notebook-cell-item",
+  );
+}
+
+function getSummarizeStepNotebookItems(
+  stageIndex: number,
+  stepType: Extract<NotebookStepType, "aggregate" | "breakout">,
+) {
+  return getNotebookStep("summarize", { stage: stageIndex })
+    .findByTestId(stepType === "aggregate" ? "aggregate-step" : "breakout-step")
+    .findAllByTestId("notebook-cell-item");
 }
