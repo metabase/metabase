@@ -30,10 +30,7 @@ import {
   isQuarterInterval,
   isTimeSeriesAxis,
 } from "metabase/visualizations/echarts/cartesian/model/guards";
-import {
-  getAggregatedOtherSeriesValue,
-  getOtherSeriesAggregationLabel,
-} from "metabase/visualizations/echarts/cartesian/model/other-series";
+import { getOtherSeriesAggregationLabel } from "metabase/visualizations/echarts/cartesian/model/other-series";
 import type {
   BaseCartesianChartModel,
   BaseSeriesModel,
@@ -486,11 +483,7 @@ export const getSeriesOnlyTooltipModel = (
 
       const value =
         seriesModel.dataKey === OTHER_DATA_KEY
-          ? getAggregatedOtherSeriesValue(
-              chartModel.groupedSeriesModels ?? [],
-              settings["graph.other_category_aggregation_fn"],
-              datum,
-            )
+          ? chartModel.transformedDataset[dataIndex][OTHER_DATA_KEY]
           : datum[seriesModel.dataKey];
 
       const prevValue =
@@ -571,11 +564,7 @@ export const getStackedTooltipModel = (
       const datum = chartModel.dataset[dataIndex];
       const value =
         seriesModel.dataKey === OTHER_DATA_KEY
-          ? getAggregatedOtherSeriesValue(
-              chartModel.groupedSeriesModels ?? [],
-              settings["graph.other_category_aggregation_fn"],
-              datum,
-            )
+          ? chartModel.transformedDataset[dataIndex][OTHER_DATA_KEY]
           : datum[seriesModel.dataKey];
 
       return {
@@ -701,11 +690,7 @@ export const getOtherSeriesTooltipModel = (
       String(
         formatValueForTooltip({
           isAlreadyScaled: true,
-          value: getAggregatedOtherSeriesValue(
-            groupedSeriesModels,
-            settings["graph.other_category_aggregation_fn"],
-            datum,
-          ),
+          value: chartModel.transformedDataset[dataIndex][OTHER_DATA_KEY],
           settings,
           column:
             chartModel.leftAxisModel?.column ??
