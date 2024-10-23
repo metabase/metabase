@@ -15,7 +15,7 @@ import ExternalLink from "metabase/core/components/ExternalLink";
 import Link from "metabase/core/components/Link";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { getSetting } from "metabase/selectors/settings";
+import { getDocsUrl, getSetting } from "metabase/selectors/settings";
 import {
   getApplicationName,
   getShowMetabaseLinks,
@@ -137,6 +137,48 @@ export const Onboarding = () => {
 
     setItemValue(newValue);
   };
+
+  const utmTags = {
+    utm_source: "product",
+    utm_medium: "docs",
+    utm_campaign: "help",
+    utm_content: "getting-started",
+  };
+
+  const sqlParamsDocsLink = useSelector(state =>
+    getDocsUrl(state, {
+      page: "questions/native-editor/sql-parameters",
+      utm: utmTags,
+    }),
+  );
+  const dashboardTabsDocsLink = useSelector(state =>
+    getDocsUrl(state, {
+      page: "dashboards/introduction",
+      anchor: "dashboard-tabs",
+      utm: utmTags,
+    }),
+  );
+  const goalLineAlertDocsLink = useSelector(state =>
+    getDocsUrl(state, {
+      page: "questions/sharing/alerts",
+      anchor: "goal-line-alerts",
+      utm: utmTags,
+    }),
+  );
+  const progressBarAlertDocsLink = useSelector(state =>
+    getDocsUrl(state, {
+      page: "questions/sharing/alerts",
+      anchor: "progress-bar-alerts",
+      utm: utmTags,
+    }),
+  );
+  const resultAlertDocsLink = useSelector(state =>
+    getDocsUrl(state, {
+      page: "questions/sharing/alerts",
+      anchor: "results-alerts",
+      utm: utmTags,
+    }),
+  );
 
   return (
     <Box
@@ -316,9 +358,11 @@ export const Onboarding = () => {
                     )} to query data with SQL or the query language native to your database. You can insert variables in your code to create ${
                       showMetabaseLinks ? (
                         <ExternalLink
-                          href="https://www.metabase.com/docs/latest/questions/native-editor/sql-parameters"
+                          href={sqlParamsDocsLink}
                           key="sql-templates"
-                        >{t`SQL templates`}</ExternalLink>
+                        >
+                          {t`SQL templates`}
+                        </ExternalLink>
                       ) : (
                         t`SQL templates`
                       )
@@ -350,10 +394,9 @@ export const Onboarding = () => {
                     <ul className={S.list}>
                       <li>{jt`organize questions into a ${
                         showMetabaseLinks ? (
-                          <ExternalLink
-                            href="https://www.metabase.com/docs/latest/dashboards/introduction#dashboard-tabs"
-                            key="tabs"
-                          >{t`dashboard with tabs`}</ExternalLink>
+                          <ExternalLink href={dashboardTabsDocsLink} key="tabs">
+                            {t`dashboard with tabs`}
+                          </ExternalLink>
                         ) : (
                           t`dashboard with tabs`
                         )
@@ -480,7 +523,7 @@ export const Onboarding = () => {
                       <li>{jt`${
                         showMetabaseLinks ? (
                           <ExternalLink
-                            href="https://www.metabase.com/docs/latest/questions/sharing/alerts#goal-line-alerts"
+                            href={goalLineAlertDocsLink}
                             key="goal"
                           >{t`Goal line alerts`}</ExternalLink>
                         ) : (
@@ -490,9 +533,11 @@ export const Onboarding = () => {
                       <li>{jt`${
                         showMetabaseLinks ? (
                           <ExternalLink
-                            href="https://www.metabase.com/docs/latest/questions/sharing/alerts#progress-bar-alerts"
+                            href={progressBarAlertDocsLink}
                             key="progress"
-                          >{t`Progress bar alerts`}</ExternalLink>
+                          >
+                            {t`Progress bar alerts`}
+                          </ExternalLink>
                         ) : (
                           t`Progress bar alerts`
                         )
@@ -500,7 +545,7 @@ export const Onboarding = () => {
                       <li>{jt`${
                         showMetabaseLinks ? (
                           <ExternalLink
-                            href="https://www.metabase.com/docs/latest/questions/sharing/alerts#results-alerts"
+                            href={resultAlertDocsLink}
                             key="results"
                           >{t`Results alerts`}</ExternalLink>
                         ) : (
