@@ -28,10 +28,12 @@ const ordersTable = checkNotNull(metadata.table(ORDERS_ID));
 
 type SetupOpts = Partial<ModelCacheRefreshStatus> & {
   waitForSectionAppearance?: boolean;
+  canManageDB?: boolean;
 };
 
 async function setup({
   waitForSectionAppearance = true,
+  canManageDB = true,
   ...cacheInfo
 }: SetupOpts = {}) {
   const question = ordersTable.question();
@@ -40,6 +42,7 @@ async function setup({
     id: 1,
     name: "Order model",
     type: "model",
+    can_manage_db: canManageDB,
   });
 
   const modelCacheInfo = getMockModelCacheInfo({
@@ -137,5 +140,10 @@ describe("ModelCacheManagementSection", () => {
 
     // get, post, get
     await waitFor(() => expect(fetchMock.calls().length).toBe(3));
+  });
+
+  it("disables refresh when DB management is not available to the user", async () => {
+    await setup({ state: "persisted", canManageDB: false });
+    expect(screen.queryByLabelText("refresh icon")).not.toBeInTheDocument();
   });
 });
