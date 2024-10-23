@@ -7,21 +7,10 @@ import {
 } from "metabase/api";
 import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { PLUGIN_MODEL_PERSISTENCE } from "metabase/plugins";
+import { Box, Button, Flex, Icon } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import { checkCanRefreshModelCache } from "metabase-lib/v1/metadata/utils/models";
 import type { ModelCacheRefreshStatus } from "metabase-types/api";
-
-import {
-  CreateOrRefreshButton,
-  DisabledLastRefreshTimeLabel,
-  DisabledStatusLabel,
-  ErrorIcon,
-  LastRefreshTimeLabel,
-  RefreshIcon,
-  Row,
-  StatusContainer,
-  StatusLabel,
-} from "./ModelCacheManagementSection.styled";
 
 type Props = {
   model: Question;
@@ -64,34 +53,17 @@ export function ModelCacheManagementSection({ model }: Props) {
   const canRefreshCache =
     persistedModel && checkCanRefreshModelCache(persistedModel);
 
-  const refreshButton =
+  const refreshButtonLabel =
     persistedModel?.state === "creating" ? (
-      <CreateOrRefreshButton
-        onClick={() => onRefresh(model.id())}
-      >{t`Create now`}</CreateOrRefreshButton>
+      t`Create now`
     ) : (
-      <CreateOrRefreshButton onClick={() => onRefresh(model.id())}>
-        <RefreshIcon name="refresh" tooltip={t`Refresh now`} />
-      </CreateOrRefreshButton>
+      <Icon name="refresh" tooltip={t`Refresh now`} />
     );
 
   const canManageDB = model.canManageDB();
-  const statusMessage = persistedModel ? getStatusMessage(persistedModel) : "";
-  const statusLabel = canManageDB ? (
-    <StatusLabel>{statusMessage}</StatusLabel>
-  ) : (
-    <DisabledStatusLabel>{statusMessage}</DisabledStatusLabel>
-  );
 
+  const statusMessage = persistedModel ? getStatusMessage(persistedModel) : "";
   const lastRefreshLabel = t`Last attempt ${lastRefreshTime}`;
-  const lastRefreshTimeLabel = canManageDB ? (
-    <LastRefreshTimeLabel> {lastRefreshLabel} </LastRefreshTimeLabel>
-  ) : (
-    <DisabledLastRefreshTimeLabel>
-      {" "}
-      {lastRefreshLabel}{" "}
-    </DisabledLastRefreshTimeLabel>
-  );
 
   return (
     <>
@@ -103,16 +75,32 @@ export function ModelCacheManagementSection({ model }: Props) {
       }
 
       {shouldShowRefreshStatus && (
-        <Row data-testid="model-cache-section">
-          <div>
-            <StatusContainer>
-              {statusLabel}
-              {isError && <ErrorIcon name="warning" />}
-            </StatusContainer>
-            {isError && lastRefreshTimeLabel}
-          </div>
-          {canRefreshCache && canManageDB && refreshButton}
-        </Row>
+        <Flex
+          justify="space-between"
+          align="center"
+          data-testid="model-cache-section"
+          c={canManageDB ? "text-dark" : "text-light"}
+          fz="md"
+        >
+          <Box>
+            <Flex align="center" fw="bold" gap="sm">
+              {statusMessage}
+              {isError && <Icon name="warning" c="error" ml="sm" />}
+            </Flex>
+            {isError && <Box pt="sm">{lastRefreshLabel}</Box>}
+          </Box>
+          {canRefreshCache && canManageDB && (
+            <Button
+              variant="subtle"
+              p="xs"
+              c="text-dark"
+              size="xs"
+              onClick={() => onRefresh(model.id())}
+            >
+              {refreshButtonLabel}
+            </Button>
+          )}
+        </Flex>
       )}
     </>
   );
