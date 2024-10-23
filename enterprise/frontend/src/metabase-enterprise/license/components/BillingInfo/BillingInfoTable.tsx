@@ -127,7 +127,7 @@ export const BillingInfoTable = ({
           />
         ))}
       </BillingInfoCard>
-      <StillNeedHelp />
+      {this.props.derivedSettingValues["airgap-enabled"] && <StillNeedHelp />}
     </>
   );
 };
