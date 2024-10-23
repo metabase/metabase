@@ -943,8 +943,8 @@
                           [:= :is_nullable [:inline "NO"]]
                           [:not [:= :c.extra [:inline "auto_increment"]]]]
                          :database-required]
-                        [[:= :c.column_key "PRI"] :pk?]
-                        [:c.column_comment :field-comment]]
+                        [[:= :c.column_key [:inline "PRI"]] :pk?]
+                        [[:nullif :c.column_comment [:inline ""]] :field-comment]]
                :from [[:information_schema.columns :c]]
                :where
                [:and [:raw "c.table_schema not in ('information_schema','performance_schema','sys')"]
