@@ -41,7 +41,7 @@ export const CubeDialog = ({
     setIsVerifyModalOpen(false); // Close the verify modal without making changes
   };
 
-  const isLongDescription = cube.description.length >= 62;
+  const isLongDescription = cube.description && typeof cube.description === 'string' && cube.description.length >= 62;
 
   return (
     <>
