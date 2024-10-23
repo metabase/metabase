@@ -4864,3 +4864,17 @@
             ;; dashcards and parameters for each dashcard, linked to a single card. Following is the proof
             ;; of things working as described.
             (is (= 1 @call-count))))))))
+
+(deftest querying-a-dashboard-returns-moderated_status
+    (mt/dataset test-data
+      (mt/with-temp [:model/Dashboard {dashboard-id :id} {:last_viewed_at #t "2000-01-01"}
+                     :model/ModerationReview _ {:moderated_item_id dashboard-id
+                                                :moderated_item_type "dashboard"
+                                                :moderator_id (mt/user->id :crowberto)
+                                                :most_recent true
+                                                :status "verified"}]
+        (is (malli= [:sequential
+                     [:map
+                      [:most_recent [:= true]]
+                      [:moderator_id [:= (mt/user->id :crowberto)]]]]
+               (:moderation_reviews (mt/user-http-request :crowberto :get 200 (str "dashboard/" dashboard-id))))))))
