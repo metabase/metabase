@@ -241,7 +241,6 @@ jobs:
     with:
       commit: ${{ inputs.commit }}
       version: ${{ inputs.version }}
-      auto: ${{ inputs.auto }}
 
   auto-publish-release:
     name: Auto-publish release ${{ inputs.version }}
