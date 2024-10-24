@@ -29,7 +29,6 @@ export default function QueryVisualization(props) {
     isNativeEditorOpen,
     result,
     maxTableRows = HARD_ROW_LIMIT,
-    onUpdateVisualizationSettings,
   } = props;
 
   const canRun = Lib.canRun(question.query(), question.type());
@@ -79,7 +78,6 @@ export default function QueryVisualization(props) {
             maxTableRows={maxTableRows}
             className={CS.spread}
             onUpdateWarnings={setWarnings}
-            onUpdateVisualizationSettings={onUpdateVisualizationSettings}
           />
         ) : !isRunning ? (
           <VisualizationEmptyState className={CS.spread} />

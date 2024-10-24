@@ -220,7 +220,6 @@ class Visualization extends PureComponent {
       isRawTable,
       getExtraDataForClick = () => ({}),
       rawSeries,
-      onUpdateVisualizationSettings,
     } = this.props;
 
     const card =
@@ -230,23 +229,18 @@ class Visualization extends PureComponent {
     const question = this._getQuestionForCardCached(metadata, card);
     const mode = this.getMode(this.props.mode, question);
 
-    if (!mode) {
-      return [];
-    }
-
-    const extraData = {
-      ...getExtraDataForClick(clicked),
-      isRawTable,
-
-      // The embedding sdk does not store the question in the query builder store,
-      // therefore we must update the visualization settings in the React context.
-      onUpdateVisualizationSettingsSdk: onUpdateVisualizationSettings,
-    };
-
-    return mode.actionsForClick(
-      { ...clicked, extraData },
-      this.state.computedSettings,
-    );
+    return mode
+      ? mode.actionsForClick(
+          {
+            ...clicked,
+            extraData: {
+              ...getExtraDataForClick(clicked),
+              isRawTable,
+            },
+          },
+          this.state.computedSettings,
+        )
+      : [];
   }
 
   visualizationIsClickable = clicked => {

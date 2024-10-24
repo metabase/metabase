@@ -19,7 +19,6 @@ export const QuestionVisualization = () => {
     isQueryRunning,
     navigateToNewCard,
     onNavigateBack,
-    updateVisualizationSettings,
   } = useInteractiveQuestionContext();
 
   if (isQuestionLoading) {
@@ -47,7 +46,6 @@ export const QuestionVisualization = () => {
       mode={mode}
       navigateToNewCardInsideQB={navigateToNewCard}
       onNavigateBack={onNavigateBack}
-      onUpdateVisualizationSettings={updateVisualizationSettings}
     />
   );
 };
