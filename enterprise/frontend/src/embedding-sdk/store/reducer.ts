@@ -1,4 +1,4 @@
-import { createAction, createReducer } from "@reduxjs/toolkit";
+import { createReducer } from "@reduxjs/toolkit";
 import { t } from "ttag";
 
 import type { EmbeddingSessionToken, FetchRequestTokenFn } from "embedding-sdk";
@@ -12,7 +12,7 @@ import type {
   SdkStoreState,
 } from "embedding-sdk/store/types";
 import type { SdkUsageProblem } from "embedding-sdk/types/usage-problem";
-import { createAsyncThunk } from "metabase/lib/redux";
+import { createAction, createAsyncThunk } from "metabase/lib/redux";
 
 import { getFetchRefreshTokenFn, getSessionTokenState } from "./selectors";
 

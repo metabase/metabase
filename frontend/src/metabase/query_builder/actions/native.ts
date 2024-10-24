@@ -1,12 +1,11 @@
-import { createAction } from "redux-actions";
-
 import Questions from "metabase/entities/questions";
-import { createThunkAction } from "metabase/lib/redux";
+import { createAction, createThunkAction } from "metabase/lib/redux";
 import { updateUserSetting } from "metabase/redux/settings";
 import { getMetadata } from "metabase/selectors/metadata";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
   CardId,
+  CollectionId,
   DatabaseId,
   NativeQuerySnippet,
   Parameter,
@@ -112,7 +111,10 @@ export const setNativeEditorSelectedRange = createAction(
 );
 
 export const SET_MODAL_SNIPPET = "metabase/qb/SET_MODAL_SNIPPET";
-export const setModalSnippet = createAction(SET_MODAL_SNIPPET);
+export const setModalSnippet = createAction<{
+  content: string;
+  collection_id: CollectionId;
+} | null>(SET_MODAL_SNIPPET);
 
 export const SET_SNIPPET_COLLECTION_ID =
   "metabase/qb/SET_SNIPPET_COLLECTION_ID";

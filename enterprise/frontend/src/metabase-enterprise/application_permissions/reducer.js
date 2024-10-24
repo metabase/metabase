@@ -33,9 +33,11 @@ export const updateApplicationPermission = createAction(
   UPDATE_APPLICATION_PERMISSION,
   ({ groupId, permission, value }) => {
     return {
-      groupId,
-      permission: permission.permission,
-      value,
+      payload: {
+        groupId,
+        permission: permission.permission,
+        value,
+      },
     };
   },
 );

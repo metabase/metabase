@@ -32,7 +32,7 @@ const QUERY_BUILDER_FEATURES = {
 export interface SegmentFormProps {
   segment?: Segment;
   previewSummary?: string;
-  updatePreviewSummary: (previewSummary: string) => void;
+  updatePreviewSummary: (previewSummary: string) => Promise<void>;
   onIsDirtyChange: (isDirty: boolean) => void;
   onSubmit: (values: Partial<Segment>) => void;
 }

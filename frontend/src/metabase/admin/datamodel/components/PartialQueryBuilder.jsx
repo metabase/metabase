@@ -30,10 +30,10 @@ class PartialQueryBuilder extends Component {
     previewSummary: PropTypes.string,
   };
 
-  componentDidMount() {
+  async componentDidMount() {
     const { value, table } = this.props;
     if (table && value != null) {
-      this.props.updatePreviewSummary({
+      await this.props.updatePreviewSummary({
         type: "query",
         database: table.db_id,
         query: {
@@ -42,15 +42,15 @@ class PartialQueryBuilder extends Component {
         },
       });
     } else {
-      this.maybeSetDefaultQuery();
+      await this.maybeSetDefaultQuery();
     }
   }
 
-  componentDidUpdate() {
-    this.maybeSetDefaultQuery();
+  async componentDidUpdate() {
+    await this.maybeSetDefaultQuery();
   }
 
-  maybeSetDefaultQuery() {
+  async maybeSetDefaultQuery() {
     const { metadata, table, value } = this.props;
 
     // we need metadata and a table to generate a default query
@@ -66,17 +66,17 @@ class PartialQueryBuilder extends Component {
 
     const defaultQuestion = getDefaultSegmentOrMetricQuestion(table, metadata);
     if (defaultQuestion) {
-      this.setDatasetQuery(defaultQuestion.datasetQuery());
+      await this.setDatasetQuery(defaultQuestion.datasetQuery());
     }
   }
 
-  setDatasetQuery = datasetQuery => {
+  setDatasetQuery = async datasetQuery => {
     if (datasetQuery instanceof Query) {
       datasetQuery = datasetQuery.datasetQuery();
     }
 
     this.props.onChange(datasetQuery.query);
-    this.props.updatePreviewSummary(datasetQuery);
+    await this.props.updatePreviewSummary(datasetQuery);
   };
 
   render() {
