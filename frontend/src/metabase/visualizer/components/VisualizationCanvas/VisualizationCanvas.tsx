@@ -1,21 +1,32 @@
+import { useCallback } from "react";
 import { t } from "ttag";
 
-import { useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Center, Flex, Text } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import {
   getVisualizerComputedSettings,
   getVisualizerRawSeries,
+  updateSettings,
 } from "metabase/visualizer/visualizer.slice";
+import type { VisualizationSettings } from "metabase-types/api";
 
 import { BottomWell } from "./BottomWell";
 
 export function VisualizationCanvas() {
   const rawSeries = useSelector(getVisualizerRawSeries);
   const settings = useSelector(getVisualizerComputedSettings);
+  const dispatch = useDispatch();
 
   const { card } = rawSeries[0] ?? {};
   const hasSeriesToShow = rawSeries.length > 0;
+
+  const handleUpdateSettings = useCallback(
+    (settings: VisualizationSettings) => {
+      dispatch(updateSettings(settings));
+    },
+    [dispatch],
+  );
 
   return (
     <Flex
@@ -33,6 +44,7 @@ export function VisualizationCanvas() {
             settings={settings}
             w="95%"
             style={{ alignSelf: "center" }}
+            onChangeSettings={handleUpdateSettings}
           />
         </>
       ) : (
