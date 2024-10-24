@@ -86,7 +86,11 @@ export const ClickActionControl = ({
     case "sort":
       return (
         <Tooltip tooltip={action.tooltip}>
-          <SortControl onlyIcon onClick={handleClick}>
+          <SortControl
+            onlyIcon
+            onClick={handleClick}
+            data-testid={`click-actions-sort-control-${action.name}`}
+          >
             {typeof action.icon === "string" && (
               <Icon size={14} name={action.icon as unknown as IconName} />
             )}

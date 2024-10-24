@@ -7,6 +7,7 @@ import {
 } from "embedding-sdk/components/private/PublicComponentWrapper";
 import CS from "metabase/css/core/index.css";
 import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
+import type Question from "metabase-lib/v1/Question";
 
 import { useInteractiveQuestionContext } from "../context";
 
@@ -19,6 +20,7 @@ export const QuestionVisualization = () => {
     isQueryRunning,
     navigateToNewCard,
     onNavigateBack,
+    updateQuestion,
   } = useInteractiveQuestionContext();
 
   if (isQuestionLoading) {
@@ -46,6 +48,9 @@ export const QuestionVisualization = () => {
       mode={mode}
       navigateToNewCardInsideQB={navigateToNewCard}
       onNavigateBack={onNavigateBack}
+      onUpdateQuestion={(question: Question) =>
+        updateQuestion(question, { run: false })
+      }
     />
   );
 };

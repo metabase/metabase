@@ -141,6 +141,7 @@ const ViewMainContainer = props => {
           noHeader
           className={CS.spread}
           mode={queryMode}
+          onUpdateQuestion={updateQuestion}
         />
       </StyledDebouncedFrame>
       <TimeseriesChrome
