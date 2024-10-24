@@ -118,10 +118,13 @@ export function getDashboardDrillQuestionUrl(question, clicked) {
     clickBehavior,
   );
 
-  const targetQuestion = new Question(
+  const baseQuestion = new Question(
     extraData.questions[targetId],
     question.metadata(),
   ).lockDisplay();
+  const targetQuestion = baseQuestion.setQuery(
+    Lib.ensureFilterStage(baseQuestion.query()),
+  );
 
   const parameters = _.chain(parameterMapping)
     .values()

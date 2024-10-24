@@ -6,6 +6,7 @@ import {
   popover,
 } from "e2e/support/helpers/e2e-ui-elements-helpers";
 import type { NotebookStepType } from "metabase/querying/notebook/types";
+import type { IconName } from "metabase/ui";
 
 export function notebookButton() {
   return cy
@@ -222,4 +223,202 @@ export function selectSavedQuestionsToJoin(
 export function selectFilterOperator(operatorName: string) {
   cy.findByLabelText("Filter operator").click();
   cy.findByRole("menu").findByText(operatorName).click();
+}
+
+type JoinType = "left-join" | "right-join" | "inner-join" | "full-join";
+
+type Stage = {
+  // TODO: add support for sort clauses if needed
+  // TODO: implement me
+  joins?: {
+    lhsTable: string;
+    rhsTable: string;
+    type: JoinType;
+    conditions: {
+      operator: "=" | ">" | "<" | ">=" | "<=" | "!=";
+      lhsColumn: string;
+      rhsColumn: string;
+    }[];
+  }[];
+  // TODO: implement me
+  expressions?: string[];
+  filters?: string[];
+  aggregations?: string[];
+  breakouts?: string[];
+  limit?: number;
+};
+
+export function verifyNotebookQuery(dataSource: string, stages: Stage[] = []) {
+  getNotebookStep("data").findByText(dataSource).should("be.visible");
+
+  for (let stageIndex = 0; stageIndex < stages.length; ++stageIndex) {
+    const { joins, filters, aggregations, breakouts, limit } =
+      stages[stageIndex];
+
+    verifyNotebookJoins(stageIndex, joins);
+    verifyNotebookFilters(stageIndex, filters);
+    verifyNotebookAggregations(stageIndex, aggregations, breakouts);
+    verifyNotebookBreakouts(stageIndex, aggregations, breakouts);
+    verifyNotebookLimit(stageIndex, limit);
+  }
+}
+
+function verifyNotebookJoins(
+  stageIndex: number,
+  joins: Stage["joins"] | undefined,
+) {
+  if (Array.isArray(joins)) {
+    cy.findByTestId(new RegExp(`step-join-${stageIndex}-\\d+`)).should(
+      "have.length",
+      joins.length,
+    );
+
+    for (let index = 0; index < joins.length; ++index) {
+      const { lhsTable, rhsTable, type, conditions } = joins[index];
+
+      getJoinItems(stageIndex, index).eq(0).should("have.text", lhsTable);
+      getJoinItems(stageIndex, index).eq(1).should("have.text", rhsTable);
+
+      getNotebookStep("join", { stage: stageIndex, index })
+        .icon(getJoinTypeIcon(type))
+        .should("be.visible");
+
+      // TODO: assert conditions count
+      for (
+        let conditionIndex = 0;
+        conditionIndex < conditions.length;
+        ++conditionIndex
+      ) {
+        // TODO: assert individual conditions
+      }
+    }
+  } else {
+    getNotebookStep("join", { stage: stageIndex }).should("not.exist");
+  }
+}
+
+function verifyNotebookFilters(
+  stageIndex: number,
+  filters: string[] | undefined,
+) {
+  if (Array.isArray(filters)) {
+    getFilterItems(stageIndex).should(
+      "have.length",
+      filters.length + 1, // +1 because of add button
+    );
+
+    for (let index = 0; index < filters.length; ++index) {
+      getFilterItems(stageIndex).eq(index).should("have.text", filters[index]);
+    }
+  } else {
+    getNotebookStep("filter", { stage: stageIndex }).should("not.exist");
+  }
+}
+
+function verifyNotebookAggregations(
+  stageIndex: number,
+  aggregations: string[] | undefined,
+  breakouts: string[] | undefined,
+) {
+  if (Array.isArray(aggregations)) {
+    getNotebookStep("summarize", { stage: stageIndex }).scrollIntoView();
+    getSummarizeItems(stageIndex, "aggregate").should(
+      "have.length",
+      aggregations.length + 1, // +1 because of add button
+    );
+
+    for (let index = 0; index < aggregations.length; ++index) {
+      getSummarizeItems(stageIndex, "aggregate")
+        .eq(index)
+        .should("have.text", aggregations[index]);
+    }
+  } else {
+    if (Array.isArray(breakouts)) {
+      getSummarizeItems(stageIndex, "aggregate").should(
+        "have.length",
+        1, // 1 because of add button
+      );
+    } else {
+      getNotebookStep("summarize", { stage: stageIndex }).should("not.exist");
+    }
+  }
+}
+
+function verifyNotebookBreakouts(
+  stageIndex: number,
+  aggregations: string[] | undefined,
+  breakouts: string[] | undefined,
+) {
+  if (Array.isArray(breakouts)) {
+    getSummarizeItems(stageIndex, "breakout").should(
+      "have.length",
+      breakouts.length + 1, // +1 because of add button
+    );
+
+    for (let index = 0; index < breakouts.length; ++index) {
+      getSummarizeItems(stageIndex, "breakout")
+        .eq(index)
+        .should("have.text", breakouts[index]);
+    }
+  } else {
+    if (Array.isArray(aggregations)) {
+      getSummarizeItems(stageIndex, "breakout").should(
+        "have.length",
+        1, // 1 because of add button
+      );
+    } else {
+      getNotebookStep("summarize", { stage: stageIndex }).should("not.exist");
+    }
+  }
+}
+
+function verifyNotebookLimit(stageIndex: number, limit: number | undefined) {
+  if (typeof limit === "number") {
+    getNotebookStep("limit", { stage: stageIndex })
+      .findByPlaceholderText("Enter a limit")
+      .should("have.value", String(limit));
+  } else {
+    getNotebookStep("limit", { stage: stageIndex }).should("not.exist");
+  }
+}
+
+function getJoinItems(stageIndex: number, index: number) {
+  return getNotebookStep("join", { stage: stageIndex, index }).findAllByTestId(
+    "notebook-cell-item",
+  );
+}
+
+function getFilterItems(stageIndex: number) {
+  return getNotebookStep("filter", { stage: stageIndex }).findAllByTestId(
+    "notebook-cell-item",
+  );
+}
+
+function getSummarizeItems(
+  stageIndex: number,
+  stepType: Extract<NotebookStepType, "aggregate" | "breakout">,
+) {
+  return getNotebookStep("summarize", { stage: stageIndex })
+    .findByTestId(stepType === "aggregate" ? "aggregate-step" : "breakout-step")
+    .findAllByTestId("notebook-cell-item");
+}
+
+function getJoinTypeIcon(type: JoinType): IconName {
+  if (type === "left-join") {
+    return "join_left_outer";
+  }
+
+  if (type === "right-join") {
+    return "join_right_outer";
+  }
+
+  if (type === "inner-join") {
+    return "join_inner";
+  }
+
+  if (type === "full-join") {
+    return "join_full_outer";
+  }
+
+  throw new Error(`Unknown join type: ${type}`);
 }
