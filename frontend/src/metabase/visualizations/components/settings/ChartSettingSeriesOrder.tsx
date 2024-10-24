@@ -186,12 +186,7 @@ export const ChartSettingSeriesOrder = ({
             <Group p={4} spacing="sm">
               <ColorSelector
                 value={otherColor ?? color("text-light")}
-                colors={[
-                  ...getAccentColors(),
-                  color("text-light"),
-                  color("text-medium"),
-                  color("text-dark"),
-                ]}
+                colors={getAccentColors()}
                 onChange={onOtherColorChange}
                 pillSize="small"
               />
