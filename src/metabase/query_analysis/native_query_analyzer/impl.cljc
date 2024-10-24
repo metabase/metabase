@@ -16,7 +16,7 @@
 ;; Using a separate list to the above, as we may want this to be more restrictive.
 (def trusted-for-table-permissions?
   "Do we trust that Macaw will not give us false negatives for tables referenced by a given query?"
-  #{:h2 :mysql :postgres :redshift :sqlite :sqlserver})
+  #{:h2 :mysql :postgres})
 
 (defn macaw-options
   "Generate the options expected by Macaw based on the nature of the given driver."

@@ -158,13 +158,6 @@ const ViewLeftSidebarContainer = ({
   result,
   isShowingChartSettingsSidebar,
   isShowingChartTypeSidebar,
-  onCloseChartSettings,
-  addField,
-  initialChartSetting,
-  onReplaceAllVisualizationSettings,
-  onOpenChartType,
-  visualizationSettings,
-  showSidebarTitle,
 }) =>
   match({
     isShowingChartSettingsSidebar,
@@ -174,19 +167,7 @@ const ViewLeftSidebarContainer = ({
       {
         isShowingChartSettingsSidebar: true,
       },
-      () => (
-        <ChartSettingsSidebar
-          question={question}
-          result={result}
-          addField={addField}
-          initialChartSetting={initialChartSetting}
-          onReplaceAllVisualizationSettings={onReplaceAllVisualizationSettings}
-          onOpenChartType={onOpenChartType}
-          visualizationSettings={visualizationSettings}
-          showSidebarTitle={showSidebarTitle}
-          onClose={onCloseChartSettings}
-        />
-      ),
+      () => <ChartSettingsSidebar question={question} result={result} />,
     )
     .with(
       {

@@ -146,6 +146,7 @@ export const createMockSettings = (
 ): EnterpriseSettings => ({
   "admin-email": "admin@metabase.test",
   "airgap-enabled": false,
+  "allowed-iframe-hosts": "*",
   "anon-tracking-enabled": false,
   "application-colors": {},
   "application-font": "Lato",

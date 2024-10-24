@@ -5,11 +5,11 @@ import type { User } from "metabase-types/api/user";
 import { ALERT_TYPE_ROWS } from "./constants";
 
 export const getDefaultAlert = (
-  question: Question,
-  user: User,
+  question: Question | undefined,
+  user: User | null,
   visualizationSettings: VisualizationSettings,
 ) => {
-  const alertType = question.alertType(visualizationSettings);
+  const alertType = question?.alertType(visualizationSettings);
   const typeDependentAlertFields =
     alertType === ALERT_TYPE_ROWS
       ? {
@@ -24,7 +24,7 @@ export const getDefaultAlert = (
 
   return {
     card: {
-      id: question.id(),
+      id: question?.id(),
       include_csv: false,
       include_xls: false,
     },
