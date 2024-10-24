@@ -16,6 +16,7 @@ describe("performAction", () => {
     const extraProps = {
       dispatch: jest.fn(),
       onChangeCardAndRun: jest.fn(),
+      onUpdateQuestion: jest.fn(),
     };
 
     expect(performAction(action, extraProps)).toBe(true);
@@ -79,6 +80,7 @@ describe("performAction", () => {
         const extraProps = {
           dispatch: jest.fn(),
           onChangeCardAndRun: jest.fn(),
+          onUpdateQuestion: jest.fn(),
         };
 
         expect(performAction(action, extraProps)).toBe(true);
@@ -117,6 +119,7 @@ describe("performAction", () => {
         const extraProps = {
           dispatch: jest.fn(),
           onChangeCardAndRun: jest.fn(),
+          onUpdateQuestion: jest.fn(),
         };
 
         expect(performAction(action, extraProps)).toBe(true);
@@ -156,6 +159,7 @@ describe("performAction", () => {
       const extraProps = {
         dispatch: jest.fn(),
         onChangeCardAndRun: jest.fn(),
+        onUpdateQuestion: jest.fn(),
       };
 
       expect(performAction(action, extraProps)).toBe(true);
@@ -194,6 +198,7 @@ describe("performAction", () => {
       const extraProps = {
         dispatch: jest.fn(),
         onChangeCardAndRun: jest.fn(),
+        onUpdateQuestion: jest.fn(),
       };
 
       expect(performAction(action, extraProps)).toBe(true);
