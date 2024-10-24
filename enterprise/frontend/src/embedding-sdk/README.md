@@ -24,7 +24,7 @@ Live demo: https://metaba.se/sdk-demo
 
 ## Known limitations
 
-- The SDK is currently only compatible with Metabase v50
+- The SDK requires Metabase version 50 or higher.
 - Some of the Pro/EE features are not exposed in the UI
   - Verified content
   - Official collections
@@ -74,7 +74,7 @@ Prerequisites:
 
 ## Start Metabase
 
-Currently, the SDK only works with Metabase version 50.
+The SDK works with Metabase version 50 or higher.
 
 You have the following options:
 
@@ -83,12 +83,12 @@ You have the following options:
 Start the Metabase container:
 
 ```bash
-docker run -d -p 3000:3000 --name metabase metabase/metabase-enterprise:v1.50.24
+docker run -d -p 3000:3000 --name metabase metabase/metabase-enterprise:v1.51.1
 ```
 
 ### 2. Running the Jar file
 
-1. Download the Jar file from https://downloads.metabase.com/enterprise/v1.50.24/metabase.jar
+1. Download the Jar file from https://downloads.metabase.com/enterprise/v1.51.1/metabase.jar
 2. Create a new directory and move the Metabase JAR into it.
 3. Change into your new Metabase directory and run the JAR.
 
