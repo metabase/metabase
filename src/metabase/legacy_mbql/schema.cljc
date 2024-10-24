@@ -416,7 +416,7 @@
 
 (def ^:private boolean-functions
   "Functions that return boolean values. Should match [[BooleanExpression]]."
-  #{:and :or :not :< :<= :> :>= := :!=})
+  #{:and :or :not :< :<= :> :>= := :!= :is-null :not-null})
 
 (def ^:private aggregations
   #{:sum :avg :stddev :var :median :percentile :min :max :cum-count :cum-sum :count-where :sum-where :share :distinct
@@ -877,7 +877,7 @@
   segment-id [:or SegmentID ::lib.schema.common/non-blank-string])
 
 (mr/def ::BooleanExpression
-  (one-of and or not < <= > >= = !=))
+  (one-of and or not < <= > >= = != is-null not-null))
 
 (mr/def ::Filter
   [:multi
