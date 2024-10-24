@@ -68,6 +68,15 @@ describe("scenarios > question > download", () => {
   });
 
   describeWithSnowplow("[snowplow]", () => {
+    beforeEach(() => {
+      resetSnowplow();
+      enableTracking();
+    });
+
+    afterEach(() => {
+      expectNoBadSnowplowEvents();
+    });
+
     testCases.forEach(fileType => {
       it(`downloads ${fileType} file`, () => {
         startNewQuestion();
