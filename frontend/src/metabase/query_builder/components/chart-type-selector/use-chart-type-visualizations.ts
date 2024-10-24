@@ -18,6 +18,22 @@ export type UseChartTypeVisualizationsProps = {
   onUpdateQuestion: (question: Question) => void;
 } & GetSensibleVisualizationsProps;
 
+export const setQuestionDisplayType = (
+  question: Question,
+  display: CardDisplayType,
+) => {
+  let newQuestion = question.setDisplay(display).lockDisplay(); // prevent viz auto-selection
+  const visualization = visualizations.get(display);
+  if (visualization?.onDisplayUpdate) {
+    const updatedSettings = visualization.onDisplayUpdate(
+      newQuestion.settings(),
+    );
+    newQuestion = newQuestion.setSettings(updatedSettings);
+  }
+
+  return newQuestion;
+};
+
 export const useChartTypeVisualizations = ({
   question,
   onUpdateQuestion,
@@ -28,15 +44,7 @@ export const useChartTypeVisualizations = ({
   const updateQuestionVisualization = useCallback(
     (display: CardDisplayType) => {
       if (question) {
-        let newQuestion = question.setDisplay(display).lockDisplay(); // prevent viz auto-selection
-        const visualization = visualizations.get(display);
-        if (visualization?.onDisplayUpdate) {
-          const updatedSettings = visualization.onDisplayUpdate(
-            newQuestion.settings(),
-          );
-          newQuestion = newQuestion.setSettings(updatedSettings);
-        }
-
+        const newQuestion = setQuestionDisplayType(question, display);
         onUpdateQuestion(newQuestion);
       }
     },

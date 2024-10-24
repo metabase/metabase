@@ -122,6 +122,7 @@
     "sql-formatter": "^15.1.2",
     "stream-browserify": "^3.0.0",
     "tether": "^1.2.0",
+    "tinykeys": "^3.0.0",
     "tippy.js": "^6.3.5",
     "ts-pattern": "^5.1.2",
     "ttag": "1.7.21",
