@@ -4,7 +4,7 @@ import _ from "underscore";
 
 import { measureTextWidth } from "metabase/lib/measure-text";
 import type { SelectProps } from "metabase/ui";
-import { Box, Group, isComboboxItem, isComboboxItemGroup } from "metabase/ui";
+import { Box, Group } from "metabase/ui";
 import type { FontStyle } from "metabase/visualizations/shared/types/measure-text";
 
 const placeholderRegex = /^\{(\d)+\}$/;
@@ -123,12 +123,16 @@ export const combineConsecutiveStrings = (arr: ReactNode[]) => {
 export const getLongestSelectLabel = (data: SelectProps["data"] = []): string =>
   [...data].reduce<string>((acc: string, option) => {
     let label: string;
-    if (isComboboxItem(option)) {
+    if (typeof option === "string") {
+      label = option;
+    } else if (!option) {
+      label = "";
+    } else if ("label" in option) {
       label = option.label;
-    } else if (isComboboxItemGroup(option)) {
+    } else if ("group" in option) {
       label = getLongestSelectLabel(option.items);
     } else {
-      label = option;
+      label = "";
     }
     return label.length > acc.length ? label : acc;
   }, "");
