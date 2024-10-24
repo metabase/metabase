@@ -40,7 +40,12 @@ export const ChartTypeSidebar = ({
           shouldUpdateUrl: Lib.queryDisplayInfo(question.query()).isEditable,
         }),
       );
-      dispatch(setUIControls({ isShowingRawTable: false }));
+      dispatch(
+        setUIControls({
+          isShowingRawTable: false,
+          queryBuilderView: "visualization",
+        }),
+      );
     }
   };
 
