@@ -23,7 +23,7 @@ interface DownloadAndAssertParams {
   publicUuid?: string;
   dashboardId?: number;
   enableFormatting?: boolean;
-  enablePivoting?: boolean;
+  pivoting?: "pivoted" | "non-pivoted";
 }
 
 export const exportFromDashcard = (format: string) => {
@@ -51,7 +51,7 @@ export function downloadAndAssert(
     downloadMethod = "POST",
     isDashboard,
     enableFormatting = true,
-    enablePivoting = false,
+    pivoting,
   }: DownloadAndAssertParams,
   callback: (data: unknown) => void,
 ) {
@@ -104,8 +104,17 @@ export function downloadAndAssert(
 
     cy.findByText(formattingButtonLabel).click();
 
-    if (enablePivoting) {
-      cy.findByText("Keep data pivoted").click();
+    if (pivoting != null) {
+      cy.findByTestId("keep-data-pivoted")
+        .as("keep-data-pivoted")
+        .then($checkbox => {
+          const isChecked = $checkbox.prop("checked");
+
+          const shouldPivot = pivoting === "pivoted";
+          if (shouldPivot !== isChecked) {
+            cy.get("@keep-data-pivoted").click();
+          }
+        });
     }
 
     cy.findByTestId("download-results-button").click();
