@@ -10,7 +10,8 @@ import { setup } from "./setup";
 const setupEnterprise = (opts: any) => {
   return setup({
     ...opts,
-    withFeatures: ["audit_app"],
+    hasEnterprisePlugins: true,
+    tokenFeatures: { audit_app: true },
   });
 };
 
