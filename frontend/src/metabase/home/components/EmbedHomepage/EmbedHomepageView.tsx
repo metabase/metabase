@@ -49,7 +49,7 @@ export const EmbedHomepageView = (props: EmbedHomepageViewProps) => {
           <Box>
             {/* eslint-disable-next-line no-literal-metabase-strings -- only visible to admins */}
             <Title order={2} mb="md">{t`Embedding Metabase`}</Title>
-            <Text lh={1.57}>
+            <Text>
               {/* eslint-disable-next-line no-literal-metabase-strings -- only visible to admins */}
               {t`Give your customers secure, multi-tenant access to their data with as much (or as little) interactivity and tools to explore data as you want, with as much customization as you need. Embed dashboards, charts—even Metabase's query editor—with iframes or as individual React components.`}
             </Text>
