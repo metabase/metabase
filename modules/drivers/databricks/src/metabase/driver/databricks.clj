@@ -54,7 +54,7 @@
      "  TABLE_NAME as name,"
      "  TABLE_SCHEMA as schema,"
      "  COMMENT description"
-     "  from information_schema.tables"
+     "  from system.information_schema.tables"
      "  where TABLE_CATALOG = ?"
      "    AND TABLE_SCHEMA <> 'information_schema'"])
    catalog])
@@ -79,7 +79,8 @@
                       e)))))
 
 (defmethod sql-jdbc.sync/describe-fields-sql :databricks
-  [driver & {:keys [schema-names table-names]}]
+  [driver & {:keys [schema-names table-names catalog]}]
+  (assert (string? (not-empty catalog)) "`catalog` is required for sync.")
   (sql/format {:select [[:c.column_name :name]
                         [:c.full_data_type :database-type]
                         [:c.ordinal_position :database-position]
@@ -87,7 +88,7 @@
                         [:c.table_name :table-name]
                         [[:case [:= :cs.constraint_type [:inline "PRIMARY KEY"]] true :else false] :pk?]
                         [[:case [:not= :c.comment [:inline ""]] :c.comment :else nil] :field-comment]]
-               :from [[:information_schema.columns :c]]
+               :from [[:system.information_schema.columns :c]]
                ;; Following links contains contains diagram of `information_schema`:
                ;; https://docs.databricks.com/en/sql/language-manual/sql-ref-information-schema.html
                :left-join [[{:select   [[:tc.table_catalog :table_catalog]
@@ -95,8 +96,8 @@
                                         [:tc.table_name :table_name]
                                         [:ccu.column_name :column_name]
                                         [:tc.constraint_type :constraint_type]]
-                             :from     [[:information_schema.table_constraints :tc]]
-                             :join     [[:information_schema.constraint_column_usage :ccu]
+                             :from     [[:system.information_schema.table_constraints :tc]]
+                             :join     [[:system.information_schema.constraint_column_usage :ccu]
                                         [:and
                                          [:= :tc.constraint_catalog :ccu.constraint_catalog]
                                          [:= :tc.constraint_schema :ccu.constraint_schema]
@@ -117,6 +118,7 @@
                             [:= :c.table_name :cs.table_name]
                             [:= :c.column_name :cs.column_name]]]
                :where [:and
+                       [:= :c.table_catalog [:inline catalog]]
                        ;; Ignore `timestamp_ntz` type columns. Columns of this type are not recognizable from
                        ;; `timestamp` columns when fetching the data. This exception should be removed when the problem
                        ;; is resolved by Databricks in underlying jdbc driver.
@@ -127,8 +129,14 @@
                :order-by [:table-schema :table-name :database-position]}
               :dialect (sql.qp/quote-style driver)))
 
+(defmethod driver/describe-fields :sql-jdbc
+  [driver database & {:as args}]
+  (let [catalog (get-in database [:details :catalog])]
+    (sql-jdbc.sync/describe-fields driver database (assoc args :catalog catalog))))
+
 (defmethod sql-jdbc.sync/describe-fks-sql :databricks
-  [driver & {:keys [schema-names table-names]}]
+  [driver & {:keys [schema-names table-names catalog]}]
+  (assert (string? (not-empty catalog)) "`catalog` is required for sync.")
   (sql/format {:select (vec
                         {:fk_kcu.table_schema  "fk-table-schema"
                          :fk_kcu.table_name    "fk-table-name"
@@ -136,23 +144,29 @@
                          :pk_kcu.table_schema  "pk-table-schema"
                          :pk_kcu.table_name    "pk-table-name"
                          :pk_kcu.column_name   "pk-column-name"})
-               :from [[:information_schema.key_column_usage :fk_kcu]]
-               :join [[:information_schema.referential_constraints :rc]
+               :from [[:system.information_schema.key_column_usage :fk_kcu]]
+               :join [[:system.information_schema.referential_constraints :rc]
                       [:and
                        [:= :fk_kcu.constraint_catalog :rc.constraint_catalog]
                        [:= :fk_kcu.constraint_schema :rc.constraint_schema]
                        [:= :fk_kcu.constraint_name :rc.constraint_name]]
-                      [:information_schema.key_column_usage :pk_kcu]
+                      [:system.information_schema.key_column_usage :pk_kcu]
                       [[:and
                         [:= :pk_kcu.constraint_catalog :rc.unique_constraint_catalog]
                         [:= :pk_kcu.constraint_schema :rc.unique_constraint_schema]
                         [:= :pk_kcu.constraint_name :rc.unique_constraint_name]]]]
                :where [:and
+                       [:= :fk_kcu.table_catalog [:inline catalog]]
                        [:not [:in :fk_kcu.table_schema ["information_schema"]]]
                        (when table-names [:in :fk_kcu.table_name table-names])
                        (when schema-names [:in :fk_kcu.table_schema schema-names])]
                :order-by [:fk-table-schema :fk-table-name]}
               :dialect (sql.qp/quote-style driver)))
+
+(defmethod driver/describe-fks :sql-jdbc
+  [driver database & {:as args}]
+  (let [catalog (get-in database [:details :catalog])]
+    (sql-jdbc.sync/describe-fks driver database (assoc args :catalog catalog))))
 
 (defmethod sql-jdbc.execute/set-timezone-sql :databricks
   [_driver]
