@@ -3866,7 +3866,7 @@ describe("issue 45670", { tags: ["@external"] }, () => {
     cy.intercept("PUT", "/api/card/*").as("updateCard");
   });
 
-  it("should be able to pass query string parameters for boolean parameters in dashboards (metabase#49052)", () => {
+  it("should be able to pass query string parameters for boolean parameters in dashboards (metabase#45670)", () => {
     getField().then(field => {
       createNativeQuestion(getQuestionDetails(field.id)).then(
         ({ body: card }) => {
