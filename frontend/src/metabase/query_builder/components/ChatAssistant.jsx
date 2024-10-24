@@ -134,9 +134,9 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
                 let selectedAgent;
 
                 if (chatType === 'insights') {
-                    selectedAgent = assistants.find(assistant => assistant.assistant_id === 'e6f2b848-a10c-4851-ab04-907990412bc9');
+                    selectedAgent = assistants.find(assistant => assistant.assistant_id === '56788b8b-f7bf-415b-9bd9-1e89ac43f957');
                 } else {
-                    selectedAgent = assistants.find(assistant => assistant.assistant_id === '425d44e0-d1f2-414e-a7e4-6eb6635b4071');
+                    selectedAgent = assistants.find(assistant => assistant.assistant_id === '84d6bab8-80df-4e80-aeca-aea14081fc52');
                 }
 
                 // Fallback to first assistant if none match
