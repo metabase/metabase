@@ -248,7 +248,8 @@ jobs:
         run: |
           cd sdk
           echo //registry.npmjs.org/:_authToken=${{ secrets.NPM_RELEASE_TOKEN }} > .npmrc
-          npm publish --tag ${{fromJson('{"master": "canary", "release-x.51.x": "50-stable"}')[inputs.branch]}}
+          # Please keep the value in sync with `inputs.branch`'s release branch
+          npm publish --tag ${{fromJson('{"master": "canary", "release-x.51.x": "51-stable"}')[inputs.branch]}}
 
       - name: Add `latest` tag to the latest release branch (`release-x.51.x`) deployment
         if: ${{ inputs.branch == 'release-x.51.x' }}
