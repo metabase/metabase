@@ -2157,32 +2157,84 @@ describeEE("scenarios > dashboard > dashboard cards > click behavior", () => {
       saveDashboard({ waitMs: 250 });
 
       (function testQuestionDestinationClick() {
-        getDashboardCard().findByText("Created at: May 2022 - 19").click();
+        getDashboardCard()
+          .findAllByText("Created at: May 2022 - 1")
+          .first()
+          .click();
 
         cy.wait("@dataset");
-        cy.findByTestId("qb-filters-panel")
-          .should("contain.text", "Created At: Month is May 1–31, 2022")
-          .should("contain.text", "Count is equal to 19");
 
         cy.location("pathname").should("equal", "/question");
         cy.findByTestId("app-bar").should(
           "contain.text",
           `Started from ${targetQuestion.name}`,
         );
-        verifyVizTypeIsLine();
 
         openNotebook();
         verifyNotebookQuery("Orders", [
           {
-            aggregations: ["Count"],
-            breakouts: ["Created At: Month"],
-            limit: 5,
+            joins: [
+              {
+                lhsTable: "Orders",
+                rhsTable: "Reviews",
+                type: "left-outer",
+                conditions: [
+                  {
+                    operator: "=",
+                    lhsColumn: "Product ID",
+                    rhsColumn: "Product ID",
+                  },
+                ],
+              },
+            ],
+            expressions: ["Net"],
+            filters: [
+              "Product → Title is Doohickey",
+              "Product → Vendor is Doohickey",
+              "ID is 7021",
+              "Net is equal to -80",
+              "Reviews - Product → Reviewer is Doohickey",
+              "User → Longitude is equal to -80",
+            ],
+            aggregations: ["Count", "Sum of Total"],
+            breakouts: [
+              "Created At: Month",
+              "Product → Category",
+              "User → Created At: Year",
+            ],
           },
           {
-            filters: [
-              "Created At: Month is May 1–31, 2022",
-              "Count is equal to 19",
+            joins: [
+              {
+                lhsTable: "Previous results",
+                rhsTable: "Reviews",
+                type: "left-outer",
+                conditions: [
+                  {
+                    operator: "=",
+                    lhsColumn: "Created At: Month",
+                    rhsColumn: "Created At: Month",
+                  },
+                ],
+              },
             ],
+            expressions: ["5 * Count"],
+            filters: [
+              "5 * Count is equal to 1",
+              "Reviews - Created At: Month → Rating is equal to 7021",
+              "Product → Category is Doohickey",
+            ],
+            aggregations: [
+              "Count",
+              "Sum of Reviews - Created At: Month → Rating",
+            ],
+            breakouts: [
+              "Product → Category",
+              "Reviews - Created At: Month → Created At",
+            ],
+          },
+          {
+            filters: ["Count is equal to -80"],
           },
         ]);
       })();
@@ -2816,8 +2868,8 @@ const getCountToDashboardFilterMapping = () => {
 function getClickMapping(columnName) {
   return cy
     .get("aside")
-    .findAllByTestId("click-target-column")
-    .filter(`:contains(${columnName})`);
+    .findByTestId("unset-click-mappings")
+    .findAllByText(columnName);
 }
 
 function customizeLinkText(text) {

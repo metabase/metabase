@@ -79,7 +79,7 @@ class ClickMappings extends Component {
             <p className={cx(CS.mb2, CS.textMedium)}>
               {this.getTargetsHeading(setTargets)}
             </p>
-            <div>
+            <div data-testid="unset-click-mappings">
               {unsetTargetsWithSourceOptions.map(
                 ({ target, sourceOptions }) => (
                   <TargetWithoutSource

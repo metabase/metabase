@@ -225,8 +225,19 @@ export function selectFilterOperator(operatorName: string) {
 }
 
 type Stage = {
-  // TODO: support joins - feel free to add them
-  // TODO: support custom columns - feel free to add them
+  // TODO: implement me
+  joins?: {
+    lhsTable: string;
+    rhsTable: string;
+    type: "left-outer" | "right-outer" | "inner";
+    conditions: {
+      operator: "=" | ">" | "<" | ">=" | "<=" | "!=";
+      lhsColumn: string;
+      rhsColumn: string;
+    }[];
+  }[];
+  // TODO: implement me
+  expressions?: string[];
   filters?: string[];
   aggregations?: string[];
   breakouts?: string[];
