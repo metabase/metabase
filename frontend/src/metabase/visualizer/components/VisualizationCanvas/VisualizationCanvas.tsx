@@ -12,6 +12,7 @@ import {
 import type { VisualizationSettings } from "metabase-types/api";
 
 import { BottomWell } from "./BottomWell";
+import { VerticalWell } from "./VerticalWell";
 
 export function VisualizationCanvas() {
   const rawSeries = useSelector(getVisualizerRawSeries);
@@ -28,30 +29,31 @@ export function VisualizationCanvas() {
     [dispatch],
   );
 
+  if (!hasSeriesToShow) {
+    return (
+      <Center h="100%" w="100%" mx="auto">
+        <Text>{t`Visualization will appear here`}</Text>
+      </Center>
+    );
+  }
+
   return (
-    <Flex
-      w="100%"
-      h="100%"
-      direction="column"
-      bg="white"
-      style={{ borderRadius: "var(--default-border-radius)" }}
-    >
-      {hasSeriesToShow ? (
-        <>
-          <Visualization rawSeries={rawSeries} />
-          <BottomWell
-            display={card.display}
-            settings={settings}
-            w="95%"
-            style={{ alignSelf: "center" }}
-            onChangeSettings={handleUpdateSettings}
-          />
-        </>
-      ) : (
-        <Center h="100%" w="100%" mx="auto">
-          <Text>{t`Visualization will appear here`}</Text>
-        </Center>
-      )}
+    <Flex w="100%" h="100%">
+      <VerticalWell
+        display={card.display}
+        settings={settings}
+        onChangeSettings={handleUpdateSettings}
+      />
+      <Flex direction="column" style={{ flex: 1 }}>
+        <Visualization rawSeries={rawSeries} />
+        <BottomWell
+          display={card.display}
+          settings={settings}
+          w="95%"
+          style={{ alignSelf: "center" }}
+          onChangeSettings={handleUpdateSettings}
+        />
+      </Flex>
     </Flex>
   );
 }

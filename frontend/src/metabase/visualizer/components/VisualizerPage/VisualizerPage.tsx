@@ -19,8 +19,13 @@ export const VisualizerPage = () => {
         component="main"
         w="100%"
         h="100%"
-        p={10}
-        style={{ overflowY: "hidden" }}
+        m={10}
+        p="xl"
+        bg="white"
+        style={{
+          borderRadius: "var(--default-border-radius)",
+          overflowY: "hidden",
+        }}
       >
         <VisualizationCanvas />
       </Box>
