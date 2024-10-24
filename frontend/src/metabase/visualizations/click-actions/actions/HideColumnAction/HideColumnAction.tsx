@@ -49,6 +49,7 @@ export const HideColumnAction: LegacyDrill = ({
 
         return question.updateSettings({ "table.columns": columnSettingsCopy });
       },
+      questionChangeBehavior: "updateQuestion",
     },
   ];
 };

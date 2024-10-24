@@ -88,7 +88,6 @@ export const InteractiveQuestionProvider = ({
     loadQuestion,
     updateQuestion,
     navigateToNewCard,
-    updateVisualizationSettings,
   } = useLoadQuestion({
     cardId,
     options,
@@ -113,7 +112,6 @@ export const InteractiveQuestionProvider = ({
     onNavigateBack,
     runQuestion,
     updateQuestion,
-    updateVisualizationSettings,
     navigateToNewCard,
     plugins: combinedPlugins,
     question,

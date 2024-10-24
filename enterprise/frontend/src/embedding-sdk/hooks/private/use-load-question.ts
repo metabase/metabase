@@ -1,4 +1,4 @@
-import { useCallback, useReducer, useRef } from "react";
+import { useReducer, useRef } from "react";
 import { useAsyncFn, useUnmount } from "react-use";
 
 import {
@@ -14,9 +14,7 @@ import type {
   SdkQuestionState,
 } from "embedding-sdk/types/question";
 import { type Deferred, defer } from "metabase/lib/promise";
-import { shouldUpdateVisualizationSettings } from "metabase/query_builder/actions";
 import type Question from "metabase-lib/v1/Question";
-import type { VisualizationSettings } from "metabase-types/api";
 
 type LoadQuestionResult = Promise<
   SdkQuestionState & { originalQuestion?: Question }
@@ -41,7 +39,6 @@ export interface LoadQuestionHookResult {
   ): Promise<void>;
 
   navigateToNewCard(params: NavigateToNewCardParams): Promise<void>;
-  updateVisualizationSettings(settings: VisualizationSettings): Promise<void>;
 }
 
 export function useLoadQuestion({
@@ -147,17 +144,6 @@ export function useLoadQuestion({
     [dispatch, originalQuestion],
   );
 
-  const updateVisualizationSettings = useCallback(
-    async (settings: VisualizationSettings) => {
-      if (!question || !shouldUpdateVisualizationSettings(settings)) {
-        return;
-      }
-
-      return updateQuestion(question.updateSettings(settings), { run: false });
-    },
-    [question, updateQuestion],
-  );
-
   const isQueryRunning =
     runQuestionState.loading ||
     updateQuestionState.loading ||
@@ -176,7 +162,6 @@ export function useLoadQuestion({
     loadQuestion,
     updateQuestion,
     navigateToNewCard,
-    updateVisualizationSettings,
   };
 }
 
