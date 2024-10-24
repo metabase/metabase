@@ -74,8 +74,8 @@ const AppBarLarge = ({
       </AppBarLeftContainer>
       {(isSearchVisible || isNewButtonVisible || isProfileLinkVisible) && (
         <AppBarRightContainer>
-          {isSearchVisible && (isEmbedded ? <SearchBar /> : <SearchButton />)}
           {isNewButtonVisible && <NewItemButton collectionId={collectionId} />}
+          {isSearchVisible && (isEmbedded ? <SearchBar /> : <SearchButton />)}
           {isProfileLinkVisible && (
             <AppBarProfileLinkContainer aria-label={t`Settings menu`}>
               <ProfileLink onLogout={onLogout} />

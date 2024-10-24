@@ -13,8 +13,13 @@ const NewItemButton = ({ collectionId }: NewItemButtonProps) => {
   return (
     <NewItemMenu
       trigger={
-        <NewButton primary icon="add" aria-label={t`New`}>
-          <NewButtonText>{t`New`}</NewButtonText>
+        <NewButton
+          primary
+          icon="insight"
+          aria-label={t`Go`}
+          data-testid="go-menu-button"
+        >
+          <NewButtonText>{t`Go`}</NewButtonText>
         </NewButton>
       }
       collectionId={collectionId}
