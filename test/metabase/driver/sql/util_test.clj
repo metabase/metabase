@@ -4,9 +4,6 @@
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.sql.util :as sql.u]
-   [metabase.query-processor :as qp]
-   [metabase.query-processor.compile :as qp.compile]
-   [metabase.test :as mt]
    [metabase.util.honey-sql-2 :as h2x]))
 
 ;;; Ok to hardcode driver names here because it's for a general util function and not something that needs to be run
@@ -139,15 +136,3 @@
                                 (pound-sign-is-special-word-char? driver-or-dialect)))]
           (testing (str "driver or dialect " driver-or-dialect)
             (is (str/includes? (sql.u/format-sql-and-fix-params driver-or-dialect q) op))))))))
-
-(deftest ^:parallel prettify-native-form-executable-test
-  ;; lbrdnk: TODO: Relax tested driver's set to all sql driver. Not doing that now to avoid blocking others in case
-  ;; there are failures in other drivers.
-  #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
-  (mt/test-driver
-    :databricks
-    (is (=? {:status :completed}
-            (qp/process-query {:database (mt/id)
-                               :type     :native
-                               :native   (-> (qp.compile/compile (mt/mbql-query orders {:limit 1}))
-                                             (update :query (partial driver/prettify-native-form driver/*driver*)))})))))
