@@ -40,6 +40,11 @@ export function entityPickerModalLevel(level) {
   return cy.findByTestId(`item-picker-level-${level}`);
 }
 
+/**
+ *
+ * @param {number} level
+ * @param {string} name
+ */
 export function entityPickerModalItem(level, name) {
   return entityPickerModalLevel(level).findByText(name).parents("button");
 }

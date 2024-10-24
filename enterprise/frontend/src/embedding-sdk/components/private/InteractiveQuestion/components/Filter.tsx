@@ -46,7 +46,7 @@ const FilterInner = ({
     handleReset,
     handleSubmit,
     handleSearch,
-  } = useFilterModal(question.query(), onQueryChange);
+  } = useFilterModal(question, onQueryChange);
 
   const onApplyFilters = () => {
     handleSubmit();

@@ -1,7 +1,12 @@
 import { createMockMetadata } from "__support__/metadata";
 import { checkNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
-import { createQuery, createQueryWithClauses } from "metabase-lib/test-helpers";
+import {
+  columnFinder,
+  createQuery,
+  createQueryWithClauses,
+  getJoinQueryHelpers,
+} from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
@@ -27,6 +32,7 @@ import {
 import {
   PRODUCTS,
   PRODUCTS_ID,
+  REVIEWS_ID,
   SAMPLE_DB_ID,
   createOrdersCreatedAtField,
   createOrdersQuantityField,
@@ -103,6 +109,54 @@ const queryDateBreakoutsMultiStage = createQueryWithClauses({
     },
   ],
 });
+
+const ordersColumns = [
+  ["Orders", "Created At"],
+  ["Orders", "Discount"],
+  ["Orders", "ID"],
+  ["Orders", "Product ID"],
+  ["Orders", "Quantity"],
+  ["Orders", "Subtotal"],
+  ["Orders", "Tax"],
+  ["Orders", "Total"],
+  ["Orders", "User ID"],
+];
+
+const productsColumns = [
+  ["Products", "Product → Category"],
+  ["Products", "Product → Created At"],
+  ["Products", "Product → Ean"],
+  ["Products", "Product → ID"],
+  ["Products", "Product → Price"],
+  ["Products", "Product → Rating"],
+  ["Products", "Product → Title"],
+  ["Products", "Product → Vendor"],
+];
+
+const peopleColumns = [
+  ["People", "User → Address"],
+  ["People", "User → Birth Date"],
+  ["People", "User → City"],
+  ["People", "User → Created At"],
+  ["People", "User → Email"],
+  ["People", "User → ID"],
+  ["People", "User → Latitude"],
+  ["People", "User → Longitude"],
+  ["People", "User → Name"],
+  ["People", "User → Password"],
+  ["People", "User → Source"],
+  ["People", "User → State"],
+  ["People", "User → Zip"],
+];
+
+const reviewsJoinProductsColumns = [
+  ["Reviews", "Reviews - Product → Body"],
+  ["Reviews", "Reviews - Product → Created At"],
+  ["Reviews", "Reviews - Product → ID"],
+  ["Reviews", "Reviews - Product → Product ID"],
+  ["Reviews", "Reviews - Product → Rating"],
+  ["Reviews", "Reviews - Product → Reviewer"],
+];
 
 describe("parameters/utils/targets", () => {
   describe("isDimensionTarget", () => {
@@ -221,43 +275,72 @@ describe("parameters/utils/targets", () => {
       describe("question", () => {
         it("returns columns from source table and implicitly joinable tables", () => {
           const question = createQuestion(queryOrders);
-          const { query, stageIndex, columns } = getParameterColumns(
-            question,
-            parameter,
+          const { query, columns } = getParameterColumns(question, parameter);
+          const columnsInfos = getColumnsInfos(query, columns);
+
+          expect(columnsInfos).toEqual(
+            withColumnsStage(0, [
+              ...ordersColumns,
+              ...productsColumns,
+              ...peopleColumns,
+            ]),
           );
-          const columnsInfos = getColumnsInfos(query, stageIndex, columns);
+        });
+
+        it("complex 1-stage query", () => {
+          const question = createQuestion(createComplex1StageQuery());
+          const { query, columns } = getParameterColumns(question, parameter);
+          const columnsInfos = getColumnsInfos(query, columns);
 
           expect(columnsInfos).toEqual([
-            ["Orders", "Created At"],
-            ["Orders", "Discount"],
-            ["Orders", "ID"],
-            ["Orders", "Product ID"],
-            ["Orders", "Quantity"],
-            ["Orders", "Subtotal"],
-            ["Orders", "Tax"],
-            ["Orders", "Total"],
-            ["Orders", "User ID"],
-            ["Products", "Product → Category"],
-            ["Products", "Product → Created At"],
-            ["Products", "Product → Ean"],
-            ["Products", "Product → ID"],
-            ["Products", "Product → Price"],
-            ["Products", "Product → Rating"],
-            ["Products", "Product → Title"],
-            ["Products", "Product → Vendor"],
-            ["People", "User → Address"],
-            ["People", "User → Birth Date"],
-            ["People", "User → City"],
-            ["People", "User → Created At"],
-            ["People", "User → Email"],
-            ["People", "User → ID"],
-            ["People", "User → Latitude"],
-            ["People", "User → Longitude"],
-            ["People", "User → Name"],
-            ["People", "User → Password"],
-            ["People", "User → Source"],
-            ["People", "User → State"],
-            ["People", "User → Zip"],
+            ...withColumnsStage(0, ordersColumns),
+            withColumnStage(0, [undefined, "User's 18th birthday"]),
+            ...withColumnsStage(0, reviewsJoinProductsColumns),
+            ...withColumnsStage(0, productsColumns),
+            ...withColumnsStage(0, peopleColumns),
+            ...withColumnsStage(0, productsColumns),
+            ...withColumnsStage(1, [
+              ["Orders", "Created At: Month"],
+              ["Products", "Created At: Year"],
+              ["Reviews", "Created At: Quarter"],
+              [undefined, "User's 18th birthday"],
+              [undefined, "Count"],
+              [undefined, "Sum of Total"],
+            ]),
+          ]);
+        });
+
+        it("complex 2-stage query", () => {
+          const question = createQuestion(createComplex2StageQuery());
+          const { query, columns } = getParameterColumns(question, parameter);
+          const columnsInfos = getColumnsInfos(query, columns);
+
+          expect(columnsInfos).toEqual([
+            ...withColumnsStage(0, ordersColumns),
+            withColumnStage(0, [undefined, "User's 18th birthday"]),
+            ...withColumnsStage(0, reviewsJoinProductsColumns),
+            ...withColumnsStage(0, productsColumns),
+            ...withColumnsStage(0, peopleColumns),
+            ...withColumnsStage(0, productsColumns),
+            ...withColumnsStage(1, [
+              ["Orders", "Created At: Month"],
+              ["Products", "Created At: Year"],
+              ["Reviews", "Created At: Quarter"],
+              [undefined, "User's 18th birthday"],
+              [undefined, "Count"],
+              [undefined, "Sum of Total"],
+            ]),
+            withColumnStage(1, [undefined, "Count + 1"]),
+            ...withColumnsStage(1, [
+              ["Reviews", "Reviews - Created At: Quarter → Body"],
+              ["Reviews", "Reviews - Created At: Quarter → Created At"],
+              ["Reviews", "Reviews - Created At: Quarter → ID"],
+              ["Reviews", "Reviews - Created At: Quarter → Product ID"],
+              ["Reviews", "Reviews - Created At: Quarter → Rating"],
+              ["Reviews", "Reviews - Created At: Quarter → Reviewer"],
+            ]),
+            withColumnStage(2, [undefined, "User's 18th birthday"]),
+            withColumnStage(2, [undefined, "Count"]),
           ]);
         });
       });
@@ -268,43 +351,61 @@ describe("parameters/utils/targets", () => {
             queryOrders,
             checkNotNull(createOrdersTable().fields),
           );
-          const { query, stageIndex, columns } = getParameterColumns(
-            question,
-            parameter,
+          const { query, columns } = getParameterColumns(question, parameter);
+          const columnsInfos = getColumnsInfos(query, columns);
+
+          expect(columnsInfos).toEqual(
+            withColumnsStage(0, [
+              ["Question", "ID"],
+              ["Question", "User ID"],
+              ["Question", "Product ID"],
+              ["Question", "Subtotal"],
+              ["Question", "Tax"],
+              ["Question", "Total"],
+              ["Question", "Discount"],
+              ["Question", "Created At"],
+              ["Question", "Quantity"],
+              ...productsColumns,
+              ...peopleColumns,
+            ]),
           );
-          const columnsInfos = getColumnsInfos(query, stageIndex, columns);
+        });
+
+        it("complex 1-stage query", () => {
+          const question = createModel(createComplex1StageQuery(), [
+            createMockField({ display_name: "Created At" }),
+            createMockField({ display_name: "User's 18th birthday" }),
+            createMockField({ display_name: "Reviews - Product → Created At" }),
+            createMockField({ display_name: "Product → Created At" }),
+            createMockField({ display_name: "Count" }),
+            createMockField({ display_name: "Sum of Total" }),
+          ]);
+          const { query, columns } = getParameterColumns(question, parameter);
+          const columnsInfos = getColumnsInfos(query, columns);
 
           expect(columnsInfos).toEqual([
-            ["Question", "ID"],
-            ["Question", "User ID"],
-            ["Question", "Product ID"],
-            ["Question", "Subtotal"],
-            ["Question", "Tax"],
-            ["Question", "Total"],
-            ["Question", "Discount"],
-            ["Question", "Created At"],
-            ["Question", "Quantity"],
-            ["People", "User → Address"],
-            ["People", "User → Birth Date"],
-            ["People", "User → City"],
-            ["People", "User → Created At"],
-            ["People", "User → Email"],
-            ["People", "User → ID"],
-            ["People", "User → Latitude"],
-            ["People", "User → Longitude"],
-            ["People", "User → Name"],
-            ["People", "User → Password"],
-            ["People", "User → Source"],
-            ["People", "User → State"],
-            ["People", "User → Zip"],
-            ["Products", "Product → Category"],
-            ["Products", "Product → Created At"],
-            ["Products", "Product → Ean"],
-            ["Products", "Product → ID"],
-            ["Products", "Product → Price"],
-            ["Products", "Product → Rating"],
-            ["Products", "Product → Title"],
-            ["Products", "Product → Vendor"],
+            ...withColumnsStage(0, [
+              ["Question", "Created At"],
+              ["Question", "User's 18th birthday"],
+              ["Question", "Reviews - Product → Created At"],
+              ["Question", "Product → Created At"],
+              ["Question", "Count"],
+              ["Question", "Sum of Total"],
+            ]),
+          ]);
+        });
+
+        it("complex 2-stage query", () => {
+          const question = createModel(createComplex2StageQuery(), [
+            createMockField({ display_name: "User's 18th birthday" }),
+            createMockField({ display_name: "Count" }),
+          ]);
+          const { query, columns } = getParameterColumns(question, parameter);
+          const columnsInfos = getColumnsInfos(query, columns);
+
+          expect(columnsInfos).toEqual([
+            withColumnStage(0, ["Question", "User's 18th birthday"]),
+            withColumnStage(0, ["Question", "Count"]),
           ]);
         });
       });
@@ -330,38 +431,35 @@ describe("parameters/utils/targets", () => {
 
         it("1 date breakout - returns 1 date column", () => {
           const question = createQuestion(query1DateBreakout);
-          const { query, stageIndex, columns } = getParameterColumns(
-            question,
-            parameter,
-          );
-          const columnsInfos = getColumnsInfos(query, stageIndex, columns);
+          const { query, columns } = getParameterColumns(question, parameter);
+          const columnsInfos = getColumnsInfos(query, columns);
 
-          expect(columnsInfos).toEqual([["Orders", "Created At"]]);
+          expect(columnsInfos).toEqual(
+            withColumnsStage(0, [["Orders", "Created At"]]),
+          );
         });
 
         it("2 date breakouts - returns 2 date columns", () => {
           const question = createQuestion(query2DateBreakouts);
-          const { query, stageIndex, columns } = getParameterColumns(
-            question,
-            parameter,
-          );
-          const columnsInfos = getColumnsInfos(query, stageIndex, columns);
+          const { query, columns } = getParameterColumns(question, parameter);
+          const columnsInfos = getColumnsInfos(query, columns);
 
-          expect(columnsInfos).toEqual([
-            ["Orders", "Created At"],
-            ["Products", "Product → Created At"],
-          ]);
+          expect(columnsInfos).toEqual(
+            withColumnsStage(0, [
+              ["Orders", "Created At"],
+              ["Products", "Product → Created At"],
+            ]),
+          );
         });
 
         it("date breakouts in multiple stages - returns date column from the last stage only", () => {
           const question = createQuestion(queryDateBreakoutsMultiStage);
-          const { query, stageIndex, columns } = getParameterColumns(
-            question,
-            parameter,
-          );
-          const columnsInfos = getColumnsInfos(query, stageIndex, columns);
+          const { query, columns } = getParameterColumns(question, parameter);
+          const columnsInfos = getColumnsInfos(query, columns);
 
-          expect(columnsInfos).toEqual([["Orders", "Created At: Month"]]);
+          expect(columnsInfos).toEqual(
+            withColumnsStage(1, [["Orders", "Created At: Month"]]),
+          );
         });
       });
 
@@ -379,7 +477,7 @@ describe("parameters/utils/targets", () => {
         it("non-date breakout - returns no columns", () => {
           const question = createModel(queryNonDateBreakout, [
             createOrdersQuantityField(),
-            createCountField(),
+            createMockField({ display_name: "Count" }),
           ]);
           const { columns } = getParameterColumns(question, parameter);
 
@@ -389,7 +487,7 @@ describe("parameters/utils/targets", () => {
         it("1 date breakout - returns 1 date column", () => {
           const question = createModel(query1DateBreakout, [
             createOrdersCreatedAtField(),
-            createCountField(),
+            createMockField({ display_name: "Count" }),
           ]);
           const { columns } = getParameterColumns(question, parameter);
 
@@ -400,7 +498,7 @@ describe("parameters/utils/targets", () => {
           const question = createModel(query2DateBreakouts, [
             createOrdersCreatedAtField(),
             createProductsCreatedAtField(),
-            createCountField(),
+            createMockField({ display_name: "Count" }),
           ]);
           const { columns } = getParameterColumns(question, parameter);
 
@@ -410,7 +508,7 @@ describe("parameters/utils/targets", () => {
         it("date breakouts in multiple stages - returns date column from the last stage only", () => {
           const question = createModel(queryDateBreakoutsMultiStage, [
             createOrdersCreatedAtField(),
-            createCountField(),
+            createMockField({ display_name: "Count" }),
           ]);
           const { columns } = getParameterColumns(question, parameter);
 
@@ -425,18 +523,17 @@ describe("parameters/utils/targets", () => {
       describe("question", () => {
         it("returns date columns from source table and implicitly joinable tables", () => {
           const question = createQuestion(queryOrders);
-          const { query, stageIndex, columns } = getParameterColumns(
-            question,
-            parameter,
-          );
-          const columnsInfos = getColumnsInfos(query, stageIndex, columns);
+          const { query, columns } = getParameterColumns(question, parameter);
+          const columnsInfos = getColumnsInfos(query, columns);
 
-          expect(columnsInfos).toEqual([
-            ["Orders", "Created At"],
-            ["Products", "Product → Created At"],
-            ["People", "User → Birth Date"],
-            ["People", "User → Created At"],
-          ]);
+          expect(columnsInfos).toEqual(
+            withColumnsStage(0, [
+              ["Orders", "Created At"],
+              ["Products", "Product → Created At"],
+              ["People", "User → Birth Date"],
+              ["People", "User → Created At"],
+            ]),
+          );
         });
       });
 
@@ -446,23 +543,128 @@ describe("parameters/utils/targets", () => {
             queryOrders,
             checkNotNull(createOrdersTable().fields),
           );
-          const { query, stageIndex, columns } = getParameterColumns(
-            question,
-            parameter,
-          );
-          const columnsInfos = getColumnsInfos(query, stageIndex, columns);
+          const { query, columns } = getParameterColumns(question, parameter);
+          const columnsInfos = getColumnsInfos(query, columns);
 
-          expect(columnsInfos).toEqual([
-            ["Question", "Created At"],
-            ["People", "User → Birth Date"],
-            ["People", "User → Created At"],
-            ["Products", "Product → Created At"],
-          ]);
+          expect(columnsInfos).toEqual(
+            withColumnsStage(0, [
+              ["Question", "Created At"],
+              ["Products", "Product → Created At"],
+              ["People", "User → Birth Date"],
+              ["People", "User → Created At"],
+            ]),
+          );
         });
       });
     });
   });
 });
+
+function createComplex1StageQuery() {
+  const baseQuery = ordersJoinReviewsOnProductId();
+  const findColumn = columnFinder(baseQuery, Lib.visibleColumns(baseQuery, -1));
+  const userBirthdayColumn = findColumn("PEOPLE", "BIRTH_DATE");
+
+  return createQueryWithClauses({
+    query: baseQuery,
+    expressions: [
+      {
+        name: "User's 18th birthday",
+        operator: "datetime-add",
+        args: [checkNotNull(userBirthdayColumn), 18, "year"],
+      },
+    ],
+    aggregations: [
+      { operatorName: "count" },
+      { operatorName: "sum", tableName: "ORDERS", columnName: "TOTAL" },
+    ],
+    breakouts: [
+      {
+        tableName: "ORDERS",
+        columnName: "CREATED_AT",
+        temporalBucketName: "Month",
+      },
+      {
+        tableName: "PRODUCTS",
+        columnName: "CREATED_AT",
+        temporalBucketName: "Year",
+      },
+      {
+        tableName: "REVIEWS",
+        columnName: "CREATED_AT",
+        temporalBucketName: "Quarter",
+      },
+      {
+        columnName: "User's 18th birthday",
+      },
+    ],
+  });
+}
+
+function createComplex2StageQuery() {
+  const baseQuery = Lib.appendStage(createComplex1StageQuery());
+  const findColumn = columnFinder(baseQuery, Lib.visibleColumns(baseQuery, -1));
+  const countColumn = findColumn(null, "count");
+
+  const stageIndex = -1;
+  const {
+    table,
+    defaultStrategy,
+    defaultOperator,
+    findLHSColumn,
+    findRHSColumn,
+  } = getJoinQueryHelpers(baseQuery, stageIndex, REVIEWS_ID);
+
+  const createdAt = findLHSColumn("ORDERS", "CREATED_AT");
+  const reviewsCreatedAt = findRHSColumn("REVIEWS", "CREATED_AT");
+  const condition = Lib.joinConditionClause(
+    baseQuery,
+    stageIndex,
+    defaultOperator,
+    reviewsCreatedAt,
+    createdAt,
+  );
+  const join = Lib.joinClause(table, [condition], defaultStrategy);
+  const queryWithJoin = Lib.join(baseQuery, stageIndex, join);
+
+  return createQueryWithClauses({
+    query: queryWithJoin,
+    expressions: [
+      {
+        name: "Count + 1",
+        operator: "+",
+        args: [checkNotNull(countColumn), 1],
+      },
+    ],
+    aggregations: [{ operatorName: "count" }],
+    breakouts: [{ columnName: "User's 18th birthday" }],
+  });
+}
+
+function ordersJoinReviewsOnProductId() {
+  const stageIndex = -1;
+  const {
+    table,
+    defaultStrategy,
+    defaultOperator,
+    findLHSColumn,
+    findRHSColumn,
+  } = getJoinQueryHelpers(queryOrders, stageIndex, REVIEWS_ID);
+
+  const productsId = findLHSColumn("ORDERS", "PRODUCT_ID");
+  const reviewsProductId = findRHSColumn("REVIEWS", "PRODUCT_ID");
+  const condition = Lib.joinConditionClause(
+    queryOrders,
+    stageIndex,
+    defaultOperator,
+    reviewsProductId,
+    productsId,
+  );
+  const join = Lib.joinClause(table, [condition], defaultStrategy);
+  const query = Lib.join(queryOrders, stageIndex, join);
+
+  return query;
+}
 
 function createUnitOfTimeParameter() {
   return createMockParameter({
@@ -486,17 +688,6 @@ function createDateParameter() {
 
 function createQuestion(query: Lib.Query) {
   return new Question(createMockCard(), metadata).setQuery(query);
-}
-
-function createCountField() {
-  return createMockField({
-    display_name: "Count",
-    semantic_type: "type/Quantity",
-    field_ref: ["aggregation", 0],
-    base_type: "type/BigInteger",
-    effective_type: "type/BigInteger",
-    name: "count",
-  });
 }
 
 function createModel(
@@ -526,11 +717,25 @@ function getModelVirtualTable(card: Card) {
 
 function getColumnsInfos(
   query: Lib.Query,
-  stageIndex: number,
-  columns: Lib.ColumnMetadata[],
+  columns: {
+    stageIndex: number;
+    column: Lib.ColumnMetadata;
+    group: Lib.ColumnGroup;
+  }[],
 ) {
-  return columns.map(column => {
+  return columns.map(({ column, stageIndex }) => {
     const info = Lib.displayInfo(query, stageIndex, column);
-    return [info.table?.displayName, info.longDisplayName];
+    return [stageIndex, info.table?.displayName, info.longDisplayName];
   });
+}
+
+function withColumnsStage(
+  stageIndex: number,
+  columns: (string | undefined)[][],
+) {
+  return columns.map(column => withColumnStage(stageIndex, column));
+}
+
+function withColumnStage(stageIndex: number, column: (string | undefined)[]) {
+  return [stageIndex, ...column];
 }

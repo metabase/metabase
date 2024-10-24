@@ -192,12 +192,12 @@
                                                               :card_id      card-id
                                                               :target       [:dimension
                                                                              [:field (mt/id :venues :id) {:base-type "type/BigInteger"}]
-                                                                             {:stage-number -2}]}
+                                                                             {:stage-number 0}]}
                                                              {:parameter_id "_COUNT_"
                                                               :card_id      card-id
                                                               :target       [:dimension
                                                                              [:field "count" {:base-type "type/Integer"}]
-                                                                             {:stage-number -1}]}]}]
+                                                                             {:stage-number 1}]}]}]
       (are [count-filter rows] (= rows
                                   (mt/formatted-rows [str int int]
                                                      (run-query-for-dashcard
@@ -205,13 +205,13 @@
                                                       :parameters [{:id    "_VENUE_ID_"
                                                                     :target [:dimension
                                                                              [:field "venue_id" {:base-type "type/BigInteger"}]
-                                                                             {:stage-number -2}]
+                                                                             {:stage-number 0}]
                                                                     :type  "id"
                                                                     :value 2}
                                                                    {:id    "_COUNT_"
                                                                     :target [:dimension
                                                                              [:field "count" {:base-type "type/Integer"}]
-                                                                             {:stage-number -1}]
+                                                                             {:stage-number 1}]
                                                                     :type  "number/>="
                                                                     :value count-filter}])))
         1 [["11" 2 1]]

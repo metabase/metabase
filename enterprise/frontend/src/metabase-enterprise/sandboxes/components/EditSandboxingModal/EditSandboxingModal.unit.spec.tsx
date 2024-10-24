@@ -144,6 +144,7 @@ describe("EditSandboxingModal", () => {
               foo: [
                 "dimension",
                 ["field", PEOPLE.ID, { "base-type": "type/BigInteger" }],
+                { "stage-number": 0 },
               ],
             },
             card_id: null,

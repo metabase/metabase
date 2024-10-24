@@ -222,7 +222,7 @@ export function QueryModals({
     case MODAL_TYPES.FILTERS:
       return (
         <FilterModal
-          query={question.query()}
+          question={question}
           onSubmit={onQueryChange}
           onClose={onCloseModal}
         />
