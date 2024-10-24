@@ -973,6 +973,33 @@ export const BarStackedAllLabelsTimeseriesWithGap45717 = {
   },
 };
 
+export const BarMaxCategoriesDefault = {
+  render: Template,
+
+  args: {
+    rawSeries: data.barMaxCategoriesDefault as any,
+    renderingContext,
+  },
+};
+
+export const BarMaxCategoriesStacked = {
+  render: Template,
+
+  args: {
+    rawSeries: data.barMaxCategoriesStacked as any,
+    renderingContext,
+  },
+};
+
+export const BarMaxCategoriesStackedNormalized = {
+  render: Template,
+
+  args: {
+    rawSeries: data.barMaxCategoriesStackedNormalized as any,
+    renderingContext,
+  },
+};
+
 export const OffsetBasedTimezone47835 = {
   render: Template,
   args: {

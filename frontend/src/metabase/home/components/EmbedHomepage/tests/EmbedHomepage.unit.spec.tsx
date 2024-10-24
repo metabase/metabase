@@ -10,24 +10,47 @@ import {
 } from "./setup";
 
 describe("EmbedHomepage (OSS)", () => {
-  it("should default to the static tab for OSS builds", () => {
+  it("should link to the docs for static embedding", () => {
     setup();
-    expect(
-      screen.getByText("Use static embedding", { exact: false }),
-    ).toBeInTheDocument();
-
-    // making sure Tabs isn't just rendering both tabs, making the test always pass
 
     expect(
-      screen.queryByText("Use interactive embedding", { exact: false }),
-    ).not.toBeInTheDocument();
-  });
-
-  it("should link to the docs", () => {
-    setup();
-    expect(screen.getByText("Learn more")).toHaveAttribute(
+      screen.getAllByRole("link", { name: "Read the docs" })[0],
+    ).toHaveAttribute(
       "href",
       "https://www.metabase.com/docs/latest/embedding/static-embedding.html?utm_source=product&source_plan=oss&utm_content=embedding-homepage",
+    );
+  });
+
+  it("should link to the docs for interactive embedding", () => {
+    setup();
+
+    expect(
+      screen.getAllByRole("link", { name: "Read the docs" })[2],
+    ).toHaveAttribute(
+      "href",
+      "https://www.metabase.com/docs/latest/embedding/interactive-embedding.html?utm_source=product&source_plan=oss&utm_content=embedding-homepage",
+    );
+  });
+
+  it("should link to the SDK quickstart", () => {
+    setup();
+
+    expect(
+      screen.getAllByRole("link", { name: "Check out the Quick Start" })[0],
+    ).toHaveAttribute(
+      "href",
+      "https://metaba.se/sdk-quick-start?utm_source=product&source_plan=oss&utm_content=embedding-homepage",
+    );
+  });
+
+  it("should link to the SDK docs", () => {
+    setup();
+
+    expect(
+      screen.getAllByRole("link", { name: "Read the docs" })[1],
+    ).toHaveAttribute(
+      "href",
+      "https://metaba.se/sdk-docs?utm_source=product&source_plan=oss&utm_content=embedding-homepage",
     );
   });
 
@@ -35,36 +58,10 @@ describe("EmbedHomepage (OSS)", () => {
     setup({ settings: { "example-dashboard-id": 1 } });
 
     expect(
-      screen.getByText("Select a question", { exact: false }),
-    ).toBeInTheDocument();
-
-    expect(
       screen.getByRole("link", {
-        name: /Embed this example dashboard/i,
+        name: /Embed an example dashboard/i,
       }),
     ).toHaveAttribute("href", "/dashboard/1");
-  });
-
-  it("should prompt to create a question if `example-dashboard-id` is not set", () => {
-    setup({ settings: { "example-dashboard-id": null } });
-
-    expect(
-      screen.getByText("Create a question", { exact: false }),
-    ).toBeInTheDocument();
-
-    expect(
-      screen.queryByRole("link", {
-        name: "Embed this example dashboard",
-      }),
-    ).not.toBeInTheDocument();
-  });
-
-  it("should prompt to enable static embedding", () => {
-    setup();
-
-    expect(
-      screen.getByText("Enable static embedding in the settings"),
-    ).toBeInTheDocument();
   });
 
   it("should set 'embedding-homepage' to 'dismissed-done' when dismissing as done", async () => {
