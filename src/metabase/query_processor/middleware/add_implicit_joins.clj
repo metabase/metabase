@@ -161,7 +161,6 @@
       (when source-query
         (recur source-query join))))
 
-;; TODO(BT) implement lib.equality style ref matching or something like distinct-fields above
 (defn- join-provides-field
   [{:keys [fields source-metadata source-table] :as join} field-clause]
   (case fields
