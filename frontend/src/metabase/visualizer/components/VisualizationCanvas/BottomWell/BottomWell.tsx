@@ -62,7 +62,7 @@ export function BottomWell({
         ...style,
         overflowX: "auto",
         overflowY: "hidden",
-        borderRadius: 16,
+        borderRadius: "var(--default-border-radius)",
       }}
     >
       <DndContext
@@ -107,7 +107,10 @@ function WellItem({ id, isDraggable = false, ...props }: WellItemProps) {
       {...props}
       bg={isDraggable ? "var(--mb-color-bg-white)" : "transparent"}
       px="sm"
-      style={{ borderRadius: 16, cursor: isDraggable ? "grab" : "default" }}
+      style={{
+        borderRadius: "var(--default-border-radius)",
+        cursor: isDraggable ? "grab" : "default",
+      }}
     />
   );
 
