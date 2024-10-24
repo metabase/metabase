@@ -161,39 +161,22 @@
       (when source-query
         (recur source-query join))))
 
-(defn- join-provides-field
-  [{:keys [fields source-metadata source-table] :as join} field-clause]
-  (case fields
-    :all (let [cols (or source-metadata
-                        (lib.metadata.protocols/fields (qp.store/metadata-provider) source-table))]
-           (when (some (comp #{field-clause} :field-ref) cols)
-             join))
-
-    :none nil
-
-    (when (some #{field-clause} fields)
-      join)))
-
 (defn- add-condition-fields-to-source
   "Add any fields that are needed for newly-added join conditions to source query `:fields` if they're not already
   present."
   [{{source-query-fields :fields} :source-query, :keys [joins], :as form}]
   (if (empty? source-query-fields)
     form
-    (let [needed (->> (set (filter some? (map (comp ::needs meta) joins)))
-                      (remove (fn [field-clause]
-                                (some #(join-provides-field % field-clause) joins))))]
+    (let [needed (set (filter some? (map (comp ::needs meta) joins)))]
       (update-in form [:source-query :fields] (fn [existing-fields]
                                                 (distinct-fields (concat existing-fields needed)))))))
 
-(defn- add-referenced-fields-to-source [{:keys [joins] :as form} reused-joins]
+(defn- add-referenced-fields-to-source [form reused-joins]
   (let [reused-join-alias? (set (map :alias reused-joins))
-        referenced-fields  (->> (set (lib.util.match/match (dissoc form :source-query :joins)
-                                       [:field _ (_ :guard (fn [{:keys [join-alias]}]
-                                                             (reused-join-alias? join-alias)))]
-                                       &match))
-                                (remove (fn [field-clause]
-                                          (some #(join-provides-field % field-clause) joins))))]
+        referenced-fields  (set (lib.util.match/match (dissoc form :source-query :joins)
+                                  [:field _ (_ :guard (fn [{:keys [join-alias]}]
+                                                        (reused-join-alias? join-alias)))]
+                                  &match))]
     (update-in form [:source-query :fields] (fn [existing-fields]
                                               (distinct-fields
                                                (concat existing-fields referenced-fields))))))
