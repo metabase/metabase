@@ -136,16 +136,13 @@ export function buildColumnTarget(
   stageIndex: number,
   column: Lib.ColumnMetadata,
 ): StructuredParameterDimensionTarget {
-  // BE works incorrectly with non-negative stage indexes: https://github.com/metabase/metabase/issues/48441
-  const fixedStageIndex =
-    stageIndex >= 0 ? stageIndex - Lib.stageCount(query) : stageIndex;
-  const fieldRef = Lib.legacyRef(query, fixedStageIndex, column);
+  const fieldRef = Lib.legacyRef(query, stageIndex, column);
 
   if (!isConcreteFieldReference(fieldRef)) {
     throw new Error(`Cannot build column target field reference: ${fieldRef}`);
   }
 
-  return ["dimension", fieldRef, { "stage-number": fixedStageIndex }];
+  return ["dimension", fieldRef, { "stage-number": stageIndex }];
 }
 
 export function buildTemplateTagVariableTarget(
@@ -168,8 +165,7 @@ export function getParameterColumns(question: Question, parameter?: Parameter) {
   const nextQuery = question.isPivoted() ? query : Lib.ensureFilterStage(query);
 
   if (parameter && isTemporalUnitParameter(parameter)) {
-    const needsFilterStage = Lib.stageCount(query) < Lib.stageCount(nextQuery);
-    const stageIndex = needsFilterStage ? -2 : -1;
+    const stageIndex = Lib.stageCount(query) - 1;
     const availableColumns = getTemporalColumns(nextQuery, stageIndex);
     const columns = availableColumns.filter(({ column, stageIndex }) => {
       return columnFilterForParameter(nextQuery, stageIndex, parameter)(column);
