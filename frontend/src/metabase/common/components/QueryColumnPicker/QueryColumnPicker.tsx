@@ -116,7 +116,9 @@ export function QueryColumnPicker({
         stageIndex,
         item.column,
       );
-      if (hasTemporalBucketing && isTemporalBucketable) {
+      // Was this a bug?
+      // Investigate!
+      if (!hasTemporalBucketing && isTemporalBucketable) {
         handleSelect(
           Lib.withDefaultTemporalBucket(query, stageIndex, item.column),
         );
