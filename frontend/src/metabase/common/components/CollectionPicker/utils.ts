@@ -115,8 +115,6 @@ export const getPathLevelForItem = (
   >,
   userPersonalCollectionId?: CollectionId,
 ): number => {
-  console.log({ item, path, userPersonalCollectionId });
-
   if (item.id === userPersonalCollectionId) {
     return 0;
   }

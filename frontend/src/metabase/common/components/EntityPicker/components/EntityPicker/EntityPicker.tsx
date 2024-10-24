@@ -117,15 +117,12 @@ export const EntityPicker = forwardRef(
     }, [models]);
     const path = pathProp ?? defaultPath;
 
-    console.log({ path });
-
     // const { currentCollection, currentQuestion, isLoading } =
     //   useGetInitialCollection(initialValue);
 
     const {
       isLoading,
       path: initialPath,
-      selectedItem: initialSelectedItem,
       collection: currentCollection,
     } = useGetInitialPath(models, options, initialValue);
 
@@ -154,8 +151,12 @@ export const EntityPicker = forwardRef(
           userPersonalCollectionId,
         );
         const newPath = path.slice(0, pathLevel + 1);
-        newPath[newPath.length - 1].selectedItem = { ...item };
 
+        // Need to do this
+        newPath[newPath.length - 1] = {
+          ...newPath[newPath.length - 1],
+          selectedItem: item,
+        };
         onItemSelect(item);
         onPathChange(newPath);
       },
@@ -164,16 +165,21 @@ export const EntityPicker = forwardRef(
 
     useDeepCompareEffect(() => {
       if (!isLoading && initialPath && !pathProp) {
-        // if (currentCollection.can_write) {
-        //   // start with the current item selected if we can
-        //   onItemSelect({
-        //     ...currentCollection,
-        //     model: "collection",
-        //   });
-        // }
+        if (
+          currentCollection.can_write &&
+          ["card", "dataset", "metric", "collection"].includes(
+            initialValue.model,
+          )
+        ) {
+          // start with the current item selected if we can
+          onItemSelect({
+            ...currentCollection,
+            model: "collection",
+          });
+        }
         onPathChange(initialPath);
       }
-    }, [isLoading, initialPath, initialSelectedItem, currentCollection]);
+    }, [isLoading, initialPath, currentCollection, initialValue.model]);
 
     // useDeepCompareEffect(
     //   function setInitialPath() {
