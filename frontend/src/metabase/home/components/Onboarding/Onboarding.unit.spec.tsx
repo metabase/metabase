@@ -13,15 +13,17 @@ import { Onboarding } from "./Onboarding";
 import type { ChecklistItemValue } from "./types";
 
 type SetupProps = {
+  enableXrays?: boolean;
   hasExampleDashboard?: boolean;
   isHosted?: boolean;
   openItem?: ChecklistItemValue;
 };
 
 const setup = ({
-  openItem,
+  enableXrays = true,
   hasExampleDashboard = true,
   isHosted = false,
+  openItem,
 }: SetupProps) => {
   const scrollIntoViewMock = jest.fn();
   window.HTMLElement.prototype.scrollIntoView = scrollIntoViewMock;
@@ -33,6 +35,7 @@ const setup = ({
       },
     }),
     settings: createMockSettingsState({
+      "enable-xrays": enableXrays,
       "example-dashboard-id": hasExampleDashboard ? 1 : null,
       "is-hosted?": isHosted,
     }),
@@ -179,6 +182,11 @@ describe("Onboarding", () => {
       setup({ openItem: "x-ray" });
 
       expect(getItemControl("Create automatic dashboards")).toBeInTheDocument();
+      expect(
+        within(getItem("x-ray")).getByText(
+          /Hover over a table and click the yellow lightning bolt/,
+        ),
+      ).toBeInTheDocument();
 
       const cta = within(getItem("x-ray")).getByRole("link");
 
@@ -186,6 +194,24 @@ describe("Onboarding", () => {
       expect(
         within(cta).getByRole("button", { name: "Browse data" }),
       ).toBeInTheDocument();
+    });
+
+    it("'x-ray' CTA should not render if x-rays are disabled", () => {
+      setup({ openItem: "x-ray", enableXrays: false });
+      expect(
+        within(getItem("x-ray")).queryByText(
+          /Hover over a table and click the yellow lightning bolt/,
+        ),
+      ).not.toBeInTheDocument();
+      expect(
+        within(getItem("x-ray")).getByText(
+          /You need to enable this feature first./,
+        ),
+      ).toBeInTheDocument();
+
+      expect(
+        within(getItem("x-ray")).queryByTestId("x-ray-cta"),
+      ).not.toBeInTheDocument();
     });
 
     it("'notebook' item should render properly", () => {

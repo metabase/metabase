@@ -13,6 +13,7 @@ import { useSetting, useTempStorage } from "metabase/common/hooks";
 import { getPlan } from "metabase/common/utils/plan";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import Link from "metabase/core/components/Link";
+import { getIsXrayEnabled } from "metabase/home/selectors";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { getDocsUrl, getSetting } from "metabase/selectors/settings";
@@ -138,6 +139,8 @@ export const Onboarding = () => {
 
     setItemValue(newValue);
   };
+
+  const isXrayEnabled = useSelector(getIsXrayEnabled);
 
   const utmTags = {
     utm_source: "product",
@@ -294,25 +297,31 @@ export const Onboarding = () => {
                     si="COmu2w0SqGagUoVp"
                     title="How to find and use X-rays?"
                   />
-                  <Text>
-                    {jt`Hover over a table and click the yellow lightning bolt ${(
-                      <Icon
-                        c="var(--mb-color-warning)"
-                        className={S.inlineIcon}
-                        key="bolt_icon"
-                        name="bolt_filled"
-                        size={14}
-                      />
-                    )}. ${applicationName} will create a bunch of charts based on that data and arrange them on a dashboard.`}
-                  </Text>
-                  <Box data-testid="x-ray-cta">
-                    <Link
-                      to="/browse/databases"
-                      onClick={() => trackChecklistItemCTAClicked("x-ray")}
-                    >
-                      <Button variant="outline">{t`Browse data`}</Button>
-                    </Link>
-                  </Box>
+                  {isXrayEnabled ? (
+                    <>
+                      <Text>
+                        {jt`Hover over a table and click the yellow lightning bolt ${(
+                          <Icon
+                            c="var(--mb-color-warning)"
+                            className={S.inlineIcon}
+                            key="bolt_icon"
+                            name="bolt_filled"
+                            size={14}
+                          />
+                        )}. ${applicationName} will create a bunch of charts based on that data and arrange them on a dashboard.`}
+                      </Text>
+                      <Box data-testid="x-ray-cta">
+                        <Link
+                          to="/browse/databases"
+                          onClick={() => trackChecklistItemCTAClicked("x-ray")}
+                        >
+                          <Button variant="outline">{t`Browse data`}</Button>
+                        </Link>
+                      </Box>
+                    </>
+                  ) : (
+                    <Text>{t`You need to enable this feature first.`}</Text>
+                  )}
                 </Stack>
               </Accordion.Panel>
             </Accordion.Item>
