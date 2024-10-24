@@ -7,11 +7,13 @@ import {
   setupCollectionsEndpoints,
 } from "__support__/server-mocks";
 import { setupNotificationChannelsEndpoints } from "__support__/server-mocks/pulse";
+import { mockSettings } from "__support__/settings";
 import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
 import { getDefaultTab } from "metabase/dashboard/actions";
 import {
   createMockDashboard,
   createMockDashboardCard,
+  createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
 import { createMockDashboardState } from "metabase-types/store/mocks";
@@ -42,11 +44,15 @@ export const setup = async ({
   slack = false,
   collections = [],
   hasEnterprisePlugins = false,
-  withFeatures = [],
+  tokenFeatures = {},
 }) => {
   setupCollectionsEndpoints({ collections });
   setupCollectionByIdEndpoint({ collections });
   setupBookmarksEndpoints([]);
+
+  const settings = mockSettings({
+    "token-features": createMockTokenFeatures(tokenFeatures),
+  });
 
   if (hasEnterprisePlugins) {
     setupEnterprisePlugins();
@@ -112,11 +118,11 @@ export const setup = async ({
     ></Route>,
     {
       withRouter: true,
-      withFeatures,
       storeInitialState: {
         currentUser: createMockUser({
           is_superuser: isAdmin,
         }),
+        settings,
         dashboard: createMockDashboardState({
           dashboardId: dashboard.id,
           dashboards: {
