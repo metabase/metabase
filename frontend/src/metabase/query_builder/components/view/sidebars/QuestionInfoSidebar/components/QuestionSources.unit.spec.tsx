@@ -5,8 +5,6 @@ import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { modelIconMap } from "metabase/lib/icon";
-import { checkNotNull } from "metabase/lib/types";
-import { getMetadata } from "metabase/selectors/metadata";
 import { convertSavedQuestionToVirtualTable } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { Card, NormalizedTable } from "metabase-types/api";
 import { createMockCard, createMockSettings } from "metabase-types/api/mocks";
@@ -58,14 +56,8 @@ const setup = async ({
     };
   }
 
-  const metadata = getMetadata(state);
-  const question = checkNotNull(metadata.question(card.id));
-
   return renderWithProviders(
-    <Route
-      path="/"
-      component={() => <QuestionSources question={question} />}
-    />,
+    <Route path="/" component={() => <QuestionSources />} />,
     {
       withRouter: true,
       storeInitialState: state,

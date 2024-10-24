@@ -13,6 +13,7 @@ import type { QuestionSource } from "./types";
 import { getIconPropsForSource } from "./utils";
 
 export const QuestionSources = () => {
+  /** Retrieve current question from the redux store */
   const questionWithParameters = useSelector(getQuestionWithParameters);
 
   const sourcesWithIcons: QuestionSource[] = useMemo(() => {
