@@ -325,6 +325,11 @@
     :month-of-year
     :quarter-of-year})
 
+(defn ends-with-temporal-unit?
+  "TODO: Proper docstring"
+  [s temporal-unit]
+  (str/ends-with? s (str ": " (describe-temporal-unit temporal-unit))))
+
 (defn ends-with-pretty-temporal-unit?
   "TODO: Proper docstring"
   [s]
