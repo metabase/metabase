@@ -91,12 +91,10 @@ export function renderWithProviders(
     const featuresObject = Object.fromEntries(
       withFeatures.map(feature => [feature, true]),
     );
-    storeInitialState.settings = {
+    storeInitialState.settings = mockSettings({
       ...storeInitialState.settings,
-      ...mockSettings({
-        "token-features": createMockTokenFeatures(featuresObject),
-      }),
-    };
+      "token-features": createMockTokenFeatures(featuresObject),
+    });
   }
 
   if (shouldSetupEnterprisePlugins || withFeatures?.length) {
