@@ -31,19 +31,19 @@ export function performAction(
     }
   }
   if (action.question) {
-    const { questionChangeBehaviour = "changeCardAndRun" } = action;
+    const { questionChangeBehavior = "changeCardAndRun" } = action;
 
     const question = action.question();
     const extra = action?.extra?.() ?? {};
 
     if (question) {
-      if (questionChangeBehaviour === "changeCardAndRun") {
+      if (questionChangeBehavior === "changeCardAndRun") {
         onChangeCardAndRun({
           nextCard: question.card(),
           ...extra,
           objectId: extra.objectId,
         });
-      } else if (questionChangeBehaviour === "updateQuestion") {
+      } else if (questionChangeBehavior === "updateQuestion") {
         onUpdateQuestion(question);
       }
 
