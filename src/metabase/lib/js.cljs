@@ -160,33 +160,56 @@
 
   <details>
   <summary>Caching</summary>
-  Attaches a cache to `metadata-provider` so that subsequent calls with the same `database-id` and `query-map` return
-  the same query object.
+  There are *three* parts to this.
 
-  It would be simpler to attach the MLv2 query to a (non-enumerable) property on the `query-map`, but the `query-map`
-  might have been `Object.freeze`'d by Immer. So instead we attach a two-level cache to the `metadata-provider`. The
-  outer key is `database-id`, and the inner cache is a JS `WeakMap`, using the `query-map` itself as the key.
-  This cache is efficient to check, and because it uses a `WeakMap` it does not retain legacy queries if they would
-  otherwise be garbage collected.
+  **First**, legacy queries that have been converted *from* MLv2 have a non-enumerable property `__libv2_query` on them.
+  If we find that, we check whether the `metadata-provider` matches, and if so then we can reuse the cached query. If
+  the metadata has been updated, we shouldn't reuse the old query anymore.
 
-  If the metadata gets updated, the `metadata-provider` will be discarded and replaced, destroying the cache.
+  **Second**, the same \"fresh\" legacy query is often passed to [[query]] multiple times, without forming a round trip.
+  Therefore we also have a cache based on the incoming query itself.
+
+  It would be simple to sneakily mutate the legacy `query-map` to attach the MLv2 query on a (non-enumerable) property,
+  but the `query-map` might have been `Object.freeze`'d by Immer. So instead we attach a two-level cache to the
+  `metadata-provider`. The outer key is `database-id`, and the inner cache is a JS `WeakMap`, using the `query-map`
+  itself as the key. This cache is efficient to check, and because it uses a `WeakMap` it does not retain legacy
+  queries if they would otherwise be garbage collected.
+
+  If the metadata gets updated, the `metadata-provider` will be discarded and replaced, destroying this cache.
+
+  **Third**, if we really do convert from the legacy query, we attach the legacy form to the metadata of the converted
+  query as `::legacy-query [(hash mlv2-form) legacy-query-map]`. That gets consumed by [[legacy-query]] to skip
+  conversion back into legacy if the query hasn't changed.
   </details>"
   ([metadata-provider table-or-card-metadata]
    (lib.core/query metadata-provider table-or-card-metadata))
 
   ([database-id metadata-provider query-map]
-   ;; Since the query-map is possibly `Object.freeze`'d, we can't mutate it to attach the query.
-   ;; Therefore, we attach a two-level cache to the metadata-provider:
-   ;; The outer key is the database-id; the inner one i a weak ref to the legacy query-map (a JS object).
-   ;; This should achieve efficient caching of legacy queries without retaining garbage.
-   ;; (Except possibly for a few empty WeakMaps, if queries are cached and then GC'd.)
-   ;; If the metadata changes, the metadata-provider is replaced, so all these caches are destroyed.
-   (lib.cache/side-channel-cache-weak-refs
-    (str database-id) metadata-provider query-map
-    #(->> %
-          lib.convert/js-legacy-query->pMBQL
-          (lib.core/query metadata-provider))
-    {:force? true})))
+   (or ;; First, check if this legacy query was previously converted from an MLv2 query.
+    (when-let [past-conversion (.-__libv2_query ^js query-map)]
+      (when (identical? (lib.metadata/->metadata-provider past-conversion)
+                        metadata-provider)
+        past-conversion))
+
+       ;; No (valid) previous conversion, so we have to convert directly.
+       ;; We want to cache this process too, based on the input `query-map`, since the same query from the network
+       ;; is often passed in without a round trip through MLv2.
+
+       ;; Since the query-map is possibly `Object.freeze`'d, we can't mutate it to attach the query.
+       ;; Therefore, we attach a two-level cache to the metadata-provider:
+       ;; The outer key is the database-id; the inner one is a weak ref to the legacy query-map (a JS object).
+       ;; This should achieve efficient caching of legacy queries without retaining garbage.
+       ;; (Except possibly for a few empty WeakMaps, if queries are cached and then GC'd.)
+       ;; If the metadata changes, the metadata-provider is replaced, so all these caches are destroyed.
+    (lib.cache/side-channel-cache-weak-refs
+     (str database-id) metadata-provider query-map
+     #(as-> % $query
+        (lib.convert/js-legacy-query->pMBQL $query)
+        (lib.core/query metadata-provider $query)
+            ;; Attach the legacy form to the metadata; it can be used to skip conversion back into legacy if the query
+            ;; has not changed.
+        (vary-meta $query assoc ::legacy-query [(hash $query) query-map]))
+     {:force? true}))))
 
 ;; TODO: Lots of utilities and helpers in this file. It would be easier to consume the API if the helpers were moved to
 ;; a utility namespace. Better would be to "upstream" them into `metabase.util.*` if they're useful elsewhere.
@@ -205,14 +228,37 @@
     (sequential? x)        (map fix-namespaced-values x)
     :else                  x))
 
+(defn- legacy-query* [query-map]
+  (let [legacy-form (-> (lib.query/->legacy-MBQL query-map)
+                        fix-namespaced-values
+                        (clj->js :keyword-fn u/qualified-name))]
+    ;; Creates a non-configurable, non-enumerable property `.__libv2_query` on the JS object, holding the MLv2 query.
+    ;; This can be used to skip conversion in [[query]].
+    (js/Object.defineProperty legacy-form "__libv2_query" #js {:value query-map})
+    legacy-form))
+
 (defn ^:export legacy-query
   "Coerce an MLv2 query (pMBQL in CLJS data structures) into a legacy MLv1 query in vanilla JSON form.
 
   > **Code health:** Legacy. This has many legitimate uses (as of March 2024), but we should aim to reduce the places
-  where a legacy query is still needed. Consider if it's practical to port the consumer of this legacy query to MLv2."
+  where a legacy query is still needed. Consider if it's practical to port the consumer of this legacy query to MLv2.
+
+  <details>
+  <summary>Caching</summary>
+  If this MLv2 query was previously converted from legacy, it will have a `::legacy-query` entry in its metadata.
+  (See [[query]] for where it gets added.) That key holds a pair `[hash-of-original-v2-query legacy-query]`. Since
+  metadata persists across [[assoc]], etc. we use the hash of the original query to check whether the query has changed.
+
+  If it hasn't changed, then we can skip conversion and return its original legacy form.
+  </details>"
   [query-map]
-  (-> (lib.query/->legacy-MBQL query-map)
-      fix-namespaced-values (clj->js :keyword-fn u/qualified-name)))
+  ;; Check the metadata: if it contains a `::legacy-query` record *and* the query hasn't changed, then return the
+  ;; cached legacy form.
+  (or (when-let [[hash-of-v2-query original-legacy-query] (-> query-map meta ::legacy-query)]
+        (when (= (hash query-map) hash-of-v2-query)
+          original-legacy-query))
+      ;; Cache is missing or the query has changed, so do a fresh conversion.
+      (legacy-query* query-map)))
 
 (defn ^:export append-stage
   "Adds a new, blank *stage* to the provided `query`.
