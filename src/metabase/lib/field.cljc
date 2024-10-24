@@ -254,7 +254,7 @@
                              ;; for every column meta this
                              ;; function adds that again!
                              ;; TODO: why that is not the case for year?
-                             (if (lib.temporal-bucket/ends-with-pretty-temporal-unit? display-name)
+                             (if (lib.temporal-bucket/ends-with-temporal-unit? display-name temporal-unit)
                                display-name
                                (lib.util/format "%s: %s" display-name (-> (name temporal-unit)
                                                                           (str/replace \- \space)
