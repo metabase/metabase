@@ -171,7 +171,14 @@
                            [:< :state_change_at
                             (sql.qp/add-interval-honeysql-form (mdb/db-type) :%now -1 :hour)]]
                           [:= :c.type "question"]
-                          [:= :c.archived true]]}))
+                          [:= :c.archived true]
+                          ;; card_id and dashboard_id are set to null when the corresponding card/dashboard is deleted
+                          [:= :p.card_id nil]
+                          [:= :p.dashboard_id nil]
+                          ;; if we do have a card or dashboard ID, but can't join it to a real card or dashboard, let's
+                          ;; delete it as well (cleaning up any possible orphans)
+                          [:= :c.id nil]
+                          [:= :d.id nil]]}))
 
 (defn- refreshable-models
   "Returns refreshable models for a database id. Must still be models and not archived."
