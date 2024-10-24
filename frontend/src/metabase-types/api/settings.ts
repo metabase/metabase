@@ -339,6 +339,7 @@ interface PublicSettings {
   "update-channel": UpdateChannel;
   version: Version;
   "version-info-last-checked": string | null;
+  "airgap-enabled": boolean;
 }
 
 export type UserSettings = {
