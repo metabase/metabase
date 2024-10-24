@@ -6,6 +6,7 @@ import type {
   ActionFormInitialValues,
   ParametersForActionExecution,
   WritebackAction,
+  WritebackParameter,
 } from "metabase-types/api";
 
 import {
@@ -22,27 +23,28 @@ type Opts = {
 };
 
 const INITIAL_VALUES = {};
+const DEFAULT_PARAMETERS: WritebackParameter[] = [];
 
 function useActionForm({
-  action,
+  action: { parameters = DEFAULT_PARAMETERS, visualization_settings },
   initialValues = INITIAL_VALUES,
   prefetchesInitialValues,
 }: Opts) {
   const fieldSettings = useMemo(() => {
     return getOrGenerateFieldSettings(
-      action.parameters,
-      action.visualization_settings?.fields,
+      parameters,
+      visualization_settings?.fields,
     );
-  }, [action]);
+  }, [parameters, visualization_settings]);
 
   const form = useMemo(
-    () => getForm(action.parameters, fieldSettings),
-    [action.parameters, fieldSettings],
+    () => getForm(parameters, fieldSettings),
+    [parameters, fieldSettings],
   );
 
   const validationSchema = useMemo(
-    () => getFormValidationSchema(action.parameters, fieldSettings),
-    [action.parameters, fieldSettings],
+    () => getFormValidationSchema(parameters, fieldSettings),
+    [parameters, fieldSettings],
   );
 
   const cleanedInitialValues = useMemo(() => {
