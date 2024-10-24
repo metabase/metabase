@@ -18,13 +18,12 @@ export const StaticEmbedContent = ({
 }: StaticEmbedContentProps) => (
   <Box>
     <Text
-      lh={1.57}
       fw="bold"
       mb="sm"
       size="lg"
       color="text-medium"
     >{t`Static embedding`}</Text>
-    <Text lh={1.57} mb="md">
+    <Text mb="md">
       {/* eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins. */}
       {t`Embed a dashboard in a 'Powered by Metabase' iframe with interactivity limited to filters and tooltips, and a few customization options. The iframe loads a Metabase URL secured with a signed JSON Web Token (JWT). Appears with "Powered by Metabase", on Open Source and Starter plans, with the option to remove on Pro and Enterprise. As the simplest form of embedding, you can add a dashboard into your app in a few minutes with just a snippet.`}
     </Text>
