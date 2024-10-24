@@ -1,10 +1,15 @@
 import type { StoryFn } from "@storybook/react";
+import type { ComponentProps } from "react";
 
-import { InteractiveQuestion } from "embedding-sdk";
-import type { InteractiveQuestionProps } from "embedding-sdk/components/public/InteractiveQuestion/InteractiveQuestion";
 import { CommonSdkStoryWrapper } from "embedding-sdk/test/CommonSdkStoryWrapper";
 
-const QUESTION_ID = (window as any).QUESTION_ID || 1;
+import { InteractiveQuestion } from "./InteractiveQuestion";
+
+const QUESTION_ID = (window as any).QUESTION_ID || 12;
+
+type InteractiveQuestionComponentProps = ComponentProps<
+  typeof InteractiveQuestion
+>;
 
 export default {
   title: "EmbeddingSDK/InteractiveQuestion",
@@ -15,7 +20,7 @@ export default {
   decorators: [CommonSdkStoryWrapper],
 };
 
-const Template: StoryFn<InteractiveQuestionProps> = args => {
+const Template: StoryFn<InteractiveQuestionComponentProps> = args => {
   return <InteractiveQuestion {...args} />;
 };
 

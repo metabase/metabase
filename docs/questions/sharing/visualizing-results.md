@@ -121,11 +121,13 @@ If you have a bar chart like Count of Users by Age, where the x-axis is a number
 
 ![Scatter](../images/scatter.png)
 
-## Pie chart or donut charts
+## Pie, donut, and sunburst charts
 
-A [pie chart or donut chart](./visualizations/pie-or-donut-chart.md) can be used when breaking out a metric by a single dimension, especially when the number of possible breakouts is small, like users by gender.
+A [pie chart or donut chart](./visualizations/pie-or-donut-chart.md) can be used when breaking out a metric by a single dimension, especially when the number of possible breakouts is small, like accounts by plan.
 
-![Donut](../images/donut.png)
+A [sunburst chart](./visualizations/pie-or-donut-chart.md) chart is a pie chart with more than one ring to show the data broken out by additional dimensions.
+
+![Donut](../images/pie-sunburst-demo.png)
 
 ## Funnel charts
 
