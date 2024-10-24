@@ -274,7 +274,8 @@
   [driver query]
   (let [db-id         (:database query)
         macaw-opts    (nqa.impl/macaw-options driver)
-        sql-string    (:query (nqa.sub/replace-tags query))
+        sql-string    (let [replaced (nqa.sub/replace-tags query)]
+                        (:query replaced replaced))
         parsed-query  (macaw/query->components (macaw/parsed-query sql-string macaw-opts) macaw-opts)
         tables        (map :component (:tables parsed-query))
         table-refs    (table-refs-for-query tables db-id)
@@ -301,7 +302,8 @@
   (let [db-id      (:database query)
         macaw-opts (nqa.impl/macaw-options driver)
         table-opts (assoc macaw-opts :mode mode)
-        sql-string (:query (nqa.sub/replace-tags query))
+        sql-string (let [replaced (nqa.sub/replace-tags query)]
+                     (:query replaced replaced))
         result     (wrap-if-legacy (macaw/query->tables sql-string table-opts))]
     (u/update-if-exists result :tables table-refs-for-query db-id)))
 

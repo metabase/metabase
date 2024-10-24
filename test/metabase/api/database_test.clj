@@ -1095,6 +1095,33 @@
           (check-tables-included response (virtual-table-for-card ok-card))
           (check-tables-not-included response (virtual-table-for-card bad-card)))))))
 
+(deftest database-list-native-perms-info-test
+  (testing "GET /api/database"
+    (testing "A native_permissions key is set to `write` if any tables have native query permissions"
+      (mt/with-temp [:model/Database                   {db-id :id}      {}
+                     :model/Table                      {table-id-1 :id} {:db_id db-id}
+                     :model/Table                      {table-id-2 :id} {:db_id db-id}
+                     :model/User                       {user-id :id}    {}
+                     :model/PermissionsGroup           {group-id :id}   {}
+                     :model/PermissionsGroupMembership {}               {:user_id user-id
+                                                                         :group_id group-id}]
+        (mt/with-no-data-perms-for-all-users!
+          (let [fetch-db (fn [] (->> (mt/user-http-request user-id :get 200 "database")
+                                     :data
+                                     (filter #(= (:id %) db-id))
+                                     first))]
+            (data-perms/set-database-permission! group-id db-id :perms/create-queries :query-builder)
+            (is (= "none" (:native_permissions (fetch-db))))
+
+            (data-perms/set-database-permission! group-id db-id :perms/create-queries :query-builder-and-native)
+            (is (= "write" (:native_permissions (fetch-db))))
+
+            (data-perms/set-table-permission! group-id table-id-1 :perms/create-queries :query-builder)
+            (is (= "write" (:native_permissions (fetch-db))))
+
+            (data-perms/set-table-permission! group-id table-id-2 :perms/create-queries :query-builder)
+            (is (= "none" (:native_permissions (fetch-db))))))))))
+
 (deftest ^:parallel db-metadata-saved-questions-db-test
   (testing "GET /api/database/:id/metadata works for the Saved Questions 'virtual' database"
     (t2.with-temp/with-temp [Card card (assoc (card-with-native-query "Birthday Card")
