@@ -185,5 +185,9 @@ describe("StaticQuestion", () => {
 
     expect(abortSpy).toHaveBeenCalled();
     abortSpy.mockRestore();
+
+    // sanity check that the two requests were made initially
+    expect(fetchMock.calls(`path:/api/card/1`).length).toBe(1);
+    expect(fetchMock.calls(`path:/api/card/1/query`).length).toBe(1);
   });
 });
