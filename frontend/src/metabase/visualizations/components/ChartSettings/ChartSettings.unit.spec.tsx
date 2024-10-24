@@ -1,11 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
 import { fireEvent, renderWithProviders, screen } from "__support__/ui";
-import {
-  ChartSettings,
-  type ChartSettingsProps,
-  type Widget,
-} from "metabase/visualizations/components/ChartSettings";
 import registerVisualizations from "metabase/visualizations/register";
 import {
   createMockCard,
@@ -13,6 +8,9 @@ import {
   createMockDataset,
   createMockVisualizationSettings,
 } from "metabase-types/api/mocks";
+
+import { ChartSettings } from "./ChartSettings";
+import type { ChartSettingsProps, Widget } from "./types";
 
 registerVisualizations();
 
