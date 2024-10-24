@@ -1,6 +1,7 @@
-/* eslint-disable react/prop-types */
+import type { Location } from "history";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { connect } from "react-redux";
+import { type ConnectedProps, connect } from "react-redux";
+import type { Route, WithRouterProps } from "react-router";
 import { push } from "react-router-redux";
 import { useMount, usePrevious, useUnmount } from "react-use";
 import { t } from "ttag";
@@ -26,6 +27,13 @@ import {
   getUser,
   getUserIsAdmin,
 } from "metabase/selectors/user";
+import type {
+  BookmarkId,
+  Card,
+  Bookmark as IBookmark,
+  Timeline,
+} from "metabase-types/api";
+import type { QueryBuilderUIControls, State } from "metabase-types/store";
 
 import * as actions from "../actions";
 import { View } from "../components/view/View";
@@ -44,7 +52,6 @@ import {
   getIsActionListVisible,
   getIsAdditionalInfoVisible,
   getIsAnySidebarOpen,
-  getIsBookmarked,
   getIsDirty,
   getIsHeaderVisible,
   getIsLiveResizable,
@@ -94,96 +101,120 @@ const timelineProps = {
   loadingAndErrorWrapper: false,
 };
 
-const mapStateToProps = (state, props) => {
-  return {
-    user: getUser(state, props),
-    canManageSubscriptions: canManageSubscriptions(state, props),
-    isAdmin: getUserIsAdmin(state, props),
+const mapStateToProps = (state: State) => ({
+  user: getUser(state),
+  canManageSubscriptions: canManageSubscriptions(state),
+  isAdmin: getUserIsAdmin(state),
 
-    mode: getMode(state),
+  mode: getMode(state),
 
-    question: getQuestion(state),
-    originalQuestion: getOriginalQuestion(state),
-    lastRunCard: getLastRunCard(state),
+  question: getQuestion(state),
+  originalQuestion: getOriginalQuestion(state),
+  lastRunCard: getLastRunCard(state),
 
-    parameterValues: getParameterValues(state),
+  parameterValues: getParameterValues(state),
 
-    tableForeignKeys: getTableForeignKeys(state),
-    tableForeignKeyReferences: getTableForeignKeyReferences(state),
+  tableForeignKeys: getTableForeignKeys(state),
+  tableForeignKeyReferences: getTableForeignKeyReferences(state),
 
-    card: getCard(state),
-    originalCard: getOriginalCard(state),
-    databases: getDatabasesList(state),
-    tables: getTables(state),
+  card: getCard(state),
+  originalCard: getOriginalCard(state),
+  databases: getDatabasesList(state),
+  tables: getTables(state),
 
-    metadata: getMetadata(state),
+  metadata: getMetadata(state),
 
-    timelines: getFilteredTimelines(state),
-    timelineEvents: getVisibleTimelineEvents(state),
-    selectedTimelineEventIds: getSelectedTimelineEventIds(state),
-    visibleTimelineEventIds: getVisibleTimelineEventIds(state),
-    xDomain: getTimeseriesXDomain(state),
+  timelines: getFilteredTimelines(state),
+  timelineEvents: getVisibleTimelineEvents(state),
+  selectedTimelineEventIds: getSelectedTimelineEventIds(state),
+  visibleTimelineEventIds: getVisibleTimelineEventIds(state),
+  xDomain: getTimeseriesXDomain(state),
 
-    result: getFirstQueryResult(state),
-    results: getQueryResults(state),
-    rawSeries: getRawSeries(state),
+  result: getFirstQueryResult(state),
+  results: getQueryResults(state),
+  rawSeries: getRawSeries(state),
 
-    uiControls: getUiControls(state),
-    ...state.qb.uiControls,
-    dataReferenceStack: getDataReferenceStack(state),
-    isAnySidebarOpen: getIsAnySidebarOpen(state),
+  uiControls: getUiControls(state),
+  ...state.qb.uiControls,
+  dataReferenceStack: getDataReferenceStack(state),
+  isAnySidebarOpen: getIsAnySidebarOpen(state),
 
-    isBookmarked: getIsBookmarked(state, props),
-    isDirty: getIsDirty(state),
-    isObjectDetail: getIsObjectDetail(state),
-    isNativeEditorOpen: getIsNativeEditorOpen(state),
-    isNavBarOpen: getIsNavbarOpen(state),
-    isVisualized: getIsVisualized(state),
-    isLiveResizable: getIsLiveResizable(state),
-    isTimeseries: getIsTimeseries(state),
-    isHeaderVisible: getIsHeaderVisible(state),
-    isActionListVisible: getIsActionListVisible(state),
-    isAdditionalInfoVisible: getIsAdditionalInfoVisible(state),
+  // isBookmarked: getIsBookmarked(state, props),
+  isDirty: getIsDirty(state),
+  isObjectDetail: getIsObjectDetail(state),
+  isNativeEditorOpen: getIsNativeEditorOpen(state),
+  isNavBarOpen: getIsNavbarOpen(state),
+  isVisualized: getIsVisualized(state),
+  isLiveResizable: getIsLiveResizable(state),
+  isTimeseries: getIsTimeseries(state),
+  isHeaderVisible: getIsHeaderVisible(state),
+  isActionListVisible: getIsActionListVisible(state),
+  isAdditionalInfoVisible: getIsAdditionalInfoVisible(state),
 
-    parameters: getParameters(state),
-    databaseFields: getDatabaseFields(state),
-    sampleDatabaseId: getSampleDatabaseId(state),
+  parameters: getParameters(state),
+  databaseFields: getDatabaseFields(state),
+  sampleDatabaseId: getSampleDatabaseId(state),
 
-    isRunnable: getIsRunnable(state),
-    isResultDirty: getIsResultDirty(state),
-    isMetadataDirty: isResultsMetadataDirty(state),
+  isRunnable: getIsRunnable(state),
+  isResultDirty: getIsResultDirty(state),
+  isMetadataDirty: isResultsMetadataDirty(state),
 
-    questionAlerts: getQuestionAlerts(state),
-    visualizationSettings: getVisualizationSettings(state),
+  questionAlerts: getQuestionAlerts(state),
+  visualizationSettings: getVisualizationSettings(state),
 
-    autocompleteResultsFn: getAutocompleteResultsFn(state),
-    cardAutocompleteResultsFn: getCardAutocompleteResultsFn(state),
+  autocompleteResultsFn: getAutocompleteResultsFn(state),
+  cardAutocompleteResultsFn: getCardAutocompleteResultsFn(state),
 
-    queryStartTime: getQueryStartTime(state),
-    nativeEditorCursorOffset: getNativeEditorCursorOffset(state),
-    nativeEditorSelectedText: getNativeEditorSelectedText(state),
-    modalSnippet: getModalSnippet(state),
-    snippetCollectionId: getSnippetCollectionId(state),
-    documentTitle: getDocumentTitle(state),
-    pageFavicon: getPageFavicon(state),
-    isLoadingComplete: getIsLoadingComplete(state),
+  queryStartTime: getQueryStartTime(state),
+  nativeEditorCursorOffset: getNativeEditorCursorOffset(state),
+  nativeEditorSelectedText: getNativeEditorSelectedText(state),
+  modalSnippet: getModalSnippet(state),
+  snippetCollectionId: getSnippetCollectionId(state),
+  documentTitle: getDocumentTitle(state),
+  pageFavicon: getPageFavicon(state),
+  isLoadingComplete: getIsLoadingComplete(state),
 
-    reportTimezone: getSetting(state, "report-timezone-long"),
+  reportTimezone: getSetting(state, "report-timezone-long"),
 
-    getEmbeddedParameterVisibility: slug =>
-      getEmbeddedParameterVisibility(state, slug),
-  };
-};
+  getEmbeddedParameterVisibility: (slug: string) =>
+    getEmbeddedParameterVisibility(state, slug),
+});
 
 const mapDispatchToProps = {
   ...actions,
   closeNavbar,
   onChangeLocation: push,
-  createBookmark: id => Bookmark.actions.create({ id, type: "card" }),
-  deleteBookmark: id => Bookmark.actions.delete({ id, type: "card" }),
+  createBookmark: (id: BookmarkId) =>
+    Bookmark.actions.create({ id, type: "card" }),
+  deleteBookmark: (id: BookmarkId) =>
+    Bookmark.actions.delete({ id, type: "card" }),
 };
 
-function QueryBuilder(props) {
+const connector = connect(mapStateToProps, mapDispatchToProps);
+
+type ReduxProps = ConnectedProps<typeof connector>;
+type BookmarkLoadListProps = {
+  bookmarks: IBookmark[];
+  allLoaded: boolean;
+};
+
+type TimelineLoadListProps = {
+  timelines: Timeline[];
+  allLoaded: boolean;
+};
+
+type QueryBuilderInnerProps = ReduxProps &
+  WithRouterProps &
+  BookmarkLoadListProps &
+  TimelineLoadListProps & {
+    route: Route;
+  };
+
+function QueryBuilderInner(props: QueryBuilderInnerProps) {
+  const isBookmarked = props.bookmarks.some(
+    bookmark => bookmark.type === "card" && bookmark.item_id === props.card?.id,
+  );
+
   const {
     question,
     originalQuestion,
@@ -197,7 +228,6 @@ function QueryBuilder(props) {
     locationChanged,
     setUIControls,
     cancelQuery,
-    isBookmarked,
     createBookmark,
     deleteBookmark,
     allLoaded,
@@ -213,7 +243,7 @@ function QueryBuilder(props) {
     () => _.debounce(forceUpdate, 400),
     [forceUpdate],
   );
-  const timeout = useRef(null);
+  const timeout = useRef<NodeJS.Timeout>();
 
   const previousUIControls = usePrevious(uiControls);
   const previousLocation = usePrevious(location);
@@ -223,7 +253,10 @@ function QueryBuilder(props) {
   const collectionId = question?.collectionId();
 
   const openModal = useCallback(
-    (modal, modalContext) => setUIControls({ modal, modalContext }),
+    (
+      modal: QueryBuilderUIControls["modal"],
+      modalContext: QueryBuilderUIControls["modalContext"],
+    ) => setUIControls({ modal, modalContext }),
     [setUIControls],
   );
 
@@ -361,7 +394,7 @@ function QueryBuilder(props) {
 
   const isNewQuestion = !originalQuestion;
   const isLocationAllowed = useCallback(
-    location =>
+    (location?: Location) =>
       isNavigationAllowed({
         destination: location,
         question,
@@ -374,6 +407,7 @@ function QueryBuilder(props) {
     <>
       <View
         {...props}
+        isBookmarked={isBookmarked}
         modal={uiControls.modal}
         recentlySaved={uiControls.recentlySaved}
         onOpenModal={openModal}
@@ -396,14 +430,14 @@ function QueryBuilder(props) {
   );
 }
 
-export default _.compose(
+export const QueryBuilder = _.compose(
   Bookmark.loadList(),
   Timelines.loadList(timelineProps),
-  connect(mapStateToProps, mapDispatchToProps),
-  favicon(({ pageFavicon }) => pageFavicon),
-  title(({ card, documentTitle }) => ({
+  connector,
+  favicon(({ pageFavicon }: { pageFavicon: string }) => pageFavicon),
+  title(({ card, documentTitle }: { card: Card; documentTitle: string }) => ({
     title: documentTitle || card?.name || t`Question`,
     titleIndex: 1,
   })),
   titleWithLoadingTime("queryStartTime"),
-)(QueryBuilder);
+)(QueryBuilderInner);
