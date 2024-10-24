@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import dayjs from "dayjs";
 import fetchMock from "fetch-mock";
 import { Route } from "react-router";
 
@@ -50,6 +51,7 @@ type SetupOpts = {
   openDashboard?: Dashboard;
   models?: ModelResult[];
   canCurateRootCollection?: boolean;
+  instanceCreationDate?: string;
 };
 
 const PERSONAL_COLLECTION_BASE = createMockCollection({
@@ -74,6 +76,7 @@ async function setup({
   isUploadEnabled = false,
   withAdditionalDatabase = true,
   canCurateRootCollection = false,
+  instanceCreationDate = dayjs().toISOString(),
 }: SetupOpts = {}) {
   const SAMPLE_DATABASE = createMockDatabase({
     id: 1,
@@ -161,6 +164,7 @@ async function setup({
         schema_name: null,
         table_prefix: null,
       },
+      "instance-creation": instanceCreationDate,
     }),
   });
 
@@ -224,6 +228,50 @@ describe("nav > containers > MainNavbar", () => {
       await setup({ pathname: "/" });
       const link = screen.getByRole("listitem", { name: /Home/i });
       expect(link).toHaveAttribute("aria-selected", "true");
+    });
+  });
+
+  describe("how to use Metabase", () => {
+    it("should render for admins", async () => {
+      await setup({ user: createMockUser({ is_superuser: true }) });
+      const link = screen.getByRole("link", { name: /How to use Metabase/i });
+      expect(link).toBeInTheDocument();
+      expect(link).toHaveAttribute("href", "/getting-started");
+    });
+
+    it("should not render for non-admins", async () => {
+      await setup({ user: createMockUser({ is_superuser: false }) });
+      const link = screen.queryByRole("link", { name: /How to use Metabase/i });
+      expect(link).not.toBeInTheDocument();
+    });
+
+    it("should be highlighted if selected", async () => {
+      await setup({
+        pathname: "/getting-started",
+        user: createMockUser({ is_superuser: true }),
+      });
+      const link = screen.getByRole("listitem", {
+        name: /How to use Metabase/i,
+      });
+      expect(link).toHaveAttribute("aria-selected", "true");
+    });
+
+    it("should render if the instance was created less than 30 days ago", async () => {
+      await setup({
+        user: createMockUser({ is_superuser: true }),
+        instanceCreationDate: dayjs().subtract(14, "days").toISOString(),
+      });
+      const link = screen.getByRole("link", { name: /How to use Metabase/i });
+      expect(link).toBeInTheDocument();
+    });
+
+    it("should not render if the instance was created more than 30 days ago", async () => {
+      await setup({
+        user: createMockUser({ is_superuser: true }),
+        instanceCreationDate: dayjs().subtract(31, "days").toISOString(),
+      });
+      const link = screen.queryByRole("link", { name: /How to use Metabase/i });
+      expect(link).not.toBeInTheDocument();
     });
   });
 

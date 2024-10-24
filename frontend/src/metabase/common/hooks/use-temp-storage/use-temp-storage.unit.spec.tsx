@@ -24,7 +24,6 @@ const TestComponent = ({
 
   return (
     <div>
-      {/* @ts-expect-error - The hook still doesn't accept any k/v pair */}
       <button onClick={() => setValue(newValue)} />
       <div data-testid="result">{`Value is: ${value}`}</div>
     </div>
@@ -37,7 +36,7 @@ type SetupProps = {
   newValue?: TempStorageValue;
 };
 
-const setup = ({ tempStorage = {}, entry, newValue }: SetupProps) => {
+const setup = ({ tempStorage, entry, newValue }: SetupProps) => {
   const initialState = createMockState({
     app: createMockAppState({ tempStorage }),
   });
@@ -50,10 +49,10 @@ const setup = ({ tempStorage = {}, entry, newValue }: SetupProps) => {
 describe("useTempStorage hook", () => {
   it("should return undefined for uninitialized key", () => {
     const tempStorage = {
-      animal: undefined,
+      "last-opened-onboarding-checklist-item": undefined,
     };
-    // @ts-expect-error - The hook still doesn't accept any k/v pair
-    setup({ tempStorage, entry: "animal" });
+
+    setup({ tempStorage, entry: "last-opened-onboarding-checklist-item" });
 
     expect(screen.getByTestId("result")).toHaveTextContent(
       "Value is: undefined",
@@ -62,15 +61,20 @@ describe("useTempStorage hook", () => {
 
   it("should read and set the value", async () => {
     const tempStorage = {
-      animal: "dog",
+      "last-opened-onboarding-checklist-item": "sql" as const,
     };
 
-    // @ts-expect-error - The hook still doesn't accept any k/v pair
-    setup({ tempStorage, entry: "animal", newValue: "cat" });
+    setup({
+      tempStorage,
+      entry: "last-opened-onboarding-checklist-item",
+      newValue: "dashboard",
+    });
 
-    expect(screen.getByTestId("result")).toHaveTextContent("Value is: dog");
+    expect(screen.getByTestId("result")).toHaveTextContent("Value is: sql");
 
     await userEvent.click(screen.getByRole("button"));
-    expect(screen.getByTestId("result")).toHaveTextContent("Value is: cat");
+    expect(screen.getByTestId("result")).toHaveTextContent(
+      "Value is: dashboard",
+    );
   });
 });

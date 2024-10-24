@@ -1,3 +1,4 @@
+import type { ChecklistItemValue } from "metabase/home/components/Onboarding/types";
 import type { CollectionId } from "metabase-types/api/collection";
 
 export interface AppErrorDescriptor {
@@ -20,8 +21,9 @@ export interface AppBreadCrumbs {
  * Only specific key/value pairs can be stored here,
  * and then later used with the `use-temp-storage` hook.
  */
-// eslint-disable-next-line @typescript-eslint/ban-types
-export type TempStorage = {};
+export type TempStorage = {
+  "last-opened-onboarding-checklist-item": ChecklistItemValue | undefined;
+};
 
 export type TempStorageKey = keyof TempStorage;
 export type TempStorageValue<Key extends TempStorageKey = TempStorageKey> =
