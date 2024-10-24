@@ -33,7 +33,7 @@ If you're exporting a pivot table, you'll have the option to keep the table pivo
 
 You can download up to 1 million rows.
 
-You can change this limit with an environment variable: [`MB_DOWNLOAD_ROW_LIMIT`](../../configuring-metabase/environment-variables.md#mb-download-row-limit).
+You can change this limit with an environment variable: [`MB_DOWNLOAD_ROW_LIMIT`](../../configuring-metabase/environment-variables.md).
 
 ## Exporting data via a public link
 

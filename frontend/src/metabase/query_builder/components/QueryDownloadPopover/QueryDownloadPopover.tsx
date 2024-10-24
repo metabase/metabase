@@ -20,7 +20,7 @@ type QueryDownloadPopoverProps = {
   }) => void;
 };
 
-const canConfigurePivoting = (format: string, display: string) =>
+const canPivotResults = (format: string, display: string) =>
   display === "pivot" && format !== "json";
 const canConfigureFormatting = (format: string) => format !== "png";
 
@@ -34,9 +34,11 @@ export const QueryDownloadPopover = ({
     ? [...exportFormats, exportFormatPng]
     : exportFormats;
 
-  const [isPivoted, setIsPivoted] = useState(false);
-  const [isFormatted, setIsFormatted] = useState(true);
   const [format, setFormat] = useState<ExportFormat>(formats[0]);
+  const canConfigurePivoting = canPivotResults(format, question.display());
+
+  const [isPivoted, setIsPivoted] = useState(canConfigurePivoting);
+  const [isFormatted, setIsFormatted] = useState(true);
 
   const hasTruncatedResults =
     result.data != null && result.data.rows_truncated != null;
@@ -61,7 +63,7 @@ export const QueryDownloadPopover = ({
         isFormattingEnabled={isFormatted}
         isPivotingEnabled={isPivoted}
         canConfigureFormatting={canConfigureFormatting(format)}
-        canConfigurePivoting={canConfigurePivoting(format, question.display())}
+        canConfigurePivoting={canConfigurePivoting}
         onChangeFormat={setFormat}
         onToggleFormatting={() => setIsFormatted(prev => !prev)}
         onTogglePivoting={() => setIsPivoted(prev => !prev)}
