@@ -42,13 +42,13 @@ Enable the Embedded Analytics SDK by going to **Admin settings > Settings > Embe
 You can install the Embedded Analytics SDK for React via npm:
 
 ```bash
-npm install @metabase/embedding-sdk-react
+npm install @metabase/embedding-sdk-react@51-stable
 ```
 
 or with yarn:
 
 ```bash
-yarn add @metabase/embedding-sdk-react
+yarn add @metabase/embedding-sdk-react@51-stable
 ```
 
 ## Developing with the embedded analytics SDK
