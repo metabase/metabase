@@ -2177,7 +2177,7 @@ describeEE("scenarios > dashboard > dashboard cards > click behavior", () => {
               {
                 lhsTable: "Orders",
                 rhsTable: "Reviews",
-                type: "left-outer",
+                type: "left-join",
                 conditions: [
                   {
                     operator: "=",
@@ -2208,7 +2208,7 @@ describeEE("scenarios > dashboard > dashboard cards > click behavior", () => {
               {
                 lhsTable: "Previous results",
                 rhsTable: "Reviews",
-                type: "left-outer",
+                type: "left-join",
                 conditions: [
                   {
                     operator: "=",
