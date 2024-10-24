@@ -159,7 +159,8 @@
   (t2/select PersistedInfo
              {:select    [:p.*]
               :from      [[:persisted_info :p]]
-              :left-join [[:report_card :c] [:= :c.id :p.card_id]]
+              :left-join [[:report_card :c] [:= :c.id :p.card_id]
+                          [:report_database :d] [:= :d.id :p.database_id]]
               :where     [:or
                           [:and
                            [:in :state (persisted-info/prunable-states)]
