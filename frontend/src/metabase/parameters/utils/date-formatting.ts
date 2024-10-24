@@ -128,7 +128,7 @@ function parseDateRangeValue(value: string) {
 
 function formatSingleDate(date: Moment) {
   if (date.hours() || date.minutes()) {
-    return date.format("MMMM D, YYYY hh:mm a");
+    return date.format("MMMM D, YYYY hh:mm A");
   } else {
     return date.format("MMMM D, YYYY");
   }
