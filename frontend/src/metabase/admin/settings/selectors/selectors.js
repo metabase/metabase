@@ -512,9 +512,10 @@ export const ADMIN_SETTINGS_SECTIONS = {
   },
   cloud: {
     name: t`Cloud`,
-    getHidden: settings =>
+    getHidden: settings => {
       settings["token-features"]?.hosting === true &&
-      settings["airgap-enabled"] === false,
+        !settings["airgap-enabled"];
+    },
     order: 132,
     component: CloudPanel,
     settings: [],
