@@ -3803,7 +3803,7 @@ describe("issue 35852", () => {
   }
 });
 
-describe("issue 49052", { tags: ["@external"] }, () => {
+describe("issue 45670", { tags: ["@external"] }, () => {
   const dialect = "postgres";
   const tableName = "many_data_types";
 
