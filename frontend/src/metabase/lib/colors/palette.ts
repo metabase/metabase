@@ -23,6 +23,7 @@ export const colors = {
   accent5: "#F2A86F",
   accent6: "#98D9D9",
   accent7: "#7172AD",
+  "accent-grey": "#B4BCC3",
   "admin-navbar": "#7172AD",
   white: "#FFFFFF",
   success: "#84BB4C",
@@ -74,6 +75,7 @@ export const aliases: Record<string, (palette: ColorPalette) => string> = {
   "accent5-light": palette => tint(color(`accent5`, palette)),
   "accent6-light": palette => tint(color(`accent6`, palette)),
   "accent7-light": palette => tint(color(`accent7`, palette)),
+  "accent-grey-light": palette => tint(color(`accent-grey`, palette)),
 
   "accent0-dark": palette => shade(color(`accent0`, palette)),
   "accent1-dark": palette => shade(color(`accent1`, palette)),
@@ -83,6 +85,7 @@ export const aliases: Record<string, (palette: ColorPalette) => string> = {
   "accent5-dark": palette => shade(color(`accent5`, palette)),
   "accent6-dark": palette => shade(color(`accent6`, palette)),
   "accent7-dark": palette => shade(color(`accent7`, palette)),
+  "accent-grey-dark": palette => shade(color(`accent-grey`, palette)),
 };
 
 /**
