@@ -73,27 +73,27 @@ const PermissionsConfirm = ({ diff }) => (
             <div>
               {database.native === DataPermissionValue.QUERY_BUILDER &&
                 jt`${(
-                  <GroupName group={group} />
+                  <GroupName key="group-name" group={group} />
                 )} will only be able to use the query
-                  builder for ${(<DatabaseName database={database} />)}.`}
+                  builder for ${(<DatabaseName key="database-name" database={database} />)}.`}
               {database.native ===
                 DataPermissionValue.QUERY_BUILDER_AND_NATIVE &&
                 jt`${(
-                  <GroupName group={group} />
+                  <GroupName key="group-name" group={group} />
                 )} will be able to use the query builder and write native queries for ${(
-                  <DatabaseName database={database} />
+                  <DatabaseName key="database-name" database={database} />
                 )}.`}
               {database.native === DataPermissionValue.NO &&
                 jt`${(
-                  <GroupName group={group} />
+                  <GroupName key="group-name" group={group} />
                 )} will not be able to use the query builder or write native queries for ${(
-                  <DatabaseName database={database} />
+                  <DatabaseName key="database-name" database={database} />
                 )}.`}
               {database.native === DataPermissionValue.CONTROLLED &&
                 jt`${(
-                  <GroupName group={group} />
+                  <GroupName key="group-name" group={group} />
                 )} will have granular query creation permissions for ${(
-                  <DatabaseName database={database} />
+                  <DatabaseName key="database-name" database={database} />
                 )}.`}
             </div>
           )}

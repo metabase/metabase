@@ -34,7 +34,7 @@
    [metabase.models.params :as params]
    [metabase.models.params.chain-filter :as chain-filter]
    [metabase.models.params.custom-values :as custom-values]
-   [metabase.models.pulse :as pulse]
+   [metabase.models.pulse :as models.pulse]
    [metabase.models.query :as query :refer [Query]]
    [metabase.models.query.permissions :as query-perms]
    [metabase.models.revision :as revision]
@@ -752,7 +752,7 @@
   [dashboard-id original-dashboard-params]
   (doseq [{:keys [pulse-id] :as broken-subscription} (broken-subscription-data dashboard-id original-dashboard-params)]
     ;; Archive the pulse
-    (pulse/update-pulse! {:id pulse-id :archived true})
+    (models.pulse/update-pulse! {:id pulse-id :archived true})
     ;; Let the pulse and subscription creator know about the broken pulse
     (messages/send-broken-subscription-notification! broken-subscription)))
 
@@ -1263,13 +1263,14 @@
 
   `parameters` should be passed as query parameter encoded as a serialized JSON string (this is because this endpoint
   is normally used to power 'Download Results' buttons that use HTML `form` actions)."
-  [dashboard-id dashcard-id card-id export-format :as {{:keys [parameters format_rows], :as request-parameters} :params}]
+  [dashboard-id dashcard-id card-id export-format :as {{:keys [parameters format_rows pivot_results] :as request-parameters} :params}]
   {dashboard-id  ms/PositiveInt
    dashcard-id   ms/PositiveInt
    card-id       ms/PositiveInt
    parameters    [:maybe ms/JSONString]
    export-format api.dataset/ExportFormat
-   format_rows   [:maybe :boolean]}
+   format_rows   [:maybe ms/BooleanValue]
+   pivot_results [:maybe ms/BooleanValue]}
   (m/mapply qp.dashboard/process-query-for-dashcard
             (merge
              request-parameters
@@ -1286,7 +1287,8 @@
               :middleware    {:process-viz-settings?  true
                               :skip-results-metadata? true
                               :ignore-cached-results? true
-                              :format-rows?           format_rows
+                              :format-rows?           (or format_rows false)
+                              :pivot?                 (or pivot_results false)
                               :js-int-to-string?      false}})))
 
 (api/defendpoint POST "/pivot/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query"

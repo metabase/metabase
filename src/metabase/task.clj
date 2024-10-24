@@ -338,6 +338,11 @@
        (map job-info)
        (filter some?)))
 
+(defn existing-triggers
+  "Get the existing triggers for a job by key name, if it exists."
+  [job-key trigger-key]
+  (filter #(= (:key %) (.getName ^TriggerKey trigger-key)) (:triggers (job-info job-key))))
+
 (defn scheduler-info
   "Return raw data about all the scheduler and scheduled tasks (i.e. Jobs and Triggers). Primarily for debugging
   purposes."

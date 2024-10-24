@@ -1,4 +1,4 @@
-import { getIframeUrl } from "./utils";
+import { getIframeDomainName, getIframeUrl, isAllowedIframeUrl } from "./utils";
 
 describe("getIframeUrl", () => {
   describe("share to embed link transformation", () => {
@@ -120,5 +120,106 @@ describe("getIframeUrl", () => {
     const input = "<div>hello world</div>";
     const result = getIframeUrl(input);
     expect(result).toBeNull();
+  });
+});
+
+describe("getIframeDomainName", () => {
+  it("should return the domain name for a valid URL", () => {
+    const result = getIframeDomainName("https://example.com/path/to/page");
+    expect(result).toBe("example.com");
+  });
+
+  it("should return the domain name for a URL without protocol", () => {
+    const result = getIframeDomainName("www.example.com");
+    expect(result).toBe("www.example.com");
+  });
+
+  it("should return null for invalid URLs", () => {
+    expect(getIframeDomainName("not a url")).toBeNull();
+    expect(getIframeDomainName("https://example.com:asdf")).toBeNull();
+    expect(getIframeDomainName("")).toBeNull();
+    expect(getIframeDomainName(undefined)).toBeNull();
+  });
+
+  it("should extract domain name from iframe src", () => {
+    const input = '<iframe src="https://example.com/embed"></iframe>';
+    const result = getIframeDomainName(input);
+    expect(result).toBe("example.com");
+  });
+
+  it("should return null for iframe without src", () => {
+    const input = "<iframe></iframe>";
+    const result = getIframeDomainName(input);
+    expect(result).toBeNull();
+  });
+});
+
+describe("isAllowedIframeUrl", () => {
+  const allowedDomains = [
+    "youtube.com",
+    "*.vimeo.com",
+    "docs.google.com",
+    "localhost:*",
+  ].join("\n");
+
+  const _isAllowedIframeUrl = (url: string) =>
+    isAllowedIframeUrl(url, allowedDomains);
+
+  it("should return true if allowed domains are set to '*'", () => {
+    expect(isAllowedIframeUrl("youtube.com", "*")).toBe(true);
+    expect(isAllowedIframeUrl("http://localhost:3000", "*")).toBe(true);
+    expect(isAllowedIframeUrl("https://example.com", "*")).toBe(true);
+  });
+
+  it("should return true for all ports on an URL if allowed", () => {
+    expect(
+      isAllowedIframeUrl("http://localhost:3000", "http://localhost:*"),
+    ).toBe(true);
+  });
+
+  it("should return false if ports do not match", () => {
+    expect(
+      isAllowedIframeUrl("http://localhost:3000", "http://localhost:3001"),
+    ).toBe(false);
+  });
+
+  it("should return true for allowed domains", () => {
+    expect(_isAllowedIframeUrl("https://youtube.com/watch?v=dQw4w9WgXcQ")).toBe(
+      true,
+    );
+  });
+
+  it("should return false for not listed domains", () => {
+    expect(_isAllowedIframeUrl("https://loom.com/embed/1234567890abcdef")).toBe(
+      false,
+    );
+    expect(
+      _isAllowedIframeUrl("https://www.loom.com/embed/1234567890abcdef"),
+    ).toBe(false);
+  });
+
+  it("should return true for allowed domain's subdomains", () => {
+    expect(
+      _isAllowedIframeUrl("https://www.youtube.com/watch?v=dQw4w9WgXcQ"),
+    ).toBe(true);
+  });
+
+  it("should accept both HTTP and HTTPS for allowed domains", () => {
+    expect(_isAllowedIframeUrl("http://localhost:3000")).toBe(true);
+    expect(_isAllowedIframeUrl("https://localhost:3000")).toBe(true);
+    expect(_isAllowedIframeUrl("youtube.com/watch?v=dQw4w9WgXcQ")).toBe(true);
+  });
+
+  it("shouldn't accept top-level domain when only subdomains allowed", () => {
+    expect(
+      _isAllowedIframeUrl("https://player.vimeo.com/video/123456789"),
+    ).toBe(true);
+    expect(_isAllowedIframeUrl("https://vimeo.com/123456789")).toBe(false);
+  });
+
+  it("shouldn't accept top-level domain and other subdomains when only one subdomain is allowed", () => {
+    expect(_isAllowedIframeUrl("https://docs.google.com/page")).toBe(true);
+    expect(_isAllowedIframeUrl("https://sheets.google.com/sheet")).toBe(false);
+    expect(_isAllowedIframeUrl("https://google.com?s=text")).toBe(false);
   });
 });

@@ -1,4 +1,4 @@
-(ns metabase.query-processor-test.cumulative-aggregation-test
+(ns ^:mb/driver-tests metabase.query-processor-test.cumulative-aggregation-test
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]

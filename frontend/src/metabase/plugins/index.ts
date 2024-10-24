@@ -23,6 +23,7 @@ import {
   type EntityId,
   type PermissionSubject,
 } from "metabase/admin/permissions/types";
+import { InteractiveEmbeddingSettings } from "metabase/admin/settings/components/EmbeddingSettings/InteractiveEmbeddingSettings";
 import type { ADMIN_SETTINGS_SECTIONS } from "metabase/admin/settings/selectors";
 import type {
   MetricFilterControlsProps,
@@ -32,6 +33,7 @@ import type {
   ModelFilterControlsProps,
   ModelFilterSettings,
 } from "metabase/browse/models";
+import type { LinkProps } from "metabase/core/components/Link";
 import { getIconBase } from "metabase/lib/icon";
 import PluginPlaceholder from "metabase/plugins/components/PluginPlaceholder";
 import type { SearchFilterComponent } from "metabase/search/types";
@@ -93,6 +95,10 @@ export const PLUGIN_ADMIN_TOOLS = {
 export const PLUGIN_ADMIN_TROUBLESHOOTING = {
   EXTRA_ROUTES: [] as ReactNode[],
   GET_EXTRA_NAV: (): ReactNode[] => [],
+};
+
+export const PLUGIN_ADMIN_SETTINGS = {
+  InteractiveEmbeddingSettings: InteractiveEmbeddingSettings,
 };
 
 // functions that update the sections
@@ -192,7 +198,7 @@ export const PLUGIN_LDAP_FORM_FIELDS = {
       [setting: string]: {
         display_name?: string | undefined;
         warningMessage?: string | undefined;
-        description?: string | undefined;
+        description?: string | ReactNode | undefined;
         note?: string | undefined;
       };
     };
@@ -511,6 +517,10 @@ export const PLUGIN_EMBEDDING = {
   isInteractiveEmbeddingEnabled: (_state: State) => false,
 };
 
+export const PLUGIN_EMBEDDING_SDK = {
+  isEnabled: () => false,
+};
+
 export const PLUGIN_CONTENT_VERIFICATION = {
   contentVerificationEnabled: false,
   VerifiedFilter: {} as SearchFilterComponent<"verified">,
@@ -538,8 +548,21 @@ export const PLUGIN_QUERY_BUILDER_HEADER = {
   extraButtons: (_question: Question) => [],
 };
 
+export type InsightsLinkProps = (
+  | {
+      question: Pick<Question, "id" | "collection">;
+      dashboard?: never;
+    }
+  | {
+      question?: never;
+      dashboard: Pick<Dashboard, "id" | "collection">;
+    }
+) &
+  Omit<LinkProps, "to">;
+
 export const PLUGIN_AUDIT = {
   isAuditDb: (_db: DatabaseType) => false,
+  InsightsLink: PluginPlaceholder as ComponentType<InsightsLinkProps>,
 };
 
 export const PLUGIN_UPLOAD_MANAGEMENT = {

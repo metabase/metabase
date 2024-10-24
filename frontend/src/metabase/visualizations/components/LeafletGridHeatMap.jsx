@@ -3,6 +3,8 @@ import L from "leaflet";
 import { t } from "ttag";
 
 import { color } from "metabase/lib/colors";
+import * as Lib from "metabase-lib";
+import Question from "metabase-lib/v1/Question";
 import { rangeForValue } from "metabase-lib/v1/queries/utils/range-for-value";
 import { isMetric, isNumeric } from "metabase-lib/v1/types/utils/isa";
 
@@ -104,6 +106,17 @@ export default class LeafletGridHeatMap extends LeafletMap {
       console.error(err);
       this.props.onRenderError(err.message || err);
     }
+  }
+
+  supportsFilter() {
+    const {
+      series: [{ card }],
+      metadata,
+    } = this.props;
+
+    const question = new Question(card, metadata);
+    const { isNative } = Lib.queryDisplayInfo(question.query());
+    return !isNative;
   }
 
   _createGridSquare = index => {

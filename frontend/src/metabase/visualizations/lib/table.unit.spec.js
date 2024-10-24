@@ -126,6 +126,7 @@ describe("metabase/visualization/lib/table", () => {
           data: rowData,
         });
       });
+
       it("should work with a dimension cell", () => {
         expect(
           getTableCellClickedObject(
@@ -148,6 +149,7 @@ describe("metabase/visualization/lib/table", () => {
           data: rowData,
         });
       });
+
       it("should work with a metric cell", () => {
         expect(
           getTableCellClickedObject(
@@ -177,6 +179,7 @@ describe("metabase/visualization/lib/table", () => {
         });
       });
     });
+
     describe("pivoted table", () => {
       // TODO:
     });
@@ -186,6 +189,7 @@ describe("metabase/visualization/lib/table", () => {
     it("should return true for numeric columns without a semantic type", () => {
       expect(isColumnRightAligned({ base_type: TYPE.Integer })).toBe(true);
     });
+
     it("should return true for numeric columns with semantic type Number", () => {
       expect(
         isColumnRightAligned({
@@ -194,6 +198,7 @@ describe("metabase/visualization/lib/table", () => {
         }),
       ).toBe(true);
     });
+
     it("should return true for numeric columns with semantic type latitude or longitude", () => {
       expect(
         isColumnRightAligned({
@@ -208,6 +213,7 @@ describe("metabase/visualization/lib/table", () => {
         }),
       ).toBe(true);
     });
+
     it("should return false for numeric columns with semantic type zip code", () => {
       expect(
         isColumnRightAligned({
@@ -216,6 +222,7 @@ describe("metabase/visualization/lib/table", () => {
         }),
       ).toBe(false);
     });
+
     it("should return false for numeric columns with semantic type FK or PK", () => {
       expect(
         isColumnRightAligned({

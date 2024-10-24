@@ -464,10 +464,10 @@ describe("scenarios > dashboard > tabs", () => {
     };
 
     firstQuestion().then(r => {
-      expect(r.view_count).to.equal(1);
+      cy.wrap(r.view_count).should("equal", 1);
     });
     secondQuestion().then(r => {
-      expect(r.view_count).to.equal(1);
+      cy.wrap(r.view_count).should("equal", 1);
     });
 
     // Visit first tab and confirm only first card was queried

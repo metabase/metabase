@@ -7,14 +7,13 @@ import {
   ViewHeaderLeftSubHeading,
   ViewHeaderMainLeftContentContainer,
 } from "metabase/query_builder/components/view/ViewHeader/ViewTitleHeader.styled";
-import {
-  QuestionDataSource,
-  QuestionDescription,
-} from "metabase/query_builder/components/view/ViewHeader/components";
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
+
+import { QuestionDataSource } from "../QuestionDataSource";
+import { QuestionDescription } from "../QuestionDescription";
 
 interface AdHocQuestionLeftSideProps {
   question: Question;

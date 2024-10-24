@@ -127,13 +127,29 @@
 
 (defonce ^:private tokens (atom {}))
 
-(mu/defn username->token :- [:re u/uuid-regex]
+;;; This is done by hitting the app DB directly instead of hitting [[metabase.http-client/authenticate]] to avoid
+;;; deadlocks in MySQL that I haven't been able to figure out yet. The session endpoint updates User last_login and
+;;; updated_at which requires a lock on that User row which other parallel test threads seem to already have for one
+;;; reason or another...
+;;;
+;;;    DRIVERS=mysql clj -X:dev:user/mysql:ee:ee-dev:test :only metabase.query-processor.card-test
+;;;
+;;; consistently fails for me when using [[metabase.http-client/authenticate]] instead of the code below. See #48489 for
+;;; more info
+(mu/defn ^:private authenticate! :- ms/UUIDString
+  "Create a new `:model/Session` for one of the test users."
+  [username :- TestUserName]
+  (let [session-token (str (random-uuid))]
+    (t2/insert! :model/Session {:id session-token, :user_id (user->id username)})
+    session-token))
+
+(mu/defn username->token :- ms/UUIDString
   "Return cached session token for a test User, logging in first if needed."
   [username :- TestUserName]
   (or (@tokens username)
       (locking tokens
         (or (@tokens username)
-            (u/prog1 (client/authenticate (user->credentials username))
+            (u/prog1 (authenticate! username)
               (swap! tokens assoc username <>))))
       (throw (Exception. (format "Authentication failed for %s with credentials %s"
                                  username (user->credentials username))))))
@@ -167,6 +183,7 @@
 
 (defn- user-request
   [the-client user & args]
+  (initialize/initialize-if-needed! :db :test-users :web-server)
   (if (keyword? user)
     (do
       (fetch-user user)

@@ -28,7 +28,7 @@
               quick-filter-drill (m/find-first #(= (:type %) :drill-thru/quick-filter)
                                                (lib/available-drill-thrus query drill-context))]
           (is (some? quick-filter-drill))
-          (let [query' (lib/drill-thru query -1 quick-filter-drill "<")]
+          (let [query' (lib/drill-thru query -1 nil quick-filter-drill "<")]
             (is (=? {:stages [{:filters [[:<
                                           {}
                                           [:field {} (mt/id :products :created_at)]
@@ -71,7 +71,7 @@
                                 (lib/available-drill-thrus query drill-context))
             _                  (is (=? {:column {:name "LATITUDE"}}
                                        distribution-drill))
-            query'             (lib/drill-thru query -1 distribution-drill)]
+            query'             (lib/drill-thru query -1 nil distribution-drill)]
         (is (=? {:stages [{:source-card 1
                            :aggregation [[:count {}]]
                            :breakout    [[:field {:binning {:strategy :default}} "LATITUDE"]]}]}

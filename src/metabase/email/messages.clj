@@ -1,19 +1,20 @@
 (ns metabase.email.messages
   "Convenience functions for sending templated email messages.  Each function here should represent a single email.
-   NOTE: we want to keep this about email formatting, so don't put heavy logic here RE: building data for emails."
+   NOTE: we want to keep this about email formatting, so don't put heavy logic here RE: building data for emails.
+
+  NOTE: This namespace is deprecated, all of these emails will soon be converted to System Email Notifications."
   (:require
    [buddy.core.codecs :as codecs]
    [cheshire.core :as json]
    [clojure.core.cache :as cache]
-   [clojure.java.io :as io]
    [hiccup.core :refer [html]]
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.config :as config]
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
-   [metabase.driver.util :as driver.u]
    [metabase.email :as email]
+   [metabase.email.result-attachment :as email.result-attachment]
    [metabase.lib.util :as lib.util]
    [metabase.models.collection :as collection]
    [metabase.models.data-permissions :as data-perms]
@@ -21,15 +22,7 @@
    [metabase.models.user :refer [User]]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
-   [metabase.pulse.markdown :as markdown]
-   [metabase.pulse.parameters :as pulse-params]
-   [metabase.pulse.render :as render]
-   [metabase.pulse.render.image-bundle :as image-bundle]
-   [metabase.pulse.render.js-svg :as js-svg]
-   [metabase.pulse.render.style :as style]
-   [metabase.query-processor.store :as qp.store]
-   [metabase.query-processor.streaming :as qp.streaming]
-   [metabase.query-processor.streaming.interface :as qp.si]
+   [metabase.pulse.core :as pulse]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
@@ -37,20 +30,20 @@
    [metabase.util.i18n :as i18n :refer [trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.markdown :as markdown]
    [metabase.util.urls :as urls]
    [stencil.core :as stencil]
    [stencil.loader :as stencil-loader]
    [toucan2.core :as t2])
   (:import
-   (java.io File IOException OutputStream)
    (java.time LocalTime)
    (java.time.format DateTimeFormatter)))
 
 (set! *warn-on-reflection* true)
 
-(defn- app-name-trs
+(defn app-name-trs
   "Return the user configured application name, or Metabase translated
-  via tru if a name isn't configured."
+  via trs if a name isn't configured."
   []
   (or (public-settings/application-name)
       (trs "Metabase")))
@@ -60,7 +53,9 @@
   (alter-meta! #'stencil/render-file assoc :style/indent 1)
   (stencil-loader/set-cache (cache/ttl-cache-factory {} :ttl 0)))
 
-(defn- logo-url []
+(defn logo-url
+  "Return the URL for the application logo. If the logo is the default, return a URL to the Metabase logo."
+  []
   (let [url (public-settings/application-logo-url)]
     (cond
       (= url "app/assets/img/logo.svg") "http://static.metabase.com/email_logo.png"
@@ -76,12 +71,14 @@
 
   The available icons are defined in [[js-svg/icon-paths]]."
   [icon-name]
-  (let [color     (style/primary-color)
-        png-bytes (js-svg/icon icon-name color)]
-    (-> (image-bundle/make-image-bundle :attachment png-bytes)
-        (image-bundle/image-bundle->attachment))))
+  (let [color     (pulse/primary-color)
+        png-bytes (pulse/icon icon-name color)]
+    (-> (pulse/make-image-bundle :attachment png-bytes)
+        (pulse/image-bundle->attachment))))
 
-(defn- button-style [color]
+(defn button-style
+  "Return a CSS style string for a button with the given color."
+  [color]
   (str "display: inline-block; "
        "box-sizing: border-box; "
        "padding: 0.5rem 1.375rem; "
@@ -100,36 +97,15 @@
   "Context that is used across multiple email templates, and that is the same for all emails"
   []
   {:applicationName           (public-settings/application-name)
-   :applicationColor          (style/primary-color)
+   :applicationColor          (pulse/primary-color)
    :applicationLogoUrl        (logo-url)
-   :buttonStyle               (button-style (style/primary-color))
-   :colorTextLight            style/color-text-light
-   :colorTextMedium           style/color-text-medium
-   :colorTextDark             style/color-text-dark
+   :buttonStyle               (button-style (pulse/primary-color))
+   :colorTextLight            pulse/color-text-light
+   :colorTextMedium           pulse/color-text-medium
+   :colorTextDark             pulse/color-text-dark
    :siteUrl                   (public-settings/site-url)})
 
 ;;; ### Public Interface
-
-(defn send-new-user-email!
-  "Send an email to `invitied` letting them know `invitor` has invited them to join Metabase."
-  [invited invitor join-url sent-from-setup?]
-  (let [company      (or (public-settings/site-name) "Unknown")
-        message-body (stencil/render-file "metabase/email/new_user_invite"
-                                          (merge (common-context)
-                                                 {:emailType     "new_user_invite"
-                                                  :invitedName   (or (:first_name invited) (:email invited))
-                                                  :invitorName   (or (:first_name invitor) (:email invitor))
-                                                  :invitorEmail  (:email invitor)
-                                                  :company       company
-                                                  :joinUrl       join-url
-                                                  :today         (t/format "MMM'&nbsp;'dd,'&nbsp;'yyyy" (t/zoned-date-time))
-                                                  :logoHeader    true
-                                                  :sentFromSetup sent-from-setup?}))]
-    (email/send-message!
-     {:subject      (str (trs "You''re invited to join {0}''s {1}" company (app-name-trs)))
-      :recipients   [(:email invited)]
-      :message-type :html
-      :message      message-body})))
 
 (defn- all-admin-recipients
   "Return a sequence of email addresses for all Admin users.
@@ -338,13 +314,13 @@
     (merge (common-context)
            {:emailType                 "pulse"
             :title                     (:name dashboard)
-            :titleUrl                  (pulse-params/dashboard-url dashboard-id (pulse-params/parameters pulse dashboard))
+            :titleUrl                  (pulse/dashboard-url dashboard-id (pulse/parameters pulse dashboard))
             :dashboardDescription      (markdown/process-markdown (:description dashboard) :html)
            ;; There are legacy pulses that exist without being tied to a dashboard
             :dashboardHasTabs          (when dashboard-id
                                          (boolean (seq (t2/hydrate dashboard :tabs))))
             :creator                   (-> pulse :creator :common_name)
-            :sectionStyle              (style/style (style/section-style))
+            :sectionStyle              (pulse/style (pulse/section-style))
             :notificationText          (if (nil? non-user-email)
                                          "Manage your subscriptions"
                                          "Unsubscribe")
@@ -356,87 +332,14 @@
                                               "&pulse-id=" (:id pulse)))}
            (pulse-link-context pulse))))
 
-(defn- create-temp-file
-  "Separate from `create-temp-file-or-throw` primarily so that we can simulate exceptions in tests"
-  [suffix]
-  (doto (File/createTempFile "metabase_attachment" suffix)
-    .deleteOnExit))
-
-(defn- create-temp-file-or-throw
-  "Tries to create a temp file, will give the users a better error message if we are unable to create the temp file"
-  [suffix]
-  (try
-    (create-temp-file suffix)
-    (catch IOException e
-      (let [ex-msg (tru "Unable to create temp file in `{0}` for email attachments "
-                        (System/getProperty "java.io.tmpdir"))]
-        (throw (IOException. ex-msg e))))))
-
-(defn- create-result-attachment-map [export-type card-name ^File attachment-file]
-  (let [{:keys [content-type]} (qp.si/stream-options export-type)]
-    {:type         :attachment
-     :content-type content-type
-     :file-name    (format "%s_%s.%s"
-                           (or card-name "query_result")
-                           (u.date/format (t/zoned-date-time))
-                           (name export-type))
-     :content      (-> attachment-file .toURI .toURL)
-     :description  (format "More results for '%s'" card-name)}))
-
-(defn- stream-api-results-to-export-format
-  "For legacy compatibility. Takes QP results in the normal `:api` response format and streams them to a different
-  format.
-
-  TODO -- this function is provided mainly because rewriting all the Pulse/Alert code to stream results directly
-  was a lot of work. I intend to rework that code so we can stream directly to the correct export format(s) at some
-  point in the future; for now, this function is a stopgap.
-
-  Results are streamed synchronously. Caller is responsible for closing `os` when this call is complete."
-  [export-format format-rows? ^OutputStream os {{:keys [rows]} :data, database-id :database_id, :as results}]
-  ;; make sure Database/driver info is available for the streaming results writers -- they might need this in order to
-  ;; get timezone information when writing results
-  (driver/with-driver (driver.u/database->driver database-id)
-    (qp.store/with-metadata-provider database-id
-      (let [w                           (qp.si/streaming-results-writer export-format os)
-            cols                        (-> results :data :cols)
-            viz-settings                (-> results :data :viz-settings)
-            [ordered-cols output-order] (qp.streaming/order-cols cols viz-settings)
-            viz-settings'               (assoc viz-settings :output-order output-order)]
-        (qp.si/begin! w
-                      (-> results
-                          (assoc-in [:data :format-rows?] format-rows?)
-                          (assoc-in [:data :ordered-cols] ordered-cols))
-                      viz-settings')
-        (dorun
-         (map-indexed
-          (fn [i row]
-            (qp.si/write-row! w row i ordered-cols viz-settings'))
-          rows))
-        (qp.si/finish! w results)))))
-
-(defn- result-attachment
-  [{{card-name :name format-rows :format_rows :as card} :card
-    {{:keys [rows]} :data :as result}                   :result}]
-  (when (seq rows)
-    [(when-let [temp-file (and (:include_csv card)
-                               (create-temp-file-or-throw "csv"))]
-       (with-open [os (io/output-stream temp-file)]
-         (stream-api-results-to-export-format :csv format-rows os result))
-       (create-result-attachment-map "csv" card-name temp-file))
-     (when-let [temp-file (and (:include_xls card)
-                               (create-temp-file-or-throw "xlsx"))]
-       (with-open [os (io/output-stream temp-file)]
-         (stream-api-results-to-export-format :xlsx format-rows os result))
-       (create-result-attachment-map "xlsx" card-name temp-file))]))
-
 (defn- part-attachments [parts]
-  (filter some? (mapcat result-attachment parts)))
+  (filter some? (mapcat email.result-attachment/result-attachment parts)))
 
 (defn- render-part
-  [timezone part]
+  [timezone part options]
   (case (:type part)
     :card
-    (render/render-pulse-section timezone part)
+    (pulse/render-pulse-section timezone part options)
 
     :text
     {:content (markdown/process-markdown (:text part) :html)}
@@ -446,11 +349,11 @@
 
 (defn- render-filters
   [notification dashboard]
-  (let [filters (pulse-params/parameters notification dashboard)
+  (let [filters (pulse/parameters notification dashboard)
         cells   (map
                  (fn [filter]
                    [:td {:class "filter-cell"
-                         :style (style/style {:width "50%"
+                         :style (pulse/style {:width "50%"
                                               :padding "0px"
                                               :vertical-align "baseline"})}
                     [:table {:cellpadding "0"
@@ -459,23 +362,23 @@
                              :height "100%"}
                      [:tr
                       [:td
-                       {:style (style/style {:color style/color-text-medium
+                       {:style (pulse/style {:color pulse/color-text-medium
                                              :min-width "100px"
                                              :width "50%"
                                              :padding "4px 4px 4px 0"
                                              :vertical-align "baseline"})}
                        (:name filter)]
                       [:td
-                       {:style (style/style {:color style/color-text-dark
+                       {:style (pulse/style {:color pulse/color-text-dark
                                              :min-width "100px"
                                              :width "50%"
                                              :padding "4px 16px 4px 8px"
                                              :vertical-align "baseline"})}
-                       (pulse-params/value-string filter)]]]])
+                       (pulse/value-string filter)]]]])
                  filters)
         rows    (partition 2 2 nil cells)]
     (html
-     [:table {:style (style/style {:table-layout :fixed
+     [:table {:style (pulse/style {:table-layout :fixed
                                    :border-collapse :collapse
                                    :cellpadding "0"
                                    :cellspacing "0"
@@ -488,8 +391,7 @@
 
 (defn- render-message-body
   [notification message-type message-context timezone dashboard parts]
-  (let [rendered-cards  (binding [render/*include-title* true]
-                          (mapv #(render-part timezone %) parts))
+  (let [rendered-cards  (mapv #(render-part timezone % {:pulse/include-title? true}) parts)
         icon-name       (case message-type
                           :alert :bell
                           :pulse :dashboard)
@@ -509,7 +411,7 @@
   (for [{{result-card-id :id} :card :as result} results
         :let [pulse-card (m/find-first #(= (:id %) result-card-id) (:cards pulse))]]
     (if result-card-id
-      (update result :card merge (select-keys pulse-card [:include_csv :include_xls :format_rows]))
+      (update result :card merge (select-keys pulse-card [:include_csv :include_xls :format_rows :pivot_results]))
       result)))
 
 (defn render-pulse-email
@@ -538,7 +440,7 @@
   (or (:card alert)
       (first (:cards alert))))
 
-(defn- common-alert-context
+(defn common-alert-context
   "Template context that is applicable to all alert templates, including alert management templates
   (e.g. the subscribed/unsubscribed emails)"
   ([alert]
@@ -549,7 +451,7 @@
             {:emailType                 "alert"
              :questionName              card-name
              :questionURL               (urls/card-url card-id)
-             :sectionStyle              (style/section-style)}
+             :sectionStyle              (pulse/section-style)}
             (when alert-condition-map
               {:alertCondition (get alert-condition-map (pulse->alert-condition-kwd alert))})))))
 
@@ -627,7 +529,8 @@
                          nil
                          (assoc-attachment-booleans alert results))))
 
-(def ^:private alert-condition-text
+(def alert-condition-text
+  "A map of alert conditions to their corresponding text."
   {:meets "when this question meets its goal"
    :below "when this question goes below its goal"
    :rows  "whenever this question has any results"})
@@ -649,18 +552,11 @@
   (str "metabase/email/" template-name ".mustache"))
 
 ;; Paths to the templates for all of the alerts emails
-(def ^:private new-alert-template          (template-path "alert_new_confirmation"))
 (def ^:private you-unsubscribed-template   (template-path "alert_unsubscribed"))
 (def ^:private admin-unsubscribed-template (template-path "alert_admin_unsubscribed_you"))
 (def ^:private added-template              (template-path "alert_you_were_added"))
 (def ^:private stopped-template            (template-path "alert_stopped_working"))
 (def ^:private archived-template           (template-path "alert_archived"))
-
-(defn send-new-alert-email!
-  "Send out the initial 'new alert' email to the `creator` of the alert"
-  [{:keys [creator] :as alert}]
-  (send-email! creator "You set up an alert" new-alert-template
-               (common-alert-context alert alert-condition-text)))
 
 (defn send-you-unsubscribed-alert-email!
   "Send an email to `who-unsubscribed` letting them know they've unsubscribed themselves from `alert`"
@@ -695,18 +591,6 @@
   [alert user {:keys [first_name last_name] :as _archiver}]
   (let [edited-text (format "the question was edited by %s %s" first_name last_name)]
     (send-email! user not-working-subject stopped-template (assoc (common-alert-context alert) :deletionCause edited-text))))
-
-(defn send-slack-token-error-emails!
-  "Email all admins when a Slack API call fails due to a revoked token or other auth error"
-  []
-  (email/send-message!
-   :subject (trs "Your Slack connection stopped working")
-   :recipients (all-admin-recipients)
-   :message-type :html
-   :message (stencil/render-file "metabase/email/slack_token_error.mustache"
-                                 (merge (common-context)
-                                        {:logoHeader  true
-                                         :settingsUrl (str (public-settings/site-url) "/admin/settings/slack")}))))
 
 (defn send-broken-subscription-notification!
   "Email dashboard and subscription creators information about a broken subscription due to bad parameters"

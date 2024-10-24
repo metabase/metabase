@@ -17,21 +17,21 @@
    :compiler-options {:reader-features #{:cljs-release}
                       :source-map      true}
    :closure-defines {goog.debug.LOGGING_ENABLED true}
-   :entries    [metabase.lib.column-group
+   :entries    [metabase.legacy-mbql.js
+                metabase.lib.column-group
                 metabase.lib.js
                 metabase.lib.limit
                 metabase.lib.types.isa
-                metabase.legacy-mbql.js
-                metabase.shared.dashboards.constants
-                metabase.shared.formatting.constants
-                metabase.shared.formatting.date
-                metabase.shared.formatting.numbers
-                metabase.shared.formatting.time
-                metabase.shared.parameters.parameters
-                metabase.shared.util.currency
-                metabase.shared.util.time
+                metabase.models.dashboard.constants
+                metabase.models.params.shared
                 metabase.types
+                metabase.util.currency
                 metabase.util.devtools
+                metabase.util.formatting.constants
+                metabase.util.formatting.date
+                metabase.util.formatting.numbers
+                metabase.util.formatting.time
+                metabase.util.time
                 metabase.xrays.domain-entities.queries.util]}
 
   :test

@@ -10,12 +10,12 @@ import {
   SidesheetCard,
   SidesheetTabPanelContainer,
 } from "metabase/common/components/Sidesheet";
+import { InsightsTabOrLink } from "metabase/common/components/Sidesheet/components/InsightsTabOrLink";
 import { SidesheetEditableDescription } from "metabase/common/components/Sidesheet/components/SidesheetEditableDescription";
 import SidesheetS from "metabase/common/components/Sidesheet/sidesheet.module.css";
 import { Timeline } from "metabase/common/components/Timeline";
 import { getTimelineEvents } from "metabase/common/components/Timeline/utils";
 import { useRevisionListQuery } from "metabase/common/hooks";
-import { EntityIdCard } from "metabase/components/EntityIdCard";
 import { revertToRevision, updateDashboard } from "metabase/dashboard/actions";
 import { DASHBOARD_DESCRIPTION_MAX_LENGTH } from "metabase/dashboard/constants";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -24,6 +24,8 @@ import { Stack, Tabs, Text } from "metabase/ui";
 import type { Dashboard, Revision, User } from "metabase-types/api";
 
 import { DashboardDetails } from "./DashboardDetails";
+import { DashboardEntityIdCard } from "./DashboardEntityIdCard";
+import { InsightsUpsellTab } from "./components/InsightsUpsellTab";
 
 interface DashboardInfoSidebarProps {
   dashboard: Dashboard;
@@ -37,6 +39,7 @@ interface DashboardInfoSidebarProps {
 enum Tab {
   Overview = "overview",
   History = "history",
+  Insights = "insights",
 }
 
 export function DashboardInfoSidebar({
@@ -111,6 +114,7 @@ export function DashboardInfoSidebar({
               {!isIADashboard && (
                 <Tabs.Tab value={Tab.History}>{t`History`}</Tabs.Tab>
               )}
+              <InsightsTabOrLink dashboard={dashboard} />
             </Tabs.List>
             <SidesheetTabPanelContainer>
               <Tabs.Panel value={Tab.Overview}>
@@ -129,6 +133,9 @@ export function DashboardInfoSidebar({
                   revisions={revisions}
                   currentUser={currentUser}
                 />
+              </Tabs.Panel>
+              <Tabs.Panel value={Tab.Insights}>
+                <InsightsUpsellTab model="dashboard" />
               </Tabs.Panel>
             </SidesheetTabPanelContainer>
           </Tabs>
@@ -172,7 +179,7 @@ const OverviewTab = ({
       <SidesheetCard>
         <DashboardDetails dashboard={dashboard} />
       </SidesheetCard>
-      <EntityIdCard entityId={dashboard.entity_id} />
+      <DashboardEntityIdCard dashboard={dashboard} />
     </Stack>
   );
 };

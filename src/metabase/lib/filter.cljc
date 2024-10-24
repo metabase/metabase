@@ -23,10 +23,10 @@
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.shared.util.i18n :as i18n]
-   [metabase.shared.util.time :as shared.ut]
    [metabase.util :as u]
-   [metabase.util.malli :as mu]))
+   [metabase.util.i18n :as i18n]
+   [metabase.util.malli :as mu]
+   [metabase.util.time :as u.time]))
 
 (doseq [tag [:and :or]]
   (lib.hierarchy/derive tag ::compound))
@@ -91,7 +91,7 @@
       (i18n/tru "{0} is equal to {1}" (->display-name a) (->display-name b))
 
       [:= _ (a :guard (unit-is lib.schema.temporal-bucketing/datetime-truncation-units)) (b :guard string?)]
-      (i18n/tru "{0} is {1}" (->unbucketed-display-name a) (shared.ut/format-relative-date-range b 0 (:temporal-unit (second a)) nil nil {:include-current true}))
+      (i18n/tru "{0} is {1}" (->unbucketed-display-name a) (u.time/format-relative-date-range b 0 (:temporal-unit (second a)) nil nil {:include-current true}))
 
       [:= _ (a :guard (unit-is :day-of-week)) (b :guard (some-fn int? string?))]
       (i18n/tru "{0} is {1}" (->display-name a) (->temporal-name a b))
@@ -183,7 +183,7 @@
 (defmethod lib.metadata.calculation/display-name-method ::binary
   [query stage-number expr style]
   (let [->display-name #(lib.metadata.calculation/display-name query stage-number % style)
-        ->temporal-name #(shared.ut/format-unit % nil)
+        ->temporal-name #(u.time/format-unit % nil)
         temporal? #(lib.util/original-isa? % :type/Temporal)]
     (lib.util.match/match-one expr
       [:< _ (x :guard temporal?) (y :guard string?)]
@@ -214,7 +214,7 @@
       [:between _ x (y :guard string?) (z :guard string?)]
       (i18n/tru "{0} is {1}"
                 (->unbucketed-display-name x)
-                (shared.ut/format-diff y z))
+                (u.time/format-diff y z))
 
       [:between _
        [:+ _ x [:interval _ n unit]]

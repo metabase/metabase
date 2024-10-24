@@ -1,4 +1,4 @@
-(ns metabase.api.embed-test
+(ns ^:mb/driver-tests metabase.api.embed-test
   "Tests for /api/embed endpoints."
   (:require
    [buddy.sign.jwt :as jwt]
@@ -6,6 +6,7 @@
    [clj-time.core :as time]
    [clojure.data.csv :as csv]
    [clojure.set :as set]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [crypto.random :as crypto-random]
    [dk.ative.docjure.spreadsheet :as spreadsheet]
@@ -105,7 +106,8 @@
       ~@body)))
 
 (defmacro with-embedding-enabled-and-new-secret-key! {:style/indent 0} [& body]
-  `(mt/with-temporary-setting-values [~'enable-embedding true]
+  `(mt/with-temporary-setting-values [~'enable-embedding-static true
+                                      ~'enable-embedding-interactive true]
      (with-new-secret-key!
        ~@body)))
 
@@ -288,7 +290,9 @@
   (str "embed/card/"
        (card-token card-or-id additional-token-keys)
        "/query"
-       response-format-route-suffix))
+       response-format-route-suffix
+       (when-not (str/blank? response-format-route-suffix)
+         "?format_rows=true")))
 
 (def ^:private response-format->request-options
   {""      nil
@@ -425,7 +429,10 @@
 
           (testing "If `:locked` parameter is present in URL params, request should fail"
             (is (= "You can only specify a value for :venue_id in the JWT."
-                   (client/client :get 400 (str (card-query-url card response-format {:params {:venue_id 100}}) "?venue_id=100"))))))))))
+                   (let [url (card-query-url card response-format {:params {:venue_id 100}})]
+                     (client/client :get 400 (str url (if (str/includes? url "format_rows")
+                                                        "&venue_id=100"
+                                                        "?venue_id=100"))))))))))))
 
 (deftest card-disabled-params-test
   (with-embedding-enabled-and-new-secret-key!
@@ -438,7 +445,10 @@
 
         (testing "If a `:disabled` param is passed in the URL the request should fail"
           (is (= "You're not allowed to specify a value for :venue_id."
-                 (client/client :get 400 (str (card-query-url card response-format) "?venue_id=200")))))))))
+                 (let [url (card-query-url card response-format)]
+                   (client/client :get 400 (str url (if (str/includes? url "format_rows")
+                                                      "&venue_id=200"
+                                                      "?venue_id=200")))))))))))
 
 (deftest card-enabled-params-test
   (mt/test-helpers-set-global-values!
@@ -447,7 +457,10 @@
         (do-response-formats [response-format request-options]
           (testing "If `:enabled` param is present in both JWT and the URL, the request should fail"
             (is (= "You can't specify a value for :venue_id if it's already set in the JWT."
-                   (client/real-client :get 400 (str (card-query-url card response-format {:params {:venue_id 100}}) "?venue_id=200")))))
+                   (let [url (card-query-url card response-format {:params {:venue_id 100}})]
+                     (client/client :get 400 (str url (if (str/includes? url "format_rows")
+                                                        "&venue_id=100"
+                                                        "?venue_id=100")))))))
 
           (testing "If an `:enabled` param is present in the JWT, that's ok"
             #_{:clj-kondo/ignore [:deprecated-var]}
@@ -461,9 +474,12 @@
             #_{:clj-kondo/ignore [:deprecated-var]}
             (test-query-results
              response-format
-             (client/real-client :get (response-format->status-code response-format)
-                                 (str (card-query-url card response-format) "?venue_id=200")
-                                 {:request-options request-options}))))))))
+             (let [url (card-query-url card response-format)]
+               (client/real-client :get (response-format->status-code response-format)
+                                   (str url (if (str/includes? url "format_rows")
+                                              "&venue_id=200"
+                                              "?venue_id=200"))
+                                   {:request-options request-options})))))))))
 
 (defn card-with-date-field-filter-default
   []
@@ -536,7 +552,7 @@
     (with-embedding-enabled-and-new-secret-key!
       (t2.with-temp/with-temp [Card card (card-with-date-field-filter)]
         (is (= "count\n107\n"
-               (client/client :get 200 (str (card-query-url card "/csv") "?date=Q1-2014"))))))))
+               (client/client :get 200 (str (card-query-url card "/csv") "&date=Q1-2014"))))))))
 
 (deftest csv-forward-url-test
   (mt/test-helpers-set-global-values!
@@ -1090,7 +1106,7 @@
 (deftest endpoint-should-fail-if-embedding-is-disabled
   (is (= "Embedding is not enabled."
          (with-embedding-enabled-and-temp-card-referencing! :venues :name [card]
-           (mt/with-temporary-setting-values [enable-embedding false]
+           (mt/with-temporary-setting-values [enable-embedding-static false]
              (client/client :get 400 (field-values-url card (mt/id :venues :name))))))))
 
 (deftest embedding-not-enabled-message
@@ -1106,7 +1122,7 @@
           (dropdown [card param-key  & [entity-id]]
             (client/client :get 200 (format "embed/card/%s/params/%s/values"
                                             (card-token card nil entity-id) param-key)))]
-    (mt/with-temporary-setting-values [enable-embedding true]
+    (mt/with-temporary-setting-values [enable-embedding-static true]
       (with-new-secret-key!
         (api.card-test/with-card-param-values-fixtures [{:keys [card field-filter-card param-keys]}]
           (t2/update! :model/Card (:id field-filter-card)
@@ -1223,7 +1239,7 @@
 (deftest field-values-endpoint-should-fail-if-embedding-is-disabled
   (is (= "Embedding is not enabled."
          (with-embedding-enabled-and-temp-dashcard-referencing! :venues :name [dashboard]
-           (mt/with-temporary-setting-values [enable-embedding false]
+           (mt/with-temporary-setting-values [enable-embedding-static false]
              (client/client :get 400 (field-values-url dashboard (mt/id :venues :name))))))))
 
 ;; Endpoint should fail if embedding is disabled for the Dashboard
@@ -1259,7 +1275,7 @@
                                      :value "33 T"))))
 
              (testing "Endpoint should fail if embedding is disabled"
-               (mt/with-temporary-setting-values [enable-embedding false]
+               (mt/with-temporary-setting-values [enable-embedding-static false]
                  (is (= "Embedding is not enabled."
                         (client/client :get 400 (field-search-url object (mt/id :venues :id) (mt/id :venues :name))
                                        :value "33 T")))))
@@ -1304,7 +1320,7 @@
                                     :value "10"))))
 
             (testing " ...or if embedding is disabled"
-              (mt/with-temporary-setting-values [enable-embedding false]
+              (mt/with-temporary-setting-values [enable-embedding-static false]
                 (is (= "Embedding is not enabled."
                        (client/client :get 400 (field-remapping-url
                                                 object (mt/id :venues :id) (mt/id :venues :name) entity-id)
@@ -1564,7 +1580,7 @@
     (mt/dataset test-data
       (testing "GET /api/embed/pivot/card/:token/query"
         (testing "check that the endpoint doesn't work if embedding isn't enabled"
-          (mt/with-temporary-setting-values [enable-embedding false]
+          (mt/with-temporary-setting-values [enable-embedding-static false]
             (with-new-secret-key!
               (with-temp-card [card (api.pivots/pivot-card)]
                 (is (= "Embedding is not enabled."
@@ -1629,7 +1645,7 @@
 
 (deftest pivot-dashcard-embedding-disabled-test
   (mt/dataset test-data
-    (mt/with-temporary-setting-values [enable-embedding false]
+    (mt/with-temporary-setting-values [enable-embedding-static false]
       (with-new-secret-key!
         (with-temp-dashcard [dashcard {:dash     {:parameters []}
                                        :card     (api.pivots/pivot-card)

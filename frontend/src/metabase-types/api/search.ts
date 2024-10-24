@@ -142,4 +142,5 @@ export type SearchRequest = {
   // this should be in ListCollectionItemsRequest but legacy code expects them here
   collection?: CollectionId;
   namespace?: "snippets";
+  calculate_available_models?: true;
 } & PaginationRequest;

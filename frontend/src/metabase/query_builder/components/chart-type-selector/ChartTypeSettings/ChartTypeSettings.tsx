@@ -1,26 +1,33 @@
 import { t } from "ttag";
 
-import { Box, Space, Text } from "metabase/ui";
+import { Space, Stack, type StackProps, Text } from "metabase/ui";
 
 import { ChartTypeList, type ChartTypeListProps } from "../ChartTypeList";
 
 export type ChartTypeSettingsProps = {
   sensibleVisualizations: ChartTypeListProps["visualizationList"];
   nonSensibleVisualizations: ChartTypeListProps["visualizationList"];
-} & Pick<ChartTypeListProps, "selectedVisualization" | "onSelectVisualization">;
+} & Pick<
+  ChartTypeListProps,
+  "selectedVisualization" | "onSelectVisualization" | "onOpenSettings"
+> &
+  StackProps;
 
 export const ChartTypeSettings = ({
   selectedVisualization,
   onSelectVisualization,
   sensibleVisualizations,
   nonSensibleVisualizations,
+  onOpenSettings,
+  ...stackProps
 }: ChartTypeSettingsProps) => (
-  <Box display="contents" data-testid="chart-type-settings">
+  <Stack data-testid="chart-type-settings" {...stackProps}>
     <ChartTypeList
       data-testid="display-options-sensible"
       visualizationList={sensibleVisualizations}
       onSelectVisualization={onSelectVisualization}
       selectedVisualization={selectedVisualization}
+      onOpenSettings={onOpenSettings}
     />
 
     <Space h="xl" />
@@ -39,6 +46,7 @@ export const ChartTypeSettings = ({
       visualizationList={nonSensibleVisualizations}
       onSelectVisualization={onSelectVisualization}
       selectedVisualization={selectedVisualization}
+      onOpenSettings={onOpenSettings}
     />
-  </Box>
+  </Stack>
 );

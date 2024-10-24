@@ -29,13 +29,16 @@ export function getOptionByOperator(operator: Lib.StringFilterOperatorName) {
 }
 
 export function getDefaultOperator(
+  query: Lib.Query,
   column: Lib.ColumnMetadata,
   availableOptions: OperatorOption[],
 ): Lib.StringFilterOperatorName {
+  const fieldValuesInfo = Lib.fieldValuesSearchInfo(query, column);
+
   const desiredOperator =
     Lib.isPrimaryKey(column) ||
     Lib.isForeignKey(column) ||
-    Lib.isCategory(column)
+    fieldValuesInfo.hasFieldValues !== "none"
       ? "="
       : "contains";
   return getDefaultAvailableOperator(availableOptions, desiredOperator);

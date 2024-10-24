@@ -1,49 +1,51 @@
-import type { MouseEvent, MouseEventHandler, ReactNode } from "react";
+import type { MouseEventHandler, ReactNode } from "react";
 
-import { Box, Center, Stack, Text } from "metabase/ui";
+import { Box, Center, Group, Icon, Paper, Stack, Title } from "metabase/ui";
 
-import {
-  SharingPaneButtonContent,
-  SharingPaneButtonTitle,
-} from "./SharingPaneButton.styled";
+import S from "./SharingPaneButton.module.css";
 
 type SharingOptionProps = {
   illustration: JSX.Element;
   children: ReactNode;
-  header: string;
-  description: ReactNode | string;
-  disabled?: boolean;
+  title: string;
+  badge?: ReactNode;
   onClick?: MouseEventHandler;
   "data-testid"?: string;
+  externalLink?: boolean;
 };
 
 export const SharingPaneButton = ({
   illustration,
   children,
-  header,
-  description,
-  disabled,
+  title,
   onClick,
+  badge,
+  externalLink = false,
   "data-testid": dataTestId,
 }: SharingOptionProps) => (
-  <SharingPaneButtonContent
+  <Paper
+    className={S.Container}
+    p={24}
+    pt={52}
     withBorder
-    disabled={disabled}
     data-testid={dataTestId}
+    onClick={onClick}
+    h="100%"
+    pos="relative"
+    w={"22rem"}
   >
-    <Center
-      h="22.5rem"
-      p="8rem"
-      onClick={(event: MouseEvent) => !disabled && onClick?.(event)}
-    >
-      <Stack w="17.5rem" justify="center" align="center">
-        {illustration}
-        <SharingPaneButtonTitle fz="xl" disabled={disabled}>
-          {header}
-        </SharingPaneButtonTitle>
-        <Text>{description}</Text>
-        <Box w="100%">{children}</Box>
-      </Stack>
-    </Center>
-  </SharingPaneButtonContent>
+    <Stack>
+      {externalLink && (
+        <Box pos="absolute" top={12} right={12}>
+          <Icon name="share" color="var(--external-link-icon-color)" />
+        </Box>
+      )}
+      <Center mb={32}>{illustration}</Center>
+      <Group align="center" spacing="sm">
+        <Title size="h2">{title}</Title>
+        {badge}
+      </Group>
+      {children}
+    </Stack>
+  </Paper>
 );

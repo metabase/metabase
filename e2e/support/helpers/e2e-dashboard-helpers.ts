@@ -160,6 +160,20 @@ export function addIFrameWhileEditing(
   cy.findByTestId("iframe-card-input").type(embed, options);
 }
 
+export function editIFrameWhileEditing(
+  dashcardIndex = 0,
+  embed: string,
+  options: Partial<Cypress.TypeOptions> = {},
+) {
+  getDashboardCard(dashcardIndex)
+    .realHover()
+    .findByTestId("dashboardcard-actions-panel")
+    .should("be.visible")
+    .icon("pencil")
+    .click();
+  cy.findByTestId("iframe-card-input").type(`{selectall}${embed}`, options);
+}
+
 export function addTextBoxWhileEditing(
   text: string,
   options: Partial<Cypress.TypeOptions> = {},
@@ -270,9 +284,12 @@ export function resizeDashboardCard({
   });
 }
 
+/** Opens the dashboard info sidesheet */
 export function openDashboardInfoSidebar() {
   dashboardHeader().icon("info").click();
+  return sidesheet();
 }
+/** Closes the dashboard info sidesheet */
 export function closeDashboardInfoSidebar() {
   sidesheet().findByLabelText("Close").click();
 }

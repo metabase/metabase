@@ -207,6 +207,8 @@ import label_component from "./label.svg?component";
 import label_source from "./label.svg?source";
 import ldap_component from "./ldap.svg?component";
 import ldap_source from "./ldap.svg?source";
+import learn_component from "./learn.svg?component";
+import learn_source from "./learn.svg?source";
 import lightbulb_component from "./lightbulb.svg?component";
 import lightbulb_source from "./lightbulb.svg?source";
 import line_component from "./line.svg?component";
@@ -229,6 +231,8 @@ import location_component from "./location.svg?component";
 import location_source from "./location.svg?source";
 import lock_component from "./lock.svg?component";
 import lock_source from "./lock.svg?source";
+import lock_filled_component from "./lock_filled.svg?component";
+import lock_filled_source from "./lock_filled.svg?source";
 import mail_component from "./mail.svg?component";
 import mail_source from "./mail.svg?source";
 import mail_filled_component from "./mail_filled.svg?component";
@@ -809,6 +813,10 @@ export const Icons = {
     component: ldap_component,
     source: ldap_source,
   },
+  learn: {
+    component: learn_component,
+    source: learn_source,
+  },
   lightbulb: {
     component: lightbulb_component,
     source: lightbulb_source,
@@ -852,6 +860,10 @@ export const Icons = {
   lock: {
     component: lock_component,
     source: lock_source,
+  },
+  lock_filled: {
+    component: lock_filled_component,
+    source: lock_filled_source,
   },
   mail: {
     component: mail_component,

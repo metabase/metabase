@@ -8,13 +8,13 @@
    [hickory.core :as hik]
    [hickory.render :as hik.r]
    [hickory.zip :as hik.z]
-   [metabase.email.messages :as messages]
-   [metabase.pulse :as pulse]
-   [metabase.pulse.markdown :as markdown]
+   [metabase.email.result-attachment :as email.result-attachment]
    [metabase.pulse.render :as render]
    [metabase.pulse.render.image-bundle :as img]
    [metabase.pulse.render.png :as png]
    [metabase.pulse.render.style :as style]
+   [metabase.pulse.send :as pulse.send]
+   [metabase.util.markdown :as markdown]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -37,13 +37,11 @@
         (for [cell row]
           [:td {:style table-style} cell])])]))
 
-(def ^:private result-attachment #'messages/result-attachment)
-
 (defn- render-csv-for-dashcard
   [part]
   (-> part
       (assoc-in [:card :include_csv] true)
-      result-attachment
+      email.result-attachment/result-attachment
       first
       :content
       slurp
@@ -55,7 +53,7 @@
             [:td {:style (style/style (merge table-style-map {:max-width "400px"}))}
              content])]
     (if card
-      (let [base-render (render/render-pulse-card :inline (pulse/defaulted-timezone card) card dashcard result)
+      (let [base-render (render/render-pulse-card :inline (pulse.send/defaulted-timezone card) card dashcard result)
             html-src    (-> base-render :content)
             img-src     (-> base-render
                             (png/render-html-to-png 1200)
@@ -78,7 +76,7 @@
          (markdown/process-markdown (:text dashboard-result) :html)])
        (cellfn nil)])))
 
-(def ^:private execute-dashboard #'pulse/execute-dashboard)
+(def ^:private execute-dashboard #'pulse.send/execute-dashboard)
 
 (defn render-dashboard-to-hiccup
   "Given a dashboard ID, renders all of the dashcards to hiccup datastructure."
@@ -160,11 +158,13 @@
   a style tag with an attribute 'nonce=%NONCE%'. Specifcally, this was designed to be used with the
   endpoint `api/pulse/preview_dashboard/:id`."
   [only-this-uri handler]
-  (fn [request respond raise]
-    (let [{:keys [uri]} request]
-      (handler
-       request
-       (if (str/starts-with? uri only-this-uri)
-         (comp respond (partial add-style-nonce request))
-         respond)
-       raise))))
+  (with-meta
+   (fn [request respond raise]
+     (let [{:keys [uri]} request]
+       (handler
+        request
+        (if (str/starts-with? uri only-this-uri)
+          (comp respond (partial add-style-nonce request))
+          respond)
+        raise)))
+   (meta handler)))

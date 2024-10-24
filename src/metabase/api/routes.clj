@@ -34,9 +34,10 @@
    [metabase.api.preview-embed :as api.preview-embed]
    [metabase.api.public :as api.public]
    [metabase.api.pulse :as api.pulse]
+   [metabase.api.pulse.unsubscribe :as api.pulse.unsubscribe]
    [metabase.api.revision :as api.revision]
    [metabase.api.routes.common
-    :refer [+auth +message-only-exceptions +public-exceptions +static-apikey]]
+    :refer [+auth +message-only-exceptions +public-exceptions]]
    [metabase.api.search :as api.search]
    [metabase.api.segment :as api.segment]
    [metabase.api.session :as api.session]
@@ -124,12 +125,13 @@
   (context "/metabot"              [] (+auth api.metabot/routes))
   (context "/model-index"          [] (+auth api.model-index/routes))
   (context "/native-query-snippet" [] (+auth api.native-query-snippet/routes))
-  (context "/notify"               [] (+static-apikey api.notify/routes))
+  (context "/notify"               [] (+auth api.notify/routes))
   (context "/permissions"          [] (+auth api.permissions/routes))
   (context "/persist"              [] (+auth api.persist/routes))
   (context "/premium-features"     [] (+auth api.premium-features/routes))
   (context "/preview_embed"        [] (+auth api.preview-embed/routes))
   (context "/public"               [] (+public-exceptions api.public/routes))
+  (context "/pulse/unsubscribe"    [] api.pulse.unsubscribe/routes)
   (context "/pulse"                [] (+auth api.pulse/routes))
   (context "/revision"             [] (+auth api.revision/routes))
   (context "/search"               [] (+auth api.search/routes))

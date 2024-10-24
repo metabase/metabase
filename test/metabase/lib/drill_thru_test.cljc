@@ -116,13 +116,13 @@
            (is (thrown-with-msg?
                 #?(:clj clojure.lang.ExceptionInfo :cljs cljs.core.ExceptionInfo)
                 #"Do not call drill-thru for "
-                (apply lib/drill-thru query -1 drill args))))
+                (apply lib/drill-thru query -1 nil drill args))))
 
          (testing (str "\nquery =\n" (u/pprint-to-str query)
                        "\ndrill =\n" (u/pprint-to-str drill)
                        "\nargs =\n" (u/pprint-to-str args))
            (try
-             (let [query' (apply lib/drill-thru query -1 drill args)]
+             (let [query' (apply lib/drill-thru query -1 nil drill args)]
                (is (not (me/humanize (mc/validate ::lib.schema/query query'))))
                (when (< (inc depth) test-drill-applications-max-depth)
                  (testing (str "\n\nDEPTH = " (inc depth) "\n\nquery =\n" (u/pprint-to-str query'))
@@ -748,7 +748,10 @@
                    :row-count  77
                    :table-name "Orders"}
                   {:display-name "See this month by week"
-                   :type         :drill-thru/zoom-in.timeseries}]}))
+                   :type         :drill-thru/zoom-in.timeseries}]
+    ;; Underlying records and automatic insights are not supported for native.
+    ;; zoom-in.timeseries can't be because we don't know what unit (if any) it's currently bucketed by.
+    :native-drills #{:drill-thru/quick-filter}}))
 
 (deftest ^:parallel available-drill-thrus-test-10
   (testing (str "fk-filter should not get returned for non-fk column (#34440) "
@@ -764,7 +767,8 @@
                     {:type :drill-thru/quick-filter, :operators [{:name "="}
                                                                  {:name "≠"}]}
                     {:type :drill-thru/underlying-records, :row-count 2, :table-name "Orders"}
-                    {:type :drill-thru/zoom-in.timeseries, :display-name "See this month by week"}]})))
+                    {:type :drill-thru/zoom-in.timeseries, :display-name "See this month by week"}]
+      :native-drills #{:drill-thru/quick-filter}})))
 
 ;; FIXME: quick-filter gets returned for non-metric column (#34443)
 (deftest ^:parallel available-drill-thrus-test-11

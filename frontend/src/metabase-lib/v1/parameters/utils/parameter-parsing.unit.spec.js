@@ -16,6 +16,7 @@ describe("parameters/utils/parameter-values", () => {
   let parameter4;
   let parameters;
   let queryParams;
+
   beforeEach(() => {
     field1 = {
       id: 1,

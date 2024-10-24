@@ -19,12 +19,14 @@ import {
   collectionOnTheGoModal,
   commandPalette,
   commandPaletteButton,
+  createDashboard,
   createDashboardWithTabs,
   createQuestionAndDashboard,
   dashboardHeader,
   describeEE,
   describeWithSnowplow,
   editDashboard,
+  editIFrameWhileEditing,
   enableTracking,
   entityPickerModal,
   expectGoodSnowplowEvent,
@@ -53,6 +55,7 @@ import {
   sidebar,
   sidesheet,
   updateDashboardCards,
+  updateSetting,
   visitDashboard,
 } from "e2e/support/helpers";
 import { GRID_WIDTH } from "metabase/lib/dashboard_grid";
@@ -130,7 +133,10 @@ describe("scenarios > dashboard", () => {
         .click();
 
       entityPickerModal().within(() => {
-        cy.findByPlaceholderText("Search…").type("Pro");
+        cy.findByPlaceholderText("Search this collection or everywhere…").type(
+          "Pro",
+        );
+        cy.findByText("Everywhere").click();
         cy.findByText("Products").click();
       });
 
@@ -320,62 +326,6 @@ describe("scenarios > dashboard", () => {
             .and("contain", "Orders, Count")
             .and("contain", "18,760");
         }
-      });
-
-      describe("iframe cards", () => {
-        it("should be possible to add an iframe card", () => {
-          editDashboard();
-          addIFrameWhileEditing("https://example.com");
-          cy.findByTestId("dashboardcard-actions-panel").should("not.exist");
-          cy.button("Done").click();
-          getDashboardCards().eq(0).realHover();
-          cy.findByTestId("dashboardcard-actions-panel").should("be.visible");
-          validateIFrame("https://example.com");
-          saveDashboard();
-          validateIFrame("https://example.com");
-        });
-
-        it("should handle various iframe and URL inputs", () => {
-          const testCases = [
-            {
-              input: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-              expected: "https://www.youtube.com/embed/dQw4w9WgXcQ",
-            },
-            {
-              input: "https://youtu.be/dQw4w9WgXcQ",
-              expected: "https://www.youtube.com/embed/dQw4w9WgXcQ",
-            },
-            {
-              input: "https://www.loom.com/share/1234567890abcdef",
-              expected: "https://www.loom.com/embed/1234567890abcdef",
-            },
-            {
-              input: "https://vimeo.com/123456789",
-              expected: "https://player.vimeo.com/video/123456789",
-            },
-            {
-              input: "example.com",
-              expected: "https://example.com",
-            },
-            {
-              input: "https://example.com",
-              expected: "https://example.com",
-            },
-            {
-              input:
-                '<iframe src="https://example.com" onload="alert(\'XSS\')"></iframe>',
-              expected: "https://example.com",
-            },
-          ];
-
-          editDashboard();
-
-          testCases.forEach(({ input, expected }, index) => {
-            addIFrameWhileEditing(input);
-            cy.button("Done").click();
-            validateIFrame(expected, index);
-          });
-        });
       });
 
       it("should hide personal collections when adding questions to a dashboard in public collection", () => {
@@ -704,6 +654,111 @@ describe("scenarios > dashboard", () => {
         getDashboardCards().eq(1).contains("bottom");
       },
     );
+  });
+
+  describe("iframe cards", () => {
+    it("should handle various iframe and URL inputs", () => {
+      const testCases = [
+        {
+          input: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+          expected: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+        },
+        {
+          input: "https://youtu.be/dQw4w9WgXcQ",
+          expected: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+        },
+        {
+          input: "https://www.loom.com/share/1234567890abcdef",
+          expected: "https://www.loom.com/embed/1234567890abcdef",
+        },
+        {
+          input: "https://vimeo.com/123456789",
+          expected: "https://player.vimeo.com/video/123456789",
+        },
+        {
+          input: "example.com",
+          expected: "https://example.com",
+        },
+        {
+          input: "https://example.com",
+          expected: "https://example.com",
+        },
+        {
+          input:
+            '<iframe src="https://example.com" onload="alert(\'XSS\')"></iframe>',
+          expected: "https://example.com",
+        },
+      ];
+
+      updateSetting("allowed-iframe-hosts", "*");
+
+      cy.createDashboard().then(({ body: { id } }) => {
+        visitDashboard(id);
+      });
+
+      editDashboard();
+
+      testCases.forEach(({ input, expected }, index) => {
+        addIFrameWhileEditing(input);
+        cy.button("Done").click();
+        validateIFrame(expected, index);
+      });
+    });
+
+    it("should respect allowed-iframe-hosts setting", () => {
+      const errorMessage = /can not be embedded in iframe cards/;
+
+      updateSetting(
+        "allowed-iframe-hosts",
+        ["youtube.com", "player.videos.com"].join("\n"),
+      );
+
+      cy.createDashboard().then(({ body: { id } }) => visitDashboard(id));
+      editDashboard();
+
+      // Test allowed domain with subdomains
+      addIFrameWhileEditing("https://youtube.com/watch?v=dQw4w9WgXcQ");
+      cy.button("Done").click();
+      validateIFrame("https://www.youtube.com/embed/dQw4w9WgXcQ");
+
+      editIFrameWhileEditing(0, "https://www.youtube.com/watch?v=dQw4w9WgXcQ");
+      cy.button("Done").click();
+      validateIFrame("https://www.youtube.com/embed/dQw4w9WgXcQ");
+
+      // Test allowed subdomain, but no other domains
+      editIFrameWhileEditing(0, "player.videos.com/video/123456789");
+      cy.button("Done").click();
+      validateIFrame("https://player.videos.com/video/123456789");
+
+      editIFrameWhileEditing(0, "videos.com/video/123456789");
+      cy.button("Done").click();
+      getDashboardCard().within(() => {
+        cy.findByText(errorMessage).should("be.visible");
+        cy.get("iframe").should("not.exist");
+      });
+
+      editIFrameWhileEditing(0, "www.videos.com/video");
+      cy.button("Done").click();
+      getDashboardCard().within(() => {
+        cy.findByText(errorMessage).should("be.visible");
+        cy.get("iframe").should("not.exist");
+      });
+
+      // Test forbidden domain and subdomains
+      editIFrameWhileEditing(0, "https://example.com");
+      cy.button("Done").click();
+      getDashboardCard().within(() => {
+        cy.findByText(errorMessage).should("be.visible");
+        cy.get("iframe").should("not.exist");
+      });
+
+      editIFrameWhileEditing(0, "www.example.com");
+      cy.button("Done").click();
+      getDashboardCard().within(() => {
+        cy.findByText(errorMessage).should("be.visible");
+        cy.get("iframe").should("not.exist");
+      });
+    });
   });
 
   it("should add a filter", () => {
@@ -1146,6 +1201,29 @@ describeWithSnowplow("scenarios > dashboard", () => {
 
   afterEach(() => {
     expectNoBadSnowplowEvents();
+  });
+
+  it("should be possible to add an iframe card", () => {
+    updateSetting("allowed-iframe-hosts", "*");
+    createDashboard({ name: "iframe card" }).then(({ body: { id } }) => {
+      visitDashboard(id);
+
+      editDashboard();
+      addIFrameWhileEditing("https://example.com");
+      cy.findByTestId("dashboardcard-actions-panel").should("not.exist");
+      cy.button("Done").click();
+      getDashboardCards().eq(0).realHover();
+      cy.findByTestId("dashboardcard-actions-panel").should("be.visible");
+      validateIFrame("https://example.com");
+      saveDashboard();
+      validateIFrame("https://example.com");
+
+      expectGoodSnowplowEvent({
+        event: "new_iframe_card_created",
+        target_id: id,
+        event_detail: "example.com",
+      });
+    });
   });
 
   it("saving a dashboard should track a 'dashboard_saved' snowplow event", () => {

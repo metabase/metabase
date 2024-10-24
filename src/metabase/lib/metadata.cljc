@@ -6,7 +6,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
-   [metabase.shared.util.i18n :as i18n]
+   [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
 
 ;;; TODO -- deprecate all the schemas below, and just use the versions in [[lib.schema.metadata]] instead.

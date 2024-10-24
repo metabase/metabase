@@ -80,10 +80,10 @@
    [metabase.lib.stage :as lib.stage]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
-   [metabase.shared.util.time :as shared.ut]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.memoize :as memoize]))
+   [metabase.util.memoize :as memoize]
+   [metabase.util.time :as u.time]))
 
 ;;; This ensures that all of metabase.lib.* is loaded, so all the `defmethod`s are properly registered.
 (comment lib.core/keep-me)
@@ -248,22 +248,23 @@
   looking at the last stage.
 
   > **Code health:** Healthy"
-  [a-query stage-number]
-  (if (and
-       (empty? (lib.core/aggregations a-query stage-number))
-       (empty? (lib.core/breakouts a-query stage-number)))
+  [a-query stage-number card-id]
+  (let [{a-query :query, :keys [stage-number]} (lib.core/wrap-native-query-with-mbql a-query stage-number card-id)]
+    (if (and
+         (empty? (lib.core/aggregations a-query stage-number))
+         (empty? (lib.core/breakouts a-query stage-number)))
     ;; No extra stage needed with no aggregations.
-    #js {:query      a-query
-         :stageIndex stage-number}
-    ;; An extra stage is needed, so see if one already exists.
-    (if-let [next-stage (->> (lib.util/canonical-stage-index a-query stage-number)
-                             (lib.util/next-stage-number a-query))]
-      ;; Already an extra stage, so use it.
       #js {:query      a-query
-           :stageIndex next-stage}
+           :stageIndex stage-number}
+    ;; An extra stage is needed, so see if one already exists.
+      (if-let [next-stage (->> (lib.util/canonical-stage-index a-query stage-number)
+                               (lib.util/next-stage-number a-query))]
+      ;; Already an extra stage, so use it.
+        #js {:query      a-query
+             :stageIndex next-stage}
       ;; No new stage, so append one.
-      #js {:query      (lib.core/append-stage a-query)
-           :stageIndex -1})))
+        #js {:query      (lib.core/append-stage a-query)
+             :stageIndex -1}))))
 
 (defn ^:export orderable-columns
   "Returns a JS Array of *column metadata* values for all columns which can be used to add an `ORDER BY` to `a-query` at
@@ -1941,7 +1942,7 @@
   clicked value are also in the `dimensions` list.
 
   > **Code health:** Single use. This is only here to support the context menu UI and should not be reused."
-  [a-query stage-number column value row dimensions]
+  [a-query stage-number card-id column value row dimensions]
   (lib.convert/with-aggregation-list (lib.core/aggregations a-query stage-number)
     (let [column-ref (when-let [a-ref (and column (.-field_ref ^js column))]
                        (legacy-ref->pMBQL a-ref))]
@@ -1951,7 +1952,8 @@
                    :value      (cond
                                  (undefined? value) nil   ; Missing a value, ie. a column click
                                  (nil? value)       :null ; Provided value is null, ie. database NULL
-                                 :else              value)}
+                                 :else              value)
+                   :card-id    card-id}
                   (when row                    {:row        (mapv row-cell       row)})
                   (when (not-empty dimensions) {:dimensions (mapv dimension-cell dimensions)}))
            (lib.core/available-drill-thrus a-query stage-number)
@@ -1966,8 +1968,8 @@
   The exact effect on the query depends on the specific drill-thru and the `args`.
 
   > **Code health:** Single use. This is only here to support the context menu UI and should not be reused."
-  [a-query stage-number a-drill-thru & args]
-  (apply lib.core/drill-thru a-query stage-number a-drill-thru args))
+  [a-query stage-number card-id a-drill-thru & args]
+  (apply lib.core/drill-thru a-query stage-number card-id a-drill-thru args))
 
 (defn ^:export filter-drill-details
   "Returns a JS object with the details needed to render the complex UI for `column-filter` and some `quick-filter`
@@ -1991,6 +1993,14 @@
        "query"      a-query
        "stageIndex" stage-number
        "value"      (lib.drill-thru.common/drill-value->js value)})
+
+(defn ^:export combine-column-drill-details
+  "Returns a JS object with the details needed to render the complex UI for `combine-column` drills."
+  [{a-query :query
+    :keys [column stage-number]}]
+  #js {"query"      a-query
+       "stageIndex" stage-number
+       "column"     column})
 
 (defn ^:export aggregation-drill-details
   "Returns a JS object with the details needed to render the complex UI for `compare-aggregation` drills.
@@ -2053,7 +2063,7 @@
   code. It does not need to be wrapped or included here. Just merge these extra keyword conversions into that code and
   remove this."
   [n unit offset-n offset-unit options]
-  (shared.ut/format-relative-date-range
+  (u.time/format-relative-date-range
    n
    (keyword unit)
    offset-n
@@ -2209,11 +2219,13 @@
   > **Code health:** Smelly; Single use. This is highly specialized in the UI, but should probably continue to exist.
   However, it should be adjusted to accept only MLv2 columns. Any legacy conversion should be done by the caller, and
   ideally refactored away."
-  [a-query stage-number latitude-column longitude-column bounds]
+  [a-query stage-number latitude-column longitude-column card-id  bounds]
+  ;; (.log js/console "update-lat-lon-filter")
   (let [bounds           (js->clj bounds :keywordize-keys true)
         latitude-column  (legacy-column->metadata a-query stage-number latitude-column)
         longitude-column (legacy-column->metadata a-query stage-number longitude-column)]
-    (lib.core/update-lat-lon-filter a-query stage-number latitude-column longitude-column bounds)))
+    (lib.core/with-wrapped-native-query a-query stage-number card-id
+      lib.core/update-lat-lon-filter latitude-column longitude-column bounds)))
 
 (defn ^:export update-numeric-filter
   "Add or update a filter against `numeric-column`, based on the provided start and end values. **Removes** any existing
@@ -2222,9 +2234,10 @@
   > **Code health:** Smelly; Single use. This is highly specialized in the UI, but should probably continue to exist.
   However, it should be adjusted to accept only MLv2 columns. Any legacy conversion should be done by the caller, and
   ideally refactored away."
-  [a-query stage-number numeric-column start end]
+  [a-query stage-number numeric-column card-id start end]
   (let [numeric-column (legacy-column->metadata a-query stage-number numeric-column)]
-    (lib.core/update-numeric-filter a-query stage-number numeric-column start end)))
+    (lib.core/with-wrapped-native-query a-query stage-number card-id
+      lib.core/update-numeric-filter numeric-column start end)))
 
 (defn ^:export update-temporal-filter
   "Add or update a filter against `temporal-column`, based on the provided start and end values.
@@ -2236,9 +2249,10 @@
   > **Code health:** Smelly; Single use. This is highly specialized in the UI, but should probably continue to exist.
   However, it should be adjusted to accept only MLv2 columns. Any legacy conversion should be done by the caller, and
   ideally refactored away."
-  [a-query stage-number temporal-column start end]
+  [a-query stage-number temporal-column card-id start end]
   (let [temporal-column (legacy-column->metadata a-query stage-number temporal-column)]
-    (lib.core/update-temporal-filter a-query stage-number temporal-column start end)))
+    (lib.core/with-wrapped-native-query a-query stage-number card-id
+      lib.core/update-temporal-filter temporal-column start end)))
 
 (defn ^:export valid-filter-for?
   "Given two columns, returns true if `src-column` is a valid source to use for filtering `dst-column`.

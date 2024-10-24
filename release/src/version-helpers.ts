@@ -1,5 +1,3 @@
-import { coerce, compare as compareVersions } from "semver";
-
 import type { GithubProps, Tag } from "./types";
 
 // https://regexr.com/7l1ip
@@ -209,14 +207,16 @@ export function versionSort(a: string, b: string) {
 
 export function getLastReleaseFromTags({
   tags,
-  ignorePatches = false
+  ignorePatches = false,
+  ignorePreReleases = false,
 }: {
   tags: Tag[],
-  ignorePatches?: boolean
+  ignorePatches?: boolean,
+  ignorePreReleases?: boolean,
 }) {
   return tags
     .map(tag => tag.ref.replace('refs/tags/', ''))
-    .filter(tag => !isPreReleaseVersion(tag)) // we want to ignore prerelease tags because release notes should be cumulative
+    .filter(ignorePreReleases ? tag => !isPreReleaseVersion(tag) : () => true)
     .filter(ignorePatches ? v => !isPatchVersion(v) :  () => true)
     .sort(versionSort)
     .reverse()[0];
@@ -231,15 +231,16 @@ export async function getLastReleaseTag({
   owner,
   repo,
   version = '',
-  ignorePatches = false,
-}: GithubProps & { version?: string, ignorePatches?: boolean }) {
+  ignorePatches,
+  ignorePreReleases,
+}: GithubProps & { version?: string, ignorePatches?: boolean, ignorePreReleases?: boolean }) {
   const tags =  await github.paginate(github.rest.git.listMatchingRefs, {
     owner,
     repo,
     ref: `tags/v0.${version ? getMajorVersion(version) : ''}`,
   });
 
-  const lastRelease = getLastReleaseFromTags({ tags, ignorePatches });
+  const lastRelease = getLastReleaseFromTags({ tags, ignorePatches, ignorePreReleases });
 
   return lastRelease;
 }
@@ -272,6 +273,8 @@ export const getNextPatchVersion = async ({
   const lastRelease = await getLastReleaseTag({
     github, owner, repo,
     version: `v0.${majorVersion.toString()}.0`,
+    ignorePatches: false,
+    ignorePreReleases: false,
   });
 
   const nextPatch = findNextPatchVersion(lastRelease);

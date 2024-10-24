@@ -1,6 +1,6 @@
 import cx from "classnames";
 import { Component } from "react";
-import { t } from "ttag";
+import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
 import ButtonsS from "metabase/css/components/buttons.module.css";
@@ -39,15 +39,41 @@ const SHORTCUTS: Shortcut[] = [
 ];
 
 const RELATIVE_SHORTCUTS: ShortcutMap = {
+  // these have to be plural because they're plural elsewhere and they cannot be both a singular message ID and a
+  // plural message ID
   [t`Last`]: [
-    { name: t`Week`, operator: "time-interval", values: ["last", "week"] },
-    { name: t`Month`, operator: "time-interval", values: ["last", "month"] },
-    { name: t`Year`, operator: "time-interval", values: ["last", "year"] },
+    {
+      name: ngettext(msgid`Week`, `Weeks`, 1),
+      operator: "time-interval",
+      values: ["last", "week"],
+    },
+    {
+      name: ngettext(msgid`Month`, `Months`, 1),
+      operator: "time-interval",
+      values: ["last", "month"],
+    },
+    {
+      name: ngettext(msgid`Year`, `Years`, 1),
+      operator: "time-interval",
+      values: ["last", "year"],
+    },
   ],
   [t`This`]: [
-    { name: t`Week`, operator: "time-interval", values: ["current", "week"] },
-    { name: t`Month`, operator: "time-interval", values: ["current", "month"] },
-    { name: t`Year`, operator: "time-interval", values: ["current", "year"] },
+    {
+      name: ngettext(msgid`Week`, `Weeks`, 1),
+      operator: "time-interval",
+      values: ["current", "week"],
+    },
+    {
+      name: ngettext(msgid`Month`, `Months`, 1),
+      operator: "time-interval",
+      values: ["current", "month"],
+    },
+    {
+      name: ngettext(msgid`Year`, `Years`, 1),
+      operator: "time-interval",
+      values: ["current", "year"],
+    },
   ],
 };
 

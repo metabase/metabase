@@ -1,4 +1,4 @@
-(ns metabase-enterprise.advanced-permissions.common-test
+(ns ^:mb/driver-tests metabase-enterprise.advanced-permissions.common-test
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.advanced-permissions.api.util-test

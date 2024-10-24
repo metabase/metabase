@@ -1,4 +1,4 @@
-(ns ^:mb/once metabase.sync.sync-metadata.fields-test
+(ns ^:mb/driver-tests metabase.sync.sync-metadata.fields-test
   "Tests for the logic that syncs Field models with the Metadata fetched from a DB. (There are more tests for this
   behavior in the namespace `metabase.sync-database.sync-dynamic-test`, which is sort of a misnomer.)"
   (:require
@@ -15,6 +15,7 @@
    [metabase.test :as mt]
    [metabase.test.data.one-off-dbs :as one-off-dbs]
    [metabase.util :as u]
+   [toucan2.connection :as t2.connection]
    [toucan2.core :as t2]))
 
 (defn- do-with-test-db [thunk]
@@ -314,23 +315,27 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :metadata/key-constraints)
       (mt/dataset country
         (let [tables (t2/select :model/Table :db_id (mt/id))]
-          (doseq [sync-fields-and-fks! [(fn []
-                                          (run! sync-fields/sync-fields-for-table! tables)
-                                          (run! sync-fks/sync-fks-for-table! tables))
-                                        (fn []
-                                          (sync-fields/sync-fields! (mt/db))
-                                          (sync-fks/sync-fks! (mt/db)))]]
-            ;; 1. delete the fields that were just synced
-            (t2/delete! :model/Field :table_id [:in (map :id tables)])
-            ;; 2. sync the metadata for each table
-            (sync-fields-and-fks!)
-            (let [continent-id-field (t2/select-one :model/Field :%lower.name "id" :table_id (mt/id :continent))]
-              (is (= #{{:name "name",         :semantic_type nil,      :fk_target_field_id nil}
-                       {:name "id",           :semantic_type :type/PK, :fk_target_field_id nil}
-                       {:name "continent_id", :semantic_type :type/FK, :fk_target_field_id (:id continent-id-field)}}
-                     (set (map #(into {} %)
-                               (t2/select [Field
-                                           [:%lower.name :name]
-                                           :semantic_type
-                                           :fk_target_field_id]
-                                          :table_id [:in (map :id tables)]))))))))))))
+          (doseq [[message sync-fields-and-fks!] {"for specific tables" (fn []
+                                                                          (run! sync-fields/sync-fields-for-table! tables)
+                                                                          (run! sync-fks/sync-fks-for-table! tables))
+                                                  "for entire DB"       (fn []
+                                                                          (sync-fields/sync-fields! (mt/db))
+                                                                          (sync-fks/sync-fks! (mt/db)))}]
+            (testing message
+              ;; do this in a transaction so deleting all the Fields isn't permanent
+              (t2/with-transaction [_ t2.connection/*current-connectable* {:rollback-only true}]
+                ;; 1. delete the fields that were just synced
+                (t2/delete! :model/Field :table_id [:in (map :id tables)])
+                ;; 2. sync the metadata for each table
+                (sync-fields-and-fks!)
+                (let [continent-id-field (t2/select-one :model/Field :%lower.name "id" :table_id (mt/id :continent))]
+                  (is (= [{:name "continent_id", :semantic_type :type/FK, :fk_target_field_id (u/the-id continent-id-field)}
+                          {:name "id",           :semantic_type :type/PK, :fk_target_field_id nil}
+                          {:name "name",         :semantic_type nil,      :fk_target_field_id nil}]
+                         (->> (t2/select [Field
+                                          [:%lower.name :name]
+                                          :semantic_type
+                                          :fk_target_field_id]
+                                         :table_id [:in (map :id tables)])
+                              distinct
+                              (sort-by :name)))))))))))))

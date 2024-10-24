@@ -75,14 +75,14 @@ export const SaveQuestionProvider = ({
   // we care only about the very first result as question can be changed before
   // the modal is closed
   const [isSavedQuestionInitiallyChanged] = useState(
-    isNotNull(originalQuestion) &&
-      originalQuestion.type() !== "model" &&
-      question.isDirtyComparedTo(originalQuestion),
+    isNotNull(originalQuestion) && question.isDirtyComparedTo(originalQuestion),
   );
 
   const showSaveType =
     isSavedQuestionInitiallyChanged &&
     originalQuestion != null &&
+    originalQuestion.type() !== "model" &&
+    originalQuestion.type() !== "metric" &&
     originalQuestion.canWrite();
 
   return (

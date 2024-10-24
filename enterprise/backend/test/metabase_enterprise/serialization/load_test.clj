@@ -1,4 +1,4 @@
-(ns metabase-enterprise.serialization.load-test
+(ns ^:mb/driver-tests metabase-enterprise.serialization.load-test
   (:refer-clojure :exclude [load])
   (:require
    [clojure.data :as data]
@@ -25,10 +25,10 @@
             Table
             User]]
    [metabase.models.interface :as mi]
+   [metabase.models.visualization-settings :as mb.viz]
+   [metabase.models.visualization-settings-test :as mb.viz-test]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
-   [metabase.shared.models.visualization-settings :as mb.viz]
-   [metabase.shared.models.visualization-settings-test :as mb.viz-test]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]

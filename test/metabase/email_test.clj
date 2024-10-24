@@ -270,7 +270,7 @@
              (@inbox "test@test.com")))))
     (testing "metrics collection"
       (let [calls (atom nil)]
-        (with-redefs [prometheus/inc #(swap! calls conj %)]
+        (with-redefs [prometheus/inc! #(swap! calls conj %)]
           (with-fake-inbox
             (email/send-message!
              :subject      "101 Reasons to use Metabase"
@@ -285,7 +285,7 @@
                                 :max-attempts 1
                                 :initial-interval-millis 1)
             test-retry   (retry/random-exponential-backoff-retry "test-retry" retry-config)]
-        (with-redefs [prometheus/inc    #(swap! calls conj %)
+        (with-redefs [prometheus/inc!   #(swap! calls conj %)
                       retry/decorate    (rt/test-retry-decorate-fn test-retry)
                       email/send-email! (fn [_ _] (throw (Exception. "test-exception")))]
           (email/send-message!

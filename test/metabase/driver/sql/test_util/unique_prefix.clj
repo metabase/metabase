@@ -28,6 +28,7 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.public-settings :as public-settings]
+   [metabase.test.initialize :as initialize]
    [metabase.util.date-2 :as u.date]))
 
 (defn- utc-date
@@ -40,6 +41,8 @@
    (unique-prefix* (utc-date)))
   ([local-date]
    {:pre [(instance? java.time.LocalDate local-date)]}
+   ;; app DB has to be initialized to get settings
+   (initialize/initialize-if-needed! :db)
    (-> (format "%s_%s_" local-date (public-settings/site-uuid))
        (str/replace  #"-" "_"))))
 

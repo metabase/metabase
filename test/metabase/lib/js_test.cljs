@@ -616,26 +616,26 @@
           two-stage-agg (lib/aggregate two-stage (lib/count))]
       (testing "does not change a query with no aggregations or breakouts"
         (doseq [stage [0 -1]]
-          (let [obj (lib.js/as-returned simple-query stage)]
+          (let [obj (lib.js/as-returned simple-query stage nil)]
             (is (=? simple-query (.-query obj)))
             (is (=? stage        (.-stageIndex obj)))))
 
         (testing "in the target stage"
           (doseq [stage [1 -1]]
-            (let [obj (lib.js/as-returned two-stage stage)]
+            (let [obj (lib.js/as-returned two-stage stage nil)]
               (is (=? two-stage (.-query obj)))
               (is (=? stage     (.-stageIndex obj)))))))
 
       (testing "uses an existing later stage if it exists"
-        (let [obj (lib.js/as-returned two-stage 0)]
+        (let [obj (lib.js/as-returned two-stage 0 nil)]
           (is (=? two-stage (.-query obj)))
           (is (=? 1         (.-stageIndex obj))))
-        (let [obj   (lib.js/as-returned two-stage-agg 0)]
+        (let [obj   (lib.js/as-returned two-stage-agg 0 nil)]
           (is (=? two-stage-agg (.-query obj)))
           (is (=? 1             (.-stageIndex obj)))))
 
       (testing "appends a new stage if necessary"
-        (let [obj (lib.js/as-returned two-stage-agg 1)]
+        (let [obj (lib.js/as-returned two-stage-agg 1 nil)]
           (is (=? (lib/append-stage two-stage-agg)
                   (.-query obj)))
           (is (=? -1 (.-stageIndex obj)))))
@@ -647,11 +647,11 @@
                             lib/append-stage
                             (lib/filter (lib/> (first (lib/returned-columns brk-only)) 100)))]
           (testing "uses an existing later stage if it exists"
-            (let [obj (lib.js/as-returned two-stage 0)]
+            (let [obj (lib.js/as-returned two-stage 0 nil)]
               (is (=? two-stage (.-query obj)))
               (is (=? 1         (.-stageIndex obj)))))
           (testing "appends a new stage if necessary"
-            (let [obj (lib.js/as-returned brk-only 0)]
+            (let [obj (lib.js/as-returned brk-only 0 nil)]
               (is (=? (lib/append-stage brk-only)
                       (.-query obj)))
               (is (=? -1 (.-stageIndex obj)))))))
@@ -663,11 +663,11 @@
                             lib/append-stage
                             (lib/filter (lib/> (first (lib/returned-columns agg-only)) 100)))]
           (testing "uses an existing later stage if it exists"
-            (let [obj (lib.js/as-returned two-stage 0)]
+            (let [obj (lib.js/as-returned two-stage 0 nil)]
               (is (=? two-stage (.-query obj)))
               (is (=? 1         (.-stageIndex obj)))))
           (testing "appends a new stage if necessary"
-            (let [obj (lib.js/as-returned agg-only 0)]
+            (let [obj (lib.js/as-returned agg-only 0 nil)]
               (is (=? (lib/append-stage agg-only)
                       (.-query obj)))
               (is (=? -1 (.-stageIndex obj))))))))))
