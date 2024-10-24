@@ -1,17 +1,17 @@
 import { match } from "ts-pattern";
 import { jt, t } from "ttag";
 
-import { useDocsUrl, useMergeSetting, useSetting } from "metabase/common/hooks";
-import { getPlan } from "metabase/common/utils/plan";
+import {
+  useDocsUrl,
+  useMergeSetting,
+  useSetting,
+  useUrlWithUtm,
+} from "metabase/common/hooks";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
-import {
-  getLearnUrl,
-  getSetting,
-  getUpgradeUrl,
-} from "metabase/selectors/settings";
+import { getLearnUrl, getUpgradeUrl } from "metabase/selectors/settings";
 import { Alert, Box, Button, Icon, Stack, Text } from "metabase/ui";
 
 import SettingHeader from "../SettingHeader";
@@ -21,25 +21,19 @@ import { SettingTextInput } from "../widgets/SettingTextInput";
 
 import type { AdminSettingComponentProps } from "./types";
 
+const utmTags = {
+  utm_source: "product",
+  utm_medium: "docs",
+  utm_campaign: "embedding-sdk",
+  utm_content: "embedding-sdk-admin",
+};
+
 export function EmbeddingSdkSettings({
   updateSetting,
 }: AdminSettingComponentProps) {
   const isEE = PLUGIN_EMBEDDING_SDK.isEnabled();
   const isEmbeddingSdkEnabled = useSetting("enable-embedding-sdk");
   const canEditSdkOrigins = isEE && isEmbeddingSdkEnabled;
-
-  const plan = useSelector(state =>
-    getPlan(getSetting(state, "token-features")),
-  );
-
-  const addUtmToLink = (url: string) =>
-    `${url}?${new URLSearchParams({
-      utm_source: "product",
-      utm_medium: "docs",
-      utm_campaign: "embedding-sdk",
-      utm_content: "embedding-sdk-admin",
-      source_plan: plan,
-    })}`;
 
   const isHosted = useSetting("is-hosted?");
 
@@ -78,18 +72,21 @@ export function EmbeddingSdkSettings({
     updateSetting({ key: "enable-embedding-sdk" }, value);
   }
 
-  const { url: activationUrl } = useDocsUrl(
+  const { url: switchMetabaseBinariesUrl } = useDocsUrl(
     "paid-features/activating-the-enterprise-edition",
+    { utm: utmTags },
   );
 
-  const switchMetabaseBinariesUrl = addUtmToLink(activationUrl);
-
-  const implementJwtUrl = addUtmToLink(
+  const implementJwtUrl = useUrlWithUtm(
     getLearnUrl("metabase-basics/embedding/securing-embeds"),
+    utmTags,
   );
 
-  const quickStartUrl = addUtmToLink("https://metaba.se/sdk-quick-start");
-  const documentationUrl = addUtmToLink("https://metaba.se/sdk-docs");
+  const quickStartUrl = useUrlWithUtm(
+    "https://metaba.se/sdk-quick-start",
+    utmTags,
+  );
+  const documentationUrl = useUrlWithUtm("https://metaba.se/sdk-docs", utmTags);
 
   const apiKeyBannerText = match({
     isOSS: !isEE && !isHosted,

@@ -3,11 +3,11 @@ import type { PropsWithChildren } from "react";
 import {
   BackButton,
   ChartTypeSelector,
+  Editor,
+  EditorButton,
   Filter,
   FilterBar,
   FilterButton,
-  Notebook,
-  NotebookButton,
   QuestionResetButton,
   QuestionVisualization,
   SaveButton,
@@ -87,8 +87,12 @@ const InteractiveQuestion = withPublicComponentWrapper(
   Title: typeof Title;
   Summarize: typeof Summarize;
   SummarizeButton: typeof SummarizeButton;
-  Notebook: typeof Notebook;
-  NotebookButton: typeof NotebookButton;
+  /** @deprecated Use `InteractiveQuestion.Editor` instead */
+  Notebook: typeof Editor;
+  Editor: typeof Editor;
+  /** @deprecated Use `InteractiveQuestion.EditorButton` instead */
+  NotebookButton: typeof EditorButton;
+  EditorButton: typeof EditorButton;
   QuestionVisualization: typeof QuestionVisualization;
   SaveQuestionForm: typeof SdkSaveQuestionForm;
   SaveButton: typeof SaveButton;
@@ -103,8 +107,12 @@ InteractiveQuestion.ResetButton = QuestionResetButton;
 InteractiveQuestion.Title = Title;
 InteractiveQuestion.Summarize = Summarize;
 InteractiveQuestion.SummarizeButton = SummarizeButton;
-InteractiveQuestion.Notebook = Notebook;
-InteractiveQuestion.NotebookButton = NotebookButton;
+/** @deprecated Use `InteractiveQuestion.Editor` instead */
+InteractiveQuestion.Notebook = Editor;
+InteractiveQuestion.Editor = Editor;
+/** @deprecated Use `InteractiveQuestion.EditorButton` instead */
+InteractiveQuestion.NotebookButton = EditorButton;
+InteractiveQuestion.EditorButton = EditorButton;
 InteractiveQuestion.QuestionVisualization = QuestionVisualization;
 InteractiveQuestion.SaveQuestionForm = SdkSaveQuestionForm;
 InteractiveQuestion.SaveButton = SaveButton;

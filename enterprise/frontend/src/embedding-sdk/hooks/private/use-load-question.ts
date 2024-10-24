@@ -131,6 +131,7 @@ export function useLoadQuestion({
           originalQuestion,
           cancelDeferred: deferred(),
           onQuestionChange: question => setQuestionState({ question }),
+          onClearQueryResults: () => setQuestionState({ queryResults: [null] }),
         }),
       );
 

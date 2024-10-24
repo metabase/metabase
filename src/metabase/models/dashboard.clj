@@ -19,7 +19,7 @@
    [metabase.models.parameter-card :as parameter-card]
    [metabase.models.params :as params]
    [metabase.models.permissions :as perms]
-   [metabase.models.pulse :as pulse]
+   [metabase.models.pulse :as models.pulse]
    [metabase.models.pulse-card :as pulse-card]
    [metabase.models.revision :as revision]
    [metabase.models.serialization :as serdes]
@@ -141,7 +141,7 @@
                                     :dashboard_card_id dashcard-id
                                     :position          position})]
         (t2/with-transaction [_conn]
-          (binding [pulse/*allow-moving-dashboard-subscriptions* true]
+          (binding [models.pulse/*allow-moving-dashboard-subscriptions* true]
             (t2/update! :model/Pulse {:dashboard_id dashboard-id}
                         ;; TODO we probably don't need this anymore
                         ;; pulse.name is no longer used for generating title.
