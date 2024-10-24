@@ -559,6 +559,28 @@ describe("Notebook Editor > Join Step", () => {
     expect(condition.operator.shortName).toBe("!=");
   });
 
+  it("should reset the draft join condition state when the rhs table is changed", async () => {
+    setup();
+    const rhsTablePicker = screen.getByLabelText("Right table");
+    await userEvent.click(within(rhsTablePicker).getByRole("button"));
+    const entityPickerModal = await screen.findByTestId("entity-picker-modal");
+    await waitForLoaderToBeRemoved();
+    await userEvent.click(within(entityPickerModal).getByText("Reviews"));
+    const lhsColumnPicker = await screen.findByTestId("lhs-column-picker");
+    await userEvent.click(within(lhsColumnPicker).getByText("ID"));
+
+    const newRhsTablePicker = screen.getByLabelText("Right table");
+    await userEvent.click(within(newRhsTablePicker).getByText("Reviews"));
+    const newEntityPickerModal = await screen.findByTestId(
+      "entity-picker-modal",
+    );
+    await waitForLoaderToBeRemoved();
+    await userEvent.click(within(newEntityPickerModal).getByText("Orders"));
+    const lhsColumn = screen.getByLabelText("Left column");
+    expect(within(lhsColumn).getByText("Pick a column…")).toBeInTheDocument();
+    expect(within(lhsColumn).queryByText("ID")).not.toBeInTheDocument();
+  });
+
   describe("join strategies", () => {
     it("should be able to change the join strategy for a new join clause", async () => {
       const { getRecentJoin } = setup();

@@ -41,7 +41,7 @@ export function FilterWidgetTypeSelect({
   // eslint-disable-next-line no-unconditional-metabase-links-render -- It's hard to tell if this is still used in the app. Please see https://metaboat.slack.com/archives/C505ZNNH4/p1703243785315819
   const { url: docsUrl } = useDocsUrl(
     "questions/native-editor/sql-parameters",
-    "the-field-filter-variable-type",
+    { anchor: "the-field-filter-variable-type" },
   );
 
   return (

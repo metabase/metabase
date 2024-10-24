@@ -191,10 +191,13 @@
                     :parameter_usage_count
                     :can_restore
                     :can_delete
+                    :can_manage_db
                     [:collection :is_personal]
                     [:moderation_reviews :moderator_details])
-        (cond->                                             ; card
-         (card/model? card) (t2/hydrate :persisted)))))
+        (cond->
+         (card/model? card) (t2/hydrate :persisted
+                                        ;; can_manage_db determines whether we should enable model persistence settings
+                                        :can_manage_db)))))
 
 (defn get-card
   "Get `Card` with ID."
