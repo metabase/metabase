@@ -142,3 +142,58 @@ export const getIframeUrl = (
 
   return null;
 };
+
+const splitPortAndRest = (url: string): [string, string] | [string, null] => {
+  const portPattern = /:(\d+|\*)$/;
+  const match = url.match(portPattern);
+
+  return [match ? url.slice(0, match.index) : url, match ? match[1] : ""];
+};
+
+export const isAllowedIframeUrl = (url: string, allowedIframesSetting = "") => {
+  if (allowedIframesSetting === "*") {
+    return true;
+  }
+
+  try {
+    const rawAllowedDomains = allowedIframesSetting
+      .replaceAll(",", "")
+      .split("\n")
+      .map(host => host.trim());
+
+    const parsedUrl = new URL(normalizeUrl(url));
+    const hostname = parsedUrl.hostname;
+    const port = parsedUrl.port;
+
+    return rawAllowedDomains.some(rawAllowedDomain => {
+      try {
+        const [rawAllowedDomainWithoutPort, allowedPort] =
+          splitPortAndRest(rawAllowedDomain);
+
+        const allowedDomain = new URL(
+          normalizeUrl(rawAllowedDomainWithoutPort),
+        );
+
+        const arePortsMatching = allowedPort === "*" || port === allowedPort;
+
+        if (!arePortsMatching) {
+          return false;
+        }
+
+        if (allowedDomain.hostname.startsWith("*.")) {
+          const baseDomain = allowedDomain.hostname.slice(2);
+          return hostname.endsWith("." + baseDomain);
+        }
+
+        return hostname.endsWith(allowedDomain.hostname);
+      } catch (e) {
+        console.warn(
+          `Error while checking against allowed iframe domain ${rawAllowedDomain}`,
+        );
+        return false;
+      }
+    });
+  } catch {
+    return false;
+  }
+};
