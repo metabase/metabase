@@ -4,63 +4,9 @@
    #_[clojure.test.check.generators :as gen]
    #_[malli.generator :as mg]
    [metabase.lib.core :as lib]
-   [metabase.lib.test-metadata :as meta]))
-
-;; ;; These query functions are functions so that changes to metabase.lib code will be picked up without having to reload
-;; ;; this file.
-;; (defn- basic-queries [metadata-provider]
-;;   (gen/elements [(lib/query metadata-provider (meta/table-metadata :orders))]))
-;;
-;; (defn- tag-as [tags xs]
-;;   (for [x xs]
-;;     (reduce #(vary-meta %1 assoc %2 true) x tags)))
-;;
-;; (defn- native-queries [metadata-provider]
-;;   (gen/elements [(lib/native-query metadata-provider "SELECT * FROM Orders;")]))
-;;
-;; (defn queries-for
-;;   "Creates a `test.check`-compatible generator for a broad set of queries against the given `metadata-provider`.
-;;
-;;   For the default [[meta/metadata-provider]], prefer [[query]]."
-;;   [metadata-provider]
-;;   (gen/one-of [(basic-queries metadata-provider)
-;;                (native-queries metadata-provider)]))
-;;
-;; (def query
-;;   "Returns a `test.check` compatible generator for general MBQL queries against the default [[meta/metadata-provider]].
-;;
-;;   (Currently it's not really a generator, just an `:enum` of handwritten sample queries.)"
-;;   (queries-for meta/metadata-provider))
-;;
-;; (defn with-visible-columns
-;;   "Given a generator for queries, wraps it to return `[query visible-columns]` pairs.
-;;
-;;   (Uses the last stage of the query.)"
-;;   [query-gen]
-;;   (gen/fmap #(vector [% (lib/visible-columns %)])
-;;             query-gen))
-;;
-;; (def query+visible-columns
-;;   "Everything from [[query]] paired with its [[lib/visible-columns]].
-;;
-;;   To select a random column, see [[query+visible-column]]."
-;;   (with-visible-columns query))
-;;
-;; (defn pick-column
-;;   "Given a generator for `[query columns]` pairs, returns a generator for `[query column]` pairs, choosing a random
-;;   column from the list."
-;;   [query-cols-gen]
-;;   (gen/bind query-cols-gen
-;;             (fn [[q cols]]
-;;               (gen/fmap #(vector q %) (gen/elements cols)))))
-;;
-;; (def query+visible-column
-;;   "Everything from [[query]] paired with a randomly selected [[lib/visible-columns]].
-;;
-;;   To get the entire list of columns, see [[query+visible-columns]]."
-;;   (pick-column query+visible-columns))
-
-
+   [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util.generators.coroutines :as co]
+   #?@(:cljs (metabase.test-runner.assert-exprs.approximately-equal))))
 
 ;; Ideas =============================================================================================================
 ;; I'm thinking about sampling vs. exhaustion. I think it would be powerful to devise a scheme for generating queries
@@ -98,15 +44,21 @@
 ;; tests.
 
 
-;; First cut at defining a form for steps:
-;; - A step is represented as a vector, a kind of reified function call: `[:step-label args...]`
-;;   - Steps are constructed using functions, though, which (1) helps abstract them if they change a bit and (2)
-;;     makes it easy for the FE to create Clojure data structures.
-;;   - The query is deliberately *not* included in the args; it's understood and makes the steps much smaller.
-;; - Applying a step is done with `(run-step step query)`
-;; - Before/after testing is accomplished with `(test-step step query)`
-;;   - That is powered by `(before-and-after step before after)`, a multimethod.
-;; - A lazy sequence of next steps is generated with `(next-steps query)`.
+;; Second draft: lazy sequences powered by stateful, imperative generators.
+;; - Trying to produce lazy sequences of possible next steps is fraught.
+;;   - We can't tell a big family of nearly identical options apart, so interesting cases are drowned out.
+;;   - Eg. in the set of all possible aggregations on a stage, the single `:count` is dwarfed by sum/avg/min/max on
+;;     twenty columns each.
+;; - Better is a guided series of weighted choices: x% chance the next step is aggregating.
+;;   - Then having decided to aggregate, uniformly pick one of ~8 operators, and uniformly pick a column if needed.
+;;   - That preserves the density of interesting cases like :count vs. a swarm of samey :min clauses.
+;; - The generators are powered by inner functions that actually produce a `[:step ...]` command.
+;; - The interface for defining steps shouldn't need to think too hard about generators.
+;;   - It can work like `for` except that each line is choosing probabilistically from a list of choices.
+;; - The context contains a stack of previous queries, so we can (with some probability) pop back up that stack to
+;;   abandon a branch we've been exploring and try something else.
+
+
 (defn- step-key [[op]]
   op)
 
@@ -123,8 +75,7 @@
     (step-key step)))
 
 (defmulti ^:private next-steps*
-  "Given a query, generate a lazy sequence of possible steps to take. Nil or empty if this step is not applicable
-  to the input query."
+  "Given a query, generate a nested set of choices, with the leaf nodes being possible steps."
   (fn [step-kind _query]
     step-kind))
 
@@ -157,36 +108,44 @@
               (last after-aggs))
           "new aggregation should resemble the intended one"))))
 
-(defn- stage-seq [query]
-  (-> query
-      :stages
-      count
-      dec
-      (range -1 -1)))
+#_(defmacro ^{:private true, :style/indent [[1]]} with-choices [bindings & body]
+  (when-not (even? (count bindings))
+    (throw (ex-info "with-choices must have an even number of bindings" {:got (bount bindings)})))
+  (let [choice-pairs (partition 2 bindings)]
+    (reduce (fn [inner [label chooser]]
+              `(let [~label ()])
+              ))
+    )
+  )
 
+(defn- choose
+  "Uniformly chooses among a seq of options."
+  [xs]
+  (rand-nth xs))
+
+(defn- choose-stage
+  "Chooses a stage to operator on. 80% act on -1, 20% chooses a stage by index (which might be the last stage)."
+  [query]
+  (if (< (rand) 0.8)
+    -1
+    (rand-int (count (:stages query)))))
+
+;; If exhaustion is a goal, we should think about making these into generators or otherwise capturing the choices.
 (defmethod next-steps* :aggregate [_aggregate query]
-  (for [stage-number (stage-seq query)
-        operator     (lib/available-aggregation-operators query stage-number)
+  (let [stage-number (choose-stage query)
+        operator     (choose (lib/available-aggregation-operators query stage-number))
         agg          (if (:requires-column? operator)
-                       (map #(lib/aggregation-clause operator %) (:columns operator))
-                       [(lib/aggregation-clause operator)])]
+                       (lib/aggregation-clause operator (choose (:columns operator)))
+                       (lib/aggregation-clause operator))]
     [:aggregate stage-number agg]))
 
 ;; Helpers
-(defn- step-taken [ctx step]
-  (update ctx :steps conj step))
-
-(defn- context-for [query0]
-  {:query  query0
-   :origin query0
-   :steps  []})
-
-(defn run-step
+(defn- run-step
   "Applies a step, returning the updated context."
-  [step ctx]
-  (-> ctx
-      (update :query #(run-step* step %))
-      (step-taken step)))
+  [step {:keys [query] :as ctx}]
+  {:query    (run-step* step query)
+   :step     step
+   :previous ctx})
 
 ;; NOTE: The public surface consumes and returns contexts, which contain queries among other things.
 ;; The contexts are intended to be opaque, and useful for eg. diagnosing and reproducing failures.
@@ -200,15 +159,15 @@
     ;; Run the before/after tests. Throws if the tests fail.
     (try
       (before-and-after step before after)
+      ctx'
+
       (catch #?(:clj Throwable :cljs js/Error) e
         (throw (ex-info "Error in before/after testing" (-> ctx
                                                             (dissoc :query)
                                                             (assoc :before before, :after after, :step step))
-                        e))))
-    ;; If the tests have passed, we return the updated context.
-    ctx'))
+                        e))))))
 
-(defn- multiplex
+#_(defn- multiplex
   "Given a list of lazy sequences, returns an interleaved sequence of their elements.
 
   The order is driven by `reorder-fn`, which defaults to `identity` but can be set to `shuffle`. Note that this applies
@@ -223,30 +182,59 @@
      (let [reordered (reorder-fn seqs)]
        (lazy-cat (map first reordered) (multiplex reorder-fn (keep next reordered)))))))
 
-(defn- next-steps [reorder-fn {:keys [query]}]
-  (->> @step-kinds
-       keys
-       (map #(next-steps* % query))
-       (multiplex reorder-fn)))
+(def ^:dynamic *pop-probability*
+  "A configurable parameter, controlling the \"complexity\" of the generated queries.
+
+  A probability value in the interval [0, 1). Higher means queries will stay simpler, lower means they will be deeper."
+  0.48)
+
+(defn- gen-step
+  "Given a query, choose the next step, apply it and [[co/yield]] the new context.
+
+  Makes a weighted choice between:
+  - 20% pop to a previous query, choosing a different branch.
+    - That previous query has already been yielded, so recurse to choose another thing to do next.
+  - 80% choose among the step-keys uniformly, choose a step in detail with `next-steps*`, and take that step."
+  [{:keys [previous query] :as ctx}]
+  (if (and previous
+           (< (rand) *pop-probability*))
+    ;; Pop to a previous query and recursively choose an actual step.
+    (recur previous)
+    ;; 80%: Uniformly choose a step-key from those registered, generate that step, and yield it.
+    ;; If that step is not possible on this query, recurse to roll again.
+    (let [step-kind (rand-nth (keys @step-kinds))]
+      (if-let [step (next-steps* step-kind query)]
+        (test-step step ctx)
+        (recur ctx)))))
 
 (defn- random-queries-from*
-  [ctx]
-  (->> (next-steps shuffle ctx)   ; Steps
-       (map #(test-step % ctx))   ; Applied steps
-       (map random-queries-from*) ; One lazy future walk for each next step!
-       (multiplex shuffle)        ; Single lazy sequence
-       (cons ctx)                 ; Starting with this context
-       lazy-seq))
+  "Returns a lazy sequence of queries powered by the generators."
+  [ctx limit]
+  (co/generator
+    (loop [ctx ctx
+           i   0]
+      (when (< i limit)
+        (let [ctx' (gen-step ctx)]
+          (co/yield ctx')
+          (recur ctx' (inc i)))))))
+
+(defn- context-for [query0]
+  {:query    query0
+   :previous nil
+   :step     nil})
 
 (defn random-queries-from
   "Given a starter query, generate a lazy sequence of random-walk queries over it.
 
   This sequence is infinite! Be kind to your REPL."
-  [starting-query]
-  (for [{:keys [origin query steps]} (random-queries-from* (context-for starting-query))]
-    (vary-meta query assoc ::origin-query origin ::steps steps)))
+  ([starting-query]
+   (random-queries-from 10 starting-query))
+  ([limit starting-query]
+   ;; Change this to a map?
+   (for [{:keys [query] :as ctx} (random-queries-from* (context-for starting-query) limit)]
+     (vary-meta query assoc ::context (dissoc ctx :query)))))
 
-(comment
+#_(comment
   (deref step-kinds)
   (let [base  (lib/query meta/metadata-provider (meta/table-metadata :orders))
         ctx   (context-for base)
@@ -258,7 +246,7 @@
 
   (map (comp ::steps meta) qs))
 
-(defn- random-skip
+#_(defn- random-skip
   [skipper xs]
   (if (number? skipper)
     (random-skip #(drop (rand-int skipper) %) xs)
@@ -272,7 +260,7 @@
 ;; But this foundation shows the approach for now, and it does work.
 
 ;; Unit tests
-(deftest ^:parallel multiplex-test
+#_(deftest ^:parallel multiplex-test
   (let [xs (range 10)
         ys [:a :b :c :d :e :f]
         zs [true false nil "asdf"]
@@ -296,12 +284,48 @@
                  (set result)))
           (is (empty? (remove #{1} (vals (frequencies result))))))))))
 
+(defn step-seq
+  "Returns the sequence of steps that brought about this query."
+  [query]
+  (->> query
+       meta
+       ::context
+       (iterate :previous)
+       (take-while some?)
+       reverse
+       next
+       (map :step)))
+
+(comment
+  ;; Produces a map from {*pop-probability* {depth count}} to help judge the appropriate *pop-probability* values.
+  ;; The results suggest a huge inflection around 0.5, which isn't too surprising.
+  ;; We should consider these schemes:
+  ;; - Make it a function of the current depth, some declining curve that allows occasional super-deep queries; OR
+  ;; - A dynamic parameter - the more iterations we request from the generator, the lower/flatter the
+  ;;   *pop-probability* goes.
+  ;; - Lower *pop-probability* but a small chance to "abort" right back to the OG query and start over.
+
+  ;; Anyway, this is an easy thing to make pluggable with some presets.
+
+  ;; For now, a constant 0.48 is a solid mix of deep complexity but mostly straightforward.
+  (into (sorted-map)
+        (for [prob (range 0.05 1 0.05)]
+          (binding [*pop-probability* prob]
+            [prob (->> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                       (random-queries-from 100)
+                       (map (comp count step-seq))
+                       frequencies
+                       (into (sorted-map))
+                       )])))
+  )
+
 (deftest ^:parallel query-generator-test
   (doseq [q (->> (lib/query meta/metadata-provider (meta/table-metadata :orders))
-                 random-queries-from
-                 (random-skip 15)
-                 (take 20))]
-    (is (= (count (lib/aggregations q))
-           (count (filter (comp #{:aggregate} first) (::steps (meta q))))))
-    )
-  )
+                 (random-queries-from 100))]
+    (is (= (->> (lib/stage-count q)
+                range
+                (map (comp count #(lib/aggregations q %)))
+                (reduce +))
+           (->> (step-seq q)
+                (filter (comp #{:aggregate} first))
+                count)))))

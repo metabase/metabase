@@ -30,6 +30,7 @@
   clojurewerkz/quartzite                    {:mvn/version "2.2.0"               ; scheduling library
                                              :exclusions  [c3p0/c3p0
                                                            org.quartz-scheduler/quartz]}
+  cloroutine/cloroutine                     {:mvn/version "12"}                 ; "Cloroutines", ie. a macro for stackless, suspend/resume coroutines
   colorize/colorize                         {:mvn/version "0.1.1"               ; string output with ANSI color codes (for logging)
                                              :exclusions  [org.clojure/clojure]}
   com.clearspring.analytics/stream          {:mvn/version "2.9.8"               ; Various sketching algorithms
