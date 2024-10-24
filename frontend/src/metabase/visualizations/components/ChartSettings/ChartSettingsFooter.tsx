@@ -4,15 +4,17 @@ import Button from "metabase/core/components/Button";
 
 import { ChartSettingsFooterRoot } from "./ChartSettings.styled";
 
+type ChartSettingsFooterProps = {
+  onDone: () => void;
+  onCancel: () => void;
+  onReset: (() => void) | null;
+};
+
 export const ChartSettingsFooter = ({
   onDone,
   onCancel,
   onReset,
-}: {
-  onDone: () => void;
-  onCancel: () => void;
-  onReset: (() => void) | null;
-}) => (
+}: ChartSettingsFooterProps) => (
   <ChartSettingsFooterRoot>
     {onReset && (
       <Button

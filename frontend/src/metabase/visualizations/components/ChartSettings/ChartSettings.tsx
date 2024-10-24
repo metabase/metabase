@@ -63,10 +63,10 @@ export const ChartSettings = ({
   widgets: propWidgets,
 }: ChartSettingsProps) => {
   const [currentSection, setCurrentSection] = useState<string | null>(
-    initial?.section || null,
+    initial?.section ?? null,
   );
   const [currentWidget, setCurrentWidget] = useState<Widget | null>(
-    initial?.widget || null,
+    initial?.widget ?? null,
   );
   const [popoverRef, setPopoverRef] = useState<HTMLElement | null>();
   const [warnings, setWarnings] = useState();
@@ -402,7 +402,7 @@ export const ChartSettingsWithState = (props: ChartSettingsWithStateProps) => {
   }, [props.settings]);
 
   const onDone = (settings: VisualizationSettings) =>
-    props.onChange?.(settings || tempSettings);
+    props.onChange?.(settings ?? tempSettings);
 
   return (
     <ChartSettings
