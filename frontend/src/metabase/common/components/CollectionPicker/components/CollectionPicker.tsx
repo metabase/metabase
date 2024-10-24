@@ -26,7 +26,7 @@ import {
 
 import { CollectionItemPickerResolver } from "./CollectionItemPickerResolver";
 
-const defaultOptions: CollectionPickerOptions = {
+export const defaultOptions: CollectionPickerOptions = {
   showPersonalCollections: true,
   showRootCollection: true,
 };

@@ -148,6 +148,7 @@ export const getSearchInputPlaceholder = <
 >(
   folder: Item | undefined,
 ): string => {
+  // console.log(folder);
   if (folder?.model === "collection") {
     return t`Search this collection or everywhere…`;
   }

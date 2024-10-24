@@ -136,7 +136,7 @@ export const useEnsureCollectionSelected = ({
   enabled: boolean;
   options: CollectionItemListProps["options"];
   useRootCollection: boolean;
-  onInit: (item: CollectionPickerItem) => void;
+  onInit?: (item: CollectionPickerItem) => void;
 }) => {
   const [isEnabled, setIsEnabled] = useState(enabled);
   // all this is done to acquire the name of the root collection, which getStateFromIdPath can't provide
@@ -157,7 +157,7 @@ export const useEnsureCollectionSelected = ({
 
   useEffect(() => {
     if (isEnabled && defaultCollectionItem) {
-      onInit(defaultCollectionItem);
+      onInit?.(defaultCollectionItem);
       setIsEnabled(false); // ensure this effect runs only once
     }
   }, [isEnabled, defaultCollectionItem, onInit]);

@@ -327,7 +327,7 @@ describe("scenarios > collection defaults", () => {
       cy.signInAsAdmin();
     });
 
-    it("should handle moving a question when you don't have access to entier collection path (metabase#44316", () => {
+    it("should handle moving a question when you don't have access to entier collection path (metabase#44316)", () => {
       cy.createCollection({
         name: "Collection A",
       }).then(({ body: collectionA }) => {

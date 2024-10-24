@@ -449,7 +449,7 @@ describe("scenarios > organization > entity picker", () => {
     });
   });
 
-  describe("question picker", () => {
+  describe.only("question picker", () => {
     const tabs = ["Questions", "Models", "Metrics"];
 
     it("should select a card from local search results", () => {

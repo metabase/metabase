@@ -123,6 +123,8 @@ export const getPathLevelForItem = (
     item.collection_id ??
     getParentCollectionId(item?.effective_location ?? item?.location);
 
+  console.log({ parentCollectionId });
+
   // set selected item at the correct level
   const pathLevel = path.findIndex(
     level => String(level?.query?.id) === String(parentCollectionId),
