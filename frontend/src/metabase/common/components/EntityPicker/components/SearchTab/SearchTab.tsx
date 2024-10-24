@@ -45,7 +45,7 @@ export const SearchTab = <
       {folder && (
         <Flex align="center" justify="space-between" p="xl">
           <Flex align="center">
-            <Text mr={12} weight="bold">
+            <Text mr={12} fw="bold">
               {t`Search:`}
             </Text>
 

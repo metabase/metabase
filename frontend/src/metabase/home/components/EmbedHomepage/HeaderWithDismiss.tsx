@@ -10,7 +10,7 @@ type HeaderWithDismissProps = {
 
 export const HeaderWithDismiss = ({ onDismiss }: HeaderWithDismissProps) => {
   return (
-    <Group position="apart">
+    <Group gap="apart">
       <Text
         lh={1.57}
         fw="bold"

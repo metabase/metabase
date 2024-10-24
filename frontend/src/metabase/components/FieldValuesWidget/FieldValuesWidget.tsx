@@ -794,9 +794,9 @@ function renderValue({
 export const ItemWrapper = forwardRef<HTMLDivElement, SelectItemProps>(
   function ItemWrapper({ label, value, ...others }, ref) {
     return (
-      <div ref={ref} {...others}>
+      <Box ref={ref} {...others}>
         {label || value}
-      </div>
+      </Box>
     );
   },
 );

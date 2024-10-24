@@ -1,7 +1,7 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
-import { Button, Text, type TextProps, Textarea } from "metabase/ui";
+import { Button, Text, Textarea } from "metabase/ui";
 
 export const IFrameWrapper = styled.div<{ fade?: boolean }>`
   display: flex;
@@ -37,6 +37,6 @@ export const SaveButton = styled(Button)`
   ${interactiveDashcardElementCss}
 ` as unknown as typeof Button;
 
-export const InteractiveText = styled(Text)<TextProps>`
+export const InteractiveText = styled(Text)`
   ${interactiveDashcardElementCss}
-`;
+` as unknown as typeof Text;
