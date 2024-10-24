@@ -10,6 +10,7 @@ import { EntityPickerModal, defaultOptions } from "../../EntityPicker";
 import { useLogRecentItem } from "../../EntityPicker/hooks/use-log-recent-item";
 import type {
   CollectionPickerItem,
+  CollectionPickerModel,
   CollectionPickerOptions,
   CollectionPickerStatePath,
   CollectionPickerValueItem,
@@ -27,12 +28,17 @@ export interface CollectionPickerModalProps {
   shouldDisableItem?: (item: CollectionPickerItem) => boolean;
   searchResultFilter?: (searchResults: SearchResult[]) => SearchResult[];
   recentFilter?: (recentItems: RecentItem[]) => RecentItem[];
+  models?: CollectionPickerModel[];
 }
 
 const canSelectItem = (
   item: Pick<CollectionPickerItem, "can_write" | "model"> | null,
 ): item is CollectionPickerValueItem => {
-  return !!item && item.can_write !== false && item.model === "collection";
+  return (
+    !!item &&
+    item.can_write !== false &&
+    (item.model === "collection" || item.model === "dashboard")
+  );
 };
 
 const searchFilter = (searchResults: SearchResult[]): SearchResult[] => {
@@ -50,6 +56,7 @@ export const CollectionPickerModal = ({
   shouldDisableItem,
   searchResultFilter,
   recentFilter,
+  models = ["collection"],
 }: CollectionPickerModalProps) => {
   options = { ...defaultOptions, ...options };
   const [selectedItem, setSelectedItem] = useState<CollectionPickerItem | null>(
@@ -120,8 +127,10 @@ export const CollectionPickerModal = ({
   >[] = [
     {
       id: "collections-tab",
-      displayName: t`Collections`,
-      model: "collection" as const,
+      displayName: models.some(model => model !== "collection")
+        ? t`Browse`
+        : t`Collections`,
+      models,
       folderModels: ["collection" as const],
       icon: "folder",
       render: ({ onItemSelect }) => (
@@ -134,6 +143,7 @@ export const CollectionPickerModal = ({
           onInit={handleInit}
           onItemSelect={onItemSelect}
           onPathChange={setCollectionsPath}
+          models={models}
         />
       ),
     },

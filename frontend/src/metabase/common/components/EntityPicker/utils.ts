@@ -73,7 +73,8 @@ export const computeInitialTabId = <
   }
 
   const initialValueTab =
-    initialValue?.model && tabs.find(tab => tab.model === initialValue.model);
+    initialValue?.model &&
+    tabs.find(tab => tab.models.includes(initialValue.model));
 
   if (initialValueTab) {
     return initialValueTab.id;
@@ -111,8 +112,8 @@ export const getSearchModels = <
 >(
   tabs: EntityPickerTab<Id, Model, Item>[],
 ): SearchModel[] => {
-  return tabs.flatMap(({ model }) => {
-    return model && isSearchModel(model) ? [model] : [];
+  return tabs.flatMap(({ models }) => {
+    return models && models.every(isSearchModel) ? models : [];
   });
 };
 
