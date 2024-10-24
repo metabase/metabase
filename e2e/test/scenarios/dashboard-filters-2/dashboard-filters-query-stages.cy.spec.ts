@@ -409,7 +409,6 @@ describe("scenarios > dashboard > filters > query stages", () => {
               [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS],
             ], // TODO: https://github.com/metabase/metabase/issues/46845
             ["User", PEOPLE_NUMBER_COLUMNS],
-            // ["Summaries", ["Count", "Sum of Total"]], // TODO: https://github.com/metabase/metabase/issues/48339
           ]);
           verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
             ["Base Orders Model", [...ORDERS_NUMBER_COLUMNS, "Net"]],
@@ -419,7 +418,6 @@ describe("scenarios > dashboard > filters > query stages", () => {
               [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS],
             ], // TODO: https://github.com/metabase/metabase/issues/46845
             ["User", PEOPLE_NUMBER_COLUMNS],
-            // ["Summaries", ["Count", "Sum of Total"]], // TODO: https://github.com/metabase/metabase/issues/48339
           ]);
           verifyDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX, [
             [NAMELESS_SECTION, ["Count", "Sum of Total"]],
@@ -431,7 +429,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
       });
     });
 
-    describe("Q3 - join, custom column, no aggregations, 2 breakouts", () => {
+    describe("Q3 - join, custom column, no aggregations, 3 breakouts", () => {
       beforeEach(() => {
         createAndVisitDashboardWithCardMatrix(createQ3Query);
       });
@@ -457,14 +455,14 @@ describe("scenarios > dashboard > filters > query stages", () => {
             ["Reviews", REVIEWS_DATE_COLUMNS],
             ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
             ["User", PEOPLE_DATE_COLUMNS],
-            // ["Summaries", ["Created At: Month", "Created At: Year"]], // TODO: https://github.com/metabase/metabase/issues/48339
+            ["Summaries", ["Created At: Month", "Created At: Year"]],
           ]);
           verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
             ["Base Orders Model", ORDERS_DATE_COLUMNS],
             ["Reviews", REVIEWS_DATE_COLUMNS],
             ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
             ["User", PEOPLE_DATE_COLUMNS],
-            // ["Summaries", ["Created At: Month", "Created At: Year"]], // TODO: https://github.com/metabase/metabase/issues/48339
+            ["Summaries", ["Created At: Month", "Created At: Year"]],
           ]);
           verifyDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX, [
             [NAMELESS_SECTION, ["Created At", "User → Created At"]],
@@ -479,13 +477,13 @@ describe("scenarios > dashboard > filters > query stages", () => {
             ["Reviews", REVIEWS_TEXT_COLUMNS],
             ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
             ["User", PEOPLE_TEXT_COLUMNS],
-            // ["Summaries", ["Category"]], // TODO: https://github.com/metabase/metabase/issues/48339
+            ["Summaries", ["Category"]],
           ]);
           verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
             ["Reviews", REVIEWS_TEXT_COLUMNS],
             ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
             ["User", PEOPLE_TEXT_COLUMNS],
-            // ["Summaries", ["Category"]], // TODO: https://github.com/metabase/metabase/issues/48339
+            ["Summaries", ["Category"]],
           ]);
           verifyDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX, [
             [NAMELESS_SECTION, ["Product → Category"]],
@@ -778,7 +776,6 @@ describe("scenarios > dashboard > filters > query stages", () => {
             ],
             ["User", PEOPLE_NUMBER_COLUMNS],
             ["Summaries", ["Count", "Sum of Total", "5 * Count"]],
-            // ["Summaries (2)", ["Count", "Sum of Rating"]], // TODO: https://github.com/metabase/metabase/issues/48339
           ]);
           verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
             ["Base Orders Model", [...ORDERS_NUMBER_COLUMNS, "Net"]],
@@ -789,7 +786,6 @@ describe("scenarios > dashboard > filters > query stages", () => {
             ],
             ["User", PEOPLE_NUMBER_COLUMNS],
             ["Summaries", ["Count", "Sum of Total", "5 * Count"]],
-            // ["Summaries (2)", ["Count", "Sum of Rating"]], // TODO: https://github.com/metabase/metabase/issues/48339
           ]);
           verifyDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX, [
             [
@@ -936,25 +932,6 @@ describe("scenarios > dashboard > filters > query stages", () => {
             values: ["31", "114"],
           });
         });
-
-        // TODO: https://github.com/metabase/metabase/issues/48339
-        it.skip("2nd stage aggregation", () => {
-          setup2ndStageAggregationFilter();
-
-          verifyDashcardNoResults({ dashcardIndex: 0 });
-
-          goBackToDashboard();
-
-          verifyDashcardNoResults({ dashcardIndex: 1 });
-
-          goBackToDashboard();
-
-          verifyDashcardNoResults({ dashcardIndex: 2 });
-
-          goBackToDashboard();
-
-          verifyDashcardNoResults({ dashcardIndex: 3 });
-        });
       });
     });
 
@@ -1003,14 +980,14 @@ describe("scenarios > dashboard > filters > query stages", () => {
             ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
             ["User", PEOPLE_TEXT_COLUMNS],
             ["Summaries", ["Category"]],
-            // ["Summaries (2)", ["Reviewer", "Category"]], // TODO: https://github.com/metabase/metabase/issues/48339
+            ["Summaries (2)", ["Reviewer", "Category"]],
           ]);
           verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
             ["Reviews", [...REVIEWS_TEXT_COLUMNS, ...REVIEWS_TEXT_COLUMNS]],
             ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
             ["User", PEOPLE_TEXT_COLUMNS],
             ["Summaries", ["Category"]],
-            // ["Summaries (2)", ["Reviewer", "Category"]], // TODO: https://github.com/metabase/metabase/issues/48339
+            ["Summaries (2)", ["Reviewer", "Category"]],
           ]);
           verifyDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX, [
             [
@@ -1609,7 +1586,6 @@ describe("scenarios > dashboard > filters > query stages", () => {
             ["User", PEOPLE_NUMBER_COLUMNS],
             ["Summaries", ["Count", "Sum of Total", "5 * Count"]],
             ["Summaries (2)", ["Count", "Sum of Rating"]],
-            // ["Summaries (3)", ["Count"]], // TODO: https://github.com/metabase/metabase/issues/48339
           ]);
           verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
             ["Base Orders Model", [...ORDERS_NUMBER_COLUMNS, "Net"]],
@@ -1621,7 +1597,6 @@ describe("scenarios > dashboard > filters > query stages", () => {
             ["User", PEOPLE_NUMBER_COLUMNS],
             ["Summaries", ["Count", "Sum of Total", "5 * Count"]],
             ["Summaries (2)", ["Count", "Sum of Rating"]],
-            // ["Summaries (3)", ["Count"]], // TODO: https://github.com/metabase/metabase/issues/48339
           ]);
           verifyDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX, [
             [NAMELESS_SECTION, ["Count"]],
@@ -1820,6 +1795,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
         });
 
         // TODO: https://github.com/metabase/metabase/issues/48339
+        // TODO: https://github.com/metabase/metabase/issues/49022
         it.skip("3rd stage aggregation", () => {
           setup3rdStageAggregationFilter();
 
@@ -2196,7 +2172,7 @@ function createQ2Query(source: Card): StructuredQuery {
   };
 }
 
-// Q3 - join, custom column, no aggregations, 2 breakouts
+// Q3 - join, custom column, no aggregations, 3 breakouts
 function createQ3Query(source: Card): StructuredQuery {
   return {
     ...createQ1Query(source),
@@ -2890,16 +2866,4 @@ function verifyDashcardCellValues({
 
     cy.findAllByTestId("cell-data").eq(cellIndex).should("have.text", value);
   }
-}
-
-function verifyDashcardNoResults({ dashcardIndex }: { dashcardIndex: number }) {
-  getDashboardCard(dashcardIndex).should("have.text", "No results!");
-
-  getDashboardCard(dashcardIndex).findByTestId("legend-caption-title").click();
-  cy.wait("@dataset");
-
-  cy.findByTestId("query-visualization-root").should(
-    "have.text",
-    "No results!",
-  );
 }

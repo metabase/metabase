@@ -411,7 +411,8 @@
                    (-> lib.tu/venues-query
                        (lib/filter (lib/= (meta/field-metadata :venues :category-id) 1)))
                    (-> lib.tu/venues-query
-                       (lib/breakout (meta/field-metadata :venues :category-id)))
+                       (lib/breakout (meta/field-metadata :venues :category-id))
+                       (lib/append-stage))
                    (-> lib.tu/venues-query
                        (lib/aggregate (lib/count)))
                    (-> lib.tu/venues-query
@@ -423,6 +424,13 @@
     (doseq [query [(-> lib.tu/venues-query
                        (lib/breakout (meta/field-metadata :venues :category-id))
                        (lib/aggregate (lib/count)))
+                   (-> lib.tu/venues-query
+                       (lib/breakout (meta/field-metadata :venues :category-id)))
+                   (-> lib.tu/venues-query
+                       (lib/append-stage)
+                       (lib/filter (lib/= (meta/field-metadata :venues :category-id) 1))
+                       (lib/breakout (meta/field-metadata :venues :category-id))
+                       (lib/breakout (meta/field-metadata :venues :price)))
                    (-> lib.tu/venues-query
                        (lib/filter (lib/= (meta/field-metadata :venues :category-id) 1))
                        (lib/breakout (meta/field-metadata :venues :category-id))
