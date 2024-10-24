@@ -22,6 +22,7 @@ import {
   popover,
   resetSnowplow,
   restore,
+  retryAssertion,
   setTokenFeatures,
   undoToast,
   updateSetting,
@@ -77,6 +78,33 @@ describe("scenarios > home > homepage", () => {
       cy.wait("@getXrayDashboard");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("More X-rays");
+    });
+
+    it("homepage should not flicker when syncing databases and showing xrays", () => {
+      cy.signInAsAdmin();
+      cy.addSQLiteDatabase();
+
+      cy.intercept("/api/database", req => {
+        req.continue(res => {
+          res.body.data[1].initial_sync_status = "incomplete";
+
+          return new Promise(resolve => {
+            setTimeout(() => {
+              resolve();
+            }, 1000);
+          });
+        });
+      });
+
+      cy.visit("/");
+      cy.wait("@getXrayCandidates");
+
+      retryAssertion(() =>
+        cy
+          .findByTestId("home-page")
+          .findByTestId("loading-indicator", { timeout: 0 })
+          .should("not.exist"),
+      );
     });
 
     it("should allow switching between multiple schemas for x-rays", () => {
