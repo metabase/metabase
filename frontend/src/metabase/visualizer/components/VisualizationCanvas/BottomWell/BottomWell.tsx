@@ -10,14 +10,14 @@ import {
 } from "@dnd-kit/sortable";
 
 import { Sortable } from "metabase/core/components/Sortable";
-import { Box, type BoxProps, Flex, type GroupProps, Text } from "metabase/ui";
+import { Box, type BoxProps, Flex, type FlexProps, Text } from "metabase/ui";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type {
   VisualizationDisplay,
   VisualizationSettings,
 } from "metabase-types/api";
 
-interface BottomWellProps extends GroupProps {
+interface BottomWellProps extends FlexProps {
   display: VisualizationDisplay;
   settings: ComputedVisualizationSettings;
   onChangeSettings: (settings: VisualizationSettings) => void;
