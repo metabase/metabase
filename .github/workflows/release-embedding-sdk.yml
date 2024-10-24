@@ -250,7 +250,7 @@ jobs:
           echo //registry.npmjs.org/:_authToken=${{ secrets.NPM_RELEASE_TOKEN }} > .npmrc
           npm publish --tag ${{fromJson('{"master": "canary", "release-x.51.x": "50-stable"}')[inputs.branch]}}
 
-      - name: Add `latest` tag to `release-x.51.x` branch deployment
+      - name: Add `latest` tag to the latest release branch (`release-x.51.x`) deployment
         if: ${{ inputs.branch == 'release-x.51.x' }}
         run: |
           npm dist-tag add @metabase/embedding-sdk-react@${{ env.sdk_version }} latest
