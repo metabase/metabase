@@ -50,7 +50,7 @@ import { TabsView } from "./TabsView";
 export type EntityPickerModalOptions = {
   showSearch?: boolean;
   hasConfirmButtons?: boolean;
-  confirmButtonText?: string | ((model: string) => string);
+  confirmButtonText?: string | ((model?: string) => string);
   cancelButtonText?: string;
   hasRecents?: boolean;
 };
@@ -83,7 +83,7 @@ export interface EntityPickerModalProps<
   initialValue?: Partial<Item>;
   canSelectItem: boolean;
   tabs: EntityPickerTab<Id, Model, Item>[];
-  options?: Partial<EntityPickerOptions<Item>>;
+  options?: Partial<EntityPickerOptions>;
   searchResultFilter?: (results: SearchResult[]) => SearchResult[];
   recentFilter?: (results: RecentItem[]) => RecentItem[];
   searchParams?: Partial<SearchRequest>;
