@@ -22,6 +22,7 @@ import type {
   WritebackActionId,
 } from "./actions";
 import type { Card, CardId, VisualizationSettings } from "./card";
+import type { ModerationReview } from "./moderation";
 import type { Dataset } from "./dataset";
 import type { SearchModel } from "./search";
 
@@ -74,9 +75,14 @@ export interface Dashboard {
   embedding_params?: EmbeddingParameters | null;
   width: DashboardWidth;
 
+  moderation_reviews: ModerationReview[];
+
   /* Indicates whether static embedding for this dashboard has been published */
   enable_embedding: boolean;
 }
+
+export const entityIsDashboard = (entity: any): entity is Dashboard =>
+  Object.hasOwn(entity, "dashcards");
 
 /** Dashboards with string ids, like x-rays, cannot have cache configurations */
 export type CacheableDashboard = Omit<Dashboard, "id"> & { id: number };

@@ -390,7 +390,7 @@ export const PLUGIN_MODERATION = {
     _currentUser: User | null,
   ) => [] as RevisionOrModerationEvent[],
   useMenuItems: (
-    _question?: Question,
+    _model?: Question | Dashboard,
     _isModerator?: boolean,
     _reload?: () => void,
   ) => [],

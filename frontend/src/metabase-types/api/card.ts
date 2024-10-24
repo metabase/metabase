@@ -6,6 +6,7 @@ import type { DashCardId, DashboardId } from "./dashboard";
 import type { Database, DatabaseId } from "./database";
 import type { BaseEntityId } from "./entity-id";
 import type { Field } from "./field";
+import type { ModerationReview } from "./moderation";
 import type { PaginationRequest, PaginationResponse } from "./pagination";
 import type { Parameter } from "./parameters";
 import type { DatasetQuery, FieldReference, PublicDatasetQuery } from "./query";
@@ -246,16 +247,8 @@ export type EmbedVisualizationSettings = {
   iframe?: string;
 };
 
-export interface ModerationReview {
-  status: ModerationReviewStatus;
-  moderator_id: number;
-  created_at: string;
-  most_recent?: boolean;
-}
-
 export type CardId = number;
 export type CardEntityId = BaseEntityId;
-export type ModerationReviewStatus = "verified" | null;
 
 export type CardFilterOption =
   | "all"
