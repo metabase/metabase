@@ -395,6 +395,12 @@ export const ChartSettings = ({
 export const ChartSettingsWithState = (props: ChartSettingsWithStateProps) => {
   const [tempSettings, setTempSettings] = useState(props.settings);
 
+  useEffect(() => {
+    if (props.settings) {
+      setTempSettings(props.settings);
+    }
+  }, [props.settings]);
+
   const onDone = (settings: VisualizationSettings) =>
     props.onChange?.(settings || tempSettings);
 
