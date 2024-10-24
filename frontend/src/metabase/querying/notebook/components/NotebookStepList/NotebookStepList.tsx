@@ -1,8 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 
-import { useSelector } from "metabase/lib/redux";
 import { getQuestionSteps } from "metabase/querying/notebook/utils/steps";
-import { getMetadata } from "metabase/selectors/metadata";
 import type { Query } from "metabase-lib";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -39,7 +37,7 @@ export function NotebookStepList({
   updateQuestion,
   readOnly = false,
 }: NotebookStepListProps) {
-  const metadata = useSelector(getMetadata);
+  const metadata = question.metadata();
   const [openSteps, setOpenSteps] = useState<OpenSteps>(
     getInitialOpenSteps(question, readOnly),
   );

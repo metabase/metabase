@@ -60,7 +60,7 @@ export const getDocsUrl = createSelector(
 export const getDocsSearchUrl = (query: Record<string, string>) =>
   `https://www.metabase.com/search?${new URLSearchParams(query)}`;
 
-const getDocsUrlForVersion = (
+export const getDocsUrlForVersion = (
   version: Version | undefined,
   page = "",
   anchor = "",

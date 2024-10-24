@@ -51,6 +51,8 @@ title: API changelog
 - `GET /api/transform/:db-id/:schema/:transform-name`, which hasn't been used internally by Metabase for ages, has
   been removed.
 
+- `POST /api/user/:id/send_invite` is deprecated and will be removed in the next version.
+
 ## Metabase 0.49.5
 NOTE: These endpoint changes were added in 0.49.3, and a bug in `GET /api/embed/card/:token/query/:export-format` was fixed in 0.49.5.
 

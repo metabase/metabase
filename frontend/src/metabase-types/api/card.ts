@@ -39,6 +39,7 @@ export interface Card<Q extends DatasetQuery = DatasetQuery>
   can_write: boolean;
   can_restore: boolean;
   can_delete: boolean;
+  can_manage_db: boolean;
   initially_published_at: string | null;
 
   database_id?: DatabaseId;
