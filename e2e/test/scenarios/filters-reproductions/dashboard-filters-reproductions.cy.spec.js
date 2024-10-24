@@ -14,6 +14,7 @@ import {
   changeSynchronousBatchUpdateSetting,
   commandPalette,
   commandPaletteSearch,
+  createDashboard,
   createDashboardWithTabs,
   createNativeQuestion,
   createQuestion,
@@ -3795,4 +3796,92 @@ describe("issue 35852", () => {
       });
     });
   }
+});
+
+describe("issue 32573", () => {
+  const modelDetails = {
+    name: "M1",
+    type: "model",
+    query: {
+      "source-table": ORDERS_ID,
+      fields: [["field", ORDERS.TAX, null]],
+    },
+  };
+
+  const parameterDetails = {
+    id: "92eb69ea",
+    name: "ID",
+    sectionId: "id",
+    slug: "id",
+    type: "id",
+    default: 1,
+  };
+
+  const dashboardDetails = {
+    parameters: [parameterDetails],
+  };
+
+  function getQuestionDetails(modelId) {
+    return {
+      name: "Q1",
+      type: "question",
+      query: {
+        "source-table": `card__${modelId}`,
+      },
+    };
+  }
+
+  function getParameterMapping(questionId) {
+    return {
+      card_id: questionId,
+      parameter_id: parameterDetails.id,
+      target: [
+        "dimension",
+        ["field", "ID", { "base-type": "type/BigInteger" }],
+      ],
+    };
+  }
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should not crash a dashboard when there is a missing parameter column (metabase#32573)", () => {
+    createQuestion(modelDetails).then(({ body: model }) => {
+      createQuestion(getQuestionDetails(model.id)).then(
+        ({ body: question }) => {
+          createDashboard(dashboardDetails).then(({ body: dashboard }) => {
+            return cy
+              .request("PUT", `/api/dashboard/${dashboard.id}`, {
+                dashcards: [
+                  createMockDashboardCard({
+                    card_id: question.id,
+                    parameter_mappings: [getParameterMapping(question.id)],
+                    size_x: 6,
+                    size_y: 6,
+                  }),
+                ],
+              })
+              .then(() => visitDashboard(dashboard.id));
+          });
+        },
+      );
+    });
+    getDashboardCard()
+      .findByText("There was a problem displaying this chart.")
+      .should("be.visible");
+
+    editDashboard();
+    cy.findByTestId("fixed-width-filters").findByText("ID").click();
+    getDashboardCard().within(() => {
+      cy.findByText("Unknown Field").should("be.visible");
+      cy.findByLabelText("Disconnect").click();
+    });
+    saveDashboard();
+    getDashboardCard().within(() => {
+      cy.findByText("Q1").should("be.visible");
+      cy.findByText("Tax").should("be.visible");
+    });
+  });
 });
