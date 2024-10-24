@@ -10,7 +10,7 @@ title: Embedded analytics SDK - versions
 
 The SDK version tracks with the Metabase version.
 
-So, for example, if you're on Metabase version `1.51.0`, you should use the SDK `1.51.0`.
+So, for example, if you're on Metabase version `1.51.1`, you should use the SDK `1.51` or higher.
 
 ## Version pinning when using the SDK with Metabase Cloud
 
