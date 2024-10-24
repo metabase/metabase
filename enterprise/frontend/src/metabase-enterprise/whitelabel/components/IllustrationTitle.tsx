@@ -10,7 +10,7 @@ export function IllustrationTitle({
   errorMessageContainerId,
 }: IllustrationDescriptionProps) {
   return (
-    <Text fw="bold" transform="none">
+    <Text fw="bold" style={{ transform: "none" }}>
       <Flex align="center">
         {title}
         <Text

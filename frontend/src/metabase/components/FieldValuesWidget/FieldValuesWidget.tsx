@@ -616,8 +616,10 @@ export function FieldValuesWidgetInner({
             placeholder={tokenFieldPlaceholder}
             shouldCreate={shouldCreate}
             autoFocus={autoFocus}
-            icon={prefix && <span data-testid="input-prefix">{prefix}</span>}
-            itemComponent={CustomItemComponent}
+            leftSection={
+              prefix && <span data-testid="input-prefix">{prefix}</span>
+            }
+            renderOption={CustomItemComponent}
           />
         ) : (
           <TokenField
@@ -792,9 +794,9 @@ function renderValue({
 export const ItemWrapper = forwardRef<HTMLDivElement, SelectItemProps>(
   function ItemWrapper({ label, value, ...others }, ref) {
     return (
-      <div ref={ref} {...others}>
+      <Box ref={ref} {...others}>
         {label || value}
-      </div>
+      </Box>
     );
   },
 );

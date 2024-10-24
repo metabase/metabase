@@ -1,7 +1,9 @@
-import type { MantineThemeOverride } from "@mantine/core";
+import { type MantineThemeOverride, Tooltip } from "@mantine/core";
 
-export const getTooltipOverrides = (): MantineThemeOverride["components"] => ({
-  Tooltip: {
+import TooltipStyles from "./Tooltip.module.css";
+
+export const tooltipOverrides: MantineThemeOverride["components"] = {
+  Tooltip: Tooltip.extend({
     defaultProps: {
       arrowSize: 10,
       withArrow: true,
@@ -16,14 +18,8 @@ export const getTooltipOverrides = (): MantineThemeOverride["components"] => ({
         touch: true,
       },
     },
-    styles: theme => ({
-      tooltip: {
-        backgroundColor: theme.fn.themeColor("bg-black"),
-        color: theme.white,
-        fontSize: theme.fontSizes.sm,
-        fontWeight: "bold",
-        padding: "0.6rem 0.75rem",
-      },
-    }),
-  },
-});
+    classNames: {
+      tooltip: TooltipStyles.tooltip,
+    },
+  }),
+};

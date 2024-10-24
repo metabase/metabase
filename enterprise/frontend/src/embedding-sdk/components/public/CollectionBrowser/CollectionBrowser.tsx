@@ -74,7 +74,7 @@ export const CollectionBrowserInner = ({
     .filter(isNotNull);
 
   return (
-    <Stack w="100%" h="100%" spacing="sm" className={className} style={style}>
+    <Stack w="100%" h="100%" gap="sm" className={className} style={style}>
       <CollectionBreadcrumbs
         collectionId={currentCollectionId}
         onClick={onClickBreadcrumbItem}

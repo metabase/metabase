@@ -147,7 +147,7 @@ export const SearchResults = ({
   }
 
   return hasResults ? (
-    <SearchResultsList data-testid="search-results-list" spacing={0}>
+    <SearchResultsList data-testid="search-results-list" gap={0}>
       <ResultsContainer>
         {list.map((item, index) => {
           const isIndexedEntity = item.model === "indexed-entity";

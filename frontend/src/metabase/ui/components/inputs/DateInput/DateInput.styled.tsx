@@ -1,15 +1,28 @@
-import type { MantineThemeOverride } from "@mantine/core";
+import { DateInput } from "@mantine/dates";
 
-export const getDateInputOverrides =
-  (): MantineThemeOverride["components"] => ({
-    DateInput: {
-      defaultProps: {
-        size: "md",
-      },
-      styles: theme => ({
-        calendar: {
-          padding: `${theme.spacing.sm} ${theme.spacing.md}`,
-        },
-      }),
+import Styles from "../Calendar/Calendar.module.css";
+
+export const dateInputOverrides = {
+  DateInput: DateInput.extend({
+    defaultProps: {
+      size: "md",
     },
-  });
+    classNames: {
+      levelsGroup: Styles.popoverWrapper, // weird name for a popover wrapper
+      day: Styles.day,
+      weekday: Styles.weekday,
+      month: Styles.month,
+      monthRow: Styles.row,
+      monthCell: Styles.cell,
+      monthsList: Styles.monthsList,
+      monthsListRow: Styles.row,
+      monthsListCell: Styles.cell,
+      yearsList: Styles.yearsList,
+      yearsListRow: Styles.row,
+      yearsListCell: Styles.cell,
+      calendarHeader: Styles.calendarHeader,
+      calendarHeaderLevel: Styles.calendarHeaderLevel,
+      calendarHeaderControl: Styles.calendarHeaderControl,
+    },
+  }),
+};
