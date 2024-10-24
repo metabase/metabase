@@ -99,6 +99,7 @@ describe("SDK auth flow", () => {
 
     it("should use `fetchRequestToken` if provided", async () => {
       const customFetchFunction = jest.fn().mockImplementation(() => ({
+        ...MOCK_SESSION,
         id: "mock-id-from-custom-fetch-function",
       }));
 
