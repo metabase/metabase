@@ -1,16 +1,12 @@
-import MetabaseSettings from "metabase/lib/settings";
-
 import { generatePassword } from "./security";
 
 describe("generatePassword", () => {
   it("defaults to at least 14 characters even if password-complexity requirements are lower", () => {
-    MetabaseSettings.set("password-complexity", { total: 10 });
-    expect(generatePassword().length).toBe(14);
+    expect(generatePassword({ total: 10 }).length).toBe(14);
   });
 
   it("defaults to complexity requirements if greater than 14", () => {
-    MetabaseSettings.set("password-complexity", { total: 20 });
-    expect(generatePassword().length).toBe(20);
+    expect(generatePassword({ total: 20 }).length).toBe(20);
   });
 
   it("falls back to length 14 passwords", () => {
