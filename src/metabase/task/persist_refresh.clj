@@ -35,11 +35,11 @@
 
 (p/defprotocol+ Refresher
   "This protocol is just a wrapper of the ddl.interface multimethods to ease for testing. Rather than defing some
-  multimethods on fake engine types, just work against this, and it will dispatch to the ddl.interface normally, or
-  allow for easy to control custom behavior in tests."
-  (refresh! [this database definition dataset-query])
-  "Refresh a persisted model. Returns a map with :state that is :success or :error. If :state is :error, includes a
-  key :error with a string message. See [[metabase.driver.ddl.interface/refresh!]] for more information."
+   multimethods on fake engine types, just work against this, and it will dispatch to the ddl.interface normally, or
+   allow for easy to control custom behavior in tests."
+  (refresh! [this database definition dataset-query]
+    "Refresh a persisted model. Returns a map with :state that is :success or :error. If :state is :error, includes a
+    key :error with a string message. See [[metabase.driver.ddl.interface/refresh!]] for more information.")
   (unpersist! [this database persisted-info]))
 
 (def ^:private dispatching-refresher
