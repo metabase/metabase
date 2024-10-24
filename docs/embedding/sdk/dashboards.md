@@ -87,6 +87,7 @@ const plugins = {
 `dashcardMenu`: can be used in the InteractiveDashboard like this:
 
 ```typescript jsx
+{% raw %}
 <InteractiveDashboard
   questionId={1}
   plugins={{
@@ -95,6 +96,7 @@ const plugins = {
     },
   }}
 />
+{% endraw %}
 ```
 
 #### Enabling/disabling default actions

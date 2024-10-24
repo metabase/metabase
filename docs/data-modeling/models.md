@@ -170,7 +170,7 @@ See [History](../exploration-and-organization/history.md).
 
 You can move outdated or unneeded models to trash, or delete them permanently. Deleting a model will affect questions that use it as a data source.
 
-See [Deleting and restoring items](../exploration-and-organization/delete-and-restore.md#delete-and-restore-items).
+See [Deleting and restoring items](../exploration-and-organization/delete-and-restore.md).
 
 ## Verifying a model
 
