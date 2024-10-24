@@ -49,7 +49,7 @@ describe("metabase/parameters/utils/formatting", () => {
       {
         type: "date/range",
         value: "2018-01-01T12:30:00~2018-01-10",
-        expected: "January 1, 2018 12:30 pm - January 10, 2018",
+        expected: "January 1, 2018 12:30 PM - January 10, 2018",
       },
       {
         type: "date/range",
@@ -59,7 +59,7 @@ describe("metabase/parameters/utils/formatting", () => {
       {
         type: "date/range",
         value: "2018-01-01T12:30:00~2018-01-10T08:15:00",
-        expected: "January 1, 2018 12:30 pm - January 10, 2018 08:15 AM",
+        expected: "January 1, 2018 12:30 PM - January 10, 2018 08:15 AM",
       },
       {
         type: "date/all-options",
