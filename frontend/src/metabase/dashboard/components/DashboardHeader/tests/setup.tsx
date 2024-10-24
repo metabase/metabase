@@ -117,6 +117,7 @@ export const setup = async ({
       component={() => <DashboardHeader {...dashboardHeaderProps} />}
     ></Route>,
     {
+      withFeatures: ["cache_granular_controls"],
       withRouter: true,
       storeInitialState: {
         currentUser: createMockUser({

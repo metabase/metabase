@@ -6,6 +6,7 @@ import type { ByRoleMatcher } from "@testing-library/react";
 import { render, screen, waitFor } from "@testing-library/react";
 import type { History } from "history";
 import { createMemoryHistory } from "history";
+import { merge } from "icepick";
 import { KBarProvider } from "kbar";
 import type * as React from "react";
 import { DragDropContextProvider } from "react-dnd";
@@ -91,10 +92,17 @@ export function renderWithProviders(
     const featuresObject = Object.fromEntries(
       withFeatures.map(feature => [feature, true]),
     );
-    storeInitialState.settings = mockSettings({
-      ...storeInitialState.settings,
-      "token-features": createMockTokenFeatures(featuresObject),
+
+    const updatedTokenFeatures = createMockTokenFeatures({
+      ...storeInitialState.settings?.values["token-features"],
+      ...featuresObject,
     });
+
+    storeInitialState.settings = mockSettings(
+      merge(storeInitialState.settings, {
+        "token-features": updatedTokenFeatures,
+      }),
+    );
   }
 
   if (shouldSetupEnterprisePlugins || withFeatures?.length) {
