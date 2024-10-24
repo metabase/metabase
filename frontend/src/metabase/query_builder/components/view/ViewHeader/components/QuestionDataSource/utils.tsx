@@ -13,6 +13,7 @@ import {
   getQuestionVirtualTableId,
   isVirtualCardId,
 } from "metabase-lib/v1/metadata/utils/saved-questions";
+import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import * as ML_Urls from "metabase-lib/v1/urls";
 
 import { HeadBreadcrumbs } from "../HeaderBreadcrumbs";
@@ -44,11 +45,9 @@ export function getDataSourceParts({
   }
 
   const query = question.query();
-
   const { isEditable, isNative } = Lib.queryDisplayInfo(query);
 
   const hasDataPermission = isEditable;
-
   if (!hasDataPermission) {
     return [];
   }
@@ -56,7 +55,6 @@ export function getDataSourceParts({
   const parts: DataSourcePart[] = [];
 
   const metadata = question.metadata();
-
   const database = metadata.database(Lib.databaseID(query));
 
   if (database) {
@@ -71,7 +69,6 @@ export function getDataSourceParts({
   const table = !isNative
     ? metadata.table(Lib.sourceTableOrCardId(query))
     : (question.legacyQuery() as NativeQuery).table();
-
   if (table && table.hasSchema()) {
     const isBasedOnSavedQuestion = isVirtualCardId(table.id);
     if (database != null && !isBasedOnSavedQuestion) {
@@ -94,43 +91,39 @@ export function getDataSourceParts({
       ];
     }
 
-    if (formatTableAsComponent) {
-      const allTables = [
-        table,
-        ...Lib.joins(query, -1)
-          .map(join => Lib.pickerInfo(query, Lib.joinedThing(query, join)))
-          .map(pickerInfo => {
-            if (pickerInfo?.tableId != null) {
-              return metadata.table(pickerInfo.tableId);
-            }
+    const allTables = [
+      table,
+      ...Lib.joins(query, -1)
+        .map(join => Lib.pickerInfo(query, Lib.joinedThing(query, join)))
+        .map(pickerInfo => {
+          if (pickerInfo?.tableId != null) {
+            return metadata.table(pickerInfo.tableId);
+          }
 
-            if (pickerInfo?.cardId != null) {
-              return metadata.table(
-                getQuestionVirtualTableId(pickerInfo.cardId),
-              );
-            }
+          if (pickerInfo?.cardId != null) {
+            return metadata.table(getQuestionVirtualTableId(pickerInfo.cardId));
+          }
 
-            return undefined;
-          }),
-      ].filter(isNotNull);
+          return undefined;
+        }),
+    ].filter(isNotNull);
 
-      const part: DataSourcePart = (
-        <QuestionTableBadges
-          tables={allTables}
-          subHead={subHead}
-          hasLink={hasTableLink}
-          isLast={!isObjectDetail}
-        />
-      );
-      parts.push(part);
-    } else {
-      const part = {
+    const part: DataSourcePart = formatTableAsComponent ? (
+      <QuestionTableBadges
+        tables={allTables}
+        subHead={subHead}
+        hasLink={hasTableLink}
+        isLast={!isObjectDetail}
+      />
+    ) : (
+      {
         name: table.displayName(),
         href: hasTableLink ? getTableURL(table) : "",
         model: table.type ?? "table",
-      };
-      parts.push(part);
-    }
+      }
+    );
+
+    parts.push(part);
   }
 
   return parts.filter(
