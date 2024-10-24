@@ -28,7 +28,7 @@ import {
 } from "metabase/selectors/user";
 
 import * as actions from "../actions";
-import View from "../components/view/View";
+import { View } from "../components/view/View";
 import { VISUALIZATION_SLOW_TIMEOUT } from "../constants";
 import {
   getAutocompleteResultsFn,
