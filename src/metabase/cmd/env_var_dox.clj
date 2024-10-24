@@ -1,6 +1,6 @@
 (ns metabase.cmd.env-var-dox
   "Code to generate docs for environment variables. You can generate
-  docs by running: `clojure -M:ee:run environment-variables-documentation`"
+  docs by running: `clojure -M:ee:doc environment-variables-documentation`"
   (:require
    [clojure.java.classpath :as classpath]
    [clojure.java.io :as io]
