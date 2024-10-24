@@ -24,14 +24,14 @@ Live demo: https://metaba.se/sdk-demo
 
 ## Known limitations
 
-- The SDK is currently only compatible with Metabase v50
+- The SDK requires Metabase version 50 or higher.
 - Some of the Pro/EE features are not exposed in the UI
   - Verified content
   - Official collections
   - Subscriptions
   - Alerts
   - ...
-- The Metabase Embedding SDK does not support server-side rendering (SSR) at the moment.
+- The SDK does not support server-side rendering (SSR) at the moment.
 - Embedding multiple instances of interactive dashboards on the same page is not supported.
   - Please use static dashboards if you need to embed multiple dashboards on the same page.
 
@@ -56,7 +56,7 @@ disclosure [here](https://github.com/metabase/metabase/blob/master/SECURITY.md#r
 - You have an application using React. The SDK is tested to work with React 18. It may work in React 17, but cause some
   warnings or unexpected behaviors.
 - You have a Pro or Enterprise [subscription or free trial](https://www.metabase.com/pricing/) of Metabase
-- You have a running Metabase instance using a compatible version of the enterprise binary. v1.50.x are the only supported versions at this time.
+- You have a running Metabase instance using a compatible version of the enterprise binary.
 
 # Getting started
 
@@ -74,7 +74,7 @@ Prerequisites:
 
 ## Start Metabase
 
-Currently, the SDK only works with Metabase version 50.
+The SDK requires Metabase version 50 or higher.
 
 You have the following options:
 
@@ -83,12 +83,12 @@ You have the following options:
 Start the Metabase container:
 
 ```bash
-docker run -d -p 3000:3000 --name metabase metabase/metabase-enterprise:v1.50.24
+docker run -d -p 3000:3000 --name metabase metabase/metabase-enterprise:v1.51.1
 ```
 
 ### 2. Running the Jar file
 
-1. Download the Jar file from https://downloads.metabase.com/enterprise/v1.50.24/metabase.jar
+1. Download the Jar file from https://downloads.metabase.com/enterprise/v1.51.1/metabase.jar
 2. Create a new directory and move the Metabase JAR into it.
 3. Change into your new Metabase directory and run the JAR.
 
