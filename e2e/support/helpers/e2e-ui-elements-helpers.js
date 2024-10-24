@@ -347,12 +347,12 @@ export function removeMultiAutocompleteValue(index, filter) {
     .click();
 }
 
-export function retryAssertion(assertFn, timeout = 4000, interval = 400) {
+export function repeatAssertion(assertFn, timeout = 4000, interval = 400) {
   if (timeout <= 0) {
     return;
   }
   assertFn();
 
   cy.wait(interval);
-  retryAssertion(assertFn, timeout - interval, interval);
+  repeatAssertion(assertFn, timeout - interval, interval);
 }

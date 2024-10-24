@@ -20,9 +20,9 @@ import {
   navigationSidebar,
   openNavigationSidebar,
   popover,
+  repeatAssertion,
   resetSnowplow,
   restore,
-  retryAssertion,
   setTokenFeatures,
   undoToast,
   updateSetting,
@@ -91,6 +91,8 @@ describe("scenarios > home > homepage", () => {
           return new Promise(resolve => {
             setTimeout(() => {
               resolve();
+              // Setting this to be arbitrarly long so that the repeat assertion
+              // has a guarentee of finding it.
             }, 1000);
           });
         });
@@ -99,7 +101,7 @@ describe("scenarios > home > homepage", () => {
       cy.visit("/");
       cy.wait("@getXrayCandidates");
 
-      retryAssertion(() =>
+      repeatAssertion(() =>
         cy
           .findByTestId("home-page")
           .findByTestId("loading-indicator", { timeout: 0 })
