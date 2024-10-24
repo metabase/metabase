@@ -194,7 +194,7 @@ jobs:
 
           return upload_path;
 
-    - name: Upload to s3 latest path
+    - name: Upload to s3 ${{ inputs.tag_name }} path
       run: | # sh
         aws s3 cp \
           s3://${{ vars.AWS_S3_DOWNLOADS_BUCKET }}/${{ steps.source_path.outputs.result }}/metabase.jar \
