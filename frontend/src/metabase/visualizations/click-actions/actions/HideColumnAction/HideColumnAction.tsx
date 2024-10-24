@@ -1,10 +1,8 @@
 import { t } from "ttag";
 
-import { onUpdateVisualizationSettings } from "metabase/query_builder/actions";
 import type { LegacyDrill } from "metabase/visualizations/types";
 import * as Lib from "metabase-lib";
 import { findColumnSettingIndexesForColumns } from "metabase-lib/v1/queries/utils/dataset";
-import type { VisualizationSettings } from "metabase-types/api";
 
 export const HideColumnAction: LegacyDrill = ({
   question,
@@ -34,7 +32,7 @@ export const HideColumnAction: LegacyDrill = ({
       icon: "eye_crossed_out",
       tooltip: t`Hide column`,
       default: true,
-      action: () => {
+      question: () => {
         const columnSettings = settings?.["table.columns"] ?? [];
         const [columnSettingIndex] = findColumnSettingIndexesForColumns(
           [column],
@@ -49,18 +47,7 @@ export const HideColumnAction: LegacyDrill = ({
           };
         }
 
-        const vizSettings = { "table.columns": columnSettingsCopy };
-
-        const onUpdateVisualizationSettingsSdk = clicked?.extraData
-          ?.onUpdateVisualizationSettingsSdk as (
-          settings: VisualizationSettings,
-        ) => void;
-
-        // The embedding sdk does not store the question in the query builder store,
-        // therefore we must update the visualization settings in the React context.
-        onUpdateVisualizationSettingsSdk?.(vizSettings);
-
-        return onUpdateVisualizationSettings(vizSettings);
+        return question.updateSettings({ "table.columns": columnSettingsCopy });
       },
     },
   ];
