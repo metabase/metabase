@@ -1,4 +1,4 @@
-import { DndContext, type DragEndEvent } from "@dnd-kit/core";
+import { DndContext, type DragEndEvent, useDroppable } from "@dnd-kit/core";
 import {
   restrictToHorizontalAxis,
   restrictToParentElement,
@@ -12,6 +12,7 @@ import {
 import { Sortable } from "metabase/core/components/Sortable";
 import { Box, type BoxProps, Flex, type FlexProps, Text } from "metabase/ui";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import { DROPPABLE_ID } from "metabase/visualizer/dnd/constants";
 import type {
   VisualizationDisplay,
   VisualizationSettings,
@@ -30,6 +31,8 @@ export function BottomWell({
   onChangeSettings,
   ...props
 }: BottomWellProps) {
+  const { setNodeRef } = useDroppable({ id: DROPPABLE_ID.HORIZONTAL_WELL });
+
   if (display !== "funnel") {
     return null;
   }
@@ -64,6 +67,7 @@ export function BottomWell({
         overflowY: "hidden",
         borderRadius: "var(--default-border-radius)",
       }}
+      ref={setNodeRef}
     >
       <DndContext
         modifiers={[restrictToHorizontalAxis, restrictToParentElement]}

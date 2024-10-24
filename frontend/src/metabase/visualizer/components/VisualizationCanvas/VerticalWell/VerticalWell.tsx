@@ -1,5 +1,8 @@
+import { useDroppable } from "@dnd-kit/core";
+
 import { Box, type BoxProps, Flex, type FlexProps, Text } from "metabase/ui";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import { DROPPABLE_ID } from "metabase/visualizer/dnd/constants";
 import type {
   VisualizationDisplay,
   VisualizationSettings,
@@ -17,6 +20,8 @@ export function VerticalWell({
   style,
   ...props
 }: VerticalWellProps) {
+  const { setNodeRef } = useDroppable({ id: DROPPABLE_ID.VERTICAL_WELL });
+
   if (display !== "funnel") {
     return null;
   }
@@ -37,6 +42,7 @@ export function VerticalWell({
         ...style,
         borderRadius: "var(--default-border-radius)",
       }}
+      ref={setNodeRef}
     >
       <WellItem>
         <Text truncate>{metric}</Text>
