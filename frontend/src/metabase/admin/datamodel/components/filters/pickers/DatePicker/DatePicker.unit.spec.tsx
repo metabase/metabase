@@ -240,9 +240,9 @@ describe("DatePicker", () => {
 
     describe("Specific Dates", () => {
       const singleDateOperators = [
-        ["=", "on"],
-        ["<", "before"],
-        [">", "after"],
+        ["=", "On"],
+        ["<", "Before"],
+        [">", "After"],
       ];
 
       singleDateOperators.forEach(([operator, description]) => {
@@ -263,6 +263,25 @@ describe("DatePicker", () => {
             operator,
             CREATED_AT_FIELD,
             "2020-05-21",
+          ]);
+        });
+
+        it(`can add time to a specific ${description} date filter`, async () => {
+          const onChange = jest.fn();
+
+          render(
+            <DatePickerStateWrapper filter={filter} onChange={onChange} />,
+          );
+          await userEvent.click(screen.getByText("Specific dates..."));
+          await userEvent.click(screen.getByText("On"));
+          await screen.findByTestId(`specific-date-picker`);
+          await userEvent.click(screen.getByText(description));
+          await userEvent.click(screen.getByText("Add a time"));
+
+          expect(onChange).toHaveBeenLastCalledWith([
+            operator,
+            CREATED_AT_FIELD,
+            "2020-05-01T12:30:00",
           ]);
         });
       });
@@ -286,6 +305,26 @@ describe("DatePicker", () => {
           CREATED_AT_FIELD,
           "2020-05-17",
           "2020-05-19",
+        ]);
+      });
+
+      it("can add time to a between date filter", async () => {
+        const onChange = jest.fn();
+
+        render(<DatePickerStateWrapper filter={filter} onChange={onChange} />);
+
+        await userEvent.click(await screen.findByText("Specific dates..."));
+        await userEvent.click(await screen.findByText("Between"));
+
+        await userEvent.click(screen.getByText("17")); // start date
+        await userEvent.click(screen.getByText("19")); // end date
+        await userEvent.click(screen.getByText("Add a time"));
+
+        expect(onChange).toHaveBeenLastCalledWith([
+          "between",
+          CREATED_AT_FIELD,
+          "2020-05-17T12:30:00",
+          "2020-05-19T12:30:00",
         ]);
       });
 
