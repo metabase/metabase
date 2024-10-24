@@ -7,10 +7,17 @@ import {
 import { cardApi } from "metabase/api";
 import { createAsyncThunk } from "metabase/lib/redux";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
-import type { Card, CardId, Dataset, RawSeries } from "metabase-types/api";
+import type {
+  Card,
+  CardId,
+  Dataset,
+  RawSeries,
+  VisualizationSettings,
+} from "metabase-types/api";
 import type { VisualizerState } from "metabase-types/store/visualizer";
 
 const initialState: VisualizerState = {
+  settings: {},
   cards: [],
   datasets: {},
   loadingCards: {},
@@ -58,6 +65,12 @@ const visualizerSlice = createSlice({
   name: "visualizer",
   initialState,
   reducers: {
+    updateSettings: (state, action: PayloadAction<VisualizationSettings>) => {
+      state.settings = {
+        ...state.settings,
+        ...action.payload,
+      };
+    },
     removeCard: (state, action: PayloadAction<CardId>) => {
       const cardId = action.payload;
       state.cards = state.cards.filter(card => card.id !== cardId);
@@ -117,10 +130,17 @@ const visualizerSlice = createSlice({
   },
 });
 
-export const { removeCard, toggleCardExpanded, setSelectedCard } =
-  visualizerSlice.actions;
+export const {
+  updateSettings,
+  removeCard,
+  toggleCardExpanded,
+  setSelectedCard,
+} = visualizerSlice.actions;
 
 export const { reducer } = visualizerSlice;
+
+export const settings = (state: { visualizer: VisualizerState }) =>
+  state.visualizer.settings;
 
 export const selectCards = (state: { visualizer: VisualizerState }) =>
   state.visualizer.cards;
@@ -143,8 +163,8 @@ export const selectCardIds = createSelector(
 );
 
 export const getVisualizerRawSeries = createSelector(
-  [selectCards, selectDatasets, selectSelectedCardId],
-  (cards, datasets, selectedCardId): RawSeries => {
+  [selectCards, selectDatasets, selectSelectedCardId, settings],
+  (cards, datasets, selectedCardId, settings): RawSeries => {
     if (selectedCardId == null) {
       return [];
     }
@@ -158,7 +178,13 @@ export const getVisualizerRawSeries = createSelector(
 
     return [
       {
-        card: selectedCard,
+        card: {
+          ...selectedCard,
+          visualization_settings: {
+            ...selectedCard.visualization_settings,
+            ...settings,
+          },
+        },
         ...dataset,
       },
     ];
