@@ -1,19 +1,3 @@
-## [1.51.1](https://github.com/metabase/metabase/compare/embedding-sdk-0.1.40...embedding-sdk-1.51.1) (2024-10-24)
-
-
-### Bug Fixes
-
-* **sdk:** Change QuestionEditor tab name to 'Editor' ([#48821](https://github.com/metabase/metabase/issues/48821)) ([#48872](https://github.com/metabase/metabase/issues/48872)) ([b469405](https://github.com/metabase/metabase/commit/b469405f212499959ed98be51e70cdab00900d9f))
-* **sdk:** fix defaultProps react error ([#48764](https://github.com/metabase/metabase/issues/48764)) ([#48864](https://github.com/metabase/metabase/issues/48864)) ([4a1330a](https://github.com/metabase/metabase/commit/4a1330a112600ac052c3ef71c9d700140dae8225))
-* **sdk:** hide downloads by default ([#48755](https://github.com/metabase/metabase/issues/48755)) ([#48863](https://github.com/metabase/metabase/issues/48863)) ([361bf49](https://github.com/metabase/metabase/commit/361bf49d33ebdfdb8a80b847528d6834e92c5630))
-
-
-### Features
-
-* **sdk:** `defineEmbeddingSdkConfig` to make typing easier ([#48879](https://github.com/metabase/metabase/issues/48879)) ([#48904](https://github.com/metabase/metabase/issues/48904)) ([351898c](https://github.com/metabase/metabase/commit/351898c44e110870e6d05dac525a3647ca333018))
-
-
-
 ## [0.1.40](https://github.com/metabase/metabase/compare/embedding-sdk-0.1.39...embedding-sdk-0.1.40) (2024-10-17)
 
 
