@@ -236,7 +236,9 @@
     (into []
           (if metric-based?
             identity
-            (map #(dissoc % ::lib.join/join-alias ::lib.field/temporal-unit ::lib.field/binning :fk-field-id)))
+            ;; as with previous `lbrdnk WIP` comment -- let's not block temporal unit when searching for previous
+            ;; stage metadata
+            (map #(dissoc % ::lib.join/join-alias #_::lib.field/temporal-unit ::lib.field/binning :fk-field-id)))
           (or
            ;; 1a. columns returned by previous stage
            (previous-stage-metadata query stage-number unique-name-fn)
