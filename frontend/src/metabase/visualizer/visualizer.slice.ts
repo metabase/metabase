@@ -6,6 +6,7 @@ import {
 
 import { cardApi } from "metabase/api";
 import { createAsyncThunk } from "metabase/lib/redux";
+import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import type { Card, CardId, Dataset, RawSeries } from "metabase-types/api";
 import type { VisualizerState } from "metabase-types/store/visualizer";
 
@@ -162,4 +163,10 @@ export const getVisualizerRawSeries = createSelector(
       },
     ];
   },
+);
+
+export const getVisualizerComputedSettings = createSelector(
+  [getVisualizerRawSeries],
+  rawSeries =>
+    rawSeries.length > 0 ? getComputedSettingsForSeries(rawSeries) : {},
 );
