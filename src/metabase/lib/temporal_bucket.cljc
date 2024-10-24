@@ -8,6 +8,7 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
+   [metabase.lib.util :as lib.util]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
@@ -302,3 +303,74 @@
                     original-temporal-unit
                     (assoc :metabase.lib.field/original-temporal-unit original-temporal-unit))]
       [tag options id-or-name])))
+
+;; all but :default
+(def displayable-temporal-units
+  "TODO: Proper docstring"
+  #{:millisecond
+    :second
+    :minute
+    :hour
+    :day
+    :week
+    :month
+    :quarter
+    :year
+    :minute-of-hour
+    :hour-of-day
+    :day-of-week
+    :day-of-month
+    :day-of-year
+    :week-of-year
+    :month-of-year
+    :quarter-of-year})
+
+(defn ends-with-temporal-unit?
+  "TODO: Proper docstring"
+  [s temporal-unit]
+  (str/ends-with? s (str ": " (describe-temporal-unit temporal-unit))))
+
+(defn ends-with-pretty-temporal-unit?
+  "TODO: Proper docstring"
+  [s]
+  (boolean (some (fn [temporal-unit]
+                   (when (str/ends-with? s (str ": " (describe-temporal-unit temporal-unit)))
+                     temporal-unit))
+                 displayable-temporal-units)))
+
+;; TODO: Make this reasonably fast in case it matters here
+(defn- expensive-display-name-from-column-metadata
+  [column-metadata]
+  (some (fn [temporal-unit]
+          (when (str/ends-with? (:display_name column-metadata)
+                                ;; is this ok with i18n?
+                                (str ": " (describe-temporal-unit temporal-unit)))
+            temporal-unit))
+        displayable-temporal-units))
+
+(defn- display-name-without-temporal-unit-len
+  [display-name temporal-unit-from-display-name]
+(- (count display-name)
+   (count (str ": " (describe-temporal-unit temporal-unit-from-display-name)))))
+
+(defn ensure-temporal-unit-in-display-name
+  "Adjust `:display_name` to contain temporal_unit"
+  [column-metadata]
+  ;; this is raw! -- remove and add back!
+  (if-some [temporal-unit (or (:unit column-metadata)
+                              (get-in column-metadata [:field_ref 2 :temporal-unit]))]
+    (let [temporal-unit-for-humans (describe-temporal-unit temporal-unit)
+          display-name (:display_name column-metadata)]
+      (if (or (= :default temporal-unit)
+              (str/ends-with? display-name temporal-unit-for-humans))
+        column-metadata
+        ;; if we got to this point we are changing temporal unit (nothing -> some, some -> some)
+        ;; hence remove the existing one first!
+        (let [temporal-unit-from-display-name-kw (expensive-display-name-from-column-metadata column-metadata)
+              column-metadata (if temporal-unit-from-display-name-kw
+                                (update column-metadata :display_name subs 0 (display-name-without-temporal-unit-len
+                                                                              (:display_name column-metadata)
+                                                                              temporal-unit-from-display-name-kw))
+                                column-metadata)]
+          (update column-metadata :display_name (partial lib.util/format "%s: %s") temporal-unit-for-humans))))
+    column-metadata))

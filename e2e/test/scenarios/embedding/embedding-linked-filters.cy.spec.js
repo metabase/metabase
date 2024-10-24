@@ -62,7 +62,8 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
       chartPathWithFillColor("#509EE3").should("have.length", 49);
 
-      assertOnXYAxisLabels({ xLabel: "STATE", yLabel: "count" });
+      // tmp, hand in hand with change to `metabase.query-processor.middleware.annotate/merged-column-info`
+      assertOnXYAxisLabels({ xLabel: "STATE", yLabel: "Count" });
 
       echartsContainer()
         .get("text")
@@ -84,6 +85,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
         .and("not.contain", "TX");
 
       chartPathWithFillColor("#509EE3").should("have.length", 1).realHover();
+      // here -- the name
       assertEChartsTooltip({
         header: "AK",
         rows: [{ color: "#509EE3", name: "Count", value: "68" }],
@@ -128,7 +130,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
       cy.findByRole("heading", { name: nativeDashboardDetails.name });
       getDashboardCard().contains(nativeQuestionDetails.name);
 
-      assertOnXYAxisLabels({ xLabel: "STATE", yLabel: "count" });
+      assertOnXYAxisLabels({ xLabel: "STATE", yLabel: "Count" });
 
       chartPathWithFillColor("#509EE3").should("have.length", 49);
       echartsContainer()

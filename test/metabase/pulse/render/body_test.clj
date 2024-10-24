@@ -997,5 +997,5 @@
         (mt/with-current-user (mt/user->id :rasta)
           (let [card-doc        (render.tu/render-pivot-card-as-hickory! card-id)
                 card-header-els (hik.s/select (hik.s/tag :th) card-doc)]
-            (is (=  ["Category" "Created At" "Sum of Price"]
+            (is (=  ["Category" "Created At: Year" "Sum of Price"]
                     (mapv (comp first :content) card-header-els)))))))))

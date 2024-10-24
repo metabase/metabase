@@ -1,4 +1,5 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+// import { DateTimeField, BinnedField } from "frontend/src/metabase-types/api/query.ts";
 import {
   type DashboardDetails,
   type StructuredQuestionDetails,
@@ -1022,18 +1023,46 @@ describe("scenarios > question > multiple column breakouts", () => {
           createQuestion(questionDetails, { visitQuestion: true });
           openNotebook();
 
+          // const field: BinnedField | DateTimeField = questionDetails?.query?.breakout?.[0]
+          // const istemporalUnitSet =  !! field?.[2]?.["temporal-unit"]
+
           cy.log("add an aggregation for the first column");
           getNotebookStep("summarize").button("Summarize").click();
           popover().within(() => {
             cy.findByText("Minimum of ...").click();
+            // if (istemporalUnitSet) {
+            //   cy.findByText(column1Name)
+            //     .realHover()
+            //     .closest("[data-testid=dimension-list-item]")
+            //     .findByTestId("dimension-list-item-binning")
+            //     .click();
+            //   // lbrdnk: If we aggregate bucketed column in a next stage, QB provides option to bucket again. I believe
+            //   //         we should allow only coarser buckets. That's not the case at the time of writing.
+            //   //
+            //   //         Also the already bucketed column is bucketed again by default by month. I believe the already
+            //   //         bucketed column should have `don't bin` bucketting set by default.
+            //   cy.contains("More…").click()
+            //   cy.contains("Don't bin").click()
+            // } else {
             cy.findByText(column1Name).click();
+            // }
           });
 
           cy.log("add an aggregation for the second column");
           getNotebookStep("summarize", { stage: 1 }).icon("add").click();
           popover().within(() => {
             cy.findByText("Maximum of ...").click();
+            // if (istemporalUnitSet) {
+            //   cy.findByText(column2Name)
+            //     .realHover()
+            //     .closest("[data-testid=dimension-list-item]")
+            //     .findByTestId("dimension-list-item-binning")
+            //     .click();
+            //   cy.contains("More…").click()
+            //   cy.contains("Don't bin").click()
+            // } else {
             cy.findByText(column2Name).click();
+            // }
           });
 
           cy.log("assert query results");
@@ -1048,8 +1077,7 @@ describe("scenarios > question > multiple column breakouts", () => {
           column2Name: "Created At: Month",
         });
         assertTableData({
-          // TODO QP bug, should be "Min of Created At: Year",  "Max of Created At: Month"
-          columns: ["Min of Created At: Month", "Max of Created At: Month"],
+          columns: ["Min of Created At: Year", "Max of Created At: Month"],
           firstRows: [["January 1, 2022, 12:00 AM", "April 1, 2026, 12:00 AM"]],
         });
 
@@ -1089,6 +1117,9 @@ describe("scenarios > question > multiple column breakouts", () => {
           createQuestion(questionDetails, { visitQuestion: true });
           openNotebook();
 
+          // const field: BinnedField | DateTimeField = questionDetails?.query?.breakout?.[0]
+          // const istemporalUnitSet =  !! field?.[2]?.["temporal-unit"]
+
           cy.log("add an aggregation");
           getNotebookStep("summarize").button("Summarize").click();
           popover().findByText("Count of rows").click();
@@ -1098,14 +1129,38 @@ describe("scenarios > question > multiple column breakouts", () => {
             .findByTestId("breakout-step")
             .findByText("Pick a column to group by")
             .click();
-          popover().findByText(column1Name).click();
+          popover().within(() => {
+            // if (false /*istemporalUnitSet*/) {
+            //   cy.findByText(column1Name)
+            //     .realHover()
+            //     .closest("[data-testid=dimension-list-item]")
+            //     .findByTestId("dimension-list-item-binning")
+            //     .click();
+            //   cy.contains("More…").click()
+            //   cy.contains("Don't bin").click()
+            // } else {
+            cy.findByText(column1Name).click();
+            // }
+          });
 
           cy.log("add a breakout for the second breakout column");
           getNotebookStep("summarize", { stage: 1 })
             .findByTestId("breakout-step")
             .icon("add")
             .click();
-          popover().findByText(column2Name).click();
+          popover().within(() => {
+            // if (false /*istemporalUnitSet*/) {
+            // cy.findByText(column2Name)
+            //   .realHover()
+            //   .closest("[data-testid=dimension-list-item]")
+            //   .findByTestId("dimension-list-item-binning")
+            //   .click();
+            // cy.contains("More…").click();
+            // cy.contains("Don't bin").click();
+            // } else {
+            cy.findByText(column2Name).click();
+            // }
+          });
 
           cy.log("assert query results");
           visualize();
@@ -1119,9 +1174,8 @@ describe("scenarios > question > multiple column breakouts", () => {
           column2Name: "Created At: Month",
         });
         assertTableData({
-          // TODO QP bug, should be "Created At: Year", "Created At: Month"
-          columns: ["Created At: Month", "Created At: Month", "Count"],
-          firstRows: [["January 2022", "April 2022", "1"]],
+          columns: ["Created At: Year", "Created At: Month", "Count"],
+          firstRows: [["2022", "April 2022", "1"]],
         });
 
         cy.log("'num-bins' breakouts");
