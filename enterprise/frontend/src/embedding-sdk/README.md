@@ -24,7 +24,7 @@ Live demo: https://metaba.se/sdk-demo
 
 ## Known limitations
 
-- The SDK requires Metabase version 50 or higher.
+- The SDK requires Metabase version 51.
 - Some of the Pro/EE features are not exposed in the UI
   - Verified content
   - Official collections
@@ -74,7 +74,7 @@ Prerequisites:
 
 ## Start Metabase
 
-The SDK requires Metabase version 50 or higher.
+The SDK requires Metabase version 51.
 
 You have the following options:
 
