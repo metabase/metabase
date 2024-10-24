@@ -170,7 +170,6 @@ describe("QuestionSources", () => {
 
     expect(screen.getByText("/")).toBeInTheDocument();
 
-    expect(screen.getByText("/")).toBeInTheDocument();
     const tableLink = await screen.findByRole("link", { name: /Products/i });
     expect(tableLink).toBeInTheDocument();
     expect(
