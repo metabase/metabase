@@ -98,11 +98,11 @@ export function renderWithProviders(
       ...featuresObject,
     });
 
-    storeInitialState.settings = mockSettings(
-      merge(storeInitialState.settings, {
-        "token-features": updatedTokenFeatures,
-      }),
-    );
+    const merged = merge(storeInitialState.settings || {}, {
+      "token-features": updatedTokenFeatures,
+    });
+
+    storeInitialState.settings = mockSettings(merged);
   }
 
   if (shouldSetupEnterprisePlugins || withFeatures?.length) {
