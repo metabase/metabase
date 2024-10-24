@@ -154,9 +154,8 @@
 
 (defn- already-has-join?
   "Whether the current query level already has a join with the same alias."
-  [{:keys [joins source-query]} {join-alias :alias, :keys [fk-field-id], :as join}]
-  (or (some #(and (= (:alias %) join-alias)
-                  (= (:fk-field-id %) fk-field-id))
+  [{:keys [joins source-query]} {join-alias :alias, :as join}]
+  (or (some #(= (:alias %) join-alias)
             joins)
       (when source-query
         (recur source-query join))))
