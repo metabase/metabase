@@ -148,8 +148,15 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
                 setAgent(selectedAgent);
 
                 // Create a new thread
-                const createdThread = await client.threads.create();
-                setThread(createdThread);
+                if (!threadId) {
+                    const createdThread = await client.threads.create();
+                    setThread(createdThread); // Set the thread ID
+                    setThreadId(createdThread); // Set it in parent state too
+                } else {
+                    setThread(threadId)
+                    setMessages([]);
+                    setInputValue("");
+                }
             } catch (error) {
                 console.error("Error initializing Client or creating thread:", error.message);
             } finally {
@@ -160,21 +167,32 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
         if (client) {
             initializeClientAndThread();
         }
-    }, [client, chatType]);
+    }, [client, chatType, threadId]);
 
     useEffect(() => {
         setMessages([])
         setInputValue("")
-        let thread_Id = generateRandomId();
-        setThreadId(thread_Id)
     }, [])
 
-    const newChat = () => {
-        setSelectedThreadId(null)
-        setMessages([])
-        setInputValue("")
-        let thread_Id = generateRandomId();
-        setThreadId(thread_Id)
+    const newChat = async () => {
+        try {
+            if (!client) return; // Ensure the client is initialized
+
+            // Create a new thread using the client instance
+            const createdThread = await client.threads.create();
+
+            // Set the new thread ID in the state
+            setSelectedThreadId(null);
+            setThread(createdThread);
+            setThreadId(createdThread)
+            // Reset other relevant states for a fresh chat
+            setMessages([]);
+            setInputValue("");
+
+            // Optionally, reset any other state such as chat history or old card ID if needed
+        } catch (error) {
+            console.error("Error creating new chat thread:", error);
+        }
     }
 
     useEffect(() => {
@@ -671,10 +689,10 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
                 }
             }
             const list = await client.runs.list(thread.thread_id);
-            if(list && list.length > 0 && thread.thread_id) {
+            if (list && list.length > 0 && thread.thread_id) {
                 setRunId(list[0].run_id)
                 const streamStatus = await client.runs.get(thread.thread_id, list[0].run_id);
-                if(streamStatus && streamStatus.status !== 'pending') {
+                if (streamStatus && streamStatus.status !== 'pending') {
                     setChatDisabled(false);
                     setChatLoading(false);
                 }
@@ -911,7 +929,7 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
 
     const stopMessage = async () => {
         const list = await client.runs.list(thread.thread_id);
-        if(list && list.length > 0 && thread.thread_id) {
+        if (list && list.length > 0 && thread.thread_id) {
             setRunId(list[0].run_id)
             await stopStream(list[0].run_id);
         }

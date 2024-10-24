@@ -42,7 +42,7 @@ export const HomeLayout = () => {
   const [dbId, setDbId] = useState<number | null>(null)
   const [schema, setSchema] = useState<any[]>([]);
   const [messages, setMessages] = useState([]);
-  const [threadId, setThreadId] = useState('')
+  const [threadId, setThreadId] = useState(null)
   const [isChatHistoryOpen, setIsChatHistoryOpen] = useState(true);
   const [showButton, setShowButton] = useState(false);
   const [insightDB, setInsightDB] = useState<number | null>(null);
@@ -189,14 +189,23 @@ const langchain_key = "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";
     setInputValue(""); // Clear the input value
   };
 
-  const handleStartNewChat = () => {
-    setSelectedThreadId(null)
-    setMessages([])
-    setInputValue("")
-    let thread_Id = generateRandomId();
-    setThreadId(thread_Id)
+  const handleStartNewChat = async () => {
+    try {
+      if (!client) return; 
+      const createdThread = await client.threads.create();
+  
+      setSelectedThreadId(null);
+      setThreadId(createdThread);
+  
+      setMessages([]);
+      setInputValue("");
+  
+      setOldCardId(null);
+    } catch (error) {
+      console.error("Error creating new chat thread:", error);
+    }
   };
-
+  
   const toggleChatHistory = () => {
     setIsChatHistoryOpen(!isChatHistoryOpen);
   };
