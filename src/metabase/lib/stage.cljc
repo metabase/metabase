@@ -144,15 +144,20 @@
              :lib/desired-column-alias (unique-name-fn source-alias)}
             (when (:metabase.lib.card/force-broken-id-refs col)
               (select-keys col [:metabase.lib.card/force-broken-id-refs])))
-           ;; do not retain `:temporal-unit`; it's not like we're doing a extract(month from <x>) twice, in both
+           ;; ~~do not retain `:temporal-unit`; it's not like we're doing a extract(month from <x>) twice, in both
            ;; stages of a query. It's a little hacky that we're manipulating `::lib.field` keys directly here since
            ;; they're presumably supposed to be private-ish, but I don't have a more elegant way of solving this sort
-           ;; of problem at this point in time.
+           ;; of problem at this point in time.~~ -- Cam
+           ;;
+           ;; lbrdnk WIP: Let's try to return those temporal units. Those are necessary for bucketing of already
+           ;;             bucketed columns in next stages which is completely legal operation (questionable whether
+           ;;             it should be, but that's the status quo). I believe we should return actual previous stage
+           ;;             metadata and it should be consumer's responsibility to treat those with care.
            ;;
            ;; also don't retain `:lib/expression-name`, the fact that this column came from an expression in the
            ;; previous stage should be totally irrelevant and we don't want it confusing our code that decides whether
            ;; to generate `:expression` or `:field` refs.
-           (dissoc ::lib.field/temporal-unit :lib/expression-name))))))
+           (dissoc #_::lib.field/temporal-unit :lib/expression-name))))))
 
 (mu/defn- saved-question-metadata :- [:maybe lib.metadata.calculation/ColumnsWithUniqueAliases]
   "Metadata associated with a Saved Question, e.g. if we have a `:source-card`"
