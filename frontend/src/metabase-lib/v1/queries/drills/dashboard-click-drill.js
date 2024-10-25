@@ -122,9 +122,9 @@ export function getDashboardDrillQuestionUrl(question, clicked) {
     extraData.questions[targetId],
     question.metadata(),
   ).lockDisplay();
-  const targetQuestion = baseQuestion.setQuery(
-    Lib.ensureFilterStage(baseQuestion.query()),
-  );
+  const targetQuestion = baseQuestion.isPivoted()
+    ? baseQuestion
+    : baseQuestion.setQuery(Lib.ensureFilterStage(baseQuestion.query()));
 
   const parameters = _.chain(parameterMapping)
     .values()
