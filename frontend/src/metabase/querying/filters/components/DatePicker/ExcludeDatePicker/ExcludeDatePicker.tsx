@@ -196,6 +196,7 @@ function ExcludeValuePicker({
       <Stack p="md">
         <Checkbox
           checked={isAll}
+          variant="stacked"
           label={isAll ? t`Select none` : t`Select all`}
           onChange={event => handleToggleAll(event.target.checked)}
         />
