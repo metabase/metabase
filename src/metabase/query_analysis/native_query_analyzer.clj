@@ -272,37 +272,33 @@
   Explicit references are columns that are named in the query; implicit ones are from wildcards. If a field could be
   both explicit and implicit, it will *only* show up in the `:explicit` set."
   [driver query]
-  (let [db-id         (:database query)
-        macaw-opts    (nqa.impl/macaw-options driver)
-        sql-string    (:query (nqa.sub/replace-tags query))
-        parsed-query  (macaw/query->components (macaw/parsed-query sql-string macaw-opts) macaw-opts)
-        tables        (map :component (:tables parsed-query))
-        table-refs    (table-refs-for-query tables db-id)
-        explicit-refs (explicit-field-refs-for-query parsed-query db-id table-refs)
-        implicit-refs (-> (implicit-references-for-query parsed-query db-id)
-                          (set/difference explicit-refs))
-        field-refs    (concat (mark-reference explicit-refs true)
-                              (mark-reference implicit-refs false))]
-    {:tables (strip-model-refs table-refs)
-     :fields (strip-model-refs field-refs)}))
-
-(defn- wrap-if-legacy [result]
-  (cond
-    (map? result)     result
-    (keyword? result) {:error result}
-    (coll? result)    {:tables result}
-    :else             result))
+  (let [db-id      (:database query)
+        macaw-opts (nqa.impl/macaw-options driver)
+        sql-string (:query (nqa.sub/replace-tags query))
+        result     (macaw/query->components (macaw/parsed-query sql-string macaw-opts) macaw-opts)]
+    (if (:error result)
+      ;; We may want to do some error translation here in the future, to decrease coupling to Macaw.
+      result
+      (let [tables        (map :component (:tables result))
+            table-refs    (table-refs-for-query tables db-id)
+            explicit-refs (explicit-field-refs-for-query result db-id table-refs)
+            implicit-refs (-> (implicit-references-for-query result db-id)
+                              (set/difference explicit-refs))
+            field-refs    (concat (mark-reference explicit-refs true)
+                                  (mark-reference implicit-refs false))]
+        {:tables (strip-model-refs table-refs)
+         :fields (strip-model-refs field-refs)}))))
 
 (defn- tables-via-macaw
   "Returns a set of table identifiers that (may) be referenced in the given card's query.
   Errs on the side of optimism: i.e., it may return tables that are *not* in the query, and is unlikely to fail
   to return tables that are in the query."
-  [driver query & {:keys [mode] :or {mode :basic-select}}]
+  [driver query & {:keys [mode] :or {mode :compound-select}}]
   (let [db-id      (:database query)
         macaw-opts (nqa.impl/macaw-options driver)
         table-opts (assoc macaw-opts :mode mode)
         sql-string (:query (nqa.sub/replace-tags query))
-        result     (wrap-if-legacy (macaw/query->tables sql-string table-opts))]
+        result     (macaw/query->tables sql-string table-opts)]
     (u/update-if-exists result :tables table-refs-for-query db-id)))
 
 ;; Keeping this multimethod private for now, need some hammock time on what to expose to drivers.
