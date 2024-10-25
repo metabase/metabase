@@ -91,7 +91,7 @@ const ChatMessageList = ({
 
         // Extract the message visualization index
         const visualizationIdx = message.visualizationIdx;
-
+        console.log("🚀 ~ {messages.map ~ visualizationIdx:", visualizationIdx)
         return (
           <div key={message.id || index}>
             {message.text !== "" && (
@@ -313,6 +313,7 @@ const ChatMessageList = ({
           </div>
         );
       })}
+
       <div ref={messageEndRef} />
     </div>
   );
