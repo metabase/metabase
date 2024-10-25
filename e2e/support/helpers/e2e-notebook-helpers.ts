@@ -228,7 +228,6 @@ export function selectFilterOperator(operatorName: string) {
 type JoinType = "left-join" | "right-join" | "inner-join" | "full-join";
 
 type Stage = {
-  // TODO: add support for sort clauses if needed
   joins?: {
     lhsTable: string;
     rhsTable: string;
@@ -239,11 +238,14 @@ type Stage = {
       rhsColumn: string;
     }[];
   }[];
-  // TODO: implement me
   expressions?: string[];
   filters?: string[];
   aggregations?: string[];
   breakouts?: string[];
+  sort?: {
+    column: string;
+    order: "asc" | "desc";
+  }[];
   limit?: number;
 };
 
@@ -251,13 +253,22 @@ export function verifyNotebookQuery(dataSource: string, stages: Stage[] = []) {
   getNotebookStep("data").findByText(dataSource).should("be.visible");
 
   for (let stageIndex = 0; stageIndex < stages.length; ++stageIndex) {
-    const { joins, filters, aggregations, breakouts, limit } =
-      stages[stageIndex];
+    const {
+      joins,
+      expressions,
+      filters,
+      aggregations,
+      breakouts,
+      sort,
+      limit,
+    } = stages[stageIndex];
 
     verifyNotebookJoins(stageIndex, joins);
+    verifyNotebookExpressions(stageIndex, expressions);
     verifyNotebookFilters(stageIndex, filters);
     verifyNotebookAggregations(stageIndex, aggregations, breakouts);
     verifyNotebookBreakouts(stageIndex, aggregations, breakouts);
+    verifyNotebookSort(stageIndex, sort);
     verifyNotebookLimit(stageIndex, limit);
   }
 }
@@ -272,17 +283,17 @@ function verifyNotebookJoins(
       joins.length,
     );
 
-    for (let index = 0; index < joins.length; ++index) {
-      const { lhsTable, rhsTable, type, conditions } = joins[index];
+    for (let joinIndex = 0; joinIndex < joins.length; ++joinIndex) {
+      const { lhsTable, rhsTable, type, conditions } = joins[joinIndex];
 
-      getJoinItems(stageIndex, index).eq(0).should("have.text", lhsTable);
-      getJoinItems(stageIndex, index).eq(1).should("have.text", rhsTable);
+      getJoinItems(stageIndex, joinIndex).eq(0).should("have.text", lhsTable);
+      getJoinItems(stageIndex, joinIndex).eq(1).should("have.text", rhsTable);
 
-      getNotebookStep("join", { stage: stageIndex, index })
+      getNotebookStep("join", { stage: stageIndex, index: joinIndex })
         .icon(getJoinTypeIcon(type))
         .should("be.visible");
 
-      getNotebookStep("join", { stage: stageIndex, index })
+      getNotebookStep("join", { stage: stageIndex, index: joinIndex })
         .findAllByTestId(/^join-condition-\d+$/)
         .should("have.length", conditions.length);
 
@@ -292,7 +303,7 @@ function verifyNotebookJoins(
         ++conditionIndex
       ) {
         const { operator, lhsColumn, rhsColumn } = conditions[conditionIndex];
-        getNotebookStep("join", { stage: stageIndex, index })
+        getNotebookStep("join", { stage: stageIndex, index: joinIndex })
           .findByTestId(`join-condition-${conditionIndex}`)
           .within(() => {
             cy.findByLabelText("Left column")
@@ -309,6 +320,26 @@ function verifyNotebookJoins(
     }
   } else {
     getNotebookStep("join", { stage: stageIndex }).should("not.exist");
+  }
+}
+
+function verifyNotebookExpressions(
+  stageIndex: number,
+  expressions: string[] | undefined,
+) {
+  if (Array.isArray(expressions)) {
+    getExpressionItems(stageIndex).should(
+      "have.length",
+      expressions.length + 1, // +1 because of add button
+    );
+
+    for (let index = 0; index < expressions.length; ++index) {
+      getExpressionItems(stageIndex)
+        .eq(index)
+        .should("have.text", expressions[index]);
+    }
+  } else {
+    getNotebookStep("expression", { stage: stageIndex }).should("not.exist");
   }
 }
 
@@ -387,6 +418,34 @@ function verifyNotebookBreakouts(
   }
 }
 
+function verifyNotebookSort(
+  stageIndex: number,
+  sort:
+    | {
+        column: string;
+        order: "asc" | "desc";
+      }[]
+    | undefined,
+) {
+  if (Array.isArray(sort)) {
+    getSortItems(stageIndex).should(
+      "have.length",
+      sort.length + 1, // +1 because of add button
+    );
+
+    for (let index = 0; index < sort.length; ++index) {
+      const { column, order } = sort[index];
+      getSortItems(stageIndex).eq(index).should("have.text", column);
+      getSortItems(stageIndex)
+        .eq(index)
+        .icon(order === "asc" ? "arrow_up" : "arrow_down")
+        .should("be.visible");
+    }
+  } else {
+    getNotebookStep("sort", { stage: stageIndex }).should("not.exist");
+  }
+}
+
 function verifyNotebookLimit(stageIndex: number, limit: number | undefined) {
   if (typeof limit === "number") {
     getNotebookStep("limit", { stage: stageIndex })
@@ -399,6 +458,12 @@ function verifyNotebookLimit(stageIndex: number, limit: number | undefined) {
 
 function getJoinItems(stageIndex: number, index: number) {
   return getNotebookStep("join", { stage: stageIndex, index }).findAllByTestId(
+    "notebook-cell-item",
+  );
+}
+
+function getExpressionItems(stageIndex: number) {
+  return getNotebookStep("expression", { stage: stageIndex }).findAllByTestId(
     "notebook-cell-item",
   );
 }
@@ -416,6 +481,12 @@ function getSummarizeItems(
   return getNotebookStep("summarize", { stage: stageIndex })
     .findByTestId(stepType === "aggregate" ? "aggregate-step" : "breakout-step")
     .findAllByTestId("notebook-cell-item");
+}
+
+function getSortItems(stageIndex: number) {
+  return getNotebookStep("sort", { stage: stageIndex }).findAllByTestId(
+    "notebook-cell-item",
+  );
 }
 
 function getJoinTypeIcon(type: JoinType): IconName {
