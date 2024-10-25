@@ -130,10 +130,9 @@ export const isFolder = (
   return (
     item.id === "root" ||
     item.is_personal ||
-    (item?.model === "collection" &&
+    ((item?.model === "collection" || item?.model === "dashboard") &&
       _.intersection([...(item?.below ?? []), ...(item?.here ?? [])], models)
-        .length > 0) ||
-    item?.model === "dashboard"
+        .length > 0)
   );
 };
 
