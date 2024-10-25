@@ -12,7 +12,7 @@ import {
 } from "metabase/visualizer/visualizer.slice";
 import type { VisualizationSettings } from "metabase-types/api";
 
-import { BottomWell } from "./BottomWell";
+import { HorizontalWell } from "./HorizontalWell";
 import { VerticalWell } from "./VerticalWell";
 
 export function VisualizationCanvas() {
@@ -43,7 +43,7 @@ export function VisualizationCanvas() {
       <VerticalWell display={display} settings={settings} />
       <Flex direction="column" style={{ flex: 1 }}>
         <Visualization rawSeries={rawSeries} />
-        <BottomWell
+        <HorizontalWell
           display={display}
           settings={settings}
           w="95%"

@@ -18,19 +18,19 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
-interface BottomWellProps extends FlexProps {
+interface HorizontalWellProps extends FlexProps {
   display: VisualizationDisplay;
   settings: ComputedVisualizationSettings;
   onChangeSettings: (settings: VisualizationSettings) => void;
 }
 
-export function BottomWell({
+export function HorizontalWell({
   display,
   settings,
   style,
   onChangeSettings,
   ...props
-}: BottomWellProps) {
+}: HorizontalWellProps) {
   const { setNodeRef } = useDroppable({ id: DROPPABLE_ID.HORIZONTAL_WELL });
 
   if (display !== "funnel") {
