@@ -150,7 +150,7 @@ describeWithSnowplowEE(
           createDashboardWithQuestions({
             // Can't figure out the type if I extracted `dashboardDetails` to a variable.
             dashboardDetails: {
-              name: "Dashboard with parameters",
+              name: "Dashboard with a parameter",
               parameters: [CATEGORY_FILTER],
               enable_embedding: true,
               embedding_params: {
@@ -316,7 +316,7 @@ describeWithSnowplowEE(
           // Can't figure out the type if I extracted `questionDetails` to a variable.
           createNativeQuestion(
             {
-              name: "25374",
+              name: "Native question with a parameter",
               native: {
                 "template-tags": {
                   num: {
