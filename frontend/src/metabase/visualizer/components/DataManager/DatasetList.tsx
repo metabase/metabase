@@ -9,8 +9,6 @@ import {
   selectCards,
   selectDatasets,
   selectExpandedCards,
-  selectSelectedCardId,
-  setSelectedCard,
   toggleCardExpanded,
 } from "metabase/visualizer/visualizer.slice";
 
@@ -21,7 +19,6 @@ export const DatasetList = () => {
   const cards = useSelector(selectCards);
   const datasets = useSelector(selectDatasets);
   const expandedCards = useSelector(selectExpandedCards);
-  const selectedCardId = useSelector(selectSelectedCardId);
   const dispatch = useDispatch();
 
   return (
@@ -35,18 +32,10 @@ export const DatasetList = () => {
       {cards.map(card => {
         const dataset = datasets[card.id];
         const isExpanded = expandedCards[card.id];
-        const isSelected = selectedCardId === card.id;
 
         return (
           <Box key={card.id} mb={4}>
-            <Flex
-              align="center"
-              px={8}
-              py={4}
-              bg={isSelected ? "var(--mb-color-bg-light)" : undefined}
-              onClick={() => dispatch(setSelectedCard(card.id))}
-              className={S.parent}
-            >
+            <Flex align="center" px={8} py={4} className={S.parent}>
               <Icon
                 style={{ flexShrink: 0 }}
                 name={isExpanded ? "chevronup" : "chevrondown"}

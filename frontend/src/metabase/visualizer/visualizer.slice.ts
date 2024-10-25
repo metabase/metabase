@@ -20,6 +20,7 @@ import type {
 } from "metabase-types/store/visualizer";
 
 const initialState: VisualizerState = {
+  display: null,
   settings: {},
   cards: [],
   datasets: {},
@@ -27,7 +28,6 @@ const initialState: VisualizerState = {
   loadingDatasets: {},
   expandedCards: {},
   error: null,
-  selectedCardId: null,
   draggedItem: null,
 };
 
@@ -87,9 +87,6 @@ const visualizerSlice = createSlice({
       const cardId = action.payload;
       state.expandedCards[cardId] = !state.expandedCards[cardId];
     },
-    setSelectedCard: (state, action: PayloadAction<CardId | null>) => {
-      state.selectedCardId = action.payload;
-    },
     setDraggedItem: (state, action: PayloadAction<DraggedItem | null>) => {
       state.draggedItem = action.payload;
     },
@@ -110,8 +107,9 @@ const visualizerSlice = createSlice({
         }
         state.loadingCards[card.id] = false;
         state.expandedCards[card.id] = true;
-        if (!state.selectedCardId) {
-          state.selectedCardId = card.id;
+        if (!state.display) {
+          state.display = card.display;
+          state.settings = card.visualization_settings;
         }
       })
       .addCase(fetchCard.rejected, (state, action) => {
@@ -141,7 +139,6 @@ export const {
   updateSettings,
   removeCard,
   toggleCardExpanded,
-  setSelectedCard,
   setDraggedItem,
 } = visualizerSlice.actions;
 
@@ -149,6 +146,9 @@ export const { reducer } = visualizerSlice;
 
 export const getSettings = (state: { visualizer: VisualizerState }) =>
   state.visualizer.settings;
+
+export const getVisualizationType = (state: { visualizer: VisualizerState }) =>
+  state.visualizer.display;
 
 export const selectCards = (state: { visualizer: VisualizerState }) =>
   state.visualizer.cards;
@@ -162,8 +162,6 @@ export const selectError = (state: { visualizer: VisualizerState }) =>
   state.visualizer.error;
 export const selectExpandedCards = (state: { visualizer: VisualizerState }) =>
   state.visualizer.expandedCards;
-export const selectSelectedCardId = (state: { visualizer: VisualizerState }) =>
-  state.visualizer.selectedCardId;
 
 export const getDraggedItem = (state: { visualizer: VisualizerState }) =>
   state.visualizer.draggedItem;
@@ -174,27 +172,21 @@ export const selectCardIds = createSelector(
 );
 
 export const getVisualizerRawSeries = createSelector(
-  [selectCards, selectDatasets, selectSelectedCardId, getSettings],
-  (cards, datasets, selectedCardId, settings): RawSeries => {
-    if (selectedCardId == null) {
-      return [];
-    }
+  [getVisualizationType, selectCards, selectDatasets, getSettings],
+  (display, cards, datasets, settings): RawSeries => {
+    const [card] = cards;
+    const dataset = card ? datasets[card.id] : null;
 
-    const selectedCard = cards.find(card => card.id === selectedCardId);
-    const dataset = selectedCard ? datasets[selectedCard.id] : null;
-
-    if (selectedCard == null || dataset == null) {
+    if (display == null || card == null || dataset == null) {
       return [];
     }
 
     return [
       {
         card: {
-          ...selectedCard,
-          visualization_settings: {
-            ...selectedCard.visualization_settings,
-            ...settings,
-          },
+          ...card,
+          display,
+          visualization_settings: settings,
         },
         ...dataset,
       },
@@ -206,9 +198,4 @@ export const getVisualizerComputedSettings = createSelector(
   [getVisualizerRawSeries],
   rawSeries =>
     rawSeries.length > 0 ? getComputedSettingsForSeries(rawSeries) : {},
-);
-
-export const getVisualizationType = createSelector(
-  [getVisualizerRawSeries],
-  rawSeries => (rawSeries.length > 0 ? rawSeries[0].card.display : undefined),
 );

@@ -3,6 +3,7 @@ import type {
   CardId,
   Dataset,
   DatasetColumn,
+  VisualizationDisplay,
   VisualizationSettings,
 } from "metabase-types/api";
 
@@ -21,13 +22,14 @@ export type DraggedColumn = BaseDraggedItem<{
 export type DraggedItem = DraggedColumn;
 
 export interface VisualizerState {
+  display: VisualizationDisplay | null;
   settings: VisualizationSettings;
+
   cards: Card[];
   datasets: Record<CardId, Dataset>;
   expandedCards: Record<CardId, boolean>;
   loadingCards: Record<CardId, boolean>;
   loadingDatasets: Record<CardId, boolean>;
   error: string | null;
-  selectedCardId: CardId | null;
   draggedItem: DraggedItem | null;
 }
