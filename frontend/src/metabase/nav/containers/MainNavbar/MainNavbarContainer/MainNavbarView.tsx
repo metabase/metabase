@@ -17,7 +17,8 @@ import { isSmallScreen } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { WhatsNewNotification } from "metabase/nav/components/WhatsNewNotification";
-import { getApplicationName } from "metabase/selectors/whitelabel";
+import { getIsEmbedded } from "metabase/selectors/embed";
+import { getIsWhiteLabeling } from "metabase/selectors/whitelabel";
 import type { IconName, IconProps } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { Bookmark, Collection, User } from "metabase-types/api";
@@ -116,7 +117,6 @@ export function MainNavbarView({
   );
 
   const ONBOARDING_URL = "/getting-started";
-  const applicationName = useSelector(getApplicationName);
 
   const [showOnboarding, setShowOnboarding] = useState(false);
   const instanceCreated = useSetting("instance-creation");
@@ -129,6 +129,12 @@ export function MainNavbarView({
       setShowOnboarding(true);
     }
   }, [instanceCreated]);
+
+  const isEmbedded = useSelector(getIsEmbedded);
+  const isWhiteLabelled = useSelector(getIsWhiteLabeling);
+
+  const showOnboardingChecklist =
+    isAdmin && showOnboarding && !isEmbedded && !isWhiteLabelled;
 
   return (
     <ErrorBoundary>
@@ -143,14 +149,15 @@ export function MainNavbarView({
             >
               {t`Home`}
             </PaddedSidebarLink>
-            {currentUser.is_superuser && showOnboarding && (
+            {showOnboardingChecklist && (
               <PaddedSidebarLink
                 icon="learn"
                 url={ONBOARDING_URL}
                 isSelected={nonEntityItem?.url === ONBOARDING_URL}
                 onClick={() => trackOnboardingChecklistOpened()}
               >
-                {t`How to use ${applicationName}`}
+                {/* eslint-disable-next-line no-literal-metabase-strings -- We only show this to non-whitelabelled instances */}
+                {t`How to use Metabase`}
               </PaddedSidebarLink>
             )}
           </SidebarSection>

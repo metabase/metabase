@@ -1,4 +1,5 @@
 import {
+  describeEE,
   describeWithSnowplow,
   enableTracking,
   expectGoodSnowplowEvent,
@@ -6,8 +7,38 @@ import {
   expectNoBadSnowplowEvents,
   resetSnowplow,
   restore,
+  setTokenFeatures,
+  updateSetting,
+  visitFullAppEmbeddingUrl,
 } from "e2e/support/helpers";
 import type { ChecklistItemValue } from "metabase/home/components/Onboarding/types";
+
+describeEE("Onboarding checklist page", () => {
+  beforeEach(() => {
+    restore("setup");
+    cy.signInAsAdmin();
+    setTokenFeatures("all");
+  });
+
+  it("should not render when embedded in an iframe or when the instance is whitelabelled", () => {
+    visitFullAppEmbeddingUrl({ url: "/", qs: {} });
+    cy.findByTestId("main-navbar-root").within(() => {
+      cy.findByRole("listitem", { name: "Home" }).should("be.visible");
+      cy.findByRole("listitem", { name: "How to use Metabase" }).should(
+        "not.exist",
+      );
+    });
+
+    updateSetting("application-name", "Acme, corp.");
+    cy.visit("/");
+    cy.findByTestId("main-navbar-root").within(() => {
+      cy.findByRole("listitem", { name: "Home" }).should("be.visible");
+      cy.findByRole("listitem", { name: "How to use Metabase" }).should(
+        "not.exist",
+      );
+    });
+  });
+});
 
 describeWithSnowplow("Onboarding checklist events", () => {
   beforeEach(() => {
