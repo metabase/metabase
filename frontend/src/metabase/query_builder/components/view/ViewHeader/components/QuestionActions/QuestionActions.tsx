@@ -147,7 +147,7 @@ export const QuestionActions = ({
     });
   }
 
-  const moderationItems = PLUGIN_MODERATION.useMenuItems(
+  const moderationItems = PLUGIN_MODERATION.useQuestionMenuItems(
     question,
     isModerator,
     reload,

@@ -375,9 +375,8 @@ export type RevisionOrModerationEvent = {
 
 export const PLUGIN_MODERATION = {
   isEnabled: () => false,
-  QuestionModerationIcon: PluginPlaceholder,
+  EntityModerationIcon: PluginPlaceholder,
   QuestionModerationSection: PluginPlaceholder,
-  QuestionModerationButton: PluginPlaceholder,
   ModerationReviewBanner: PluginPlaceholder,
   ModerationReviewTextForQuestion: PluginPlaceholder,
   ModerationReviewTextForDashboard: PluginPlaceholder,
@@ -387,8 +386,13 @@ export const PLUGIN_MODERATION = {
     undefined,
   getModerationTimelineEvents: (_reviews: any, _currentUser: BaseUser | null) =>
     [] as RevisionOrModerationEvent[],
-  useMenuItems: (
-    _model?: Question | Dashboard,
+  useDashboardMenuItems: (
+    _model?: Dashboard,
+    _isModerator?: boolean,
+    _reload?: () => void,
+  ) => [],
+  useQuestionMenuItems: (
+    _model?: Question,
     _isModerator?: boolean,
     _reload?: () => void,
   ) => [],

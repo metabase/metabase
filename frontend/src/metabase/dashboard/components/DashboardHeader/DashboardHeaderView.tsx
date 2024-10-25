@@ -200,8 +200,8 @@ export function DashboardHeaderView({
                     data-testid="dashboard-name-heading"
                     onChange={handleUpdateCaption}
                   />
-                  <PLUGIN_MODERATION.QuestionModerationIcon
-                    question={dashboard}
+                  <PLUGIN_MODERATION.EntityModerationIcon
+                    dashboard={dashboard}
                   />
                   <PLUGIN_COLLECTION_COMPONENTS.CollectionInstanceAnalyticsIcon
                     color={color("brand")}
