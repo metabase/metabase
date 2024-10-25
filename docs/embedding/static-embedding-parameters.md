@@ -44,7 +44,7 @@ Editable parameters are responsible for passing filter values from the embedded 
 
 ### You can't disable parameters when the original question or dashboard requires a value
 
-If the filter on a dashboard or question is set to [Always require a value](../dashboards/filters.md#requiring-a-filter), you won't be able to disable the parameter when embedding.
+If the filter on a dashboard or question is set to [Always require a value](../dashboards/filters.md), you won't be able to disable the parameter when embedding.
 
 ## Populating an embedded filter widget with a default value
 
@@ -122,7 +122,7 @@ You can use locked parameters to display filtered data based on attributes captu
 
 Locked parameters will apply the selected filter values to your original dashboard or SQL question, but they won't be displayed as filter widgets on your embed. Locked parameters may also limit the values that are shown in your [editable filter widgets](#adding-a-filter-widget-to-a-static-embed).
 
-If you just want to require a value for the parameter, you could set the filter as editable and configure the underlying question or dashboard to [always require a value](../dashboards/filters.md#requiring-a-filter).
+If you just want to require a value for the parameter, you could set the filter as editable and configure the underlying question or dashboard to [always require a value](../dashboards/filters.md).
 
 ## Updating a locked parameter
 
