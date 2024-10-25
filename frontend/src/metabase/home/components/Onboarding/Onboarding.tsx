@@ -643,6 +643,7 @@ const VideoTutorial = forwardRef(function VideoTutorial(
 ) {
   return (
     <iframe
+      allowFullScreen
       className={S.video}
       loading="lazy"
       ref={ref}
