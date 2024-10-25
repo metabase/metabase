@@ -13,6 +13,7 @@ import {
   Tooltip,
 } from "metabase/ui";
 
+import type { DatePickerUnit } from "../../types";
 import { IncludeCurrentSwitch } from "../IncludeCurrentSwitch";
 import type { DateIntervalValue } from "../types";
 import {
@@ -26,6 +27,7 @@ import { setDefaultOffset, setUnit } from "./utils";
 
 interface DateIntervalPickerProps {
   value: DateIntervalValue;
+  availableUnits: ReadonlyArray<DatePickerUnit>;
   isNew: boolean;
   canUseRelativeOffsets: boolean;
   onChange: (value: DateIntervalValue) => void;
@@ -34,13 +36,14 @@ interface DateIntervalPickerProps {
 
 export function DateIntervalPicker({
   value,
+  availableUnits,
   isNew,
   canUseRelativeOffsets,
   onChange,
   onSubmit,
 }: DateIntervalPickerProps) {
   const interval = getInterval(value);
-  const unitOptions = getUnitOptions(value);
+  const unitOptions = getUnitOptions(value, availableUnits);
   const dateRangeText = formatDateRange(value);
 
   const handleIntervalChange = (inputValue: number | "") => {

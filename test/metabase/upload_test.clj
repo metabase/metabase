@@ -550,17 +550,17 @@
                     :file (csv-file-with lines)
                     :auxiliary-sync-steps :synchronous)]
             (testing "Table and Fields exist after sync"
-              (is (=? (cond->> [["id" {:semantic_type :type/PK
-                                       :base_type     :type/BigInteger}]
-                                ["nulls" {:base_type :type/Text}]
-                                ["string" {:base_type :type/Text}]
-                                ["bool" {:base_type :type/Boolean}]
-                                ["number" {:base_type :type/Float}]
-                                ["date" {:base_type :type/Date}]
-                                ["datetime" {:base_type :type/DateTime}]]
+              (is (=? (cond->> [["id"       {:semantic_type :type/PK
+                                             :base_type     :type/BigInteger}]
+                                ["nulls"    {:base_type     :type/Text}]
+                                ["string"   {:base_type     :type/Text}]
+                                ["bool"     {:base_type     :type/Boolean}]
+                                ["number"   {:base_type     :type/Float}]
+                                ["date"     {:base_type     :type/Date}]
+                                ["datetime" {:base_type     :type/DateTime}]]
                         (auto-pk-column?)
-                        (cons ["_mb_row_id" {:semantic_type     :type/PK
-                                             :base_type         :type/BigInteger}]))
+                        (cons ["_mb_row_id" {:semantic_type :type/PK
+                                             :base_type     :type/BigInteger}]))
                       (->> (t2/select :model/Field :table_id (:id table))
                            (sort-by :database_position)
                            (map (juxt (comp u/lower-case-en :name) identity))))))
@@ -582,6 +582,17 @@
             (testing "Headers are displayed correctly"
               (is (= (header-with-auto-pk ["Dirección" "País"])
                      (column-display-names-for-table table))))))))))
+
+(deftest detect-charset-test
+  (doseq [[encoding filename] [["UTF-8" "csv/utf-8.csv"]
+                               ["UTF-8" "csv/48945-1.csv"]
+                               ["UTF-8" "csv/48945-2.csv"]
+                               ["UTF-8" "csv/48945-3.csv"]
+                               ["UTF-16BE" "csv/utf-16.csv"]
+                               ;; Hmm, https://stackoverflow.com/a/19111140
+                               ["WINDOWS-1252" "csv/iso-8859-1.csv"]]]
+    (testing (str "Correct charset detected for " filename)
+      (is (= encoding (#'upload/detect-charset (io/file (io/resource filename))))))))
 
 (deftest infer-separator-catch-exception-test
   (testing "errors in [[upload/infer-separator]] should not prevent the upload (#44034)"
@@ -2178,7 +2189,7 @@
                           {:fail-msg "There's a value with the wrong type \\('double precision'\\) in the 'test_column' column"}
                           {:coerced 2.1})) ; column is promoted to float
                        {:upload-type int-type,   :uncoerced "2.0",        :coerced 2} ; value is coerced to int
-                       {:upload-type float-type, :uncoerced "2",          :coerced 2.0}
+                       {:upload-type float-type, :uncoerced "2",          :coerced 2.0} ; column is promoted to float
                        {:upload-type bool-type,  :uncoerced "0",          :coerced false}
                        {:upload-type bool-type,  :uncoerced "1.0",        :fail-msg "'1.0' is not a recognizable boolean"}
                        {:upload-type bool-type,  :uncoerced "0.0",        :fail-msg "'0.0' is not a recognizable boolean"}
