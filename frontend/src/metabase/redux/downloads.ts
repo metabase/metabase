@@ -164,9 +164,9 @@ const getDatasetParams = ({
 }: DownloadQueryResultsOpts): DownloadQueryResultsParams => {
   const cardId = question.id();
 
-  const exportParams: Record<string, string> = {
-    format_rows: String(enableFormatting),
-    pivot_results: String(enablePivot),
+  const exportParams = {
+    format_rows: enableFormatting,
+    pivot_results: enablePivot,
   };
 
   const { accessedVia, resourceType: resource } = getDownloadedResourceType({
@@ -208,7 +208,7 @@ const getDatasetParams = ({
         url: `/api/embed/dashboard/${token}/dashcard/${dashcardId}/card/${cardId}/${type}`,
         params: new URLSearchParams({
           parameters: JSON.stringify(params),
-          ...exportParams,
+          ..._.mapObject(exportParams, value => String(value)),
         }),
       };
     }
@@ -221,7 +221,7 @@ const getDatasetParams = ({
         url: Urls.embedCard(token, type),
         params: new URLSearchParams({
           parameters: JSON.stringify(Object.fromEntries(params)),
-          ...exportParams,
+          ..._.mapObject(exportParams, value => String(value)),
         }),
       };
     }
