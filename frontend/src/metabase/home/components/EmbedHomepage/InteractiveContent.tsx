@@ -14,13 +14,12 @@ export const InteractiveContent = ({
 }: InteractiveContentProps) => (
   <Box>
     <Text
-      lh={1.57}
       fw="bold"
       mb="sm"
       size="lg"
       color="text-medium"
     >{t`Interactive embedding`}</Text>
-    <Text lh={1.57} mb="md">
+    <Text mb="md">
       {/* eslint-disable-next-line no-literal-metabase-strings -- only visible to admins */}
       {t`Interactive embedding allows you to embed the full Metabase app with iframes. It offers settings to customize appearance and includes the query builder with row-level access.`}
     </Text>
