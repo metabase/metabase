@@ -1,8 +1,10 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
+  addOrUpdateDashboardCard,
   changeSynchronousBatchUpdateSetting,
   createDashboardWithTabs,
   createQuestion,
+  createQuestionAndDashboard,
   editDashboard,
   entityPickerModal,
   entityPickerModalItem,
@@ -11,23 +13,33 @@ import {
   getDashboardCard,
   getNotebookStep,
   modal,
+  openNotebook,
   popover,
   restore,
   saveDashboard,
   saveQuestion,
   sidebar,
   startNewQuestion,
+  verifyNotebookQuery,
   visitDashboard,
   visualize,
 } from "e2e/support/helpers";
+import { checkNotNull } from "metabase/lib/types";
 import type {
   Card,
   ConcreteFieldReference,
   StructuredQuery,
 } from "metabase-types/api";
 
-const { ORDERS, ORDERS_ID, PEOPLE, PRODUCTS, REVIEWS, REVIEWS_ID } =
-  SAMPLE_DATABASE;
+const {
+  ORDERS,
+  ORDERS_ID,
+  PEOPLE,
+  PRODUCTS,
+  PRODUCTS_ID,
+  REVIEWS,
+  REVIEWS_ID,
+} = SAMPLE_DATABASE;
 
 const CARD_HEIGHT = 4;
 const CARD_WIDTH = 12;
@@ -2126,6 +2138,114 @@ describe("pivot tables", () => {
         ["User", PEOPLE_NUMBER_COLUMNS],
       ]);
     }
+  });
+});
+
+/**
+ * In https://github.com/metabase/metabase/issues/46519 we added { "stage-number": number }
+ * to target dimension. This test ensures that existing dashboards without this information
+ * still work the same as they did before that epic.
+ */
+describe("parameter mappings without target stage index", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+    changeSynchronousBatchUpdateSetting(true); // prevent last_used_param_values from breaking test isolation
+
+    cy.intercept("POST", "/api/dataset").as("dataset");
+    // cy.intercept("GET", "/api/dashboard/**").as("getDashboard");
+    // cy.intercept("PUT", "/api/dashboard/**").as("updateDashboard");
+    // cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
+    //   "dashboardData",
+    // );
+
+    // question with 1 stage + aggregations + breakouts, filter on 1st stage without stage-number,
+
+    createQuestionAndDashboard({
+      questionDetails: {
+        query: {
+          "source-table": PRODUCTS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            [
+              "field",
+              PRODUCTS.CATEGORY,
+              {
+                "base-type": "type/Text",
+              },
+            ],
+          ],
+        },
+      },
+      dashboardDetails: {
+        parameters: [
+          {
+            name: "Category",
+            slug: "text",
+            id: "169f9d0a",
+            type: "string/=",
+            sectionId: "string",
+          },
+        ],
+      },
+    }).then(({ body: { card_id, dashboard_id } }) => {
+      addOrUpdateDashboardCard({
+        dashboard_id,
+        card_id: checkNotNull(card_id),
+        card: {
+          parameter_mappings: [
+            {
+              card_id: checkNotNull(card_id),
+              parameter_id: "169f9d0a",
+              target: [
+                "dimension",
+                [
+                  "field",
+                  PRODUCTS.CATEGORY,
+                  {
+                    "base-type": "type/Text",
+                  },
+                ],
+                // { "stage-number": 0 }, intentionally omitted
+              ],
+            },
+          ],
+        },
+      });
+
+      visitDashboard(dashboard_id);
+    });
+  });
+
+  afterEach(() => {
+    changeSynchronousBatchUpdateSetting(false);
+  });
+
+  it("drilling via dashcard header works even when 'stage-number' attribute is missing in target dimension", () => {
+    cy.findByLabelText("Category").click();
+    popover().within(() => {
+      cy.findByText("Gadget").click();
+      cy.button("Add filter").click();
+    });
+
+    getDashboardCard().within(() => {
+      cy.findByText("Gadget").should("be.visible");
+      cy.findByText("53").should("be.visible");
+      cy.findByTestId("legend-caption").click();
+    });
+
+    cy.wait("@dataset");
+
+    openNotebook();
+    verifyNotebookQuery("Products", [
+      {
+        filters: ["Category is Gadget"],
+      },
+      {
+        aggregations: ["Count"],
+        breakouts: ["Category"],
+      },
+    ]);
   });
 });
 
