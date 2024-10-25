@@ -347,7 +347,9 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
         }
     };
 
-
+    useEffect(() => {
+        console.log("🚀 ~ ChatAssistant ~ card:", card)
+    },  card)
 
     useEffect(() => {
         if (pendingInfoMessage && visualizationIndex >= 0) {
