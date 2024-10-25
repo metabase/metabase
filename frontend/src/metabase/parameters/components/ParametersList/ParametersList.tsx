@@ -36,7 +36,7 @@ export const ParametersList = ({
   setEditingParameter,
   enableParameterRequiredBehavior,
 }: ParametersListProps) => {
-  const [showFilterList, setShowFilterList] = useState(false);
+  const [showFilterList, setShowFilterList] = useState(true);
   const [showRequiredFilters, setShowRequiredFilters] = useState(true);
 
   const pointerSensor = useSensor(PointerSensor, {
@@ -47,24 +47,27 @@ export const ParametersList = ({
     const visibleParams = getVisibleParameters(parameters, hideParameters);
     return visibleParams.filter(
       parameter =>
-        isEditing ||
-        !(
-          parameter.name.startsWith("#hide") || parameter.name.endsWith("#hide")
-        ),
+        isEditing || // If you're in edit mode, we'll show you all the parameters
+        (!parameter.name.startsWith("#hide") &&
+          !parameter.name.endsWith("#hide")), // Filter the parameters with #hide
     );
   }, [parameters, hideParameters, isEditing]);
 
   const requiredFilters = useMemo(() => {
-    return parameters.filter(parameter => parameter.required);
-  }, [parameters]);
-
-  const hasNonHiddenParameters = useMemo(() => {
-    return parameters.some(
-      parameter =>
-        !parameter.name.startsWith("#hide") &&
-        !parameter.name.endsWith("#hide"),
+    return visibleValuePopulatedParameters.filter(
+      parameter => parameter.required,
     );
-  }, [parameters]);
+  }, [visibleValuePopulatedParameters]);
+
+  const optionalFilters = useMemo(() => {
+    return visibleValuePopulatedParameters.filter(
+      parameter => !parameter.required,
+    );
+  }, [visibleValuePopulatedParameters]);
+
+  const hasOptionalFilters = useMemo(() => {
+    return optionalFilters.length > 0;
+  }, [optionalFilters]);
 
   const handleSortEnd = useCallback(
     ({ id, newIndex }: DragEndEvent) => {
@@ -125,7 +128,7 @@ export const ParametersList = ({
 
   return (
     <>
-      {question && (hasNonHiddenParameters || requiredFilters.length > 0) && (
+      {question && (hasOptionalFilters || requiredFilters.length > 0) && (
         <div
           style={{
             display: "flex",
@@ -143,7 +146,7 @@ export const ParametersList = ({
               {showRequiredFilters ? `Required Filters` : `Required Filters`}
             </FilterButton>
           )}
-          {hasNonHiddenParameters && (
+          {hasOptionalFilters && (
             <FilterButton
               borderless
               primary
@@ -151,7 +154,7 @@ export const ParametersList = ({
               onClick={toggleFilterList}
               style={{ marginRight: "10px" }}
             >
-              {showFilterList ? `Filters ` : `Filters `}
+              {showFilterList ? `Optional Filters` : `Optional Filters`}
             </FilterButton>
           )}
         </div>
@@ -172,7 +175,7 @@ export const ParametersList = ({
           )}
         </div>
       )}
-      {showFilterList && visibleValuePopulatedParameters.length > 0 && (
+      {showFilterList && optionalFilters.length > 0 && (
         <div
           className={cx(
             className,
@@ -183,7 +186,7 @@ export const ParametersList = ({
           )}
         >
           <SortableList
-            items={visibleValuePopulatedParameters}
+            items={optionalFilters}
             getId={getId}
             renderItem={renderItem}
             onSortEnd={handleSortEnd}
