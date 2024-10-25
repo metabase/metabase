@@ -30,13 +30,13 @@ interface CollectionBreadcrumbsProps
 export const CollectionBreadcrumbs = (props: CollectionBreadcrumbsProps) => {
   const viewedItem = useSelector(getViewedItem);
 
-  const { data: viewedQuestion } = useGetCardQuery(
+  const { currentData: viewedQuestion } = useGetCardQuery(
     viewedItem.model === "question" && viewedItem.question?.id
       ? { id: viewedItem.question.id() }
       : skipToken,
   );
 
-  const { data: viewedDashboard } = useGetDashboardQuery(
+  const { currentData: viewedDashboard } = useGetDashboardQuery(
     viewedItem.model === "dashboard" && viewedItem.dashboard?.id
       ? { id: viewedItem.dashboard.id }
       : skipToken,
@@ -53,12 +53,8 @@ export const CollectionBreadcrumbs = (props: CollectionBreadcrumbsProps) => {
   const isQuestionPage = useLocation().pathname?.startsWith("/question");
   const shouldShowDashboard = isDashboardQuestion && isQuestionPage;
 
-  const viewedDashboardQuestionDashboardReq = useGetDashboardQuery(
-    shouldShowDashboard ? { id: dashboardId } : skipToken,
-  );
-  const viewedDashboardQuestionDashboard = shouldShowDashboard
-    ? viewedDashboardQuestionDashboardReq.data
-    : undefined;
+  const { currentData: viewedDashboardQuestionDashboard } =
+    useGetDashboardQuery(shouldShowDashboard ? { id: dashboardId } : skipToken);
 
   return (
     <Breadcrumbs
