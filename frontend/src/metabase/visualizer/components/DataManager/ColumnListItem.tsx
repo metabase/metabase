@@ -13,7 +13,13 @@ export const ColumnListItem = forwardRef<HTMLDivElement, ColumnListItemProps>(
   function ColumnListItem({ column, ...props }, ref) {
     return (
       <Flex {...props} px={8} py={4} align="center" ref={ref}>
-        <Icon name={getIconForField(column) as IconName} mr={4} size={12} />
+        <Icon
+          name="grabber"
+          mr={4}
+          size={16}
+          style={{ color: "var(--mb-color-text-medium)" }}
+        />
+        <Icon name={getIconForField(column) as IconName} mr={4} size={16} />
         <Text truncate>{getFriendlyName(column)}</Text>
       </Flex>
     );
