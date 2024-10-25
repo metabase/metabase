@@ -10,13 +10,16 @@ import {
 import { jt, t } from "ttag";
 
 import { useSetting, useTempStorage } from "metabase/common/hooks";
-import { getPlan } from "metabase/common/utils/plan";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import Link from "metabase/core/components/Link";
 import { getIsXrayEnabled } from "metabase/home/selectors";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { getDocsUrl, getSetting } from "metabase/selectors/settings";
+import {
+  getDocsUrl,
+  getIsPaidPlan,
+  getSetting,
+} from "metabase/selectors/settings";
 import {
   getApplicationName,
   getShowMetabaseLinks,
@@ -44,9 +47,12 @@ import type { ChecklistItemValue } from "./types";
 export const Onboarding = () => {
   const applicationName = useSelector(getApplicationName);
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
-  const plan = useSelector(state =>
-    getPlan(getSetting(state, "token-features")),
-  );
+  const isPaidPlan = useSelector(getIsPaidPlan);
+
+  const isHosted = useSelector(getIsHosted);
+  const shouldConfigureCommunicationChannels = !isHosted;
+
+  const isXrayEnabled = useSelector(getIsXrayEnabled);
 
   const exampleDashboardId = useSetting("example-dashboard-id");
 
@@ -73,11 +79,6 @@ export const Onboarding = () => {
   const [itemValue, setItemValue] = useState<ChecklistItemValue | null>(null);
 
   const DEFAULT_ITEM = "database";
-
-  const isHosted = useSelector(getIsHosted);
-  const shouldConfigureCommunicationChannels = !isHosted;
-
-  const shouldShowSupport = plan !== "oss";
 
   const newQuestionUrl = Urls.newQuestion({
     mode: "notebook",
@@ -139,8 +140,6 @@ export const Onboarding = () => {
 
     setItemValue(newValue);
   };
-
-  const isXrayEnabled = useSelector(getIsXrayEnabled);
 
   const utmTags = {
     utm_source: "product",
@@ -252,7 +251,7 @@ export const Onboarding = () => {
                     srcSet="app/assets/img/onboarding_invite@2x.png 2x"
                     width="100%"
                   />
-                  {plan === "oss" ? (
+                  {!isPaidPlan ? (
                     // eslint-disable-next-line no-literal-metabase-strings -- OSS doesn't have whitelabeling option
                     <Text>{t`Don't be shy with invites. Metabase makes self-service analytics easy.`}</Text>
                   ) : (
@@ -598,7 +597,7 @@ export const Onboarding = () => {
             </Accordion.Item>
           </Box>
         </Accordion>
-        {(showMetabaseLinks || shouldShowSupport) && (
+        {(showMetabaseLinks || isPaidPlan) && (
           <Box component="footer">
             {showMetabaseLinks && (
               <Box data-testid="learning-section" mb="xl">
@@ -618,7 +617,7 @@ export const Onboarding = () => {
                 </Text>
               </Box>
             )}
-            {shouldShowSupport && (
+            {isPaidPlan && (
               <Box className={S.support} data-testid="help-section" p="lg">
                 <Stack spacing="xs">
                   <Title order={4}>{t`Need to talk with someone?`}</Title>

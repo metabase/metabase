@@ -1,61 +1,14 @@
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { Route } from "react-router";
 
-import { renderWithProviders } from "__support__/ui";
-import {
-  createMockAppState,
-  createMockSettingsState,
-  createMockState,
-} from "metabase-types/store/mocks";
+import type { ChecklistItemValue } from "../types";
 
-import { Onboarding } from "./Onboarding";
-import type { ChecklistItemValue } from "./types";
-
-type SetupProps = {
-  enableXrays?: boolean;
-  hasExampleDashboard?: boolean;
-  isHosted?: boolean;
-  openItem?: ChecklistItemValue;
-};
-
-const setup = ({
-  enableXrays = true,
-  hasExampleDashboard = true,
-  isHosted = false,
-  openItem,
-}: SetupProps) => {
-  const scrollIntoViewMock = jest.fn();
-  window.HTMLElement.prototype.scrollIntoView = scrollIntoViewMock;
-
-  const state = createMockState({
-    app: createMockAppState({
-      tempStorage: {
-        "last-opened-onboarding-checklist-item": openItem,
-      },
-    }),
-    settings: createMockSettingsState({
-      "enable-xrays": enableXrays,
-      "example-dashboard-id": hasExampleDashboard ? 1 : null,
-      "is-hosted?": isHosted,
-    }),
-  });
-
-  renderWithProviders(
-    <Route path="/getting-started" component={Onboarding} />,
-    {
-      initialRoute: "/getting-started",
-      storeInitialState: state,
-      withRouter: true,
-    },
-  );
-
-  return { scrollIntoViewMock };
-};
+import { setup } from "./setup";
 
 const getItem = (checklistItem: ChecklistItemValue) => {
   return screen.getByTestId(`${checklistItem}-item`);
 };
+
 const getItemControl = (label: string) => {
   const labelRegex = new RegExp(label, "i");
 
@@ -70,7 +23,7 @@ describe("Onboarding", () => {
   });
 
   it("should have four sections by default", () => {
-    setup({});
+    setup();
 
     [
       "Set up your Metabase",
@@ -85,7 +38,7 @@ describe("Onboarding", () => {
   });
 
   it("'database' accordion item should be open by default", () => {
-    setup({});
+    setup();
 
     const databaseItem = getItem("database");
     const databaseItemControl = getItemControl("Connect to your database");
@@ -108,7 +61,7 @@ describe("Onboarding", () => {
   });
 
   it("should be possible to open a different item", async () => {
-    setup({});
+    setup();
 
     expect(getItem("database")).toHaveAttribute("data-active", "true");
     await userEvent.click(getItemControl("Query with SQL"));
@@ -118,7 +71,7 @@ describe("Onboarding", () => {
   });
 
   it("only one item can be expanded at a time", async () => {
-    setup({});
+    setup();
 
     const databaseItemControl = getItemControl("Connect to your database");
     const sqlItemControl = getItemControl("Query with SQL");
@@ -132,7 +85,7 @@ describe("Onboarding", () => {
 
   describe("'Set up your Metabase' section", () => {
     it("'add database' item should render properly", () => {
-      setup({});
+      setup();
 
       expect(getItemControl("Connect to your database")).toBeInTheDocument();
 
@@ -145,7 +98,7 @@ describe("Onboarding", () => {
       ).toBeInTheDocument();
     });
 
-    it("'people invites' item should render properly", async () => {
+    it("'invite people' item should render properly", async () => {
       setup({ openItem: "invite" });
 
       const inviteItem = getItem("invite");
@@ -157,6 +110,11 @@ describe("Onboarding", () => {
         within(inviteItem).getAllByRole("link");
 
       expect(controlLabel).not.toHaveAttribute("href");
+      expect(
+        within(inviteItem).getByText(
+          "Don't be shy with invites. Metabase makes self-service analytics easy.",
+        ),
+      ).toBeInTheDocument();
 
       expect(primaryCTA).toHaveAttribute("href", "/admin/people");
       expect(secondaryCTA).toHaveAttribute(
@@ -356,11 +314,21 @@ describe("Onboarding", () => {
         }),
       ).toBeInTheDocument();
     });
+
+    it.each<ChecklistItemValue>(["subscription", "alert"])(
+      "should not render %s email and Slack setup links for hosted instances",
+      i => {
+        setup({ openItem: i, isHosted: true });
+        expect(
+          screen.queryByTestId(`${i}-communication-setup`),
+        ).not.toBeInTheDocument();
+      },
+    );
   });
 
   describe("footer", () => {
-    it("should render learning section", () => {
-      setup({});
+    it("should render the 'learning' section", () => {
+      setup();
 
       const footer = screen.getByRole("contentinfo");
       const learning = within(footer).getByTestId("learning-section");
@@ -385,8 +353,8 @@ describe("Onboarding", () => {
       );
     });
 
-    it("should not render help section", () => {
-      setup({});
+    it("should not render the 'help' section", () => {
+      setup();
 
       const footer = screen.getByRole("contentinfo");
       expect(
