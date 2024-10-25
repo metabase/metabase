@@ -29,4 +29,5 @@ export interface SankeyFormatters {
 export interface SankeyChartModel {
   data: SankeyRawData;
   formatters: SankeyFormatters;
+  sankeyColumns: SankeyChartColumns;
 }

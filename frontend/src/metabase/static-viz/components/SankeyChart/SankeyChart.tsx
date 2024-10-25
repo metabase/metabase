@@ -38,7 +38,6 @@ export const SankeyChart = ({
   const chartModel = getSankeyChartModel(
     rawSeries,
     computedVisualizationSettings,
-    renderingContext,
   );
 
   const layout = getSankeyLayout(chartModel, renderingContext);
