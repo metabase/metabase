@@ -69,6 +69,36 @@ Must be less than 1048575. This environment variable also affects how many rows 
   This environment variable also affects how many rows Metabase includes in dashboard subscription attachments.
   See also MB_UNAGGREGATED_QUERY_ROW_LIMIT.
 
+### `MB_ALLOWED_IFRAME_HOSTS`
+
+- Type: string
+- Default: `youtube.com,
+youtu.be,
+loom.com,
+vimeo.com,
+docs.google.com,
+calendar.google.com,
+airtable.com,
+typeform.com,
+canva.com,
+codepen.io,
+figma.com,
+grafana.com,
+miro.com,
+excalidraw.com,
+notion.com,
+atlassian.com,
+trello.com,
+asana.com,
+gist.github.com,
+linkedin.com,
+twitter.com,
+x.com`
+- [Exported as](../installation-and-operation/serialization.md): `allowed-iframe-hosts`.
+- [Configuration file name](./config-file.md): `allowed-iframe-hosts`
+
+Allowed iframe hosts.
+
 ### `MB_ANON_TRACKING_ENABLED`
 
 - Type: boolean
@@ -411,15 +441,25 @@ SMTP secure connection protocol. (tls, ssl, starttls, or none).
 
 SMTP username.
 
-### `MB_EMBEDDING_APP_ORIGIN`
+### `MB_EMBEDDING_APP_ORIGINS_INTERACTIVE`
 
 > Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 - Type: string
 - Default: `null`
-- [Configuration file name](./config-file.md): `embedding-app-origin`
+- [Configuration file name](./config-file.md): `embedding-app-origins-interactive`
 
-Allow this origin to embed the full Metabase application.
+Allow these space delimited origins to embed Metabase interactive.
+
+### `MB_EMBEDDING_APP_ORIGINS_SDK`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: string
+- Default: `localhost:*`
+- [Configuration file name](./config-file.md): `embedding-app-origins-sdk`
+
+Allow Metabase SDK access to these space delimited origins.
 
 ### `MB_EMBEDDING_HOMEPAGE`
 
@@ -438,14 +478,29 @@ Embedding homepage status, indicating if its visible, hidden or has been dismiss
 
 Secret key used to sign JSON Web Tokens for requests to `/api/embed` endpoints.
 
-### `MB_ENABLE_EMBEDDING`
+### `MB_ENABLE_EMBEDDING_INTERACTIVE`
 
 - Type: boolean
 - Default: `false`
-- [Exported as](../installation-and-operation/serialization.md): `enable-embedding`.
-- [Configuration file name](./config-file.md): `enable-embedding`
+- [Configuration file name](./config-file.md): `enable-embedding-interactive`
 
-Allow admins to securely embed questions and dashboards within other applications?
+Allow admins to embed Metabase via interactive embedding?
+
+### `MB_ENABLE_EMBEDDING_SDK`
+
+- Type: boolean
+- Default: `false`
+- [Configuration file name](./config-file.md): `enable-embedding-sdk`
+
+Allow admins to embed Metabase via the SDK?
+
+### `MB_ENABLE_EMBEDDING_STATIC`
+
+- Type: boolean
+- Default: `false`
+- [Configuration file name](./config-file.md): `enable-embedding-static`
+
+Allow admins to embed Metabase via static embedding?
 
 ### `MB_ENABLE_PASSWORD_LOGIN`
 
@@ -1585,7 +1640,7 @@ Must be less than 1048575, and less than the number configured in MB_AGGREGATED_
 - [Exported as](../installation-and-operation/serialization.md): `update-channel`.
 - [Configuration file name](./config-file.md): `update-channel`
 
-Metabase will notify you when a new release is available for the channel you select.
+Well notify you here when theres a new version of this type of release.
 
 ### `MB_UPLOADS_SETTINGS`
 
@@ -1963,7 +2018,7 @@ Default page to show people when they log in.
 Type: Boolean<br>
 Default: True
 
-If you want to exclude the [Usage analytics](../usage-and-performance-tools/usage-analytics.md) collection, you can set `MB_LOAD_ANALYTICS_CONTENT=false`. Setting this environment variable to false can also come in handy when migrating environments, as it can simplify the migration process.
+If you want to exclude the [Metabase analytics](../usage-and-performance-tools/usage-analytics.md) collection, you can set `MB_LOAD_ANALYTICS_CONTENT=false`. Setting this environment variable to false can also come in handy when migrating environments, as it can simplify the migration process.
 
 ### `MB_NO_SURVEYS`
 

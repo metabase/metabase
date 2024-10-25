@@ -5,7 +5,7 @@ import DebouncedFrame from "metabase/components/DebouncedFrame";
 import { SyncedParametersList } from "metabase/query_builder/components/SyncedParametersList";
 import { breakpointMaxSmall } from "metabase/styled-components/theme/media-queries";
 
-import { ViewTitleHeader } from "./ViewHeader";
+import { ViewTitleHeader } from "../ViewHeader";
 
 export const QueryBuilderViewRoot = styled.div`
   display: flex;
