@@ -584,9 +584,13 @@ export const Onboarding = () => {
                       }: when a question returns any result.`}</li>
                     </ul>
                   </Text>
+                  {/* If the example dashboard is not available, there's a high chance that this question isn't either */}
                   {exampleDashboardId && (
                     <Box data-testid="alert-cta">
                       <Link
+                        // The product decision was to hard code this question id, since we don't have the
+                        // mechanism to obtain it programmatically. In the worst case scenario,
+                        // a user will land on a page that doesn't exist.
                         to="/question/12"
                         onClick={() => trackChecklistItemCTAClicked("alert")}
                       >
