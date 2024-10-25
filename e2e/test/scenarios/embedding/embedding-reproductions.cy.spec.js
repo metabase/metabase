@@ -985,7 +985,8 @@ describe("issue 40660", () => {
   });
 });
 
-describe("issue 49142", () => {
+// Skipped since it does not make sense when CSP is disabled
+describe.skip("issue 49142", () => {
   const questionDetails = {
     name: "Products",
     query: { "source-table": PRODUCTS_ID, limit: 2 },
