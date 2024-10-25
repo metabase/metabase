@@ -136,10 +136,10 @@ Here you'll find additional settings for configuring your x and y axes (as in ax
 - Rename the axis
 - Split y-axis when necessary
 - Auto y-axis range. When not toggled on, you can set the y-axis range (it's min and max values).
-- Unpin from zero. Allows you to "Zoom in" on charts with values well above zero. Here's an example (note the y-axis starts at 20,000):
-  ![y-axis unpinned from zero](../../images/unpinned-from-zero-y-axis.png)
 - Scale: Linear, power, or log.
 - Show lines and marks
+- Unpin from zero. Allows you to "Zoom in" on charts with values well above zero. Here's an example (note the y-axis starts at 20,000):
+  ![y-axis unpinned from zero](../../images/unpinned-from-zero-y-axis.png)
 
 ## Chart legend
 
@@ -154,7 +154,7 @@ You can use the legend to:
 - Highlight a series, by hovering over the name of the series in the legend.
 - Hide the series, by clicking on the color circle for the series.
 
- To permanently hide the series from the chart, use the [data settings](#data-settings).
+To permanently hide the series from the chart, use the [data settings](#data-settings).
 
 - Drill down to individual records for aggregated series, by clicking on the series name.
 
