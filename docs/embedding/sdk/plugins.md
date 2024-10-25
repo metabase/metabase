@@ -14,7 +14,7 @@ The Metabase Embedding SDK supports plugins to customize the behavior of compone
 
 To use a plugin globally, add the plugin to the `MetabaseProvider`'s `pluginsConfig` prop:
 
-```typescript jsx
+```typescript
 {% raw %}
 <MetabaseProvider
     config={config}
@@ -32,7 +32,7 @@ To use a plugin globally, add the plugin to the `MetabaseProvider`'s `pluginsCon
 
 To use a plugin on a per-component basis, pass the plugin as a prop to the component:
 
-```typescript jsx
+```typescript
 {% raw %}
 <InteractiveQuestion
     questionId={1}

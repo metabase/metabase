@@ -18,7 +18,7 @@ export interface WritebackActionBase {
   model_id: CardId;
   name: string;
   description: string | null;
-  parameters: WritebackParameter[];
+  parameters?: WritebackParameter[];
   visualization_settings?: ActionFormSettings;
   archived: boolean;
   creator_id: UserId;

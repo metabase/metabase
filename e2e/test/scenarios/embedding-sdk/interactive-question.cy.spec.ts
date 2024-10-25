@@ -5,6 +5,8 @@ import {
   popover,
   restore,
   setTokenFeatures,
+  tableHeaderClick,
+  tableInteractive,
   visitFullAppEmbeddingUrl,
 } from "e2e/support/helpers";
 import {
@@ -98,6 +100,22 @@ describeSDK("scenarios > embedding-sdk > interactive-question", () => {
     popover().findByText("See these Orders").click();
 
     cy.icon("warning").should("not.exist");
+  });
+
+  it("should be able to hide columns from a table", () => {
+    cy.wait("@cardQuery").then(({ response }) => {
+      expect(response?.statusCode).to.equal(202);
+    });
+
+    tableInteractive().findByText("Max of Quantity").should("be.visible");
+
+    tableHeaderClick("Max of Quantity");
+
+    popover()
+      .findByTestId("click-actions-sort-control-formatting-hide")
+      .click();
+
+    tableInteractive().findByText("Max of Quantity").should("not.exist");
   });
 
   it("can save a question", () => {
