@@ -1,8 +1,11 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ORDERS_BY_YEAR_QUESTION_ID,
   ORDERS_DASHBOARD_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
+  addOrUpdateDashboardCard,
+  createDashboardWithQuestions,
   describeWithSnowplowEE,
   expectGoodSnowplowEvent,
   expectNoBadSnowplowEvents,
@@ -16,6 +19,9 @@ import {
   showDashboardCardActions,
   visitEmbeddedPage,
 } from "e2e/support/helpers";
+import { createMockParameter } from "metabase-types/api/mocks";
+
+const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 /** These tests are about the `downloads` flag for static embeds, both dashboards and questions.
  *  Unless the product changes, these should test the same things as `public-resource-downloads.cy.spec.ts`
@@ -118,6 +124,89 @@ describeWithSnowplowEE(
           resource_type: "dashcard",
           accessed_via: "static-embed",
           export_type: "csv",
+        });
+      });
+
+      describe("with dashboard parameters", () => {
+        beforeEach(() => {
+          cy.signInAsAdmin();
+
+          setTokenFeatures("all");
+
+          // Test parameter with accentuation (metabase#49118)
+          const CATEGORY_FILTER = createMockParameter({
+            id: "5aefc725",
+            name: "usuário",
+            slug: "usu%C3%A1rio",
+            type: "string/=",
+          });
+          const questionDetails = {
+            name: "Products",
+            query: {
+              "source-table": PRODUCTS_ID,
+            },
+          };
+          createDashboardWithQuestions({
+            // Can't figure out the type if I extracted `dashboardDetails` to a variable.
+            dashboardDetails: {
+              name: "Dashboard with parameters",
+              parameters: [CATEGORY_FILTER],
+              enable_embedding: true,
+              embedding_params: {
+                [CATEGORY_FILTER.slug]: "enabled",
+              },
+            },
+            questions: [questionDetails],
+          }).then(({ dashboard, questions }) => {
+            const dashboardId = dashboard.id;
+            cy.wrap(dashboardId).as("dashboardId");
+            const questionId = questions[0].id;
+            addOrUpdateDashboardCard({
+              dashboard_id: dashboardId,
+              card_id: questionId,
+              card: {
+                parameter_mappings: [
+                  {
+                    card_id: questionId,
+                    parameter_id: CATEGORY_FILTER.id,
+                    target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
+                  },
+                ],
+              },
+            });
+          });
+
+          cy.signOut();
+        });
+
+        it("should be able to download a static embedded dashcard as CSV", () => {
+          cy.get("@dashboardId").then(dashboardId => {
+            visitEmbeddedPage(
+              {
+                resource: { dashboard: Number(dashboardId) },
+                params: {},
+              },
+              {
+                pageStyle: {
+                  downloads: true,
+                },
+              },
+            );
+          });
+
+          waitLoading();
+
+          showDashboardCardActions();
+          getDashboardCardMenu().click();
+          exportFromDashcard(".csv");
+          cy.verifyDownload(".csv", { contains: true });
+
+          expectGoodSnowplowEvent({
+            event: "download_results_clicked",
+            resource_type: "dashcard",
+            accessed_via: "static-embed",
+            export_type: "csv",
+          });
         });
       });
     });
