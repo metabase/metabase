@@ -2173,6 +2173,12 @@ describeEE("scenarios > dashboard > dashboard cards > click behavior", () => {
         `Started from ${targetQuestion.name}`,
       );
 
+      // TODO: https://github.com/metabase/metabase/issues/46774
+      // queryBuilderMain()
+      //   .findByText("There was a problem with your question")
+      //   .should("not.exist");
+      // queryBuilderMain().findByText("No results!").should("be.visible");
+
       openNotebook();
       verifyNotebookQuery("Orders", [
         {
