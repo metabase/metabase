@@ -31,7 +31,7 @@ export function HorizontalWell({
   onChangeSettings,
   ...props
 }: HorizontalWellProps) {
-  const { active, setNodeRef } = useDroppable({
+  const { active, setNodeRef, isOver } = useDroppable({
     id: DROPPABLE_ID.HORIZONTAL_WELL,
   });
 
@@ -73,7 +73,8 @@ export function HorizontalWell({
         border: `1px ${borderStyle} ${active ? "var(--mb-color-brand)" : "var(--border-color)"}`,
         transform: active ? "scale(1.025)" : "scale(1)",
         transition:
-          "transform 0.2s ease-in-out 0.2s, border 0.2s ease-in-out 0.2s, background 0.2s ease-in-out 0.2s",
+          "transform 0.2s ease-in-out 0.2s, border-color 0.2s ease-in-out 0.2s, background 0.2s ease-in-out 0.2s",
+        outline: isOver ? "1px solid var(--mb-color-brand)" : "none",
       }}
       maw="80%"
       ref={setNodeRef}
