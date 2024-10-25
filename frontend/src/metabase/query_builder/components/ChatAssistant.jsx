@@ -348,10 +348,6 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
     };
 
     useEffect(() => {
-        console.log("🚀 ~ ChatAssistant ~ card:", card)
-    },  card)
-
-    useEffect(() => {
         if (pendingInfoMessage && visualizationIndex >= 0) {
             setMessages(prevMessages => {
                 const newMessage = {
@@ -456,6 +452,10 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
                     } else if (Array.isArray(content) && content.length > 0 && content[0].text) {
                         partialText = content[0].text; // Extract text from the first object in the array
                     }
+                    if (partialText.startsWith("\n")) {
+                        partialText = partialText.replace(/^\n+/, ""); // Remove any leading newlines
+                    }
+                    
                     setRunId(id)
                     if (messageData && partialText) {
 
