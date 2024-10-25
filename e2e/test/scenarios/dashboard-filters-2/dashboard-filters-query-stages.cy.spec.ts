@@ -2155,9 +2155,9 @@ describe("parameter mappings without target stage index", () => {
     cy.intercept("POST", "/api/dataset").as("dataset");
     // cy.intercept("GET", "/api/dashboard/**").as("getDashboard");
     // cy.intercept("PUT", "/api/dashboard/**").as("updateDashboard");
-    // cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
-    //   "dashboardData",
-    // );
+    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
+      "dashcardQuery",
+    );
 
     // question with 1 stage + aggregations + breakouts, filter on 1st stage without stage-number,
 
@@ -2206,7 +2206,7 @@ describe("parameter mappings without target stage index", () => {
                     "base-type": "type/Text",
                   },
                 ],
-                // { "stage-number": 0 }, intentionally omitted
+                // { "stage-number": 0 }, // intentionally omitted
               ],
             },
           ],
@@ -2214,6 +2214,7 @@ describe("parameter mappings without target stage index", () => {
       });
 
       visitDashboard(dashboard_id);
+      cy.wait("@dashcardQuery");
     });
   });
 
@@ -2227,11 +2228,12 @@ describe("parameter mappings without target stage index", () => {
       cy.findByText("Gadget").click();
       cy.button("Add filter").click();
     });
+    cy.wait("@dashcardQuery");
 
     getDashboardCard().within(() => {
       cy.findByText("Gadget").should("be.visible");
       cy.findByText("53").should("be.visible");
-      cy.findByTestId("legend-caption").click();
+      cy.findByTestId("legend-caption-title").click();
     });
 
     cy.wait("@dataset");
@@ -2240,8 +2242,6 @@ describe("parameter mappings without target stage index", () => {
     verifyNotebookQuery("Products", [
       {
         filters: ["Category is Gadget"],
-      },
-      {
         aggregations: ["Count"],
         breakouts: ["Category"],
       },
