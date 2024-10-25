@@ -16,7 +16,7 @@ import {
     adhocQuestionHash
 } from "e2e/support/helpers/e2e-ad-hoc-question-helpers";
 import { useSelector } from "metabase/lib/redux";
-import { getDBInputValue, getCompanyName, getInsightDBInputValue } from "metabase/redux/initialDb";
+import { getDBInputValue, getInsightDBInputValue } from "metabase/redux/initialDb";
 import { getInitialSchema, getInitialInsightSchema } from "metabase/redux/initialSchema";
 import { useListDatabasesQuery, useGetDatabaseMetadataWithoutParamsQuery, skipToken } from "metabase/api";
 import { SemanticError } from "metabase/components/ErrorPages";
@@ -24,7 +24,6 @@ import { SpinnerIcon } from "metabase/components/LoadingSpinner/LoadingSpinner.s
 import { t } from "ttag";
 import toast from 'react-hot-toast';
 import { useSetting } from "metabase/common/hooks";
-import { string } from "yup";
 
 
 const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages, selectedThreadId, setSelectedThreadId, chatType, oldCardId, insights, initial_message, setMessages, setInputValue, setThreadId, threadId, inputValue, messages, isChatHistoryOpen, setIsChatHistoryOpen, setShowButton, setShouldRefetchHistory }) => {
@@ -154,7 +153,6 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
                     setThreadId(createdThread); // Set it in parent state too
                 } else {
                     setThread(threadId)
-                    setMessages([]);
                     setInputValue("");
                 }
             } catch (error) {
@@ -265,7 +263,7 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
             // Call the processMessages function to handle the logic
             processMessages();
         }
-    }, [client, selectedMessages, selectedThreadId, setMessages, setThreadId]);
+    }, [client, selectedMessages, selectedThreadId]);
 
     useEffect(() => {
         if (inputRef.current) {
@@ -396,7 +394,7 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
             isLoading: true,
             showFeedback: false,
         };
-
+        setInputValue("");
         // Display temporary message during server response wait time
         const tempMessageId = Date.now() + Math.random();
         let tempMessage;
@@ -428,7 +426,7 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
         }
 
         // Clear the input field
-        setInputValue("");
+  
         setChatDisabled(true);
         setChatLoading(true);
         let currentMessage = ""; // To accumulate partial chunks
@@ -650,7 +648,7 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
                         } catch (error) {
                             console.error("Error parsing tool message content:", error);
                         }
-                    } else if (messageData && typeof messageData.content === 'string' && !finalMessageProcessed) {
+                    } else if (messageData && typeof messageData.content === 'string' && !finalMessageProcessed && !inputValue === messageData.content) {
                         // Avoid duplication by ensuring the final message is only appended once
                         finalMessageProcessed = true;
 
@@ -721,6 +719,7 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
                 },
             ]);
         } finally {
+            setInputValue("")
             setChatDisabled(false);
             setChatLoading(false);
             setShouldRefetchHistory(true);
@@ -1156,157 +1155,6 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
                             </Button>
                             <Button variant="filled" onClick={() => setIsDBModalOpen(false)}>
                                 Save
-                            </Button>
-                        </div>
-                    </div>
-                </Modal>
-            )}
-            {isModalOpen && selectedIndex !== null && (
-                <Modal isOpen={isModalOpen} onClose={closeModal}>
-                    <div style={{ padding: "20px", position: "relative" }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
-                            <h2 style={{ fontSize: "24px", fontWeight: "600", margin: 0, paddingLeft: "1rem" }}>Verify results</h2>
-                            <Icon
-                                name="close"
-                                size={24}
-                                style={{ cursor: "pointer", color: "#76797D", paddingRight: "1rem" }}
-                                onClick={closeModal}
-                            />
-                        </div>
-                        <div style={{ marginBottom: "20px", paddingLeft: "1rem", paddingRight: "1rem" }}>
-                            <h4 style={{ marginBottom: "10px", color: "#5B6B7B", fontWeight: "600" }}>Sources</h4>
-                            <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
-                                {sources[selectedIndex]?.tables?.map((table, index) => (
-                                    <div
-                                        key={index}
-                                        style={{
-                                            padding: "8px 12px",
-                                            backgroundColor: "#F8FAFD",
-                                            borderRadius: "8px",
-                                            border: "1px solid #E1E5EB",
-                                            display: "flex",
-                                            flexDirection: "column",
-                                            alignItems: "flex-start",
-                                        }}
-                                    >
-                                        <div style={{ fontWeight: "500", color: "#3A4A58" }}>Table: {table.tableName}</div>
-                                        <div style={{ marginTop: "8px", color: "#76797D", fontSize: "14px" }}>
-                                            Fields: {table.fields.join(", ")}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                        <Tabs
-                            value={selectedTab}
-                            onChange={(newTab) => setSelectedTab(newTab)}
-                            style={{
-                                flexGrow: 1,
-                                display: "flex",
-                                flexDirection: "column",
-                                paddingLeft: "1rem",
-                                paddingRight: "1rem",
-                            }}
-                        >
-                            <Tabs.List
-                                style={{
-                                    borderBottom: "none",
-                                }}
-                            >
-                                <Tabs.Tab
-                                    value="reasoning"
-                                    style={{
-                                        backgroundColor: selectedTab === "reasoning" ? "#F8FAFD" : "#FFFFFF",
-                                        color: selectedTab === "reasoning" ? "#0458DD" : "#76797D",
-                                        borderBottom: "none",
-                                    }}
-                                    onClick={() => setSelectedTab("reasoning")}
-                                >
-                                    Reasoning
-                                </Tabs.Tab>
-                                <Tabs.Tab
-                                    value="codeQuery"
-                                    style={{
-                                        backgroundColor: selectedTab === "codeQuery" ? "#F8FAFD" : "#FFFFFF",
-                                        color: selectedTab === "codeQuery" ? "#0458DD" : "#76797D",
-                                        borderBottom: "none",
-                                    }}
-                                    onClick={() => setSelectedTab("codeQuery")}
-                                >
-                                    Code Query
-                                </Tabs.Tab>
-                                <Tabs.Tab
-                                    value="aiDefinitions"
-                                    style={{
-                                        backgroundColor: selectedTab === "aiDefinitions" ? "#F8FAFD" : "#FFFFFF",
-                                        color: selectedTab === "aiDefinitions" ? "#0458DD" : "#76797D",
-                                        borderBottom: "none",
-                                    }}
-                                    onClick={() => setSelectedTab("aiDefinitions")}
-                                    disabled
-                                >
-                                    AI Definitions
-                                </Tabs.Tab>
-                                <Tabs.Tab
-                                    value="joins"
-                                    style={{
-                                        backgroundColor: selectedTab === "joins" ? "#F8FAFD" : "#FFFFFF",
-                                        color: selectedTab === "joins" ? "#0458DD" : "#76797D",
-                                        borderBottom: "none",
-                                    }}
-                                    onClick={() => setSelectedTab("joins")}
-                                    disabled
-                                >
-                                    Joins
-                                </Tabs.Tab>
-                            </Tabs.List>
-
-                            <Tabs.Panel
-                                value="reasoning"
-                                style={{ backgroundColor: "#F8FAFD", padding: "1rem", height: "350px", overflowY: "auto", borderBottomLeftRadius: "12px", borderBottomRightRadius: "12px" }}
-                            >
-                                Reasoning
-                            </Tabs.Panel>
-
-                            <Tabs.Panel
-                                value="codeQuery"
-                                style={{ backgroundColor: "#F8FAFD", padding: "1rem", height: "350px", overflowY: "auto", borderBottomLeftRadius: "12px", borderBottomRightRadius: "12px" }}
-                            >
-                                <pre style={{ whiteSpace: "pre-wrap", wordWrap: "break-word" }}>{codeQuery[selectedIndex]}</pre>
-                            </Tabs.Panel>
-                        </Tabs>
-
-                        <div style={{ display: "flex", marginTop: "20px", paddingLeft: "1rem", paddingRight: "1rem", gap: "2rem" }}>
-                            <Button
-                                variant="outlined"
-                                style={{
-                                    flex: 1,
-                                    borderColor: "#1664D6",
-                                    color: "#1664D6",
-                                    marginRight: "1px",
-                                    height: "50px",
-                                    fontSize: "16px",
-                                    fontWeight: "500",
-                                    border: "1px solid #1664D6",
-                                }}
-                                onClick={handleFeedbackDialogOpen}
-                            >
-                                Provide feedback
-                            </Button>
-                            <Button
-                                variant="filled"
-                                style={{
-                                    flex: 1,
-                                    backgroundColor: "#1664D6",
-                                    color: "#FFFFFF",
-                                    height: "50px",
-                                    fontSize: "16px",
-                                    fontWeight: "500",
-                                    marginLeft: "1px",
-                                }}
-                                onClick={() => { redirect(); }}
-                            >
-                                Go to builder & save
                             </Button>
                         </div>
                     </div>
