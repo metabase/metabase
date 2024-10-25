@@ -3,15 +3,11 @@ import { useDroppable } from "@dnd-kit/core";
 import { Box, type BoxProps, Flex, type FlexProps, Text } from "metabase/ui";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import { DROPPABLE_ID } from "metabase/visualizer/dnd/constants";
-import type {
-  VisualizationDisplay,
-  VisualizationSettings,
-} from "metabase-types/api";
+import type { VisualizationDisplay } from "metabase-types/api";
 
 interface VerticalWellProps extends FlexProps {
   display: VisualizationDisplay;
   settings: ComputedVisualizationSettings;
-  onChangeSettings: (settings: VisualizationSettings) => void;
 }
 
 export function VerticalWell({

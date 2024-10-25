@@ -4,17 +4,20 @@ import {
   DragOverlay,
   type DragStartEvent,
 } from "@dnd-kit/core";
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
 
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Box, Flex } from "metabase/ui";
 import { DROPPABLE_ID } from "metabase/visualizer/dnd/constants";
 import {
   isDraggedColumnItem,
   isValidDraggedItem,
 } from "metabase/visualizer/dnd/guards";
-import type { DraggedItem } from "metabase/visualizer/dnd/types";
-import { updateSettings } from "metabase/visualizer/visualizer.slice";
+import {
+  getDraggedItem,
+  setDraggedItem,
+  updateSettings,
+} from "metabase/visualizer/visualizer.slice";
 
 import { DataImporter } from "../DataImporter";
 import { DataManager } from "../DataManager";
@@ -22,14 +25,24 @@ import { DragOverlay as VisualizerDragOverlay } from "../DragOverlay";
 import { VisualizationCanvas } from "../VisualizationCanvas";
 
 export const VisualizerPage = () => {
-  const [draggedItem, setDraggedItem] = useState<DraggedItem | null>();
+  const draggedItem = useSelector(getDraggedItem);
   const dispatch = useDispatch();
 
-  const handleDragStart = useCallback((event: DragStartEvent) => {
-    if (isValidDraggedItem(event.active)) {
-      setDraggedItem(event.active);
-    }
-  }, []);
+  const handleDragStart = useCallback(
+    (event: DragStartEvent) => {
+      if (isValidDraggedItem(event.active)) {
+        dispatch(
+          setDraggedItem({
+            id: event.active.id,
+            data: {
+              current: event.active.data.current,
+            },
+          }),
+        );
+      }
+    },
+    [dispatch],
+  );
 
   const handleDragEnd = useCallback(
     ({ active, over }: DragEndEvent) => {
@@ -47,7 +60,7 @@ export const VisualizerPage = () => {
         dispatch(updateSettings({ "funnel.dimension": active.id }));
       }
 
-      setDraggedItem(null);
+      dispatch(setDraggedItem(null));
     },
     [dispatch],
   );

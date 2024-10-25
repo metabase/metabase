@@ -39,11 +39,7 @@ export function VisualizationCanvas() {
 
   return (
     <Flex w="100%" h="100%">
-      <VerticalWell
-        display={card.display}
-        settings={settings}
-        onChangeSettings={handleUpdateSettings}
-      />
+      <VerticalWell display={card.display} settings={settings} />
       <Flex direction="column" style={{ flex: 1 }}>
         <Visualization rawSeries={rawSeries} />
         <BottomWell

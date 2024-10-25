@@ -14,7 +14,10 @@ import type {
   RawSeries,
   VisualizationSettings,
 } from "metabase-types/api";
-import type { VisualizerState } from "metabase-types/store/visualizer";
+import type {
+  DraggedItem,
+  VisualizerState,
+} from "metabase-types/store/visualizer";
 
 const initialState: VisualizerState = {
   settings: {},
@@ -25,6 +28,7 @@ const initialState: VisualizerState = {
   expandedCards: {},
   error: null,
   selectedCardId: null,
+  draggedItem: null,
 };
 
 export const addCard = createAsyncThunk(
@@ -86,6 +90,9 @@ const visualizerSlice = createSlice({
     setSelectedCard: (state, action: PayloadAction<CardId | null>) => {
       state.selectedCardId = action.payload;
     },
+    setDraggedItem: (state, action: PayloadAction<DraggedItem | null>) => {
+      state.draggedItem = action.payload;
+    },
   },
   extraReducers: builder => {
     builder
@@ -135,6 +142,7 @@ export const {
   removeCard,
   toggleCardExpanded,
   setSelectedCard,
+  setDraggedItem,
 } = visualizerSlice.actions;
 
 export const { reducer } = visualizerSlice;
@@ -156,6 +164,9 @@ export const selectExpandedCards = (state: { visualizer: VisualizerState }) =>
   state.visualizer.expandedCards;
 export const selectSelectedCardId = (state: { visualizer: VisualizerState }) =>
   state.visualizer.selectedCardId;
+
+export const getDraggedItem = (state: { visualizer: VisualizerState }) =>
+  state.visualizer.draggedItem;
 
 export const selectCardIds = createSelector(
   [selectCards],

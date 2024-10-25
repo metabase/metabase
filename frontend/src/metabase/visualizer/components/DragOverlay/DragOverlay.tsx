@@ -1,5 +1,5 @@
 import { DRAGGABLE_ID } from "metabase/visualizer/dnd/constants";
-import type { DraggedItem } from "metabase/visualizer/dnd/types";
+import type { DraggedItem } from "metabase-types/store/visualizer";
 
 import { ColumnListItem } from "../DataManager";
 
