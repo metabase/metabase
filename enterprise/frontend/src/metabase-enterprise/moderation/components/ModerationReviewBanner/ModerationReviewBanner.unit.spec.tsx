@@ -6,7 +6,7 @@ import { createMockUser } from "metabase-types/api/mocks";
 
 import {
   ModerationReviewBanner,
-  ModerationReviewText,
+  ModerationReviewTextForQuestion,
 } from "./ModerationReviewBanner";
 
 const moderationReview: ModerationReview = {
@@ -39,7 +39,7 @@ describe("ModerationReviewText", () => {
     setupUserEndpoints(moderator);
 
     renderWithProviders(
-      <ModerationReviewText
+      <ModerationReviewTextForQuestion
         question={
           new Question({
             moderation_reviews: [moderationReview],
