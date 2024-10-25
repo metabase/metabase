@@ -55,9 +55,9 @@ The data section is where you select the data you want to work with. Here you'll
 
 ![data picker](../images/data-picker.png)
 
-You can see the data source in a new browser tab by ⌘/Ctrl+Clicking on its name in the query builder.
+You can see the data source in a new browser tab by Cmd/Ctrl+Clicking on the data source's name in the query builder.
 
-You can click on the arrow next to the data source name to select which columns you want to include in your query. You'll also be able [hide columns ](#adding-or-removing-columns-in-a-table) from the table view once you visualize your results.
+To choose which columns to include in your query, click on the arrow next to the data source . You'll also be able [hide columns ](#adding-or-removing-columns-in-a-table) from the table view once you visualize your results.
 
 ## Joining data
 
@@ -171,8 +171,7 @@ When you click on a different grouping column than the one you currently have se
 Some grouping columns will give you the option of choosing how big or small to make the groupings:
 
 - For datetime columns, you can click on the words `by month` to change the grouping to day, week, hour, quarter, year, etc. You'll also be able to add multiple breakouts by the same datetime column with different time granularities (for example, group by week and day of the week).
-
-- For numeric columns like age, Metabase will automatically "bin" the results, so you'll see your metric grouped in age brackets, like 0–10, 11–20, 21–30, etc. Just like with dates, you can click on the current binning option to change it to a specific number of bins. It's not currently possible to choose your own ranges for bins, though.
+- For numeric columns like age, Metabase will automatically "bin" the results, so you'll see your metric grouped in age brackets, like 0–10, 11–20, 21–30, etc. Just like with dates, you can click on the current binning option to change it to a specific number of bins. Currently, you can't choose your own ranges for bins.
 
   ![Multiple groupings](../images/histogram-bins.png)
 

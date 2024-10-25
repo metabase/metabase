@@ -154,7 +154,7 @@ You can use the legend to:
 - Highlight a series, by hovering over the name of the series in the legend.
 - Hide the series, by clicking on the color circle for the series.
 
-  This will temporarily hide the series for the current view, but the setting will not be saved. To permanently hide the series from the chart, use the [data settings](#data-settings).
+ To permanently hide the series from the chart, use the [data settings](#data-settings).
 
 - Drill down to individual records for aggregated series, by clicking on the series name.
 
