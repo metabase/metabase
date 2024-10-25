@@ -31,12 +31,13 @@ export function VerticalWell({
       pos="relative"
       align="center"
       justify="center"
-      bg="var(--mb-color-text-light)"
+      bg="var(--mb-color-bg-light)"
       p="md"
       wrap="nowrap"
       style={{
         ...style,
-        borderRadius: "var(--default-border-radius)",
+        borderRadius: "var(--border-radius-xl)",
+        border: `1px solid var(--mb-color-border)`,
       }}
       ref={setNodeRef}
     >
@@ -56,7 +57,9 @@ function WellItem(props: BoxProps) {
       style={{
         position: "absolute",
         transform: "rotate(-90deg)",
-        borderRadius: "var(--default-border-radius)",
+        borderRadius: "var(--border-radius-xl)",
+        border: `1px solid var(--mb-color-border)`,
+        boxShadow: "0 0 1px var(--mb-color-shadow)",
       }}
     />
   );
