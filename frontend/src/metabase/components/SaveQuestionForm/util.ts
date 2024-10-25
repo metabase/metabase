@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { canonicalCollectionId } from "metabase/collections/utils";
 import type Question from "metabase-lib/v1/Question";
-import type { CardType } from "metabase-types/api";
+import type { CardType, DashboardTabId } from "metabase-types/api";
 
 import type { FormValues } from "./types";
 
@@ -27,22 +27,29 @@ const updateQuestion = async (
 export const createQuestion = async (
   details: FormValues,
   question: Question,
-  onCreate: (question: Question) => Promise<void>,
+  onCreate: (
+    question: Question,
+    options?: {
+      dashboardTabId?: DashboardTabId | undefined;
+    },
+  ) => Promise<Question>,
 ) => {
   if (details.saveType !== "create") {
     return;
   }
 
   const collectionId = canonicalCollectionId(details.collection_id);
+  const dashboardId = details.dashboard_id;
   const displayName = details.name.trim();
   const description = details.description ? details.description.trim() : null;
 
   const newQuestion = question
     .setDisplayName(displayName)
     .setDescription(description)
-    .setCollectionId(collectionId);
+    .setCollectionId(collectionId)
+    .setDashboardId(dashboardId);
 
-  await onCreate(newQuestion);
+  return onCreate(newQuestion, { dashboardTabId: details.tab_id || undefined });
 };
 
 export async function submitQuestion(
@@ -50,12 +57,17 @@ export async function submitQuestion(
   details: FormValues,
   question: Question,
   onSave: (question: Question) => Promise<void>,
-  onCreate: (question: Question) => Promise<void>,
+  onCreate: (
+    question: Question,
+    options?: {
+      dashboardTabId?: DashboardTabId | undefined;
+    },
+  ) => Promise<Question>,
 ) {
   if (details.saveType === "overwrite" && originalQuestion) {
     await updateQuestion(originalQuestion, question, onSave);
   } else {
-    await createQuestion(details, question, onCreate);
+    return await createQuestion(details, question, onCreate);
   }
 }
 
@@ -63,6 +75,8 @@ export const getInitialValues = (
   originalQuestion: Question | null,
   question: Question,
   initialCollectionId: FormValues["collection_id"],
+  initialDashboardId: FormValues["dashboard_id"],
+  initialDashboardTabId: FormValues["tab_id"],
 ): FormValues => {
   const isReadonly = originalQuestion != null && !originalQuestion.canWrite();
 
@@ -70,6 +84,18 @@ export const getInitialValues = (
     originalQuestion
       ? t`${originalQuestion.displayName()} - Modified`
       : undefined;
+
+  const dashboardId =
+    question.dashboardId() === undefined || isReadonly
+      ? initialDashboardId
+      : question.dashboardId();
+
+  const collectionId =
+    question.collectionId() === undefined ||
+    isReadonly ||
+    dashboardId === initialDashboardId
+      ? initialCollectionId
+      : question.collectionId();
 
   return {
     name:
@@ -80,10 +106,9 @@ export const getInitialValues = (
       "",
     description:
       originalQuestion?.description() || question.description() || "",
-    collection_id:
-      question.collectionId() === undefined || isReadonly
-        ? initialCollectionId
-        : question.collectionId(),
+    collection_id: collectionId,
+    dashboard_id: dashboardId,
+    tab_id: initialDashboardTabId,
     saveType:
       originalQuestion &&
       originalQuestion.type() === "question" &&

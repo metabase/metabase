@@ -1,6 +1,7 @@
 import styled from "@emotion/styled";
 
 import Collections from "metabase/entities/collections";
+import Dashboards from "metabase/entities/dashboards";
 import { space } from "metabase/styled-components/theme";
 import { Icon } from "metabase/ui";
 
@@ -15,6 +16,11 @@ export const StyledIcon = styled(Icon)`
 `;
 
 export const CollectionLink = styled(Collections.Link)`
+  color: var(--mb-color-brand);
+  margin-left: ${space(0)};
+`;
+
+export const DashboardLink = styled(Dashboards.Link)`
   color: var(--mb-color-brand);
   margin-left: ${space(0)};
 `;

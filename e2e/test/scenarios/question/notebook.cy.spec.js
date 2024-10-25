@@ -20,6 +20,7 @@ import {
   openTable,
   popover,
   restore,
+  saveQuestion,
   selectFilterOperator,
   startNewQuestion,
   summarize,
@@ -39,13 +40,11 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
   it("shouldn't offer to save the question when there were no changes (metabase#13470)", () => {
     openOrdersTable();
     // save question initially
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Save").click();
-    cy.findByTestId("save-question-modal").within(modal => {
-      cy.findByText("Save").click();
+    saveQuestion(undefined, undefined, {
+      tab: "Browse",
+      path: ["Our analytics"],
     });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Not now").click();
+
     // enter "notebook" and visualize without changing anything
     openNotebook();
 

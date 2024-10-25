@@ -122,6 +122,7 @@ export interface CollectionItem {
   location?: string;
   effective_location?: string;
   authority_level?: CollectionAuthorityLevel;
+  dashboard_count?: number | null;
   getIcon: () => IconProps;
   getUrl: (opts?: Record<string, unknown>) => string;
   setArchived?: (isArchived: boolean, opts?: Record<string, unknown>) => void;

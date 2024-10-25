@@ -45,6 +45,8 @@ export interface Card<Q extends DatasetQuery = DatasetQuery>
   collection?: Collection | null;
   collection_id: number | null;
   collection_position: number | null;
+  dashboard_id?: DashboardId | null;
+  dashboard_count?: number | null;
 
   result_metadata: Field[];
   moderation_reviews?: ModerationReview[];
@@ -307,6 +309,7 @@ export interface UpdateCardRequest {
   result_metadata?: Field[];
   cache_ttl?: number;
   collection_preview?: boolean;
+  delete_old_dashcards?: boolean;
 }
 
 export type UpdateCardKeyRequest<PropertyKey extends keyof UpdateCardRequest> =

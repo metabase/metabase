@@ -33,7 +33,7 @@ import DataReference from "../dataref/DataReference";
 import { SnippetSidebar } from "../template_tags/SnippetSidebar";
 import { TagEditorSidebar } from "../template_tags/TagEditorSidebar";
 
-import NewQuestionHeader from "./NewQuestionHeader";
+import { NewQuestionHeader } from "./NewQuestionHeader";
 import { NotebookContainer } from "./View/NotebookContainer";
 import {
   BorderedViewTitleHeader,
@@ -272,7 +272,7 @@ class View extends Component {
           <ArchivedEntityBanner
             name={card.name}
             entityType={card.type}
-            canWrite={card.can_write}
+            canMove={card.can_write}
             canRestore={card.can_restore}
             canDelete={card.can_delete}
             onUnarchive={() => onUnarchive(question)}
@@ -290,7 +290,13 @@ class View extends Component {
         />
         {/*This is used so that the New Question Header is unmounted after the animation*/}
         <Transition mounted={isNewQuestion} transition={fadeIn} duration={300}>
-          {style => <NewQuestionHeader className={CS.spread} style={style} />}
+          {style => (
+            <NewQuestionHeader
+              className={CS.spread}
+              style={style}
+              saveToDashboardId={card.dashboard_id}
+            />
+          )}
         </Transition>
       </QueryBuilderViewHeaderContainer>
     );
@@ -450,8 +456,9 @@ class View extends Component {
               isRunning={isRunning}
               onChange={updateQuestion}
               onCreate={async question => {
-                await onCreate(question);
+                const result = await onCreate(question);
                 setQueryBuilderMode("view");
+                return result;
               }}
               onSave={async question => {
                 await onSave(question);

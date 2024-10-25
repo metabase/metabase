@@ -71,6 +71,10 @@ export function collectionOnTheGoModal() {
   return cy.findByTestId("create-collection-on-the-go");
 }
 
+export function dashboardOnTheGoModal() {
+  return cy.findByTestId("create-dashboard-on-the-go");
+}
+
 export function sidebar() {
   return cy.get("main aside");
 }

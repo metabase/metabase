@@ -1,6 +1,8 @@
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
+import type { RecentItem } from "metabase-types/api";
+
 import type { EntityPickerTab } from "../../EntityPicker";
 import {
   EntityPickerModal,
@@ -28,6 +30,7 @@ interface QuestionPickerModalProps {
   options?: QuestionPickerOptions;
   value?: QuestionPickerValue;
   models?: QuestionPickerModel[];
+  recentFilter?: (items: RecentItem[]) => RecentItem[];
 }
 
 const canSelectItem = (
@@ -54,6 +57,7 @@ export const QuestionPickerModal = ({
   value = { model: "collection", id: "root" },
   options = defaultOptions,
   models = ["card", "dataset"],
+  recentFilter,
 }: QuestionPickerModalProps) => {
   options = { ...defaultOptions, ...options };
   const [selectedItem, setSelectedItem] = useState<QuestionPickerItem | null>(
@@ -98,13 +102,13 @@ export const QuestionPickerModal = ({
     {
       id: "questions-tab",
       displayName: t`Questions`,
-      model: "card" as const,
+      models: ["card" as const],
       folderModels: ["collection" as const],
       icon: "table",
       render: ({ onItemSelect }) => (
         <QuestionPicker
           initialValue={value}
-          models={["card"]}
+          models={["card", "dashboard"]}
           options={options}
           path={questionsPath}
           onInit={onItemSelect}
@@ -116,7 +120,7 @@ export const QuestionPickerModal = ({
     {
       id: "models-tab",
       displayName: t`Models`,
-      model: "dataset" as const,
+      models: ["dataset" as const],
       folderModels: ["collection" as const],
       icon: "model",
       render: ({ onItemSelect }) => (
@@ -134,7 +138,7 @@ export const QuestionPickerModal = ({
     {
       id: "metrics-tab",
       displayName: t`Metrics`,
-      model: "metric" as const,
+      models: ["metric" as const],
       folderModels: ["collection" as const],
       icon: "metric",
       render: ({ onItemSelect }) => (
@@ -152,7 +156,7 @@ export const QuestionPickerModal = ({
   ];
 
   const filteredTabs = tabs.filter(tab =>
-    models.includes(tab.model as QuestionPickerModel),
+    models.some(model => tab.models?.includes(model)),
   );
 
   return (
@@ -175,6 +179,7 @@ export const QuestionPickerModal = ({
       }
       searchResultFilter={results => results}
       actionButtons={[]}
+      recentFilter={recentFilter}
     />
   );
 };

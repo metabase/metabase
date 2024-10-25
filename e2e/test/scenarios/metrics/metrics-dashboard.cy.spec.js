@@ -16,6 +16,7 @@ import {
   getDashboardCards,
   modal,
   openQuestionActions,
+  openQuestionsSidebar,
   popover,
   restore,
   saveDashboard,
@@ -134,10 +135,8 @@ describe("scenarios > metrics > dashboard", () => {
     createQuestion(ORDERS_SCALAR_METRIC);
     createQuestion(ORDERS_TIMESERIES_METRIC);
     visitDashboard(ORDERS_DASHBOARD_ID);
-    cy.findByTestId("dashboard-header").within(() => {
-      cy.findByLabelText("Edit dashboard").click();
-      cy.findByLabelText("Add questions").click();
-    });
+    editDashboard();
+    openQuestionsSidebar();
     cy.findByTestId("add-card-sidebar").within(() => {
       cy.findByText(ORDERS_SCALAR_METRIC.name).click();
       cy.findByPlaceholderText("Search…").type(ORDERS_TIMESERIES_METRIC.name);
