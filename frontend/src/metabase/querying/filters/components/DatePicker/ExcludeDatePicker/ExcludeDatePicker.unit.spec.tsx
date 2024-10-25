@@ -79,7 +79,7 @@ describe("ExcludeDatePicker", () => {
     });
   });
 
-  it("should not allow to exclude no options", async () => {
+  it("should allow to deselect all options", async () => {
     const { onChange } = setup({ isNew: true });
 
     await userEvent.click(screen.getByText("Days of the week…"));

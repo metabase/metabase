@@ -15,15 +15,14 @@ import ExcludeDatePicker from "./ExcludeDatePicker";
 const metadata = createMockMetadata({
   databases: [createSampleDatabase()],
 });
-
 const ordersTable = checkNotNull(metadata.table(ORDERS_ID));
 const query = ordersTable.legacyQuery({ useStructuredQuery: true });
-
 const filter = new Filter(
   [null, ["field", ORDERS.CREATED_AT, null]],
   null,
   query,
 );
+const hours = Array.from({ length: 24 }, (_, i) => i);
 
 type SetupOpts = {
   filter: Filter;
@@ -36,7 +35,7 @@ function setup({ filter }: SetupOpts) {
   render(
     <ExcludeDatePicker
       filter={filter}
-      onFilterChange={jest.fn()}
+      onFilterChange={onFilterChange}
       onCommit={onCommit}
     />,
   );
@@ -45,6 +44,72 @@ function setup({ filter }: SetupOpts) {
 }
 
 describe("ExcludeDatePicker", () => {
+  beforeAll(() => {
+    jest.useFakeTimers({ advanceTimers: true });
+    jest.setSystemTime(new Date(2020, 0, 1));
+  });
+
+  it("should allow to exclude hours", async () => {
+    const filter = new Filter(
+      ["!=", ["field", ORDERS.CREATED_AT, { "temporal-unit": "hour-of-day" }]],
+      null,
+      query,
+    );
+    const { onFilterChange } = setup({ filter });
+    expect(screen.getByLabelText("Select all")).not.toBeChecked();
+    expect(screen.getByLabelText("8 AM")).not.toBeChecked();
+
+    await userEvent.click(screen.getByLabelText("8 AM"));
+    expect(onFilterChange).toHaveBeenCalledWith([
+      "!=",
+      ["field", ORDERS.CREATED_AT, { "temporal-unit": "hour-of-day" }],
+      8,
+    ]);
+  });
+
+  it("should allow to exclude all options", async () => {
+    const filter = new Filter(
+      [
+        "!=",
+        ["field", ORDERS.CREATED_AT, { "temporal-unit": "hour-of-day" }],
+        8,
+      ],
+      null,
+      query,
+    );
+    const { onFilterChange } = setup({ filter });
+    expect(screen.getByLabelText("Select all")).not.toBeChecked();
+    expect(screen.getByLabelText("8 AM")).toBeChecked();
+
+    await userEvent.click(screen.getByLabelText("Select all"));
+    expect(onFilterChange).toHaveBeenCalledWith([
+      "!=",
+      ["field", ORDERS.CREATED_AT, { "temporal-unit": "hour-of-day" }],
+      ...hours,
+    ]);
+  });
+
+  it("should allow to deselect all options", async () => {
+    const filter = new Filter(
+      [
+        "!=",
+        ["field", ORDERS.CREATED_AT, { "temporal-unit": "hour-of-day" }],
+        ...hours,
+      ],
+      null,
+      query,
+    );
+    const { onFilterChange } = setup({ filter });
+    expect(screen.getByLabelText("Select none")).toBeChecked();
+    expect(screen.getByLabelText("8 AM")).toBeChecked();
+
+    await userEvent.click(screen.getByLabelText("Select none"));
+    expect(onFilterChange).toHaveBeenCalledWith([
+      "!=",
+      ["field", ORDERS.CREATED_AT, { "temporal-unit": "hour-of-day" }],
+    ]);
+  });
+
   it("is empty option should exclude empty values by applying not-null filter", async () => {
     const { onCommit } = setup({ filter });
 
