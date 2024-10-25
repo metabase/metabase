@@ -160,7 +160,7 @@ This plugin allows you to add custom actions to
 the click-through menu of an interactive question. You can add and
 customize the appearance and behavior of the custom actions.
 
-```typescript jsx
+```typescript
 // You can provide a custom action with your own `onClick` logic.
 const createCustomAction = clicked => ({
   buttonType: "horizontal",
