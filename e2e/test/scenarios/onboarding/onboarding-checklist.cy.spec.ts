@@ -15,7 +15,7 @@ import type { ChecklistItemValue } from "metabase/home/components/Onboarding/typ
 
 describeEE("Onboarding checklist page", () => {
   beforeEach(() => {
-    restore("setup");
+    restore();
     cy.signInAsAdmin();
     setTokenFeatures("all");
   });
@@ -42,7 +42,7 @@ describeEE("Onboarding checklist page", () => {
 
 describeWithSnowplow("Onboarding checklist events", () => {
   beforeEach(() => {
-    restore("setup");
+    restore();
     cy.signInAsAdmin();
 
     resetSnowplow();
@@ -95,6 +95,13 @@ describeWithSnowplow("Onboarding checklist events", () => {
 
     it("should track individual items' cta(s) when clicked", () => {
       cy.visit("/getting-started");
+      // Not strictly necessary but reduces the flakiness by allowing the page to load fully
+      cy.findByTestId("main-navbar-root")
+        .findByRole("listitem", {
+          name: "How to use Metabase",
+        })
+        .should("have.attr", "aria-selected", "true");
+
       cy.findByTestId("database-cta").button("Add Database").click();
       expectGoodSnowplowEvent({
         event: "onboarding_checklist_cta_clicked",
