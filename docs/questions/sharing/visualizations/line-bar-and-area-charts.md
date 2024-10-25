@@ -125,21 +125,40 @@ Here you'll find additional settings for configuring your x and y axes (as in ax
 
 ### X-axis
 
-- Show label (the legend label for the axis).
+- Show label (the label for the axis).
 - Rename the axis
 - Show line and marks
 - Scale: Timeseries or Ordinal.
 
 ### Y-axis
 
-- Show label (the legend label for the axis).
+- Show label (the label for the axis).
 - Rename the axis
 - Split y-axis when necessary
 - Auto y-axis range. When not toggled on, you can set the y-axis range (it's min and max values).
-- Unpin from zero. Allows you to "Zoom in" on charts with values well above zero. Here's an example (note the y-axis starts at 20,000):
-![y-axis unpinned from zero](../../images/unpinned-from-zero-y-axis.png)
 - Scale: Linear, power, or log.
 - Show lines and marks
+- Unpin from zero. Allows you to "Zoom in" on charts with values well above zero. Here's an example (note the y-axis starts at 20,000):
+  ![y-axis unpinned from zero](../../images/unpinned-from-zero-y-axis.png)
+
+## Chart legend
+
+For charts with multiple series or breakouts, chart legend displays the label and color of each series.
+
+![Legend](../../images/legend.png)
+
+You can change the color and label for each series and reorder them in [data settings](#data-settings).
+
+You can use the legend to:
+
+- Highlight a series, by hovering over the name of the series in the legend.
+- Hide the series, by clicking on the color circle for the series.
+
+To permanently hide the series from the chart, use the [data settings](#data-settings).
+
+- Drill down to individual records for aggregated series, by clicking on the series name.
+
+Currently, you can't hide the legend or change its position on the chart.
 
 ## Further reading
 
