@@ -267,18 +267,14 @@ describe("DatePicker", () => {
         });
 
         it(`can add time to a specific ${description} date filter`, async () => {
+          const filter = createDateFilter(operator, "2020-05-01");
           const onChange = jest.fn();
-
           render(
             <DatePickerStateWrapper filter={filter} onChange={onChange} />,
           );
-          await userEvent.click(screen.getByText("Specific dates..."));
-          await userEvent.click(screen.getByText("On"));
-          await screen.findByTestId(`specific-date-picker`);
-          await userEvent.click(screen.getByText(description));
-          await userEvent.click(screen.getByText("Add a time"));
 
-          expect(onChange).toHaveBeenLastCalledWith([
+          await userEvent.click(screen.getByText("Add a time"));
+          expect(onChange.mock.lastCall[0]).toStrictEqual([
             operator,
             CREATED_AT_FIELD,
             "2020-05-01T12:30:00",
@@ -309,22 +305,17 @@ describe("DatePicker", () => {
       });
 
       it("can add time to a between date filter", async () => {
+        const filter = createDateFilter("between", "2020-04-01", "2020-05-01");
         const onChange = jest.fn();
-
         render(<DatePickerStateWrapper filter={filter} onChange={onChange} />);
 
-        await userEvent.click(await screen.findByText("Specific dates..."));
-        await userEvent.click(await screen.findByText("Between"));
-
-        await userEvent.click(screen.getByText("17")); // start date
-        await userEvent.click(screen.getByText("19")); // end date
         await userEvent.click(screen.getByText("Add a time"));
 
-        expect(onChange).toHaveBeenLastCalledWith([
+        expect(onChange.mock.lastCall[0]).toStrictEqual([
           "between",
           CREATED_AT_FIELD,
-          "2020-05-17T12:30:00",
-          "2020-05-19T12:30:00",
+          "2020-04-01T12:30:00",
+          "2020-05-01T12:30:00",
         ]);
       });
 
