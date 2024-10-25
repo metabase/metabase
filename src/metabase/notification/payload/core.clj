@@ -20,32 +20,61 @@
     [:updated_at   {:optional true} :any]]
    [:multi {:dispatch :payload_type}
     ;; system event is a bit special in that part of the payload comes from the event itself
-    [:notification/system-event [:map
-                                 [:payload
-                                  [:map {:closed true}
-                                   ;; TODO: event-info schema for each event type
-                                   [:event_topic [:fn #(= "event" (-> % keyword namespace))]]
-                                   [:event_info  [:maybe :map]]]]]]
+    [:notification/system-event
+     [:map
+      [:payload
+       [:map {:closed true}
+        ;; TODO: event-info schema for each event type
+        [:event_topic [:fn #(= "event" (-> % keyword namespace))]]
+        [:event_info  [:maybe :map]]]]]]
+    #_[:notification/alert
+       [:map
+        ;; replacement of pulse
+        [:notification_alert
+         [:map
+          [:card_id ms/PositiveInt]
+          [:creator_id ms/PositiveInt]]]]]
+    [:notification/dashboard-subscription
+     [:map
+      [:creator_id ms/PositiveInt]
+      ;; replacement of pulse
+      [:dashboard_subscription #_{:optional true}
+       [:map
+        [:dashboard_id ms/PositiveInt]
+        [:parameters {:optional true} [:maybe [:sequential :map]]]
+        [:dashboard_subscription_dashcards {:optional true}
+         [:sequential [:map
+                        [:dashboard_card_id ms/PositiveInt]
+                        [:include_csv       ms/BooleanValue]
+                        [:include_xls       ms/BooleanValue]
+                        [:pivot_results     ms/BooleanValue]]]]]]]]
 
     ;; for testing only
-    [:notification/testing       :map]]])
+    [:notification/testing :map]]])
 
 (def NotificationPayload
   "Schema for the notification payload."
   ;; TODO: how do we make this schema closed after :merge?
   [:merge
-   Notification
    [:map
-    [:context [:map]]]
+    [:payload_type (into [:enum] models.notification/notification-types)]
+    [:context      [:map]]]
    [:multi {:dispatch :payload_type}
     ;; override payload to add extra-context key
-    [:notification/system-event [:map
-                                 ;; override the payload with extra context
-                                 [:payload
-                                  [:map {:closed true}
-                                   [:event_topic                   [:fn #(= "event" (-> % keyword namespace))]]
-                                   [:event_info                    [:maybe :map]]
-                                   [:custom       {:optional true} [:maybe :map]]]]]]
+    [:notification/system-event
+     [:map
+      ;; override the payload with extra context
+      [:payload
+       [:map {:closed true}
+        [:event_topic                   [:fn #(= "event" (-> % keyword namespace))]]
+        [:event_info                    [:maybe :map]]
+        [:custom       {:optional true} [:maybe :map]]]]]]
+    [:notification/dashboard-subscription
+     [:map
+      [:payload [:map
+                 ;; TODO: type this out
+                 [:result [:sequential [:map]]]
+                 [:dashboard :map]]]]]
     [:notification/testing       :map]]])
 
 (defn- default-context
@@ -65,7 +94,7 @@
 (mu/defn notification-payload :- NotificationPayload
   "Realize notification-info with :context and :payload."
   [notification :- Notification]
-  (assoc notification
+  (assoc (select-keys notification [:payload_type])
          :payload (payload notification)
          :context (default-context)))
 

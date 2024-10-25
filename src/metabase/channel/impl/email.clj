@@ -1,16 +1,20 @@
 (ns metabase.channel.impl.email
   (:require
+   [hiccup.core :refer [html]]
    [metabase.channel.core :as channel]
    [metabase.channel.params :as channel.params]
    [metabase.channel.shared :as channel.shared]
    [metabase.email :as email]
    [metabase.email.messages :as messages]
+   [metabase.email.result-attachment :as email.result-attachment]
    [metabase.models.channel :as models.channel]
    [metabase.models.notification :as models.notification]
+   [metabase.pulse.core :as pulse]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.markdown :as markdown]
    [stencil.core :as stencil]))
 
 (def ^:private EmailMessage
@@ -96,22 +100,115 @@
 ;;                                    Dashboard Subscriptions                                      ;;
 ;; ------------------------------------------------------------------------------------------------;;
 
+(defn- make-message-attachment [[content-id url]]
+  {:type         :inline
+   :content-id   content-id
+   :content-type "image/png"
+   :content      url})
+
+(defn- render-part
+  [timezone part options]
+  (case (:type part)
+    :card
+    (pulse/render-pulse-section timezone part options)
+
+    :text
+    {:content (markdown/process-markdown (:text part) :html)}
+
+    :tab-title
+    {:content (markdown/process-markdown (format "# %s\n---" (:text part)) :html)}))
+
+(defn- icon-bundle
+  "Bundle an icon.
+
+  The available icons are defined in [[js-svg/icon-paths]]."
+  [icon-name]
+  (let [color     (pulse/primary-color)
+        png-bytes (pulse/icon icon-name color)]
+    (-> (pulse/make-image-bundle :attachment png-bytes)
+        (pulse/image-bundle->attachment))))
+
+(defn- render-filters
+  [pulse-parameters dashboard-parameters]
+  (let [filters (pulse/parameters pulse-parameters dashboard-parameters)
+        cells   (map
+                 (fn [filter]
+                   [:td {:class "filter-cell"
+                         :style (pulse/style {:width "50%"
+                                              :padding "0px"
+                                              :vertical-align "baseline"})}
+                    [:table {:cellpadding "0"
+                             :cellspacing "0"
+                             :width "100%"
+                             :height "100%"}
+                     [:tr
+                      [:td
+                       {:style (pulse/style {:color pulse/color-text-medium
+                                             :min-width "100px"
+                                             :width "50%"
+                                             :padding "4px 4px 4px 0"
+                                             :vertical-align "baseline"})}
+                       (:name filter)]
+                      [:td
+                       {:style (pulse/style {:color pulse/color-text-dark
+                                             :min-width "100px"
+                                             :width "50%"
+                                             :padding "4px 16px 4px 8px"
+                                             :vertical-align "baseline"})}
+                       (pulse/value-string filter)]]]])
+                 filters)
+        rows    (partition 2 2 nil cells)]
+    (html
+     [:table {:style (pulse/style {:table-layout :fixed
+                                   :border-collapse :collapse
+                                   :cellpadding "0"
+                                   :cellspacing "0"
+                                   :width "100%"
+                                   :font-size  "12px"
+                                   :font-weight 700
+                                   :margin-top "8px"})}
+      (for [row rows]
+        [:tr {} row])])))
+
+
+(defn- part-attachments [parts]
+  (filter some? (mapcat email.result-attachment/result-attachment parts)))
+
+(defn- render-message-body
+  [notification-payload result dashboard dashboard-subscription]
+  (let [timezone        (some->> result (some :card) channel.shared/defaulted-timezone)
+        rendered-cards  (mapv #(render-part timezone % {:pulse/include-title? true}) result)
+        icon-attachment (first (map make-message-attachment (icon-bundle :dashboard)))
+        filters         (when dashboard
+                          (render-filters (:parameters dashboard-subscription) (:parameters dashboard)))
+        message-body    (assoc notification-payload
+                               :computed {:pulse (html (vec (cons :div (map :content rendered-cards))))
+                                          :filters filters
+                                          :iconCid (:content-id icon-attachment)})
+        attachments     (apply merge (map :attachments rendered-cards))]
+    (vec (concat [{:type "text/html; charset=utf-8" :content
+                   (stencil/render-file "metabase/email/pulse" message-body)}]
+                 (map make-message-attachment attachments)
+                 [icon-attachment]
+                 (part-attachments result)))))
+
 (mu/defmethod channel/render-notification [:channel/email :notification/dashboard-subscription] :- [:sequential EmailMessage]
-  [_channel-type {:keys [dashboard payload pulse]} _template recipients]
-  (let [{:keys [user-emails
-                non-user-emails]} (recipients->emails recipients)
-        timezone                  (some->> payload (some :card) channel.shared/defaulted-timezone)
-        email-subject             (:name dashboard)
-        email-to-users            (when (seq user-emails)
-                                    (construct-email
-                                     email-subject
-                                     user-emails
-                                     (messages/render-pulse-email timezone pulse dashboard payload nil)))
-        email-to-nonusers         (for [non-user-email non-user-emails]
-                                    (construct-email
-                                     email-subject
-                                     [non-user-email]
-                                     (messages/render-pulse-email timezone pulse dashboard payload non-user-email)))]
+  [_channel-type notification-payload _template recipients]
+  (let [{:keys [dashboard result pulse]} (:payload notification-payload)
+        {:keys [user-emails
+                non-user-emails]}  (recipients->emails recipients)
+        timezone                   (some->> result (some :card) channel.shared/defaulted-timezone)
+        email-subject              (:name dashboard)
+        email-to-users             (when (seq user-emails)
+                                     (construct-email
+                                      email-subject
+                                      user-emails
+                                      (messages/render-pulse-email timezone pulse dashboard result nil)))
+        email-to-nonusers          (for [non-user-email non-user-emails]
+                                     (construct-email
+                                      email-subject
+                                      [non-user-email]
+                                      (messages/render-pulse-email timezone pulse dashboard result non-user-email)))]
     (filter some? (conj email-to-nonusers email-to-users))))
 
 ;; ------------------------------------------------------------------------------------------------;;

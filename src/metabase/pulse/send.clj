@@ -351,7 +351,8 @@
 
 (defn- send-pulse!*
   [{:keys [channels channel-ids] pulse-id :id :as pulse} dashboard]
-  (let [parts                  (execute-pulse pulse dashboard)
+  (let [dashboard              dashboard
+        parts                  (execute-pulse pulse dashboard)
         ;; `channel-ids` is the set of channels to send to now, so only send to those. Note the whole set of channels
         channels               (if (seq channel-ids)
                                  (filter #((set channel-ids) (:id %)) channels)
@@ -367,10 +368,22 @@
         (u/prog1 (doseq [pulse-channel channels]
                    (try
                      (let [channel  (pc->channel pulse-channel)
+                           #_notification-payload #_(metabase.notification.payload.core/notification-payload
+                                                     {:creator_id 1
+                                                      :dashboard_subscription {:dashboard_id 1
+                                                                               :parameters {:parameters pulse}
+                                                                               :skip_if_empty (:skip_if_empty pulse)}
+                                                      :parameters (:parameters pulse)})
+                           notification-payload (usage-tracking-map/to-usage-tracking
+                                                 (get-notification-info pulse parts pulse-channel))
                            messages (channel-render-notification (:type channel)
-                                                                 (get-notification-info pulse parts pulse-channel)
+                                                                 notification-payload
                                                                  nil
                                                                  (channel-recipients pulse-channel))]
+                       ;(def notification-payload notification-payload)
+                       ;(tap> (usage-tracking-map/usage-report notification-payload))
+                       #_(def noti-info noti-info)
+                       #_(def recipients recipients)
                        (log/debugf "[Pulse %d] Rendered %d messages for channel %s"
                                    pulse-id
                                    (count messages)
@@ -385,6 +398,22 @@
           (when (:alert_first_only pulse)
             (t2/delete! Pulse :id pulse-id))))
       (log/infof "Skipping sending %s %d" (alert-or-pulse pulse) (:id pulse)))))
+
+(-> (metabase.channel.core/render-notification
+     :channel/email
+     (metabase.notification.payload.core/notification-payload
+      {:payload_type :notification/dashboard-subscription
+       :creator_id 3
+       :dashboard_subscription {:dashboard_id 10
+                                :parameters nil
+                                :skip_if_empty false}
+       :parameters nil})
+     nil
+     [{:kind :user
+       :user (t2/select-one :model/User)}])
+    first :message
+    first :content
+    dev.render-png/open-html)
 
 (defn send-pulse!
   "Execute and Send a `Pulse`, optionally specifying the specific `PulseChannels`.  This includes running each
@@ -407,3 +436,6 @@
                       (merge (when channel-ids {:channel-ids channel-ids})))]
     (when (not (:archived dashboard))
       (send-pulse!* pulse dashboard))))
+
+#_(ngoc/with-tc
+    (mapv send-pulse! (t2/select :model/Pulse :dashboard_id 10)))

@@ -128,11 +128,11 @@
                   </div>
                 </td>
               </tr>
-              {{#filters}}
+              {{#computed.filters}}
                 <tr>
                   <td>&#8202;</td>
                   <td>
-                    {{{filters}}}
+                    {{{computed.filters}}}
                   </td>
                 </tr>
               {{/filters}}
@@ -140,7 +140,7 @@
             {{^dashboardHasTabs}}
               <hr>
             {{/dashboardHasTabs}}
-            {{{pulse}}}
+            {{{computed.pulse}}}
             {{#alertCondition}}
               <p style="color: {{colorTextMedium}}; font-size: 12px; font-weight: 400">
               {{alertCondition}}

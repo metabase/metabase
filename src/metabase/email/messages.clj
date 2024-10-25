@@ -390,15 +390,16 @@
         [:tr {} row])])))
 
 (defn- render-message-body
-  [notification message-type message-context timezone dashboard parts]
+  [pulse message-type message-context timezone dashboard parts]
   (let [rendered-cards  (mapv #(render-part timezone % {:pulse/include-title? true}) parts)
         icon-name       (case message-type
                           :alert :bell
                           :pulse :dashboard)
         icon-attachment (first (map make-message-attachment (icon-bundle icon-name)))
         filters         (when dashboard
-                          (render-filters notification dashboard))
-        message-body    (assoc message-context :pulse (html (vec (cons :div (map :content rendered-cards))))
+                          (render-filters pulse dashboard))
+        message-body    (assoc message-context
+                               :pulse (html (vec (cons :div (map :content rendered-cards))))
                                :filters filters
                                :iconCid (:content-id icon-attachment))
         attachments     (apply merge (map :attachments rendered-cards))]

@@ -92,19 +92,29 @@
     (catch Throwable e
       (log/errorf e "[Notification %d] Error sending notification!" (:notification_id handler)))))
 
+(defn- noti-handlers
+  [notification-info]
+  (case (:payload_type notification-info)
+    :notification/system-event
+    (hydrate-notification-handler
+     (t2/select :model/NotificationHandler :notification_id (:id notification-info)))
+    ;; pulse-based notifications: dashboard subs, alerts
+    :else
+    (or (:handlers notification-info)
+        [])))
+
 (mu/defn send-notification-sync!
   "Send the notification to all handlers synchronously. Do not use this directly, use *send-notification!* instead."
   [notification-info :- notification.payload/Notification]
   (try
-    (let [noti-handlers        (hydrate-notification-handler
-                                (t2/select :model/NotificationHandler :notification_id (:id notification-info)))
+    (let [handlers             (noti-handlers notification-info)
           notification-payload (notification.payload/notification-payload notification-info)]
-      (log/debugf "[Notification %d] Found %d handlers" (:id notification-info) (count noti-handlers))
+      (log/debugf "[Notification %d] Found %d handlers" (:id notification-info) (count handlers))
       (task-history/with-task-history
-       {:task          "notification-send"
-        :task_details {:notification_id       (:id notification-info)
-                       :notification_handlers (map #(select-keys % [:id :channel_type :channel_id :template_id]) noti-handlers)}}
-        (doseq [handler noti-handlers]
+        {:task          "notification-send"
+         :task_details {:notification_id       (:id notification-info)
+                        :notification_handlers (map #(select-keys % [:id :channel_type :channel_id :template_id]) handlers)}}
+        (doseq [handler handlers]
           (let [channel-type (:channel_type handler)
                 messages     (channel/render-notification
                               channel-type
