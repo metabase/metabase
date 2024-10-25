@@ -770,7 +770,9 @@
                                                                                     metadata
                                                                                     (assoc :result_metadata metadata))))]
      (when-let [dashboard-id (and autoplace-dashboard-questions? (:dashboard_id card))]
-       (autoplace-dashcard-for-card! dashboard-id card))
+       (autoplace-dashcard-for-card! dashboard-id card)
+       (events/publish-event! :event/dashboard-update {:object (t2/select-one :model/Dashboard dashboard-id)
+                                                       :user-id api/*current-user-id*}))
      (when-not delay-event?
        (events/publish-event! :event/card-create {:object card :user-id (:id creator)}))
      (when metadata-future
