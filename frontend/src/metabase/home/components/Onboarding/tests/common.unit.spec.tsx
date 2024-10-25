@@ -327,6 +327,12 @@ describe("Onboarding", () => {
         ).not.toBeInTheDocument();
       },
     );
+
+    it("should not render CTA for the example question if example dashboard doesn't exist", () => {
+      setup({ openItem: "subscription", hasExampleDashboard: false });
+
+      expect(screen.queryByTestId("alert-cta")).not.toBeInTheDocument();
+    });
   });
 
   describe("footer", () => {

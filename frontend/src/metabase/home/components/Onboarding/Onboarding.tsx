@@ -584,14 +584,16 @@ export const Onboarding = () => {
                       }: when a question returns any result.`}</li>
                     </ul>
                   </Text>
-                  <Box data-testid="alert-cta">
-                    <Link
-                      to="/question/12"
-                      onClick={() => trackChecklistItemCTAClicked("alert")}
-                    >
-                      <Button variant="outline">{t`Set up alert for a sample question`}</Button>
-                    </Link>
-                  </Box>
+                  {exampleDashboardId && (
+                    <Box data-testid="alert-cta">
+                      <Link
+                        to="/question/12"
+                        onClick={() => trackChecklistItemCTAClicked("alert")}
+                      >
+                        <Button variant="outline">{t`Set up alert for a sample question`}</Button>
+                      </Link>
+                    </Box>
+                  )}
                 </Stack>
               </Accordion.Panel>
             </Accordion.Item>
