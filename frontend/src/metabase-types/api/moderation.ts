@@ -1,3 +1,5 @@
+import type { BaseUser } from "./user";
+
 export type VerifyItemRequest = {
   status: "verified" | null;
   moderated_item_id: number;
@@ -12,4 +14,5 @@ export type ModerationReview = {
   moderator_id: number;
   created_at: string;
   most_recent?: boolean;
+  user: BaseUser;
 };

@@ -3,7 +3,8 @@ import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import {
   ModerationReviewBanner,
-  ModerationReviewText,
+  ModerationReviewTextForDashboard,
+  ModerationReviewTextForQuestion,
 } from "./components/ModerationReviewBanner";
 import { ModerationStatusIcon } from "./components/ModerationStatusIcon";
 import { QuestionModerationButton } from "./components/QuestionModerationButton";
@@ -23,7 +24,8 @@ if (hasPremiumFeature("content_verification")) {
     QuestionModerationSection,
     QuestionModerationButton,
     ModerationReviewBanner,
-    ModerationReviewText,
+    ModerationReviewTextForQuestion,
+    ModerationReviewTextForDashboard,
     ModerationStatusIcon,
     getStatusIcon,
     getQuestionIcon,
