@@ -2153,13 +2153,9 @@ describe("parameter mappings without target stage index", () => {
     changeSynchronousBatchUpdateSetting(true); // prevent last_used_param_values from breaking test isolation
 
     cy.intercept("POST", "/api/dataset").as("dataset");
-    // cy.intercept("GET", "/api/dashboard/**").as("getDashboard");
-    // cy.intercept("PUT", "/api/dashboard/**").as("updateDashboard");
     cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
       "dashcardQuery",
     );
-
-    // question with 1 stage + aggregations + breakouts, filter on 1st stage without stage-number,
 
     createQuestionAndDashboard({
       questionDetails: {
@@ -2265,12 +2261,14 @@ describe("parameter mappings without target stage index", () => {
       getPopoverItem("Count").click();
     });
     saveDashboard();
+    cy.wait("@dashcardQuery");
 
     filterWidget().eq(1).click();
     popover().within(() => {
       cy.findByPlaceholderText("Enter a number").type("1");
       cy.button("Add filter").click();
     });
+    cy.wait("@dashcardQuery");
 
     getDashboardCard().within(() => {
       cy.findByText("No results!").should("be.visible");
