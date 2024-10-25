@@ -25,6 +25,7 @@ import {
   multiAutocompleteInput,
   openNotebook,
   openStaticEmbeddingModal,
+  pieSlices,
   popover,
   queryBuilderHeader,
   removeMultiAutocompleteValue,
@@ -73,8 +74,15 @@ const FIRST_TAB = { id: 900, name: "first" };
 const SECOND_TAB = { id: 901, name: "second" };
 const THIRD_TAB = { id: 902, name: "third" };
 
-const { ORDERS, ORDERS_ID, PEOPLE, PRODUCTS, REVIEWS, REVIEWS_ID } =
-  SAMPLE_DATABASE;
+const {
+  ORDERS,
+  ORDERS_ID,
+  PEOPLE,
+  PRODUCTS,
+  PRODUCTS_ID,
+  REVIEWS,
+  REVIEWS_ID,
+} = SAMPLE_DATABASE;
 
 const TARGET_DASHBOARD = {
   name: "Target dashboard",
@@ -2244,6 +2252,101 @@ describeEE("scenarios > dashboard > dashboard cards > click behavior", () => {
         },
         {
           filters: ["Count is equal to -80"],
+        },
+      ]);
+    });
+  });
+
+  /**
+   * In https://github.com/metabase/metabase/issues/46519 we added { "stage-number": number }
+   * to target dimension. This test ensures that existing dashboards without this information
+   * still work the same as they did before that epic.
+   */
+  describe("click behavior parameter mappings for questions without target stage index", () => {
+    beforeEach(() => {
+      cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
+        "dashcardQuery",
+      );
+
+      createQuestion({
+        name: "Target question",
+        query: {
+          "source-table": PRODUCTS_ID,
+          aggregation: [["count"]],
+          breakout: [["field", PRODUCTS.CATEGORY, null]],
+        },
+        display: "pie",
+      }).then(({ body: { id: targetId } }) => {
+        createQuestionAndDashboard({
+          questionDetails: {
+            query: {
+              "source-table": REVIEWS_ID,
+            },
+          },
+        }).then(({ body: { id, card_id, dashboard_id } }) => {
+          addOrUpdateDashboardCard({
+            dashboard_id,
+            card_id,
+            card: {
+              id,
+              visualization_settings: {
+                column_settings: {
+                  [`["ref",["field",${REVIEWS.RATING},null]]`]: {
+                    click_behavior: {
+                      targetId,
+                      parameterMapping: {
+                        [`["dimension",["field",${PRODUCTS.RATING},null]]`]: {
+                          source: {
+                            type: "column",
+                            id: "RATING",
+                            name: "Rating",
+                          },
+                          target: {
+                            type: "dimension",
+                            id: [
+                              `["dimension",["field",${PRODUCTS.RATING},null]]`,
+                            ],
+                            dimension: [
+                              "dimension",
+                              ["field", PRODUCTS.RATING, null],
+                              /** { "stage-number": 0 } intentionally not provided */
+                            ],
+                          },
+                          id: [
+                            `["dimension",["field",${PRODUCTS.RATING},null]]`,
+                          ],
+                        },
+                      },
+                      linkType: "question",
+                      type: "link",
+                    },
+                  },
+                },
+              },
+            },
+          });
+
+          cy.wrap(dashboard_id).as("dashboardId");
+        });
+      });
+    });
+
+    it("click behavior works even when 'stage-number' attribute is missing in target dimension", () => {
+      cy.get("@dashboardId").then(dashboardId => visitDashboard(dashboardId));
+      cy.wait("@dashcardQuery");
+      cy.findAllByTestId("cell-data").contains("5").first().click();
+
+      cy.findByTestId("app-bar").should(
+        "contain.text",
+        "Started from Target question",
+      );
+      pieSlices().should("have.length", 2);
+      openNotebook();
+      verifyNotebookQuery("Products", [
+        {
+          filters: ["Rating is equal to 5"],
+          aggregations: ["Count"],
+          breakouts: ["Category"],
         },
       ]);
     });
