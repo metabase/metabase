@@ -331,8 +331,9 @@
     ;; For now we are not restricting this as we are for [[tables-for-native]], yet.
     ;; As we don't have any hard dependencies on this data, its useful to gather info on which drivers have errors or
     ;; inaccuracies in practice.
-    (when (isa? driver/hierarchy driver :sql)
-      (references-for-sql driver query))))
+    (if (isa? driver/hierarchy driver :sql)
+      (references-for-sql driver query)
+      {:error :query-analysis.error/driver-not-supported})))
 
 (defn tables-for-native
   "Returns a set of table identifiers that (may) be referenced in the given card's query.
