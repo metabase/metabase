@@ -412,3 +412,9 @@ LabelsOnChart.args = {
   rawSeries: data.labelsOnChart as any,
   renderingContext,
 };
+
+export const SunburstOtherLabel = Template.bind({});
+SunburstOtherLabel.args = {
+  rawSeries: data.sunburstOtherLabel as any,
+  renderingContext,
+};
