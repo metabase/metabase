@@ -214,7 +214,7 @@ describe("issue 16334", () => {
 
     const getVisualizationSettings = targetId => ({
       column_settings: {
-        [`["ref",["field",${REVIEWS.RATING},null],{"stage-number":0}]`]: {
+        [`["ref",["field",${REVIEWS.RATING},null]]`]: {
           click_behavior: {
             targetId,
             parameterMapping: {
