@@ -688,7 +688,15 @@
             new-spot (autoplace/get-position-for-new-dashcard cards-on-first-tab)]
         (t2/insert! :model/DashboardCard (assoc new-spot
                                                 :card_id (:id card)
-                                                :dashboard_id dashboard-id))))))
+                                                :dashboard_id dashboard-id))
+        (events/publish-event! :event/dashboard-update {:object dashboard
+                                                        :user-id api/*current-user-id*})))))
+
+(defn- autoremove-dashcard-for-card!
+  [card-id dashboard-id]
+  (t2/delete! :model/DashboardCard :card_id card-id :dashboard_id dashboard-id)
+  (events/publish-event! :event/dashboard-update {:object (t2/select-one :model/Dashboard dashboard-id)
+                                                  :user-id api/*current-user-id*}))
 
 (defn- autoplace-or-remove-dashcards-for-card!
   "When moving around dashboard questions (cards that are internal to a dashboard), we need to remove or autoplace new
@@ -715,9 +723,7 @@
         archived-after? (boolean new-archived)]
     ;; we'll end up unarchived and a dashboard card => make sure we autoplace
     (when (and on-dashboard-after? (not archived-after?))
-      (autoplace-dashcard-for-card! new-dashboard-id card-before-update)
-      (events/publish-event! :event/dashboard-update {:object (t2/select-one :model/Dashboard new-dashboard-id)
-                                                      :user-id api/*current-user-id*}))
+      (autoplace-dashcard-for-card! new-dashboard-id card-before-update))
 
     (when (or
            ;; we're moving from one dashboard to another dashboard
@@ -732,9 +738,7 @@
            (and on-dashboard-before?
                 (not on-dashboard-after?)
                 delete-old-dashcards?))
-      (t2/delete! :model/DashboardCard :card_id card-id :dashboard_id old-dashboard-id)
-      (events/publish-event! :event/dashboard-update {:object (t2/select-one :model/Dashboard old-dashboard-id)
-                                                      :user-id api/*current-user-id*}))))
+      (autoremove-dashcard-for-card! card-id old-dashboard-id))))
 
 (defn create-card!
   "Create a new Card. Metadata will be fetched off thread. If the metadata takes longer than [[metadata-sync-wait-ms]]
@@ -770,9 +774,7 @@
                                                                                     metadata
                                                                                     (assoc :result_metadata metadata))))]
      (when-let [dashboard-id (and autoplace-dashboard-questions? (:dashboard_id card))]
-       (autoplace-dashcard-for-card! dashboard-id card)
-       (events/publish-event! :event/dashboard-update {:object (t2/select-one :model/Dashboard dashboard-id)
-                                                       :user-id api/*current-user-id*}))
+       (autoplace-dashcard-for-card! dashboard-id card))
      (when-not delay-event?
        (events/publish-event! :event/card-create {:object card :user-id (:id creator)}))
      (when metadata-future
