@@ -147,7 +147,7 @@ export const {
 
 export const { reducer } = visualizerSlice;
 
-export const settings = (state: { visualizer: VisualizerState }) =>
+export const getSettings = (state: { visualizer: VisualizerState }) =>
   state.visualizer.settings;
 
 export const selectCards = (state: { visualizer: VisualizerState }) =>
@@ -174,7 +174,7 @@ export const selectCardIds = createSelector(
 );
 
 export const getVisualizerRawSeries = createSelector(
-  [selectCards, selectDatasets, selectSelectedCardId, settings],
+  [selectCards, selectDatasets, selectSelectedCardId, getSettings],
   (cards, datasets, selectedCardId, settings): RawSeries => {
     if (selectedCardId == null) {
       return [];
