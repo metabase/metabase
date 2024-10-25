@@ -1,4 +1,5 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
 import { createMockMetadata } from "__support__/metadata";
 import { checkNotNull } from "metabase/lib/types";
@@ -24,38 +25,43 @@ const filter = new Filter(
   query,
 );
 
+type SetupOpts = {
+  filter: Filter;
+};
+
+function setup({ filter }: SetupOpts) {
+  const onFilterChange = jest.fn();
+  const onCommit = jest.fn();
+
+  render(
+    <ExcludeDatePicker
+      filter={filter}
+      onFilterChange={jest.fn()}
+      onCommit={onCommit}
+    />,
+  );
+
+  return { onFilterChange, onCommit };
+}
+
 describe("ExcludeDatePicker", () => {
-  it("is empty option should exclude empty values by applying not-null filter", () => {
-    const commitMock = jest.fn();
-    render(
-      <ExcludeDatePicker
-        onFilterChange={jest.fn()}
-        onCommit={commitMock}
-        filter={filter}
-      />,
-    );
+  it("is empty option should exclude empty values by applying not-null filter", async () => {
+    const { onCommit } = setup({ filter });
 
-    fireEvent.click(screen.getByText("Is empty"));
+    await userEvent.click(screen.getByText("Is empty"));
 
-    expect(commitMock).toHaveBeenCalledWith([
+    expect(onCommit).toHaveBeenCalledWith([
       "not-null",
       ["field", ORDERS.CREATED_AT, null],
     ]);
   });
 
-  it("is not empty option should exclude non-empty values by applying is-null filter", () => {
-    const commitMock = jest.fn();
-    render(
-      <ExcludeDatePicker
-        onFilterChange={jest.fn()}
-        onCommit={commitMock}
-        filter={filter}
-      />,
-    );
+  it("is not empty option should exclude non-empty values by applying is-null filter", async () => {
+    const { onCommit } = setup({ filter });
 
-    fireEvent.click(screen.getByText("Is not empty"));
+    await userEvent.click(screen.getByText("Is not empty"));
 
-    expect(commitMock).toHaveBeenCalledWith([
+    expect(onCommit).toHaveBeenCalledWith([
       "is-null",
       ["field", ORDERS.CREATED_AT, null],
     ]);
