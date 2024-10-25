@@ -229,7 +229,6 @@ type JoinType = "left-join" | "right-join" | "inner-join" | "full-join";
 
 type Stage = {
   // TODO: add support for sort clauses if needed
-  // TODO: implement me
   joins?: {
     lhsTable: string;
     rhsTable: string;
@@ -268,7 +267,7 @@ function verifyNotebookJoins(
   joins: Stage["joins"] | undefined,
 ) {
   if (Array.isArray(joins)) {
-    cy.findByTestId(new RegExp(`step-join-${stageIndex}-\\d+`)).should(
+    cy.findAllByTestId(new RegExp(`^step-join-${stageIndex}-\\d+$`)).should(
       "have.length",
       joins.length,
     );
@@ -283,13 +282,29 @@ function verifyNotebookJoins(
         .icon(getJoinTypeIcon(type))
         .should("be.visible");
 
-      // TODO: assert conditions count
+      getNotebookStep("join", { stage: stageIndex, index })
+        .findAllByTestId(/^join-condition-\d+$/)
+        .should("have.length", conditions.length);
+
       for (
         let conditionIndex = 0;
         conditionIndex < conditions.length;
         ++conditionIndex
       ) {
-        // TODO: assert individual conditions
+        const { operator, lhsColumn, rhsColumn } = conditions[conditionIndex];
+        getNotebookStep("join", { stage: stageIndex, index })
+          .findByTestId(`join-condition-${conditionIndex}`)
+          .within(() => {
+            cy.findByLabelText("Left column")
+              .should("contain.text", lhsTable)
+              .and("contain.text", lhsColumn);
+
+            cy.findByLabelText("Right column")
+              .should("contain.text", rhsTable)
+              .and("contain.text", rhsColumn);
+
+            cy.findByLabelText("Change operator").should("have.text", operator);
+          });
       }
     }
   } else {
