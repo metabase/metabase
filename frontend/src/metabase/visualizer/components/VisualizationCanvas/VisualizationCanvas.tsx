@@ -5,6 +5,7 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Center, Flex, Text } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import {
+  getVisualizationType,
   getVisualizerComputedSettings,
   getVisualizerRawSeries,
   updateSettings,
@@ -15,12 +16,12 @@ import { BottomWell } from "./BottomWell";
 import { VerticalWell } from "./VerticalWell";
 
 export function VisualizationCanvas() {
+  const display = useSelector(getVisualizationType);
   const rawSeries = useSelector(getVisualizerRawSeries);
   const settings = useSelector(getVisualizerComputedSettings);
   const dispatch = useDispatch();
 
-  const { card } = rawSeries[0] ?? {};
-  const hasSeriesToShow = rawSeries.length > 0;
+  const hasSeriesToShow = rawSeries.length > 0 && display;
 
   const handleUpdateSettings = useCallback(
     (settings: VisualizationSettings) => {
@@ -39,11 +40,11 @@ export function VisualizationCanvas() {
 
   return (
     <Flex w="100%" h="100%">
-      <VerticalWell display={card.display} settings={settings} />
+      <VerticalWell display={display} settings={settings} />
       <Flex direction="column" style={{ flex: 1 }}>
         <Visualization rawSeries={rawSeries} />
         <BottomWell
-          display={card.display}
+          display={display}
           settings={settings}
           w="95%"
           style={{ alignSelf: "center" }}

@@ -207,3 +207,8 @@ export const getVisualizerComputedSettings = createSelector(
   rawSeries =>
     rawSeries.length > 0 ? getComputedSettingsForSeries(rawSeries) : {},
 );
+
+export const getVisualizationType = createSelector(
+  [getVisualizerRawSeries],
+  rawSeries => (rawSeries.length > 0 ? rawSeries[0].card.display : undefined),
+);
