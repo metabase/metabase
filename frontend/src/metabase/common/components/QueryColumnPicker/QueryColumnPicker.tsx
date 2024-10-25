@@ -105,6 +105,8 @@ export function QueryColumnPicker({
         return;
       }
 
+      // lbrdnk TODO: Binning logic should probably copy temporalBucket logic.
+      //              Ie. set default only when unset because of previous stages.
       const isBinnable = Lib.isBinnable(query, stageIndex, item.column);
       if (hasBinning && isBinnable) {
         handleSelect(Lib.withDefaultBinning(query, stageIndex, item.column));
@@ -116,9 +118,11 @@ export function QueryColumnPicker({
         stageIndex,
         item.column,
       );
-      // Was this a bug?
-      // Investigate!
-      if (!hasTemporalBucketing && isTemporalBucketable) {
+      if (
+        hasTemporalBucketing &&
+        isTemporalBucketable &&
+        !Lib.temporalBucket(item.column)
+      ) {
         handleSelect(
           Lib.withDefaultTemporalBucket(query, stageIndex, item.column),
         );
