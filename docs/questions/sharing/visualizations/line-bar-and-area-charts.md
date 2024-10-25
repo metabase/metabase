@@ -132,7 +132,7 @@ Here you'll find additional settings for configuring your x and y axes (as in ax
 
 ### Y-axis
 
-- Show label (the llabel for the axis).
+- Show label (the label for the axis).
 - Rename the axis
 - Split y-axis when necessary
 - Auto y-axis range. When not toggled on, you can set the y-axis range (it's min and max values).
