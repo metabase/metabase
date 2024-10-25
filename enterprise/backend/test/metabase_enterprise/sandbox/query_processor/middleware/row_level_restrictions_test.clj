@@ -1087,7 +1087,7 @@
             (is (= {:cached? false, :num-rows 5}
                    (run-query)))))))))
 
-(deftest persistence-disabled-when-sandboxed
+(deftest persistence-disabled-when-sandboxed-test
   (mt/test-drivers (mt/normal-drivers-with-feature :persist-models)
     (mt/dataset test-data
       ;; with-gtaps! creates a new copy of the database. So make sure to do that before anything else. Gets really
@@ -1107,7 +1107,7 @@
             ;; persist model (as admin, so sandboxing is not applied to the persisted query)
             (mt/with-test-user :crowberto
               (persist-models!))
-            (let [persisted-info (t2/select-one 'PersistedInfo
+            (let [persisted-info (t2/select-one :model/PersistedInfo
                                                 :database_id (mt/id)
                                                 :card_id (:id model))]
               (is (= "persisted" (:state persisted-info))
