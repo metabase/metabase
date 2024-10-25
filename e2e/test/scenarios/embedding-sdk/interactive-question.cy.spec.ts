@@ -1,6 +1,7 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   createQuestion,
+  modal,
   popover,
   restore,
   setTokenFeatures,
@@ -115,5 +116,30 @@ describeSDK("scenarios > embedding-sdk > interactive-question", () => {
       .click();
 
     tableInteractive().findByText("Max of Quantity").should("not.exist");
+  });
+
+  it("can save a question", () => {
+    cy.intercept("POST", "/api/card").as("createCard");
+
+    cy.findAllByTestId("cell-data").last().click();
+
+    popover().findByText("See these Orders").click();
+
+    cy.findByRole("button", { name: "Save" }).click();
+
+    modal().within(() => {
+      cy.findByRole("radiogroup").findByText("Save as new question").click();
+
+      cy.findByPlaceholderText("What is the name of your question?")
+        .clear()
+        .type("Foo Bar Orders");
+
+      cy.findByRole("button", { name: "Save" }).click();
+    });
+
+    cy.wait("@createCard").then(({ response }) => {
+      expect(response?.statusCode).to.equal(200);
+      expect(response?.body.name).to.equal("Foo Bar Orders");
+    });
   });
 });
