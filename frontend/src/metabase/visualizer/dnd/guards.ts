@@ -7,10 +7,12 @@ import type {
 
 import { DRAGGABLE_ID } from "./constants";
 
-export function isDraggedColumnItem(item: Active): item is DraggedColumn {
+type DndItem = Omit<Active, "rect">;
+
+export function isDraggedColumnItem(item: DndItem): item is DraggedColumn {
   return item.data?.current?.type === DRAGGABLE_ID.COLUMN;
 }
 
-export function isValidDraggedItem(item: Active): item is DraggedItem {
+export function isValidDraggedItem(item: DndItem): item is DraggedItem {
   return isDraggedColumnItem(item);
 }
