@@ -1474,17 +1474,15 @@ describe("scenarios > question > multiple column breakouts", () => {
       it("should be able to add filters for each source column", () => {
         function addDateBetweenFilter({
           columnName,
-          columnIndex,
           columnMinValue,
           columnMaxValue,
         }: {
           columnName: string;
-          columnIndex: number;
           columnMinValue: string;
           columnMaxValue: string;
         }) {
           popover().within(() => {
-            cy.findAllByText(columnName).eq(columnIndex).click();
+            cy.findAllByText(columnName).click();
             cy.findByText("Specific dates…").click();
             cy.findByText("Between").click();
             cy.findByLabelText("Start date").clear().type(columnMinValue);
@@ -1495,16 +1493,18 @@ describe("scenarios > question > multiple column breakouts", () => {
 
         function testDatePostAggregationFilter({
           questionDetails,
-          columnName,
+          column1Name,
           column1MinValue,
           column1MaxValue,
+          column2Name,
           column2MinValue,
           column2MaxValue,
         }: {
           questionDetails: StructuredQuestionDetails;
-          columnName: string;
+          column1Name: string;
           column1MinValue: string;
           column1MaxValue: string;
+          column2Name: string;
           column2MinValue: string;
           column2MaxValue: string;
         }) {
@@ -1518,8 +1518,7 @@ describe("scenarios > question > multiple column breakouts", () => {
           cy.log("add a filter for the first column");
           getNotebookStep("data").button("Filter").click();
           addDateBetweenFilter({
-            columnName,
-            columnIndex: 0,
+            columnName: column1Name,
             columnMinValue: column1MinValue,
             columnMaxValue: column1MaxValue,
           });
@@ -1527,8 +1526,7 @@ describe("scenarios > question > multiple column breakouts", () => {
           cy.log("add a filter for the second column");
           getNotebookStep("filter").icon("add").click();
           addDateBetweenFilter({
-            columnName,
-            columnIndex: 1,
+            columnName: column2Name,
             columnMinValue: column2MinValue,
             columnMaxValue: column2MaxValue,
           });
@@ -1609,9 +1607,10 @@ describe("scenarios > question > multiple column breakouts", () => {
         cy.log("temporal buckets");
         testDatePostAggregationFilter({
           questionDetails: questionWith2TemporalBreakoutsDetails,
-          columnName: "Created At",
+          column1Name: "Created At: Year",
           column1MinValue: "January 1, 2023",
           column1MaxValue: "December 31, 2023",
+          column2Name: "Created At: Month",
           column2MinValue: "March 1, 2023",
           column2MaxValue: "May 31, 2023",
         });
@@ -1657,10 +1656,16 @@ describe("scenarios > question > multiple column breakouts", () => {
       it("should be able to add aggregations for each source column", () => {
         function testSourceAggregation({
           questionDetails,
-          columnName,
+          column1Name,
+          column1Index,
+          column2Name,
+          column2Index,
         }: {
           questionDetails: StructuredQuestionDetails;
-          columnName: string;
+          column1Name: string;
+          column1Index: number;
+          column2Name: string;
+          column2Index: number;
         }) {
           createQuestion(questionDetails).then(({ body: card }) => {
             createQuestion(getNestedQuestionDetails(card.id), {
@@ -1673,14 +1678,14 @@ describe("scenarios > question > multiple column breakouts", () => {
           getNotebookStep("data").button("Summarize").click();
           popover().within(() => {
             cy.findByText("Minimum of ...").click();
-            cy.findAllByText(columnName).eq(0).click();
+            cy.findAllByText(column1Name).eq(column1Index).click();
           });
 
           cy.log("add an aggregation for the second column");
           getNotebookStep("summarize").icon("add").click();
           popover().within(() => {
             cy.findByText("Maximum of ...").click();
-            cy.findAllByText(columnName).eq(1).click();
+            cy.findAllByText(column2Name).eq(column2Index).click();
           });
 
           cy.log("assert query results");
@@ -1691,18 +1696,24 @@ describe("scenarios > question > multiple column breakouts", () => {
         cy.log("temporal breakouts");
         testSourceAggregation({
           questionDetails: questionWith2TemporalBreakoutsDetails,
-          columnName: "Created At",
+          column1Name: "Created At: Year",
+          column1Index: 0,
+          column2Name: "Created At: Month",
+          column2Index: 0,
         });
         assertTableData({
           // TODO QP bug, should be "Min of Created At: Year",  "Max of Created At: Month"
-          columns: ["Min of Created At: Month", "Max of Created At: Month"],
+          columns: ["Min of Created At: Year", "Max of Created At: Month"],
           firstRows: [["January 1, 2022, 12:00 AM", "April 1, 2026, 12:00 AM"]],
         });
 
         cy.log("'num-bins' breakouts");
         testSourceAggregation({
           questionDetails: questionWith2NumBinsBreakoutsDetails,
-          columnName: "Total",
+          column1Name: "Total",
+          column1Index: 0,
+          column2Name: "Total",
+          column2Index: 1,
         });
         assertTableData({
           columns: ["Min of Total", "Max of Total"],
@@ -1712,7 +1723,10 @@ describe("scenarios > question > multiple column breakouts", () => {
         cy.log("'max-bins' breakouts");
         testSourceAggregation({
           questionDetails: questionWith2BinWidthBreakoutsDetails,
-          columnName: "Latitude",
+          column1Name: "Latitude",
+          column1Index: 0,
+          column2Name: "Latitude",
+          column2Index: 1,
         });
         assertTableData({
           columns: ["Min of Latitude", "Max of Latitude"],
@@ -1723,10 +1737,16 @@ describe("scenarios > question > multiple column breakouts", () => {
       it("should be able to add breakouts for each source column", () => {
         function testSourceBreakout({
           questionDetails,
-          columnName,
+          column1Name,
+          column1Index,
+          column2Name,
+          column2Index,
         }: {
           questionDetails: StructuredQuestionDetails;
-          columnName: string;
+          column1Name: string;
+          column1Index: number;
+          column2Name: string;
+          column2Index: number;
         }) {
           createQuestion(questionDetails).then(({ body: card }) => {
             createQuestion(getNestedQuestionDetails(card.id), {
@@ -1744,14 +1764,14 @@ describe("scenarios > question > multiple column breakouts", () => {
             .findByTestId("breakout-step")
             .findByText("Pick a column to group by")
             .click();
-          popover().findAllByText(columnName).eq(0).click();
+          popover().findAllByText(column1Name).eq(column1Index).click();
 
           cy.log("add a breakout for the second source column");
           getNotebookStep("summarize")
             .findByTestId("breakout-step")
             .icon("add")
             .click();
-          popover().findAllByText(columnName).eq(1).click();
+          popover().findAllByText(column2Name).eq(column2Index).click();
 
           cy.log("assert query results");
           visualize();
@@ -1761,18 +1781,23 @@ describe("scenarios > question > multiple column breakouts", () => {
         cy.log("temporal breakouts");
         testSourceBreakout({
           questionDetails: questionWith2TemporalBreakoutsDetails,
-          columnName: "Created At",
+          column1Name: "Created At: Year",
+          column1Index: 0,
+          column2Name: "Created At: Month",
+          column2Index: 0,
         });
         assertTableData({
-          // TODO QP bug, should be "Created At",  "Created At"
-          columns: ["Created At: Month", "Created At: Month", "Count"],
-          firstRows: [["January 2022", "April 2022", "1"]],
+          columns: ["Created At: Year", "Created At: Month", "Count"],
+          firstRows: [["2022", "April 2022", "1"]],
         });
 
         cy.log("'num-bins' breakouts");
         testSourceBreakout({
           questionDetails: questionWith2NumBinsBreakoutsDetails,
-          columnName: "Total",
+          column1Name: "Total",
+          column1Index: 0,
+          column2Name: "Total",
+          column2Index: 1,
         });
         assertTableData({
           columns: ["Total", "Total", "Count"],
@@ -1785,7 +1810,10 @@ describe("scenarios > question > multiple column breakouts", () => {
         cy.log("'max-bins' breakouts");
         testSourceBreakout({
           questionDetails: questionWith2BinWidthBreakoutsDetails,
-          columnName: "Latitude",
+          column1Name: "Latitude",
+          column1Index: 0,
+          column2Name: "Latitude",
+          column2Index: 1,
         });
         assertTableData({
           columns: ["Latitude", "Latitude", "Count"],
@@ -1799,19 +1827,14 @@ describe("scenarios > question > multiple column breakouts", () => {
 
     describe("viz settings", () => {
       it("should be able to toggle the fields that correspond to breakout columns in the source card", () => {
-        function toggleColumn(
-          columnName: string,
-          columnIndex: number,
-          isVisible: boolean,
-        ) {
+        function toggleColumn(columnName: string, isVisible: boolean) {
           cy.findByTestId("chartsettings-sidebar").within(() => {
             cy.findAllByLabelText(columnName)
-              .eq(columnIndex)
               .should(isVisible ? "not.be.checked" : "be.checked")
               .click();
-            cy.findAllByLabelText(columnName)
-              .eq(columnIndex)
-              .should(isVisible ? "be.checked" : "not.be.checked");
+            cy.findAllByLabelText(columnName).should(
+              isVisible ? "be.checked" : "not.be.checked",
+            );
           });
         }
 
@@ -1837,19 +1860,19 @@ describe("scenarios > question > multiple column breakouts", () => {
           cy.findByTestId("chartsettings-sidebar")
             .button("Add or remove columns")
             .click();
-          toggleColumn(columnName, 0, false);
+          toggleColumn(columnNameYear, false);
           cy.wait("@dataset");
           assertTableData({ columns: [columnNameMonth, "Count"] });
 
-          toggleColumn(columnName, 1, false);
+          toggleColumn(columnNameMonth, false);
           cy.wait("@dataset");
           assertTableData({ columns: ["Count"] });
 
-          toggleColumn(columnName, 0, true);
+          toggleColumn(columnNameYear, true);
           cy.wait("@dataset");
           assertTableData({ columns: ["Count", columnNameYear] });
 
-          toggleColumn(columnName, 1, true);
+          toggleColumn(columnNameMonth, true);
           assertTableData({
             columns: ["Count", columnNameYear, columnNameMonth],
           });
