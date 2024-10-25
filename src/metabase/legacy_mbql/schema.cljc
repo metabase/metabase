@@ -879,8 +879,8 @@
 
 (mr/def ::BooleanExpression
   (one-of
-    ;; filters drivers must implement
-    and or not = != < > <= >= between starts-with ends-with contains
+   ;; filters drivers must implement
+   and or not = != < > <= >= between starts-with ends-with contains
     ;; SUGAR filters drivers do not need to implement
    does-not-contain inside is-empty not-empty is-null not-null relative-time-interval time-interval))
 
