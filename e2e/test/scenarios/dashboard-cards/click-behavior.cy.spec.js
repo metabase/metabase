@@ -2309,7 +2309,7 @@ describeEE("scenarios > dashboard > dashboard cards > click behavior", () => {
                             dimension: [
                               "dimension",
                               ["field", PRODUCTS.RATING, null],
-                              /** { "stage-number": 0 } intentionally not provided */
+                              /** { "stage-number": 0 } intentionally omitted */
                             ],
                           },
                           id: [
