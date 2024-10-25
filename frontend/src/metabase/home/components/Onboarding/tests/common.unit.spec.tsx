@@ -198,13 +198,14 @@ describe("Onboarding", () => {
 
       expect(getItemControl("Query with SQL")).toBeInTheDocument();
 
-      const [docsLink, cta] = within(getItem("sql")).getAllByRole("link");
+      const docsLink = within(getItem("sql")).getByText("SQL templates");
 
-      expect(docsLink).toHaveTextContent("SQL templates");
       expect(docsLink).toHaveAttribute(
         "href",
         "https://www.metabase.com/docs/latest/questions/native-editor/sql-parameters.html?utm_source=product&utm_medium=docs&utm_campaign=help&utm_content=getting-started&source_plan=oss",
       );
+
+      const cta = within(screen.getByTestId("sql-cta")).getByRole("link");
 
       expect(cta).toHaveAttribute(
         "href",
@@ -222,13 +223,16 @@ describe("Onboarding", () => {
         getItemControl("Create and filter a dashboard"),
       ).toBeInTheDocument();
 
-      const [docsLink, cta] = within(getItem("dashboard")).getAllByRole("link");
+      const docsLink = within(getItem("dashboard")).getByText(
+        "dashboard with tabs",
+      );
 
-      expect(docsLink).toHaveTextContent("dashboard with tabs");
       expect(docsLink).toHaveAttribute(
         "href",
         "https://www.metabase.com/docs/latest/dashboards/introduction.html?utm_source=product&utm_medium=docs&utm_campaign=help&utm_content=getting-started&source_plan=oss#dashboard-tabs",
       );
+
+      const cta = within(screen.getByTestId("dashboard-cta")).getByRole("link");
 
       expect(cta).toHaveAttribute("href", "/dashboard/1");
       expect(
@@ -316,6 +320,29 @@ describe("Onboarding", () => {
           name: "Set up alert for a sample question",
         }),
       ).toBeInTheDocument();
+    });
+
+    it("'alert' item docs links", () => {
+      setup({ openItem: "alert" });
+
+      const goalDoc = within(getItem("alert")).getByText("Goal line alerts");
+      const progressDoc = within(getItem("alert")).getByText(
+        "Progress bar alerts",
+      );
+      const resultDoc = within(getItem("alert")).getByText("Results alerts");
+
+      expect(goalDoc).toHaveAttribute(
+        "href",
+        "https://www.metabase.com/docs/latest/questions/sharing/alerts.html?utm_source=product&utm_medium=docs&utm_campaign=help&utm_content=getting-started&source_plan=oss#goal-line-alerts",
+      );
+      expect(progressDoc).toHaveAttribute(
+        "href",
+        "https://www.metabase.com/docs/latest/questions/sharing/alerts.html?utm_source=product&utm_medium=docs&utm_campaign=help&utm_content=getting-started&source_plan=oss#progress-bar-alerts",
+      );
+      expect(resultDoc).toHaveAttribute(
+        "href",
+        "https://www.metabase.com/docs/latest/questions/sharing/alerts.html?utm_source=product&utm_medium=docs&utm_campaign=help&utm_content=getting-started&source_plan=oss#results-alerts",
+      );
     });
 
     it.each<ChecklistItemValue>(["subscription", "alert"])(

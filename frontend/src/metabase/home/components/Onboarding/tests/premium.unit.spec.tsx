@@ -35,6 +35,40 @@ describe("Onboarding (EE with token)", () => {
     });
   });
 
+  describe("documentation links", () => {
+    it("should not render for 'sql' item", () => {
+      setup({ openItem: "sql", showMetabaseLinks: false });
+
+      const alertItem = screen.getByTestId("sql-item");
+      const sqlCopy = within(alertItem).getByText(/SQL templates/);
+
+      expect(sqlCopy).not.toHaveAttribute("href");
+    });
+
+    it("should not render for 'dashboard' item", () => {
+      setup({ openItem: "dashboard", showMetabaseLinks: false });
+
+      const alertItem = screen.getByTestId("dashboard-item");
+      const dashboardCopy = within(alertItem).getByText(/dashboard with tabs/);
+
+      expect(dashboardCopy).not.toHaveAttribute("href");
+    });
+
+    it("should not render for 'alert' item", () => {
+      setup({ openItem: "alert", showMetabaseLinks: false });
+
+      const alertItem = screen.getByTestId("alert-item");
+
+      const goalCopy = within(alertItem).getByText(/Goal line alerts/);
+      const progressCopy = within(alertItem).getByText(/Progress bar alerts/);
+      const resultCopy = within(alertItem).getByText(/Results alerts/);
+
+      [goalCopy, progressCopy, resultCopy].forEach(copy => {
+        expect(copy).not.toHaveAttribute("href");
+      });
+    });
+  });
+
   describe("footer", () => {
     it("should not render the 'learning' section is `showMetabaseLinks` has been turned off in whitelabeling", () => {
       setup({ showMetabaseLinks: false });
