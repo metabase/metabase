@@ -6,7 +6,6 @@ import type { ByRoleMatcher } from "@testing-library/react";
 import { render, screen, waitFor } from "@testing-library/react";
 import type { History } from "history";
 import { createMemoryHistory } from "history";
-import { merge } from "icepick";
 import { KBarProvider } from "kbar";
 import type * as React from "react";
 import { DragDropContextProvider } from "react-dnd";
@@ -16,7 +15,6 @@ import { Router, useRouterHistory } from "react-router";
 import { routerMiddleware, routerReducer } from "react-router-redux";
 import _ from "underscore";
 
-import { mockSettings } from "__support__/settings";
 import {
   MetabaseProviderInternal,
   type MetabaseProviderProps,
@@ -27,13 +25,16 @@ import { createMockSdkState } from "embedding-sdk/test/mocks/state";
 import { Api } from "metabase/api";
 import { UndoListing } from "metabase/containers/UndoListing";
 import { baseStyle } from "metabase/css/core/base.styled";
+import MetabaseSettings from "metabase/lib/settings";
 import { mainReducers } from "metabase/reducers-main";
 import { publicReducers } from "metabase/reducers-public";
 import { ThemeProvider } from "metabase/ui";
 import type { TokenFeature } from "metabase-types/api";
-import { createMockTokenFeatures } from "metabase-types/api/mocks";
 import type { State } from "metabase-types/store";
-import { createMockState } from "metabase-types/store/mocks";
+import {
+  createMockSettingsState,
+  createMockState,
+} from "metabase-types/store/mocks";
 
 import { setupEnterprisePlugins } from "./enterprise";
 import { getStore } from "./entities-store";
@@ -89,39 +90,31 @@ export function renderWithProviders(
   }: RenderWithProvidersOptions = {},
 ) {
   if (withFeatures?.length) {
-    const featuresObject = Object.fromEntries(
-      withFeatures.map(feature => [feature, true]),
-    );
-
-    const updatedTokenFeatures = createMockTokenFeatures({
-      ...storeInitialState.settings?.values["token-features"],
-      ...featuresObject,
-    });
-
-    const merged = merge(storeInitialState.settings || {}, {
-      "token-features": updatedTokenFeatures,
-    });
-
-    storeInitialState.settings = mockSettings(merged);
+    storeInitialState.settings ||= createMockSettingsState();
+    for (const feature of withFeatures) {
+      storeInitialState.settings.values["token-features"][feature] = true;
+    }
+    MetabaseSettings.setAll(storeInitialState.settings.values);
   }
 
   if (shouldSetupEnterprisePlugins || withFeatures?.length) {
     setupEnterprisePlugins();
   }
 
-  let { routing, ...initialState }: Partial<State> =
-    createMockState(storeInitialState);
-
+  const { settings } = storeInitialState;
   if (
-    initialState.settings &&
-    Object.entries(initialState.settings.values["token-features"]).length &&
-    !initialState.settings.values["token-status"]
+    settings &&
+    Object.entries(settings.values["token-features"]).length &&
+    !settings.values["token-status"]
   ) {
-    initialState.settings.values["token-status"] = {
+    settings.values["token-status"] = {
       valid: true,
       trial: false,
     };
   }
+
+  let { routing, ...initialState }: Partial<State> =
+    createMockState(storeInitialState);
 
   if (mode === "public") {
     const publicReducerNames = Object.keys(publicReducers);
