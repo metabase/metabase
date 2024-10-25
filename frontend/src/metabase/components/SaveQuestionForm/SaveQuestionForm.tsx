@@ -19,11 +19,6 @@ import type { Dashboard } from "metabase-types/api";
 import CS from "./SaveQuestionForm.module.css";
 import { useSaveQuestionContext } from "./context";
 
-const COLLECTION_PICKER_MODELS: CollectionPickerModel[] = [
-  "collection",
-  "dashboard",
-];
-
 export const SaveQuestionForm = ({
   onCancel,
   onSaveSuccess,
@@ -52,6 +47,11 @@ export const SaveQuestionForm = ({
     : t`Replace original question, "${originalQuestion?.displayName()}"`;
 
   const isCollectionPickerEnabled = isNullOrUndefined(saveToCollectionId);
+  const models: CollectionPickerModel[] =
+    question.type() === "question"
+      ? ["collection", "dashboard"]
+      : ["collection"];
+
   const showPickerInput = values.saveType === "create" && !saveToDashboard;
   const showTabSelect =
     values.saveType === "overwrite" &&
@@ -93,9 +93,7 @@ export const SaveQuestionForm = ({
               dashboardIdFieldName="dashboard_id"
               title={t`Where do you want to save this?`}
               zIndex={DEFAULT_MODAL_Z_INDEX + 1}
-              collectionPickerModalProps={{
-                models: COLLECTION_PICKER_MODELS,
-              }}
+              collectionPickerModalProps={{ models }}
             />
           )}
           {showTabSelect && (
