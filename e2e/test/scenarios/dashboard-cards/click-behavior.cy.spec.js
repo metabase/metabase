@@ -2264,10 +2264,6 @@ describeEE("scenarios > dashboard > dashboard cards > click behavior", () => {
    */
   describe("click behavior parameter mappings for questions without target stage index", () => {
     beforeEach(() => {
-      cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
-        "dashcardQuery",
-      );
-
       createQuestion({
         name: "Target question",
         query: {
@@ -2329,12 +2325,19 @@ describeEE("scenarios > dashboard > dashboard cards > click behavior", () => {
           cy.wrap(dashboard_id).as("dashboardId");
         });
       });
+
+      cy.intercept("POST", "/api/dataset").as("dataset");
+      cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
+        "dashcardQuery",
+      );
     });
 
     it("click behavior works even when 'stage-number' attribute is missing in target dimension", () => {
       cy.get("@dashboardId").then(dashboardId => visitDashboard(dashboardId));
       cy.wait("@dashcardQuery");
+
       cy.findAllByTestId("cell-data").contains("5").first().click();
+      cy.wait("@dataset");
 
       cy.findByTestId("app-bar").should(
         "contain.text",
