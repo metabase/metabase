@@ -23,11 +23,8 @@ export const trackEmbeddingHomepageQuickstartClick = (
   });
 };
 
-export const trackEmbeddingHomepageExampleDashboardClick = (
-  initial_tab: EmbeddingHomepageInitialTab,
-) => {
+export const trackEmbeddingHomepageExampleDashboardClick = () => {
   trackSchemaEvent(SCHEMA_NAME, {
     event: "embedding_homepage_example_dashboard_click",
-    initial_tab,
   });
 };

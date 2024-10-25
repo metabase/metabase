@@ -20,6 +20,7 @@ export const createMockQueryBuilderUIControlsState = (
   isShowingTimelineSidebar: false,
   initialChartSetting: null,
   isShowingRawTable: false,
+  queryBuilderView: "table",
   isNativeEditorOpen: false,
   queryBuilderMode: "view",
   previousQueryBuilderMode: false,
@@ -27,6 +28,7 @@ export const createMockQueryBuilderUIControlsState = (
   datasetEditorTab: "query",
   isShowingNotebookNativePreview: false,
   notebookNativePreviewSidebarWidth: null,
+  showSidebarTitle: false,
   ...opts,
 });
 

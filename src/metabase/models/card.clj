@@ -21,6 +21,7 @@
    [metabase.models.audit-log :as audit-log]
    [metabase.models.card.metadata :as card.metadata]
    [metabase.models.collection :as collection]
+   [metabase.models.data-permissions :as data-perms]
    [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
    [metabase.models.moderation-review :as moderation-review]
@@ -192,6 +193,20 @@
   "Hydrate can_run_adhoc_query onto cards"
   [cards]
   (with-can-run-adhoc-query cards))
+
+;; note: perms lookup here in the course of fetching a card/model should hit a cache pre-warmed by
+;; the `:can_run_adhoc_query` above
+(mi/define-batched-hydration-method add-can-manage-db
+  :can_manage_db
+  "Hydrate can_manage_db onto cards. Indicates whether the current user has access to the database admin page for the
+  database powering this card."
+  [cards]
+  (map
+   (fn [card]
+     (assoc card
+            :can_manage_db
+            (data-perms/user-has-permission-for-database? api/*current-user-id* :perms/manage-database :yes (:database_id card))))
+   cards))
 
 (methodical/defmethod t2/batched-hydrate [:model/Card :parameter_usage_count]
   [_model k cards]

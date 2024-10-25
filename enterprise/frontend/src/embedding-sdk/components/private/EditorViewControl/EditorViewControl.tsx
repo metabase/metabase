@@ -1,5 +1,7 @@
 import { t } from "ttag";
 
+import { useSelector } from "metabase/lib/redux";
+import { getQuestion } from "metabase/query_builder/selectors";
 import {
   Icon,
   type IconName,
@@ -7,6 +9,8 @@ import {
   type SegmentedControlProps,
   Tooltip,
 } from "metabase/ui";
+import { getIconForVisualizationType } from "metabase/visualizations";
+import type { QueryBuilderView } from "metabase-types/store";
 
 const EditorViewLabelItem = ({
   tooltipLabel,
@@ -20,59 +24,73 @@ const EditorViewLabelItem = ({
   </Tooltip>
 );
 
-const EDITOR_VIEW_OPTIONS = [
-  {
-    value: "editor",
-    label: <EditorViewLabelItem tooltipLabel={t`Editor`} iconName="notebook" />,
-  },
-  {
-    value: "table",
-    label: <EditorViewLabelItem tooltipLabel={t`Result`} iconName="table2" />,
-  },
-  {
-    value: "visualization",
-    label: (
-      <EditorViewLabelItem tooltipLabel={t`Visualization`} iconName="line" />
-    ),
-  },
-];
-
 export const EditorViewControl = ({
-  data = EDITOR_VIEW_OPTIONS,
+  availableControls = ["editor", "table", "visualization"],
   ...restProps
-}: Partial<SegmentedControlProps>) => (
-  <SegmentedControl
-    radius="xl"
-    styles={{
-      root: {
-        backgroundColor: "var(--mb-color-brand-lighter)",
-        color: "var(--mb-color-brand)",
-      },
-      label: {
-        display: "inline-flex",
-        color: "var(--mb-color-brand)",
-        "&[data-active]": {
-          "&, &:hover": {
-            color: "var(--mb-color-white)",
+}: Partial<SegmentedControlProps> & {
+  availableControls?: QueryBuilderView[];
+}) => {
+  const question = useSelector(getQuestion);
+  const vizIcon = question
+    ? getIconForVisualizationType(question.display())
+    : "line";
+
+  const options = [
+    {
+      value: "editor" as const,
+      label: (
+        <EditorViewLabelItem tooltipLabel={t`Editor`} iconName="notebook" />
+      ),
+    },
+    {
+      value: "table" as const,
+      label: <EditorViewLabelItem tooltipLabel={t`Result`} iconName="table2" />,
+    },
+    {
+      value: "visualization" as const,
+      label: (
+        <EditorViewLabelItem
+          tooltipLabel={t`Visualization`}
+          iconName={vizIcon}
+        />
+      ),
+    },
+  ].filter(({ value }) => availableControls.includes(value));
+
+  return (
+    <SegmentedControl
+      radius="xl"
+      styles={{
+        root: {
+          backgroundColor: "var(--mb-color-brand-lighter)",
+          color: "var(--mb-color-brand)",
+        },
+        label: {
+          display: "inline-flex",
+          color: "var(--mb-color-brand)",
+          "&[data-active]": {
+            "&, &:hover": {
+              color: "var(--mb-color-white)",
+            },
+          },
+          // this really should be design token values
+          padding: `4px 10px`,
+        },
+        controlActive: {
+          color: "var(--mb-color-bg-white)",
+        },
+        indicator: {
+          backgroundColor: "var(--mb-color-brand)",
+          color: "var(--mb-color-bg-white)",
+        },
+        control: {
+          "&:not(:first-of-type)": {
+            border: "none",
           },
         },
-        // this really should be design token values
-        padding: `4px 10px`,
-      },
-      controlActive: {
-        color: "var(--mb-color-bg-white)",
-      },
-      indicator: {
-        backgroundColor: "var(--mb-color-brand)",
-        color: "var(--mb-color-bg-white)",
-      },
-      control: {
-        "&:not(:first-of-type)": {
-          border: "none",
-        },
-      },
-    }}
-    data={data}
-    {...restProps}
-  />
-);
+      }}
+      data={options}
+      {...restProps}
+    />
+  );
+};

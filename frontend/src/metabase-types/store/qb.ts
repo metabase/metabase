@@ -9,6 +9,7 @@ import type {
 export type QueryBuilderMode = "view" | "notebook" | "dataset";
 export type DatasetEditorTab = "query" | "metadata";
 export type QueryBuilderQueryStatus = "idle" | "running" | "complete";
+export type QueryBuilderView = "editor" | "visualization" | "table";
 
 export type ForeignKeyReference = {
   status: number;
@@ -31,11 +32,13 @@ export interface QueryBuilderUIControls {
   initialChartSetting: null;
   isShowingRawTable: boolean;
   queryBuilderMode: QueryBuilderMode;
+  queryBuilderView: QueryBuilderView;
   previousQueryBuilderMode: boolean;
   snippetCollectionId: number | null;
   datasetEditorTab: DatasetEditorTab;
   isShowingNotebookNativePreview: boolean;
   notebookNativePreviewSidebarWidth: number | null;
+  showSidebarTitle: boolean;
 }
 
 export interface QueryBuilderLoadingControls {

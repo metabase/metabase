@@ -5,5 +5,6 @@ export const createMockAppState = (opts?: Partial<AppState>): AppState => ({
   errorPage: null,
   isDndAvailable: false,
   isErrorDiagnosticsOpen: false,
+  tempStorage: {},
   ...opts,
 });

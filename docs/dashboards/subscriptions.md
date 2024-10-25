@@ -110,7 +110,7 @@ To remove a subscription from a dashboard, select the subscription you'd like to
 
 {% include plans-blockquote.html feature="Usage analytics" %}
 
-You can view a list of all alerts and dashboard subscriptions that people have set up in your Metabase in **Metabase analytics** collection. See [Usage analytics](../usage-and-performance-tools/usage-analytics.md).
+You can view a list of all alerts and dashboard subscriptions that people have set up in your Metabase in **Usage analytics** collection. See [Usage analytics](../usage-and-performance-tools/usage-analytics.md).
 
 ## Customize filter values for each dashboard subscription
 

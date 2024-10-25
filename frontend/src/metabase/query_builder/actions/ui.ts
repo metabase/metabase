@@ -9,13 +9,15 @@ import type {
   Dispatch,
   GetState,
   QueryBuilderMode,
+  QueryBuilderUIControls,
 } from "metabase-types/store";
 
 import { updateUrl } from "./navigation";
 import { cancelQuery } from "./querying";
 
 export const SET_UI_CONTROLS = "metabase/qb/SET_UI_CONTROLS";
-export const setUIControls = createAction(SET_UI_CONTROLS);
+export const setUIControls =
+  createAction<Partial<QueryBuilderUIControls>>(SET_UI_CONTROLS);
 
 export const RESET_UI_CONTROLS = "metabase/qb/RESET_UI_CONTROLS";
 export const resetUIControls = createAction(RESET_UI_CONTROLS);
