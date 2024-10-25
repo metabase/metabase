@@ -112,6 +112,17 @@ export function renderWithProviders(
   let { routing, ...initialState }: Partial<State> =
     createMockState(storeInitialState);
 
+  if (
+    initialState.settings &&
+    Object.entries(initialState.settings.values["token-features"]).length &&
+    !initialState.settings.values["token-status"]
+  ) {
+    initialState.settings.values["token-status"] = {
+      valid: true,
+      trial: false,
+    };
+  }
+
   if (mode === "public") {
     const publicReducerNames = Object.keys(publicReducers);
     initialState = _.pick(initialState, ...publicReducerNames) as State;
