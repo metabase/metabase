@@ -845,14 +845,14 @@ describe("scenarios > dashboard > filters > query stages", () => {
 
           verifyDashcardCellValues({
             dashcardIndex: 0,
-            values: ["4,449", "17,722"],
+            values: ["4,447", "17,714"],
           });
 
           goBackToDashboard();
 
           verifyDashcardCellValues({
             dashcardIndex: 1,
-            values: ["4,449", "17,722"],
+            values: ["4,447", "17,714"],
           });
         });
 
@@ -894,14 +894,14 @@ describe("scenarios > dashboard > filters > query stages", () => {
 
           verifyDashcardCellValues({
             dashcardIndex: 0,
-            values: ["4,449", "17,722"],
+            values: ["4,447", "17,714"],
           });
 
           goBackToDashboard();
 
           verifyDashcardCellValues({
             dashcardIndex: 1,
-            values: ["4,449", "17,722"],
+            values: ["4,447", "17,714"],
           });
         });
 
