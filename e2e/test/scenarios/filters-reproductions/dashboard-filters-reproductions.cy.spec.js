@@ -12,6 +12,7 @@ import {
   addOrUpdateDashboardCard,
   appBar,
   assertQueryBuilderRowCount,
+  assertTabSelected,
   changeSynchronousBatchUpdateSetting,
   commandPalette,
   commandPaletteSearch,
@@ -4004,11 +4005,16 @@ describe("issue 48351", () => {
           id: -1,
           card_id: ORDERS_QUESTION_ID,
           dashboard_tab_id: 1,
+          size_x: 8,
+          size_y: 8,
         }),
         createMockDashboardCard({
           id: -2,
           card_id: ORDERS_QUESTION_ID,
           dashboard_tab_id: 2,
+          col: 8,
+          size_x: 8,
+          size_y: 8,
         }),
       ],
     }).then(dashboard1 => {
@@ -4023,6 +4029,8 @@ describe("issue 48351", () => {
             id: -1,
             card_id: ORDERS_QUESTION_ID,
             dashboard_tab_id: 3,
+            size_x: 8,
+            size_y: 8,
           }),
           createMockDashboardCard({
             id: -2,
@@ -4041,9 +4049,21 @@ describe("issue 48351", () => {
                 },
               },
             },
+            col: 8,
+            size_x: 8,
+            size_y: 8,
           }),
         ],
       }).then(dashboard2 => visitDashboard(dashboard2.id));
     });
+    goToTab("Tab 4");
+    getDashboardCard().within(() =>
+      cy.findAllByTestId("cell-data").eq(0).click(),
+    );
+    cy.findByTestId("dashboard-name-heading").should(
+      "have.value",
+      "Dashboard 1",
+    );
+    assertTabSelected("Tab 2");
   });
 });
