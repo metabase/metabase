@@ -47,7 +47,7 @@ export const useGetExtraButtons = ({
     refetchData: false,
   });
 
-  const moderationItems = PLUGIN_MODERATION.useMenuItems(
+  const moderationItems = PLUGIN_MODERATION.useDashboardMenuItems(
     dashboard,
     isAdmin,
     refreshDashboard,

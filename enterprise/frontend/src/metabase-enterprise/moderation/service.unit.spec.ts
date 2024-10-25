@@ -1,6 +1,6 @@
 import { ModerationReviewApi } from "metabase/services";
 import type Question from "metabase-lib/v1/Question";
-import type { ModerationReview, User } from "metabase-types/api";
+import type { ModerationReview } from "metabase-types/api";
 import {
   createMockModerationReview,
   createMockUser,
@@ -171,16 +171,19 @@ describe("moderation/service", () => {
   });
 
   describe("getLatestModerationReview", () => {
+    const user = createMockUser({ id: 0, common_name: "foo" });
+
     it("should return the review flagged as most recent", () => {
       const reviews: ModerationReview[] = [
-        { moderator_id: 0, created_at: "", status: "verified" },
+        { moderator_id: 0, created_at: "", status: "verified", user },
         {
           moderator_id: 0,
           created_at: "",
           status: "verified",
           most_recent: true,
+          user,
         },
-        { moderator_id: 0, created_at: "", status: null },
+        { moderator_id: 0, created_at: "", status: null, user },
       ];
 
       expect(getLatestModerationReview(reviews)).toEqual({
@@ -193,9 +196,9 @@ describe("moderation/service", () => {
 
     it("should return undefined when there is no review flagged as most recent", () => {
       const reviews: ModerationReview[] = [
-        { moderator_id: 0, created_at: "", status: "verified" },
-        { moderator_id: 0, created_at: "", status: "verified" },
-        { moderator_id: 0, created_at: "", status: null },
+        { moderator_id: 0, created_at: "", status: "verified", user },
+        { moderator_id: 0, created_at: "", status: "verified", user },
+        { moderator_id: 0, created_at: "", status: null, user },
       ];
 
       expect(getLatestModerationReview(reviews)).toEqual(undefined);
@@ -204,9 +207,15 @@ describe("moderation/service", () => {
 
     it("should return undefined when there is a review with a status of null flagged as most recent", () => {
       const reviews: ModerationReview[] = [
-        { moderator_id: 0, created_at: "", status: "verified" },
-        { moderator_id: 0, created_at: "", status: "verified" },
-        { moderator_id: 0, created_at: "", status: null, most_recent: true },
+        { moderator_id: 0, created_at: "", status: "verified", user },
+        { moderator_id: 0, created_at: "", status: "verified", user },
+        {
+          moderator_id: 0,
+          created_at: "",
+          status: null,
+          most_recent: true,
+          user,
+        },
       ];
 
       expect(getLatestModerationReview(reviews)).toEqual(undefined);
@@ -262,26 +271,27 @@ describe("moderation/service", () => {
 
   describe("getModerationTimelineEvents", () => {
     it("should return the moderation timeline events", () => {
+      const FooUser = createMockUser({ common_name: "Foo", id: 1 });
+      const AModerator = createMockUser({
+        common_name: "A Moderator",
+        id: 123,
+      });
       const reviews: ModerationReview[] = [
         {
           status: "verified",
           created_at: "2018-01-01T00:00:00.000Z",
           moderator_id: 1,
+          user: FooUser,
         },
         {
           status: null,
           created_at: "2018-01-02T00:00:00.000Z",
           moderator_id: 123,
+          user: AModerator,
         },
       ];
-      const usersById: Record<number, User> = {
-        1: createMockUser({
-          id: 1,
-          common_name: "Foo",
-        }),
-      };
 
-      expect(getModerationTimelineEvents(reviews, usersById)).toEqual([
+      expect(getModerationTimelineEvents(reviews)).toEqual([
         {
           timestamp: reviews[0].created_at,
           icon: getStatusIcon("verified"),

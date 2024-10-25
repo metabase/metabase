@@ -1,5 +1,8 @@
 import { t } from "ttag";
+
 import { useEditItemVerificationMutation } from "metabase/api";
+import type Question from "metabase-lib/v1/Question";
+import type { Dashboard, ModerationReview } from "metabase-types/api";
 
 import {
   MODERATION_STATUS,
@@ -8,41 +11,74 @@ import {
   isItemVerified,
 } from "../service";
 import { getVerifyQuestionTitle } from "../utils";
-import Question from "metabase-lib/v1/Question";
 
-import { Dashboard, entityIsDashboard } from "metabase-types/api";
-import { useMemo } from "react";
-
-export const useMenuItems = (
-  model: Question | Dashboard,
+export const useQuestionMenuItems = (
+  question: Question,
   isModerator: boolean,
   reload: () => void,
 ) => {
+  const latestModerationReview = getLatestModerationReview(
+    question.getModerationReviews(),
+  );
+
+  const items = useMenuItems({
+    isModerator,
+    reload,
+    moderated_item_id: question.id(),
+    moderated_item_type: "card",
+    latestModerationReview,
+    title: getVerifyQuestionTitle(question),
+  });
+
+  return items;
+};
+
+export const useDashboardMenuItems = (
+  dashboard: Dashboard,
+  isModerator: boolean,
+  reload: () => void,
+) => {
+  const latestModerationReview = getLatestModerationReview(
+    dashboard.moderation_reviews || [],
+  );
+
+  const items = useMenuItems({
+    isModerator,
+    reload,
+    moderated_item_id: dashboard.id as number,
+    moderated_item_type: "dashboard",
+    latestModerationReview,
+    title: t`Verify this dashboard`,
+  });
+
+  return items;
+};
+
+const useMenuItems = ({
+  isModerator,
+  reload,
+  moderated_item_id,
+  moderated_item_type,
+  title,
+  latestModerationReview,
+}: {
+  isModerator: boolean;
+  reload: () => void;
+  moderated_item_id: number;
+  moderated_item_type: "card" | "dashboard";
+  title: string;
+  latestModerationReview?: ModerationReview;
+}) => {
   const [editItemVerification] = useEditItemVerificationMutation();
 
-  const isDashboard = entityIsDashboard(model);
-
-  const { moderated_item_id, moderated_item_type } = useMemo(() => {
-    return {
-      moderated_item_id: isDashboard ? (model.id as number) : model.id(),
-      moderated_item_type: isDashboard
-        ? ("dashboard" as const)
-        : ("card" as const),
-    };
-  }, [isDashboard, model]);
-
   const { name: verifiedIconName } = getStatusIcon(MODERATION_STATUS.verified);
-  const latestModerationReview = getLatestModerationReview(
-    isDashboard ? model.moderation_reviews : model.getModerationReviews(),
-  );
+
   const isVerified = isItemVerified(latestModerationReview);
 
   if (isModerator) {
     return [
       {
-        title: isVerified
-          ? t`Remove verification`
-          : getVerifyQuestionTitle(model),
+        title: isVerified ? t`Remove verification` : title,
         icon: isVerified ? "close" : verifiedIconName,
         action: async () => {
           if (isVerified) {

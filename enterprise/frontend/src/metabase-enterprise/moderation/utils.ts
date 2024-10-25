@@ -1,16 +1,9 @@
 import { t } from "ttag";
 
 import type Question from "metabase-lib/v1/Question";
-import { Dashboard, entityIsDashboard } from "metabase-types/api";
 
-export const getVerifyQuestionTitle = (
-  question: Question | Dashboard,
-): string => {
-  const type = entityIsDashboard(question) ? "dashboard" : question.type();
-
-  if (type === "dashboard") {
-    return t`Verify this dashboard`;
-  }
+export const getVerifyQuestionTitle = (question: Question): string => {
+  const type = question.type();
 
   if (type === "question") {
     return t`Verify this question`;

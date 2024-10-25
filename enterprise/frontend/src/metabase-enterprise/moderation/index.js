@@ -1,16 +1,18 @@
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
+import { EntityModerationIcon } from "./components/EntityModerationIcon";
 import {
   ModerationReviewBanner,
   ModerationReviewTextForDashboard,
   ModerationReviewTextForQuestion,
 } from "./components/ModerationReviewBanner";
 import { ModerationStatusIcon } from "./components/ModerationStatusIcon";
-import { QuestionModerationButton } from "./components/QuestionModerationButton";
-import QuestionModerationIcon from "./components/QuestionModerationIcon";
 import QuestionModerationSection from "./components/QuestionModerationSection";
-import { useMenuItems } from "./hooks/useMenuItems";
+import {
+  useDashboardMenuItems,
+  useQuestionMenuItems,
+} from "./hooks/useMenuItems";
 import {
   getModerationTimelineEvents,
   getQuestionIcon,
@@ -20,9 +22,8 @@ import {
 if (hasPremiumFeature("content_verification")) {
   Object.assign(PLUGIN_MODERATION, {
     isEnabled: () => true,
-    QuestionModerationIcon,
+    EntityModerationIcon,
     QuestionModerationSection,
-    QuestionModerationButton,
     ModerationReviewBanner,
     ModerationReviewTextForQuestion,
     ModerationReviewTextForDashboard,
@@ -30,6 +31,7 @@ if (hasPremiumFeature("content_verification")) {
     getStatusIcon,
     getQuestionIcon,
     getModerationTimelineEvents,
-    useMenuItems,
+    useQuestionMenuItems,
+    useDashboardMenuItems,
   });
 }
