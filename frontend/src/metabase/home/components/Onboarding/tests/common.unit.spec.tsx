@@ -38,7 +38,7 @@ describe("Onboarding", () => {
   });
 
   it("'database' accordion item should be open by default", () => {
-    setup();
+    const { scrollIntoViewMock } = setup();
 
     const databaseItem = getItem("database");
     const databaseItemControl = getItemControl("Connect to your database");
@@ -58,16 +58,19 @@ describe("Onboarding", () => {
     expect(
       within(cta).getByRole("button", { name: "Add Database" }),
     ).toBeInTheDocument();
+
+    expect(scrollIntoViewMock).not.toHaveBeenCalled();
   });
 
   it("should be possible to open a different item", async () => {
-    setup();
+    const { scrollIntoViewMock } = setup();
 
     expect(getItem("database")).toHaveAttribute("data-active", "true");
     await userEvent.click(getItemControl("Query with SQL"));
 
     expect(getItem("database")).not.toHaveAttribute("data-active");
     expect(getItem("sql")).toHaveAttribute("data-active", "true");
+    expect(scrollIntoViewMock).toHaveBeenCalledTimes(1);
   });
 
   it("only one item can be expanded at a time", async () => {
