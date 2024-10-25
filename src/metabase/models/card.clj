@@ -724,6 +724,10 @@
            (and on-dashboard-before?
                 on-dashboard-after?
                 dashboard-changes?)
+           ;; we're archiving a Dashboard Question
+           (and archived-after?
+                on-dashboard-before?
+                on-dashboard-after?)
            ;; we're moving from a dashboard to a collection and the user has told us to delete
            (and on-dashboard-before?
                 (not on-dashboard-after?)
