@@ -25,12 +25,12 @@ import { SIDEBAR_SIZES } from "metabase/query_builder/constants";
 import { MetricEditor } from "metabase/querying/metrics/components/MetricEditor";
 import * as Lib from "metabase-lib";
 
-import DatasetEditor from "../../DatasetEditor";
-import { QueryModals } from "../../QueryModals";
-import { SavedQuestionIntroModal } from "../../SavedQuestionIntroModal";
-import ViewSidebar from "../ViewSidebar";
+import DatasetEditor from "../../../DatasetEditor";
+import { QueryModals } from "../../../QueryModals";
+import { SavedQuestionIntroModal } from "../../../SavedQuestionIntroModal";
+import ViewSidebar from "../../ViewSidebar";
+import { NotebookContainer } from "../NotebookContainer";
 
-import { NotebookContainer } from "./NotebookContainer";
 import {
   QueryBuilderContentContainer,
   QueryBuilderViewRoot,

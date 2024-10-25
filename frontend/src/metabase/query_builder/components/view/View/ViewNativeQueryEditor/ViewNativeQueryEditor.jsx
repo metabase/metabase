@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import NativeQueryEditor from "metabase/query_builder/components/NativeQueryEditor";
-import { NativeQueryEditorContainer } from "metabase/query_builder/components/view/View/View.styled";
+import { NativeQueryEditorContainer } from "metabase/query_builder/components/view/View/ViewNativeQueryEditor/ViewNativeQueryEditor.styled";
 import * as Lib from "metabase-lib";
 
 export const ViewNativeQueryEditor = props => {

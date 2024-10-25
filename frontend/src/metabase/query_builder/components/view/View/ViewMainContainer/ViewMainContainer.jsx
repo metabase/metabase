@@ -5,7 +5,7 @@ import {
   QueryBuilderMain,
   StyledDebouncedFrame,
   StyledSyncedParametersList,
-} from "metabase/query_builder/components/view/View/View.styled";
+} from "metabase/query_builder/components/view/View/ViewMainContainer/ViewMainContainer.styled";
 import { ViewNativeQueryEditor } from "metabase/query_builder/components/view/View/ViewNativeQueryEditor/ViewNativeQueryEditor";
 import { ViewFooter } from "metabase/query_builder/components/view/ViewFooter";
 import { TimeseriesChrome } from "metabase/querying/filters/components/TimeseriesChrome";
