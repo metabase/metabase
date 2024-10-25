@@ -104,7 +104,7 @@
   (->> (str/split hosts-string #"[ ,\s\r\n]+")
        (remove str/blank?)
        (mapcat add-wildcard-entries)
-       vec))
+       (into ["'self'"])))
 
 (def ^{:doc "Parse the string of allowed iframe hosts, adding wildcard prefixes as needed."}
   parse-allowed-iframe-hosts
