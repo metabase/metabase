@@ -28,6 +28,7 @@ export const createMockQueryBuilderUIControlsState = (
   datasetEditorTab: "query",
   isShowingNotebookNativePreview: false,
   notebookNativePreviewSidebarWidth: null,
+  showSidebarTitle: false,
   ...opts,
 });
 

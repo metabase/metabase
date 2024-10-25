@@ -146,7 +146,7 @@ function generateTimeValueDescription(value, bucketing, isExclude) {
     if (bucketing) {
       return formatDateTimeWithUnit(value, bucketing, { isExclude });
     } else if (m.hours() || m.minutes()) {
-      return m.format("MMMM D, YYYY hh:mm a");
+      return m.format("MMMM D, YYYY hh:mm A");
     } else {
       return m.format("MMMM D, YYYY");
     }

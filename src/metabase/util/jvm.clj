@@ -6,7 +6,6 @@
    [clojure.string :as str]
    [clojure.tools.namespace.find :as ns.find]
    [metabase.util.format :as u.format]
-   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [nano-id.core :as nano-id])
   (:import
@@ -284,7 +283,7 @@
     (when (= result ::timeout)
       (when (future? reff)
         (future-cancel reff))
-      (throw (TimeoutException. (tru "Timed out after {0}" (u.format/format-milliseconds timeout-ms)))))
+      (throw (TimeoutException. (format "Timed out after %s" (u.format/format-milliseconds timeout-ms)))))
     result))
 
 (defn do-with-timeout

@@ -38,6 +38,7 @@ export interface QueryBuilderUIControls {
   datasetEditorTab: DatasetEditorTab;
   isShowingNotebookNativePreview: boolean;
   notebookNativePreviewSidebarWidth: number | null;
+  showSidebarTitle: boolean;
 }
 
 export interface QueryBuilderLoadingControls {

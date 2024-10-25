@@ -14,7 +14,7 @@
    [metabase.server :as server]
    [metabase.server.request.util :as req.util]
    [metabase.util :as u]
-   [metabase.util.i18n :as i18n :refer [deferred-tru trs]]
+   [metabase.util.i18n :as i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
@@ -45,7 +45,7 @@
   (str
    (format "%s %s %d" (u/upper-case-en (name request-method)) uri status)
    (when async-status
-     (format " [%s: %s]" (trs "ASYNC") async-status))))
+     (format " [ASYNC: %s]" async-status))))
 
 (defn- format-performance-info
   [{:keys [start-time call-count-fn _diag-info-fn]
@@ -53,28 +53,28 @@
          call-count-fn (constantly -1)}}]
   (let [elapsed-time (u/format-nanoseconds (- (System/nanoTime) start-time))
         db-calls     (call-count-fn)]
-    (trs "{0} ({1} DB calls)" elapsed-time db-calls)))
+    (format "%s (%s DB calls)" elapsed-time db-calls)))
 
 (defn- stats [diag-info-fn]
   (str
    (when-let [^PoolBackedDataSource pool (let [data-source (mdb/data-source)]
                                            (when (instance? PoolBackedDataSource data-source)
                                              data-source))]
-     (trs "App DB connections: {0}/{1}"
-          (.getNumBusyConnectionsAllUsers pool) (.getNumConnectionsAllUsers pool)))
+     (format "App DB connections: %s/%s"
+             (.getNumBusyConnectionsAllUsers pool) (.getNumConnectionsAllUsers pool)))
    " "
    (when-let [^QueuedThreadPool pool (some-> (server/instance) .getThreadPool)]
-     (trs "Jetty threads: {0}/{1} ({2} idle, {3} queued)"
-          (.getBusyThreads pool)
-          (.getMaxThreads pool)
-          (.getIdleThreads pool)
-          (.getQueueSize pool)))
+     (format "Jetty threads: %s/%s (%s idle, %s queued)"
+             (.getBusyThreads pool)
+             (.getMaxThreads pool)
+             (.getIdleThreads pool)
+             (.getQueueSize pool)))
    " "
-   (trs "({0} total active threads)" (Thread/activeCount))
+   (format "(%s total active threads)" (Thread/activeCount))
    " "
-   (trs "Queries in flight: {0}" (thread-pool/active-thread-count))
+   (format "Queries in flight: %s" (thread-pool/active-thread-count))
    " "
-   (trs "({0} queued)" (thread-pool/queued-thread-count))
+   (format "(%s queued)" (thread-pool/queued-thread-count))
    (when diag-info-fn
      (when-let [diag-info (not-empty (diag-info-fn))]
        (format

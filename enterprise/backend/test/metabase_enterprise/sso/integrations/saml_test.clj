@@ -133,8 +133,11 @@
     (with-other-sso-types-disabled!
       (mt/with-premium-features #{}
         (with-default-saml-config!
-          (is (= "SSO has not been enabled and/or configured"
-                 (client/client :get 400 "/auth/sso"))))))))
+          (is (partial= {:cause "SSO has not been enabled and/or configured",
+                         :data {:status "error-sso-disabled", :status-code 400},
+                         :message "SSO has not been enabled and/or configured",
+                         :status "error-sso-disabled"}
+                        (client/client :get 400 "/auth/sso"))))))))
 
 (deftest require-saml-enabled-test
   (with-other-sso-types-disabled!

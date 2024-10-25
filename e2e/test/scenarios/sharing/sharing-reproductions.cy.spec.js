@@ -17,6 +17,7 @@ import {
   getDashboardCard,
   getFullName,
   getIframeBody,
+  mockSlackConfigured,
   modal,
   openAndAddEmailsToSubscriptions,
   openNewPublicLinkDropdown,
@@ -960,6 +961,7 @@ describe("issue 17547", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    mockSlackConfigured();
 
     cy.createQuestion(questionDetails).then(({ body: { id: questionId } }) => {
       setUpAlert(questionId);
