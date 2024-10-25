@@ -41,7 +41,9 @@ export default function App() {
 You can pass parameter values to questions defined with SQL via `parameterValues` prop, in the format of `{parameter_name: parameter_value}`. Learn more about [SQL parameters](../../questions/native-editor/sql-parameters.md).
 
 ```jsx
+{% raw %}
 <StaticQuestion questionId={questionId} parameterValues={{ product_id: 50 }} />
+{% endraw %}
 ```
 
 ## Embedding an interactive question
@@ -94,6 +96,7 @@ Here's an example of using the `InteractiveQuestion` component with its default 
 To customize the layout, use namespaced components within the `InteractiveQuestion` component. For example:
 
 ```typescript jsx
+{% raw %}
 <InteractiveQuestion questionId={95}>
   <div
     style={{
@@ -127,6 +130,7 @@ To customize the layout, use namespaced components within the `InteractiveQuesti
     </div>
   </div>
 </InteractiveQuestion>
+{% endraw %}
 ```
 
 ## Interactive question components
