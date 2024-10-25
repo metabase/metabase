@@ -277,6 +277,13 @@ function verifyNotebookJoins(
   stageIndex: number,
   joins: Stage["joins"] | undefined,
 ) {
+  const joinTypeIcons: Record<JoinType, IconName> = {
+    "left-join": "join_left_outer",
+    "right-join": "join_right_outer",
+    "inner-join": "join_inner",
+    "full-join": "join_full_outer",
+  };
+
   if (Array.isArray(joins)) {
     cy.findAllByTestId(new RegExp(`^step-join-${stageIndex}-\\d+$`)).should(
       "have.length",
@@ -290,7 +297,7 @@ function verifyNotebookJoins(
       getJoinItems(stageIndex, joinIndex).eq(1).should("have.text", rhsTable);
 
       getNotebookStep("join", { stage: stageIndex, index: joinIndex })
-        .icon(getJoinTypeIcon(type))
+        .icon(joinTypeIcons[type])
         .should("be.visible");
 
       getNotebookStep("join", { stage: stageIndex, index: joinIndex })
@@ -487,24 +494,4 @@ function getSortItems(stageIndex: number) {
   return getNotebookStep("sort", { stage: stageIndex }).findAllByTestId(
     "notebook-cell-item",
   );
-}
-
-function getJoinTypeIcon(type: JoinType): IconName {
-  if (type === "left-join") {
-    return "join_left_outer";
-  }
-
-  if (type === "right-join") {
-    return "join_right_outer";
-  }
-
-  if (type === "inner-join") {
-    return "join_inner";
-  }
-
-  if (type === "full-join") {
-    return "join_full_outer";
-  }
-
-  throw new Error(`Unknown join type: ${type}`);
 }
