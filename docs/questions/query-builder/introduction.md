@@ -20,7 +20,7 @@ From the **+ New** dropdown, select **Question**, then pick your starting data:
 You can start a question from:
 
 - **A model**. A [model](../../data-modeling/models.md) is a special kind of saved question meant to be used as a good starting point for questions. Sometimes these are called derived tables, as they usually pull together data from multiple raw tables.
-- **A metric**. [Metrics](../../data-modeling/metric.md) are pre-defined calculations. If you pick a metric as a starting point for a question, Metabase will create a question with the same data source as the selected metric, and apply the metric. You'll be able to add more joins, filter, and summaries.
+- **A metric**. [Metrics](../../data-modeling/metrics.md) are pre-defined calculations. If you pick a metric as a starting point for a question, Metabase will create a question with the same data source as the selected metric, and apply the metric. You'll be able to add more joins, filter, and summaries.
 - **Tables**. You'll need to specify the database and the table in that database as the starting point for your question.
 - A **saved question**. You can use the results of any question as the starting point for a new question.
 
