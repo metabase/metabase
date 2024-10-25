@@ -3985,3 +3985,65 @@ describe("issue 45670", { tags: ["@external"] }, () => {
     });
   });
 });
+
+describe("issue 48351", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should navigate to the specified tab with click behaviors (metabase#48351)", () => {
+    createDashboardWithTabs({
+      name: "Dashboard 1",
+      tabs: [
+        { id: 1, name: "Tab 1" },
+        { id: 2, name: "Tab 2" },
+      ],
+      dashcards: [
+        createMockDashboardCard({
+          id: -1,
+          card_id: ORDERS_QUESTION_ID,
+          dashboard_tab_id: 1,
+        }),
+        createMockDashboardCard({
+          id: -2,
+          card_id: ORDERS_QUESTION_ID,
+          dashboard_tab_id: 2,
+        }),
+      ],
+    }).then(dashboard1 => {
+      createDashboardWithTabs({
+        name: "Dashboard 2",
+        tabs: [
+          { id: 3, name: "Tab 3" },
+          { id: 4, name: "Tab 4" },
+        ],
+        dashcards: [
+          createMockDashboardCard({
+            id: -1,
+            card_id: ORDERS_QUESTION_ID,
+            dashboard_tab_id: 3,
+          }),
+          createMockDashboardCard({
+            id: -2,
+            card_id: ORDERS_QUESTION_ID,
+            dashboard_tab_id: 4,
+            visualization_settings: {
+              column_settings: {
+                '["name","ID"]': {
+                  click_behavior: {
+                    type: "link",
+                    linkType: "dashboard",
+                    targetId: dashboard1.id,
+                    tabId: dashboard1.tabs[1].id,
+                    parameterMapping: {},
+                  },
+                },
+              },
+            },
+          }),
+        ],
+      }).then(dashboard2 => visitDashboard(dashboard2.id));
+    });
+  });
+});
