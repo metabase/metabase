@@ -102,6 +102,7 @@
         (chart-type display-type "display-type is %s" display-type)
 
         (#{:smartscalar
+           :sankey
            :scalar
            :pie
            :scatter

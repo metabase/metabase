@@ -4,6 +4,7 @@ import {
   LineChart,
   ScatterChart,
   SunburstChart,
+  SankeyChart,
 } from "echarts/charts";
 import {
   BrushComponent,
@@ -35,6 +36,7 @@ export const registerEChartsModules = () => {
     ToolboxComponent,
     BrushComponent,
     DatasetComponent,
+    SankeyChart,
     LabelLayout,
     TooltipComponent,
   ]);

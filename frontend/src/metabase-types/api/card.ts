@@ -239,6 +239,11 @@ export type VisualizationSettings = {
   "pie.slice_threshold"?: number;
   "pie.colors"?: Record<string, string>;
 
+  // Sankey settings
+  "sankey.source"?: string;
+  "sankey.destination"?: string;
+  "sankey.value"?: string;
+
   [key: string]: any;
 } & EmbedVisualizationSettings;
 
