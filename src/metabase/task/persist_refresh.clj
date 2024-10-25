@@ -171,10 +171,7 @@
                           [:= :c.type "question"]
                           [:= :c.archived true]
                           ;; card_id is set to null when the corresponding card is deleted
-                          [:= :p.card_id nil]
-                          ;; if we do have a card ID in persisted_info but the card doesn't exist, delete it as well
-                          ;; (cleaning up any possible orphans)
-                          [:= :c.id nil]]}))
+                          [:= :p.card_id nil]]}))
 
 (defn- refreshable-models
   "Returns refreshable models for a database id. Must still be models and not archived."
