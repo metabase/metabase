@@ -46,7 +46,11 @@ export const DataImporter = () => {
     <Flex
       direction="column"
       bg="white"
-      style={{ borderRadius: "var(--default-border-radius)", height: "100%" }}
+      style={{
+        borderRadius: "var(--default-border-radius)",
+        height: "100%",
+        border: `1px solid var(--mb-color-border)`,
+      }}
     >
       <TextInput
         m={8}
