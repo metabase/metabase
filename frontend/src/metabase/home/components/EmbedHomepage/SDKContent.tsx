@@ -16,7 +16,7 @@ export const SDKContent = ({
 }: SDKContentProps) => (
   <Box>
     <Group spacing="sm" align="center" mb="sm">
-      <Text lh={1.57} fw="bold" size="lg" color="text-medium">
+      <Text fw="bold" size="lg" color="text-medium">
         {t`Embedded analytics SDK`}
       </Text>
       <Badge
@@ -27,7 +27,7 @@ export const SDKContent = ({
         uppercase={false}
       >{t`Beta`}</Badge>
     </Group>
-    <Text lh={1.57} mb="md">
+    <Text mb="md">
       {t`Embed individual components like charts, dashboards, the query builder, and more with React. Get advanced customization with CSS styling and manage granular access and interactivity per component.`}
     </Text>
     <Group spacing="md">
