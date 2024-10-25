@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { Flex, TextInput } from "metabase/ui";
+import { Box, Flex, Icon, TextInput } from "metabase/ui";
 import {
   addCard,
   removeCard,
@@ -52,16 +52,25 @@ export const DataImporter = () => {
         border: `1px solid var(--mb-color-border)`,
       }}
     >
-      <TextInput
-        m={8}
-        variant="filled"
-        value={search}
-        onChange={handleSearchChange}
-        placeholder={t`Search for something`}
-      />
+      <Box
+        style={{
+          borderBottom: `
+        1px solid var(--mb-color-border)`,
+        }}
+      >
+        <TextInput
+          m="xs"
+          variant="filled"
+          value={search}
+          onChange={handleSearchChange}
+          placeholder={t`Search for something`}
+          icon={<Icon name="search" />}
+        />
+      </Box>
       <Flex
         direction="column"
-        px={8}
+        pt="sm"
+        px="sm"
         style={{
           overflowY: "auto",
         }}
