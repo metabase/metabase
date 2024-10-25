@@ -2038,206 +2038,208 @@ describeEE("scenarios > dashboard > dashboard cards > click behavior", () => {
       editDashboard();
       getDashboardCard().realHover().icon("click").click();
 
-      (function addCustomQuestionDestination() {
-        getCreatedAtToQuestionMapping().should("not.exist");
-        cy.get("aside").findByText(CREATED_AT_COLUMN_NAME).click();
-        addSavedQuestionDestination();
+      cy.get("aside").findByText(CREATED_AT_COLUMN_NAME).click();
+      addSavedQuestionDestination();
 
-        verifyAvailableClickTargetColumns([
-          // 1st stage - Orders
-          "ID",
-          "User ID",
-          "Product ID",
-          "Subtotal",
-          "Tax",
-          "Total",
-          "Discount",
-          "Created At",
-          "Quantity",
-          // 1st stage - Custom columns
-          "Net",
-          // 1st stage - Reviews #1 (explicit join)
-          "Reviews - Product → ID",
-          "Reviews - Product → Product ID",
-          "Reviews - Product → Reviewer",
-          "Reviews - Product → Rating",
-          "Reviews - Product → Body",
-          "Reviews - Product → Created At",
-          // 1st stage - Products (implicit join with Orders)
-          "Product → ID",
-          "Product → Ean",
-          "Product → Title",
-          "Product → Category",
-          "Product → Vendor",
-          "Product → Price",
-          "Product → Rating",
-          "Product → Created At",
-          // 1st stage - People (implicit join with Orders)
-          "User → ID",
-          "User → Address",
-          "User → Email",
-          "User → Password",
-          "User → Name",
-          "User → City",
-          "User → Longitude",
-          "User → State",
-          "User → Source",
-          "User → Birth Date",
-          "User → Zip",
-          "User → Latitude",
-          "User → Created At",
-          // 1st stage - Products (implicit join with Reviews)
-          "Product → ID",
-          "Product → Ean",
-          "Product → Title",
-          "Product → Category",
-          "Product → Vendor",
-          "Product → Price",
-          "Product → Rating",
-          "Product → Created At",
-          // 1st stage - Aggregations & breakouts
-          "Created At: Month",
-          "Category",
-          "Created At: Year",
-          "Count",
-          "Sum of Total",
-          // 2nd stage - Custom columns
-          "5 * Count",
-          // 2nd stage - Reviews #2 (explicit join)
-          "Reviews - Created At: Month → ID",
-          "Reviews - Created At: Month → Product ID",
-          "Reviews - Created At: Month → Reviewer",
-          "Reviews - Created At: Month → Rating",
-          "Reviews - Created At: Month → Body",
-          "Reviews - Created At: Month → Created At",
-          // 2nd stage - Aggregations & breakouts
-          "Category",
-          "Created At",
-          "Count",
-          "Sum of Rating",
-        ]);
-
+      verifyAvailableClickTargetColumns([
         // 1st stage - Orders
-        getClickMapping("ID").click();
-        popover().findByText("ID").click();
+        "ID",
+        "User ID",
+        "Product ID",
+        "Subtotal",
+        "Tax",
+        "Total",
+        "Discount",
+        "Created At",
+        "Quantity",
         // 1st stage - Custom columns
-        getClickMapping("Net").click();
-        popover().findByText("User → Longitude").click();
+        "Net",
         // 1st stage - Reviews #1 (explicit join)
-        getClickMapping("Reviews - Product → Reviewer").click();
-        popover().findByText("Product → Category").click();
+        "Reviews - Product → ID",
+        "Reviews - Product → Product ID",
+        "Reviews - Product → Reviewer",
+        "Reviews - Product → Rating",
+        "Reviews - Product → Body",
+        "Reviews - Product → Created At",
         // 1st stage - Products (implicit join with Orders)
-        getClickMapping("Product → Title").first().click();
-        popover().findByText("Product → Category").click();
+        "Product → ID",
+        "Product → Ean",
+        "Product → Title",
+        "Product → Category",
+        "Product → Vendor",
+        "Product → Price",
+        "Product → Rating",
+        "Product → Created At",
         // 1st stage - People (implicit join with Orders)
-        getClickMapping("User → Longitude").click();
-        popover().findByText("User → Longitude").click();
+        "User → ID",
+        "User → Address",
+        "User → Email",
+        "User → Password",
+        "User → Name",
+        "User → City",
+        "User → Longitude",
+        "User → State",
+        "User → Source",
+        "User → Birth Date",
+        "User → Zip",
+        "User → Latitude",
+        "User → Created At",
         // 1st stage - Products (implicit join with Reviews)
-        getClickMapping("Product → Vendor").last().click();
-        popover().findByText("Product → Category").click();
+        "Product → ID",
+        "Product → Ean",
+        "Product → Title",
+        "Product → Category",
+        "Product → Vendor",
+        "Product → Price",
+        "Product → Rating",
+        "Product → Created At",
         // 1st stage - Aggregations & breakouts
-        getClickMapping("Category").first().click();
-        popover().findByText("Product → Category").click();
+        "Created At: Month",
+        "Category",
+        "Created At: Year",
+        "Count",
+        "Sum of Total",
         // 2nd stage - Custom columns
-        getClickMapping("5 * Count").click();
-        popover().findByText("Count").click();
+        "5 * Count",
         // 2nd stage - Reviews #2 (explicit join)
-        getClickMapping("Reviews - Created At: Month → Rating").click();
-        popover().findByText("ID").click();
+        "Reviews - Created At: Month → ID",
+        "Reviews - Created At: Month → Product ID",
+        "Reviews - Created At: Month → Reviewer",
+        "Reviews - Created At: Month → Rating",
+        "Reviews - Created At: Month → Body",
+        "Reviews - Created At: Month → Created At",
         // 2nd stage - Aggregations & breakouts
-        getClickMapping("Count").last().click();
-        popover().findByText("User → Longitude").click();
+        "Category",
+        "Created At",
+        "Count",
+        "Sum of Rating",
+      ]);
 
-        customizeLinkText(
-          `Created at: {{${CREATED_AT_COLUMN_ID}}} - {{count}}`,
-        );
-      })();
+      // 1st stage - Orders
+      getClickMapping("ID").click();
+      popover().findByText("ID").click();
+
+      // 1st stage - Custom columns
+      getClickMapping("Net").click();
+      popover().findByText("User → Longitude").click();
+
+      // 1st stage - Reviews #1 (explicit join)
+      getClickMapping("Reviews - Product → Reviewer").click();
+      popover().findByText("Product → Category").click();
+
+      // 1st stage - Products (implicit join with Orders)
+      getClickMapping("Product → Title").first().click();
+      popover().findByText("Product → Category").click();
+
+      // 1st stage - People (implicit join with Orders)
+      getClickMapping("User → Longitude").click();
+      popover().findByText("User → Longitude").click();
+
+      // 1st stage - Products (implicit join with Reviews)
+      getClickMapping("Product → Vendor").last().click();
+      popover().findByText("Product → Category").click();
+
+      // 1st stage - Aggregations & breakouts
+      getClickMapping("Category").first().click();
+      popover().findByText("Product → Category").click();
+
+      // 2nd stage - Custom columns
+      getClickMapping("5 * Count").click();
+      popover().findByText("Count").click();
+
+      // 2nd stage - Reviews #2 (explicit join)
+      getClickMapping("Reviews - Created At: Month → Rating").click();
+      popover().findByText("ID").click();
+
+      // 2nd stage - Aggregations & breakouts
+      getClickMapping("Count").last().click();
+      popover().findByText("User → Longitude").click();
+
+      customizeLinkText(`Created at: {{${CREATED_AT_COLUMN_ID}}} - {{count}}`);
 
       cy.get("aside").button("Done").click();
       saveDashboard({ waitMs: 250 });
 
-      (function testQuestionDestinationClick() {
-        getDashboardCard()
-          .findAllByText("Created at: May 2022 - 1")
-          .first()
-          .click();
+      getDashboardCard()
+        .findAllByText("Created at: May 2022 - 1")
+        .first()
+        .click();
 
-        cy.wait("@dataset");
+      cy.wait("@dataset");
 
-        cy.location("pathname").should("equal", "/question");
-        cy.findByTestId("app-bar").should(
-          "contain.text",
-          `Started from ${targetQuestion.name}`,
-        );
+      cy.location("pathname").should("equal", "/question");
+      cy.findByTestId("app-bar").should(
+        "contain.text",
+        `Started from ${targetQuestion.name}`,
+      );
 
-        openNotebook();
-        verifyNotebookQuery("Orders", [
-          {
-            joins: [
-              {
-                lhsTable: "Orders",
-                rhsTable: "Reviews",
-                type: "left-join",
-                conditions: [
-                  {
-                    operator: "=",
-                    lhsColumn: "Product ID",
-                    rhsColumn: "Product ID",
-                  },
-                ],
-              },
-            ],
-            expressions: ["Net"],
-            filters: [
-              "Product → Title is Doohickey",
-              "Product → Vendor is Doohickey",
-              "ID is 7021",
-              "Net is equal to -80",
-              "Reviews - Product → Reviewer is Doohickey",
-              "User → Longitude is equal to -80",
-            ],
-            aggregations: ["Count", "Sum of Total"],
-            breakouts: [
-              "Created At: Month",
-              "Product → Category",
-              "User → Created At: Year",
-            ],
-          },
-          {
-            joins: [
-              {
-                lhsTable: "Previous results",
-                rhsTable: "Reviews",
-                type: "left-join",
-                conditions: [
-                  {
-                    operator: "=",
-                    lhsColumn: "Created At: Month",
-                    rhsColumn: "Created At: Month",
-                  },
-                ],
-              },
-            ],
-            expressions: ["5 * Count"],
-            filters: [
-              "5 * Count is equal to 1",
-              "Reviews - Created At: Month → Rating is equal to 7021",
-              "Product → Category is Doohickey",
-            ],
-            aggregations: [
-              "Count",
-              "Sum of Reviews - Created At: Month → Rating",
-            ],
-            breakouts: [
-              "Product → Category",
-              "Reviews - Created At: Month → Created At",
-            ],
-          },
-          {
-            filters: ["Count is equal to -80"],
-          },
-        ]);
-      })();
+      openNotebook();
+      verifyNotebookQuery("Orders", [
+        {
+          joins: [
+            {
+              lhsTable: "Orders",
+              rhsTable: "Reviews",
+              type: "left-join",
+              conditions: [
+                {
+                  operator: "=",
+                  lhsColumn: "Product ID",
+                  rhsColumn: "Product ID",
+                },
+              ],
+            },
+          ],
+          expressions: ["Net"],
+          filters: [
+            "Product → Title is Doohickey",
+            "Product → Vendor is Doohickey",
+            "ID is 7021",
+            "Net is equal to -80",
+            "Reviews - Product → Reviewer is Doohickey",
+            "User → Longitude is equal to -80",
+          ],
+          aggregations: ["Count", "Sum of Total"],
+          breakouts: [
+            "Created At: Month",
+            "Product → Category",
+            "User → Created At: Year",
+          ],
+        },
+        {
+          joins: [
+            {
+              lhsTable: "Previous results",
+              rhsTable: "Reviews",
+              type: "left-join",
+              conditions: [
+                {
+                  operator: "=",
+                  lhsColumn: "Created At: Month",
+                  rhsColumn: "Created At: Month",
+                },
+              ],
+            },
+          ],
+          expressions: ["5 * Count"],
+          filters: [
+            "5 * Count is equal to 1",
+            "Reviews - Created At: Month → Rating is equal to 7021",
+            "Product → Category is Doohickey",
+          ],
+          aggregations: [
+            "Count",
+            "Sum of Reviews - Created At: Month → Rating",
+          ],
+          breakouts: [
+            "Product → Category",
+            "Reviews - Created At: Month → Created At",
+          ],
+        },
+        {
+          filters: ["Count is equal to -80"],
+        },
+      ]);
     });
   });
 
