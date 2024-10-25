@@ -1,4 +1,4 @@
-import { render, waitFor } from "@testing-library/react";
+import { render } from "@testing-library/react";
 import fetchMock from "fetch-mock";
 
 import {
@@ -7,6 +7,7 @@ import {
   setupCurrentUserEndpoint,
   setupPropertiesEndpoints,
 } from "__support__/server-mocks";
+import { waitForRequest } from "__support__/utils";
 import {
   MetabaseProvider,
   StaticQuestion,
@@ -80,18 +81,18 @@ describe("SDK auth flow", () => {
 
       setup(sdkConfig);
 
-      await waitFor(() => expect(getLastAuthProviderApiCall()).toBeTruthy());
+      await waitForRequest(() => getLastAuthProviderApiCall());
       expect(getLastAuthProviderApiCall()![1]).toMatchObject({
         credentials: "include",
         method: "GET",
       });
 
-      await waitFor(() => expect(getLastUserApiCall()).toBeTruthy());
+      await waitForRequest(() => getLastUserApiCall());
       expect(getLastUserApiCall()![1]).toMatchObject({
         headers: { "X-Metabase-Session": [MOCK_SESSION.id] },
       });
 
-      await waitFor(() => expect(getLastCardQueryApiCall()).toBeTruthy());
+      await waitForRequest(() => getLastCardQueryApiCall());
       expect(getLastCardQueryApiCall()![1]).toMatchObject({
         headers: { "X-Metabase-Session": [MOCK_SESSION.id] },
       });
@@ -113,14 +114,14 @@ describe("SDK auth flow", () => {
 
       expect(customFetchFunction).toHaveBeenCalledWith(AUTH_PROVIDER_URL);
 
-      await waitFor(() => expect(getLastUserApiCall()).toBeTruthy());
+      await waitForRequest(() => getLastUserApiCall());
       expect(getLastUserApiCall()![1]).toMatchObject({
         headers: {
           "X-Metabase-Session": ["mock-id-from-custom-fetch-function"],
         },
       });
 
-      await waitFor(() => expect(getLastCardQueryApiCall()).toBeTruthy());
+      await waitForRequest(() => getLastCardQueryApiCall());
       expect(getLastCardQueryApiCall()![1]).toMatchObject({
         headers: {
           "X-Metabase-Session": ["mock-id-from-custom-fetch-function"],
@@ -138,8 +139,18 @@ describe("SDK auth flow", () => {
 
       setup(sdkConfig);
 
-      await waitFor(() => expect(getLastUserApiCall()).toBeTruthy());
+      await waitForRequest(() => getLastUserApiCall());
       expect(getLastUserApiCall()![1]).toMatchObject({
+        headers: { "X-Api-Key": [MOCK_API_KEY] },
+      });
+
+      await waitForRequest(() => getLastCardQueryApiCall());
+      expect(getLastCardQueryApiCall()![1]).toMatchObject({
+        headers: { "X-Api-Key": [MOCK_API_KEY] },
+      });
+
+      await waitForRequest(() => getLastCardQueryApiCall());
+      expect(getLastCardQueryApiCall()![1]).toMatchObject({
         headers: { "X-Api-Key": [MOCK_API_KEY] },
       });
     });
