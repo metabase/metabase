@@ -83,11 +83,7 @@ See the PostgreSQL docs for a table about the different [SSL Modes](https://jdbc
 
 If you set the SSL Mode to either "verify-ca" or "verify-full", you'll need to specify a root certificate (PEM). You have the option of using a **Local file path** or an **Uploaded file path**. If you're on Metabase Cloud, you'll need to select **Uploaded file path** and upload your certificate.
 
-### Use an SSH tunnel
-
-See our [guide to SSH tunneling](../ssh-tunnel.md).
-
-### Authenticate client certificate
+#### Authenticate client certificate
 
 Toggle on to bring up client certificate options.
 
@@ -108,6 +104,12 @@ openssl pkcs8 -topk8 -inform PEM -outform DER -in client-key.pem -out client-key
 ```
 
 Note: if you're using GCP and you managed to issue client certificates, everything will be given in PEM format, you only need to transform the client-key.pem into a client-key.der for the "SSL Client Key"
+
+### Use an SSH tunnel
+
+See our [guide to SSH tunneling](../ssh-tunnel.md).
+
+## Advanced settings
 
 ### Unfold JSON Columns
 
