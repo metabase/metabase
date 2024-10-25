@@ -2186,6 +2186,13 @@ describe("parameter mappings without target stage index", () => {
             type: "string/=",
             sectionId: "string",
           },
+          {
+            name: "Number",
+            slug: "number",
+            id: "f5944ad9",
+            type: "number/=",
+            sectionId: "number",
+          },
         ],
       },
     }).then(({ body: { card_id, dashboard_id } }) => {
@@ -2244,6 +2251,43 @@ describe("parameter mappings without target stage index", () => {
         filters: ["Category is Gadget"],
         aggregations: ["Count"],
         breakouts: ["Category"],
+      },
+    ]);
+
+    cy.findByLabelText("Back to Test Dashboard").click();
+
+    cy.log("connect parameter with 'stage-number' attribute present");
+    editDashboard();
+
+    getFilter("Number").click();
+    getDashboardCard(0).findByText("Select…").click();
+    popover().within(() => {
+      getPopoverItem("Count").click();
+    });
+    saveDashboard();
+
+    filterWidget().eq(1).click();
+    popover().within(() => {
+      cy.findByPlaceholderText("Enter a number").type("1");
+      cy.button("Add filter").click();
+    });
+
+    getDashboardCard().within(() => {
+      cy.findByText("No results!").should("be.visible");
+      cy.findByTestId("legend-caption-title").click();
+    });
+
+    cy.wait("@dataset");
+
+    openNotebook();
+    verifyNotebookQuery("Products", [
+      {
+        filters: ["Category is Gadget"],
+        aggregations: ["Count"],
+        breakouts: ["Category"],
+      },
+      {
+        filters: ["Count is equal to 1"],
       },
     ]);
   });
