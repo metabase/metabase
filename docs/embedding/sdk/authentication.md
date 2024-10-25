@@ -32,7 +32,7 @@ if (auth.status === "success") {
 
 You can customize how the SDK fetches the refresh token by specifying the `fetchRefreshToken` function in the `config` prop:
 
-```typescript jsx
+```typescript
 /**
  * This is the default implementation used in the SDK.
  * You can customize this function to fit your needs, such as adding headers or excluding cookies.
@@ -59,7 +59,7 @@ const config = { fetchRequestToken };
 
 In case you need to reload a Metabase component, for example, your users modify your application data and that data is used to render a question in Metabase. If you embed this question and want to force Metabase to reload the question to show the latest data, you can do so by using the `key` prop to force a component to reload.
 
-```typescript jsx
+```typescript
 // Inside your application component
 const [data, setData] = useState({});
 // This is used to force reloading Metabase components
