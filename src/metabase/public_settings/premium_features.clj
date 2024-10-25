@@ -315,10 +315,14 @@
                                          {:message (.getMessage e), :status-code 400}
                                          (ex-data e)))))))) ; merge in error-details if present
 
-(defn is-airgapped?
+(defsetting airgap-enabled
   "Returns true if the current instance is airgapped."
-  []
-  (mc/validate AirgapToken (premium-embedding-token)))
+  :type       :boolean
+  :visibility :public
+  :setter     :none
+  :audit      :never
+  :export?    false
+  :getter     (fn [] (mc/validate AirgapToken (premium-embedding-token))))
 
 (let [cached-logger (memoize/ttl
                      ^{::memoize/args-fn (fn [[token _e]] [token])}
@@ -362,7 +366,7 @@
   [feature-name]
   (ex-info (tru "{0} is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
                 feature-name)
-           {:status-code 402}))
+           {:status-code 402 :status "error-premium-feature-not-available"}))
 
 (mu/defn assert-has-feature
   "Check if an token with `feature` is present. If not, throw an error with a message using `feature-name`.

@@ -399,7 +399,8 @@
   [query stage-number table]
   (merge (default-display-info query stage-number table)
          {:is-source-table (= (lib.util/source-table-id query) (:id table))
-          :schema (:schema table)}))
+          :schema (:schema table)
+          :visibility-type (:visibility-type table)}))
 
 (def ColumnMetadataWithSource
   "Schema for the column metadata that should be returned by [[metadata]]."

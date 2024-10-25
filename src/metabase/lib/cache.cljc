@@ -62,6 +62,13 @@
                                 (not (contains? mmeta :lib/__cache))
                                 (assoc :lib/__cache (Collections/synchronizedMap (WeakHashMap.))))))))
 
+(defn discard-query-cache
+  "Removes the cache from the given query. Does nothing if no cache is present."
+  [query]
+  #?(:cljs query
+     :clj  (when query
+             (vary-meta query dissoc :lib/__cache))))
+
 (defn- side-channel-cache*
   "(CLJS only; this is a pass-through in CLJ.)
 

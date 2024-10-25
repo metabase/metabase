@@ -51,9 +51,9 @@
   (:tables (refs sql)))
 
 (defn- basic-table-refs [sql]
-  (->> (mt/native-query {:query sql})
-       (nqa/tables-for-native)
-       (sort-by (juxt :schema :table))))
+  (let [result (nqa/tables-for-native (mt/native-query {:query sql}))]
+    (or (:error result)
+        (sort-by (juxt :schema :table) (:tables result)))))
 
 (defn- table-reference [table]
   (let [reference (nqa/table-reference (mt/id) table)]
