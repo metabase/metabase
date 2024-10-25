@@ -152,7 +152,7 @@
 (defn- deletable-models
   "Returns persisted info records that can be unpersisted. Will select records that have moved into a deletable state
   after a sufficient delay to ensure no queries are running against them and to allow changing mind. Also selects
-  persisted info records pointing to cards that are no longer models, archived cards/models, and records where the corresponding
+  persisted info records pointing to cards that are no longer models, archived cards/models, and all records where the corresponding
   card or database has been permanently deleted."
   []
   (t2/select :model/PersistedInfo
