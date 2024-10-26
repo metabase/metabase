@@ -57,6 +57,7 @@
    [dev.explain :as dev.explain]
    [dev.migrate :as dev.migrate]
    [dev.model-tracking :as model-tracking]
+   [dev.render-png :as render-png]
    [hashp.core :as hashp]
    [honey.sql :as sql]
    [java-time.api :as t]
@@ -108,6 +109,10 @@
   migrate!
   rollback!
   migration-sql-by-id]
+ [render-png
+  open-html
+  open-png-bytes
+  open-hiccup-as-html]
  [model-tracking
   track!
   untrack!

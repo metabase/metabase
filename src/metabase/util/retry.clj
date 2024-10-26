@@ -12,7 +12,7 @@
 (defsetting retry-max-attempts
   (deferred-tru "The maximum number of attempts for an event.")
   :type :integer
-  :default 7)
+  :default 1)
 
 (defsetting retry-initial-interval
   (deferred-tru "The initial retry delay in milliseconds.")

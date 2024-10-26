@@ -73,14 +73,16 @@
      [:map
       [:payload [:map
                  ;; TODO: type this out
-                 [:result [:sequential [:map]]]
-                 [:dashboard :map]]]]]
+                 [:result                 [:sequential [:map]]]
+                 [:dashboard              :map]
+                 [:dashboard_subscription :map]]]]]
     [:notification/testing       :map]]])
 
 (defn- default-context
   []
   ;; DO NOT delete or rename these fields, they are used in the notification templates
   {:application_name     (public-settings/application-name)
+   :application_color    (public-settings/application-color)
    :application_logo_url (messages/logo-url)
    :site_name            (public-settings/site-name)
    :site_url             (public-settings/site-url)

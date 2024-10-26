@@ -1,5 +1,7 @@
 (ns metabase.channel.impl.email
   (:require
+   [buddy.core.codecs :as codecs]
+   [cheshire.core :as json]
    [hiccup.core :refer [html]]
    [metabase.channel.core :as channel]
    [metabase.channel.params :as channel.params]
@@ -9,12 +11,16 @@
    [metabase.email.result-attachment :as email.result-attachment]
    [metabase.models.channel :as models.channel]
    [metabase.models.notification :as models.notification]
+   [metabase.public-settings :as public-settings]
    [metabase.pulse.core :as pulse]
    [metabase.util :as u]
+   [metabase.util.encryption :as encryption]
    [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.util.markdown :as markdown]
+   [metabase.util.urls :as urls]
    [stencil.core :as stencil]))
 
 (def ^:private EmailMessage
@@ -174,41 +180,73 @@
 (defn- part-attachments [parts]
   (filter some? (mapcat email.result-attachment/result-attachment parts)))
 
+;; shared between alert and dash sub
+(defn generate-dashboard-sub-unsubscribe-hash
+  "Generates hash to allow for non-users to unsubscribe from pulses/subscriptions."
+  [pulse-id email]
+  (codecs/bytes->hex
+   (encryption/validate-and-hash-secret-key
+    (json/generate-string {:salt     (public-settings/site-uuid-for-unsubscribing-url)
+                           :email    email
+                           :pulse-id pulse-id}))))
+
+(defn- render-body
+  [{:keys [details] :as _template} payload]
+  (case (keyword (:type details))
+    :email/mustache-resource
+    (stencil/render-file (:path details) payload)
+    :email/mustache-text
+    (stencil/render-string (:body details) payload)
+    (do
+     (log/warnf "Unknown email template type: %s" (:type details))
+     nil)))
+
 (defn- render-message-body
-  [notification-payload result dashboard dashboard-subscription]
-  (let [timezone        (some->> result (some :card) channel.shared/defaulted-timezone)
+  [template {:keys [payload dashboard dashboard_subscription] :as notification-payload} non-user-email]
+  (let [result          (:result payload)
+        timezone        (some->> result (some :card) channel.shared/defaulted-timezone)
         rendered-cards  (mapv #(render-part timezone % {:pulse/include-title? true}) result)
         icon-attachment (first (map make-message-attachment (icon-bundle :dashboard)))
         filters         (when dashboard
-                          (render-filters (:parameters dashboard-subscription) (:parameters dashboard)))
+                          (render-filters (:parameters dashboard_subscription) (:parameters dashboard)))
         message-body    (assoc notification-payload
-                               :computed {:pulse (html (vec (cons :div (map :content rendered-cards))))
-                                          :filters filters
-                                          :iconCid (:content-id icon-attachment)})
+                               :computed {:dashboard_content   (html (vec (cons :div (map :content rendered-cards))))
+                                          :icon_cid            (:content-id icon-attachment)
+                                          :dashboard_url       (pulse/dashboard-url (:id dashboard)
+                                                                                    (pulse/parameters (:parameters dashboard_subscription) (:parameters dashboard)))
+                                          :dashboard_has_tabs  (some-> dashboard :tabs seq)
+                                          :management_text     (if (nil? non-user-email)
+                                                                 "Manage your subscriptions"
+                                                                 "Unsubscribe")
+                                          :management_url      (if (nil? non-user-email)
+                                                                 (urls/notification-management-url)
+                                                                 (str (urls/unsubscribe-url)
+                                                                      "?hash=" (generate-dashboard-sub-unsubscribe-hash (:id dashboard_subscription) non-user-email)
+                                                                      "&email=" non-user-email
+                                                                      "&pulse-id=" (:id dashboard_subscription)))
+                                          :filters            filters})
         attachments     (apply merge (map :attachments rendered-cards))]
     (vec (concat [{:type "text/html; charset=utf-8" :content
-                   (stencil/render-file "metabase/email/pulse" message-body)}]
+                   (render-body template message-body)}]
                  (map make-message-attachment attachments)
                  [icon-attachment]
                  (part-attachments result)))))
 
 (mu/defmethod channel/render-notification [:channel/email :notification/dashboard-subscription] :- [:sequential EmailMessage]
-  [_channel-type notification-payload _template recipients]
-  (let [{:keys [dashboard result pulse]} (:payload notification-payload)
-        {:keys [user-emails
+  [_channel-type notification-payload template recipients]
+  (let [{:keys [user-emails
                 non-user-emails]}  (recipients->emails recipients)
-        timezone                   (some->> result (some :card) channel.shared/defaulted-timezone)
-        email-subject              (:name dashboard)
+        email-subject              (channel.params/substitute-params (-> template :details :subject) notification-payload)
         email-to-users             (when (seq user-emails)
                                      (construct-email
                                       email-subject
                                       user-emails
-                                      (messages/render-pulse-email timezone pulse dashboard result nil)))
+                                      (render-message-body template notification-payload nil)))
         email-to-nonusers          (for [non-user-email non-user-emails]
                                      (construct-email
                                       email-subject
                                       [non-user-email]
-                                      (messages/render-pulse-email timezone pulse dashboard result non-user-email)))]
+                                      (render-message-body template notification-payload non-user-email)))]
     (filter some? (conj email-to-nonusers email-to-users))))
 
 ;; ------------------------------------------------------------------------------------------------;;
@@ -232,15 +270,6 @@
                      :let  [emails (filter some? emails)]
                      :when (seq emails)]
                  emails)))
-
-(defn- render-body
-  [{:keys [details] :as _template} payload]
-  (case (keyword (:type details))
-    :email/mustache-resource
-    (stencil/render-file (:path details) payload)
-    :email/mustache-text
-    (stencil/render-string (:body details) payload)
-    nil))
 
 (mu/defmethod channel/render-notification
   [:channel/email :notification/system-event]

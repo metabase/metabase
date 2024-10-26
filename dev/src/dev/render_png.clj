@@ -6,7 +6,7 @@
    [clojure.java.io :as io]
    [dev.util :as dev.u]
    [hiccup.core :as hiccup]
-   [metabase.email.messages :as messages]
+   [metabase.email.result-attachment :as email.result-attachment]
    [metabase.models :refer [Card]]
    [metabase.models.card :as card]
    [metabase.pulse.render :as render]
@@ -116,7 +116,7 @@
         (for [cell row]
           [:td {:style table-style} cell])])]))
 
-(def ^:private result-attachment #'messages/result-attachment)
+(def ^:private result-attachment #'email.result-attachment/result-attachment)
 
 (defn- render-csv-for-dashcard
   [part]
