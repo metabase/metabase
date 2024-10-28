@@ -22,6 +22,7 @@ import type {
   VisualizerDataSource,
   VisualizerDataSourceId,
   VisualizerState,
+  VizDataSourceMapping,
 } from "metabase-types/store/visualizer";
 
 import { createDataSource } from "./utils";
@@ -114,6 +115,12 @@ const visualizerSlice = createSlice({
     setDraggedItem: (state, action: PayloadAction<DraggedItem | null>) => {
       state.draggedItem = action.payload;
     },
+    addDataSourceVizMapping: (
+      state,
+      action: PayloadAction<VizDataSourceMapping>,
+    ) => {
+      state.mappings.push(action.payload);
+    },
   },
   extraReducers: builder => {
     builder
@@ -165,6 +172,7 @@ const visualizerSlice = createSlice({
 });
 
 export const {
+  addDataSourceVizMapping,
   setDisplay,
   updateSettings,
   removeDataSource,

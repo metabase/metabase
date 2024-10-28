@@ -14,6 +14,7 @@ import {
   isValidDraggedItem,
 } from "metabase/visualizer/dnd/guards";
 import {
+  addDataSourceVizMapping,
   getDraggedItem,
   getVisualizationType,
   setDisplay,
@@ -63,6 +64,22 @@ export const VisualizerPage = () => {
         isDraggedColumnItem(active)
       ) {
         dispatch(updateSettings({ "funnel.dimension": active.id }));
+      }
+
+      if (
+        over?.id === DROPPABLE_ID.CANVAS_MAIN &&
+        isDraggedColumnItem(active)
+      ) {
+        const { column, dataSource } = active.data.current;
+        dispatch(
+          addDataSourceVizMapping({
+            source: dataSource.type,
+            sourceId: dataSource.id,
+            settings: {
+              "funnel.metric": column.name,
+            },
+          }),
+        );
       }
 
       dispatch(setDraggedItem(null));

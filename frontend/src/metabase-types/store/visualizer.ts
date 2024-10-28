@@ -31,6 +31,7 @@ type BaseDraggedItem<T> = {
 export type DraggedColumn = BaseDraggedItem<{
   type: "COLUMN";
   column: DatasetColumn;
+  dataSource: VisualizerDataSource;
 }>;
 
 export type DraggedItem = DraggedColumn;

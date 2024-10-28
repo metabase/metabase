@@ -11,6 +11,7 @@ import {
   removeDataSource,
   toggleDataSourceExpanded,
 } from "metabase/visualizer/visualizer.slice";
+import type { VisualizerDataSource } from "metabase-types/store/visualizer";
 
 import { ColumnListItem, type ColumnListItemProps } from "./ColumnListItem";
 import S from "./DatasetList.module.css";
@@ -62,7 +63,14 @@ export const DatasetList = () => {
             {isExpanded && dataset && dataset.data.cols && (
               <Box ml={12} mt={2}>
                 {dataset.data.cols.map(column => (
-                  <DraggableColumnListItem key={column.name} column={column} />
+                  <DraggableColumnListItem
+                    key={column.name}
+                    column={column}
+                    dataSource={{
+                      id: card.id,
+                      type: "card",
+                    }}
+                  />
                 ))}
               </Box>
             )}
@@ -73,12 +81,21 @@ export const DatasetList = () => {
   );
 };
 
-function DraggableColumnListItem({ column, ...props }: ColumnListItemProps) {
+type DraggableColumnListItemProps = ColumnListItemProps & {
+  dataSource: VisualizerDataSource;
+};
+
+function DraggableColumnListItem({
+  column,
+  dataSource,
+  ...props
+}: DraggableColumnListItemProps) {
   const { attributes, listeners, isDragging, setNodeRef } = useDraggable({
     id: column.name,
     data: {
       type: DRAGGABLE_ID.COLUMN,
       column,
+      dataSource,
     },
   });
 
