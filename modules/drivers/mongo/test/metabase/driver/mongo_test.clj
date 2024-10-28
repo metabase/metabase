@@ -865,7 +865,17 @@
         (mt/with-temp [:model/Card card {:display       :table
                                          :dataset_query {:database (mt/id)
                                                          :type     :query
-                                                         :query   {:source-table (mt/id :coll)}}}]
-          (let [results (downloads-test/all-downloads card {:export-format :csv :format-rows true})]
-            (is (= []
+                                                         :query    {:source-table (mt/id :coll)}}}]
+          (let [results (downloads-test/card-download card {:export-format :csv :format-rows true})]
+            (is (= [["ID" "A" "B" "C"]
+                    ["1"
+                     "a string"
+                     "{\"b_c\":\"a string\",\"b_d\":42,\"b_e\":{\"b_e_f\":\"a string\"}}"
+                     ""]
+                    ["2"
+                     "a string"
+                     "{\"b_d\":null,\"b_e\":null,\"b_c\":null}"
+                     ""]
+                    ["3" "a string" "{\"b_e\":{}}" ""]
+                    ["4" "a string" "null" ""]]
                    results))))))))
