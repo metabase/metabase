@@ -541,7 +541,7 @@ export const tabsReducer = createReducer<DashboardState>(
       prevDashcardIds.forEach((prevId, index) => {
         const prevDashcardData = state.dashcardData[prevId];
 
-        if (prevDashcardData) {
+        if (prevDashcardData && newDashcards[index]?.id) {
           state.dashcardData[newDashcards[index].id] = prevDashcardData;
         }
       });
