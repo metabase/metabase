@@ -234,6 +234,14 @@ export function goToTab(tabName: string) {
   cy.findByRole("tab", { name: tabName }).click();
 }
 
+export function assertTabSelected(tabName: string) {
+  cy.findByRole("tab", { name: tabName }).should(
+    "have.attr",
+    "aria-selected",
+    "true",
+  );
+}
+
 export function moveDashCardToTab({
   dashcardIndex = 0,
   tabName,
