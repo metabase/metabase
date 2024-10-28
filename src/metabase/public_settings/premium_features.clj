@@ -315,10 +315,14 @@
                                          {:message (.getMessage e), :status-code 400}
                                          (ex-data e)))))))) ; merge in error-details if present
 
-(defn is-airgapped?
+(defsetting airgap-enabled
   "Returns true if the current instance is airgapped."
-  []
-  (mc/validate AirgapToken (premium-embedding-token)))
+  :type       :boolean
+  :visibility :public
+  :setter     :none
+  :audit      :never
+  :export?    false
+  :getter     (fn [] (mc/validate AirgapToken (premium-embedding-token))))
 
 (let [cached-logger (memoize/ttl
                      ^{::memoize/args-fn (fn [[token _e]] [token])}

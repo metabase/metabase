@@ -12,7 +12,6 @@ export const HeaderWithDismiss = ({ onDismiss }: HeaderWithDismissProps) => {
   return (
     <Group position="apart">
       <Text
-        lh={1.57}
         fw="bold"
         // eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins.
       >{t`Get started with Embedding Metabase in your app`}</Text>
