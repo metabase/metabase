@@ -1,6 +1,7 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   type StructuredQuestionDetails,
+  assertQueryBuilderRowCount,
   assertTableData,
   createQuestion,
   enterCustomColumnDetails,
@@ -8,12 +9,15 @@ import {
   openNotebook,
   popover,
   restore,
+  tableHeaderClick,
   visualize,
 } from "e2e/support/helpers";
 
 const { ORDERS_ID, ORDERS, PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
 describe("scenarios > custom column > boolean functions", () => {
+  const expressionName = "Boolean column";
+
   beforeEach(() => {
     restore();
     cy.signInAsNormalUser();
@@ -30,8 +34,6 @@ describe("scenarios > custom column > boolean functions", () => {
       modifiedExpression: string;
       modifiedExpressionRows: string[][];
     };
-
-    const expressionName = "Expression";
 
     const stringQuestionDetails: StructuredQuestionDetails = {
       query: {
@@ -183,5 +185,102 @@ describe("scenarios > custom column > boolean functions", () => {
         });
       },
     );
+  });
+
+  describe("same stage", () => {
+    const questionDetails: StructuredQuestionDetails = {
+      query: {
+        "source-table": PRODUCTS_ID,
+        expressions: {
+          [expressionName]: [
+            "starts-with",
+            ["field", PRODUCTS.CATEGORY, null],
+            "Gi",
+          ],
+        },
+      },
+    };
+
+    it("should be able to add a same-stage filter", () => {
+      createQuestion(questionDetails, { visitQuestion: true });
+      assertQueryBuilderRowCount(200);
+      tableHeaderClick(expressionName);
+      popover().within(() => {
+        cy.findByText("Filter by this column").click();
+        cy.findByLabelText("True").click();
+        cy.findByText("Add filter").click();
+      });
+      assertQueryBuilderRowCount(51);
+    });
+  });
+
+  describe("previous stage", () => {
+    const questionDetails: StructuredQuestionDetails = {
+      query: {
+        "source-table": PRODUCTS_ID,
+        expressions: {
+          [expressionName]: [
+            "starts-with",
+            ["field", PRODUCTS.CATEGORY, null],
+            "Gi",
+          ],
+        },
+        aggregation: [["count"]],
+        breakout: [["expression", expressionName]],
+      },
+    };
+
+    it("should be able to add a post-aggregation filter", () => {
+      createQuestion(questionDetails, { visitQuestion: true });
+      assertQueryBuilderRowCount(2);
+      tableHeaderClick(expressionName);
+      popover().within(() => {
+        cy.findByText("Filter by this column").click();
+        cy.findByLabelText("True").click();
+        cy.findByText("Add filter").click();
+      });
+      assertQueryBuilderRowCount(1);
+    });
+  });
+
+  describe("source card", () => {
+    const questionDetails: StructuredQuestionDetails = {
+      query: {
+        "source-table": PRODUCTS_ID,
+        expressions: {
+          [expressionName]: [
+            "starts-with",
+            ["field", PRODUCTS.CATEGORY, null],
+            "Gi",
+          ],
+        },
+      },
+    };
+
+    function getNestedQuestionDetails(
+      cardId: number,
+    ): StructuredQuestionDetails {
+      return {
+        query: {
+          "source-table": `card__${cardId}`,
+        },
+      };
+    }
+
+    it("should be able to add a source column filter", () => {
+      createQuestion(questionDetails).then(({ body: card }) =>
+        createQuestion(getNestedQuestionDetails(card.id), {
+          visitQuestion: true,
+        }),
+      );
+      assertQueryBuilderRowCount(200);
+      tableHeaderClick(expressionName);
+      popover().within(() => {
+        cy.findByText("Filter by this column").click();
+        cy.findByLabelText("True").click();
+        cy.findByText("Add filter").click();
+      });
+      assertQueryBuilderRowCount(51);
+    });
   });
 });
