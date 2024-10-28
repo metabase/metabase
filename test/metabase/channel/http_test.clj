@@ -1,6 +1,5 @@
 (ns metabase.channel.http-test
   (:require
-   [cheshire.core :as json]
    [clj-http.client :as http]
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -10,6 +9,7 @@
    [metabase.task.send-pulses :as task.send-pulses]
    [metabase.test :as mt]
    [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.json :as json]
    [ring.adapter.jetty :as jetty]
    [ring.middleware.params :refer [wrap-params]]
    [toucan2.core :as t2])
@@ -47,7 +47,10 @@
 (defn- json-mw [handler]
   (fn [req]
     (-> req
-        (m/update-existing :body #(-> % slurp (json/parse-string true)))
+        (m/update-existing :body #(let [s (slurp %)]
+                                    ;; Empty string is not a valid JSON, don't pass it to Jsonista.
+                                    (when-not (str/blank? s)
+                                      (json/decode+kw s))))
         handler)))
 
 (def middlewares [json-mw wrap-params])

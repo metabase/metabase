@@ -1,6 +1,5 @@
 (ns metabase.server.middleware.security-test
   (:require
-   [cheshire.core :as json]
    [clj-http.client :as http]
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -10,6 +9,7 @@
    [metabase.server.middleware.security :as mw.security]
    [metabase.test :as mt]
    [metabase.test.util :as tu]
+   [metabase.util.json :as json]
    [stencil.core :as stencil]))
 
 (defn- csp-directive
@@ -94,7 +94,7 @@
                                           (assert (= path "frontend_client/index.html"))
                                           (render-file "frontend_client/index_template.html" variables))]
         (let [response  (http/get (str "http://localhost:" (config/config-str :mb-jetty-port)))
-              nonce     (json/parse-string @nonceJSON)
+              nonce     (json/decode @nonceJSON)
               csp       (get-in response [:headers "Content-Security-Policy"])
               style-src (->> (str/split csp #"; *")
                              (filter #(str/starts-with? % "style-src "))

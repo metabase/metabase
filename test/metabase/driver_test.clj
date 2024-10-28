@@ -1,6 +1,5 @@
 (ns ^:mb/driver-tests metabase.driver-test
   (:require
-   [cheshire.core :as json]
    [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
@@ -15,6 +14,7 @@
    [metabase.test.data.env :as tx.env]
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -186,14 +186,14 @@
         ;; TODO(qnkhuat): do we really need to handle case where wrong driver is passed?
         (let [;; This is a mongodb query, but if you pass in the wrong driver it will attempt the format
               ;; This is a corner case since the system should always be using the right driver
-              weird-formatted-query (driver/prettify-native-form :postgres (json/generate-string query))]
+              weird-formatted-query (driver/prettify-native-form :postgres (json/encode query))]
           (testing "The wrong formatter will change the format..."
             (is (not= query weird-formatted-query)))
           (testing "...but the resulting data is still the same"
             ;; Bottom line - Use the right driver, but if you use the wrong
             ;; one it should be harmless but annoying
             (is (= query
-                   (json/parse-string weird-formatted-query)))))))))
+                   (json/decode weird-formatted-query)))))))))
 
 (deftest ^:parallel prettify-native-form-executable-test
   (mt/test-drivers
