@@ -2358,3 +2358,12 @@
   > **Code health:** Healthy"
   [a-query]
   (lib.core/ensure-filter-stage a-query))
+
+(defn ^:export filter-comparable-fields
+  "TBD"
+  [field* fields*]
+  (if (not= "type/MongoBSONID" (goog.object/get field* "effective_type"))
+    (to-array (clojure.core/filter #(= "type/MongoBSONID"
+                                       (gobject/get % "effective_type"))
+                                   fields*))
+    fields*))
