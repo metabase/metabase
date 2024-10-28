@@ -6,7 +6,7 @@ import type {
   DashboardCard,
   RawSeries,
   Series,
-  type TransformedSeries,
+  TransformedSeries,
   VisualizationSettings,
 } from "metabase-types/api";
 
