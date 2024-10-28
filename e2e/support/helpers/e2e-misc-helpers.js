@@ -42,6 +42,10 @@ export function openNativeEditor({
   return focusNativeEditor().as(alias);
 }
 
+export function nativeEditor() {
+  return cy.findByTestId("native-query-editor").findByRole("textbox");
+}
+
 export function focusNativeEditor() {
   cy.findByTestId("native-query-editor")
     .should("be.visible")
