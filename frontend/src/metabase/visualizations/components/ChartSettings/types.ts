@@ -3,6 +3,7 @@ import type Question from "metabase-lib/v1/Question";
 import type {
   Dashboard,
   DashboardCard,
+  type RawSeries,
   Series,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -17,29 +18,60 @@ export type Widget = {
   widget: (() => JSX.Element | null) | undefined;
 };
 
-export type ChartSettingsWithStateProps = {
+export type DashboardChartSettingsProps = {
   className?: string;
   isDashboard?: boolean;
   dashboard?: Dashboard;
   dashcard?: DashboardCard;
-  initial?: {
-    section: string;
-    widget?: Widget;
-  };
-  onClose?: () => void;
-  series: Series;
-  computedSettings?: ComputedVisualizationSettings;
-  question?: Question;
-  noPreview?: boolean;
-  widgets?: Widget[];
-
   onChange?: (
     settings: ComputedVisualizationSettings,
     question?: Question,
   ) => void;
-  settings?: VisualizationSettings;
+  series: Series;
+  onClose?: () => void;
+  widgets?: Widget[];
+};
+export type QuestionChartSettingsProps = {
+  computedSettings?: ComputedVisualizationSettings;
+  question?: Question;
+  onChange?: (
+    settings: ComputedVisualizationSettings,
+    question?: Question,
+  ) => void;
+  series: Series;
+  initial?: {
+    section: string;
+    widget?: Widget;
+  };
+  widgets?: Widget[];
 };
 
-export type ChartSettingsProps = ChartSettingsWithStateProps & {
-  onDone?: (settings: VisualizationSettings) => void;
+export type ChartSettingsProps = {
+  initial?: {
+    section: string;
+    widget?: Widget;
+  };
+  series: Series;
+  computedSettings?: ComputedVisualizationSettings;
+  question?: Question;
+  widgets: Widget[];
+  onChange?: (
+    settings: ComputedVisualizationSettings,
+    question?: Question,
+  ) => void;
+};
+
+export type ChartSettingsVisualizationProps = {
+  warnings?: string[];
+  rawSeries: RawSeries;
+  dashboard?: Dashboard;
+  dashcard?: DashboardCard;
+  onUpdateVisualizationSettings: (
+    changedSettings: VisualizationSettings,
+    question: Question,
+  ) => void;
+  onUpdateWarnings: (warnings: string[]) => void;
+  onDone: () => void;
+  onCancel: () => void;
+  onReset: (() => void) | null;
 };
