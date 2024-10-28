@@ -73,11 +73,13 @@ export const VisualizerPage = () => {
         const { column, dataSource } = active.data.current;
         dispatch(
           addDataSourceVizMapping({
-            source: dataSource.type,
-            sourceId: dataSource.id,
-            settings: {
-              "funnel.metric": column.name,
-            },
+            key: "funnel.metric",
+            value: [
+              {
+                sourceId: dataSource.id,
+                column: column.name,
+              },
+            ],
           }),
         );
       }

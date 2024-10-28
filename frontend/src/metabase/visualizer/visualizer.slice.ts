@@ -29,7 +29,7 @@ import { createDataSource } from "./utils";
 
 const initialState: VisualizerState = {
   display: null,
-  mappings: [],
+  mappings: {},
   settings: {},
   cards: [],
   datasets: {},
@@ -86,7 +86,7 @@ const visualizerSlice = createSlice({
     setDisplay: (state, action: PayloadAction<VisualizationDisplay | null>) => {
       state.display = action.payload;
       state.settings = {};
-      state.mappings = [];
+      state.mappings = {};
     },
     updateSettings: (state, action: PayloadAction<VisualizationSettings>) => {
       state.settings = {
@@ -117,9 +117,20 @@ const visualizerSlice = createSlice({
     },
     addDataSourceVizMapping: (
       state,
-      action: PayloadAction<VizDataSourceMapping>,
+      action: PayloadAction<{
+        key: keyof VisualizationSettings;
+        value: VizDataSourceMapping | VizDataSourceMapping[];
+      }>,
     ) => {
-      state.mappings.push(action.payload);
+      const { key, value } = action.payload;
+      const currentValue = state.mappings[key];
+      state.mappings = {
+        ...state.mappings,
+        [key]:
+          Array.isArray(currentValue) && Array.isArray(value)
+            ? [...currentValue, ...value]
+            : value,
+      };
     },
   },
   extraReducers: builder => {
@@ -240,7 +251,7 @@ export const getVisualizerRawSeries = createSelector(
       source: "artificial",
     };
 
-    const rows = mappings
+    const rows = Object.values(mappings["funnel.metric"] ?? {})
       .map(mapping => {
         const source = dataSources.find(ds => ds.id === mapping.sourceId);
         const dataset = datasets[mapping.sourceId];
@@ -248,7 +259,7 @@ export const getVisualizerRawSeries = createSelector(
           return;
         }
         const metricColumnIndex = dataset.data.cols.findIndex(
-          col => col.name === mapping.settings["funnel.metric"],
+          col => col.name === mapping.column,
         );
         const value = dataset.data.rows[0][metricColumnIndex];
         if (!value) {

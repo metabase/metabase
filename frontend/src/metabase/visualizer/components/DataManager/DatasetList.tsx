@@ -66,10 +66,7 @@ export const DatasetList = () => {
                   <DraggableColumnListItem
                     key={column.name}
                     column={column}
-                    dataSource={{
-                      id: card.id,
-                      type: "card",
-                    }}
+                    dataSource={source}
                   />
                 ))}
               </Box>
