@@ -3,6 +3,7 @@ import type { OptionSourceData } from "echarts/types/src/util/types";
 
 import {
   NEGATIVE_STACK_TOTAL_DATA_KEY,
+  OTHER_DATA_KEY,
   POSITIVE_STACK_TOTAL_DATA_KEY,
   X_AXIS_DATA_KEY,
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
@@ -84,6 +85,7 @@ export const getCartesianChartOption = (
   // dataset option
   const dimensions = [
     X_AXIS_DATA_KEY,
+    OTHER_DATA_KEY,
     POSITIVE_STACK_TOTAL_DATA_KEY,
     NEGATIVE_STACK_TOTAL_DATA_KEY,
     ...chartModel.seriesModels.map(seriesModel => [

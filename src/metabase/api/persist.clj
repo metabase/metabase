@@ -96,7 +96,7 @@
   [card-id]
   {card-id [:maybe ms/PositiveInt]}
   (api/let-404 [persisted-info (first (fetch-persisted-info {:card-id card-id} nil nil))]
-    (api/write-check (t2/select-one Database :id (:database_id persisted-info)))
+    (api/read-check (t2/select-one Database :id (:database_id persisted-info)))
     persisted-info))
 
 (def ^:private CronSchedule
