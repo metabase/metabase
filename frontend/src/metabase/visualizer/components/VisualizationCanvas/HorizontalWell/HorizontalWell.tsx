@@ -31,7 +31,9 @@ export function HorizontalWell({
   onChangeSettings,
   ...props
 }: HorizontalWellProps) {
-  const { setNodeRef } = useDroppable({ id: DROPPABLE_ID.HORIZONTAL_WELL });
+  const { active, setNodeRef, isOver } = useDroppable({
+    id: DROPPABLE_ID.HORIZONTAL_WELL,
+  });
 
   if (display !== "funnel") {
     return null;
@@ -55,18 +57,26 @@ export function HorizontalWell({
     });
   };
 
+  const borderStyle = rows.length > 0 ? "solid" : "dashed";
+
   return (
     <Flex
       {...props}
-      bg="var(--mb-color-text-light)"
+      bg={active ? "var(--mb-color-brand-light)" : "bg-light"}
       p="sm"
       wrap="nowrap"
       style={{
         ...style,
         overflowX: "auto",
         overflowY: "hidden",
-        borderRadius: "var(--default-border-radius)",
+        borderRadius: "var(--border-radius-xl)",
+        border: `1px ${borderStyle} ${active ? "var(--mb-color-brand)" : "var(--border-color)"}`,
+        transform: active ? "scale(1.025)" : "scale(1)",
+        transition:
+          "transform 0.2s ease-in-out 0.2s, border-color 0.2s ease-in-out 0.2s, background 0.2s ease-in-out 0.2s",
+        outline: isOver ? "1px solid var(--mb-color-brand)" : "none",
       }}
+      maw="80%"
       ref={setNodeRef}
     >
       <DndContext
@@ -112,8 +122,9 @@ function WellItem({ id, isDraggable = false, ...props }: WellItemProps) {
       bg={isDraggable ? "var(--mb-color-bg-white)" : "transparent"}
       px="sm"
       style={{
-        borderRadius: "var(--default-border-radius)",
+        borderRadius: "var(--border-radius-xl)",
         cursor: isDraggable ? "grab" : "default",
+        border: `1px solid hsla(204,66,8,51%)`,
       }}
     />
   );

@@ -15,6 +15,7 @@ import {
 } from "metabase/visualizer/visualizer.slice";
 
 import { ColumnListItem, type ColumnListItemProps } from "./ColumnListItem";
+import S from "./DatasetList.module.css";
 
 export const DatasetList = () => {
   const cards = useSelector(selectCards);
@@ -42,9 +43,9 @@ export const DatasetList = () => {
               align="center"
               px={8}
               py={4}
-              style={{ borderRadius: 4, cursor: "pointer" }}
               bg={isSelected ? "var(--mb-color-bg-light)" : undefined}
               onClick={() => dispatch(setSelectedCard(card.id))}
+              className={S.parent}
             >
               <Icon
                 style={{ flexShrink: 0 }}
@@ -60,6 +61,7 @@ export const DatasetList = () => {
               </Text>
               <Icon
                 style={{ flexShrink: 0 }}
+                className={S.close}
                 name="close"
                 ml="auto"
                 size={12}

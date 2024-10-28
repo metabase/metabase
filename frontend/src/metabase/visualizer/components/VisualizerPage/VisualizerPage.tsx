@@ -68,7 +68,7 @@ export const VisualizerPage = () => {
   return (
     <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <Flex style={{ height: "100%", overflow: "hidden" }}>
-        <Flex direction="column" w={320}>
+        <Flex direction="column" miw={320}>
           <Box h="50%" p={10} pr={0} style={{ overflowY: "hidden" }}>
             <DataImporter />
           </Box>
@@ -79,13 +79,14 @@ export const VisualizerPage = () => {
         <Box
           component="main"
           w="100%"
-          h="100%"
           m={10}
           p="xl"
           bg="white"
           style={{
             borderRadius: "var(--default-border-radius)",
             overflowY: "hidden",
+            border: `1px solid var(--mb-color-border)`,
+            boxShadow: "0 1px 2px 2px var(--mb-color-border)",
           }}
         >
           <VisualizationCanvas />
