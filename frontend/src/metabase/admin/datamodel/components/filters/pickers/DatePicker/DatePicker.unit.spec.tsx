@@ -419,7 +419,7 @@ describe("DatePicker", () => {
           name: /12 AM/i,
         });
 
-        expect(midnightCheckbox).toBeChecked();
+        expect(midnightCheckbox).not.toBeChecked();
 
         await userEvent.click(midnightCheckbox);
 
@@ -429,7 +429,7 @@ describe("DatePicker", () => {
           0,
         ]);
 
-        expect(midnightCheckbox).not.toBeChecked();
+        expect(midnightCheckbox).toBeChecked();
       });
     });
   });

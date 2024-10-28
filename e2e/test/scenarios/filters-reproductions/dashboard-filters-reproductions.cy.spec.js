@@ -1410,13 +1410,13 @@ describe("issue 24235", () => {
     popover().within(() => {
       cy.findByText("Exclude...").click();
       cy.findByText("Days of the week...").click();
-      cy.findByText("Select none...").click();
+      cy.findByText("Select all").click();
       cy.findByText("Add filter").click();
     });
 
     filterWidget().click();
     popover().within(() => {
-      cy.findByText("Select all...").click();
+      cy.findByText("Select none").click();
       cy.findByText("Update filter").click();
     });
 
@@ -3013,9 +3013,10 @@ describe("issue 27579", () => {
     popover().within(() => {
       cy.findByText("Exclude...").click();
       cy.findByText("Hours of the day...").click();
+      cy.findByText("Select all").click();
       cy.findByLabelText("12 AM").should("be.checked");
 
-      cy.findByText("Select none...").click();
+      cy.findByText("Select none").click();
       cy.findByLabelText("12 AM").should("not.be.checked");
     });
   });
