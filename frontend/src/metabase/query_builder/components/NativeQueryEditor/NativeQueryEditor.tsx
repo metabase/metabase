@@ -421,6 +421,7 @@ export class NativeQueryEditor extends Component<
     // listen to onChange events
     editor.getSession().on("change", this.onChange);
     editor.getSelection().on("changeCursor", this.handleCursorChange);
+    editor.getSelection().on("changeSelection", this.handleCursorChange);
 
     const minLineNumberWidth = 20;
     editor.getSession().gutterRenderer = {
