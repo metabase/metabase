@@ -1,4 +1,4 @@
-import { USER_GROUPS } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ORDERS_BY_YEAR_QUESTION_ID,
@@ -39,7 +39,6 @@ import {
   createMockActionParameter,
   createMockDashboardCard,
 } from "metabase-types/api/mocks";
-const { PRODUCTS, SAMPLE_DB_ID } = SAMPLE_DATABASE;
 
 const COUNT_COLUMN_ID = "count";
 const COUNT_COLUMN_NAME = "Count";
@@ -71,7 +70,7 @@ const FIRST_TAB = { id: 900, name: "first" };
 const SECOND_TAB = { id: 901, name: "second" };
 const THIRD_TAB = { id: 902, name: "third" };
 
-const { ORDERS_ID, ORDERS, PEOPLE } = SAMPLE_DATABASE;
+const { ORDERS_ID, ORDERS, PEOPLE, PRODUCTS } = SAMPLE_DATABASE;
 
 const TARGET_DASHBOARD = {
   name: "Target dashboard",
