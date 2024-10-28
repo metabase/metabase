@@ -11,6 +11,7 @@
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.serialization :as serdes]
    [metabase.public-settings.premium-features :refer [defenterprise]]
+   [metabase.search :as search]
    [metabase.util :as u]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -296,3 +297,117 @@
 (defmethod audit-log/model-details Table
   [table _event-type]
   (select-keys table [:id :name :db_id]))
+
+;;;; ------------------------------------------------- Search ----------------------------------------------------------
+
+(search/define-spec "table"
+  {:model        :model/Table
+   :context      {:collection_id nil
+                  :database_id   :db_id
+                  :table_id      :id}
+   :archived     [:not :active]
+   :search-terms [:name :description :display_name]
+
+   :render-terms [:initial_sync_status
+                  [:description :table_description]
+                  [:name :table_name]
+                  [:schema :table_schema]
+                  [:db.name :database_name]]
+
+   :created-at   true
+   :updated-at   true
+
+   :skip         {:visibility_type [:not nil]
+                  :db_id           audit/audit-db-id}
+
+   :joins        {:db [:model/Database [:= :db.id :this.db_id]]}})
+
+(search/define-spec "segment"
+  {:model        :model/Segment
+   :context      {:collection_id :id
+                  :database_id   :table.db_id
+                  :table_id      :table_id}
+   :archived     :archived
+   :search-terms [:name :description]
+
+   :render-terms [[:table.description :table_description]
+                  [:table.schema :table_schema]
+                  [:table.name :table_name]]
+
+   :created-at   true
+   :updated-at   true
+
+   :joins        {:table [:model/Table [:= :table.id :this.table_id]]}})
+
+(search/define-spec "collection"
+  {:model        :model/Collection
+   :context      {:collection_id :id
+                  :database_id   nil
+                  :table_id      nil}
+   :archived     :archived
+   :search-terms [:name]
+
+   :render-terms [[:type :collection_type]
+                  [:name :collection_name]
+                  [:authority_level :collection_authority_level]
+                  :archived_directly
+                  ;; why not make this a search term?
+                  :description
+                  ;; bookmark (inserted just-in-time from join for ranking and rendering)
+                  :location]
+
+   :created-at   true
+   :updated-at   false
+
+   :skip         {:namespace [:not nil]}
+
+   ;; depends on the current user, used for rendering and ranking
+   :bookmark     [:model/CollectionBookmark [:and
+                                             [:= :bookmark.collection_id :this.id]
+                                             ;; a magical alias, :current_user (or perhaps this clause can be implicit)
+                                             [:= :bookmark.user_id :current_user/id]]]})
+
+(search/define-spec "card"
+  {:model        :model/Card
+   :context      {:collection_id :collection_id
+                  :database_id   nil
+                  :table_id      nil}
+   :archived     :archived
+   ;; TODO :dataset_query if native
+   :search-terms [:name :description]
+
+   :render-terms [[:collection.name :collection_name]
+                  [:collection.type :collection_type]
+                  [:collection.location :collection_location]
+                  [:collection.authority_level :collection_authority_level]
+                  :archived_directly
+                  :collection_position
+                  :creator_id
+                  ;; dashboard count (TODO oh, best query this when rendering)
+                  [:r.timestamp :last_edited_at]
+                  [:r.user_id :last_editor_id]
+                  [:mr.status :moderated_status]
+                  :display
+                  :dataset_query]
+
+   :bookmark     [:model/CardBookmark [:and
+                                       [:= :bookmark.card_id :this.id]
+                                       [:= :bookmark.user_id :current_user/id]]]
+
+   :skip         {:this.type            [:not "question"]
+                  :collection.namespace [:not nil]}
+
+   :joins        {:collection [:model/Collection [:= :collection.id :this.collection_id]]
+                  :r          [:model/Revision [:and
+                                                [:= :r.model_id :this.id]
+                                                ;; Interesting for inversion - this is a condition on whether to do the update.
+                                                ;; For now let's just swallow up spurious updates (should be 2x amplification)
+                                                [:= :r.most_recent true]
+                                                [:= :r.model "Card"]]]
+                  :mr         [:model/ModerationReview [:and
+                                                        [:= :mr.moderated_item_type "card"]
+                                                        [:= :mr.moderated_item_id :this.id]
+                                                        [:= :mr.most_recent true]]]}
+
+   :created-at   true
+   :updated-at   true})

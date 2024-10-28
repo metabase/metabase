@@ -2,12 +2,18 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
+   [macaw.util :as u]
    [metabase.db :as mdb]
+   [metabase.models :as models]
    [metabase.search :as search]
    [metabase.search.postgres.core :as search.postgres]
    [metabase.search.postgres.index-test :refer [legacy-results]]
    [metabase.test :as mt]
    [toucan2.realize :as t2.realize]))
+
+(comment
+  ;; We load this to ensure all the search-models are registered
+  models/keep-me)
 
 (def ^:private hybrid
   (comp t2.realize/realize #'search.postgres/hybrid))
@@ -55,14 +61,21 @@
           (is (= (hybrid term)
                  (#'search.postgres/hybrid-multi term))))))))
 
+(defn- normalize* [xs]
+  (into #{}
+        (map (comp #(dissoc % :bookmark)
+                   u/strip-nils
+                   #(update % :archived boolean)))
+        xs))
+
 (deftest minimal-test
   (with-setup
     (testing "consistent results with minimal implementations\n"
       (doseq [term example-terms]
         (testing term
           ;; there is no ranking, so order is non-deterministic
-          (is (= (set (hybrid term))
-                 (set (#'search.postgres/minimal term)))))))))
+          (is (= (normalize* (hybrid term))
+                 (normalize* (#'search.postgres/minimal term)))))))))
 
 (deftest minimal-with-perms-test
   (with-setup
