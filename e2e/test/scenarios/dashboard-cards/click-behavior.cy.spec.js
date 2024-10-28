@@ -21,6 +21,7 @@ import {
   getTextCardDetails,
   modal,
   multiAutocompleteInput,
+  openNotebook,
   openStaticEmbeddingModal,
   popover,
   queryBuilderHeader,
@@ -30,6 +31,7 @@ import {
   setTokenFeatures,
   updateDashboardCards,
   updateSetting,
+  verifyNotebookQuery,
   visitDashboard,
   visitEmbeddedPage,
   visitIframe,
@@ -943,17 +945,24 @@ describeEE("scenarios > dashboard > dashboard cards > click behavior", () => {
         "have.text",
         "Created At is Jul 1–31, 2022",
       );
-      cy.location().should(({ hash, pathname }) => {
-        expect(pathname).to.equal("/question");
 
-        const card = deserializeCardFromUrl(hash);
-        expect(card.name).to.deep.equal(TARGET_QUESTION.name);
-        expect(card.display).to.deep.equal(TARGET_QUESTION.display);
-        expect(card.dataset_query.query).to.deep.equal({
-          ...TARGET_QUESTION.query,
-          filter: QUERY_FILTER_CREATED_AT,
-        });
-      });
+      cy.location("pathname").should("equal", "/question");
+      cy.findByTestId("app-bar").should(
+        "contain.text",
+        `Started from ${TARGET_QUESTION.name}`,
+      );
+
+      verifyVizTypeIsLine();
+
+      openNotebook();
+      verifyNotebookQuery("Orders", [
+        {
+          filters: ["Created At is Jul 1–31, 2022"],
+          aggregations: ["Count"],
+          breakouts: ["Created At: Month"],
+          limit: 5,
+        },
+      ]);
 
       cy.go("back");
       testChangingBackToDefaultBehavior();
@@ -2644,3 +2653,11 @@ const createDashboardWithTabsLocal = ({
     });
   });
 };
+
+function verifyVizTypeIsLine() {
+  cy.findByTestId("viz-type-button").click();
+  cy.findByTestId("sidebar-content")
+    .findByTestId("Line-container")
+    .should("have.attr", "aria-selected", "true");
+  cy.findByTestId("viz-type-button").click();
+}
