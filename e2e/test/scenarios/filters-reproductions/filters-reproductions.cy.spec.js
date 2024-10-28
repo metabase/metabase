@@ -1482,3 +1482,41 @@ describe("issue 47887", () => {
     });
   });
 });
+
+describe("Issue 48851", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  const manyValues = Array(75)
+    .fill(0)
+    .map(() => Math.round(Math.random() * 1000_000_000).toString(36))
+    .join(", ");
+
+  function openTableHeaderMenu(name) {
+    cy.findAllByTestId("header-cell")
+      .contains(name)
+      .trigger("mousedown")
+      .trigger("mouseup");
+  }
+
+  it("should not overflow the filter popover, even when there are a lot of values (metabase#48851)", () => {
+    openProductsTable();
+    openTableHeaderMenu("Title");
+
+    popover().within(() => {
+      cy.findByText("Filter by this column").click();
+      cy.findByText("Is").click();
+    });
+
+    popover().last().findByText("Contains").click();
+    popover()
+      .first()
+      .findByPlaceholderText("Enter some text")
+      .type(manyValues, { timeout: 0 });
+
+    popover().scrollTo("bottom");
+    popover().button("Add filter").should("be.visible");
+  });
+});
