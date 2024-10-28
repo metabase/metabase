@@ -13,7 +13,11 @@ export const DataManager = () => {
     <Flex
       direction="column"
       bg="white"
-      style={{ borderRadius: "var(--default-border-radius)", height: "100%" }}
+      style={{
+        borderRadius: "var(--default-border-radius)",
+        height: "100%",
+        border: `1px solid var(--mb-color-border)`,
+      }}
     >
       <Box px={12} py={8}>
         <Text fw="bold" mb={3}>
