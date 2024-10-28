@@ -55,7 +55,7 @@ export const SaveQuestionProvider = ({
   onSave,
   multiStep = false,
   withCollectionPicker = true,
-  collectionId,
+  initialCollectionId,
   children,
 }: PropsWithChildren<SaveQuestionProps>) => {
   const [originalQuestion] = useState(latestOriginalQuestion); // originalQuestion from props changes during saving
@@ -69,9 +69,9 @@ export const SaveQuestionProvider = ({
       getInitialValues(
         originalQuestion,
         question,
-        collectionId ?? defaultCollectionId,
+        initialCollectionId ?? defaultCollectionId,
       ),
-    [originalQuestion, defaultCollectionId, question, collectionId],
+    [originalQuestion, defaultCollectionId, question, initialCollectionId],
   );
 
   const handleSubmit = useCallback(
@@ -82,9 +82,9 @@ export const SaveQuestionProvider = ({
         question,
         onSave,
         onCreate,
-        collectionId,
+        initialCollectionId: initialCollectionId,
       }),
-    [originalQuestion, question, onSave, onCreate, collectionId],
+    [originalQuestion, question, onSave, onCreate, initialCollectionId],
   );
 
   // we care only about the very first result as question can be changed before

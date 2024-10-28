@@ -10,11 +10,8 @@ export type SaveQuestionProps = {
   closeOnSuccess?: boolean;
   multiStep?: boolean;
 
-  /**
-   * If the collection picker is shown, this is the initial collection id.
-   * Otherwise, this becomes the target collection to save to.
-   **/
-  collectionId?: CollectionId | null;
+  /** If the collection picker is not shown, this becomes the target collection to save to. **/
+  initialCollectionId?: CollectionId | null;
   withCollectionPicker?: boolean;
 };
 
@@ -35,7 +32,7 @@ export type CreateQuestionOptions = {
   details: FormValues;
   question: Question;
   onCreate: (question: Question) => Promise<void>;
-  collectionId?: CollectionId | null;
+  initialCollectionId?: CollectionId | null;
 };
 
 export type SubmitQuestionOptions = CreateQuestionOptions & {

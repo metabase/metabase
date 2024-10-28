@@ -35,7 +35,7 @@ export const createQuestion = async (options: CreateQuestionOptions) => {
   }
 
   const collectionId = canonicalCollectionId(
-    details.collection_id ?? options.collectionId,
+    details.collection_id ?? options.initialCollectionId,
   );
 
   const displayName = details.name.trim();

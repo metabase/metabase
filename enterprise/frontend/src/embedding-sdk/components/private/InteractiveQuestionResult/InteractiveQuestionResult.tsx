@@ -173,7 +173,7 @@ export const InteractiveQuestionResult = ({
           onClose={closeSaveModal}
           onCreate={onCreate}
           onSave={onSave}
-          collectionId={saveOptions?.collectionId}
+          initialCollectionId={saveOptions?.collectionId}
           withCollectionPicker={saveOptions?.withCollectionPicker}
         />
       )}
