@@ -118,7 +118,7 @@
 (defn- slack-dashboard-header
   "Returns a block element that includes a dashboard's name, creator, and filters, for inclusion in a
   Slack dashboard subscription"
-  [pulse dashboard]
+  [dashboard creator-name parameters]
   (let [header-section  {:type "header"
                          :text {:type "plain_text"
                                 :text (:name dashboard)
@@ -126,11 +126,10 @@
         link-section    {:type "section"
                          :fields [{:type "mrkdwn"
                                    :text (format "<%s | *Sent from %s by %s*>"
-                                                 (pulse/dashboard-url (:id dashboard) (pulse/parameters pulse dashboard))
+                                                 (pulse/dashboard-url (:id dashboard) parameters)
                                                  (public-settings/site-name)
-                                                 (-> pulse :creator :common_name))}]}
-        filters         (pulse/parameters pulse dashboard)
-        filter-fields   (for [filter filters]
+                                                 creator-name)}]}
+        filter-fields   (for [filter parameters]
                           {:type "mrkdwn"
                            :text (filter-text filter)})
         filter-section  (when (seq filter-fields)
@@ -148,9 +147,11 @@
       attachment)))
 
 (mu/defmethod channel/render-notification [:channel/slack :notification/dashboard-subscription] :- [:sequential SlackMessage]
-  [_channel-type {:keys [payload dashboard pulse]} _template channel-ids]
-  (for [channel-id channel-ids]
-    {:channel-id  channel-id
-     :attachments (remove nil?
-                          (flatten [(slack-dashboard-header pulse dashboard)
-                                    (create-slack-attachment-data payload)]))}))
+  [_channel-type {:keys [payload creator]} _template channel-ids]
+  (let [parameters (:parameters payload)
+        dashboard  (:dashboard payload)]
+       (for [channel-id channel-ids]
+        {:channel-id  channel-id
+         :attachments (remove nil?
+                              (flatten [(slack-dashboard-header dashboard (:common_name creator) parameters)
+                                        (create-slack-attachment-data (:result payload))]))})))

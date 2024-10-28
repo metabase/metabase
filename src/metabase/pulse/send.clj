@@ -242,19 +242,6 @@
     (not (are-all-parts-empty? parts))
     true))
 
-(defn- get-notification-info
-  [pulse parts pulse-channel]
-  (let [alert? (nil? (:dashboard_id pulse))]
-    (merge {:payload_type  (if alert?
-                             :notification/alert
-                             :notification/dashboard-subscription)
-            :payload       (if alert? (first parts) parts)
-            :pulse         pulse
-            :pulse-channel pulse-channel}
-           (if alert?
-             {:card  (t2/select-one :model/Card (-> parts first :card :id))}
-             {:dashboard (t2/select-one :model/Dashboard (:dashboard_id pulse))}))))
-
 (defn- channel-recipients
   [pulse-channel]
   (case (keyword (:channel_type pulse-channel))
@@ -353,6 +340,26 @@
     (t2/select-one :model/Channel :id (:channel_id pulse-channel))
     {:type (keyword "channel" (name channel-type))}))
 
+(defn- get-template
+  [channel-type payload-type]
+  (case [channel-type payload-type]
+    [:channel/email :notification/dashboard-subscription]
+    {:channel_type :channel/email
+     :details      {:type    :email/mustache-resource
+                    :subject "{{payload.dashboard.name}}"
+                    :path    "metabase/email/dashboard_subscription_new"}}
+    [:channel/slack :notification/dashboard-subscription]
+    nil))
+
+(defn- notification-info
+  [pulse dashboard]
+  (if (= :pulse (alert-or-pulse pulse))
+    {:payload_type           :notification/dashboard-subscription
+     :creator_id             (:creator_id pulse)
+     :dashboard_subscription {:dashboard_id  (:id dashboard)
+                              :parameters    (:parameters pulse)
+                              :skip_if_empty (:skip_if_empty pulse)}}))
+
 (defn- send-pulse!*
   [{:keys [channels channel-ids] pulse-id :id :as pulse} dashboard]
   (let [parts                  (execute-pulse pulse dashboard)
@@ -371,19 +378,13 @@
         (u/prog1 (doseq [pulse-channel channels]
                    (try
                      (let [channel  (pc->channel pulse-channel)
-                           ;notification-payload (get-notification-info pulse parts pulse-channel)
+                           payload-type (if (= :pulse (alert-or-pulse pulse))
+                                          :notification/dashboard-subscription
+                                          :notification/alert)
                            messages (channel-render-notification
                                      (:type channel)
-                                     (notification-payload
-                                      {:payload_type           :notification/dashboard-subscription
-                                       :creator_id             (:creator_id pulse)
-                                       :dashboard_subscription {:dashboard_id  (:id dashboard)
-                                                                :parameters    (:parameters pulse)
-                                                                :skip_if_empty (:skip_if_empty pulse)}})
-                                     {:channel_type :channel/email
-                                      :details      {:type    :email/mustache-resource
-                                                     :subject "{{payload.dashboard.name}}"
-                                                     :path    "metabase/email/dashboard_subscription_new"}}
+                                     (notification-payload (notification-info pulse dashboard))
+                                     (get-template (:type channel) payload-type)
                                      (channel-recipients pulse-channel))]
                        (log/debugf "[Pulse %d] Rendered %d messages for channel %s"
                                    pulse-id
@@ -399,23 +400,6 @@
           (when (:alert_first_only pulse)
             (t2/delete! Pulse :id pulse-id))))
       (log/infof "Skipping sending %s %d" (alert-or-pulse pulse) (:id pulse)))))
-
-#_(ngoc/with-tc
-    (-> (metabase.channel.core/render-notification
-         :channel/email
-         (metabase.notification.payload.core/notification-payload
-          x
-          #_{:payload_type :notification/dashboard-subscription
-             :creator_id 3
-             :dashboard_subscription {:dashboard_id 10
-                                      :parameters nil
-                                      :skip_if_empty false}})
-         nil
-         [{:kind :user
-           :user (t2/select-one :model/User)}])
-        first :message
-        first :content
-        dev/open-html))
 
 (defn send-pulse!
   "Execute and Send a `Pulse`, optionally specifying the specific `PulseChannels`.  This includes running each
@@ -440,4 +424,4 @@
       (send-pulse!* pulse dashboard))))
 
 #_(ngoc/with-tc
-    (mapv send-pulse! (t2/select :model/Pulse :dashboard_id 12)))
+    (mapv send-pulse! (t2/select :model/Pulse :dashboard_id 12 :archived false)))

@@ -225,7 +225,7 @@
                                                                       "?hash=" (generate-dashboard-sub-unsubscribe-hash (:id dashboard_subscription) non-user-email)
                                                                       "&email=" non-user-email
                                                                       "&pulse-id=" (:id dashboard_subscription)))
-                                          :filters            #p filters})
+                                          :filters            filters})
         attachments     (apply merge (map :attachments rendered-cards))]
     (vec (concat [{:type "text/html; charset=utf-8" :content
                    (render-body template message-body)}]
@@ -235,6 +235,7 @@
 
 (mu/defmethod channel/render-notification [:channel/email :notification/dashboard-subscription] :- [:sequential EmailMessage]
   [_channel-type notification-payload template recipients]
+  (def notification-payload notification-payload)
   (let [{:keys [user-emails
                 non-user-emails]}  (recipients->emails recipients)
         email-subject     (channel.params/substitute-params (-> template :details :subject) notification-payload)
