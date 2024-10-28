@@ -223,6 +223,14 @@ describe("scenarios > custom column > boolean functions", () => {
       createQuestion(questionDetails, { visitQuestion: true });
       openNotebook();
 
+      cy.log("add a literal column");
+      getNotebookStep("expression").icon("add").click();
+      enterCustomColumnDetails({
+        formula: "True",
+        name: "Literal column",
+      });
+      popover().button("Done").click();
+
       cy.log("add an identity column");
       getNotebookStep("expression").icon("add").click();
       enterCustomColumnDetails({
@@ -246,10 +254,11 @@ describe("scenarios > custom column > boolean functions", () => {
         columns: [
           "Category",
           expressionName,
+          "Literal column",
           "Identity column",
           "Simple expression",
         ],
-        firstRows: [["Gizmo", "true", "true", "false"]],
+        firstRows: [["Gizmo", "true", "true", "true", "false"]],
       });
     });
 
