@@ -88,7 +88,7 @@ In this example of orders by product category per month, clicking on a data poin
 - **Automatic insights**: See orders for a particular category over a shorter time range.
 - **Filter by this value**: update the chart based on the value you clicked: equal to, less than, greater than, or not equal to.
 
-> Note that while charts created with SQL don't currently have the drill-through menu, you can add SQL questions to a dashboard and customize their click behavior. You can send people to a [custom destination](https://www.metabase.com/learn/building-analytics/dashboards/custom-destinations.html) (like another dashboard or an external URL), or have the clicked value [update a dashboard filter](https://www.metabase.com/learn/building-analytics/dashboards/cross-filtering.html).
+> Note that while charts created with SQL currently only have [limited drill-through menu](../questions/native-editor/writing-sql.md#drill-though-in-sql-questions), you can add SQL questions to a dashboard and customize their click behavior. You can send people to a [custom destination](https://www.metabase.com/learn/building-analytics/dashboards/custom-destinations.html) (like another dashboard or an external URL), or have the clicked value [update a dashboard filter](https://www.metabase.com/learn/building-analytics/dashboards/cross-filtering.html).
 
 Clicking on a table cell will often allow you to filter the results using a comparison operator, like =, >, or <. For example, you can click on a table cell, and select the less than operator `<` to filter for values that are less than the selected value.
 

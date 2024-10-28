@@ -2,6 +2,7 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   addOrUpdateDashboardCard,
   createNativeQuestion,
+  createQuestionAndDashboard,
   describeEE,
   filterWidget,
   getDashboardCard,
@@ -981,5 +982,41 @@ describe("issue 40660", () => {
         "be.visible",
       );
     });
+  });
+});
+
+// Skipped since it does not make sense when CSP is disabled
+describe.skip("issue 49142", () => {
+  const questionDetails = {
+    name: "Products",
+    query: { "source-table": PRODUCTS_ID, limit: 2 },
+  };
+
+  const dashboardDetails = {
+    name: "Embeddable dashboard",
+    enable_embedding: true,
+  };
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+
+    createQuestionAndDashboard({
+      questionDetails,
+      dashboardDetails,
+    }).then(({ body: { dashboard_id } }) => {
+      visitDashboard(dashboard_id);
+    });
+  });
+
+  it("embedding preview should be always working", () => {
+    openStaticEmbeddingModal({
+      activeTab: "lookAndFeel",
+      previewMode: "preview",
+    });
+    cy.findByTestId("embed-preview-iframe")
+      .its("0.contentDocument.body")
+      .should("be.visible")
+      .and("contain", "Embeddable dashboard");
   });
 });

@@ -60,10 +60,13 @@
 (deftest csp-header-iframe-hosts-tests
   (testing "Allowed iframe hosts setting is used in the CSP frame-src directive."
     (tu/with-temporary-setting-values [public-settings/allowed-iframe-hosts "https://www.wikipedia.org, https://www.metabase.com   https://clojure.org"]
-      (is (= (str "frame-src https://wikipedia.org https://*.wikipedia.org https://www.wikipedia.org "
+      (is (= (str "frame-src 'self' https://wikipedia.org https://*.wikipedia.org https://www.wikipedia.org "
                   "https://metabase.com https://*.metabase.com https://www.metabase.com "
                   "https://clojure.org https://*.clojure.org")
-             (csp-directive "frame-src"))))))
+             (csp-directive "frame-src")))))
+  (testing "Includes 'self' so embed previews work (#49142)"
+    (let [hosts (-> (csp-directive "frame-src") (str/split #"\s+") set)]
+      (is (contains? hosts "'self'") "frame-src hosts does not include 'self'"))))
 
 (deftest xframeoptions-header-tests
   (mt/with-premium-features #{:embedding}
@@ -232,7 +235,8 @@
   (testing "The allowed iframe hosts parse in the expected way."
     (let [default-hosts @#'public-settings/default-allowed-iframe-hosts]
       (testing "The defaults hosts parse correctly"
-        (is (= ["youtube.com"
+        (is (= ["'self'"
+                "youtube.com"
                 "*.youtube.com"
                 "youtu.be"
                 "*.youtu.be"
@@ -275,7 +279,7 @@
                 "*.x.com"]
                (mw.security/parse-allowed-iframe-hosts default-hosts))))
       (testing "Additional hosts a user may configure will parse correctly as well"
-        (is (= ["localhost"
+        (is (= ["'self'" "localhost"
                 "http://localhost:8000"
                 "my.domain.local:9876"
                 "*"
@@ -286,5 +290,5 @@
                 "www.mysite.cool.com"]
                (mw.security/parse-allowed-iframe-hosts "localhost, http://localhost:8000,    my.domain.local:9876, *, www.mysite.com/, www.mysite.cool.com"))))
       (testing "invalid hosts are not included"
-        (is (= []
+        (is (= ["'self'"]
                (mw.security/parse-allowed-iframe-hosts "asdf/wasd/:8000 */localhost:*")))))))
