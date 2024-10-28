@@ -2026,7 +2026,7 @@ describe("issue 41464", () => {
   });
 });
 
-describe.skip("issue 45359", () => {
+describe("issue 45359", () => {
   beforeEach(() => {
     restore();
     cy.intercept("/app/fonts/Lato/lato-v16-latin-regular.woff2").as(
