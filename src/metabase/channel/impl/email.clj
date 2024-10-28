@@ -135,9 +135,8 @@
         (pulse/image-bundle->attachment))))
 
 (defn- render-filters
-  [pulse-parameters dashboard-parameters]
-  (let [filters (pulse/parameters pulse-parameters dashboard-parameters)
-        cells   (map
+  [parameters]
+  (let [cells   (map
                  (fn [filter]
                    [:td {:class "filter-cell"
                          :style (pulse/style {:width "50%"
@@ -162,7 +161,7 @@
                                              :padding "4px 16px 4px 8px"
                                              :vertical-align "baseline"})}
                        (pulse/value-string filter)]]]])
-                 filters)
+                 parameters)
         rows    (partition 2 2 nil cells)]
     (html
      [:table {:style (pulse/style {:table-layout :fixed
@@ -202,13 +201,15 @@
      nil)))
 
 (defn- render-message-body
-  [template {:keys [payload dashboard dashboard_subscription] :as notification-payload} non-user-email]
+  [template {:keys [payload dashboard_subscription] :as notification-payload} non-user-email]
   (let [result          (:result payload)
+        parameters      (:parameters payload)
+        dashboard       (:dashboard payload)
         timezone        (some->> result (some :card) channel.shared/defaulted-timezone)
         rendered-cards  (mapv #(render-part timezone % {:pulse/include-title? true}) result)
         icon-attachment (first (map make-message-attachment (icon-bundle :dashboard)))
-        filters         (when dashboard
-                          (render-filters (:parameters dashboard_subscription) (:parameters dashboard)))
+        filters         (when parameters
+                          (render-filters parameters))
         message-body    (assoc notification-payload
                                :computed {:dashboard_content   (html (vec (cons :div (map :content rendered-cards))))
                                           :icon_cid            (:content-id icon-attachment)
@@ -224,7 +225,7 @@
                                                                       "?hash=" (generate-dashboard-sub-unsubscribe-hash (:id dashboard_subscription) non-user-email)
                                                                       "&email=" non-user-email
                                                                       "&pulse-id=" (:id dashboard_subscription)))
-                                          :filters            filters})
+                                          :filters            #p filters})
         attachments     (apply merge (map :attachments rendered-cards))]
     (vec (concat [{:type "text/html; charset=utf-8" :content
                    (render-body template message-body)}]
@@ -236,17 +237,17 @@
   [_channel-type notification-payload template recipients]
   (let [{:keys [user-emails
                 non-user-emails]}  (recipients->emails recipients)
-        email-subject              (channel.params/substitute-params (-> template :details :subject) notification-payload)
-        email-to-users             (when (seq user-emails)
-                                     (construct-email
-                                      email-subject
-                                      user-emails
-                                      (render-message-body template notification-payload nil)))
-        email-to-nonusers          (for [non-user-email non-user-emails]
-                                     (construct-email
-                                      email-subject
-                                      [non-user-email]
-                                      (render-message-body template notification-payload non-user-email)))]
+        email-subject     (channel.params/substitute-params (-> template :details :subject) notification-payload)
+        email-to-users    (when (seq user-emails)
+                            (construct-email
+                             email-subject
+                             user-emails
+                             (render-message-body template notification-payload nil)))
+        email-to-nonusers (for [non-user-email non-user-emails]
+                            (construct-email
+                             email-subject
+                             [non-user-email]
+                             (render-message-body template notification-payload non-user-email)))]
     (filter some? (conj email-to-nonusers email-to-users))))
 
 ;; ------------------------------------------------------------------------------------------------;;

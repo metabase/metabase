@@ -15,7 +15,7 @@
 ;; TODO - this and `execute-multi-card` should be made more efficient: eg. we query for the card several times
 (defn execute-card
   "Execute the query for a single Card. `options` are passed along to the Query Processor."
-  [{pulse-creator-id :creator_id :as x} card-or-id & {:as options}]
+  [{pulse-creator-id :creator_id} card-or-id & {:as options}]
   ;; The Card must either be executed in the context of a User
   {:pre [(integer? pulse-creator-id)]}
   (let [card-id (u/the-id card-or-id)]

@@ -24,4 +24,5 @@
      :style                  {:color_text_dark   style/color-text-dark
                               :color_text_light  style/color-text-light
                               :color_text_medium style/color-text-medium}
+     :parameters             parameters
      :dashboard_subscription (t2/hydrate dashboard_subscription :creator)}))

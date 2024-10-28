@@ -75,7 +75,8 @@
                  ;; TODO: type this out
                  [:result                 [:sequential [:map]]]
                  [:dashboard              :map]
-                 [:dashboard_subscription :map]]]]]
+                 [:dashboard_subscription :map]
+                 [:parameters {:optional true} [:maybe [:sequential :map]]]]]]]
     [:notification/testing       :map]]])
 
 ;; TODO: from metabase.email.messages
