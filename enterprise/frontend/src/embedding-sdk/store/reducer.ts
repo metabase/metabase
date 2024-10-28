@@ -94,8 +94,6 @@ export const sdk = createReducer(initialState, builder => {
       loading: false,
       error: null,
     };
-
-    state.loginStatus = { status: "success" };
   });
 
   builder.addCase(refreshTokenAsync.rejected, (state, action) => {

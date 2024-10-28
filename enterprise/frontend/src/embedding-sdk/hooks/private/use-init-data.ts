@@ -3,8 +3,10 @@ import _ from "underscore";
 
 import { getEmbeddingSdkVersion } from "embedding-sdk/config";
 import { setupSdkAuth } from "embedding-sdk/hooks";
+import { COULD_NOT_AUTHENTICATE_MESSAGE } from "embedding-sdk/lib/user-warnings";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
 import {
+  getOrRefreshSession,
   setFetchRefreshTokenFn,
   setLoginStatus,
 } from "embedding-sdk/store/reducer";
@@ -67,11 +69,51 @@ export const useInitData = ({ config }: InitDataLoaderParameters) => {
     if (loginStatus.status === "validated") {
       const fetchData = async () => {
         dispatch(setLoginStatus({ status: "loading" }));
-        dispatch(refreshCurrentUser());
-        dispatch(refreshSiteSettings({}));
+
+        try {
+          // if using JWT, let's first check if the session is valid before doing other requests
+          // mostly to have better errors and debugging information
+          if (config.jwtProviderUri) {
+            const sessionResponse = await dispatch(
+              getOrRefreshSession(config.jwtProviderUri),
+            );
+            if (sessionResponse.meta.requestStatus === "rejected") {
+              // errors on `getOrRefreshSession` are handled directly in the reducer
+              return;
+            }
+          }
+
+          const [userResponse, siteSettingsResponse] = await Promise.all([
+            dispatch(refreshCurrentUser()),
+            dispatch(refreshSiteSettings({})),
+          ]);
+
+          if (
+            userResponse.meta.requestStatus === "rejected" ||
+            siteSettingsResponse.meta.requestStatus === "rejected"
+          ) {
+            dispatch(
+              setLoginStatus({
+                status: "error",
+                error: new Error(COULD_NOT_AUTHENTICATE_MESSAGE),
+              }),
+            );
+            return;
+          }
+
+          dispatch(setLoginStatus({ status: "success" }));
+        } catch (error) {
+          dispatch(
+            setLoginStatus({
+              status: "error",
+              error: new Error(COULD_NOT_AUTHENTICATE_MESSAGE),
+            }),
+          );
+        }
       };
 
       fetchData();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- the auth url could be dynamic and we don't want to re-do the logic on each render
   }, [dispatch, loginStatus.status]);
 };
