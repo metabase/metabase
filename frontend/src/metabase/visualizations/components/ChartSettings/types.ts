@@ -22,10 +22,7 @@ export type Widget = {
 
 type CommonChartSettingsProps = {
   series: Series;
-  onChange?: (
-    settings?: ComputedVisualizationSettings,
-    question?: Question,
-  ) => void;
+  onChange?: (settings?: VisualizationSettings, question?: Question) => void;
 };
 
 export type DashboardChartSettingsProps = {
