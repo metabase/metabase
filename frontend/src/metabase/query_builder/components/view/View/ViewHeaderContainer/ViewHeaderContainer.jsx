@@ -2,12 +2,13 @@
 import { ArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner";
 import CS from "metabase/css/core/index.css";
 import NewQuestionHeader from "metabase/query_builder/components/view/NewQuestionHeader";
+import { Transition } from "metabase/ui";
+import * as Lib from "metabase-lib";
+
 import {
   BorderedViewTitleHeader,
   QueryBuilderViewHeaderContainer,
-} from "metabase/query_builder/components/view/View/View.styled";
-import { Transition } from "metabase/ui";
-import * as Lib from "metabase-lib";
+} from "./ViewHeaderContainer.styled";
 
 const fadeIn = {
   in: { opacity: 1 },
