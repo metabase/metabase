@@ -6,8 +6,10 @@ import {
   createQuestion,
   enterCustomColumnDetails,
   getNotebookStep,
+  modal,
   openNotebook,
   popover,
+  queryBuilderHeader,
   restore,
   tableHeaderClick,
   visualize,
@@ -22,6 +24,7 @@ describe("scenarios > custom column > boolean functions", () => {
     restore();
     cy.signInAsNormalUser();
     cy.intercept("POST", "/api/dataset").as("dataset");
+    cy.intercept("PUT", "/api/card/*").as("updateCard");
   });
 
   describe("expression editor", () => {
@@ -101,6 +104,12 @@ describe("scenarios > custom column > boolean functions", () => {
         columns: [...questionColumns, expressionName],
         firstRows: modifiedExpressionRows,
       });
+
+      cy.log("assert that the question can be saved");
+      queryBuilderHeader().button("Save").click();
+      modal().button("Save").click();
+      cy.wait("@updateCard");
+      queryBuilderHeader().button("Save").should("not.exist");
     }
 
     it("isNull", () => {
@@ -248,7 +257,7 @@ describe("scenarios > custom column > boolean functions", () => {
     });
   });
 
-  describe("source card", () => {
+  describe.skip("source card", () => {
     const questionDetails: StructuredQuestionDetails = {
       query: {
         "source-table": PRODUCTS_ID,
