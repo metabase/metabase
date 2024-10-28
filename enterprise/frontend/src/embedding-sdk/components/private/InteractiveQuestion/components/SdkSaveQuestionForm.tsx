@@ -12,7 +12,7 @@ export type SdkSaveQuestionFormProps = {
 };
 
 export const SdkSaveQuestionForm = ({ onClose }: SdkSaveQuestionFormProps) => {
-  const { question, originalQuestion, onSave, onCreate } =
+  const { question, originalQuestion, onSave, onCreate, saveOptions } =
     useInteractiveQuestionContext();
 
   if (!question) {
@@ -26,7 +26,8 @@ export const SdkSaveQuestionForm = ({ onClose }: SdkSaveQuestionFormProps) => {
       onCreate={onCreate}
       onSave={onSave}
       multiStep={false}
-      collectionId={null}
+      collectionId={saveOptions?.collectionId}
+      withCollectionPicker={saveOptions?.withCollectionPicker}
     >
       <Stack p="md">
         <Title>
