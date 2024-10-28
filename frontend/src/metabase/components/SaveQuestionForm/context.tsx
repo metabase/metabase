@@ -25,6 +25,7 @@ type SaveQuestionContextType = {
   setValues: (values: FormValues) => void;
   showSaveType: boolean;
   multiStep: boolean;
+  withCollectionPicker: boolean;
 };
 
 export const SaveQuestionContext =
@@ -53,6 +54,8 @@ export const SaveQuestionProvider = ({
   onCreate,
   onSave,
   multiStep = false,
+  withCollectionPicker = true,
+  collectionId,
   children,
 }: PropsWithChildren<SaveQuestionProps>) => {
   const [originalQuestion] = useState(latestOriginalQuestion); // originalQuestion from props changes during saving
@@ -62,8 +65,13 @@ export const SaveQuestionProvider = ({
   );
 
   const initialValues: FormValues = useMemo(
-    () => getInitialValues(originalQuestion, question, defaultCollectionId),
-    [originalQuestion, defaultCollectionId, question],
+    () =>
+      getInitialValues(
+        originalQuestion,
+        question,
+        collectionId ?? defaultCollectionId,
+      ),
+    [originalQuestion, defaultCollectionId, question, collectionId],
   );
 
   const handleSubmit = useCallback(
@@ -103,6 +111,7 @@ export const SaveQuestionProvider = ({
             setValues,
             showSaveType,
             multiStep,
+            withCollectionPicker,
           }}
         >
           {children}

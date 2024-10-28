@@ -9,7 +9,13 @@ export type SaveQuestionProps = {
 
   closeOnSuccess?: boolean;
   multiStep?: boolean;
-  initialCollectionId?: CollectionId | null;
+
+  /**
+   * If the collection picker is shown, this is the initial collection id.
+   * Otherwise, this becomes the target collection to save to.
+   **/
+  collectionId?: CollectionId | null;
+  withCollectionPicker?: boolean;
 };
 
 export type FormValues = {

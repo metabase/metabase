@@ -133,7 +133,7 @@ export function QueryModals({
         <SaveQuestionModal
           question={question}
           originalQuestion={originalQuestion}
-          initialCollectionId={initialCollectionId}
+          collectionId={initialCollectionId}
           onSave={handleSaveAndClose}
           onCreate={handleSaveModalCreate}
           onClose={onCloseModal}
@@ -156,7 +156,7 @@ export function QueryModals({
         <SaveQuestionModal
           question={question}
           originalQuestion={originalQuestion}
-          initialCollectionId={initialCollectionId}
+          collectionId={initialCollectionId}
           onSave={async question => {
             await onSave(question);
             onOpenModal(MODAL_TYPES.ADD_TO_DASHBOARD);
@@ -203,7 +203,7 @@ export function QueryModals({
           onClose={onCloseModal}
           opened={true}
           multiStep
-          initialCollectionId={initialCollectionId}
+          collectionId={initialCollectionId}
         />
       );
     case MODAL_TYPES.SAVE_QUESTION_BEFORE_EMBED:
@@ -216,7 +216,7 @@ export function QueryModals({
           onClose={onCloseModal}
           opened={true}
           multiStep
-          initialCollectionId={initialCollectionId}
+          collectionId={initialCollectionId}
         />
       );
     case MODAL_TYPES.FILTERS:
