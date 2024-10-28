@@ -1224,19 +1224,6 @@ async function fetchRequestToken(url) {
 const config = defineEmbeddingSdkConfig({ fetchRequestToken });
 ```
 
-### Customizing loader and error components
-
-You can provide your own React components for loading and error states by specifying `loaderComponent` and `errorComponent` in the config.
-
-```tsx
-import { defineEmbeddingSdkConfig } from "@metabase/embedding-sdk-react";
-
-const config = defineEmbeddingSdkConfig({
-  loaderComponent: () => <div>Analytics is loading...</div>,
-  errorComponent: ({ message }) => <div>There was an error: {message}</div>,
-});
-```
-
 ### Using with Next.js
 
 #### Using App Router
