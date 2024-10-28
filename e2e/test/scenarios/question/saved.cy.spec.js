@@ -31,6 +31,7 @@ import {
   sidesheet,
   summarize,
   tableHeaderClick,
+  toggleAlertChannel,
   visitQuestion,
 } from "e2e/support/helpers";
 
@@ -497,10 +498,8 @@ describe(
       popover().findByText("Create alert").click();
       modal().button("Set up an alert").click();
       modal().within(() => {
-        getAlertChannel(secondWebhookName).scrollIntoView();
-        getAlertChannel(secondWebhookName)
-          .findByRole("checkbox")
-          .click({ force: true });
+        toggleAlertChannel("Email");
+        toggleAlertChannel(secondWebhookName);
         cy.button("Done").click();
       });
       cy.findByTestId("sharing-menu-button").click();

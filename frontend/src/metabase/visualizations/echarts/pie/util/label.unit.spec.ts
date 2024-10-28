@@ -76,8 +76,8 @@ describe("pie chart label utilities", () => {
   });
 
   describe("calcAvailableDonutSliceLabelLength", () => {
-    it("throws error when outer radius is not bigger than inner radius", () => {
-      expect(() =>
+    it("returns 0 when outer radius is not bigger than inner radius", () => {
+      expect(
         calcAvailableDonutSliceLabelLength(
           5,
           5,
@@ -86,9 +86,9 @@ describe("pie chart label utilities", () => {
           12,
           "horizontal",
         ),
-      ).toThrow("Outer radius must be bigger than inner");
+      ).toBe(0);
 
-      expect(() =>
+      expect(
         calcAvailableDonutSliceLabelLength(
           10,
           5,
@@ -97,8 +97,24 @@ describe("pie chart label utilities", () => {
           12,
           "horizontal",
         ),
-      ).toThrow("Outer radius must be bigger than inner");
+      ).toBe(0);
     });
+
+    it.each([50, 100])(
+      "returns 0 when donut thickness is less than the double of the label font size",
+      fontSize => {
+        expect(
+          calcAvailableDonutSliceLabelLength(
+            50,
+            100,
+            0,
+            Math.PI / 2,
+            fontSize,
+            "horizontal",
+          ),
+        ).toBe(0);
+      },
+    );
 
     it("calculates radial label length correctly", () => {
       const result = calcAvailableDonutSliceLabelLength(
