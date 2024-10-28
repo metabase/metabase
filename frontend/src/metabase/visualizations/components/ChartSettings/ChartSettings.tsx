@@ -414,7 +414,7 @@ export const DashboardChartSettings = ({
   onClose,
   widgets: propWidgets,
 }: DashboardChartSettingsProps) => {
-  const [tempSettings, setTempSettings] = useState<VisualizationSettings>({});
+  const [tempSettings, setTempSettings] = useState<VisualizationSettings>();
   const [warnings, setWarnings] = useState<string[]>();
 
   const {
@@ -429,7 +429,7 @@ export const DashboardChartSettings = ({
   });
 
   const handleDone = useCallback(() => {
-    onChange?.(chartSettings ?? tempSettings);
+    onChange?.(chartSettings ?? tempSettings ?? {});
     onClose?.();
   }, [chartSettings, onChange, onClose, tempSettings]);
 
