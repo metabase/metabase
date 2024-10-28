@@ -7,5 +7,6 @@
 
 (mu/defmethod metabot-v3.tools.interface/*invoke-tool* :metabot.tool/goto-question :- [:sequential ::metabot-v3.reactions/reaction]
   [_tool-name _arg-map]
-  [{:type :metabot.reaction/goto-question
-    :question_id (t2/select-one-pk :model/Card :name "Sales Over Time")}])
+  {:reactions [{:type :metabot.reaction/goto-question
+                :question_id (t2/select-one-pk :model/Card :name "Sales Over Time")}]
+   :output "Navigated to question."})

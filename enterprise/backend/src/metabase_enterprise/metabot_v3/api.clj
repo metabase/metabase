@@ -4,8 +4,9 @@
    [compojure.core :refer [POST]]
    [malli.core :as mc]
    [malli.transform :as mtx]
-   [metabase-enterprise.metabot-v3.client :as metabot-v3.client]
+   [metabase-enterprise.metabot-v3.client.schema :as metabot-v3.client.schema]
    [metabase-enterprise.metabot-v3.context :as metabot-v3.context]
+   [metabase-enterprise.metabot-v3.envelope :as metabot-v3.envelope]
    [metabase-enterprise.metabot-v3.handle-response :as metabot-v3.handle-response]
    [metabase-enterprise.metabot-v3.reactions :as metabot-v3.reactions]
    [metabase.api.common :as api]
@@ -27,16 +28,15 @@
               {:name :api-response}
               (mtx/key-transformer {:encode u/->snake_case_en}))))
 
-(mu/defn- request :- ::response
-  [input-message :- :string
-   context       :- ::metabot-v3.context/context
-   history       :- [:maybe ::metabot-v3.client.schema/messages]]
-  (let [response         (metabot-v3.client/*request* input-message context history)
-        response-message (:message response)]
-    {:reactions (encode-reactions (metabot-v3.handle-response/handle-response-message response-message))
-     :history   (into (vec history)
-                      [{:role :user, :content input-message}
-                       response-message])}))
+(defn- request [message context history]
+  (let [env (metabot-v3.handle-response/handle-envelope
+             (metabot-v3.envelope/add-user-message
+              (metabot-v3.envelope/create context history)
+              message))]
+    {:reactions (if-let [reactions (seq (metabot-v3.envelope/reactions env))]
+                  (encode-reactions reactions)
+                  (encode-reactions [(metabot-v3.envelope/last-assistant-message->reaction env)]))
+     :history (metabot-v3.envelope/history env)}))
 
 (api/defendpoint POST "/agent"
   "Send a chat message to the LLM via the AI Proxy."
@@ -45,17 +45,10 @@
    context [:map-of :keyword :any]
    history [:maybe [:sequential :map]]}
   ;; HACK: for the demo, let's catch any exceptions that occur and just respond with something semi-reasonable
-  (try
-    (let [context (mc/decode ::metabot-v3.context/context
-                             context (mtx/transformer {:name :api-request}))
-          history (mc/decode [:maybe ::metabot-v3.client.schema/messages]
-                             history (mtx/transformer {:name :api-request}))]
-      (request message context history))
-    (catch Exception _
-      {:reactions [{:type               :metabot.reaction/message
-                    :message            "Sorry, something went wrong."
-                    :repl/message-color :red
-                    :repl/message-emoji "⚠"}]
-       :history history})))
+  (let [context (mc/decode ::metabot-v3.context/context
+                           context (mtx/transformer {:name :api-request}))
+        history (mc/decode [:maybe ::metabot-v3.client.schema/messages]
+                           history (mtx/transformer {:name :api-request}))]
+    (request message context history)))
 
 (api/define-routes)

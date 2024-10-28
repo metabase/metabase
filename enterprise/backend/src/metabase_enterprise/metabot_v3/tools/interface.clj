@@ -1,9 +1,7 @@
 (ns metabase-enterprise.metabot-v3.tools.interface
   (:require
-   [metabase-enterprise.metabot-v3.reactions :as metabot-v3.reactions]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.util :as u]
-   [metabase.util.i18n :as i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
@@ -94,8 +92,6 @@
   (fn [tool-name _argument-map]
     (keyword tool-name)))
 
-(mu/defmethod *invoke-tool* :default :- [:sequential ::metabot-v3.reactions/reaction]
-  [tool-name argument-map]
-  [{:type    :metabot.reaction/message
-    :message (tru "Tool is not yet implemented: {0}"
-                  (pr-str (list tool-name argument-map)))}])
+(mu/defmethod *invoke-tool* :default
+  [tool-name _argument-map]
+  {:output (format "Tool '%s' is not yet implemented." tool-name)})
