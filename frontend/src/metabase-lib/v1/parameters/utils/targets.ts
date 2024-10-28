@@ -198,7 +198,7 @@ export function getParameterColumnsLastStageOnly(question: Question) {
       ? question.composeQuestionAdhoc().query()
       : question.query();
   const lastStageIndex = Lib.stageCount(query) - 1;
-  const columns = getFilterableStageColumns(query, lastStageIndex);
+  const columns = getFilterableColumns(query, [lastStageIndex]);
 
   return { query, columns };
 }
@@ -216,23 +216,22 @@ function getTemporalColumns(query: Lib.Query, stageIndex: number) {
   }));
 }
 
-function getFilterableColumns(query: Lib.Query) {
-  return Lib.stageIndexes(query).flatMap(stageIndex => {
-    return getFilterableStageColumns(query, stageIndex);
-  });
-}
+function getFilterableColumns(
+  query: Lib.Query,
+  stages = Lib.stageIndexes(query),
+) {
+  return stages.flatMap(stageIndex => {
+    const columns = Lib.filterableColumns(query, stageIndex);
+    const groups = Lib.groupColumns(columns);
 
-function getFilterableStageColumns(query: Lib.Query, stageIndex: number) {
-  const columns = Lib.filterableColumns(query, stageIndex);
-  const groups = Lib.groupColumns(columns);
+    return groups.flatMap(group => {
+      const columns = Lib.getColumnsFromColumnGroup(group);
 
-  return groups.flatMap(group => {
-    const columns = Lib.getColumnsFromColumnGroup(group);
-
-    return columns.map(column => ({
-      stageIndex,
-      column,
-      group,
-    }));
+      return columns.map(column => ({
+        stageIndex,
+        column,
+        group,
+      }));
+    });
   });
 }
