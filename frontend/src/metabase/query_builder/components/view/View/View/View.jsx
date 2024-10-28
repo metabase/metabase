@@ -17,20 +17,20 @@ import {
   rememberLastUsedDatabase,
   setArchivedQuestion,
 } from "metabase/query_builder/actions";
-import { ViewHeaderContainer } from "metabase/query_builder/components/view/View/ViewHeaderContainer/ViewHeaderContainer";
-import { ViewLeftSidebarContainer } from "metabase/query_builder/components/view/View/ViewLeftSidebarContainer/ViewLeftSidebarContainer";
-import { ViewMainContainer } from "metabase/query_builder/components/view/View/ViewMainContainer/ViewMainContainer";
-import { ViewRightSidebarContainer } from "metabase/query_builder/components/view/View/ViewRightSidebarContainer/ViewRightSidebarContainer";
 import { SIDEBAR_SIZES } from "metabase/query_builder/constants";
 import { MetricEditor } from "metabase/querying/metrics/components/MetricEditor";
 import * as Lib from "metabase-lib";
 
-import DatasetEditor from "../../DatasetEditor";
-import { QueryModals } from "../../QueryModals";
-import { SavedQuestionIntroModal } from "../../SavedQuestionIntroModal";
-import ViewSidebar from "../ViewSidebar";
+import DatasetEditor from "../../../DatasetEditor";
+import { QueryModals } from "../../../QueryModals";
+import { SavedQuestionIntroModal } from "../../../SavedQuestionIntroModal";
+import ViewSidebar from "../../ViewSidebar";
+import { NotebookContainer } from "../NotebookContainer";
+import { ViewHeaderContainer } from "../ViewHeaderContainer";
+import { ViewLeftSidebarContainer } from "../ViewLeftSidebarContainer";
+import { ViewMainContainer } from "../ViewMainContainer";
+import { ViewRightSidebarContainer } from "../ViewRightSidebarContainer";
 
-import { NotebookContainer } from "./NotebookContainer";
 import {
   QueryBuilderContentContainer,
   QueryBuilderViewRoot,
