@@ -6,7 +6,8 @@
    [metabase.pulse.render.style :as style]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [toucan2.core :as t2]))
 
 (def Notification
   "Schema for the notification."
@@ -124,6 +125,7 @@
   "Realize notification-info with :context and :payload."
   [notification :- Notification]
   (assoc (select-keys notification [:payload_type])
+         :creator (t2/select-one :model/User (:creator_id notification))
          :payload (payload notification)
          :context (default-context)))
 
