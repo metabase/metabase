@@ -3,7 +3,6 @@ import _ from "underscore";
 
 import { getEmbeddingSdkVersion } from "embedding-sdk/config";
 import { setupSdkAuth } from "embedding-sdk/hooks";
-import { COULD_NOT_AUTHENTICATE_MESSAGE } from "embedding-sdk/lib/user-warnings";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
 import {
   setFetchRefreshTokenFn,
@@ -68,35 +67,8 @@ export const useInitData = ({ config }: InitDataLoaderParameters) => {
     if (loginStatus.status === "validated") {
       const fetchData = async () => {
         dispatch(setLoginStatus({ status: "loading" }));
-
-        try {
-          const [userResponse, siteSettingsResponse] = await Promise.all([
-            dispatch(refreshCurrentUser()),
-            dispatch(refreshSiteSettings({})),
-          ]);
-
-          if (
-            userResponse.meta.requestStatus === "rejected" ||
-            siteSettingsResponse.meta.requestStatus === "rejected"
-          ) {
-            dispatch(
-              setLoginStatus({
-                status: "error",
-                error: new Error(COULD_NOT_AUTHENTICATE_MESSAGE),
-              }),
-            );
-            return;
-          }
-
-          dispatch(setLoginStatus({ status: "success" }));
-        } catch (error) {
-          dispatch(
-            setLoginStatus({
-              status: "error",
-              error: new Error(COULD_NOT_AUTHENTICATE_MESSAGE),
-            }),
-          );
-        }
+        dispatch(refreshCurrentUser());
+        dispatch(refreshSiteSettings({}));
       };
 
       fetchData();
