@@ -58,3 +58,7 @@ Note that only the `*` wildcard is supported; you can't use other special charac
 You can append options to the connection string that Metabase uses to connect to your database. E.g., `IgnoreTransactions=0`.
 
 See [Compute settings for the Databricks JDBC Driver](https://docs.databricks.com/en/integrations/jdbc/compute.html).
+
+## Limitations
+
+Currently, you can't sync Databricks's `samples` catalog.
