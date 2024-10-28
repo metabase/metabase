@@ -150,9 +150,10 @@
   `all`, but other options include `mine`, `bookmarked`, `database`, `table`, `using_model`, `using_metric`,
   `using_segment`, and `archived`. See corresponding implementation functions above for the specific behavior
   of each filter option. :card_index:"
-  [f model_id]
-  {f        [:maybe (into [:enum] card-filter-options)]
-   model_id [:maybe ms/PositiveInt]}
+  [f model_id database_id]
+  {f           [:maybe (into [:enum] card-filter-options)]
+   model_id    [:maybe ms/PositiveInt]
+   database_id [:maybe ms/PositiveInt]}
   (let [f (or (keyword f) :all)]
     (when (contains? #{:database :table :using_model :using_metric :using_segment} f)
       (api/checkp (integer? model_id) "model_id" (format "model_id is a required parameter when filter mode is '%s'"
@@ -163,14 +164,21 @@
         :using_model   (api/read-check Card model_id)
         :using_metric  (api/read-check Database (db-id-via-table :metric model_id))
         :using_segment (api/read-check Database (db-id-via-table :segment model_id))))
-    (let [cards          (filter mi/can-read? (cards-for-filter-option f model_id))
-          last-edit-info (:card (last-edit/fetch-last-edited-info {:card-ids (map :id cards)}))]
-      (into []
-            (map (fn [{:keys [id] :as card}]
-                   (if-let [edit-info (get last-edit-info id)]
-                     (assoc card :last-edit-info edit-info)
-                     card)))
-            cards))))
+    (let [cards (if database_id
+                  (->> (cards-for-filter-option :database database_id)
+                       (map #(select-keys % [:id :name :description :dataset_query :visualization_settings]))
+                       (into []))
+                  (let [cards (filter mi/can-read? (cards-for-filter-option f model_id))
+                        last-edit-info (:card (last-edit/fetch-last-edited-info {:card-ids (map :id cards)}))]
+                    (into []
+                          (map (fn [{:keys [id] :as card}]
+                                 (if-let [edit-info (get last-edit-info id)]
+                                   (assoc card :last-edit-info edit-info)
+                                   card)))
+                          cards)))]
+      cards)))
+
+
 
 (defn hydrate-card-details
   "Adds additional information to a `Card` selected with toucan that is needed by the frontend. This should be the same information
