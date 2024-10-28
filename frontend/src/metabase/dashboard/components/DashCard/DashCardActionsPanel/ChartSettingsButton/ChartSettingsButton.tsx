@@ -18,7 +18,7 @@ interface Props {
   series: Series;
   dashboard: Dashboard;
   dashcard?: DashboardCard;
-  onReplaceAllVisualizationSettings: (settings?: VisualizationSettings) => void;
+  onReplaceAllVisualizationSettings: (settings: VisualizationSettings) => void;
 }
 
 export function ChartSettingsButton({

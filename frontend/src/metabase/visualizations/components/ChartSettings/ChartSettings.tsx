@@ -126,7 +126,7 @@ export const useChartSettingsState = ({
 export const ChartSettings = ({
   initial,
   series,
-  computedSettings: propComputedSettings,
+  computedSettings = {},
   onChange,
   question,
   widgets,
@@ -140,11 +140,6 @@ export const ChartSettings = ({
     initial?.widget ?? null,
   );
   const [popoverRef, setPopoverRef] = useState<HTMLElement | null>();
-
-  const computedSettings = useMemo(
-    () => propComputedSettings || {},
-    [propComputedSettings],
-  );
 
   const columnHasSettings = useCallback(
     (col: DatasetColumn) => {
@@ -420,7 +415,7 @@ export const DashboardChartSettings = ({
   onClose,
   widgets: propWidgets,
 }: DashboardChartSettingsProps) => {
-  const [tempSettings, setTempSettings] = useState<VisualizationSettings>();
+  const [tempSettings, setTempSettings] = useState<VisualizationSettings>({});
   const [warnings, setWarnings] = useState<string[]>();
 
   const {
@@ -454,10 +449,6 @@ export const DashboardChartSettings = ({
     !_.isEqual(chartSettings, {}) && (chartSettings || {}).virtual_card == null
       ? handleResetSettings
       : null;
-
-  const handleCancel = useCallback(() => {
-    onClose?.();
-  }, [onClose]);
 
   const widgets = useMemo(
     () =>
@@ -494,7 +485,7 @@ export const DashboardChartSettings = ({
         onUpdateVisualizationSettings={handleChangeSettings}
         onUpdateWarnings={setWarnings}
         onDone={handleDone}
-        onCancel={handleCancel}
+        onCancel={() => onClose?.()}
         onReset={onResetToDefault}
       />
     </ChartSettingsRoot>
