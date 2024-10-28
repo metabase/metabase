@@ -315,7 +315,7 @@ describe("scenarios > custom column > boolean functions", () => {
       });
     });
 
-    it("should be able to add a same-stage order by clause", () => {
+    it("should be able to add a same-stage sorting", () => {
       createQuestion(questionDetails, { visitQuestion: true });
       openNotebook();
       getNotebookStep("expression").button("Sort").click();
