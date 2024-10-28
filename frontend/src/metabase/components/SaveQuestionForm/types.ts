@@ -14,13 +14,13 @@ export type SaveQuestionProps = {
    * If the collection picker is shown, this is the initial collection id.
    * Otherwise, this becomes the target collection to save to.
    **/
-  collectionId?: CollectionId;
+  collectionId?: CollectionId | null;
   withCollectionPicker?: boolean;
 };
 
 export type FormValues = {
   saveType: "overwrite" | "create";
-  collection_id: CollectionId | null | undefined;
+  collection_id?: CollectionId | null;
   name: string;
   description: string;
 };
@@ -35,7 +35,7 @@ export type CreateQuestionOptions = {
   details: FormValues;
   question: Question;
   onCreate: (question: Question) => Promise<void>;
-  collectionId?: CollectionId;
+  collectionId?: CollectionId | null;
 };
 
 export type SubmitQuestionOptions = CreateQuestionOptions & {

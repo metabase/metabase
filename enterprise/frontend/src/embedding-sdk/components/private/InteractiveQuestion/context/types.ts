@@ -32,7 +32,7 @@ export type SdkInteractiveQuestionSaveOptions = {
    * If `withCollectionPicker` is true, this is the initial collection id..
    * Otherwise, this becomes the target collection to save to.
    **/
-  collectionId?: CollectionId;
+  collectionId?: CollectionId | null;
 };
 
 export type QuestionMockLocationParameters = {
