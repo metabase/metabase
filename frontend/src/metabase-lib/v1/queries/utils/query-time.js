@@ -248,7 +248,7 @@ export function getStartingFrom(mbql) {
 }
 
 export function formatStartingFrom(unit, n) {
-  const unitText = Lib.describeTemporalUnit(unit, n);
+  const unitText = Lib.describeTemporalUnit(unit, n).toLowerCase();
   return n >= 0 ? t`${unitText} from now` : t`${unitText} ago`;
 }
 
