@@ -79,7 +79,7 @@ class ClickMappings extends Component {
             <p className={cx(CS.mb2, CS.textMedium)}>
               {this.getTargetsHeading(setTargets)}
             </p>
-            <div>
+            <div data-testid="unset-click-mappings">
               {unsetTargetsWithSourceOptions.map(
                 ({ target, sourceOptions }) => (
                   <TargetWithoutSource
@@ -182,7 +182,9 @@ function TargetWithoutSource({
   return (
     <Select
       key={id}
-      triggerElement={<TargetTrigger>{name}</TargetTrigger>}
+      triggerElement={
+        <TargetTrigger data-testid="click-target-column">{name}</TargetTrigger>
+      }
       value={null}
       sections={Object.entries(sourceOptions).map(([sourceType, items]) => ({
         name: {
