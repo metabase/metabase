@@ -15,9 +15,9 @@
 ;; TODO - this and `execute-multi-card` should be made more efficient: eg. we query for the card several times
 (defn execute-card
   "Execute the query for a single Card. `options` are passed along to the Query Processor."
-  [{pulse-creator-id :creator_id} card-or-id & {:as options}]
+  [creator-id card-or-id & {:as options}]
   ;; The Card must either be executed in the context of a User
-  {:pre [(integer? pulse-creator-id)]}
+  {:pre [(integer? creator-id)]}
   (let [card-id (u/the-id card-or-id)]
     (try
       (when-let [{query     :dataset_query
@@ -37,15 +37,15 @@
                                                       :process-viz-settings?             true
                                                       :js-int-to-string?                 false
                                                       :add-default-userland-constraints? false})
-                                  (merge (cond-> {:executed-by pulse-creator-id
+                                  (merge (cond-> {:executed-by creator-id
                                                   :context     :pulse
                                                   :card-id     card-id}
                                            (= card-type :model)
                                            (assoc :metadata/model-metadata metadata))
                                          {:visualization-settings (:visualization_settings card)}
                                          options)))))
-              result        (if pulse-creator-id
-                              (mw.session/with-current-user pulse-creator-id
+              result        (if creator-id
+                              (mw.session/with-current-user creator-id
                                 (process-query))
                               (process-query))]
           {:card   card

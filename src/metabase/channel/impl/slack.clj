@@ -95,12 +95,12 @@
 ;; ------------------------------------------------------------------------------------------------;;
 
 (mu/defmethod channel/render-notification [:channel/slack :notification/alert] :- [:sequential SlackMessage]
-  [_channel-type {:keys [payload card]} _template channel-ids]
+  [_channel-type {:keys [payload]} _template channel-ids]
   (let [attachments [{:blocks [{:type "header"
                                 :text {:type "plain_text"
-                                       :text (str "🔔 " (:name card))
+                                       :text (str "🔔 " (-> payload :card :name))
                                        :emoji true}}]}
-                     (part->attachment-data payload (slack/files-channel))]]
+                     (part->attachment-data (:result payload) (slack/files-channel))]]
     (for [channel-id channel-ids]
       {:channel-id  channel-id
        :attachments attachments})))

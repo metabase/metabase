@@ -88,7 +88,7 @@
     {{:keys [rows]} :data :as result}                                                :result}]
   (when (seq rows)
     [(when-let [temp-file (and (:include_csv card)
-                               (create-temp-file-or-throw "csv"))]
+                           (create-temp-file-or-throw "csv"))]
        (with-open [os (io/output-stream temp-file)]
          (stream-api-results-to-export-format os {:export-format :csv :format-rows? format-rows :pivot? pivot-results} result))
        (create-result-attachment-map "csv" card-name temp-file))

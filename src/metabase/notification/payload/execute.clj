@@ -153,3 +153,7 @@
                              [(tab->part tab)])
                            (dashcards->part cards parameters))))))
       (dashcards->part (t2/select :model/DashboardCard :dashboard_id dashboard-id) parameters))))
+
+(defn execute-card
+  [& args]
+  (apply pu/execute-card args))

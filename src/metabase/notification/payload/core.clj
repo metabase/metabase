@@ -28,13 +28,12 @@
         ;; TODO: event-info schema for each event type
         [:event_topic [:fn #(= "event" (-> % keyword namespace))]]
         [:event_info  [:maybe :map]]]]]]
-    #_[:notification/alert
-       [:map
-        ;; replacement of pulse
-        [:notification_alert
-         [:map
-          [:card_id ms/PositiveInt]
-          [:creator_id ms/PositiveInt]]]]]
+    [:notification/alert
+     [:map
+      ;; replacement of pulse
+      [:alert      :map]
+      [:card_id    ms/PositiveInt]
+      [:creator_id ms/PositiveInt]]]
     [:notification/dashboard-subscription
      [:map
       [:creator_id ms/PositiveInt]
@@ -45,10 +44,10 @@
         [:parameters {:optional true} [:maybe [:sequential :map]]]
         [:dashboard_subscription_dashcards {:optional true}
          [:sequential [:map
-                        [:dashboard_card_id ms/PositiveInt]
-                        [:include_csv       ms/BooleanValue]
-                        [:include_xls       ms/BooleanValue]
-                        [:pivot_results     ms/BooleanValue]]]]]]]]
+                       [:dashboard_card_id ms/PositiveInt]
+                       [:include_csv       ms/BooleanValue]
+                       [:include_xls       ms/BooleanValue]
+                       [:pivot_results     ms/BooleanValue]]]]]]]]
 
     ;; for testing only
     [:notification/testing :map]]])
@@ -77,7 +76,16 @@
                  [:result                 [:sequential [:map]]]
                  [:dashboard              :map]
                  [:dashboard_subscription :map]
+                 [:style                  :map]
                  [:parameters {:optional true} [:maybe [:sequential :map]]]]]]]
+    [:notification/alert
+     [:map
+      [:payload [:map
+                 ;; TODO: type this out
+                 [:result :map]
+                 [:card   :map]
+                 [:style  :map]
+                 [:alert  :map]]]]]
     [:notification/testing       :map]]])
 
 ;; TODO: from metabase.email.messages
@@ -125,7 +133,7 @@
   "Realize notification-info with :context and :payload."
   [notification :- Notification]
   (assoc (select-keys notification [:payload_type])
-         :creator (t2/select-one :model/User (:creator_id notification))
+         :creator (t2/select-one [:model/User :first_name :last_name :email] (:creator_id notification))
          :payload (payload notification)
          :context (default-context)))
 

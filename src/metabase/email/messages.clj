@@ -476,7 +476,7 @@
   []
   (or (driver/report-timezone) "UTC"))
 
-(defn- alert-schedule-text
+(defn alert-schedule-text
   "Returns a string that describes the run schedule of an alert (i.e. how often results are checked),
   for inclusion in the email template. Not translated, since emails in general are not currently translated."
   [channel]
