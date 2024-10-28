@@ -298,19 +298,19 @@ describe("scenarios > custom column > boolean functions", () => {
       createQuestion(questionDetails, { visitQuestion: true });
       openNotebook();
       getNotebookStep("expression").button("Summarize").click();
-      popover().findByText("Count of rows");
+      popover().findByText("Count of rows").click();
       getNotebookStep("summarize")
         .findByTestId("breakout-step")
-        .icon("add")
+        .findByText("Pick a column to group by")
         .click();
       popover().findByText(expressionName).click();
       visualize();
       cy.wait("@dataset");
       assertTableData({
-        columns: ["Count", expressionName],
+        columns: [expressionName, "Count"],
         firstRows: [
-          ["1", "false"],
-          ["3", "true"],
+          ["false", "149"],
+          ["true", "51"],
         ],
       });
     });
@@ -377,6 +377,53 @@ describe("scenarios > custom column > boolean functions", () => {
         cy.findByText("Add filter").click();
       });
       assertQueryBuilderRowCount(1);
+    });
+
+    it("should be able to add a post-aggregation aggregation", () => {
+      createQuestion(questionDetails, { visitQuestion: true });
+      openNotebook();
+      getNotebookStep("summarize").button("Summarize").click();
+      popover().findByText("Minimum of ...").click();
+      popover().findByText(expressionName).click();
+      visualize();
+      cy.wait("@dataset");
+      assertTableData({
+        columns: [`Min of ${expressionName}`],
+        firstRows: [["false"]],
+      });
+    });
+
+    it("should be possible to add a post-aggregation breakout and sorting", () => {
+      createQuestion(questionDetails, { visitQuestion: true });
+      openNotebook();
+      getNotebookStep("summarize").button("Summarize").click();
+      popover().findByText("Count of rows").click();
+      getNotebookStep("summarize", { stage: 1 })
+        .findByTestId("breakout-step")
+        .findByText("Pick a column to group by")
+        .click();
+      popover().findByText(expressionName).click();
+      visualize();
+      cy.wait("@dataset");
+      assertTableData({
+        columns: [expressionName, "Count"],
+        firstRows: [
+          ["false", 1],
+          ["true", 1],
+        ],
+      });
+      openNotebook();
+      getNotebookStep("summarize", { stage: 1 }).button("Sort").click();
+      popover().findByText(expressionName).click();
+      getNotebookStep("sort", { stage: 1 }).icon("arrow_up").click();
+      visualize();
+      assertTableData({
+        columns: [expressionName, "Count"],
+        firstRows: [
+          ["true", 1],
+          ["false", 1],
+        ],
+      });
     });
   });
 
