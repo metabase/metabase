@@ -10,6 +10,7 @@ import {
   chartPathWithFillColor,
   createDashboardWithTabs,
   dashboardHeader,
+  describeEE,
   editDashboard,
   entityPickerModal,
   filterWidget,
@@ -172,7 +173,7 @@ const URL_WITH_FILLED_PARAMS = URL_WITH_PARAMS.replace(
   .replace(`{{${CREATED_AT_COLUMN_ID}}}`, POINT_CREATED_AT)
   .replace(`{{${DASHBOARD_FILTER_TEXT.slug}}}`, FILTER_VALUE);
 
-describe("scenarios > dashboard > dashboard cards > click behavior", () => {
+describeEE("scenarios > dashboard > dashboard cards > click behavior", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
