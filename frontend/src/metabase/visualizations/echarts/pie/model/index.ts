@@ -167,9 +167,8 @@ function calculatePercentageAndIsOther(
   );
 }
 
-function aggregateSlices(
+function aggregateChildrenSlices(
   node: SliceTreeNode,
-  total: number,
   renderingContext: RenderingContext,
 ) {
   const children = getArrayFromMapValues(node.children);
@@ -178,9 +177,13 @@ function aggregateSlices(
 
   if (others.length > 1 && otherTotal > 0) {
     const otherSliceChildren: SliceTree = new Map();
-    others.forEach(o => {
-      otherSliceChildren.set(String(o.key), { ...o, color: "" });
-      node.children.delete(String(o.key));
+    others.forEach(otherChildSlice => {
+      otherSliceChildren.set(String(otherChildSlice.key), {
+        ...otherChildSlice,
+        normalizedPercentage: otherChildSlice.value / otherTotal,
+        color: "",
+      });
+      node.children.delete(String(otherChildSlice.key));
     });
 
     node.children.set(OTHER_SLICE_KEY, {
@@ -188,7 +191,7 @@ function aggregateSlices(
       name: OTHER_SLICE_NAME,
       value: otherTotal,
       displayValue: otherTotal,
-      normalizedPercentage: otherTotal / total,
+      normalizedPercentage: otherTotal / node.value,
       color: renderingContext.getColor("text-light"),
       children: otherSliceChildren,
       visible: true,
@@ -200,7 +203,7 @@ function aggregateSlices(
     others[0].isOther = false;
   }
 
-  children.forEach(child => aggregateSlices(child, total, renderingContext));
+  children.forEach(child => aggregateChildrenSlices(child, renderingContext));
 }
 
 function computeSliceAngles(
@@ -327,11 +330,11 @@ export function getPieChartModel(
     if (!hasMultipleRings) {
       return hexColor;
     }
-    const accentNumber = hexToAccentColorMap.get(hexColor);
-    if (accentNumber == null) {
+    const accentKey = hexToAccentColorMap.get(hexColor);
+    if (accentKey == null) {
       return hexColor;
     }
-    return renderingContext.getColor(getRingColorAlias(accentNumber, ring));
+    return renderingContext.getColor(getRingColorAlias(accentKey, ring));
   }
 
   // Create sliceTree, fill out the innermost slice ring
@@ -457,10 +460,11 @@ export function getPieChartModel(
   const otherTotal = others.reduce((currTotal, o) => currTotal + o.value, 0);
   if (otherTotal > 0) {
     const children: SliceTree = new Map();
-    others.forEach(node => {
-      children.set(String(node.key), {
-        ...node,
+    others.forEach(otherChildSlice => {
+      children.set(String(otherChildSlice.key), {
+        ...otherChildSlice,
         color: "",
+        normalizedPercentage: otherChildSlice.value / otherTotal,
       });
     });
     const visible = !hiddenSlices.includes(OTHER_SLICE_KEY);
@@ -485,7 +489,7 @@ export function getPieChartModel(
 
   // Aggregate slices in middle and outer ring into "other" slices
   sliceTreeNodes.forEach(node =>
-    aggregateSlices(node, total, renderingContext),
+    aggregateChildrenSlices(node, renderingContext),
   );
 
   // We increase the size of small slices, but only for the first ring, because
