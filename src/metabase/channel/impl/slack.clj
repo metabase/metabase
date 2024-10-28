@@ -32,11 +32,11 @@
                  :text {:type "mrkdwn"
                         :text (truncate-mrkdwn mrkdwn block-text-length-limit)}}]})))
 
-(defn- payload->attachment-data
-  [payload channel-id]
-  (case (:type payload)
+(defn- part->attachment-data
+  [part channel-id]
+  (case (:type part)
     :card
-    (let [{:keys [card dashcard result]}         payload
+    (let [{:keys [card dashcard result]}         part
           {card-id :id card-name :name :as card} card]
       {:title           (or (-> dashcard :visualization_settings :card.title)
                             card-name)
@@ -47,10 +47,10 @@
        :fallback        card-name})
 
     :text
-    (text->markdown-block (:text payload))
+    (text->markdown-block (:text part))
 
     :tab-title
-    (text->markdown-block (format "# %s" (:text payload)))))
+    (text->markdown-block (format "# %s" (:text part)))))
 
 (def ^:private slack-width
   "Maximum width of the rendered PNG of HTML to be sent to Slack. Content that exceeds this width (e.g. a table with
@@ -100,7 +100,7 @@
                                 :text {:type "plain_text"
                                        :text (str "🔔 " (:name card))
                                        :emoji true}}]}
-                     (payload->attachment-data payload (slack/files-channel))]]
+                     (part->attachment-data payload (slack/files-channel))]]
     (for [channel-id channel-ids]
       {:channel-id  channel-id
        :attachments attachments})))
@@ -143,7 +143,7 @@
   [parts]
   (let [channel-id (slack/files-channel)]
     (for [part  parts
-          :let  [attachment (payload->attachment-data part channel-id)]
+          :let  [attachment (part->attachment-data part channel-id)]
           :when attachment]
       attachment)))
 

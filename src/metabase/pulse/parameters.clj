@@ -12,8 +12,8 @@
 (defenterprise the-parameters
   "OSS way of getting filter parameters for a dashboard subscription"
   metabase-enterprise.dashboard-subscription-filters.pulse
-  [_dashboard-subscription-parameters dashboard]
-  (:parameters dashboard))
+  [_dashboard-subscription-params dashboard-params]
+  dashboard-params)
 
 (defn- param-val-or-default
   "Returns the parameter value, such that:
@@ -25,10 +25,10 @@
 (defn parameters
   "Returns the list of parameters applied to a dashboard subscription, filtering out ones
   without a value"
-  [dashboard-subscription-parameters dashboard]
+  [dashboard-subscription-params dashboard-params]
   (filter
    param-val-or-default
-   (the-parameters dashboard-subscription-parameters dashboard)))
+   (the-parameters dashboard-subscription-params dashboard-params)))
 
 (defn value-string
   "Returns the value(s) of a dashboard filter, formatted appropriately."

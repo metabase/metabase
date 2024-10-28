@@ -1,9 +1,9 @@
 (ns metabase.notification.payload.core
   (:require
-   [metabase.email.messages :as messages]
    [metabase.models.notification :as models.notification]
    [metabase.public-settings :as public-settings]
-   [metabase.pulse.core :as pulse]
+   #_{:clj-kondo/ignore [:metabase/ns-module-checker]}
+   [metabase.pulse.render.style :as style]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]))
@@ -78,16 +78,42 @@
                  [:dashboard_subscription :map]]]]]
     [:notification/testing       :map]]])
 
+;; TODO: from metabase.email.messages
+(defn logo-url
+  "Return the URL for the application logo. If the logo is the default, return a URL to the Metabase logo."
+  []
+  (let [url (public-settings/application-logo-url)]
+    (cond
+      (= url "app/assets/img/logo.svg") "http://static.metabase.com/email_logo.png"
+
+      :else nil)))
+
+;; TODO: from metabase.email.messages
+(defn button-style
+  "Return a CSS style string for a button with the given color."
+  [color]
+  (str "display: inline-block; "
+       "box-sizing: border-box; "
+       "padding: 0.5rem 1.375rem; "
+       "font-size: 1.063rem; "
+       "font-weight: bold; "
+       "text-decoration: none; "
+       "cursor: pointer; "
+       "color: #fff; "
+       "border: 1px solid " color "; "
+       "background-color: " color "; "
+       "border-radius: 4px;"))
+
 (defn- default-context
   []
   ;; DO NOT delete or rename these fields, they are used in the notification templates
   {:application_name     (public-settings/application-name)
    :application_color    (public-settings/application-color)
-   :application_logo_url (messages/logo-url)
+   :application_logo_url (logo-url)
    :site_name            (public-settings/site-name)
    :site_url             (public-settings/site-url)
    :admin_email          (public-settings/admin-email)
-   :style                {:button (messages/button-style (pulse/primary-color))}})
+   :style                {:button (button-style (style/primary-color))}})
 
 (defmulti payload
   "Given a notification info, return the notification payload."

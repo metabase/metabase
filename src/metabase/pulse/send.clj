@@ -11,7 +11,6 @@
    [metabase.models.pulse :as models.pulse :refer [Pulse]]
    [metabase.models.serialization :as serdes]
    [metabase.models.task-history :as task-history]
-   [metabase.notification.core :as notification]
    [metabase.pulse.parameters :as pulse-params]
    [metabase.pulse.util :as pu]
    [metabase.query-processor.timezone :as qp.timezone]
@@ -103,11 +102,11 @@
   "Given a dashcard returns its part based on its type.
 
   The result will follow the pulse's creator permissions."
-  [dashcard pulse dashboard]
+  [dashcard pulse-params dashboard-params]
   (assert api/*current-user-id* "Makes sure you wrapped this with a `with-current-user`.")
   (cond
     (:card_id dashcard)
-    (let [parameters (merge-default-values (pulse-params/parameters pulse dashboard))]
+    (let [parameters (merge-default-values (pulse-params/parameters pulse-params dashboard-params))]
       (pu/execute-dashboard-subscription-card dashcard parameters))
 
     ;; iframes
@@ -129,7 +128,7 @@
     ;; text cards have existed for a while and I'm not sure if all existing text cards
     ;; will have virtual_card.display = "text", so assume everything else is a text card
     :else
-    (let [parameters (merge-default-values (pulse-params/parameters pulse dashboard))]
+    (let [parameters (merge-default-values (pulse-params/parameters pulse-params dashboard-params))]
       (some-> dashcard
               (pulse-params/process-virtual-dashcard parameters)
               escape-heading-markdown
@@ -137,10 +136,10 @@
               (assoc :type :text)))))
 
 (defn- dashcards->part
-  [dashcards pulse dashboard]
+  [dashcards pulse-params dashboard-params]
   (let [ordered-dashcards (sort dashboard-card/dashcard-comparator dashcards)]
     (doall (for [dashcard ordered-dashcards
-                 :let     [part (dashcard->part dashcard pulse dashboard)]
+                 :let     [part (dashcard->part dashcard pulse-params dashboard-params)]
                  :when    (some? part)]
              part))))
 
@@ -170,7 +169,7 @@
                                         (concat
                                          (when should-render-tab?
                                            [(tab->part tab)])
-                                         (dashcards->part cards pulse dashboard))))))
+                                         (dashcards->part cards (:parameters pulse) (:parameters dashboard)))))))
                     (dashcards->part (t2/select :model/DashboardCard :dashboard_id dashboard-id) pulse dashboard))]
         (if skip_if_empty
           ;; Remove cards that have no results when empty results aren't wanted
@@ -341,6 +340,10 @@
   [& args]
   (apply (requiring-resolve 'metabase.channel.core/render-notification) args))
 
+(defn- notification-payload
+  [& args]
+  (apply (requiring-resolve 'metabase.notification.core/notification-payload) args))
+
 (defn- pc->channel
   "Given a pulse channel, return the channel object.
 
@@ -365,23 +368,17 @@
                                            :user-id (:creator_id pulse)
                                            :object  {:recipients (map :recipients (:channels pulse))
                                                      :filters    (:parameters pulse)}})
-
-        (def x {:payload_type :notification/dashboard-subscription
-                :creator_id (:id pulse)
-                :dashboard_subscription {:dashboard_id (:id dashboard)
-                                         :parameters (:parameters pulse)
-                                         :skip_if_empty (:skip_if_empty pulse)}})
         (u/prog1 (doseq [pulse-channel channels]
                    (try
                      (let [channel  (pc->channel pulse-channel)
                            ;notification-payload (get-notification-info pulse parts pulse-channel)
                            messages (channel-render-notification
                                      (:type channel)
-                                     (notification/notification-payload
-                                      {:payload_type :notification/dashboard-subscription
-                                       :creator_id (:id pulse)
-                                       :dashboard_subscription {:dashboard_id (:id dashboard)
-                                                                :parameters (:parameters pulse)
+                                     (notification-payload
+                                      {:payload_type           :notification/dashboard-subscription
+                                       :creator_id             (:creator_id pulse)
+                                       :dashboard_subscription {:dashboard_id  (:id dashboard)
+                                                                :parameters    (:parameters pulse)
                                                                 :skip_if_empty (:skip_if_empty pulse)}})
                                      {:channel_type :channel/email
                                       :details      {:type    :email/mustache-resource
@@ -443,4 +440,4 @@
       (send-pulse!* pulse dashboard))))
 
 #_(ngoc/with-tc
-    (mapv send-pulse! (t2/select :model/Pulse :dashboard_id 11)))
+    (mapv send-pulse! (t2/select :model/Pulse :dashboard_id 12)))
