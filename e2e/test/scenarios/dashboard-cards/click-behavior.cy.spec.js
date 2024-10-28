@@ -1382,7 +1382,7 @@ describeEE("scenarios > dashboard > dashboard cards > click behavior", () => {
         addSavedQuestionDestination();
         addSavedQuestionCreatedAtParameter();
         addSavedQuestionQuantityParameter();
-        customizeLinkText(`Count: {{${CREATED_AT_COLUMN_ID}}}`);
+        customizeLinkText(`Created at: {{${CREATED_AT_COLUMN_ID}}}`);
 
         cy.icon("chevronleft").click();
 
