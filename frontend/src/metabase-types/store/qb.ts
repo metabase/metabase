@@ -39,8 +39,8 @@ export interface QueryBuilderUIControls {
   isShowingNotebookNativePreview: boolean;
   notebookNativePreviewSidebarWidth: number | null;
   showSidebarTitle: boolean;
-  modal: QueryModalType;
-  modalContext: TimelineEventId;
+  modal: QueryModalType | null;
+  modalContext: TimelineEventId | null;
 }
 
 export interface QueryBuilderLoadingControls {
