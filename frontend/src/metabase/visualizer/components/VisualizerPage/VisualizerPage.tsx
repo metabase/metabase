@@ -15,16 +15,21 @@ import {
 } from "metabase/visualizer/dnd/guards";
 import {
   getDraggedItem,
+  getVisualizationType,
+  setDisplay,
   setDraggedItem,
   updateSettings,
 } from "metabase/visualizer/visualizer.slice";
+import type { VisualizationDisplay } from "metabase-types/api";
 
 import { DataImporter } from "../DataImporter";
 import { DataManager } from "../DataManager";
 import { DragOverlay as VisualizerDragOverlay } from "../DragOverlay";
 import { VisualizationCanvas } from "../VisualizationCanvas";
+import { VisualizationPicker } from "../VisualizationPicker";
 
 export const VisualizerPage = () => {
+  const display = useSelector(getVisualizationType);
   const draggedItem = useSelector(getDraggedItem);
   const dispatch = useDispatch();
 
@@ -65,6 +70,13 @@ export const VisualizerPage = () => {
     [dispatch],
   );
 
+  const handleChangeDisplay = useCallback(
+    (nextDisplay: string) => {
+      dispatch(setDisplay(nextDisplay as VisualizationDisplay));
+    },
+    [dispatch],
+  );
+
   return (
     <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <Flex style={{ height: "100%", overflow: "hidden" }}>
@@ -80,7 +92,7 @@ export const VisualizerPage = () => {
           component="main"
           w="100%"
           m={10}
-          p="xl"
+          px="xl"
           bg="white"
           style={{
             borderRadius: "var(--default-border-radius)",
@@ -89,7 +101,16 @@ export const VisualizerPage = () => {
             boxShadow: "0 1px 2px 2px var(--mb-color-border)",
           }}
         >
-          <VisualizationCanvas />
+          <Flex direction="row" align="center" justify="space-between">
+            <p>Name your visualization</p>
+            <VisualizationPicker
+              value={display}
+              onChange={handleChangeDisplay}
+            />
+          </Flex>
+          <Box h="90%">
+            <VisualizationCanvas />
+          </Box>
         </Box>
       </Flex>
       <DragOverlay dropAnimation={null}>

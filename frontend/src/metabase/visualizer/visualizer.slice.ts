@@ -12,6 +12,7 @@ import type {
   CardId,
   Dataset,
   RawSeries,
+  VisualizationDisplay,
   VisualizationSettings,
 } from "metabase-types/api";
 import type {
@@ -78,6 +79,10 @@ const visualizerSlice = createSlice({
   name: "visualizer",
   initialState,
   reducers: {
+    setDisplay: (state, action: PayloadAction<VisualizationDisplay | null>) => {
+      state.display = action.payload;
+      state.settings = {};
+    },
     updateSettings: (state, action: PayloadAction<VisualizationSettings>) => {
       state.settings = {
         ...state.settings,
@@ -156,6 +161,7 @@ const visualizerSlice = createSlice({
 });
 
 export const {
+  setDisplay,
   updateSettings,
   removeDataSource,
   toggleDataSourceExpanded,
