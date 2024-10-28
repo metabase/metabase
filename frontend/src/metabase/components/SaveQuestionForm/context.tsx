@@ -76,8 +76,15 @@ export const SaveQuestionProvider = ({
 
   const handleSubmit = useCallback(
     async (details: FormValues) =>
-      submitQuestion(originalQuestion, details, question, onSave, onCreate),
-    [originalQuestion, question, onSave, onCreate],
+      submitQuestion({
+        originalQuestion,
+        details,
+        question,
+        onSave,
+        onCreate,
+        collectionId,
+      }),
+    [originalQuestion, question, onSave, onCreate, collectionId],
   );
 
   // we care only about the very first result as question can be changed before

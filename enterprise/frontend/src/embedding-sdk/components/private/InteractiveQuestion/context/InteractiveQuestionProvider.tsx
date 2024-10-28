@@ -50,10 +50,8 @@ export const InteractiveQuestionProvider = ({
   children,
   onBeforeSave,
   onSave,
-  isSaveEnabled = true,
   entityTypeFilter,
-  saveToCollectionId,
-  withSaveCollectionPicker: withCollectionPicker,
+  saveOptions,
 }: InteractiveQuestionProviderProps) => {
   const { id: cardId, isLoading: isLoadingValidatedId } = useValidatedEntityId({
     type: "card",
@@ -64,7 +62,7 @@ export const InteractiveQuestionProvider = ({
   const handleSaveQuestion = useSaveQuestion();
 
   const handleSave = async (question: Question) => {
-    if (isSaveEnabled) {
+    if (saveOptions?.isEnabled) {
       await onBeforeSave?.(question);
       await handleSaveQuestion(question);
       onSave?.(question);
@@ -122,10 +120,8 @@ export const InteractiveQuestionProvider = ({
     mode,
     onSave: handleSave,
     onCreate: handleCreate,
-    isSaveEnabled,
     modelsFilterList: mapEntityTypeFilterToDataPickerModels(entityTypeFilter),
-    saveToCollectionId,
-    withSaveCollectionPicker: withCollectionPicker,
+    saveOptions,
   };
 
   useEffect(() => {

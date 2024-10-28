@@ -5,13 +5,16 @@ import { canonicalCollectionId } from "metabase/collections/utils";
 import type Question from "metabase-lib/v1/Question";
 import type { CardType } from "metabase-types/api";
 
-import type { FormValues } from "./types";
+import type {
+  CreateQuestionOptions,
+  FormValues,
+  SubmitQuestionOptions,
+  UpdateQuestionOptions,
+} from "./types";
 
-const updateQuestion = async (
-  originalQuestion: Question,
-  newQuestion: Question,
-  onSave: (question: Question) => Promise<void>,
-) => {
+const updateQuestion = async (options: UpdateQuestionOptions) => {
+  const { originalQuestion, newQuestion, onSave } = options;
+
   const collectionId = canonicalCollectionId(originalQuestion.collectionId());
   const displayName = originalQuestion.displayName();
   const description = originalQuestion.description();
@@ -24,16 +27,17 @@ const updateQuestion = async (
   await onSave(updatedQuestion.setId(originalQuestion.id()));
 };
 
-export const createQuestion = async (
-  details: FormValues,
-  question: Question,
-  onCreate: (question: Question) => Promise<void>,
-) => {
+export const createQuestion = async (options: CreateQuestionOptions) => {
+  const { details, question, onCreate } = options;
+
   if (details.saveType !== "create") {
     return;
   }
 
-  const collectionId = canonicalCollectionId(details.collection_id);
+  const collectionId = canonicalCollectionId(
+    details.collection_id ?? options.collectionId,
+  );
+
   const displayName = details.name.trim();
   const description = details.description ? details.description.trim() : null;
 
@@ -45,17 +49,13 @@ export const createQuestion = async (
   await onCreate(newQuestion);
 };
 
-export async function submitQuestion(
-  originalQuestion: Question | null,
-  details: FormValues,
-  question: Question,
-  onSave: (question: Question) => Promise<void>,
-  onCreate: (question: Question) => Promise<void>,
-) {
+export async function submitQuestion(options: SubmitQuestionOptions) {
+  const { originalQuestion, details, question, onSave, onCreate } = options;
+
   if (details.saveType === "overwrite" && originalQuestion) {
-    await updateQuestion(originalQuestion, question, onSave);
+    await updateQuestion({ originalQuestion, newQuestion: question, onSave });
   } else {
-    await createQuestion(details, question, onCreate);
+    await createQuestion({ details, question, onCreate });
   }
 }
 

@@ -14,7 +14,7 @@ export type SaveQuestionProps = {
    * If the collection picker is shown, this is the initial collection id.
    * Otherwise, this becomes the target collection to save to.
    **/
-  collectionId?: CollectionId | null;
+  collectionId?: CollectionId;
   withCollectionPicker?: boolean;
 };
 
@@ -23,4 +23,22 @@ export type FormValues = {
   collection_id: CollectionId | null | undefined;
   name: string;
   description: string;
+};
+
+export type UpdateQuestionOptions = {
+  newQuestion: Question;
+  originalQuestion: Question;
+  onSave: (question: Question) => Promise<void>;
+};
+
+export type CreateQuestionOptions = {
+  details: FormValues;
+  question: Question;
+  onCreate: (question: Question) => Promise<void>;
+  collectionId?: CollectionId;
+};
+
+export type SubmitQuestionOptions = CreateQuestionOptions & {
+  originalQuestion: Question | null;
+  onSave: (question: Question) => Promise<void>;
 };
