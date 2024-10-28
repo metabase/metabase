@@ -1362,11 +1362,7 @@ describeEE("scenarios > dashboard > dashboard cards > click behavior", () => {
         cy.get("aside").findByText("No available targets").should("not.exist");
         addTextParameter();
         addTimeParameter();
-        cy.get("aside")
-          .findByRole("textbox")
-          .type(`Count: {{${COUNT_COLUMN_ID}}}`, {
-            parseSpecialCharSequences: false,
-          });
+        customizeLinkText(`Count: {{${COUNT_COLUMN_ID}}}`);
 
         cy.icon("chevronleft").click();
 
@@ -1386,11 +1382,7 @@ describeEE("scenarios > dashboard > dashboard cards > click behavior", () => {
         addSavedQuestionDestination();
         addSavedQuestionCreatedAtParameter();
         addSavedQuestionQuantityParameter();
-        cy.get("aside")
-          .findByRole("textbox")
-          .type(`Created at: {{${CREATED_AT_COLUMN_ID}}}`, {
-            parseSpecialCharSequences: false,
-          });
+        customizeLinkText(`Count: {{${CREATED_AT_COLUMN_ID}}}`);
 
         cy.icon("chevronleft").click();
 
@@ -2641,6 +2633,12 @@ const createDashboardWithTabsLocal = ({
     });
   });
 };
+
+function customizeLinkText(text) {
+  cy.get("aside")
+    .findByRole("textbox")
+    .type(text, { parseSpecialCharSequences: false });
+}
 
 function verifyVizTypeIsLine() {
   cy.findByTestId("viz-type-button").click();
