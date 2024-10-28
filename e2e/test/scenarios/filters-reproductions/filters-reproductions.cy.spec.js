@@ -1487,11 +1487,12 @@ describe("Issue 48851", () => {
   beforeEach(() => {
     restore();
     cy.signInAsNormalUser();
+    cy.viewport(1050, 300);
   });
 
-  const manyValues = Array(75)
+  const manyValues = Array(12)
     .fill(0)
-    .map(() => Math.round(Math.random() * 1000_000_000).toString(36))
+    .map(() => Math.round(Math.random() * 1000_000_000_000).toString(36))
     .join(", ");
 
   function openTableHeaderMenu(name) {
