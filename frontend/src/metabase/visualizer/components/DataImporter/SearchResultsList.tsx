@@ -1,19 +1,22 @@
+import { useMemo } from "react";
+
 import { useSearchQuery } from "metabase/api";
 import { Loader } from "metabase/ui";
-import type { CardId } from "metabase-types/api";
+import { createDataSource } from "metabase/visualizer/utils";
+import type { VisualizerDataSourceId } from "metabase-types/store/visualizer";
 
 import { ResultsList, type ResultsListProps } from "./ResultsList";
 
 interface SearchResultsListProps {
   search: string;
   onSelect: ResultsListProps["onSelect"];
-  selectedCardIds: Set<CardId>;
+  dataSourceIds: Set<VisualizerDataSourceId>;
 }
 
 export function SearchResultsList({
   search,
   onSelect,
-  selectedCardIds,
+  dataSourceIds,
 }: SearchResultsListProps) {
   const { data = { data: [] } } = useSearchQuery(
     {
@@ -26,14 +29,23 @@ export function SearchResultsList({
     },
   );
 
-  if (!data) {
+  const items = useMemo(
+    () =>
+      Array.isArray(data)
+        ? data.map(item => createDataSource("card", item.id, item.name))
+        : [],
+    [data],
+  );
+
+  if (items.length === 0) {
     return <Loader />;
   }
+
   return (
     <ResultsList
-      items={data.data}
+      items={items}
       onSelect={onSelect}
-      selectedCardIds={selectedCardIds}
+      dataSourceIds={dataSourceIds}
     />
   );
 }

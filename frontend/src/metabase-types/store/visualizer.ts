@@ -1,17 +1,19 @@
 import type {
   Card,
-  CardId,
   Dataset,
   DatasetColumn,
   VisualizationDisplay,
   VisualizationSettings,
 } from "metabase-types/api";
 
-type VisualizerDataSourceType = "card";
+export type VisualizerDataSourceType = "card";
+export type VisualizerDataSourceId = `${VisualizerDataSourceType}:${number}`;
 
 export type VisualizerDataSource = {
-  id: number;
+  id: VisualizerDataSourceId;
+  sourceId: number;
   type: VisualizerDataSourceType;
+  name: string;
 };
 
 type BaseDraggedItem<T> = {
@@ -31,12 +33,11 @@ export type DraggedItem = DraggedColumn;
 export interface VisualizerState {
   display: VisualizationDisplay | null;
   settings: VisualizationSettings;
-
   cards: Card[];
-  datasets: Record<CardId, Dataset>;
-  expandedCards: Record<CardId, boolean>;
-  loadingCards: Record<CardId, boolean>;
-  loadingDatasets: Record<CardId, boolean>;
+  datasets: Record<VisualizerDataSourceId, Dataset>;
+  expandedDataSources: Record<VisualizerDataSourceId, boolean>;
+  loadingDataSources: Record<VisualizerDataSourceId, boolean>;
+  loadingDatasets: Record<VisualizerDataSourceId, boolean>;
   error: string | null;
   draggedItem: DraggedItem | null;
 }

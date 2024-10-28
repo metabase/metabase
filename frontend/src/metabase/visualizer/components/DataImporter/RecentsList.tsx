@@ -2,37 +2,38 @@ import { useMemo } from "react";
 
 import { useListRecentsQuery } from "metabase/api";
 import { Loader } from "metabase/ui";
-import type { CardId } from "metabase-types/api";
+import { createDataSource } from "metabase/visualizer/utils";
+import type { VisualizerDataSourceId } from "metabase-types/store/visualizer";
 
 import { ResultsList, type ResultsListProps } from "./ResultsList";
 
 interface RecentsListProps {
   onSelect: ResultsListProps["onSelect"];
-  selectedCardIds: Set<CardId>;
+  dataSourceIds: Set<VisualizerDataSourceId>;
 }
 
-export function RecentsList({ onSelect, selectedCardIds }: RecentsListProps) {
-  const { data = [] } = useListRecentsQuery(undefined, {
+export function RecentsList({ onSelect, dataSourceIds }: RecentsListProps) {
+  const { data: allRecents = [] } = useListRecentsQuery(undefined, {
     refetchOnMountOrArgChange: true,
   });
 
-  const cardsOnlyData = useMemo(
-    () =>
-      data.filter(maybeCard =>
+  const items = useMemo(() => {
+    return allRecents
+      .filter(maybeCard =>
         ["card", "dataset", "metric"].includes(maybeCard.model),
-      ),
-    [data],
-  );
+      )
+      .map(card => createDataSource("card", card.id, card.name));
+  }, [allRecents]);
 
-  if (!cardsOnlyData) {
+  if (!items) {
     return <Loader />;
   }
 
   return (
     <ResultsList
-      items={cardsOnlyData}
+      items={items}
       onSelect={onSelect}
-      selectedCardIds={selectedCardIds}
+      dataSourceIds={dataSourceIds}
     />
   );
 }

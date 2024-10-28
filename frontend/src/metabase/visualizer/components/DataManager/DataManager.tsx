@@ -2,12 +2,12 @@ import { t } from "ttag";
 
 import { useSelector } from "metabase/lib/redux";
 import { Box, Center, Flex, Text } from "metabase/ui";
-import { selectCards } from "metabase/visualizer/visualizer.slice";
+import { getDataSources } from "metabase/visualizer/visualizer.slice";
 
 import { DatasetList } from "./DatasetList";
 
 export const DataManager = () => {
-  const cards = useSelector(selectCards);
+  const dataSources = useSelector(getDataSources);
 
   return (
     <Flex
@@ -24,7 +24,7 @@ export const DataManager = () => {
           {t`Data`}
         </Text>
       </Box>
-      {cards.length > 0 ? (
+      {dataSources.length > 0 ? (
         <DatasetList />
       ) : (
         <Center h="100%" w="100%" mx="auto">

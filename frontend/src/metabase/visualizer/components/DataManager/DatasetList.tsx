@@ -5,20 +5,20 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Box, Flex, Icon, Text } from "metabase/ui";
 import { DRAGGABLE_ID } from "metabase/visualizer/dnd/constants";
 import {
-  removeCard,
-  selectCards,
-  selectDatasets,
-  selectExpandedCards,
-  toggleCardExpanded,
+  getDataSources,
+  getDatasets,
+  getExpandedDataSources,
+  removeDataSource,
+  toggleDataSourceExpanded,
 } from "metabase/visualizer/visualizer.slice";
 
 import { ColumnListItem, type ColumnListItemProps } from "./ColumnListItem";
 import S from "./DatasetList.module.css";
 
 export const DatasetList = () => {
-  const cards = useSelector(selectCards);
-  const datasets = useSelector(selectDatasets);
-  const expandedCards = useSelector(selectExpandedCards);
+  const dataSources = useSelector(getDataSources);
+  const datasets = useSelector(getDatasets);
+  const expandedDataSources = useSelector(getExpandedDataSources);
   const dispatch = useDispatch();
 
   return (
@@ -29,12 +29,12 @@ export const DatasetList = () => {
         overflowY: "auto",
       }}
     >
-      {cards.map(card => {
-        const dataset = datasets[card.id];
-        const isExpanded = expandedCards[card.id];
+      {dataSources.map(source => {
+        const dataset = datasets[source.id];
+        const isExpanded = expandedDataSources[source.id];
 
         return (
-          <Box key={card.id} mb={4}>
+          <Box key={source.id} mb={4}>
             <Flex align="center" px={8} py={4} className={S.parent}>
               <Icon
                 style={{ flexShrink: 0 }}
@@ -42,11 +42,11 @@ export const DatasetList = () => {
                 aria-label={t`Expand`}
                 size={12}
                 mr={6}
-                onClick={() => dispatch(toggleCardExpanded(card.id))}
+                onClick={() => dispatch(toggleDataSourceExpanded(source.id))}
                 cursor="pointer"
               />
               <Text truncate mr={4}>
-                {card.name}
+                {source.name}
               </Text>
               <Icon
                 style={{ flexShrink: 0 }}
@@ -54,8 +54,8 @@ export const DatasetList = () => {
                 name="close"
                 ml="auto"
                 size={12}
-                aria-label={t`Remove the dataset ${card.name} from the list`}
-                onClick={() => dispatch(removeCard(card.id))}
+                aria-label={t`Remove the dataset ${source.name} from the list`}
+                onClick={() => dispatch(removeDataSource(source))}
                 cursor="pointer"
               />
             </Flex>

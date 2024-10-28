@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
@@ -6,33 +6,36 @@ import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Box, Flex, Icon, TextInput } from "metabase/ui";
 import {
-  addCard,
-  removeCard,
-  selectCardIds,
+  addDataSource,
+  getDataSources,
+  removeDataSource,
 } from "metabase/visualizer/visualizer.slice";
+import type { VisualizerDataSource } from "metabase-types/store/visualizer";
 
 import { RecentsList } from "./RecentsList";
-import type { ResultsItem, ResultsListProps } from "./ResultsList";
+import type { ResultsListProps } from "./ResultsList";
 import { SearchResultsList } from "./SearchResultsList";
 
 export const DataImporter = () => {
   const dispatch = useDispatch();
-  const selectedCardIds = useSelector(selectCardIds);
+  const dataSources = useSelector(getDataSources);
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebouncedValue(search, SEARCH_DEBOUNCE_DURATION);
 
-  const handleCardSelect: ResultsListProps["onSelect"] = useCallback(
-    (item: ResultsItem) => {
-      if (typeof item.id !== "number") {
-        throw new Error(`Search item with invalid id: ${JSON.stringify(item)}`);
-      }
-      if (selectedCardIds.has(item.id)) {
-        dispatch(removeCard(item.id));
+  const dataSourceIds = useMemo(
+    () => new Set(dataSources.map(s => s.id)),
+    [dataSources],
+  );
+
+  const handleDataSourceSelect: ResultsListProps["onSelect"] = useCallback(
+    (source: VisualizerDataSource) => {
+      if (dataSourceIds.has(source.id)) {
+        dispatch(removeDataSource(source));
       } else {
-        dispatch(addCard(item.id));
+        dispatch(addDataSource(source));
       }
     },
-    [dispatch, selectedCardIds],
+    [dataSourceIds, dispatch],
   );
 
   const handleSearchChange: React.ChangeEventHandler<HTMLInputElement> =
@@ -77,14 +80,14 @@ export const DataImporter = () => {
       >
         {showRecents ? (
           <RecentsList
-            onSelect={handleCardSelect}
-            selectedCardIds={selectedCardIds}
+            onSelect={handleDataSourceSelect}
+            dataSourceIds={dataSourceIds}
           />
         ) : (
           <SearchResultsList
             search={debouncedSearch}
-            onSelect={handleCardSelect}
-            selectedCardIds={selectedCardIds}
+            onSelect={handleDataSourceSelect}
+            dataSourceIds={dataSourceIds}
           />
         )}
       </Flex>

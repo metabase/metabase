@@ -1,21 +1,19 @@
 import { Box, Text } from "metabase/ui";
-import type { CardId } from "metabase-types/api";
-
-export interface ResultsItem {
-  id: number | string;
-  name: string;
-}
+import type {
+  VisualizerDataSource,
+  VisualizerDataSourceId,
+} from "metabase-types/store/visualizer";
 
 export interface ResultsListProps {
-  items: ResultsItem[];
-  onSelect?: (item: ResultsItem) => void;
-  selectedCardIds: Set<CardId>;
+  items: VisualizerDataSource[];
+  onSelect?: (item: VisualizerDataSource) => void;
+  dataSourceIds: Set<VisualizerDataSourceId>;
 }
 
 export const ResultsList = ({
   items,
   onSelect,
-  selectedCardIds,
+  dataSourceIds,
 }: ResultsListProps) => {
   return (
     <Box component="ul">
@@ -26,7 +24,7 @@ export const ResultsList = ({
             borderRadius: 5,
             cursor: "pointer",
             backgroundColor:
-              typeof item.id === "number" && selectedCardIds.has(item.id)
+              typeof item.id === "number" && dataSourceIds.has(item.id)
                 ? "var(--mb-color-bg-light)"
                 : "transparent",
           }}
