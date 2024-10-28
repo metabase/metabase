@@ -26,7 +26,7 @@ export const ChartSettingColorPicker = ({
     light: true,
     dark: true,
     harmony: false,
-    grey: true,
+    gray: true,
   },
 }: ChartSettingColorPickerProps) => {
   return (

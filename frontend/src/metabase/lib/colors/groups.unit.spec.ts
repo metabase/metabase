@@ -3,18 +3,18 @@ import { color } from "./palette";
 
 describe("groups", () => {
   describe("getAccentColors", () => {
-    it("should return main accent colors without grey by default", () => {
-      const colors = getAccentColors({ grey: false });
-      expect(colors).not.toContain(color("accent-grey"));
-      expect(colors).not.toContain(color("accent-grey-light"));
-      expect(colors).not.toContain(color("accent-grey-dark"));
+    it("should return main accent colors without gray by default", () => {
+      const colors = getAccentColors({ gray: false });
+      expect(colors).not.toContain(color("accent-gray"));
+      expect(colors).not.toContain(color("accent-gray-light"));
+      expect(colors).not.toContain(color("accent-gray-dark"));
     });
 
-    it("should include grey when specified", () => {
+    it("should include gray when specified", () => {
       const colors = getAccentColors();
-      expect(colors).toContain(color("accent-grey"));
-      expect(colors).toContain(color("accent-grey-light"));
-      expect(colors).toContain(color("accent-grey-dark"));
+      expect(colors).toContain(color("accent-gray"));
+      expect(colors).toContain(color("accent-gray-light"));
+      expect(colors).toContain(color("accent-gray-dark"));
     });
   });
 });

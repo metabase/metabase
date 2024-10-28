@@ -3,17 +3,17 @@ import { getPickerColorAlias, getRingColorAlias } from "./colors";
 describe("getRingColorAlias", () => {
   it("should return the correct color alias for inner ring", () => {
     expect(getRingColorAlias("1", "inner")).toBe("accent1-dark");
-    expect(getRingColorAlias("grey", "inner")).toBe("accent-grey-dark");
+    expect(getRingColorAlias("gray", "inner")).toBe("accent-gray-dark");
   });
 
   it("should return the correct color alias for middle ring", () => {
     expect(getRingColorAlias("1", "middle")).toBe("accent1");
-    expect(getRingColorAlias("grey", "middle")).toBe("accent-grey");
+    expect(getRingColorAlias("gray", "middle")).toBe("accent-gray");
   });
 
   it("should return the correct color alias for outer ring", () => {
     expect(getRingColorAlias("1", "outer")).toBe("accent1-light");
-    expect(getRingColorAlias("grey", "outer")).toBe("accent-grey-light");
+    expect(getRingColorAlias("gray", "outer")).toBe("accent-gray-light");
   });
 });
 
@@ -24,7 +24,7 @@ describe("getPickerColorAlias", () => {
   });
 
   it("should return the correct color alias for non-numeric accent keys", () => {
-    expect(getPickerColorAlias("grey")).toBe("accent-grey-dark");
+    expect(getPickerColorAlias("gray")).toBe("accent-gray-dark");
     expect(getPickerColorAlias("something")).toBe("accent-something-dark");
   });
 });

@@ -166,9 +166,9 @@
   --mb-base-color-orion-50: #81898e;
   --mb-base-color-orion-40: #92999e;
   --mb-base-color-orion-30: #b7bcbf;
-  --mb-base-color-orion-20: #dcdfe0; /* accent-grey-dark */
-  --mb-base-color-orion-10: #f3f3f4; /* accent-grey */
-  --mb-base-color-orion-5: #fafafb; /* accent-grey-light */
+  --mb-base-color-orion-20: #dcdfe0; /* accent-gray-dark */
+  --mb-base-color-orion-10: #f3f3f4; /* accent-gray */
+  --mb-base-color-orion-5: #fafafb; /* accent-gray-light */
 }
 
 .textDefault {
