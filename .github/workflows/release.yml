@@ -310,6 +310,21 @@ jobs:
           console.log("The canonical version of this Metabase", edition, "edition is", canonical_version);
 
           return canonical_version;
+    - name: Determine the docker short version tag
+      uses: actions/github-script@v7
+      id: short_canonical_version
+      with:
+        result-encoding: string
+        script: |
+          const edition = '${{ matrix.edition }}';
+
+          const canonical_version = "${{ steps.canonical_version.outputs.result }}";
+          const versionParts = canonical_version.split("."); // ["v1", "51", "1", "3"]
+          const shortCanonicalVersion = versionParts.slice(0, 2).join("."); // "v1.51"
+
+          console.log("The short canonical version of this Metabase", edition, "edition is", shortCanonicalVersion);
+
+          return shortCanonicalVersion;
     - uses: actions/download-artifact@v4
       name: Retrieve previously downloaded Uberjar
       with:
@@ -358,6 +373,10 @@ jobs:
         echo "Pushing ${{ steps.canonical_version.outputs.result }} to ${{ env.DOCKERHUB_REPO }} ..."
         docker tag localhost:5000/local-metabase:${{ steps.canonical_version.outputs.result }} ${{ env.DOCKERHUB_REPO }}:${{ steps.canonical_version.outputs.result }}
         docker push ${{ env.DOCKERHUB_REPO }}:${{ steps.canonical_version.outputs.result }}
+
+        echo "Pushing ${{ steps.short_canonical_version.outputs.result }} to ${{ env.DOCKERHUB_REPO }} ..."
+        docker tag localhost:5000/local-metabase:${{ steps.canonical_version.outputs.result }} ${{ env.DOCKERHUB_REPO }}:${{ steps.short_canonical_version.outputs.result }}
+        docker push ${{ env.DOCKERHUB_REPO }}:${{ steps.short_canonical_version.outputs.result }}
         echo "Finished!"
 
   verify-docker-pull:
