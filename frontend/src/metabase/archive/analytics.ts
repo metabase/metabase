@@ -13,7 +13,7 @@ export const archiveAndTrack = async ({
   triggeredFrom: MoveToTrashEvent["triggered_from"];
 }): Promise<void> => {
   const start = new Date().getTime();
-  const logAnaltyics = (successful: boolean) =>
+  const logAnalytics = (successful: boolean) =>
     trackSchemaEvent("simple_event", {
       event: "moved-to-trash",
       event_detail: model === "card" ? "question" : model,
@@ -25,11 +25,11 @@ export const archiveAndTrack = async ({
 
   return archive()
     .then(result => {
-      logAnaltyics(true);
+      logAnalytics(true);
       return result;
     })
     .catch(error => {
-      logAnaltyics(false);
+      logAnalytics(false);
       throw error;
     });
 };
