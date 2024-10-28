@@ -330,11 +330,11 @@ export function getPieChartModel(
     if (!hasMultipleRings) {
       return hexColor;
     }
-    const accentNumber = hexToAccentColorMap.get(hexColor);
-    if (accentNumber == null) {
+    const accentKey = hexToAccentColorMap.get(hexColor);
+    if (accentKey == null) {
       return hexColor;
     }
-    return renderingContext.getColor(getRingColorAlias(accentNumber, ring));
+    return renderingContext.getColor(getRingColorAlias(accentKey, ring));
   }
 
   // Create sliceTree, fill out the innermost slice ring

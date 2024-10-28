@@ -1,41 +1,45 @@
 import { aliases, colors } from "metabase/lib/colors";
-import { checkNumber } from "metabase/lib/types";
 
 const ACCENT_KEY_PREFIX = "accent";
 
-export function createHexToAccentNumberMap() {
-  const hexToAccentNumber = new Map<string, number>();
+type AccentKey = string;
 
-  for (const [key, hex] of Object.entries(colors)) {
-    if (!key.startsWith(ACCENT_KEY_PREFIX)) {
+const isAccentColorKey = (key: string) => key.startsWith(ACCENT_KEY_PREFIX);
+
+const extractAccentKey = (input: string): AccentKey => {
+  const withoutPrefix = input.slice(ACCENT_KEY_PREFIX.length);
+  return withoutPrefix.split("-")[0] ?? null;
+};
+
+export function createHexToAccentNumberMap() {
+  const hexToAccentNumber = new Map<string, AccentKey>();
+
+  for (const [colorKey, hex] of Object.entries(colors)) {
+    if (!isAccentColorKey(colorKey)) {
       continue;
     }
-
-    const accentNumber = checkNumber(
-      Number(key.slice(ACCENT_KEY_PREFIX.length)),
-    );
-
-    hexToAccentNumber.set(hex, accentNumber);
+    const accentKey = extractAccentKey(colorKey);
+    if (accentKey) {
+      hexToAccentNumber.set(hex, accentKey);
+    }
   }
 
-  for (const [key, hexGetter] of Object.entries(aliases)) {
-    if (!key.startsWith(ACCENT_KEY_PREFIX)) {
+  for (const [colorKey, hexGetter] of Object.entries(aliases)) {
+    if (!isAccentColorKey(colorKey)) {
       continue;
     }
 
-    const accentNumber = checkNumber(
-      Number(key.slice(ACCENT_KEY_PREFIX.length, ACCENT_KEY_PREFIX.length + 1)),
-    );
-    const hex = hexGetter(colors);
-
-    hexToAccentNumber.set(hex, accentNumber);
+    const accentKey = extractAccentKey(colorKey);
+    if (accentKey) {
+      hexToAccentNumber.set(hexGetter(colors), accentKey);
+    }
   }
 
   return hexToAccentNumber;
 }
 
 export function getRingColorAlias(
-  accentColorNumber: number,
+  accentKey: AccentKey,
   ring: "inner" | "middle" | "outer",
 ) {
   let suffix = "";
@@ -45,9 +49,9 @@ export function getRingColorAlias(
     suffix = "-light";
   }
 
-  return `${ACCENT_KEY_PREFIX}${accentColorNumber}${suffix}`;
+  return `${ACCENT_KEY_PREFIX}${accentKey}${suffix}`;
 }
 
-export function getPickerColorAlias(accentNumber: number) {
-  return `${ACCENT_KEY_PREFIX}${accentNumber}-dark`;
+export function getPickerColorAlias(accentKey: AccentKey) {
+  return `${ACCENT_KEY_PREFIX}${accentKey}-dark`;
 }
