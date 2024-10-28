@@ -7,6 +7,13 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
+type VisualizerDataSourceType = "card";
+
+export type VisualizerDataSource = {
+  id: number;
+  type: VisualizerDataSourceType;
+};
+
 type BaseDraggedItem<T> = {
   id: string;
   data: {
