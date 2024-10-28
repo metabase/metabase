@@ -11,7 +11,6 @@
    [metabase.driver :as driver]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
-   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.setting :refer [defsetting]]
    [metabase.public-settings.premium-features :as premium-features]
@@ -284,26 +283,6 @@
   (set (for [driver (descendants driver/hierarchy :metabase.driver/driver)
              :when  (driver/available? driver)]
          driver)))
-
-(mu/defn semantic-version-gte :- :boolean
-  "Returns true if xv is greater than or equal to yv according to semantic versioning.
-   xv and yv are sequences of integers of the form `[major minor ...]`, where only
-   major is obligatory.
-   Examples:
-   (semantic-version-gte [4 1] [4 1]) => true
-   (semantic-version-gte [4 0 1] [4 1]) => false
-   (semantic-version-gte [4 1] [4]) => true
-   (semantic-version-gte [3 1] [4]) => false"
-  [xv :- [:maybe [:sequential ::lib.schema.common/int-greater-than-or-equal-to-zero]]
-   yv :- [:maybe [:sequential ::lib.schema.common/int-greater-than-or-equal-to-zero]]]
-  (loop [xv (seq xv), yv (seq yv)]
-    (or (nil? yv)
-        (let [[x & xs] xv
-              [y & ys] yv
-              x (if (nil? x) 0 x)
-              y (if (nil? y) 0 y)]
-          (or (> x y)
-              (and (>= x y) (recur xs ys)))))))
 
 (defn- file-upload-props [{prop-name :name, visible-if :visible-if, disp-nm :display-name, :as conn-prop}]
   (if (premium-features/is-hosted?)

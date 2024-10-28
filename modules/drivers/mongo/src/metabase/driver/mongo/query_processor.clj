@@ -14,7 +14,6 @@
                                             $group $gt $gte $hour $limit $literal $lookup $lt $lte $match $max $min
                                             $minute $mod $month $multiply $ne $not $or $project $regexMatch $second
                                             $size $skip $sort $strcasecmp $subtract $sum $toLower $unwind $year]]
-   [metabase.driver.util :as driver.u]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.metadata :as lib.metadata]
@@ -32,7 +31,8 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu])
+   [metabase.util.malli :as mu]
+   [metabase.util.version :as version])
   (:import
    (org.bson BsonBinarySubType)
    (org.bson.types Binary ObjectId)))
@@ -317,7 +317,7 @@
     field
     (let [supports-dateTrunc? (-> (get-mongo-version)
                                   :semantic-version
-                                  (driver.u/semantic-version-gte [5]))
+                                  (version/semantic-version-gte [5]))
           column field]
       (letfn [(truncate [unit]
                 (if supports-dateTrunc?
@@ -535,7 +535,7 @@
 (defmethod ->rvalue :replace
   [[_ & args]]
   (let [version (get-mongo-version)]
-    (if (driver.u/semantic-version-gte (:semantic-version version) [4 4])
+    (if (version/semantic-version-gte (:semantic-version version) [4 4])
       (let [[expr fnd replacement] (mapv ->rvalue args)]
         {"$replaceAll" {"input" expr "find" fnd "replacement" replacement}})
       (throw (ex-info "Replace requires MongoDB 4.4 or above"

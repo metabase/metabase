@@ -15,7 +15,6 @@
    [metabase.driver.mongo.parameters :as mongo.params]
    [metabase.driver.mongo.query-processor :as mongo.qp]
    [metabase.driver.mongo.util :as mongo.util]
-   [metabase.driver.util :as driver.u]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -24,6 +23,7 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.version :as version]
    [taoensso.nippy :as nippy])
   (:import
    (com.mongodb.client MongoClient MongoDatabase)
@@ -412,26 +412,26 @@
   [_driver _feature db]
   (-> ((some-fn :dbms-version :dbms_version) db)
       :semantic-version
-      (driver.u/semantic-version-gte [4 2])))
+      (version/semantic-version-gte [4 2])))
 
 (defmethod driver/database-supports? [:mongo :date-arithmetics]
   [_driver _feature db]
   (-> ((some-fn :dbms-version :dbms_version) db)
       :semantic-version
-      (driver.u/semantic-version-gte [5])))
+      (version/semantic-version-gte [5])))
 
 (defmethod driver/database-supports? [:mongo :datetime-diff]
   [_driver _feature db]
   (-> ((some-fn :dbms-version :dbms_version) db)
       :semantic-version
-      (driver.u/semantic-version-gte [5])))
+      (version/semantic-version-gte [5])))
 
 (defmethod driver/database-supports? [:mongo :now]
   ;; The $$NOW aggregation expression was introduced in version 4.2.
   [_driver _feature db]
   (-> ((some-fn :dbms-version :dbms_version) db)
       :semantic-version
-      (driver.u/semantic-version-gte [4 2])))
+      (version/semantic-version-gte [4 2])))
 
 (defmethod driver/database-supports? [:mongo :native-requires-specified-collection]
   [_driver _feature _db]

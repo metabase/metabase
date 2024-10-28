@@ -7,7 +7,6 @@
   Because functions here don't know where the JDBC spec came from, you can use them to perform the usual application
   DB setup steps on arbitrary databases -- useful for functionality like the `load-from-h2` or `dump-to-h2` commands."
   (:require
-   [clojure.string :as str]
    [honey.sql :as sql]
    [metabase.config :as config]
    [metabase.db.connection :as mdb.connection]
@@ -21,6 +20,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.version :as version]
    [methodical.core :as methodical]
    [toucan2.honeysql2 :as t2.honeysql]
    [toucan2.jdbc.options :as t2.jdbc.options]
@@ -105,26 +105,6 @@
           (liquibase/release-lock-if-needed! liquibase)
           (throw e))))))
 
-;; Helper function to parse a version string
-(defn parse-version
-  "Parse a semantic version string into a vector of numbers."
-  [version]
-  (mapv #(Integer/parseInt %) (str/split version #"\.")))
-
-;; Helper function to compare two version strings
-(defn compare-versions
-  "Compare two version strings v1 and v2. Return -1 if v1 < v2, 1 if v1 > v2, 0 if equal."
-  [v1 v2]
-  (let [v1-parts (parse-version v1)
-        v2-parts (parse-version v2)]
-    (loop [parts1 v1-parts parts2 v2-parts]
-      (cond
-        (empty? parts1) 0                              ;; If both are empty, they are equal
-        (empty? parts2) 0
-        (< (first parts1) (first parts2)) -1           ;; Compare major, minor, patch parts
-        (> (first parts1) (first parts2)) 1
-        :else (recur (rest parts1) (rest parts2))))))  ;; If equal, compare the next part
-
 (mu/defn- verify-db-connection
   "Test connection to application database with `data-source` and throw an exception if we have any troubles
   connecting."
@@ -134,27 +114,29 @@
   (classloader/require 'metabase.driver.sql-jdbc.connection)
 
   ;; Define the minimum version requirements per database type
-  (let [min-versions {:postgres "12"
-                      :mysql "8.0.17"}
-        required-version (get min-versions db-type)] ;; Get the required version for the db-type
+  (let [min-versions {:postgres [12 0]
+                      :mysql    [8 0]
+                      :mariadb  [10 4]}
+        required-version (get min-versions db-type)]
 
     (let [error-msg (format "Unable to connect to Metabase %s DB." (name db-type))]
+      ;; First verify basic connectivity
+      (try
+        (assert ((requiring-resolve 'metabase.driver.sql-jdbc.connection/can-connect-with-spec?)
+                 {:datasource data-source})
+                error-msg)
+        (catch Throwable e
+          (throw (ex-info error-msg {} e)))))
 
-      (try (assert ((requiring-resolve 'metabase.driver.sql-jdbc.connection/can-connect-with-spec?) {:datasource data-source}) error-msg)
-           (catch Throwable e
-             (throw (ex-info error-msg {} e)))))
+    ;; Then check version requirements
     (with-open [conn (.getConnection ^javax.sql.DataSource data-source)]
-      (let [metadata (.getMetaData conn)
-            db-version (.getDatabaseProductVersion metadata)] ;; Extract the DB version
-        (log/infof "Successfully verified %s %s application database connection. %s"
-                   (.getDatabaseProductName metadata) db-version (u/emoji "✅"))
+      (let [version-info (version/get-db-version conn)]
+        (log/infof "Successfully connected to %s %s. %s"
+                  (:flavor version-info)
+                  (:version version-info)
+                  (u/emoji "✅"))
 
-        ;; Only check version if the required version is defined for the db-type
-        (when (and required-version (= -1 (compare-versions db-version required-version)))
-          (let [version-error-msg (format "Database version %s is below the required version %s for %s."
-                                          db-version required-version (name db-type))]
-            (log/error version-error-msg)
-            (throw (ex-info version-error-msg {}))))))))
+        (version/check-min-version db-type version-info required-version)))))
 
 (mu/defn- error-if-downgrade-required!
   [data-source :- (ms/InstanceOfClass javax.sql.DataSource)]
