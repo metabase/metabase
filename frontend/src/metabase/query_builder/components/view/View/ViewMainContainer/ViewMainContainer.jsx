@@ -1,15 +1,17 @@
 /* eslint-disable react/prop-types */
 import CS from "metabase/css/core/index.css";
 import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
+import { TimeseriesChrome } from "metabase/querying/filters/components/TimeseriesChrome";
+import * as Lib from "metabase-lib";
+
+import { ViewFooter } from "../../ViewFooter";
+import { ViewNativeQueryEditor } from "../ViewNativeQueryEditor";
+
 import {
   QueryBuilderMain,
   StyledDebouncedFrame,
   StyledSyncedParametersList,
-} from "metabase/query_builder/components/view/View/View.styled";
-import { ViewNativeQueryEditor } from "metabase/query_builder/components/view/View/ViewNativeQueryEditor/ViewNativeQueryEditor";
-import { ViewFooter } from "metabase/query_builder/components/view/ViewFooter";
-import { TimeseriesChrome } from "metabase/querying/filters/components/TimeseriesChrome";
-import * as Lib from "metabase-lib";
+} from "./ViewMainContainer.styled";
 
 export const ViewMainContainer = props => {
   const {
