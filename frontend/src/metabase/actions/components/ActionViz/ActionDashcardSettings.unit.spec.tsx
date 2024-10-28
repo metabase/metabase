@@ -456,16 +456,6 @@ describe("ActionViz > ActionDashcardSettings", () => {
     ).toBeInTheDocument();
   });
 
-  it("should be valid and not crash when the action does not have parameters (metabase#32665)", async () => {
-    const { closeSpy } = setup({
-      dashcard: createMockActionDashboardCard({
-        action: createMockQueryAction(),
-      }),
-    });
-    await userEvent.click(screen.getByRole("button", { name: "Done" }));
-    expect(closeSpy).toHaveBeenCalled();
-  });
-
   it("shows parameters for an action", async () => {
     setup({
       dashcard: actionDashcardWithAction,

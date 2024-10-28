@@ -167,8 +167,9 @@ function calculatePercentageAndIsOther(
   );
 }
 
-function aggregateChildrenSlices(
+function aggregateSlices(
   node: SliceTreeNode,
+  total: number,
   renderingContext: RenderingContext,
 ) {
   const children = getArrayFromMapValues(node.children);
@@ -177,13 +178,9 @@ function aggregateChildrenSlices(
 
   if (others.length > 1 && otherTotal > 0) {
     const otherSliceChildren: SliceTree = new Map();
-    others.forEach(otherChildSlice => {
-      otherSliceChildren.set(String(otherChildSlice.key), {
-        ...otherChildSlice,
-        normalizedPercentage: otherChildSlice.value / otherTotal,
-        color: "",
-      });
-      node.children.delete(String(otherChildSlice.key));
+    others.forEach(o => {
+      otherSliceChildren.set(String(o.key), { ...o, color: "" });
+      node.children.delete(String(o.key));
     });
 
     node.children.set(OTHER_SLICE_KEY, {
@@ -191,7 +188,7 @@ function aggregateChildrenSlices(
       name: OTHER_SLICE_NAME,
       value: otherTotal,
       displayValue: otherTotal,
-      normalizedPercentage: otherTotal / node.value,
+      normalizedPercentage: otherTotal / total,
       color: renderingContext.getColor("text-light"),
       children: otherSliceChildren,
       visible: true,
@@ -203,7 +200,7 @@ function aggregateChildrenSlices(
     others[0].isOther = false;
   }
 
-  children.forEach(child => aggregateChildrenSlices(child, renderingContext));
+  children.forEach(child => aggregateSlices(child, total, renderingContext));
 }
 
 function computeSliceAngles(
@@ -460,11 +457,10 @@ export function getPieChartModel(
   const otherTotal = others.reduce((currTotal, o) => currTotal + o.value, 0);
   if (otherTotal > 0) {
     const children: SliceTree = new Map();
-    others.forEach(otherChildSlice => {
-      children.set(String(otherChildSlice.key), {
-        ...otherChildSlice,
+    others.forEach(node => {
+      children.set(String(node.key), {
+        ...node,
         color: "",
-        normalizedPercentage: otherChildSlice.value / otherTotal,
       });
     });
     const visible = !hiddenSlices.includes(OTHER_SLICE_KEY);
@@ -489,7 +485,7 @@ export function getPieChartModel(
 
   // Aggregate slices in middle and outer ring into "other" slices
   sliceTreeNodes.forEach(node =>
-    aggregateChildrenSlices(node, renderingContext),
+    aggregateSlices(node, total, renderingContext),
   );
 
   // We increase the size of small slices, but only for the first ring, because

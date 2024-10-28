@@ -71,8 +71,8 @@ export function ActionDashcardSettings({
   );
 
   const isFormInvalid =
-    action != null &&
-    action.parameters?.some(actionParameter => {
+    !!action &&
+    action.parameters.some(actionParameter => {
       const isHidden = isParameterHidden(action, actionParameter);
       const isRequired = isParameterRequired(action, actionParameter);
       const isParameterMapped =

@@ -193,9 +193,7 @@
                      PersistedInfo deletable {:card_id (u/the-id model3) :database_id (u/the-id db)
                                               :state "deletable"
                                               ;; need an "old enough" state change
-                                              :state_change_at (t/minus (t/local-date-time) (t/hours 2))}
-                     ;; Record not in "deletable" state, but with nil card_id
-                     PersistedInfo deletable2 {:card_id nil :database_id (u/the-id db)}]
+                                              :state_change_at (t/minus (t/local-date-time) (t/hours 2))}]
         (let [called-on (atom #{})
               test-refresher (reify task.persist-refresh/Refresher
                                (refresh! [_ _ _ _]
@@ -206,20 +204,19 @@
             (let [queued-for-deletion (into #{} (map :id) (#'task.persist-refresh/deletable-models))]
               (doseq [deletable-persisted [deletable punmodeled parchived]]
                 (is (contains? queued-for-deletion (u/the-id deletable-persisted))))))
-            ;; we manually pass in the deleteable ones to not catch others in a running instance
+          ;; we manually pass in the deleteable ones to not catch others in a running instance
           (#'task.persist-refresh/prune-deletables! test-refresher [deletable parchived punmodeled])
           (testing "We delete persisted_info records for all of the pruned"
             (let [persisted-records (t2/select :model/PersistedInfo :id [:in (map :id [parchived punmodeled deletable])])
                   existing (map (comp
                                  (update-keys {parchived 'parchived
                                                punmodeled 'punmodeled
-                                               deletable 'deletable
-                                               deletable2 'deletable2}
+                                               deletable 'deletable}
                                               :id)
                                  :id)
                                 persisted-records)]
               (is (= [] existing))))
-            ;; don't assert equality if there are any deletable in the app db
+          ;; don't assert equality if there are any deletable in the app db
           (doseq [deletable-persisted [deletable punmodeled parchived]]
             (is (contains? @called-on (u/the-id deletable-persisted))))
           (is (partial= {:task "unpersist-tables"

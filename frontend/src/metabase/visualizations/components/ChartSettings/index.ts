@@ -1,1 +1,2 @@
-export * from "./ChartSettings";
+export * from "./QuestionChartSettings";
+export * from "./DashcardChartSettings";

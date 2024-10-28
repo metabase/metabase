@@ -4,7 +4,7 @@ title: Diagnostic information for troubleshooting
 
 # Diagnostic information for troubleshooting
 
-To download diagnostic information, hit `Cmd + F1` on Macs, `Ctrl + F1` on PCs. Hit Cmd/Ctrl + K to bring up the command palette, search for "Diagnostic", and select "Open diagnostic error modal"
+To download diagnostic information, hit `Cmd + F1` on Macs, `Ctrl + F1` on PCs.
 
 Select the info you want to include in the diagnostic JSON file. Options include:
 
@@ -15,7 +15,7 @@ Select the info you want to include in the diagnostic JSON file. Options include
 - Server logs from the current user only
 - Metabase instance version information
 
-What data Metabase captures depends on the page you're on when you request diagnostic information.
+What data Metabase captures depends on the page you're on when you hit `Cmd/Ctrl + F1`.
 
 > Review the downloaded file before sharing it, as the diagnostic info may contain sensitive data.
 

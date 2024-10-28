@@ -9,7 +9,7 @@ import {
   createMockVisualizationSettings,
 } from "metabase-types/api/mocks";
 
-import { ChartSettings } from "./ChartSettings";
+import { QuestionChartSettings } from "./QuestionChartSettings/QuestionChartSettings";
 import type { ChartSettingsProps, Widget } from "./types";
 
 registerVisualizations();
@@ -38,7 +38,9 @@ function widget(widget: Partial<Widget> = {}): Widget {
 type SetupOpts = Partial<ChartSettingsProps>;
 
 const setup = (props: SetupOpts) => {
-  return renderWithProviders(<ChartSettings {...DEFAULT_PROPS} {...props} />);
+  return renderWithProviders(
+    <QuestionChartSettings {...DEFAULT_PROPS} {...props} />,
+  );
 };
 
 describe("ChartSettings", () => {

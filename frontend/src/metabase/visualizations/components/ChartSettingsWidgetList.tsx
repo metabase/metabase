@@ -1,5 +1,6 @@
 import _ from "underscore";
 
+import type { Widget } from "./ChartSettings/types";
 import ChartSettingsWidget from "./ChartSettingsWidget";
 import {
   ChartSettingsWidgetListDivider,
@@ -7,7 +8,7 @@ import {
 } from "./ChartSettingsWidgetList.styled";
 
 interface ChartSettingsWidgetListProps {
-  widgets: { id: string; group?: string }[];
+  widgets: Widget[];
   extraWidgetProps: Record<string, unknown>;
 }
 

@@ -1,4 +1,4 @@
-import type { Card, Dashboard, DashboardCard } from "metabase-types/api";
+import type { Card, Dashboard } from "metabase-types/api";
 
 import { cypressWaitAll } from "../e2e-misc-helpers";
 
@@ -16,11 +16,14 @@ export const createDashboardWithQuestions = ({
   dashboardName?: string;
   dashboardDetails?: DashboardDetails;
   questions: (NativeQuestionDetails | StructuredQuestionDetails)[];
-  cards?: Partial<DashboardCard>[];
-}): Cypress.Chainable<{
-  dashboard: Dashboard;
-  questions: Card[];
-}> => {
+  cards?: Partial<Card>[];
+}): Cypress.Chainable<
+  Cypress.Response<{
+    dashboard: Dashboard;
+    questions: Card;
+  }>
+> => {
+  // @ts-expect-error - Cypress typings don't account for what happens in then() here
   return createDashboard({ name: dashboardName, ...dashboardDetails }).then(
     ({ body: dashboard }) => {
       return cypressWaitAll(
