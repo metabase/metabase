@@ -293,6 +293,40 @@ describe("scenarios > custom column > boolean functions", () => {
         firstRows: [["false", "true"]],
       });
     });
+
+    it("should be able to add a same-stage breakout", () => {
+      createQuestion(questionDetails, { visitQuestion: true });
+      openNotebook();
+      getNotebookStep("expression").button("Summarize").click();
+      popover().findByText("Count of rows");
+      getNotebookStep("summarize")
+        .findByTestId("breakout-step")
+        .icon("add")
+        .click();
+      popover().findByText(expressionName).click();
+      visualize();
+      cy.wait("@dataset");
+      assertTableData({
+        columns: ["Count", expressionName],
+        firstRows: [
+          ["1", "false"],
+          ["3", "true"],
+        ],
+      });
+    });
+
+    it("should be able to add a same stage order by clause", () => {
+      createQuestion(questionDetails, { visitQuestion: true });
+      openNotebook();
+      getNotebookStep("expression").button("Sort").click();
+      popover().findByText(expressionName).click();
+      visualize();
+      cy.wait("@dataset");
+      assertTableData({
+        columns: ["Category", expressionName],
+        firstRows: [["Doohickey", "false"]],
+      });
+    });
   });
 
   describe("previous stage", () => {
