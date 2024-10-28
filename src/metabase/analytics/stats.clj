@@ -516,10 +516,10 @@
 
 (defn- deployment-model
   []
-  (case
+  (cond
    (premium-features/is-hosted?) "cloud"
-   (in-docker?) "docker"
-   :else "jar"))
+   (in-docker?)                  "docker"
+   :else                         "jar"))
 
 (def ^:private activation-days 3)
 
