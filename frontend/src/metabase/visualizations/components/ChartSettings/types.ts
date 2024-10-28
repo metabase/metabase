@@ -3,7 +3,7 @@ import type Question from "metabase-lib/v1/Question";
 import type {
   Dashboard,
   DashboardCard,
-  type RawSeries,
+  RawSeries,
   Series,
   VisualizationSettings,
 } from "metabase-types/api";
