@@ -127,7 +127,7 @@ describe("moderation/service", () => {
             common_name: "Foo",
             id: 1,
           }),
-          createMockUser({ id: 2 }),
+          createMockUser({ id: 2, is_superuser: true }),
         ),
       ).toEqual({
         bannerText: "Foo verified this",
@@ -191,6 +191,7 @@ describe("moderation/service", () => {
         created_at: "",
         status: "verified",
         most_recent: true,
+        user,
       });
     });
 
@@ -271,11 +272,15 @@ describe("moderation/service", () => {
 
   describe("getModerationTimelineEvents", () => {
     it("should return the moderation timeline events", () => {
-      const FooUser = createMockUser({ common_name: "Foo", id: 1 });
-      const AModerator = createMockUser({
-        common_name: "A Moderator",
+      const FooUser = createMockUser({
+        common_name: "Foo",
+        id: 1,
+      });
+      const BarUser = createMockUser({
+        common_name: "Bar",
         id: 123,
       });
+
       const reviews: ModerationReview[] = [
         {
           status: "verified",
@@ -287,15 +292,54 @@ describe("moderation/service", () => {
           status: null,
           created_at: "2018-01-02T00:00:00.000Z",
           moderator_id: 123,
-          user: AModerator,
+          user: BarUser,
         },
       ];
 
+      // If no current user is supplied, expect names to be replaced
       expect(getModerationTimelineEvents(reviews)).toEqual([
         {
           timestamp: reviews[0].created_at,
           icon: getStatusIcon("verified"),
+          title: "A moderator verified this",
+        },
+        {
+          timestamp: reviews[1].created_at,
+          icon: getRemovedReviewStatusIcon(),
+          title: "A moderator removed verification",
+        },
+      ]);
+
+      // If a current user is supplied and they are an admin, expect names to be present
+      expect(
+        getModerationTimelineEvents(
+          reviews,
+          createMockUser({ is_superuser: true, id: 10 }),
+        ),
+      ).toEqual([
+        {
+          timestamp: reviews[0].created_at,
+          icon: getStatusIcon("verified"),
           title: "Foo verified this",
+        },
+        {
+          timestamp: reviews[1].created_at,
+          icon: getRemovedReviewStatusIcon(),
+          title: "Bar removed verification",
+        },
+      ]);
+
+      // If a current user is supplied, but they are not an admin, expect names to be replaced
+      expect(
+        getModerationTimelineEvents(
+          reviews,
+          createMockUser({ is_superuser: false, id: 10 }),
+        ),
+      ).toEqual([
+        {
+          timestamp: reviews[0].created_at,
+          icon: getStatusIcon("verified"),
+          title: "A moderator verified this",
         },
         {
           timestamp: reviews[1].created_at,

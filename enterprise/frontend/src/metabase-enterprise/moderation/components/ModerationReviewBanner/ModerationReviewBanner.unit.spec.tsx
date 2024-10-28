@@ -10,7 +10,11 @@ import {
 } from "./ModerationReviewBanner";
 
 const moderator: User = createMockUser({ id: 1, common_name: "Foo" });
-const currentUser: User = createMockUser({ id: 2, common_name: "Bar" });
+const currentUser: User = createMockUser({
+  id: 2,
+  common_name: "Bar",
+  is_superuser: true,
+});
 
 const moderationReview: ModerationReview = {
   most_recent: true,
