@@ -268,7 +268,7 @@ describe("issue 38176", () => {
 
     cy.findByPlaceholderText("Country").type("NL");
 
-    cy.findByTestId("query-builder-main").button("Get Answer").click();
+    cy.findByTestId("qb-header").icon("play").click();
 
     questionInfoButton().click();
     sidesheet().within(() => {
