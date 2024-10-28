@@ -16,11 +16,11 @@ const QuestionEditorInner = () => {
   const {
     queryResults,
     runQuestion,
-    isSaveEnabled,
     question,
     originalQuestion,
     onSave,
     onCreate,
+    saveOptions,
   } = useInteractiveQuestionContext();
 
   const [activeTab, setActiveTab] = useState<
@@ -65,7 +65,7 @@ const QuestionEditorInner = () => {
                   closeSaveModal();
                 }}
               />
-              {isSaveEnabled && (
+              {saveOptions?.isEnabled && (
                 <InteractiveQuestion.SaveButton onClick={openSaveModal} />
               )}
             </Group>
@@ -120,7 +120,7 @@ const QuestionEditorInner = () => {
       </Tabs>
 
       {/* Refer to the SaveQuestionProvider for context on why we have to do it like this */}
-      {isSaveModalOpen && question && (
+      {saveOptions?.isEnabled && isSaveModalOpen && question && (
         <SaveQuestionModal
           question={question}
           originalQuestion={originalQuestion ?? null}
@@ -137,19 +137,19 @@ const QuestionEditorInner = () => {
 
 export const QuestionEditor = ({
   questionId,
-  isSaveEnabled = true,
   onBeforeSave,
   onSave,
   plugins,
   entityTypeFilter,
+  saveOptions,
 }: InteractiveQuestionProps) => (
   <InteractiveQuestion
     questionId={questionId}
     plugins={plugins}
     onSave={onSave}
     onBeforeSave={onBeforeSave}
-    isSaveEnabled={isSaveEnabled}
     entityTypeFilter={entityTypeFilter}
+    saveOptions={saveOptions}
   >
     <QuestionEditorInner />
   </InteractiveQuestion>

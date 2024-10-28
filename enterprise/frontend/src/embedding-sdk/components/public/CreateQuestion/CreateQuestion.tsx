@@ -6,16 +6,16 @@ type CreateQuestionProps = Omit<InteractiveQuestionProps, "questionId">;
 
 export const CreateQuestion = ({
   plugins,
-  isSaveEnabled,
   onSave,
   onBeforeSave,
   entityTypeFilter,
+  saveOptions,
 }: CreateQuestionProps = {}) => (
   <QuestionEditor
     plugins={plugins}
-    isSaveEnabled={isSaveEnabled}
     onBeforeSave={onBeforeSave}
     onSave={onSave}
     entityTypeFilter={entityTypeFilter}
+    saveOptions={saveOptions}
   />
 );
