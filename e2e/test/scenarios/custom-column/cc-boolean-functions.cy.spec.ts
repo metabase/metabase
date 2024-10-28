@@ -205,6 +205,10 @@ describe("scenarios > custom column > boolean functions", () => {
     const questionDetails: StructuredQuestionDetails = {
       query: {
         "source-table": PRODUCTS_ID,
+        fields: [
+          ["field", PRODUCTS.CATEGORY, null],
+          ["expression", expressionName],
+        ],
         expressions: {
           [expressionName]: [
             "starts-with",
@@ -214,6 +218,40 @@ describe("scenarios > custom column > boolean functions", () => {
         },
       },
     };
+
+    it("should be able to add a same-stage custom column", () => {
+      createQuestion(questionDetails, { visitQuestion: true });
+      openNotebook();
+
+      cy.log("add an identity column");
+      getNotebookStep("expression").icon("add").click();
+      enterCustomColumnDetails({
+        formula: `[${expressionName}]`,
+        name: "Identity column",
+      });
+      popover().button("Done").click();
+
+      cy.log("add a simple expression");
+      getNotebookStep("expression").icon("add").click();
+      enterCustomColumnDetails({
+        formula: `[${expressionName}] != True`,
+        name: "Simple expression",
+      });
+      popover().button("Done").click();
+
+      cy.log("assert query results");
+      visualize();
+      cy.wait("@dataset");
+      assertTableData({
+        columns: [
+          "Category",
+          expressionName,
+          "Identity column",
+          "Simple expression",
+        ],
+        firstRows: [["Gizmo", "true", "true", "false"]],
+      });
+    });
 
     it("should be able to add a same-stage filter", () => {
       createQuestion(questionDetails, { visitQuestion: true });
