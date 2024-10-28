@@ -30,5 +30,12 @@ export const Default = {
   args: {
     questionId: QUESTION_ID,
     isSaveEnabled: true,
+    withCollectionPicker: true,
+  },
+
+  argTypes: {
+    saveToCollectionId: {
+      control: { type: "number" },
+    },
   },
 };

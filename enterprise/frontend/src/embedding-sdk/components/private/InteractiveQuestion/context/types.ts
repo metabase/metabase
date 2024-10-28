@@ -9,15 +9,30 @@ import type Question from "metabase-lib/v1/Question";
 import type { CardEntityId, CardId, CollectionId } from "metabase-types/api";
 
 export type EntityTypeFilterKeys = "table" | "question" | "model" | "metric";
+
 export type InteractiveQuestionConfig = {
   componentPlugins?: SdkPluginsConfig;
   onNavigateBack?: () => void;
   onBeforeSave?: (question?: Question) => Promise<void>;
   onSave?: (question?: Question) => void;
-  isSaveEnabled?: boolean;
   entityTypeFilter?: EntityTypeFilterKeys[];
-  saveToCollectionId?: CollectionId;
+  saveOptions?: SdkInteractiveQuestionSaveOptions;
+};
+
+export type SdkInteractiveQuestionSaveOptions = {
+  /** Is the save question button visible? */
+  isEnabled?: boolean;
+
+  /** Allow the user to choose the collection to save this question to? */
   withCollectionPicker?: boolean;
+
+  /**
+   * The collection to save the question to.
+   *
+   * If `withCollectionPicker` is true, this is the initial collection id..
+   * Otherwise, this becomes the target collection to save to.
+   **/
+  collectionId?: CollectionId;
 };
 
 export type QuestionMockLocationParameters = {
@@ -38,13 +53,7 @@ export type InteractiveQuestionContextType = Omit<
   LoadQuestionHookResult,
   "loadQuestion"
 > &
-  Pick<
-    InteractiveQuestionConfig,
-    | "onNavigateBack"
-    | "isSaveEnabled"
-    | "saveToCollectionId"
-    | "withCollectionPicker"
-  > &
+  Pick<InteractiveQuestionConfig, "onNavigateBack" | "saveOptions"> &
   Pick<QBNotebookProps, "modelsFilterList"> & {
     plugins: InteractiveQuestionConfig["componentPlugins"] | null;
     mode: Mode | null | undefined;

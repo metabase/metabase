@@ -53,7 +53,7 @@ export const InteractiveQuestionProvider = ({
   isSaveEnabled = true,
   entityTypeFilter,
   saveToCollectionId,
-  withCollectionPicker,
+  withSaveCollectionPicker: withCollectionPicker,
 }: InteractiveQuestionProviderProps) => {
   const { id: cardId, isLoading: isLoadingValidatedId } = useValidatedEntityId({
     type: "card",
@@ -125,7 +125,7 @@ export const InteractiveQuestionProvider = ({
     isSaveEnabled,
     modelsFilterList: mapEntityTypeFilterToDataPickerModels(entityTypeFilter),
     saveToCollectionId,
-    withCollectionPicker,
+    withSaveCollectionPicker: withCollectionPicker,
   };
 
   useEffect(() => {
