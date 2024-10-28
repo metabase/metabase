@@ -264,6 +264,26 @@ describe("scenarios > custom column > boolean functions", () => {
       });
       assertQueryBuilderRowCount(51);
     });
+
+    it("should be able to add a same-stage aggregation", () => {
+      createQuestion(questionDetails, { visitQuestion: true });
+      openNotebook();
+      getNotebookStep("expression").button("Summarize").click();
+      popover().findByText("Minimum of ...").click();
+      popover().findByText(expressionName).click();
+      getNotebookStep("summarize")
+        .findByTestId("aggregate-step")
+        .icon("add")
+        .click();
+      popover().findByText("Maximum of ...").click();
+      popover().findByText(expressionName).click();
+      visualize();
+      cy.wait("@dataset");
+      assertTableData({
+        columns: [`Min of ${expressionName}`, `Max of ${expressionName}`],
+        firstRows: [["false", "true"]],
+      });
+    });
   });
 
   describe("previous stage", () => {
