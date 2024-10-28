@@ -1,13 +1,6 @@
-import userEvent from "@testing-library/user-event";
-
 import { fireEvent, renderWithProviders, screen } from "__support__/ui";
 import registerVisualizations from "metabase/visualizations/register";
-import {
-  createMockCard,
-  createMockDashboardCard,
-  createMockDataset,
-  createMockVisualizationSettings,
-} from "metabase-types/api/mocks";
+import { createMockCard, createMockDataset } from "metabase-types/api/mocks";
 
 import { ChartSettings } from "./ChartSettings";
 import type { ChartSettingsProps, Widget } from "./types";
@@ -15,6 +8,7 @@ import type { ChartSettingsProps, Widget } from "./types";
 registerVisualizations();
 
 const DEFAULT_PROPS = {
+  widgets: [],
   series: [
     {
       card: createMockCard({ visualization_settings: {} }),

@@ -1,3 +1,4 @@
+import type { ChartSettingsFooterProps } from "metabase/visualizations/components/ChartSettings/ChartSettingsFooter";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type Question from "metabase-lib/v1/Question";
 import type {
@@ -5,6 +6,7 @@ import type {
   DashboardCard,
   RawSeries,
   Series,
+  type TransformedSeries,
   VisualizationSettings,
 } from "metabase-types/api";
 
@@ -18,48 +20,38 @@ export type Widget = {
   widget: (() => JSX.Element | null) | undefined;
 };
 
+type CommonChartSettingsProps = {
+  series: Series;
+  onChange?: (
+    settings?: ComputedVisualizationSettings,
+    question?: Question,
+  ) => void;
+};
+
 export type DashboardChartSettingsProps = {
   className?: string;
-  isDashboard?: boolean;
   dashboard?: Dashboard;
   dashcard?: DashboardCard;
-  onChange?: (
-    settings: ComputedVisualizationSettings,
-    question?: Question,
-  ) => void;
-  series: Series;
+  isDashboard?: boolean;
   onClose?: () => void;
   widgets?: Widget[];
-};
+} & CommonChartSettingsProps;
+
 export type QuestionChartSettingsProps = {
-  computedSettings?: ComputedVisualizationSettings;
-  question?: Question;
-  onChange?: (
-    settings: ComputedVisualizationSettings,
-    question?: Question,
-  ) => void;
-  series: Series;
-  initial?: {
-    section: string;
-    widget?: Widget;
-  };
   widgets?: Widget[];
-};
+} & CommonChartSettingsProps &
+  Pick<ChartSettingsProps, "initial" | "computedSettings" | "question">;
 
 export type ChartSettingsProps = {
   initial?: {
     section: string;
     widget?: Widget;
   };
-  series: Series;
   computedSettings?: ComputedVisualizationSettings;
   question?: Question;
   widgets: Widget[];
-  onChange?: (
-    settings: ComputedVisualizationSettings,
-    question?: Question,
-  ) => void;
-};
+} & CommonChartSettingsProps &
+  Pick<UseChartSettingsStateReturned, "chartSettings" | "transformedSeries">;
 
 export type ChartSettingsVisualizationProps = {
   warnings?: string[];
@@ -71,7 +63,23 @@ export type ChartSettingsVisualizationProps = {
     question: Question,
   ) => void;
   onUpdateWarnings: (warnings: string[]) => void;
-  onDone: () => void;
-  onCancel: () => void;
-  onReset: (() => void) | null;
+} & ChartSettingsFooterProps;
+
+export type UseChartSettingsStateProps = {
+  settings?: VisualizationSettings;
+  series: Series;
+  onChange?: (
+    settings: ComputedVisualizationSettings,
+    question?: Question,
+  ) => void;
+};
+
+export type UseChartSettingsStateReturned = {
+  chartSettings?: VisualizationSettings;
+  handleChangeSettings: (
+    changedSettings: VisualizationSettings,
+    question: Question,
+  ) => void;
+  chartSettingsRawSeries: Series;
+  transformedSeries?: RawSeries | TransformedSeries;
 };

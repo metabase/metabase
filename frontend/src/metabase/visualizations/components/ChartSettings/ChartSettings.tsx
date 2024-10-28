@@ -23,13 +23,7 @@ import { keyForSingleSeries } from "metabase/visualizations/lib/settings/series"
 import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import type Question from "metabase-lib/v1/Question";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
-import type {
-  DatasetColumn,
-  RawSeries,
-  Series,
-  TransformedSeries,
-  VisualizationSettings,
-} from "metabase-types/api";
+import type { DatasetColumn, VisualizationSettings } from "metabase-types/api";
 
 import ChartSettingsWidgetList from "../ChartSettingsWidgetList";
 import ChartSettingsWidgetPopover from "../ChartSettingsWidgetPopover";
@@ -48,6 +42,8 @@ import type {
   ChartSettingsVisualizationProps,
   DashboardChartSettingsProps,
   QuestionChartSettingsProps,
+  UseChartSettingsStateProps,
+  UseChartSettingsStateReturned,
   Widget,
 } from "./types";
 
@@ -90,27 +86,11 @@ const ChartSettingsVisualization = ({
   </ChartSettingsPreview>
 );
 
-type UseChartSettingsStateParams = {
-  settings?: VisualizationSettings;
-  series: any;
-  onChange: any;
-};
-
-type UseChartSettingsStateReturned = {
-  chartSettings: VisualizationSettings;
-  handleChangeSettings: (
-    changedSettings: VisualizationSettings,
-    question: Question,
-  ) => void;
-  chartSettingsRawSeries: Series;
-  transformedSeries: RawSeries | TransformedSeries;
-};
-
 export const useChartSettingsState = ({
   settings,
   series,
   onChange,
-}: UseChartSettingsStateParams): UseChartSettingsStateReturned => {
+}: UseChartSettingsStateProps): UseChartSettingsStateReturned => {
   const chartSettings = useMemo(
     () => settings || series[0].card.visualization_settings,
     [series, settings],
@@ -152,7 +132,7 @@ export const ChartSettings = ({
   widgets,
   chartSettings,
   transformedSeries,
-}: ChartSettingsProps & UseChartSettingsStateReturned) => {
+}: ChartSettingsProps) => {
   const [currentSection, setCurrentSection] = useState<string | null>(
     initial?.section ?? null,
   );
@@ -224,7 +204,7 @@ export const ChartSettings = ({
         return null;
       }
 
-      const singleSeriesForColumn = transformedSeries.find(single => {
+      const singleSeriesForColumn = transformedSeries?.find(single => {
         const metricColumn = single.data.cols[1];
         if (metricColumn) {
           return (
@@ -280,7 +260,9 @@ export const ChartSettings = ({
 
   const handleChangeSeriesColor = useCallback(
     (seriesKey: string, color: string) => {
-      onChange?.(updateSeriesColor(chartSettings, seriesKey, color));
+      if (chartSettings) {
+        onChange?.(updateSeriesColor(chartSettings, seriesKey, color));
+      }
     },
     [chartSettings, onChange],
   );
@@ -398,12 +380,8 @@ export const QuestionChartSettings = ({
   computedSettings,
   initial,
 }: QuestionChartSettingsProps) => {
-  const {
-    chartSettings,
-    handleChangeSettings,
-    chartSettingsRawSeries,
-    transformedSeries,
-  } = useChartSettingsState({ series, onChange });
+  const { chartSettings, handleChangeSettings, transformedSeries } =
+    useChartSettingsState({ series, onChange });
 
   const widgets = useMemo(
     () =>
@@ -425,8 +403,6 @@ export const QuestionChartSettings = ({
         initial={initial}
         computedSettings={computedSettings}
         chartSettings={chartSettings}
-        handleChangeSettings={handleChangeSettings}
-        chartSettingsRawSeries={chartSettingsRawSeries}
         transformedSeries={transformedSeries}
         widgets={widgets}
       />
@@ -507,8 +483,6 @@ export const DashboardChartSettings = ({
         series={series}
         onChange={setTempSettings}
         chartSettings={chartSettings}
-        handleChangeSettings={handleChangeSettings}
-        chartSettingsRawSeries={chartSettingsRawSeries}
         widgets={widgets}
         transformedSeries={transformedSeries}
       />
