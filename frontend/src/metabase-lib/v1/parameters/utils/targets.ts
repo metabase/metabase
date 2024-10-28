@@ -187,6 +187,22 @@ export function getParameterColumns(question: Question, parameter?: Parameter) {
   return { query: nextQuery, columns };
 }
 
+// For now use only the columns available in the last stage.
+// We may want to enable all columns later, see: https://github.com/metabase/metabase/issues/49218
+// If we want this, then this function should be removed and its usage should be replaced with getParameterColumns.
+export function getParameterColumnsLastStageOnly(question: Question) {
+  // treat the dataset/model question like it is already composed so that we can apply
+  // dataset/model-specific metadata to the underlying dimension options
+  const query =
+    question.type() !== "question"
+      ? question.composeQuestionAdhoc().query()
+      : question.query();
+  const lastStageIndex = Lib.stageCount(query) - 1;
+  const columns = getFilterableStageColumns(query, lastStageIndex);
+
+  return { query, columns };
+}
+
 function getTemporalColumns(query: Lib.Query, stageIndex: number) {
   const columns = Lib.breakouts(query, stageIndex).map(breakout => {
     return Lib.breakoutColumn(query, stageIndex, breakout);
@@ -202,17 +218,21 @@ function getTemporalColumns(query: Lib.Query, stageIndex: number) {
 
 function getFilterableColumns(query: Lib.Query) {
   return Lib.stageIndexes(query).flatMap(stageIndex => {
-    const columns = Lib.filterableColumns(query, stageIndex);
-    const groups = Lib.groupColumns(columns);
+    return getFilterableStageColumns(query, stageIndex);
+  });
+}
 
-    return groups.flatMap(group => {
-      const columns = Lib.getColumnsFromColumnGroup(group);
+function getFilterableStageColumns(query: Lib.Query, stageIndex: number) {
+  const columns = Lib.filterableColumns(query, stageIndex);
+  const groups = Lib.groupColumns(columns);
 
-      return columns.map(column => ({
-        stageIndex,
-        column,
-        group,
-      }));
-    });
+  return groups.flatMap(group => {
+    const columns = Lib.getColumnsFromColumnGroup(group);
+
+    return columns.map(column => ({
+      stageIndex,
+      column,
+      group,
+    }));
   });
 }
