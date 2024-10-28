@@ -70,8 +70,8 @@ function ChartSettingsSidebarInner({
             question={question}
             series={series}
             onChange={onChange}
-            computedSettings={visualizationSettings}
             initial={initialChartSetting}
+            computedSettings={visualizationSettings}
           />
         </ErrorBoundary>
       </SidebarContent>

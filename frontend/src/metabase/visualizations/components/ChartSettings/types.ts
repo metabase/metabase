@@ -31,13 +31,12 @@ export type DashboardChartSettingsProps = {
   dashcard?: DashboardCard;
   isDashboard?: boolean;
   onClose?: () => void;
-  widgets?: Widget[];
-} & CommonChartSettingsProps;
-
-export type QuestionChartSettingsProps = {
-  widgets?: Widget[];
 } & CommonChartSettingsProps &
-  Pick<ChartSettingsProps, "initial" | "computedSettings" | "question">;
+  ChartSettingsTestTypes;
+
+export type QuestionChartSettingsProps = CommonChartSettingsProps &
+  Pick<ChartSettingsProps, "initial" | "computedSettings" | "question"> &
+  ChartSettingsTestTypes;
 
 export type ChartSettingsProps = {
   initial?: {
@@ -79,4 +78,9 @@ export type UseChartSettingsStateReturned = {
   ) => void;
   chartSettingsRawSeries: Series;
   transformedSeries?: RawSeries | TransformedSeries;
+};
+
+// Only used for the tests in ChartSettings.unit.spec.tsx
+export type ChartSettingsTestTypes = {
+  widgets?: Widget[];
 };

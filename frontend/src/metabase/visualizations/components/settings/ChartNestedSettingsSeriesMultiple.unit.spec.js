@@ -2,7 +2,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen, within } from "__support__/ui";
-import { ChartSettings } from "metabase/visualizations/components/ChartSettings";
+import { DashboardChartSettings } from "metabase/visualizations/components/ChartSettings";
 import registerVisualizations from "metabase/visualizations/register";
 import { createMockCard } from "metabase-types/api/mocks";
 
@@ -35,8 +35,9 @@ const setup = (seriesDisplay, numberOfSeries = 1, changeSeriesName = false) => {
   const series = new Array(numberOfSeries)
     .fill(1)
     .map((s, index) => getSeries(seriesDisplay, index, changeSeriesName));
+  console.log({ MOCK_SERIES: JSON.stringify(series, undefined, 2) });
   return renderWithProviders(
-    <ChartSettings
+    <DashboardChartSettings
       series={series}
       initial={{ section: "Display" }}
       isDashboard={true}

@@ -9,7 +9,6 @@ import {
   extractRemappings,
   getVisualizationTransformed,
 } from "metabase/visualizations";
-import { ChartSettingsFooter } from "metabase/visualizations/components/ChartSettings/ChartSettingsFooter";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { updateSeriesColor } from "metabase/visualizations/lib/series";
 import {
@@ -37,6 +36,7 @@ import {
   SectionContainer,
   SectionWarnings,
 } from "./ChartSettings.styled";
+import { ChartSettingsFooter } from "./ChartSettingsFooter";
 import type {
   ChartSettingsProps,
   ChartSettingsVisualizationProps,
@@ -409,7 +409,6 @@ export const DashboardChartSettings = ({
   className,
   dashboard,
   dashcard,
-  isDashboard,
   onChange,
   series,
   onClose,
@@ -456,16 +455,10 @@ export const DashboardChartSettings = ({
       getSettingsWidgetsForSeries(
         transformedSeries,
         handleChangeSettings,
-        isDashboard,
+        true,
         { dashboardId: dashboard?.id },
       ),
-    [
-      propWidgets,
-      transformedSeries,
-      handleChangeSettings,
-      isDashboard,
-      dashboard?.id,
-    ],
+    [propWidgets, transformedSeries, handleChangeSettings, dashboard?.id],
   );
 
   return (
