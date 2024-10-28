@@ -21,7 +21,7 @@ You can embed a static question using the `StaticQuestion` component.
 
 The component has a default height, which can be customized by using the `height` prop. To inherit the height from the parent container, you can pass `100%` to the height prop.
 
-```typescript jsx
+```typescript
 import React from "react";
 import {MetabaseProvider, StaticQuestion} from "@metabase/embedding-sdk-react";
 
@@ -50,7 +50,7 @@ You can pass parameter values to questions defined with SQL via `parameterValues
 
 You can embed an interactive question using the `InteractiveQuestion` component.
 
-```typescript jsx
+```typescript
 import React from "react";
 import {MetabaseProvider, InteractiveQuestion} from "@metabase/embedding-sdk-react";
 
@@ -89,13 +89,13 @@ By default, the Embedded Analytics SDK provides a default layout for interactive
 
 Here's an example of using the `InteractiveQuestion` component with its default layout:
 
-```typescript jsx
+```typescript
 <InteractiveQuestion questionId={95} />
 ```
 
 To customize the layout, use namespaced components within the `InteractiveQuestion` component. For example:
 
-```typescript jsx
+```typescript
 {% raw %}
 <InteractiveQuestion questionId={95}>
   <div
@@ -160,7 +160,7 @@ This plugin allows you to add custom actions to
 the click-through menu of an interactive question. You can add and
 customize the appearance and behavior of the custom actions.
 
-```typescript jsx
+```typescript
 // You can provide a custom action with your own `onClick` logic.
 const createCustomAction = clicked => ({
   buttonType: "horizontal",
