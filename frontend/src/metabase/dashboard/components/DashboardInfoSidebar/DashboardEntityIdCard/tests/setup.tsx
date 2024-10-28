@@ -16,7 +16,7 @@ import { DashboardEntityIdCard } from "../DashboardEntityIdCard";
 export const setup = ({
   dashboard = createMockDashboard(),
   hasEnterprisePlugins,
-  enableSerialization,
+  enableSerialization = false,
   ...renderOptions
 }: {
   dashboard?: Dashboard;
@@ -29,7 +29,7 @@ export const setup = ({
   const state = createMockState({
     settings: mockSettings({
       "token-features": createMockTokenFeatures({
-        serialization: !!enableSerialization,
+        serialization: enableSerialization,
       }),
     }),
   });
