@@ -1283,7 +1283,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
           });
         });
 
-        // TODO: zhttps://github.com/metabase/metabase/issues/46774
+        // TODO: https://github.com/metabase/metabase/issues/46774
         it.skip("1st stage implicit join (joined data source)", () => {
           setup1stStageImplicitJoinFromJoinFilter();
 
