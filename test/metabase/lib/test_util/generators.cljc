@@ -2,8 +2,10 @@
   (:require
    #?@(:cljs (metabase.test-runner.assert-exprs.approximately-equal))
    [clojure.test :refer [deftest is testing]]
+   [metabase.lib.breakout :as lib.breakout]
    [metabase.lib.core :as lib]
-   [metabase.lib.test-metadata :as meta]))
+   [metabase.lib.test-metadata :as meta]
+   [metabase.util :as u]))
 
 ;; NOTE: Being able to *execute* these queries and grok the results would actually be really powerful, if we can
 ;; achieve it with moderate cost. I think we can, at least for most queries. Some temporal stuff is a huge PITA,
@@ -74,6 +76,22 @@
 (defn- add-step [{:keys [kind] :as step-def}]
   (swap! step-kinds assoc kind step-def))
 
+;; Helpers =======================================================================================
+(defn- choose
+  "Uniformly chooses among a seq of options.
+
+  Returns nil if the list is empty! This is handy for choose-and-do vs. do-nothing while writing the next steps."
+  [xs]
+  (when-not (empty? xs)
+    (rand-nth xs)))
+
+(defn- choose-stage
+  "Chooses a stage to operator on. 80% act on -1, 20% chooses a stage by index (which might be the last stage)."
+  [query]
+  (if (< (rand) 0.8)
+    -1
+    (rand-int (count (:stages query)))))
+
 ;; Aggregations ==================================================================================
 ;; TODO: Add a schema for the step `[vectors ...]`?
 (add-step {:kind :aggregate})
@@ -96,18 +114,6 @@
               (last after-aggs))
           "new aggregation should resemble the intended one"))))
 
-(defn- choose
-  "Uniformly chooses among a seq of options."
-  [xs]
-  (rand-nth xs))
-
-(defn- choose-stage
-  "Chooses a stage to operato on. 80% act on -1, 20% chooses a stage by index (which might be the last stage)."
-  [query]
-  (if (< (rand) 0.8)
-    -1
-    (rand-int (count (:stages query)))))
-
 ;; TODO: If exhaustion is a goal, we should think about making these into generators or otherwise reifying the choices.
 (defmethod next-steps* :aggregate [query _aggregate]
   (let [stage-number (choose-stage query)
@@ -117,7 +123,51 @@
                        (lib/aggregation-clause operator))]
     [:aggregate stage-number agg]))
 
-;; Helpers
+;; Breakouts =====================================================================================
+(add-step {:kind :breakout})
+
+(defmethod next-steps* :breakout [query _breakout]
+  (let [stage-number (choose-stage query)
+        column       (choose (lib/breakoutable-columns query stage-number))
+        ;; If this is a temporal column, we need to choose a unit for it. Nil if it's not temporal.
+        ;; TODO: Don't always bucket/bin! We should sometimes choose the "Don't bin" option etc.
+        bucket       (choose (lib/available-temporal-buckets query stage-number column))
+        binning      (choose (lib/available-binning-strategies query stage-number column))
+        brk-column   (cond-> column
+                       bucket  (lib/with-temporal-bucket bucket)
+                       binning (lib/with-binning binning))]
+    [:breakout stage-number (lib/ref brk-column) brk-column]))
+
+(defmethod run-step* :breakout [query [_breakout stage-number brk-clause _column]]
+  (lib/breakout query stage-number brk-clause))
+
+(defmethod before-and-after :breakout [before after [_breakout stage-number brk-clause column]]
+  ;; Duplicate breakouts are not allowed! So we want to check that logic.
+  (let [before-breakouts (lib/breakouts before stage-number)
+        after-breakouts  (lib/breakouts after  stage-number)
+        opts             {:same-binning-strategy? true
+                          :same-temporal-bucket?  true}
+        fresh?           (empty? (lib.breakout/existing-breakouts before stage-number column opts))]
+    (testing (str ":breakout stage " stage-number
+                  "\n\nBefore query\n" (u/pprint-to-str before)
+                  "\n\nwith column\n" (u/pprint-to-str column)
+                  "\n\nwith breakout clause\n" (u/pprint-to-str brk-clause)
+                  "\n")
+      (if fresh?
+        (testing "freshly added breakout columns"
+          (is (= false (boolean (lib.breakout/breakout-column? before stage-number column opts)))
+              "are not present before")
+          (is (= true  (boolean (lib.breakout/breakout-column? after  stage-number column opts)))
+              "are present after")
+          (testing "go at the end of the list"
+            (is (= (count after-breakouts)
+                   (inc (count before-breakouts))))
+            (is (=? brk-clause (last after-breakouts)))))
+        (testing "duplicate breakout columns are blocked"
+          (is (= (count after-breakouts)
+                 (count before-breakouts))))))))
+
+;; Generator internals ===========================================================================
 (defn- run-step
   "Applies a step, returning the updated context."
   [{:keys [query] :as ctx} step]
@@ -231,8 +281,9 @@
      (vary-meta query assoc ::context (dissoc ctx :query)))))
 
 (deftest ^:parallel query-generator-test
-  (doseq [q (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
-                (random-queries-from 100))]
+  (doseq [table (meta/tables)
+          q     (-> (lib/query meta/metadata-provider (meta/table-metadata table))
+                    (random-queries-from 100))]
     (is (= (->> (lib/stage-count q)
                 range
                 (map (comp count #(lib/aggregations q %)))
