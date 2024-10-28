@@ -16,6 +16,11 @@ export type VisualizerDataSource = {
   name: string;
 };
 
+export type VizDataSourceMapping = {
+  sourceId: VisualizerDataSourceId;
+  settings: Record<keyof VisualizationSettings, string>;
+};
+
 type BaseDraggedItem<T> = {
   id: string;
   data: {
@@ -32,6 +37,7 @@ export type DraggedItem = DraggedColumn;
 
 export interface VisualizerState {
   display: VisualizationDisplay | null;
+  mappings: VizDataSourceMapping[];
   settings: VisualizationSettings;
   cards: Card[];
   datasets: Record<VisualizerDataSourceId, Dataset>;

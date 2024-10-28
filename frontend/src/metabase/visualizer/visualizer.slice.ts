@@ -6,11 +6,13 @@ import {
 
 import { cardApi } from "metabase/api";
 import { createAsyncThunk } from "metabase/lib/redux";
+import { isNotFalsy } from "metabase/lib/types";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import type {
   Card,
   CardId,
   Dataset,
+  DatasetColumn,
   RawSeries,
   VisualizationDisplay,
   VisualizationSettings,
@@ -26,6 +28,7 @@ import { createDataSource } from "./utils";
 
 const initialState: VisualizerState = {
   display: null,
+  mappings: [],
   settings: {},
   cards: [],
   datasets: {},
@@ -82,6 +85,7 @@ const visualizerSlice = createSlice({
     setDisplay: (state, action: PayloadAction<VisualizationDisplay | null>) => {
       state.display = action.payload;
       state.settings = {};
+      state.mappings = [];
     },
     updateSettings: (state, action: PayloadAction<VisualizationSettings>) => {
       state.settings = {
@@ -190,19 +194,61 @@ export const getDraggedItem = (state: { visualizer: VisualizerState }) =>
 const getCards = (state: { visualizer: VisualizerState }) =>
   state.visualizer.cards;
 
+const getVizDataSourceMappings = (state: { visualizer: VisualizerState }) =>
+  state.visualizer.mappings;
+
 export const getDataSources = createSelector([getCards], cards =>
   cards.map(card => createDataSource("card", card.id, card.name)),
 );
 
 export const getVisualizerRawSeries = createSelector(
-  [getVisualizationType, getDataSources, getDatasets, getSettings],
-  (display, dataSources, datasets, settings): RawSeries => {
-    const [source] = dataSources;
-    const dataset = source ? datasets[source.id] : null;
-
-    if (display == null || dataset == null) {
+  [
+    getVisualizationType,
+    getVizDataSourceMappings,
+    getSettings,
+    getDataSources,
+    getDatasets,
+  ],
+  (display, mappings, settings, dataSources, datasets): RawSeries => {
+    if (!display) {
       return [];
     }
+
+    const metricColumn: DatasetColumn = {
+      base_type: "type/Integer",
+      effective_type: "type/Integer",
+      display_name: "METRIC",
+      field_ref: ["field", "METRIC", { "base-type": "type/Integer" }],
+      name: "METRIC",
+      source: "artificial",
+    };
+
+    const dimensionColumn: DatasetColumn = {
+      base_type: "type/Text",
+      effective_type: "type/Text",
+      display_name: "DIMENSION",
+      field_ref: ["field", "DIMENSION", { "base-type": "type/Text" }],
+      name: "DIMENSION",
+      source: "artificial",
+    };
+
+    const rows = mappings
+      .map(mapping => {
+        const source = dataSources.find(ds => ds.id === mapping.sourceId);
+        const dataset = datasets[mapping.sourceId];
+        if (!source || !dataset) {
+          return;
+        }
+        const metricColumnIndex = dataset.data.cols.findIndex(
+          col => col.name === mapping.settings["funnel.metric"],
+        );
+        const value = dataset.data.rows[0][metricColumnIndex];
+        if (!value) {
+          return;
+        }
+        return [source.name, value];
+      })
+      .filter(isNotFalsy);
 
     return [
       {
@@ -210,7 +256,13 @@ export const getVisualizerRawSeries = createSelector(
           display,
           visualization_settings: settings,
         },
-        ...dataset,
+        data: {
+          cols: [dimensionColumn, metricColumn],
+          rows: rows,
+          results_metadata: {
+            columns: [dimensionColumn, metricColumn],
+          },
+        },
       },
     ];
   },
