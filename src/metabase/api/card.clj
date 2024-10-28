@@ -146,10 +146,8 @@
                                          :where [:= :m.id model-id]}))
 
 (api/defendpoint GET "/"
-  "Get all the Cards. Option filter param `f` can be used to change the set of Cards that are returned; default is
-  `all`, but other options include `mine`, `bookmarked`, `database`, `table`, `using_model`, `using_metric`,
-  `using_segment`, and `archived`. See corresponding implementation functions above for the specific behavior
-  of each filter option. :card_index:"
+  "Get all the Cards. Optionally filter by `database_id` to return only id, name, description, dataset_query, and visualization_settings 
+   for the 100 most recent cards by `created_at`."
   [f model_id database_id]
   {f           [:maybe (into [:enum] card-filter-options)]
    model_id    [:maybe ms/PositiveInt]
@@ -165,9 +163,13 @@
         :using_metric  (api/read-check Database (db-id-via-table :metric model_id))
         :using_segment (api/read-check Database (db-id-via-table :segment model_id))))
     (let [cards (if database_id
+                  ;; Filtrar por database_id, ordenar por created_at descendente y limitar a 100
                   (->> (cards-for-filter-option :database database_id)
+                       (sort-by :created_at #(compare %2 %1))  ;; Orden descendente
+                       (take 100)                             ;; Limitar a 100
                        (map #(select-keys % [:id :name :description :dataset_query :visualization_settings]))
                        (into []))
+                  ;; Comportamiento por defecto si no se proporciona database_id
                   (let [cards (filter mi/can-read? (cards-for-filter-option f model_id))
                         last-edit-info (:card (last-edit/fetch-last-edited-info {:card-ids (map :id cards)}))]
                     (into []
