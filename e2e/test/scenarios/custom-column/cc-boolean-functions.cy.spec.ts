@@ -207,7 +207,7 @@ describe("scenarios > custom column > boolean functions", () => {
         "source-table": PRODUCTS_ID,
         fields: [
           ["field", PRODUCTS.CATEGORY, null],
-          ["expression", expressionName],
+          ["expression", expressionName, { "base-type": "type/Boolean" }],
         ],
         expressions: {
           [expressionName]: [
@@ -315,7 +315,7 @@ describe("scenarios > custom column > boolean functions", () => {
       });
     });
 
-    it("should be able to add a same stage order by clause", () => {
+    it("should be able to add a same-stage order by clause", () => {
       createQuestion(questionDetails, { visitQuestion: true });
       openNotebook();
       getNotebookStep("expression").button("Sort").click();
@@ -341,9 +341,31 @@ describe("scenarios > custom column > boolean functions", () => {
           ],
         },
         aggregation: [["count"]],
-        breakout: [["expression", expressionName]],
+        breakout: [
+          ["expression", expressionName, { "base-type": "type/Boolean" }],
+        ],
       },
     };
+
+    it("should be able to add a post-aggregation custom column", () => {
+      createQuestion(questionDetails, { visitQuestion: true });
+      openNotebook();
+      getNotebookStep("summarize").button("Custom column").click();
+      enterCustomColumnDetails({
+        formula: `not([${expressionName}])`,
+        name: "Simple expression",
+      });
+      popover().button("Done").click();
+      visualize();
+      cy.wait("@dataset");
+      assertTableData({
+        columns: [expressionName, "Count", "Simple expression"],
+        firstRows: [
+          ["false", "149", "true"],
+          ["true", "51", "false"],
+        ],
+      });
+    });
 
     it("should be able to add a post-aggregation filter", () => {
       createQuestion(questionDetails, { visitQuestion: true });
@@ -382,7 +404,7 @@ describe("scenarios > custom column > boolean functions", () => {
       };
     }
 
-    it("should be able to add a source column filter", () => {
+    it("should be able to add a filter for the source column", () => {
       createQuestion(questionDetails).then(({ body: card }) =>
         createQuestion(getNestedQuestionDetails(card.id), {
           visitQuestion: true,
