@@ -23,9 +23,9 @@ export const colors = {
   accent5: "#F2A86F",
   accent6: "#98D9D9",
   accent7: "#7172AD",
-  "accent-grey": "#B4BCC3",
-  "accent-grey-light": "#F3F5F7",
-  "accent-grey-dark": "#808991",
+  "accent-grey": "#F3F5F7", // Orion 10 (--mb-base-color-gray-10)
+  "accent-grey-light": "#FAFBFC", // Orion 5 (--mb-base-color-gray-5)
+  "accent-grey-dark": "#DBDFE3", // Orion 20 (--mb-base-color-gray-20)
   "admin-navbar": "#7172AD",
   white: "#FFFFFF",
   success: "#84BB4C",
