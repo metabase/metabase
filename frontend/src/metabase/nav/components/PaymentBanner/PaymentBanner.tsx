@@ -1,6 +1,6 @@
 import { jt, t } from "ttag";
 
-import Banner from "metabase/components/Banner";
+import { Banner } from "metabase/components/Banner";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import CS from "metabase/css/core/index.css";
 import { getStoreUrl } from "metabase/selectors/settings";

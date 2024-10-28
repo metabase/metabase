@@ -8,7 +8,7 @@ const propTypes = {
   children: PropTypes.node,
 };
 
-const Banner = ({ className, children }) => {
+export const Banner = ({ className, children }) => {
   const content =
     typeof children === "string" ? <Markdown>{children}</Markdown> : children;
 
@@ -16,5 +16,3 @@ const Banner = ({ className, children }) => {
 };
 
 Banner.propTypes = propTypes;
-
-export default Banner;
