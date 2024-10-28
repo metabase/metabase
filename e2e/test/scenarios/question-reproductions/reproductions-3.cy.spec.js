@@ -20,6 +20,7 @@ import {
   getTable,
   join,
   leftSidebar,
+  main,
   modal,
   moveColumnDown,
   newButton,
@@ -2229,6 +2230,24 @@ describe("issue 36027", () => {
         cy.findByText(state).should("be.visible");
       });
     });
+  });
+});
+
+describe("issue 12586", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should not show the run button overlay when an error occurs", () => {
+    openOrdersTable();
+    summarize();
+
+    cy.intercept("POST", "/api/dataset", req => req.destroy());
+
+    rightSidebar().button("Done").click();
+    main().findByText("We're experiencing server issues").should("be.visible");
+    cy.findByTestId("query-builder-main").icon("play").should("not.be.visible");
   });
 });
 
