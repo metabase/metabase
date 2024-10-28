@@ -254,25 +254,6 @@
     "hi" "aGk="
     "hi" "data:application/octet-stream;base64,aGk="))
 
-(deftest ^:parallel semantic-version-gte-test
-  (testing "semantic-version-gte works as expected"
-    (are [x y] (driver.u/semantic-version-gte x y)
-      [5 0]   [4 0]
-      [5 0 1] [4 0]
-      [5 0]   [4 0 1]
-      [5 0]   [4 1]
-      [4 1]   [4 1]
-      [4 1]   [4]
-      [4]     [4]
-      [4]     [4 0 0])
-    (are [x y] (not (driver.u/semantic-version-gte x y))
-      [3]     [4]
-      [4]     [4 1]
-      [4 0]   [4 0 1]
-      [4 0 1] [4 1]
-      [3 9]   [4 0]
-      [3 1]   [4])))
-
 (deftest ^:parallel mark-h2-superseded-test
   (testing "H2 should have :superseded-by set so it doesn't show up in the list of available drivers in the UI DB edit forms"
     (is (=? {:driver-name "H2", :superseded-by :deprecated}

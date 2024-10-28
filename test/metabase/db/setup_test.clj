@@ -1,6 +1,7 @@
 (ns metabase.db.setup-test
   (:require
    [clojure.java.jdbc :as jdbc]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.db.connection :as mdb.connection]
    [metabase.db.data-source :as mdb.data-source]
@@ -34,20 +35,27 @@
                   (format "jdbc:h2:mem:%s" (mt/random-name))))))))
 
   (let [create-mock-connection (fn [version]
-                                 (reify java.sql.Connection
-                                   (close [_])
-                                   (^java.sql.PreparedStatement prepareStatement [_ ^String _]
-                                     (reify java.sql.PreparedStatement
-                                       (close [_])
-                                       (^java.sql.ResultSet executeQuery [_]
-                                         (reify java.sql.ResultSet
-                                           (close [_])
-                                           (next [_] true)
-                                           (^int getInt [_ ^int _] 1)))))
-                                   (getMetaData [_]
-                                     (reify java.sql.DatabaseMetaData
-                                       (getDatabaseProductName [_] "PostgreSQL")
-                                       (getDatabaseProductVersion [_] version)))))]
+                                (reify java.sql.Connection
+                                  (close [_])
+                                  (^java.sql.PreparedStatement prepareStatement [_ ^String _]
+                                    (reify java.sql.PreparedStatement
+                                      (close [_])
+                                      (^java.sql.ResultSet executeQuery [_]
+                                        (reify java.sql.ResultSet
+                                          (close [_])
+                                          (next [_] true)
+                                          (^int getInt [_ ^int _] 1)))))
+                                  (getMetaData [_]
+                                    (let [version-parts (str/split version #"\.")]
+                                      (reify java.sql.DatabaseMetaData
+                                        (getDatabaseProductName [_] "PostgreSQL")
+                                        (getDatabaseProductVersion [_] version)
+                                        (getDatabaseMajorVersion [_]
+                                          (Integer/parseInt (first version-parts)))
+                                        (getDatabaseMinorVersion [_]
+                                          (if (> (count version-parts) 1)
+                                            (Integer/parseInt (second version-parts))
+                                            0)))))))]
 
     (testing "Should throw an exception for unsupported database version"
       (with-redefs [sql-jdbc.conn/can-connect-with-spec? (constantly true)]
@@ -58,7 +66,7 @@
             (#'mdb.setup/verify-db-connection :postgres mock-datasource)
             (is false "Expected an exception to be thrown")
             (catch clojure.lang.ExceptionInfo e
-              (is (= "Database version 11.0 is below the required version 12 for postgres."
+              (is (= "PostgreSQL version 11.0 is below the required version 12.0."
                      (.getMessage e))))))))
 
     (testing "Should not throw an exception for supported database version"
