@@ -1709,42 +1709,6 @@ describe("scenarios > dashboard > filters > query stages", () => {
             values: ["1,077"],
           });
         });
-
-        // TODO: https://github.com/metabase/metabase/issues/48339
-        // TODO: https://github.com/metabase/metabase/issues/49022
-        it.skip("3rd stage aggregation", () => {
-          setup3rdStageAggregationFilter();
-
-          getDashboardCard(0)
-            .findByTestId("cell-data")
-            .should("have.text", "0"); // TODO: https://github.com/metabase/metabase/issues/48339#issuecomment-2393449924
-          getDashboardCard(0).findByTestId("legend-caption-title").click();
-          cy.wait("@dataset");
-          cy.findByTestId("query-visualization-root").should(
-            "contain.text",
-            "No results!",
-          );
-          cy.findByTestId("question-row-count").should(
-            "have.text",
-            "Showing 0 rows",
-          );
-
-          goBackToDashboard();
-
-          getDashboardCard(1)
-            .findByTestId("cell-data")
-            .should("have.text", "0"); // TODO: https://github.com/metabase/metabase/issues/48339#issuecomment-2393449924
-          getDashboardCard(1).findByTestId("legend-caption-title").click();
-          cy.wait("@dataset");
-          cy.findByTestId("query-visualization-root").should(
-            "contain.text",
-            "No results!",
-          );
-          cy.findByTestId("question-row-count").should(
-            "have.text",
-            "Showing 0 rows",
-          );
-        });
       });
     });
   });
@@ -2615,31 +2579,6 @@ function setup2ndStageBreakoutFilter() {
   filterWidget().eq(0).click();
   popover().within(() => {
     cy.findByLabelText("Gadget").click();
-    cy.button("Add filter").click();
-  });
-  cy.wait(["@dashboardData", "@dashboardData"]);
-}
-
-function setup3rdStageAggregationFilter() {
-  editDashboard();
-
-  getFilter("Number").click();
-  sidebar().findByText("Filter operator").next().click();
-  popover().findByText("Between").click();
-
-  getDashboardCard(0).findByText("Select…").click();
-  popover().within(() => {
-    getPopoverList().scrollTo("bottom");
-    getPopoverItem("Count", 2).click();
-  });
-
-  cy.button("Save").click();
-  cy.wait("@updateDashboard");
-
-  filterWidget().eq(0).click();
-  popover().within(() => {
-    cy.findAllByPlaceholderText("Enter a number").eq(0).type("0");
-    cy.findAllByPlaceholderText("Enter a number").eq(1).type("2");
     cy.button("Add filter").click();
   });
   cy.wait(["@dashboardData", "@dashboardData"]);
