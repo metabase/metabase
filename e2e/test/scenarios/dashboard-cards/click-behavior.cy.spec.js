@@ -2030,7 +2030,7 @@ describeEE("scenarios > dashboard > dashboard cards > click behavior", () => {
       query: createMultiStageQuery(),
     };
 
-    it("should allow navigating to questions with filters applied in every stage", () => {
+    it("should only allow navigating to questions with filters available in the last stage", () => {
       createQuestion(targetQuestion);
       createQuestionAndDashboard({ questionDetails }).then(({ body: card }) => {
         visitDashboard(card.dashboard_id);
@@ -2060,48 +2060,22 @@ describeEE("scenarios > dashboard > dashboard cards > click behavior", () => {
         "Reviews - Created At: Month → Body",
         "Reviews - Created At: Month → Created At",
       ]);
-      cy.pause();
-      //TODO: update assertions below
 
-      // 1st stage - Orders
-      getClickMapping("ID").click();
+      // 1st stage - Breakouts
+      getClickMapping("Created At: Month").click();
+      popover().findByText("Created At").click();
+
+      // 1st stage - Aggregations
+      getClickMapping("Count").click();
       popover().findByText("ID").click();
-
-      // 1st stage - Custom columns
-      getClickMapping("Net").click();
-      popover().findByText("User → Longitude").click();
-
-      // 1st stage - Reviews #1 (explicit join)
-      getClickMapping("Reviews - Product → Reviewer").click();
-      popover().findByText("Product → Category").click();
-
-      // 1st stage - Products (implicit join with Orders)
-      getClickMapping("Product → Title").first().click();
-      popover().findByText("Product → Category").click();
-
-      // 1st stage - People (implicit join with Orders)
-      getClickMapping("User → Longitude").click();
-      popover().findByText("User → Longitude").click();
-
-      // 1st stage - Products (implicit join with Reviews)
-      getClickMapping("Product → Vendor").last().click();
-      popover().findByText("Product → Category").click();
-
-      // 1st stage - Aggregations & breakouts
-      getClickMapping("Category").first().click();
-      popover().findByText("Product → Category").click();
 
       // 2nd stage - Custom columns
       getClickMapping("5 * Count").click();
-      popover().findByText("Count").click();
-
-      // 2nd stage - Reviews #2 (explicit join)
-      getClickMapping("Reviews - Created At: Month → Rating").click();
-      popover().findByText("ID").click();
-
-      // 2nd stage - Aggregations & breakouts
-      getClickMapping("Count").last().click();
       popover().findByText("User → Longitude").click();
+
+      // 2nd stage - Reviews (explicit join)
+      getClickMapping("Reviews - Created At: Month → Reviewer").click();
+      popover().findByText("Product → Category").click();
 
       customizeLinkText(`Created at: {{${CREATED_AT_COLUMN_ID}}} - {{count}}`);
 
@@ -2121,12 +2095,6 @@ describeEE("scenarios > dashboard > dashboard cards > click behavior", () => {
         `Started from ${targetQuestion.name}`,
       );
 
-      // TODO: https://github.com/metabase/metabase/issues/46774
-      // queryBuilderMain()
-      //   .findByText("There was a problem with your question")
-      //   .should("not.exist");
-      // queryBuilderMain().findByText("No results!").should("be.visible");
-
       openNotebook();
       verifyNotebookQuery("Orders", [
         {
@@ -2145,14 +2113,6 @@ describeEE("scenarios > dashboard > dashboard cards > click behavior", () => {
             },
           ],
           expressions: ["Net"],
-          filters: [
-            "Product → Title is Doohickey",
-            "Product → Vendor is Doohickey",
-            "ID is 7021",
-            "Net is equal to -80",
-            "Reviews - Product → Reviewer is Doohickey",
-            "User → Longitude is equal to -80",
-          ],
           aggregations: ["Count", "Sum of Total"],
           breakouts: [
             "Created At: Month",
@@ -2177,9 +2137,10 @@ describeEE("scenarios > dashboard > dashboard cards > click behavior", () => {
           ],
           expressions: ["5 * Count"],
           filters: [
-            "5 * Count is equal to 1",
-            "Reviews - Created At: Month → Rating is equal to 7021",
-            "Product → Category is Doohickey",
+            "5 * Count is equal to -80",
+            "Created At: Month is May 1–31, 2022",
+            "Count is equal to 7021",
+            "Reviews - Created At: Month → Reviewer is Doohickey",
           ],
           aggregations: [
             "Count",
@@ -2189,9 +2150,6 @@ describeEE("scenarios > dashboard > dashboard cards > click behavior", () => {
             "Product → Category",
             "Reviews - Created At: Month → Created At",
           ],
-        },
-        {
-          filters: ["Count is equal to -80"],
         },
       ]);
     });
