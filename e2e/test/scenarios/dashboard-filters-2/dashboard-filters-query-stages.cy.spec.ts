@@ -108,7 +108,7 @@ const MODEL_BASED_MODEL_INDEX = 3;
 
 /**
  * Empty section title element is rendered.
- * See https://github.com/metabase/metabase/issues/47218
+ * TODO: https://github.com/metabase/metabase/issues/47218
  */
 const NAMELESS_SECTION = "";
 
