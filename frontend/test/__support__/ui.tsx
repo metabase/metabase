@@ -25,18 +25,12 @@ import { createMockSdkState } from "embedding-sdk/test/mocks/state";
 import { Api } from "metabase/api";
 import { UndoListing } from "metabase/containers/UndoListing";
 import { baseStyle } from "metabase/css/core/base.styled";
-import MetabaseSettings from "metabase/lib/settings";
 import { mainReducers } from "metabase/reducers-main";
 import { publicReducers } from "metabase/reducers-public";
 import { ThemeProvider } from "metabase/ui";
-import type { TokenFeature } from "metabase-types/api";
 import type { State } from "metabase-types/store";
-import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase-types/store/mocks";
+import { createMockState } from "metabase-types/store/mocks";
 
-import { setupEnterprisePlugins } from "./enterprise";
 import { getStore } from "./entities-store";
 
 type ReducerValue = ReducerObject | Reducer;
@@ -56,11 +50,6 @@ export interface RenderWithProvidersOptions {
   withKBar?: boolean;
   withDND?: boolean;
   withUndos?: boolean;
-  /** Token features to enable.
-   *
-   * Note: To keep tests isolated from another, don't change token features between tests in the same file. */
-  withFeatures?: TokenFeature[];
-  shouldSetupEnterprisePlugins?: boolean;
   customReducers?: ReducerObject;
   sdkProviderProps?: Partial<MetabaseProviderProps> | null;
   theme?: MantineThemeOverride;
@@ -81,38 +70,12 @@ export function renderWithProviders(
     withKBar = false,
     withDND = false,
     withUndos = false,
-    withFeatures,
-    shouldSetupEnterprisePlugins,
     customReducers,
     sdkProviderProps = null,
     theme,
     ...options
   }: RenderWithProvidersOptions = {},
 ) {
-  if (withFeatures?.length) {
-    storeInitialState.settings ||= createMockSettingsState();
-    for (const feature of withFeatures) {
-      storeInitialState.settings.values["token-features"][feature] = true;
-    }
-    MetabaseSettings.setAll(storeInitialState.settings.values);
-  }
-
-  if (shouldSetupEnterprisePlugins || withFeatures?.length) {
-    setupEnterprisePlugins();
-  }
-
-  const { settings } = storeInitialState;
-  if (
-    settings &&
-    Object.entries(settings.values["token-features"]).length &&
-    !settings.values["token-status"]
-  ) {
-    settings.values["token-status"] = {
-      valid: true,
-      trial: false,
-    };
-  }
-
   let { routing, ...initialState }: Partial<State> =
     createMockState(storeInitialState);
 
