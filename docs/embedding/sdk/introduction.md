@@ -61,10 +61,16 @@ yarn add @metabase/embedding-sdk-react@51-stable
 - [Plugins](./plugins.md)
 - [Versioning](./version.md)
 - [Authentication](./authentication.md)
+- [Config](./config.md)
+- [Notes on Next.js](./next-js.md)
 
 ## Embedding SDK source code
 
 You can find the [embedding SDK source code in the Metabase repo](https://github.com/metabase/metabase/tree/master/enterprise/frontend/src/embedding-sdk).
+
+# Changelog
+
+[View changelog](https://github.com/metabase/metabase/blob/master/enterprise/frontend/src/embedding-sdk/CHANGELOG.md)
 
 ## SDK limitations
 
