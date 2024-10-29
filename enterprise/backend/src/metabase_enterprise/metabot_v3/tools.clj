@@ -4,10 +4,8 @@
    [clojure.string :as str]
    [malli.core :as mc]
    [malli.transform :as mtx]
-   [metabase-enterprise.metabot-v3.tools.add-to-group]
-   [metabase-enterprise.metabot-v3.tools.apply-visualizations]
-   [metabase-enterprise.metabot-v3.tools.get-user-id]
-   [metabase-enterprise.metabot-v3.tools.goto-question]
+   [metabase-enterprise.metabot-v3.tools.change-display-type]
+   [metabase-enterprise.metabot-v3.tools.change-table-visualization-settings]
    [metabase-enterprise.metabot-v3.tools.interface :as metabot-v3.tools.interface]
    [metabase-enterprise.metabot-v3.tools.invite-user]
    [metabase-enterprise.metabot-v3.tools.who-is-your-favorite]
@@ -23,7 +21,10 @@
 (set! *warn-on-reflection* true)
 
 (comment
-  metabase-enterprise.metabot-v3.tools.invite-user/keep-me)
+  metabase-enterprise.metabot-v3.tools.invite-user/keep-me
+  metabase-enterprise.metabot-v3.tools.change-display-type/keep-me
+  metabase-enterprise.metabot-v3.tools.change-table-visualization-settings/keep-me
+  metabase-enterprise.metabot-v3.tools.who-is-your-favorite/keep-me)
 
 (mu/defn- reducible-tool-metadata-file-paths :- (lib.schema.common/instance-of-class clojure.lang.IReduceInit)
   []
