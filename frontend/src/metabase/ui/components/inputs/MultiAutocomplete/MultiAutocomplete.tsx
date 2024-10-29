@@ -176,6 +176,10 @@ export function MultiAutocomplete({
       searchValue={searchValue}
       placeholder={placeholder}
       searchable
+      hidePickedOptions
+      comboboxProps={{
+        withinPortal: false,
+      }}
       autoFocus={autoFocus}
       onChange={handleChange}
       onFocus={handleFocus}
