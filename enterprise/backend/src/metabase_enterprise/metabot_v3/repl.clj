@@ -5,7 +5,7 @@
     clj -X:ee:metabot-v3/repl"
   (:require
    [clojure.string :as str]
-   [metabase-enterprise.metabot-v3.client :as metabot-v3.client]
+   [metabase-enterprise.metabot-v3.envelope :as metabot-v3.envelope]
    [metabase-enterprise.metabot-v3.handle-response :as metabot-v3.handle-response]
    [metabase-enterprise.metabot-v3.reactions :as metabot-v3.reactions]
    [metabase.db :as mdb]
@@ -53,15 +53,15 @@
                            (println "🗨 " (u/colorize :blue input))
                            (when (and (not (#{"quit" "exit" "bye" "goodbye" "\\q"} input))
                                       (not (str/blank? input)))
-                             (let [context  {}
-                                   response (metabot-v3.client/*request* input context history)]
-                               (-> response
-                                   :message
-                                   metabot-v3.handle-response/handle-response-message
-                                   handle-reactions)
-                               (into (vec history)
-                                     [{:role :user, :content input}
-                                      (:message response)]))))
+                             (let [context {}
+                                   env (metabot-v3.handle-response/handle-envelope
+                                        (metabot-v3.envelope/add-user-message
+                                         (metabot-v3.envelope/create context history)
+                                         input))]
+                               (if-let [reactions (seq (metabot-v3.envelope/reactions env))]
+                                 (handle-reactions reactions)
+                                 (handle-reactions [(metabot-v3.envelope/last-assistant-message->reaction env)]))
+                               (metabot-v3.envelope/history env))))
                          (catch Throwable e
                            #_{:clj-kondo/ignore [:discouraged-var]}
                            (println (u/pprint-to-str :red e))
