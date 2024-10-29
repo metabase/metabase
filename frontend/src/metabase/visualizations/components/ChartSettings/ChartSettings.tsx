@@ -57,34 +57,36 @@ const ChartSettingsVisualization = ({
   onDone,
   onReset,
   onUpdateVisualizationSettings,
-  onUpdateWarnings,
   rawSeries,
-  warnings,
-}: ChartSettingsVisualizationProps) => (
-  <ChartSettingsPreview>
-    <SectionWarnings warnings={warnings} size={20} />
-    <ChartSettingsVisualizationContainer>
-      <Visualization
-        className={CS.spread}
-        rawSeries={rawSeries}
-        showTitle
-        isEditing
-        isDashboard
-        dashboard={dashboard}
-        dashcard={dashcard}
-        isSettings
-        showWarnings
-        onUpdateVisualizationSettings={onUpdateVisualizationSettings}
-        onUpdateWarnings={onUpdateWarnings}
+}: ChartSettingsVisualizationProps) => {
+  const [warnings, setWarnings] = useState<string[]>();
+
+  return (
+    <ChartSettingsPreview>
+      <SectionWarnings warnings={warnings} size={20} />
+      <ChartSettingsVisualizationContainer>
+        <Visualization
+          className={CS.spread}
+          rawSeries={rawSeries}
+          showTitle
+          isEditing
+          isDashboard
+          dashboard={dashboard}
+          dashcard={dashcard}
+          isSettings
+          showWarnings
+          onUpdateVisualizationSettings={onUpdateVisualizationSettings}
+          onUpdateWarnings={setWarnings}
+        />
+      </ChartSettingsVisualizationContainer>
+      <ChartSettingsFooter
+        onDone={onDone}
+        onCancel={onCancel}
+        onReset={onReset}
       />
-    </ChartSettingsVisualizationContainer>
-    <ChartSettingsFooter
-      onDone={onDone}
-      onCancel={onCancel}
-      onReset={onReset}
-    />
-  </ChartSettingsPreview>
-);
+    </ChartSettingsPreview>
+  );
+};
 
 export const useChartSettingsState = ({
   settings,
@@ -406,7 +408,6 @@ export const QuestionChartSettings = ({
 };
 
 export const DashboardChartSettings = ({
-  className,
   dashboard,
   dashcard,
   onChange,
@@ -415,7 +416,6 @@ export const DashboardChartSettings = ({
   widgets: propWidgets,
 }: DashboardChartSettingsProps) => {
   const [tempSettings, setTempSettings] = useState<VisualizationSettings>();
-  const [warnings, setWarnings] = useState<string[]>();
 
   const {
     chartSettings,
@@ -462,7 +462,7 @@ export const DashboardChartSettings = ({
   );
 
   return (
-    <ChartSettingsRoot className={className}>
+    <ChartSettingsRoot className={CS.spread}>
       <ChartSettings
         series={series}
         onChange={setTempSettings}
@@ -471,12 +471,10 @@ export const DashboardChartSettings = ({
         transformedSeries={transformedSeries}
       />
       <ChartSettingsVisualization
-        warnings={warnings}
         rawSeries={chartSettingsRawSeries}
         dashboard={dashboard}
         dashcard={dashcard}
         onUpdateVisualizationSettings={handleChangeSettings}
-        onUpdateWarnings={setWarnings}
         onDone={handleDone}
         onCancel={() => onClose?.()}
         onReset={onResetToDefault}

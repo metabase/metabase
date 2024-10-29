@@ -9,6 +9,7 @@ import type {
   TransformedSeries,
   VisualizationSettings,
 } from "metabase-types/api";
+import type { QueryBuilderUIControls } from "metabase-types/store";
 
 // this type is not full, we need to extend it later
 export type Widget = {
@@ -39,10 +40,7 @@ export type QuestionChartSettingsProps = CommonChartSettingsProps &
   ChartSettingsTestTypes;
 
 export type ChartSettingsProps = {
-  initial?: {
-    section: string;
-    widget?: Widget;
-  };
+  initial?: QueryBuilderUIControls["initialChartSetting"];
   computedSettings?: ComputedVisualizationSettings;
   question?: Question;
   widgets: Widget[];
@@ -50,7 +48,6 @@ export type ChartSettingsProps = {
   Pick<UseChartSettingsStateReturned, "chartSettings" | "transformedSeries">;
 
 export type ChartSettingsVisualizationProps = {
-  warnings?: string[];
   rawSeries: RawSeries;
   dashboard?: Dashboard;
   dashcard?: DashboardCard;
@@ -58,7 +55,6 @@ export type ChartSettingsVisualizationProps = {
     changedSettings: VisualizationSettings,
     question: Question,
   ) => void;
-  onUpdateWarnings: (warnings: string[]) => void;
 } & ChartSettingsFooterProps;
 
 export type UseChartSettingsStateProps = {

@@ -1,3 +1,4 @@
+import type { Widget } from "metabase/visualizations/components/ChartSettings/types";
 import type {
   Card,
   DashboardId,
@@ -9,6 +10,10 @@ import type {
 export type QueryBuilderMode = "view" | "notebook" | "dataset";
 export type DatasetEditorTab = "query" | "metadata";
 export type QueryBuilderQueryStatus = "idle" | "running" | "complete";
+export type InitialChartSettingState = {
+  section?: string | null;
+  widget?: Widget | null;
+};
 
 export type ForeignKeyReference = {
   status: number;
@@ -28,7 +33,7 @@ export interface QueryBuilderUIControls {
   isShowingQuestionDetailsSidebar: boolean;
   isShowingTimelineSidebar: boolean;
   isNativeEditorOpen: boolean;
-  initialChartSetting: null;
+  initialChartSetting: InitialChartSettingState;
   isShowingRawTable: boolean;
   queryBuilderMode: QueryBuilderMode;
   previousQueryBuilderMode: boolean;
