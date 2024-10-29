@@ -18,6 +18,7 @@ import {
   sidebar,
   startNewQuestion,
   visitDashboard,
+  visitPublicDashboard,
   visualize,
 } from "e2e/support/helpers";
 import type {
@@ -132,9 +133,14 @@ describe("scenarios > dashboard > filters > query stages", () => {
     cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
       "dashboardData",
     );
+    cy.intercept("GET", "/api/public/dashboard/*/dashcard/*/card/*").as(
+      "publicDashboardData",
+    );
   });
 
   afterEach(() => {
+    // changeSynchronousBatchUpdateSetting needs admin privileges and tests using public dashboards log us out
+    cy.signInAsAdmin();
     changeSynchronousBatchUpdateSetting(false);
   });
 
@@ -721,6 +727,8 @@ describe("scenarios > dashboard > filters > query stages", () => {
       describe("applies filter to the the dashcard and allows to drill via dashcard header", () => {
         it("1st stage explicit join", () => {
           setup1stStageExplicitJoinFilter();
+          apply1stStageExplicitJoinFilter();
+          cy.wait(["@dashboardData", "@dashboardData"]);
 
           verifyDashcardCellValues({
             dashcardIndex: 0,
@@ -954,6 +962,8 @@ describe("scenarios > dashboard > filters > query stages", () => {
       describe("applies filter to the the dashcard and allows to drill via dashcard header", () => {
         it("1st stage explicit join", () => {
           setup1stStageExplicitJoinFilter();
+          apply1stStageExplicitJoinFilter();
+          cy.wait(["@dashboardData", "@dashboardData"]);
 
           verifyDashcardRowsCount({
             dashcardIndex: 0,
@@ -1249,6 +1259,8 @@ describe("scenarios > dashboard > filters > query stages", () => {
       describe("applies filter to the the dashcard and allows to drill via dashcard header", () => {
         it("1st stage explicit join", () => {
           setup1stStageExplicitJoinFilter();
+          apply1stStageExplicitJoinFilter();
+          cy.wait(["@dashboardData", "@dashboardData"]);
 
           verifyDashcardRowsCount({
             dashcardIndex: 0,
@@ -1262,6 +1274,21 @@ describe("scenarios > dashboard > filters > query stages", () => {
             dashcardIndex: 1,
             dashboardCount: "Rows 1-1 of 953",
             queryBuilderCount: "Showing 953 rows",
+          });
+
+          cy.then(function () {
+            visitPublicDashboard(this.dashboardId);
+
+            apply1stStageExplicitJoinFilter();
+            waitForPublicDashboardData();
+
+            getDashboardCard(0)
+              .findByText("Rows 1-1 of 953")
+              .should("be.visible");
+
+            getDashboardCard(1)
+              .findByText("Rows 1-1 of 953")
+              .should("be.visible");
           });
         });
 
@@ -2229,6 +2256,7 @@ function createAndVisitDashboard(cards: Card[]) {
     ],
   }).then(dashboard => {
     visitDashboard(dashboard.id);
+    cy.wrap(dashboard.id).as("dashboardId");
     cy.wait("@getDashboard");
   });
 }
@@ -2250,13 +2278,14 @@ function setup1stStageExplicitJoinFilter() {
 
   cy.button("Save").click();
   cy.wait("@updateDashboard");
+}
 
+function apply1stStageExplicitJoinFilter() {
   filterWidget().eq(0).click();
   popover().within(() => {
     cy.findByPlaceholderText("Search by Reviewer").type("abe.gorczany");
     cy.button("Add filter").click();
   });
-  cy.wait(["@dashboardData", "@dashboardData"]);
 }
 
 function setup1stStageImplicitJoinFromSourceFilter() {
@@ -2580,6 +2609,15 @@ function clickAway() {
 function goBackToDashboard() {
   cy.findByLabelText("Back to Test Dashboard").click();
   cy.wait("@getDashboard");
+}
+
+function waitForPublicDashboardData() {
+  cy.wait([
+    "@publicDashboardData",
+    "@publicDashboardData",
+    "@publicDashboardData",
+    "@publicDashboardData",
+  ]);
 }
 
 function verifyDashcardMappingOptions(
