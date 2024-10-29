@@ -1495,16 +1495,9 @@ describe("Issue 48851", () => {
     .map(() => Math.round(Math.random() * 1000_000_000_000).toString(36))
     .join(", ");
 
-  function openTableHeaderMenu(name) {
-    cy.findAllByTestId("header-cell")
-      .contains(name)
-      .trigger("mousedown")
-      .trigger("mouseup");
-  }
-
   it("should not overflow the filter popover, even when there are a lot of values (metabase#48851)", () => {
     openProductsTable();
-    openTableHeaderMenu("Title");
+    tableHeaderClick("Title");
 
     popover().within(() => {
       cy.findByText("Filter by this column").click();
