@@ -148,9 +148,7 @@
                 queued-for-deletion (into #{} (map :id) (#'task.persist-refresh/deletable-models))]
             (testing "Query finds deletabable, and off persisted infos"
               ;; use superset, because orphaned PersistedInfo records from other tests might also be deletable
-              (is (set/superset?
-                   (set (map u/the-id deletable-persisted-infos))
-                   queued-for-deletion)))
+              (is (set/superset? queued-for-deletion (set (map u/the-id deletable-persisted-infos)))))
               ;; we manually pass in the deleteable ones to not catch others in a running instance
             (testing "Both deletables are pruned by prune-deletables!"
               (#'task.persist-refresh/prune-deletables! test-refresher deletable-persisted-infos)
