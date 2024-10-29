@@ -59,21 +59,37 @@
 ;;           {:perms/view-data {table-id :unrestricted}}  source-card-read-perms
 ;;
 
-(mu/defn query->source-table-ids :- [:set [:or [:= ::native] ::lib.schema.id/table]]
-  "Return a sequence of all Table IDs referenced by `query`, and/or the ::native keyword for native queries."
+(mu/defn query->source-ids :- [:maybe
+                               [:map
+                                [:table-ids {:optional true} [:set ::lib.schema.id/table]]
+                                [:card-ids  {:optional true} [:set ::lib.schema.id/card]]
+                                [:native?   {:optional true} :boolean]]]
+  "Return a map containing of table IDs and/or source card IDs referenced by `query`, and/or the :native? boolean flag
+  indicating a native query or subquery. Intended to be used in the context of permissions enforcement."
   [query :- :map]
-  (set
-   (flatten
-    (lib.util.match/match query
-      ;; if we come across a native query just put a placeholder (`::native`) there so we know we need to
-      ;; add native permissions to the complete set below.
-      (m :guard (every-pred map? :native))
-      [::native]
+  (apply
+   merge-with
+   ;; Combine sets of table or card IDs if there are multiple references
+   (fn [val1 val2] (if (and (set? val1) (set? val2))
+                     (set/union val1 val2)
+                     val2))
+   (lib.util.match/match query
+     ;; If we come across a native query, replace it with a card ID if it came from a source card, so we can check
+     ;; permissions on the card and not require full native query access to the DB
+     (m :guard (every-pred map? :native))
+     (if-let [source-card-id (:qp/stage-is-from-source-card m)]
+       {:card-ids source-card-id}
+       {:native? true})
 
-      (m :guard (every-pred map? #(pos-int? (:source-table %))))
-      (cons
-       (:source-table m)
-       (query->source-table-ids (dissoc m :source-table)))))))
+     (m :guard (every-pred map? #(pos-int? (:source-table %))))
+     {:table-ids (conj (set (:table-ids (query->source-ids (dissoc m :source-table))))
+                       (:source-table m))})))
+
+(mu/defn query->source-table-ids
+  "Returns a sequence of all :source-table IDs referenced by a query. Convenience wrapper around `query->source-ids`"
+  [query :- :map]
+  (when (seq query)
+    (:table-ids (query->source-ids query))))
 
 (def ^:dynamic *card-instances*
   "A map from card IDs to card instances with the collection_id (possibly nil).
@@ -136,11 +152,9 @@
       (if-let [source-card-id (qp.util/query->source-card-id query)]
         {:paths (source-card-read-perms source-card-id)}
         ;; otherwise if there's no source card then calculate perms based on the Tables referenced in the query
-        (let [query               (cond-> query
-                                    (not already-preprocessed?) preprocess-query)
-              table-ids-or-native (vec (query->source-table-ids query))
-              table-ids           (filter integer? table-ids-or-native)
-              native?             (.contains ^clojure.lang.PersistentVector table-ids-or-native ::native)]
+        (let [query                       (cond-> query
+                                            (not already-preprocessed?) preprocess-query)
+              {:keys [table-ids native?]} (vec (query->source-ids query))]
           (merge
            (when (seq table-ids)
              {:perms/create-queries (zipmap table-ids (repeat :query-builder))
