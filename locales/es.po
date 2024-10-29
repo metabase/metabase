@@ -35330,3 +35330,24 @@ msgstr "Nuevo Hilo"
 
 msgid "Error creating new chat thread:"
 msgstr "Error al crear un nuevo hilo de chat:"
+
+msgid "Show Text"
+msgstr "Mostrar Texto"
+
+msgid "Show Code"
+msgstr "Mostrar Código"
+
+msgid "Please wait until results are loaded..."
+msgstr "Por favor espera mientras se cargan los resultados..."
+
+msgid "Sorry there was some issue loading the result"
+msgstr "Lo siento, hubo un problema al cargar el resultado"
+
+msgid "Verify"
+msgstr "Verificar"
+
+msgid "Describe the issue..."
+msgstr "Describe el problema..."
+
+msgid "Submit Correction"
+msgstr "Enviar Corrección"

@@ -1,6 +1,7 @@
 import React from "react";
 import { Icon, Button } from "metabase/ui";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
+import ReactMarkdown from 'react-markdown';
 
 const Message = ({
   message,
@@ -21,23 +22,18 @@ const Message = ({
 
   // Function to handle rendering text from message
   const renderMessageContent = (message) => {
-    // If message.text is an object or array, extract only the text content
     if (Array.isArray(message.text)) {
       return message.text
-        .filter((item) => typeof item === "object" && item.text && item.text.trim().length > 0) // Exclude empty or whitespace-only text
+        .filter((item) => typeof item === "object" && item.text && item.text.trim().length > 0)
         .map((item, index) => (
-          <span key={index} style={{ display: "block" }}>
-            {item.text}
-          </span>
+          <ReactMarkdown key={index}>{item.text}</ReactMarkdown>
         ));
     } else if (typeof message.text === "object" && message.text.text && message.text.text.trim().length > 0) {
-      // If message.text is an object with a "text" field
-      return <span>{message.text.text}</span>;
+      return <ReactMarkdown>{message.text.text}</ReactMarkdown>;
     } else if (typeof message.text === "string" && message.text.trim().length > 0) {
-      // If message.text is a simple string, render it directly
-      return <span>{message.text}</span>;
+      return <ReactMarkdown>{message.text}</ReactMarkdown>;
     }
-    return null; // Fallback for unexpected cases or empty text
+    return null;
   };
   
 
@@ -76,7 +72,7 @@ const Message = ({
       >
         {/* Render the message content */}
         <span style={{ fontSize: "16px", whiteSpace: "pre-wrap", paddingRight: "2rem" }}>
-          {renderMessageContent(message)}
+        {renderMessageContent(message)}
         </span>
         {isLoading && (
           <div

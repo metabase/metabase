@@ -10,6 +10,7 @@ import { InsightImg } from "metabase/components/Insight/InsightImg";
 import { PlanDisplay } from "../Insight/InsightPlan";
 import { highlightCode, styles } from "../Insight/utils";
 import ReactMarkdown from 'react-markdown';
+import { t } from "ttag";
 
 const ChatMessageList = ({
   messages,
@@ -171,7 +172,7 @@ const ChatMessageList = ({
                             borderRadius: '5px',
                             cursor: 'pointer'
                           }} onClick={handleShowCode}>
-                            {showCode ? 'Show Text' : 'Show Code'} &nbsp;&nbsp;<Icon name="chevronright" size={14} />
+                             {showCode ? t`Show Text` : t`Show Code`}  &nbsp;&nbsp;<Icon name="chevronright" size={14} />
                           </button>
 
                           {!showCode ? (
@@ -232,7 +233,7 @@ const ChatMessageList = ({
                   >
                     {showError ? (
                       <MonospaceErrorDisplay>
-                        Sorry there was some issue loading the result
+                        {t`Sorry there was some issue loading the result`}
                       </MonospaceErrorDisplay>
                     ) : (
                       <div
@@ -243,7 +244,7 @@ const ChatMessageList = ({
                           alignItems: "center",
                         }}
                       >
-                        <span>Please wait till results are loaded...</span>
+                        <span>{t`Please wait until results are loaded...`}</span>
                         <Loader />
                       </div>
                     )}
@@ -299,13 +300,13 @@ const ChatMessageList = ({
             {feedbackData.messageId === message.id && (
               <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
                 <Input
-                  placeholder="Describe the issue..."
+                  placeholder={t`Describe the issue...`}
                   value={feedbackData.correctionText}
                   onChange={handleCorrectionChange}
                   style={{ width: '100%', marginBottom: '10px' }}
                 />
                 <Button variant="filled" onClick={handleSubmitCorrection}>
-                  Submit Correction
+                {t`Submit Correction`}
                 </Button>
               </div>
             )}
