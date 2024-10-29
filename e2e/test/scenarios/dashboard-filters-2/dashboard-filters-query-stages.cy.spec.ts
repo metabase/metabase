@@ -1481,7 +1481,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
           cy.wait(["@dashboardData", "@dashboardData"]);
 
           verifyDashcardRowsCount({
-            dashcardIndex: 1,
+            dashcardIndex: 0,
             dashboardCount: "Rows 1-1 of 6",
             queryBuilderCount: "Showing 6 rows",
           });
@@ -1490,6 +1490,22 @@ describe("scenarios > dashboard > filters > query stages", () => {
 
           verifyDashcardRowsCount({
             dashcardIndex: 1,
+            dashboardCount: "Rows 1-1 of 6",
+            queryBuilderCount: "Showing 6 rows",
+          });
+
+          goBackToDashboard();
+
+          verifyDashcardRowsCount({
+            dashcardIndex: 2,
+            dashboardCount: "Rows 1-1 of 6",
+            queryBuilderCount: "Showing 6 rows",
+          });
+
+          goBackToDashboard();
+
+          verifyDashcardRowsCount({
+            dashcardIndex: 3,
             dashboardCount: "Rows 1-1 of 6",
             queryBuilderCount: "Showing 6 rows",
           });
@@ -1504,6 +1520,8 @@ describe("scenarios > dashboard > filters > query stages", () => {
 
           getDashboardCard(0).findByText("Rows 1-1 of 6").should("be.visible");
           getDashboardCard(1).findByText("Rows 1-1 of 6").should("be.visible");
+          getDashboardCard(2).findByText("Rows 1-1 of 6").should("be.visible");
+          getDashboardCard(3).findByText("Rows 1-1 of 6").should("be.visible");
 
           cy.log("embedded dashboard");
           getDashboardId().then(dashboardId => {
@@ -1518,6 +1536,8 @@ describe("scenarios > dashboard > filters > query stages", () => {
 
           getDashboardCard(0).findByText("Rows 1-1 of 6").should("be.visible");
           getDashboardCard(1).findByText("Rows 1-1 of 6").should("be.visible");
+          getDashboardCard(2).findByText("Rows 1-1 of 6").should("be.visible");
+          getDashboardCard(3).findByText("Rows 1-1 of 6").should("be.visible");
         });
 
         it("2nd stage breakout", () => {
@@ -1539,6 +1559,22 @@ describe("scenarios > dashboard > filters > query stages", () => {
             queryBuilderCount: "Showing 1,077 rows",
           });
 
+          goBackToDashboard();
+
+          verifyDashcardRowsCount({
+            dashcardIndex: 2,
+            dashboardCount: "Rows 1-1 of 1077",
+            queryBuilderCount: "Showing 1,077 rows",
+          });
+
+          goBackToDashboard();
+
+          verifyDashcardRowsCount({
+            dashcardIndex: 3,
+            dashboardCount: "Rows 1-1 of 1077",
+            queryBuilderCount: "Showing 1,077 rows",
+          });
+
           cy.log("public dashboard");
           getDashboardId().then(dashboardId =>
             visitPublicDashboard(dashboardId),
@@ -1557,6 +1593,12 @@ describe("scenarios > dashboard > filters > query stages", () => {
             .findByText("Rows 1-1 of 1077")
             .should("be.visible");
           getDashboardCard(1)
+            .findByText("Rows 1-1 of 1077")
+            .should("be.visible");
+          getDashboardCard(2)
+            .findByText("Rows 1-1 of 1077")
+            .should("be.visible");
+          getDashboardCard(3)
             .findByText("Rows 1-1 of 1077")
             .should("be.visible");
 
@@ -1581,6 +1623,12 @@ describe("scenarios > dashboard > filters > query stages", () => {
             .findByText("Rows 1-1 of 1077")
             .should("be.visible");
           getDashboardCard(1)
+            .findByText("Rows 1-1 of 1077")
+            .should("be.visible");
+          getDashboardCard(2)
+            .findByText("Rows 1-1 of 1077")
+            .should("be.visible");
+          getDashboardCard(3)
             .findByText("Rows 1-1 of 1077")
             .should("be.visible");
         });
