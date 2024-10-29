@@ -28,7 +28,13 @@ import type {
   VisualizerState,
 } from "metabase-types/store/visualizer";
 
-import { createColumnImport, createDataSource } from "./utils";
+import {
+  createColumnImport,
+  createDataSource,
+  createDataSourceNameRef,
+  getDataSourceIdFromNameRef,
+  isDataSourceNameRef,
+} from "./utils";
 
 const initialState: VisualizerState = {
   display: null,
@@ -125,7 +131,7 @@ const visualizerSlice = createSlice({
             ...dimension,
             values: [
               ...dimension.values,
-              `$_${action.payload.dataSource.id}_name`,
+              createDataSourceNameRef(action.payload.dataSource.id),
             ],
           };
         }
@@ -175,9 +181,8 @@ const visualizerSlice = createSlice({
         state.columns = state.columns.map(col => ({
           ...col,
           values: col.values.filter(v => {
-            if (v.startsWith("$_")) {
-              const [_, dataSourceId, __] = v.split("_");
-              return dataSourceId !== source.id;
+            if (isDataSourceNameRef(v)) {
+              return getDataSourceIdFromNameRef(v) !== source.id;
             }
             return !removedColumnsSet.has(v);
           }),
@@ -307,15 +312,13 @@ const getVisualizerDataset = createSelector(
 
     const unzippedRows = cols.map(column =>
       column.values
-        .map(columnName => {
-          if (columnName.startsWith("$_")) {
-            const [, dataSourceId] = columnName.split("_");
-            const dataSource = dataSources.find(
-              source => source.id === dataSourceId,
-            );
+        .map(value => {
+          if (isDataSourceNameRef(value)) {
+            const id = getDataSourceIdFromNameRef(value);
+            const dataSource = dataSources.find(source => source.id === id);
             return dataSource?.name ? [dataSource.name] : [];
           }
-          const values = importedColumnValuesMap[columnName];
+          const values = importedColumnValuesMap[value];
           if (!values) {
             return [];
           }
