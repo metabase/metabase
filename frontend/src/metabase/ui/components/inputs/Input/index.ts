@@ -1,2 +1,2 @@
 export { Input } from "@mantine/core";
-export { inputOverrides } from "./Input.styled";
+export { inputOverrides } from "./Input.config";
