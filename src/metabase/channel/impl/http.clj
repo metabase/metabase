@@ -77,7 +77,7 @@
 
 (mu/defmethod channel/render-notification [:channel/http :notification/alert]
   [_channel-type {:keys [payload creator]} _template _recipients]
-  (let [{:keys [card alert result]} payload
+  (let [{:keys [card alert card_part]} payload
         request-body         {:type               "alert"
                               :alert_id           (:id alert)
                               :alert_creator_id   (:id creator)
@@ -86,9 +86,9 @@
                                                    :question_id   (:id card)
                                                    :question_name (:name card)
                                                    :question_url  (urls/card-url (:id card))
-                                                   :visualization (let [{:keys [card dashcard result]} result]
+                                                   :visualization (let [{:keys [card dashcard result]} card_part]
                                                                     (pulse/render-pulse-card-to-base64
                                                                      (channel.shared/defaulted-timezone card) card dashcard result image-width))
-                                                   :raw_data      (qp-result->raw-data (:result result))}
+                                                   :raw_data      (qp-result->raw-data (:result card_part))}
                               :sent_at            (t/offset-date-time)}]
     [{:body request-body}]))

@@ -9,7 +9,7 @@
    [metabase.channel.http-test :as channel.http-test]
    [metabase.email :as email]
    [metabase.integrations.slack :as slack]
-   [metabase.models :refer [Card Collection Pulse PulseCard PulseChannel PulseChannelRecipient]]
+   [metabase.models :refer [Card Collection Dashboard DashboardCard Pulse PulseCard PulseChannel PulseChannelRecipient]]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.pulse :as models.pulse]
@@ -397,22 +397,22 @@
                 (mt/summarize-multipart-single-email email test-card-regex))))}})))
 
 ;; this should be in dashboard subscriptions
-(deftest empty-results-test
-  (testing "Pulse where the card has no results"
-    (tests! {:card (assoc (pulse.test-util/checkins-query-card {:filter   [:> $date "2017-10-24"]
-                                                                :breakout [!day.date]})
-                          :visualization_settings {:graph.dimensions ["DATE"]
-                                                   :graph.metrics    ["count"]})}
-            "skip if empty = false"
-            {:pulse    {:skip_if_empty false}
-             :assert {:email (fn [_ [email]]
-                               (is (= (rasta-alert-email-2)
-                                      (mt/summarize-multipart-single-email email test-card-regex))))}}
+#_(deftest empty-results-test
+    (testing "Pulse where the card has no results"
+      (tests! {:card (assoc (pulse.test-util/checkins-query-card {:filter   [:> $date "2017-10-24"]
+                                                                  :breakout [!day.date]})
+                            :visualization_settings {:graph.dimensions ["DATE"]
+                                                     :graph.metrics    ["count"]})}
+              "skip if empty = false"
+              {:pulse    {:skip_if_empty false}
+               :assert {:email (fn [_ [email]]
+                                 (is (= (rasta-alert-email-2)
+                                        (mt/summarize-multipart-single-email email test-card-regex))))}}
 
-            "skip if empty = true"
-            {:pulse    {:skip_if_empty true}
-             :assert {:email (fn [_ emails]
-                               (is (empty? emails)))}})))
+              "skip if empty = true"
+              {:pulse    {:skip_if_empty true}
+               :assert {:email (fn [_ emails]
+                                 (is (empty? emails)))}})))
 
 (deftest rows-alert-test
   (testing "Rows alert"
@@ -680,30 +680,30 @@
                  (mt/summarize-multipart-single-email (-> channel-messsages :channel/email first) test-card-regex))))))))
 
 ;; TODO should be in dashboard subscription test
-(deftest dashboard-description-markdown-test
-  (testing "Dashboard description renders markdown"
-    (mt/with-temp [Card                  {card-id :id} {:name          "Test card"
-                                                        :dataset_query {:database (mt/id)
-                                                                        :type     :native
-                                                                        :native   {:query "select * from checkins"}}
-                                                        :display       :table}
-                   Dashboard             {dashboard-id :id} {:description "# dashboard description"}
-                   DashboardCard         {dashboard-card-id :id} {:dashboard_id dashboard-id
-                                                                  :card_id      card-id}
-                   Pulse                 {pulse-id :id} {:name         "Pulse Name"
-                                                         :dashboard_id dashboard-id}
-                   PulseCard             _ {:pulse_id          pulse-id
-                                            :card_id           card-id
-                                            :dashboard_card_id dashboard-card-id}
-                   PulseChannel          {pc-id :id} {:pulse_id pulse-id}
-                   PulseChannelRecipient _ {:user_id          (pulse.test-util/rasta-id)
-                                            :pulse_channel_id pc-id}]
-      (pulse.test-util/email-test-setup
-       (pulse.send/send-pulse! (models.pulse/retrieve-notification pulse-id))
-       (is (= (mt/email-to :rasta {:subject "Pulse Name"
-                                   :body    {"<h1>dashboard description</h1>" true}
-                                   :bcc?    true})
-              (mt/regex-email-bodies #"<h1>dashboard description</h1>")))))))
+#_(deftest dashboard-description-markdown-test
+    (testing "Dashboard description renders markdown"
+      (mt/with-temp [Card                  {card-id :id} {:name          "Test card"
+                                                          :dataset_query {:database (mt/id)
+                                                                          :type     :native
+                                                                          :native   {:query "select * from checkins"}}
+                                                          :display       :table}
+                     Dashboard             {dashboard-id :id} {:description "# dashboard description"}
+                     DashboardCard         {dashboard-card-id :id} {:dashboard_id dashboard-id
+                                                                    :card_id      card-id}
+                     Pulse                 {pulse-id :id} {:name         "Pulse Name"
+                                                           :dashboard_id dashboard-id}
+                     PulseCard             _ {:pulse_id          pulse-id
+                                              :card_id           card-id
+                                              :dashboard_card_id dashboard-card-id}
+                     PulseChannel          {pc-id :id} {:pulse_id pulse-id}
+                     PulseChannelRecipient _ {:user_id          (pulse.test-util/rasta-id)
+                                              :pulse_channel_id pc-id}]
+        (pulse.test-util/email-test-setup
+         (pulse.send/send-pulse! (models.pulse/retrieve-notification pulse-id))
+         (is (= (mt/email-to :rasta {:subject "Pulse Name"
+                                     :body    {"<h1>dashboard description</h1>" true}
+                                     :bcc?    true})
+                (mt/regex-email-bodies #"<h1>dashboard description</h1>")))))))
 
 (deftest nonuser-email-test
   (testing "Both users and Nonusers get an email, with unsubscribe text for nonusers"

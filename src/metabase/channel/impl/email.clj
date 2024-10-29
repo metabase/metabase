@@ -102,8 +102,8 @@
    :content-type "image/png"
    :content      url})
 
-(defn- assoc-attachment-booleans [dashboard-subscription results]
-  (for [{{result-card-id :id} :card :as result} results
+(defn- assoc-attachment-booleans [dashboard-subscription execution-datas]
+  (for [{{result-card-id :id} :card :as result} execution-datas
         ;; TODO: check if does this match by dashboard_card_id or card_id?
         :let [noti-dashcard (m/find-first #(= (:card_id %) result-card-id) (:dashboard_subscription_dashcards dashboard-subscription))]]
     (if result-card-id
@@ -111,12 +111,12 @@
       result)))
 
 (defn- email-attachment
-  [dashboard-subscription rendered-cards result]
+  [dashboard-subscription rendered-cards execution-data]
   (filter some?
           (concat (map make-message-attachment (apply merge (map :attachments (u/one-or-many rendered-cards))))
                   (mapcat email.result-attachment/result-attachment (assoc-attachment-booleans
                                                                      dashboard-subscription
-                                                                     (u/one-or-many result))))))
+                                                                     (u/one-or-many execution-data))))))
 
 (defn- icon-bundle
   "Bundle an icon.
@@ -176,13 +176,13 @@
 
 (mu/defmethod channel/render-notification [:channel/email :notification/alert] :- [:sequential EmailMessage]
   [_channel-type {:keys [payload] :as notification-payload} template recipients]
-  (let [{:keys [result
+  (let [{:keys [card_part
                 alert
                 card]}     payload
         timezone           (channel.shared/defaulted-timezone card)
-        rendered-card      (render-part timezone result {:pulse/include-title? true})
+        rendered-card      (render-part timezone card_part {:pulse/include-title? true})
         icon-attachment    (apply make-message-attachment (icon-bundle :bell))
-        attachments        (concat [icon-attachment] (email-attachment nil rendered-card result))
+        attachments        (concat [icon-attachment] (email-attachment nil rendered-card card_part))
         message-context-fn (fn [non-user-email]
                              (assoc notification-payload
                                     :computed {:subject         (case (messages/pulse->alert-condition-kwd alert)
@@ -249,16 +249,16 @@
 
 (mu/defmethod channel/render-notification [:channel/email :notification/dashboard-subscription] :- [:sequential EmailMessage]
   [_channel-type {:keys [payload] :as notification-payload} template recipients]
-  (let [{:keys [result
+  (let [{:keys [dashboard_parts
                 dashboard_subscription
                 parameters
                 dashboard]} payload
-        timezone            (some->> result (some :card) channel.shared/defaulted-timezone)
-        rendered-cards      (mapv #(render-part timezone % {:pulse/include-title? true}) result)
+        timezone            (some->> dashboard_parts (some :card) channel.shared/defaulted-timezone)
+        rendered-cards      (mapv #(render-part timezone % {:pulse/include-title? true}) dashboard_parts)
         icon-attachment     (apply make-message-attachment (icon-bundle :dashboard))
         attachments         (concat
                              [icon-attachment]
-                             (email-attachment dashboard_subscription rendered-cards result))
+                             (email-attachment dashboard_subscription rendered-cards dashboard_parts))
         message-context-fn  (fn [non-user-email]
                               (-> notification-payload
                                   (assoc :computed {:dashboard_content   (html (vec (cons :div (map :content rendered-cards))))

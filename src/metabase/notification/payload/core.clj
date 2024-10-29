@@ -1,6 +1,7 @@
 (ns metabase.notification.payload.core
   (:require
    [metabase.models.notification :as models.notification]
+   [metabase.notification.payload.execute :as notification.payload.execute]
    [metabase.public-settings :as public-settings]
    #_{:clj-kondo/ignore [:metabase/ns-module-checker]}
    [metabase.pulse.render.style :as style]
@@ -77,21 +78,19 @@
     [:notification/dashboard-subscription
      [:map
       [:payload [:map
-                 ;; TODO: type this out
-                 [:result                 [:sequential [:map]]]
-                 [:dashboard              :map]
-                 [:dashboard_subscription :map]
-                 [:style                  :map]
+                 [:dashboard_parts             [:sequential notification.payload.execute/Part]]
+                 [:dashboard                   :map]
+                 [:dashboard_subscription      :map]
+                 [:style                       :map]
                  [:parameters {:optional true} [:maybe [:sequential :map]]]]]]]
     [:notification/alert
      [:map
       [:payload [:map
-                 ;; TODO: type this out
-                 [:result :map]
-                 [:card   :map]
-                 [:style  :map]
-                 [:alert  :map]]]]]
-    [:notification/testing       :map]]])
+                 [:card_part notification.payload.execute/Part]
+                 [:card      :map]
+                 [:style     :map]
+                 [:alert     :map]]]]]
+    [:notification/testing   :map]]])
 
 ;; TODO: from metabase.email.messages
 (defn logo-url

@@ -78,6 +78,7 @@
                                           card
                                           (t2/select-one :model/Card :id card-id))
                               :dashcard dashcard
+                              ;; TODO should this be dashcard?
                               :type     :card
                               :result   (qp.dashboard/process-query-for-dashcard
                                          :dashboard-id  dashboard_id

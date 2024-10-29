@@ -11,6 +11,7 @@
    [metabase.pulse.util :as pu]
    [metabase.server.middleware.session :as mw.session]
    [metabase.util :as u]
+   [metabase.util.malli :as mu]
    [metabase.util.urls :as urls]
    [toucan2.core :as t2]))
 
@@ -152,7 +153,22 @@
                  :when    (some? part)]
              part))))
 
-(defn execute-dashboard
+(def Part
+  "Part."
+  [:multi {:dispatch :type}
+   [:card      [:map {:closed true}
+                [:type                      [:= :card]]
+                [:card                      :map]
+                [:result                    [:maybe :map]]
+                [:dashcard {:optional true} [:maybe :map]]]]
+   [:text      [:map {:closed true}
+                [:text :string]
+                [:type [:= :text]]]]
+   [:tab-title [:map {:closed true}
+                [:text :string]
+                [:type [:= :tab-title]]]]])
+
+(mu/defn execute-dashboard :- [:sequential Part]
   "Execute a dashboard and return its parts."
   [dashboard-id user-id parameters]
   (mw.session/with-current-user user-id
@@ -167,7 +183,7 @@
                            (dashcards->part cards parameters))))))
       (dashcards->part (t2/select :model/DashboardCard :dashboard_id dashboard-id) parameters))))
 
-(defn execute-card
+(mu/defn execute-card :- Part
   "Returns the result for a card."
   [& args]
   (apply pu/execute-card args))

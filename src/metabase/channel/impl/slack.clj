@@ -100,7 +100,7 @@
                                 :text {:type "plain_text"
                                        :text (str "🔔 " (-> payload :card :name))
                                        :emoji true}}]}
-                     (part->attachment-data (:result payload) (slack/files-channel))]]
+                     (part->attachment-data (:card_part payload) (slack/files-channel))]]
     (for [channel-id channel-ids]
       {:channel-id  channel-id
        :attachments attachments})))
@@ -154,4 +154,4 @@
         {:channel-id  channel-id
          :attachments (remove nil?
                               (flatten [(slack-dashboard-header dashboard (:common_name creator) parameters)
-                                        (create-slack-attachment-data (:result payload))]))})))
+                                        (create-slack-attachment-data (:dashboard_parts payload))]))})))

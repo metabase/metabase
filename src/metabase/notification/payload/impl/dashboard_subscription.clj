@@ -14,7 +14,7 @@
   (let [dashboard-id (:dashboard_id dashboard_subscription)
         dashboard    (t2/hydrate (t2/select-one :model/Dashboard dashboard-id) :tabs)
         parameters   (pulse-params/parameters (:parameters dashboard_subscription) (:parameters dashboard))]
-    {:result                 (cond->> (notification.execute/execute-dashboard dashboard-id creator_id parameters)
+    {:dashboard_parts        (cond->> (notification.execute/execute-dashboard dashboard-id creator_id parameters)
                                (:skip_if_empty dashboard_subscription)
                                (remove (fn [{part-type :type :as part}]
                                          (and
@@ -28,7 +28,7 @@
      :dashboard_subscription dashboard_subscription}))
 
 (mu/defmethod notification.payload/should-send-notification? :notification/dashboard-subscription
-  [{:keys [result dashboard_subscription]}]
+  [{:keys [dashboard_parts dashboard_subscription]}]
   (if (:skip_if_empty dashboard_subscription)
-    (not (every? notification.execute/is-card-empty? result))
+    (not (every? notification.execute/is-card-empty? dashboard_parts))
     true))
