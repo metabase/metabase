@@ -8,6 +8,7 @@ import { cardApi } from "metabase/api";
 import { createAsyncThunk } from "metabase/lib/redux";
 import { isNotFalsy } from "metabase/lib/types";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
+import { getColumnNameFromKey } from "metabase-lib/v1/queries/utils/column-key";
 import type {
   Card,
   CardId,
@@ -259,7 +260,7 @@ export const getVisualizerRawSeries = createSelector(
           return;
         }
         const metricColumnIndex = dataset.data.cols.findIndex(
-          col => col.name === mapping.column,
+          col => col.name === getColumnNameFromKey(mapping.column),
         );
         const value = dataset.data.rows[0][metricColumnIndex];
         if (!value) {

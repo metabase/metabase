@@ -21,6 +21,7 @@ import {
   setDraggedItem,
   updateSettings,
 } from "metabase/visualizer/visualizer.slice";
+import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import type { VisualizationDisplay } from "metabase-types/api";
 
 import { DataImporter } from "../DataImporter";
@@ -77,7 +78,7 @@ export const VisualizerPage = () => {
             value: [
               {
                 sourceId: dataSource.id,
-                column: column.name,
+                column: getColumnKey(column),
               },
             ],
           }),
