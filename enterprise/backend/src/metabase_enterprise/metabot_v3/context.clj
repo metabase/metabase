@@ -1,8 +1,35 @@
 (ns metabase-enterprise.metabot-v3.context
   (:require
+   [cheshire.core :as json]
+   [clojure.java.io :as io]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
+
+(set! *warn-on-reflection* true)
+;; todo: remove this before shipping. This is quick and dirty
+(defn log
+  "Log a payload. Direction should be `:llm.log/fe->be` or similar. This should not be shipping in this form. This is
+  not a rolling log, or logging to the console. This pretty prints to the file `llm-payloads`. It is explicitly useful
+  for dev work and not production.
+
+  Examples calls are ;; using doto
+    (doto (request message context history)
+      (metabot-v3.context/log :llm.log/be->fe))
+    ;; or just regularly
+    (metabot-v3.context/log _body :llm.log/fe->be)"
+  [payload direction]
+  (let [directions {:llm.log/fe->be "\"FE -----------------> BE\""
+                    :llm.log/be->llm "\"BE -----------------> LLM\""
+                    :llm.log/llm->be "\"LLM -----------------> BE\""
+                    :llm.log/be->fe "\"BE -----------------> FE\""}]
+    (with-open [^java.io.BufferedWriter w (io/writer "llm-payloads" :append true)]
+      (io/copy (directions direction (name direction)) w)
+      (.newLine w)
+      (let [payload' (json/generate-string payload {:pretty true})]
+        (io/copy payload' w))
+      (.newLine w)
+      (.newLine w))))
 
 ;;; TODO
 (mr/def ::context

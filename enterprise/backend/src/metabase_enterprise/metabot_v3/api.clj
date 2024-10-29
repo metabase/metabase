@@ -45,10 +45,12 @@
    context [:map-of :keyword :any]
    history [:maybe [:sequential :map]]}
   ;; HACK: for the demo, let's catch any exceptions that occur and just respond with something semi-reasonable
+  (metabot-v3.context/log _body :llm.log/fe->be)
   (let [context (mc/decode ::metabot-v3.context/context
                            context (mtx/transformer {:name :api-request}))
         history (mc/decode [:maybe ::metabot-v3.client.schema/messages]
                            history (mtx/transformer {:name :api-request}))]
-    (request message context history)))
+    (doto (request message context history)
+      (metabot-v3.context/log :llm.log/be->fe))))
 
 (api/define-routes)

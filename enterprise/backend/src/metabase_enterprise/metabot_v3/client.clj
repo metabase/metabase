@@ -100,11 +100,13 @@
   #_(premium-features/assert-has-feature :metabot-v3 "MetaBot")
   (try
     (let [url      (agent-endpoint-url)
-          body     (build-request-body context messages)
+          body     (doto (build-request-body context messages)
+                     (metabot-v3.context/log :llm.log/be->llm))
           _        (log/debugf "Request to AI Proxy:\n%s" (u/pprint-to-str body))
           options  (build-request-options body)
           response (-> (http/post url options)
                        maybe-parse-response-body-as-json)]
+      (metabot-v3.context/log (:body response) :llm.log/llm->be)
       (log/debugf "Response from AI Proxy:\n%s" (u/pprint-to-str (select-keys response #{:body :status :headers})))
       (if (= (:status response) 200)
         (u/prog1 (decode-response-body (:body response))
