@@ -80,11 +80,14 @@
   true)
 
 (defmulti ^:dynamic *invoke-tool*
-  "Invoke a Metabot v3 tool, e.g. send an email to someone. This should return a vector of frontend reactions with a
-  shape like
-
+  "Invoke a Metabot v3 tool, e.g. send an email to someone. This should return a map with the following keys:
+  - `output`, the string value to return to the LLM
+  - `reactions`, a vector of frontend reactions with a shape like
     [{:type    :reaction/display-message
       :message \"I need more info.\"}]
+
+  `reactions` is optional - in general, we let the LLM react instead. For example, when inviting a user, we tell the
+  LLM the user was invited and let it generate the message to send to the user rather than hardcoding anything.
 
   Different reactions should get bundled with different keys, for example `:metabot.reaction/message` should include
   `:message`. This should match what the frontend expects."
