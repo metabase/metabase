@@ -14,14 +14,12 @@ import {
   isValidDraggedItem,
 } from "metabase/visualizer/dnd/guards";
 import {
-  addDataSourceVizMapping,
   getDraggedItem,
   getVisualizationType,
+  importColumn,
   setDisplay,
   setDraggedItem,
-  updateSettings,
 } from "metabase/visualizer/visualizer.slice";
-import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import type { VisualizationDisplay } from "metabase-types/api";
 
 import { DataImporter } from "../DataImporter";
@@ -53,36 +51,26 @@ export const VisualizerPage = () => {
 
   const handleDragEnd = useCallback(
     ({ active, over }: DragEndEvent) => {
-      if (
-        over?.id === DROPPABLE_ID.VERTICAL_WELL &&
-        isDraggedColumnItem(active)
-      ) {
-        dispatch(updateSettings({ "funnel.metric": active.id }));
-      }
+      // if (
+      //   over?.id === DROPPABLE_ID.VERTICAL_WELL &&
+      //   isDraggedColumnItem(active)
+      // ) {
+      //   dispatch(updateSettings({ "funnel.metric": active.id }));
+      // }
 
-      if (
-        over?.id === DROPPABLE_ID.HORIZONTAL_WELL &&
-        isDraggedColumnItem(active)
-      ) {
-        dispatch(updateSettings({ "funnel.dimension": active.id }));
-      }
+      // if (
+      //   over?.id === DROPPABLE_ID.HORIZONTAL_WELL &&
+      //   isDraggedColumnItem(active)
+      // ) {
+      //   dispatch(updateSettings({ "funnel.dimension": active.id }));
+      // }
 
       if (
         over?.id === DROPPABLE_ID.CANVAS_MAIN &&
         isDraggedColumnItem(active)
       ) {
         const { column, dataSource } = active.data.current;
-        dispatch(
-          addDataSourceVizMapping({
-            key: "funnel.metric",
-            value: [
-              {
-                sourceId: dataSource.id,
-                column: getColumnKey(column),
-              },
-            ],
-          }),
-        );
+        dispatch(importColumn({ column, dataSource }));
       }
 
       dispatch(setDraggedItem(null));

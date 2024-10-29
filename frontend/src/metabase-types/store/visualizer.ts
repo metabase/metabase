@@ -16,9 +16,15 @@ export type VisualizerDataSource = {
   name: string;
 };
 
-export type VizDataSourceMapping = {
+export type VisualizerColumnImport = {
   sourceId: VisualizerDataSourceId;
-  column: string;
+  columnKey: string;
+  name: string;
+};
+
+export type VisualizerDatasetColumn = DatasetColumn & {
+  values: string[];
+  source: "artificial";
 };
 
 type BaseDraggedItem<T> = {
@@ -38,10 +44,8 @@ export type DraggedItem = DraggedColumn;
 
 export interface VisualizerState {
   display: VisualizationDisplay | null;
-  mappings: Record<
-    keyof VisualizationSettings,
-    VizDataSourceMapping | VizDataSourceMapping[]
-  >;
+  columns: VisualizerDatasetColumn[];
+  importedColumns: VisualizerColumnImport[];
   settings: VisualizationSettings;
   cards: Card[];
   datasets: Record<VisualizerDataSourceId, Dataset>;

@@ -3,18 +3,20 @@ import {
   createSelector,
   createSlice,
 } from "@reduxjs/toolkit";
+import _ from "underscore";
 
 import { cardApi } from "metabase/api";
 import { createAsyncThunk } from "metabase/lib/redux";
-import { isNotFalsy } from "metabase/lib/types";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import { getColumnNameFromKey } from "metabase-lib/v1/queries/utils/column-key";
+import { isNumeric } from "metabase-lib/v1/types/utils/isa";
 import type {
   Card,
   CardId,
   Dataset,
   DatasetColumn,
   RawSeries,
+  RowValues,
   VisualizationDisplay,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -22,15 +24,16 @@ import type {
   DraggedItem,
   VisualizerDataSource,
   VisualizerDataSourceId,
+  VisualizerDatasetColumn,
   VisualizerState,
-  VizDataSourceMapping,
 } from "metabase-types/store/visualizer";
 
-import { createDataSource } from "./utils";
+import { createColumnImport, createDataSource } from "./utils";
 
 const initialState: VisualizerState = {
   display: null,
-  mappings: {},
+  columns: [],
+  importedColumns: [],
   settings: {},
   cards: [],
   datasets: {},
@@ -84,10 +87,66 @@ const visualizerSlice = createSlice({
   name: "visualizer",
   initialState,
   reducers: {
+    importColumn: (
+      state,
+      action: PayloadAction<{
+        column: DatasetColumn;
+        dataSource: VisualizerDataSource;
+      }>,
+    ) => {
+      const importedColumn = createColumnImport(
+        action.payload.dataSource,
+        action.payload.column,
+      );
+      state.importedColumns.push(importedColumn);
+
+      if (state.display === "funnel" && isNumeric(action.payload.column)) {
+        const metricColumnName = state.settings["funnel.metric"];
+        const metricColumnIndex = state.columns.findIndex(
+          column => column.name === metricColumnName,
+        );
+
+        const dimensionColumnName = state.settings["funnel.dimension"];
+        const dimensionColumnIndex = state.columns.findIndex(
+          column => column.name === dimensionColumnName,
+        );
+
+        if (metricColumnIndex !== -1 && dimensionColumnIndex !== -1) {
+          const metric = state.columns[metricColumnIndex];
+          state.columns[metricColumnIndex] = {
+            ...metric,
+            values: !metric.values.includes(importedColumn.name)
+              ? [...metric.values, importedColumn.name]
+              : metric.values,
+          };
+
+          const dimension = state.columns[dimensionColumnIndex];
+          state.columns[dimensionColumnIndex] = {
+            ...dimension,
+            values: [
+              ...dimension.values,
+              `$_${action.payload.dataSource.name}`,
+            ],
+          };
+        }
+      }
+    },
     setDisplay: (state, action: PayloadAction<VisualizationDisplay | null>) => {
-      state.display = action.payload;
+      const display = action.payload;
+
+      state.display = display;
       state.settings = {};
-      state.mappings = {};
+      state.importedColumns = [];
+
+      if (display === "funnel") {
+        const metric = createMetricColumn();
+        const dimension = createDimensionColumn();
+        state.columns = [metric, dimension];
+        state.settings = {
+          "funnel.metric": metric.name,
+          "funnel.dimension": dimension.name,
+        };
+      }
     },
     updateSettings: (state, action: PayloadAction<VisualizationSettings>) => {
       state.settings = {
@@ -105,6 +164,10 @@ const visualizerSlice = createSlice({
       delete state.loadingDataSources[source.id];
       delete state.datasets[source.id];
       delete state.loadingDatasets[source.id];
+
+      state.importedColumns = state.importedColumns.filter(
+        column => column.sourceId !== source.id,
+      );
     },
     toggleDataSourceExpanded: (
       state,
@@ -115,23 +178,6 @@ const visualizerSlice = createSlice({
     },
     setDraggedItem: (state, action: PayloadAction<DraggedItem | null>) => {
       state.draggedItem = action.payload;
-    },
-    addDataSourceVizMapping: (
-      state,
-      action: PayloadAction<{
-        key: keyof VisualizationSettings;
-        value: VizDataSourceMapping | VizDataSourceMapping[];
-      }>,
-    ) => {
-      const { key, value } = action.payload;
-      const currentValue = state.mappings[key];
-      state.mappings = {
-        ...state.mappings,
-        [key]:
-          Array.isArray(currentValue) && Array.isArray(value)
-            ? [...currentValue, ...value]
-            : value,
-      };
     },
   },
   extraReducers: builder => {
@@ -184,7 +230,7 @@ const visualizerSlice = createSlice({
 });
 
 export const {
-  addDataSourceVizMapping,
+  importColumn,
   setDisplay,
   updateSettings,
   removeDataSource,
@@ -214,8 +260,12 @@ export const getDraggedItem = (state: { visualizer: VisualizerState }) =>
 const getCards = (state: { visualizer: VisualizerState }) =>
   state.visualizer.cards;
 
-const getVizDataSourceMappings = (state: { visualizer: VisualizerState }) =>
-  state.visualizer.mappings;
+// Must remain private
+const getVisualizationColumns = (state: { visualizer: VisualizerState }) =>
+  state.visualizer.columns;
+
+export const getImportedColumns = (state: { visualizer: VisualizerState }) =>
+  state.visualizer.importedColumns;
 
 export const getDataSources = createSelector([getCards], cards =>
   cards.map(card => createDataSource("card", card.id, card.name)),
@@ -223,52 +273,49 @@ export const getDataSources = createSelector([getCards], cards =>
 
 export const getVisualizerRawSeries = createSelector(
   [
-    getVisualizationType,
-    getVizDataSourceMappings,
-    getSettings,
-    getDataSources,
     getDatasets,
+    getImportedColumns,
+    getVisualizationType,
+    getSettings,
+    getVisualizationColumns,
   ],
-  (display, mappings, settings, dataSources, datasets): RawSeries => {
+  (dataSets, importedColumns, display, settings, cols): RawSeries => {
     if (!display) {
       return [];
     }
 
-    const metricColumn: DatasetColumn = {
-      base_type: "type/Integer",
-      effective_type: "type/Integer",
-      display_name: "METRIC",
-      field_ref: ["field", "METRIC", { "base-type": "type/Integer" }],
-      name: "METRIC",
-      source: "artificial",
-    };
+    const importedColumnValuesMap: Record<string, RowValues> = {};
+    importedColumns.forEach(columnImport => {
+      const dataset = dataSets[columnImport.sourceId];
+      if (!dataset) {
+        return;
+      }
+      const columnName = getColumnNameFromKey(columnImport.columnKey);
+      const columnIndex = dataset.data.cols.findIndex(
+        col => col.name === columnName,
+      );
+      if (columnIndex >= 0) {
+        const values = dataset.data.rows.map(row => row[columnIndex]);
+        importedColumnValuesMap[columnImport.name] = values;
+      }
+    });
 
-    const dimensionColumn: DatasetColumn = {
-      base_type: "type/Text",
-      effective_type: "type/Text",
-      display_name: "DIMENSION",
-      field_ref: ["field", "DIMENSION", { "base-type": "type/Text" }],
-      name: "DIMENSION",
-      source: "artificial",
-    };
-
-    const rows = Object.values(mappings["funnel.metric"] ?? {})
-      .map(mapping => {
-        const source = dataSources.find(ds => ds.id === mapping.sourceId);
-        const dataset = datasets[mapping.sourceId];
-        if (!source || !dataset) {
-          return;
-        }
-        const metricColumnIndex = dataset.data.cols.findIndex(
-          col => col.name === getColumnNameFromKey(mapping.column),
-        );
-        const value = dataset.data.rows[0][metricColumnIndex];
-        if (!value) {
-          return;
-        }
-        return [source.name, value];
-      })
-      .filter(isNotFalsy);
+    const unzippedRows = cols.map(column =>
+      column.values
+        .map(columnName => {
+          if (columnName.startsWith("$_")) {
+            const [, rawValue] = columnName.split("_");
+            return [rawValue];
+          }
+          const values = importedColumnValuesMap[columnName];
+          if (!values) {
+            return [];
+          }
+          return values;
+        })
+        .flat(),
+    );
+    const rows = _.zip(...unzippedRows);
 
     return [
       {
@@ -277,11 +324,9 @@ export const getVisualizerRawSeries = createSelector(
           visualization_settings: settings,
         },
         data: {
-          cols: [dimensionColumn, metricColumn],
-          rows: rows,
-          results_metadata: {
-            columns: [dimensionColumn, metricColumn],
-          },
+          cols,
+          rows,
+          results_metadata: { columns: cols },
         },
       },
     ];
@@ -293,3 +338,29 @@ export const getVisualizerComputedSettings = createSelector(
   rawSeries =>
     rawSeries.length > 0 ? getComputedSettingsForSeries(rawSeries) : {},
 );
+
+function createMetricColumn(): VisualizerDatasetColumn {
+  return {
+    base_type: "type/Integer",
+    effective_type: "type/Integer",
+    display_name: "METRIC",
+    field_ref: ["field", "METRIC", { "base-type": "type/Integer" }],
+    name: "METRIC",
+    source: "artificial",
+
+    values: [],
+  };
+}
+
+function createDimensionColumn(): VisualizerDatasetColumn {
+  return {
+    base_type: "type/Text",
+    effective_type: "type/Text",
+    display_name: "DIMENSION",
+    field_ref: ["field", "DIMENSION", { "base-type": "type/Text" }],
+    name: "DIMENSION",
+    source: "artificial",
+
+    values: [],
+  };
+}
