@@ -53,7 +53,11 @@
                            (println "🗨 " (u/colorize :blue input))
                            (when (and (not (#{"quit" "exit" "bye" "goodbye" "\\q"} input))
                                       (not (str/blank? input)))
-                             (let [context {}
+                             (let [context {:current_page {:name "Visualizer",
+                                                           :description "A page where query results are visualized."}
+                                            :current_visualization_settings {:current_display_type "bar",
+                                                                             :visible_columns [{:name "Created At"}, {:name "Id"}, {:name "Order Number"}, {:name "Status"}, {:name "Total"}],
+                                                                             :hidden_columns [{:name "Customer Id"}, {:name "Customer Name"}, {:name "Customer Email"}]}}
                                    env (metabot-v3.handle-response/handle-envelope
                                         (metabot-v3.envelope/add-user-message
                                          (metabot-v3.envelope/create context history)
@@ -78,3 +82,5 @@
   (println "Starting MetaBot REPL... 🤖")
   (user-repl)
   (System/exit 0))
+
+(user-repl)
