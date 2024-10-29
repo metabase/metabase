@@ -1,4 +1,4 @@
-import { InfoBanner } from "./DatabaseInfoField.styled";
+import { Banner } from "metabase/components/Banner";
 
 export interface DatabaseInfoFieldProps {
   placeholder?: string;
@@ -7,7 +7,11 @@ export interface DatabaseInfoFieldProps {
 const DatabaseInfoField = ({
   placeholder,
 }: DatabaseInfoFieldProps): JSX.Element => {
-  return <InfoBanner>{placeholder}</InfoBanner>;
+  return (
+    <Banner mb="sm" style={{ borderRadius: "sm" }}>
+      {placeholder}
+    </Banner>
+  );
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
