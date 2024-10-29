@@ -145,8 +145,7 @@
   --mb-base-color-blue-5: #f8fbfe;
 
   /* Gray */
-  /*   bg-black */
-  --mb-base-color-gray-100: #121619;
+  --mb-base-color-gray-100: #121619; /* bg-black */
   --mb-base-color-gray-90: #20272b;
   --mb-base-color-gray-80: #313b42;
   --mb-base-color-gray-70: #47545e;
@@ -157,6 +156,19 @@
   --mb-base-color-gray-20: #dbdfe3;
   --mb-base-color-gray-10: #f3f5f7;
   --mb-base-color-gray-5: #fafbfc;
+
+  /* Orion */
+  --mb-base-color-orion-100: #071722;
+  --mb-base-color-orion-90: #182731;
+  --mb-base-color-orion-80: #2f3c45;
+  --mb-base-color-orion-70: #47535b;
+  --mb-base-color-orion-60: #656f76;
+  --mb-base-color-orion-50: #81898e;
+  --mb-base-color-orion-40: #92999e;
+  --mb-base-color-orion-30: #b7bcbf;
+  --mb-base-color-orion-20: #dcdfe0; /* accent-gray-dark */
+  --mb-base-color-orion-10: #f3f3f4; /* accent-gray */
+  --mb-base-color-orion-5: #fafafb; /* accent-gray-light */
 }
 
 .textDefault {

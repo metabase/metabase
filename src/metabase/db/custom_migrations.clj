@@ -1660,3 +1660,86 @@
                                                           :is_optional true})}
                          {:type                 "notification-recipient/group"
                           :permissions_group_id (t2/select-one-pk :permissions_group :name "Administrators")}]}])))
+
+(defn- last-stage-number
+  [outer-query]
+  (loop [query (:query outer-query), i 0]
+    (if-let [source-query (:source-query query)]
+      (recur source-query (inc i))
+      i)))
+
+(defn- set-target-stage-number
+  [mapping last-stage]
+  (if-let [target (:target mapping)]
+    (cond-> mapping
+      (and (vector? target) (= (get target 0) "dimension"))
+      (assoc-in [:target 2 :stage-number] last-stage))
+    mapping))
+
+(defn- set-parameter-stage-numbers
+  [record last-stage]
+  (when-let [orig-pmappings (some-> record :parameter_mappings (json/parse-string true))]
+    (let [pmappings (map #(set-target-stage-number % last-stage) orig-pmappings)]
+      (when (not= pmappings orig-pmappings)
+        pmappings))))
+
+(defn- add-stage-numbers-to-parameter-mapping-targets
+  []
+  (let [prev-card-last-stage (volatile! nil)]
+    (run!
+     (fn [record]
+       (let [card-id (:c_id record)
+             [prev-card-id prev-last-stage] @prev-card-last-stage
+             last-stage (if (= card-id prev-card-id)
+                          prev-last-stage
+                          (let [ls (if (= (:c_type record) "model")
+                                     ;; models are not transparent
+                                     0
+                                     ;; questions and metrics are
+                                     (-> record
+                                         :dataset_query
+                                         (json/parse-string true)
+                                         last-stage-number))]
+                            (vreset! prev-card-last-stage [card-id ls])
+                            ls))]
+         (when-let [new-mappings (set-parameter-stage-numbers record last-stage)]
+           (t2/query {:update :report_dashboardcard
+                      :set    {:parameter_mappings (json/generate-string new-mappings)}
+                      :where  [:= :id (:dc_id record)]}))))
+     (t2/reducible-query {:select     [[:c.id :c_id] [:c.type :c_type] :c.dataset_query
+                                       [:dc.id :dc_id] :dc.parameter_mappings]
+                          :from       [[:report_card :c]]
+                          :inner-join [[:report_dashboardcard :dc] [:= :dc.card_id :c.id]]
+                          :where      [:!= :dc.parameter_mappings "[]"]
+                          :order-by   [:c.id]}))))
+
+(defn- remove-target-stage-number
+  [mapping]
+  (if-let [target (:target mapping)]
+    (cond-> mapping
+      (and (vector? target) (= (get target 0) "dimension"))
+      (update :target subvec 0 2))
+    mapping))
+
+(defn- remove-parameter-stage-numbers
+  [record]
+  (when-let [orig-pmappings (some-> record :parameter_mappings (json/parse-string true))]
+    (let [pmappings (map remove-target-stage-number orig-pmappings)]
+      (when (not= pmappings orig-pmappings)
+        pmappings))))
+
+(defn- remove-stage-numbers-from-parameter-mapping-targets
+  []
+  (run!
+   (fn [record]
+     (when-let [new-mappings (remove-parameter-stage-numbers record)]
+       (t2/query {:update :report_dashboardcard
+                  :set    {:parameter_mappings (json/generate-string new-mappings)}
+                  :where  [:= :id (:id record)]})))
+   (t2/reducible-query {:select [:id :parameter_mappings]
+                        :from   [:report_dashboardcard]
+                        :where  [:!= :parameter_mappings "[]"]})))
+
+(define-reversible-migration AddStageNumberToParameterMappingTargets
+  (add-stage-numbers-to-parameter-mapping-targets)
+  (remove-stage-numbers-from-parameter-mapping-targets))
