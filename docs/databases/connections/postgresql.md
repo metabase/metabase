@@ -40,7 +40,7 @@ The password for the username that you use to connect to the database.
 
 ### Use an authentication provider
 
-{% include plans-blockquote.yyhtml feature="Authenticating with a provider" %}
+{% include plans-blockquote.html feature="Authenticating with a provider" %}
 
 Instead of a password, you can authenticate with a supported provider.
 
