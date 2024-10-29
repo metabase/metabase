@@ -181,9 +181,10 @@ function ExtractColumnButton({
 }) {
   return (
     <Button
-      variant="unstyled"
+      variant="subtle"
       type="button"
       p="sm"
+      mb="xs"
       className={styles.button}
       classNames={{
         inner: styles.inner,
