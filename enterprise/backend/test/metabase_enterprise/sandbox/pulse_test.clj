@@ -9,6 +9,8 @@
    [metabase.models
     :refer [Card Pulse PulseCard PulseChannel PulseChannelRecipient]]
    [metabase.models.pulse :as models.pulse]
+   [metabase.notification.payload.execute :as notification.payload.execute]
+   [metabase.notification.send :as notification.send]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.pulse.send :as pulse.send]
    [metabase.pulse.test-util :as pulse.test-util]
@@ -47,7 +49,8 @@
                  PulseChannelRecipient _ {:pulse_channel_id (:id pc)
                                           :user_id          (mt/user->id :rasta)}]
     (mt/with-temporary-setting-values [email-from-address "metamailman@metabase.com"]
-      (-> (#'pulse.send/execute-pulse (models.pulse/retrieve-pulse pulse) nil) first :result))))
+      (let [pulse (models.pulse/retrieve-pulse pulse)]
+        (-> (notification.payload.execute/execute-card (:creator_id pulse) (-> pulse :cards first :id)) :result)))))
 
 (deftest dashboard-subscription-send-event-test
   (testing "When we send a pulse, we also log the event:"
@@ -68,7 +71,7 @@
                                          :user_id          (mt/user->id :rasta)}]
         (mt/with-temporary-setting-values [email-from-address "metamailman@metabase.com"]
           (mt/with-fake-inbox
-            (with-redefs [pulse.send/send-retrying!  (fn [_ _] :noop)]
+            (with-redefs [notification.send/channel-send-retrying!  (fn [_ _] :noop)]
               (mt/with-test-user :lucky
                 (pulse.send/send-pulse! pulse)))
             (is (= {:topic    :subscription-send

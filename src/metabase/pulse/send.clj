@@ -5,7 +5,6 @@
    [metabase.models.database :refer [Database]]
    [metabase.models.interface :as mi]
    [metabase.models.pulse :as models.pulse :refer [Pulse]]
-   [metabase.notification.core :as notification]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -107,7 +106,7 @@
                      channels)]
     (doseq [pulse-channel channels]
       (try
-        (notification/*send-notification!* (notification-info pulse dashboard pulse-channel))
+        ((requiring-resolve 'metabase.notification.core/*send-notification!*) (notification-info pulse dashboard pulse-channel))
         (catch Exception e
           (log/errorf e "[Pulse %d] Error sending to %s channel" (:id pulse) (:channel_type pulse-channel)))))
     nil))

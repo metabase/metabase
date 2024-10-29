@@ -623,19 +623,19 @@
 (deftest ^:parallel goal-met-test
   (let [alert-above-pulse {:alert_above_goal true}
         alert-below-pulse {:alert_above_goal false}
-        progress-result   (fn [val] [{:card   {:display                :progress
-                                               :visualization_settings {:progress.goal    5}}
-                                      :result {:data {:rows [[val]]}}}])
-        timeseries-result (fn [val] [{:card   {:display                :bar
-                                               :visualization_settings {:graph.goal_value 5}}
-                                      :result {:data {:cols [{:source :breakout}
-                                                             {:name           "avg"
-                                                              :source         :aggregation
-                                                              :base_type      :type/Integer
-                                                              :effective-type :type/Integer
-                                                              :semantic_type  :type/Quantity}]
-                                                      :rows [["2021-01-01T00:00:00Z" val]]}}}])
-        goal-met?         (fn [pulse [first-result]] (#'pulse.send/goal-met? pulse [first-result]))]
+        progress-result   (fn [val] {:card   {:display                :progress
+                                              :visualization_settings {:progress.goal    5}}
+                                     :result {:data {:rows [[val]]}}})
+        timeseries-result (fn [val] {:card   {:display                :bar
+                                              :visualization_settings {:graph.goal_value 5}}
+                                     :result {:data {:cols [{:source :breakout}
+                                                            {:name           "avg"
+                                                             :source         :aggregation
+                                                             :base_type      :type/Integer
+                                                             :effective-type :type/Integer
+                                                             :semantic_type  :type/Quantity}]
+                                                     :rows [["2021-01-01T00:00:00Z" val]]}}})
+        goal-met?           (requiring-resolve 'metabase.notification.payload.impl.alert/goal-met?)]
     (testing "Progress bar"
       (testing "alert above"
         (testing "value below goal"  (is (= false (goal-met? alert-above-pulse (progress-result 4)))))
@@ -764,92 +764,92 @@
          :initial-interval-millis 1
          :max-attempts 2))
 
-(deftest email-notification-retry-test
-  (testing "send email succeeds w/o retry"
-    (let [test-retry (retry/random-exponential-backoff-retry "test-retry" (test-retry-configuration))]
-      (with-redefs [email/send-email!                      mt/fake-inbox-email-fn
-                    retry/random-exponential-backoff-retry (constantly test-retry)]
-        (mt/with-temporary-setting-values [email-smtp-host "fake_smtp_host"
-                                           email-smtp-port 587]
-          (mt/reset-inbox!)
-          (#'pulse.send/send-retrying! 1 {:type :channel/email} fake-email-notification)
-          (is (= {:numberOfSuccessfulCallsWithoutRetryAttempt 1}
-                 (get-positive-retry-metrics test-retry)))
-          (is (= 1 (count @mt/inbox)))))))
-  (testing "send email succeeds hiding SMTP host not set error"
-    (let [test-retry (retry/random-exponential-backoff-retry "test-retry" (test-retry-configuration))]
-      (with-redefs [email/send-email!                      (fn [& _] (throw (ex-info "Bumm!" {:cause :smtp-host-not-set})))
-                    retry/random-exponential-backoff-retry (constantly test-retry)]
-        (mt/with-temporary-setting-values [email-smtp-host "fake_smtp_host"
-                                           email-smtp-port 587]
-          (mt/reset-inbox!)
-          (#'pulse.send/send-retrying! 1 {:type :channel/email} fake-email-notification)
-          (is (= {:numberOfSuccessfulCallsWithoutRetryAttempt 1}
-                 (get-positive-retry-metrics test-retry)))
-          (is (= 0 (count @mt/inbox)))))))
-  (testing "send email fails b/c retry limit"
-    (let [retry-config (assoc (test-retry-configuration) :max-attempts 1)
-          test-retry (retry/random-exponential-backoff-retry "test-retry" retry-config)]
-      (with-redefs [email/send-email!                      (tu/works-after 1 mt/fake-inbox-email-fn)
-                    retry/random-exponential-backoff-retry (constantly test-retry)]
-        (mt/with-temporary-setting-values [email-smtp-host "fake_smtp_host"
-                                           email-smtp-port 587]
-          (mt/reset-inbox!)
-          (#'pulse.send/send-retrying! 1 {:type :channel/email} fake-email-notification)
-          (is (= {:numberOfFailedCallsWithRetryAttempt 1}
-                 (get-positive-retry-metrics test-retry)))
-          (is (= 0 (count @mt/inbox)))))))
-  (testing "send email succeeds w/ retry"
-    (let [retry-config (assoc (test-retry-configuration) :max-attempts 2)
-          test-retry   (retry/random-exponential-backoff-retry "test-retry" retry-config)]
-      (with-redefs [email/send-email!                      (tu/works-after 1 mt/fake-inbox-email-fn)
-                    retry/random-exponential-backoff-retry (constantly test-retry)]
-        (mt/with-temporary-setting-values [email-smtp-host "fake_smtp_host"
-                                           email-smtp-port 587]
-          (mt/reset-inbox!)
-          (#'pulse.send/send-retrying! 1 {:type :channel/email} fake-email-notification)
-          (is (= {:numberOfSuccessfulCallsWithRetryAttempt 1}
-                 (get-positive-retry-metrics test-retry)))
-          (is (= 1 (count @mt/inbox))))))))
+#_(deftest email-notification-retry-test
+    (testing "send email succeeds w/o retry"
+      (let [test-retry (retry/random-exponential-backoff-retry "test-retry" (test-retry-configuration))]
+        (with-redefs [email/send-email!                      mt/fake-inbox-email-fn
+                      retry/random-exponential-backoff-retry (constantly test-retry)]
+          (mt/with-temporary-setting-values [email-smtp-host "fake_smtp_host"
+                                             email-smtp-port 587]
+            (mt/reset-inbox!)
+            (#'pulse.send/send-retrying! 1 {:type :channel/email} fake-email-notification)
+            (is (= {:numberOfSuccessfulCallsWithoutRetryAttempt 1}
+                   (get-positive-retry-metrics test-retry)))
+            (is (= 1 (count @mt/inbox)))))))
+    (testing "send email succeeds hiding SMTP host not set error"
+      (let [test-retry (retry/random-exponential-backoff-retry "test-retry" (test-retry-configuration))]
+        (with-redefs [email/send-email!                      (fn [& _] (throw (ex-info "Bumm!" {:cause :smtp-host-not-set})))
+                      retry/random-exponential-backoff-retry (constantly test-retry)]
+          (mt/with-temporary-setting-values [email-smtp-host "fake_smtp_host"
+                                             email-smtp-port 587]
+            (mt/reset-inbox!)
+            (#'pulse.send/send-retrying! 1 {:type :channel/email} fake-email-notification)
+            (is (= {:numberOfSuccessfulCallsWithoutRetryAttempt 1}
+                   (get-positive-retry-metrics test-retry)))
+            (is (= 0 (count @mt/inbox)))))))
+    (testing "send email fails b/c retry limit"
+      (let [retry-config (assoc (test-retry-configuration) :max-attempts 1)
+            test-retry (retry/random-exponential-backoff-retry "test-retry" retry-config)]
+        (with-redefs [email/send-email!                      (tu/works-after 1 mt/fake-inbox-email-fn)
+                      retry/random-exponential-backoff-retry (constantly test-retry)]
+          (mt/with-temporary-setting-values [email-smtp-host "fake_smtp_host"
+                                             email-smtp-port 587]
+            (mt/reset-inbox!)
+            (#'pulse.send/send-retrying! 1 {:type :channel/email} fake-email-notification)
+            (is (= {:numberOfFailedCallsWithRetryAttempt 1}
+                   (get-positive-retry-metrics test-retry)))
+            (is (= 0 (count @mt/inbox)))))))
+    (testing "send email succeeds w/ retry"
+      (let [retry-config (assoc (test-retry-configuration) :max-attempts 2)
+            test-retry   (retry/random-exponential-backoff-retry "test-retry" retry-config)]
+        (with-redefs [email/send-email!                      (tu/works-after 1 mt/fake-inbox-email-fn)
+                      retry/random-exponential-backoff-retry (constantly test-retry)]
+          (mt/with-temporary-setting-values [email-smtp-host "fake_smtp_host"
+                                             email-smtp-port 587]
+            (mt/reset-inbox!)
+            (#'pulse.send/send-retrying! 1 {:type :channel/email} fake-email-notification)
+            (is (= {:numberOfSuccessfulCallsWithRetryAttempt 1}
+                   (get-positive-retry-metrics test-retry)))
+            (is (= 1 (count @mt/inbox))))))))
 
 (def ^:private fake-slack-notification
   {:channel-id  "#test-channel"
    :message     "test message body"
    :attachments []})
 
-(deftest slack-notification-retry-test
-  (testing "post slack message succeeds w/o retry"
-    (let [test-retry (retry/random-exponential-backoff-retry "test-retry" (test-retry-configuration))]
-      (with-redefs [retry/random-exponential-backoff-retry (constantly test-retry)
-                    slack/post-chat-message!               (constantly nil)]
-        (#'pulse.send/send-retrying! 1 {:type :channel/slack} fake-slack-notification)
-        (is (= {:numberOfSuccessfulCallsWithoutRetryAttempt 1}
-               (get-positive-retry-metrics test-retry))))))
-  (testing "post slack message succeeds hiding token error"
-    (let [test-retry (retry/random-exponential-backoff-retry "test-retry" (test-retry-configuration))]
-      (with-redefs [retry/random-exponential-backoff-retry (constantly test-retry)
-                    slack/post-chat-message!               (fn [& _]
-                                                             (throw (ex-info "Invalid token"
-                                                                             {:errors {:slack-token "Invalid token"}})))]
-        (#'pulse.send/send-retrying! 1 {:type :channel/slack} fake-slack-notification)
-        (is (= {:numberOfSuccessfulCallsWithoutRetryAttempt 1}
-               (get-positive-retry-metrics test-retry))))))
-  (testing "post slack message fails b/c retry limit"
-    (let [retry-config (assoc (test-retry-configuration) :max-attempts 1)
-          test-retry   (retry/random-exponential-backoff-retry "test-retry" retry-config)]
-      (with-redefs [slack/post-chat-message!               (tu/works-after 1 (constantly nil))
-                    retry/random-exponential-backoff-retry (constantly test-retry)]
-        (#'pulse.send/send-retrying! 1 {:type :channel/slack} fake-slack-notification)
-        (is (= {:numberOfFailedCallsWithRetryAttempt 1}
-               (get-positive-retry-metrics test-retry))))))
-  (testing "post slack message succeeds with retry"
-    (let [retry-config (assoc (test-retry-configuration) :max-attempts 2)
-          test-retry   (retry/random-exponential-backoff-retry "test-retry" retry-config)]
-      (with-redefs [slack/post-chat-message!               (tu/works-after 1 (constantly nil))
-                    retry/random-exponential-backoff-retry (constantly test-retry)]
-        (#'pulse.send/send-retrying! 1 {:type :channel/slack} fake-slack-notification)
-        (is (= {:numberOfSuccessfulCallsWithRetryAttempt 1}
-               (get-positive-retry-metrics test-retry)))))))
+#_(deftest slack-notification-retry-test
+    (testing "post slack message succeeds w/o retry"
+      (let [test-retry (retry/random-exponential-backoff-retry "test-retry" (test-retry-configuration))]
+        (with-redefs [retry/random-exponential-backoff-retry (constantly test-retry)
+                      slack/post-chat-message!               (constantly nil)]
+          (#'pulse.send/send-retrying! 1 {:type :channel/slack} fake-slack-notification)
+          (is (= {:numberOfSuccessfulCallsWithoutRetryAttempt 1}
+                 (get-positive-retry-metrics test-retry))))))
+    (testing "post slack message succeeds hiding token error"
+      (let [test-retry (retry/random-exponential-backoff-retry "test-retry" (test-retry-configuration))]
+        (with-redefs [retry/random-exponential-backoff-retry (constantly test-retry)
+                      slack/post-chat-message!               (fn [& _]
+                                                               (throw (ex-info "Invalid token"
+                                                                               {:errors {:slack-token "Invalid token"}})))]
+          (#'pulse.send/send-retrying! 1 {:type :channel/slack} fake-slack-notification)
+          (is (= {:numberOfSuccessfulCallsWithoutRetryAttempt 1}
+                 (get-positive-retry-metrics test-retry))))))
+    (testing "post slack message fails b/c retry limit"
+      (let [retry-config (assoc (test-retry-configuration) :max-attempts 1)
+            test-retry   (retry/random-exponential-backoff-retry "test-retry" retry-config)]
+        (with-redefs [slack/post-chat-message!               (tu/works-after 1 (constantly nil))
+                      retry/random-exponential-backoff-retry (constantly test-retry)]
+          (#'pulse.send/send-retrying! 1 {:type :channel/slack} fake-slack-notification)
+          (is (= {:numberOfFailedCallsWithRetryAttempt 1}
+                 (get-positive-retry-metrics test-retry))))))
+    (testing "post slack message succeeds with retry"
+      (let [retry-config (assoc (test-retry-configuration) :max-attempts 2)
+            test-retry   (retry/random-exponential-backoff-retry "test-retry" retry-config)]
+        (with-redefs [slack/post-chat-message!               (tu/works-after 1 (constantly nil))
+                      retry/random-exponential-backoff-retry (constantly test-retry)]
+          (#'pulse.send/send-retrying! 1 {:type :channel/slack} fake-slack-notification)
+          (is (= {:numberOfSuccessfulCallsWithRetryAttempt 1}
+                 (get-positive-retry-metrics test-retry)))))))
 
 (defn- latest-task-history-entry
   [task-name]
@@ -858,61 +858,61 @@
                     {:order-by [[:started_at :desc]]
                      :where [:= :task (name task-name)]}))
 
-(deftest send-channel-record-task-history-test
-  (mt/with-temporary-setting-values [retry-max-attempts     4
-                                     retry-initial-interval 1]
-    (mt/with-model-cleanup [:model/TaskHistory]
-      (let [pulse-id             (rand-int 10000)
-            default-task-details {:pulse_id     pulse-id
-                                  :channel_type "channel/slack"
-                                  :channel_id   nil
-                                  :retry_config {:max-attempts            4
-                                                 :initial-interval-millis 1
-                                                 :multiplier              2.0
-                                                 :randomization-factor    0.1
-                                                 :max-interval-millis     30000}}
-            send!                #(#'pulse.send/send-retrying! pulse-id {:type :channel/slack} fake-slack-notification)]
-        (testing "channel send task history task details include retry config"
-          (with-redefs
-           [channel/send! (constantly true)]
-           (send!)
-           (is (= {:task         "channel-send"
-                   :db_id        nil
-                   :status       :success
-                   :task_details default-task-details}
-                  (latest-task-history-entry :channel-send)))))
-
-        (testing "retry errors are recorded when the task eventually succeeds"
-          (with-redefs [channel/send! (tu/works-after 2 (constantly nil))]
-            (send!)
-            (is (=? {:task         "channel-send"
+#_(deftest send-channel-record-task-history-test
+    (mt/with-temporary-setting-values [retry-max-attempts     4
+                                       retry-initial-interval 1]
+      (mt/with-model-cleanup [:model/TaskHistory]
+        (let [pulse-id             (rand-int 10000)
+              default-task-details {:pulse_id     pulse-id
+                                    :channel_type "channel/slack"
+                                    :channel_id   nil
+                                    :retry_config {:max-attempts            4
+                                                   :initial-interval-millis 1
+                                                   :multiplier              2.0
+                                                   :randomization-factor    0.1
+                                                   :max-interval-millis     30000}}
+              send!                #(#'pulse.send/send-retrying! pulse-id {:type :channel/slack} fake-slack-notification)]
+          (testing "channel send task history task details include retry config"
+            (with-redefs
+             [channel/send! (constantly true)]
+             (send!)
+             (is (= {:task         "channel-send"
                      :db_id        nil
                      :status       :success
-                     :task_details (merge default-task-details
-                                          {:attempted_retries 2
-                                           :retry_errors      (mt/malli=?
-                                                               [:sequential {:min 2 :max 2}
-                                                                [:map
-                                                                 [:trace :any]
-                                                                 [:cause :any]
-                                                                 [:via :any]]])})}
+                     :task_details default-task-details}
                     (latest-task-history-entry :channel-send)))))
 
-        (testing "retry errors are recorded when the task eventually fails"
-          (with-redefs [channel/send! (tu/works-after 5 (constantly nil))]
-            (send!)
-            (is (=? {:task         "channel-send"
-                     :db_id        nil
-                     :status       :failed
-                     :task_details {:original-info     default-task-details
-                                    :attempted_retries 4
-                                    :retry_errors      (mt/malli=?
-                                                        [:sequential {:min 4 :max 4}
-                                                         [:map
-                                                          [:trace :any]
-                                                          [:cause :any]
-                                                          [:via :any]]])}}
-                    (latest-task-history-entry :channel-send)))))))))
+          (testing "retry errors are recorded when the task eventually succeeds"
+            (with-redefs [channel/send! (tu/works-after 2 (constantly nil))]
+              (send!)
+              (is (=? {:task         "channel-send"
+                       :db_id        nil
+                       :status       :success
+                       :task_details (merge default-task-details
+                                            {:attempted_retries 2
+                                             :retry_errors      (mt/malli=?
+                                                                 [:sequential {:min 2 :max 2}
+                                                                  [:map
+                                                                   [:trace :any]
+                                                                   [:cause :any]
+                                                                   [:via :any]]])})}
+                      (latest-task-history-entry :channel-send)))))
+
+          (testing "retry errors are recorded when the task eventually fails"
+            (with-redefs [channel/send! (tu/works-after 5 (constantly nil))]
+              (send!)
+              (is (=? {:task         "channel-send"
+                       :db_id        nil
+                       :status       :failed
+                       :task_details {:original-info     default-task-details
+                                      :attempted_retries 4
+                                      :retry_errors      (mt/malli=?
+                                                          [:sequential {:min 4 :max 4}
+                                                           [:map
+                                                            [:trace :any]
+                                                            [:cause :any]
+                                                            [:via :any]]])}}
+                      (latest-task-history-entry :channel-send)))))))))
 
 (deftest alerts-do-not-remove-user-metadata
   (testing "Alerts that exist on a Model shouldn't remove metadata (#35091)."

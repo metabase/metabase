@@ -27,7 +27,7 @@
                                                                 (u/prog1 (apply orig-execute-card args)
                                                                   (reset! pulse-result <>)))]
         (pulse.send/send-pulse! pulse)
-        (qp.test-util/rows (:result (first #p @pulse-result)))))))
+        (qp.test-util/rows (:result (first @pulse-result)))))))
 
 (def card-name "Test card")
 
