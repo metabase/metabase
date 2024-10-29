@@ -31,8 +31,12 @@
     [:notification/alert
      [:map
       ;; replacement of pulse
-      [:alert      :map]
-      [:card_id    ms/PositiveInt]
+      [:alert      [:map
+                    [:card_id          ms/PositiveInt]
+                    [:alert_condition  [:enum "rows" "goal"]]
+                    [:alert_above_goal [:maybe ms/BooleanValue]]
+                    [:alert_first_only [:maybe ms/BooleanValue]]
+                    [:schedule         :map]]]
       [:creator_id ms/PositiveInt]]]
     [:notification/dashboard-subscription
      [:map
@@ -44,10 +48,11 @@
         [:parameters {:optional true} [:maybe [:sequential :map]]]
         [:dashboard_subscription_dashcards {:optional true}
          [:sequential [:map
-                       [:dashboard_card_id ms/PositiveInt]
-                       [:include_csv       ms/BooleanValue]
-                       [:include_xls       ms/BooleanValue]
-                       [:pivot_results     ms/BooleanValue]]]]]]]]
+                       [:card_id       [:maybe ms/PositiveInt]]
+                       [:include_csv   ms/BooleanValue]
+                       [:include_xls   ms/BooleanValue]
+                       [:format_rows   ms/BooleanValue]
+                       [:pivot_results ms/BooleanValue]]]]]]]]
 
     ;; for testing only
     [:notification/testing :map]]])

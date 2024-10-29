@@ -18,6 +18,7 @@
             User]]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.permissions-group :as perms-group]
+   [metabase.notification.test-util :as notification.tu]
    [metabase.public-settings :as public-settings]
    [metabase.pulse.render.body :as body]
    [metabase.pulse.send :as pulse.send]
@@ -702,7 +703,7 @@
                                     :dashboard_id       dashboard-id
                                     :visualization_settings {:text "{{foo}}"}}]
       (is (= [{:text "Doohickey and Gizmo" :type :text}]
-             (execute-dashboard (:id dashboard) (mt/user->id :rasta) nil))))))
+             (execute-dashboard (:id dashboard) (mt/user->id :rasta) (:parameters dashboard)))))))
 
 (deftest no-native-perms-test
   (testing "A native query on a dashboard executes succesfully even if the subscription creator does not have native
@@ -1002,37 +1003,38 @@
 (deftest dashboard-subscription-attachments-test
   (testing "Dashboard subscription attachments respect dashcard viz settings."
     (mt/with-fake-inbox
-      (mt/with-temp [Card {card-id :id :as c} (pulse.test-util/checkins-query-card {:breakout [!day.date]})
-                     Dashboard     {dash-id :id} {:name "just dash"}]
-        (let [;; with the helper `metadata->field-ref` we turn column metadata into column field refs
-              ;; with an additional key `:enabled`. Here the 1st col is enabled, and the 2nd is disabled
-              viz {:table.columns (mapv metadata->field-ref (:result_metadata c) [true false])}]
-          (mt/with-temp [DashboardCard {dash-card-id :id} {:dashboard_id           dash-id
-                                                           :card_id                card-id
-                                                           :visualization_settings viz}
-                         Pulse         {pulse-id :id, :as pulse}  {:name         "just pulse"
-                                                                   :dashboard_id dash-id}
-                         PulseCard     _ {:pulse_id          pulse-id
-                                          :card_id           card-id
-                                          :position          0
-                                          :dashboard_card_id dash-card-id
-                                          :include_csv       true}
-                         PulseChannel  {pc-id :id} {:pulse_id pulse-id}
-                         PulseChannelRecipient _ {:user_id          (pulse.test-util/rasta-id)
-                                                  :pulse_channel_id pc-id}]
-            (with-redefs [email.result-attachment/result-attachment result-attachment]
-              (pulse.send/send-pulse! pulse)
-              (is (= 1
-                     (-> @mt/inbox
-                         (get (:email (mt/fetch-user :rasta)))
-                         last
-                         :body
-                         last
-                         :content
-                         str/split-lines
-                         (->> (mapv #(str/split % #",")))
-                         first
-                         count))))))))))
+      (notification.tu/with-notification-testing-setup
+        (mt/with-temp [Card {card-id :id :as c} (pulse.test-util/checkins-query-card {:breakout [!day.date]})
+                       Dashboard     {dash-id :id} {:name "just dash"}]
+          (let [;; with the helper `metadata->field-ref` we turn column metadata into column field refs
+                ;; with an additional key `:enabled`. Here the 1st col is enabled, and the 2nd is disabled
+                viz {:table.columns (mapv metadata->field-ref (:result_metadata c) [true false])}]
+            (mt/with-temp [DashboardCard {dash-card-id :id} {:dashboard_id           dash-id
+                                                             :card_id                card-id
+                                                             :visualization_settings viz}
+                           Pulse         {pulse-id :id, :as pulse}  {:name         "just pulse"
+                                                                     :dashboard_id dash-id}
+                           PulseCard     _ {:pulse_id          pulse-id
+                                            :card_id           card-id
+                                            :position          0
+                                            :dashboard_card_id dash-card-id
+                                            :include_csv       true}
+                           PulseChannel  {pc-id :id} {:pulse_id pulse-id}
+                           PulseChannelRecipient _ {:user_id          (pulse.test-util/rasta-id)
+                                                    :pulse_channel_id pc-id}]
+              (with-redefs [email.result-attachment/result-attachment result-attachment]
+                (pulse.send/send-pulse! pulse)
+                (is (= 1
+                       (-> @mt/inbox
+                           (get (:email (mt/fetch-user :rasta)))
+                           last
+                           :body
+                           last
+                           :content
+                           str/split-lines
+                           (->> (mapv #(str/split % #",")))
+                           first
+                           count)))))))))))
 
 (deftest attachment-filenames-stay-readable-test
   (testing "Filenames remain human-readable (#41669)"

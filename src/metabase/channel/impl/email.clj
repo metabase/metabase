@@ -3,6 +3,7 @@
    [buddy.core.codecs :as codecs]
    [cheshire.core :as json]
    [hiccup.core :refer [html]]
+   [medley.core :as m]
    [metabase.channel.core :as channel]
    [metabase.channel.params :as channel.params]
    [metabase.channel.shared :as channel.shared]
@@ -49,33 +50,9 @@
    #(filter u/email? %)))
 
 ;; ------------------------------------------------------------------------------------------------;;
-;;                                           Alerts                                                ;;
+;;                                        Render Utils                                             ;;
 ;; ------------------------------------------------------------------------------------------------;;
 
-(defn- find-goal-value
-  "The goal value can come from a progress goal or a graph goal_value depending on it's type"
-  [card]
-  (case (:display card)
-
-    (:area :bar :line)
-    (get-in card [:visualization_settings :graph.goal_value])
-
-    :progress
-    (get-in card [:visualization_settings :progress.goal])
-
-    nil))
-
-(mu/defmethod channel/send! :channel/email
-  [_channel {:keys [subject recipients message-type message recipient-type]} :- EmailMessage]
-  (email/send-message-or-throw! {:subject      subject
-                                 :recipients   recipients
-                                 :message-type message-type
-                                 :message      message
-                                 :bcc?         (if recipient-type
-                                                 (= :bcc recipient-type)
-                                                 (email/bcc-enabled?))}))
-
-;; shared between alert and dash sub
 (defn generate-dashboard-sub-unsubscribe-hash
   "Generates hash to allow for non-users to unsubscribe from pulses/subscriptions."
   [pulse-id email]
@@ -91,9 +68,6 @@
        "?hash=" (generate-dashboard-sub-unsubscribe-hash dashboard-subscription-id non-user-email)
                 "&email=" non-user-email
                 "&pulse-id=" dashboard-subscription-id))
-
-(defn- part-attachments [parts]
-  (filter some? (mapcat email.result-attachment/result-attachment parts)))
 
 (defn- render-part
   [timezone part options]
@@ -128,6 +102,22 @@
    :content-type "image/png"
    :content      url})
 
+(defn- assoc-attachment-booleans [dashboard-subscription results]
+  (for [{{result-card-id :id} :card :as result} results
+        ;; TODO: check if does this match by dashboard_card_id or card_id?
+        :let [noti-dashcard (m/find-first #(= (:card_id %) result-card-id) (:dashboard_subscription_dashcards dashboard-subscription))]]
+    (if result-card-id
+      (update result :card merge (select-keys noti-dashcard [:include_csv :include_xls :format_rows :pivot_results]))
+      result)))
+
+(defn- email-attachment
+  [dashboard-subscription rendered-cards result]
+  (filter some?
+          (concat (map make-message-attachment (apply merge (map :attachments (u/one-or-many rendered-cards))))
+                  (mapcat email.result-attachment/result-attachment (assoc-attachment-booleans
+                                                                     dashboard-subscription
+                                                                     (u/one-or-many result))))))
+
 (defn- icon-bundle
   "Bundle an icon.
 
@@ -138,51 +128,79 @@
     (-> (pulse/make-image-bundle :attachment png-bytes)
         (pulse/image-bundle->attachment))))
 
+;; ------------------------------------------------------------------------------------------------;;
+;;                                           Alerts                                                ;;
+;; ------------------------------------------------------------------------------------------------;;
+
+(defn- find-goal-value
+  "The goal value can come from a progress goal or a graph goal_value depending on it's type"
+  [card]
+  (case (:display card)
+
+    (:area :bar :line)
+    (get-in card [:visualization_settings :graph.goal_value])
+
+    :progress
+    (get-in card [:visualization_settings :progress.goal])
+
+    nil))
+
+(mu/defmethod channel/send! :channel/email
+  [_channel {:keys [subject recipients message-type message recipient-type]} :- EmailMessage]
+  (email/send-message-or-throw! {:subject      subject
+                                 :recipients   recipients
+                                 :message-type message-type
+                                 :message      message
+                                 :bcc?         (if recipient-type
+                                                 (= :bcc recipient-type)
+                                                 (email/bcc-enabled?))}))
+
+(defn- construct-emails
+  [template message-context-fn attachments recipients]
+  (let [{:keys [user-emails
+                non-user-emails]} (recipients->emails recipients)
+        email-to-users            (when (seq user-emails)
+                                    (let [message-ctx (message-context-fn nil)]
+                                      (construct-email
+                                       (channel.params/substitute-params (-> template :details :subject) message-ctx)
+                                       user-emails
+                                       (render-message-body template (message-context-fn nil) attachments))))
+        email-to-nonusers         (for [non-user-email non-user-emails]
+                                    (let [message-ctx (message-context-fn non-user-email)]
+                                      (construct-email
+                                       (channel.params/substitute-params (-> template :details :subject) message-ctx)
+                                       [non-user-email]
+                                       (render-message-body template (message-context-fn non-user-email) attachments))))]
+    (filter some? (conj email-to-nonusers email-to-users))))
+
+
 (mu/defmethod channel/render-notification [:channel/email :notification/alert] :- [:sequential EmailMessage]
   [_channel-type {:keys [payload] :as notification-payload} template recipients]
   (let [{:keys [result
                 alert
-                card]}            payload
-        {:keys [user-emails
-                non-user-emails]} (recipients->emails recipients)
-        timezone                  (channel.shared/defaulted-timezone card)
-        rendered-card             (render-part timezone result {:pulse/include-title? true})
-        goal                      (find-goal-value card)
-        icon-attachment           (apply make-message-attachment (icon-bundle :bell))
-        message-context           (fn [non-user-email]
-                                    (assoc notification-payload
-                                           :computed {:subject         (case (messages/pulse->alert-condition-kwd alert)
-                                                                         :meets (trs "Alert: {0} has reached its goal" (:name card))
-                                                                         :below (trs "Alert: {0} has gone below its goal" (:name card))
-                                                                         :rows  (trs "Alert: {0} has results" (:name card)))
-                                                      :icon_cid        (:content-id icon-attachment)
-                                                      :card_url            (urls/card-url (:id card))
-                                                      :alert_content   (html (:content rendered-card))
-                                                      :alert_schedule  (messages/alert-schedule-text (:schedule alert))
-                                                      :management_text (if (nil? non-user-email)
-                                                                         "Manage your subscriptions"
-                                                                         "Unsubscribe")
-                                                      :alert_condition (get goal (messages/pulse->alert-condition-kwd alert))
-                                                      :management_url  (if (nil? non-user-email)
-                                                                         (urls/notification-management-url)
-                                                                         (unsubscribe-url-for-non-user (:id alert) non-user-email))}))
-        attachments               (concat
-                                   [icon-attachment (apply make-message-attachment (:attachments rendered-card))]
-                                   (part-attachments result))
-        email-to-users            (when (> (count user-emails) 0)
-                                    (let [message-ctx (message-context nil)]
-                                      (def message-ctx message-ctx)
-                                      (construct-email
-                                       (channel.params/substitute-params (-> template :details :subject) message-ctx)
-                                       user-emails
-                                       (render-message-body template (message-context nil) attachments))))
-        email-to-nonusers         (for [non-user-email non-user-emails]
-                                    (let [message-ctx (message-context non-user-email)]
-                                      (construct-email
-                                       (channel.params/substitute-params (-> template :details :subject) message-ctx)
-                                       [non-user-email]
-                                       (render-message-body template (message-context non-user-email) attachments))))]
-    (filter some? (conj email-to-nonusers email-to-users))))
+                card]}     payload
+        timezone           (channel.shared/defaulted-timezone card)
+        rendered-card      (render-part timezone result {:pulse/include-title? true})
+        icon-attachment    (apply make-message-attachment (icon-bundle :bell))
+        attachments        (concat [icon-attachment] (email-attachment nil rendered-card result))
+        message-context-fn (fn [non-user-email]
+                             (assoc notification-payload
+                                    :computed {:subject         (case (messages/pulse->alert-condition-kwd alert)
+                                                                  :meets (trs "Alert: {0} has reached its goal" (:name card))
+                                                                  :below (trs "Alert: {0} has gone below its goal" (:name card))
+                                                                  :rows  (trs "Alert: {0} has results" (:name card)))
+                                               :icon_cid        (:content-id icon-attachment)
+                                               :card_url        (urls/card-url (:id card))
+                                               :alert_content   (html (:content rendered-card))
+                                               :alert_schedule  (messages/alert-schedule-text (:schedule alert))
+                                               :management_text (if (nil? non-user-email)
+                                                                  "Manage your subscriptions"
+                                                                  "Unsubscribe")
+                                               :alert_condition (get (find-goal-value card) (messages/pulse->alert-condition-kwd alert))
+                                               :management_url  (if (nil? non-user-email)
+                                                                  (urls/notification-management-url)
+                                                                  (unsubscribe-url-for-non-user (:id alert) non-user-email))}))]
+    (construct-emails template message-context-fn attachments recipients)))
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                    Dashboard Subscriptions                                      ;;
@@ -230,46 +248,33 @@
         [:tr {} row])])))
 
 (mu/defmethod channel/render-notification [:channel/email :notification/dashboard-subscription] :- [:sequential EmailMessage]
-  [_channel-type {:keys [payload dashboard_subscription] :as notification-payload} template recipients]
-  (let [{:keys [user-emails
-                non-user-emails]}  (recipients->emails recipients)
-        email-subject              (channel.params/substitute-params (-> template :details :subject) notification-payload)
-        {:keys [result
+  [_channel-type {:keys [payload] :as notification-payload} template recipients]
+  (let [{:keys [result
+                dashboard_subscription
                 parameters
-                dashboard]}        payload
-        timezone                   (some->> result (some :card) channel.shared/defaulted-timezone)
-        rendered-cards             (mapv #(render-part timezone % {:pulse/include-title? true}) result)
-        icon-attachment            (apply make-message-attachment (icon-bundle :dashboard))
-        filters                    (when parameters
-                                     (render-filters parameters))
-        attachments               (concat
-                                   [icon-attachment]
-                                   (map #(apply make-message-attachment %) (map :attachments rendered-cards))
-                                   (part-attachments result))
-        message-context            (fn [non-user-email]
-                                     (assoc notification-payload
-                                            :computed {:dashboard_content   (html (vec (cons :div (map :content rendered-cards))))
-                                                       :icon_cid            (:content-id icon-attachment)
-                                                       :dashboard_url       (pulse/dashboard-url (:id dashboard) parameters)
-                                                       :dashboard_has_tabs? (some-> dashboard :tabs seq)
-                                                       :management_text     (if (nil? non-user-email)
-                                                                              "Manage your subscriptions"
-                                                                              "Unsubscribe")
-                                                       :management_url      (if (nil? non-user-email)
-                                                                              (urls/notification-management-url)
-                                                                              (unsubscribe-url-for-non-user (:id dashboard_subscription) non-user-email))
-                                                       :filters            filters}))
-        email-to-users             (when (seq user-emails)
-                                     (construct-email
-                                      email-subject
-                                      user-emails
-                                      (render-message-body template (message-context nil) attachments)))
-        email-to-nonusers          (for [non-user-email non-user-emails]
-                                     (construct-email
-                                      email-subject
-                                      [non-user-email]
-                                      (render-message-body template (message-context non-user-email) attachments)))]
-    (filter some? (conj email-to-nonusers email-to-users))))
+                dashboard]} payload
+        timezone            (some->> result (some :card) channel.shared/defaulted-timezone)
+        rendered-cards      (mapv #(render-part timezone % {:pulse/include-title? true}) result)
+        icon-attachment     (apply make-message-attachment (icon-bundle :dashboard))
+        attachments         (concat
+                             [icon-attachment]
+                             (email-attachment dashboard_subscription rendered-cards result))
+        message-context-fn  (fn [non-user-email]
+                              (-> notification-payload
+                                  (assoc :computed {:dashboard_content   (html (vec (cons :div (map :content rendered-cards))))
+                                                    :icon_cid            (:content-id icon-attachment)
+                                                    :dashboard_url       (pulse/dashboard-url (:id dashboard) parameters)
+                                                    :dashboard_has_tabs? (some-> dashboard :tabs seq)
+                                                    :management_text     (if (nil? non-user-email)
+                                                                           "Manage your subscriptions"
+                                                                           "Unsubscribe")
+                                                    :management_url      (if (nil? non-user-email)
+                                                                           (urls/notification-management-url)
+                                                                           (unsubscribe-url-for-non-user (:id dashboard_subscription) non-user-email))
+                                                    :filters            (when parameters
+                                                                          (render-filters parameters))})
+                                  (m/update-existing-in [:payload :dashboard :description] #(markdown/process-markdown % :html))))]
+    (construct-emails template message-context-fn attachments recipients)))
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                         System Events                                           ;;

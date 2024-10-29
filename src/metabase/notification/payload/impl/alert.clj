@@ -9,16 +9,17 @@
    [toucan2.core :as t2]))
 
 (mu/defmethod notification.payload/payload :notification/alert
-  [{:keys [card_id creator_id alert] :as _notification-info} :- notification.payload/Notification]
-  {:result (notification.execute/execute-card creator_id card_id
-                                              ;; for query_execution's context purposes
-                                              ;; TODO: check whether we can remove this or name it?
-                                              :pulse-id (:id alert))
-   :card  (t2/select-one :model/Card card_id)
-   :style {:color_text_dark   style/color-text-dark
-           :color_text_light  style/color-text-light
-           :color_text_medium style/color-text-medium}
-   :alert alert})
+  [{:keys [creator_id alert] :as _notification-info} :- notification.payload/Notification]
+  (let [card_id (:card_id alert)]
+    {:result (notification.execute/execute-card creator_id card_id
+                                                ;; for query_execution's context purposes
+                                                ;; TODO: check whether we can remove this or name it?
+                                                :pulse-id (:id alert))
+     :card  (t2/select-one :model/Card card_id)
+     :style {:color_text_dark   style/color-text-dark
+             :color_text_light  style/color-text-light
+             :color_text_medium style/color-text-medium}
+     :alert alert}))
 
 (defn- goal-met? [{:keys [alert_above_goal], :as alert} result]
   (let [goal-comparison      (if alert_above_goal >= <)

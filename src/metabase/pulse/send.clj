@@ -66,7 +66,7 @@
     {:channel_type :channel/email
      :details      {:type    :email/mustache-resource
                     :subject "{{payload.dashboard.name}}"
-                    :path    "metabase/email/dashboard_subscription_new"}}
+                    :path    "metabase/email/dashboard_subscription"}}
 
     [:channel/email :notification/alert]
     {:channel_type :channel/email
@@ -85,18 +85,24 @@
 (defn- notification-info
   [pulse dashboard pulse-channel]
   (if (= :pulse (alert-or-pulse pulse))
-    {:payload_type           :notification/dashboard-subscription
+    {:id                     (:id pulse)
+     :payload_type           :notification/dashboard-subscription
      :creator_id             (:creator_id pulse)
-     :dashboard_subscription {:dashboard_id  (:id dashboard)
-                              :parameters    (:parameters pulse)
-                              :skip_if_empty (:skip_if_empty pulse)}
+     :dashboard_subscription {:dashboard_id                     (:id dashboard)
+                              :parameters                       (:parameters pulse)
+                              :skip_if_empty                    (:skip_if_empty pulse)
+                              :dashboard_subscription_dashcards (map
+                                                                 #(merge {:card_id (:id %)}
+                                                                         (select-keys % [:include_xls :include_csv :pivot_results :format_rows]))
+                                                                 (:cards pulse))}
      :handlers               [(get-notification-handler pulse-channel :notification/dashboard-subscription)]}
-    {:payload_type :notification/alert
-     :card_id      (some :id (:cards pulse))
-     :alert        (assoc (select-keys pulse [:id :alert_condition :alert_above_goal])
+    {:id           (:id pulse)
+     :payload_type :notification/alert
+     :creator_id   (:creator_id pulse)
+     :alert        (assoc (select-keys pulse [:id :alert_condition :alert_above_goal :alert_first_only])
+                          :card_id (some :id (:cards pulse))
                           :schedule (select-keys pulse-channel [:schedule_type :schedule_hour :schedule_day :schedule_frame]))
-     :handlers     [(get-notification-handler pulse-channel :notification/alert)]
-     :creator_id   (:creator_id pulse)}))
+     :handlers     [(get-notification-handler pulse-channel :notification/alert)]}))
 
 (defn- send-pulse!*
   [{:keys [channels channel-ids] :as pulse} dashboard]
@@ -132,8 +138,3 @@
                       (merge (when channel-ids {:channel-ids channel-ids})))]
     (when (not (:archived dashboard))
       (send-pulse!* pulse dashboard))))
-
-#_(ngoc/with-tc
-    (mapv send-pulse! (t2/select :model/Pulse 8)))
-
-#_(t2/select-one :model/Pulse :dashboard_id 12 :archived false)

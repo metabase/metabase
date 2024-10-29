@@ -17,17 +17,19 @@
 (defn send-alert-created-by-user!
   "Create a Pulse with `:creator_id` of `user-kw`, and simulate sending it, executing it and returning the results."
   [user-kw card]
-  (t2.with-temp/with-temp [:model/Pulse     pulse {:creator_id (test.users/user->id user-kw)
-                                                   :alert_condition "rows"}
-                           :model/PulseCard _     {:pulse_id (:id pulse), :card_id (u/the-id card)}]
-    (let [pulse-result      (atom nil)
-          orig-execute-card @#'notification.payload.execute/execute-card]
-      (with-redefs [channel/send!                             (constantly :noop)
-                    notification.payload.execute/execute-card (fn [& args]
-                                                                (u/prog1 (apply orig-execute-card args)
-                                                                  (reset! pulse-result <>)))]
-        (pulse.send/send-pulse! pulse)
-        (qp.test-util/rows (:result (first @pulse-result)))))))
+  (notification.tu/with-notification-testing-setup
+    (t2.with-temp/with-temp [:model/Pulse     pulse {:creator_id (test.users/user->id user-kw)
+                                                     :alert_condition "rows"}
+                             :model/PulseChannel _   {:pulse_id (:id pulse), :channel_type :email}
+                             :model/PulseCard _     {:pulse_id (:id pulse), :card_id (u/the-id card)}]
+      (let [pulse-result      (atom nil)
+            orig-execute-card @#'notification.payload.execute/execute-card]
+        (with-redefs [channel/send!                             (constantly :noop)
+                      notification.payload.execute/execute-card (fn [& args]
+                                                                  (u/prog1 (apply orig-execute-card args)
+                                                                    (reset! pulse-result <>)))]
+          (pulse.send/send-pulse! pulse)
+          (qp.test-util/rows (:result @pulse-result)))))))
 
 (def card-name "Test card")
 
