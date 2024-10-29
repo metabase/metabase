@@ -24,6 +24,7 @@ import { NoDatabaseError, SemanticError } from "metabase/components/ErrorPages";
 import { Client } from "@langchain/langgraph-sdk";
 import { Client as ClientSmith } from "langsmith/client";
 import { useSetting } from "metabase/common/hooks";
+import { t } from "ttag";
 
 export const HomeLayout = () => {
   const initialMessage = useSelector(getInitialMessage);
@@ -239,7 +240,7 @@ const langchain_key = "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";
                         <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100%" }}>
                           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "1rem" }}>
                             <p style={{ fontSize: "16px", color: "#76797D", fontWeight: "500", marginBottom: "1rem" }}>
-                              Please Wait while we initialize the chat
+                            {t`Please Wait while we initialize the chat`}
                             </p>
                             <LoadingSpinner />
                           </div>
@@ -268,7 +269,7 @@ const langchain_key = "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";
                           <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100%" }}>
                             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "1rem" }}>
                               <p style={{ fontSize: "16px", color: "#76797D", fontWeight: "500", marginBottom: "1rem" }}>
-                                Please Wait while we initialize the chat
+                              {t`Please Wait while we initialize the chat`}
                               </p>
                               <LoadingSpinner />
                             </div>
@@ -332,7 +333,7 @@ const langchain_key = "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";
                 onClick={handleStartNewChat}
               >
                 <p style={{ fontSize: "14px", color: "#8A64DF", fontWeight: "500" }}>
-                  New Thread
+                {t`New Thread`}
                 </p>
               </button>
             </Flex>

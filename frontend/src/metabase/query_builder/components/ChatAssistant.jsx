@@ -414,7 +414,7 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
         } else {
             tempMessage = {
                 id: Date.now() + Math.random(),
-                text: "Please wait until we generate the response....",
+                text: t`Please wait until we generate the response....`,
                 typeMessage: "data",
                 sender: "server",
                 type: "text",
@@ -518,12 +518,12 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
                             const { table_names } = tool_calls[0].args;
                         } else if (tool_calls[0].name === "CreatePlanOutput") {
                             const { steps } = tool_calls[0].args;
-                            removeExistingMessage("Please wait until we generate the response....");
+                            removeExistingMessage(t`Please wait until we generate the response....`);
                             setMessages(prevMessages => [
                                 ...prevMessages,
                                 {
                                     id: Date.now() + Math.random(),
-                                    text: "Here is a plan on how we want to get insights for your task.",
+                                    text: t`Here is a plan on how we want to get insights for your task.`,
                                     typeMessage: "data",
                                     sender: "server",
                                     showType: "insightProgress",
@@ -538,7 +538,7 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
                             const cardTempMessage = {
                                 id: cardMessageId,
                                 sender: "server",
-                                text: "Generating card...", // Show progress text
+                                text: t`Generating card...`, // Show progress text
                                 isLoading: true,
                                 isTemporary: true,
                             };
@@ -597,7 +597,7 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
                                 const cardTempMessage = {
                                     id: cardMessageId,
                                     sender: "server",
-                                    text: "Generating card...", // Show progress text
+                                    text: t`Generating card...`, // Show progress text
                                     isLoading: true,
                                     isTemporary: true,
                                 };
@@ -625,14 +625,14 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
                             }
 
                             if (python_code && explanation) {
-                                removeExistingMessage("Please wait until we generate the response....")
+                                removeExistingMessage(t`Please wait until we generate the response....`)
                                 setInsightCellCode((prevCode) => [...prevCode, python_code]);
                                 setInsightsText((prevText) => [...prevText, explanation]);
                                 setInsightsCode((prevCode) => [...prevCode, python_code]);
                             }
 
                             if (result && result.outputs && result.outputs.length > 0) {
-                                removeExistingMessage("Please wait until we generate the response....")
+                                removeExistingMessage(t`Please wait until we generate the response....`)
                                 result.outputs.forEach((output) => {
                                     if (output.data && output.data['image/png']) {
                                         const generatedImages = output.data['image/png'];
@@ -673,13 +673,13 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
                 }
 
                 if (event === "error" && data) {
-                    removeExistingMessage("Please wait until we generate the response....")
+                    removeExistingMessage(t`Please wait until we generate the response....`)
                     setMessages((prev) => [
                         ...prev,
                         {
                             id: Date.now() + Math.random(),
                             sender: "server",
-                            text: "There was an error processing your request. Please contact team Omniloy for assistance.",
+                            text: t`There was an error processing your request. Please contact team Omniloy for assistance.`,
                             typeMessage: 'error',
                             isLoading: false,
                             showVisualization: false,
@@ -708,7 +708,7 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
                 {
                     id: Date.now() + Math.random(),
                     sender: "server",
-                    text: "An error occurred while processing your request. Please try again later.",
+                    text: t`An error occurred while processing your request. Please try again later.`,
                     isLoading: false,
                     showVisualization: false
                 },
@@ -758,13 +758,12 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
 
     function showCardGenerationMessage(chunkInterval = 50, tempMessageId) {
         const messages = [
-            "Fetching the data from your database to generate the card...",
-            "Working with your database to gather the necessary information...",
-            "Generating the card with the requested data, please hold on for a moment...",
-            "Querying your database and preparing the card with all relevant insights...",
-            "The data is being processed and your card will be visible shortly..."
+            t`Fetching the data from your database to generate the card...`,
+            t`Working with your database to gather the necessary information...`,
+            t`Generating the card with the requested data, please hold on for a moment...`,
+            t`Querying your database and preparing the card with all relevant insights...`,
+            t`The data is being processed and your card will be visible shortly...`
         ];
-
         const startTime = Date.now();
 
         function chunkString(str, chunkSize) {
@@ -804,13 +803,12 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
     // Updated emulateDataStream to integrate with chat messages
     function emulateDataStream(chunkInterval = 50, tempMessageId) {
         const messages = [
-            "Scanning through your card collection and analyzing relevant tables...",
-            "Identifying patterns in the data and cross-referencing cards with table structures...",
-            "Exploring relationships between request and cards and extracting key metrics from tables...",
-            "Mapping relevant cards and corresponding table columns for comprehensive analysis...",
-            "Evaluating the semantic connections between cards and their associated table data...",
+            t`Scanning through your card collection and analyzing relevant tables...`,
+            t`Identifying patterns in the data and cross-referencing cards with table structures...`,
+            t`Exploring relationships between request and cards and extracting key metrics from tables...`,
+            t`Mapping relevant cards and corresponding table columns for comprehensive analysis...`,
+            t`Evaluating the semantic connections between cards and their associated table data...`
         ];
-
         const startTime = Date.now();
 
         function chunkString(str, chunkSize) {
@@ -870,7 +868,7 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
     }
     const removeLoadingMessage = () => {
         setMessages(prevMessages => prevMessages.filter(
-            message => message.text !== "Please wait until we generate the response...." && message.text !== "Please wait until we generate the visualization for you...."
+            message => message.text !== t`Please wait until we generate the response....` && message.text !== t`Please wait until we generate the visualization for you....`
         ));
     };
 
