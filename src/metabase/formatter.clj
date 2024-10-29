@@ -266,14 +266,13 @@
              (format "%.8f° %s" (Math/abs v) dir)
              v)))))
 
-(defn dictionary-formatter
+(defn- dictionary-formatter
   "Format dictionaries as json.
   The value if a dictionary is Clojure edn on the backend, but displays as JSON in
   When exporting, the map must be encoded as json so that exports match the app's output."
   [value]
-  (if (string? value)
-    value
-    (json/encode value)))
+  (cond-> value
+    (string? value) json/encode))
 
 (mu/defn create-formatter
   "Create a formatter for a column based on its timezone, column metadata, and visualization-settings"
@@ -296,8 +295,7 @@
      (number-formatter col visualization-settings)
 
      (or (isa? (:semantic_type col) :type/SerializedJSON)
-         (isa? (:base_type col) :type/Dictionary)
-         (isa? (:effective_type col) :type/Dictionary))
+         (isa? ((some-fn :effective_type :base_type) col) :type/Dictionary))
      (partial dictionary-formatter)
 
      :else
