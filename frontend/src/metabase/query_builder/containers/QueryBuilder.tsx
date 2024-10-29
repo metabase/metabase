@@ -347,7 +347,7 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
     ) {
       // when the data reference is toggled we need to trigger a rerender after a short delay in order to
       // ensure that some components are updated after the animation completes (e.g. card visualization)
-      timeout.current = setTimeout(forceUpdateDebounced, 300);
+      timeout.current = window.setTimeout(forceUpdateDebounced, 300);
     }
   }, [uiControls, previousUIControls, forceUpdateDebounced]);
 
