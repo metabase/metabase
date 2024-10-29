@@ -17,7 +17,10 @@ import F from "./Field.module.css";
 
 const Field = ({ field, foreignKeys, url, icon, isEditing, formField }) => (
   <div className={cx(S.item, CS.py1, CS.borderTop)}>
-    <div className={S.itemBody} style={{ maxWidth: "100%", borderTop: "none" }}>
+    <div
+      className={cx(S.itemBody, CS.flexColumn)}
+      style={{ maxWidth: "100%", borderTop: "none" }}
+    >
       <div className={F.field} style={{ flexGrow: "1" }}>
         <div className={cx(S.itemTitle, F.fieldName)}>
           {isEditing ? (
@@ -83,7 +86,7 @@ const Field = ({ field, foreignKeys, url, icon, isEditing, formField }) => (
         </div>
         <div className={F.fieldDataType}>{field.base_type}</div>
       </div>
-      <div className={cx(S.itemSubtitle, F.fieldSecondary, { [CS.mt1]: true })}>
+      <div className={cx(S.itemSubtitle, { [CS.mt1]: true })}>
         <div className={F.fieldForeignKey}>
           {isEditing
             ? (isTypeFK(formField.semantic_type.value) ||
@@ -107,7 +110,11 @@ const Field = ({ field, foreignKeys, url, icon, isEditing, formField }) => (
                 </span>
               )}
         </div>
-        <div className={F.fieldOther} />
+        {field.description && (
+          <div className={cx(S.itemSubtitle, CS.mb2, { [CS.mt1]: isEditing })}>
+            {field.description}
+          </div>
+        )}
       </div>
     </div>
   </div>
