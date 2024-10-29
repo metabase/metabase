@@ -30,7 +30,7 @@ export const SharingPaneButton = ({
     withBorder
     data-testid={dataTestId}
     onClick={onClick}
-    h="100%"
+    mih="100%"
     pos="relative"
     w={"22rem"}
   >
