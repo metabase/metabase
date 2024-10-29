@@ -79,6 +79,42 @@
     }
   }
 
+  &[data-variant="inverse"] {
+    /* need to implement variantColorResolver to support other colors */
+    --button-color: var(--mb-color-brand);
+
+    display: flex;
+    justify-content: flex-start;
+    color: var(--mb-color-text-dark);
+    background-color: transparent;
+
+    &:hover {
+      color: var(--mb-color-text-white);
+      background-color: var(--button-color);
+
+      [data-position] {
+        color: var(--mb-color-text-white);
+      }
+    }
+
+    [data-position] {
+      color: var(--button-color);
+    }
+
+    &:disabled,
+    &[data-disabled="true"] {
+      color: var(--mb-color-text-light);
+      border-color: transparent;
+      background-color: transparent;
+
+      &:hover {
+        color: var(--mb-color-text-light);
+        border-color: transparent;
+        background-color: transparent;
+      }
+    }
+  }
+
   &:disabled,
   &:disabled:hover {
     color: var(--mb-color-text-tertiary);
