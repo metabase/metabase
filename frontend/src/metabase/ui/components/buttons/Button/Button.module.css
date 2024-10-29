@@ -82,6 +82,7 @@
   &[data-variant="inverse"] {
     /* need to implement variantColorResolver to support other colors */
     --button-color: var(--mb-color-brand);
+    --button-color-hover: var(--mb-color-brand-light);
 
     display: flex;
     justify-content: flex-start;
@@ -89,11 +90,11 @@
     background-color: transparent;
 
     &:hover {
-      color: var(--mb-color-text-white);
-      background-color: var(--button-color);
+      color: var(--button-color);
+      background-color: var(--button-color-hover);
 
       [data-position] {
-        color: var(--mb-color-text-white);
+        color: var(--button-color);
       }
     }
 
