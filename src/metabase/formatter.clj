@@ -272,7 +272,7 @@
   When exporting, the map must be encoded as json so that exports match the app's output."
   [value]
   (cond-> value
-    (string? value) json/encode))
+    (not (string? value)) json/encode))
 
 (mu/defn create-formatter
   "Create a formatter for a column based on its timezone, column metadata, and visualization-settings"
