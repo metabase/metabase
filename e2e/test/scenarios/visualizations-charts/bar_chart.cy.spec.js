@@ -27,6 +27,22 @@ import {
 
 const { ORDERS, ORDERS_ID, PEOPLE, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
+const breakoutBarChart = {
+  display: "bar",
+  dataset_query: {
+    type: "query",
+    query: {
+      "source-table": ORDERS_ID,
+      aggregation: [["count"]],
+      breakout: [
+        ["field", PEOPLE.SOURCE, { "source-field": ORDERS.USER_ID }],
+        ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
+      ],
+    },
+    database: SAMPLE_DB_ID,
+  },
+};
+
 describe("scenarios > visualizations > bar chart", () => {
   beforeEach(() => {
     restore();
@@ -135,25 +151,7 @@ describe("scenarios > visualizations > bar chart", () => {
 
   describe("with x-axis series", () => {
     beforeEach(() => {
-      visitQuestionAdhoc({
-        display: "bar",
-        dataset_query: {
-          type: "query",
-          query: {
-            "source-table": ORDERS_ID,
-            aggregation: [["count"]],
-            breakout: [
-              ["field", PEOPLE.SOURCE, { "source-field": ORDERS.USER_ID }],
-              [
-                "field",
-                PRODUCTS.CATEGORY,
-                { "source-field": ORDERS.PRODUCT_ID },
-              ],
-            ],
-          },
-          database: SAMPLE_DB_ID,
-        },
-      });
+      visitQuestionAdhoc(breakoutBarChart);
 
       cy.findByTestId("viz-settings-button").click();
       sidebar().findByText("Data").click();
@@ -347,6 +345,31 @@ describe("scenarios > visualizations > bar chart", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Category is Doohickey").should("be.visible");
     });
+  });
+
+  it("supports gray series colors", () => {
+    const grayColor = "#F3F3F4";
+
+    visitQuestionAdhoc({
+      ...breakoutBarChart,
+      visualization_settings: {
+        "graph.dimensions": ["CATEGORY", "SOURCE"],
+        "graph.metrics": ["count"],
+      },
+    });
+
+    // Ensure the gray color did not get assigned to series
+    chartPathWithFillColor(grayColor).should("not.exist");
+
+    cy.findByTestId("viz-settings-button").click();
+
+    // Open color picker for the first series
+    cy.findByLabelText("#88BF4D").click();
+
+    // Assign gray color to the first series
+    cy.findByLabelText(grayColor).click();
+
+    chartPathWithFillColor(grayColor).should("be.visible");
   });
 
   it("supports up to 100 series (metabase#28796)", () => {
