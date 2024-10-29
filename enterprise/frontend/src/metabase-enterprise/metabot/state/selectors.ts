@@ -10,3 +10,8 @@ export const getMetabotVisisble = createSelector(
   getMetabot,
   metabot => metabot.visible,
 );
+
+export const getUserMessages = createSelector(
+  getMetabot,
+  metabot => metabot.userMessages,
+);
