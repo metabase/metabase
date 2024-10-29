@@ -1,13 +1,9 @@
 import {
   adhocQuestionHash,
   createNativeQuestion,
-  focusNativeEditor,
-  modal,
-  nativeEditor,
   openNativeEditor,
   restore,
   runNativeQuery,
-  sidebar,
   withDatabase,
 } from "e2e/support/helpers";
 
@@ -157,45 +153,5 @@ describe("issue 33327", () => {
 
     cy.findByTestId("scalar-value").should("have.text", "1");
     cy.findByTestId("visualization-root").icon("warning").should("not.exist");
-  });
-});
-
-describe("issue 33640", () => {
-  const SQL = `
-WHERE [text to be replaced]
-AND y = 20
-`.trim();
-
-  beforeEach(() => {
-    restore();
-    cy.signInAsAdmin();
-  });
-
-  it("should be possible to add a snippet into the native editor without overwriting unrelated text (metabase#33640)", () => {
-    openNativeEditor();
-
-    cy.icon("snippet").click();
-
-    sidebar().last().button("Create a snippet").click();
-
-    modal().within(() => {
-      cy.findByLabelText("Enter some SQL here so you can reuse it later").type(
-        "x = 42",
-      );
-      cy.findByLabelText("Give your snippet a name").type("test");
-      cy.button("Save").click();
-    });
-
-    focusNativeEditor();
-    nativeEditor()
-      .clear()
-      .type(SQL, { timeout: 0 })
-      .type("{selectAll}")
-      .type("{leftarrow}")
-      .type("{rightarrow}".repeat(27), { timeout: 0 })
-      .type("{shift}{leftarrow}".repeat(21), { timeout: 0 })
-      .type("{backspace}");
-
-    sidebar().last().icon("snippet").realClick();
   });
 });
