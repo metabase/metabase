@@ -1,6 +1,7 @@
-/* eslint-disable react/prop-types */
+import type { Location } from "history";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { connect } from "react-redux";
+import { type ConnectedProps, connect } from "react-redux";
+import type { Route, WithRouterProps } from "react-router";
 import { push } from "react-router-redux";
 import { useMount, usePrevious, useUnmount } from "react-use";
 import { t } from "ttag";
@@ -26,6 +27,13 @@ import {
   getUser,
   getUserIsAdmin,
 } from "metabase/selectors/user";
+import type {
+  BookmarkId,
+  Bookmark as BookmarkType,
+  Card,
+  Timeline,
+} from "metabase-types/api";
+import type { QueryBuilderUIControls, State } from "metabase-types/store";
 
 import * as actions from "../actions";
 import { View } from "../components/view/View";
@@ -94,11 +102,30 @@ const timelineProps = {
   loadingAndErrorWrapper: false,
 };
 
-const mapStateToProps = (state, props) => {
+type BookmarkListLoaderOutput = {
+  bookmarks: BookmarkType[];
+  reloadBookmarks: () => void;
+};
+
+type TimelineListLoaderOutput = {
+  timelines: Timeline[];
+  reloadTimelines: () => void;
+};
+
+type EntityListLoaderMergedProps = {
+  allLoading: boolean;
+  allLoaded: boolean;
+  allFetched: boolean;
+  allError: boolean;
+  reload: () => void;
+} & BookmarkListLoaderOutput &
+  TimelineListLoaderOutput;
+
+const mapStateToProps = (state: State, props: EntityListLoaderMergedProps) => {
   return {
-    user: getUser(state, props),
-    canManageSubscriptions: canManageSubscriptions(state, props),
-    isAdmin: getUserIsAdmin(state, props),
+    user: getUser(state),
+    canManageSubscriptions: canManageSubscriptions(state),
+    isAdmin: getUserIsAdmin(state),
 
     mode: getMode(state),
 
@@ -170,7 +197,7 @@ const mapStateToProps = (state, props) => {
 
     reportTimezone: getSetting(state, "report-timezone-long"),
 
-    getEmbeddedParameterVisibility: slug =>
+    getEmbeddedParameterVisibility: (slug: string) =>
       getEmbeddedParameterVisibility(state, slug),
   };
 };
@@ -179,11 +206,22 @@ const mapDispatchToProps = {
   ...actions,
   closeNavbar,
   onChangeLocation: push,
-  createBookmark: id => Bookmark.actions.create({ id, type: "card" }),
-  deleteBookmark: id => Bookmark.actions.delete({ id, type: "card" }),
+  createBookmark: (id: BookmarkId) =>
+    Bookmark.actions.create({ id, type: "card" }),
+  deleteBookmark: (id: BookmarkId) =>
+    Bookmark.actions.delete({ id, type: "card" }),
 };
 
-function QueryBuilder(props) {
+const connector = connect(mapStateToProps, mapDispatchToProps);
+type ReduxProps = ConnectedProps<typeof connector>;
+
+type QueryBuilderInnerProps = ReduxProps &
+  WithRouterProps &
+  EntityListLoaderMergedProps & {
+    route: Route;
+  };
+
+function QueryBuilderInner(props: QueryBuilderInnerProps) {
   const {
     question,
     originalQuestion,
@@ -213,7 +251,7 @@ function QueryBuilder(props) {
     () => _.debounce(forceUpdate, 400),
     [forceUpdate],
   );
-  const timeout = useRef(null);
+  const timeout = useRef<number>();
 
   const previousUIControls = usePrevious(uiControls);
   const previousLocation = usePrevious(location);
@@ -223,7 +261,10 @@ function QueryBuilder(props) {
   const collectionId = question?.collectionId();
 
   const openModal = useCallback(
-    (modal, modalContext) => setUIControls({ modal, modalContext }),
+    (
+      modal: QueryBuilderUIControls["modal"],
+      modalContext: QueryBuilderUIControls["modalContext"],
+    ) => setUIControls({ modal, modalContext }),
     [setUIControls],
   );
 
@@ -306,7 +347,7 @@ function QueryBuilder(props) {
     ) {
       // when the data reference is toggled we need to trigger a rerender after a short delay in order to
       // ensure that some components are updated after the animation completes (e.g. card visualization)
-      timeout.current = setTimeout(forceUpdateDebounced, 300);
+      timeout.current = window.setTimeout(forceUpdateDebounced, 300);
     }
   }, [uiControls, previousUIControls, forceUpdateDebounced]);
 
@@ -361,7 +402,7 @@ function QueryBuilder(props) {
 
   const isNewQuestion = !originalQuestion;
   const isLocationAllowed = useCallback(
-    location =>
+    (location?: Location) =>
       isNavigationAllowed({
         destination: location,
         question,
@@ -396,14 +437,14 @@ function QueryBuilder(props) {
   );
 }
 
-export default _.compose(
+export const QueryBuilder = _.compose(
   Bookmark.loadList(),
   Timelines.loadList(timelineProps),
-  connect(mapStateToProps, mapDispatchToProps),
-  favicon(({ pageFavicon }) => pageFavicon),
-  title(({ card, documentTitle }) => ({
+  connector,
+  favicon(({ pageFavicon }: { pageFavicon: string }) => pageFavicon),
+  title(({ card, documentTitle }: { card: Card; documentTitle: string }) => ({
     title: documentTitle || card?.name || t`Question`,
     titleIndex: 1,
   })),
   titleWithLoadingTime("queryStartTime"),
-)(QueryBuilder);
+)(QueryBuilderInner);
