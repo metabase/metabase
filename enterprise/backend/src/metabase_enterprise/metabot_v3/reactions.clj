@@ -98,6 +98,16 @@
                                       [:fieldName [:maybe :string]]
                                       [:granularity [:maybe [:enum "day" "week" "month" "year"]]]]]]]])
 
+(defreaction :metabot.reaction/change-table-visualization-settings
+  [:map
+   [:type [:= :metabot.reaction/change-table-visualization-settings]]
+   [:visible-columns [:vector :string]]])
+
+(defreaction :metabot.reaction/change-display-type
+  [:map
+   [:type [:= :metabot.reaction/change-display-type]]
+   [:display-type [:enum "pie" "table" "bar" "line" "row" "area" "scalar"]]])
+
 (defreaction :metabot.reaction/goto-question
   [:map
    [:type [:= :metabot.reaction/goto-question]]

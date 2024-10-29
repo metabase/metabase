@@ -93,3 +93,9 @@
       (fn []
         @metadata))
     tools-metadata*))
+
+(defn applicable-tools
+  "Given a list of tools and the relevant context, return the filtered list of tools that are applicable in this
+  context."
+  [tools context]
+  (filter #(metabot-v3.tools.interface/*tool-applicable?* (:name %) context) tools))
