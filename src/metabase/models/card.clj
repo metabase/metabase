@@ -767,6 +767,108 @@
     :query_type ;; these first three may not even be changeable
     :dataset_query})
 
+;; lbrdnk TODO: extending to expressions later
+;; lbrdnk TODO: wrap in not-empty!
+(defn- field-id-or-name->indexed-breakouts
+  [breakout-clause]
+  (loop [breakouts breakout-clause
+         current-breakout-index 0
+         id->clauses {}]
+    (if (empty? breakouts)
+      id->clauses
+      (recur (rest breakouts)
+             (inc current-breakout-index)
+             (let [current-breakout-element (first breakouts)
+                   current-element-id       (second current-breakout-element)]
+               (update id->clauses current-element-id
+                       (fn [id-clause-s]
+                         (conj (vec id-clause-s) [current-breakout-index current-breakout-element])))))))
+  )
+
+(defn- field-id-or-name->action
+  "Result should be map of having keys of original:field-id-or-name... -> [:action & args]
+
+  where action is :delete, :update, :noop atm"
+  [original:field-id-or-name->indexed new:field-id-or-name->indexed]
+  (reduce-kv
+   (fn [acc field-id-or-name breakout-elements]
+     (cond (and (< 1 (count breakout-elements))
+                (not= breakout-elements (get new:field-id-or-name->indexed field-id-or-name)))
+           (assoc acc field-id-or-name [:delete])
+
+           (and (= 1 (count breakout-elements))
+                (not= breakout-elements (get new:field-id-or-name->indexed field-id-or-name)))
+           (assoc acc field-id-or-name [:update (second (first (get new:field-id-or-name->indexed field-id-or-name)))])
+
+           (= 1 (count breakout-elements))
+           (assoc acc field-id-or-name [:noop])
+
+           :else ; this should never happen. should add logging?
+           (assoc acc field-id-or-name [:noop])))
+   {}
+   original:field-id-or-name->indexed))
+
+;; dirty
+(defn- adjusted-parameter-mappings
+  [id->action parameter-mappings]
+  (vec (keep
+        (fn [mapping]
+          (let [dimension? (= :dimension (get-in mapping [:target 0]))]
+            (if-not dimension?
+              mapping ; noop
+              (let [ref (get-in mapping [:target 1])
+                    id  (second ref)
+                    [action arg] (get id->action id)]
+                (case action
+                  :delete nil
+                  :noop   mapping
+                  :update (assoc-in mapping [:target 1] arg))
+                ))))
+        parameter-mappings)))
+
+;; lbrdnk TODO: extend to expressions? -- nope?
+(defn- adjusted-dashcards
+  [id->action dashcards]
+  ;; maybe update-some?
+  (mapv (fn [dashcard]
+          (update dashcard :parameter_mappings (partial adjusted-parameter-mappings id->action)))
+        dashcards))
+
+(defn- update-associated-parameters!
+  "Update of dependent `:model/DashboardCard`.
+
+  Currently works with dashboard"
+  [card-before card-updates]
+  (def cid (:id card-before))
+  (def cbcb card-before)
+  (def caca card-updates)
+  (def cb-norm (-> card-before :dataset_query mbql.normalize/normalize))
+  (def ca-norm (-> card-updates :dataset_query mbql.normalize/normalize))
+  (def ca-struct (field-id-or-name->indexed-breakouts (get-in ca-norm [:query :breakout])))
+  (def cb-struct (field-id-or-name->indexed-breakouts (get-in cb-norm [:query :breakout])))
+  
+  (def map-to-actions (field-id-or-name->action cb-struct ca-struct))
+  
+  (def dcs (t2/select :model/DashboardCard :card_id cid))
+  
+  (def adj (adjusted-dashcards map-to-actions dcs))
+  
+  (doseq [{:keys [id] :as adjusted-dashcard} adj
+          :let [dashcard-update-only (select-keys adjusted-dashcard [:parameter_mappings])]]
+    (t2/update! :model/DashboardCard :id id dashcard-update-only))
+  
+  (comment
+    (def dcs-test dcs)
+    (def adj-test adj)
+    (def id->action-test map-to-actions)
+    
+    (t2/select :model/DashboardCard {:where [:in :id (map :id adj)]})
+    )
+  
+  
+  ;; go through dcs and generated indices to update
+  nil)
+
 (defn update-card!
   "Update a Card. Metadata is fetched asynchronously. If it is ready before [[metadata-sync-wait-ms]] elapses it will be
   included, otherwise the metadata will be saved to the database asynchronously."
@@ -792,7 +894,8 @@
                                     :present #{:collection_id :collection_position :description :cache_ttl :archived_directly}
                                     :non-nil #{:dataset_query :display :name :visualization_settings :archived
                                                :enable_embedding :type :parameters :parameter_mappings :embedding_params
-                                               :result_metadata :collection_preview :verified-result-metadata?})))
+                                               :result_metadata :collection_preview :verified-result-metadata?}))
+    (update-associated-parameters! card-before-update card-updates))
   ;; Fetch the updated Card from the DB
   (let [card (t2/select-one Card :id (:id card-before-update))]
     (delete-alerts-if-needed! :old-card card-before-update, :new-card card, :actor actor)
