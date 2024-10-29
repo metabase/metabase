@@ -861,7 +861,10 @@
     :enabled   (t2/exists? :model/Table :is_upload true)}
    {:name      :snippet-collections
     :available (premium-features/enable-snippet-collections?)
-    :enabled   (t2/exists? :model/Collection :namespace "snippets")}])
+    :enabled   (t2/exists? :model/Collection :namespace "snippets")}
+   {:name      :metabot-v3
+    :available (premium-features/enable-metabot-v3?)
+    :enabled   (premium-features/enable-metabot-v3?)}])
 
 (defn- snowplow-features
   []
