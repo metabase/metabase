@@ -394,8 +394,10 @@ describe("scenarios > custom column > boolean functions", () => {
         });
       });
 
-      it("should be possible to add a post-aggregation breakout and sorting", () => {
+      it("should be able to add a post-aggregation breakout and sorting", () => {
         createQuestion(questionDetails, { visitQuestion: true });
+
+        cy.log("add a breakout");
         openNotebook();
         getNotebookStep("summarize").button("Summarize").click();
         popover().findByText("Count of rows").click();
@@ -413,6 +415,8 @@ describe("scenarios > custom column > boolean functions", () => {
             ["true", 1],
           ],
         });
+
+        cy.log("add sorting");
         openNotebook();
         getNotebookStep("summarize", { stage: 1 }).button("Sort").click();
         popover().findByText(expressionName).click();
@@ -430,6 +434,7 @@ describe("scenarios > custom column > boolean functions", () => {
 
     describe("source card", () => {
       const questionDetails: StructuredQuestionDetails = {
+        name: "Source",
         query: {
           "source-table": PRODUCTS_ID,
           expressions: {
@@ -446,6 +451,7 @@ describe("scenarios > custom column > boolean functions", () => {
         cardId: number,
       ): StructuredQuestionDetails {
         return {
+          name: "Nested",
           query: {
             "source-table": `card__${cardId}`,
           },
@@ -495,6 +501,58 @@ describe("scenarios > custom column > boolean functions", () => {
           cy.findByText("Add filter").click();
         });
         assertQueryBuilderRowCount(51);
+      });
+
+      it("should be able to add an aggregation for a source boolean column", () => {
+        createQuestion(questionDetails).then(({ body: card }) =>
+          createQuestion(getNestedQuestionDetails(card.id), {
+            visitQuestion: true,
+          }),
+        );
+        openNotebook();
+        getNotebookStep("data").button("Summarize").click();
+        popover().findByText("Minimum of ...").click();
+        popover().findByText(expressionName).click();
+        visualize();
+        cy.wait("@dataset");
+        assertTableData({
+          columns: [`Min of ${expressionName}`],
+          firstRows: [["false"]],
+        });
+      });
+
+      it.skip("should be able to add a breakout and sorting for a source boolean column", () => {
+        createQuestion(questionDetails).then(({ body: card }) =>
+          createQuestion(getNestedQuestionDetails(card.id), {
+            visitQuestion: true,
+          }),
+        );
+
+        cy.log("add a breakout");
+        openNotebook();
+        getNotebookStep("data").button("Summarize").click();
+        getNotebookStep("summarize")
+          .findByTestId("breakout-step")
+          .findByText("Pick a column to group by")
+          .click();
+        popover().findByText(expressionName).click();
+        visualize();
+        cy.wait("@dataset");
+        assertTableData({
+          columns: [expressionName],
+          firstRows: [["false"], ["true"]],
+        });
+
+        cy.log("add sorting");
+        openNotebook();
+        getNotebookStep("summarize").button("Sort").click();
+        popover().findByText(expressionName).click();
+        getNotebookStep("sort").icon("arrow_up").click();
+        visualize();
+        assertTableData({
+          columns: [expressionName],
+          firstRows: [["true"], ["false"]],
+        });
       });
     });
   });
