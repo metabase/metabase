@@ -12,8 +12,6 @@ export const Container = styled.div`
 
 export const FlexTippyPopover = styled(TippyPopover)`
   display: flex;
-  max-height: 80vh;
-  box-sizing: border-box;
 
   &.tippy-box {
     border: none;
