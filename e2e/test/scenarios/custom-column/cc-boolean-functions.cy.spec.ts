@@ -452,7 +452,36 @@ describe("scenarios > custom column > boolean functions", () => {
         };
       }
 
-      it("should be able to add a filter for the source column", () => {
+      it("should be able to add a custom column for a source boolean column", () => {
+        createQuestion(questionDetails).then(({ body: card }) =>
+          createQuestion(getNestedQuestionDetails(card.id), {
+            visitQuestion: true,
+          }),
+        );
+
+        cy.log("add a custom column");
+        openNotebook();
+        getNotebookStep("data").button("Custom column").click();
+        enterCustomColumnDetails({
+          formula: `[${expressionName}] != True`,
+          name: "Simple expression",
+        });
+        popover().button("Done").click();
+        visualize();
+        cy.wait("@dataset");
+        assertQueryBuilderRowCount(200);
+
+        cy.log("use the new custom column in a filter");
+        tableHeaderClick("Simple expression");
+        popover().within(() => {
+          cy.findByText("Filter by this column").click();
+          cy.findByLabelText("True").click();
+          cy.findByText("Add filter").click();
+        });
+        assertQueryBuilderRowCount(149);
+      });
+
+      it("should be able to add a filter for a source boolean column", () => {
         createQuestion(questionDetails).then(({ body: card }) =>
           createQuestion(getNestedQuestionDetails(card.id), {
             visitQuestion: true,
