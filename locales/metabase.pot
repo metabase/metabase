@@ -25359,3 +25359,24 @@ msgstr ""
 
 msgid "Error creating new chat thread:"
 msgstr ""
+
+msgid "Show Text"
+msgstr ""
+
+msgid "Show Code"
+msgstr ""
+
+msgid "Please wait until results are loaded..."
+msgstr ""
+
+msgid "Sorry there was some issue loading the result"
+msgstr ""
+
+msgid "Verify"
+msgstr ""
+
+msgid "Describe the issue..."
+msgstr ""
+
+msgid "Submit Correction"
+msgstr ""
