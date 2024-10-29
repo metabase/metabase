@@ -1118,6 +1118,8 @@ describe("scenarios > dashboard > filters > query stages", () => {
 
         it("2nd stage breakout", () => {
           setup2ndStageBreakoutFilter();
+          apply2ndStageBreakoutFilter();
+          cy.wait(["@dashboardData", "@dashboardData"]);
 
           verifyDashcardRowsCount({
             dashcardIndex: 0,
@@ -1520,6 +1522,8 @@ describe("scenarios > dashboard > filters > query stages", () => {
 
         it("2nd stage breakout", () => {
           setup2ndStageBreakoutFilter();
+          apply2ndStageBreakoutFilter();
+          cy.wait(["@dashboardData", "@dashboardData"]);
 
           verifyDashcardRowsCount({
             dashcardIndex: 0,
@@ -1534,6 +1538,51 @@ describe("scenarios > dashboard > filters > query stages", () => {
             dashboardCount: "Rows 1-1 of 1077",
             queryBuilderCount: "Showing 1,077 rows",
           });
+
+          cy.log("public dashboard");
+          getDashboardId().then(dashboardId =>
+            visitPublicDashboard(dashboardId),
+          );
+          waitForPublicDashboardData();
+          // TODO: https://github.com/metabase/metabase/issues/49282
+          // We should use apply2ndStageBreakoutFilter() instead of the next 4 lines:
+          filterWidget().eq(0).click();
+          popover().within(() => {
+            cy.findByPlaceholderText("Enter some text").type("Gadget");
+            cy.button("Add filter").click();
+          });
+          waitForPublicDashboardData();
+
+          getDashboardCard(0)
+            .findByText("Rows 1-1 of 1077")
+            .should("be.visible");
+          getDashboardCard(1)
+            .findByText("Rows 1-1 of 1077")
+            .should("be.visible");
+
+          cy.log("embedded dashboard");
+          getDashboardId().then(dashboardId => {
+            visitEmbeddedPage({
+              resource: { dashboard: dashboardId },
+              params: {},
+            });
+          });
+          waitForEmbeddedDashboardData();
+          // TODO: https://github.com/metabase/metabase/issues/49282
+          // We should use apply2ndStageBreakoutFilter() instead of the next 4 lines:
+          filterWidget().eq(0).click();
+          popover().within(() => {
+            cy.findByPlaceholderText("Enter some text").type("Gadget");
+            cy.button("Add filter").click();
+          });
+          waitForEmbeddedDashboardData();
+
+          getDashboardCard(0)
+            .findByText("Rows 1-1 of 1077")
+            .should("be.visible");
+          getDashboardCard(1)
+            .findByText("Rows 1-1 of 1077")
+            .should("be.visible");
         });
       });
     });
@@ -2656,13 +2705,14 @@ function setup2ndStageBreakoutFilter() {
 
   cy.button("Save").click();
   cy.wait("@updateDashboard");
+}
 
+function apply2ndStageBreakoutFilter() {
   filterWidget().eq(0).click();
   popover().within(() => {
     cy.findByLabelText("Gadget").click();
     cy.button("Add filter").click();
   });
-  cy.wait(["@dashboardData", "@dashboardData"]);
 }
 
 function getFilter(name: string) {
