@@ -26,17 +26,20 @@ export interface QueryBuilderUIControls {
   isShowingChartTypeSidebar: boolean;
   isShowingChartSettingsSidebar: boolean;
   isShowingQuestionDetailsSidebar: boolean;
+  isShowingQuestionInfoSidebar: boolean;
+  isShowingSnippetSidebar: boolean;
   isShowingTimelineSidebar: boolean;
   isNativeEditorOpen: boolean;
   initialChartSetting: null;
   isShowingRawTable: boolean;
-  queryBuilderMode: QueryBuilderMode;
+  queryBuilderMode: QueryBuilderMode | false;
   previousQueryBuilderMode: boolean;
   snippetCollectionId: number | null;
   datasetEditorTab: DatasetEditorTab;
   isShowingNotebookNativePreview: boolean;
   notebookNativePreviewSidebarWidth: number | null;
   showSidebarTitle: boolean;
+  dataReferenceStack: null;
 }
 
 export interface QueryBuilderLoadingControls {
