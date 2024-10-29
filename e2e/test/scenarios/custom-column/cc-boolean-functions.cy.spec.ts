@@ -458,7 +458,7 @@ describe("scenarios > custom column > boolean functions", () => {
         };
       }
 
-      it("should be able to add a custom column for a source boolean column", () => {
+      it("should be able to add a custom column for a boolean column", () => {
         createQuestion(questionDetails).then(({ body: card }) =>
           createQuestion(getNestedQuestionDetails(card.id), {
             visitQuestion: true,
@@ -487,7 +487,7 @@ describe("scenarios > custom column > boolean functions", () => {
         assertQueryBuilderRowCount(149);
       });
 
-      it("should be able to add a filter for a source boolean column", () => {
+      it("should be able to add a filter for a boolean column", () => {
         createQuestion(questionDetails).then(({ body: card }) =>
           createQuestion(getNestedQuestionDetails(card.id), {
             visitQuestion: true,
@@ -503,7 +503,7 @@ describe("scenarios > custom column > boolean functions", () => {
         assertQueryBuilderRowCount(51);
       });
 
-      it("should be able to add an aggregation for a source boolean column", () => {
+      it("should be able to add an aggregation for a boolean column", () => {
         createQuestion(questionDetails).then(({ body: card }) =>
           createQuestion(getNestedQuestionDetails(card.id), {
             visitQuestion: true,
@@ -521,7 +521,7 @@ describe("scenarios > custom column > boolean functions", () => {
         });
       });
 
-      it.skip("should be able to add a breakout and sorting for a source boolean column (metabase#49305)", () => {
+      it.skip("should be able to add a breakout and sorting for a boolean column (metabase#49305)", () => {
         createQuestion(questionDetails).then(({ body: card }) =>
           createQuestion(getNestedQuestionDetails(card.id), {
             visitQuestion: true,
