@@ -28,6 +28,8 @@ export const createMockQueryBuilderUIControlsState = (
   isShowingNotebookNativePreview: false,
   notebookNativePreviewSidebarWidth: null,
   showSidebarTitle: false,
+  modal: null,
+  modalContext: null,
   ...opts,
 });
 

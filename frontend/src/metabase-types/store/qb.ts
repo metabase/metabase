@@ -1,9 +1,11 @@
+import type { QueryModalType } from "metabase/query_builder/constants";
 import type {
   Card,
   DashboardId,
   Dataset,
   Field,
   ParameterValueOrArray,
+  TimelineEventId,
 } from "metabase-types/api";
 
 export type QueryBuilderMode = "view" | "notebook" | "dataset";
@@ -39,6 +41,8 @@ export interface QueryBuilderUIControls {
   isShowingNotebookNativePreview: boolean;
   notebookNativePreviewSidebarWidth: number | null;
   showSidebarTitle: boolean;
+  modal: QueryModalType | null;
+  modalContext: TimelineEventId | null;
   dataReferenceStack: null;
 }
 
