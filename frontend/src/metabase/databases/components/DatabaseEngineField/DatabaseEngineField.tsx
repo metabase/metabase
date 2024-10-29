@@ -32,7 +32,8 @@ const DatabaseEngineField = ({
         option.value === "bigquery-cloud-sdk" ||
         option.value === "oracle" ||
         option.value === "redshift" || 
-        option.value === "athena",
+        option.value === "athena" ||
+        option.value === "sqlserver",
     );
   }, [engines, engineKey, isAdvanced]);
 
