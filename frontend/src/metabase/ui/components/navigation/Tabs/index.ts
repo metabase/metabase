@@ -5,4 +5,4 @@ export type {
   TabsListProps,
   TabsPanelProps,
 } from "@mantine/core";
-export { tabsOverrides } from "./Tabs.styled";
+export { tabsOverrides } from "./Tabs.config";
