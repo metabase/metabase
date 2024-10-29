@@ -82,5 +82,3 @@
   (println "Starting MetaBot REPL... 🤖")
   (user-repl)
   (System/exit 0))
-
-(user-repl)
