@@ -59,7 +59,7 @@ import {
 } from "metabase-types/api/mocks/presets";
 import type { RequestState, State } from "metabase-types/store";
 
-import QueryBuilder from "./QueryBuilder";
+import { QueryBuilder } from "./QueryBuilder";
 
 export const TEST_DB = createSampleDatabase();
 
