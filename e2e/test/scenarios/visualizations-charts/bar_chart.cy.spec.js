@@ -348,7 +348,7 @@ describe("scenarios > visualizations > bar chart", () => {
   });
 
   it("supports gray series colors", () => {
-    const greyColor = "#D7DCDF";
+    const grayColor = "#F3F3F4";
 
     visitQuestionAdhoc({
       ...breakoutBarChart,
@@ -358,18 +358,18 @@ describe("scenarios > visualizations > bar chart", () => {
       },
     });
 
-    // Ensure the grey color did not get assigned to series
-    chartPathWithFillColor(greyColor).should("not.exist");
+    // Ensure the gray color did not get assigned to series
+    chartPathWithFillColor(grayColor).should("not.exist");
 
     cy.findByTestId("viz-settings-button").click();
 
     // Open color picker for the first series
     cy.findByLabelText("#88BF4D").click();
 
-    // Assign grey color to the first series
-    cy.findByLabelText(greyColor).click();
+    // Assign gray color to the first series
+    cy.findByLabelText(grayColor).click();
 
-    chartPathWithFillColor(greyColor).should("be.visible");
+    chartPathWithFillColor(grayColor).should("be.visible");
   });
 
   it("supports up to 100 series (metabase#28796)", () => {
