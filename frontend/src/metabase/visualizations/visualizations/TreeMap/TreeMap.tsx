@@ -1,10 +1,6 @@
 import { t } from "ttag";
 
 import { getOptionFromColumn } from "metabase/visualizations/lib/settings/utils";
-import {
-  getDefaultDimensions,
-  getDefaultMetrics,
-} from "metabase/visualizations/shared/settings/cartesian-chart";
 import type {
   ComputedVisualizationSettings,
   VisualizationProps,
@@ -15,7 +11,19 @@ import type { RawSeries } from "metabase-types/api";
 import { ChartRenderer } from "./TreeMap.styled";
 
 const __DIMENSIONS = "treemap.dimensions";
-const __MEASURES = "treemap.measures";
+const __MEASURE = "treemap.measure";
+
+function getDefaultDimensions(series: RawSeries) {
+  return series[0].data.cols
+    .filter(isDimension)
+    .map(col => col.name)
+    .slice(0, 1);
+}
+
+function getDefaultMetric(series: RawSeries) {
+  const metrics = series[0].data.cols.filter(isMetric).map(col => col.name);
+  return metrics.length > 0 ? metrics[0] : null;
+}
 
 Object.assign(TreeMap, {
   uiName: t`Treemap`,
@@ -27,8 +35,7 @@ Object.assign(TreeMap, {
       section: t`Columns`,
       title: t`Dimensions`,
       widget: "fields",
-      getDefault: (series, vizSettings) =>
-        getDefaultDimensions(series, vizSettings),
+      getDefault: series => getDefaultDimensions(series),
       getProps: ([{ _card, data }], vizSettings) => {
         const addedDimensions = vizSettings[__DIMENSIONS] || [];
         const options = data.cols.filter(isDimension).map(getOptionFromColumn);
@@ -42,12 +49,11 @@ Object.assign(TreeMap, {
         };
       },
     },
-    [__MEASURES]: {
+    [__MEASURE]: {
       section: t`Columns`,
       title: t`Measures`,
       widget: "field",
-      getDefault: (series, vizSettings) =>
-        getDefaultMetrics(series, vizSettings),
+      getDefault: series => getDefaultMetric(series),
       getProps: ([{ _card, data }], _vizSettings) => {
         const options = data.cols.filter(isMetric).map(getOptionFromColumn);
         return {
@@ -124,7 +130,7 @@ function getTreeMapModel(
   ] = rawSeries;
 
   const dimensions = settings[__DIMENSIONS];
-  const measure = settings[__MEASURES];
+  const measure = settings[__MEASURE];
   const colNames = new Map(cols.map((v, i) => [v.name, i]));
   const dimIndexes = dimensions.map(value => colNames.get(value));
   const measIndex = colNames.get(measure);
