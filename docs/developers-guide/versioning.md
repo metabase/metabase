@@ -58,7 +58,7 @@ The gold release is the first stable release of a new major version of Metabase.
 
 ## Beta releases
 
-We usually publish beta versions to kick the tires on new features before releasing a new stable version (a gold release). To distinguish these beta versions, we append `beta` to the release, like so:
+We usually publish beta versions to kick the tires on new features before releasing a new major version (a gold release). To distinguish these beta versions, we append `beta` to the release, like so:
 
 - `v1.51.0-beta` (EE version)
 - `v0.51.0-beta` (OSS version)
