@@ -30,10 +30,13 @@ export interface SelectProps<Value extends string | null = string>
   onChange?: (newValue: Value) => void;
 }
 
-function _Select<Value extends string | null>(props: SelectProps<Value>) {
+function _Select<Value extends string | null>(
+  props: SelectProps<Value>,
+  ref: Ref<HTMLElement>,
+) {
   return (
     // @ts-expect-error -- our tighter types are better
-    <MantineSelect {...props} />
+    <MantineSelect {...props} ref={ref} />
   );
 }
 

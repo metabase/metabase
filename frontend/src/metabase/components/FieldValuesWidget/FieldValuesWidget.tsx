@@ -624,9 +624,7 @@ export function FieldValuesWidgetInner({
             leftSection={
               prefix && <span data-testid="input-prefix">{prefix}</span>
             }
-            renderOption={option =>
-              CustomItemComponent(option as unknown as SelectItemProps)
-            }
+            renderOption={CustomItemComponent as any}
           />
           </Box>
         ) : (
