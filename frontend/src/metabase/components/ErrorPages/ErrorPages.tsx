@@ -114,7 +114,7 @@ export const SmallGenericError = ({
             }
             color="text-light"
             onClick={openModal}
-            variant="unstyled"
+            variant="subtle"
           />
         )}
       </Tooltip>

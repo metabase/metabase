@@ -11,6 +11,7 @@ const SEARCH_SIDEBAR_WIDTH = "18rem";
 
 export const SearchMain = styled(Flex)`
   width: min(calc(${SEARCH_BODY_WIDTH} + ${SEARCH_SIDEBAR_WIDTH}), 100%);
+  padding: 1.5rem 1rem;
 
   ${breakpointMinSmall} {
     padding: 2rem;
@@ -18,6 +19,8 @@ export const SearchMain = styled(Flex)`
 ` as unknown as typeof Flex;
 
 export const SearchBody = styled(Flex)`
+  flex-direction: column;
+
   ${breakpointMinMedium} {
     flex-direction: row-reverse;
     gap: 2.5rem;

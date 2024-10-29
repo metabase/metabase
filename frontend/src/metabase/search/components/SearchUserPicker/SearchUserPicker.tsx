@@ -104,7 +104,7 @@ export const SearchUserPicker = ({
               );
             })}
             <UserPickerInput
-              variant="unstyled"
+              variant="subtle"
               pl="sm"
               size="md"
               placeholder={t`Search for someone…`}
