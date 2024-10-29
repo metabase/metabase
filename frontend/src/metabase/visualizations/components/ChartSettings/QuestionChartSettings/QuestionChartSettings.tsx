@@ -5,7 +5,8 @@ import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/setting
 import { BaseChartSettings } from "../BaseChartSettings";
 import { ChartSettingsRoot } from "../ChartSettings.styled";
 import { useChartSettingsState } from "../hooks";
-import type { QuestionChartSettingsProps } from "../types";
+
+import type { QuestionChartSettingsProps } from "./types";
 
 export const QuestionChartSettings = ({
   question,

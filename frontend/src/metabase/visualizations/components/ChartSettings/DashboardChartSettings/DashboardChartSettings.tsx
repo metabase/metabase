@@ -10,7 +10,8 @@ import { BaseChartSettings } from "../BaseChartSettings";
 import { ChartSettingsRoot } from "../ChartSettings.styled";
 import { ChartSettingsVisualization } from "../ChartSettingsVisualization";
 import { useChartSettingsState } from "../hooks";
-import type { DashboardChartSettingsProps } from "../types";
+
+import type { DashboardChartSettingsProps } from "./types";
 
 export const DashboardChartSettings = ({
   dashboard,
@@ -19,8 +20,11 @@ export const DashboardChartSettings = ({
   series,
   onClose,
   widgets: propWidgets,
+  settings,
 }: DashboardChartSettingsProps) => {
-  const [tempSettings, setTempSettings] = useState<VisualizationSettings>();
+  const [tempSettings, setTempSettings] = useState<
+    VisualizationSettings | undefined
+  >(settings);
 
   const {
     chartSettings,

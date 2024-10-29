@@ -16,13 +16,14 @@ import type { DatasetColumn } from "metabase-types/api";
 
 import ChartSettingsWidgetList from "../../ChartSettingsWidgetList";
 import ChartSettingsWidgetPopover from "../../ChartSettingsWidgetPopover";
-import type { ChartSettingsProps, Widget } from "../types";
+import type { Widget } from "../types";
 
 import {
   ChartSettingsListContainer,
   ChartSettingsMenu,
   SectionContainer,
 } from "./BaseChartSettings.styled";
+import type { BaseChartSettingsProps } from "./types";
 
 // section names are localized
 const DEFAULT_TAB_PRIORITY = [t`Data`];
@@ -36,7 +37,7 @@ export const BaseChartSettings = ({
   widgets,
   chartSettings,
   transformedSeries,
-}: ChartSettingsProps) => {
+}: BaseChartSettingsProps) => {
   const [currentSection, setCurrentSection] = useState<string | null>(
     initial?.section ?? null,
   );

@@ -6,13 +6,33 @@ import {
   getVisualizationTransformed,
 } from "metabase/visualizations";
 import { updateSettings } from "metabase/visualizations/lib/settings";
+import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type Question from "metabase-lib/v1/Question";
-import type { VisualizationSettings } from "metabase-types/api";
-
 import type {
-  UseChartSettingsStateProps,
-  UseChartSettingsStateReturned,
-} from "./types";
+  RawSeries,
+  Series,
+  TransformedSeries,
+  VisualizationSettings,
+} from "metabase-types/api";
+
+export type UseChartSettingsStateProps = {
+  settings?: VisualizationSettings;
+  series: Series;
+  onChange?: (
+    settings: ComputedVisualizationSettings,
+    question?: Question,
+  ) => void;
+};
+
+export type UseChartSettingsStateReturned = {
+  chartSettings?: VisualizationSettings;
+  handleChangeSettings: (
+    changedSettings: VisualizationSettings,
+    question: Question,
+  ) => void;
+  chartSettingsRawSeries: Series;
+  transformedSeries?: RawSeries | TransformedSeries;
+};
 
 export const useChartSettingsState = ({
   settings,

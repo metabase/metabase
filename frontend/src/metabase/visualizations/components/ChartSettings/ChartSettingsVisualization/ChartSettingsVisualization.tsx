@@ -4,13 +4,13 @@ import CS from "metabase/css/core/index.css";
 import Visualization from "metabase/visualizations/components/Visualization";
 
 import { ChartSettingsFooter } from "../ChartSettingsFooter";
-import type { ChartSettingsVisualizationProps } from "../types";
 
 import {
   ChartSettingsPreview,
   ChartSettingsVisualizationContainer,
   SectionWarnings,
 } from "./ChartSettingsVisualization.styled";
+import type { ChartSettingsVisualizationProps } from "./types";
 
 export const ChartSettingsVisualization = ({
   dashboard,
