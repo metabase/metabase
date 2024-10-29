@@ -771,19 +771,34 @@
 ;; lbrdnk TODO: wrap in not-empty!
 (defn- field-id-or-name->indexed-breakouts
   [breakout-clause]
-  (loop [breakouts breakout-clause
-         current-breakout-index 0
-         id->clauses {}]
-    (if (empty? breakouts)
-      id->clauses
-      (recur (rest breakouts)
-             (inc current-breakout-index)
-             (let [current-breakout-element (first breakouts)
-                   current-element-id       (second current-breakout-element)]
-               (update id->clauses current-element-id
-                       (fn [id-clause-s]
-                         (conj (vec id-clause-s) [current-breakout-index current-breakout-element])))))))
-  )
+  (transduce
+   (fn [rf]
+     (let [index (volatile! 0)]
+       (fn
+         ([] (rf))
+         ([result] (rf result))
+         ([acc breakout]
+          (let [id (second breakout)]
+            (rf acc [id [(vswap! index inc) breakout]]))))))
+   (completing
+    (fn [acc [k v]]
+      (update acc k #(conj (vec %1) v)))
+    not-empty)
+   {}
+   breakout-clause)
+  #_(not-empty
+   (loop [breakouts breakout-clause
+          current-breakout-index 0
+          id->clauses {}]
+     (if (empty? breakouts)
+       id->clauses
+       (recur (rest breakouts)
+              (inc current-breakout-index)
+              (let [current-breakout-element (first breakouts)
+                    current-element-id       (second current-breakout-element)]
+                (update id->clauses current-element-id
+                        (fn [id-clause-s]
+                          (conj (vec id-clause-s) [current-breakout-index current-breakout-element])))))))))
 
 (defn- field-id-or-name->action
   "Result should be map of having keys of original:field-id-or-name... -> [:action & args]
@@ -895,6 +910,7 @@
                                     :non-nil #{:dataset_query :display :name :visualization_settings :archived
                                                :enable_embedding :type :parameters :parameter_mappings :embedding_params
                                                :result_metadata :collection_preview :verified-result-metadata?}))
+    ;; ok, now update dependent parameters
     (update-associated-parameters! card-before-update card-updates))
   ;; Fetch the updated Card from the DB
   (let [card (t2/select-one Card :id (:id card-before-update))]
