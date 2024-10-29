@@ -271,22 +271,12 @@ export const getDataSources = createSelector([getCards], cards =>
   cards.map(card => createDataSource("card", card.id, card.name)),
 );
 
-export const getVisualizerRawSeries = createSelector(
-  [
-    getDatasets,
-    getImportedColumns,
-    getVisualizationType,
-    getSettings,
-    getVisualizationColumns,
-  ],
-  (dataSets, importedColumns, display, settings, cols): RawSeries => {
-    if (!display) {
-      return [];
-    }
-
+const getVisualizerDataset = createSelector(
+  [getDatasets, getImportedColumns, getVisualizationColumns],
+  (datasets, importedColumns, cols): Dataset => {
     const importedColumnValuesMap: Record<string, RowValues> = {};
     importedColumns.forEach(columnImport => {
-      const dataset = dataSets[columnImport.sourceId];
+      const dataset = datasets[columnImport.sourceId];
       if (!dataset) {
         return;
       }
@@ -315,19 +305,28 @@ export const getVisualizerRawSeries = createSelector(
         })
         .flat(),
     );
-    const rows = _.zip(...unzippedRows);
 
+    return {
+      cols,
+      rows: _.zip(...unzippedRows),
+      results_metadata: { columns: cols },
+    };
+  },
+);
+
+export const getVisualizerRawSeries = createSelector(
+  [getVisualizationType, getSettings, getVisualizerDataset],
+  (display, settings, data): RawSeries => {
+    if (!display) {
+      return [];
+    }
     return [
       {
         card: {
           display,
           visualization_settings: settings,
         },
-        data: {
-          cols,
-          rows,
-          results_metadata: { columns: cols },
-        },
+        data,
       },
     ];
   },
