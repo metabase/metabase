@@ -1,16 +1,17 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import { color } from "metabase/lib/colors";
 import {
   getMaxDimensionsSupported,
   getMaxMetricsSupported,
 } from "metabase/visualizations";
-import { ChartSettingMaxCategories } from "metabase/visualizations/components/settings/ChartSettingMaxCategories";
 import { ChartSettingSeriesOrder } from "metabase/visualizations/components/settings/ChartSettingSeriesOrder";
 import { dimensionIsNumeric } from "metabase/visualizations/lib/numeric";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
-import { seriesSetting } from "metabase/visualizations/lib/settings/series";
+import {
+  keyForSingleSeries,
+  seriesSetting,
+} from "metabase/visualizations/lib/settings/series";
 import { getOptionFromColumn } from "metabase/visualizations/lib/settings/utils";
 import { dimensionIsTimeseries } from "metabase/visualizations/lib/timeseries";
 import { MAX_SERIES, columnsAreValid } from "metabase/visualizations/lib/utils";
@@ -38,7 +39,6 @@ import {
   getDefaultYAxisTitle,
   getIsXAxisLabelEnabledDefault,
   getIsYAxisLabelEnabledDefault,
-  getSeriesModelsForSettings,
   getSeriesOrderDimensionSetting,
   getSeriesOrderVisibilitySettings,
   getYAxisAutoRangeDefault,
@@ -65,13 +65,6 @@ function canHaveDataLabels(series, vizSettings) {
   );
   return vizSettings["stackable.stack_type"] !== "normalized" || !areAllAreas;
 }
-
-const areAllBars = (series, settings) =>
-  getSeriesDisplays(series, settings).every(display => display === "bar");
-
-const canHaveMaxCategoriesSetting = (series, settings) => {
-  return Boolean(series && areAllBars(series, settings) && series.length >= 2);
-};
 
 export const GRAPH_DATA_SETTINGS = {
   ...columnSettings({
@@ -103,18 +96,12 @@ export const GRAPH_DATA_SETTINGS = {
     getDefault: (series, vizSettings) =>
       getDefaultDimensions(series, vizSettings),
     persistDefault: true,
-    getProps: ([{ card, data }], vizSettings, _, { transformedSeries }) => {
+    getProps: ([{ card, data }], vizSettings) => {
       const addedDimensions = vizSettings["graph.dimensions"];
       const maxDimensionsSupported = getMaxDimensionsSupported(card.display);
       const options = data.cols
         .filter(getDefaultDimensionFilter(card.display))
         .map(getOptionFromColumn);
-      const fieldSettingWidgets = canHaveMaxCategoriesSetting(
-        transformedSeries,
-        vizSettings,
-      )
-        ? [null, "graph.max_categories"] // We want to show "graph.max_categories" setting for the breakout dimension (2nd)
-        : [];
       return {
         options,
         addAnother:
@@ -127,7 +114,9 @@ export const GRAPH_DATA_SETTINGS = {
             ? t`Add series breakout`
             : null,
         columns: data.cols,
-        fieldSettingWidgets,
+        // When this prop is passed it will only show the
+        // column settings for any index that is included in the array
+        showColumnSettingForIndicies: [0],
       };
     },
     writeDependencies: ["graph.metrics"],
@@ -145,45 +134,18 @@ export const GRAPH_DATA_SETTINGS = {
     section: t`Data`,
     widget: ChartSettingSeriesOrder,
     marginBottom: "1rem",
-    useRawSeries: true,
-    getValue: (rawSeries, settings) => {
-      const seriesModels = getSeriesModelsForSettings(rawSeries, settings);
-      const seriesKeys = seriesModels.map(s => s.vizSettingsKey);
+
+    getValue: (series, settings) => {
+      const seriesKeys = series.map(s => keyForSingleSeries(s));
       return getSeriesOrderVisibilitySettings(settings, seriesKeys);
     },
-    getProps: (rawSeries, settings, _onChange, _extra, onChangeSettings) => {
-      const groupedAfterIndex =
-        settings["graph.max_categories_enabled"] &&
-        settings["graph.max_categories"] !== 0
-          ? settings["graph.max_categories"]
-          : Infinity;
-      const onOtherColorChange = color =>
-        onChangeSettings({ "graph.other_category_color": color });
-      return {
-        rawSeries,
-        settings,
-        groupedAfterIndex,
-        otherColor: settings["graph.other_category_color"],
-        otherSettingWidgetId: "graph.max_categories",
-        onOtherColorChange,
-        truncateAfter: 10,
-      };
-    },
-    getHidden: (series, settings, { transformedSeries }) => {
+    getHidden: (series, settings) => {
       return (
-        settings["graph.dimensions"]?.length < 2 ||
-        transformedSeries.length > MAX_SERIES
+        settings["graph.dimensions"]?.length < 2 || series.length > MAX_SERIES
       );
     },
     dashboard: false,
-    readDependencies: [
-      "series_settings.colors",
-      "series_settings",
-      "graph.metrics",
-      "graph.dimensions",
-      "graph.max_categories",
-      "graph.other_category_color",
-    ],
+    readDependencies: ["series_settings.colors", "series_settings"],
     writeDependencies: ["graph.series_order_dimension"],
   },
   "graph.metrics": {
@@ -458,45 +420,6 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS = {
       ],
     },
     default: getDefaultDataLabelsFormatting(),
-  },
-  "graph.max_categories_enabled": {
-    hidden: true,
-    getDefault: () => false,
-    isValid: (series, settings) => {
-      return canHaveMaxCategoriesSetting(series, settings);
-    },
-    readDependencies: ["series_settings"],
-  },
-  "graph.max_categories": {
-    widget: ChartSettingMaxCategories,
-    hidden: true,
-    default: 8,
-    isValid: (series, settings) => {
-      return canHaveMaxCategoriesSetting(series, settings);
-    },
-    getProps: ([{ card }], settings) => {
-      return {
-        isEnabled: settings["graph.max_categories_enabled"],
-        aggregationFunction: settings["graph.other_category_aggregation_fn"],
-      };
-    },
-    readDependencies: [
-      "graph.max_categories_enabled",
-      "graph.other_category_aggregation_fn",
-      "series_settings",
-    ],
-  },
-  "graph.other_category_color": {
-    default: color("text-light"),
-  },
-  "graph.other_category_aggregation_fn": {
-    hidden: true,
-    getDefault: ([{ data }], settings) => {
-      const [metricName] = settings["graph.metrics"];
-      const metric = data.cols.find(col => col.name === metricName);
-      return metric?.aggregation_type ?? "sum";
-    },
-    readDependencies: ["graph.metrics"],
   },
 };
 

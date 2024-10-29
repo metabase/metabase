@@ -2,7 +2,7 @@ import { formatValue } from "metabase/lib/formatting";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type { RowValue } from "metabase-types/api";
 
-import { cachedFormatter } from "../../cartesian/utils/formatter";
+import { cachedFormatter } from "../../../cartesian/utils/formatter";
 
 import type { SankeyChartColumns, SankeyFormatters } from "./types";
 
@@ -20,14 +20,9 @@ export const getSankeyFormatters = (
         formatValue(value, settings.column?.(columns.value.column) ?? {}),
       );
     }),
-    source: cachedFormatter((value: RowValue) => {
+    node: cachedFormatter((value: RowValue) => {
       return String(
         formatValue(value, settings.column?.(columns.source.column) ?? {}),
-      );
-    }),
-    target: cachedFormatter((value: RowValue) => {
-      return String(
-        formatValue(value, settings.column?.(columns.target.column) ?? {}),
       );
     }),
   };

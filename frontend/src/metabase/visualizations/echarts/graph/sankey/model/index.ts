@@ -5,11 +5,12 @@ import type { RawSeries } from "metabase-types/api";
 
 import { getSankeyChartColumns, getSankeyData } from "./dataset";
 import { getSankeyFormatters } from "./formatters";
+import type { SankeyChartModel } from "./types";
 
 export const getSankeyChartModel = (
   rawSeries: RawSeries,
   settings: ComputedVisualizationSettings,
-) => {
+): SankeyChartModel => {
   const [
     {
       data: { cols },

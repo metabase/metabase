@@ -3,11 +3,9 @@ import { init } from "echarts/core";
 import type { StaticChartProps } from "metabase/static-viz/components/StaticVisualization";
 import { sanitizeSvgForBatik } from "metabase/static-viz/lib/svg";
 import { registerEChartsModules } from "metabase/visualizations/echarts";
-import { getSankeyLayout } from "metabase/visualizations/echarts/graph/layout";
-import { getSankeyChartModel } from "metabase/visualizations/echarts/graph/model";
+import { getSankeyLayout } from "metabase/visualizations/echarts/graph/sankey/layout";
+import { getSankeyChartModel } from "metabase/visualizations/echarts/graph/sankey/model";
 import { getSankeyChartOption } from "metabase/visualizations/echarts/graph/sankey/option";
-
-import { computeSankeyChartSettings } from "./settings";
 
 const WIDTH = 540;
 const HEIGHT = 360;
@@ -16,7 +14,7 @@ registerEChartsModules();
 
 export const SankeyChart = ({
   rawSeries,
-  dashcardSettings,
+  settings,
   renderingContext,
   width = WIDTH,
   height = HEIGHT,
@@ -29,20 +27,14 @@ export const SankeyChart = ({
     height,
   });
 
-  const computedVisualizationSettings = computeSankeyChartSettings(
-    rawSeries,
-    dashcardSettings,
+  const chartModel = getSankeyChartModel(rawSeries, settings);
+  const layout = getSankeyLayout(chartModel, settings, renderingContext);
+  const option = getSankeyChartOption(
+    chartModel,
+    layout,
+    settings,
     renderingContext,
   );
-
-  const chartModel = getSankeyChartModel(
-    rawSeries,
-    computedVisualizationSettings,
-  );
-
-  const layout = getSankeyLayout(chartModel, renderingContext);
-
-  const option = getSankeyChartOption(chartModel, layout, renderingContext);
 
   chart.setOption(option);
 

@@ -7,9 +7,16 @@ export interface SankeyChartColumns {
   value: ColumnDescriptor;
 }
 
-export interface SankeyRawData {
+export interface SankeyNode {
+  value: RowValue;
+  level: number;
+  hasInputs: boolean;
+  hasOutputs: boolean;
+}
+
+export interface SankeyData {
   links: SankeyLink[];
-  levels: RowValue[][];
+  nodes: SankeyNode[];
 }
 
 export interface SankeyLink {
@@ -18,16 +25,19 @@ export interface SankeyLink {
   value: RowValue;
 }
 
+export interface SankeyDataModel {
+  data: SankeyData;
+}
+
 export type Formatter = (value: RowValue) => string;
 
 export interface SankeyFormatters {
-  source: Formatter;
-  target: Formatter;
+  node: Formatter;
   value: Formatter;
 }
 
 export interface SankeyChartModel {
-  data: SankeyRawData;
+  data: SankeyData;
   formatters: SankeyFormatters;
   sankeyColumns: SankeyChartColumns;
 }

@@ -3,9 +3,14 @@ import { getColumnDescriptors } from "metabase/visualizations/lib/graph/columns"
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type { DatasetColumn, RawSeries, RowValue } from "metabase-types/api";
 
-import { NULL_CHAR } from "../../cartesian/constants/dataset";
+import { NULL_CHAR } from "../../../cartesian/constants/dataset";
 
-import type { SankeyChartColumns, SankeyLink } from "./types";
+import type {
+  SankeyChartColumns,
+  SankeyData,
+  SankeyLink,
+  SankeyNode,
+} from "./types";
 
 export const getSankeyChartColumns = <TColumn extends DatasetColumn>(
   columns: TColumn[],
@@ -23,6 +28,10 @@ export const getSankeyChartColumns = <TColumn extends DatasetColumn>(
   const target = getColumnDescriptors([settings["sankey.target"]], columns)[0];
   const value = getColumnDescriptors([settings["sankey.value"]], columns)[0];
 
+  if (!source || !target || !value) {
+    return null;
+  }
+
   return {
     source,
     target,
@@ -33,27 +42,33 @@ export const getSankeyChartColumns = <TColumn extends DatasetColumn>(
 export const getSankeyData = (
   rawSeries: RawSeries,
   sankeyColumns: SankeyChartColumns,
-) => {
+): SankeyData => {
   const [
     {
       data: { rows },
     },
   ] = rawSeries;
 
-  const nodeToLevel = new Map<RowValue, number>();
+  const valueToNodeInfo = new Map<RowValue, SankeyNode>();
 
-  function getOrSetNodeLevel(name: RowValue, level: number): number {
-    const currentLevel = nodeToLevel.get(name);
+  function updateNodeInfo(
+    value: RowValue,
+    level: number,
+    type: "source" | "target",
+  ): SankeyNode {
+    const nodeInfo = valueToNodeInfo.get(value) ?? {
+      value,
+      level,
+      hasInputs: false,
+      hasOutputs: false,
+    };
 
-    if (currentLevel == null) {
-      nodeToLevel.set(name, level);
-      return level;
-    }
+    nodeInfo.level = Math.max(nodeInfo.level, level);
+    nodeInfo.hasInputs = nodeInfo.hasInputs || type === "target";
+    nodeInfo.hasOutputs = nodeInfo.hasOutputs || type === "source";
 
-    const newLevel = Math.max(currentLevel, level);
-    nodeToLevel.set(name, newLevel);
-
-    return newLevel;
+    valueToNodeInfo.set(value, nodeInfo);
+    return nodeInfo;
   }
 
   const linkMap = new Map<string, SankeyLink>();
@@ -63,8 +78,8 @@ export const getSankeyData = (
     const target = row[sankeyColumns.target.index];
     const value = row[sankeyColumns.value.index];
 
-    const sourceLevel = getOrSetNodeLevel(source, 0);
-    getOrSetNodeLevel(target, sourceLevel + 1);
+    const sourceInfo = updateNodeInfo(source, 0, "source");
+    updateNodeInfo(target, sourceInfo.level + 1, "target");
 
     const linkKey = `${NULL_CHAR}${source}->${target}`;
 
@@ -80,17 +95,8 @@ export const getSankeyData = (
     }
   });
 
-  const levels: RowValue[][] = [];
-  for (const [node, level] of nodeToLevel.entries()) {
-    if (!levels[level]) {
-      levels[level] = [];
-    }
-
-    levels[level].push(node);
-  }
-
   return {
-    levels,
+    nodes: Array.from(valueToNodeInfo.values()),
     links: Array.from(linkMap.values()),
   };
 };
