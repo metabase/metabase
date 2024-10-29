@@ -67,13 +67,11 @@ export const StrategyFormLauncher = ({
 
   return (
     <StyledLauncher
-      ref={hoveredRef}
+      ref={hoveredRef as any}
       aria-label={ariaLabel}
       onClick={launchForm}
       forRoot={forRoot}
       inheritsRootStrategy={inheritsRootStrategy}
-      justify="space-between"
-      gap="md"
       data-testid={`strategy-form-launcher${
         shouldDisableTooltip ? "" : "-with-tooltip"
       }`}

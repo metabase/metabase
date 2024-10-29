@@ -15,7 +15,7 @@ import P from "./PerformanceApp.module.css";
 import { StrategyEditorForDatabases } from "./StrategyEditorForDatabases";
 
 const validTabIds = new Set(Object.values(PerformanceTabId).map(String));
-const isValidTabId = (tab: TabsValue): tab is PerformanceTabId =>
+const isValidTabId = (tab: string | null): tab is PerformanceTabId =>
   !!tab && validTabIds.has(tab);
 
 export const PerformanceApp = ({

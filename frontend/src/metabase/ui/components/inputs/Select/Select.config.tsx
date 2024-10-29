@@ -8,6 +8,7 @@ export const selectOverrides = {
       size: "md",
       maxDropdownHeight: 512,
       withScrollArea: false,
+      allowDeselect: false,
       renderOption: item => (
         <SelectItem {...item.option} selected={item.checked} />
       ),

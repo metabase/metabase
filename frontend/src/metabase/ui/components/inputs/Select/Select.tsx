@@ -4,6 +4,7 @@ import type {
   SelectProps as MantineSelectProps,
 } from "@mantine/core";
 import { Select as MantineSelect } from "@mantine/core";
+import { type Ref, forwardRef } from "react";
 export * from "./SelectItem";
 
 import type { IconName } from "../../icons";
@@ -13,7 +14,7 @@ export type SelectOption<Value = string | null> = ComboboxItem & {
   icon?: IconName;
 } & Record<string, any>;
 
-type SelectData<Value extends string | null> =
+export type SelectData<Value extends string | null> =
   | SelectOption<Value>[]
   | ComboboxItemGroup<SelectOption<Value>>[]
   | Value[];
@@ -22,16 +23,22 @@ type SelectData<Value extends string | null> =
  * Mantine v7 loosened up the value types for Select, removing the generics, which sucks
  * This re-introduces the value generics to keep the type safety
  */
-export interface SelectProps<Value extends string | null = string | null>
-  extends Omit<MantineSelectProps, "data" | "onChange" | "value"> {
+export interface SelectProps<Value extends string | null = string>
+  extends Omit<MantineSelectProps, "data" | "onChange" | "value" | "ref"> {
   data: SelectData<Value>;
   value?: Value;
-  onChange: (newValue: Value) => void;
+  onChange?: (newValue: Value) => void;
 }
 
-export function Select<Value extends string | null>(props: SelectProps<Value>) {
+function _Select<Value extends string | null>(props: SelectProps<Value>) {
   return (
-    // @ts-expect-error -- mine is better
+    // @ts-expect-error -- our tighter types are better
     <MantineSelect {...props} />
   );
 }
+
+// forwardRef is hard to type with generics
+// see https://stackoverflow.com/questions/58469229/react-with-typescript-generics-while-using-react-forwardref
+export const Select = forwardRef(_Select) as <Value extends string | null>(
+  props: SelectProps<Value> & { ref?: Ref<HTMLElement> },
+) => React.ReactNode;

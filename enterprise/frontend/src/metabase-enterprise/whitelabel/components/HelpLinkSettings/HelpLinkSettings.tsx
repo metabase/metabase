@@ -32,9 +32,9 @@ export const HelpLinkSettings = ({
 
   const [error, setError] = useState<string | null>(null);
 
-  const handleRadioChange = (value: HelpLinkSetting) => {
-    setHelpLinkSetting(value);
-    onChangeSetting("help-link", value);
+  const handleRadioChange = (value: string) => {
+    setHelpLinkSetting(value as HelpLinkSetting);
+    onChangeSetting("help-link", value as HelpLinkSetting);
   };
   const customUrl = settingValues["help-link-custom-destination"];
 

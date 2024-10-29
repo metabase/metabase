@@ -17,32 +17,32 @@ export const dateFilterOptions = [
   {
     label: c(`Occurs in the phrase 'Not used in over 1 month'`).t`1 month`,
     value: "one-month",
-    duration: [[1, "month"]],
+    duration: [[1, "month"]] as const,
   },
   {
     label: c(`Occurs in the phrase 'Not used in over 2 months'`).t`2 months`,
     value: "two-months",
-    duration: [[2, "month"]],
+    duration: [[2, "month"]] as const,
   },
   {
     label: c(`Occurs in the phrase 'Not used in over 3 months'`).t`3 months`,
     value: "three-months",
-    duration: [[3, "month"]],
+    duration: [[3, "month"]] as const,
   },
   {
     label: c(`Occurs in the phrase 'Not used in over 6 months'`).t`6 months`,
     value: "six-months",
-    duration: [[6, "month"]],
+    duration: [[6, "month"]] as const,
   },
   {
     label: c(`Occurs in the phrase 'Not used in over 9 months'`).t`9 months`,
     value: "nine-months",
-    duration: [[9, "month"]],
+    duration: [[9, "month"]] as const,
   },
   {
     label: c(`Occurs in the phrase 'Not used in over 1 year'`).t`1 year`,
     value: "one-year",
-    duration: [[1, "year"]],
+    duration: [[1, "year"]] as const,
   },
   {
     label: c(`Occurs in the phrase 'Not used in over 1.5 years'`).t`1.5 years`,
@@ -50,14 +50,14 @@ export const dateFilterOptions = [
     duration: [
       [1, "year"],
       [6, "month"],
-    ],
+    ] as const,
   },
   {
     label: c(`Occurs in the phrase 'Not used in over 2 years'`).t`2 years`,
     value: "two-years",
-    duration: [[2, "year"]],
+    duration: [[2, "year"]] as const,
   },
-] as const;
+];
 
 export type DateFilter = (typeof dateFilterOptions)[number]["value"];
 export type DateDurations = (typeof dateFilterOptions)[number]["duration"];

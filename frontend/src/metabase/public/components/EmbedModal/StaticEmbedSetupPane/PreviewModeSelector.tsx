@@ -11,7 +11,7 @@ const ControlOptionItem = ({
   label: string;
   iconName: IconName;
 }) => (
-  <Group noWrap px="sm" spacing="xs">
+  <Group wrap="nowrap" px="sm" gap="xs">
     <Icon name={iconName} />
     <Box>{label}</Box>
   </Group>

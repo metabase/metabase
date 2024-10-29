@@ -41,7 +41,7 @@ const QuestionEditorInner = () => {
     <FlexibleSizeComponent>
       <Tabs
         value={activeTab}
-        onTabChange={setActiveTab}
+        onChange={setActiveTab}
         defaultValue="editor"
         h="100%"
         display="flex"

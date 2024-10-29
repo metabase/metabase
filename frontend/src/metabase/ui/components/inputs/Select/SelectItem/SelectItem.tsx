@@ -11,7 +11,7 @@ export interface SelectItemProps
   extends Omit<HTMLAttributes<HTMLDivElement>, "style">,
     BoxProps {
   value: string;
-  label?: string;
+  label?: string | JSX.Element;
   size?: MantineSize;
   icon?: IconName;
   selected?: boolean;

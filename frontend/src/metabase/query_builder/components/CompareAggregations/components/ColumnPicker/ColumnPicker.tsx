@@ -11,7 +11,7 @@ import S from "./ColumnPicker.module.css";
 interface ItemType {
   example?: string;
   label: string;
-  value: ColumnType;
+  value: string;
 }
 
 interface Props {
@@ -60,8 +60,11 @@ export const ColumnPicker = ({ value, onChange, comparisonType }: Props) => {
 
 const Item = forwardRef<
   HTMLDivElement,
-  ItemType & ComponentPropsWithoutRef<"div"> & { selected: boolean }
->(function Item({ example, label, selected, value, ...props }, ref) {
+  { option: ItemType; checked?: boolean } & ComponentPropsWithoutRef<"div">
+>(function Item(
+  { option: { example, label }, checked: selected, ...props },
+  ref,
+) {
   return (
     <div data-testid="column-picker-item" ref={ref} {...props}>
       <Flex align="center" gap="sm">

@@ -45,3 +45,14 @@
 .ModelPersistenceConfigurationTabBody {
   padding: 1rem 2.5rem;
 }
+
+.FormBox {
+  overflow: auto;
+  flex-grow: 1;
+  padding-bottom: 2.5rem;
+  padding-inline: 2.5rem;
+
+  &.FormBoxSidebar {
+    padding-inline: 1rem;
+  }
+}
