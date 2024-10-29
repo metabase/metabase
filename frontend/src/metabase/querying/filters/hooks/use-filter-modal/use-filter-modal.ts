@@ -13,7 +13,8 @@ export const useFilterModal = (
   onSubmit: (newQuery: Lib.Query) => void,
 ) => {
   const [query, setQuery] = useState(() =>
-    question.isPivoted()
+    // Pivot tables cannot work when there is an extra stage added on top of breakouts and aggregations
+    question.display() === "pivot"
       ? question.query()
       : Lib.ensureFilterStage(question.query()),
   );

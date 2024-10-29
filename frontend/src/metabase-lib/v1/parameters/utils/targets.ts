@@ -162,7 +162,10 @@ export function getParameterColumns(question: Question, parameter?: Parameter) {
     question.type() !== "question"
       ? question.composeQuestionAdhoc().query()
       : question.query();
-  const nextQuery = question.isPivoted() ? query : Lib.ensureFilterStage(query);
+
+  // Pivot tables cannot work when there is an extra stage added on top of breakouts and aggregations
+  const nextQuery =
+    question.display() === "pivot" ? query : Lib.ensureFilterStage(query);
 
   if (parameter && isTemporalUnitParameter(parameter)) {
     const stageIndex = Lib.stageCount(query) - 1;
