@@ -180,14 +180,14 @@ describe("StaticQuestion", () => {
     const abortSpy = jest.spyOn(AbortController.prototype, "abort");
 
     const { unmount } = setup();
-
     await act(async () => unmount());
 
-    expect(abortSpy).toHaveBeenCalled();
-    abortSpy.mockRestore();
-
-    // sanity check that the two requests were made initially
+    // two requests should've been made initially
     expect(fetchMock.calls(`path:/api/card/1`).length).toBe(1);
     expect(fetchMock.calls(`path:/api/card/1/query`).length).toBe(1);
+
+    // consequently, two abort calls should've been made for the two requests
+    expect(abortSpy).toHaveBeenCalledTimes(2);
+    abortSpy.mockRestore();
   });
 });
