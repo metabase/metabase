@@ -41,23 +41,27 @@ Sometimes called a minor release, we issue point releases when we add bug fixes 
 
 Sometimes called a patch release, we issue these hotfix releases to fix security issues in a timely manner, or to undo a horrific regression.
 
-## Other release terms
+## Release channels
 
-### The Gold Release
+Metabase maintains different release channels:
 
-The gold release is the first release of a new major version of Metabase. So for Metabase version 46, the gold releases would be:
+- **Stable**: The recommended version of Metabase to use in production.
+- **Beta**: Use the beta release to try out upstream features in a staging environment prior to a new major release. Beta releases should mostly be stable, but they can have bugs that we'll fix before shipping the gold release, which is the first stable version of a major release.
+- **Nightly**: Contains all the work from the master branch. It's the most up to date, but it's only recommended for experimental usage.
 
-- `v0.46.0` (the OSS version)
-- `v1.46.0` (the EE version)
+## The Gold Release
 
-### Release Candidates
+The gold release is the first stable release of a new major version of Metabase. So for Metabase version 51, the gold releases would be:
 
-We usually publish release candidates to kick the tires on new features before releasing a new major version (a gold release). To distinguish these release candidates, we append an `-RC#` at the end.
+- `v0.51.1` (the OSS version)
+- `v1.51.1` (the EE version)
 
-E.g.,
+## Beta releases
 
-- `v1.46.0-RC1` (the first release candidate for the EE version)
-- `v0.46.0-RC3` (the third release candidate for the OSS version)
+We usually publish beta versions to kick the tires on new features before releasing a new stable version (a gold release). To distinguish these beta versions, we append `beta` to the release, like so:
+
+- `v1.51.0-beta` (EE version)
+- `v0.51.0-beta` (OSS version)
 
 ## Further reading
 
