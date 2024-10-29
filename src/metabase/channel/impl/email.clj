@@ -32,22 +32,15 @@
    [:message                         :any]
    [:recipient-type {:optional true} [:maybe (ms/enum-keywords-and-strings :cc :bcc)]]])
 
-(defn- construct-email
-  ([subject recipients message]
-   (construct-email subject recipients message nil))
-  ([subject recipients message recipient-type]
-   {:subject        subject
-    :recipients     recipients
-    :message-type   :attachments
-    :message        message
-    :recipient-type recipient-type}))
-
-(defn- recipients->emails
-  [recipients]
-  (update-vals
-   {:user-emails     (mapv (comp :email :user) (filter #(= :user (:kind %)) recipients))
-    :non-user-emails (mapv :email (filter #(= :external-email (:kind %)) recipients))}
-   #(filter u/email? %)))
+(mu/defmethod channel/send! :channel/email
+  [_channel {:keys [subject recipients message-type message recipient-type]} :- EmailMessage]
+  (email/send-message-or-throw! {:subject      subject
+                                 :recipients   recipients
+                                 :message-type message-type
+                                 :message      message
+                                 :bcc?         (if recipient-type
+                                                 (= :bcc recipient-type)
+                                                 (email/bcc-enabled?))}))
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                        Render Utils                                             ;;
@@ -102,8 +95,8 @@
    :content-type "image/png"
    :content      url})
 
-(defn- assoc-attachment-booleans [dashboard-subscription execution-datas]
-  (for [{{result-card-id :id} :card :as result} execution-datas
+(defn- assoc-attachment-booleans [dashboard-subscription parts]
+  (for [{{result-card-id :id} :card :as result} parts
         ;; TODO: check if does this match by dashboard_card_id or card_id?
         :let [noti-dashcard (m/find-first #(= (:card_id %) result-card-id) (:dashboard_subscription_dashcards dashboard-subscription))]]
     (if result-card-id
@@ -128,32 +121,22 @@
     (-> (pulse/make-image-bundle :attachment png-bytes)
         (pulse/image-bundle->attachment))))
 
-;; ------------------------------------------------------------------------------------------------;;
-;;                                           Alerts                                                ;;
-;; ------------------------------------------------------------------------------------------------;;
+(defn- construct-email
+  ([subject recipients message]
+   (construct-email subject recipients message nil))
+  ([subject recipients message recipient-type]
+   {:subject        subject
+    :recipients     recipients
+    :message-type   :attachments
+    :message        message
+    :recipient-type recipient-type}))
 
-(defn- find-goal-value
-  "The goal value can come from a progress goal or a graph goal_value depending on it's type"
-  [card]
-  (case (:display card)
-
-    (:area :bar :line)
-    (get-in card [:visualization_settings :graph.goal_value])
-
-    :progress
-    (get-in card [:visualization_settings :progress.goal])
-
-    nil))
-
-(mu/defmethod channel/send! :channel/email
-  [_channel {:keys [subject recipients message-type message recipient-type]} :- EmailMessage]
-  (email/send-message-or-throw! {:subject      subject
-                                 :recipients   recipients
-                                 :message-type message-type
-                                 :message      message
-                                 :bcc?         (if recipient-type
-                                                 (= :bcc recipient-type)
-                                                 (email/bcc-enabled?))}))
+(defn- recipients->emails
+  [recipients]
+  (update-vals
+   {:user-emails     (mapv (comp :email :user) (filter #(= :user (:kind %)) recipients))
+    :non-user-emails (mapv :email (filter #(= :external-email (:kind %)) recipients))}
+   #(filter u/email? %)))
 
 (defn- construct-emails
   [template message-context-fn attachments recipients]
@@ -173,6 +156,22 @@
                                        (render-message-body template (message-context-fn non-user-email) attachments))))]
     (filter some? (conj email-to-nonusers email-to-users))))
 
+;; ------------------------------------------------------------------------------------------------;;
+;;                                           Alerts                                                ;;
+;; ------------------------------------------------------------------------------------------------;;
+
+(defn- find-goal-value
+  "The goal value can come from a progress goal or a graph goal_value depending on it's type"
+  [card]
+  (case (:display card)
+
+    (:area :bar :line)
+    (get-in card [:visualization_settings :graph.goal_value])
+
+    :progress
+    (get-in card [:visualization_settings :progress.goal])
+
+    nil))
 
 (mu/defmethod channel/render-notification [:channel/email :notification/alert] :- [:sequential EmailMessage]
   [_channel-type {:keys [payload] :as notification-payload} template recipients]
@@ -208,33 +207,33 @@
 
 (defn- render-filters
   [parameters]
-  (let [cells   (map
-                 (fn [filter]
-                   [:td {:class "filter-cell"
-                         :style (pulse/style {:width "50%"
-                                              :padding "0px"
-                                              :vertical-align "baseline"})}
-                    [:table {:cellpadding "0"
-                             :cellspacing "0"
-                             :width "100%"
-                             :height "100%"}
-                     [:tr
-                      [:td
-                       {:style (pulse/style {:color pulse/color-text-medium
-                                             :min-width "100px"
-                                             :width "50%"
-                                             :padding "4px 4px 4px 0"
-                                             :vertical-align "baseline"})}
-                       (:name filter)]
-                      [:td
-                       {:style (pulse/style {:color pulse/color-text-dark
-                                             :min-width "100px"
-                                             :width "50%"
-                                             :padding "4px 16px 4px 8px"
-                                             :vertical-align "baseline"})}
-                       (pulse/value-string filter)]]]])
-                 parameters)
-        rows    (partition 2 2 nil cells)]
+  (let [cells (map
+               (fn [filter]
+                 [:td {:class "filter-cell"
+                       :style (pulse/style {:width "50%"
+                                            :padding "0px"
+                                            :vertical-align "baseline"})}
+                  [:table {:cellpadding "0"
+                           :cellspacing "0"
+                           :width "100%"
+                           :height "100%"}
+                   [:tr
+                    [:td
+                     {:style (pulse/style {:color pulse/color-text-medium
+                                           :min-width "100px"
+                                           :width "50%"
+                                           :padding "4px 4px 4px 0"
+                                           :vertical-align "baseline"})}
+                     (:name filter)]
+                    [:td
+                     {:style (pulse/style {:color pulse/color-text-dark
+                                           :min-width "100px"
+                                           :width "50%"
+                                           :padding "4px 16px 4px 8px"
+                                           :vertical-align "baseline"})}
+                     (pulse/value-string filter)]]]])
+               parameters)
+        rows  (partition 2 2 nil cells)]
     (html
      [:table {:style (pulse/style {:table-layout :fixed
                                    :border-collapse :collapse
