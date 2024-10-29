@@ -26,3 +26,9 @@
                               :color_text_medium style/color-text-medium}
      :parameters             parameters
      :dashboard_subscription dashboard_subscription}))
+
+(mu/defmethod notification.payload/should-send-notification? :notification/dashboard-subscription
+  [{:keys [result dashboard_subscription]}]
+  (if (:skip_if_empty dashboard_subscription)
+    (not (every? notification.execute/is-card-empty? result))
+    true))

@@ -5,12 +5,25 @@
    [metabase.models.interface :as mi]
    [metabase.models.params.shared :as shared.params]
    [metabase.models.serialization :as serdes]
+   #_{:clj-kondo/ignore [:metabase/ns-module-checker]}
    [metabase.pulse.parameters :as pulse-params]
+   #_{:clj-kondo/ignore [:metabase/ns-module-checker]}
    [metabase.pulse.util :as pu]
    [metabase.server.middleware.session :as mw.session]
    [metabase.util :as u]
    [metabase.util.urls :as urls]
    [toucan2.core :as t2]))
+
+(defn is-card-empty?
+  "Check if the card is empty"
+  [card]
+  (if-let [result (:result card)]
+    (or (zero? (-> result :row_count))
+        ;; Many aggregations result in [[nil]] if there are no rows to aggregate after filters
+        (= [[nil]]
+           (-> result :data :rows)))
+    ;; Text cards have no result; treat as empty
+    true))
 
 (defn- tab->part
   [{:keys [name]}]
@@ -155,5 +168,6 @@
       (dashcards->part (t2/select :model/DashboardCard :dashboard_id dashboard-id) parameters))))
 
 (defn execute-card
+  "Returns the result for a card."
   [& args]
   (apply pu/execute-card args))

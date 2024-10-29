@@ -50,6 +50,11 @@
    :randomization-factor    0.1
    :max-interval-millis     30000})
 
+(defn- should-retry-sending?
+  [exception channel-type]
+  (not (and (= :channel/slack channel-type)
+            (contains? (:errors (ex-data exception)) :slack-token))))
+
 (defn- channel-send-retrying!
   [handler message]
   (try
@@ -66,11 +71,12 @@
                          (try
                            (channel/send! channel message)
                            (catch Exception e
-                             (vswap! retry-errors conj {:message   (u/strip-error e)
-                                                        :timestamp (t/offset-date-time)})
-                             (log/warnf e "[Notification %d] Failed to send to channel %s , retrying..."
-                                        notification-id (handler->channel-name handler))
-                             (throw e))))
+                             (when (should-retry-sending? e (:type channel))
+                               (vswap! retry-errors conj {:message   (u/strip-error e)
+                                                          :timestamp (t/offset-date-time)})
+                               (log/warnf e "[Notification %d] Failed to send to channel %s , retrying..."
+                                          notification-id (handler->channel-name handler))
+                               (throw e)))))
           retrier     (retry/make retry-config)]
       (log/debugf "[Notification %d] Sending a message to channel %s" notification-id (handler->channel-name handler))
       (task-history/with-task-history {:task            "channel-send"
@@ -99,7 +105,6 @@
     (hydrate-notification-handler
      (t2/select :model/NotificationHandler :notification_id (:id notification-info)))
     ;; pulse-based notifications: dashboard subs, alerts
-    :else
     (or (:handlers notification-info)
         [])))
 
@@ -109,27 +114,30 @@
   (try
     (let [handlers             (noti-handlers notification-info)
           notification-payload (notification.payload/notification-payload notification-info)]
-      (log/debugf "[Notification %d] Found %d handlers" (:id notification-info) (count handlers))
-      (task-history/with-task-history
-        {:task          "notification-send"
-         :task_details {:notification_id       (:id notification-info)
-                        :notification_handlers (map #(select-keys % [:id :channel_type :channel_id :template_id]) handlers)}}
-        (doseq [handler handlers]
-          (let [channel-type (:channel_type handler)
-                messages     (channel/render-notification
-                              channel-type
-                              notification-payload
-                              (:template handler)
-                              (:recipients handler))]
-            (log/debugf "[Notification %d] Got %d messages for channel %s with template %d"
-                        (:id notification-info) (count messages)
-                        (handler->channel-name handler)
-                        (-> handler :template :id))
-            (doseq [message messages]
-              (log/infof "[Notification %d] Sending message to channel %s"
-                         (:id notification-info) (:channel_type handler))
-              (channel-send-retrying! handler message))))
-        (log/infof "[Notification %d] Sent successfully" (:id notification-info))))
+      (if (notification.payload/should-send-notification? notification-payload)
+        (do
+         (log/debugf "[Notification %d] Found %d handlers" (:id notification-info) (count handlers))
+         (task-history/with-task-history
+           {:task          "notification-send"
+            :task_details {:notification_id       (:id notification-info)
+                           :notification_handlers (map #(select-keys % [:id :channel_type :channel_id :template_id]) handlers)}}
+           (doseq [handler handlers]
+             (let [channel-type (:channel_type handler)
+                   messages     (channel/render-notification
+                                 channel-type
+                                 notification-payload
+                                 (:template handler)
+                                 (:recipients handler))]
+               (log/debugf "[Notification %d] Got %d messages for channel %s with template %d"
+                           (:id notification-info) (count messages)
+                           (handler->channel-name handler)
+                           (-> handler :template :id))
+               (doseq [message messages]
+                 (log/infof "[Notification %d] Sending message to channel %s"
+                            (:id notification-info) (:channel_type handler))
+                 (channel-send-retrying! handler message))))
+           (log/infof "[Notification %d] Sent successfully" (:id notification-info))))
+        (log/infof "[Notification %d] Skipping" (:id notification-info))))
     (catch Exception e
       (log/errorf e "[Notification %d] Failed to send" (:id notification-info))
       (throw e)))

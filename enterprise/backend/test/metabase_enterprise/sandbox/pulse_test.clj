@@ -28,7 +28,7 @@
                 (t2.with-temp/with-temp [Card card {:dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
                   ;; `with-gtaps!` binds the current test user; we don't want that falsely affecting results
                   (mt/with-test-user nil
-                    (pulse.test-util/send-pulse-created-by-user! user-kw card)))))]
+                    (pulse.test-util/send-alert-created-by-user! user-kw card)))))]
       (is (= [[100]]
              (send-pulse-created-by-user! :crowberto)))
       (is (= [[10]]

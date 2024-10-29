@@ -731,7 +731,7 @@
                                                                 :limit    1})
                                               :collection_id (:id coll)}]
                 (perms/revoke-collection-permissions! (perms-group/all-users) coll)
-                (pulse.test-util/send-pulse-created-by-user! user-kw card)))]
+                (pulse.test-util/send-alert-created-by-user! user-kw card)))]
       (is (= [[1 "2014-04-07T00:00:00Z" 5 12]]
              (send-pulse-created-by-user!* :crowberto)))
       (testing "If the current user doesn't have permissions to execute the Card for a Pulse, an Exception should be thrown."
@@ -875,12 +875,12 @@
         (testing "channel send task history task details include retry config"
           (with-redefs
            [channel/send! (constantly true)]
-            (send!)
-            (is (= {:task         "channel-send"
-                    :db_id        nil
-                    :status       :success
-                    :task_details default-task-details}
-                   (latest-task-history-entry :channel-send)))))
+           (send!)
+           (is (= {:task         "channel-send"
+                   :db_id        nil
+                   :status       :success
+                   :task_details default-task-details}
+                  (latest-task-history-entry :channel-send)))))
 
         (testing "retry errors are recorded when the task eventually succeeds"
           (with-redefs [channel/send! (tu/works-after 2 (constantly nil))]

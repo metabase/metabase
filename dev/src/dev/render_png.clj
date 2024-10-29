@@ -14,6 +14,7 @@
    [metabase.pulse.render.png :as png]
    [metabase.pulse.render.style :as style]
    [metabase.pulse.send :as pulse]
+   [metabase.notification.payload.execute :as notification.payload.execute]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util.markdown :as markdown]
@@ -72,14 +73,12 @@
   [hiccup]
   (open-html (hiccup/html hiccup)))
 
-(def ^:private execute-dashboard #'pulse/execute-dashboard)
-
 (defn render-dashboard-to-pngs
   "Given a dashboard ID, renders each dashcard, including Markdown, to its own temporary png image, and opens each one."
   [dashboard-id]
   (let [user              (t2/select-one :model/User)
         dashboard         (t2/select-one :model/Dashboard :id dashboard-id)
-        dashboard-results (execute-dashboard {:creator_id (:id user)} dashboard)]
+        dashboard-results (notification.payload.execute/execute-dashboard (:id dashboard) (:id user) nil)]
     (doseq [{:keys [card dashcard result] :as dashboard-result} dashboard-results]
       (let [render    (if card
                         (render/render-pulse-card :inline (pulse/defaulted-timezone card) card dashcard result)
@@ -162,7 +161,7 @@
   [dashboard-id]
   (let [user              (t2/select-one :model/User)
         dashboard         (t2/select-one :model/Dashboard :id dashboard-id)
-        dashboard-results (execute-dashboard {:creator_id (:id user)} dashboard)
+        dashboard-results (notification.payload.execute/execute-dashboard (:id dashboard) (:id user) nil)
         render            (->> (map render-one-dashcard (map #(assoc % :dashboard-id dashboard-id) dashboard-results))
                                (into [[:tr
                                        [:th {:style (style/style table-style-map)} "Card Name"]

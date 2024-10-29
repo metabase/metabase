@@ -137,6 +137,14 @@
          :payload (payload notification)
          :context (default-context)))
 
+(defmulti should-send-notification?
+  "Determine whether a notification should be sent. Default to true."
+  :payload_type)
+
+(defmethod should-send-notification? :default
+  [_notification-payload]
+  true)
+
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                    Load the implementations                                     ;;
 ;; ------------------------------------------------------------------------------------------------;;

@@ -9,6 +9,7 @@
    [hickory.render :as hik.r]
    [hickory.zip :as hik.z]
    [metabase.email.result-attachment :as email.result-attachment]
+   [metabase.notification.payload.execute :as notification.payload.execute]
    [metabase.pulse.render :as render]
    [metabase.pulse.render.image-bundle :as img]
    [metabase.pulse.render.png :as png]
@@ -76,14 +77,12 @@
          (markdown/process-markdown (:text dashboard-result) :html)])
        (cellfn nil)])))
 
-(def ^:private execute-dashboard #'pulse.send/execute-dashboard)
-
 (defn render-dashboard-to-hiccup
   "Given a dashboard ID, renders all of the dashcards to hiccup datastructure."
   [dashboard-id]
   (let [user              (t2/select-one :model/User)
         dashboard         (t2/select-one :model/Dashboard :id dashboard-id)
-        dashboard-results (execute-dashboard {:creator_id (:id user)} dashboard)
+        dashboard-results (notification.payload.execute/execute-dashboard (:id dashboard) (:id user) nil)
         render            (->> (map render-one-dashcard (map #(assoc % :dashboard-id dashboard-id) dashboard-results))
                                (into [[:tr
                                        [:th {:style (style/style table-style-map)} "Card Name"]
