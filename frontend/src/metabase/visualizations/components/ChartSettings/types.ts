@@ -1,4 +1,4 @@
-import type { ChartSettingsFooterProps } from "metabase/visualizations/components/ChartSettings/ChartSettingsFooter";
+import type { ChartSettingsFooterProps } from "metabase/visualizations/components/ChartSettings/ChartSettingsFooter/ChartSettingsFooter";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type Question from "metabase-lib/v1/Question";
 import type {

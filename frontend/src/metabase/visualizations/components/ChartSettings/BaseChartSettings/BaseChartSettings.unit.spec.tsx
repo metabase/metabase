@@ -2,8 +2,9 @@ import { fireEvent, renderWithProviders, screen } from "__support__/ui";
 import registerVisualizations from "metabase/visualizations/register";
 import { createMockCard, createMockDataset } from "metabase-types/api/mocks";
 
-import { ChartSettings } from "./ChartSettings";
-import type { ChartSettingsProps, Widget } from "./types";
+import type { ChartSettingsProps, Widget } from "../types";
+
+import { BaseChartSettings } from "./BaseChartSettings";
 
 registerVisualizations();
 
@@ -32,7 +33,9 @@ function widget(widget: Partial<Widget> = {}): Widget {
 type SetupOpts = Partial<ChartSettingsProps>;
 
 const setup = (props: SetupOpts) => {
-  return renderWithProviders(<ChartSettings {...DEFAULT_PROPS} {...props} />);
+  return renderWithProviders(
+    <BaseChartSettings {...DEFAULT_PROPS} {...props} />,
+  );
 };
 
 describe("ChartSettings", () => {
