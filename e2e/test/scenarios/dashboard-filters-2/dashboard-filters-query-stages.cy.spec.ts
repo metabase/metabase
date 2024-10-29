@@ -18,6 +18,7 @@ import {
   sidebar,
   startNewQuestion,
   visitDashboard,
+  visitEmbeddedPage,
   visitPublicDashboard,
   visualize,
 } from "e2e/support/helpers";
@@ -135,6 +136,9 @@ describe("scenarios > dashboard > filters > query stages", () => {
     );
     cy.intercept("GET", "/api/public/dashboard/*/dashcard/*/card/*").as(
       "publicDashboardData",
+    );
+    cy.intercept("GET", "/api/embed/dashboard/*/dashcard/*/card/*").as(
+      "embeddedDashboardData",
     );
   });
 
@@ -1276,20 +1280,38 @@ describe("scenarios > dashboard > filters > query stages", () => {
             queryBuilderCount: "Showing 953 rows",
           });
 
-          cy.then(function () {
-            visitPublicDashboard(this.dashboardId);
+          cy.log("public dashboard");
+          getDashboardId().then(dashboardId =>
+            visitPublicDashboard(dashboardId),
+          );
+          waitForPublicDashboardData();
+          apply1stStageExplicitJoinFilter();
+          waitForPublicDashboardData();
 
-            apply1stStageExplicitJoinFilter();
-            waitForPublicDashboardData();
+          getDashboardCard(0)
+            .findByText("Rows 1-1 of 953")
+            .should("be.visible");
+          getDashboardCard(1)
+            .findByText("Rows 1-1 of 953")
+            .should("be.visible");
 
-            getDashboardCard(0)
-              .findByText("Rows 1-1 of 953")
-              .should("be.visible");
-
-            getDashboardCard(1)
-              .findByText("Rows 1-1 of 953")
-              .should("be.visible");
+          cy.log("embedded dashboard");
+          getDashboardId().then(dashboardId => {
+            visitEmbeddedPage({
+              resource: { dashboard: dashboardId },
+              params: {},
+            });
           });
+          waitForEmbeddedDashboardData();
+          apply1stStageExplicitJoinFilter();
+          waitForEmbeddedDashboardData();
+
+          getDashboardCard(0)
+            .findByText("Rows 1-1 of 953")
+            .should("be.visible");
+          getDashboardCard(1)
+            .findByText("Rows 1-1 of 953")
+            .should("be.visible");
         });
 
         it("1st stage implicit join (data source)", () => {
@@ -2242,6 +2264,12 @@ function createAndVisitDashboard(cards: Card[]) {
   const getNextId = () => --id;
 
   createDashboardWithTabs({
+    enable_embedding: true,
+    embedding_params: {
+      [DATE_PARAMETER.slug]: "enabled",
+      [TEXT_PARAMETER.slug]: "enabled",
+      [NUMBER_PARAMETER.slug]: "enabled",
+    },
     parameters: [DATE_PARAMETER, TEXT_PARAMETER, NUMBER_PARAMETER],
     dashcards: [
       ...cards.map((card, index) => ({
@@ -2611,12 +2639,27 @@ function goBackToDashboard() {
   cy.wait("@getDashboard");
 }
 
+function getDashboardId(): Cypress.Chainable<number> {
+  return cy
+    .get("@dashboardId")
+    .then(dashboardId => dashboardId as unknown as number);
+}
+
 function waitForPublicDashboardData() {
   cy.wait([
     "@publicDashboardData",
     "@publicDashboardData",
     "@publicDashboardData",
     "@publicDashboardData",
+  ]);
+}
+
+function waitForEmbeddedDashboardData() {
+  cy.wait([
+    "@embeddedDashboardData",
+    "@embeddedDashboardData",
+    "@embeddedDashboardData",
+    "@embeddedDashboardData",
   ]);
 }
 
