@@ -24,6 +24,11 @@ export const DEFAULT_UI_CONTROLS: QueryBuilderUIControls = {
   previousQueryBuilderMode: false,
   snippetCollectionId: null,
   datasetEditorTab: "query", // "query" / "metadata"
+  isShowingQuestionDetailsSidebar: false,
+  isShowingSnippetSidebar: false,
+  isShowingNotebookNativePreview: false,
+  notebookNativePreviewSidebarWidth: null,
+  showSidebarTitle: false,
 };
 
 export const DEFAULT_LOADING_CONTROLS: QueryBuilderLoadingControls = {
