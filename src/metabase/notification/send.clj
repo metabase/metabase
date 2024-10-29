@@ -108,6 +108,12 @@
     (or (:handlers notification-info)
         [])))
 
+(defn- do-after-notification-sent
+  [notification-info]
+  (when (and (= :notification/alert (:payload_type notification-info))
+             (-> notification-info :alert :alert_first_only))
+    (t2/delete! :model/Pulse (-> notification-info :alert :id))))
+
 (mu/defn send-notification-sync!
   "Send the notification to all handlers synchronously. Do not use this directly, use *send-notification!* instead."
   [notification-info :- notification.payload/Notification]
@@ -136,6 +142,7 @@
                  (log/infof "[Notification %d] Sending message to channel %s"
                             (:id notification-info) (:channel_type handler))
                  (channel-send-retrying! handler message))))
+           (do-after-notification-sent notification-info)
            (log/infof "[Notification %d] Sent successfully" (:id notification-info))))
         (log/infof "[Notification %d] Skipping" (:id notification-info))))
     (catch Exception e

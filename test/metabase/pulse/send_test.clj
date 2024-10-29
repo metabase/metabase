@@ -13,6 +13,7 @@
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.pulse :as models.pulse]
+   [metabase.notification.test-util :as notification.tu]
    [metabase.public-settings :as public-settings]
    [metabase.pulse.core :as pulse]
    [metabase.pulse.render :as render]
@@ -115,28 +116,29 @@
           :when        f]
     (assert (fn? f))
     (testing (format "sent to %s channel" channel-type)
-      (mt/with-temp [Card          {card-id :id} (merge {:name    pulse.test-util/card-name
-                                                         :display (or display :line)}
-                                                        card)]
-        (with-pulse-for-card [{pulse-id :id}
-                              {:card          card-id
-                               :pulse         pulse
-                               :channel       channel
-                               :pulse-card    pulse-card
-                               :pulse-channel channel-type}]
-          (letfn [(thunk* []
-                    (f {:card-id card-id, :pulse-id pulse-id}
-                       ((keyword "channel" (name channel-type))
-                        (pulse.test-util/with-captured-channel-send-messages!
-                          (mt/with-temporary-setting-values [site-url "https://metabase.com/testmb"]
-                            (pulse/send-pulse! (t2/select-one :model/Pulse pulse-id)))))))
-                  (thunk []
-                    (if fixture
-                      (fixture {:card-id card-id, :pulse-id pulse-id} thunk*)
-                      (thunk*)))]
-            (case channel-type
-              (:http :email) (thunk)
-              :slack (pulse.test-util/slack-test-setup! (thunk)))))))))
+      (notification.tu/with-notification-testing-setup
+        (mt/with-temp [Card          {card-id :id} (merge {:name    pulse.test-util/card-name
+                                                           :display (or display :line)}
+                                                          card)]
+          (with-pulse-for-card [{pulse-id :id}
+                                {:card          card-id
+                                 :pulse         pulse
+                                 :channel       channel
+                                 :pulse-card    pulse-card
+                                 :pulse-channel channel-type}]
+            (letfn [(thunk* []
+                      (f {:card-id card-id, :pulse-id pulse-id}
+                         ((keyword "channel" (name channel-type))
+                          (pulse.test-util/with-captured-channel-send-messages!
+                            (mt/with-temporary-setting-values [site-url "https://metabase.com/testmb"]
+                              (pulse/send-pulse! (t2/select-one :model/Pulse pulse-id)))))))
+                    (thunk []
+                      (if fixture
+                        (fixture {:card-id card-id, :pulse-id pulse-id} thunk*)
+                        (thunk*)))]
+              (case channel-type
+                (:http :email) (thunk)
+                :slack (pulse.test-util/slack-test-setup! (thunk))))))))))
 
 (defn- tests!
   "Convenience for writing multiple tests using `do-test`. `common` is a map of shared properties as passed to `do-test`
@@ -279,6 +281,7 @@
                       test-card-regex
                       #"More results have been included" #"ID</th>"))))}}))
 
+;; TODO we really expect alert to include csv???
 (deftest csv-test
   (tests! {:pulse {}
            :card  (merge
@@ -325,22 +328,22 @@
 
 ;; Not really sure how this is significantly different from `xls-test`
 (deftest xls-test-2
-  (testing "Basic test, 1 card, 1 recipient, with XLS attachment"
-    (do-test!
-     {:card
-      (merge
-       (pulse.test-util/checkins-query-card {:breakout [!day.date]})
-       {:visualization_settings {:graph.dimensions ["DATE"]
-                                 :graph.metrics    ["count"]}})
-      :pulse-card {:include_xls true}
-      :assert
-      {:email
-       (fn [_ [email]]
-         (is (= (rasta-alert-message {:message [{pulse.test-util/card-name true}
-                                                pulse.test-util/png-attachment
-                                                pulse.test-util/png-attachment
-                                                pulse.test-util/xls-attachment]})
-                (mt/summarize-multipart-single-email email test-card-regex))))}})))
+ (testing "Basic test, 1 card, 1 recipient, with XLS attachment"
+   (do-test!
+    {:card
+     (merge
+      (pulse.test-util/checkins-query-card {:breakout [!day.date]})
+      {:visualization_settings {:graph.dimensions ["DATE"]
+                                :graph.metrics    ["count"]}})
+     :pulse-card {:include_xls true}
+     :assert
+     {:email
+      (fn [_ [email]]
+        (is (= (rasta-alert-message {:message [{pulse.test-util/card-name true}
+                                               pulse.test-util/png-attachment
+                                               pulse.test-util/png-attachment
+                                               pulse.test-util/xls-attachment]})
+               (mt/summarize-multipart-single-email email test-card-regex))))}})))
 
 (deftest ensure-constraints-test
   (testing "Validate pulse queries are limited by `default-query-constraints`"
@@ -394,22 +397,22 @@
                 (mt/summarize-multipart-single-email email test-card-regex))))}})))
 
 ;; this should be in dashboard subscriptions
-#_(deftest empty-results-test
-    (testing "Pulse where the card has no results"
-      (tests! {:card (assoc (pulse.test-util/checkins-query-card {:filter   [:> $date "2017-10-24"]
-                                                                  :breakout [!day.date]})
-                            :visualization_settings {:graph.dimensions ["DATE"]
-                                                     :graph.metrics    ["count"]})}
-              "skip if empty = false"
-              {:pulse    {:skip_if_empty false}
-               :assert {:email (fn [_ [email]]
-                                 (is (= (rasta-alert-email-2)
-                                        (mt/summarize-multipart-single-email email test-card-regex))))}}
+(deftest empty-results-test
+  (testing "Pulse where the card has no results"
+    (tests! {:card (assoc (pulse.test-util/checkins-query-card {:filter   [:> $date "2017-10-24"]
+                                                                :breakout [!day.date]})
+                          :visualization_settings {:graph.dimensions ["DATE"]
+                                                   :graph.metrics    ["count"]})}
+            "skip if empty = false"
+            {:pulse    {:skip_if_empty false}
+             :assert {:email (fn [_ [email]]
+                               (is (= (rasta-alert-email-2)
+                                      (mt/summarize-multipart-single-email email test-card-regex))))}}
 
-              "skip if empty = true"
-              {:pulse    {:skip_if_empty true}
-               :assert {:email (fn [_ emails]
-                                 (is (empty? emails)))}})))
+            "skip if empty = true"
+            {:pulse    {:skip_if_empty true}
+             :assert {:email (fn [_ emails]
+                               (is (empty? emails)))}})))
 
 (deftest rows-alert-test
   (testing "Rows alert"
@@ -677,30 +680,30 @@
                  (mt/summarize-multipart-single-email (-> channel-messsages :channel/email first) test-card-regex))))))))
 
 ;; TODO should be in dashboard subscription test
-#_(deftest dashboard-description-markdown-test
-    (testing "Dashboard description renders markdown"
-      (mt/with-temp [Card                  {card-id :id} {:name          "Test card"
-                                                          :dataset_query {:database (mt/id)
-                                                                          :type     :native
-                                                                          :native   {:query "select * from checkins"}}
-                                                          :display       :table}
-                     Dashboard             {dashboard-id :id} {:description "# dashboard description"}
-                     DashboardCard         {dashboard-card-id :id} {:dashboard_id dashboard-id
-                                                                    :card_id      card-id}
-                     Pulse                 {pulse-id :id} {:name         "Pulse Name"
-                                                           :dashboard_id dashboard-id}
-                     PulseCard             _ {:pulse_id          pulse-id
-                                              :card_id           card-id
-                                              :dashboard_card_id dashboard-card-id}
-                     PulseChannel          {pc-id :id} {:pulse_id pulse-id}
-                     PulseChannelRecipient _ {:user_id          (pulse.test-util/rasta-id)
-                                              :pulse_channel_id pc-id}]
-        (pulse.test-util/email-test-setup
-         (pulse.send/send-pulse! (models.pulse/retrieve-notification pulse-id))
-         (is (= (mt/email-to :rasta {:subject "Pulse Name"
-                                     :body    {"<h1>dashboard description</h1>" true}
-                                     :bcc?    true})
-                (mt/regex-email-bodies #"<h1>dashboard description</h1>")))))))
+(deftest dashboard-description-markdown-test
+  (testing "Dashboard description renders markdown"
+    (mt/with-temp [Card                  {card-id :id} {:name          "Test card"
+                                                        :dataset_query {:database (mt/id)
+                                                                        :type     :native
+                                                                        :native   {:query "select * from checkins"}}
+                                                        :display       :table}
+                   Dashboard             {dashboard-id :id} {:description "# dashboard description"}
+                   DashboardCard         {dashboard-card-id :id} {:dashboard_id dashboard-id
+                                                                  :card_id      card-id}
+                   Pulse                 {pulse-id :id} {:name         "Pulse Name"
+                                                         :dashboard_id dashboard-id}
+                   PulseCard             _ {:pulse_id          pulse-id
+                                            :card_id           card-id
+                                            :dashboard_card_id dashboard-card-id}
+                   PulseChannel          {pc-id :id} {:pulse_id pulse-id}
+                   PulseChannelRecipient _ {:user_id          (pulse.test-util/rasta-id)
+                                            :pulse_channel_id pc-id}]
+      (pulse.test-util/email-test-setup
+       (pulse.send/send-pulse! (models.pulse/retrieve-notification pulse-id))
+       (is (= (mt/email-to :rasta {:subject "Pulse Name"
+                                   :body    {"<h1>dashboard description</h1>" true}
+                                   :bcc?    true})
+              (mt/regex-email-bodies #"<h1>dashboard description</h1>")))))))
 
 (deftest nonuser-email-test
   (testing "Both users and Nonusers get an email, with unsubscribe text for nonusers"
@@ -983,31 +986,32 @@
                     :post "/test"
                     (fn [req]
                       (swap! requests conj req)))]
-      (channel.http-test/with-server [url [endpoint]]
-        (mt/with-temp
-          [:model/Card         card           {:dataset_query (mt/mbql-query orders {:aggregation [[:count]]})}
-           :model/Channel      channel        {:type    :channel/http
-                                               :details {:url         (str url "/test")
-                                                         :auth-method :none}}
-           :model/Pulse        {pulse-id :id} {:name "Test Pulse"
-                                               :alert_condition "rows"}
-           :model/PulseCard    _              {:pulse_id pulse-id
-                                               :card_id  (:id card)}
-           :model/PulseChannel _              {:pulse_id pulse-id
-                                               :channel_type "http"
-                                               :channel_id   (:id channel)}]
-          (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id))
-          (is (=? {:body {:alert_creator_id   (mt/user->id :rasta)
-                          :alert_creator_name "Rasta Toucan"
-                          :alert_id           pulse-id
-                          :data               {:question_id   (:id card)
-                                               :question_name (mt/malli=? string?)
-                                               :question_url  (mt/malli=? string?)
-                                               :raw_data      {:cols ["count"], :rows [[18760]]},
-                                               :type          "question"
-                                               :visualization (mt/malli=? [:fn #(str/starts-with? % "data:image/png;base64,")])}
-                          :type               "alert"}}
-                  (first @requests))))))))
+      (notification.tu/with-notification-testing-setup
+        (channel.http-test/with-server [url [endpoint]]
+          (mt/with-temp
+            [:model/Card         card           {:dataset_query (mt/mbql-query orders {:aggregation [[:count]]})}
+             :model/Channel      channel        {:type    :channel/http
+                                                 :details {:url         (str url "/test")
+                                                           :auth-method :none}}
+             :model/Pulse        {pulse-id :id} {:name "Test Pulse"
+                                                 :alert_condition "rows"}
+             :model/PulseCard    _              {:pulse_id pulse-id
+                                                 :card_id  (:id card)}
+             :model/PulseChannel _              {:pulse_id pulse-id
+                                                 :channel_type "http"
+                                                 :channel_id   (:id channel)}]
+            (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id))
+            (is (=? {:body {:alert_creator_id   (mt/user->id :rasta)
+                            :alert_creator_name "Rasta Toucan"
+                            :alert_id           pulse-id
+                            :data               {:question_id   (:id card)
+                                                 :question_name (mt/malli=? string?)
+                                                 :question_url  (mt/malli=? string?)
+                                                 :raw_data      {:cols ["count"], :rows [[18760]]},
+                                                 :type          "question"
+                                                 :visualization (mt/malli=? [:fn #(str/starts-with? % "data:image/png;base64,")])}
+                            :type               "alert"}}
+                    (first @requests)))))))))
 
 (deftest do-not-send-alert-with-archived-card-test
   (mt/with-temp

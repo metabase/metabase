@@ -138,7 +138,7 @@
   "Realize notification-info with :context and :payload."
   [notification :- Notification]
   (assoc (select-keys notification [:payload_type])
-         :creator (t2/select-one [:model/User :first_name :last_name :email] (:creator_id notification))
+         :creator (t2/select-one [:model/User :id :first_name :last_name :email] (:creator_id notification))
          :payload (payload notification)
          :context (default-context)))
 

@@ -77,8 +77,10 @@
 
 (defn- get-notification-handler
   [pulse-channel payload-type]
-  (let [channel-type (-> pulse-channel pc->channel :type)]
+  (let [channel      (pc->channel pulse-channel)
+        channel-type (:type channel)]
     {:channel_type channel-type
+     :channel      channel
      :template     (get-template channel-type payload-type)
      :recipients   (channel-recipients pulse-channel)}))
 

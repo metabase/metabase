@@ -76,18 +76,19 @@
      :rows (:rows data)}))
 
 (mu/defmethod channel/render-notification [:channel/http :notification/alert]
-  [_channel-type {:keys [card pulse payload]} _template _recipients]
-  (let [request-body      {:type               "alert"
-                           :alert_id           (:id pulse)
-                           :alert_creator_id   (get-in pulse [:creator :id])
-                           :alert_creator_name (get-in pulse [:creator :common_name])
-                           :data               {:type          "question"
-                                                :question_id   (:id card)
-                                                :question_name (:name card)
-                                                :question_url  (urls/card-url (:id card))
-                                                :visualization (let [{:keys [card dashcard result]} payload]
-                                                                 (pulse/render-pulse-card-to-base64
-                                                                  (channel.shared/defaulted-timezone card) card dashcard result image-width))
-                                                :raw_data      (qp-result->raw-data (:result payload))}
-                           :sent_at            (t/offset-date-time)}]
+  [_channel-type {:keys [payload creator]} _template _recipients]
+  (let [{:keys [card alert result]} payload
+        request-body         {:type               "alert"
+                              :alert_id           (:id alert)
+                              :alert_creator_id   (:id creator)
+                              :alert_creator_name (:common_name creator)
+                              :data               {:type          "question"
+                                                   :question_id   (:id card)
+                                                   :question_name (:name card)
+                                                   :question_url  (urls/card-url (:id card))
+                                                   :visualization (let [{:keys [card dashcard result]} result]
+                                                                    (pulse/render-pulse-card-to-base64
+                                                                     (channel.shared/defaulted-timezone card) card dashcard result image-width))
+                                                   :raw_data      (qp-result->raw-data (:result result))}
+                              :sent_at            (t/offset-date-time)}]
     [{:body request-body}]))
