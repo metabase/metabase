@@ -365,12 +365,7 @@
 ;; `metabase.server.middleware`.
 (defmethod set-cell! Object
   [^Cell cell value _styles _typed-styles]
-  ;; stick the object in a JSON map and encode it, which will force conversion to a string. Then unparse that JSON and
-  ;; use the resulting value as the cell's new String value.  There might be some more efficient way of doing this but
-  ;; I'm not sure what it is.
-  (.setCellValue cell (str (-> (json/generate-string {:v value})
-                               (json/parse-string keyword)
-                               :v))))
+  (.setCellValue cell (json/generate-string value)))
 
 (defmethod set-cell! nil [^Cell cell _value _styles _typed-styles]
   (.setBlank cell))

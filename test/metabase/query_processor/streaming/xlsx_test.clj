@@ -643,7 +643,7 @@
 (deftest encode-strange-classes-test
   (testing (str "Make sure that we're piggybacking off of the JSON encoding logic when encoding strange values in "
                 "XLSX (#5145, #5220, #5459)")
-    (is (= ["Hello XLSX World!" "{:v \"No Encoder\"}"]
+    (is (= ["\"Hello XLSX World!\"" "{\"v\":\"No Encoder\"}"]
            (second (xlsx-export [{:name "val1"} {:name "val2"}]
                                 {}
                                 [[(SampleNastyClass. "Hello XLSX World!") (AnotherNastyClass. "No Encoder")]]))))))
