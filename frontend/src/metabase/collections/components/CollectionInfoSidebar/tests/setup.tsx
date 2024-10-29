@@ -29,7 +29,6 @@ export const setup = ({
       }),
     }),
   });
-
   if (enableEnterprisePlugins) {
     setupEnterprisePlugins();
   }
