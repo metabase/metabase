@@ -25275,7 +25275,6 @@ msgstr ""
 msgid "Ask a question or make a request to get started"
 msgstr ""
 
-
 msgid "Fetching the data from your database to generate the card..."
 msgstr ""
 
@@ -25379,4 +25378,16 @@ msgid "Describe the issue..."
 msgstr ""
 
 msgid "Submit Correction"
+msgstr ""
+
+msgid "Expected Insight"
+msgstr ""
+
+msgid "Python Operations"
+msgstr ""
+
+msgid "Transformations"
+msgstr ""
+
+msgid "Visualizations"
 msgstr ""
