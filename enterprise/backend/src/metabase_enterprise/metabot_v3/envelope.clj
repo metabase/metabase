@@ -8,7 +8,7 @@
 (def ^:constant max-round-trips
   "The maximum number of times we'll make a request to the LLM before responding to the user. Currently we'll just throw
   an exception if this limit is exceeded."
-  10)
+  6)
 
 (defn create
   "Create a fresh envelope from a context and history. This envelope should be used for the lifetime of the request."
