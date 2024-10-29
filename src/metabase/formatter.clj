@@ -294,7 +294,7 @@
           (or (isa? (:effective_type col) :type/Number)
               (isa? (:base_type col) :type/Number)))
      (number-formatter col visualization-settings)
-     #_#_
+
      (or (isa? (:semantic_type col) :type/SerializedJSON)
          (isa? (:base_type col) :type/Dictionary)
          (isa? (:effective_type col) :type/Dictionary))
