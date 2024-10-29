@@ -12,7 +12,7 @@ import type {
 import type { SdkUsageProblem } from "embedding-sdk/types/usage-problem";
 import { createAsyncThunk } from "metabase/lib/redux";
 
-import { refreshTokenAsync } from "./refresh-token";
+import { refreshTokenAsync } from "./auth";
 import { getSessionTokenState } from "./selectors";
 
 const SET_LOGIN_STATUS = "sdk/SET_LOGIN_STATUS";
