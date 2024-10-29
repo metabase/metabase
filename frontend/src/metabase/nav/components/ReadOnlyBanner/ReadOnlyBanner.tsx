@@ -1,11 +1,12 @@
 import { t } from "ttag";
 
-import { Flex, Icon, Text, useMantineTheme } from "metabase/ui";
+import { Banner } from "metabase/components/Banner";
+import { Icon, Text, useMantineTheme } from "metabase/ui";
 
 export const ReadOnlyBanner = () => {
   const theme = useMantineTheme();
   return (
-    <Flex
+    <Banner
       py="0.75rem"
       px="1rem"
       bg={theme.fn.themeColor("accent4")}
@@ -17,6 +18,6 @@ export const ReadOnlyBanner = () => {
         {/* eslint-disable-next-line no-literal-metabase-strings -- correct usage */}
         {t`Metabase is under maintenance and is operating in read-only mode. It should only take up to 30 minutes.`}
       </Text>
-    </Flex>
+    </Banner>
   );
 };
