@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import type { Location } from "history";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { type ConnectedProps, connect } from "react-redux";
