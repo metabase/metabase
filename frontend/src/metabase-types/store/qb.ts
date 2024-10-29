@@ -1,3 +1,4 @@
+import type { QueryModalType } from "metabase/query_builder/constants";
 import type { Widget } from "metabase/visualizations/components/ChartSettings/types";
 import type {
   Card,
@@ -5,6 +6,7 @@ import type {
   Dataset,
   Field,
   ParameterValueOrArray,
+  TimelineEventId,
 } from "metabase-types/api";
 
 export type QueryBuilderMode = "view" | "notebook" | "dataset";
@@ -31,17 +33,22 @@ export interface QueryBuilderUIControls {
   isShowingChartTypeSidebar: boolean;
   isShowingChartSettingsSidebar: boolean;
   isShowingQuestionDetailsSidebar: boolean;
+  isShowingQuestionInfoSidebar: boolean;
+  isShowingSnippetSidebar: boolean;
   isShowingTimelineSidebar: boolean;
   isNativeEditorOpen: boolean;
   initialChartSetting: InitialChartSettingState;
   isShowingRawTable: boolean;
-  queryBuilderMode: QueryBuilderMode;
+  queryBuilderMode: QueryBuilderMode | false;
   previousQueryBuilderMode: boolean;
   snippetCollectionId: number | null;
   datasetEditorTab: DatasetEditorTab;
   isShowingNotebookNativePreview: boolean;
   notebookNativePreviewSidebarWidth: number | null;
   showSidebarTitle: boolean;
+  modal: QueryModalType | null;
+  modalContext: TimelineEventId | null;
+  dataReferenceStack: null;
 }
 
 export interface QueryBuilderLoadingControls {
