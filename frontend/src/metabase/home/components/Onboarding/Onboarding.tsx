@@ -10,6 +10,7 @@ import {
 import { jt, t } from "ttag";
 
 import { useSetting, useTempStorage } from "metabase/common/hooks";
+import { getPlan } from "metabase/common/utils/plan";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import Link from "metabase/core/components/Link";
 import { getIsXrayEnabled } from "metabase/home/selectors";
@@ -141,47 +142,56 @@ export const Onboarding = () => {
     setItemValue(newValue);
   };
 
+  const plan = useSelector(state =>
+    getPlan(getSetting(state, "token-features")),
+  );
+
   const utmTags = {
     utm_source: "product",
     utm_medium: "docs",
     utm_campaign: "help",
     utm_content: "getting-started",
+    source_plan: plan,
   };
 
   const sqlParamsDocsLink = useSelector(state =>
     getDocsUrl(state, {
       page: "questions/native-editor/sql-parameters",
-      utm: utmTags,
     }),
   );
   const dashboardTabsDocsLink = useSelector(state =>
     getDocsUrl(state, {
       page: "dashboards/introduction",
       anchor: "dashboard-tabs",
-      utm: utmTags,
     }),
   );
   const goalLineAlertDocsLink = useSelector(state =>
     getDocsUrl(state, {
       page: "questions/sharing/alerts",
       anchor: "goal-line-alerts",
-      utm: utmTags,
     }),
   );
   const progressBarAlertDocsLink = useSelector(state =>
     getDocsUrl(state, {
       page: "questions/sharing/alerts",
       anchor: "progress-bar-alerts",
-      utm: utmTags,
     }),
   );
   const resultAlertDocsLink = useSelector(state =>
     getDocsUrl(state, {
       page: "questions/sharing/alerts",
       anchor: "results-alerts",
-      utm: utmTags,
     }),
   );
+
+  const getUTMLink = (url: string) => {
+    const a = new URL(url);
+    Object.entries(utmTags).forEach(([key, value]) => {
+      a.searchParams.set(key, value);
+    });
+
+    return a.toString();
+  };
 
   return (
     <Box
@@ -373,7 +383,7 @@ export const Onboarding = () => {
                     )} to query data with SQL or the query language native to your database. You can insert variables in your code to create ${
                       showMetabaseLinks ? (
                         <ExternalLink
-                          href={sqlParamsDocsLink}
+                          href={getUTMLink(sqlParamsDocsLink)}
                           key="sql-templates"
                         >
                           {t`SQL templates`}
@@ -411,7 +421,10 @@ export const Onboarding = () => {
                     <ul className={S.list}>
                       <li>{jt`organize questions into a ${
                         showMetabaseLinks ? (
-                          <ExternalLink href={dashboardTabsDocsLink} key="tabs">
+                          <ExternalLink
+                            href={getUTMLink(dashboardTabsDocsLink)}
+                            key="tabs"
+                          >
                             {t`dashboard with tabs`}
                           </ExternalLink>
                         ) : (
@@ -553,7 +566,7 @@ export const Onboarding = () => {
                       <li>{jt`${
                         showMetabaseLinks ? (
                           <ExternalLink
-                            href={goalLineAlertDocsLink}
+                            href={getUTMLink(goalLineAlertDocsLink)}
                             key="goal"
                           >{t`Goal line alerts`}</ExternalLink>
                         ) : (
@@ -563,7 +576,7 @@ export const Onboarding = () => {
                       <li>{jt`${
                         showMetabaseLinks ? (
                           <ExternalLink
-                            href={progressBarAlertDocsLink}
+                            href={getUTMLink(progressBarAlertDocsLink)}
                             key="progress"
                           >
                             {t`Progress bar alerts`}
@@ -575,7 +588,7 @@ export const Onboarding = () => {
                       <li>{jt`${
                         showMetabaseLinks ? (
                           <ExternalLink
-                            href={resultAlertDocsLink}
+                            href={getUTMLink(resultAlertDocsLink)}
                             key="results"
                           >{t`Results alerts`}</ExternalLink>
                         ) : (
