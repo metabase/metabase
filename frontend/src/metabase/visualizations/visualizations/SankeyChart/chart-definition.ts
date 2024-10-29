@@ -1,5 +1,7 @@
 import { t } from "ttag";
 
+import { getSankeyChartColumns } from "metabase/visualizations/echarts/graph/sankey/model/dataset";
+import { ChartSettingsError } from "metabase/visualizations/lib/errors";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import {
   dimensionSetting,
@@ -9,7 +11,11 @@ import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
-import type { VisualizationSettingsDefinitions } from "metabase/visualizations/types";
+import type {
+  ComputedVisualizationSettings,
+  VisualizationSettingsDefinitions,
+} from "metabase/visualizations/types";
+import type { RawSeries } from "metabase-types/api";
 
 export const SETTINGS_DEFINITIONS = {
   ...columnSettings({ hidden: true }),
@@ -57,8 +63,22 @@ export const SANKEY_CHART_DEFINITION = {
   identifier: "sankey",
   iconName: "link",
   noun: t`sankey chart`,
-  minSize: getMinSize("combo"),
-  defaultSize: getDefaultSize("combo"),
+  minSize: getMinSize("sankey"),
+  defaultSize: getDefaultSize("sankey"),
+  checkRenderable: (
+    rawSeries: RawSeries,
+    settings: ComputedVisualizationSettings,
+  ) => {
+    const sankeyColumns = getSankeyChartColumns(
+      rawSeries[0].data.cols,
+      settings,
+    );
+    if (!sankeyColumns) {
+      throw new ChartSettingsError(t`Which columns do you want to use?`, {
+        section: `Data`,
+      });
+    }
+  },
   settings: {
     ...SETTINGS_DEFINITIONS,
   } as any as VisualizationSettingsDefinitions,
