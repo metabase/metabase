@@ -35246,3 +35246,87 @@ msgstr "Realiza una pregunta o haz una petición para empezar"
 
 msgid "Loading suggestions"
 msgstr "Cargando sugerencias"
+
+msgid "Fetching the data from your database to generate the card..."
+msgstr "Obteniendo los datos de tu base de datos para generar la tarjeta..."
+
+msgid "Working with your database to gather the necessary information..."
+msgstr "Trabajando con tu base de datos para recopilar la información necesaria..."
+
+msgid "Generating the card with the requested data, please hold on for a moment..."
+msgstr "Generando la tarjeta con los datos solicitados, por favor espera un momento..."
+
+msgid "Querying your database and preparing the card with all relevant insights..."
+msgstr "Consultando tu base de datos y preparando la tarjeta con todos los insights relevantes..."
+
+msgid "The data is being processed and your card will be visible shortly..."
+msgstr "Los datos están siendo procesados y tu tarjeta estará visible en breve..."
+
+msgid "Scanning through your card collection and analyzing relevant tables..."
+msgstr "Escaneando tu colección de tarjetas y analizando las tablas relevantes..."
+
+msgid "Identifying patterns in the data and cross-referencing cards with table structures..."
+msgstr "Identificando patrones en los datos y cruzando referencias de tarjetas con estructuras de tablas..."
+
+msgid "Exploring relationships between request and cards and extracting key metrics from tables..."
+msgstr "Explorando relaciones entre la solicitud y las tarjetas, y extrayendo métricas clave de las tablas..."
+
+msgid "Mapping relevant cards and corresponding table columns for comprehensive analysis..."
+msgstr "Mapeando tarjetas relevantes y columnas correspondientes de las tablas para un análisis integral..."
+
+msgid "Evaluating the semantic connections between cards and their associated table data..."
+msgstr "Evaluando las conexiones semánticas entre las tarjetas y los datos de las tablas asociadas..."
+
+msgid "Here is a plan on how we want to get insights for your task."
+msgstr "Aquí tienes un plan de cómo queremos obtener insights para tu tarea."
+
+msgid "Generating card..."
+msgstr "Generando tarjeta..."
+
+msgid "Please wait until we generate the response...."
+msgstr "Por favor espera hasta que generemos la respuesta...."
+
+msgid "Please wait until we generate the visualization for you...."
+msgstr "Por favor espera hasta que generemos la visualización para ti...."
+
+msgid "There was an error processing your request. Please contact team Omniloy for assistance."
+msgstr "Hubo un error al procesar tu solicitud. Por favor contacta al equipo de Omniloy para asistencia."
+
+msgid "An error occurred while processing your request. Please try again later."
+msgstr "Ocurrió un error al procesar tu solicitud. Por favor intenta nuevamente más tarde."
+
+msgid "Chat history"
+msgstr "Historial de chat"
+
+msgid "No chat history available"
+msgstr "No hay historial de chat disponible"
+
+msgid "Today"
+msgstr "Hoy"
+
+msgid "Last 7 Days"
+msgstr "Últimos 7 días"
+
+msgid "Last 30 Days"
+msgstr "Últimos 30 días"
+
+msgid "Error initializing Client or fetching threads:"
+msgstr "Error al inicializar el cliente o al obtener hilos:"
+
+msgid "Error parsing message content:"
+msgstr "Error al analizar el contenido del mensaje:"
+
+msgid "No messages found in the selected thread."
+msgstr "No se encontraron mensajes en el hilo seleccionado."
+
+msgid "Error fetching thread history:"
+msgstr "Error al obtener el historial del hilo."
+
+msgid "Please Wait while we initialize the chat"
+msgstr "Por favor espera mientras inicializamos el chat"
+
+msgid "New Thread"
+msgstr "Nuevo Hilo"
+
+msgid "Error creating new chat thread:"
+msgstr "Error al crear un nuevo hilo de chat:"

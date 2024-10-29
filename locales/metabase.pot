@@ -25274,3 +25274,88 @@ msgstr ""
 
 msgid "Ask a question or make a request to get started"
 msgstr ""
+
+
+msgid "Fetching the data from your database to generate the card..."
+msgstr ""
+
+msgid "Working with your database to gather the necessary information..."
+msgstr ""
+
+msgid "Generating the card with the requested data, please hold on for a moment..."
+msgstr ""
+
+msgid "Querying your database and preparing the card with all relevant insights..."
+msgstr ""
+
+msgid "The data is being processed and your card will be visible shortly..."
+msgstr ""
+
+msgid "Scanning through your card collection and analyzing relevant tables..."
+msgstr ""
+
+msgid "Identifying patterns in the data and cross-referencing cards with table structures..."
+msgstr ""
+
+msgid "Exploring relationships between request and cards and extracting key metrics from tables..."
+msgstr ""
+
+msgid "Mapping relevant cards and corresponding table columns for comprehensive analysis..."
+msgstr ""
+
+msgid "Evaluating the semantic connections between cards and their associated table data..."
+msgstr ""
+
+msgid "Here is a plan on how we want to get insights for your task."
+msgstr ""
+
+msgid "Generating card..."
+msgstr ""
+
+msgid "Please wait until we generate the response...."
+msgstr ""
+
+msgid "Please wait until we generate the visualization for you...."
+msgstr ""
+
+msgid "There was an error processing your request. Please contact team Omniloy for assistance."
+msgstr ""
+
+msgid "An error occurred while processing your request. Please try again later."
+msgstr ""
+
+msgid "Chat history"
+msgstr ""
+
+msgid "No chat history available"
+msgstr ""
+
+msgid "Today"
+msgstr ""
+
+msgid "Last 7 Days"
+msgstr ""
+
+msgid "Last 30 Days"
+msgstr ""
+
+msgid "Error initializing Client or fetching threads:"
+msgstr ""
+
+msgid "Error parsing message content:"
+msgstr ""
+
+msgid "No messages found in the selected thread."
+msgstr ""
+
+msgid "Error fetching thread history:"
+msgstr ""
+
+msgid "Please Wait while we initialize the chat"
+msgstr ""
+
+msgid "New Thread"
+msgstr ""
+
+msgid "Error creating new chat thread:"
+msgstr ""

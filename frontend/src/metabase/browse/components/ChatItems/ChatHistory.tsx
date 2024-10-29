@@ -3,6 +3,7 @@ import { Box, Text, ScrollArea, Title, Divider } from "metabase/ui";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import { useSetting } from "metabase/common/hooks";
 import dayjs from "dayjs";
+import { t } from "ttag";
 
 interface ChatHistoryProps {
   client: any;
@@ -217,7 +218,7 @@ const ChatHistory = ({
         order={4}
         style={{ marginBottom: "16px", color: "#76797D", fontSize: "16px" }}
       >
-        Chat history
+        {t`Chat history`}
       </Title>
 
       {/* Show loading spinner at the top if data is being loaded */}
@@ -232,7 +233,7 @@ const ChatHistory = ({
         chatHistory.last7Days.length === 0 &&
         chatHistory.last30Days.length === 0 && (
           <Text style={{ textAlign: "center", color: "#76797D", marginBottom: "1rem" }}>
-            No chat history available
+            {t`No chat history available`}
           </Text>
         )}
 
@@ -247,7 +248,7 @@ const ChatHistory = ({
                 fontSize: "14px",
               }}
             >
-              Today
+              {t`Today`}
             </Text>
             {chatHistory.today.map((chat: any, index: number) => (
               <Box
@@ -282,7 +283,7 @@ const ChatHistory = ({
                 fontSize: "14px",
               }}
             >
-              Last 7 Days
+              {t`Last 7 Days`}
             </Text>
             {chatHistory.last7Days.map((chat: any, index: number) => (
               <Box
@@ -317,7 +318,7 @@ const ChatHistory = ({
                 fontSize: "14px",
               }}
             >
-              Last 30 Days
+              {t`Last 30 Days`}
             </Text>
             {chatHistory.last30Days.map((chat: any, index: number) => (
               <Box
