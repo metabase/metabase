@@ -1510,7 +1510,6 @@ describe("Issue 48851", () => {
       .findByPlaceholderText("Enter some text")
       .type(manyValues, { timeout: 0 });
 
-    popover().scrollTo("bottom");
     popover().button("Add filter").should("be.visible");
   });
 });

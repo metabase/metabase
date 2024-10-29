@@ -137,7 +137,7 @@ function StringValueInput({
 
   if (type === "partial") {
     return (
-      <Flex p="md">
+      <Box p="md" pb={0} mah="40vh" style={{ overflow: "auto" }}>
         <MultiAutocomplete
           value={values}
           data={[]}
@@ -147,7 +147,8 @@ function StringValueInput({
           aria-label={t`Filter value`}
           onChange={onChange}
         />
-      </Flex>
+        <Box pt="md" />
+      </Box>
     );
   }
 
