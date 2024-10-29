@@ -36,7 +36,6 @@ export const getSankeyLayout = (
   };
 
   const mostRightNodes = getMostRightNodes(chartModel.data, settings);
-
   const maxRightLabelWidth = Math.max(
     ...mostRightNodes
       .map(node => chartModel.formatters.node(node.value))

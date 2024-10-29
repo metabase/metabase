@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { getColorsForValues } from "metabase/lib/colors/charts";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type { RawSeries } from "metabase-types/api";
 
@@ -25,9 +26,14 @@ export const getSankeyChartModel = (
 
   const data = getSankeyData(rawSeries, sankeyColumns);
 
+  const nodeColors = getColorsForValues(
+    data.nodes.map(node => String(node.value)),
+  );
+
   return {
     data,
     formatters,
     sankeyColumns,
+    nodeColors,
   };
 };

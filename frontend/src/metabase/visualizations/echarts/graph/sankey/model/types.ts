@@ -40,4 +40,5 @@ export interface SankeyChartModel {
   data: SankeyData;
   formatters: SankeyFormatters;
   sankeyColumns: SankeyChartColumns;
+  nodeColors: Record<string, string>;
 }
