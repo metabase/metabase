@@ -358,6 +358,13 @@ Default: True
 
 If you want to exclude the [Metabase analytics](../usage-and-performance-tools/usage-analytics.md) collection, you can set `MB_LOAD_ANALYTICS_CONTENT=false`. Setting this environment variable to false can also come in handy when migrating environments, as it can simplify the migration process.
 
+### `MB_LOAD_SAMPLE_CONTENT`
+
+Type: Boolean<br>
+Default: True
+
+Whether to include the Sample Database in your Metabase. To exclude the Sample Database, set `MB_LOAD_SAMPLE_CONTENT=false`.
+
 ### `MB_NO_SURVEYS`
 
 Type: boolean<br>
