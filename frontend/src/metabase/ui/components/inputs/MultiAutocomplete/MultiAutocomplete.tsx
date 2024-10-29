@@ -5,11 +5,7 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { color } from "metabase/lib/colors";
-import { Icon } from "metabase/ui";
-import type {
-  LegacyComboboxData,
-  LegacyComboboxDataItem,
-} from "metabase/ui/components/inputs/Combobox";
+import { Icon, type SelectOption } from "metabase/ui";
 
 import { MultiSelect, type MultiSelectProps } from "../MultiSelect";
 
@@ -52,7 +48,7 @@ export function MultiAutocomplete({
   const visibleValues = isFocused ? lastSelectedValues : [...selectedValues];
 
   const items = useMemo(
-    () => getAvailableSelectItems(data, lastSelectedValues),
+    () => getAvailableSelectItems(data as SelectOption[], lastSelectedValues),
     [data, lastSelectedValues],
   );
 
@@ -191,22 +187,16 @@ export function MultiAutocomplete({
   );
 }
 
-function getSelectItem(
-  item: string | LegacyComboboxDataItem,
-): LegacyComboboxDataItem {
+function getSelectItem(item: string | SelectOption): SelectOption {
   if (typeof item === "string") {
     return { value: item, label: item };
   }
-
-  // if (isComboboxItemWithMissingLabel(item)) {
-  //   return { value: item.value, label: item.value?.toString() ?? "" };
-  // }
 
   return item;
 }
 
 function getAvailableSelectItems(
-  data: LegacyComboboxData,
+  data: SelectOption[],
   selectedValues: string[],
 ) {
   const all = [...data, ...selectedValues].map(getSelectItem);

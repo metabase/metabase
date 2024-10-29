@@ -12,7 +12,7 @@ import S from "./ListPicker.css";
 
 interface ListPickerProps {
   value: string;
-  options: (string | SelectOption)[];
+  options: SelectOption[] | string[];
   onChange: (value: string) => void;
   onClear: () => void;
   onSearchChange?: (query: string) => void;

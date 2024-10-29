@@ -183,7 +183,7 @@ function normalize(value: number[] | undefined): (number | undefined)[] {
 
 type SelectItem = {
   value: string;
-  label: string | undefined;
+  label: string;
 };
 
 function getOption(entry: string | ParameterValue): SelectItem | null {
@@ -197,8 +197,8 @@ function getOption(entry: string | ParameterValue): SelectItem | null {
   return { value, label };
 }
 
-function getLabel(option: string | ParameterValue) {
-  return option[1] ?? option[0]?.toString();
+function getLabel(option: string | ParameterValue): string {
+  return option[1] ?? option[0]?.toString() ?? "";
 }
 
 function getValue(option: string | ParameterValue) {

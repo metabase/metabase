@@ -31,7 +31,14 @@ export const ExportSettingsWidget = ({
   const applicationName = useSelector(getApplicationName);
   return (
     <Stack>
-      <Chip.Group value={selectedFormat} onChange={onChangeFormat}>
+      <Chip.Group
+        value={selectedFormat}
+        onChange={(newValue: string | string[]) => {
+          Array.isArray(newValue)
+            ? onChangeFormat(newValue[0] as ExportFormat)
+            : onChangeFormat(newValue as ExportFormat);
+        }}
+      >
         <Group gap="xs" wrap="nowrap">
           {formats.map(format => (
             <Chip

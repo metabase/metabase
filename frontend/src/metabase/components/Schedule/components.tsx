@@ -63,8 +63,10 @@ export const SelectFrequency = ({
   return (
     <AutoWidthSelect
       display="flex"
-      value={scheduleType}
-      onChange={(value: ScheduleType) => updateSchedule("schedule_type", value)}
+      value={scheduleType ?? "daily"}
+      onChange={(value: ScheduleType | null) =>
+        updateSchedule("schedule_type", value)
+      }
       data={scheduleTypeOptions}
       aria-label={label}
     />
@@ -79,7 +81,7 @@ export const SelectFrame = ({
   const label = useMemo(() => getScheduleComponentLabel("frame"), []);
   return (
     <AutoWidthSelect
-      value={schedule.schedule_frame}
+      value={schedule.schedule_frame ?? "first"}
       onChange={(value: ScheduleFrameType) =>
         updateSchedule("schedule_frame", value)
       }
@@ -175,8 +177,8 @@ export const SelectWeekday = ({
   const label = useMemo(() => getScheduleComponentLabel("weekday"), []);
   return (
     <AutoWidthSelect<ScheduleDayType>
-      value={schedule.schedule_day}
-      onChange={(value: ScheduleDayType | null) =>
+      value={schedule.schedule_day ?? "sun"}
+      onChange={(value: ScheduleDayType) =>
         updateSchedule("schedule_day", value)
       }
       data={weekdays}

@@ -7,6 +7,7 @@ import ExternalLink from "metabase/core/components/ExternalLink";
 import { color } from "metabase/lib/colors";
 import { useSelector } from "metabase/lib/redux";
 import type {
+  DisplayTheme,
   EmbedResourceType,
   EmbeddingDisplayOptions,
 } from "metabase/public/lib/types";
@@ -25,8 +26,8 @@ import { DisplayOptionSection } from "./StaticEmbedSetupPane.styled";
 import { StaticEmbedSetupPaneSettingsContentSection } from "./StaticEmbedSetupPaneSettingsContentSection";
 
 const THEME_OPTIONS = [
-  { label: t`Light`, value: "light" },
-  { label: t`Dark`, value: "night" },
+  { label: t`Light`, value: "light" as DisplayTheme },
+  { label: t`Dark`, value: "night" as DisplayTheme },
 ] as const;
 type ThemeOptions = (typeof THEME_OPTIONS)[number]["value"];
 

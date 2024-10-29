@@ -2,7 +2,11 @@ import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
 import { act, fireEvent, render, screen } from "__support__/ui";
-import { MultiAutocomplete, type MultiAutocompleteProps } from "metabase/ui";
+import {
+  MultiAutocomplete,
+  type MultiAutocompleteProps,
+  type SelectOption,
+} from "metabase/ui";
 
 const EXAMPLE_DATA = [
   { label: "Foo", value: "foo" },
@@ -286,7 +290,12 @@ describe("MultiAutocomplete", () => {
   it("should be possible to customize what values get filtered", async () => {
     const { input } = setup({
       data: EXAMPLE_DATA,
-      filter: (_query, _selected, item) => !item.label?.endsWith(")"),
+      filter: ({ options }) => {
+        // type cast because we are dealing with ungrouped items
+        return (options as SelectOption[]).filter(
+          option => option.value === "bar",
+        );
+      },
     });
 
     await userEvent.type(input, "Ba", {

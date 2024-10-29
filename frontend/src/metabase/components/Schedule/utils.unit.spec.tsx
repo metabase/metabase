@@ -107,16 +107,6 @@ describe("Schedule utility functions", () => {
       expect(result).toBe("the longest string in the array");
     });
 
-    it("should return the longest label from a mixed array", () => {
-      const data: SelectProps["data"] = [
-        "short",
-        { value: "value", label: "the longest string in the array" },
-        "medium length",
-      ];
-      const result = getLongestSelectLabel(data);
-      expect(result).toBe("the longest string in the array");
-    });
-
     it("should return an empty string if data is empty", () => {
       const data: SelectProps["data"] = [];
       const result = getLongestSelectLabel(data);

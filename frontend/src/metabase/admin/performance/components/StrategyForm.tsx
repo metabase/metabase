@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { useFormikContext } from "formik";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -49,8 +50,8 @@ import {
   scheduleSettingsToCron,
 } from "../utils";
 
+import Styles from "./PerformanceApp.module.css";
 import {
-  FormBox,
   FormWrapper,
   LoaderInButton,
   StyledForm,
@@ -214,7 +215,11 @@ const StrategyFormBody = ({
         aria-labelledby={headingId}
         data-testid={`strategy-form-for-${targetModel}-${targetId}`}
       >
-        <FormBox isInSidebar={isInSidebar}>
+        <Box
+          className={cx(Styles.FormBox, {
+            [Styles.FormBoxSidebar]: isInSidebar,
+          })}
+        >
           {shouldShowName && (
             <Box lh="1rem" pt="md" color="text-medium">
               <Group gap="sm">
@@ -271,7 +276,7 @@ const StrategyFormBody = ({
               <ScheduleStrategyFormFields />
             )}
           </Stack>
-        </FormBox>
+        </Box>
         <FormButtons
           targetId={targetId}
           targetModel={targetModel}

@@ -117,7 +117,9 @@ export const DashCardMenuItems = ({
   return menuItems.map(item => (
     <Menu.Item
       fw="bold"
-      {...item}
+      onClick={item.onClick}
+      disabled={item.disabled}
+      closeMenuOnClick={item.closeMenuOnClick}
       key={item.key}
       leftSection={<Icon name={item.iconName} aria-hidden />}
     >

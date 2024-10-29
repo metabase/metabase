@@ -619,7 +619,9 @@ export function FieldValuesWidgetInner({
             leftSection={
               prefix && <span data-testid="input-prefix">{prefix}</span>
             }
-            renderOption={CustomItemComponent}
+            renderOption={option =>
+              CustomItemComponent(option as unknown as SelectItemProps)
+            }
           />
         ) : (
           <TokenField

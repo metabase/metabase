@@ -35,6 +35,7 @@ const PopoverDropdown = function PopoverDropdown(
 };
 
 PopoverDropdown.displayName = MantinePopoverDropdown.displayName;
+// @ts-expect-error -- our types are better
 MantinePopover.Dropdown = PopoverDropdown;
 
 const Popover = MantinePopover;
