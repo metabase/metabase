@@ -10029,6 +10029,27 @@ databaseChangeLog:
                   constraints:
                     nullable: true
 
+  - changeSet:
+      id: v52.2024-10-29T10:30:00
+      author: escherize
+      comment: Add reason column to moderation_review
+      preConditions:
+        - not:
+            - columnExists:
+                tableName: moderation_review
+                columnName: reason
+      changes:
+        - addColumn:
+            tableName: moderation_review
+            columns:
+              - column:
+                  name: reason
+                  type: varchar(128)
+                  defaultValue: null
+                  remarks: The reason for marking an entity's verification status
+                  constraints:
+                    nullable: true
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

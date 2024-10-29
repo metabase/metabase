@@ -19,6 +19,17 @@
   "Schema of valid statuses"
   [:maybe (into [:enum] statuses)])
 
+(def ^:private reasons
+  {:no-updates        "This won't be updated"
+   :temp-maintenance  "In temporary maintenance"
+   :data-problem      "Problems with the data"
+   :needs-replacement "Model needs replacing"
+   :other             "Other"})
+
+(def Reasons
+  "Reasons that a verifiable entity would be flagged"
+  (into [:enum nil] (keys reasons)))
+
 ;;; currently unused, but I'm leaving this in commented out because it serves as documentation
 (comment
   (def ReviewChanges
@@ -28,7 +39,8 @@
      [:moderated_item_id   {:optional true} mu/IntGreaterThanZero]
      [:moderated_item_type {:optional true} moderation/moderated-item-types]
      [:status              {:optional true} Statuses]
-     [:text                {:optional true} [:maybe :string]]]))
+     [:text                {:optional true} [:maybe :string]]
+     [:reason              {:optional true} Reasons]]))
 
 (def ModerationReview
   "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], now it's a reference to the toucan2 model name.
@@ -74,10 +86,11 @@
   "Create a new ModerationReview"
   [params :-
    [:map
-    [:moderated_item_id       ms/PositiveInt]
-    [:moderated_item_type     moderation/moderated-item-types]
-    [:moderator_id            ms/PositiveInt]
+    [:moderated_item_id   ms/PositiveInt]
+    [:moderated_item_type moderation/moderated-item-types]
+    [:moderator_id        ms/PositiveInt]
     [:status              {:optional true} Statuses]
+    [:reason              {:optional true} Reasons]
     [:text                {:optional true} [:maybe :string]]]]
   (t2/with-transaction [_conn]
     (delete-extra-reviews! (:moderated_item_id params) (:moderated_item_type params))
