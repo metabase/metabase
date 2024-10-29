@@ -1,13 +1,13 @@
-import { useMemo } from "react";
-
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getQuestion } from "metabase/query_builder/selectors";
 import { useMetabotAgentMutation } from "metabase-enterprise/api";
-import { isMetabotMessageReaction } from "metabase-types/api";
 
 import {
+  clearUserMessages,
   getMetabotVisisble,
-  processMetabotMessages,
+  getUserMessages,
+  processMetabotReactions,
+  removeUserMessage,
   setVisible,
 } from "./state";
 
@@ -15,14 +15,12 @@ export const useMetabotAgent = () => {
   const dispatch = useDispatch();
   const question = useSelector(getQuestion);
 
+  // TODO: fix typing issue
+  const userMessages = useSelector(getUserMessages as any) as string[];
+
   const [sendMessage, sendMessageReq] = useMetabotAgentMutation({
     fixedCacheKey: "metabot",
   });
-
-  const messages = useMemo(() => {
-    const reactions = sendMessageReq.data?.reactions || [];
-    return reactions.filter(isMetabotMessageReaction);
-  }, [sendMessageReq]);
 
   return {
     visible: useSelector(getMetabotVisisble as any),
@@ -33,10 +31,14 @@ export const useMetabotAgent = () => {
 
       dispatch(setVisible(isVisible));
     },
-    messages,
+    userMessages,
+    removeUserMessage: (messageIndex: number) =>
+      dispatch(removeUserMessage(messageIndex)),
     // TODO: need to handle not sending messages while we're
     // processing playing through response messages
     sendMessage: async (message: string) => {
+      dispatch(clearUserMessages());
+
       const result = await sendMessage({
         message,
         context: {
@@ -64,7 +66,7 @@ export const useMetabotAgent = () => {
       }
 
       const reactions = result.data?.reactions || [];
-      await dispatch(processMetabotMessages(reactions));
+      await dispatch(processMetabotReactions(reactions));
     },
     sendMessageReq,
   };

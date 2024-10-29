@@ -1,5 +1,4 @@
 import { useEffect } from "react";
-// TODO: integrate our custom hooks with tinykeys
 import { tinykeys } from "tinykeys";
 
 import ErrorBoundary from "metabase/ErrorBoundary";

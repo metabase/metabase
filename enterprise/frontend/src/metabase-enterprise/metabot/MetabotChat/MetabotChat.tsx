@@ -1,115 +1,137 @@
+import cx from "classnames";
 import { useEffect, useRef, useState } from "react";
 import { t } from "ttag";
 
-import {
-  Box,
-  Flex,
-  Icon,
-  Input,
-  Transition,
-  UnstyledButton,
-} from "metabase/ui";
+import { Box, Flex, Icon, Textarea, UnstyledButton } from "metabase/ui";
 
 import { MetabotIcon } from "../MetabotIcon";
 import { useMetabotAgent } from "../hooks";
 
 import Styles from "./MetabotChat.module.css";
-import { transitions } from "./utils";
+
+const MIN_INPUT_HEIGHT = 42;
+const ANIMATION_DURATION_MS = 300;
 
 export const MetabotChat = ({ onClose }: { onClose: () => void }) => {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
   const [message, setMessage] = useState("");
-  const { messages, sendMessage, sendMessageReq } = useMetabotAgent();
+
+  const { userMessages, removeUserMessage, sendMessage, sendMessageReq } =
+    useMetabotAgent();
   const { isLoading } = sendMessageReq;
+
+  const resetInput = () => {
+    setMessage("");
+    setInputExpanded(false);
+  };
 
   const handleSend = () => {
     if (!message.length || isLoading) {
       return;
     }
-    setMessage("");
-    sendMessage(message).catch(err => console.error(err));
+    resetInput();
+    sendMessage(message)
+      .catch(err => console.error(err))
+      .finally(() => textareaRef.current?.focus());
   };
 
   const handleClose = () => {
-    setMessage("");
+    resetInput();
     onClose();
   };
 
-  // animate once mounted
-  const [mounted, setMounted] = useState(false);
+  // auto-focus once animation in completes
+  // doing it too early will cause the page to shift down
   useEffect(() => {
-    setMounted(true);
+    const timeout = setTimeout(() => {
+      textareaRef.current?.focus();
+    }, ANIMATION_DURATION_MS);
+    return () => clearTimeout(timeout);
   }, []);
 
-  // auto-focus once animation in completes
-  const [entered, setEntered] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
-  useEffect(() => {
-    entered && inputRef.current?.focus();
-  }, [entered]);
+  const [inputExpanded, setInputExpanded] = useState(false);
+  const handleMaybeExpandInput = () => {
+    const textarea = textareaRef.current;
+    if (!textarea) {
+      return;
+    }
 
-  // animate messages once we have some amount of messages to show the user
-  const [showMessages, setShowMessages] = useState(false);
-  useEffect(() => {
-    setShowMessages(messages.length > 0);
-  }, [messages]);
+    const isMultiRow = textarea.scrollHeight > MIN_INPUT_HEIGHT;
+    if (inputExpanded !== isMultiRow) {
+      setInputExpanded(isMultiRow);
+    }
+    // keep scrolled to bottom
+    textarea.scrollTop = Math.max(MIN_INPUT_HEIGHT, textarea.scrollHeight);
+  };
+
+  const handleInputChange = (value: string) => {
+    setMessage(value);
+  };
 
   return (
-    <Transition
-      mounted={mounted}
-      onEntered={() => setEntered(true)}
-      transition={transitions.chatBarSlideIn}
-      duration={150}
-      timingFunction="ease"
+    <Box
+      className={Styles.container}
+      style={{ animationDuration: `${ANIMATION_DURATION_MS}ms` }}
     >
-      {style => (
-        <Box className={Styles.container} style={style}>
-          {messages.length > 0 && (
-            <Box className={Styles.responses}>
-              {messages.map((msg, index) => (
-                <Transition
-                  key={index}
-                  mounted={showMessages}
-                  transition={transitions.messageSlideIn}
-                  duration={150}
-                  timingFunction="ease"
-                >
-                  {style => (
-                    <Box className={Styles.response} style={style}>
-                      {msg.message}
-                    </Box>
-                  )}
-                </Transition>
-              ))}
+      {userMessages.length > 0 && (
+        <Box className={Styles.responses}>
+          {userMessages.map((msg, index) => (
+            <Box className={Styles.response} key={msg}>
+              <Box>{msg}</Box>
+              <UnstyledButton
+                className={Styles.responseDismissBtn}
+                onClick={() => removeUserMessage(index)}
+              >
+                <Icon name="close" size="1rem" />
+              </UnstyledButton>
             </Box>
-          )}
-          <Flex className={Styles.innerContainer}>
-            <Box w="33px" h="24px">
-              <MetabotIcon isLoading={isLoading} />
-            </Box>
-            <Input
-              w="100%"
-              ref={inputRef}
-              value={message}
-              className={Styles.input}
-              styles={{ input: { border: "none" } }}
-              placeholder={
-                isLoading
-                  ? t`Doing science...`
-                  : t`Tell me to do something, or ask a question`
-              }
-              onChange={e => setMessage(e.target.value)}
-              onKeyDown={event => {
-                if (event.key === "Enter") {
-                  handleSend();
-                }
-              }}
-            />
-            <UnstyledButton h="1rem" onClick={handleClose}>
-              <Icon name="close" c="text-light" size="1rem" />
-            </UnstyledButton>
-          </Flex>
+          ))}
         </Box>
       )}
-    </Transition>
+      <Flex
+        className={cx(
+          Styles.innerContainer,
+          isLoading && Styles.innerContainerLoading,
+          inputExpanded && Styles.innerContainerExpanded,
+        )}
+        gap="sm"
+      >
+        <Box w="33px" h="24px">
+          <MetabotIcon isLoading={isLoading} />
+        </Box>
+        <Textarea
+          w="100%"
+          autosize
+          minRows={1}
+          maxRows={4}
+          ref={textareaRef}
+          value={message}
+          disabled={isLoading}
+          className={cx(
+            Styles.textarea,
+            inputExpanded && Styles.textareaExpanded,
+            isLoading && Styles.textareaLoading,
+          )}
+          placeholder={
+            isLoading
+              ? t`Doing science...`
+              : t`Tell me to do something, or ask a question`
+          }
+          onChange={e => handleInputChange(e.target.value)}
+          // TODO: find a way to not use an undocumented api...
+          // @ts-expect-error - undocumented API for mantine Textarea when using autosize
+          onHeightChange={handleMaybeExpandInput}
+          onKeyDown={event => {
+            if (event.key === "Enter") {
+              handleSend();
+            }
+          }}
+        />
+        <UnstyledButton h="1rem" onClick={handleClose}>
+          <Icon name="close" c="text-light" size="1rem" />
+        </UnstyledButton>
+      </Flex>
+    </Box>
   );
 };
