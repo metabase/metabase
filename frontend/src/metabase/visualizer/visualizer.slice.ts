@@ -125,7 +125,7 @@ const visualizerSlice = createSlice({
             ...dimension,
             values: [
               ...dimension.values,
-              `$_${action.payload.dataSource.name}`,
+              `$_${action.payload.dataSource.id}_name`,
             ],
           };
         }
@@ -165,9 +165,24 @@ const visualizerSlice = createSlice({
       delete state.datasets[source.id];
       delete state.loadingDatasets[source.id];
 
-      state.importedColumns = state.importedColumns.filter(
-        column => column.sourceId !== source.id,
+      const [removedColumns, remainingColumns] = _.partition(
+        state.importedColumns,
       );
+      state.importedColumns = remainingColumns;
+      const removedColumnsSet = new Set(removedColumns.map(c => c.name));
+
+      if (removedColumnsSet.size > 0) {
+        state.columns = state.columns.map(col => ({
+          ...col,
+          values: col.values.filter(v => {
+            if (v.startsWith("$_")) {
+              const [_, dataSourceId, __] = v.split("_");
+              return dataSourceId !== source.id;
+            }
+            return !removedColumnsSet.has(v);
+          }),
+        }));
+      }
     },
     toggleDataSourceExpanded: (
       state,
@@ -272,8 +287,8 @@ export const getDataSources = createSelector([getCards], cards =>
 );
 
 const getVisualizerDataset = createSelector(
-  [getDatasets, getImportedColumns, getVisualizationColumns],
-  (datasets, importedColumns, cols): Dataset => {
+  [getDataSources, getDatasets, getImportedColumns, getVisualizationColumns],
+  (dataSources, datasets, importedColumns, cols): Dataset => {
     const importedColumnValuesMap: Record<string, RowValues> = {};
     importedColumns.forEach(columnImport => {
       const dataset = datasets[columnImport.sourceId];
@@ -294,8 +309,11 @@ const getVisualizerDataset = createSelector(
       column.values
         .map(columnName => {
           if (columnName.startsWith("$_")) {
-            const [, rawValue] = columnName.split("_");
-            return [rawValue];
+            const [, dataSourceId] = columnName.split("_");
+            const dataSource = dataSources.find(
+              source => source.id === dataSourceId,
+            );
+            return dataSource?.name ? [dataSource.name] : [];
           }
           const values = importedColumnValuesMap[columnName];
           if (!values) {
