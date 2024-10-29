@@ -847,7 +847,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
 
         it("2nd stage custom column", () => {
           setup2ndStageCustomColumnFilter();
-          apply2nStageCustomColumnFilter();
+          apply2ndStageCustomColumnFilter();
           cy.wait(["@dashboardData", "@dashboardData"]);
 
           verifyDashcardCellValues({
@@ -1098,7 +1098,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
 
         it("2nd stage custom column", () => {
           setup2ndStageCustomColumnFilter();
-          apply2nStageCustomColumnFilter();
+          apply2ndStageCustomColumnFilter();
           cy.wait(["@dashboardData", "@dashboardData"]);
 
           verifyDashcardRowsCount({
@@ -1430,7 +1430,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
 
         it("2nd stage custom column", () => {
           setup2ndStageCustomColumnFilter();
-          apply2nStageCustomColumnFilter();
+          apply2ndStageCustomColumnFilter();
           cy.wait(["@dashboardData", "@dashboardData"]);
 
           verifyDashcardRowsCount({
@@ -1452,7 +1452,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
             visitPublicDashboard(dashboardId),
           );
           waitForPublicDashboardData();
-          apply2nStageCustomColumnFilter();
+          apply2ndStageCustomColumnFilter();
           waitForPublicDashboardData();
 
           getDashboardCard(0).findByText("Rows 1-1 of 31").should("be.visible");
@@ -1466,7 +1466,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
             });
           });
           waitForEmbeddedDashboardData();
-          apply2nStageCustomColumnFilter();
+          apply2ndStageCustomColumnFilter();
           waitForEmbeddedDashboardData();
 
           getDashboardCard(0).findByText("Rows 1-1 of 31").should("be.visible");
@@ -1475,6 +1475,8 @@ describe("scenarios > dashboard > filters > query stages", () => {
 
         it("2nd stage aggregation", () => {
           setup2ndStageAggregationFilter();
+          apply2ndStageAggregationFilter();
+          cy.wait(["@dashboardData", "@dashboardData"]);
 
           verifyDashcardRowsCount({
             dashcardIndex: 1,
@@ -1489,6 +1491,31 @@ describe("scenarios > dashboard > filters > query stages", () => {
             dashboardCount: "Rows 1-1 of 6",
             queryBuilderCount: "Showing 6 rows",
           });
+
+          cy.log("public dashboard");
+          getDashboardId().then(dashboardId =>
+            visitPublicDashboard(dashboardId),
+          );
+          waitForPublicDashboardData();
+          apply2ndStageAggregationFilter();
+          waitForPublicDashboardData();
+
+          getDashboardCard(0).findByText("Rows 1-1 of 6").should("be.visible");
+          getDashboardCard(1).findByText("Rows 1-1 of 6").should("be.visible");
+
+          cy.log("embedded dashboard");
+          getDashboardId().then(dashboardId => {
+            visitEmbeddedPage({
+              resource: { dashboard: dashboardId },
+              params: {},
+            });
+          });
+          waitForEmbeddedDashboardData();
+          apply2ndStageAggregationFilter();
+          waitForEmbeddedDashboardData();
+
+          getDashboardCard(0).findByText("Rows 1-1 of 6").should("be.visible");
+          getDashboardCard(1).findByText("Rows 1-1 of 6").should("be.visible");
         });
 
         it("2nd stage breakout", () => {
@@ -1720,7 +1747,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
 
         it("2nd stage custom column", () => {
           setup2ndStageCustomColumnFilter();
-          apply2nStageCustomColumnFilter();
+          apply2ndStageCustomColumnFilter();
           cy.wait(["@dashboardData", "@dashboardData"]);
 
           verifyDashcardCellValues({
@@ -1738,6 +1765,8 @@ describe("scenarios > dashboard > filters > query stages", () => {
 
         it("2nd stage aggregation", () => {
           setup2ndStageAggregationFilter();
+          apply2ndStageAggregationFilter();
+          cy.wait(["@dashboardData", "@dashboardData"]);
 
           verifyDashcardCellValues({
             dashcardIndex: 0,
@@ -2541,7 +2570,7 @@ function setup2ndStageCustomColumnFilter() {
   cy.wait("@updateDashboard");
 }
 
-function apply2nStageCustomColumnFilter() {
+function apply2ndStageCustomColumnFilter() {
   filterWidget().eq(0).click();
   popover().within(() => {
     cy.findAllByPlaceholderText("Enter a number").eq(0).type("0");
@@ -2584,14 +2613,15 @@ function setup2ndStageAggregationFilter() {
 
   cy.button("Save").click();
   cy.wait("@updateDashboard");
+}
 
+function apply2ndStageAggregationFilter() {
   filterWidget().eq(0).click();
   popover().within(() => {
     cy.findAllByPlaceholderText("Enter a number").eq(0).type("0");
     cy.findAllByPlaceholderText("Enter a number").eq(1).type("2");
     cy.button("Add filter").click();
   });
-  cy.wait(["@dashboardData", "@dashboardData"]);
 }
 
 function setup2ndStageBreakoutFilter() {
