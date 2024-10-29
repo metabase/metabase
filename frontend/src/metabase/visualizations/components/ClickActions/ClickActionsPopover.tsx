@@ -120,43 +120,6 @@ export class ClickActionsPopover extends Component<
     const popoverAnchor = this.getPopoverReference(clicked);
 
     return (
-      // <FlexTippyPopover
-      //   reference={popoverAnchor}
-      //   visible={!!popoverAnchor}
-      //   onShow={instance => {
-      //     this.instance = instance;
-      //   }}
-      //   onClose={() => {
-      //     this.close();
-      //   }}
-      //   placement="bottom-start"
-      //   maxWidth={700}
-      //   offset={[0, 8]}
-      //   popperOptions={{
-      //     modifiers: [
-      //       {
-      //         name: "preventOverflow",
-      //         options: {
-      //           padding: 16,
-      //           altAxis: true,
-      //           tether: false,
-      //         },
-      //       },
-      //     ],
-      //   }}
-      //   content={
-      //     popover ? (
-      //       popover
-      //     ) : (
-      //       <ClickActionsView
-      //         clickActions={clickActions}
-      //         close={this.close}
-      //         onClick={this.handleClickAction}
-      //       />
-      //     )
-      //   }
-      //   {...popoverAction?.popoverProps}
-      // />
       <PopoverWithRef
         anchorEl={popoverAnchor}
         opened={!!popoverAnchor}
