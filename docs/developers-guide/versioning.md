@@ -45,7 +45,7 @@ Sometimes called a patch release, we issue these hotfix releases to fix security
 
 Metabase maintains different release channels:
 
-- **Stable**: The recommended version of Metabase to use in production.
+- **Stable**: The recommended version of Metabase to use in production. See the [list of stable releases](../releases.md).
 - **Beta**: Use the beta release to try out upstream features in a staging environment prior to a new major release. Beta releases should mostly be stable, but they can have bugs that we'll fix before shipping the gold release, which is the first stable version of a major release.
 - **Nightly**: Contains all the work from the master branch. It's the most up to date, but it's only recommended for experimental usage.
 
