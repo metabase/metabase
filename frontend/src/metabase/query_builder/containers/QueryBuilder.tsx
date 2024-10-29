@@ -251,7 +251,7 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
     () => _.debounce(forceUpdate, 400),
     [forceUpdate],
   );
-  const timeout = useRef<NodeJS.Timeout>();
+  const timeout = useRef<number>();
 
   const previousUIControls = usePrevious(uiControls);
   const previousLocation = usePrevious(location);
