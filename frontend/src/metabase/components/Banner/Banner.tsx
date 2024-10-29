@@ -9,6 +9,7 @@ export const Banner = ({ children, ...props }: FlexProps) => {
     <Flex
       bg="var(--mb-color-bg-light)"
       c="var(--mb-color-text-medium)"
+      data-testid="app-banner"
       p="0.75rem"
       {...props}
     >
