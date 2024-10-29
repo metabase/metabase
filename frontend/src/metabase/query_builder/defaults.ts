@@ -29,6 +29,8 @@ export const DEFAULT_UI_CONTROLS: QueryBuilderUIControls = {
   isShowingNotebookNativePreview: false,
   notebookNativePreviewSidebarWidth: null,
   showSidebarTitle: false,
+  modal: null,
+  modalContext: null,
 };
 
 export const DEFAULT_LOADING_CONTROLS: QueryBuilderLoadingControls = {
