@@ -201,270 +201,272 @@ describe("scenarios > custom column > boolean functions", () => {
     });
   });
 
-  describe("same stage", () => {
-    const questionDetails: StructuredQuestionDetails = {
-      query: {
-        "source-table": PRODUCTS_ID,
-        fields: [
-          ["field", PRODUCTS.CATEGORY, null],
-          ["expression", expressionName, { "base-type": "type/Boolean" }],
-        ],
-        expressions: {
-          [expressionName]: [
-            "starts-with",
-            ["field", PRODUCTS.CATEGORY, null],
-            "Gi",
-          ],
-        },
-      },
-    };
-
-    it("should be able to add a same-stage custom column", () => {
-      createQuestion(questionDetails, { visitQuestion: true });
-      openNotebook();
-
-      cy.log("add a literal column");
-      getNotebookStep("expression").icon("add").click();
-      enterCustomColumnDetails({
-        formula: "True",
-        name: "Literal column",
-      });
-      popover().button("Done").click();
-
-      cy.log("add an identity column");
-      getNotebookStep("expression").icon("add").click();
-      enterCustomColumnDetails({
-        formula: `[${expressionName}]`,
-        name: "Identity column",
-      });
-      popover().button("Done").click();
-
-      cy.log("add a simple expression");
-      getNotebookStep("expression").icon("add").click();
-      enterCustomColumnDetails({
-        formula: `[${expressionName}] != True`,
-        name: "Simple expression",
-      });
-      popover().button("Done").click();
-
-      cy.log("assert query results");
-      visualize();
-      cy.wait("@dataset");
-      assertTableData({
-        columns: [
-          "Category",
-          expressionName,
-          "Literal column",
-          "Identity column",
-          "Simple expression",
-        ],
-        firstRows: [["Gizmo", "true", "true", "true", "false"]],
-      });
-    });
-
-    it("should be able to add a same-stage filter", () => {
-      createQuestion(questionDetails, { visitQuestion: true });
-      assertQueryBuilderRowCount(200);
-      tableHeaderClick(expressionName);
-      popover().within(() => {
-        cy.findByText("Filter by this column").click();
-        cy.findByLabelText("True").click();
-        cy.findByText("Add filter").click();
-      });
-      assertQueryBuilderRowCount(51);
-    });
-
-    it("should be able to add a same-stage aggregation", () => {
-      createQuestion(questionDetails, { visitQuestion: true });
-      openNotebook();
-      getNotebookStep("expression").button("Summarize").click();
-      popover().findByText("Minimum of ...").click();
-      popover().findByText(expressionName).click();
-      getNotebookStep("summarize")
-        .findByTestId("aggregate-step")
-        .icon("add")
-        .click();
-      popover().findByText("Maximum of ...").click();
-      popover().findByText(expressionName).click();
-      visualize();
-      cy.wait("@dataset");
-      assertTableData({
-        columns: [`Min of ${expressionName}`, `Max of ${expressionName}`],
-        firstRows: [["false", "true"]],
-      });
-    });
-
-    it("should be able to add a same-stage breakout", () => {
-      createQuestion(questionDetails, { visitQuestion: true });
-      openNotebook();
-      getNotebookStep("expression").button("Summarize").click();
-      popover().findByText("Count of rows").click();
-      getNotebookStep("summarize")
-        .findByTestId("breakout-step")
-        .findByText("Pick a column to group by")
-        .click();
-      popover().findByText(expressionName).click();
-      visualize();
-      cy.wait("@dataset");
-      assertTableData({
-        columns: [expressionName, "Count"],
-        firstRows: [
-          ["false", "149"],
-          ["true", "51"],
-        ],
-      });
-    });
-
-    it("should be able to add a same-stage sorting", () => {
-      createQuestion(questionDetails, { visitQuestion: true });
-      openNotebook();
-      getNotebookStep("expression").button("Sort").click();
-      popover().findByText(expressionName).click();
-      visualize();
-      cy.wait("@dataset");
-      assertTableData({
-        columns: ["Category", expressionName],
-        firstRows: [["Doohickey", "false"]],
-      });
-    });
-  });
-
-  describe("previous stage", () => {
-    const questionDetails: StructuredQuestionDetails = {
-      query: {
-        "source-table": PRODUCTS_ID,
-        expressions: {
-          [expressionName]: [
-            "starts-with",
-            ["field", PRODUCTS.CATEGORY, null],
-            "Gi",
-          ],
-        },
-        aggregation: [["count"]],
-        breakout: [
-          ["expression", expressionName, { "base-type": "type/Boolean" }],
-        ],
-      },
-    };
-
-    it("should be able to add a post-aggregation custom column", () => {
-      createQuestion(questionDetails, { visitQuestion: true });
-      openNotebook();
-      getNotebookStep("summarize").button("Custom column").click();
-      enterCustomColumnDetails({
-        formula: `not([${expressionName}])`,
-        name: "Simple expression",
-      });
-      popover().button("Done").click();
-      visualize();
-      cy.wait("@dataset");
-      assertTableData({
-        columns: [expressionName, "Count", "Simple expression"],
-        firstRows: [
-          ["false", "149", "true"],
-          ["true", "51", "false"],
-        ],
-      });
-    });
-
-    it("should be able to add a post-aggregation filter", () => {
-      createQuestion(questionDetails, { visitQuestion: true });
-      assertQueryBuilderRowCount(2);
-      tableHeaderClick(expressionName);
-      popover().within(() => {
-        cy.findByText("Filter by this column").click();
-        cy.findByLabelText("True").click();
-        cy.findByText("Add filter").click();
-      });
-      assertQueryBuilderRowCount(1);
-    });
-
-    it("should be able to add a post-aggregation aggregation", () => {
-      createQuestion(questionDetails, { visitQuestion: true });
-      openNotebook();
-      getNotebookStep("summarize").button("Summarize").click();
-      popover().findByText("Minimum of ...").click();
-      popover().findByText(expressionName).click();
-      visualize();
-      cy.wait("@dataset");
-      assertTableData({
-        columns: [`Min of ${expressionName}`],
-        firstRows: [["false"]],
-      });
-    });
-
-    it("should be possible to add a post-aggregation breakout and sorting", () => {
-      createQuestion(questionDetails, { visitQuestion: true });
-      openNotebook();
-      getNotebookStep("summarize").button("Summarize").click();
-      popover().findByText("Count of rows").click();
-      getNotebookStep("summarize", { stage: 1 })
-        .findByTestId("breakout-step")
-        .findByText("Pick a column to group by")
-        .click();
-      popover().findByText(expressionName).click();
-      visualize();
-      cy.wait("@dataset");
-      assertTableData({
-        columns: [expressionName, "Count"],
-        firstRows: [
-          ["false", 1],
-          ["true", 1],
-        ],
-      });
-      openNotebook();
-      getNotebookStep("summarize", { stage: 1 }).button("Sort").click();
-      popover().findByText(expressionName).click();
-      getNotebookStep("sort", { stage: 1 }).icon("arrow_up").click();
-      visualize();
-      assertTableData({
-        columns: [expressionName, "Count"],
-        firstRows: [
-          ["true", 1],
-          ["false", 1],
-        ],
-      });
-    });
-  });
-
-  describe.skip("source card", () => {
-    const questionDetails: StructuredQuestionDetails = {
-      query: {
-        "source-table": PRODUCTS_ID,
-        expressions: {
-          [expressionName]: [
-            "starts-with",
-            ["field", PRODUCTS.CATEGORY, null],
-            "Gi",
-          ],
-        },
-      },
-    };
-
-    function getNestedQuestionDetails(
-      cardId: number,
-    ): StructuredQuestionDetails {
-      return {
+  describe("query builder", () => {
+    describe("same stage", () => {
+      const questionDetails: StructuredQuestionDetails = {
         query: {
-          "source-table": `card__${cardId}`,
+          "source-table": PRODUCTS_ID,
+          fields: [
+            ["field", PRODUCTS.CATEGORY, null],
+            ["expression", expressionName, { "base-type": "type/Boolean" }],
+          ],
+          expressions: {
+            [expressionName]: [
+              "starts-with",
+              ["field", PRODUCTS.CATEGORY, null],
+              "Gi",
+            ],
+          },
         },
       };
-    }
 
-    it("should be able to add a filter for the source column", () => {
-      createQuestion(questionDetails).then(({ body: card }) =>
-        createQuestion(getNestedQuestionDetails(card.id), {
-          visitQuestion: true,
-        }),
-      );
-      assertQueryBuilderRowCount(200);
-      tableHeaderClick(expressionName);
-      popover().within(() => {
-        cy.findByText("Filter by this column").click();
-        cy.findByLabelText("True").click();
-        cy.findByText("Add filter").click();
+      it("should be able to add a same-stage custom column", () => {
+        createQuestion(questionDetails, { visitQuestion: true });
+        openNotebook();
+
+        cy.log("add a literal column");
+        getNotebookStep("expression").icon("add").click();
+        enterCustomColumnDetails({
+          formula: "True",
+          name: "Literal column",
+        });
+        popover().button("Done").click();
+
+        cy.log("add an identity column");
+        getNotebookStep("expression").icon("add").click();
+        enterCustomColumnDetails({
+          formula: `[${expressionName}]`,
+          name: "Identity column",
+        });
+        popover().button("Done").click();
+
+        cy.log("add a simple expression");
+        getNotebookStep("expression").icon("add").click();
+        enterCustomColumnDetails({
+          formula: `[${expressionName}] != True`,
+          name: "Simple expression",
+        });
+        popover().button("Done").click();
+
+        cy.log("assert query results");
+        visualize();
+        cy.wait("@dataset");
+        assertTableData({
+          columns: [
+            "Category",
+            expressionName,
+            "Literal column",
+            "Identity column",
+            "Simple expression",
+          ],
+          firstRows: [["Gizmo", "true", "true", "true", "false"]],
+        });
       });
-      assertQueryBuilderRowCount(51);
+
+      it("should be able to add a same-stage filter", () => {
+        createQuestion(questionDetails, { visitQuestion: true });
+        assertQueryBuilderRowCount(200);
+        tableHeaderClick(expressionName);
+        popover().within(() => {
+          cy.findByText("Filter by this column").click();
+          cy.findByLabelText("True").click();
+          cy.findByText("Add filter").click();
+        });
+        assertQueryBuilderRowCount(51);
+      });
+
+      it("should be able to add a same-stage aggregation", () => {
+        createQuestion(questionDetails, { visitQuestion: true });
+        openNotebook();
+        getNotebookStep("expression").button("Summarize").click();
+        popover().findByText("Minimum of ...").click();
+        popover().findByText(expressionName).click();
+        getNotebookStep("summarize")
+          .findByTestId("aggregate-step")
+          .icon("add")
+          .click();
+        popover().findByText("Maximum of ...").click();
+        popover().findByText(expressionName).click();
+        visualize();
+        cy.wait("@dataset");
+        assertTableData({
+          columns: [`Min of ${expressionName}`, `Max of ${expressionName}`],
+          firstRows: [["false", "true"]],
+        });
+      });
+
+      it("should be able to add a same-stage breakout", () => {
+        createQuestion(questionDetails, { visitQuestion: true });
+        openNotebook();
+        getNotebookStep("expression").button("Summarize").click();
+        popover().findByText("Count of rows").click();
+        getNotebookStep("summarize")
+          .findByTestId("breakout-step")
+          .findByText("Pick a column to group by")
+          .click();
+        popover().findByText(expressionName).click();
+        visualize();
+        cy.wait("@dataset");
+        assertTableData({
+          columns: [expressionName, "Count"],
+          firstRows: [
+            ["false", "149"],
+            ["true", "51"],
+          ],
+        });
+      });
+
+      it("should be able to add a same-stage sorting", () => {
+        createQuestion(questionDetails, { visitQuestion: true });
+        openNotebook();
+        getNotebookStep("expression").button("Sort").click();
+        popover().findByText(expressionName).click();
+        visualize();
+        cy.wait("@dataset");
+        assertTableData({
+          columns: ["Category", expressionName],
+          firstRows: [["Doohickey", "false"]],
+        });
+      });
+    });
+
+    describe("previous stage", () => {
+      const questionDetails: StructuredQuestionDetails = {
+        query: {
+          "source-table": PRODUCTS_ID,
+          expressions: {
+            [expressionName]: [
+              "starts-with",
+              ["field", PRODUCTS.CATEGORY, null],
+              "Gi",
+            ],
+          },
+          aggregation: [["count"]],
+          breakout: [
+            ["expression", expressionName, { "base-type": "type/Boolean" }],
+          ],
+        },
+      };
+
+      it("should be able to add a post-aggregation custom column", () => {
+        createQuestion(questionDetails, { visitQuestion: true });
+        openNotebook();
+        getNotebookStep("summarize").button("Custom column").click();
+        enterCustomColumnDetails({
+          formula: `not([${expressionName}])`,
+          name: "Simple expression",
+        });
+        popover().button("Done").click();
+        visualize();
+        cy.wait("@dataset");
+        assertTableData({
+          columns: [expressionName, "Count", "Simple expression"],
+          firstRows: [
+            ["false", "149", "true"],
+            ["true", "51", "false"],
+          ],
+        });
+      });
+
+      it("should be able to add a post-aggregation filter", () => {
+        createQuestion(questionDetails, { visitQuestion: true });
+        assertQueryBuilderRowCount(2);
+        tableHeaderClick(expressionName);
+        popover().within(() => {
+          cy.findByText("Filter by this column").click();
+          cy.findByLabelText("True").click();
+          cy.findByText("Add filter").click();
+        });
+        assertQueryBuilderRowCount(1);
+      });
+
+      it("should be able to add a post-aggregation aggregation", () => {
+        createQuestion(questionDetails, { visitQuestion: true });
+        openNotebook();
+        getNotebookStep("summarize").button("Summarize").click();
+        popover().findByText("Minimum of ...").click();
+        popover().findByText(expressionName).click();
+        visualize();
+        cy.wait("@dataset");
+        assertTableData({
+          columns: [`Min of ${expressionName}`],
+          firstRows: [["false"]],
+        });
+      });
+
+      it("should be possible to add a post-aggregation breakout and sorting", () => {
+        createQuestion(questionDetails, { visitQuestion: true });
+        openNotebook();
+        getNotebookStep("summarize").button("Summarize").click();
+        popover().findByText("Count of rows").click();
+        getNotebookStep("summarize", { stage: 1 })
+          .findByTestId("breakout-step")
+          .findByText("Pick a column to group by")
+          .click();
+        popover().findByText(expressionName).click();
+        visualize();
+        cy.wait("@dataset");
+        assertTableData({
+          columns: [expressionName, "Count"],
+          firstRows: [
+            ["false", 1],
+            ["true", 1],
+          ],
+        });
+        openNotebook();
+        getNotebookStep("summarize", { stage: 1 }).button("Sort").click();
+        popover().findByText(expressionName).click();
+        getNotebookStep("sort", { stage: 1 }).icon("arrow_up").click();
+        visualize();
+        assertTableData({
+          columns: [expressionName, "Count"],
+          firstRows: [
+            ["true", 1],
+            ["false", 1],
+          ],
+        });
+      });
+    });
+
+    describe("source card", () => {
+      const questionDetails: StructuredQuestionDetails = {
+        query: {
+          "source-table": PRODUCTS_ID,
+          expressions: {
+            [expressionName]: [
+              "starts-with",
+              ["field", PRODUCTS.CATEGORY, null],
+              "Gi",
+            ],
+          },
+        },
+      };
+
+      function getNestedQuestionDetails(
+        cardId: number,
+      ): StructuredQuestionDetails {
+        return {
+          query: {
+            "source-table": `card__${cardId}`,
+          },
+        };
+      }
+
+      it("should be able to add a filter for the source column", () => {
+        createQuestion(questionDetails).then(({ body: card }) =>
+          createQuestion(getNestedQuestionDetails(card.id), {
+            visitQuestion: true,
+          }),
+        );
+        assertQueryBuilderRowCount(200);
+        tableHeaderClick(expressionName);
+        popover().within(() => {
+          cy.findByText("Filter by this column").click();
+          cy.findByLabelText("True").click();
+          cy.findByText("Add filter").click();
+        });
+        assertQueryBuilderRowCount(51);
+      });
     });
   });
 });
