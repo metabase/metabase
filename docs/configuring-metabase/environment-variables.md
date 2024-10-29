@@ -107,6 +107,17 @@ Allowed iframe hosts.
 
 Enable the collection of anonymous usage data in order to help Metabase improve.
 
+### `MB_API_KEY`
+
+- Type: string
+- Default: `null`
+
+When set, this API key is required for all API requests.
+
+Middleware that enforces validation of the client via the request header X-Metabase-Apikey.
+        If the header is available, then it’s validated against MB_API_KEY.
+        When it matches, the request continues; otherwise it’s blocked with a 403 Forbidden response.
+
 ### `MB_APPLICATION_COLORS`
 
 > Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
@@ -1053,13 +1064,6 @@ By default "Site Url" is used in notification links, but can be overridden.
 
 The base URL where dashboard notitification links will point to instead of the Metabase base URL.
         Only applicable for users who utilize interactive embedding and subscriptions.
-
-### `MB_NOTIFICATION_THREAD_POOL_SIZE`
-
-- Type: integer
-- Default: `10`
-
-The size of the thread pool used to send notifications.
 
 ### `MB_NUM_METABOT_CHOICES`
 
