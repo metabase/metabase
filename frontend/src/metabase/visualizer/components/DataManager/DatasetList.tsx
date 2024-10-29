@@ -8,9 +8,11 @@ import {
   getDataSources,
   getDatasets,
   getExpandedDataSources,
+  getImportedColumns,
   removeDataSource,
   toggleDataSourceExpanded,
 } from "metabase/visualizer/visualizer.slice";
+import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import type { VisualizerDataSource } from "metabase-types/store/visualizer";
 
 import { ColumnListItem, type ColumnListItemProps } from "./ColumnListItem";
@@ -20,6 +22,7 @@ export const DatasetList = () => {
   const dataSources = useSelector(getDataSources);
   const datasets = useSelector(getDatasets);
   const expandedDataSources = useSelector(getExpandedDataSources);
+  const importedColumns = useSelector(getImportedColumns);
   const dispatch = useDispatch();
 
   return (
@@ -67,6 +70,11 @@ export const DatasetList = () => {
                     key={column.name}
                     column={column}
                     dataSource={source}
+                    isSelected={importedColumns.some(
+                      c =>
+                        c.sourceId === source.id &&
+                        c.columnKey === getColumnKey(column),
+                    )}
                   />
                 ))}
               </Box>
@@ -79,12 +87,14 @@ export const DatasetList = () => {
 };
 
 type DraggableColumnListItemProps = ColumnListItemProps & {
+  isSelected: boolean;
   dataSource: VisualizerDataSource;
 };
 
 function DraggableColumnListItem({
   column,
   dataSource,
+  isSelected,
   ...props
 }: DraggableColumnListItemProps) {
   const { attributes, listeners, isDragging, setNodeRef } = useDraggable({
@@ -101,6 +111,7 @@ function DraggableColumnListItem({
       {...props}
       {...attributes}
       {...listeners}
+      bg={isSelected ? "var(--mb-color-brand-lighter)" : undefined}
       column={column}
       style={{ visibility: isDragging ? "hidden" : "visible" }}
       ref={setNodeRef}
