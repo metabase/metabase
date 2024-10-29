@@ -83,9 +83,11 @@ export const getThemeOverrides = (): MantineThemeOverride => ({
     xl: rem(21),
   },
   lineHeights: {
-    sm: "1rem",
-    md: "1.25rem",
-    lg: "1.5rem",
+    xs: "100%",
+    sm: "115%",
+    md: "122%",
+    lg: "138%",
+    xl: "150%",
   },
   headings: {
     sizes: {
