@@ -173,6 +173,7 @@ const visualizerSlice = createSlice({
 
       const [removedColumns, remainingColumns] = _.partition(
         state.importedColumns,
+        columnImport => columnImport.sourceId === source.id,
       );
       state.importedColumns = remainingColumns;
       const removedColumnsSet = new Set(removedColumns.map(c => c.name));
