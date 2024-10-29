@@ -193,9 +193,9 @@ You can preview appearance settings from your question or dashboard's embedded a
 
 For global appearance settings, such as the colors and fonts used across your entire Metabase instance, see [Customizing Metabase's appearance](../configuring-metabase/appearance.md).
 
-## Allow people to download the results of an embedded question or dashboard
+## Disable downloading the results of an embedded question or dashboard
 
-{% include plans-blockquote.html feature="Downloading results" %}
+{% include plans-blockquote.html feature="Disabling downloading results" %}
 
 By default, Metabase will include a **Download** button on embedded questions, and an **Export to PDF** option on embedded dashboards. You can remove the download option by setting `downloads=false` in the embedding URL in the iframe's `src` attribute, see [customizing the appearance of static embeds](./static-embedding.md#customizing-the-appearance-of-static-embeds).
 
