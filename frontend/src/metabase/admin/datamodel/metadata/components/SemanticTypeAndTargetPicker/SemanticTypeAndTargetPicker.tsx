@@ -9,11 +9,8 @@ import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import * as MetabaseCore from "metabase/lib/core";
 import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings/column";
-import { filterComparableFields } from "metabase-lib/internal";
 import type Field from "metabase-lib/v1/metadata/Field";
 import type { FieldFormattingSettings, FieldId } from "metabase-types/api";
-
-// lbrdnk TODO: Should reside elsewhere! Also proper import.
 
 import FieldSeparator from "../FieldSeparator";
 
@@ -59,9 +56,11 @@ const SemanticTypeAndTargetPicker = ({
   hasSeparator,
   onUpdateField,
 }: SemanticTypeAndTargetPickerProps) => {
-  const compatibleIdFields = filterComparableFields(field, idFields);
-  const hasIdFields = compatibleIdFields.length > 0;
-  const includeSchema = hasMultipleSchemas(compatibleIdFields);
+  const comparableIdFields = idFields.filter((idField: Field) =>
+    field.isComparableWith(idField),
+  );
+  const hasIdFields = comparableIdFields.length > 0;
+  const includeSchema = hasMultipleSchemas(comparableIdFields);
   const showFKTargetSelect = field.isFK();
   const showCurrencyTypeSelect = field.isCurrency();
 
@@ -152,11 +151,11 @@ const SemanticTypeAndTargetPicker = ({
             hasSeparator ? CS.mt0 : CS.mt1,
             className,
           )}
-          placeholder={getFkFieldPlaceholder(field, compatibleIdFields)}
+          placeholder={getFkFieldPlaceholder(field, comparableIdFields)}
           searchProp={SEARCH_PROPS}
           value={field.fk_target_field_id}
           onChange={handleChangeTarget}
-          options={compatibleIdFields}
+          options={comparableIdFields}
           optionValueFn={getFieldId}
           optionNameFn={includeSchema ? getFieldNameWithSchema : getFieldName}
           optionIconFn={getFieldIcon}
