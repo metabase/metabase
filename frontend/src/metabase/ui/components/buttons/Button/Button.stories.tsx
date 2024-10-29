@@ -16,7 +16,7 @@ const args = {
 
 const argTypes = {
   variant: {
-    options: ["default", "filled", "outline", "subtle"],
+    options: ["default", "filled", "outline", "subtle", "inverse"],
     control: { type: "inline-radio" },
   },
   color: {
@@ -97,6 +97,7 @@ const GridTemplate = (args: ButtonProps) => (
     <GridRowGroup {...args} variant="outline" />
     <GridRowGroup {...args} variant="default" />
     <GridRow {...args} variant="subtle" />
+    <GridRow {...args} variant="inverse" />
   </Stack>
 );
 
@@ -121,6 +122,7 @@ const LoadingGridTemplate = (args: ButtonProps) => (
     <LoadingGridRowGroup {...args} variant="outline" />
     <LoadingGridRowGroup {...args} variant="default" />
     <LoadingGridRow {...args} variant="subtle" />
+    <LoadingGridRow {...args} variant="inverse" />
   </Stack>
 );
 
