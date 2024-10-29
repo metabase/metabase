@@ -70,7 +70,7 @@ describe("AppBanner", () => {
       ).toBeInTheDocument();
       expect(
         screen.queryByText(
-          /Pro features won’t work right now due to lack of payment\./,
+          /Pro features won't work right now due to lack of payment\./,
         ),
       ).not.toBeInTheDocument();
     });
@@ -86,7 +86,7 @@ describe("AppBanner", () => {
       ).not.toBeInTheDocument();
       expect(
         screen.getByText(
-          /Pro features won’t work right now due to lack of payment\./,
+          /Pro features won't work right now due to lack of payment\./,
         ),
       ).toBeInTheDocument();
     });

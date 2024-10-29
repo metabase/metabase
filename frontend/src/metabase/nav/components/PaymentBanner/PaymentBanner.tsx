@@ -29,7 +29,7 @@ export const PaymentBanner = ({ tokenStatus }: PaymentBannerProps) => {
     case "unpaid":
       return (
         <Banner>
-          {jt`⚠️ Pro features won’t work right now due to lack of payment. ${(
+          {jt`⚠️ Pro features won't work right now due to lack of payment. ${(
             <ExternalLink
               key="payment-unpaid"
               className={CS.link}
