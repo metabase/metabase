@@ -28,11 +28,13 @@ export interface QueryBuilderUIControls {
   isShowingChartTypeSidebar: boolean;
   isShowingChartSettingsSidebar: boolean;
   isShowingQuestionDetailsSidebar: boolean;
+  isShowingQuestionInfoSidebar: boolean;
+  isShowingSnippetSidebar: boolean;
   isShowingTimelineSidebar: boolean;
   isNativeEditorOpen: boolean;
   initialChartSetting: null;
   isShowingRawTable: boolean;
-  queryBuilderMode: QueryBuilderMode;
+  queryBuilderMode: QueryBuilderMode | false;
   previousQueryBuilderMode: boolean;
   snippetCollectionId: number | null;
   datasetEditorTab: DatasetEditorTab;
@@ -41,6 +43,7 @@ export interface QueryBuilderUIControls {
   showSidebarTitle: boolean;
   modal: QueryModalType | null;
   modalContext: TimelineEventId | null;
+  dataReferenceStack: null;
 }
 
 export interface QueryBuilderLoadingControls {
