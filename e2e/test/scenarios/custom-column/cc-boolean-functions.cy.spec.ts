@@ -521,7 +521,7 @@ describe("scenarios > custom column > boolean functions", () => {
         });
       });
 
-      it.skip("should be able to add a breakout and sorting for a source boolean column", () => {
+      it.skip("should be able to add a breakout and sorting for a source boolean column (metabase#49305)", () => {
         createQuestion(questionDetails).then(({ body: card }) =>
           createQuestion(getNestedQuestionDetails(card.id), {
             visitQuestion: true,
