@@ -187,9 +187,11 @@ You can preview appearance settings from your question or dashboard's embedded a
 | `theme`                    | null (default), night                         |
 | `refresh` (dashboard only) | integer (seconds, e.g., `refresh=60`)         |
 | `font`\*                   | [font name](../configuring-metabase/fonts.md) |
-| `downloads`\*              | true, false                                   |
+| `downloads`\*\*            | true, false                                   |
 
-\* Disabling downloads is only possible on [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+\* Avalable on [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans
+
+\*\* Disabling downloads is available on [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 For global appearance settings, such as the colors and fonts used across your entire Metabase instance, see [Customizing Metabase's appearance](../configuring-metabase/appearance.md).
 
