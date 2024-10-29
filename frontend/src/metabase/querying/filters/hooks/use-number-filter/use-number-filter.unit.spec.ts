@@ -56,7 +56,7 @@ const METADATA = createMockMetadata({
             createOrdersProductIdField(),
             createOrdersTotalField(),
             createOrdersQuantityField({
-              semantic_type: "type/Category",
+              semantic_type: null,
             }),
           ],
         }),
@@ -269,7 +269,7 @@ describe("useNumberFilter", () => {
       expectedOperator: "=",
     },
     {
-      title: "category column",
+      title: "column with field values",
       column: findColumn("ORDERS", "QUANTITY"),
       expectedOperator: "=",
     },

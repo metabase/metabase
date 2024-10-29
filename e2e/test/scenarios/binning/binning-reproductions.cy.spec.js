@@ -39,7 +39,7 @@ describe("binning related reproductions", () => {
     });
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Pick the metric you want to see").click();
+    cy.findByText("Pick a function or metric").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Count of rows").click();
 
@@ -48,7 +48,7 @@ describe("binning related reproductions", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/CREATED_AT/i).realHover();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("by day").click({ force: true });
+    cy.findByText("by month").click({ force: true });
 
     // Implicit assertion - it fails if there is more than one instance of the string, which is exactly what we need for this repro
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -111,7 +111,7 @@ describe("binning related reproductions", () => {
     });
 
     getNotebookStep("summarize")
-      .findByText("Pick the metric you want to see")
+      .findByText("Pick a function or metric")
       .click();
     popover().findByText("Count of rows").click();
     getNotebookStep("summarize")
@@ -226,7 +226,7 @@ describe("binning related reproductions", () => {
 
     cy.createQuestion(questionDetails, { visitQuestion: true });
 
-    // Open settings through viz type picker to ensure "Table ptions" is in the sidebar.
+    // Open settings through viz type picker to ensure "Table Options" is in the sidebar.
     cy.findByTestId("viz-type-button").click();
     cy.findByTestId("sidebar-left").within(() => {
       cy.findByTestId("Table-button").click();
@@ -292,7 +292,7 @@ describe("binning related reproductions", () => {
       openSummarizeOptions("Notebook mode");
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Pick the metric you want to see").click();
+      cy.findByText("Pick a function or metric").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Count of rows").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

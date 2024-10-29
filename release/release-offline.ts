@@ -17,7 +17,6 @@ import {
   isValidCommitHash,
   isEnterpriseVersion,
   getMajorVersion,
-  isLatestRelease,
   getVersionInfo,
   publishRelease,
   closeMilestone,
@@ -250,25 +249,11 @@ async function s3() {
 
   await checkJar();
 
-  const isLatest = isWithoutGithub ? latestFlag : await isLatestRelease({
-    github,
-    owner: GITHUB_OWNER,
-    repo: GITHUB_REPO,
-    version,
-  });
-
   const versionPath = edition === "ee" ? `enterprise/${version}` : version;
 
   await $`aws s3 cp ${JAR_PATH}/metabase.jar s3://${AWS_S3_DOWNLOADS_BUCKET}/${versionPath}/metabase.jar`.pipe(
     process.stdout,
   );
-
-  if (isLatest === 'true') {
-    const latestPath = edition === "ee" ? `enterprise/latest` : `latest`;
-    await $`aws s3 cp ${JAR_PATH}/metabase.jar s3://${AWS_S3_DOWNLOADS_BUCKET}/${latestPath}/metabase.jar`.pipe(
-      process.stdout,
-    );
-  }
 
   await $`aws cloudfront create-invalidation \
     --distribution-id ${AWS_CLOUDFRONT_DOWNLOADS_ID} \
@@ -300,21 +285,6 @@ async function docker() {
   await $`docker push ${dockerTag}`.pipe(process.stdout);
 
   log(`✅ Published ${dockerTag} to DockerHub`);
-
-  const isLatest = isWithoutGithub ? latestFlag :await isLatestRelease({
-    github,
-    owner: GITHUB_OWNER,
-    repo: GITHUB_REPO,
-    version,
-  });
-
-  if (isLatest === 'true') {
-    const latestTag = `${DOCKERHUB_OWNER}/${dockerRepo}:latest`;
-    await $`docker tag ${dockerTag} ${latestTag}`.pipe(process.stdout);
-    await $`docker push ${latestTag}`.pipe(process.stdout);
-
-    log(`✅ Published ${latestTag} to DockerHub`);
-  }
 }
 
 async function versionInfo() {

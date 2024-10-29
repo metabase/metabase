@@ -34,12 +34,14 @@ export const ChartTypeSidebar = ({
   const dispatch = useDispatch();
 
   const onUpdateQuestion = (newQuestion: Question) => {
-    dispatch(
-      updateQuestion(newQuestion, {
-        shouldUpdateUrl: Lib.queryDisplayInfo(question.query()).isEditable,
-      }),
-    );
-    dispatch(setUIControls({ isShowingRawTable: false }));
+    if (question) {
+      dispatch(
+        updateQuestion(newQuestion, {
+          shouldUpdateUrl: Lib.queryDisplayInfo(question.query()).isEditable,
+        }),
+      );
+      dispatch(setUIControls({ isShowingRawTable: false }));
+    }
   };
 
   const {
@@ -54,16 +56,16 @@ export const ChartTypeSidebar = ({
   });
 
   const handleSelectVisualization = (display: CardDisplayType) => {
-    if (display === selectedVisualization) {
-      dispatch(
-        onOpenChartSettings({
-          initialChartSettings: { section: t`Data` },
-          showSidebarTitle: true,
-        }),
-      );
-    } else {
-      updateQuestionVisualization(display);
-    }
+    updateQuestionVisualization(display);
+  };
+
+  const onOpenVizSettings = () => {
+    dispatch(
+      onOpenChartSettings({
+        initialChartSettings: { section: t`Data` },
+        showSidebarTitle: true,
+      }),
+    );
   };
 
   return (
@@ -77,6 +79,10 @@ export const ChartTypeSidebar = ({
         onSelectVisualization={handleSelectVisualization}
         sensibleVisualizations={sensibleVisualizations}
         nonSensibleVisualizations={nonSensibleVisualizations}
+        onOpenSettings={onOpenVizSettings}
+        spacing={0}
+        w="100%"
+        p="lg"
       />
     </SidebarContent>
   );

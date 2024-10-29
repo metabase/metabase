@@ -30,12 +30,17 @@ export interface VersionInfo {
   released: string;
   patch: boolean;
   highlights: string[];
+  rollout?: number;
 }
 
 export interface VersionInfoFile {
   latest: VersionInfo;
+  beta?: VersionInfo;
+  nightly?: VersionInfo;
   older: VersionInfo[];
 }
+
+export type ReleaseChannel = "latest" | "beta" | "nightly";
 
 export type Issue = {
   number: number;

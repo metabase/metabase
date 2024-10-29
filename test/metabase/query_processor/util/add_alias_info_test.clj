@@ -197,16 +197,14 @@
                                  ::add/desired-alias "count"
                                  ::add/position      0}]]
                  :filter      [:!=
-                               [:field %date {:temporal-unit     :default
-                                              ::add/source-table $$checkins
+                               [:field %date {::add/source-table $$checkins
                                               ::add/source-alias "DATE"}]
                                [:value nil {:base_type         :type/Date
                                             :effective_type    :type/Date
                                             :coercion_strategy nil
                                             :semantic_type     nil
                                             :database_type     "DATE"
-                                            :name              "DATE"
-                                            :unit              :default}]]})
+                                            :name              "DATE"}]]})
               (add-alias-info
                (lib.tu.macros/mbql-query checkins
                  {:aggregation [[:count]]

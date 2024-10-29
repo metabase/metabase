@@ -1,4 +1,4 @@
-(ns metabase.models.action-test
+(ns ^:mb/driver-tests metabase.models.action-test
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]

@@ -55,7 +55,7 @@ module.exports = {
       }),
       new webpack.EnvironmentPlugin({
         EMBEDDING_SDK_VERSION,
-        IS_EMBEDDING_SDK_BUILD: isEmbeddingSDK,
+        IS_EMBEDDING_SDK: isEmbeddingSDK,
       }),
     ],
     module: {

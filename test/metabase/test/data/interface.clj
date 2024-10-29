@@ -40,6 +40,7 @@
 
 (defsetting database-source-dataset-name
   "The name of the test dataset this Database was created from, if any."
+  :encryption     :no
   :visibility     :internal
   :type           :string
   :database-local :only)
@@ -240,7 +241,7 @@
   (assert-database-name-does-not-include-driver db-name)
   (str/starts-with? table-name (db-qualified-table-name-prefix db-name)))
 
-(mu/defn db-qualified-table-name :- [:string]
+(mu/defn db-qualified-table-name :- :string
   "Return a combined table name qualified with the name of its database, suitable for use as an identifier.
   Provided for drivers where testing wackiness makes it hard to actually create separate Databases, such as Oracle,
   where this is disallowed on RDS. (Since Oracle can't create seperate DBs, we just create various tables in the same

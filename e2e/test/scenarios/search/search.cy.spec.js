@@ -10,6 +10,7 @@ import {
   isScrollableHorizontally,
   main,
   restore,
+  updateSetting,
   visitFullAppEmbeddingUrl,
 } from "e2e/support/helpers";
 
@@ -193,10 +194,8 @@ describe("scenarios > search", () => {
     });
 
     it("should not dismiss when the homepage redirects to a dashboard (metabase#34226)", () => {
-      cy.request("PUT", "/api/setting/custom-homepage", { value: true });
-      cy.request("PUT", "/api/setting/custom-homepage-dashboard", {
-        value: ORDERS_DASHBOARD_ID,
-      });
+      updateSetting("custom-homepage", true);
+      updateSetting("custom-homepage-dashboard", ORDERS_DASHBOARD_ID);
       cy.intercept(
         {
           url: `/api/dashboard/${ORDERS_DASHBOARD_ID}`,
@@ -279,6 +278,7 @@ describe.skip("issue 16785", () => {
 
 describe("issue 28788", () => {
   const LONG_STRING = "01234567890ABCDEFGHIJKLMNOPQRSTUVXYZ0123456789";
+
   beforeEach(() => {
     restore();
     cy.signInAsNormalUser();

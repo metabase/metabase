@@ -20,10 +20,12 @@ import {
   navigationSidebar,
   openNavigationSidebar,
   popover,
+  repeatAssertion,
   resetSnowplow,
   restore,
   setTokenFeatures,
   undoToast,
+  updateSetting,
   visitDashboard,
   visitQuestion,
 } from "e2e/support/helpers";
@@ -76,6 +78,35 @@ describe("scenarios > home > homepage", () => {
       cy.wait("@getXrayDashboard");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("More X-rays");
+    });
+
+    it("homepage should not flicker when syncing databases and showing xrays", () => {
+      cy.signInAsAdmin();
+      cy.addSQLiteDatabase();
+
+      cy.intercept("/api/database", req => {
+        req.continue(res => {
+          res.body.data[1].initial_sync_status = "incomplete";
+
+          return new Promise(resolve => {
+            setTimeout(() => {
+              resolve();
+              // Setting this to be arbitrarly long so that the repeat assertion
+              // has a guarentee of finding it.
+            }, 1000);
+          });
+        });
+      });
+
+      cy.visit("/");
+      cy.wait("@getXrayCandidates");
+
+      repeatAssertion(() =>
+        cy
+          .findByTestId("home-page")
+          .findByTestId("loading-indicator", { timeout: 0 })
+          .should("not.exist"),
+      );
     });
 
     it("should allow switching between multiple schemas for x-rays", () => {
@@ -245,6 +276,7 @@ describe("scenarios > home > custom homepage", () => {
     beforeEach(() => {
       restore();
       cy.signInAsAdmin();
+      cy.intercept("GET", "/api/search*").as("search");
     });
 
     it("should give you the option to set a custom home page in settings", () => {
@@ -357,6 +389,7 @@ describe("scenarios > home > custom homepage", () => {
         //Ensure that child dashboards of personal collections do not
         //appear in search
         cy.findByPlaceholderText(/search/i).type("das{enter}");
+        cy.wait("@search");
         cy.findByText("Orders in a dashboard").should("exist");
         cy.findByText("nested dash").should("not.exist");
 
@@ -384,10 +417,8 @@ describe("scenarios > home > custom homepage", () => {
     beforeEach(() => {
       restore();
       cy.signInAsAdmin();
-      cy.request("PUT", "/api/setting/custom-homepage", { value: true });
-      cy.request("PUT", "/api/setting/custom-homepage-dashboard", {
-        value: ORDERS_DASHBOARD_ID,
-      });
+      updateSetting("custom-homepage", true);
+      updateSetting("custom-homepage-dashboard", ORDERS_DASHBOARD_ID);
     });
 
     it("should not flash the homescreen before redirecting (#37089)", () => {

@@ -29,6 +29,7 @@ export const TEST_DASHBOARD_STATE: DashboardState = {
       created_at: "2024-01-01T00:00:00Z",
       updated_at: "2024-01-01T00:00:00Z",
       collection_id: 1,
+      creator_id: 1,
       name: "",
       description: "",
       can_write: true,

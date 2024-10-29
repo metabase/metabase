@@ -21,7 +21,7 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
-interface PublicOrEmbeddedQuestionViewProps {
+export interface PublicOrEmbeddedQuestionViewProps {
   initialized: boolean;
   card: Card<DatasetQuery> | null;
   metadata: Metadata;

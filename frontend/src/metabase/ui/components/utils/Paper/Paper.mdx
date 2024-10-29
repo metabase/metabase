@@ -1,0 +1,33 @@
+import { Fragment } from "react";
+import { Canvas, Story, Meta } from "@storybook/blocks";
+import { Grid, Paper, Text } from "metabase/ui";
+import * as PaperStories from "./Paper.stories";
+
+<Meta of={PaperStories} />
+
+# Paper
+
+Our themed wrapper around [Mantine Paper](https://v6.mantine.dev/core/paper/).
+
+## Docs
+
+- [Figma File](https://www.figma.com/file/uc2OFS4lu0GvVDFB7Sz1hw/Paper?type=design&node-id=1-227&mode=design&t=x44LGyAYVvvURkVS-0)
+- [Mantine Paper Docs](https://v6.mantine.dev/core/paper/)
+
+## Examples
+
+<Canvas>
+  <Story of={PaperStories.Default} />
+</Canvas>
+
+### No border
+
+<Canvas>
+  <Story of={PaperStories.NoBorder} />
+</Canvas>
+
+### Border
+
+<Canvas>
+  <Story of={PaperStories.Border} />
+</Canvas>

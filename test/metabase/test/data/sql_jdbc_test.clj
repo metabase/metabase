@@ -1,4 +1,4 @@
-(ns metabase.test.data.sql-jdbc-test
+(ns ^:mb/driver-tests metabase.test.data.sql-jdbc-test
   "Tests for SQL JDBC test extensions."
   (:require
    [clojure.test :refer :all]

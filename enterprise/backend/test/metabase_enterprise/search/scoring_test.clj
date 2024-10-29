@@ -121,7 +121,7 @@
              (-> (scoring/top-results
                   results
                   1
-                  (map #(scoring/score-and-result % {:search-string search-string})))
+                  (keep #(scoring/score-and-result % {:search-string search-string})))
                  first
                  :name))))))
 

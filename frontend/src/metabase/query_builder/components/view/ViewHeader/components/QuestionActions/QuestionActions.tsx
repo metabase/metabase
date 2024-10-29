@@ -83,7 +83,7 @@ export const QuestionActions = ({
 
   const dispatch = useDispatch();
 
-  const dispatchSoftReloadCard = () => dispatch(softReloadCard());
+  const reload = () => dispatch(softReloadCard());
   const onOpenSettingsSidebar = () => dispatch(onOpenQuestionSettings());
 
   const infoButtonColor = isShowingQuestionInfoSidebar
@@ -125,6 +125,15 @@ export const QuestionActions = ({
 
   const extraButtons = [];
 
+  if (isQuestion || isMetric) {
+    extraButtons.push({
+      title: t`Add to dashboard`,
+      icon: "add_to_dash",
+      action: () => onOpenModal(MODAL_TYPES.ADD_TO_DASHBOARD),
+      testId: ADD_TO_DASH_TESTID,
+    });
+  }
+
   if (
     isMetabotEnabled &&
     isModel &&
@@ -138,13 +147,12 @@ export const QuestionActions = ({
     });
   }
 
-  extraButtons.push(
-    ...PLUGIN_MODERATION.getMenuItems(
-      question,
-      isModerator,
-      dispatchSoftReloadCard,
-    ),
+  const moderationItems = PLUGIN_MODERATION.useMenuItems(
+    question,
+    isModerator,
+    reload,
   );
+  extraButtons.push(...moderationItems);
 
   if (hasCollectionPermissions) {
     if (isModelOrMetric && hasDataPermissions) {
@@ -168,42 +176,6 @@ export const QuestionActions = ({
     }
   }
 
-  if (isQuestion || isMetric) {
-    extraButtons.push({
-      title: t`Add to dashboard`,
-      icon: "add_to_dash",
-      action: () => onOpenModal(MODAL_TYPES.ADD_TO_DASHBOARD),
-      testId: ADD_TO_DASH_TESTID,
-    });
-  }
-
-  if (enableSettingsSidebar) {
-    extraButtons.push({
-      title: t`Edit settings`,
-      icon: "gear",
-      action: onOpenSettingsSidebar,
-      testId: "question-settings-button",
-    });
-  }
-
-  if (hasCollectionPermissions) {
-    extraButtons.push({
-      title: t`Move`,
-      icon: "move",
-      action: () => onOpenModal(MODAL_TYPES.MOVE),
-      testId: MOVE_TESTID,
-    });
-  }
-
-  if (hasDataPermissions) {
-    extraButtons.push({
-      title: t`Duplicate`,
-      icon: "clone",
-      action: () => onOpenModal(MODAL_TYPES.CLONE),
-      testId: CLONE_TESTID,
-    });
-  }
-
   if (hasCollectionPermissions) {
     if (isQuestion) {
       extraButtons.push({
@@ -224,7 +196,42 @@ export const QuestionActions = ({
 
   extraButtons.push(...PLUGIN_QUERY_BUILDER_HEADER.extraButtons(question));
 
+  if (enableSettingsSidebar) {
+    extraButtons.push({
+      title: t`Edit settings`,
+      icon: "gear",
+      action: onOpenSettingsSidebar,
+      testId: "question-settings-button",
+    });
+  }
+
   if (hasCollectionPermissions) {
+    extraButtons.push({
+      separator: true,
+      key: "move-separator",
+    });
+    extraButtons.push({
+      title: t`Move`,
+      icon: "move",
+      action: () => onOpenModal(MODAL_TYPES.MOVE),
+      testId: MOVE_TESTID,
+    });
+  }
+
+  if (hasDataPermissions) {
+    extraButtons.push({
+      title: t`Duplicate`,
+      icon: "clone",
+      action: () => onOpenModal(MODAL_TYPES.CLONE),
+      testId: CLONE_TESTID,
+    });
+  }
+
+  if (hasCollectionPermissions) {
+    extraButtons.push({
+      separator: true,
+      key: "trash-separator",
+    });
     extraButtons.push({
       title: t`Move to trash`,
       icon: "trash",

@@ -20,7 +20,7 @@ import {
 
 import S from "./SdkUsageProblemBanner.module.css";
 
-interface Props {
+export interface SdkUsageProblemBannerProps {
   problem: SdkUsageProblem | null;
 }
 
@@ -30,7 +30,9 @@ const unthemedBrand = originalColors["brand"];
 const unthemedTextDark = originalColors["text-dark"];
 const unthemedTextMedium = originalColors["text-medium"];
 
-export const SdkUsageProblemBanner = ({ problem }: Props) => {
+export const SdkUsageProblemBanner = ({
+  problem,
+}: SdkUsageProblemBannerProps) => {
   const theme = useMantineTheme();
 
   const [expanded, setExpanded] = useState(false);

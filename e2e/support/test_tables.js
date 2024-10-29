@@ -169,36 +169,35 @@ export const no_pk_table = async dbClient => {
 
 export const multi_schema = async dbClient => {
   const schemas = {
-    Domestic: [
-      "Animals",
-      [
+    Domestic: {
+      Animals: [
         { name: "Duck", score: 10 },
         { name: "Horse", score: 20 },
         { name: "Cow", score: 30 },
       ],
-    ],
-    Wild: [
-      "Animals",
-      [
+    },
+    Wild: {
+      Animals: [
         { name: "Snake", score: 10 },
         { name: "Lion", score: 20 },
         { name: "Elephant", score: 30 },
       ],
-    ],
+      Birds: [{ name: "Toucan", score: 50 }],
+    },
   };
 
-  Object.entries(schemas).forEach(async ([schemaName, details]) => {
-    const [table, rows] = details;
-    await dbClient.schema.createSchemaIfNotExists(schemaName);
-    await dbClient.schema.withSchema(schemaName).dropTableIfExists(table);
+  for (const [schema, tables] of Object.entries(schemas)) {
+    await dbClient.schema.createSchemaIfNotExists(schema);
 
-    await dbClient.schema.withSchema(schemaName).createTable(table, t => {
-      t.string("name");
-      t.integer("score");
-    });
-
-    await dbClient(`${schemaName}.${table}`).insert(rows);
-  });
+    for (const [table, rows] of Object.entries(tables)) {
+      await dbClient.schema.withSchema(schema).dropTableIfExists(table);
+      await dbClient.schema.withSchema(schema).createTable(table, t => {
+        t.string("name");
+        t.integer("score");
+      });
+      await dbClient(`${schema}.${table}`).insert(rows);
+    }
+  }
 
   return schemas;
 };

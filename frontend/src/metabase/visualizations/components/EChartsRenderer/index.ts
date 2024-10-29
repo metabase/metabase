@@ -1,2 +1,3 @@
 export * from "./EChartsRenderer";
-export * from "./ResponsiveEChartsRenderer";
+export type { ResponsiveEChartsRendererProps } from "./ResponsiveEChartsRenderer";
+export { ResponsiveEChartsRenderer } from "./ResponsiveEChartsRenderer.styled";

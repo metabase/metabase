@@ -86,7 +86,7 @@ const recents_1 = createMockRecentCollectionItem({
   model: "dataset",
   moderated_status: "verified",
   parent_collection: {
-    id: null,
+    id: "root",
     name: "Our analytics",
   },
 });

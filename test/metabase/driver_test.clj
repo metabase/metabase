@@ -1,4 +1,4 @@
-(ns metabase.driver-test
+(ns ^:mb/driver-tests metabase.driver-test
   (:require
    [cheshire.core :as json]
    [clojure.set :as set]
@@ -8,6 +8,8 @@
    [metabase.driver.h2 :as h2]
    [metabase.driver.impl :as driver.impl]
    [metabase.plugins.classloader :as classloader]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.task.sync-databases :as task.sync-databases]
    [metabase.test :as mt]
    [metabase.test.data.env :as tx.env]
@@ -83,7 +85,7 @@
 
 (deftest can-connect-with-destroy-db-test
   (testing "driver/can-connect? should fail or throw after destroying a database"
-    (mt/test-drivers (mt/normal-drivers-without-feature :connection/multiple-databases)
+    (mt/test-drivers (mt/normal-drivers-with-feature :test/dynamic-dataset-loading)
       (let [database-name (mt/random-name)
             dbdef         (basic-db-definition database-name)]
         (mt/dataset dbdef
@@ -115,7 +117,7 @@
 
 (deftest check-can-connect-before-sync-test
   (testing "Database sync should short-circuit and fail if the database at the connection has been deleted (metabase#7526)"
-    (mt/test-drivers (mt/normal-drivers-without-feature :connection/multiple-databases)
+    (mt/test-drivers (mt/normal-drivers-with-feature :test/dynamic-dataset-loading)
       (let [database-name (mt/random-name)
             dbdef         (basic-db-definition database-name)]
         (mt/dataset dbdef
@@ -192,6 +194,15 @@
             ;; one it should be harmless but annoying
             (is (= query
                    (json/parse-string weird-formatted-query)))))))))
+
+(deftest ^:parallel prettify-native-form-executable-test
+  (mt/test-drivers
+    (set (filter (partial get-method driver/prettify-native-form) (mt/normal-drivers)))
+    (is (=? {:status :completed}
+            (qp/process-query {:database (mt/id)
+                               :type     :native
+                               :native   (-> (qp.compile/compile (mt/mbql-query orders {:limit 1}))
+                                             (update :query (partial driver/prettify-native-form driver/*driver*)))})))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Begin tests for `describe-*` methods used in sync

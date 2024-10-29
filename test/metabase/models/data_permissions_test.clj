@@ -247,18 +247,15 @@
         (is (= :unrestricted
                (data-perms/table-permission-for-user user-id :perms/view-data database-id table-id-1)))
         (t2/update! :model/Table table-id-1 {:active false})
-
-        ;; Deactivated table has minimum permissions when reading straight from DB
-        (is (= :blocked (data-perms/table-permission-for-user user-id :perms/view-data database-id table-id-1)))
-
-        ;; Deactivated table has minimum permissions when reading from cache
-        (data-perms/with-relevant-permissions-for-user user-id
+        (testing "Deactivated table has minimum permissions when reading straight from DB"
           (is (= :blocked (data-perms/table-permission-for-user user-id :perms/view-data database-id table-id-1))))
-
-        ;; Reactivating the table allows the perms to be read again
-        (t2/update! :model/Table table-id-1 {:active true})
-        (is (= :unrestricted
-               (data-perms/table-permission-for-user user-id :perms/view-data database-id table-id-1)))))))
+        (testing "Deactivated table has minimum permissions when reading from cache"
+          (data-perms/with-relevant-permissions-for-user user-id
+            (is (= :blocked (data-perms/table-permission-for-user user-id :perms/view-data database-id table-id-1)))))
+        (testing "Reactivating the table allows the perms to be read again"
+          (t2/update! :model/Table table-id-1 {:active true})
+          (is (= :unrestricted
+                 (data-perms/table-permission-for-user user-id :perms/view-data database-id table-id-1))))))))
 
 (deftest permissions-for-user-test
   (mt/with-temp [:model/PermissionsGroup           {group-id-1 :id}    {}

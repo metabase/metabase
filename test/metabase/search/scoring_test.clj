@@ -4,7 +4,7 @@
    [java-time.api :as t]
    [metabase.search.config :as search.config]
    [metabase.search.filter-test :as search.filter-test]
-   [metabase.search.impl :as search.impl]
+   [metabase.search.legacy :as search.legacy]
    [metabase.search.scoring :as scoring]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -235,7 +235,7 @@
   [search-ctx]
   (mt/with-current-user (mt/user->id :crowberto)
     (let [search-ctx (merge search.filter-test/default-search-ctx search-ctx)]
-      (t2/query (#'search.impl/full-search-query search-ctx)))))
+      (t2/query (search.legacy/full-search-query search-ctx)))))
 
 (deftest search-native-query-scoring-test
   (testing "Exclude native query matches in search scoring when the search should exclude native queries"

@@ -9,11 +9,13 @@ export const CreateQuestion = ({
   isSaveEnabled,
   onSave,
   onBeforeSave,
+  entityTypeFilter,
 }: CreateQuestionProps = {}) => (
   <QuestionEditor
     plugins={plugins}
     isSaveEnabled={isSaveEnabled}
     onBeforeSave={onBeforeSave}
     onSave={onSave}
+    entityTypeFilter={entityTypeFilter}
   />
 );

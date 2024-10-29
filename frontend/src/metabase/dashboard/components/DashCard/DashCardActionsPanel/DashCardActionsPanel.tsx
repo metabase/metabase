@@ -36,7 +36,7 @@ interface Props {
   onRemove: (dashcard: DashboardCard) => void;
   onAddSeries: (dashcard: DashboardCard) => void;
   onReplaceCard: (dashcard: DashboardCard) => void;
-  onReplaceAllVisualizationSettings: (
+  onReplaceAllDashCardVisualizationSettings: (
     dashcardId: DashCardId,
     settings: VisualizationSettings,
   ) => void;
@@ -60,7 +60,7 @@ function DashCardActionsPanelInner({
   onRemove,
   onAddSeries,
   onReplaceCard,
-  onReplaceAllVisualizationSettings,
+  onReplaceAllDashCardVisualizationSettings,
   onUpdateVisualizationSettings,
   showClickBehaviorSidebar,
   onPreviewToggle,
@@ -95,9 +95,9 @@ function DashCardActionsPanelInner({
         return;
       }
 
-      onReplaceAllVisualizationSettings(dashcard.id, settings);
+      onReplaceAllDashCardVisualizationSettings(dashcard.id, settings);
     },
-    [dashcard, onReplaceAllVisualizationSettings],
+    [dashcard, onReplaceAllDashCardVisualizationSettings],
   );
 
   const handleReplaceCard = useCallback(() => {
@@ -135,19 +135,15 @@ function DashCardActionsPanelInner({
     );
   }
 
-  if (supportPreviewing) {
+  if (supportPreviewing && isPreviewing) {
     buttons.push(
       <DashCardActionButton
         key="preview"
         onClick={onPreviewToggle}
-        tooltip={isPreviewing ? t`Edit` : t`Preview`}
-        aria-label={isPreviewing ? t`Edit card` : t`Preview card`}
+        tooltip={t`Edit`}
+        aria-label={t`Edit card`}
       >
-        {isPreviewing ? (
-          <DashCardActionButton.Icon name="edit_document" />
-        ) : (
-          <DashCardActionButton.Icon name="eye" size={18} />
-        )}
+        {isPreviewing ? <DashCardActionButton.Icon name="pencil" /> : null}
       </DashCardActionButton>,
     );
   }

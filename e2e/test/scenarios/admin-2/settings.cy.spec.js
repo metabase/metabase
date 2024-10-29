@@ -28,6 +28,7 @@ import {
   setupSMTP,
   tableHeaderClick,
   undoToast,
+  updateSetting,
   visitQuestion,
   visitQuestionAdhoc,
 } from "e2e/support/helpers";
@@ -473,6 +474,7 @@ describe.skip(
       });
     }
     const nativeQuery = "select (random() * random() * random()), pg_sleep(2)";
+
     beforeEach(() => {
       cy.intercept("POST", "/api/dataset").as("dataset");
       cy.intercept("POST", "/api/card/*/query").as("cardQuery");
@@ -707,6 +709,7 @@ describe("scenarios > admin > license and billing", () => {
       status: "something",
     });
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -794,9 +797,7 @@ describe("scenarios > admin > license and billing", () => {
 
 describe("scenarios > admin > localization", () => {
   function setFirstWeekDayTo(day) {
-    cy.request("PUT", "/api/setting/start-of-week", {
-      value: day.toLowerCase(),
-    });
+    updateSetting("start-of-week", day.toLowerCase());
   }
 
   beforeEach(() => {
@@ -1277,5 +1278,102 @@ describe("notifications", { tags: "@external" }, () => {
       .click();
 
     cy.findByRole("heading", { name: "Add a webhook" }).should("exist");
+  });
+});
+
+describe("admin > settings > updates", () => {
+  // we're mocking this so it can be stable for tests
+  const versionInfo = {
+    latest: {
+      version: "v1.86.76",
+      released: "2022-10-14",
+      rollout: 60,
+      highlights: ["New latest feature", "Another new feature"],
+    },
+    beta: {
+      version: "v1.86.75.309",
+      released: "2022-10-15",
+      rollout: 70,
+      highlights: ["New beta feature", "Another new feature"],
+    },
+    nightly: {
+      version: "v1.86.75.311",
+      released: "2022-10-16",
+      rollout: 80,
+      highlights: ["New nightly feature", "Another new feature"],
+    },
+    older: [
+      {
+        version: "v1.86.75",
+        released: "2022-10-10",
+        rollout: 100,
+        highlights: ["Some old feature", "Another old feature"],
+      },
+    ],
+  };
+
+  const currentVersion = "v1.86.70";
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+    cy.visit("/admin/settings/updates");
+
+    cy.intercept("GET", "/api/session/properties", (req, res) => {
+      req.continue(res => {
+        res.body["version-info"] = versionInfo;
+        res.body.version.tag = currentVersion;
+        return res.body;
+      });
+    });
+  });
+
+  it("should show the updates page", () => {
+    cy.findByLabelText("Check for updates").should("be.visible");
+    cy.findByTestId("update-channel-setting")
+      .findByText("Types of releases to check for")
+      .should("be.visible");
+
+    cy.findByTestId("settings-updates").within(() => {
+      cy.findByText("Metabase 1.86.76 is available. You're running 1.86.70");
+      cy.findByText("Some old feature").should("be.visible");
+    });
+
+    cy.log("hide most things if updates are turned off");
+
+    cy.findByLabelText("Check for updates").click();
+
+    cy.findByTestId("settings-updates").within(() => {
+      cy.findByText("Types of releases to check for").should("not.exist");
+      cy.findByText("Some old feature").should("not.exist");
+    });
+  });
+
+  it("should change release notes based on the selected update channel", () => {
+    cy.findByTestId("settings-updates").within(() => {
+      cy.findByText(/Metabase 1\.86\.76 is available/).should("be.visible");
+      cy.findByText("Some old feature").should("be.visible");
+      cy.findByText("New latest feature").should("be.visible");
+      cy.findByText("Stable releases").click();
+    });
+
+    popover().findByText("Beta releases").click();
+
+    cy.findByTestId("settings-updates").within(() => {
+      cy.findByText(/Metabase 1\.86\.75\.309 is available/).should(
+        "be.visible",
+      );
+      cy.findByText("New beta feature").should("be.visible");
+      cy.findByText("Beta releases").click();
+    });
+
+    popover().findByText("Nightly builds").click();
+
+    cy.findByTestId("settings-updates").within(() => {
+      cy.findByText(/Metabase 1\.86\.75\.311 is available/).should(
+        "be.visible",
+      );
+      cy.findByText("New nightly feature").should("be.visible");
+    });
   });
 });

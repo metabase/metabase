@@ -1,59 +1,47 @@
 (ns metabase.search
-  "API namespace for the `metabase.search` module.
-
-  TODO: a lot of this stuff wouldn't need to be exposed if we moved more of the search stuff
-  from [[metabase.api.search]] into the `metabase.search` module."
+  "API namespace for the `metabase.search` module"
   (:require
-   [metabase.db]
+   [metabase.db :as mdb]
+   [metabase.search.api :as search.api]
    [metabase.search.config :as search.config]
+   [metabase.search.fulltext :as search.fulltext]
    [metabase.search.impl :as search.impl]
    [metabase.search.postgres.core :as search.postgres]
-   [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
    [potemkin :as p]))
 
 (set! *warn-on-reflection* true)
+
+(comment
+  search.api/keep-me
+  search.config/keep-me
+  search.impl/keep-me)
 
 (p/import-vars
  [search.config
   SearchableModel
   all-models]
+ [search.api
+  model-set]
  [search.impl
-  query-model-set
+  search
+  ;; We could avoid exposing this by wrapping `query-model-set` and `search` with it.
   search-context])
 
-(defn is-postgres?
-  "Check whether we can create this index"
-  []
-  (= :postgres (metabase.db/db-type)))
-
-(defn- query-fn [search-engine]
-  (case search-engine
-    :fulltext (if (is-postgres?)
-                search.postgres/search
-                (do (log/warn ":fulltext search not supported for your AppDb, using :in-place")
-                    search.impl/in-place))
-    :in-place search.impl/in-place))
+;; TODO The following need to be cleaned up to use multimethods.
 
 (defn supports-index?
-  "Does this instance support a search index, e.g. has the right kind of AppDb"
+  "Does this instance support a search index?"
   []
-  (is-postgres?))
+  (search.fulltext/supported-db? (mdb/db-type)))
 
 (defn init-index!
   "Ensure there is an index ready to be populated."
   [& {:keys [force-reset?]}]
-  (when (is-postgres?)
+  (when (supports-index?)
     (search.postgres/init! force-reset?)))
 
 (defn reindex!
   "Populate a new index, and make it active. Simultaneously updates the current index."
   []
-  (when (is-postgres?)
+  (when (supports-index?)
     (search.postgres/reindex!)))
-
-(mu/defn search
-  "Builds a search query that includes all the searchable entities and runs it"
-  [search-ctx :- search.config/SearchContext]
-  (let [query-fn (query-fn (:search-engine search-ctx :in-place))]
-    (search.impl/search query-fn search-ctx)))

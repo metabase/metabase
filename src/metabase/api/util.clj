@@ -38,7 +38,7 @@
   what is being phoned home."
   []
   (validation/check-has-application-permission :monitoring)
-  (stats/anonymous-usage-stats))
+  (stats/legacy-anonymous-usage-stats))
 
 (api/defendpoint GET "/random_token"
   "Return a cryptographically secure random 32-byte token, encoded as a hexadecimal string.

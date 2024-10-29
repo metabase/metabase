@@ -8,9 +8,9 @@
    [hickory.select :as hik.s]
    [metabase.formatter :as formatter]
    [metabase.models :refer [Card]]
-   [metabase.pulse :as pulse]
    [metabase.pulse.render.body :as body]
    [metabase.pulse.render.test-util :as render.tu]
+   [metabase.pulse.send :as pulse.send]
    [metabase.pulse.util :as pu]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
@@ -847,7 +847,7 @@
 
 (defn- render-card
   [render-type card data]
-  (body/render render-type :attachment (pulse/defaulted-timezone card) card nil data))
+  (body/render render-type :attachment (pulse.send/defaulted-timezone card) card nil data))
 
 (deftest render-cards-are-thread-safe-test-for-js-visualization
   (mt/with-temp [:model/Card card {:dataset_query          (mt/mbql-query orders
@@ -974,3 +974,28 @@
                        (map vector
                             (range)
                             (map :content (take 20 card-row-els)))))))))))))
+
+(deftest table-renders-excludes-pivot-grouping
+  (testing "Rendered Tables respect the provided viz-settings on the dashcard."
+    (mt/dataset test-data
+      (mt/with-temp [:model/Card {card-id :id}
+                     {:display                :pivot
+                      :visualization_settings {:pivot_table.column_split
+                                               {:rows    [[:field (mt/id :products :category) {:base-type :type/Text}]]
+                                                :columns [[:field (mt/id :products :created_at) {:base-type :type/DateTime :temporal-unit :year}]]
+                                                :values  [[:aggregation 0]]}
+                                               :column_settings
+                                               {"[\"name\",\"sum\"]" {:number_style       "currency"
+                                                                      :currency_in_header false}}}
+                      :dataset_query          {:database (mt/id)
+                                               :type     :query
+                                               :query
+                                               {:source-table (mt/id :products)
+                                                :aggregation  [[:sum [:field (mt/id :products :price) {:base-type :type/Float}]]]
+                                                :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]
+                                                               [:field (mt/id :products :created_at) {:base-type :type/DateTime :temporal-unit :year}]]}}}]
+        (mt/with-current-user (mt/user->id :rasta)
+          (let [card-doc        (render.tu/render-pivot-card-as-hickory! card-id)
+                card-header-els (hik.s/select (hik.s/tag :th) card-doc)]
+            (is (=  ["Category" "Created At" "Sum of Price"]
+                    (mapv (comp first :content) card-header-els)))))))))

@@ -6,7 +6,7 @@
   (:require
    [clojure.string :as str]
    [metabase.search.config :as search.config]
-   [metabase.search.impl :as search.impl]
+   [metabase.search.legacy :as search.legacy]
    [metabase.search.postgres.index :as search.index]
    [toucan2.core :as t2]
    [toucan2.realize :as t2.realize]))
@@ -26,6 +26,9 @@
        (map m)
        (str/join " ")))
 
+(defn- display-data [m]
+  (select-keys m [:name :display_name :description]))
+
 (defn- ->entry [m]
   (-> m
       (select-keys
@@ -37,6 +40,8 @@
         :table_id])
       (update :archived boolean)
       (assoc
+       :display_data    (display-data m)
+       :legacy_input    m
        :searchable_text (searchable-text m)
        :model_rank      (model-rank (:model m)))))
 
@@ -45,14 +50,13 @@
        :models             (disj search.config/all-models "indexed-entity")
        ;; we want to see everything
        :is-superuser?      true
-       ;; irrelevant, as we're acting as a super user
-       :current-user-id    1
+       :current-user-id    (t2/select-one-pk :model/User :is_superuser true)
        :current-user-perms #{"/"}
        ;; include both achived and non-archived items.
        :archived?          nil
        ;; only need this for display data
        :model-ancestors?   false}
-      search.impl/full-search-query
+      search.legacy/full-search-query
       (dissoc :limit)
       t2/reducible-query))
 
@@ -60,7 +64,6 @@
   "Go over all searchable items and populate the index with them."
   []
   (->> (search-items-reducible)
-        ;; TODO realize and insert in batches
        (eduction
         (comp
          (map t2.realize/realize)

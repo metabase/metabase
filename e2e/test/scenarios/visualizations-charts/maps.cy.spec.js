@@ -27,7 +27,7 @@ describe("scenarios > visualizations > maps", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Visualization").click();
     cy.icon("pinmap").click();
-    cy.findByTestId("Map-button").within(() => {
+    cy.findByTestId("Map-container").within(() => {
       cy.icon("gear").click();
     });
 

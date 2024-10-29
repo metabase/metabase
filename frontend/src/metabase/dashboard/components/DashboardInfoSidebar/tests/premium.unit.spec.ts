@@ -1,33 +1,39 @@
-import userEvent from "@testing-library/user-event";
-
 import { screen } from "__support__/ui";
+import type { Dashboard } from "metabase-types/api";
+import {
+  createMockDashboard,
+  createMockSettings,
+  createMockTokenFeatures,
+} from "metabase-types/api/mocks";
 
-import { setupEnterprise } from "./setup";
+import type { SetupOpts } from "./setup";
+import { setup } from "./setup";
 
-const tokenFeatures = {
-  cache_granular_controls: true,
+const setupEnterprise = (opts: SetupOpts) => {
+  return setup({
+    ...opts,
+    settings: createMockSettings({
+      "token-features": createMockTokenFeatures({
+        content_verification: true,
+        cache_granular_controls: true,
+        serialization: true,
+        audit_app: true,
+      }),
+    }),
+    hasEnterprisePlugins: true,
+  });
 };
 
-describe("DashboardInfoSidebar > premium enterprise", () => {
-  it("should render the component", async () => {
-    await setupEnterprise({}, tokenFeatures);
+describe("DashboardInfoSidebar > enterprise", () => {
+  describe("entity id display", () => {
+    it("should show entity ids only with serialization feature", async () => {
+      const dashboard = createMockDashboard({
+        entity_id: "jenny8675309" as Dashboard["entity_id"],
+      });
+      await setupEnterprise({ dashboard });
 
-    expect(screen.getByText("Info")).toBeInTheDocument();
-    expect(screen.getByTestId("sidesheet")).toBeInTheDocument();
-  });
-
-  it("should render caching section with caching feature", async () => {
-    await setupEnterprise({}, tokenFeatures);
-
-    expect(await screen.findByText("Caching")).toBeInTheDocument();
-    expect(await screen.findByText("Caching policy")).toBeInTheDocument();
-  });
-
-  it("should show cache form when clicking on caching section", async () => {
-    await setupEnterprise({}, tokenFeatures);
-
-    await userEvent.click(await screen.findByText("Use default"));
-
-    expect(await screen.findByText("Caching settings")).toBeInTheDocument();
+      expect(screen.getByText("Entity ID")).toBeInTheDocument();
+      expect(screen.getByText("jenny8675309")).toBeInTheDocument();
+    });
   });
 });

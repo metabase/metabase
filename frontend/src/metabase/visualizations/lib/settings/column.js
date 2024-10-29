@@ -2,7 +2,7 @@ import moment from "moment-timezone"; // eslint-disable-line no-restricted-impor
 import { t } from "ttag";
 import _ from "underscore";
 
-import { currency } from "cljs/metabase.shared.util.currency";
+import { currency } from "cljs/metabase.util.currency";
 import {
   formatColumn,
   getCurrencySymbol,
@@ -362,7 +362,7 @@ export const NUMBER_COLUMN_SETTINGS = {
     getDefault: getDefaultNumberSeparators,
   },
   decimals: {
-    title: t`Minimum number of decimal places`,
+    title: t`Number of decimal places`,
     widget: "number",
     props: {
       placeholder: "1",

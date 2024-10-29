@@ -86,16 +86,13 @@ export const getScheduleComponent = (componentType: ScheduleComponentType) =>
   cacheStrategyForm().findByLabelText(getScheduleComponentLabel(componentType));
 
 export const openSidebar = (type: "question" | "dashboard") => {
-  // this will change when we move to having a dashboard settings sidesheet
   if (type === "dashboard") {
-    cy.icon("info").click();
-    return;
+    cy.findByTestId("dashboard-header").icon("ellipsis").click();
   }
 
   if (type === "question") {
     cy.findByTestId("qb-header").icon("ellipsis").click();
   }
-
   popover().findByText("Edit settings").click();
 };
 
@@ -111,7 +108,7 @@ export const openSidebarCacheStrategyForm = (
   cy.log("Open the cache strategy form in the sidebar");
   openSidebar(type);
   cy.wait("@getCacheConfig");
-  cy.findByLabelText("Caching policy").click();
+  cy.findByLabelText("When to get new results").click();
 };
 
 export const cancelConfirmationModal = () => {

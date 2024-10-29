@@ -17,10 +17,10 @@ export interface MetabaseTheme {
   fontSize?: string;
 
   /**
-   * Base font family supported by Metabase, defaults to `Lato`.
-   * Custom fonts are not yet supported in this version.
+   * Font family that will be used for all text, it defaults to the instance's default font.
    **/
-  fontFamily?: MetabaseFontFamily;
+  // eslint-disable-next-line @typescript-eslint/ban-types -- this is needed to allow any string but keep autocomplete for the built-in ones
+  fontFamily?: MetabaseFontFamily | (string & {});
 
   /** Base line height */
   lineHeight?: string | number;

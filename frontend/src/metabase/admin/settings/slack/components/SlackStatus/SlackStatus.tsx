@@ -55,7 +55,10 @@ const SlackStatus = ({
             {!isValid && (
               <StatusMessageText>
                 {jt`Need help? ${(
-                  <ExternalLink href={docsUrl}>{t`See our docs`}</ExternalLink>
+                  <ExternalLink
+                    key="link"
+                    href={docsUrl}
+                  >{t`See our docs`}</ExternalLink>
                 )}.`}
               </StatusMessageText>
             )}

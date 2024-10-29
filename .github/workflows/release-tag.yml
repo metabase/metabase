@@ -1,0 +1,348 @@
+name: Release 4 - Set Release Channel
+run-name: Set ${{ inputs.version }} as ${{ inputs.tag_name }} ( ${{ inputs.tag_ee && 'EE' || '' }} ${{ inputs.tag_oss && 'OSS' || '' }} )
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Metabase version (e.g. v0.46.3)
+        type: string
+        required: true
+      tag_name:
+        description: Tag name to apply to this release
+        type: choice
+        options:
+          - nightly
+          - beta
+          - latest
+        required: true
+      tag_rollout:
+        description: Rollout % (0-100)
+        type: number
+        default: 100
+      tag_ee:
+        description: Apply to EE
+        type: boolean
+        default: true
+      tag_oss:
+        description: Apply to OSS
+        type: boolean
+        default: true
+  workflow_call:
+    inputs:
+      version:
+        type: string
+        required: true
+      tag_name:
+        type: string
+        # options:
+        #   - nightly
+        #   - beta
+        #   - latest
+        required: true
+      tag_rollout:
+        description: Rollout % (0-100)
+        type: number
+        default: 100
+      tag_ee:
+        description: Apply to EE
+        type: boolean
+        default: true
+      tag_oss:
+        description: Apply to OSS
+        type: boolean
+        default: true
+
+jobs:
+  check-version:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    outputs:
+      ee: ${{ fromJson(steps.canonical_version.outputs.result).ee }}
+      oss: ${{ fromJson(steps.canonical_version.outputs.result).oss }}
+      edition_matrix: ${{ steps.edition_matrix.outputs.result }}
+    steps:
+    - name: Fail early on the incorrect version format
+      if: ${{ !(startsWith(inputs.version,'v0.') || startsWith(inputs.version,'v1.')) }}
+      run: |
+        echo "The version format is invalid!"
+        echo "It must start with either 'v0.' or 'v1.'."
+        echo "Please, try again."
+        exit 1
+    - uses: actions/checkout@v4
+      with:
+        sparse-checkout: release
+    - name: Prepare build scripts
+      run: cd ${{ github.workspace }}/release && yarn && yarn build
+    - name: Get Release Version
+      uses: actions/github-script@v7
+      id: canonical_version
+      with:
+        script: | # js
+          const { isValidVersionString, getCanonicalVersion, hasBeenReleased } = require('${{ github.workspace }}/release/dist/index.cjs');
+
+          const version = '${{ inputs.version }}';
+
+          if (!isValidVersionString(version)) {
+            throw new Error("The version format is invalid!");
+          }
+
+          const versions = {
+            ee: getCanonicalVersion(version, 'ee'),
+            oss: getCanonicalVersion(version, 'oss'),
+          };
+
+          const ossReleased = await hasBeenReleased({
+            github,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            version: versions.oss,
+          });
+
+          const eeReleased = await hasBeenReleased({
+            github,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            version: versions.ee,
+          });
+
+          if (!ossReleased || !eeReleased) {
+            throw new Error("This version has not been released yet!", version);
+          }
+
+          return versions;
+
+    - name: Get Edition matrix
+      uses: actions/github-script@v7
+      id: edition_matrix
+      with:
+        script: | # js
+          const tag_oss = ${{ inputs.tag_oss }};
+          const tag_ee = ${{ inputs.tag_ee }};
+
+          if (tag_oss && tag_ee) {
+            return ["oss", "ee"];
+          }
+
+          if (tag_oss) {
+            return ["oss"];
+          }
+
+          if (tag_ee) {
+            return ["ee"];
+          }
+
+          throw new Error("No edition selected to tag");
+
+  copy-to-s3:
+    runs-on: ubuntu-22.04
+    needs: check-version
+    timeout-minutes: 5
+    strategy:
+      matrix:
+        edition: ${{ fromJson(needs.check-version.outputs.edition_matrix) }}
+    steps:
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_S3_RELEASE_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_S3_RELEASE_SECRET_ACCESS_KEY }}
+        aws-region: ${{ vars.AWS_REGION }}
+    - name: Determine the source path
+      uses: actions/github-script@v7
+      id: source_path
+      with:
+        result-encoding: string
+        script: | # js
+          const version = '${{ inputs.version }}';
+          const edition = '${{ matrix.edition }}';
+
+          const source_path = edition === 'ee'
+            ? 'enterprise/' + version.replace(/^v0\./, "v1.") // always e.g. v1.47.2
+            : version.replace(/^v1\./, "v0."); // always e.g. v0.45.6;
+
+          console.log("The source path for this", edition, "edition is", source_path);
+
+          return source_path;
+
+    - name: Determine upload path
+      uses: actions/github-script@v7
+      id: upload_path
+      with:
+        result-encoding: string
+        script: | # js
+          const edition = '${{ matrix.edition }}';
+          const tagName = '${{ inputs.tag_name }}';
+
+          const OSSversion = '${{ needs.check-version.outputs.oss }}';
+          const EEversion = '${{ needs.check-version.outputs.ee }}';
+
+          const upload_path = edition === 'ee'
+            ? `enterprise/${tagName}`
+            : tagName;
+
+          console.log("The upload path for this", edition, "edition is", upload_path);
+
+          return upload_path;
+
+    - name: Upload to s3 latest path
+      run: | # sh
+        aws s3 cp \
+          s3://${{ vars.AWS_S3_DOWNLOADS_BUCKET }}/${{ steps.source_path.outputs.result }}/metabase.jar \
+          s3://${{ vars.AWS_S3_DOWNLOADS_BUCKET }}/${{ steps.upload_path.outputs.result }}/metabase.jar
+
+    - name: Create cloudfront invalidation
+      run: |
+        aws cloudfront create-invalidation \
+        --distribution-id ${{ vars.AWS_CLOUDFRONT_DOWNLOADS_ID }} \
+        --paths /${{ steps.upload_path.outputs.result }}/metabase.jar
+
+    - name: Download the jars
+      run: | # sh
+        curl -L http://${{ vars.AWS_S3_DOWNLOADS_BUCKET }}.s3.${{ vars.AWS_REGION }}.amazonaws.com/${{ steps.source_path.outputs.result }}/metabase.jar -o metabase-source.jar
+        curl -L http://${{ vars.AWS_S3_DOWNLOADS_BUCKET }}.s3.${{ vars.AWS_REGION }}.amazonaws.com/${{ steps.upload_path.outputs.result }}/metabase.jar -o metabase-tagged.jar
+
+    - name: Verify Checksums match
+      run: | # sh
+        SOURCE_CHECKSUM=$(sha256sum ./metabase-source.jar | awk '{print $1}')
+        TAGGED_CHECKSUM=$(sha256sum ./metabase-tagged.jar | awk '{print $1}')
+
+        echo "Source Checksum: $SOURCE_CHECKSUM"
+        echo "Tagged Checksum: $TAGGED_CHECKSUM"
+
+        if [[ "$SOURCE_CHECKSUM" != "$TAGGED_CHECKSUM" ]]; then
+          echo "jar Checksums do not match!"
+          exit 1
+        fi
+
+  tag-docker-image:
+    runs-on: ubuntu-22.04
+    needs: check-version
+    timeout-minutes: 5
+    strategy:
+      matrix:
+        edition: ${{ fromJson(needs.check-version.outputs.edition_matrix) }}
+    env:
+      TAG_NAME: ${{ inputs.tag_name }}
+    steps:
+    - name: Determine the Docker Hub repository
+      run: | # sh
+        if [[ "${{ matrix.edition }}" == "ee" ]]; then
+          echo "Metabase EE: image is going to be pushed to ${{ github.repository_owner }}/metabase-enterprise"
+          echo "DOCKERHUB_REPO=${{ github.repository_owner }}/metabase-enterprise" >> $GITHUB_ENV
+          echo "DOCKERHUB_VERSION=${{ needs.check-version.outputs.ee }}" >> $GITHUB_ENV
+        else
+          echo "Metabase OSS: image is going to be pushed to ${{ github.repository_owner }}/metabase"
+          echo "DOCKERHUB_REPO=${{ github.repository_owner }}/metabase" >> $GITHUB_ENV
+          echo "DOCKERHUB_VERSION=${{ needs.check-version.outputs.oss }}" >> $GITHUB_ENV
+        fi
+
+    - name: Login to Docker Hub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKERHUB_RELEASE_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_RELEASE_TOKEN }}
+
+    - name: Tag the docker image
+      run: | # sh
+        docker pull $DOCKERHUB_REPO\:$DOCKERHUB_VERSION
+        docker tag $DOCKERHUB_REPO\:$DOCKERHUB_VERSION $DOCKERHUB_REPO\:$TAG_NAME
+        docker image ls $DOCKERHUB_REPO
+
+        SOURCE_ID=$(docker image ls $DOCKERHUB_REPO\:$DOCKERHUB_VERSION -q)
+        TAGGED_ID=$(docker image ls $DOCKERHUB_REPO\:$TAG_NAME -q)
+
+        if [[ $SOURCE_ID != $TAGGED_ID ]]; then
+          echo "Error tagging docker image"
+          exit 1
+        fi
+
+        docker push $DOCKERHUB_REPO\:$TAG_NAME
+
+  push-git-tags:
+    permissions: write-all
+    needs: check-version
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    strategy:
+      matrix:
+        edition: ${{ fromJson(needs.check-version.outputs.edition_matrix) }}
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0 # fetch all history
+    - name: Add and push git tag
+      run: | # sh
+
+        if [[ "${{ matrix.edition }}" == "ee" ]]; then
+          git tag -f ${{ inputs.tag_name }}-ee ${{ needs.check-version.outputs.ee }}
+          git push origin -f ${{ inputs.tag_name }}-ee
+        elif [[ "${{ matrix.edition }}" == "oss" ]]; then
+          git tag -f ${{ inputs.tag_name }}-oss ${{ needs.check-version.outputs.oss }}
+          git push origin -f ${{ inputs.tag_name }}-oss
+        fi
+
+  update-release-log:
+    needs: check-version
+    uses: ./.github/workflows/release-log.yml
+    with:
+      version: ${{ fromJSON(vars.CURRENT_VERSION) }} # cast string to number
+    secrets: inherit
+
+  update-version-info:
+    runs-on: ubuntu-22.04
+    needs: check-version
+    timeout-minutes: 5
+    strategy:
+      matrix:
+        edition: ${{ fromJson(needs.check-version.outputs.edition_matrix) }}
+    env:
+      AWS_S3_STATIC_BUCKET: ${{ vars.AWS_S3_STATIC_BUCKET }}
+      AWS_REGION: ${{ vars.AWS_REGION }}
+    steps:
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_S3_RELEASE_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_S3_RELEASE_SECRET_ACCESS_KEY }}
+        aws-region: ${{ vars.AWS_REGION }}
+    - uses: actions/checkout@v4
+      with:
+        sparse-checkout: release
+    - name: Prepare build scripts
+      run: cd ${{ github.workspace }}/release && yarn && yarn build
+    - name: Generate new version info
+      uses: actions/github-script@v7
+      id: new_version_info
+      with:
+        result-encoding: string
+        script: | # js
+          const { updateVersionInfoChannel } = require('${{ github.workspace }}/release/dist/index.cjs');
+          const fs = require('fs');
+
+          const edition = '${{ matrix.edition }}';
+
+          const canonical_version = edition === 'ee'
+            ? '${{ needs.check-version.outputs.ee }}'
+            : '${{ needs.check-version.outputs.oss }}';
+
+          const newVersionInfo = await updateVersionInfoChannel({
+            channel: '${{ inputs.tag_name }}',
+            newVersion: canonical_version,
+            rollout: ${{ inputs.tag_rollout }},
+          });
+
+          fs.writeFileSync('version-info.json', JSON.stringify(newVersionInfo));
+
+    - name: Upload new version-info.json to S3
+      run: |
+        if [[ "${{ matrix.edition }}" == "ee" ]]; then
+          aws s3 cp version-info.json s3://${{ vars.AWS_S3_STATIC_BUCKET }}/version-info-ee.json
+        else
+          aws s3 cp version-info.json s3://${{ vars.AWS_S3_STATIC_BUCKET }}/version-info.json
+        fi
+    - name: Create cloudfront invalidation for version-info.json and version-info-ee.json
+      run: |
+        aws cloudfront create-invalidation \
+        --distribution-id ${{ vars.AWS_CLOUDFRONT_STATIC_ID }} \
+        --paths "/version-info.json" "/version-info-ee.json"

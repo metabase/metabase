@@ -9,6 +9,13 @@ import { ForgotPassword } from "metabase/auth/components/ForgotPassword";
 import { Login } from "metabase/auth/components/Login";
 import { Logout } from "metabase/auth/components/Logout";
 import { ResetPassword } from "metabase/auth/components/ResetPassword";
+import {
+  BrowseDatabases,
+  BrowseMetrics,
+  BrowseModels,
+  BrowseSchemas,
+  BrowseTables,
+} from "metabase/browse";
 import CollectionLanding from "metabase/collections/components/CollectionLanding";
 import { MoveCollectionModal } from "metabase/collections/components/MoveCollectionModal";
 import { TrashCollectionLanding } from "metabase/collections/components/TrashCollectionLanding";
@@ -25,6 +32,7 @@ import { DashboardAppConnected } from "metabase/dashboard/containers/DashboardAp
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { Route } from "metabase/hoc/Title";
 import { HomePage } from "metabase/home/components/HomePage";
+import { Onboarding } from "metabase/home/components/Onboarding";
 import { trackPageView } from "metabase/lib/analytics";
 import DatabaseMetabotApp from "metabase/metabot/containers/DatabaseMetabotApp";
 import ModelMetabotApp from "metabase/metabot/containers/ModelMetabotApp";
@@ -50,11 +58,6 @@ import SearchApp from "metabase/search/containers/SearchApp";
 import { Setup } from "metabase/setup/components/Setup";
 import getCollectionTimelineRoutes from "metabase/timelines/collections/routes";
 
-import { BrowseDatabases } from "./browse/components/BrowseDatabases";
-import { BrowseMetrics } from "./browse/components/BrowseMetrics";
-import { BrowseModels } from "./browse/components/BrowseModels";
-import BrowseSchemas from "./browse/components/BrowseSchemas";
-import { BrowseTables } from "./browse/components/BrowseTables";
 import {
   CanAccessMetabot,
   CanAccessSettings,
@@ -127,6 +130,14 @@ export const getRoutes = store => {
               }
             }}
           />
+
+          <Route
+            path="getting-started"
+            title={t`Getting Started`}
+            component={IsAdmin}
+          >
+            <IndexRoute component={Onboarding} />
+          </Route>
 
           <Route path="search" title={t`Search`} component={SearchApp} />
           {/* Send historical /archive route to trash - can remove in v52 */}

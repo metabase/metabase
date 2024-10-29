@@ -409,6 +409,7 @@ describe("scenarios > models metadata", () => {
           // Drill to People table
           // FK column is mapped to real DB column
           drillDashboardFK({ id: 1 });
+          popover().findByText("View details").click();
           cy.wait("@dataset");
           cy.findByTestId("object-detail").within(() => {
             cy.findAllByText("1");
@@ -420,6 +421,7 @@ describe("scenarios > models metadata", () => {
           // Drill to Reviews table
           // FK column has a FK semantic type, no mapping to real DB columns
           drillDashboardFK({ id: 7 });
+          popover().findByText("View details").click();
           cy.wait("@dataset");
           cy.findByTestId("object-detail").within(() => {
             cy.findAllByText("7");

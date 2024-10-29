@@ -1,11 +1,11 @@
 import { match } from "ts-pattern";
 
 import { nonUserFacingLabels, hiddenLabels } from "./constants";
-import { getMilestoneIssues, isLatestRelease, hasBeenReleased } from "./github";
+import { getMilestoneIssues, hasBeenReleased } from "./github";
 import type { Issue, ReleaseProps } from "./types";
 import {
   isEnterpriseVersion,
-  isRCVersion,
+  isPreReleaseVersion,
   isValidVersionString,
 } from "./version-helpers";
 
@@ -260,12 +260,6 @@ export async function publishRelease({
 
   const issues = await getMilestoneIssues({ version, github, owner, repo });
 
-  const isLatest: "true" | "false" =
-    !isEnterpriseVersion(version) &&
-    (await isLatestRelease({ version, github, owner, repo }))
-      ? "true"
-      : "false";
-
   const payload = {
     owner,
     repo,
@@ -273,8 +267,7 @@ export async function publishRelease({
     name: getReleaseTitle(version),
     body: generateReleaseNotes({ version, checksum, issues }),
     draft: true,
-    prerelease: isRCVersion(version),
-    make_latest: isLatest,
+    prerelease: isPreReleaseVersion(version), // this api arg has never worked, but maybe it will someday! 🤞
   };
 
   return github.rest.repos.createRelease(payload);

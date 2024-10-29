@@ -30,6 +30,11 @@ export const TAG_TYPES = [
   "timeline",
   "timeline-event",
   "user",
+  "public-dashboard",
+  "embed-dashboard",
+  "public-card",
+  "embed-card",
+  "public-action",
 ] as const;
 
 export const TAG_TYPE_MAPPING = {

@@ -33,7 +33,9 @@ describe("QuestionSettingsSidebar", () => {
 
     it("should not allow to configure caching without cache token feature", async () => {
       await setup({ card });
-      expect(screen.queryByText("Caching policy")).not.toBeInTheDocument();
+      expect(
+        screen.queryByText("When to get new results"),
+      ).not.toBeInTheDocument();
     });
 
     it("should not show granular model caching controls on OSS", async () => {

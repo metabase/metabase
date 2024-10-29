@@ -2,10 +2,12 @@ import { getSelectionPosition, setSelectionPosition } from "metabase/lib/dom";
 
 describe("getSelectionPosition/setSelectionPosition", () => {
   let container;
+
   beforeEach(() => {
     container = document.createElement("div");
     document.body.appendChild(container);
   });
+
   afterEach(() => {
     document.body.removeChild(container);
   });

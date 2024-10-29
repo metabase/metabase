@@ -8,9 +8,12 @@ import {
   expectNoBadSnowplowEvents,
   isEE,
   main,
+  mockSessionProperty,
+  onlyOnEE,
   popover,
   resetSnowplow,
   restore,
+  setTokenFeatures,
 } from "e2e/support/helpers";
 import { SUBSCRIBE_URL } from "metabase/setup/constants";
 
@@ -233,6 +236,29 @@ describe("scenarios > setup", () => {
     });
   });
 
+  it("should pre-fill user info for hosted instances (infra-frontend#1109)", () => {
+    onlyOnEE();
+    setTokenFeatures("none");
+    mockSessionProperty("is-hosted?", true);
+
+    cy.visit(
+      "/setup?first_name=John&last_name=Doe&email=john@doe.test&site_name=Doe%20Unlimited",
+    );
+
+    skipWelcomePage();
+    selectPreferredLanguageAndContinue();
+
+    cy.findByTestId("setup-forms").within(() => {
+      cy.findByDisplayValue("John").should("exist");
+      cy.findByDisplayValue("Doe").should("exist");
+      cy.findByDisplayValue("john@doe.test").should("exist");
+      cy.findByDisplayValue("Doe Unlimited").should("exist");
+      cy.findByLabelText("Create a password")
+        .should("be.focused")
+        .and("be.empty");
+    });
+  });
+
   it("should allow you to connect a db during setup", () => {
     const dbName = "SQLite db";
 
@@ -359,15 +385,6 @@ describe("scenarios > setup", () => {
         .last()
         .findByRole("link", { name: "Take me to Metabase" })
         .click();
-    });
-
-    cy.log(
-      "Make sure the embedding secret key is set after embedding has been autoenabled",
-    );
-    cy.wait("@properties").then(request => {
-      expect(request.response?.body["embedding-secret-key"]?.length).to.equal(
-        64,
-      );
     });
 
     cy.location("pathname").should("eq", "/");

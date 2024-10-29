@@ -18,15 +18,16 @@ export const sdkReducers = {
   sdk,
 } as unknown as Record<string, Reducer>;
 
-export const store = getStore(sdkReducers, null, {
-  embed: {
-    options: {},
-    isEmbeddingSdk: true,
-  },
-  app: {
-    isDndAvailable: false,
-  },
-}) as unknown as Store<SdkStoreState, AnyAction>;
+export const getSdkStore = () =>
+  getStore(sdkReducers, null, {
+    embed: {
+      options: {},
+      isEmbeddingSdk: true,
+    },
+    app: {
+      isDndAvailable: false,
+    },
+  }) as unknown as Store<SdkStoreState, AnyAction>;
 
 export const useSdkDispatch: () => ThunkDispatch<
   SdkStoreState,

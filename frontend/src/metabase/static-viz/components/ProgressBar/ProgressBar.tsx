@@ -32,7 +32,7 @@ const layout = {
   fontSize: 13,
 };
 
-interface ProgressBarProps {
+export interface ProgressBarProps {
   data: ProgressBarData;
   settings: {
     color: string;

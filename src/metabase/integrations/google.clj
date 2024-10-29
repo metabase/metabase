@@ -27,6 +27,7 @@
 
 (defsetting google-auth-client-id
   (deferred-tru "Client ID for Google Sign-In.")
+  :encryption :when-encryption-key-set
   :visibility :public
   :audit      :getter
   :setter     (fn [client-id]

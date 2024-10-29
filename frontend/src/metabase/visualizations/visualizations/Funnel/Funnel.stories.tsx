@@ -1,4 +1,4 @@
-import type { Story } from "@storybook/react";
+import type { StoryFn } from "@storybook/react";
 
 import { VisualizationWrapper } from "__support__/storybook";
 import { NumberColumn, StringColumn } from "__support__/visualizations";
@@ -44,7 +44,7 @@ const MOCK_SERIES = [
   },
 ];
 
-export const Default: Story = () => (
+export const Default: StoryFn = () => (
   <VisualizationWrapper>
     <Box h={500}>
       <Visualization rawSeries={MOCK_SERIES} width={500} />

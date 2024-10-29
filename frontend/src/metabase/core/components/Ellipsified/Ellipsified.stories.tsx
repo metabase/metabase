@@ -1,4 +1,4 @@
-import type { ComponentStory } from "@storybook/react";
+import type { StoryFn } from "@storybook/react";
 
 import { Ellipsified } from "./Ellipsified";
 
@@ -16,7 +16,7 @@ export default {
   component: Ellipsified,
 };
 
-const Template: ComponentStory<typeof Ellipsified> = args => (
+const Template: StoryFn<typeof Ellipsified> = args => (
   <ul style={{ maxWidth: 100 }}>
     {testLabels.map((label: string) => (
       <li style={{ marginTop: 10 }} key={label}>
@@ -26,8 +26,12 @@ const Template: ComponentStory<typeof Ellipsified> = args => (
   </ul>
 );
 
-export const SingleLineEllipsify = Template.bind({});
-SingleLineEllipsify.args = { lines: 1 };
+export const SingleLineEllipsify = {
+  render: Template,
+  args: { lines: 1 },
+};
 
-export const MultiLineClamp = Template.bind({});
-MultiLineClamp.args = { lines: 8 };
+export const MultiLineClamp = {
+  render: Template,
+  args: { lines: 8 },
+};

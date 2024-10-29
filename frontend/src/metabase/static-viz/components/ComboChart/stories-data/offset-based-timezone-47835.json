@@ -1,0 +1,266 @@
+[
+  {
+    "card": {
+      "original_card_id": 556,
+      "can_delete": false,
+      "public_uuid": null,
+      "parameter_usage_count": 0,
+      "created_at": "2024-10-01T19:34:48.001925Z",
+      "parameters": [],
+      "metabase_version": "v0.1.37-SNAPSHOT (c38c478)",
+      "collection": {
+        "metabase.models.collection.root/is-root?": true,
+        "authority_level": null,
+        "name": "Our analytics",
+        "is_personal": false,
+        "id": "root",
+        "can_write": true
+      },
+      "visualization_settings": {
+        "table.cell_column": "HourNumber",
+        "graph.dimensions": ["DatetimeHour"],
+        "graph.metrics": ["HourNumber"]
+      },
+      "collection_preview": true,
+      "entity_id": "wIneCe559aa9P1B8sxlfD",
+      "archived_directly": false,
+      "display": "bar",
+      "parameter_mappings": [],
+      "id": 556,
+      "dataset_query": {
+        "database": 4,
+        "type": "native",
+        "native": {
+          "template-tags": {},
+          "query": "DECLARE @date_var DATETIME\nSELECT @date_var = '2024-09-01 00:00'\n\n;WITH Dates AS\n(\n    SELECT DATEPART(HOUR,@date_var) [Hour], \n      @date_var DatetimeHour, 0 HourNumber\n    UNION ALL\n    SELECT DATEPART(HOUR,DATEADD(HOUR,1,DatetimeHour)), \n      DATEADD(HOUR,1,DatetimeHour), HourNumber+1\n    FROM Dates\n    WHERE HourNumber < 23\n)\nSELECT HourNumber, DatetimeHour\nFROM Dates\norder by DatetimeHour asc"
+        }
+      },
+      "cache_ttl": null,
+      "embedding_params": null,
+      "made_public_by_id": null,
+      "updated_at": "2024-10-01T19:41:19.387667Z",
+      "moderation_reviews": [],
+      "can_restore": false,
+      "creator_id": 1,
+      "average_query_time": 140.2,
+      "type": "question",
+      "last_used_at": "2024-10-02T23:32:27.702646Z",
+      "dashboard_count": 0,
+      "last_query_start": "2024-10-02T23:32:27.673477Z",
+      "name": "47835 mssql",
+      "query_type": "native",
+      "collection_id": null,
+      "enable_embedding": false,
+      "database_id": 4,
+      "trashed_from_collection_id": null,
+      "can_write": true,
+      "initially_published_at": null,
+      "result_metadata": [
+        {
+          "display_name": "HourNumber",
+          "field_ref": [
+            "field",
+            "HourNumber",
+            {
+              "base-type": "type/Integer"
+            }
+          ],
+          "base_type": "type/Integer",
+          "effective_type": "type/Integer",
+          "name": "HourNumber",
+          "semantic_type": "type/Quantity",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 24,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 0,
+                "q1": 5.5,
+                "q3": 17.5,
+                "max": 23,
+                "sd": 7.0710678118654755,
+                "avg": 11.5
+              }
+            }
+          }
+        },
+        {
+          "display_name": "DatetimeHour",
+          "field_ref": [
+            "field",
+            "DatetimeHour",
+            {
+              "base-type": "type/DateTime"
+            }
+          ],
+          "base_type": "type/DateTime",
+          "effective_type": "type/DateTime",
+          "name": "DatetimeHour",
+          "semantic_type": null,
+          "fingerprint": {
+            "global": {
+              "distinct-count": 24,
+              "nil%": 0
+            },
+            "type": {
+              "type/DateTime": {
+                "earliest": "2024-09-01T00:00:00+13:00",
+                "latest": "2024-09-01T23:00:00+13:00"
+              }
+            }
+          }
+        }
+      ],
+      "can_run_adhoc_query": true,
+      "table_id": null,
+      "source_card_id": null,
+      "collection_position": null,
+      "view_count": 12,
+      "archived": false,
+      "description": null,
+      "cache_invalidated_at": null,
+      "displayIsLocked": true
+    },
+    "data": {
+      "rows": [
+        [0, "2024-09-01T00:00:00+13:00"],
+        [1, "2024-09-01T01:00:00+13:00"],
+        [2, "2024-09-01T02:00:00+13:00"],
+        [3, "2024-09-01T03:00:00+13:00"],
+        [4, "2024-09-01T04:00:00+13:00"],
+        [5, "2024-09-01T05:00:00+13:00"],
+        [6, "2024-09-01T06:00:00+13:00"],
+        [7, "2024-09-01T07:00:00+13:00"],
+        [8, "2024-09-01T08:00:00+13:00"],
+        [9, "2024-09-01T09:00:00+13:00"],
+        [10, "2024-09-01T10:00:00+13:00"],
+        [11, "2024-09-01T11:00:00+13:00"],
+        [12, "2024-09-01T12:00:00+13:00"],
+        [13, "2024-09-01T13:00:00+13:00"],
+        [14, "2024-09-01T14:00:00+13:00"],
+        [15, "2024-09-01T15:00:00+13:00"],
+        [16, "2024-09-01T16:00:00+13:00"],
+        [17, "2024-09-01T17:00:00+13:00"],
+        [18, "2024-09-01T18:00:00+13:00"],
+        [19, "2024-09-01T19:00:00+13:00"],
+        [20, "2024-09-01T20:00:00+13:00"],
+        [21, "2024-09-01T21:00:00+13:00"],
+        [22, "2024-09-01T22:00:00+13:00"],
+        [23, "2024-09-01T23:00:00+13:00"]
+      ],
+      "cols": [
+        {
+          "display_name": "HourNumber",
+          "source": "native",
+          "field_ref": [
+            "field",
+            "HourNumber",
+            {
+              "base-type": "type/Integer"
+            }
+          ],
+          "name": "HourNumber",
+          "base_type": "type/Integer",
+          "database_type": "int",
+          "effective_type": "type/Integer"
+        },
+        {
+          "display_name": "DatetimeHour",
+          "source": "native",
+          "field_ref": [
+            "field",
+            "DatetimeHour",
+            {
+              "base-type": "type/DateTime"
+            }
+          ],
+          "name": "DatetimeHour",
+          "base_type": "type/DateTime",
+          "database_type": "datetime",
+          "effective_type": "type/DateTime"
+        }
+      ],
+      "native_form": {
+        "params": null,
+        "query": "DECLARE @date_var DATETIME\nSELECT @date_var = '2024-09-01 00:00'\n\n;WITH Dates AS\n(\n    SELECT DATEPART(HOUR,@date_var) [Hour], \n      @date_var DatetimeHour, 0 HourNumber\n    UNION ALL\n    SELECT DATEPART(HOUR,DATEADD(HOUR,1,DatetimeHour)), \n      DATEADD(HOUR,1,DatetimeHour), HourNumber+1\n    FROM Dates\n    WHERE HourNumber < 23\n)\nSELECT HourNumber, DatetimeHour\nFROM Dates\norder by DatetimeHour asc"
+      },
+      "format-rows?": true,
+      "results_timezone": "+13:00",
+      "requested_timezone": "+13:00",
+      "results_metadata": {
+        "columns": [
+          {
+            "display_name": "HourNumber",
+            "field_ref": [
+              "field",
+              "HourNumber",
+              {
+                "base-type": "type/Integer"
+              }
+            ],
+            "base_type": "type/Integer",
+            "effective_type": "type/Integer",
+            "name": "HourNumber",
+            "semantic_type": "type/Quantity",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 24,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 0,
+                  "q1": 5.5,
+                  "q3": 17.5,
+                  "max": 23,
+                  "sd": 7.0710678118654755,
+                  "avg": 11.5
+                }
+              }
+            }
+          },
+          {
+            "display_name": "DatetimeHour",
+            "field_ref": [
+              "field",
+              "DatetimeHour",
+              {
+                "base-type": "type/DateTime"
+              }
+            ],
+            "base_type": "type/DateTime",
+            "effective_type": "type/DateTime",
+            "name": "DatetimeHour",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": {
+                "distinct-count": 24,
+                "nil%": 0
+              },
+              "type": {
+                "type/DateTime": {
+                  "earliest": "2024-09-01T00:00:00+13:00",
+                  "latest": "2024-09-01T23:00:00+13:00"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "insights": [
+        {
+          "previous-value": 22,
+          "unit": "hour",
+          "offset": -479194.9999924746,
+          "last-change": 0.045454545454545456,
+          "col": "HourNumber",
+          "slope": 23.999999999623117,
+          "last-value": 23,
+          "best-fit": ["+", -479194.9999924746, ["*", 23.999999999623117, "x"]]
+        }
+      ]
+    }
+  }
+]

@@ -802,6 +802,7 @@ describeEE("issue 23689", () => {
     cy.visit(`/admin/people/groups/${groupId}`);
     cy.wait("@membership");
   }
+
   beforeEach(() => {
     // TODO: remove the next line when this issue gets fixed
     cy.skipOn(true);

@@ -2,10 +2,32 @@
   (:require
    [malli.core :as mc]
    [malli.util :as mut]
-   [metabase.models.view-log :as view-log]
+   [metabase.models.view-log-impl :as view-log-impl]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-;; collection events
+#_{:clj-kondo/ignore [:unused-private-var]}
+(defn- with-hydrate
+  "Given a malli entry schema of a map, return a new entry schema with an additional option
+  to hydrate information when sending system event notifications.
+
+    (events.notification/hydrate! [:map
+                                    (-> [:user_id :int] (with-hydrate :user [:model/User :email]))]
+                                  {:user_id 1})
+    ;; => {:user_id 1
+           :user    {:email \"ngoc@metabase.com\"}}"
+  [entry-schema k model]
+  (assert (#{2 3} (count entry-schema)) "entry-schema must have 2 or 3 elements")
+  (let [[entry-key option schema] (if (= 2 (count entry-schema))
+                                    [(first entry-schema) {} (second entry-schema)]
+                                    entry-schema)]
+    [entry-key (assoc option :hydrate {:key   k
+                                       :model model})
+     schema]))
+
+(def ^:private user-hydrate
+  [:model/User :first_name :last_name :email])
+
 (let [default-schema (mc/schema
                       [:map {:closed true}
                        [:user-id  pos-int?]
@@ -46,7 +68,7 @@
      :event/card-read   (mc/schema
                          [:map {:closed true}
                           ;; context is deliberately coupled to view-log's context
-                          [:context [:and :some ::view-log/context]]
+                          [:context view-log-impl/context]
                           [:user-id [:maybe pos-int?]]
                           [:object-id [:maybe pos-int?]]])
      :event/card-query  [:map {:closed true}
@@ -60,8 +82,21 @@
                       [:map {:closed true}
                        [:user-id pos-int?]])]
   (def ^:private user-events-schema
-    {:event/user-login  default-schema
-     :event/user-joined default-schema}))
+    {:event/user-login   default-schema
+     :event/user-joined  default-schema
+     :event/user-invited (mc/schema
+                          [:map {:closed true}
+                           [:object [:map
+                                     [:email ms/Email]
+                                     [:is_from_setup {:optional true} :boolean]
+                                     [:first_name    {:optional true} [:maybe :string]]
+                                     [:invite_method {:optional true} :string]
+                                     [:sso_source    {:optional true} [:maybe [:or :keyword :string]]]]]
+                           [:details {:optional true}
+                            [:map {:closed true}
+                             [:invitor [:map {:closed true}
+                                        [:email                       ms/Email]
+                                        [:first_name {:optional true} [:maybe :string]]]]]]])}))
 
 ;; metric events
 
@@ -108,7 +143,8 @@
 (def ^:private alert-schema
   {:event/alert-create (mc/schema
                         [:map {:closed true}
-                         [:user-id pos-int?]
+                         (-> [:user-id pos-int?]
+                             (with-hydrate :user user-hydrate))
                          [:object [:and
                                    [:fn #(t2/instance-of? :model/Pulse %)]
                                    [:map

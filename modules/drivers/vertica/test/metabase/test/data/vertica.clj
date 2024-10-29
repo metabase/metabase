@@ -1,4 +1,4 @@
-(ns metabase.test.data.vertica
+(ns ^:mb/driver-tests metabase.test.data.vertica
   "Code for creating / destroying a Vertica database from a `DatabaseDefinition`."
   (:require
    [clojure.data.csv :as csv]
@@ -7,11 +7,14 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.driver.vertica]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.test :as mt]
    [metabase.test.data.dataset-definitions]
+   [metabase.test.data.impl :as data.impl]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
    [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
@@ -24,6 +27,8 @@
    [metabase.util.random :as u.random]))
 
 (set! *warn-on-reflection* true)
+
+(comment metabase.driver.vertica/keep-me)
 
 (sql-jdbc.tx/add-test-extensions! :vertica)
 
@@ -280,3 +285,25 @@
                                     #_types          (into-array String ["TABLE"]))]
          ;; if the ResultSet returns anything we know the table is already loaded.
          (.next rset))))))
+
+(def ^:dynamic *override-describe-database-to-filter-by-db-name?*
+  "Whether to override the production implementation for `describe-database` with a special one that only syncs
+  the tables qualified by the database name. This is `true` by default during tests to fake database isolation.
+  See (metabase#40310)"
+  true)
+
+(defonce ^:private ^{:arglists '([driver database])}
+  original-describe-database
+  (get-method driver/describe-database :vertica))
+
+;; For test databases, only sync the tables that are qualified by the db name
+(defmethod driver/describe-database :vertica
+  [driver database]
+  (if *override-describe-database-to-filter-by-db-name?*
+    (let [r                (original-describe-database driver database)
+          physical-db-name (data.impl/database-source-dataset-name database)]
+      (update r :tables (fn [tables]
+                          (into #{}
+                                (filter #(tx/qualified-by-db-name? physical-db-name (:name %)))
+                                tables))))
+    (original-describe-database driver database)))

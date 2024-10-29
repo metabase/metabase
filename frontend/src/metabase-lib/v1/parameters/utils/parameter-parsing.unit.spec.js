@@ -16,6 +16,7 @@ describe("parameters/utils/parameter-values", () => {
   let parameter4;
   let parameters;
   let queryParams;
+
   beforeEach(() => {
     field1 = {
       id: 1,
@@ -287,7 +288,7 @@ describe("parameters/utils/parameter-values", () => {
         getParameterValueFromQueryParams(parameter2, {
           [parameter2.slug]: "parameter2 default value",
         }),
-      ).toEqual([NaN]);
+      ).toEqual([]);
 
       expect(getParameterValueFromQueryParams(parameter2, {})).toBe(
         "parameter2 default value",

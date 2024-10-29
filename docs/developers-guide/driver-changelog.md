@@ -123,6 +123,14 @@ title: Driver interface changelog
   `:metabase.driver.sql.query-processor/nfc-path` to include the nfc-path in the field identifier. So that record-like
   fields can be referenced with `<table>.<record>.<record-field>`. See `bigquery-cloud-sdk` for an example. Defaults to  `nil` to indicate that the path should not be part of the identifier.
 
+- `:test/dynamic-dataset-loading` feature has been added. It enables drivers to bail out of tests that require
+  creation of new, not pre-loaded, dataset during test run time.
+
+- The `:temporal/requires-default-unit` feature has been added. It should be false for most drivers, but it's necessary
+  for a few (like the old, pre-JDBC Druid driver) to find all temporal field refs and put a `:temporal-unit :default` on them.
+  That default setting was previously done for all drivers, but it introduced some downstream issues, so now only those
+  drivers which need it can set the feature.
+
 ## Metabase 0.50.17
 
 - Added method `metabase.driver/incorporate-auth-provider-details` for driver specific behavior required to

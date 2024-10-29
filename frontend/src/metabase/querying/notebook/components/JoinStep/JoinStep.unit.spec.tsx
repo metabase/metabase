@@ -37,6 +37,7 @@ import { createMockState } from "metabase-types/store/mocks";
 
 import { createMockNotebookStep } from "../../test-utils";
 import type { NotebookStep } from "../../types";
+import { NotebookProvider } from "../Notebook/context";
 
 import { JoinStep } from "./JoinStep";
 
@@ -187,16 +188,18 @@ function setup({
     };
 
     return (
-      <JoinStep
-        step={step}
-        stageIndex={step.stageIndex}
-        query={query}
-        color="brand"
-        isLastOpened={false}
-        readOnly={readOnly}
-        reportTimezone="UTC"
-        updateQuery={onChange}
-      />
+      <NotebookProvider>
+        <JoinStep
+          step={step}
+          stageIndex={step.stageIndex}
+          query={query}
+          color="brand"
+          isLastOpened={false}
+          readOnly={readOnly}
+          reportTimezone="UTC"
+          updateQuery={onChange}
+        />
+      </NotebookProvider>
     );
   }
 
@@ -554,6 +557,28 @@ describe("Notebook Editor > Join Step", () => {
 
     const [condition] = getRecentJoin().conditions;
     expect(condition.operator.shortName).toBe("!=");
+  });
+
+  it("should reset the draft join condition state when the rhs table is changed", async () => {
+    setup();
+    const rhsTablePicker = screen.getByLabelText("Right table");
+    await userEvent.click(within(rhsTablePicker).getByRole("button"));
+    const entityPickerModal = await screen.findByTestId("entity-picker-modal");
+    await waitForLoaderToBeRemoved();
+    await userEvent.click(within(entityPickerModal).getByText("Reviews"));
+    const lhsColumnPicker = await screen.findByTestId("lhs-column-picker");
+    await userEvent.click(within(lhsColumnPicker).getByText("ID"));
+
+    const newRhsTablePicker = screen.getByLabelText("Right table");
+    await userEvent.click(within(newRhsTablePicker).getByText("Reviews"));
+    const newEntityPickerModal = await screen.findByTestId(
+      "entity-picker-modal",
+    );
+    await waitForLoaderToBeRemoved();
+    await userEvent.click(within(newEntityPickerModal).getByText("Orders"));
+    const lhsColumn = screen.getByLabelText("Left column");
+    expect(within(lhsColumn).getByText("Pick a column…")).toBeInTheDocument();
+    expect(within(lhsColumn).queryByText("ID")).not.toBeInTheDocument();
   });
 
   describe("join strategies", () => {

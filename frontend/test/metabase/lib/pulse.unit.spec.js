@@ -58,6 +58,7 @@ describe("getPulseParameters", () => {
 describe("getActivePulseParameters", () => {
   let pulse;
   let parametersList;
+
   beforeEach(() => {
     pulse = {
       parameters: [

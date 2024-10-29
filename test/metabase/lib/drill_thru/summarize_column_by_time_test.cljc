@@ -66,15 +66,17 @@
     :expected    {:type :drill-thru/summarize-column-by-time}}))
 
 (deftest ^:parallel apply-summarize-column-by-time-test
-  (lib.drill-thru.tu/test-drill-application
-   {:drill-type  :drill-thru/summarize-column-by-time
-    :click-type  :header
-    :query-type  :unaggregated
-    :column-name "SUBTOTAL"
-    :expected    {:type :drill-thru/summarize-column-by-time}
-    :expected-query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
-                        (lib/aggregate (lib/sum (meta/field-metadata :orders :subtotal)))
-                        (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :month)))}))
+  (let [exp-subtotal   [:field {} (lib.drill-thru.tu/field-key= "SUBTOTAL" (meta/id :orders :subtotal))]
+        exp-created-at [:field {:temporal-unit :month}
+                        (lib.drill-thru.tu/field-key= "CREATED_AT" (meta/id :orders :created-at))]]
+    (lib.drill-thru.tu/test-drill-application
+     {:drill-type  :drill-thru/summarize-column-by-time
+      :click-type  :header
+      :query-type  :unaggregated
+      :column-name "SUBTOTAL"
+      :expected    {:type :drill-thru/summarize-column-by-time}
+      :expected-query {:stages [{:aggregation [[:sum {} exp-subtotal]]
+                                 :breakout    [exp-created-at]}]}})))
 
 ;; TODO: Bring the fingerprint-based unit selection logic from
 ;; https://github.com/metabase/metabase/blob/0624d8d0933f577cc70c03948f4b57f73fe13ada/frontend/src/metabase-lib/metadata/Field.ts#L397

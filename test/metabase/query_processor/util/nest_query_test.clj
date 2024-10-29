@@ -480,8 +480,7 @@
         (is (partial= (lib.tu.macros/$ids venues
                         {:source-query {:source-table $$venues
                                         :expressions  {"test" [:* 1 1]}
-                                        :fields       [[:field %price {:temporal-unit      :default
-                                                                       ::add/source-table  $$venues
+                                        :fields       [[:field %price {::add/source-table  $$venues
                                                                        ::add/source-alias  "PRICE"
                                                                        ::add/desired-alias "PRICE"
                                                                        ::add/position      0}]
@@ -517,8 +516,7 @@
                                                                                              ::add/source-alias  "PRODUCT_ID"
                                                                                              ::add/desired-alias "PRODUCT_ID"
                                                                                              ::add/position      0}]
-                                                      created-at        [:field %created-at {:temporal-unit      :default
-                                                                                             ::add/source-table  $$orders
+                                                      created-at        [:field %created-at {::add/source-table  $$orders
                                                                                              ::add/source-alias  "CREATED_AT"
                                                                                              ::add/desired-alias "CREATED_AT"
                                                                                              ::add/position      1}]

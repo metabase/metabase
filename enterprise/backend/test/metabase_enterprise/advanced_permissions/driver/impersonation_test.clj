@@ -1,4 +1,4 @@
-(ns metabase-enterprise.advanced-permissions.driver.impersonation-test
+(ns ^:mb/driver-tests metabase-enterprise.advanced-permissions.driver.impersonation-test
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]

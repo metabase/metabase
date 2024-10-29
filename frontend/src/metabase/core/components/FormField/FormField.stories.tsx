@@ -1,5 +1,5 @@
-import { useArgs } from "@storybook/addons";
-import type { ComponentStory } from "@storybook/react";
+import { useArgs } from "@storybook/preview-api";
+import type { StoryFn } from "@storybook/react";
 import type { ComponentProps } from "react";
 import { cloneElement, isValidElement } from "react";
 
@@ -17,7 +17,7 @@ type inputProps = {
   onChange: (value: unknown) => void;
 };
 
-const Template: ComponentStory<typeof FormField> = ({
+const Template: StoryFn<typeof FormField> = ({
   children,
   ...args
 }: ComponentProps<typeof FormField>) => {
@@ -37,23 +37,32 @@ const Template: ComponentStory<typeof FormField> = ({
   );
 };
 
-export const ToggleStory = Template.bind({});
-ToggleStory.storyName = "Toggle";
-ToggleStory.args = {
-  children: <Toggle />,
+export const ToggleStory = {
+  render: Template,
+  name: "Toggle",
+
+  args: {
+    children: <Toggle />,
+  },
 };
 
-export const ToggleWithTitle = Template.bind({});
-ToggleWithTitle.args = {
-  children: <Toggle />,
-  title: "Toggle this value?",
-  infoTooltip: "Info tooltip",
+export const ToggleWithTitle = {
+  render: Template,
+
+  args: {
+    children: <Toggle />,
+    title: "Toggle this value?",
+    infoTooltip: "Info tooltip",
+  },
 };
 
-export const ToggleWithInlineTitle = Template.bind({});
-ToggleWithInlineTitle.args = {
-  children: <Toggle />,
-  title: "Toggle this value?",
-  orientation: "horizontal",
-  infoTooltip: "Info tooltip",
+export const ToggleWithInlineTitle = {
+  render: Template,
+
+  args: {
+    children: <Toggle />,
+    title: "Toggle this value?",
+    orientation: "horizontal",
+    infoTooltip: "Info tooltip",
+  },
 };

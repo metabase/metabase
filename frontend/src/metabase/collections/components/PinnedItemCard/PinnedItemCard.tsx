@@ -45,7 +45,7 @@ type ItemOrSkeleton =
       iconForSkeleton: IconName;
     };
 
-type Props = {
+export type PinnedItemCardProps = {
   databases?: Database[];
   bookmarks?: Bookmark[];
   createBookmark?: CreateBookmark;
@@ -84,7 +84,7 @@ function PinnedItemCard({
   onMove,
   onClick,
   iconForSkeleton,
-}: Props) {
+}: PinnedItemCardProps) {
   const [showTitleTooltip, setShowTitleTooltip] = useState(false);
   const icon =
     iconForSkeleton ??

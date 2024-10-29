@@ -24,16 +24,19 @@ describe("visualization.lib.timeseries", () => {
         true,
       );
     });
+
     it("should detect Time column as timeseries", () => {
       expect(dimensionIsTimeseries({ cols: [{ base_type: TYPE.Time }] })).toBe(
         true,
       );
     });
+
     it("should detect DateTime column as timeseries", () => {
       expect(
         dimensionIsTimeseries({ cols: [{ base_type: TYPE.DateTime }] }),
       ).toBe(true);
     });
+
     ISO_8601_DATES.forEach(isoDate => {
       it(
         "should detect values with ISO 8601 formatted string '" +

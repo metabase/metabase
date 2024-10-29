@@ -13,14 +13,16 @@ import {
 } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 
-import { ResultItem, type ResultItemType } from "./ResultItem";
+import type { SearchItem } from "../../types";
+
+import { ResultItem } from "./ResultItem";
 
 function setup({
   item,
   isSelected = false,
   onClick = jest.fn(),
 }: {
-  item: ResultItemType;
+  item: SearchItem;
   isSelected?: boolean;
   onClick?: () => void;
 }) {
@@ -47,7 +49,7 @@ function setup({
   );
 }
 
-const collectionItemWithInvalidParent: ResultItemType = {
+const collectionItemWithInvalidParent: SearchItem = {
   id: 301,
   model: "collection",
   name: "Foo Collection",
@@ -58,7 +60,7 @@ const collectionItemWithInvalidParent: ResultItemType = {
   display: null,
 };
 
-const collectionItemWithValidParent: ResultItemType = {
+const collectionItemWithValidParent: SearchItem = {
   id: 302,
   model: "collection",
   name: "Foo Collection",
@@ -69,7 +71,8 @@ const collectionItemWithValidParent: ResultItemType = {
   display: null,
 };
 
-const questionItem: ResultItemType = {
+const questionItem: SearchItem = {
+  id: 303,
   model: "card",
   name: "My Bar Chart",
   description: "",
@@ -79,7 +82,8 @@ const questionItem: ResultItemType = {
   display: "bar",
 };
 
-const dashboardItem: ResultItemType = {
+const dashboardItem: SearchItem = {
+  id: 304,
   model: "dashboard",
   name: "My Awesome Dashboard ",
   description: "This dashboard contains awesome stuff",
@@ -89,7 +93,8 @@ const dashboardItem: ResultItemType = {
   display: null,
 };
 
-const questionInOfficialCollection: ResultItemType = {
+const questionInOfficialCollection: SearchItem = {
+  id: 305,
   model: "card",
   name: "My Line Chart",
   description: "",
@@ -103,7 +108,8 @@ const questionInOfficialCollection: ResultItemType = {
   display: "line",
 };
 
-const verifiedModelItem: ResultItemType = {
+const verifiedModelItem: SearchItem = {
+  id: 306,
   model: "dataset",
   name: "My Verified Model",
   description: "",
@@ -113,18 +119,20 @@ const verifiedModelItem: ResultItemType = {
   display: null,
 };
 
-const tableItem: ResultItemType = {
+const tableItem: SearchItem = {
+  id: 307,
   model: "table",
   name: "My Flat Table",
+  description: null,
   database_name: "My Database",
 };
 
-const tableItemWithSchema: ResultItemType = {
+const tableItemWithSchema: SearchItem = {
   ...tableItem,
   table_schema: "my_schema",
 };
 
-const tableItemWithEmptySchema: ResultItemType = {
+const tableItemWithEmptySchema: SearchItem = {
   ...tableItem,
   table_schema: "",
 };
@@ -201,7 +209,7 @@ describe("EntityPicker > ResultItem", () => {
     expect(
       screen.getByText("in My official parent collection"),
     ).toBeInTheDocument();
-    expect(getIcon("badge")).toBeInTheDocument();
+    expect(getIcon("official_collection")).toBeInTheDocument();
   });
 
   it("should render a verified model item", () => {

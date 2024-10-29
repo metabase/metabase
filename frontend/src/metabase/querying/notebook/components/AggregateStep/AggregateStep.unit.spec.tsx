@@ -74,9 +74,7 @@ function setup({ step = createMockNotebookStep() }: SetupOpts = {}) {
 describe("AggregateStep", () => {
   it("should render correctly without an aggregation", () => {
     setup();
-    expect(
-      screen.getByText("Pick the metric you want to see"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Pick a function or metric")).toBeInTheDocument();
   });
 
   it("should render correctly with an aggregation", () => {
@@ -104,7 +102,7 @@ describe("AggregateStep", () => {
   it("should add an aggregation with a basic operator", async () => {
     const { getRecentAggregationClause } = setup();
 
-    await userEvent.click(screen.getByText("Pick the metric you want to see"));
+    await userEvent.click(screen.getByText("Pick a function or metric"));
     await userEvent.click(screen.getByText("Average of ..."));
     await userEvent.click(screen.getByText("Quantity"));
 
@@ -179,7 +177,9 @@ describe("AggregateStep", () => {
       expect(queryIcon("add")).not.toBeInTheDocument();
     });
 
-    it("should not allow to use temporal comparisons for metrics", async () => {
+    // TODO: unskip this once we enable "Compare to the past" again
+    // eslint-disable-next-line jest/no-disabled-tests
+    it.skip("should not allow to use temporal comparisons for metrics", async () => {
       const query = createQueryWithClauses({
         aggregations: [{ operatorName: "count" }],
       });
@@ -192,7 +192,9 @@ describe("AggregateStep", () => {
       expect(screen.queryByText(/compare/i)).not.toBeInTheDocument();
     });
 
-    it("should allow to use temporal comparisons for non-metrics", async () => {
+    // TODO: unskip this once we enable "Compare to the past" again
+    // eslint-disable-next-line jest/no-disabled-tests
+    it.skip("should allow to use temporal comparisons for non-metrics", async () => {
       const query = createQueryWithClauses({
         aggregations: [{ operatorName: "count" }],
       });

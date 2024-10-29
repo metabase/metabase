@@ -35,7 +35,8 @@
   "Another internal test setting"
   :visibility :internal
   :default    ["A" "B" "C"]
-  :type       :csv)
+  :type       :csv
+  :encryption :no)
 
 (deftest with-temporary-setting-values-test
   (testing "`with-temporary-setting-values` should do its thing"

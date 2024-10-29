@@ -6,7 +6,7 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [medley.core :as m]
-   [metabase.email.messages :as messages]
+   [metabase.events :as events]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
@@ -23,6 +23,7 @@
    (str "Deprecated Slack API token for connecting the Metabase Slack bot. "
         "Please use a new Slack app integration instead."))
   :deprecated "0.42.0"
+  :encryption :when-encryption-key-set
   :visibility :settings-manager
   :doc        false
   :audit      :never)
@@ -31,6 +32,7 @@
   (deferred-tru
    (str "Bot user OAuth token for connecting the Metabase Slack app. "
         "This should be used for all new Slack integrations starting in Metabase v0.42.0."))
+  :encryption :when-encryption-key-set
   :visibility :settings-manager
   :getter (fn []
             (-> (setting/get-value-of-type :string :slack-app-token)
@@ -57,6 +59,7 @@
 
 (defsetting slack-cached-channels-and-usernames
   "A cache shared between instances for storing an instance's slack channels and users."
+  :encryption :when-encryption-key-set
   :visibility :internal
   :type       :json
   :doc        false
@@ -76,6 +79,7 @@
 (defsetting slack-files-channel
   (deferred-tru "The name of the channel to which Metabase files should be initially uploaded")
   :default "metabase_files"
+  :encryption :no
   :visibility :settings-manager
   :audit      :getter
   :setter (fn [channel-name]
@@ -113,7 +117,8 @@
       ;; Check `slack-token-valid?` before sending emails to avoid sending repeat emails for the same invalid token.
       ;; We should send an email if `slack-token-valid?` is `true` or `nil` (i.e. a pre-existing bot integration is
       ;; being used)
-      (when (slack-token-valid?) (messages/send-slack-token-error-emails!))
+      (when (slack-token-valid?)
+        (events/publish-event! :event/slack-token-invalid {}))
       (slack-token-valid?! false))
     (when invalid-token?
       (log/warn (u/colorize :red (str "🔒 Your Slack authorization token is invalid or has been revoked. Please"

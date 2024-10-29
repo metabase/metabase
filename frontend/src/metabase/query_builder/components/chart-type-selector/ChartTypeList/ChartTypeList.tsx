@@ -1,29 +1,39 @@
+import { Grid } from "metabase/ui";
+import type { CardDisplayType } from "metabase-types/api";
+
 import { ChartTypeOption, type ChartTypeOptionProps } from "../ChartTypeOption";
 
-import { OptionList } from "./ChartTypeList.styled";
-
 export type ChartTypeListProps = {
-  visualizationList: ChartTypeOptionProps["visualizationType"][];
+  visualizationList: CardDisplayType[];
   "data-testid"?: string;
 } & Pick<
   ChartTypeOptionProps,
-  "selectedVisualization" | "onSelectVisualization"
+  "selectedVisualization" | "onSelectVisualization" | "onOpenSettings"
 >;
 
 export const ChartTypeList = ({
   visualizationList,
   onSelectVisualization,
   selectedVisualization,
+  onOpenSettings,
   "data-testid": dataTestId,
 }: ChartTypeListProps) => (
-  <OptionList data-testid={dataTestId}>
+  <Grid
+    data-testid={dataTestId}
+    align="flex-start"
+    justify="flex-start"
+    grow={false}
+  >
     {visualizationList.map(type => (
-      <ChartTypeOption
-        key={type}
-        visualizationType={type}
-        selectedVisualization={selectedVisualization}
-        onSelectVisualization={onSelectVisualization}
-      />
+      <Grid.Col span={3} key={type} data-testid="chart-type-list-col">
+        <ChartTypeOption
+          key={type}
+          visualizationType={type}
+          selectedVisualization={selectedVisualization}
+          onSelectVisualization={onSelectVisualization}
+          onOpenSettings={onOpenSettings}
+        />
+      </Grid.Col>
     ))}
-  </OptionList>
+  </Grid>
 );

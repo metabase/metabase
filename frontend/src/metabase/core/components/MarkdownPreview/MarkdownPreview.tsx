@@ -8,7 +8,7 @@ import Tooltip from "../Tooltip";
 
 import C from "./MarkdownPreview.module.css";
 
-interface Props {
+export interface MarkdownPreviewProps {
   children: string;
   className?: string;
   tooltipMaxWidth?: ComponentProps<typeof Tooltip>["maxWidth"];
@@ -26,7 +26,7 @@ export const MarkdownPreview = ({
   lineClamp,
   allowedElements = DEFAULT_ALLOWED_ELEMENTS,
   oneLine,
-}: Props) => {
+}: MarkdownPreviewProps) => {
   const { isTruncated, ref } = useIsTruncated();
 
   const setReactMarkdownRef: LegacyRef<HTMLDivElement> = div => {

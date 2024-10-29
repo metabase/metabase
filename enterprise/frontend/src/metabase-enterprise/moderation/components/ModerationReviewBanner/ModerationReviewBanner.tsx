@@ -5,7 +5,7 @@ import { skipToken, useGetUserQuery } from "metabase/api";
 import { alpha, color } from "metabase/lib/colors";
 import { useSelector } from "metabase/lib/redux";
 import { getRelativeTime } from "metabase/lib/time";
-import { Flex, Icon, Text as UIText } from "metabase/ui";
+import { FixedSizeIcon, Flex, Icon, Text as UIText } from "metabase/ui";
 import {
   getIconForReview,
   getLatestModerationReview,
@@ -14,13 +14,13 @@ import {
 import type Question from "metabase-lib/v1/Question";
 import type { ModerationReview } from "metabase-types/api";
 
+import Styles from "./ModerationReview.module.css";
 import {
   Container,
   Text,
   TextContainer,
   Time,
 } from "./ModerationReviewBanner.styled";
-
 const ICON_BUTTON_SIZE = 16;
 
 interface ModerationReviewBannerProps {
@@ -93,8 +93,13 @@ export const ModerationReviewText = ({ question }: { question: Question }) => {
   );
 
   return (
-    <Flex gap="sm" align="center">
-      <Icon name={iconName} color={color(iconColor)} size={ICON_BUTTON_SIZE} />
+    <Flex gap="sm" align="top">
+      <FixedSizeIcon
+        name={iconName}
+        color={color(iconColor)}
+        size={ICON_BUTTON_SIZE}
+        className={Styles.IconMargin}
+      />
       <UIText>
         {bannerText} {relativeCreationTime}
       </UIText>

@@ -137,6 +137,13 @@
   []
   (major-version (:tag mb-version-info)))
 
+(defn current-minor-version
+  "Returns the minor version of the running Metabase JAR.
+  When the version.properties file is missing (e.g., running in local dev), returns nil."
+  []
+  (some-> (second (re-find #"\d+\.\d+\.(\d+)" (:tag mb-version-info)))
+          parse-long))
+
 (defonce ^{:doc "This UUID is randomly-generated upon launch and used to identify this specific Metabase instance during
                 this specifc run. Restarting the server will change this UUID, and each server in a horizontal cluster
                 will have its own ID, making this different from the `site-uuid` Setting."}

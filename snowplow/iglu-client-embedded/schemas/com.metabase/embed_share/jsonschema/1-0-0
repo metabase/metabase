@@ -23,7 +23,7 @@
       "type": [
         "boolean",
         "null"
-      ],
+      ]
     },
     "number_embedded_questions": {
       "description": "The number of embedded questions",

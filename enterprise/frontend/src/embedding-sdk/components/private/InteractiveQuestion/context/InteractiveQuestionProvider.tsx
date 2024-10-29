@@ -3,6 +3,7 @@ import { createContext, useContext, useEffect, useMemo } from "react";
 import { useLoadQuestion } from "embedding-sdk/hooks/private/use-load-question";
 import { useSdkSelector } from "embedding-sdk/store";
 import { getPlugins } from "embedding-sdk/store/selectors";
+import type { DataPickerValue } from "metabase/common/components/DataPicker";
 import { useValidatedEntityId } from "metabase/lib/entity-id/hooks/use-validated-entity-id";
 import { useCreateQuestion } from "metabase/query_builder/containers/use-create-question";
 import { useSaveQuestion } from "metabase/query_builder/containers/use-save-question";
@@ -10,6 +11,7 @@ import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/mode
 import type Question from "metabase-lib/v1/Question";
 
 import type {
+  EntityTypeFilterKeys,
   InteractiveQuestionContextType,
   InteractiveQuestionProviderProps,
 } from "./types";
@@ -26,6 +28,19 @@ export const InteractiveQuestionContext = createContext<
 
 const DEFAULT_OPTIONS = {};
 
+const FILTER_MODEL_MAP: Record<EntityTypeFilterKeys, DataPickerValue["model"]> =
+  {
+    table: "table",
+    question: "card",
+    model: "dataset",
+    metric: "metric",
+  };
+const mapEntityTypeFilterToDataPickerModels = (
+  entityTypeFilter: InteractiveQuestionProviderProps["entityTypeFilter"],
+): InteractiveQuestionContextType["modelsFilterList"] => {
+  return entityTypeFilter?.map(entityType => FILTER_MODEL_MAP[entityType]);
+};
+
 export const InteractiveQuestionProvider = ({
   cardId: initId,
   options = DEFAULT_OPTIONS,
@@ -36,6 +51,7 @@ export const InteractiveQuestionProvider = ({
   onBeforeSave,
   onSave,
   isSaveEnabled = true,
+  entityTypeFilter,
 }: InteractiveQuestionProviderProps) => {
   const { id: cardId, isLoading: isLoadingValidatedId } = useValidatedEntityId({
     type: "card",
@@ -105,6 +121,7 @@ export const InteractiveQuestionProvider = ({
     onSave: handleSave,
     onCreate: handleCreate,
     isSaveEnabled,
+    modelsFilterList: mapEntityTypeFilterToDataPickerModels(entityTypeFilter),
   };
 
   useEffect(() => {

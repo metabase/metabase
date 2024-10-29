@@ -936,9 +936,10 @@
    :extractionFn (unit->extraction-fn unit)})
 
 (defmethod ->dimension-rvalue :field
-  [[_ _ {:keys [temporal-unit]} :as clause]]
-  (if temporal-unit
-    (temporal-dimension-rvalue temporal-unit)
+  [[_ _ {:keys [base-type temporal-unit]} :as clause]]
+  (if (or temporal-unit
+          (isa? base-type :type/Temporal))
+    (temporal-dimension-rvalue (or temporal-unit :default))
     (->rvalue clause)))
 
 (defmulti ^:private handle-breakout

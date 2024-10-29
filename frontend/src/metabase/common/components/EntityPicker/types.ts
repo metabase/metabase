@@ -1,4 +1,5 @@
 import type { IconName } from "metabase/ui";
+import type { SearchResult, SearchResultId } from "metabase-types/api";
 
 import type { EntityPickerModalOptions } from "./components/EntityPickerModal";
 
@@ -24,12 +25,34 @@ export type PickerStateItem<Item, Query> = {
 
 export type EntityPickerOptions = EntityPickerModalOptions;
 
-export type EntityTab<Model extends string> = {
-  displayName: string;
-  element: JSX.Element;
-  icon: IconName;
-  model: Model;
+export type EntityPickerTabRenderProps<
+  Id extends SearchResultId,
+  Model extends string,
+  Item extends TypeWithModel<Id, Model>,
+> = {
+  onItemSelect: (item: Item) => void;
 };
+
+export type EntityPickerTabId = string;
+
+export type EntityPickerTab<
+  Id extends SearchResultId,
+  Model extends string,
+  Item extends TypeWithModel<Id, Model>,
+> = {
+  id: EntityPickerTabId;
+  displayName: string;
+  render: (props: EntityPickerTabRenderProps<Id, Model, Item>) => JSX.Element;
+  icon: IconName;
+  /**
+   * Recents & Search tabs don't have models associated with them - hence null
+   * (they provide the same models as the other tabs combined).
+   */
+  model: Model | null;
+  folderModels: Model[];
+};
+
+export type EntityPickerSearchScope = "everywhere" | "folder";
 
 export type ListProps<
   Id,
@@ -49,3 +72,23 @@ export type ListProps<
 };
 
 export type FilterItemsInPersonalCollection = "only" | "exclude";
+
+export type TabFolderState<
+  Id,
+  Model extends string,
+  Item extends TypeWithModel<Id, Model>,
+> = Partial<Record<EntityPickerTabId, Item>>;
+
+export type SearchItem = Pick<SearchResult, "id" | "model" | "name"> &
+  Partial<
+    Pick<
+      SearchResult,
+      | "collection"
+      | "description"
+      | "collection_authority_level"
+      | "moderated_status"
+      | "display"
+      | "database_name"
+      | "table_schema"
+    >
+  >;

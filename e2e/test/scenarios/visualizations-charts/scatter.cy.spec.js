@@ -2,7 +2,9 @@ import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   assertEChartsTooltip,
+  assertEChartsTooltipNotContain,
   cartesianChartCircle,
+  leftSidebar,
   restore,
   visitQuestionAdhoc,
 } from "e2e/support/helpers";
@@ -43,11 +45,8 @@ describe("scenarios > visualizations > scatter", () => {
 
     triggerPopoverForBubble();
     assertEChartsTooltip({
+      header: "May 2023",
       rows: [
-        {
-          name: "Created At",
-          value: "May 2023",
-        },
         {
           name: "Count",
           value: "271",
@@ -80,11 +79,8 @@ describe("scenarios > visualizations > scatter", () => {
 
     triggerPopoverForBubble();
     assertEChartsTooltip({
+      header: "May 2023",
       rows: [
-        {
-          name: "Created At",
-          value: "May 2023",
-        },
         {
           name: "Orders count",
           value: "271",
@@ -144,6 +140,48 @@ select 10 as size, 2 as x, 5 as y`,
         assert.notEqual(r0, r1);
       });
     });
+  });
+
+  it("should allow adding non-series columns to the tooltip", () => {
+    visitQuestionAdhoc({
+      display: "scatter",
+      dataset_query: {
+        type: "query",
+        database: SAMPLE_DB_ID,
+        query: { "source-table": ORDERS_ID },
+      },
+      visualization_settings: {
+        "graph.metrics": ["TAX"],
+        "graph.dimensions": ["SUBTOTAL"],
+      },
+    });
+
+    cartesianChartCircle().first().realHover();
+    assertEChartsTooltip({
+      header: "15.69",
+      rows: [{ name: "Tax", value: "0.86" }],
+    });
+    assertEChartsTooltipNotContain(["Total", "Discount", "Quantity"]);
+
+    cy.findByTestId("viz-settings-button").click();
+
+    leftSidebar().within(() => {
+      cy.findByText("Display").click();
+      cy.findByPlaceholderText("Enter metric names").click();
+    });
+    cy.findByRole("option", { name: "Total" }).click();
+    cy.findByRole("option", { name: "Discount" }).click();
+
+    cartesianChartCircle().first().realHover();
+    assertEChartsTooltip({
+      header: "15.69",
+      rows: [
+        { name: "Tax", value: "0.86" },
+        { name: "Total", value: "16.55" },
+        { name: "Discount", value: "(empty)" },
+      ],
+    });
+    assertEChartsTooltipNotContain(["Quantity"]);
   });
 });
 

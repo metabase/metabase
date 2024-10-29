@@ -285,8 +285,8 @@
       "viz-settings": {
         "graph.dimensions": ["CREATED_AT"],
         "graph.metrics": ["count", "avg", "sum", "count_2", "avg_2"],
-        "metabase.shared.models.visualization-settings/column-settings": {},
-        "metabase.shared.models.visualization-settings/global-column-settings": {}
+        "metabase.models.visualization-settings/column-settings": {},
+        "metabase.models.visualization-settings/global-column-settings": {}
       },
       "results_timezone": "America/Montevideo",
       "results_metadata": {

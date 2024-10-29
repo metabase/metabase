@@ -57,3 +57,7 @@ Under "Tell Metabase about your identity provider", enter the following:
 - **SAML Identity Provider Issuer**: the "Microsoft Entra Identifier" URL you got from the Microsoft Entra ID SAML SSO configuration.
 
 Click on **Save Changes** below, and you should now be able to log in via Microsoft Entra ID.
+
+## Further reading
+
+- [User provisioning](./user-provisioning.md)

@@ -336,7 +336,10 @@ if (shouldEnableHotRefresh) {
   };
 
   config.watchOptions = {
-    ignored: ["**/node_modules", CLJS_SRC_PATH_DEV + "/**"],
+    // Shadow's live reload does not work. I assume it could be related to rspack migration.  Namely, the compiled cljs
+    // is loaded on save. On page reload however, the compiled cljs that was used on rspack initialization is used
+    // again. The following exception fixes that, for the cost of always reloading the page when compiled cljs changes.
+    ignored: ["**/node_modules" /*, CLJS_SRC_PATH_DEV + "/**" */],
   };
 
   config.plugins.unshift(

@@ -16,6 +16,7 @@ export * from "./group";
 export * from "./metabot";
 export * from "./models";
 export * from "./modelIndexes";
+export * from "./moderation";
 export * from "./notifications";
 export * from "./pagination";
 export * from "./parameters";

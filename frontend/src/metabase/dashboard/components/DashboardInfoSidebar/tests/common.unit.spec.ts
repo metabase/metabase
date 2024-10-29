@@ -1,7 +1,11 @@
 import userEvent from "@testing-library/user-event";
 
 import { screen } from "__support__/ui";
-import { createMockDashboard } from "metabase-types/api/mocks";
+import type { Dashboard } from "metabase-types/api";
+import {
+  createMockCollection,
+  createMockDashboard,
+} from "metabase-types/api/mocks";
 
 import { setup } from "./setup";
 
@@ -100,13 +104,101 @@ describe("DashboardInfoSidebar", () => {
     expect(setDashboardAttribute).toHaveBeenCalledWith("description", "");
   });
 
-  it("should show dashboard auto-apply filter toggle", async () => {
-    await setup();
-    expect(screen.getByText("Auto-apply filters")).toBeInTheDocument();
+  it("should show last edited info", async () => {
+    await setup({
+      dashboard: createMockDashboard({
+        "last-edit-info": {
+          timestamp: "1793-09-22T00:00:00",
+          first_name: "Frodo",
+          last_name: "Baggins",
+          email: "dontlikejewelry@example.com",
+          id: 7,
+        },
+      }),
+    });
+    expect(screen.getByText("Creator and last editor")).toBeInTheDocument();
+    expect(screen.getByText("September 22, 1793")).toBeInTheDocument();
+    expect(screen.getByText("by Frodo Baggins")).toBeInTheDocument();
   });
 
-  it("should not render caching section in OSS", async () => {
+  it("should show creator info", async () => {
+    await setup({
+      dashboard: createMockDashboard({
+        creator_id: 1,
+        "last-edit-info": {
+          timestamp: "1793-09-22T00:00:00",
+          first_name: "Frodo",
+          last_name: "Baggins",
+          email: "dontlikejewelry@example.com",
+          id: 7,
+        },
+      }),
+    });
+
+    expect(screen.getByText("Creator and last editor")).toBeInTheDocument();
+    expect(screen.getByText("January 1, 2024")).toBeInTheDocument();
+    expect(screen.getByText("by Testy Tableton")).toBeInTheDocument();
+  });
+
+  it("should show collection", async () => {
+    await setup({
+      dashboard: createMockDashboard({
+        collection: createMockCollection({
+          name: "My little collection ",
+        }),
+      }),
+    });
+
+    expect(screen.getByText("Saved in")).toBeInTheDocument();
+    expect(await screen.findByText("My little collection")).toBeInTheDocument();
+  });
+
+  it("should show root collection", async () => {
+    await setup({
+      dashboard: createMockDashboard({
+        collection_id: null,
+        collection: createMockCollection({
+          name: "Our analytics",
+          // @ts-expect-error - ye olde null root collection bugbear
+          id: null,
+        }),
+      }),
+    });
+
+    expect(screen.getByText("Saved in")).toBeInTheDocument();
+    expect(await screen.findByText("Our analytics")).toHaveAttribute(
+      "href",
+      "/collection/root",
+    );
+  });
+
+  it("should not show Visibility section when not shared publicly", async () => {
     await setup();
-    expect(screen.queryByText("Caching")).not.toBeInTheDocument();
+    expect(screen.queryByText("Visibility")).not.toBeInTheDocument();
+  });
+
+  it("should show Visibility section when dashboard has a public link", async () => {
+    await setup({ dashboard: createMockDashboard({ public_uuid: "123" }) });
+    expect(screen.getByText("Visibility")).toBeInTheDocument();
+  });
+
+  it("should show visibility section when embedding is enabled", async () => {
+    await setup({ dashboard: createMockDashboard({ enable_embedding: true }) });
+    expect(screen.getByText("Visibility")).toBeInTheDocument();
+    expect(screen.getByText("Embedded")).toBeInTheDocument();
+  });
+
+  describe("DashboardInfoSidebar > enterprise", () => {
+    describe("entity id display", () => {
+      it("should not show entity ids without serialization feature", async () => {
+        const dashboard = createMockDashboard({
+          entity_id: "jenny8675309" as Dashboard["entity_id"],
+        });
+        await setup({ dashboard });
+
+        expect(screen.queryByText("Entity ID")).not.toBeInTheDocument();
+        expect(screen.queryByText("jenny8675309")).not.toBeInTheDocument();
+      });
+    });
   });
 });

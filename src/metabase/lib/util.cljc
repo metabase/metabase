@@ -24,8 +24,8 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.shared.util.i18n :as i18n]
    [metabase.util :as u]
+   [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
 
 #?(:clj
@@ -344,12 +344,19 @@
         stages'                     (apply update (vec stages) stage-number' f args)]
     (assoc query :stages stages')))
 
+(defn native-stage?
+  "Is this query stage a native stage?"
+  [query stage-number]
+  (-> (query-stage query stage-number)
+      :lib/type
+      (= :mbql.stage/native)))
+
 (mu/defn ensure-mbql-final-stage :- ::lib.schema/query
   "Convert query to a pMBQL (pipeline) query, and make sure the final stage is an `:mbql` one."
   [query]
   (let [query (pipeline query)]
     (cond-> query
-      (= (:lib/type (query-stage query -1)) :mbql.stage/native)
+      (native-stage? query -1)
       (update :stages conj {:lib/type :mbql.stage/mbql}))))
 
 (defn join-strings-with-conjunction

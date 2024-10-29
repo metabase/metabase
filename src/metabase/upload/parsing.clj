@@ -47,6 +47,7 @@
    "d MMMM, uuuu"       ; 30 January, 2000
    "EEEE, MMMM d uuuu"  ; Sunday, January 30 2000
    "EEEE, MMMM d, uuuu" ; Sunday, January 30, 2000
+   "EEE MMM dd uuuu HH:mm:ss 'GMT'Z (zzzz)" ; The format produced by exporting Google Sheets
    ])
 
 (def local-date-formatter

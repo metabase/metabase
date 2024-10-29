@@ -1,4 +1,4 @@
-(ns metabase.query-processor-test.advanced-math-test
+(ns ^:mb/driver-tests metabase.query-processor-test.advanced-math-test
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]

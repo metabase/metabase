@@ -271,9 +271,10 @@
    ;; where this setting should be visible (default: :admin)
    [:visibility Visibility]
 
-   ;; should this setting be encrypted `:never` or `:maybe` (when `MB_ENCRYPTION_SECRET_KEY` is set).
-   ;; Defaults to `:maybe` (except for `:boolean` typed settings, where it defaults to `:never`)
-   [:encryption [:enum :never :maybe]]
+   ;; should this setting be encrypted. Available options are `:no` or `:when-encryption-key-set` (the setting will be
+   ;; encrypted when `MB_ENCRYPTION_SECRET_KEY` is set, otherwise we can't encrypt). This is required for `:timestamp`,
+   ;; `:json`, and `:csv`-typed settings. Defaults to `:no` for all other types.
+   [:encryption [:enum :no :when-encryption-key-set]]
 
    ;; should this setting be serialized?
    [:export? :boolean]
@@ -388,7 +389,7 @@
       (core/get *database-local-values* setting-name))))
 
 (defn- prohibits-encryption? [setting-or-name]
-  (= :never (:encryption (resolve-setting setting-or-name))))
+  (= :no (:encryption (resolve-setting setting-or-name))))
 
 (defn- allows-user-local-values? [setting]
   (#{:only :allowed} (:user-local (resolve-setting setting))))
@@ -953,6 +954,42 @@
     (binding [config/*disable-setting-cache* (not cache?)]
       (set-with-audit-logging! setting new-value bypass-read-only?))))
 
+(defn- extract-encryption-or-default
+  "Encryption is turned off or on according to (in order of preference):
+
+  - the value you specify in `defsetting`,
+
+  - ON for settings marked as `sensitive?`
+
+  - ON for settings with a setter of `:none` (the specific value here doesn't really matter, we just don't want the
+  caller to need to provide a value)
+
+  - OFF for types unlikely to contain secrets. As of this writing, that's booleans, numbers, keywords, and timestamps
+
+  If none of these conditions are met (a non-`:sensitive?` string/json/csv value you're storing in the database, and
+  you didn't provide a value) then we'll throw an exception telling you that you need to provide it. This way, when we
+  add new settings, we'll think about their sensitivity level and make a conscious decision about whether they need to
+  be encrypted or not."
+  [setting]
+  (or
+   (:encryption setting)
+   ;; NOTE: if none of the below conditions is met, users of `defsetting` will be required to
+   ;; provide a value for `:encryption`.
+   ;;
+   ;; if a setting is `:sensitive?`, default to encrypting it
+   (when (:sensitive? setting)
+     :when-encryption-key-set)
+   ;; if a setting isn't stored in the DB, the value doesn't really matter, but provide
+   ;; a default so the caller doesn't have to
+   (when (= (:setter setting) :none)
+     :when-encryption-key-set)
+   ;; if the setting isn't a type likely to contain secrets, default to plaintext
+   (when (contains? #{:boolean :integer :positive-integer :double :keyword :timestamp} (:type setting))
+     :no)
+
+   (throw (ex-info (trs "`:encryption` is a required option for setting {0}" (:name setting))
+                   {:setting setting}))))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               register-setting!                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -977,7 +1014,7 @@
                  :init           nil
                  :tag            (default-tag-for-type setting-type)
                  :visibility     :admin
-                 :encryption     (if (= setting-type :boolean) :never :maybe)
+                 :encryption     (extract-encryption-or-default setting)
                  :export?        false
                  :sensitive?     false
                  :cache?         true

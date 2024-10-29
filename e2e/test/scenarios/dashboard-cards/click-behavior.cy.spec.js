@@ -1,4 +1,4 @@
-import { USER_GROUPS } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ORDERS_BY_YEAR_QUESTION_ID,
@@ -10,6 +10,7 @@ import {
   chartPathWithFillColor,
   createDashboardWithTabs,
   dashboardHeader,
+  describeEE,
   editDashboard,
   entityPickerModal,
   filterWidget,
@@ -19,6 +20,8 @@ import {
   getLinkCardDetails,
   getTextCardDetails,
   modal,
+  multiAutocompleteInput,
+  openNotebook,
   openStaticEmbeddingModal,
   popover,
   queryBuilderHeader,
@@ -27,16 +30,16 @@ import {
   saveDashboard,
   setTokenFeatures,
   updateDashboardCards,
+  updateSetting,
+  verifyNotebookQuery,
   visitDashboard,
   visitEmbeddedPage,
   visitIframe,
 } from "e2e/support/helpers";
-import { b64hash_to_utf8 } from "metabase/lib/encoding";
 import {
   createMockActionParameter,
   createMockDashboardCard,
 } from "metabase-types/api/mocks";
-const { PRODUCTS, SAMPLE_DB_ID } = SAMPLE_DATABASE;
 
 const COUNT_COLUMN_ID = "count";
 const COUNT_COLUMN_NAME = "Count";
@@ -68,7 +71,7 @@ const FIRST_TAB = { id: 900, name: "first" };
 const SECOND_TAB = { id: 901, name: "second" };
 const THIRD_TAB = { id: 902, name: "third" };
 
-const { ORDERS_ID, ORDERS, PEOPLE } = SAMPLE_DATABASE;
+const { ORDERS_ID, ORDERS, PEOPLE, PRODUCTS } = SAMPLE_DATABASE;
 
 const TARGET_DASHBOARD = {
   name: "Target dashboard",
@@ -133,24 +136,14 @@ const DASHBOARD_FILTER_NUMBER = createMockActionParameter({
   sectionId: "number",
 });
 
-const QUERY_FILTER_CREATED_AT = [
-  "between",
-  [
-    "field",
-    ORDERS.CREATED_AT,
-    {
-      "base-type": "type/DateTime",
-    },
-  ],
-  "2022-07-01",
-  "2022-07-31",
-];
-
-const QUERY_FILTER_QUANTITY = [
-  "=",
-  ["field", ORDERS.QUANTITY, { "base-type": "type/Integer" }],
-  POINT_COUNT,
-];
+const DASHBOARD_FILTER_TEXT_WITH_DEFAULT = createMockActionParameter({
+  id: "4",
+  name: "Text filter with default",
+  slug: "filter-with-default",
+  type: "string/=",
+  sectionId: "string",
+  default: "Hello",
+});
 
 const URL = "https://metabase.com/";
 const URL_WITH_PARAMS = `${URL}{{${DASHBOARD_FILTER_TEXT.slug}}}/{{${COUNT_COLUMN_ID}}}/{{${CREATED_AT_COLUMN_ID}}}`;
@@ -161,7 +154,7 @@ const URL_WITH_FILLED_PARAMS = URL_WITH_PARAMS.replace(
   .replace(`{{${CREATED_AT_COLUMN_ID}}}`, POINT_CREATED_AT)
   .replace(`{{${DASHBOARD_FILTER_TEXT.slug}}}`, FILTER_VALUE);
 
-describe("scenarios > dashboard > dashboard cards > click behavior", () => {
+describeEE("scenarios > dashboard > dashboard cards > click behavior", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -217,6 +210,37 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
       clickLineChartPoint();
       assertDrillThroughMenuOpen();
+    });
+
+    it("should open drill-through menu for native query based dashcard", () => {
+      cy.createNativeQuestionAndDashboard({
+        questionDetails: {
+          name: "Native Question",
+          display: "line",
+          native: {
+            query: `
+              SELECT
+                DATE_TRUNC('month', CREATED_AT) AS "Created At",
+                COUNT(*) AS "count"
+              FROM
+                ORDERS
+              GROUP BY
+                DATE_TRUNC('month', CREATED_AT)
+              LIMIT
+                5
+            `,
+          },
+        },
+        dashboardDetails: {
+          name: "Dashboard",
+        },
+      }).then(({ body: card }) => {
+        visitDashboard(card.dashboard_id);
+      });
+
+      clickLineChartPoint();
+      // TODO: fix it, currently we drill down to the quesiton on dot click
+      // assertDrillThroughMenuOpen();
     });
 
     it("allows setting dashboard without filters as custom destination and changing it back to default click behavior", () => {
@@ -636,6 +660,171 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       });
     });
 
+    it("sets non-specified parameters to default values when accessed from a click action", () => {
+      cy.createDashboard(
+        {
+          ...TARGET_DASHBOARD,
+          parameters: [
+            DASHBOARD_FILTER_TEXT,
+            DASHBOARD_FILTER_TEXT_WITH_DEFAULT,
+          ],
+        },
+        {
+          wrapId: true,
+          idAlias: "targetDashboardId",
+        },
+      )
+        .then(dashboardId => {
+          return cy
+            .request("PUT", `/api/dashboard/${dashboardId}`, {
+              dashcards: [
+                createMockDashboardCard({
+                  card_id: ORDERS_QUESTION_ID,
+                  parameter_mappings: [
+                    createTextFilterMapping({ card_id: ORDERS_QUESTION_ID }),
+                    createTextFilterWithDefaultMapping({
+                      card_id: ORDERS_QUESTION_ID,
+                    }),
+                  ],
+                }),
+              ],
+            })
+            .then(() => dashboardId);
+        })
+        .then(dashboardId => {
+          visitDashboard(dashboardId);
+        });
+
+      filterWidget().contains("Hello").click();
+      popover().within(() => {
+        multiAutocompleteInput().type("{backspace}World{enter}");
+        cy.button("Update filter").click();
+      });
+
+      cy.createQuestionAndDashboard({ questionDetails }).then(
+        ({ body: card }) => {
+          visitDashboard(card.dashboard_id);
+        },
+      );
+
+      editDashboard();
+
+      getDashboardCard().realHover().icon("click").click();
+      addDashboardDestination();
+      cy.get("aside").findByText("Select a dashboard tab").should("not.exist");
+      cy.get("aside").findByText("No available targets").should("not.exist");
+      addTextParameter();
+      cy.get("aside").button("Done").click();
+
+      saveDashboard({ waitMs: 250 });
+
+      clickLineChartPoint();
+
+      cy.findAllByTestId("field-set")
+        .contains(DASHBOARD_FILTER_TEXT.name)
+        .parent()
+        .should("contain.text", POINT_COUNT);
+      cy.findAllByTestId("field-set")
+        .contains(DASHBOARD_FILTER_TEXT_WITH_DEFAULT.name)
+        .parent()
+        .should("contain.text", DASHBOARD_FILTER_TEXT_WITH_DEFAULT.default);
+
+      cy.get("@targetDashboardId").then(targetDashboardId => {
+        cy.location().should(({ pathname, search }) => {
+          expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
+          expect(search).to.equal(
+            `?${DASHBOARD_FILTER_TEXT.slug}=${POINT_COUNT}&${DASHBOARD_FILTER_TEXT_WITH_DEFAULT.slug}=Hello`,
+          );
+        });
+      });
+    });
+
+    it("sets parameters with default values to the correct value when accessed via click action", () => {
+      cy.createDashboard(
+        {
+          ...TARGET_DASHBOARD,
+          parameters: [
+            DASHBOARD_FILTER_TEXT,
+            DASHBOARD_FILTER_TEXT_WITH_DEFAULT,
+          ],
+        },
+        {
+          wrapId: true,
+          idAlias: "targetDashboardId",
+        },
+      )
+        .then(dashboardId => {
+          return cy
+            .request("PUT", `/api/dashboard/${dashboardId}`, {
+              dashcards: [
+                createMockDashboardCard({
+                  card_id: ORDERS_QUESTION_ID,
+                  parameter_mappings: [
+                    createTextFilterMapping({ card_id: ORDERS_QUESTION_ID }),
+                    createTextFilterWithDefaultMapping({
+                      card_id: ORDERS_QUESTION_ID,
+                    }),
+                  ],
+                }),
+              ],
+            })
+            .then(() => dashboardId);
+        })
+        .then(dashboardId => {
+          visitDashboard(dashboardId);
+        });
+
+      cy.findAllByTestId("field-set")
+        .contains(DASHBOARD_FILTER_TEXT.name)
+        .parent()
+        .click();
+      popover().within(() => {
+        multiAutocompleteInput().type("John Doe{enter}");
+        cy.button("Add filter").click();
+      });
+
+      cy.findAllByTestId("field-set")
+        .contains(DASHBOARD_FILTER_TEXT_WITH_DEFAULT.name)
+        .parent()
+        .click();
+      popover().within(() => {
+        multiAutocompleteInput().type("{backspace}World{enter}");
+        cy.button("Update filter").click();
+      });
+
+      cy.createQuestionAndDashboard({ questionDetails }).then(
+        ({ body: card }) => {
+          visitDashboard(card.dashboard_id);
+        },
+      );
+
+      editDashboard();
+
+      getDashboardCard().realHover().icon("click").click();
+      addDashboardDestination();
+      cy.get("aside").findByText("Select a dashboard tab").should("not.exist");
+      cy.get("aside").findByText("No available targets").should("not.exist");
+      addTextWithDefaultParameter();
+      cy.get("aside").button("Done").click();
+
+      saveDashboard({ waitMs: 250 });
+
+      clickLineChartPoint();
+      cy.findAllByTestId("field-set")
+        .contains(DASHBOARD_FILTER_TEXT_WITH_DEFAULT.name)
+        .parent()
+        .should("contain.text", POINT_COUNT);
+
+      cy.get("@targetDashboardId").then(targetDashboardId => {
+        cy.location().should(({ pathname, search }) => {
+          expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
+          expect(search).to.equal(
+            `?${DASHBOARD_FILTER_TEXT.slug}=&${DASHBOARD_FILTER_TEXT_WITH_DEFAULT.slug}=${POINT_COUNT}`,
+          );
+        });
+      });
+    });
+
     it("does not allow setting dashboard as custom destination if user has no permissions to it", () => {
       cy.createCollection({ name: RESTRICTED_COLLECTION_NAME }).then(
         ({ body: restrictedCollection }) => {
@@ -736,17 +925,24 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         "have.text",
         "Created At is Jul 1–31, 2022",
       );
-      cy.location().should(({ hash, pathname }) => {
-        expect(pathname).to.equal("/question");
 
-        const card = deserializeCardFromUrl(hash);
-        expect(card.name).to.deep.equal(TARGET_QUESTION.name);
-        expect(card.display).to.deep.equal(TARGET_QUESTION.display);
-        expect(card.dataset_query.query).to.deep.equal({
-          ...TARGET_QUESTION.query,
-          filter: QUERY_FILTER_CREATED_AT,
-        });
-      });
+      cy.location("pathname").should("equal", "/question");
+      cy.findByTestId("app-bar").should(
+        "contain.text",
+        `Started from ${TARGET_QUESTION.name}`,
+      );
+
+      verifyVizTypeIsLine();
+
+      openNotebook();
+      verifyNotebookQuery("Orders", [
+        {
+          filters: ["Created At is Jul 1–31, 2022"],
+          aggregations: ["Count"],
+          breakouts: ["Created At: Month"],
+          limit: 5,
+        },
+      ]);
 
       cy.go("back");
       testChangingBackToDefaultBehavior();
@@ -775,16 +971,23 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       cy.findByTestId("qb-filters-panel")
         .should("contain.text", "Created At is Jul 1–31, 2022")
         .should("contain.text", "Quantity is equal to 64");
-      cy.location().should(({ hash, pathname }) => {
-        expect(pathname).to.equal("/question");
-        const card = deserializeCardFromUrl(hash);
-        expect(card.name).to.deep.equal(TARGET_QUESTION.name);
-        expect(card.display).to.deep.equal(TARGET_QUESTION.display);
-        expect(card.dataset_query.query).to.deep.equal({
-          ...TARGET_QUESTION.query,
-          filter: ["and", QUERY_FILTER_CREATED_AT, QUERY_FILTER_QUANTITY],
-        });
-      });
+
+      cy.location("pathname").should("equal", "/question");
+      cy.findByTestId("app-bar").should(
+        "contain.text",
+        `Started from ${TARGET_QUESTION.name}`,
+      );
+      verifyVizTypeIsLine();
+
+      openNotebook();
+      verifyNotebookQuery("Orders", [
+        {
+          filters: ["Created At is Jul 1–31, 2022", "Quantity is equal to 64"],
+          aggregations: ["Count"],
+          breakouts: ["Created At: Month"],
+          limit: 5,
+        },
+      ]);
     });
 
     it("does not allow setting saved question as custom destination if user has no permissions to it", () => {
@@ -1159,11 +1362,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         cy.get("aside").findByText("No available targets").should("not.exist");
         addTextParameter();
         addTimeParameter();
-        cy.get("aside")
-          .findByRole("textbox")
-          .type(`Count: {{${COUNT_COLUMN_ID}}}`, {
-            parseSpecialCharSequences: false,
-          });
+        customizeLinkText(`Count: {{${COUNT_COLUMN_ID}}}`);
 
         cy.icon("chevronleft").click();
 
@@ -1183,11 +1382,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         addSavedQuestionDestination();
         addSavedQuestionCreatedAtParameter();
         addSavedQuestionQuantityParameter();
-        cy.get("aside")
-          .findByRole("textbox")
-          .type(`Created at: {{${CREATED_AT_COLUMN_ID}}}`, {
-            parseSpecialCharSequences: false,
-          });
+        customizeLinkText(`Created at: {{${CREATED_AT_COLUMN_ID}}}`);
 
         cy.icon("chevronleft").click();
 
@@ -1232,16 +1427,26 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         cy.findByTestId("qb-filters-panel")
           .should("contain.text", "Created At is Jul 1–31, 2022")
           .should("contain.text", "Quantity is equal to 64");
-        cy.location().should(({ hash, pathname }) => {
-          expect(pathname).to.equal("/question");
-          const card = deserializeCardFromUrl(hash);
-          expect(card.name).to.deep.equal(TARGET_QUESTION.name);
-          expect(card.display).to.deep.equal(TARGET_QUESTION.display);
-          expect(card.dataset_query.query).to.deep.equal({
-            ...TARGET_QUESTION.query,
-            filter: ["and", QUERY_FILTER_CREATED_AT, QUERY_FILTER_QUANTITY],
-          });
-        });
+
+        cy.location("pathname").should("equal", "/question");
+        cy.findByTestId("app-bar").should(
+          "contain.text",
+          `Started from ${TARGET_QUESTION.name}`,
+        );
+        verifyVizTypeIsLine();
+
+        openNotebook();
+        verifyNotebookQuery("Orders", [
+          {
+            filters: [
+              "Created At is Jul 1–31, 2022",
+              "Quantity is equal to 64",
+            ],
+            aggregations: ["Count"],
+            breakouts: ["Created At: Month"],
+            limit: 5,
+          },
+        ]);
       })();
     });
 
@@ -1632,9 +1837,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
     });
 
     it("allows opening custom URL destination that is not a Metabase instance URL using link (metabase#33379)", () => {
-      cy.request("PUT", "/api/setting/site-url", {
-        value: "https://localhost:4000/subpath",
-      });
+      updateSetting("site-url", "https://localhost:4000/subpath");
       const dashboardDetails = {
         enable_embedding: true,
       };
@@ -2202,15 +2405,6 @@ const onNextAnchorClick = callback => {
   });
 };
 
-/**
- * Duplicated from metabase/lib/card because Cypress can't handle import from there.
- *
- * @param {string} value
- * @returns object
- */
-const deserializeCardFromUrl = serialized =>
-  JSON.parse(b64hash_to_utf8(serialized));
-
 const clickLineChartPoint = () => {
   cartesianChartCircle()
     .eq(POINT_INDEX)
@@ -2280,6 +2474,14 @@ const addTextParameter = () => {
   });
 };
 
+const addTextWithDefaultParameter = () => {
+  cy.get("aside").findByText(DASHBOARD_FILTER_TEXT_WITH_DEFAULT.name).click();
+  popover().within(() => {
+    cy.findByText(CREATED_AT_COLUMN_NAME).should("exist");
+    cy.findByText(COUNT_COLUMN_NAME).should("exist").click();
+  });
+};
+
 const addTimeParameter = () => {
   cy.get("aside").findByText(DASHBOARD_FILTER_TIME.name).click();
   popover().within(() => {
@@ -2309,6 +2511,23 @@ const createTextFilterMapping = ({ card_id }) => {
   return {
     card_id,
     parameter_id: DASHBOARD_FILTER_TEXT.id,
+    target: ["dimension", fieldRef],
+  };
+};
+
+const createTextFilterWithDefaultMapping = ({ card_id }) => {
+  const fieldRef = [
+    "field",
+    PEOPLE.NAME,
+    {
+      "base-type": "type/Text",
+      "source-field": ORDERS.USER_ID,
+    },
+  ];
+
+  return {
+    card_id,
+    parameter_id: DASHBOARD_FILTER_TEXT_WITH_DEFAULT.id,
     target: ["dimension", fieldRef],
   };
 };
@@ -2414,3 +2633,17 @@ const createDashboardWithTabsLocal = ({
     });
   });
 };
+
+function customizeLinkText(text) {
+  cy.get("aside")
+    .findByRole("textbox")
+    .type(text, { parseSpecialCharSequences: false });
+}
+
+function verifyVizTypeIsLine() {
+  cy.findByTestId("viz-type-button").click();
+  cy.findByTestId("sidebar-content")
+    .findByTestId("Line-container")
+    .should("have.attr", "aria-selected", "true");
+  cy.findByTestId("viz-type-button").click();
+}

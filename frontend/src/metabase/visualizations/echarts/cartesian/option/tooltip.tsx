@@ -4,6 +4,7 @@ import { renderToString } from "react-dom/server";
 import { EChartsTooltip } from "metabase/visualizations/components/ChartTooltip/EChartsTooltip";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import { getTooltipModel } from "metabase/visualizations/visualizations/CartesianChart/events";
+import type { CardDisplayType } from "metabase-types/api";
 
 import { getTooltipBaseOption } from "../../tooltip";
 import {
@@ -14,6 +15,7 @@ import type { BaseCartesianChartModel, DataKey } from "../model/types";
 
 interface ChartItemTooltip {
   dataIndex: number;
+  display: CardDisplayType;
   seriesId?: DataKey | null;
   settings: ComputedVisualizationSettings;
   chartModel: BaseCartesianChartModel;
@@ -23,6 +25,7 @@ const ChartItemTooltip = ({
   chartModel,
   settings,
   dataIndex,
+  display,
   seriesId,
 }: ChartItemTooltip) => {
   if (dataIndex == null || seriesId == null) {
@@ -33,6 +36,7 @@ const ChartItemTooltip = ({
     chartModel,
     settings,
     dataIndex,
+    display,
     seriesId,
   );
 
@@ -46,6 +50,7 @@ const ChartItemTooltip = ({
 export const getTooltipOption = (
   chartModel: BaseCartesianChartModel,
   settings: ComputedVisualizationSettings,
+  display: CardDisplayType,
   containerRef: React.RefObject<HTMLDivElement>,
 ): TooltipOption => {
   return {
@@ -70,6 +75,7 @@ export const getTooltipOption = (
           settings={settings}
           chartModel={chartModel}
           dataIndex={dataIndex}
+          display={display}
           seriesId={seriesId}
         />,
       );
