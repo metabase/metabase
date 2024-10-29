@@ -35351,3 +35351,15 @@ msgstr "Describe el problema..."
 
 msgid "Submit Correction"
 msgstr "Enviar Corrección"
+
+msgid "Expected Insight:"
+msgstr "Insight esperado"
+
+msgid "Python Operations:"
+msgstr "Operaciones en Python"
+
+msgid "Transformations:"
+msgstr "Transformaciones"
+
+msgid "Visualizations:"
+msgstr "Visualizaciones"
