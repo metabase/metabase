@@ -413,9 +413,12 @@ export const DashboardChartSettings = ({
   onChange,
   series,
   onClose,
-  widgets: propWidgets,
+  widgets: testWidgets,
+  settings: testSettings,
 }: DashboardChartSettingsProps) => {
-  const [tempSettings, setTempSettings] = useState<VisualizationSettings>();
+  const [tempSettings, setTempSettings] = useState<
+    VisualizationSettings | undefined
+  >(testSettings);
 
   const {
     chartSettings,
@@ -451,14 +454,14 @@ export const DashboardChartSettings = ({
 
   const widgets = useMemo(
     () =>
-      propWidgets ||
+      testWidgets ||
       getSettingsWidgetsForSeries(
         transformedSeries,
         handleChangeSettings,
         true,
         { dashboardId: dashboard?.id },
       ),
-    [propWidgets, transformedSeries, handleChangeSettings, dashboard?.id],
+    [testWidgets, transformedSeries, handleChangeSettings, dashboard?.id],
   );
 
   return (

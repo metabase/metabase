@@ -33,7 +33,8 @@ export type DashboardChartSettingsProps = {
   isDashboard?: boolean;
   onClose?: () => void;
 } & CommonChartSettingsProps &
-  ChartSettingsTestTypes;
+  ChartSettingsTestTypes &
+  DashboardChartSettingsTestTypes;
 
 export type QuestionChartSettingsProps = CommonChartSettingsProps &
   Pick<ChartSettingsProps, "initial" | "computedSettings" | "question"> &
@@ -77,6 +78,11 @@ export type UseChartSettingsStateReturned = {
 };
 
 // Only used for the tests in ChartSettings.unit.spec.tsx
-export type ChartSettingsTestTypes = {
+type ChartSettingsTestTypes = {
   widgets?: Widget[];
+};
+
+// Only used for the tests in DashboardChartSettings.unit.spec.tsx
+type DashboardChartSettingsTestTypes = {
+  settings?: VisualizationSettings;
 };
