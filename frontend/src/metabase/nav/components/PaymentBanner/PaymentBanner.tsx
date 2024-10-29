@@ -7,58 +7,46 @@ import { getStoreUrl } from "metabase/selectors/settings";
 import type { TokenStatus } from "metabase-types/api";
 
 interface PaymentBannerProps {
-  isAdmin: boolean;
   tokenStatus: TokenStatus;
 }
 
-export const PaymentBanner = ({ isAdmin, tokenStatus }: PaymentBannerProps) => {
-  if (isAdmin && tokenStatus.status === "past-due") {
-    return (
-      <Banner>
-        {jt`⚠️ We couldn't process payment for your account. Please ${(
-          <ExternalLink
-            key="payment-past-due"
-            className={CS.link}
-            href={getStoreUrl()}
-          >
-            {t`review your payment settings`}
-          </ExternalLink>
-        )} to avoid service interruptions.`}
-      </Banner>
-    );
-  } else if (isAdmin && tokenStatus.status === "unpaid") {
-    return (
-      <Banner>
-        {jt`⚠️ Pro features won’t work right now due to lack of payment. ${(
-          <ExternalLink
-            key="payment-unpaid"
-            className={CS.link}
-            href={getStoreUrl()}
-          >
-            {t`Review your payment settings`}
-          </ExternalLink>
-        )} to restore Pro functionality.`}
-      </Banner>
-    );
-  } else if (isAdmin && tokenStatus.status === "invalid") {
-    return (
-      <Banner>
-        {jt`⚠️ Pro features error. ` + (tokenStatus["error-details"] || "")}
-      </Banner>
-    );
+export const PaymentBanner = ({ tokenStatus }: PaymentBannerProps) => {
+  switch (tokenStatus.status) {
+    case "past-due":
+      return (
+        <Banner>
+          {jt`⚠️ We couldn't process payment for your account. Please ${(
+            <ExternalLink
+              key="payment-past-due"
+              className={CS.link}
+              href={getStoreUrl()}
+            >
+              {t`review your payment settings`}
+            </ExternalLink>
+          )} to avoid service interruptions.`}
+        </Banner>
+      );
+    case "unpaid":
+      return (
+        <Banner>
+          {jt`⚠️ Pro features won’t work right now due to lack of payment. ${(
+            <ExternalLink
+              key="payment-unpaid"
+              className={CS.link}
+              href={getStoreUrl()}
+            >
+              {t`Review your payment settings`}
+            </ExternalLink>
+          )} to restore Pro functionality.`}
+        </Banner>
+      );
+    case "invalid":
+      return (
+        <Banner>
+          {jt`⚠️ Pro features error. ` + (tokenStatus["error-details"] || "")}
+        </Banner>
+      );
+    default:
+      return null;
   }
-
-  return null;
 };
-
-export function shouldRenderPaymentBanner({
-  isAdmin,
-  tokenStatus,
-}: PaymentBannerProps) {
-  const shouldRenderStatuses: (string | undefined)[] = [
-    "past-due",
-    "unpaid",
-    "invalid",
-  ];
-  return isAdmin && shouldRenderStatuses.includes(tokenStatus?.status);
-}

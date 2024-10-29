@@ -16,13 +16,14 @@ import { AppBanner } from "./AppBanner";
 
 interface SetupOpts {
   isAdmin: boolean;
-  tokenStatusStatus: TokenStatusStatus;
+  tokenStatusStatus?: TokenStatusStatus;
+  tokenError?: string;
 }
 const TEST_DB = createSampleDatabase();
 
 const DATA_WAREHOUSE_DB = createMockDatabase({ id: 2 });
 
-function setup({ isAdmin, tokenStatusStatus }: SetupOpts) {
+function setup({ isAdmin, tokenStatusStatus, tokenError }: SetupOpts) {
   setupDatabasesEndpoints([TEST_DB, DATA_WAREHOUSE_DB]);
 
   const state = createMockState({
@@ -31,6 +32,7 @@ function setup({ isAdmin, tokenStatusStatus }: SetupOpts) {
       "token-status": createMockTokenStatus({
         status: tokenStatusStatus,
         valid: false,
+        "error-details": tokenError,
       }),
     }),
   });
@@ -43,6 +45,12 @@ function setup({ isAdmin, tokenStatusStatus }: SetupOpts) {
 }
 
 describe("AppBanner", () => {
+  it("should not render for non admins", () => {
+    setup({ isAdmin: false });
+
+    expect(screen.queryByTestId("app-banner")).not.toBeInTheDocument();
+  });
+
   it("should render past-due banner for admin user with tokenStatusStatus: past-due", () => {
     setup({
       isAdmin: true,
@@ -75,43 +83,22 @@ describe("AppBanner", () => {
     ).toBeInTheDocument();
   });
 
+  it("should render an error with details when the token is `invalid`", () => {
+    setup({
+      isAdmin: true,
+      tokenStatusStatus: "invalid",
+      tokenError: "This is a critical damage.",
+    });
+
+    expect(screen.getByText(/This is a critical damage\./)).toBeInTheDocument();
+  });
+
   it("should not render for admin user with tokenStatusStatus: something-else", () => {
     setup({
       isAdmin: true,
       tokenStatusStatus: "something-else",
     });
 
-    expect(
-      screen.queryByText(/We couldn't process payment for your account\./),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByText(
-        /Pro features won’t work right now due to lack of payment\./,
-      ),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId("app-banner")).not.toBeInTheDocument();
   });
-
-  it.each([
-    { tokenStatusStatus: "past-due" },
-    { tokenStatusStatus: "unpaid" },
-    {
-      tokenStatusStatus: "something-else",
-    },
-  ] as const)(
-    "should not render for non admin user with tokenStatusStatus: $tokenStatusStatus",
-    ({ tokenStatusStatus }) => {
-      setup({
-        isAdmin: false,
-        tokenStatusStatus,
-      });
-      expect(
-        screen.queryByText(/We couldn't process payment for your account\./),
-      ).not.toBeInTheDocument();
-      expect(
-        screen.queryByText(
-          /Pro features won’t work right now due to lack of payment\./,
-        ),
-      ).not.toBeInTheDocument();
-    },
-  );
 });
