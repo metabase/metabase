@@ -21,7 +21,13 @@ export const ChartSettingColorPicker = ({
   title,
   pillSize,
   onChange,
-  accentColorOptions = { main: true, light: true, dark: true, harmony: false },
+  accentColorOptions = {
+    main: true,
+    light: true,
+    dark: true,
+    harmony: false,
+    gray: true,
+  },
 }: ChartSettingColorPickerProps) => {
   return (
     <div className={cx(CS.flex, CS.alignCenter, className)}>
