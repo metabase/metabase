@@ -2646,6 +2646,7 @@ function getDashboardId(): Cypress.Chainable<number> {
 }
 
 function waitForPublicDashboardData() {
+  // tests with public dashboards always have 4 dashcards
   cy.wait([
     "@publicDashboardData",
     "@publicDashboardData",
@@ -2655,6 +2656,7 @@ function waitForPublicDashboardData() {
 }
 
 function waitForEmbeddedDashboardData() {
+  // tests with embedded dashboards always have 4 dashcards
   cy.wait([
     "@embeddedDashboardData",
     "@embeddedDashboardData",
