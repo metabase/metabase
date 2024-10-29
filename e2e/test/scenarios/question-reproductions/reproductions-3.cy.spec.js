@@ -2239,7 +2239,7 @@ describe("issue 12586", () => {
     cy.signInAsNormalUser();
   });
 
-  it("should not show the run button overlay when an error occurs", () => {
+  it("should not show the run button overlay when an error occurs (metabase#12586)", () => {
     openOrdersTable();
     summarize();
 
