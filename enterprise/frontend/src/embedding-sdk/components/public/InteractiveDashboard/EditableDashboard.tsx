@@ -91,6 +91,7 @@ export const EditableDashboard = ({
             setRefreshElapsedHook={setRefreshElapsedHook}
             isFullscreen={isFullscreen}
             onFullscreenChange={onFullscreenChange}
+            noLoaderWrapper
             onNavigateToNewCardFromDashboard={onNavigateToNewCardFromDashboard}
             downloadsEnabled={withDownloads}
             onLoad={onLoad}
