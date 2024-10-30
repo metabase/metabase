@@ -1812,6 +1812,8 @@ describe("issue 25374", () => {
 
       visitDashboard(dashboard_id);
 
+      cy.waitAlias(/getDashboard/);
+
       filterWidget().type("1,2,3{enter}");
       cy.findByDisplayValue("1,2,3");
 
