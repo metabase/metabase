@@ -9,4 +9,5 @@ export const StyledPublicComponentWrapper = styled(PublicComponentWrapper)`
   flex-direction: column;
   justify-content: flex-start;
   align-items: stretch;
+  overflow: auto;
 `;

@@ -658,7 +658,7 @@ By default, this component takes full page height (100vh). You can override this
 <EditableDashboard
   style={{
     height: 800,
-    overflow: "auto",
+    minHeight: "auto",
   }}
   dashboardId={dashboardId}
 />
