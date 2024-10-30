@@ -848,6 +848,7 @@
   [identifier->action dashcards]
   (not-empty (keep (partial update-for-dashcard identifier->action) dashcards)))
 
+;; ! :delete action is shut down until I find reasonable condition for deletion.
 (defn- update-associated-parameters!
   "Update _parameter mappings_ of _dashcards_ that target modified _card_, to reflect the modification.
 
