@@ -789,7 +789,7 @@
   (let [after--refs (get after--identifier->refs identifier #{})]
     (cond
       (or
-       ;; If there were more than 1 ref to a field in orig breakout and there is a difference
+       ;; If there was more than 1 ref to a field in orig breakout and there is a difference
        (and (< 1 (count before--refs))
             (not= before--refs after--refs))
        ;; If there was 1 ref to a field in orig breakout and if not present in modified breakout
