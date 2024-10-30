@@ -828,7 +828,7 @@
     mapping
     (let [dimension (get-in mapping [:target 1])
           identifier (subvec dimension 0 2)
-          [action arg] (get identifier->action identifier)]
+          [action arg] (get identifier->action identifier [:noop])]
       (case action
         :update (assoc-in mapping [:target 1] arg)
         :noop   mapping
@@ -846,7 +846,7 @@
 
 (defn- updates-for-dashcards
   [identifier->action dashcards]
-  (keep (partial update-for-dashcard identifier->action) dashcards))
+  (not-empty (keep (partial update-for-dashcard identifier->action) dashcards)))
 
 (defn- update-associated-parameters!
   "Update _parameter mappings_ of _dashcards_ that target modified _card_, to reflect the modification.
