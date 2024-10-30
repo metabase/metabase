@@ -191,18 +191,15 @@ describe("parameters/utils/parameter-values", () => {
       ).toEqual(["123.456"]);
     });
 
-    it("should convert boolean arguments to strings", () => {
-      field1.isNumeric = () => true;
-      field1.isDate = () => true;
-
-      field4.isNumeric = () => true;
-      field4.isDate = () => false;
+    it("should convert boolean arguments to strings if all mapped fields are strings", () => {
+      field1.isString = () => true;
+      field4.isStringLike = () => true;
 
       expect(
         getParameterValueFromQueryParams(parameter1, {
-          [parameter1.slug]: "123.456",
+          [parameter1.slug]: true,
         }),
-      ).toEqual(["123.456"]);
+      ).toEqual(["true"]);
     });
 
     it("should parse a value of 'true' or 'false' as a boolean if all associated fields are booleans", () => {
