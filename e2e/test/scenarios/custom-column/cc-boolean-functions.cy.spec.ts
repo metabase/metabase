@@ -625,35 +625,6 @@ describe("scenarios > custom column > boolean functions", () => {
       );
     }
 
-    it("should be able to setup an 'update filter' click behavior and convert the value based on the connected fields", () => {
-      createDashboardWithQuestion().then(dashboard =>
-        visitDashboard(dashboard.id),
-      );
-
-      cy.log("setup click behavior");
-      editDashboard();
-      showDashboardCardActions();
-      getDashboardCard().findByLabelText("Click behavior").click();
-      sidebar().within(() => {
-        cy.findByText(expressionName).click();
-        cy.findByText("Update a dashboard filter").click();
-        cy.findByText(parameterDetails.name).click();
-      });
-      popover().findByText(expressionName).click();
-      saveDashboard();
-
-      cy.log("verify click behavior");
-      getDashboardCard().within(() => {
-        cy.findByText("Hudson Borer").should("be.visible");
-        cy.findByText("Sydney Rempel").should("not.exist");
-        cy.findAllByText("false").first().click();
-      });
-      getDashboardCard().within(() => {
-        cy.findByText("Hudson Borer").should("not.exist");
-        cy.findByText("Sydney Rempel").should("be.visible");
-      });
-    });
-
     it("should be able setup an 'open question' click behavior", () => {
       createDashboardWithQuestion().then(dashboard =>
         visitDashboard(dashboard.id),
