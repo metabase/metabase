@@ -779,17 +779,26 @@
           breakout-clause))
 
 (defn- action-for-identifier+refs
-  "TBD!!!!!!!!!!!!!!"
+  "Generate _action_ for combination of args.
+
+  _Action_ is to be performed on _parameter mapping_ of a _dashcard_. For more info see
+  the [[update-associated-parameters!]]'s docstring.
+
+  _Action_ has a form of [<action> & args]. Currently :delete, :update, :noop are implemented."
   [after--identifier->refs identifier before--refs]
   (let [after--refs (get after--identifier->refs identifier #{})]
     (cond
-      (or (and (< 1 (count before--refs) (count after--refs))
-               (not= before--refs after--refs))
-          (and (= 1 (count before--refs))
-               (not= 1 (count after--refs))
-               (not (contains? after--refs (first before--refs)))))
+      (or
+       ;; If there were more than 1 ref to a field in orig breakout and there is a difference
+       (and (< 1 (count before--refs))
+            (not= before--refs after--refs))
+       ;; If there was 1 ref to a field in orig breakout and if not present in modified breakout
+       (and (= 1 (count before--refs))
+            (not= 1 (count after--refs))
+            (not (contains? after--refs (first before--refs)))))
       [:delete]
 
+      ;; If there was 1 ref in orig and modfied breakout that's different
       (and (= 1 (count before--refs) (count after--refs))
            (not= before--refs after--refs))
       [:update (first after--refs)]
@@ -798,6 +807,10 @@
       [:noop])))
 
 (defn- breakouts-->identifier->action
+  "Generate mapping of _identifier_ -> _action_.
+
+  _identifier_ is is a vector of first 2 elements of ref, eg. [:expression \"xix\"] or [:field 10]. Action is generated
+  in [[action-for-identifier+refs]] and performed later in [[update-mapping]]."
   [breakout-before-update breakout-after-update]
   (let [before--identifier->refs (breakout-->identifier->refs breakout-before-update)
         after--identifier->refs  (breakout-->identifier->refs breakout-after-update)
@@ -807,6 +820,7 @@
     (not-empty (m/filter-vals (complement #{[:noop]}) (reduce-kv action-kvrf {} before--identifier->refs)))))
 
 (defn- update-mapping
+  "Return modifed mapping, or nil, according to action."
   [identifier->action mapping]
   (if-not (and (= :dimension (get-in mapping [:target 0]))
                (#{:field :expression} (get-in mapping [:target 1 0])))
@@ -820,6 +834,8 @@
         :delete nil))))
 
 (defn- update-for-dashcard
+  "Return nil for no-op updates or [<dashcard-id> <update>]. <update> is a map of `:parameter_mappings` only as only
+  this is updated."
   [identifier->action dashcard]
   (let [card-update (select-keys (update dashcard :parameter_mappings
                                          (comp vec (partial keep (partial update-mapping identifier->action))))
@@ -832,7 +848,17 @@
   (keep (partial update-for-dashcard identifier->action) dashcards))
 
 (defn- update-associated-parameters!
-  "TBD"
+  "Update _parameter mappings_ of _dashcards_ that target modified _card_, to reflect the modification.
+
+  This function handles only modifications to breakout.
+
+  Context. Card can have multiple multiple breakout elements referencing same field or expression, having different
+  _temporal unit_. Those refs can be targeted by dashboard _temporal unit parameter_. If refs change, and card is saved,
+  _parameter mappings_ have to be updated to target new, modified refs. This function takes care of that.
+
+  First mappings of _identifier_ -> _action_ are generated. _identifier_ is described
+  eg. in [[breakouts-->identifier->action]] docstring. Then, dashcards are fetched and updates are generated
+  by [[updates-for-dashcards]]. Updates are then executed."
   [card-before card-after]
   (let [card->breakout     #(-> % :dataset_query mbql.normalize/normalize :query :breakout)
         breakout-before    (card->breakout card-before)
