@@ -652,6 +652,18 @@ component.
   but without its cards - at this stage dashboard title, tabs and cards grid is rendered, but cards content is not yet
   loaded.
 
+By default, this component takes full page height (100vh). You can override this with custom styles passed via `style` or `className` props.
+
+```tsx
+<EditableDashboard
+  style={{
+    height: 800,
+    overflow: "auto",
+  }}
+  dashboardId={dashboardId}
+/>
+```
+
 ### Creating Dashboards
 
 Creating dashboard could be done with `useCreateDashboardApi` hook or `CreateDashboardModal` component.

@@ -198,6 +198,7 @@ function Dashboard(props: DashboardProps) {
     toggleSidebar,
     parameterQueryParams,
     downloadsEnabled = true,
+    noLoaderWrapper = false,
   } = props;
 
   const dispatch = useDispatch();
@@ -396,6 +397,7 @@ function Dashboard(props: DashboardProps) {
       isNightMode={shouldRenderAsNightMode}
       loading={!dashboard}
       error={error}
+      noWrapper={noLoaderWrapper}
     >
       {() => {
         if (!dashboard) {
