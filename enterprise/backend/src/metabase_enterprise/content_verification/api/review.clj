@@ -12,8 +12,8 @@
   [:as {{:keys [text moderated_item_id moderated_item_type status reason]} :body}]
   {moderated_item_id   ms/PositiveInt
    moderated_item_type moderation/moderated-item-types
-   status              [:maybe moderation-review/Statuses]
-   reason              [:maybe moderation-review/Reasons]
+   status              moderation-review/Statuses
+   reason              moderation-review/Reasons
    text                [:maybe :string]}
   (api/check-superuser)
   (let [review-data {:moderated_item_id   moderated_item_id
@@ -22,7 +22,9 @@
                      :status              status
                      :reason              reason
                      :text                text}]
-    (api/check-404 (t2/exists? (get moderation/moderated-item-type->model moderated_item_type) moderated_item_id))
+    (api/check-404 (t2/exists?
+                    (get moderation/moderated-item-type->model moderated_item_type)
+                    moderated_item_id))
     (moderation-review/create-review! review-data)))
 
 (api/define-routes)

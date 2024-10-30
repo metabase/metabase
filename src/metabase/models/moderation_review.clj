@@ -28,7 +28,7 @@
 
 (def Reasons
   "Reasons that a verifiable entity would be flagged"
-  (into [:enum nil] (keys reasons)))
+  [:maybe (into [:enum nil] (keys reasons))])
 
 ;;; currently unused, but I'm leaving this in commented out because it serves as documentation
 (comment
