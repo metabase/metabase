@@ -9,7 +9,6 @@ import { canonicalCollectionId } from "metabase/collections/utils";
 import ConfirmContent from "metabase/components/ConfirmContent";
 import Modal from "metabase/components/Modal";
 import { MoveModal } from "metabase/containers/MoveModal";
-import { ROOT_COLLECTION } from "metabase/entities/collections";
 import Dashboards from "metabase/entities/dashboards";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -42,22 +41,13 @@ export const MoveQuestionModal = ({
     boolean | undefined
   >();
 
-  const card = question.card();
-  const canMoveToDashboard =
-    card.type === "question" &&
-    Boolean(
-      card?.dashboard_count === 0 ||
-        (card?.dashboard_count === 1 && card?.dashboard_id),
-    );
-
   const handleMove = async (destination: MoveDestination) => {
     const update =
       destination.model === "dashboard"
         ? { dashboard_id: destination.id }
         : {
             dashboard_id: null,
-            collection_id:
-              canonicalCollectionId(destination.id) || ROOT_COLLECTION.id,
+            collection_id: canonicalCollectionId(destination.id),
           };
 
     await updateQuestion({
@@ -188,7 +178,7 @@ export const MoveQuestionModal = ({
       initialCollectionId={question.collectionId() ?? "root"}
       onClose={onClose}
       onMove={handleChooseMoveLocation}
-      canMoveToDashboard={canMoveToDashboard}
+      canMoveToDashboard
     />
   );
 };
