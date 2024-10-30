@@ -1,4 +1,3 @@
-import { fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
@@ -10,6 +9,7 @@ import {
 } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
 import {
+  fireEvent,
   mockGetBoundingClientRect,
   mockScrollBy,
   renderWithProviders,

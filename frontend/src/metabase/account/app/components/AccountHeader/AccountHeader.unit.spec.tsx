@@ -1,5 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
-
+import { fireEvent, render, screen } from "__support__/ui";
 import { PLUGIN_IS_PASSWORD_USER } from "metabase/plugins";
 import { createMockUser } from "metabase-types/api/mocks";
 

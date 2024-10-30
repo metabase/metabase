@@ -1,7 +1,6 @@
-import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders } from "__support__/ui";
+import { renderWithProviders, screen, within } from "__support__/ui";
 import type { VisualizationSettings } from "metabase-types/api";
 
 import {

@@ -1,6 +1,4 @@
-import { render, screen } from "@testing-library/react";
-
-import { mockGetBoundingClientRect } from "__support__/ui";
+import { mockGetBoundingClientRect, render, screen } from "__support__/ui";
 
 import { VirtualizedList } from "./VariableHeightVirtualizedList";
 

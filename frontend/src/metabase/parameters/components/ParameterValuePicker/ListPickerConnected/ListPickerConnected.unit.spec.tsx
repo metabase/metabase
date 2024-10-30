@@ -1,6 +1,6 @@
-import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
+import { act, render, screen, waitFor } from "__support__/ui";
 import type {
   Parameter,
   ParameterValue,

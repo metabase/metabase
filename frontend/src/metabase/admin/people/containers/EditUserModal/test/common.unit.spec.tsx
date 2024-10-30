@@ -1,6 +1,7 @@
-import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
+
+import { screen } from "__support__/ui";
 
 import { defaultUser, setup } from "./setup";
 

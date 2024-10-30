@@ -1,8 +1,7 @@
-import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { createMockEntitiesState } from "__support__/store";
-import { getIcon, renderWithProviders } from "__support__/ui";
+import { getIcon, renderWithProviders, screen } from "__support__/ui";
 import { getMetadata } from "metabase/selectors/metadata";
 import type {
   Collection,

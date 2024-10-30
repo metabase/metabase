@@ -1,5 +1,3 @@
-import { within } from "@testing-library/react";
-
 import {
   setupAlertsEndpoints,
   setupCardEndpoints,
@@ -14,6 +12,7 @@ import {
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
+  within,
 } from "__support__/ui";
 import { InteractiveQuestionResult } from "embedding-sdk/components/private/InteractiveQuestionResult";
 import { createMockJwtConfig } from "embedding-sdk/test/mocks/config";

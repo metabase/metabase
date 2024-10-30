@@ -1,6 +1,6 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
+import { fireEvent, render, screen, waitFor } from "__support__/ui";
 import type {
   ActionFormSettings,
   FieldSettings,

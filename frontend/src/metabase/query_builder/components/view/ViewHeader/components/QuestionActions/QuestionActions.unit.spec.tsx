@@ -1,4 +1,3 @@
-import { waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { createMockEntitiesState } from "__support__/store";
@@ -7,6 +6,7 @@ import {
   queryIcon,
   renderWithProviders,
   screen,
+  waitFor,
 } from "__support__/ui";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import { getMetadata } from "metabase/selectors/metadata";

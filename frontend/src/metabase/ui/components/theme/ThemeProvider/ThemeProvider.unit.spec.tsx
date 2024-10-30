@@ -1,7 +1,7 @@
 import type { MantineThemeOverride } from "@mantine/core";
-import { render, screen } from "@testing-library/react";
 import Color from "color";
 
+import { render, screen } from "__support__/ui";
 import { getThemeOverrides } from "metabase/ui/theme";
 import { getColorShades } from "metabase/ui/utils/colors";
 
