@@ -275,7 +275,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
         createAndVisitDashboardWithCardMatrix(createQ2Query);
       });
 
-      it("allows to map to all relevant columns (metabase#47184)", () => {
+      it("allows to map to all relevant columns (metabase#47184, metabase#47218)", () => {
         editDashboard();
 
         cy.log("## date columns");

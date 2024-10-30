@@ -59,6 +59,7 @@ export const AccordionListCell = ({
     isLastItem,
     isLastSection,
   } = row;
+  const isSubsequentItem = itemIndex > 0;
   let content;
   let borderTop;
   let borderBottom;
@@ -206,7 +207,7 @@ export const AccordionListCell = ({
       </div>
     );
   } else if (type === "header-hidden") {
-    content = <div className={cx({ [CS.my1]: itemIndex > 0 })} />;
+    content = <div className={cx({ [CS.my1]: isSubsequentItem })} />;
   } else if (type === "no-results") {
     content = (
       <EmptyStateContainer>
@@ -317,6 +318,10 @@ export const AccordionListCell = ({
     if (renderItemWrapper) {
       content = renderItemWrapper(content, item);
     }
+  }
+
+  if (type === "header-hidden" && !isSubsequentItem) {
+    return null;
   }
 
   return (
