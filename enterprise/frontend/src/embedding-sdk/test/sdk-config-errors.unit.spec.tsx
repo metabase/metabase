@@ -98,7 +98,7 @@ describe("SDK auth errors", () => {
     console.error = jest.fn((...args) => {
       consoleErrorCalls.push(args);
       // Uncomment to line below to debug these tests
-      originalConsoleError(...args);
+      // originalConsoleError(...args);
     });
   });
 
