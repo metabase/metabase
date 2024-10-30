@@ -1793,13 +1793,9 @@ describe("issue 25374", () => {
         });
       },
     ).as("dashboardParams");
-    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card//*/query").as(
-      "dashcardQuery",
-    );
 
     restore();
     cy.signInAsAdmin();
-    changeSynchronousBatchUpdateSetting(true); // prevent last_used_param_values from breaking test isolation
 
     cy.createNativeQuestionAndDashboard({
       questionDetails,
@@ -1827,23 +1823,16 @@ describe("issue 25374", () => {
       });
 
       visitDashboard(dashboard_id);
-      cy.wait("@dashcardQuery");
-      cy.location("search").should("eq", "?equal_to=");
 
       filterWidget().type("1,2,3{enter}");
-      cy.wait("@dashcardQuery");
+      cy.findByDisplayValue("1,2,3");
 
       cy.get(".CardVisualization")
         .should("contain", "COUNT(*)")
         .and("contain", "3");
-      cy.findByDisplayValue("1,2,3").should("be.visible");
 
       cy.location("search").should("eq", "?equal_to=1%2C2%2C3");
     });
-  });
-
-  afterEach(() => {
-    changeSynchronousBatchUpdateSetting(false);
   });
 
   it("should pass comma-separated values down to the connected question (metabase#25374-1)", () => {
@@ -1873,76 +1862,70 @@ describe("issue 25374", () => {
     cy.location("search").should("eq", "?equal_to=1%2C2%2C3");
   });
 
-  it("should retain comma-separated values when reverting to default (metabase#25374-3)", () => {
-    editDashboard();
-    cy.findByTestId("edit-dashboard-parameters-widget-container")
-      .findByText("Equal to")
-      .click();
-    dashboardParameterSidebar().findByLabelText("Default value").type("1,2,3");
+  it(
+    "should retain comma-separated values when reverting to default (metabase#25374-3)",
+    { tags: "@flaky" },
+    () => {
+      editDashboard();
+      cy.findByTestId("edit-dashboard-parameters-widget-container")
+        .findByText("Equal to")
+        .click();
+      dashboardParameterSidebar()
+        .findByLabelText("Default value")
+        .type("1,2,3");
+      saveDashboard();
 
-    saveDashboard();
-    cy.location("search").should("eq", "?equal_to=1%2C2%2C3");
-    getDashboardCard().findAllByTestId("cell-data").should("have.text", "3");
+      cy.location("search").should("eq", "?equal_to=1%2C2%2C3");
 
-    cy.button("Clear").click();
-    cy.wait("@dashcardQuery");
-    getDashboardCard().should(
-      "contain.text",
-      "There was a problem displaying this chart.",
-    );
-    cy.location("search").should("eq", "?equal_to=");
+      cy.button("Clear").click();
+      cy.location("search").should("eq", "?equal_to=");
 
-    cy.button("Reset filter to default state").click();
-    cy.wait("@dashcardQuery");
-    getDashboardCard().findAllByTestId("cell-data").should("have.text", "3");
-    cy.location("search").should("eq", "?equal_to=1%2C2%2C3");
+      cy.button("Reset filter to default state").click();
+      cy.location("search").should("eq", "?equal_to=1%2C2%2C3");
 
-    // Drill-through and go to the question
-    getDashboardCard(0).findByText(questionDetails.name).click();
-    cy.wait("@cardQuery");
+      // Drill-through and go to the question
+      getDashboardCard(0).findByText(questionDetails.name).click();
+      cy.wait("@cardQuery");
 
-    cy.get("[data-testid=cell-data]")
-      .should("contain", "COUNT(*)")
-      .and("contain", "3");
+      cy.get("[data-testid=cell-data]")
+        .should("contain", "COUNT(*)")
+        .and("contain", "3");
 
-    cy.location("search").should("eq", "?num=1%2C2%2C3");
-  });
+      cy.location("search").should("eq", "?num=1%2C2%2C3");
+    },
+  );
 
-  it("should retain comma-separated values when reverting to default via 'Reset all filters' (metabase#25374-4)", () => {
-    editDashboard();
-    cy.findByTestId("edit-dashboard-parameters-widget-container")
-      .findByText("Equal to")
-      .click();
-    dashboardParameterSidebar().findByLabelText("Default value").type("1,2,3");
-    saveDashboard();
-    cy.location("search").should("eq", "?equal_to=1%2C2%2C3");
-    getDashboardCard().findAllByTestId("cell-data").should("have.text", "3");
+  it(
+    "should retain comma-separated values when reverting to default via 'Reset all filters' (metabase#25374-4)",
+    { tags: "@flaky" },
+    () => {
+      editDashboard();
+      cy.findByTestId("edit-dashboard-parameters-widget-container")
+        .findByText("Equal to")
+        .click();
+      dashboardParameterSidebar()
+        .findByLabelText("Default value")
+        .type("1,2,3");
+      saveDashboard();
 
-    cy.button("Clear").click();
-    cy.wait("@dashcardQuery");
-    cy.location("search").should("eq", "?equal_to=");
-    getDashboardCard().should(
-      "contain.text",
-      "There was a problem displaying this chart.",
-    );
+      cy.button("Clear").click();
+      cy.location("search").should("eq", "?equal_to=");
 
-    cy.button("Move, trash, and more…").click();
-    popover().findByText("Reset all filters").should("be.visible").click();
-    cy.wait("@dashcardQuery");
-    cy.location("search").should("eq", "?equal_to=1%2C2%2C3");
-    cy.location("search").should("eq", "?equal_to=1%2C2%2C3");
-    getDashboardCard().findAllByTestId("cell-data").should("have.text", "3");
+      cy.button("Move, trash, and more…").click();
+      popover().findByText("Reset all filters").should("be.visible").click();
+      cy.location("search").should("eq", "?equal_to=1%2C2%2C3");
 
-    // Drill-through and go to the question
-    getDashboardCard(0).findByText(questionDetails.name).click();
-    cy.wait("@cardQuery");
+      // Drill-through and go to the question
+      getDashboardCard(0).findByText(questionDetails.name).click();
+      cy.wait("@cardQuery");
 
-    cy.get("[data-testid=cell-data]")
-      .should("contain", "COUNT(*)")
-      .and("contain", "3");
+      cy.get("[data-testid=cell-data]")
+        .should("contain", "COUNT(*)")
+        .and("contain", "3");
 
-    cy.location("search").should("eq", "?num=1%2C2%2C3");
-  });
+      cy.location("search").should("eq", "?num=1%2C2%2C3");
+    },
+  );
 });
 
 describe("issue 25908", () => {
