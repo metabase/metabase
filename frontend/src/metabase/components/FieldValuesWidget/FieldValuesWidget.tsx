@@ -163,10 +163,15 @@ export function FieldValuesWidgetInner({
   const [isExpanded, setIsExpanded] = useState(false);
   const dispatch = useDispatch();
 
+  const isSingleValueSearch = valuesMode === "search" && !multi;
+  const isListMode =
+    !disableList &&
+    (shouldList({ parameter, fields, disableSearch }) || isSingleValueSearch);
+
   const previousWidth = usePrevious(width);
 
   useMount(() => {
-    if (shouldList({ parameter, fields, disableSearch })) {
+    if (isListMode) {
       fetchValues();
     }
   });
@@ -479,17 +484,15 @@ export function FieldValuesWidgetInner({
     valuesMode,
   });
 
-  const isListMode =
-    !disableList &&
-    shouldList({ parameter, fields, disableSearch }) &&
-    valuesMode === "list";
   const isLoading = loadingState !== "LOADED";
-  const hasListValues = hasList({
-    parameter,
-    fields,
-    disableSearch,
-    options,
-  });
+  const hasListValues =
+    hasList({
+      parameter,
+      fields,
+      disableSearch,
+      options,
+    }) ||
+    (isSingleValueSearch && options.length > 0);
 
   const valueForLabel = (label: string | number) => {
     const value = fieldValues.byLabel.get(label?.toString());
