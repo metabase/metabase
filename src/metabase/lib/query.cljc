@@ -328,3 +328,10 @@
     (-> a-query
         (update :stages #(vec (take (inc stage-number) %)))
         (update-in [:stages stage-number] preview-stage clause-type clause-index))))
+
+(defn serializable
+  "Given a query, ensure it doesn't have any keys or structures that aren't safe for serialization.
+
+  For example, any Atoms or Delays or should be removed."
+  [a-query]
+  (dissoc a-query :lib/metadata))
