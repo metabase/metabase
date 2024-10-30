@@ -13,6 +13,7 @@ import {
   saveDashboard,
   selectDashboardFilter,
   setFilter,
+  sidebar,
   toggleFilterWidgetValues,
   toggleRequiredParameter,
   visitDashboard,
@@ -233,6 +234,46 @@ describe("scenarios > dashboard > filters > text/category", () => {
       buttonLabel: "Set to default",
     });
     filterWidget().findByText("Twitter");
+  });
+
+  it("should use the list value picker for single-value category filters (metabase#49323)", () => {
+    setFilter("Text or Category", "Is");
+
+    selectDashboardFilter(cy.findByTestId("dashcard"), "Title");
+
+    sidebar().findByText("A single value").click();
+    saveDashboard();
+
+    waitDashboardCardQuery();
+
+    filterWidget().contains("Text").click();
+    popover().within(() => {
+      cy.findByRole("combobox").should("not.exist");
+      cy.findByText("Aerodynamic Concrete Bench").should("be.visible").click();
+      cy.findByText("Aerodynamic Bronze Hat").should("be.visible").click();
+      cy.button("Add filter").click();
+    });
+    filterWidget().findByText("Aerodynamic Bronze Hat");
+  });
+
+  it("should use the list value picker for multi-value category filters (metabase#49323)", () => {
+    setFilter("Text or Category", "Is");
+
+    selectDashboardFilter(cy.findByTestId("dashcard"), "Title");
+
+    sidebar().findByText("Multiple values").click();
+    saveDashboard();
+
+    waitDashboardCardQuery();
+
+    filterWidget().contains("Text").click();
+    popover().within(() => {
+      cy.findByRole("combobox").should("not.exist");
+      cy.findByText("Aerodynamic Concrete Bench").should("be.visible").click();
+      cy.findByText("Aerodynamic Bronze Hat").should("be.visible").click();
+      cy.button("Add filter").click();
+    });
+    filterWidget().findByText("2 selections");
   });
 });
 
