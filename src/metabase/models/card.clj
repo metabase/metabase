@@ -827,7 +827,11 @@
 
 (defn- updates-for-dashcards
   [identifier->action dashcards]
-  (not-empty (keep (partial update-for-dashcard identifier->action) dashcards)))
+  (not-empty (for [{:keys [id parameter_mappings]} dashcards
+                   :let [updated (into [] (keep #(update-mapping identifier->action %))
+                                          parameter_mappings]
+                   :when (not= parameter_mappings updated)]
+             [id {:parameter_mappings updated}]))
 
 (defn- update-associated-parameters!
   "Update _parameter mappings_ of _dashcards_ that target modified _card_, to reflect the modification.
