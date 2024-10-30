@@ -2,9 +2,9 @@ import { t } from "ttag";
 
 import Button from "metabase/core/components/Button";
 
-import { ChartSettingsFooterRoot } from "./ChartSettings.styled";
+import { ChartSettingsFooterRoot } from "./ChartSettingsFooter.styled";
 
-type ChartSettingsFooterProps = {
+export type ChartSettingsFooterProps = {
   onDone: () => void;
   onCancel: () => void;
   onReset: (() => void) | null;
