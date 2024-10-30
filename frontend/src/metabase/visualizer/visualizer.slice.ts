@@ -292,9 +292,35 @@ export const getDataSources = createSelector([getCards], cards =>
   cards.map(card => createDataSource("card", card.id, card.name)),
 );
 
-const getVisualizerDataset = createSelector(
-  [getDataSources, getDatasets, getImportedColumns, getVisualizationColumns],
-  (dataSources, datasets, importedColumns, cols): Dataset => {
+export const getUsedDataSources = createSelector(
+  [getDataSources, getImportedColumns],
+  (dataSources, importedColumns) => {
+    if (dataSources.length === 1) {
+      return dataSources;
+    }
+
+    const usedDataSourceIds = new Set(
+      importedColumns.map(columnImport => columnImport.sourceId),
+    );
+    return dataSources.filter(dataSource =>
+      usedDataSourceIds.has(dataSource.id),
+    );
+  },
+);
+
+const getVisualizerDatasetData = createSelector(
+  [
+    getUsedDataSources,
+    getDatasets,
+    getImportedColumns,
+    getVisualizationColumns,
+  ],
+  (usedDataSources, datasets, importedColumns, cols): Dataset => {
+    if (usedDataSources.length === 1) {
+      const [source] = usedDataSources;
+      return datasets[source.id]?.data;
+    }
+
     const importedColumnValuesMap: Record<string, RowValues> = {};
     importedColumns.forEach(columnImport => {
       const dataset = datasets[columnImport.sourceId];
@@ -316,7 +342,7 @@ const getVisualizerDataset = createSelector(
         .map(value => {
           if (isDataSourceNameRef(value)) {
             const id = getDataSourceIdFromNameRef(value);
-            const dataSource = dataSources.find(source => source.id === id);
+            const dataSource = usedDataSources.find(source => source.id === id);
             return dataSource?.name ? [dataSource.name] : [];
           }
           const values = importedColumnValuesMap[value];
@@ -337,7 +363,7 @@ const getVisualizerDataset = createSelector(
 );
 
 export const getVisualizerRawSeries = createSelector(
-  [getVisualizationType, getSettings, getVisualizerDataset],
+  [getVisualizationType, getSettings, getVisualizerDatasetData],
   (display, settings, data): RawSeries => {
     if (!display) {
       return [];
