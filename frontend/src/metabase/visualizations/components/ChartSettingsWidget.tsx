@@ -3,6 +3,7 @@ import type * as React from "react";
 
 import PopoverS from "metabase/components/Popover/Popover.module.css";
 import FormS from "metabase/css/components/form.module.css";
+import type Question from "metabase-lib/v1/Question";
 
 import {
   Description,
@@ -12,13 +13,22 @@ import {
   Title,
 } from "./ChartSettingsWidget.styled";
 
-type Props = {
+export type ExtraWidgetProps = Partial<{
+  id: string;
+  question: Question;
+  onShowWidget: any;
+  onEndShowWidget: any;
+  columnHasSettings: any;
+  onChangeSeriesColor: any;
+}>;
+
+export type ChartSettingsWidgetProps = {
   title?: string;
   description?: string;
   hint?: string;
   hidden?: boolean;
   disabled?: boolean;
-  widget?: React.ComponentType<{ id: string }>;
+  widget?: React.ComponentType<ExtraWidgetProps>;
   inline?: boolean;
   marginBottom?: string;
   props?: Record<string, unknown>;
@@ -26,8 +36,7 @@ type Props = {
   variant?: "default" | "form-field";
   borderBottom?: boolean;
   dataTestId?: string;
-  id: string;
-};
+} & ExtraWidgetProps;
 
 const ChartSettingsWidget = ({
   title,
@@ -48,7 +57,7 @@ const ChartSettingsWidget = ({
   // * adding additional fields
   // * substituting widgets
   ...extraWidgetProps
-}: Props) => {
+}: ChartSettingsWidgetProps) => {
   const isFormField = variant === "form-field";
   return (
     <Root

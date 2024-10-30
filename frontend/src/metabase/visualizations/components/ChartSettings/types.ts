@@ -9,6 +9,7 @@ export type Widget = {
   props: Record<string, unknown>;
   title?: string;
   widget: (() => JSX.Element | null) | undefined;
+  group?: string;
 };
 
 export type CommonChartSettingsProps = {
