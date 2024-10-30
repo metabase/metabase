@@ -788,7 +788,8 @@
   [after--identifier->refs identifier before--refs]
   (let [after--refs (get after--identifier->refs identifier #{})]
     (cond
-      (or
+      #_#_(or
+       ;; If before is subset we should not do anything
        ;; If there was more than 1 ref to a field in orig breakout and there is a difference
        (and (< 1 (count before--refs))
             (not= before--refs after--refs))
