@@ -31,7 +31,6 @@ export const Default = {
     questionId: QUESTION_ID,
     saveOptions: {
       isEnabled: true,
-      collectionId: null,
       withCollectionPicker: true,
     },
   },
