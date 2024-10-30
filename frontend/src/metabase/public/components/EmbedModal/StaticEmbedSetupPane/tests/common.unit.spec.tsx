@@ -496,14 +496,14 @@ describe("Static Embed Setup phase", () => {
 
         expect(
           screen.getByText(
-            "The “Powered by Metabase” banner appears on all static embeds created with the open source version. You’ll need to upgrade to remove it.",
+            "The “Powered by Metabase” banner appears on all static embeds created with your current version. Upgrade to remove it (and customize a lot more)",
           ),
         ).toBeVisible();
 
         const link = within(
           screen.getByLabelText("Removing the banner"),
         ).getByRole("link", {
-          name: "Upgrade to a paid plan",
+          name: "Upgrade plan",
         });
         expect(link).toBeVisible();
         expect(link).toHaveAttribute(

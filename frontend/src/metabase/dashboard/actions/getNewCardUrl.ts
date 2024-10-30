@@ -52,7 +52,8 @@ export const getNewCardUrl = ({
   if (isEditable) {
     nextQuestion = new Question(cardAfterClick, metadata);
 
-    if (!nextQuestion.isPivoted()) {
+    // Pivot tables cannot work when there is an extra stage added on top of breakouts and aggregations
+    if (nextQuestion.display() !== "pivot") {
       nextQuestion = nextQuestion.setQuery(
         Lib.ensureFilterStage(nextQuestion.query()),
       );

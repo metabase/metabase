@@ -18,6 +18,8 @@ import {
   sidebar,
   startNewQuestion,
   visitDashboard,
+  visitEmbeddedPage,
+  visitPublicDashboard,
   visualize,
 } from "e2e/support/helpers";
 import type {
@@ -108,7 +110,7 @@ const MODEL_BASED_MODEL_INDEX = 3;
 
 /**
  * Empty section title element is rendered.
- * See https://github.com/metabase/metabase/issues/47218
+ * TODO: https://github.com/metabase/metabase/issues/47218
  */
 const NAMELESS_SECTION = "";
 
@@ -132,94 +134,18 @@ describe("scenarios > dashboard > filters > query stages", () => {
     cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
       "dashboardData",
     );
+    cy.intercept("GET", "/api/public/dashboard/*/dashcard/*/card/*").as(
+      "publicDashboardData",
+    );
+    cy.intercept("GET", "/api/embed/dashboard/*/dashcard/*/card/*").as(
+      "embeddedDashboardData",
+    );
   });
 
   afterEach(() => {
+    // changeSynchronousBatchUpdateSetting needs admin privileges and tests using public dashboards log us out
+    cy.signInAsAdmin();
     changeSynchronousBatchUpdateSetting(false);
-  });
-
-  // Sanity checks. If the base queries tests fail then something is very wrong.
-  describe("base queries", () => {
-    const ORDERS_QUESTION_INDEX = 0;
-    const BASE_QUESTION_INDEX = 1;
-    const BASE_MODEL_INDEX = 2;
-
-    beforeEach(() => {
-      cy.then(function () {
-        createAndVisitDashboard([
-          this.ordersQuestion,
-          this.baseQuestion,
-          this.baseModel,
-        ]);
-      });
-    });
-
-    it("allows to map to all relevant columns", () => {
-      editDashboard();
-
-      cy.log("## date columns");
-      getFilter("Date").click();
-      verifyDateMappingOptions();
-
-      cy.log("## text columns");
-      getFilter("Text").click();
-      verifyTextMappingOptions();
-
-      cy.log("## number columns");
-      getFilter("Number").click();
-      verifyNumberMappingOptions();
-
-      function verifyDateMappingOptions() {
-        verifyDashcardMappingOptions(ORDERS_QUESTION_INDEX, [
-          ["Orders", ORDERS_DATE_COLUMNS],
-          ["Product", PRODUCTS_DATE_COLUMNS],
-          ["User", PEOPLE_DATE_COLUMNS],
-        ]);
-        verifyDashcardMappingOptions(BASE_QUESTION_INDEX, [
-          ["Q0 Orders", ORDERS_DATE_COLUMNS],
-          ["Product", PRODUCTS_DATE_COLUMNS],
-          ["User", PEOPLE_DATE_COLUMNS],
-        ]);
-        verifyDashcardMappingOptions(BASE_MODEL_INDEX, [
-          ["Base Orders Model", ORDERS_DATE_COLUMNS],
-          ["Product", PRODUCTS_DATE_COLUMNS],
-          ["User", PEOPLE_DATE_COLUMNS],
-        ]);
-      }
-
-      function verifyTextMappingOptions() {
-        verifyDashcardMappingOptions(ORDERS_QUESTION_INDEX, [
-          ["Product", PRODUCTS_TEXT_COLUMNS],
-          ["User", PEOPLE_TEXT_COLUMNS],
-        ]);
-        verifyDashcardMappingOptions(BASE_QUESTION_INDEX, [
-          ["Product", PRODUCTS_TEXT_COLUMNS],
-          ["User", PEOPLE_TEXT_COLUMNS],
-        ]);
-        verifyDashcardMappingOptions(BASE_MODEL_INDEX, [
-          ["Product", PRODUCTS_TEXT_COLUMNS],
-          ["User", PEOPLE_TEXT_COLUMNS],
-        ]);
-      }
-
-      function verifyNumberMappingOptions() {
-        verifyDashcardMappingOptions(ORDERS_QUESTION_INDEX, [
-          ["Orders", ORDERS_NUMBER_COLUMNS],
-          ["Product", PRODUCTS_NUMBER_COLUMNS],
-          ["User", PEOPLE_NUMBER_COLUMNS],
-        ]);
-        verifyDashcardMappingOptions(BASE_QUESTION_INDEX, [
-          ["Q0 Orders", ORDERS_NUMBER_COLUMNS],
-          ["Product", PRODUCTS_NUMBER_COLUMNS],
-          ["User", PEOPLE_NUMBER_COLUMNS],
-        ]);
-        verifyDashcardMappingOptions(BASE_MODEL_INDEX, [
-          ["Base Orders Model", ORDERS_NUMBER_COLUMNS],
-          ["Product", PRODUCTS_NUMBER_COLUMNS],
-          ["User", PEOPLE_NUMBER_COLUMNS],
-        ]);
-      }
-    });
   });
 
   describe("1-stage queries", () => {
@@ -805,6 +731,8 @@ describe("scenarios > dashboard > filters > query stages", () => {
       describe("applies filter to the the dashcard and allows to drill via dashcard header", () => {
         it("1st stage explicit join", () => {
           setup1stStageExplicitJoinFilter();
+          apply1stStageExplicitJoinFilter();
+          cy.wait(["@dashboardData", "@dashboardData"]);
 
           verifyDashcardCellValues({
             dashcardIndex: 0,
@@ -919,6 +847,8 @@ describe("scenarios > dashboard > filters > query stages", () => {
 
         it("2nd stage custom column", () => {
           setup2ndStageCustomColumnFilter();
+          apply2ndStageCustomColumnFilter();
+          cy.wait(["@dashboardData", "@dashboardData"]);
 
           verifyDashcardCellValues({
             dashcardIndex: 0,
@@ -1038,6 +968,8 @@ describe("scenarios > dashboard > filters > query stages", () => {
       describe("applies filter to the the dashcard and allows to drill via dashcard header", () => {
         it("1st stage explicit join", () => {
           setup1stStageExplicitJoinFilter();
+          apply1stStageExplicitJoinFilter();
+          cy.wait(["@dashboardData", "@dashboardData"]);
 
           verifyDashcardRowsCount({
             dashcardIndex: 0,
@@ -1166,6 +1098,8 @@ describe("scenarios > dashboard > filters > query stages", () => {
 
         it("2nd stage custom column", () => {
           setup2ndStageCustomColumnFilter();
+          apply2ndStageCustomColumnFilter();
+          cy.wait(["@dashboardData", "@dashboardData"]);
 
           verifyDashcardRowsCount({
             dashcardIndex: 0,
@@ -1184,6 +1118,8 @@ describe("scenarios > dashboard > filters > query stages", () => {
 
         it("2nd stage breakout", () => {
           setup2ndStageBreakoutFilter();
+          apply2ndStageBreakoutFilter();
+          cy.wait(["@dashboardData", "@dashboardData"]);
 
           verifyDashcardRowsCount({
             dashcardIndex: 0,
@@ -1333,6 +1269,8 @@ describe("scenarios > dashboard > filters > query stages", () => {
       describe("applies filter to the the dashcard and allows to drill via dashcard header", () => {
         it("1st stage explicit join", () => {
           setup1stStageExplicitJoinFilter();
+          apply1stStageExplicitJoinFilter();
+          cy.wait(["@dashboardData", "@dashboardData"]);
 
           verifyDashcardRowsCount({
             dashcardIndex: 0,
@@ -1347,6 +1285,39 @@ describe("scenarios > dashboard > filters > query stages", () => {
             dashboardCount: "Rows 1-1 of 953",
             queryBuilderCount: "Showing 953 rows",
           });
+
+          cy.log("public dashboard");
+          getDashboardId().then(dashboardId =>
+            visitPublicDashboard(dashboardId),
+          );
+          waitForPublicDashboardData();
+          apply1stStageExplicitJoinFilter();
+          waitForPublicDashboardData();
+
+          getDashboardCard(0)
+            .findByText("Rows 1-1 of 953")
+            .should("be.visible");
+          getDashboardCard(1)
+            .findByText("Rows 1-1 of 953")
+            .should("be.visible");
+
+          cy.log("embedded dashboard");
+          getDashboardId().then(dashboardId => {
+            visitEmbeddedPage({
+              resource: { dashboard: dashboardId },
+              params: {},
+            });
+          });
+          waitForEmbeddedDashboardData();
+          apply1stStageExplicitJoinFilter();
+          waitForEmbeddedDashboardData();
+
+          getDashboardCard(0)
+            .findByText("Rows 1-1 of 953")
+            .should("be.visible");
+          getDashboardCard(1)
+            .findByText("Rows 1-1 of 953")
+            .should("be.visible");
         });
 
         it("1st stage implicit join (data source)", () => {
@@ -1367,7 +1338,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
           });
         });
 
-        // TODO: zhttps://github.com/metabase/metabase/issues/46774
+        // TODO: https://github.com/metabase/metabase/issues/46774
         it.skip("1st stage implicit join (joined data source)", () => {
           setup1stStageImplicitJoinFromJoinFilter();
 
@@ -1461,6 +1432,8 @@ describe("scenarios > dashboard > filters > query stages", () => {
 
         it("2nd stage custom column", () => {
           setup2ndStageCustomColumnFilter();
+          apply2ndStageCustomColumnFilter();
+          cy.wait(["@dashboardData", "@dashboardData"]);
 
           verifyDashcardRowsCount({
             dashcardIndex: 0,
@@ -1475,13 +1448,40 @@ describe("scenarios > dashboard > filters > query stages", () => {
             dashboardCount: "Rows 1-1 of 31",
             queryBuilderCount: "Showing 31 rows",
           });
+
+          cy.log("public dashboard");
+          getDashboardId().then(dashboardId =>
+            visitPublicDashboard(dashboardId),
+          );
+          waitForPublicDashboardData();
+          apply2ndStageCustomColumnFilter();
+          waitForPublicDashboardData();
+
+          getDashboardCard(0).findByText("Rows 1-1 of 31").should("be.visible");
+          getDashboardCard(1).findByText("Rows 1-1 of 31").should("be.visible");
+
+          cy.log("embedded dashboard");
+          getDashboardId().then(dashboardId => {
+            visitEmbeddedPage({
+              resource: { dashboard: dashboardId },
+              params: {},
+            });
+          });
+          waitForEmbeddedDashboardData();
+          apply2ndStageCustomColumnFilter();
+          waitForEmbeddedDashboardData();
+
+          getDashboardCard(0).findByText("Rows 1-1 of 31").should("be.visible");
+          getDashboardCard(1).findByText("Rows 1-1 of 31").should("be.visible");
         });
 
         it("2nd stage aggregation", () => {
           setup2ndStageAggregationFilter();
+          apply2ndStageAggregationFilter();
+          cy.wait(["@dashboardData", "@dashboardData"]);
 
           verifyDashcardRowsCount({
-            dashcardIndex: 1,
+            dashcardIndex: 0,
             dashboardCount: "Rows 1-1 of 6",
             queryBuilderCount: "Showing 6 rows",
           });
@@ -1493,10 +1493,57 @@ describe("scenarios > dashboard > filters > query stages", () => {
             dashboardCount: "Rows 1-1 of 6",
             queryBuilderCount: "Showing 6 rows",
           });
+
+          goBackToDashboard();
+
+          verifyDashcardRowsCount({
+            dashcardIndex: 2,
+            dashboardCount: "Rows 1-1 of 6",
+            queryBuilderCount: "Showing 6 rows",
+          });
+
+          goBackToDashboard();
+
+          verifyDashcardRowsCount({
+            dashcardIndex: 3,
+            dashboardCount: "Rows 1-1 of 6",
+            queryBuilderCount: "Showing 6 rows",
+          });
+
+          cy.log("public dashboard");
+          getDashboardId().then(dashboardId =>
+            visitPublicDashboard(dashboardId),
+          );
+          waitForPublicDashboardData();
+          apply2ndStageAggregationFilter();
+          waitForPublicDashboardData();
+
+          getDashboardCard(0).findByText("Rows 1-1 of 6").should("be.visible");
+          getDashboardCard(1).findByText("Rows 1-1 of 6").should("be.visible");
+          getDashboardCard(2).findByText("Rows 1-1 of 6").should("be.visible");
+          getDashboardCard(3).findByText("Rows 1-1 of 6").should("be.visible");
+
+          cy.log("embedded dashboard");
+          getDashboardId().then(dashboardId => {
+            visitEmbeddedPage({
+              resource: { dashboard: dashboardId },
+              params: {},
+            });
+          });
+          waitForEmbeddedDashboardData();
+          apply2ndStageAggregationFilter();
+          waitForEmbeddedDashboardData();
+
+          getDashboardCard(0).findByText("Rows 1-1 of 6").should("be.visible");
+          getDashboardCard(1).findByText("Rows 1-1 of 6").should("be.visible");
+          getDashboardCard(2).findByText("Rows 1-1 of 6").should("be.visible");
+          getDashboardCard(3).findByText("Rows 1-1 of 6").should("be.visible");
         });
 
         it("2nd stage breakout", () => {
           setup2ndStageBreakoutFilter();
+          apply2ndStageBreakoutFilter();
+          cy.wait(["@dashboardData", "@dashboardData"]);
 
           verifyDashcardRowsCount({
             dashcardIndex: 0,
@@ -1511,6 +1558,79 @@ describe("scenarios > dashboard > filters > query stages", () => {
             dashboardCount: "Rows 1-1 of 1077",
             queryBuilderCount: "Showing 1,077 rows",
           });
+
+          goBackToDashboard();
+
+          verifyDashcardRowsCount({
+            dashcardIndex: 2,
+            dashboardCount: "Rows 1-1 of 1077",
+            queryBuilderCount: "Showing 1,077 rows",
+          });
+
+          goBackToDashboard();
+
+          verifyDashcardRowsCount({
+            dashcardIndex: 3,
+            dashboardCount: "Rows 1-1 of 1077",
+            queryBuilderCount: "Showing 1,077 rows",
+          });
+
+          cy.log("public dashboard");
+          getDashboardId().then(dashboardId =>
+            visitPublicDashboard(dashboardId),
+          );
+          waitForPublicDashboardData();
+          // TODO: https://github.com/metabase/metabase/issues/49282
+          // We should use apply2ndStageBreakoutFilter() instead of the next 4 lines:
+          filterWidget().eq(0).click();
+          popover().within(() => {
+            cy.findByPlaceholderText("Enter some text").type("Gadget");
+            cy.button("Add filter").click();
+          });
+          waitForPublicDashboardData();
+
+          getDashboardCard(0)
+            .findByText("Rows 1-1 of 1077")
+            .should("be.visible");
+          getDashboardCard(1)
+            .findByText("Rows 1-1 of 1077")
+            .should("be.visible");
+          getDashboardCard(2)
+            .findByText("Rows 1-1 of 1077")
+            .should("be.visible");
+          getDashboardCard(3)
+            .findByText("Rows 1-1 of 1077")
+            .should("be.visible");
+
+          cy.log("embedded dashboard");
+          getDashboardId().then(dashboardId => {
+            visitEmbeddedPage({
+              resource: { dashboard: dashboardId },
+              params: {},
+            });
+          });
+          waitForEmbeddedDashboardData();
+          // TODO: https://github.com/metabase/metabase/issues/49282
+          // We should use apply2ndStageBreakoutFilter() instead of the next 4 lines:
+          filterWidget().eq(0).click();
+          popover().within(() => {
+            cy.findByPlaceholderText("Enter some text").type("Gadget");
+            cy.button("Add filter").click();
+          });
+          waitForEmbeddedDashboardData();
+
+          getDashboardCard(0)
+            .findByText("Rows 1-1 of 1077")
+            .should("be.visible");
+          getDashboardCard(1)
+            .findByText("Rows 1-1 of 1077")
+            .should("be.visible");
+          getDashboardCard(2)
+            .findByText("Rows 1-1 of 1077")
+            .should("be.visible");
+          getDashboardCard(3)
+            .findByText("Rows 1-1 of 1077")
+            .should("be.visible");
         });
       });
     });
@@ -1610,6 +1730,8 @@ describe("scenarios > dashboard > filters > query stages", () => {
       describe("applies filter to the the dashcard and allows to drill via dashcard header", () => {
         it("1st stage explicit join", () => {
           setup1stStageExplicitJoinFilter();
+          apply1stStageExplicitJoinFilter();
+          cy.wait(["@dashboardData", "@dashboardData"]);
 
           verifyDashcardCellValues({
             dashcardIndex: 0,
@@ -1724,6 +1846,8 @@ describe("scenarios > dashboard > filters > query stages", () => {
 
         it("2nd stage custom column", () => {
           setup2ndStageCustomColumnFilter();
+          apply2ndStageCustomColumnFilter();
+          cy.wait(["@dashboardData", "@dashboardData"]);
 
           verifyDashcardCellValues({
             dashcardIndex: 0,
@@ -1740,6 +1864,8 @@ describe("scenarios > dashboard > filters > query stages", () => {
 
         it("2nd stage aggregation", () => {
           setup2ndStageAggregationFilter();
+          apply2ndStageAggregationFilter();
+          cy.wait(["@dashboardData", "@dashboardData"]);
 
           verifyDashcardCellValues({
             dashcardIndex: 0,
@@ -1792,42 +1918,6 @@ describe("scenarios > dashboard > filters > query stages", () => {
             dashcardIndex: 1,
             values: ["1,077"],
           });
-        });
-
-        // TODO: https://github.com/metabase/metabase/issues/48339
-        // TODO: https://github.com/metabase/metabase/issues/49022
-        it.skip("3rd stage aggregation", () => {
-          setup3rdStageAggregationFilter();
-
-          getDashboardCard(0)
-            .findByTestId("cell-data")
-            .should("have.text", "0"); // TODO: https://github.com/metabase/metabase/issues/48339#issuecomment-2393449924
-          getDashboardCard(0).findByTestId("legend-caption-title").click();
-          cy.wait("@dataset");
-          cy.findByTestId("query-visualization-root").should(
-            "contain.text",
-            "No results!",
-          );
-          cy.findByTestId("question-row-count").should(
-            "have.text",
-            "Showing 0 rows",
-          );
-
-          goBackToDashboard();
-
-          getDashboardCard(1)
-            .findByTestId("cell-data")
-            .should("have.text", "0"); // TODO: https://github.com/metabase/metabase/issues/48339#issuecomment-2393449924
-          getDashboardCard(1).findByTestId("legend-caption-title").click();
-          cy.wait("@dataset");
-          cy.findByTestId("query-visualization-root").should(
-            "contain.text",
-            "No results!",
-          );
-          cy.findByTestId("question-row-count").should(
-            "have.text",
-            "Showing 0 rows",
-          );
         });
       });
     });
@@ -1955,7 +2045,6 @@ describe("scenarios > dashboard > filters > query stages + temporal unit paramet
 
 describe("pivot tables", () => {
   const QUESTION_PIVOT_INDEX = 0;
-  const QUESTION_PIVOTED_TABLE_INDEX = 1;
 
   beforeEach(() => {
     restore();
@@ -1974,22 +2063,10 @@ describe("pivot tables", () => {
         query: createPivotableQuery(this.baseQuestion),
         name: "Question - pivot viz",
         display: "pivot",
-      }).then(response => cy.wrap(response.body).as("pivot"));
-
-      createQuestion({
-        type: "question",
-        query: createPivotableQuery(this.baseQuestion),
-        name: "Question - pivoted table",
-        visualization_settings: {
-          "table.cell_column": "count",
-          "table.pivot_column": "PRODUCTS__via__PRODUCT_ID__CATEGORY",
-        },
-      }).then(response => cy.wrap(response.body).as("pivotedTable"));
-    });
-
-    cy.then(function () {
-      const cards = [this.pivot, this.pivotedTable];
-      createAndVisitDashboard(cards);
+      }).then(response => {
+        const card = response.body;
+        createAndVisitDashboard([card]);
+      });
     });
 
     function createPivotableQuery(source: Card): StructuredQuery {
@@ -2050,24 +2127,8 @@ describe("pivot tables", () => {
     cy.button("Filter").click();
     modal().findByText("Summaries").should("not.exist");
 
-    cy.go("back");
-    cy.go("back");
-
-    getDashboardCard(QUESTION_PIVOTED_TABLE_INDEX)
-      .findByTestId("legend-caption-title")
-      .click();
-    cy.wait("@cardQuery");
-    cy.button("Filter").click();
-    modal().findByText("Summaries").should("not.exist");
-
     function verifyDateMappingOptions() {
       verifyDashcardMappingOptions(QUESTION_PIVOT_INDEX, [
-        ["Base Orders Question", ORDERS_DATE_COLUMNS],
-        ["Reviews", REVIEWS_DATE_COLUMNS],
-        ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
-        ["User", PEOPLE_DATE_COLUMNS],
-      ]);
-      verifyDashcardMappingOptions(QUESTION_PIVOTED_TABLE_INDEX, [
         ["Base Orders Question", ORDERS_DATE_COLUMNS],
         ["Reviews", REVIEWS_DATE_COLUMNS],
         ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
@@ -2081,21 +2142,10 @@ describe("pivot tables", () => {
         ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
         ["User", PEOPLE_TEXT_COLUMNS],
       ]);
-      verifyDashcardMappingOptions(QUESTION_PIVOTED_TABLE_INDEX, [
-        ["Reviews", REVIEWS_TEXT_COLUMNS],
-        ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
-        ["User", PEOPLE_TEXT_COLUMNS],
-      ]);
     }
 
     function verifyNumberMappingOptions() {
       verifyDashcardMappingOptions(QUESTION_PIVOT_INDEX, [
-        ["Base Orders Question", [...ORDERS_NUMBER_COLUMNS, "Net"]],
-        ["Reviews", REVIEWS_NUMBER_COLUMNS],
-        ["Product", [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
-        ["User", PEOPLE_NUMBER_COLUMNS],
-      ]);
-      verifyDashcardMappingOptions(QUESTION_PIVOTED_TABLE_INDEX, [
         ["Base Orders Question", [...ORDERS_NUMBER_COLUMNS, "Net"]],
         ["Reviews", REVIEWS_NUMBER_COLUMNS],
         ["Product", [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS]], // TODO: https://github.com/metabase/metabase/issues/46845
@@ -2375,6 +2425,12 @@ function createAndVisitDashboard(cards: Card[]) {
   const getNextId = () => --id;
 
   createDashboardWithTabs({
+    enable_embedding: true,
+    embedding_params: {
+      [DATE_PARAMETER.slug]: "enabled",
+      [TEXT_PARAMETER.slug]: "enabled",
+      [NUMBER_PARAMETER.slug]: "enabled",
+    },
     parameters: [DATE_PARAMETER, TEXT_PARAMETER, NUMBER_PARAMETER],
     dashcards: [
       ...cards.map((card, index) => ({
@@ -2389,6 +2445,7 @@ function createAndVisitDashboard(cards: Card[]) {
     ],
   }).then(dashboard => {
     visitDashboard(dashboard.id);
+    cy.wrap(dashboard.id).as("dashboardId");
     cy.wait("@getDashboard");
   });
 }
@@ -2410,13 +2467,14 @@ function setup1stStageExplicitJoinFilter() {
 
   cy.button("Save").click();
   cy.wait("@updateDashboard");
+}
 
+function apply1stStageExplicitJoinFilter() {
   filterWidget().eq(0).click();
   popover().within(() => {
     cy.findByPlaceholderText("Search by Reviewer").type("abe.gorczany");
     cy.button("Add filter").click();
   });
-  cy.wait(["@dashboardData", "@dashboardData"]);
 }
 
 function setup1stStageImplicitJoinFromSourceFilter() {
@@ -2609,14 +2667,15 @@ function setup2ndStageCustomColumnFilter() {
 
   cy.button("Save").click();
   cy.wait("@updateDashboard");
+}
 
+function apply2ndStageCustomColumnFilter() {
   filterWidget().eq(0).click();
   popover().within(() => {
     cy.findAllByPlaceholderText("Enter a number").eq(0).type("0");
     cy.findAllByPlaceholderText("Enter a number").eq(1).type("20");
     cy.button("Add filter").click();
   });
-  cy.wait(["@dashboardData", "@dashboardData"]);
 }
 
 function setup2ndStageAggregationFilter() {
@@ -2653,14 +2712,15 @@ function setup2ndStageAggregationFilter() {
 
   cy.button("Save").click();
   cy.wait("@updateDashboard");
+}
 
+function apply2ndStageAggregationFilter() {
   filterWidget().eq(0).click();
   popover().within(() => {
     cy.findAllByPlaceholderText("Enter a number").eq(0).type("0");
     cy.findAllByPlaceholderText("Enter a number").eq(1).type("2");
     cy.button("Add filter").click();
   });
-  cy.wait(["@dashboardData", "@dashboardData"]);
 }
 
 function setup2ndStageBreakoutFilter() {
@@ -2695,38 +2755,14 @@ function setup2ndStageBreakoutFilter() {
 
   cy.button("Save").click();
   cy.wait("@updateDashboard");
+}
 
+function apply2ndStageBreakoutFilter() {
   filterWidget().eq(0).click();
   popover().within(() => {
     cy.findByLabelText("Gadget").click();
     cy.button("Add filter").click();
   });
-  cy.wait(["@dashboardData", "@dashboardData"]);
-}
-
-function setup3rdStageAggregationFilter() {
-  editDashboard();
-
-  getFilter("Number").click();
-  sidebar().findByText("Filter operator").next().click();
-  popover().findByText("Between").click();
-
-  getDashboardCard(0).findByText("Select…").click();
-  popover().within(() => {
-    getPopoverList().scrollTo("bottom");
-    getPopoverItem("Count", 2).click();
-  });
-
-  cy.button("Save").click();
-  cy.wait("@updateDashboard");
-
-  filterWidget().eq(0).click();
-  popover().within(() => {
-    cy.findAllByPlaceholderText("Enter a number").eq(0).type("0");
-    cy.findAllByPlaceholderText("Enter a number").eq(1).type("2");
-    cy.button("Add filter").click();
-  });
-  cy.wait(["@dashboardData", "@dashboardData"]);
 }
 
 function getFilter(name: string) {
@@ -2765,6 +2801,32 @@ function clickAway() {
 function goBackToDashboard() {
   cy.findByLabelText("Back to Test Dashboard").click();
   cy.wait("@getDashboard");
+}
+
+function getDashboardId(): Cypress.Chainable<number> {
+  return cy
+    .get("@dashboardId")
+    .then(dashboardId => dashboardId as unknown as number);
+}
+
+function waitForPublicDashboardData() {
+  // tests with public dashboards always have 4 dashcards
+  cy.wait([
+    "@publicDashboardData",
+    "@publicDashboardData",
+    "@publicDashboardData",
+    "@publicDashboardData",
+  ]);
+}
+
+function waitForEmbeddedDashboardData() {
+  // tests with embedded dashboards always have 4 dashcards
+  cy.wait([
+    "@embeddedDashboardData",
+    "@embeddedDashboardData",
+    "@embeddedDashboardData",
+    "@embeddedDashboardData",
+  ]);
 }
 
 function verifyDashcardMappingOptions(

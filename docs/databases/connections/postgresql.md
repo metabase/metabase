@@ -38,6 +38,25 @@ The database username for the account that you want to use to connect to your da
 
 The password for the username that you use to connect to the database.
 
+### Use an authentication provider
+
+{% include plans-blockquote.html feature="Authenticating with a provider" %}
+
+Instead of a password, you can authenticate with a supported provider.
+
+Only for self-hosted Pro and Enterprise plans.
+
+#### Azure Managed Identity
+
+To use Azure Managed Identity, you'll need to input your [client ID](https://learn.microsoft.com/en-us/previous-versions/azure/postgresql/single-server/how-to-connect-with-managed-identity#retrieving-the-access-token-from-azure-instance-metadata-service).
+
+#### Oauth
+
+To use Oauth as a provider, you'll need to input your:
+
+- Auth token URL
+- Auth token request headers (a JSON map)
+
 ### Schemas
 
 You can specify which schemas you want to sync and scan. Options are:
