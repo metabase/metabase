@@ -1,4 +1,3 @@
-import { render } from "@testing-library/react";
 import fetchMock from "fetch-mock";
 
 import {
@@ -7,6 +6,7 @@ import {
   setupCurrentUserEndpoint,
   setupPropertiesEndpoints,
 } from "__support__/server-mocks";
+import { render } from "__support__/ui";
 import { waitForRequest } from "__support__/utils";
 import {
   MetabaseProvider,

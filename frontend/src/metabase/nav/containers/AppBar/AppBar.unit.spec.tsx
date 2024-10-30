@@ -1,9 +1,8 @@
-import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Route } from "react-router";
 
 import { setupCollectionsEndpoints } from "__support__/server-mocks";
-import { renderWithProviders } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 import { DEFAULT_EMBED_OPTIONS } from "metabase/redux/embed";
 import { createMockCard } from "metabase-types/api/mocks";
 import type { EmbedOptions } from "metabase-types/store";

@@ -1,8 +1,8 @@
-import { render, screen } from "@testing-library/react";
 import _userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
 import { createMockMetadata } from "__support__/metadata";
+import { render, screen } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
 import Filter from "metabase-lib/v1/queries/structured/Filter";
 import {

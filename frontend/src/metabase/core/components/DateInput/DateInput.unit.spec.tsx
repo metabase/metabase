@@ -1,8 +1,9 @@
-import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { Moment } from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import { useCallback, useState } from "react";
+
+import { render, screen } from "__support__/ui";
 
 import type { DateInputProps } from "./DateInput";
 import DateInput from "./DateInput";
