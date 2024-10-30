@@ -112,7 +112,7 @@ const MODEL_BASED_MODEL_INDEX = 3;
  * Empty section title element is rendered.
  * TODO: https://github.com/metabase/metabase/issues/47218
  */
-const NAMELESS_SECTION = "";
+const NAMELESS_SECTION = undefined;
 
 /**
  * Abbreviations used for card aliases in this test suite:
@@ -2851,14 +2851,14 @@ function verifyNoDashcardMappingOptions(dashcardIndex: number) {
     .should("be.visible");
 }
 
-type SectionName = string;
+type SectionName = string | typeof NAMELESS_SECTION;
 type ColumnName = string;
 type MappingSection = [SectionName, ColumnName[]];
 
 function verifyPopoverMappingOptions(sections: MappingSection[]) {
   const expectedItemsCount = sections.reduce(
     (sum, [sectionName, columnNames]) =>
-      sum + [sectionName, ...columnNames].length,
+      sum + columnNames.length + (sectionName === NAMELESS_SECTION ? 0 : 1),
     0,
   );
 
@@ -2869,8 +2869,11 @@ function verifyPopoverMappingOptions(sections: MappingSection[]) {
       for (const [sectionName, columnNames] of sections) {
         const item = cy.wrap($items[index]);
         item.scrollIntoView(); // the list is virtualized, we need to keep scrolling to see all the items
-        item.should("have.text", sectionName);
-        ++index;
+
+        if (sectionName !== NAMELESS_SECTION) {
+          item.should("have.text", sectionName);
+          ++index;
+        }
 
         for (const columnName of columnNames) {
           const item = cy.wrap($items[index]);
