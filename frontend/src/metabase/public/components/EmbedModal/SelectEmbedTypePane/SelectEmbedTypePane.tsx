@@ -110,7 +110,6 @@ export function SelectEmbedTypePane({
           to={interactiveEmbeddingCta.url}
           target={interactiveEmbeddingCta.target}
           rel="noreferrer"
-          style={{ height: "100%" }}
         >
           <SharingPaneButton
             title={t`Interactive embedding`}
@@ -129,7 +128,6 @@ export function SelectEmbedTypePane({
         {/* REACT SDK */}
         <a
           href={"https://metaba.se/sdk" + utmTags}
-          style={{ height: "100%" }}
           target="_blank"
           rel="noreferrer"
         >
