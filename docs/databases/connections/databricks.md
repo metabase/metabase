@@ -28,9 +28,9 @@ See [Personal Access Token (PAT)](https://docs.databricks.com/en/dev-tools/auth/
 
 ## Catalog
 
-For now, you can only select one catalog. Metabase doesn't support multi-catalog connections.
+For now, you can only select one catalog. Metabase doesn't support multi-catalog connections. If you want to use more than one catalog in Metabase, you can set up multiple connections, each selecting a different catalog.
 
-You also can't sync Databricks's legacy catalogs, including the `samples` or `hive_metastore` catalogs.
+You can't sync Databricks's legacy catalogs, however, including the `samples` or `hive_metastore` catalogs.
 
 ## Schemas
 
