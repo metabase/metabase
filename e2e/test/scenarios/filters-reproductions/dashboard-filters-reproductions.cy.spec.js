@@ -1862,6 +1862,9 @@ describe("issue 25374", () => {
         .findByLabelText("Default value")
         .type("1,2,3");
       saveDashboard();
+
+      cy.location("search").should("eq", "?equal_to=1%2C2%2C3");
+
       cy.button("Clear").click();
       cy.location("search").should("eq", "?equal_to=");
 
