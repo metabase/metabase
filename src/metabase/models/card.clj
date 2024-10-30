@@ -781,13 +781,12 @@
   _Action_ is to be performed on _parameter mapping_ of a _dashcard_. For more info see
   the [[update-associated-parameters!]]'s docstring.
 
-  _Action_ has a form of [<action> & args]. Currently :update, :noop are implemented."
+  _Action_ has a form of [<action> & args]."
   [after--identifier->refs identifier before--refs]
   (let [after--refs (get after--identifier->refs identifier #{})]
-    (if (and (= 1 (count before--refs) (count after--refs))
-             (not= before--refs after--refs))
-      [:update (first after--refs)]
-      [:noop])))
+    (when (and (= 1 (count before--refs) (count after--refs))
+               (not= before--refs after--refs))
+      [:update (first after--refs)])))
 
 (defn- breakouts-->identifier->action
   "Generate mapping of _identifier_ -> _action_.
@@ -796,11 +795,12 @@
   in [[action-for-identifier+refs]] and performed later in [[update-mapping]]."
   [breakout-before-update breakout-after-update]
   (let [before--identifier->refs (breakout-->identifier->refs breakout-before-update)
-        after--identifier->refs  (breakout-->identifier->refs breakout-after-update)
-        action (partial action-for-identifier+refs after--identifier->refs)
-        action-kvrf (fn [acc identifier before--refs] (assoc acc identifier (action identifier before--refs)))]
+        after--identifier->refs  (breakout-->identifier->refs breakout-after-update)]
     ;; Remove no-ops to avoid redundant db calls in [[update-associated-parameters!]].
-    (not-empty (m/filter-vals (complement #{[:noop]}) (reduce-kv action-kvrf {} before--identifier->refs)))))
+    (->> before--identifier->refs
+         (m/map-kv-vals #(action-for-identifier+refs after--identifier->refs %1 %2))
+         (m/filter-vals some?)
+         not-empty)))
 
 (defn- update-mapping
   "Return modifed mapping, or nil, according to action."
@@ -810,10 +810,10 @@
     mapping
     (let [dimension (get-in mapping [:target 1])
           identifier (subvec dimension 0 2)
-          [action arg] (get identifier->action identifier [:noop])]
+          [action arg] (get identifier->action identifier)]
       (case action
         :update (assoc-in mapping [:target 1] arg)
-        :noop   mapping))))
+        mapping))))
 
 (defn- updates-for-dashcards
   [identifier->action dashcards]
