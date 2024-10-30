@@ -187,17 +187,19 @@ You can preview appearance settings from your question or dashboard's embedded a
 | `theme`                    | null (default), night                         |
 | `refresh` (dashboard only) | integer (seconds, e.g., `refresh=60`)         |
 | `font`\*                   | [font name](../configuring-metabase/fonts.md) |
-| `downloads`\*              | true, false                                   |
+| `downloads`\*\*            | true, false                                   |
 
-\* Available on [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+\* Avalable on [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans
+
+\*\* Disabling downloads is available on [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 For global appearance settings, such as the colors and fonts used across your entire Metabase instance, see [Customizing Metabase's appearance](../configuring-metabase/appearance.md).
 
-## Allow people to download the results of an embedded question or dashboard
+## Disable downloads for an embedded question or dashboard
 
-{% include plans-blockquote.html feature="Downloading results" %}
+{% include plans-blockquote.html feature="Disabling downloads" %}
 
-By default, Metabase will include a **Download** button on embedded questions, and an **Export to PDF** option on embedded dashboards. You can remove the download option by setting `downloads=false` in the embedding URL in the iframe's `src` attribute, see [customizing the appearance of static embeds](./static-embedding.md#customizing-the-appearance-of-static-embeds).
+By default, Metabase will include a **Download** button on embedded questions, and an **Export to PDF** option on embedded dashboards. You can remove the option to download results by setting `downloads=false` in the embedding URL in the iframe's `src` attribute, see [customizing the appearance of static embeds](./static-embedding.md#customizing-the-appearance-of-static-embeds).
 
 If the download option is missing when you expected it to be available, check that the URL in the `src` attribute for your iframe has the parameter `downloads=true`.
 

@@ -98,9 +98,7 @@
             (swap! pivot-data assoc :pivot-grouping pivot-grouping-key))
 
           (vreset! ordered-formatters
-                   (if format-rows?
-                     (mapv #(formatter/create-formatter results_timezone % viz-settings) ordered-cols)
-                     (vec (repeat (count ordered-cols) identity))))
+                   (mapv #(formatter/create-formatter results_timezone % viz-settings format-rows?) ordered-cols))
 
           ;; write the column names for non-pivot tables
           (when col-names
