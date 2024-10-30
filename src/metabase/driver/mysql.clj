@@ -950,7 +950,7 @@
                :from [[:information_schema.columns :c]]
                :where
                [:and [:raw "c.table_schema not in ('information_schema','performance_schema','sys')"]
-                (when table-names [:in [:lower :c.table_name] (map u/lower-case-en table-names)])]}
+                (when (seq table-names) [:in [:lower :c.table_name] (map u/lower-case-en table-names)])]}
               :dialect (sql.qp/quote-style driver)))
 
 (defmethod sql-jdbc.sync/describe-fks-sql :mysql
