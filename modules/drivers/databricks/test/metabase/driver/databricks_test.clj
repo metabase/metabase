@@ -49,7 +49,7 @@
     :databricks
     (let [fields (vec (driver/describe-fields :databricks (mt/db) {:schema-names ["test-data"]
                                                                    :table-names ["orders"]}))]
-      ;; Currently we have `test-data` in `metabase_ci` and `metabase_drivers`. Ensure the underlying sql query
+      ;; Currently we have `test-data` in `metabase_ci` and `metabase_drivers`. Verify that the underlying sql query
       ;; does not waste resources by returning for both.
       (testing "Underlying query returns only fields from selected catalog"
         (is (= 9 (count fields))))
