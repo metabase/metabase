@@ -536,7 +536,10 @@
   :visibility :public
   :setter     :none
   :audit      :never
-  :getter     (fn [] (boolean ((*token-features*) "hosting")))
+  :getter     (fn [] (boolean
+                      (and
+                       ((*token-features*) "hosting")
+                       (not (airgap-enabled)))))
   :doc        false)
 
 (defn log-enabled?
