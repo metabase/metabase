@@ -31,7 +31,7 @@ export const initAuth = createAsyncThunk(
           api.sessionToken = session.id;
         }
       };
-      // verify that the jwt is actually valid before proceeding
+      // verify that the session is actually valid before proceeding
       await dispatch(getOrRefreshSession(sdkConfig.jwtProviderUri!)).unwrap();
     } else if (isValidApiKeyConfig) {
       // API key setup
