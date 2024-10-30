@@ -1,5 +1,6 @@
 (ns metabase.notification.payload.execute
   (:require
+   [malli.core :as mc]
    [metabase.api.common :as api]
    [metabase.models.dashboard-card :as dashboard-card]
    [metabase.models.interface :as mi]
@@ -161,12 +162,13 @@
                 [:card                      :map]
                 [:result                    [:maybe :map]]
                 [:dashcard {:optional true} [:maybe :map]]]]
-   [:text      [:map {:closed true}
+   [:text      [:map
                 [:text :string]
                 [:type [:= :text]]]]
    [:tab-title [:map {:closed true}
                 [:text :string]
-                [:type [:= :tab-title]]]]])
+                [:type [:= :tab-title]]]]
+   [::mc/default :map]])
 
 (mu/defn execute-dashboard :- [:sequential Part]
   "Execute a dashboard and return its parts."
@@ -183,7 +185,7 @@
                            (dashcards->part cards parameters))))))
       (dashcards->part (t2/select :model/DashboardCard :dashboard_id dashboard-id) parameters))))
 
-(mu/defn execute-card :- Part
+(mu/defn execute-card :- [:maybe Part]
   "Returns the result for a card."
   [& args]
   (apply pu/execute-card args))

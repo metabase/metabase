@@ -15,44 +15,43 @@
 ;; TODO - this and `execute-multi-card` should be made more efficient: eg. we query for the card several times
 (defn execute-card
   "Execute the query for a single Card. `options` are passed along to the Query Processor."
-  [creator-id card-or-id & {:as options}]
+  [creator-id card-id & {:as options}]
   ;; The Card must either be executed in the context of a User
   {:pre [(integer? creator-id)]}
-  (let [card-id (u/the-id card-or-id)]
-    (try
-      (when-let [{query     :dataset_query
-                  metadata  :result_metadata
-                  card-type :type
-                  :as       card} (t2/select-one :model/Card :id card-id, :archived false)]
-        (let [query         (assoc query :async? false)
-              process-fn (if (= :pivot (:display card))
-                           qp.pivot/run-pivot-query
-                           qp/process-query)
-              process-query (fn []
-                              (binding [qp.perms/*card-id* card-id]
-                                (process-fn
-                                 (qp/userland-query
-                                  (assoc query
-                                         :middleware {:skip-results-metadata?            true
-                                                      :process-viz-settings?             true
-                                                      :js-int-to-string?                 false
-                                                      :add-default-userland-constraints? false})
-                                  (merge (cond-> {:executed-by creator-id
-                                                  :context     :pulse
-                                                  :card-id     card-id}
-                                           (= card-type :model)
-                                           (assoc :metadata/model-metadata metadata))
-                                         {:visualization-settings (:visualization_settings card)}
-                                         options)))))
-              result        (if creator-id
-                              (mw.session/with-current-user creator-id
-                                (process-query))
-                              (process-query))]
-          {:card   card
-           :result result
-           :type   :card}))
-      (catch Throwable e
-        (log/warnf e "Error running query for Card %s" card-id)))))
+  (try
+    (when-let [{query     :dataset_query
+                metadata  :result_metadata
+                card-type :type
+                :as       card} (t2/select-one :model/Card :id card-id, :archived false)]
+      (let [query         (assoc query :async? false)
+            process-fn (if (= :pivot (:display card))
+                         qp.pivot/run-pivot-query
+                         qp/process-query)
+            process-query (fn []
+                            (binding [qp.perms/*card-id* card-id]
+                              (process-fn
+                               (qp/userland-query
+                                (assoc query
+                                       :middleware {:skip-results-metadata?            true
+                                                    :process-viz-settings?             true
+                                                    :js-int-to-string?                 false
+                                                    :add-default-userland-constraints? false})
+                                (merge (cond-> {:executed-by creator-id
+                                                :context     :pulse
+                                                :card-id     card-id}
+                                         (= card-type :model)
+                                         (assoc :metadata/model-metadata metadata))
+                                       {:visualization-settings (:visualization_settings card)}
+                                       options)))))
+            result        (if creator-id
+                            (mw.session/with-current-user creator-id
+                              (process-query))
+                            (process-query))]
+        {:card   card
+         :result result
+         :type   :card}))
+    (catch Throwable e
+      (log/warnf e "Error running query for Card %s" card-id))))
 
 (defn is-card-empty?
   "Check if the card is empty"

@@ -49,7 +49,8 @@
                (= "header" auth-method)       (update :headers merge auth-info)
                (= "query-param" auth-method)  (update :query-params merge auth-info)))]
     (http/request (cond-> req
-                    (map? (:body req)) (update :body json/generate-string)))))
+                    (or (map? (:body req))
+                        (sequential? (:body req))) (update :body json/generate-string)))))
 
 (defmethod channel/can-connect? :channel/http
   [_channel-type details]
@@ -78,17 +79,17 @@
 (mu/defmethod channel/render-notification [:channel/http :notification/alert]
   [_channel-type {:keys [payload creator]} _template _recipients]
   (let [{:keys [card alert card_part]} payload
-        request-body         {:type               "alert"
-                              :alert_id           (:id alert)
-                              :alert_creator_id   (:id creator)
-                              :alert_creator_name (:common_name creator)
-                              :data               {:type          "question"
-                                                   :question_id   (:id card)
-                                                   :question_name (:name card)
-                                                   :question_url  (urls/card-url (:id card))
-                                                   :visualization (let [{:keys [card dashcard result]} card_part]
-                                                                    (pulse/render-pulse-card-to-base64
-                                                                     (channel.shared/defaulted-timezone card) card dashcard result image-width))
-                                                   :raw_data      (qp-result->raw-data (:result card_part))}
-                              :sent_at            (t/offset-date-time)}]
+        request-body {:type               "alert"
+                      :alert_id           (:id alert)
+                      :alert_creator_id   (:id creator)
+                      :alert_creator_name (:common_name creator)
+                      :data               {:type          "question"
+                                           :question_id   (:id card)
+                                           :question_name (:name card)
+                                           :question_url  (urls/card-url (:id card))
+                                           :visualization (let [{:keys [card dashcard result]} card_part]
+                                                            (pulse/render-pulse-card-to-base64
+                                                             (channel.shared/defaulted-timezone card) card dashcard result image-width))
+                                           :raw_data      (qp-result->raw-data (:result card_part))}
+                      :sent_at            (t/offset-date-time)}]
     [{:body request-body}]))

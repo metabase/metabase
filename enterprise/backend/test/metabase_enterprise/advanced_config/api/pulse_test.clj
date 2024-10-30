@@ -34,6 +34,7 @@
                                                              :schedule_hour 12
                                                              :schedule_day  nil}
                                                             channel)]
+                                     :alert_condition "rows"
                                      :skip_if_empty false})
                        :recipients (set (keys (mt/regex-email-bodies (re-pattern "Test card"))))}))]
             (testing "allowed email -- should pass"

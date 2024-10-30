@@ -33,15 +33,15 @@
      [:map
       ;; replacement of pulse
       [:alert      [:map
-                    [:card_id          ms/PositiveInt]
-                    [:alert_condition  [:enum "rows" "goal"]]
-                    [:alert_above_goal [:maybe ms/BooleanValue]]
-                    [:alert_first_only [:maybe ms/BooleanValue]]
-                    [:schedule         :map]
-                    [:include_csv      ms/BooleanValue]
-                    [:include_xls      ms/BooleanValue]
-                    [:format_rows      ms/BooleanValue]
-                    [:pivot_results    ms/BooleanValue]]]
+                    [:card_id                           ms/PositiveInt]
+                    [:schedule                          :map]
+                    [:alert_condition  {:optional true} [:enum "rows" "goal"]]
+                    [:alert_above_goal {:optional true} [:maybe ms/BooleanValue]]
+                    [:alert_first_only {:optional true} [:maybe ms/BooleanValue]]
+                    [:include_csv      {:optional true} [:maybe ms/BooleanValue]]
+                    [:include_xls      {:optional true} [:maybe ms/BooleanValue]]
+                    [:format_rows      {:optional true} [:maybe ms/BooleanValue]]
+                    [:pivot_results    {:optional true} [:maybe ms/BooleanValue]]]]
       [:creator_id ms/PositiveInt]]]
     [:notification/dashboard-subscription
      [:map
@@ -53,12 +53,11 @@
         [:parameters {:optional true} [:maybe [:sequential :map]]]
         [:dashboard_subscription_dashcards {:optional true}
          [:sequential [:map
-                       [:card_id       [:maybe ms/PositiveInt]]
-                       [:include_csv   ms/BooleanValue]
-                       [:include_xls   ms/BooleanValue]
-                       [:format_rows   ms/BooleanValue]
-                       [:pivot_results ms/BooleanValue]]]]]]]]
-
+                       [:card_id                        [:maybe ms/PositiveInt]]
+                       [:include_csv   {:optional true} [:maybe ms/BooleanValue]]
+                       [:include_xls   {:optional true} [:maybe ms/BooleanValue]]
+                       [:format_rows   {:optional true} [:maybe ms/BooleanValue]]
+                       [:pivot_results {:optional true} [:maybe ms/BooleanValue]]]]]]]]]
     ;; for testing only
     [:notification/testing :map]]])
 
@@ -90,7 +89,7 @@
     [:notification/alert
      [:map
       [:payload [:map
-                 [:card_part notification.payload.execute/Part]
+                 [:card_part [:maybe notification.payload.execute/Part]]
                  [:card      :map]
                  [:style     :map]
                  [:alert     :map]]]]]

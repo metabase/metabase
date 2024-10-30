@@ -22,6 +22,7 @@
     :as pulse-channel
     :refer [channel-types PulseChannel]]
    [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
+   [metabase.notification.core :as notification]
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.pulse.core :as pulse]
@@ -353,7 +354,8 @@
   ;; make sure any email addresses that are specified are allowed before sending the test Pulse.
   (doseq [channel channels]
     (pulse-channel/validate-email-domains channel))
-  (pulse/send-pulse! (assoc body :creator_id api/*current-user-id*))
+  (binding [notification/*send-notification!* notification/send-notification-sync!]
+    (pulse/send-pulse! (assoc body :creator_id api/*current-user-id*)))
   {:ok true})
 
 (api/defendpoint DELETE "/:id/subscription"

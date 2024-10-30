@@ -28,7 +28,8 @@
      :dashboard_subscription dashboard_subscription}))
 
 (mu/defmethod notification.payload/should-send-notification? :notification/dashboard-subscription
-  [{:keys [dashboard_parts dashboard_subscription]}]
-  (if (:skip_if_empty dashboard_subscription)
-    (not (every? notification.execute/is-card-empty? dashboard_parts))
-    true))
+  [{:keys [payload] :as _noti-payload}]
+  (let [{:keys [dashboard_parts dashboard_subscription]} payload]
+    (if (:skip_if_empty dashboard_subscription)
+      (not (every? notification.execute/is-card-empty? dashboard_parts))
+      true)))

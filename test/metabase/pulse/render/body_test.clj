@@ -631,7 +631,7 @@
                                                                                                    [:avg [:field (mt/id :orders :subtotal) nil]]]}}
                                                          :creator_id    (mt/user->id :crowberto)}]
           (let [data                   (qp/process-query dataset-query)
-                combined-cards-results [(pu/execute-card card card nil)]
+                combined-cards-results [(pu/execute-card (:creator_id card) (:id card) nil)]
                 cards-with-data        (map
                                         (comp
                                          #'body/add-dashcard-timeline-events

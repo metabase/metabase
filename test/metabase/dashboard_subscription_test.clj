@@ -658,7 +658,7 @@
                                                                 :target       [:dimension [:field (mt/id :products :category) nil]]}]
                                           :card_id            mbql-card-id
                                           :dashboard_id       dashboard-id}]
-            (let [[mbql-results] (map :result (execute-dashboard (:id dashboard) (mt/user->id :rasta) nil))]
+            (let [[mbql-results] (map :result (execute-dashboard (:id dashboard) (mt/user->id :rasta) (:parameters dashboard)))]
               (is (= [[2 "Small Marble Shoes"        "Doohickey"]
                       [3 "Synergistic Granite Chair" "Doohickey"]]
                      (mt/rows mbql-results))))))
@@ -685,7 +685,7 @@
                                                                 :target       [:dimension [:template-tag "category"]]}]
                                           :card_id            sql-card-id
                                           :dashboard_id       dashboard-id}]
-            (let [[results] (map :result (execute-dashboard (:id dashboard) (mt/user->id :rasta) nil))]
+            (let [[results] (map :result (execute-dashboard (:id dashboard) (mt/user->id :rasta) (:parameters dashboard)))]
               (is (= [[1  "Rustic Paper Wallet"   "Gizmo"]
                       [10 "Mediocre Wooden Table" "Gizmo"]]
                      (mt/rows results))))))))))

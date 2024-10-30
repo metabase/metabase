@@ -11,6 +11,7 @@
    [metabase.models.pulse :as models.pulse]
    [metabase.notification.payload.execute :as notification.payload.execute]
    [metabase.notification.send :as notification.send]
+   [metabase.notification.test-util :as notification.tu]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.pulse.send :as pulse.send]
    [metabase.pulse.test-util :as pulse.test-util]
@@ -18,6 +19,10 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.tools.with-temp :as t2.with-temp]))
+
+(use-fixtures :each (fn [thunk]
+                      (notification.tu/with-send-notification-sync
+                        (thunk))))
 
 (set! *warn-on-reflection* true)
 
@@ -71,15 +76,15 @@
                                          :user_id          (mt/user->id :rasta)}]
         (mt/with-temporary-setting-values [email-from-address "metamailman@metabase.com"]
           (mt/with-fake-inbox
-            (with-redefs [notification.send/channel-send-retrying!  (fn [_ _] :noop)]
+            (with-redefs [notification.send/channel-send-retrying!  (fn [_ _ _ _] :noop)]
               (mt/with-test-user :lucky
                 (pulse.send/send-pulse! pulse)))
             (is (= {:topic    :subscription-send
                     :user_id  (mt/user->id :crowberto)
                     :model    "Pulse"
                     :model_id (:id pulse)
-                    :details  {:recipients [[(dissoc (mt/fetch-user :rasta) :last_login :is_qbnewb :is_superuser :date_joined)]]
-                               :filters    []}}
+                    :details  {:recipients [(dissoc (mt/fetch-user :rasta) :last_login :is_qbnewb :is_superuser :date_joined)]
+                               :filters    nil}}
                    (mt/latest-audit-log-entry :subscription-send (:id pulse))))))))))
 
 (deftest alert-send-event-test
@@ -98,16 +103,14 @@
                                                         :user_id          (mt/user->id :rasta)}]
         (mt/with-temporary-setting-values [email-from-address "metamailman@metabase.com"]
           (mt/with-fake-inbox
-            (with-redefs [messages/render-pulse-email  (fn [_ _ _ [{:keys [result]}] _]
-                                                         [{:result result}])]
-              (mt/with-test-user :lucky
-                (pulse.send/send-pulse! pulse)))
+            (mt/with-test-user :lucky
+              (pulse.send/send-pulse! pulse))
             (is (= {:topic    :alert-send
                     :user_id  (mt/user->id :crowberto)
                     :model    "Pulse"
                     :model_id (:id pulse)
-                    :details  {:recipients [[(dissoc (mt/fetch-user :rasta) :last_login :is_qbnewb :is_superuser :date_joined)]]
-                               :filters    []}}
+                    :details  {:recipients [(dissoc (mt/fetch-user :rasta) :last_login :is_qbnewb :is_superuser :date_joined)]
+                               :filters    nil}}
                    (mt/latest-audit-log-entry :alert-send (:id pulse))))))))))
 
 (deftest e2e-sandboxed-pulse-test
