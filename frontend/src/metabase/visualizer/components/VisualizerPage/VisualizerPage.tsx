@@ -51,28 +51,16 @@ export const VisualizerPage = () => {
 
   const handleDragEnd = useCallback(
     ({ active, over }: DragEndEvent) => {
-      // if (
-      //   over?.id === DROPPABLE_ID.VERTICAL_WELL &&
-      //   isDraggedColumnItem(active)
-      // ) {
-      //   dispatch(updateSettings({ "funnel.metric": active.id }));
-      // }
-
-      // if (
-      //   over?.id === DROPPABLE_ID.HORIZONTAL_WELL &&
-      //   isDraggedColumnItem(active)
-      // ) {
-      //   dispatch(updateSettings({ "funnel.dimension": active.id }));
-      // }
-
-      if (
-        over?.id === DROPPABLE_ID.CANVAS_MAIN &&
-        isDraggedColumnItem(active)
-      ) {
+      if (isDraggedColumnItem(active)) {
         const { column, dataSource } = active.data.current;
-        dispatch(importColumn({ column, dataSource }));
+        if (over?.id === DROPPABLE_ID.X_AXIS_WELL) {
+          // dispatch(updateSettings({ "funnel.dimension": active.id }));
+        } else if (over?.id === DROPPABLE_ID.Y_AXIS_WELL) {
+          // dispatch(updateSettings({ "funnel.metric": active.id }));
+        } else if (over?.id === DROPPABLE_ID.CANVAS_MAIN) {
+          dispatch(importColumn({ column, dataSource }));
+        }
       }
-
       dispatch(setDraggedItem(null));
     },
     [dispatch],
