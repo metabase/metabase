@@ -8,15 +8,11 @@ import { useCallback } from "react";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Box, Flex } from "metabase/ui";
-import { DROPPABLE_ID } from "metabase/visualizer/dnd/constants";
-import {
-  isDraggedColumnItem,
-  isValidDraggedItem,
-} from "metabase/visualizer/dnd/guards";
+import { isValidDraggedItem } from "metabase/visualizer/dnd/guards";
+import { handleVisualizerDragEnd } from "metabase/visualizer/dnd/handlers";
 import {
   getDraggedItem,
   getVisualizationType,
-  importColumn,
   setDisplay,
   setDraggedItem,
 } from "metabase/visualizer/visualizer.slice";
@@ -51,20 +47,13 @@ export const VisualizerPage = () => {
   );
 
   const handleDragEnd = useCallback(
-    ({ active, over }: DragEndEvent) => {
-      if (isDraggedColumnItem(active)) {
-        const { column, dataSource } = active.data.current;
-        if (over?.id === DROPPABLE_ID.X_AXIS_WELL) {
-          // dispatch(updateSettings({ "funnel.dimension": active.id }));
-        } else if (over?.id === DROPPABLE_ID.Y_AXIS_WELL) {
-          // dispatch(updateSettings({ "funnel.metric": active.id }));
-        } else if (over?.id === DROPPABLE_ID.CANVAS_MAIN) {
-          dispatch(importColumn({ column, dataSource }));
-        }
+    (event: DragEndEvent) => {
+      if (display) {
+        handleVisualizerDragEnd(display, { event, dispatch });
       }
       dispatch(setDraggedItem(null));
     },
-    [dispatch],
+    [display, dispatch],
   );
 
   const handleChangeDisplay = useCallback(
