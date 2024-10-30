@@ -108,69 +108,52 @@ const initialState: SdkState = {
 };
 
 export const sdk = createReducer(initialState, builder => {
-  builder.addCase(refreshTokenAsync.pending, state => ({
-    ...state,
-    token: { ...state.token, loading: true },
-  }));
+  builder.addCase(refreshTokenAsync.pending, state => {
+    state.token.loading = true;
+  });
 
-  builder.addCase(refreshTokenAsync.fulfilled, (state, action) => ({
-    ...state,
-    token: {
-      ...state.token,
-      token: action.payload,
-      error: null,
-      loading: false,
-    },
-  }));
+  builder.addCase(refreshTokenAsync.fulfilled, (state, action) => {
+    state.token.loading = false;
+    state.token.token = action.payload;
+    state.token.error = null;
+  });
 
-  builder.addCase(refreshTokenAsync.rejected, (state, action) => ({
-    ...state,
-    isLoggedIn: false,
-    token: {
-      ...state.token,
-      token: null,
-      error: action.error,
-      loading: false,
-    },
-  }));
+  builder.addCase(refreshTokenAsync.rejected, (state, action) => {
+    state.token.token = null;
+    state.token.error = action.error;
+    state.token.loading = false;
+  });
 
-  builder.addCase(setLoginStatus, (state, action) => ({
-    ...state,
-    loginStatus: action.payload,
-  }));
+  builder.addCase(setLoginStatus, (state, action) => {
+    state.loginStatus = action.payload;
+  });
 
-  builder.addCase(setLoaderComponent, (state, action) => ({
-    ...state,
-    loaderComponent: action.payload,
-  }));
+  builder.addCase(setLoaderComponent, (state, action) => {
+    state.loaderComponent = action.payload;
+  });
 
   builder.addCase(setPlugins, (state, action) => ({
     ...state,
     plugins: action.payload,
   }));
 
-  builder.addCase(setEventHandlers, (state, action) => ({
-    ...state,
-    eventHandlers: action.payload,
-  }));
+  builder.addCase(setEventHandlers, (state, action) => {
+    state.eventHandlers = action.payload;
+  });
 
-  builder.addCase(setErrorComponent, (state, action) => ({
-    ...state,
-    errorComponent: action.payload,
-  }));
+  builder.addCase(setErrorComponent, (state, action) => {
+    state.errorComponent = action.payload;
+  });
 
-  builder.addCase(setMetabaseClientUrl, (state, action) => ({
-    ...state,
-    metabaseInstanceUrl: action.payload,
-  }));
+  builder.addCase(setMetabaseClientUrl, (state, action) => {
+    state.metabaseInstanceUrl = action.payload;
+  });
 
-  builder.addCase(setFetchRefreshTokenFn, (state, action) => ({
-    ...state,
-    fetchRefreshTokenFn: action.payload,
-  }));
+  builder.addCase(setFetchRefreshTokenFn, (state, action) => {
+    state.fetchRefreshTokenFn = action.payload;
+  });
 
-  builder.addCase(setUsageProblem, (state, action) => ({
-    ...state,
-    usageProblem: action.payload,
-  }));
+  builder.addCase(setUsageProblem, (state, action) => {
+    state.usageProblem = action.payload;
+  });
 });
