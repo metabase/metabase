@@ -13,6 +13,9 @@ export const AppBanner = () => {
   const shouldRenderPaymentBanner =
     tokenStatus && paymentStatuses.includes(tokenStatus?.status ?? "");
 
+  // Even though both the `tokenStatus` and `readOnly` settings
+  // are visible only to admins (and will be `undefined` otherwise),
+  // we still need to explicitly prevent rendering the banner for non-admins.
   if (!isAdmin) {
     return null;
   }
@@ -25,5 +28,6 @@ export const AppBanner = () => {
     return <PaymentBanner tokenStatus={tokenStatus} />;
   }
 
+  // Do not render to admins if the specific conditions haven't been met
   return null;
 };
