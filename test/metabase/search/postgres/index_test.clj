@@ -48,6 +48,20 @@
       (search.ingestion/populate-index!)
       (is (= rows-before (count-rows))))))
 
+(deftest incremental-update-test
+  (with-index
+   (testing "The index is updated when models change"
+     ;; The second entry is "Revenue Project(ions)"
+     (is (= 2 (count (search.index/search "Projected Revenue"))))
+     (is (= 0 (count (search.index/search "Protected Avenue"))))
+
+     (t2/update! :model/Card {:name "Projected Revenue"} {:name "Protected Avenue"})
+     ;; TODO wire up an actual hook
+     (search.ingestion/update-index! (t2/select-one :model/Card :name "Protected Avenue"))
+
+     (is (= 1 (count (search.index/search "Projected Revenue"))))
+     (is (= 1 (count (search.index/search "Protected Avenue")))))))
+
 (deftest consistent-subset-test
   (with-index
     (testing "It's consistent with in-place search on various full words"
