@@ -290,7 +290,7 @@
                         [[:not= :pk.column_name nil] :pk?]
 
                         [[:col_description
-                          [:cast [:cast [:format "%I.%I" [:cast :c.table_schema :text] [:c.table_name :text]] :regclass] :oid]
+                          [:cast [:cast [:format [:inline "%I.%I"] [:cast :c.table_schema :text] [:cast :c.table_name :text]] :regclass] :oid]
                           :c.ordinal_position]
                          :field-comment]
                         [[:and
