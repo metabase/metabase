@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [honey.sql :as sql]
    [java-time.api :as t]
+   [metabase.config :as config]
    [metabase.driver :as driver]
    [metabase.driver.hive-like :as driver.hive-like]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -191,6 +192,7 @@
     :HttpPath       http-path
     :uid            "token"
     :pwd            token
+    :UserAgentEntry (format "Metabase/%s" (:tag config/mb-version-info))
     :UseNativeQuery 1}
    ;; Following is used just for tests. See the [[metabase.driver.sql-jdbc.connection-test/perturb-db-details]]
    ;; and test that is using the function.
