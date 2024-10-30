@@ -37,7 +37,11 @@
                     [:alert_condition  [:enum "rows" "goal"]]
                     [:alert_above_goal [:maybe ms/BooleanValue]]
                     [:alert_first_only [:maybe ms/BooleanValue]]
-                    [:schedule         :map]]]
+                    [:schedule         :map]
+                    [:include_csv      ms/BooleanValue]
+                    [:include_xls      ms/BooleanValue]
+                    [:format_rows      ms/BooleanValue]
+                    [:pivot_results    ms/BooleanValue]]]
       [:creator_id ms/PositiveInt]]]
     [:notification/dashboard-subscription
      [:map

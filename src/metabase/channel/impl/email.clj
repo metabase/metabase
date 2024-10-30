@@ -95,21 +95,19 @@
    :content-type "image/png"
    :content      url})
 
-(defn- assoc-attachment-booleans [dashboard-subscription parts]
+(defn- assoc-attachment-booleans [part-configs parts]
   (for [{{result-card-id :id} :card :as result} parts
         ;; TODO: check if does this match by dashboard_card_id or card_id?
-        :let [noti-dashcard (m/find-first #(= (:card_id %) result-card-id) (:dashboard_subscription_dashcards dashboard-subscription))]]
+        :let [noti-dashcard (m/find-first #(= (:card_id %) result-card-id) part-configs)]]
     (if result-card-id
       (update result :card merge (select-keys noti-dashcard [:include_csv :include_xls :format_rows :pivot_results]))
       result)))
 
 (defn- email-attachment
-  [dashboard-subscription rendered-cards execution-data]
+  [rendered-cards parts]
   (filter some?
           (concat (map make-message-attachment (apply merge (map :attachments (u/one-or-many rendered-cards))))
-                  (mapcat email.result-attachment/result-attachment (assoc-attachment-booleans
-                                                                     dashboard-subscription
-                                                                     (u/one-or-many execution-data))))))
+                  (mapcat email.result-attachment/result-attachment parts))))
 
 (defn- icon-bundle
   "Bundle an icon.
@@ -181,7 +179,9 @@
         timezone           (channel.shared/defaulted-timezone card)
         rendered-card      (render-part timezone card_part {:pulse/include-title? true})
         icon-attachment    (apply make-message-attachment (icon-bundle :bell))
-        attachments        (concat [icon-attachment] (email-attachment nil rendered-card card_part))
+        attachments        (concat [icon-attachment]
+                                   (email-attachment rendered-card
+                                                     (assoc-attachment-booleans [alert] [card_part])))
         message-context-fn (fn [non-user-email]
                              (assoc notification-payload
                                     :computed {:subject         (case (messages/pulse->alert-condition-kwd alert)
@@ -257,7 +257,9 @@
         icon-attachment     (apply make-message-attachment (icon-bundle :dashboard))
         attachments         (concat
                              [icon-attachment]
-                             (email-attachment dashboard_subscription rendered-cards dashboard_parts))
+                             (email-attachment rendered-cards (assoc-attachment-booleans
+                                                               (:dashboard_subscription_dashcards dashboard_subscription)
+                                                               dashboard_parts)))
         message-context-fn  (fn [non-user-email]
                               (-> notification-payload
                                   (assoc :computed {:dashboard_content   (html (vec (cons :div (map :content rendered-cards))))
