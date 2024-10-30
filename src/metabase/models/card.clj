@@ -767,122 +767,84 @@
     :query_type ;; these first three may not even be changeable
     :dataset_query})
 
-;; lbrdnk TODO: extending to expressions later
-;; lbrdnk TODO: wrap in not-empty!
-(defn- field-id-or-name->indexed-breakouts
+(defn- breakout-->identifier->indexed-refs
+  "Generate mapping of _ref identifier_ -> [_breakout index_ _ref_] from breakout clause, ie. vector of refs.
+
+  _ref identifier_ is a vector of first 2 elements of ref."
   [breakout-clause]
   (transduce
-   (fn [rf]
-     (let [index (volatile! 0)]
-       (fn
-         ([] (rf))
-         ([result] (rf result))
-         ([acc breakout]
-          (let [id (second breakout)]
-            (rf acc [id [(vswap! index inc) breakout]]))))))
-   (completing
-    (fn [acc [k v]]
-      (update acc k #(conj (vec %1) v)))
-    not-empty)
+   (map-indexed (fn [index breakout] @(def ee [(subvec breakout 0 2) [index breakout]])))
+   (completing (fn [acc [k v]] (update acc k #(conj (vec %1) v))) not-empty)
    {}
-   breakout-clause)
-  #_(not-empty
-   (loop [breakouts breakout-clause
-          current-breakout-index 0
-          id->clauses {}]
-     (if (empty? breakouts)
-       id->clauses
-       (recur (rest breakouts)
-              (inc current-breakout-index)
-              (let [current-breakout-element (first breakouts)
-                    current-element-id       (second current-breakout-element)]
-                (update id->clauses current-element-id
-                        (fn [id-clause-s]
-                          (conj (vec id-clause-s) [current-breakout-index current-breakout-element])))))))))
+   breakout-clause))
 
-(defn- field-id-or-name->action
-  "Result should be map of having keys of original:field-id-or-name... -> [:action & args]
+(defn- action-for-identifier+indexed-refs
+  "TBD"
+  [after--identifier->indexed-refs identifier before--indexed-refs]
+  (let [after--indexed-refs (get after--identifier->indexed-refs identifier)]
+    (cond
+      ;; Ignore delete for now. It's prone to nuke what could be usable.
+      #_#_(delete? before--indexed-refs after--indexed-refs)
+        [:delete]
 
-  where action is :delete, :update, :noop atm"
-  [original:field-id-or-name->indexed new:field-id-or-name->indexed]
-  (reduce-kv
-   (fn [acc field-id-or-name breakout-elements]
-     (cond (and (< 1 (count breakout-elements))
-                (not= breakout-elements (get new:field-id-or-name->indexed field-id-or-name)))
-           (assoc acc field-id-or-name [:delete])
+      ;; here I'm missing deletion -- before 1 after 0
+      (and (= 1 (count before--indexed-refs))
+           (not= before--indexed-refs after--indexed-refs)
+           (= 1 (count after--indexed-refs)))
+      (let [[[_index ref]] after--indexed-refs]
+        [:update ref])
 
-           (and (= 1 (count breakout-elements))
-                (not= breakout-elements (get new:field-id-or-name->indexed field-id-or-name)))
-           (assoc acc field-id-or-name [:update (second (first (get new:field-id-or-name->indexed field-id-or-name)))])
+      :else
+      [:noop])))
 
-           (= 1 (count breakout-elements))
-           (assoc acc field-id-or-name [:noop])
+(defn- breakouts-->identifier->action
+  [breakout-before-update breakout-after-update]
+  (let [before--identifier->indexed-refs @(def qq (breakout-->identifier->indexed-refs breakout-before-update))
+        after--identifier->indexed-refs  @(def ww (breakout-->identifier->indexed-refs breakout-after-update))
+        action (partial action-for-identifier+indexed-refs after--identifier->indexed-refs)
+        action-kvrf (fn [acc identifier indexed-refs] (assoc acc identifier (action identifier indexed-refs)))]
+    (reduce-kv action-kvrf {} before--identifier->indexed-refs)))
 
-           :else ; this should never happen. should add logging?
-           (assoc acc field-id-or-name [:noop])))
-   {}
-   original:field-id-or-name->indexed))
+(defn- update-mapping
+  [identifier->action mapping]
+  (when (= :dimension (get-in mapping [:target 0]))
+    (let [dimension (get-in mapping [:target 1])
+          identifier (subvec dimension 0 2)
+          [action arg] (get identifier->action identifier)]
+      (case action
+        :update (assoc-in mapping [:target 1] arg)
+        :noop   mapping
+        :delete nil))))
 
-;; dirty
-(defn- adjusted-parameter-mappings
-  [id->action parameter-mappings]
-  (vec (keep
-        (fn [mapping]
-          (let [dimension? (= :dimension (get-in mapping [:target 0]))]
-            (if-not dimension?
-              mapping ; noop
-              (let [ref (get-in mapping [:target 1])
-                    id  (second ref)
-                    [action arg] (get id->action id)]
-                (case action
-                  :delete nil
-                  :noop   mapping
-                  :update (assoc-in mapping [:target 1] arg))
-                ))))
-        parameter-mappings)))
+(defn- update-for-dashcard
+  [identifier->action dashcard]
+  (def iii identifier->action)
+  (def ddd dashcard)
+  @(def rrr (let [updated (select-keys (update dashcard :parameter_mappings
+                                               (comp vec (partial keep (partial update-mapping identifier->action))))
+                                       [:parameter_mappings])]
+              (def uuu updated)
+              (when (not= (:parameter_mappings dashcard) (:parameter_mappings updated))
+                [(:id dashcard) updated]))))
 
-;; lbrdnk TODO: extend to expressions? -- nope?
-(defn- adjusted-dashcards
-  [id->action dashcards]
-  ;; maybe update-some?
-  (mapv (fn [dashcard]
-          (update dashcard :parameter_mappings (partial adjusted-parameter-mappings id->action)))
-        dashcards))
+(defn- updates-for-dashcards
+  [identifier->action dashcards]
+  (keep (partial update-for-dashcard identifier->action) dashcards))
 
+;; lbrdnk TODO: Verify case breakout becoming nil!
 (defn- update-associated-parameters!
   "Update of dependent `:model/DashboardCard`.
 
-  Currently works with dashboard"
-  [card-before card-updates]
-  (def cid (:id card-before))
-  (def cbcb card-before)
-  (def caca card-updates)
-  (def cb-norm (-> card-before :dataset_query mbql.normalize/normalize))
-  (def ca-norm (-> card-updates :dataset_query mbql.normalize/normalize))
-  (def ca-struct (field-id-or-name->indexed-breakouts (get-in ca-norm [:query :breakout])))
-  (def cb-struct (field-id-or-name->indexed-breakouts (get-in cb-norm [:query :breakout])))
-  
-  (def map-to-actions (field-id-or-name->action cb-struct ca-struct))
-  
-  (def dcs (t2/select :model/DashboardCard :card_id cid))
-  
-  (def adj (adjusted-dashcards map-to-actions dcs))
-  
-  (doseq [{:keys [id] :as adjusted-dashcard} adj
-          :let [dashcard-update-only (select-keys adjusted-dashcard [:parameter_mappings])]]
-    (t2/update! :model/DashboardCard :id id dashcard-update-only))
-  
-  (comment
-    (def dcs-test dcs)
-    (def adj-test adj)
-    (def id->action-test map-to-actions)
-    
-    (t2/select :model/DashboardCard {:where [:in :id (map :id adj)]})
-    )
-  
-  
-  ;; go through dcs and generated indices to update
-  nil)
+  Currently works with dashboard TBD..."
+  [card-before card-after]
+  (let [card->breakout     #(-> % :dataset_query mbql.normalize/normalize :query :breakout)
+        breakout-before    (card->breakout card-before)
+        breakout-after     (card->breakout card-after)
+        identifier->action (breakouts-->identifier->action breakout-before breakout-after)
+        dashcards          (t2/select :model/DashboardCard :card_id (some :id [card-after card-before]))
+        updates            @(def xix (updates-for-dashcards identifier->action dashcards))]
+    (doseq [[id update] updates]
+      (t2/update! :model/DashboardCard :id id update))))
 
 (defn update-card!
   "Update a Card. Metadata is fetched asynchronously. If it is ready before [[metadata-sync-wait-ms]] elapses it will be
