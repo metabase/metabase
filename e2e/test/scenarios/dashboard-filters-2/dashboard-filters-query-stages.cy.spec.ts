@@ -108,10 +108,6 @@ const MODEL_BASED_QUESTION_INDEX = 1;
 const QUESTION_BASED_MODEL_INDEX = 2;
 const MODEL_BASED_MODEL_INDEX = 3;
 
-/**
- * Empty section title element is rendered.
- * TODO: https://github.com/metabase/metabase/issues/47218
- */
 const NAMELESS_SECTION = undefined;
 
 /**
