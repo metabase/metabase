@@ -44,12 +44,19 @@ export const initAuth = createAsyncThunk(
     ]);
 
     if (!user.payload) {
-      throw new Error("Failed to fetch the user, is the session valid?");
+      // The refresh user thunk just returns null if it fails to fetch the user, it doesn't throw
+      const error = new Error(
+        "Failed to fetch the user, is the session valid?",
+      );
+      console.error(error);
+      throw error;
     }
     if (!siteSettings.payload) {
-      throw new Error(
+      const error = new Error(
         "Failed to fetch the site settings, is the session valid?",
       );
+      console.error(error);
+      throw error;
     }
   },
 );
