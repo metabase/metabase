@@ -286,6 +286,20 @@ class ExpressionEditorTextfield extends React.Component<
     this.handleEnter();
   };
 
+  handleKeyDownCapture = (event: KeyboardEvent) => {
+    if (event.key === "Tab" && this.state.suggestions.length === 0) {
+      // Do not let Ace editor get this event
+      event.stopPropagation();
+
+      // Redispatch the event from parent node of the Ace editor
+      // so that listeners up in the tree can still handle it, e.g.
+      // to contain focus within the popover/modal.
+      this.suggestionTarget.current?.dispatchEvent(
+        new KeyboardEvent("keydown", event),
+      );
+    }
+  };
+
   textarea() {
     return this.input.current?.refEditor?.getElementsByTagName("textarea")[0];
   }
@@ -303,19 +317,12 @@ class ExpressionEditorTextfield extends React.Component<
       // Without this hack, popups get blocked since they are not
       // considered by the browser to be in response to a user action.
       this.textarea()?.addEventListener("keypress", this.handleKeypress);
-      this.textarea()?.addEventListener(
-        "keydown",
-        event => {
-          if (event.key === "Tab" && this.state.suggestions.length === 0) {
-            event.stopPropagation();
 
-            this.suggestionTarget.current?.dispatchEvent(
-              new KeyboardEvent("keydown", event),
-            );
-          }
-        },
-        { capture: true },
-      );
+      // HACK: Ace will sometimes unexpectedly prevent changing focus with the Tab key.
+      // See https://github.com/metabase/metabase/issues/49036
+      this.textarea()?.addEventListener("keydown", this.handleKeyDownCapture, {
+        capture: true, // otherwise Ace will call preventDefault() on this event in its own keydown handler
+      });
 
       editor.getSession().setMode(mode);
 
