@@ -30,6 +30,8 @@ See [Personal Access Token (PAT)](https://docs.databricks.com/en/dev-tools/auth/
 
 For now, you can only select one catalog. Metabase doesn't support multi-catalog connections.
 
+You also can't sync Databricks's legacy catalogs, including the `samples` or `hive_metastore` catalogs.
+
 ## Schemas
 
 You can specify which schemas you want to sync and scan. Options are:
@@ -59,7 +61,3 @@ You can append options to the connection string that Metabase uses to connect to
 
 See [Compute settings for the Databricks JDBC Driver](https://docs.databricks.com/en/integrations/jdbc/compute.html).
 
-## Limitations
-
-- You can only sync one catalog.
-- You can't sync Databricks's legacy catalogs, including the `samples` or `hive_metastore` catalogs.
