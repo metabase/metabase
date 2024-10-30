@@ -9,7 +9,7 @@ import {
   createMockVisualizationSettings,
 } from "metabase-types/api/mocks";
 
-import { DashboardChartSettings } from "./ChartSettings";
+import { DashboardChartSettings } from "./DashboardChartSettings";
 import type { DashboardChartSettingsProps } from "./types";
 
 registerVisualizations();

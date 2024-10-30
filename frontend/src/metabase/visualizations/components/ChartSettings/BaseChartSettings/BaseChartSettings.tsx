@@ -1,131 +1,34 @@
-import { assocIn } from "icepick";
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
 import Radio from "metabase/core/components/Radio";
 import CS from "metabase/css/core/index.css";
-import {
-  extractRemappings,
-  getVisualizationTransformed,
-} from "metabase/visualizations";
-import Visualization from "metabase/visualizations/components/Visualization";
 import { updateSeriesColor } from "metabase/visualizations/lib/series";
 import {
-  getClickBehaviorSettings,
   getComputedSettings,
   getSettingsWidgets,
-  updateSettings,
 } from "metabase/visualizations/lib/settings";
 import { getSettingDefinitionsForColumn } from "metabase/visualizations/lib/settings/column";
 import { keyForSingleSeries } from "metabase/visualizations/lib/settings/series";
-import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/settings/visualization";
-import type Question from "metabase-lib/v1/Question";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
-import type { DatasetColumn, VisualizationSettings } from "metabase-types/api";
+import type { DatasetColumn } from "metabase-types/api";
 
-import ChartSettingsWidgetList from "../ChartSettingsWidgetList";
-import ChartSettingsWidgetPopover from "../ChartSettingsWidgetPopover";
+import ChartSettingsWidgetList from "../../ChartSettingsWidgetList";
+import ChartSettingsWidgetPopover from "../../ChartSettingsWidgetPopover";
+import type { Widget } from "../types";
 
 import {
   ChartSettingsListContainer,
   ChartSettingsMenu,
-  ChartSettingsPreview,
-  ChartSettingsRoot,
-  ChartSettingsVisualizationContainer,
   SectionContainer,
-  SectionWarnings,
-} from "./ChartSettings.styled";
-import { ChartSettingsFooter } from "./ChartSettingsFooter";
-import type {
-  ChartSettingsProps,
-  ChartSettingsVisualizationProps,
-  DashboardChartSettingsProps,
-  QuestionChartSettingsProps,
-  UseChartSettingsStateProps,
-  UseChartSettingsStateReturned,
-  Widget,
-} from "./types";
+} from "./BaseChartSettings.styled";
+import type { BaseChartSettingsProps } from "./types";
 
 // section names are localized
 const DEFAULT_TAB_PRIORITY = [t`Data`];
 
-const ChartSettingsVisualization = ({
-  dashboard,
-  dashcard,
-  onCancel,
-  onDone,
-  onReset,
-  onUpdateVisualizationSettings,
-  rawSeries,
-}: ChartSettingsVisualizationProps) => {
-  const [warnings, setWarnings] = useState<string[]>();
-
-  return (
-    <ChartSettingsPreview>
-      <SectionWarnings warnings={warnings} size={20} />
-      <ChartSettingsVisualizationContainer>
-        <Visualization
-          className={CS.spread}
-          rawSeries={rawSeries}
-          showTitle
-          isEditing
-          isDashboard
-          dashboard={dashboard}
-          dashcard={dashcard}
-          isSettings
-          showWarnings
-          onUpdateVisualizationSettings={onUpdateVisualizationSettings}
-          onUpdateWarnings={setWarnings}
-        />
-      </ChartSettingsVisualizationContainer>
-      <ChartSettingsFooter
-        onDone={onDone}
-        onCancel={onCancel}
-        onReset={onReset}
-      />
-    </ChartSettingsPreview>
-  );
-};
-
-export const useChartSettingsState = ({
-  settings,
-  series,
-  onChange,
-}: UseChartSettingsStateProps): UseChartSettingsStateReturned => {
-  const chartSettings = useMemo(
-    () => settings || series[0].card.visualization_settings,
-    [series, settings],
-  );
-
-  const handleChangeSettings = useCallback(
-    (changedSettings: VisualizationSettings, question: Question) => {
-      onChange?.(updateSettings(chartSettings, changedSettings), question);
-    },
-    [chartSettings, onChange],
-  );
-
-  const chartSettingsRawSeries = useMemo(
-    () => assocIn(series, [0, "card", "visualization_settings"], chartSettings),
-    [chartSettings, series],
-  );
-
-  const transformedSeries = useMemo(() => {
-    const { series: transformedSeries } = getVisualizationTransformed(
-      extractRemappings(chartSettingsRawSeries),
-    );
-    return transformedSeries;
-  }, [chartSettingsRawSeries]);
-
-  return {
-    chartSettings,
-    handleChangeSettings,
-    chartSettingsRawSeries,
-    transformedSeries,
-  };
-};
-
-export const ChartSettings = ({
+export const BaseChartSettings = ({
   initial,
   series,
   computedSettings = {},
@@ -134,7 +37,7 @@ export const ChartSettings = ({
   widgets,
   chartSettings,
   transformedSeries,
-}: ChartSettingsProps) => {
+}: BaseChartSettingsProps) => {
   const [currentSection, setCurrentSection] = useState<string | null>(
     initial?.section ?? null,
   );
@@ -366,122 +269,5 @@ export const ChartSettings = ({
         handleEndShowWidget={handleEndShowWidget}
       />
     </>
-  );
-};
-
-export const QuestionChartSettings = ({
-  question,
-  widgets: propWidgets,
-  series,
-  onChange,
-  computedSettings,
-  initial,
-}: QuestionChartSettingsProps) => {
-  const { chartSettings, handleChangeSettings, transformedSeries } =
-    useChartSettingsState({ series, onChange });
-
-  const widgets = useMemo(
-    () =>
-      propWidgets ||
-      getSettingsWidgetsForSeries(
-        transformedSeries,
-        handleChangeSettings,
-        false,
-      ),
-    [propWidgets, transformedSeries, handleChangeSettings],
-  );
-
-  return (
-    <ChartSettingsRoot>
-      <ChartSettings
-        question={question}
-        series={series}
-        onChange={onChange}
-        initial={initial}
-        computedSettings={computedSettings}
-        chartSettings={chartSettings}
-        transformedSeries={transformedSeries}
-        widgets={widgets}
-      />
-    </ChartSettingsRoot>
-  );
-};
-
-export const DashboardChartSettings = ({
-  dashboard,
-  dashcard,
-  onChange,
-  series,
-  onClose,
-  widgets: testWidgets,
-  settings: testSettings,
-}: DashboardChartSettingsProps) => {
-  const [tempSettings, setTempSettings] = useState<
-    VisualizationSettings | undefined
-  >(testSettings);
-
-  const {
-    chartSettings,
-    handleChangeSettings,
-    chartSettingsRawSeries,
-    transformedSeries,
-  } = useChartSettingsState({
-    series,
-    settings: tempSettings,
-    onChange: setTempSettings,
-  });
-
-  const handleDone = useCallback(() => {
-    onChange?.(chartSettings ?? tempSettings ?? {});
-    onClose?.();
-  }, [chartSettings, onChange, onClose, tempSettings]);
-
-  const handleResetSettings = useCallback(() => {
-    const originalCardSettings = dashcard?.card.visualization_settings;
-    const clickBehaviorSettings = getClickBehaviorSettings(chartSettings);
-
-    onChange?.({
-      ...originalCardSettings,
-      ...clickBehaviorSettings,
-    });
-  }, [chartSettings, dashcard?.card.visualization_settings, onChange]);
-
-  const onResetToDefault =
-    // resetting virtual cards wipes the text and broke the UI (metabase#14644)
-    !_.isEqual(chartSettings, {}) && (chartSettings || {}).virtual_card == null
-      ? handleResetSettings
-      : null;
-
-  const widgets = useMemo(
-    () =>
-      testWidgets ||
-      getSettingsWidgetsForSeries(
-        transformedSeries,
-        handleChangeSettings,
-        true,
-        { dashboardId: dashboard?.id },
-      ),
-    [testWidgets, transformedSeries, handleChangeSettings, dashboard?.id],
-  );
-
-  return (
-    <ChartSettingsRoot className={CS.spread}>
-      <ChartSettings
-        series={series}
-        onChange={setTempSettings}
-        chartSettings={chartSettings}
-        widgets={widgets}
-        transformedSeries={transformedSeries}
-      />
-      <ChartSettingsVisualization
-        rawSeries={chartSettingsRawSeries}
-        dashboard={dashboard}
-        dashcard={dashcard}
-        onUpdateVisualizationSettings={handleChangeSettings}
-        onDone={handleDone}
-        onCancel={() => onClose?.()}
-        onReset={onResetToDefault}
-      />
-    </ChartSettingsRoot>
   );
 };
