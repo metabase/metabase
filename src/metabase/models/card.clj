@@ -771,12 +771,9 @@
   "Generate mapping of of _ref identifier_ -> #{_ref..._}.
 
   _ref identifier_ is a vector of first 2 elements of ref, eg. [:expression \"xix\"] or [:field 10]"
-  [breakout-clause]
-  (reduce (fn [acc breakout]
-            (update acc (subvec breakout 0 2)
-                    #(conj (set %1) breakout)))
-          {}
-          breakout-clause))
+  [breakouts]
+  (-> (group-by #(subvec % 0 2) breakouts)
+      (update-vals set)))
 
 (defn- action-for-identifier+refs
   "Generate _action_ for combination of args.
