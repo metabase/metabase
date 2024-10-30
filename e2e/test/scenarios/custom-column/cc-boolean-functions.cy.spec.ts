@@ -22,6 +22,7 @@ import {
   tableHeaderClick,
   visitDashboard,
   visualize,
+  DashboardDetails,
 } from "e2e/support/helpers";
 import type { CardId, DashboardParameterMapping } from "metabase-types/api";
 import { createMockDashboardCard } from "metabase-types/api/mocks";
@@ -596,7 +597,8 @@ describe("scenarios > custom column > boolean functions", () => {
       sectionId: "string",
     };
 
-    const dashboardDetails = {
+    const dashboardDetails: DashboardDetails = {
+      name: "D1",
       parameters: [parameterDetails],
     };
 
@@ -611,23 +613,25 @@ describe("scenarios > custom column > boolean functions", () => {
       };
     }
 
-    function createDashboardWithQuestion() {
-      return createDashboard(dashboardDetails).then(({ body: dashboard }) => {
-        return createQuestion(questionDetails).then(({ body: card }) => {
-          return cy
-            .request("PUT", `/api/dashboard/${dashboard.id}`, {
-              dashcards: [
-                createMockDashboardCard({
-                  card_id: card.id,
-                  parameter_mappings: [getParameterMapping(card.id)],
-                  size_x: 8,
-                  size_y: 8,
-                }),
-              ],
-            })
-            .then(() => dashboard);
-        });
-      });
+    function createDashboardWithQuestion(opts?: DashboardDetails) {
+      return createDashboard({ ...dashboardDetails, ...opts }).then(
+        ({ body: dashboard }) => {
+          return createQuestion(questionDetails).then(({ body: card }) => {
+            return cy
+              .request("PUT", `/api/dashboard/${dashboard.id}`, {
+                dashcards: [
+                  createMockDashboardCard({
+                    card_id: card.id,
+                    parameter_mappings: [getParameterMapping(card.id)],
+                    size_x: 8,
+                    size_y: 8,
+                  }),
+                ],
+              })
+              .then(() => dashboard);
+          });
+        },
+      );
     }
 
     it("should be able to setup an 'update filter' click behavior and convert the value based on the connected fields", () => {
@@ -640,7 +644,7 @@ describe("scenarios > custom column > boolean functions", () => {
       showDashboardCardActions();
       getDashboardCard().findByLabelText("Click behavior").click();
       sidebar().within(() => {
-        cy.findByTestId("click-mappings").findByText(expressionName).click();
+        cy.findByText(expressionName).click();
         cy.findByText("Update a dashboard filter").click();
         cy.findByText(parameterDetails.name).click();
       });
@@ -652,6 +656,8 @@ describe("scenarios > custom column > boolean functions", () => {
         cy.findByText("Hudson Borer").should("be.visible");
         cy.findByText("Sydney Rempel").should("not.exist");
         cy.findAllByText("false").first().click();
+      });
+      getDashboardCard().within(() => {
         cy.findByText("Hudson Borer").should("not.exist");
         cy.findByText("Sydney Rempel").should("be.visible");
       });
@@ -688,6 +694,82 @@ describe("scenarios > custom column > boolean functions", () => {
       cy.findByTestId("qb-filters-panel")
         .findByText(`${expressionName} is false`)
         .should("be.visible");
+    });
+
+    it("should be able setup an 'open dashboard' click behavior for the same dashboard", () => {
+      createDashboardWithQuestion().then(dashboard =>
+        visitDashboard(dashboard.id),
+      );
+
+      cy.log("setup click behavior");
+      editDashboard();
+      showDashboardCardActions();
+      getDashboardCard().findByLabelText("Click behavior").click();
+      sidebar().within(() => {
+        cy.findByText(expressionName).click();
+        cy.findByText("Go to a custom destination").click();
+        cy.findByText("Dashboard").click();
+      });
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Dashboards").click();
+        cy.findByText("D1").click();
+      });
+      sidebar()
+        .findByTestId("click-mappings")
+        .findByText(parameterDetails.name)
+        .click();
+      popover().findByText(expressionName).click();
+      saveDashboard();
+
+      cy.log("verify click behavior");
+      getDashboardCard().within(() => {
+        cy.findByText("Hudson Borer").should("be.visible");
+        cy.findByText("Sydney Rempel").should("not.exist");
+        cy.findAllByText("false").first().click();
+      });
+      getDashboardCard().within(() => {
+        cy.findByText("Hudson Borer").should("not.exist");
+        cy.findByText("Sydney Rempel").should("be.visible");
+      });
+    });
+
+    it("should be able setup an 'open dashboard' click behavior for another dashboard", () => {
+      createDashboardWithQuestion({ name: "D2" });
+      createDashboardWithQuestion({ name: "D1" }).then(dashboard =>
+        visitDashboard(dashboard.id),
+      );
+
+      cy.log("setup click behavior");
+      editDashboard();
+      showDashboardCardActions();
+      getDashboardCard().findByLabelText("Click behavior").click();
+      sidebar().within(() => {
+        cy.findByText(expressionName).click();
+        cy.findByText("Go to a custom destination").click();
+        cy.findByText("Dashboard").click();
+      });
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Dashboards").click();
+        cy.findByText("D2").click();
+      });
+      sidebar()
+        .findByTestId("click-mappings")
+        .findByText(parameterDetails.name)
+        .click();
+      popover().findByText(expressionName).click();
+      saveDashboard();
+
+      cy.log("verify click behavior");
+      getDashboardCard().within(() => {
+        cy.findByText("Hudson Borer").should("be.visible");
+        cy.findByText("Sydney Rempel").should("not.exist");
+        cy.findAllByText("false").first().click();
+      });
+      cy.findByTestId("dashboard-name-heading").should("have.value", "D2");
+      getDashboardCard().within(() => {
+        cy.findByText("Hudson Borer").should("not.exist");
+        cy.findByText("Sydney Rempel").should("be.visible");
+      });
     });
   });
 });
