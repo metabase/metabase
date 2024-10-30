@@ -185,12 +185,12 @@ export const Onboarding = () => {
   );
 
   const getUTMLink = (url: string) => {
-    const a = new URL(url);
+    const urlObject = new URL(url);
     Object.entries(utmTags).forEach(([key, value]) => {
-      a.searchParams.set(key, value);
+      urlObject.searchParams.set(key, value);
     });
 
-    return a.toString();
+    return urlObject.toString();
   };
 
   return (
