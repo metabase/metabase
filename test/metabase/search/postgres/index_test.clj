@@ -60,7 +60,13 @@
      (search.ingestion/update-index! (t2/select-one :model/Card :name "Protected Avenue"))
 
      (is (= 1 (count (search.index/search "Projected Revenue"))))
-     (is (= 1 (count (search.index/search "Protected Avenue")))))))
+     (is (= 1 (count (search.index/search "Protected Avenue"))))
+
+     ;; TODO wire up the actual hook, and actually delete it
+     (search.ingestion/delete-model! (t2/select-one :model/Card :name "Protected Avenue"))
+
+     (is (= 1 (count (search.index/search "Projected Revenue"))))
+     (is (= 0 (count (search.index/search "Protected Avenue")))))))
 
 (deftest consistent-subset-test
   (with-index

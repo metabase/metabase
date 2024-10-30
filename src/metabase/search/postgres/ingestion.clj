@@ -127,6 +127,22 @@
          (reduce u/rconcat [])
          (batch-update!))))
 
+;; TODO think about how we're going to handle cascading deletes.
+;; One idea is to queue a general purge command.
+(defn delete-model!
+  "Given a deleted instance, delete all the corresponding search entries."
+  [instance]
+  (let [model (t2/model instance)
+        id    (:id instance)
+        ;; TODO this could use some precalculation into a look-up map
+        search-models (->> (methods search.spec/spec)
+                           (map (fn [[search-model spec-fn]] (spec-fn search-model)))
+                           (filter #(= model (:model %)))
+                           (map :name)
+                           seq)]
+    (when search-models
+      (search.index/delete! id search-models))))
+
 (defn- index-model-entries [search-model where-clause]
   (-> (#'metabase.search.postgres.ingestion/spec-index-query search-model)
       (sql.helpers/where where-clause)))
