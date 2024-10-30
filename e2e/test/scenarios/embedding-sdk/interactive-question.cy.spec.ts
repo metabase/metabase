@@ -98,9 +98,9 @@ describeSDK("scenarios > embedding-sdk > interactive-question", () => {
 
     tableHeaderClick("Max of Quantity");
 
-    popover()
-      .findByTestId("click-actions-sort-control-formatting-hide")
-      .click();
+    popover().within(() => {
+      cy.findByTestId("click-actions-sort-control-formatting-hide").click();
+    });
 
     tableInteractive().findByText("Max of Quantity").should("not.exist");
   });
