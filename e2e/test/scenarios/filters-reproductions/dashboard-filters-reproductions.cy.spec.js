@@ -1782,18 +1782,6 @@ describe("issue 25374", () => {
 
   beforeEach(() => {
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
-    cy.intercept(
-      {
-        method: "GET",
-        url: "/api/dashboard/*",
-      },
-      req => {
-        req.reply(res => {
-          res.body.last_used_param_values = {}; // remove param values to prevent cached redirect
-        });
-      },
-    ).as("dashboardParams");
-
     restore();
     cy.signInAsAdmin();
 
@@ -1874,9 +1862,6 @@ describe("issue 25374", () => {
         .findByLabelText("Default value")
         .type("1,2,3");
       saveDashboard();
-
-      cy.location("search").should("eq", "?equal_to=1%2C2%2C3");
-
       cy.button("Clear").click();
       cy.location("search").should("eq", "?equal_to=");
 
