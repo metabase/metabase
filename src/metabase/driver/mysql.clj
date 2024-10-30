@@ -965,6 +965,6 @@
                :join [[:information_schema.table_constraints :b] [:using :constraint_schema :constraint_name :table_name]]
                :where [:and [:= :b.constraint_type [:inline "FOREIGN KEY"]]
                        [:!= :a.referenced_table_schema nil]
-                       (when table-names [:in :a.table_name table-names])]
+                       (when (seq table-names) [:in :a.table_name table-names])]
                :order-by [:a.table_name]}
               :dialect (sql.qp/quote-style driver)))
