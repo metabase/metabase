@@ -5,9 +5,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.test :as met]
    [metabase.api.alert :as api.alert]
-   [metabase.email.messages :as messages]
-   [metabase.models
-    :refer [Card Pulse PulseCard PulseChannel PulseChannelRecipient]]
+   [metabase.models :refer [Card Pulse PulseCard PulseChannel PulseChannelRecipient]]
    [metabase.models.pulse :as models.pulse]
    [metabase.notification.payload.execute :as notification.payload.execute]
    [metabase.notification.send :as notification.send]
