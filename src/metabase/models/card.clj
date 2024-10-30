@@ -780,13 +780,16 @@
           breakout-clause))
 
 (defn- action-for-identifier+refs
-  "TBD"
+  "TBD!!!!!!!!!!!!!!"
   [after--identifier->refs identifier before--refs]
-  (let [after--refs (get after--identifier->refs identifier)]
+  (let [after--refs (get after--identifier->refs identifier #{})]
     (cond
-      ;; Ignore delete for now. It's prone to nuke what could be usable.
-      #_#_(delete? before--indexed-refs after--indexed-refs)
-        [:delete]
+      (or (and (< 1 (count before--refs) (count after--refs))
+               (not= before--refs after--refs))
+          (and (= 1 (count before--refs))
+               (not= 1 (count after--refs))
+               (not (contains? after--refs (first before--refs)))))
+      [:delete]
 
       (and (= 1 (count before--refs) (count after--refs))
            (not= before--refs after--refs))
