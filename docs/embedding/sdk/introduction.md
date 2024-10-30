@@ -18,16 +18,30 @@ To give you and idea of what's possible with the SDK, we've put together example
 
 ![Pug and play example app built with embedding SDK](../images/pug-and-play.png)
 
-# Embedded analytics SDK prerequisites
+## Embedded analytics SDK prerequisites
 
 - React application. The SDK is tested to work with React 18 or higher, though it may work with earlier versions.
 - [Metabase Pro or Enterprise subscription or free trial](https://www.metabase.com/pricing/).
-- Metabase version 1.50 or higher.
+- Metabase version 1.51 or higher.
 - [Node.js 18.x LTS](https://nodejs.org/en) or higher.
 
 ## Embedded analytics SDK on NPM
 
 Check out the Metabase Embedded analytics SDK on NPM: [metaba.se/sdk](https://metaba.se/sdk).
+
+## Quickstart with CLI
+
+If you have Node and Docker installed, you can change into your React application and run:
+
+```sh
+npx @metabase/embedding-sdk-react@latest start
+```
+
+Only works locally, and you don't need a license key (but you can use one to demo more features).
+
+See more about the [CLI quickstart](./quickstart-cli.md).
+
+We also have a [quickstart with a sample app that uses JWT](./quickstart.md).
 
 ## Installation
 
@@ -53,7 +67,8 @@ yarn add @metabase/embedding-sdk-react@51-stable
 
 ## Developing with the embedded analytics SDK
 
-- [Quickstart](./quickstart.md)
+- [Quickstart with sample app and JWT](./quickstart.md)
+- [Quickstart with CLI and your data](./quickstart-cli.md)
 - [Questions](./questions.md)
 - [Dashboards](./dashboards.md)
 - [Collections](./collections.md)
@@ -68,19 +83,20 @@ yarn add @metabase/embedding-sdk-react@51-stable
 
 You can find the [embedding SDK source code in the Metabase repo](https://github.com/metabase/metabase/tree/master/enterprise/frontend/src/embedding-sdk).
 
-# Changelog
+## Changelog
 
 [View changelog](https://github.com/metabase/metabase/blob/master/enterprise/frontend/src/embedding-sdk/CHANGELOG.md)
 
 ## SDK limitations
 
-- Unsupported features:
-  - Verified content
-  - Official collections
-  - Subscriptions
-  - Alerts
-- The Metabase Embedding SDK doesn't support server-side rendering (SSR).
-- You can't embed multiple interactive dashboards on the same application page. If you need to embed multiple dashboards on the same application page, you can embed static dashboards.
+The SDK doesn't support:
+
+- Verified content
+- Official collections
+- Subscriptions
+- Alerts
+- Server-side rendering (SSR).
+- Multiple _interactive_ dashboards on the same application page. If you need to embed multiple dashboards on the same application page, you can embed static dashboards.
 
 ## Feedback
 
