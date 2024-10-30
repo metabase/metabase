@@ -767,43 +767,41 @@
     :query_type ;; these first three may not even be changeable
     :dataset_query})
 
-(defn- breakout-->identifier->indexed-refs
-  "Generate mapping of _ref identifier_ -> [_breakout index_ _ref_] from breakout clause, ie. vector of refs.
+(defn- breakout-->identifier->refs
+  "~~Generate mapping of _ref identifier_ -> [_breakout index_ _ref_] from breakout clause, ie. vector of refs.~~
+  Generate mapping of of _ref identifier_ -> [_refs_].
 
   _ref identifier_ is a vector of first 2 elements of ref."
   [breakout-clause]
-  (transduce
-   (map-indexed (fn [index breakout] @(def ee [(subvec breakout 0 2) [index breakout]])))
-   (completing (fn [acc [k v]] (update acc k #(conj (vec %1) v))) not-empty)
-   {}
-   breakout-clause))
+  (reduce (fn [acc breakout]
+            (update acc (subvec breakout 0 2)
+                    #(conj (set %1) breakout)))
+          {}
+          breakout-clause))
 
-(defn- action-for-identifier+indexed-refs
+(defn- action-for-identifier+refs
   "TBD"
-  [after--identifier->indexed-refs identifier before--indexed-refs]
-  (let [after--indexed-refs (get after--identifier->indexed-refs identifier)]
+  [after--identifier->refs identifier before--refs]
+  (let [after--refs (get after--identifier->refs identifier)]
     (cond
       ;; Ignore delete for now. It's prone to nuke what could be usable.
       #_#_(delete? before--indexed-refs after--indexed-refs)
         [:delete]
 
-      ;; here I'm missing deletion -- before 1 after 0
-      (and (= 1 (count before--indexed-refs))
-           (not= before--indexed-refs after--indexed-refs)
-           (= 1 (count after--indexed-refs)))
-      (let [[[_index ref]] after--indexed-refs]
-        [:update ref])
+      (and (= 1 (count before--refs) (count after--refs))
+           (not= before--refs after--refs))
+      [:update (first after--refs)]
 
       :else
       [:noop])))
 
 (defn- breakouts-->identifier->action
   [breakout-before-update breakout-after-update]
-  (let [before--identifier->indexed-refs @(def qq (breakout-->identifier->indexed-refs breakout-before-update))
-        after--identifier->indexed-refs  @(def ww (breakout-->identifier->indexed-refs breakout-after-update))
-        action (partial action-for-identifier+indexed-refs after--identifier->indexed-refs)
-        action-kvrf (fn [acc identifier indexed-refs] (assoc acc identifier (action identifier indexed-refs)))]
-    (reduce-kv action-kvrf {} before--identifier->indexed-refs)))
+  (let [before--identifier->refs (breakout-->identifier->refs breakout-before-update)
+        after--identifier->refs  (breakout-->identifier->refs breakout-after-update)
+        action (partial action-for-identifier+refs after--identifier->refs)
+        action-kvrf (fn [acc identifier before--refs] (assoc acc identifier (action identifier before--refs)))]
+    (reduce-kv action-kvrf {} before--identifier->refs)))
 
 (defn- update-mapping
   [identifier->action mapping]
@@ -818,31 +816,25 @@
 
 (defn- update-for-dashcard
   [identifier->action dashcard]
-  (def iii identifier->action)
-  (def ddd dashcard)
-  @(def rrr (let [updated (select-keys (update dashcard :parameter_mappings
-                                               (comp vec (partial keep (partial update-mapping identifier->action))))
-                                       [:parameter_mappings])]
-              (def uuu updated)
-              (when (not= (:parameter_mappings dashcard) (:parameter_mappings updated))
-                [(:id dashcard) updated]))))
+  (let [card-update (select-keys (update dashcard :parameter_mappings
+                                         (comp vec (partial keep (partial update-mapping identifier->action))))
+                                 [:parameter_mappings])]
+    (when (not= (:parameter_mappings dashcard) (:parameter_mappings card-update))
+      [(:id dashcard) card-update])))
 
 (defn- updates-for-dashcards
   [identifier->action dashcards]
   (keep (partial update-for-dashcard identifier->action) dashcards))
 
-;; lbrdnk TODO: Verify case breakout becoming nil!
 (defn- update-associated-parameters!
-  "Update of dependent `:model/DashboardCard`.
-
-  Currently works with dashboard TBD..."
+  "TBD"
   [card-before card-after]
   (let [card->breakout     #(-> % :dataset_query mbql.normalize/normalize :query :breakout)
         breakout-before    (card->breakout card-before)
         breakout-after     (card->breakout card-after)
         identifier->action (breakouts-->identifier->action breakout-before breakout-after)
         dashcards          (t2/select :model/DashboardCard :card_id (some :id [card-after card-before]))
-        updates            @(def xix (updates-for-dashcards identifier->action dashcards))]
+        updates            (updates-for-dashcards identifier->action dashcards)]
     (doseq [[id update] updates]
       (t2/update! :model/DashboardCard :id id update))))
 
