@@ -3,8 +3,6 @@ import type { ComponentProps } from "react";
 
 import { CommonSdkStoryWrapper } from "embedding-sdk/test/CommonSdkStoryWrapper";
 
-import { THIRD_COLLECTION_ID } from "../../../../../../../e2e/support/cypress_sample_instance_data";
-
 import { InteractiveQuestion } from "./InteractiveQuestion";
 
 const QUESTION_ID = (window as any).QUESTION_ID || 12;
@@ -35,19 +33,6 @@ export const Default = {
       isEnabled: true,
       collectionId: null,
       withCollectionPicker: true,
-    },
-  },
-};
-
-export const SaveToCollection = {
-  render: Template,
-
-  args: {
-    questionId: QUESTION_ID,
-    saveOptions: {
-      isEnabled: true,
-      collectionId: THIRD_COLLECTION_ID,
-      withCollectionPicker: false,
     },
   },
 };

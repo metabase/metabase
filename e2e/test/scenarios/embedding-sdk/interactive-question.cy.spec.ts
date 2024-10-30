@@ -49,7 +49,7 @@ describeSDK("scenarios > embedding-sdk > interactive-question", () => {
     cy.intercept("GET", "/api/user/current").as("getUser");
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
 
-    visitInteractiveQuestionStory("embeddingsdk-interactivequestion--default");
+    visitInteractiveQuestionStory();
 
     cy.wait("@getUser").then(({ response }) => {
       expect(response?.statusCode).to.equal(200);
@@ -128,6 +128,11 @@ describeSDK("scenarios > embedding-sdk > interactive-question", () => {
   });
 
   it("can save a question to a pre-defined collection", () => {
+    visitInteractiveQuestionStory({
+      saveToCollectionId: Number(THIRD_COLLECTION_ID),
+      withCollectionPicker: false,
+    });
+
     saveInteractiveQuestionAsNewQuestion("Sample Orders 3");
 
     cy.wait("@createCard").then(({ response }) => {

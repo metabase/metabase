@@ -7,14 +7,31 @@ import {
 import { EMBEDDING_SDK_STORY_HOST } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import { JWT_SHARED_SECRET } from "e2e/support/helpers/e2e-jwt-helpers";
 
-export function visitInteractiveQuestionStory(storyId: string) {
+/** Get storybook args in the format of as "key:value;key:value" */
+export function getStorybookArgs(props: Record<string, string>): string {
+  const params = new URLSearchParams(props);
+
+  return params.toString().replaceAll("=", ":").replaceAll("&", ";");
+}
+
+export function visitInteractiveQuestionStory(
+  options: { saveToCollectionId?: number; withCollectionPicker?: boolean } = {},
+) {
+  const params: Record<string, string> = {
+    ...(options.saveToCollectionId && {
+      "saveOptions.collectionId": options.saveToCollectionId.toString(),
+    }),
+    "saveOptions.withCollectionPicker":
+      options.withCollectionPicker?.toString() ?? "true",
+  };
+
   cy.get("@questionId").then(questionId => {
     visitFullAppEmbeddingUrl({
       url: EMBEDDING_SDK_STORY_HOST,
       qs: {
-        id: storyId,
+        id: "embeddingsdk-interactivequestion--default",
         viewMode: "story",
-        args: { "saveOptions.collectionId": 1114 },
+        args: getStorybookArgs(params),
       },
       onBeforeLoad: (window: any) => {
         window.JWT_SHARED_SECRET = JWT_SHARED_SECRET;
