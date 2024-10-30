@@ -50,9 +50,7 @@
                         pivot-grouping (m/remove-nth pivot-grouping))]
             (vreset! col-names names))
           (vreset! ordered-formatters
-                   (if format-rows?
-                     (mapv #(formatter/create-formatter results_timezone % viz-settings) ordered-cols)
-                     (vec (repeat (count ordered-cols) identity))))
+                   (mapv #(formatter/create-formatter results_timezone % viz-settings format-rows?) ordered-cols))
           (.write writer "[\n")))
 
       (write-row! [_ row row-num _ {:keys [output-order]}]

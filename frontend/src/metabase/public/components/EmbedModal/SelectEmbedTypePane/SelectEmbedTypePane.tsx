@@ -116,7 +116,6 @@ export function SelectEmbedTypePane({
           to={interactiveEmbeddingCta.url}
           target={interactiveEmbeddingCta.target}
           rel="noreferrer"
-          style={{ height: "100%" }}
         >
           <SharingPaneButton
             title={t`Interactive embedding`}
@@ -133,12 +132,7 @@ export function SelectEmbedTypePane({
         </Link>
 
         {/* REACT SDK */}
-        <a
-          href={sdkUrl}
-          style={{ height: "100%" }}
-          target="_blank"
-          rel="noreferrer"
-        >
+        <a href={sdkUrl} target="_blank" rel="noreferrer">
           <SharingPaneButton
             title={t`Embedded analytics SDK`}
             badge={

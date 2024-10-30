@@ -30,7 +30,7 @@ const ListItem = ({
         <div className={S.itemIcons}>
           {icon && <Icon className={S.chartIcon} name={icon} size={16} />}
         </div>
-        <div className={S.itemBody}>
+        <div className={cx(S.itemBody, CS.flexColumn)}>
           <div className={S.itemTitle}>
             <Ellipsified tooltip={name}>{name}</Ellipsified>
           </div>
