@@ -792,6 +792,16 @@ See [fonts](../configuring-metabase/fonts.md).")
   :getter  (fn [] (some-> (setting/get-value-of-type :string :source-address-header)
                           u/lower-case-en)))
 
+(defsetting not-behind-proxy
+  (deferred-tru
+   (str "Indicates whether Metabase is running behind a proxy that sets the source-address-header for incoming "
+        "requests. Defaults to false, but can be set to true via environment variable."))
+  :type       :boolean
+  :setter     :none
+  :visibility :internal
+  :default    false
+  :export?    false)
+
 (defn remove-public-uuid-if-public-sharing-is-disabled
   "If public sharing is *disabled* and `object` has a `:public_uuid`, remove it so people don't try to use it (since it
   won't work). Intended for use as part of a `post-select` implementation for Cards and Dashboards."
