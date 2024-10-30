@@ -200,11 +200,8 @@ function getTemporalColumns(query: Lib.Query, stageIndex: number) {
   }));
 }
 
-function getFilterableColumns(
-  query: Lib.Query,
-  stages = Lib.stageIndexes(query),
-) {
-  return stages.flatMap(stageIndex => {
+function getFilterableColumns(query: Lib.Query) {
+  return Lib.stageIndexes(query).flatMap(stageIndex => {
     const columns = Lib.filterableColumns(query, stageIndex);
     const groups = Lib.groupColumns(columns);
 
