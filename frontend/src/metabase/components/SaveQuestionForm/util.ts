@@ -34,8 +34,12 @@ export const createQuestion = async (options: CreateQuestionOptions) => {
     return;
   }
 
+  // If the collection picker is disabled (e.g. in the sdk),
+  // we use the initial collection as the target collection to save to.
   const collectionId = canonicalCollectionId(
-    details.collection_id ?? options.initialCollectionId,
+    options.isCollectionPickerEnabled
+      ? details.collection_id
+      : options.initialCollectionId,
   );
 
   const displayName = details.name.trim();
@@ -50,12 +54,30 @@ export const createQuestion = async (options: CreateQuestionOptions) => {
 };
 
 export async function submitQuestion(options: SubmitQuestionOptions) {
-  const { originalQuestion, details, question, onSave, onCreate } = options;
+  const {
+    originalQuestion,
+    details,
+    question,
+    onSave,
+    onCreate,
+    initialCollectionId,
+    isCollectionPickerEnabled,
+  } = options;
 
   if (details.saveType === "overwrite" && originalQuestion) {
-    await updateQuestion({ originalQuestion, newQuestion: question, onSave });
+    await updateQuestion({
+      originalQuestion,
+      newQuestion: question,
+      onSave,
+    });
   } else {
-    await createQuestion({ details, question, onCreate });
+    await createQuestion({
+      question,
+      details,
+      onCreate,
+      initialCollectionId,
+      isCollectionPickerEnabled,
+    });
   }
 }
 

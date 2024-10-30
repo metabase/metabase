@@ -33,6 +33,7 @@ export type CreateQuestionOptions = {
   question: Question;
   onCreate: (question: Question) => Promise<void>;
   initialCollectionId?: CollectionId | null;
+  isCollectionPickerEnabled?: boolean;
 };
 
 export type SubmitQuestionOptions = CreateQuestionOptions & {

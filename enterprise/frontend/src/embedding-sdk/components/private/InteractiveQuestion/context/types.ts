@@ -29,8 +29,8 @@ export type SdkInteractiveQuestionSaveOptions = {
   /**
    * The collection to save the question to.
    *
-   * If `withCollectionPicker` is true, this is the initial collection id..
-   * Otherwise, this becomes the target collection to save to.
+   * If `withCollectionPicker` is `true`, we pre-fill this in the collection picker.
+   * Otherwise, this is the target collection to save to.
    **/
   collectionId?: CollectionId | null;
 };

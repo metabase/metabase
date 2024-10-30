@@ -82,9 +82,17 @@ export const SaveQuestionProvider = ({
         question,
         onSave,
         onCreate,
-        initialCollectionId: initialCollectionId,
+        initialCollectionId,
+        isCollectionPickerEnabled: withCollectionPicker,
       }),
-    [originalQuestion, question, onSave, onCreate, initialCollectionId],
+    [
+      originalQuestion,
+      question,
+      onSave,
+      onCreate,
+      initialCollectionId,
+      withCollectionPicker,
+    ],
   );
 
   // we care only about the very first result as question can be changed before
