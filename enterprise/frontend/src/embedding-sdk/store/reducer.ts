@@ -12,7 +12,7 @@ import type {
 import type { SdkUsageProblem } from "embedding-sdk/types/usage-problem";
 import { createAsyncThunk } from "metabase/lib/redux";
 
-import { refreshTokenAsync } from "./auth";
+import { initAuth, refreshTokenAsync } from "./auth";
 import { getSessionTokenState } from "./selectors";
 
 const SET_LOGIN_STATUS = "sdk/SET_LOGIN_STATUS";
@@ -97,6 +97,19 @@ export const sdk = createReducer(initialState, builder => {
   });
 
   builder.addCase(refreshTokenAsync.rejected, (state, action) => {
+    const error = action.error as Error;
+    state.loginStatus = { status: "error", error };
+  });
+
+  builder.addCase(initAuth.pending, state => {
+    state.loginStatus = { status: "loading" };
+  });
+
+  builder.addCase(initAuth.fulfilled, state => {
+    state.loginStatus = { status: "success" };
+  });
+
+  builder.addCase(initAuth.rejected, (state, action) => {
     const error = action.error as Error;
     state.loginStatus = { status: "error", error };
   });

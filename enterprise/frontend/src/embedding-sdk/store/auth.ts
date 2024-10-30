@@ -3,61 +3,52 @@ import type {
   FetchRequestTokenFn,
   SDKConfig,
 } from "embedding-sdk";
-import { setupSdkAuth } from "embedding-sdk/hooks";
-import { COULD_NOT_AUTHENTICATE_MESSAGE } from "embedding-sdk/lib/user-warnings";
-import type { SdkDispatch, SdkStoreState } from "embedding-sdk/store/types";
+import type { SdkStoreState } from "embedding-sdk/store/types";
+import api from "metabase/lib/api";
 import { createAsyncThunk } from "metabase/lib/redux";
 import { refreshSiteSettings } from "metabase/redux/settings";
 import { refreshCurrentUser } from "metabase/redux/user";
 
-import { getOrRefreshSession, setLoginStatus } from "./reducer";
+import { getOrRefreshSession } from "./reducer";
 import { getFetchRefreshTokenFn } from "./selectors";
 
 export const initAuth = createAsyncThunk(
   "sdk/token/INIT_AUTH",
   async (sdkConfig: SDKConfig, { dispatch }) => {
-    setupSdkAuth(sdkConfig, dispatch as SdkDispatch);
+    // Setup JWT or API key
+    const isValidJwtConfig =
+      sdkConfig.jwtProviderUri && sdkConfig.jwtProviderUri?.length > 0;
+    const isValidApiKeyConfig =
+      sdkConfig.apiKey && window.location.hostname === "localhost";
 
-    dispatch(setLoginStatus({ status: "loading" }));
-
-    try {
-      // if using JWT, let's first check if the session is valid before doing other requests
-      // mostly to have better errors and debugging information
-      if (sdkConfig.jwtProviderUri) {
-        const sessionResponse = await dispatch(
-          getOrRefreshSession(sdkConfig.jwtProviderUri),
-        );
-        if (sessionResponse.meta.requestStatus === "rejected") {
-          // errors on `getOrRefreshSession` are handled directly in the reducer
-          return;
+    if (isValidJwtConfig) {
+      // JWT setup
+      api.onBeforeRequest = async () => {
+        const session = await dispatch(
+          getOrRefreshSession(sdkConfig.jwtProviderUri!),
+        ).unwrap();
+        if (session?.id) {
+          api.sessionToken = session.id;
         }
-      }
+      };
+      // verify that the jwt is actually valid before proceeding
+      await dispatch(getOrRefreshSession(sdkConfig.jwtProviderUri!)).unwrap();
+    } else if (isValidApiKeyConfig) {
+      // API key setup
+      api.apiKey = sdkConfig.apiKey;
+    }
+    // Fetch user and site settings
+    const [user, siteSettings] = await Promise.all([
+      dispatch(refreshCurrentUser()),
+      dispatch(refreshSiteSettings({})),
+    ]);
 
-      const [userResponse, siteSettingsResponse] = await Promise.all([
-        dispatch(refreshCurrentUser()),
-        dispatch(refreshSiteSettings({})),
-      ]);
-
-      if (
-        userResponse.meta.requestStatus === "rejected" ||
-        siteSettingsResponse.meta.requestStatus === "rejected"
-      ) {
-        dispatch(
-          setLoginStatus({
-            status: "error",
-            error: new Error(COULD_NOT_AUTHENTICATE_MESSAGE),
-          }),
-        );
-        return;
-      }
-
-      dispatch(setLoginStatus({ status: "success" }));
-    } catch (error) {
-      dispatch(
-        setLoginStatus({
-          status: "error",
-          error: new Error(COULD_NOT_AUTHENTICATE_MESSAGE),
-        }),
+    if (!user.payload) {
+      throw new Error("Failed to fetch the user, is the session valid?");
+    }
+    if (!siteSettings.payload) {
+      throw new Error(
+        "Failed to fetch the site settings, is the session valid?",
       );
     }
   },
@@ -117,7 +108,7 @@ export const refreshTokenAsync = createAsyncThunk(
       // The host app may have a lot of logs (and the sdk logs a lot too), so we
       // make a big red error message to make it visible as this is 90% a blocking error
       console.error(
-        "%cFailed to refresh auth session\n",
+        "%cFailed to get auth session\n",
         "color: #FF2222; font-size: 16px; font-weight: bold;",
         ex,
       );
@@ -146,7 +137,9 @@ export const defaultGetRefreshTokenFn: FetchRequestTokenFn = async url => {
   });
 
   if (!response.ok) {
-    throw new Error(`HTTP error! status: ${response.status}`);
+    throw new Error(
+      `Failed to fetch the session, HTTP status: ${response.status}`,
+    );
   }
 
   const asText = await response.text();

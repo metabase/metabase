@@ -191,7 +191,7 @@ describe("useInitData hook", () => {
 
       expect(screen.getByTestId("test-component")).toHaveAttribute(
         "data-error-message",
-        "Could not authenticate: invalid JWT URI or JWT provider did not return a valid JWT token",
+        "Failed to fetch the user, is the session valid?",
       );
     });
 
