@@ -1,6 +1,8 @@
 import type { ColumnDescriptor } from "metabase/visualizations/lib/graph/columns";
 import type { RowValue } from "metabase-types/api";
 
+export type ColumnKey = string;
+
 export interface SankeyChartColumns {
   source: ColumnDescriptor;
   target: ColumnDescriptor;
@@ -12,6 +14,7 @@ export interface SankeyNode {
   level: number;
   hasInputs: boolean;
   hasOutputs: boolean;
+  columnValues: Record<ColumnKey, RowValue>;
 }
 
 export interface SankeyData {
@@ -23,6 +26,7 @@ export interface SankeyLink {
   source: RowValue;
   target: RowValue;
   value: RowValue;
+  columnValues: Record<ColumnKey, RowValue>;
 }
 
 export interface SankeyDataModel {

@@ -1,6 +1,8 @@
 import { sumMetric } from "metabase/visualizations/lib/dataset";
 import { getColumnDescriptors } from "metabase/visualizations/lib/graph/columns";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
+import { isMetric } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetColumn, RawSeries, RowValue } from "metabase-types/api";
 
 import { NULL_CHAR } from "../../../cartesian/constants/dataset";
@@ -45,30 +47,49 @@ export const getSankeyData = (
 ): SankeyData => {
   const [
     {
-      data: { rows },
+      data: { rows, cols },
     },
   ] = rawSeries;
 
-  const valueToNodeInfo = new Map<RowValue, SankeyNode>();
+  // getColumnKey and isMetric are slow so we compute needed metadata here instead of when iterating through rows
+  const columnInfos = cols.map(column => ({
+    key: getColumnKey(column),
+    isMetric: isMetric(column),
+  }));
 
-  function updateNodeInfo(
+  const valueToNode = new Map<RowValue, SankeyNode>();
+
+  function updateNode(
     value: RowValue,
     level: number,
     type: "source" | "target",
+    row: RowValue[],
   ): SankeyNode {
-    const nodeInfo = valueToNodeInfo.get(value) ?? {
+    const node = valueToNode.get(value) ?? {
       value,
       level,
       hasInputs: false,
       hasOutputs: false,
+      columnValues: {},
     };
 
-    nodeInfo.level = Math.max(nodeInfo.level, level);
-    nodeInfo.hasInputs = nodeInfo.hasInputs || type === "target";
-    nodeInfo.hasOutputs = nodeInfo.hasOutputs || type === "source";
+    node.level = Math.max(node.level, level);
+    node.hasInputs = node.hasInputs || type === "target";
+    node.hasOutputs = node.hasOutputs || type === "source";
 
-    valueToNodeInfo.set(value, nodeInfo);
-    return nodeInfo;
+    if (type === "target") {
+      cols.forEach((_column, index) => {
+        const columnKey = columnInfos[index].key;
+        const columnValue = row[index];
+
+        node.columnValues[columnKey] = columnInfos[index].isMetric
+          ? sumMetric(node.columnValues[columnKey], columnValue)
+          : columnValue;
+      });
+    }
+
+    valueToNode.set(value, node);
+    return node;
   }
 
   const linkMap = new Map<string, SankeyLink>();
@@ -78,25 +99,32 @@ export const getSankeyData = (
     const target = row[sankeyColumns.target.index];
     const value = row[sankeyColumns.value.index];
 
-    const sourceInfo = updateNodeInfo(source, 0, "source");
-    updateNodeInfo(target, sourceInfo.level + 1, "target");
+    const sourceInfo = updateNode(source, 0, "source", row);
+    updateNode(target, sourceInfo.level + 1, "target", row);
 
     const linkKey = `${NULL_CHAR}${source}->${target}`;
 
-    const existingLink = linkMap.get(linkKey);
-    if (existingLink == null) {
-      linkMap.set(linkKey, {
-        source,
-        target,
-        value,
-      });
-    } else {
-      existingLink.value = sumMetric(existingLink.value, value);
-    }
+    const link: SankeyLink = linkMap.get(linkKey) ?? {
+      source,
+      target,
+      value,
+      columnValues: {},
+    };
+
+    cols.forEach((_column, index) => {
+      const columnKey = columnInfos[index].key;
+      const columnValue = row[index];
+
+      link.columnValues[columnKey] = columnInfos[index].isMetric
+        ? sumMetric(link.columnValues[columnKey], columnValue)
+        : columnValue;
+    });
+
+    linkMap.set(linkKey, link);
   });
 
   return {
-    nodes: Array.from(valueToNodeInfo.values()),
+    nodes: Array.from(valueToNode.values()),
     links: Array.from(linkMap.values()),
   };
 };
