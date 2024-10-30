@@ -638,15 +638,24 @@
  (fn [obj, ^JsonGenerator json-generator]
    (.writeString json-generator (str (:v obj)))))
 
+(defrecord ^:private SampleNastyClass2 [^Number v])
+
+(json.generate/add-encoder
+ SampleNastyClass2
+ (fn [obj, ^JsonGenerator json-generator]
+   (.writeNumber json-generator (long (:v obj)))))
+
 (defrecord ^:private AnotherNastyClass [^String v])
 
 (deftest encode-strange-classes-test
   (testing (str "Make sure that we're piggybacking off of the JSON encoding logic when encoding strange values in "
                 "XLSX (#5145, #5220, #5459)")
-    (is (= ["Hello XLSX World!" "{:v \"No Encoder\"}"]
-           (second (xlsx-export [{:name "val1"} {:name "val2"}]
+    (is (= ["Hello XLSX World!" "23" "{\"v\":\"No Encoder\"}"]
+           (second (xlsx-export [{:name "val1"} {:name "val2"} {:name "val3"}]
                                 {}
-                                [[(SampleNastyClass. "Hello XLSX World!") (AnotherNastyClass. "No Encoder")]]))))))
+                                [[(SampleNastyClass. "Hello XLSX World!")
+                                  (SampleNastyClass2. 23)
+                                  (AnotherNastyClass. "No Encoder")]]))))))
 
 (defn- parse-column-widths
   [^org.apache.poi.ss.usermodel.Sheet sheet]
