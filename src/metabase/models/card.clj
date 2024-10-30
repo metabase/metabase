@@ -873,7 +873,13 @@
                                                :enable_embedding :type :parameters :parameter_mappings :embedding_params
                                                :result_metadata :collection_preview :verified-result-metadata?}))
     ;; ok, now update dependent parameters
-    (update-associated-parameters! card-before-update card-updates))
+    (try
+      (update-associated-parameters! card-before-update card-updates)
+      (catch Throwable e
+        (log/error "Update of dependent card parameters failed!")
+        (log/debug e
+                   "`card-before-update`:" (pr-str card-before-update)
+                   "`card-updates`:" (pr-str card-updates)))))
   ;; Fetch the updated Card from the DB
   (let [card (t2/select-one Card :id (:id card-before-update))]
     (delete-alerts-if-needed! :old-card card-before-update, :new-card card, :actor actor)
