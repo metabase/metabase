@@ -303,6 +303,19 @@ class ExpressionEditorTextfield extends React.Component<
       // Without this hack, popups get blocked since they are not
       // considered by the browser to be in response to a user action.
       this.textarea()?.addEventListener("keypress", this.handleKeypress);
+      this.textarea()?.addEventListener(
+        "keydown",
+        event => {
+          if (event.key === "Tab" && this.state.suggestions.length === 0) {
+            event.stopPropagation();
+
+            this.suggestionTarget.current?.dispatchEvent(
+              new KeyboardEvent("keydown", event),
+            );
+          }
+        },
+        { capture: true },
+      );
 
       editor.getSession().setMode(mode);
 
