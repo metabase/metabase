@@ -2873,19 +2873,6 @@ const getCountToDashboardFilterMapping = () => {
   return cy.get("aside").contains(`${COUNT_COLUMN_NAME} updates 1 filter`);
 };
 
-function getClickMapping(columnName) {
-  return cy
-    .get("aside")
-    .findByTestId("unset-click-mappings")
-    .findAllByText(columnName);
-}
-
-function customizeLinkText(text) {
-  cy.get("aside")
-    .findByRole("textbox")
-    .type(text, { parseSpecialCharSequences: false });
-}
-
 const createDashboardWithTabsLocal = ({
   dashboard: dashboardDetails,
   tabs,
@@ -2908,12 +2895,25 @@ const createDashboardWithTabsLocal = ({
   });
 };
 
+function getClickMapping(columnName) {
+  return cy
+    .get("aside")
+    .findByTestId("unset-click-mappings")
+    .findAllByText(columnName);
+}
+
 function verifyVizTypeIsLine() {
   cy.findByTestId("viz-type-button").click();
   cy.findByTestId("sidebar-content")
     .findByTestId("Line-container")
     .should("have.attr", "aria-selected", "true");
   cy.findByTestId("viz-type-button").click();
+}
+
+function customizeLinkText(text) {
+  cy.get("aside")
+    .findByRole("textbox")
+    .type(text, { parseSpecialCharSequences: false });
 }
 
 function verifyAvailableClickTargetColumns(columns) {
