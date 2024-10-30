@@ -50,7 +50,7 @@ export const MoveModal = ({
   onMove,
   initialCollectionId,
   movingCollectionId,
-  canMoveToDashboard = false,
+  canMoveToDashboard = true,
 }: MoveModalProps) => {
   // if we are moving a collection, we can't move it into itself or any of its children
   const shouldDisableItem = movingCollectionId
@@ -140,10 +140,10 @@ export const BulkMoveModal = ({
       ? t`Move ${selectedItems.length} items?`
       : t`Move "${selectedItems[0].name}"?`;
 
-  const canMoveToDashboard =
-    selectedItems.length === 1 &&
-    selectedItems[0].model === "card" &&
-    selectedItems[0].dashboard_count === 0;
+  const canMoveToDashboard = true;
+  // selectedItems.length === 1 &&
+  // selectedItems[0].model === "card" &&
+  // selectedItems[0].dashboard_count === 0;
 
   const models: CollectionPickerModel[] = canMoveToDashboard
     ? ["collection", "dashboard"]
