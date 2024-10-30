@@ -143,7 +143,7 @@ export function FormCollectionAndDashboardPicker({
       allowCreateNew: showCreateNewCollectionOption,
       hasRecents: type !== "snippet-collections",
       confirmButtonText: item =>
-        item?.model === "dashboard"
+        item === "dashboard"
           ? t`Select this dashboard`
           : t`Select this collection`,
     }),
