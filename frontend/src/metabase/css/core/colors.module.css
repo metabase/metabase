@@ -169,6 +169,58 @@
   --mb-base-color-orion-20: #dcdfe0; /* accent-gray-dark */
   --mb-base-color-orion-10: #f3f3f4; /* accent-gray */
   --mb-base-color-orion-5: #fafafb; /* accent-gray-light */
+
+  /* Orion Alpha */
+  --mb-color-orion-alpha-90: color-mix(
+    in srgb,
+    var(--mb-base-color-orion-100) 93%,
+    transparent
+  );
+  --mb-color-orion-alpha-80: color-mix(
+    in srgb,
+    var(--mb-base-color-orion-100) 84%,
+    transparent
+  );
+  --mb-color-orion-alpha-70: color-mix(
+    in srgb,
+    var(--mb-base-color-orion-100) 74%,
+    transparent
+  );
+  --mb-color-orion-alpha-60: color-mix(
+    in srgb,
+    var(--mb-base-color-orion-100) 62%,
+    transparent
+  );
+  --mb-color-orion-alpha-50: color-mix(
+    in srgb,
+    var(--mb-base-color-orion-100) 51%,
+    transparent
+  );
+  --mb-color-orion-alpha-40: color-mix(
+    in srgb,
+    var(--mb-base-color-orion-100) 44%,
+    transparent
+  );
+  --mb-color-orion-alpha-30: color-mix(
+    in srgb,
+    var(--mb-base-color-orion-100) 29%,
+    transparent
+  );
+  --mb-color-orion-alpha-20: color-mix(
+    in srgb,
+    var(--mb-base-color-orion-100) 14%,
+    transparent
+  );
+  --mb-color-orion-alpha-10: color-mix(
+    in srgb,
+    var(--mb-base-color-orion-100) 5%,
+    transparent
+  );
+  --mb-color-orion-alpha-5: color-mix(
+    in srgb,
+    var(--mb-base-color-orion-100) 2%,
+    transparent
+  );
 }
 
 .textDefault {
