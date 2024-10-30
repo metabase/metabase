@@ -815,23 +815,13 @@
         :update (assoc-in mapping [:target 1] arg)
         :noop   mapping))))
 
-(defn- update-for-dashcard
-  "Return nil for no-op updates or [<dashcard-id> <update>]. <update> is a map of `:parameter_mappings` only as only
-  this is updated."
-  [identifier->action dashcard]
-  (let [card-update (select-keys (update dashcard :parameter_mappings
-                                         (comp vec (partial keep (partial update-mapping identifier->action))))
-                                 [:parameter_mappings])]
-    (when (not= (:parameter_mappings dashcard) (:parameter_mappings card-update))
-      [(:id dashcard) card-update])))
-
 (defn- updates-for-dashcards
   [identifier->action dashcards]
   (not-empty (for [{:keys [id parameter_mappings]} dashcards
                    :let [updated (into [] (keep #(update-mapping identifier->action %))
-                                          parameter_mappings]
+                                       parameter_mappings)]
                    :when (not= parameter_mappings updated)]
-             [id {:parameter_mappings updated}]))
+             [id {:parameter_mappings updated}])))
 
 (defn- update-associated-parameters!
   "Update _parameter mappings_ of _dashcards_ that target modified _card_, to reflect the modification.
@@ -857,7 +847,7 @@
         (when (seq updates)
           (t2/with-transaction [_conn]
             (doseq [[id update] updates]
-              (t2/update! :model/DashboardCard :id id update)))))))
+              (t2/update! :model/DashboardCard :id id update))))))))
 
 (defn update-card!
   "Update a Card. Metadata is fetched asynchronously. If it is ready before [[metadata-sync-wait-ms]] elapses it will be
