@@ -40,10 +40,10 @@
 
 (deftest idempotent-test
   (with-index
-   (let [count-rows  (fn [] (t2/count @#'search.index/active-table))
-         rows-before (count-rows)]
-     (search.ingestion/populate-index!)
-     (is (= rows-before (count-rows))))))
+    (let [count-rows  (fn [] (t2/count @#'search.index/active-table))
+          rows-before (count-rows)]
+      (search.ingestion/populate-index!)
+      (is (= rows-before (count-rows))))))
 
 (deftest consistent-subset-test
   (with-index
