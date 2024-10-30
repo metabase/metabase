@@ -90,7 +90,8 @@
     {:id                     (:id pulse)
      :payload_type           :notification/dashboard-subscription
      :creator_id             (:creator_id pulse)
-     :dashboard_subscription {:dashboard_id                     (:id dashboard)
+     :dashboard_subscription {:id                               (:id pulse)
+                              :dashboard_id                     (:id dashboard)
                               :parameters                       (:parameters pulse)
                               :skip_if_empty                    (:skip_if_empty pulse)
                               :dashboard_subscription_dashcards (map
