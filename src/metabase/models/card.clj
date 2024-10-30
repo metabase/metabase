@@ -854,8 +854,9 @@
             updates            (updates-for-dashcards identifier->action dashcards)]
         ;; Beware. This can have negative impact on card update performance as queries are fired in sequence. I'm not
         ;; aware of more reasonable way.
-        (doseq [[id update] updates]
-          (t2/update! :model/DashboardCard :id id update))))))
+        (t2/with-transaction [_conn]
+          (doseq [[id update] updates]
+            (t2/update! :model/DashboardCard :id id update)))))))
 
 (defn update-card!
   "Update a Card. Metadata is fetched asynchronously. If it is ready before [[metadata-sync-wait-ms]] elapses it will be
