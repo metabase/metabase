@@ -3,19 +3,31 @@ import {
   type StructuredQuestionDetails,
   assertQueryBuilderRowCount,
   assertTableData,
+  createDashboard,
   createQuestion,
+  editDashboard,
   enterCustomColumnDetails,
+  entityPickerModal,
+  entityPickerModalTab,
+  getDashboardCard,
   getNotebookStep,
   modal,
   openNotebook,
   popover,
   queryBuilderHeader,
   restore,
+  saveDashboard,
+  showDashboardCardActions,
+  sidebar,
   tableHeaderClick,
+  visitDashboard,
   visualize,
 } from "e2e/support/helpers";
+import type { CardId, DashboardParameterMapping } from "metabase-types/api";
+import { createMockDashboardCard } from "metabase-types/api/mocks";
 
-const { ORDERS_ID, ORDERS, PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
+const { ORDERS_ID, ORDERS, PEOPLE_ID, PEOPLE, PRODUCTS_ID, PRODUCTS } =
+  SAMPLE_DATABASE;
 
 describe("scenarios > custom column > boolean functions", () => {
   const expressionName = "Boolean column";
@@ -554,6 +566,128 @@ describe("scenarios > custom column > boolean functions", () => {
           firstRows: [["true"], ["false"]],
         });
       });
+    });
+  });
+
+  describe("dashboards", () => {
+    const questionDetails: StructuredQuestionDetails = {
+      name: "Q1",
+      query: {
+        "source-table": PEOPLE_ID,
+        fields: [
+          ["field", PEOPLE.NAME, { "base-type": "type/Text" }],
+          ["expression", expressionName, { "base-type": "type/Boolean" }],
+        ],
+        expressions: {
+          [expressionName]: [
+            "starts-with",
+            ["field", PEOPLE.NAME, null],
+            "Sydney",
+          ],
+        },
+      },
+    };
+
+    const parameterDetails = {
+      name: "City",
+      slug: "city",
+      id: "27454068",
+      type: "string/contains",
+      sectionId: "string",
+    };
+
+    const dashboardDetails = {
+      parameters: [parameterDetails],
+    };
+
+    function getParameterMapping(cardId: CardId): DashboardParameterMapping {
+      return {
+        card_id: cardId,
+        parameter_id: parameterDetails.id,
+        target: [
+          "dimension",
+          ["field", PEOPLE.CITY, { "base-type": "type/Text" }],
+        ],
+      };
+    }
+
+    function createDashboardWithQuestion() {
+      return createDashboard(dashboardDetails).then(({ body: dashboard }) => {
+        return createQuestion(questionDetails).then(({ body: card }) => {
+          return cy
+            .request("PUT", `/api/dashboard/${dashboard.id}`, {
+              dashcards: [
+                createMockDashboardCard({
+                  card_id: card.id,
+                  parameter_mappings: [getParameterMapping(card.id)],
+                  size_x: 8,
+                  size_y: 8,
+                }),
+              ],
+            })
+            .then(() => dashboard);
+        });
+      });
+    }
+
+    it("should be able to setup an 'update filter' click behavior and convert the value based on the connected fields", () => {
+      createDashboardWithQuestion().then(dashboard =>
+        visitDashboard(dashboard.id),
+      );
+
+      cy.log("setup click behavior");
+      editDashboard();
+      showDashboardCardActions();
+      getDashboardCard().findByLabelText("Click behavior").click();
+      sidebar().within(() => {
+        cy.findByTestId("click-mappings").findByText(expressionName).click();
+        cy.findByText("Update a dashboard filter").click();
+        cy.findByText(parameterDetails.name).click();
+      });
+      popover().findByText(expressionName).click();
+      saveDashboard();
+
+      cy.log("verify click behavior");
+      getDashboardCard().within(() => {
+        cy.findByText("Hudson Borer").should("be.visible");
+        cy.findByText("Sydney Rempel").should("not.exist");
+        cy.findAllByText("false").first().click();
+        cy.findByText("Hudson Borer").should("not.exist");
+        cy.findByText("Sydney Rempel").should("be.visible");
+      });
+    });
+
+    it("should be able setup an 'open question' click behavior", () => {
+      createDashboardWithQuestion().then(dashboard =>
+        visitDashboard(dashboard.id),
+      );
+
+      cy.log("setup click behavior");
+      editDashboard();
+      showDashboardCardActions();
+      getDashboardCard().findByLabelText("Click behavior").click();
+      sidebar().within(() => {
+        cy.findByText(expressionName).click();
+        cy.findByText("Go to a custom destination").click();
+        cy.findByText("Saved question").click();
+      });
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Questions").click();
+        cy.findByText("Q1").click();
+      });
+      sidebar()
+        .findByTestId("click-mappings")
+        .findByText(expressionName)
+        .click();
+      popover().findByText(expressionName).click();
+      saveDashboard();
+
+      cy.log("verify click behavior");
+      getDashboardCard().findAllByText("false").first().click();
+      cy.wait("@dataset");
+      cy.findByTestId("qb-filters-panel")
+        .findByText(`${expressionName} is false`)
+        .should("be.visible");
     });
   });
 });
