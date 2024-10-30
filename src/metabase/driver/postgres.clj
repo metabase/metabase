@@ -289,11 +289,10 @@
                         [:c.table_name :table-name]
                         [[:not= :pk.column_name nil] :pk?]
 
-                        [{:select [[[:pg_catalog.col_description
-                                     :oid
-                                     :c.ordinal_position]]]
-                          :from [[:pg_catalog.pg_class :pc]]
-                          :where [:= :c.table_name :pc.relname]} :field-comment]
+                        [[:col_description
+                          [:cast [:cast [:format [:inline "%I.%I"] [:cast :c.table_schema :text] [:cast :c.table_name :text]] :regclass] :oid]
+                          :c.ordinal_position]
+                         :field-comment]
                         [[:and
                           [:or [:= :column_default nil] [:= [:lower :column_default] [:inline "null"]]]
                           [:= :is_nullable [:inline "NO"]]

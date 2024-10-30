@@ -186,12 +186,13 @@
   [tables db-id]
   (consolidate-tables
    tables
-   (t2/select :model/QueryTable
-              {:select [[:t.id :table-id] [:t.name :table] [:t.schema :schema]]
-               :from   [[(t2/table-name :model/Table) :t]]
-               :where  [:and
-                        [:= :t.db_id db-id]
-                        (into [:or] (map table-query tables))]})))
+   (when (seq tables)
+     (t2/select :model/QueryTable
+                {:select [[:t.id :table-id] [:t.name :table] [:t.schema :schema]]
+                 :from   [[(t2/table-name :model/Table) :t]]
+                 :where  [:and
+                          [:= :t.db_id db-id]
+                          (into [:or] (map table-query tables))]}))))
 
 (defn- fill-missing-table-ids-hack
   "See if we can qualify the schema and table-id for any explicit field refs which couldn't resolve their field"
@@ -285,17 +286,24 @@
     {:tables (strip-model-refs table-refs)
      :fields (strip-model-refs field-refs)}))
 
+(defn- wrap-if-legacy [result]
+  (cond
+    (map? result)     result
+    (keyword? result) {:error result}
+    (coll? result)    {:tables result}
+    :else             result))
+
 (defn- tables-via-macaw
   "Returns a set of table identifiers that (may) be referenced in the given card's query.
   Errs on the side of optimism: i.e., it may return tables that are *not* in the query, and is unlikely to fail
   to return tables that are in the query."
-  [driver query & {:keys [mode] :or {mode :ast-walker-1}}]
-  (let [db-id        (:database query)
-        macaw-opts   (nqa.impl/macaw-options driver)
-        table-opts   (assoc macaw-opts :mode mode)
-        sql-string   (:query (nqa.sub/replace-tags query))
-        parsed-query (macaw/query->tables sql-string table-opts)]
-    (table-refs-for-query parsed-query db-id)))
+  [driver query & {:keys [mode] :or {mode :basic-select}}]
+  (let [db-id      (:database query)
+        macaw-opts (nqa.impl/macaw-options driver)
+        table-opts (assoc macaw-opts :mode mode)
+        sql-string (:query (nqa.sub/replace-tags query))
+        result     (wrap-if-legacy (macaw/query->tables sql-string table-opts))]
+    (u/update-if-exists result :tables table-refs-for-query db-id)))
 
 ;; Keeping this multimethod private for now, need some hammock time on what to expose to drivers.
 (defmulti ^:private tables-for-native*
@@ -315,7 +323,7 @@
   [driver query opts]
   (if (nqa.impl/trusted-for-table-permissions? driver)
     (tables-via-macaw driver query opts)
-    :query-analysis.error/driver-not-supported))
+    {:error :query-analysis.error/driver-not-supported}))
 
 (defn references-for-native
   "Returns a `{:explicit #{...} :implicit #{...}}` map with field IDs that (may) be referenced in the given card's

@@ -175,6 +175,38 @@
   :visibility :settings-manager
   :export?    true)
 
+(def ^:private default-allowed-iframe-hosts
+  "youtube.com,
+youtu.be,
+loom.com,
+vimeo.com,
+docs.google.com,
+calendar.google.com,
+airtable.com,
+typeform.com,
+canva.com,
+codepen.io,
+figma.com,
+grafana.com,
+miro.com,
+excalidraw.com,
+notion.com,
+atlassian.com,
+trello.com,
+asana.com,
+gist.github.com,
+linkedin.com,
+twitter.com,
+x.com")
+
+(defsetting allowed-iframe-hosts
+  (deferred-tru "Allowed iframe hosts")
+  :encryption :no
+  :default    default-allowed-iframe-hosts
+  :audit      :getter
+  :visibility :public
+  :export?    true)
+
 (defsetting custom-homepage
   (deferred-tru "Pick one of your dashboards to serve as homepage. Users without dashboard access will be directed to the default homepage.")
   :encryption :no
