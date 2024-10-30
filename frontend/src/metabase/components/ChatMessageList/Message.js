@@ -13,6 +13,7 @@ const Message = ({
   onDenyClick,
   onSuggestion,
   showCubeEditButton,
+  showIcon
 }) => {
   const isUser = message.sender === "user";
   let hasError = false;
@@ -20,22 +21,43 @@ const Message = ({
     hasError = true;
   }
 
-  // Function to handle rendering text from message
   const renderMessageContent = (message) => {
     if (Array.isArray(message.text)) {
       return message.text
         .filter((item) => typeof item === "object" && item.text && item.text.trim().length > 0)
         .map((item, index) => (
-          <ReactMarkdown key={index}>{item.text}</ReactMarkdown>
+          <ReactMarkdown
+            key={index}
+            components={{
+              p: ({ node, ...props }) => <span {...props} style={{ margin: 0, padding: 0, lineHeight: '1.2', display: 'block' }} />,
+            }}
+          >
+            {item.text}
+          </ReactMarkdown>
         ));
     } else if (typeof message.text === "object" && message.text.text && message.text.text.trim().length > 0) {
-      return <ReactMarkdown>{message.text.text}</ReactMarkdown>;
+      return (
+        <ReactMarkdown
+          components={{
+            p: ({ node, ...props }) => <span {...props} style={{ margin: 0, padding: 0, lineHeight: '1.2', display: 'block' }} />,
+          }}
+        >
+          {message.text.text}
+        </ReactMarkdown>
+      );
     } else if (typeof message.text === "string" && message.text.trim().length > 0) {
-      return <ReactMarkdown>{message.text}</ReactMarkdown>;
+      return (
+        <ReactMarkdown
+          components={{
+            p: ({ node, ...props }) => <span {...props} style={{ margin: 0, padding: 0, lineHeight: '1.2', display: 'block' }} />,
+          }}
+        >
+          {message.text}
+        </ReactMarkdown>
+      );
     }
     return null;
   };
-  
 
   return (
     <div
@@ -46,18 +68,31 @@ const Message = ({
         marginBottom: "16px",
       }}
     >
-      <Icon
-        size={24}
-        style={{
-          marginTop: "4px",
-          marginBottom: "auto",
-          padding: "6px",
-          backgroundColor: isUser ? "#0458DD" : hasError ? "#FFCDD2" : "#E9DFFF",
-          borderRadius: "50%",
-          color: isUser ? "#FFF" : hasError ? "#D32F2F" : "#5B26D3",
-        }}
-        name={isUser ? "person" : hasError ? "warning" : "chat"}
-      />
+      {showIcon ? (
+        <Icon
+          size={24}
+          style={{
+            marginTop: "4px",
+            marginBottom: "auto",
+            padding: "6px",
+            backgroundColor: isUser ? "#0458DD" : hasError ? "#FFCDD2" : "#E9DFFF",
+            borderRadius: "50%",
+            color: isUser ? "#FFF" : hasError ? "#D32F2F" : "#5B26D3",
+          }}
+          name={isUser ? "person" : hasError ? "warning" : "chat"}
+        />
+      ) : (
+        <div
+          style={{
+            width: "36px",
+            height: "36px",
+            marginTop: "4px",
+            marginBottom: "auto",
+  
+          }}
+        />
+      )}
+
       <div
         style={{
           padding: "0px 16px",
@@ -67,12 +102,12 @@ const Message = ({
           position: "relative",
           display: "flex",
           flexDirection: "column",
-          alignItems: "flex-start",
+          alignItems: "flex-start"
         }}
       >
         {/* Render the message content */}
         <span style={{ fontSize: "16px", whiteSpace: "pre-wrap", paddingRight: "2rem" }}>
-        {renderMessageContent(message)}
+          {renderMessageContent(message)}
         </span>
         {isLoading && (
           <div
@@ -124,7 +159,7 @@ const Message = ({
                 Provide feedback
               </span>
             </Button>
-              {message.showSuggestionButton !== false && (
+            {message.showSuggestionButton !== false && (
               <Button
                 variant="outlined"
                 style={{
@@ -153,7 +188,7 @@ const Message = ({
                   Ask Suggestion
                 </span>
               </Button>
-              )}
+            )}
             {showCubeEditButton && (
               <Button
                 variant="outlined"

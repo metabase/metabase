@@ -77,6 +77,8 @@ const ChatMessageList = ({
   }
   const formattedInsightsCode = insightsCode.join('\n\n');
 
+  let lastSender = null; 
+
   return (
     <div
       style={{
@@ -89,6 +91,10 @@ const ChatMessageList = ({
       {messages.map((message, index) => {
         const isLastServerMessage =
           index === messages.length - 1 && message.sender === "server" && message.isLoading;
+
+          const showIcon = message.sender !== lastSender;
+        lastSender = message.sender; 
+
 
         // Extract the message visualization index
         const visualizationIdx = message.visualizationIdx;
@@ -109,6 +115,7 @@ const ChatMessageList = ({
                 showCubeEditButton={showCubeEditButton}
                 sendAdminRequest={sendAdminRequest}
                 onSuggestion={onSuggestion}
+                showIcon={showIcon}
               />
             )}
 
