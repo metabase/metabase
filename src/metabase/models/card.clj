@@ -866,6 +866,8 @@
     (when-some [identifier->action (breakouts-->identifier->action breakout-before breakout-after)]
       (let [dashcards          (t2/select :model/DashboardCard :card_id (some :id [card-after card-before]))
             updates            (updates-for-dashcards identifier->action dashcards)]
+        ;; Beware. This can have negative impact on card update performance as queries are fired in sequence. I'm not
+        ;; aware of more reasonable way.
         (doseq [[id update] updates]
           (t2/update! :model/DashboardCard :id id update))))))
 
