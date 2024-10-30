@@ -1,6 +1,7 @@
 (ns metabase.query-processor.streaming.xlsx
   (:require
    [cheshire.core :as json]
+   [cheshire.generate :as json.generate]
    [clojure.java.io :as io]
    [clojure.string :as str]
    [dk.ative.docjure.spreadsheet :as spreadsheet]
@@ -362,15 +363,22 @@
 
 ;; add a generic implementation for the method that writes values to XLSX cells that just piggybacks off the
 ;; implementations we've already defined for encoding things as JSON. These implementations live in
-;; `metabase.server.middleware`.
+;; `metabase.server.middleware.json`.
 (defmethod set-cell! Object
   [^Cell cell value _styles _typed-styles]
-  ;; stick the object in a JSON map and encode it, which will force conversion to a string. Then unparse that JSON and
-  ;; use the resulting value as the cell's new String value.  There might be some more efficient way of doing this but
-  ;; I'm not sure what it is.
-  (.setCellValue cell (str (-> (json/generate-string {:v value})
-                               (json/parse-string keyword)
-                               :v))))
+  ;; Ok, this seems a bit strange, but the reason for generating the string and sometimes parsing it again:
+  ;; An Object can come in without an encoder (custom encoders can be added with `json.generate/add-encoder`)
+  ;; In such cases, we want to just turn that object into a json-encoded string, and be done with it.
+  ;; But in cases where the Object DOES have an encoder, we want the encoder's output directly, not wrapped in
+  ;; another set of quotes, so we read the encoded result back to 'unwrap' it once.
+  ;; And, if we don't encode the value first, we end up with a string of the object's classname, which isn't
+  ;; the expected output.
+  ;; Finally, we wrap the encoded-obj in `str` in case the custom object's encoding is not a string;
+  ;; For simplicity, we'll assume objects are exported as some kind of string, and the value can be parsed
+  ;; by the user later somehow
+  (let [encoded-obj (cond-> (json/encode value)
+                      (contains? (:impls json.generate/JSONable) (type value)) json/parse-string)]
+    (.setCellValue cell (str encoded-obj))))
 
 (defmethod set-cell! nil [^Cell cell _value _styles _typed-styles]
   (.setBlank cell))

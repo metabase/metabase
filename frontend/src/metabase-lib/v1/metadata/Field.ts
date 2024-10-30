@@ -288,6 +288,20 @@ class FieldInner extends Base {
   }
 
   /**
+   * Predicate to decide whether `this` is comparable with `field`.
+   *
+   * Currently only the MongoBSONID erroneous case is ruled out to fix the issue #49149. To the best of my knowledge
+   * there's no logic on FE to reliably decide whether two columns are comparable. Trying to come up with that in ad-hoc
+   * manner could disable some cases that users may depend on.
+   */
+  isComparableWith(field) {
+    return this.effective_type === "type/MongoBSONID" ||
+      field.effective_type === "type/MongoBSONID"
+      ? this.effective_type === field.effective_type
+      : true;
+  }
+
+  /**
    * @param {Field} field
    */
   isCompatibleWith(field) {
