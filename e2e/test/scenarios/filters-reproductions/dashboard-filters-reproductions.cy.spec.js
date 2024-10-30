@@ -1782,6 +1782,17 @@ describe("issue 25374", () => {
 
   beforeEach(() => {
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+    cy.intercept(
+      {
+        method: "GET",
+        url: "/api/dashboard/*",
+      },
+      req => {
+        req.reply(res => {
+          res.body.last_used_param_values = {}; // remove param values to prevent cached redirect
+        });
+      },
+    ).as("dashboardParams");
     cy.intercept("POST", "/api/dashboard/*/dashcard/*/card//*/query").as(
       "dashcardQuery",
     );
