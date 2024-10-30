@@ -63,9 +63,9 @@ export const useChartSettingsSections = ({
 
   const visibleWidgets = sections[chartSettingCurrentSection] || [];
 
-  const currentSectionHasColumnSettings = (
-    sections[chartSettingCurrentSection] || []
-  ).some((widget: Widget) => widget.id === "column_settings");
+  const currentSectionHasColumnSettings = visibleWidgets.some(
+    (widget: Widget) => widget.id === "column_settings",
+  );
 
   const showSectionPicker =
     // don't show section tabs for a single section
