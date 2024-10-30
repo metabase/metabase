@@ -1,3 +1,5 @@
+import dayjs from "dayjs";
+
 import type { EnterpriseSettings } from "metabase-enterprise/settings/types";
 import type {
   Engine,
@@ -192,6 +194,7 @@ export const createMockSettings = (
   "example-dashboard-id": 1,
   "has-user-setup": true,
   "hide-embed-branding?": true,
+  "instance-creation": dayjs().toISOString(),
   "show-static-embed-terms": true,
   "google-auth-auto-create-accounts-domain": null,
   "google-auth-client-id": null,

@@ -1,10 +1,11 @@
+import dayjs from "dayjs";
 import type { MouseEvent } from "react";
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-import { useUserSetting } from "metabase/common/hooks";
+import { useSetting, useUserSetting } from "metabase/common/hooks";
 import { useIsAtHomepageDashboard } from "metabase/common/hooks/use-is-at-homepage-dashboard";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import { Tree } from "metabase/components/tree";
@@ -13,8 +14,11 @@ import {
   getCollectionIcon,
 } from "metabase/entities/collections";
 import { isSmallScreen } from "metabase/lib/dom";
+import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { WhatsNewNotification } from "metabase/nav/components/WhatsNewNotification";
+import { getIsEmbedded } from "metabase/selectors/embed";
+import { getIsWhiteLabeling } from "metabase/selectors/whitelabel";
 import type { IconName, IconProps } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { Bookmark, Collection, User } from "metabase-types/api";
@@ -32,6 +36,7 @@ import {
 } from "../MainNavbar.styled";
 import { SidebarCollectionLink, SidebarLink } from "../SidebarItems";
 import { SidebarOnboardingSection } from "../SidebarItems/SidebarOnboardingSection";
+import { trackOnboardingChecklistOpened } from "../SidebarItems/SidebarOnboardingSection/analytics";
 import type { SelectedItem } from "../types";
 
 import BookmarkList from "./BookmarkList";
@@ -111,6 +116,26 @@ export function MainNavbarView({
     [collections],
   );
 
+  const ONBOARDING_URL = "/getting-started";
+
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const instanceCreated = useSetting("instance-creation");
+
+  useEffect(() => {
+    const daysSinceCreation = dayjs().diff(dayjs(instanceCreated), "days");
+    const isNewInstance = daysSinceCreation <= 30;
+
+    if (isNewInstance) {
+      setShowOnboarding(true);
+    }
+  }, [instanceCreated]);
+
+  const isEmbedded = useSelector(getIsEmbedded);
+  const isWhiteLabelled = useSelector(getIsWhiteLabeling);
+
+  const showOnboardingChecklist =
+    isAdmin && showOnboarding && !isEmbedded && !isWhiteLabelled;
+
   return (
     <ErrorBoundary>
       <SidebarContentRoot>
@@ -124,6 +149,17 @@ export function MainNavbarView({
             >
               {t`Home`}
             </PaddedSidebarLink>
+            {showOnboardingChecklist && (
+              <PaddedSidebarLink
+                icon="learn"
+                url={ONBOARDING_URL}
+                isSelected={nonEntityItem?.url === ONBOARDING_URL}
+                onClick={() => trackOnboardingChecklistOpened()}
+              >
+                {/* eslint-disable-next-line no-literal-metabase-strings -- We only show this to non-whitelabelled instances */}
+                {t`How to use Metabase`}
+              </PaddedSidebarLink>
+            )}
           </SidebarSection>
 
           {bookmarks.length > 0 && (

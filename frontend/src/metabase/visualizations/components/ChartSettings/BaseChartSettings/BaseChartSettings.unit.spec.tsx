@@ -1,20 +1,16 @@
-import userEvent from "@testing-library/user-event";
-
 import { fireEvent, renderWithProviders, screen } from "__support__/ui";
 import registerVisualizations from "metabase/visualizations/register";
-import {
-  createMockCard,
-  createMockDashboardCard,
-  createMockDataset,
-  createMockVisualizationSettings,
-} from "metabase-types/api/mocks";
+import { createMockCard, createMockDataset } from "metabase-types/api/mocks";
 
-import { ChartSettings } from "./ChartSettings";
-import type { ChartSettingsProps, Widget } from "./types";
+import type { Widget } from "../types";
+
+import { BaseChartSettings } from "./BaseChartSettings";
+import type { BaseChartSettingsProps } from "./types";
 
 registerVisualizations();
 
 const DEFAULT_PROPS = {
+  widgets: [],
   series: [
     {
       card: createMockCard({ visualization_settings: {} }),
@@ -35,10 +31,12 @@ function widget(widget: Partial<Widget> = {}): Widget {
   };
 }
 
-type SetupOpts = Partial<ChartSettingsProps>;
+type SetupOpts = Partial<BaseChartSettingsProps>;
 
 const setup = (props: SetupOpts) => {
-  return renderWithProviders(<ChartSettings {...DEFAULT_PROPS} {...props} />);
+  return renderWithProviders(
+    <BaseChartSettings {...DEFAULT_PROPS} {...props} />,
+  );
 };
 
 describe("ChartSettings", () => {
@@ -133,43 +131,5 @@ describe("ChartSettings", () => {
     });
 
     expect(screen.queryByText("Foo")).not.toBeInTheDocument();
-  });
-
-  it("reset settings should revert to the original card settings with click behavior", async () => {
-    const onChange = jest.fn();
-
-    const originalVizSettings = createMockVisualizationSettings({
-      "graph.goal_value": 100,
-      "graph.show_goal": true,
-      "graph.goal_label": "foo",
-    });
-
-    const modifiedSettings = createMockVisualizationSettings({
-      "graph.show_goal": false,
-      "graph.goal_label": "bar",
-      click_behavior: {
-        type: "link",
-        linkType: "url",
-      },
-    });
-
-    setup({
-      dashcard: createMockDashboardCard({
-        card: createMockCard({ visualization_settings: originalVizSettings }),
-      }),
-      settings: modifiedSettings,
-      widgets: [],
-      onChange,
-    });
-
-    await userEvent.click(screen.getByText("Reset to defaults"));
-
-    expect(onChange).toHaveBeenCalledWith({
-      ...originalVizSettings,
-      click_behavior: {
-        type: "link",
-        linkType: "url",
-      },
-    });
   });
 });

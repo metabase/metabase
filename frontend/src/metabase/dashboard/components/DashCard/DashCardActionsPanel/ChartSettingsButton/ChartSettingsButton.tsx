@@ -2,9 +2,8 @@ import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
 import { DEFAULT_Z_INDEX } from "metabase/components/Popover/constants";
-import CS from "metabase/css/core/index.css";
 import { Modal } from "metabase/ui";
-import { ChartSettingsWithState } from "metabase/visualizations/components/ChartSettings";
+import { DashboardChartSettings } from "metabase/visualizations/components/ChartSettings";
 import type {
   Dashboard,
   DashboardCard,
@@ -50,11 +49,9 @@ export function ChartSettingsButton({
         <Modal.Overlay />
         <Modal.Content mih="85%">
           <Modal.Body>
-            <ChartSettingsWithState
-              className={CS.spread}
+            <DashboardChartSettings
               series={series}
               onChange={onReplaceAllVisualizationSettings}
-              isDashboard
               dashboard={dashboard}
               dashcard={dashcard}
               onClose={close}
