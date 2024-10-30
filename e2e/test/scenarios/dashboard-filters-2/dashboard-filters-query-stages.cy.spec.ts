@@ -1730,6 +1730,8 @@ describe("scenarios > dashboard > filters > query stages", () => {
       describe("applies filter to the the dashcard and allows to drill via dashcard header", () => {
         it("1st stage explicit join", () => {
           setup1stStageExplicitJoinFilter();
+          apply1stStageExplicitJoinFilter();
+          cy.wait(["@dashboardData", "@dashboardData"]);
 
           verifyDashcardCellValues({
             dashcardIndex: 0,
