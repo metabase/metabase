@@ -1863,6 +1863,8 @@ describe("issue 25374", () => {
         .type("1,2,3");
       saveDashboard();
 
+      cy.waitAlias(/getDashboard/);
+
       cy.location("search").should("eq", "?equal_to=1%2C2%2C3");
 
       cy.button("Clear").click();
