@@ -4,6 +4,7 @@
    [cheshire.core :as json]
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase.api.downloads-exports-test :as downloads-test]
    [metabase.db.metadata-queries :as metadata-queries]
    [metabase.driver :as driver]
    [metabase.driver.mongo :as mongo]
@@ -855,3 +856,26 @@
         (is (= {:version "4.0.28-23"
                 :semantic-version [4 0]}
                (driver/dbms-version :mongo (mt/db))))))))
+
+(deftest object-columns-export-as-json
+  (mt/test-driver :mongo
+    (mt/with-db (missing-fields-db)
+      (sync/sync-database! (missing-fields-db))
+      (testing "Objects are formatted correctly as JSON in downloads"
+        (mt/with-temp [:model/Card card {:display       :table
+                                         :dataset_query {:database (mt/id)
+                                                         :type     :query
+                                                         :query    {:source-table (mt/id :coll)}}}]
+          (let [results (downloads-test/card-download card {:export-format :csv :format-rows true})]
+            (is (= [["ID" "A" "B" "C"]
+                    ["1"
+                     "a string"
+                     "{\"b_c\":\"a string\",\"b_d\":42,\"b_e\":{\"b_e_f\":\"a string\"}}"
+                     ""]
+                    ["2"
+                     "a string"
+                     "{\"b_d\":null,\"b_e\":null,\"b_c\":null}"
+                     ""]
+                    ["3" "a string" "{\"b_e\":{}}" ""]
+                    ["4" "a string" "null" ""]]
+                   results))))))))
