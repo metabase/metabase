@@ -768,10 +768,9 @@
     :dataset_query})
 
 (defn- breakout-->identifier->refs
-  "~~Generate mapping of _ref identifier_ -> [_breakout index_ _ref_] from breakout clause, ie. vector of refs.~~
-  Generate mapping of of _ref identifier_ -> [_refs_].
+  "Generate mapping of of _ref identifier_ -> #{_ref..._}.
 
-  _ref identifier_ is a vector of first 2 elements of ref."
+  _ref identifier_ is a vector of first 2 elements of ref, eg. [:expression \"xix\"] or [:field 10]"
   [breakout-clause]
   (reduce (fn [acc breakout]
             (update acc (subvec breakout 0 2)
