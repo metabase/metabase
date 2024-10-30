@@ -2895,11 +2895,10 @@ const createDashboardWithTabsLocal = ({
   });
 };
 
-function getClickMapping(columnName) {
-  return cy
-    .get("aside")
-    .findByTestId("unset-click-mappings")
-    .findAllByText(columnName);
+function customizeLinkText(text) {
+  cy.get("aside")
+    .findByRole("textbox")
+    .type(text, { parseSpecialCharSequences: false });
 }
 
 function verifyVizTypeIsLine() {
@@ -2910,10 +2909,11 @@ function verifyVizTypeIsLine() {
   cy.findByTestId("viz-type-button").click();
 }
 
-function customizeLinkText(text) {
-  cy.get("aside")
-    .findByRole("textbox")
-    .type(text, { parseSpecialCharSequences: false });
+function getClickMapping(columnName) {
+  return cy
+    .get("aside")
+    .findByTestId("unset-click-mappings")
+    .findAllByText(columnName);
 }
 
 function verifyAvailableClickTargetColumns(columns) {
