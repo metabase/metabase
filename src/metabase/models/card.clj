@@ -809,7 +809,9 @@
 
 (defn- update-mapping
   [identifier->action mapping]
-  (when (= :dimension (get-in mapping [:target 0]))
+  (if-not (and (= :dimension (get-in mapping [:target 0]))
+               (#{:field :expression} (get-in mapping [:target 1 0])))
+    mapping
     (let [dimension (get-in mapping [:target 1])
           identifier (subvec dimension 0 2)
           [action arg] (get identifier->action identifier)]
