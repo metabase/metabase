@@ -61,4 +61,5 @@ See [Compute settings for the Databricks JDBC Driver](https://docs.databricks.co
 
 ## Limitations
 
-Currently, you can't sync Databricks's `samples` catalog.
+- You can only sync one catalog.
+- You can't sync Databricks's legacy catalogs, including the `samples` or `hive_metastore` catalogs.
