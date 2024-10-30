@@ -804,7 +804,8 @@
         after--identifier->refs  (breakout-->identifier->refs breakout-after-update)
         action (partial action-for-identifier+refs after--identifier->refs)
         action-kvrf (fn [acc identifier before--refs] (assoc acc identifier (action identifier before--refs)))]
-    (reduce-kv action-kvrf {} before--identifier->refs)))
+    ;; Remove no-ops to avoid redundant db calls in [[update-associated-parameters!]].
+    (not-empty (m/filter-vals (complement #{[:noop]}) (reduce-kv action-kvrf {} before--identifier->refs)))))
 
 (defn- update-mapping
   [identifier->action mapping]
@@ -834,12 +835,12 @@
   [card-before card-after]
   (let [card->breakout     #(-> % :dataset_query mbql.normalize/normalize :query :breakout)
         breakout-before    (card->breakout card-before)
-        breakout-after     (card->breakout card-after)
-        identifier->action (breakouts-->identifier->action breakout-before breakout-after)
-        dashcards          (t2/select :model/DashboardCard :card_id (some :id [card-after card-before]))
-        updates            (updates-for-dashcards identifier->action dashcards)]
-    (doseq [[id update] updates]
-      (t2/update! :model/DashboardCard :id id update))))
+        breakout-after     (card->breakout card-after)]
+    (when-some [identifier->action (breakouts-->identifier->action breakout-before breakout-after)]
+      (let [dashcards          (t2/select :model/DashboardCard :card_id (some :id [card-after card-before]))
+            updates            (updates-for-dashcards identifier->action dashcards)]
+        (doseq [[id update] updates]
+          (t2/update! :model/DashboardCard :id id update))))))
 
 (defn update-card!
   "Update a Card. Metadata is fetched asynchronously. If it is ready before [[metadata-sync-wait-ms]] elapses it will be
@@ -867,7 +868,7 @@
                                     :non-nil #{:dataset_query :display :name :visualization_settings :archived
                                                :enable_embedding :type :parameters :parameter_mappings :embedding_params
                                                :result_metadata :collection_preview :verified-result-metadata?}))
-    ;; ok, now update dependent parameters
+    ;; ok, now update dependent dashcard parameters
     (try
       (update-associated-parameters! card-before-update card-updates)
       (catch Throwable e
