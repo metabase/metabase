@@ -784,27 +784,12 @@
   _Action_ is to be performed on _parameter mapping_ of a _dashcard_. For more info see
   the [[update-associated-parameters!]]'s docstring.
 
-  _Action_ has a form of [<action> & args]. Currently :delete, :update, :noop are implemented."
+  _Action_ has a form of [<action> & args]. Currently :update, :noop are implemented."
   [after--identifier->refs identifier before--refs]
   (let [after--refs (get after--identifier->refs identifier #{})]
-    (cond
-      #_#_(or
-       ;; If before is subset we should not do anything
-       ;; If there was more than 1 ref to a field in orig breakout and there is a difference
-       (and (< 1 (count before--refs))
-            (not= before--refs after--refs))
-       ;; If there was 1 ref to a field in orig breakout and if not present in modified breakout
-       (and (= 1 (count before--refs))
-            (not= 1 (count after--refs))
-            (not (contains? after--refs (first before--refs)))))
-      [:delete]
-
-      ;; If there was 1 ref in orig and modfied breakout that's different
-      (and (= 1 (count before--refs) (count after--refs))
-           (not= before--refs after--refs))
+    (if (and (= 1 (count before--refs) (count after--refs))
+             (not= before--refs after--refs))
       [:update (first after--refs)]
-
-      :else
       [:noop])))
 
 (defn- breakouts-->identifier->action
@@ -831,8 +816,7 @@
           [action arg] (get identifier->action identifier [:noop])]
       (case action
         :update (assoc-in mapping [:target 1] arg)
-        :noop   mapping
-        :delete nil))))
+        :noop   mapping))))
 
 (defn- update-for-dashcard
   "Return nil for no-op updates or [<dashcard-id> <update>]. <update> is a map of `:parameter_mappings` only as only
