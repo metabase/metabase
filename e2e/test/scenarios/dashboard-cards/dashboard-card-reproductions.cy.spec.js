@@ -218,19 +218,28 @@ describe("issue 16334", () => {
           click_behavior: {
             targetId,
             parameterMapping: {
-              [`["dimension",["field",${PRODUCTS.RATING},null]]`]: {
-                source: {
-                  type: "column",
-                  id: "RATING",
-                  name: "Rating",
+              [`["dimension",["field",${PRODUCTS.RATING},null],{"stage-number":0}]`]:
+                {
+                  source: {
+                    type: "column",
+                    id: "RATING",
+                    name: "Rating",
+                  },
+                  target: {
+                    type: "dimension",
+                    id: [
+                      `["dimension",["field",${PRODUCTS.RATING},null],{"stage-number":0}]`,
+                    ],
+                    dimension: [
+                      "dimension",
+                      ["field", PRODUCTS.RATING, null],
+                      { "stage-number": 0 },
+                    ],
+                  },
+                  id: [
+                    `["dimension",["field",${PRODUCTS.RATING},null],{"stage-number":0}]`,
+                  ],
                 },
-                target: {
-                  type: "dimension",
-                  id: [`["dimension",["field",${PRODUCTS.RATING},null]]`],
-                  dimension: ["dimension", ["field", PRODUCTS.RATING, null]],
-                },
-                id: [`["dimension",["field",${PRODUCTS.RATING},null]]`],
-              },
             },
             linkType: "question",
             type: "link",
