@@ -193,11 +193,11 @@
   (mt/test-driver :postgres
     (testing "Make sure that Tables / Fields with dots in their names get escaped properly"
       (mt/dataset dots-in-names
-        (= {:columns ["id" "dotted.name"]
-            :rows    [[1 "toucan_cage"]
-                      [2 "four_loko"]
-                      [3 "ouija_board"]]}
-           (mt/rows+column-names (mt/run-mbql-query objects.stuff)))))
+        (is (= {:columns ["id" "dotted.name"]
+                :rows    [[1 "toucan_cage"]
+                          [2 "four_loko"]
+                          [3 "ouija_board"]]}
+               (mt/rows+column-names (mt/run-mbql-query objects.stuff))))))
     (testing "make sure schema/table/field names with hyphens in them work correctly (#8766)"
       (let [details (mt/dbdef->connection-details :postgres :db {:database-name "hyphen-names-test"})
             spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
