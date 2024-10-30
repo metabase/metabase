@@ -1061,32 +1061,72 @@
                                                        :type     :native
                                                        :native   {:query "SELECT 1234.567 as A"}}}]
         (testing "CSV downloads respect the formatted/unformatted setting"
-          (let [formatted-json-results   (all-downloads card {:export-format :csv :format-rows true})
-                unformatted-json-results (all-downloads card {:export-format :csv :format-rows false})]
+          (let [formatted-results   (all-downloads card {:export-format :csv :format-rows true})
+                unformatted-results (all-downloads card {:export-format :csv :format-rows false})]
             (is (= {:unsaved-card-download    [["A"] ["1,234.57"]]
                     :card-download            [["A"] ["1,234.57"]]
                     :public-question-download [["A"] ["1,234.57"]]
                     :dashcard-download        [["A"] ["1,234.57"]]
                     :public-dashcard-download [["A"] ["1,234.57"]]}
-                   formatted-json-results))
+                   formatted-results))
             (is (= {:unsaved-card-download    [["A"] ["1234.567"]]
                     :card-download            [["A"] ["1234.567"]]
                     :public-question-download [["A"] ["1234.567"]]
                     :dashcard-download        [["A"] ["1234.567"]]
                     :public-dashcard-download [["A"] ["1234.567"]]}
-                   unformatted-json-results))))
+                   unformatted-results))))
         (testing "JSON downloads respect the formatted/unformatted setting"
-          (let [formatted-json-results   (all-downloads card {:export-format :json :format-rows true})
-                unformatted-json-results (all-downloads card {:export-format :json :format-rows false})]
+          (let [formatted-results   (all-downloads card {:export-format :json :format-rows true})
+                unformatted-results (all-downloads card {:export-format :json :format-rows false})]
             (is (= {:unsaved-card-download    [["A"] ["1,234.57"]]
                     :card-download            [["A"] ["1,234.57"]]
                     :public-question-download [["A"] ["1,234.57"]]
                     :dashcard-download        [["A"] ["1,234.57"]]
                     :public-dashcard-download [["A"] ["1,234.57"]]}
-                   formatted-json-results))
+                   formatted-results))
             (is (= {:unsaved-card-download    [["A"] [1234.567]]
                     :card-download            [["A"] [1234.567]]
                     :public-question-download [["A"] [1234.567]]
                     :dashcard-download        [["A"] [1234.567]]
                     :public-dashcard-download [["A"] [1234.567]]}
-                   unformatted-json-results))))))))
+                   unformatted-results))))))))
+
+(deftest pivot-measures-order-test
+  (testing "A pivot download will use the user-configured measures order (#48442)."
+    (mt/dataset test-data
+      (mt/with-temp [:model/Card card {:display                :pivot
+                                       :visualization_settings {:pivot_table.column_split
+                                                                {:rows    [[:field (mt/id :products :category) {:base-type :type/Text}]]
+                                                                 :columns []
+                                                                 :values  [[:aggregation 1]
+                                                                           [:aggregation 0]
+                                                                           [:aggregation 2]]}
+                                                                :column_settings
+                                                                {"[\"name\",\"count\"]" {:column_title "Count Renamed"}
+                                                                 "[\"name\",\"sum\"]"   {:column_title "Sum Renamed"}
+                                                                 "[\"name\",\"avg\"]"   {:column_title "Average Renamed"}}}
+                                       :dataset_query          {:database (mt/id)
+                                                                :type     :query
+                                                                :query
+                                                                {:source-table (mt/id :products)
+                                                                 :aggregation  [[:count]
+                                                                                [:sum [:field (mt/id :products :price) {:base-type :type/Float}]]
+                                                                                [:avg [:field (mt/id :products :rating) {:base-type :type/Float}]]]
+                                                                 :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]]}}}]
+        (let [expected-header ["Category" "Sum of Price" "Count" "Average of Rating"]
+              formatted-results (all-downloads card {:export-format :csv :format-rows false :pivot true})]
+          (is (= {:unsaved-card-download    expected-header
+                  :card-download            expected-header
+                  :public-question-download expected-header
+                  :dashcard-download        expected-header
+                  :public-dashcard-download expected-header}
+                 (update-vals formatted-results first))))
+        (testing "The column title changes are used when format-rows is true"
+          (let [expected-header ["Category" "Sum Renamed" "Count Renamed" "Average Renamed"]
+                formatted-results (all-downloads card {:export-format :csv :format-rows true :pivot true})]
+            (is (= {:unsaved-card-download    expected-header
+                    :card-download            expected-header
+                    :public-question-download expected-header
+                    :dashcard-download        expected-header
+                    :public-dashcard-download expected-header}
+                   (update-vals formatted-results first)))))))))

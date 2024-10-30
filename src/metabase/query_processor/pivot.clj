@@ -45,8 +45,15 @@
 (mr/def ::num-breakouts ::lib.schema.common/int-greater-than-or-equal-to-zero)
 (mr/def ::index         ::lib.schema.common/int-greater-than-or-equal-to-zero)
 
-(mr/def ::pivot-rows [:sequential ::index])
-(mr/def ::pivot-cols [:sequential ::index])
+(mr/def ::pivot-rows     [:sequential ::index])
+(mr/def ::pivot-cols     [:sequential ::index])
+(mr/def ::pivot-measures [:sequential ::index])
+
+(mr/def ::pivot-opts [:maybe
+                      [:map
+                       [:pivot-rows     {:optional true} [:maybe ::pivot-rows]]
+                       [:pivot-cols     {:optional true} [:maybe ::pivot-cols]]
+                       [:pivot-measures {:optional true} [:maybe ::pivot-measures]]]])
 
 (mu/defn- group-bitmask :- ::bitmask
   "Come up with a display name given a combination of breakout `indexes` e.g.
@@ -173,9 +180,7 @@
 (mu/defn- generate-queries :- [:sequential ::lib.schema/query]
   "Generate the additional queries to perform a generic pivot table"
   [query                                               :- ::lib.schema/query
-   {:keys [pivot-rows pivot-cols], :as _pivot-options} :- [:map
-                                                           [:pivot-rows {:optional true} [:maybe ::pivot-rows]]
-                                                           [:pivot-cols {:optional true} [:maybe ::pivot-cols]]]]
+   {:keys [pivot-rows pivot-cols], :as _pivot-options} :- ::pivot-opts]
   (try
     (let [all-breakouts (lib/breakouts query)
           all-queries   (for [breakout-indexes (u/prog1 (breakout-combinations (count all-breakouts) pivot-rows pivot-cols)
@@ -342,48 +347,52 @@
               qp.pipeline/*reduce*  (or reduce qp.pipeline/*reduce*)]
       (qp/process-query first-query rff))))
 
-(mu/defn- pivot-options :- [:map
-                            [:pivot-rows [:maybe [:sequential [:int {:min 0}]]]]
-                            [:pivot-cols [:maybe [:sequential [:int {:min 0}]]]]]
+(mu/defn- pivot-options :- ::pivot-opts
   "Given a pivot table query and a card ID, looks at the `pivot_table.column_split` key in the card's visualization
   settings and generates pivot-rows and pivot-cols to use for generating subqueries."
   [query        :- [:map
                     [:database ::lib.schema.id/database]]
    viz-settings :- [:maybe :map]]
-  (let [column-split         (:pivot_table.column_split viz-settings)
-        column-split-rows    (seq (:rows column-split))
-        column-split-columns (seq (:columns column-split))
-        index-in-breakouts   (when (or column-split-rows
-                                       column-split-columns)
-                               (let [metadata-provider (or (:lib/metadata query)
-                                                           (lib.metadata.jvm/application-database-metadata-provider (:database query)))
-                                     mlv2-query        (lib/query metadata-provider query)
-                                     breakouts         (into []
-                                                             (map-indexed (fn [i col]
-                                                                            (cond-> col
-                                                                              true                         (assoc ::i i)
-                                                                              ;; if the col has a card-id, we swap the :lib/source to say source/card
-                                                                              ;; this allows `lib/find-matching-column` to properly match a column that has a join-alias
-                                                                              ;; but whose source is a model
-                                                                              (contains? col :lib/card-id) (assoc :lib/source :source/card))))
-                                                             (lib/breakouts-metadata mlv2-query))]
-                                 (fn [legacy-ref]
-                                   (try
-                                     (::i (lib.equality/find-column-for-legacy-ref
-                                           mlv2-query
-                                           -1
-                                           legacy-ref
-                                           breakouts))
-                                     (catch Throwable e
-                                       (log/errorf e "Error finding matching column for ref %s" (pr-str legacy-ref))
-                                       nil)))))
-
-        pivot-rows (when column-split-rows
-                     (into [] (keep index-in-breakouts) column-split-rows))
-        pivot-cols (when column-split-columns
-                     (into [] (keep index-in-breakouts) column-split-columns))]
-    {:pivot-rows pivot-rows
-     :pivot-cols pivot-cols}))
+  (let [column-split          (:pivot_table.column_split viz-settings)
+        column-split-rows     (seq (:rows column-split))
+        column-split-columns  (seq (:columns column-split))
+        column-split-measures (seq (:values column-split))
+        metadata-provider     (or (:lib/metadata query)
+                                  (lib.metadata.jvm/application-database-metadata-provider (:database query)))
+        mlv2-query            (lib/query metadata-provider query)
+        breakouts             (into []
+                                    (map-indexed (fn [i col]
+                                                   (cond-> col
+                                                     true                         (assoc ::i i)
+                                                     ;; if the col has a card-id, we swap the :lib/source to say source/card
+                                                     ;; this allows `lib/find-matching-column` to properly match a column that has a join-alias
+                                                     ;; but whose source is a model
+                                                     (contains? col :lib/card-id) (assoc :lib/source :source/card))))
+                                    (concat (lib/breakouts-metadata mlv2-query)
+                                            (lib/aggregations-metadata mlv2-query)))
+        index-in-breakouts    (when (or column-split-rows
+                                        column-split-columns
+                                        column-split-measures)
+                                (fn [legacy-ref]
+                                  (try
+                                    (::i (lib.equality/find-column-for-legacy-ref
+                                          mlv2-query
+                                          -1
+                                          legacy-ref
+                                          breakouts))
+                                    (catch Throwable e
+                                      (log/errorf e "Error finding matching column for ref %s" (pr-str legacy-ref))
+                                      nil))))
+        pivot-rows            (when column-split-rows
+                                (into [] (keep index-in-breakouts) column-split-rows))
+        pivot-cols            (when column-split-columns
+                                (into [] (keep index-in-breakouts) column-split-columns))
+        pivot-measures        (when column-split-measures
+                                (into [] (keep index-in-breakouts) column-split-measures))]
+    (when (or pivot-rows pivot-cols pivot-measures)
+      {:pivot-rows     pivot-rows
+       :pivot-cols     pivot-cols
+       :pivot-measures pivot-measures})))
 
 (mu/defn- column-mapping-for-subquery :- ::pivot-column-mapping
   [num-canonical-cols            :- ::lib.schema.common/int-greater-than-or-equal-to-zero
@@ -529,10 +538,11 @@
      (qp.setup/with-qp-setup [query query]
        (let [rff               (or rff qp.reducible/default-rff)
              query             (lib/query (qp.store/metadata-provider) query)
-             pivot-options     (or
-                                (not-empty (select-keys query [:pivot-rows :pivot-cols]))
-                                (pivot-options query (get-in query [:info :visualization-settings])))
-             query             (assoc-in query [:middleware :pivot-options] pivot-options)
-             all-queries       (generate-queries query pivot-options)
+             pivot-opts        (or
+                                (pivot-options query (get query :viz-settings))
+                                (pivot-options query (get-in query [:info :visualization-settings]))
+                                (not-empty (select-keys query [:pivot-rows :pivot-cols :pivot-measures])))
+             query             (assoc-in query [:middleware :pivot-options] pivot-opts)
+             all-queries       (generate-queries query pivot-opts)
              column-mapping-fn (make-column-mapping-fn query)]
          (process-multiple-queries all-queries rff column-mapping-fn))))))
