@@ -61,7 +61,7 @@
 ;;
 
 (defn- merge-source-ids
-  "Combine sets of table or card IDs if there are multiple references"
+  "Merge function which takes the union of two sets of IDs, if they are both sets"
   [val1 val2]
   (if (and (set? val1) (set? val2))
     (set/union val1 val2)
@@ -77,8 +77,8 @@
   [query :- :map]
   (apply merge-with merge-source-ids
          (lib.util.match/match query
-     ;; If we come across a native query, replace it with a card ID if it came from a source card, so we can check
-     ;; permissions on the card and not necessarily require full native query access to the DB
+           ;; If we come across a native query, replace it with a card ID if it came from a source card, so we can check
+           ;; permissions on the card and not necessarily require full native query access to the DB
            (m :guard (every-pred map? :native))
            (if-let [source-card-id (:qp/stage-is-from-source-card m)]
              {:card-ids #{source-card-id}}
