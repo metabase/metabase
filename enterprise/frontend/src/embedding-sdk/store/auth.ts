@@ -99,7 +99,7 @@ export const refreshTokenAsync = createAsyncThunk(
           );
         }
       }
-      // Lastly if we don't have an error message or status check if we actually got the session id
+      // Lastly if we don't have an error message or status, check if we actually got the session ID
       if (!("id" in response)) {
         throw new Error(
           `${source} must return an object with the shape {id:string, exp:number, iat:number, status:string}, got ${safeStringify(response)} instead`,
