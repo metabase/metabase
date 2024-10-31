@@ -76,18 +76,18 @@
   indicating a native query or subquery. Intended to be used in the context of permissions enforcement."
   [query :- :map]
   (apply merge-with merge-source-ids
-         (lib.util.match/match query
-           ;; If we come across a native query, replace it with a card ID if it came from a source card, so we can check
-           ;; permissions on the card and not necessarily require full native query access to the DB
-           (m :guard (every-pred map? :native))
-           (if-let [source-card-id (:qp/stage-is-from-source-card m)]
-             {:card-ids #{source-card-id}}
-             {:native? true})
+   (lib.util.match/match query
+     ;; If we come across a native query, replace it with a card ID if it came from a source card, so we can check
+     ;; permissions on the card and not necessarily require full native query access to the DB
+     (m :guard (every-pred map? :native))
+     (if-let [source-card-id (:qp/stage-is-from-source-card m)]
+       {:card-ids #{source-card-id}}
+       {:native? true})
 
-           (m :guard (every-pred map? #(pos-int? (:source-table %))))
-           (merge-source-ids
-            {:table-ids (:source-table m)}
-            (query->source-ids (dissoc m :source-table))))))
+     (m :guard (every-pred map? #(pos-int? (:source-table %))))
+     (apply merge-witl merge-source-ids
+      {:table-ids #{(:source-table m)}}
+      (query->source-ids (dissoc m :source-table))))))
 
 (mu/defn query->source-table-ids
   "Returns a sequence of all :source-table IDs referenced by a query. Convenience wrapper around `query->source-ids` if
