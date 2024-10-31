@@ -138,7 +138,12 @@ describe("scenarios > public > dashboard", () => {
       expect(response.body.uuid).not.to.be.null;
 
       cy.findByTestId("public-link-input").should("be.visible");
-      cy.findByTestId("public-link-input").then($input => {
+      cy.findByTestId("public-link-input").should(
+        "not.have.attr",
+        "placeholder",
+        "Loading…",
+      );
+      cy.findByTestId("public-link-input").should($input => {
         expect($input.val()).to.match(PUBLIC_DASHBOARD_REGEX);
       });
     });
