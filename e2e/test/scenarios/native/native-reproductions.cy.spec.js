@@ -831,19 +831,23 @@ describe("issue 34596", () => {
 
     cy.wait("@autocomplete");
 
-    cy.findByRole("listbox")
+    cy.get(".ace_autocomplete")
+      .should("be.visible")
       .should("contain", "PEOPLE")
       .should("contain", "EXPECTED_INVOICE");
 
     cy.intercept("GET", "/api/database/*/autocomplete_suggestions**", req =>
-      // Add a long delay to avoid the immediate autocomplete results from
-      // causing a false positive. The test will end long before this delay gets hit.
-      req.delay(30_000),
+      req.on("response", res => {
+        // Add a long delay to avoid the immediate autocomplete results from
+        // causing a false positive. The test will end long before this delay gets hit.
+        res.setDelay(30_000);
+      }),
     );
 
     editor.type("O");
 
-    cy.findByRole("listbox")
+    cy.get(".ace_autocomplete")
+      .should("be.visible")
       .should("contain", "PEOPLE")
       // short timeout here to indicate that we aren't waiting for autocompletion results
       .should("not.contain", "EXPECTED_INVOICE", { timeout: 5000 });
