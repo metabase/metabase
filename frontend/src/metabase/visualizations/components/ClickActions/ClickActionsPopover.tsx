@@ -118,9 +118,7 @@ export class ClickActionsPopover extends Component<
           onChangeCardAndRun={({ nextCard }) => {
             onChangeCardAndRun({ nextCard });
           }}
-          onClose={() => {
-            this.close();
-          }}
+          onClose={this.close}
           series={series}
           onUpdateVisualizationSettings={onUpdateVisualizationSettings}
         />
@@ -133,9 +131,7 @@ export class ClickActionsPopover extends Component<
       <PopoverWithRef
         anchorEl={popoverAnchor}
         opened={!!popoverAnchor}
-        onClose={() => {
-          this.close();
-        }}
+        onClose={this.close}
         position="bottom-start"
         width={700}
         offset={8}
