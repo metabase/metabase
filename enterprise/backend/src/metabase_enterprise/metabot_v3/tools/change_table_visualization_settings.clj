@@ -5,7 +5,7 @@
 
 (mu/defmethod metabot-v3.tools.interface/*tool-applicable?* :metabot.tool/change-table-visualization-settings
   [_tool-name context]
-  (= "table" (some-> context :current_display_type)))
+  (= "table" (some-> context :current_visualization_settings :current_display_type)))
 
 (mu/defmethod metabot-v3.tools.interface/*invoke-tool* :metabot.tool/change-table-visualization-settings
   [_tool-name {:keys [visible-columns], :as _argument-map}]
