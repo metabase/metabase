@@ -14,8 +14,11 @@ export const metabot = createSlice({
   name: "metabase-enterprise/metabot",
   initialState,
   reducers: {
-    setVisible: (state, action: PayloadAction<boolean>) => {
-      state.visible = action.payload;
+    setVisible: (state, { payload: visible }: PayloadAction<boolean>) => {
+      state.visible = visible;
+      if (!visible) {
+        state.userMessages = [];
+      }
     },
     addUserMessage: (state, action: PayloadAction<string>) => {
       state.userMessages.push(action.payload);
