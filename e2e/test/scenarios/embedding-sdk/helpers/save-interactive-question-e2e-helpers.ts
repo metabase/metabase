@@ -15,14 +15,12 @@ export function getStorybookArgs(props: Record<string, string>): string {
 }
 
 export function visitInteractiveQuestionStory(
-  options: { saveToCollectionId?: number; withCollectionPicker?: boolean } = {},
+  options: { saveToCollectionId?: number } = {},
 ) {
   const params: Record<string, string> = {
     ...(options.saveToCollectionId && {
-      "saveOptions.collectionId": options.saveToCollectionId.toString(),
+      saveToCollectionId: options.saveToCollectionId.toString(),
     }),
-    "saveOptions.withCollectionPicker":
-      options.withCollectionPicker?.toString() ?? "true",
   };
 
   cy.get("@questionId").then(questionId => {

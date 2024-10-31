@@ -11,6 +11,7 @@ import { useGetDefaultCollectionId } from "metabase/collections/hooks";
 import { FormProvider } from "metabase/forms";
 import { isNotNull } from "metabase/lib/types";
 import type Question from "metabase-lib/v1/Question";
+import type { CollectionId } from "metabase-types/api";
 
 import { SAVE_QUESTION_SCHEMA } from "./schema";
 import type { FormValues, SaveQuestionProps } from "./types";
@@ -25,7 +26,7 @@ type SaveQuestionContextType = {
   setValues: (values: FormValues) => void;
   showSaveType: boolean;
   multiStep: boolean;
-  withCollectionPicker: boolean;
+  saveToCollectionId?: CollectionId;
 };
 
 export const SaveQuestionContext =
@@ -54,8 +55,7 @@ export const SaveQuestionProvider = ({
   onCreate,
   onSave,
   multiStep = false,
-  withCollectionPicker = true,
-  initialCollectionId,
+  saveToCollectionId,
   children,
 }: PropsWithChildren<SaveQuestionProps>) => {
   const [originalQuestion] = useState(latestOriginalQuestion); // originalQuestion from props changes during saving
@@ -65,13 +65,8 @@ export const SaveQuestionProvider = ({
   );
 
   const initialValues: FormValues = useMemo(
-    () =>
-      getInitialValues(
-        originalQuestion,
-        question,
-        initialCollectionId ?? defaultCollectionId,
-      ),
-    [originalQuestion, defaultCollectionId, question, initialCollectionId],
+    () => getInitialValues(originalQuestion, question, defaultCollectionId),
+    [originalQuestion, defaultCollectionId, question],
   );
 
   const handleSubmit = useCallback(
@@ -82,17 +77,9 @@ export const SaveQuestionProvider = ({
         question,
         onSave,
         onCreate,
-        initialCollectionId,
-        isCollectionPickerEnabled: withCollectionPicker,
+        saveToCollectionId,
       }),
-    [
-      originalQuestion,
-      question,
-      onSave,
-      onCreate,
-      initialCollectionId,
-      withCollectionPicker,
-    ],
+    [originalQuestion, question, onSave, onCreate, saveToCollectionId],
   );
 
   // we care only about the very first result as question can be changed before
@@ -126,7 +113,7 @@ export const SaveQuestionProvider = ({
             setValues,
             showSaveType,
             multiStep,
-            withCollectionPicker,
+            saveToCollectionId,
           }}
         >
           {children}

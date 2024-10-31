@@ -9,10 +9,16 @@ export type SaveQuestionProps = {
 
   closeOnSuccess?: boolean;
   multiStep?: boolean;
+  initialCollectionId?: CollectionId;
 
-  /** If the collection picker is not shown, this becomes the target collection to save to. **/
-  initialCollectionId?: CollectionId | null;
-  withCollectionPicker?: boolean;
+  /**
+   * The target collection to save the question to.
+   * Currently used for the embedding sdk.
+   *
+   * When this is defined, the collection picker will be hidden and
+   * the question will be saved to this collection.
+   ***/
+  saveToCollectionId?: CollectionId;
 };
 
 export type FormValues = {
@@ -32,9 +38,7 @@ export type CreateQuestionOptions = {
   details: FormValues;
   question: Question;
   onCreate: (question: Question) => Promise<void>;
-  initialCollectionId?: CollectionId | null;
-  isCollectionPickerEnabled?: boolean;
-};
+} & Pick<SaveQuestionProps, "saveToCollectionId">;
 
 export type SubmitQuestionOptions = CreateQuestionOptions & {
   originalQuestion: Question | null;

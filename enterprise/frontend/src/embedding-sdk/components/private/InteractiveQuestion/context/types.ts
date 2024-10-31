@@ -3,10 +3,11 @@ import type { PropsWithChildren } from "react";
 import type { SdkPluginsConfig } from "embedding-sdk";
 import type { LoadQuestionHookResult } from "embedding-sdk/hooks/private/use-load-question";
 import type { LoadSdkQuestionParams } from "embedding-sdk/types/question";
+import type { SaveQuestionProps } from "metabase/components/SaveQuestionForm/types";
 import type { NotebookProps as QBNotebookProps } from "metabase/querying/notebook/components/Notebook";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import type Question from "metabase-lib/v1/Question";
-import type { CardEntityId, CardId, CollectionId } from "metabase-types/api";
+import type { CardEntityId, CardId } from "metabase-types/api";
 
 export type EntityTypeFilterKeys = "table" | "question" | "model" | "metric";
 
@@ -16,24 +17,10 @@ export type InteractiveQuestionConfig = {
   onBeforeSave?: (question?: Question) => Promise<void>;
   onSave?: (question?: Question) => void;
   entityTypeFilter?: EntityTypeFilterKeys[];
-  saveOptions?: SdkInteractiveQuestionSaveOptions;
-};
 
-export type SdkInteractiveQuestionSaveOptions = {
   /** Is the save question button visible? */
-  isEnabled?: boolean;
-
-  /** Allow the user to choose the collection to save this question to? */
-  withCollectionPicker?: boolean;
-
-  /**
-   * The collection to save the question to.
-   *
-   * If `withCollectionPicker` is `true`, we pre-fill this in the collection picker.
-   * Otherwise, this is the target collection to save to.
-   **/
-  collectionId?: CollectionId | null;
-};
+  isSaveEnabled?: boolean;
+} & Pick<SaveQuestionProps, "saveToCollectionId">;
 
 export type QuestionMockLocationParameters = {
   location: { search: string; hash: string; pathname: string };
@@ -53,7 +40,10 @@ export type InteractiveQuestionContextType = Omit<
   LoadQuestionHookResult,
   "loadQuestion"
 > &
-  Pick<InteractiveQuestionConfig, "onNavigateBack" | "saveOptions"> &
+  Pick<
+    InteractiveQuestionConfig,
+    "onNavigateBack" | "isSaveEnabled" | "saveToCollectionId"
+  > &
   Pick<QBNotebookProps, "modelsFilterList"> & {
     plugins: InteractiveQuestionConfig["componentPlugins"] | null;
     mode: Mode | null | undefined;

@@ -10,6 +10,7 @@ import FormRadio from "metabase/core/components/FormRadio";
 import FormTextArea from "metabase/core/components/FormTextArea";
 import CS from "metabase/css/core/index.css";
 import { Form, FormSubmitButton } from "metabase/forms";
+import { isNullOrUndefined } from "metabase/lib/types";
 import { DEFAULT_MODAL_Z_INDEX } from "metabase/ui";
 
 import { useSaveQuestionContext } from "./context";
@@ -26,10 +27,12 @@ export const SaveQuestionForm = ({
     originalQuestion,
     showSaveType,
     values,
-    withCollectionPicker,
+    saveToCollectionId,
   } = useSaveQuestionContext();
 
   const nameInputPlaceholder = getPlaceholder(question.type());
+
+  const isCollectionPickerEnabled = !isNullOrUndefined(saveToCollectionId);
 
   return (
     <Form>
@@ -59,7 +62,7 @@ export const SaveQuestionForm = ({
             title={t`Description`}
             placeholder={t`It's optional but oh, so helpful`}
           />
-          {withCollectionPicker && (
+          {isCollectionPickerEnabled && (
             <FormCollectionPicker
               name="collection_id"
               title={t`Which collection should this go in?`}

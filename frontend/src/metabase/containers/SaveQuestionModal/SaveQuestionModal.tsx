@@ -9,13 +9,13 @@ import { Flex, Modal, type ModalProps } from "metabase/ui";
 
 export const SaveQuestionModal = ({
   initialCollectionId,
-  withCollectionPicker,
   multiStep,
   onCreate,
   onSave,
   originalQuestion,
   question,
   closeOnSuccess,
+  saveToCollectionId,
   ...modalProps
 }: SaveQuestionProps & Omit<ModalProps, "title">) => (
   <SaveQuestionProvider
@@ -31,7 +31,7 @@ export const SaveQuestionModal = ({
     onSave={onSave}
     multiStep={multiStep}
     initialCollectionId={initialCollectionId}
-    withCollectionPicker={withCollectionPicker}
+    saveToCollectionId={saveToCollectionId}
   >
     <Modal.Root padding="2.5rem" {...modalProps}>
       <Modal.Overlay />

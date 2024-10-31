@@ -29,9 +29,6 @@ export const Default = {
 
   args: {
     questionId: QUESTION_ID,
-    saveOptions: {
-      isEnabled: true,
-      withCollectionPicker: true,
-    },
+    isSaveEnabled: true,
   },
 };

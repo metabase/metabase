@@ -2,6 +2,7 @@ import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
 import { canonicalCollectionId } from "metabase/collections/utils";
+import { isNullOrUndefined } from "metabase/lib/types";
 import type Question from "metabase-lib/v1/Question";
 import type { CardType } from "metabase-types/api";
 
@@ -28,19 +29,15 @@ const updateQuestion = async (options: UpdateQuestionOptions) => {
 };
 
 export const createQuestion = async (options: CreateQuestionOptions) => {
-  const { details, question, onCreate } = options;
+  const { details, question, onCreate, saveToCollectionId } = options;
 
   if (details.saveType !== "create") {
     return;
   }
 
-  // If the collection picker is disabled (e.g. in the sdk),
-  // we use the initial collection as the target collection to save to.
-  const collectionId = canonicalCollectionId(
-    options.isCollectionPickerEnabled
-      ? details.collection_id
-      : options.initialCollectionId,
-  );
+  const collectionId = !isNullOrUndefined(saveToCollectionId)
+    ? saveToCollectionId
+    : details.collection_id;
 
   const displayName = details.name.trim();
   const description = details.description ? details.description.trim() : null;
@@ -48,7 +45,7 @@ export const createQuestion = async (options: CreateQuestionOptions) => {
   const newQuestion = question
     .setDisplayName(displayName)
     .setDescription(description)
-    .setCollectionId(collectionId);
+    .setCollectionId(canonicalCollectionId(collectionId));
 
   await onCreate(newQuestion);
 };
@@ -60,8 +57,7 @@ export async function submitQuestion(options: SubmitQuestionOptions) {
     question,
     onSave,
     onCreate,
-    initialCollectionId,
-    isCollectionPickerEnabled,
+    saveToCollectionId,
   } = options;
 
   if (details.saveType === "overwrite" && originalQuestion) {
@@ -75,8 +71,7 @@ export async function submitQuestion(options: SubmitQuestionOptions) {
       question,
       details,
       onCreate,
-      initialCollectionId,
-      isCollectionPickerEnabled,
+      saveToCollectionId,
     });
   }
 }
