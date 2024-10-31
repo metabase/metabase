@@ -447,15 +447,16 @@ export class NativeQueryEditor extends Component<
       prefix: string,
     ): Promise<Ace.ValueCompletion[]> => {
       if (!this.props.autocompleteResultsFn) {
-        return Promise.resolve([]);
+        return [];
       }
 
-      const results: AutocompleteItem[] =
-        await this.props.autocompleteResultsFn(prefix);
+      const results = await this.props.autocompleteResultsFn(prefix);
       return results.map(([name, meta]) => ({ value: name, meta }));
     };
 
-    const referencedQuestionCompletions = async () => {
+    const referencedQuestionCompletions = async (): Promise<
+      Ace.ValueCompletion[]
+    > => {
       // Get referenced questions
       const referencedQuestionIds = this.props.query.referencedQuestionIds();
 
@@ -466,12 +467,10 @@ export class NativeQueryEditor extends Component<
 
       // Get columns from referenced questions that match the prefix
       return referencedCards.filter(Boolean).flatMap(card =>
-        card.result_metadata.map(
-          (columnMetadata): Ace.ValueCompletion => ({
-            value: columnMetadata.name,
-            meta: `${card.name} :${columnMetadata.base_type}`,
-          }),
-        ),
+        card.result_metadata.map(columnMetadata => ({
+          value: columnMetadata.name,
+          meta: `${card.name} :${columnMetadata.base_type}`,
+        })),
       );
     };
 
