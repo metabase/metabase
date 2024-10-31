@@ -1786,6 +1786,7 @@ describe("issue 25374", () => {
 
     restore();
     cy.signInAsAdmin();
+    changeSynchronousBatchUpdateSetting(false); // prevent last_used_param_values from breaking test isolation
 
     cy.createNativeQuestionAndDashboard({
       questionDetails,
@@ -1815,14 +1816,18 @@ describe("issue 25374", () => {
       visitDashboard(dashboard_id);
 
       filterWidget().type("1,2,3{enter}");
-      cy.findByDisplayValue("1,2,3");
 
       cy.get(".CardVisualization")
         .should("contain", "COUNT(*)")
         .and("contain", "3");
+      cy.findByDisplayValue("1,2,3").should("be.visible");
 
       cy.location("search").should("eq", "?equal_to=1%2C2%2C3");
     });
+  });
+
+  afterEach(() => {
+    changeSynchronousBatchUpdateSetting(false);
   });
 
   it("should pass comma-separated values down to the connected question (metabase#25374-1)", () => {
