@@ -161,9 +161,14 @@ describe("scenarios > public > dashboard", () => {
 
       cy.findByTestId("public-link-popover-content").within(() => {
         cy.findByText("Public link").should("be.visible");
-        cy.findByTestId("public-link-input").then($input =>
-          expect($input.val()).to.match(PUBLIC_DASHBOARD_REGEX),
+        cy.findByTestId("public-link-input").should(
+          "not.have.attr",
+          "placeholder",
+          "Loading…",
         );
+        cy.findByTestId("public-link-input").should($input => {
+          expect($input.val()).to.match(PUBLIC_DASHBOARD_REGEX);
+        });
         cy.findByText("Remove public URL").should("not.exist");
       });
     });
