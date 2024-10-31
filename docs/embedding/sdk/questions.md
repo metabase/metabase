@@ -65,7 +65,6 @@ export default function App() {
         </MetabaseProvider>
     );
 }
-const questionId = 1; // This is the question ID you want to embed
 ```
 
 ## Question props
