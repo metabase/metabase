@@ -414,9 +414,10 @@
     ;; SUGAR drivers do not need to implement
     :get-year :get-quarter :get-month :get-week :get-day :get-day-of-week :get-hour :get-minute :get-second})
 
-(def ^:private boolean-functions
+(def boolean-functions
   "Functions that return boolean values. Should match [[BooleanExpression]]."
-  #{:and :or :not :< :<= :> :>= := :!=})
+  #{:and :or :not :< :<= :> :>= := :!= :between :starts-with :ends-with :contains :does-not-contain :inside :is-empty
+    :not-empty :is-null :not-null :relative-time-interval :time-interval})
 
 (def ^:private aggregations
   #{:sum :avg :stddev :var :median :percentile :min :max :cum-count :cum-sum :count-where :sum-where :share :distinct
@@ -877,7 +878,11 @@
   segment-id [:or SegmentID ::lib.schema.common/non-blank-string])
 
 (mr/def ::BooleanExpression
-  (one-of and or not < <= > >= = !=))
+  (one-of
+   ;; filters drivers must implement
+   and or not = != < > <= >= between starts-with ends-with contains
+    ;; SUGAR filters drivers do not need to implement
+   does-not-contain inside is-empty not-empty is-null not-null relative-time-interval time-interval))
 
 (mr/def ::Filter
   [:multi
@@ -893,11 +898,7 @@
    [:numeric  NumericExpression]
    [:string   StringExpression]
    [:boolean  BooleanExpression]
-   [:else    (one-of
-              ;; filters drivers must implement
-              and or not = != < > <= >= between starts-with ends-with contains
-              ;; SUGAR filters drivers do not need to implement
-              does-not-contain inside is-empty not-empty is-null not-null relative-time-interval time-interval segment)]])
+   [:else     (one-of segment)]])
 
 (def ^:private CaseClause
   [:tuple {:error/message ":case subclause"} Filter ExpressionArg])

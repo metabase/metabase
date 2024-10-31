@@ -71,7 +71,7 @@ export const QuestionDetails = ({ question }: { question: Question }) => {
         </Flex>
       </SidesheetCardSection>
       <SharingDisplay question={question} />
-      <QuestionSources question={question} />
+      <QuestionSources />
     </>
   );
 };
