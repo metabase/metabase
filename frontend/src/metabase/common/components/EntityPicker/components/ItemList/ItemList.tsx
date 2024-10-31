@@ -86,12 +86,13 @@ export const ItemList = <
                 isFolder(item) ? <Icon name="chevronright" size={10} /> : null
               }
               label={
-                <Flex>
+                <Flex align="center">
                   {item.name}{" "}
                   <PLUGIN_MODERATION.ModerationStatusIcon
                     status={item.moderated_status}
                     filled
-                    ml="0.25rem"
+                    size={14}
+                    ml="0.5rem"
                   />
                 </Flex>
               }

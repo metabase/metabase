@@ -50,6 +50,7 @@ export const ResultItem = ({
         <PLUGIN_MODERATION.ModerationStatusIcon
           status={item.moderated_status}
           filled
+          size={14}
         />
         {item.description && (
           <Tooltip
