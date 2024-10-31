@@ -82,7 +82,7 @@
                                                      [:= :updated.moderated_item_type "card"]
                                                      [:= :updated.moderated_item_id :this.id]
                                                      [:= :updated.most_recent true]]}}}
-                 (#'search.spec/search-model-hooks (search.spec/spec "card"))))
+         (#'search.spec/search-model-hooks (search.spec/spec "card"))))
 
   (is (= #:model{:Table      #{{:search-model "segment",
                                 :fields       #{:description :schema :name :db_id}

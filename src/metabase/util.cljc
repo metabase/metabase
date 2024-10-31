@@ -1127,7 +1127,7 @@
   #?(:clj
      (reify CollReduce
        (coll-reduce [_ f]
-        #_{:clj-kondo/ignore [:reduce-without-init]}
+         #_{:clj-kondo/ignore [:reduce-without-init]}
          (let [acc1 (reduce f r1)
                acc2 (reduce f acc1 r2)]
            acc2))
