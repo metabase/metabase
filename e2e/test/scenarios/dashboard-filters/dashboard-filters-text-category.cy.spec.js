@@ -233,7 +233,7 @@ describe("scenarios > dashboard > filters > text/category", () => {
     toggleFilterWidgetValues(["Twitter"], {
       buttonLabel: "Set to default",
     });
-    filterWidget().findByText("Twitter");
+    filterWidget().findByText("Twitter").should("be.visible");
   });
 
   it("should use the list value picker for single-value category filters (metabase#49323)", () => {
@@ -253,7 +253,7 @@ describe("scenarios > dashboard > filters > text/category", () => {
       cy.findByText("Aerodynamic Bronze Hat").should("be.visible").click();
       cy.button("Add filter").click();
     });
-    filterWidget().findByText("Aerodynamic Bronze Hat");
+    filterWidget().findByText("Aerodynamic Bronze Hat").should("be.visible");
   });
 
   it("should use the list value picker for multi-value category filters (metabase#49323)", () => {
@@ -273,7 +273,7 @@ describe("scenarios > dashboard > filters > text/category", () => {
       cy.findByText("Aerodynamic Bronze Hat").should("be.visible").click();
       cy.button("Add filter").click();
     });
-    filterWidget().findByText("2 selections");
+    filterWidget().findByText("2 selections").should("be.visible");
   });
 });
 
