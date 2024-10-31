@@ -590,19 +590,22 @@ describe("issue 34330", () => {
 
   it("should only call the autocompleter with all text typed (metabase#34330)", () => {
     const editor = openNativeEditor();
-    const query = "USER";
+    const query = "USER_ID";
+    editor.realType(query);
 
-    editor.type(query);
+    cy.wait("@autocomplete").then(({ request }) => {
+      const url = new URL(request.url);
+      expect(url.searchParams.get("substring")).to.equal(query);
+    });
 
+    // only one call to the autocompleter should have been made
     cy.get("@autocomplete.all").should("have.length", 1);
-    cy.get("@autocomplete").its("request.url").should("contain", query);
   });
 
   it("should call the autocompleter eventually, even when only 1 character was typed (metabase#34330)", () => {
     const editor = openNativeEditor();
 
-    // can't use cy.type because it does not simulate the bug
-    editor.type("U");
+    editor.realType("U");
 
     cy.wait("@autocomplete").then(({ request }) => {
       const url = new URL(request.url);
