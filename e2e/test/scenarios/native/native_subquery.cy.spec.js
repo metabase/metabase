@@ -86,15 +86,12 @@ describe("scenarios > question > native subquery", () => {
 
         openNativeEditor();
         cy.reload(); // Refresh the state, so previously created questions need to be loaded again.
-        cy.get(".ace_editor")
-          .should("be.visible")
-          .type(" ")
-          .realType("{{#people");
+        cy.get(".ace_editor").should("be.visible").type(" ").type("{{#people");
 
         // Wait until another explicit autocomplete is triggered
         // (slightly longer than AUTOCOMPLETE_DEBOUNCE_DURATION)
         // See https://github.com/metabase/metabase/pull/20970
-        cy.wait(1000);
+        cy.wait(2000);
         cy.get(".ace_autocomplete")
           .should("be.visible")
           .findByText(`${questionId2}-a-`);
