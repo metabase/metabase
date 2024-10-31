@@ -2,6 +2,7 @@
   (:require
    [cheshire.core :as json]
    [clojure.java.io :as io]
+   [metabase.config :as config]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
@@ -19,17 +20,18 @@
     ;; or just regularly
     (metabot-v3.context/log _body :llm.log/fe->be)"
   [payload direction]
-  (let [directions {:llm.log/fe->be "\"FE -----------------> BE\""
-                    :llm.log/be->llm "\"BE -----------------> LLM\""
-                    :llm.log/llm->be "\"LLM -----------------> BE\""
-                    :llm.log/be->fe "\"BE -----------------> FE\""}]
-    (with-open [^java.io.BufferedWriter w (io/writer "llm-payloads" :append true)]
-      (io/copy (directions direction (name direction)) w)
-      (.newLine w)
-      (let [payload' (json/generate-string payload {:pretty true})]
-        (io/copy payload' w))
-      (.newLine w)
-      (.newLine w))))
+  (when config/is-dev?
+    (let [directions {:llm.log/fe->be "\"FE -----------------> BE\""
+                      :llm.log/be->llm "\"BE -----------------> LLM\""
+                      :llm.log/llm->be "\"LLM -----------------> BE\""
+                      :llm.log/be->fe "\"BE -----------------> FE\""}]
+      (with-open [^java.io.BufferedWriter w (io/writer "llm-payloads" :append true)]
+        (io/copy (directions direction (name direction)) w)
+        (.newLine w)
+        (let [payload' (json/generate-string payload {:pretty true})]
+          (io/copy payload' w))
+        (.newLine w)
+        (.newLine w)))))
 
 ;;; TODO
 (mr/def ::context
