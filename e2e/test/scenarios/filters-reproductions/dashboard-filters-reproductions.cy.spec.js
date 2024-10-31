@@ -1852,36 +1852,38 @@ describe("issue 25374", () => {
     cy.location("search").should("eq", "?equal_to=1%2C2%2C3");
   });
 
-  it(
-    "should retain comma-separated values when reverting to default (metabase#25374-3)",
-    { tags: "@flaky" },
-    () => {
-      editDashboard();
-      cy.findByTestId("edit-dashboard-parameters-widget-container")
-        .findByText("Equal to")
-        .click();
-      dashboardParameterSidebar()
-        .findByLabelText("Default value")
-        .type("1,2,3");
-      saveDashboard();
+  it("should retain comma-separated values when reverting to default (metabase#25374-3)", () => {
+    editDashboard();
+    cy.findByTestId("edit-dashboard-parameters-widget-container")
+      .findByText("Equal to")
+      .click();
+    dashboardParameterSidebar().findByLabelText("Default value").type("1,2,3");
 
-      cy.button("Clear").click();
-      cy.location("search").should("eq", "?equal_to=");
+    saveDashboard();
+    cy.location("search").should("eq", "?equal_to=1%2C2%2C3");
+    getDashboardCard().findAllByTestId("cell-data").should("have.text", "3");
 
-      cy.button("Reset filter to default state").click();
-      cy.location("search").should("eq", "?equal_to=1%2C2%2C3");
+    cy.button("Clear").click();
+    cy.location("search").should("eq", "?equal_to=");
+    getDashboardCard().should(
+      "contain.text",
+      "There was a problem displaying this chart.",
+    );
 
-      // Drill-through and go to the question
-      getDashboardCard(0).findByText(questionDetails.name).click();
-      cy.wait("@cardQuery");
+    cy.button("Reset filter to default state").click();
+    cy.location("search").should("eq", "?equal_to=1%2C2%2C3");
+    getDashboardCard().findAllByTestId("cell-data").should("have.text", "3");
 
-      cy.get("[data-testid=cell-data]")
-        .should("contain", "COUNT(*)")
-        .and("contain", "3");
+    // Drill-through and go to the question
+    getDashboardCard(0).findByText(questionDetails.name).click();
+    cy.wait("@cardQuery");
 
-      cy.location("search").should("eq", "?num=1%2C2%2C3");
-    },
-  );
+    cy.get("[data-testid=cell-data]")
+      .should("contain", "COUNT(*)")
+      .and("contain", "3");
+
+    cy.location("search").should("eq", "?num=1%2C2%2C3");
+  });
 
   it(
     "should retain comma-separated values when reverting to default via 'Reset all filters' (metabase#25374-4)",
