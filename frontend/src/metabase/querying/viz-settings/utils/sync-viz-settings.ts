@@ -219,41 +219,27 @@ function syncPivotColumnSplit(
   newColumns: ColumnInfo[],
   oldColumns: ColumnInfo[],
 ): VisualizationSettings {
-  const columnSplit = settings["pivot_table.column_split"];
-  if (!columnSplit) {
+  const columnSettings = settings["pivot_table.column_split"];
+  if (!columnSettings) {
     return settings;
   }
 
+  const keys = ["rows", "columns", "values"] as const;
   return {
     ...settings,
-    "pivot_table.column_split": {
-      rows: syncColumns({
-        settings: columnSplit.rows,
-        newColumns,
-        oldColumns,
-        getColumnName: setting => setting,
-        setColumnName: (_, newName) => newName,
-        createSetting: column => column.name,
-        shouldCreateSetting: () => false,
-      }),
-      columns: syncColumns({
-        settings: columnSplit.columns,
-        newColumns,
-        oldColumns,
-        getColumnName: setting => setting,
-        setColumnName: (_, newName) => newName,
-        createSetting: column => column.name,
-        shouldCreateSetting: () => false,
-      }),
-      values: syncColumns({
-        settings: columnSplit.values,
-        newColumns,
-        oldColumns,
-        getColumnName: setting => setting,
-        setColumnName: (_, newName) => newName,
-        createSetting: column => column.name,
-        shouldCreateSetting: () => false,
-      }),
-    },
+    "pivot_table.column_split": Object.fromEntries(
+      keys.map(key => [
+        key,
+        syncColumns({
+          settings: columnSettings[key] ?? [],
+          newColumns,
+          oldColumns,
+          getColumnName: setting => setting,
+          setColumnName: (_, newName) => newName,
+          createSetting: column => column.name,
+          shouldCreateSetting: () => false,
+        }),
+      ]),
+    ),
   };
 }

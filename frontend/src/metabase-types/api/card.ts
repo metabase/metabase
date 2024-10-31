@@ -119,9 +119,9 @@ export type ColumnFormattingSetting = {
 };
 
 export type PivotTableColumnSplitSetting = {
-  rows: string[];
-  columns: string[];
-  values: string[];
+  rows?: string[];
+  columns?: string[];
+  values?: string[];
 };
 
 export type PivotTableCollapsedRowsSetting = {

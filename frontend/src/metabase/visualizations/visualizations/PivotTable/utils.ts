@@ -52,7 +52,8 @@ export function updateValueWithCurrentColumns(
     for (const { columnFilter: filter, name } of partitions) {
       const column = columns.find(c => c.name === columnName);
       if (column != null && (filter == null || filter(column))) {
-        value[name].push(column.name);
+        value[name] = value[name] ?? [];
+        value[name]?.push(column.name);
         break;
       }
     }
@@ -67,17 +68,15 @@ export function addMissingCardBreakouts(
   setting: PivotTableColumnSplitSetting,
   availableColumns: DatasetColumn[],
 ) {
+  const { rows = [], columns = [] } = setting;
   const breakoutColumns = availableColumns.filter(
     column => column.source === "breakout",
   );
-  if (breakoutColumns.length <= setting.columns.length + setting.rows.length) {
+  if (breakoutColumns.length <= columns.length + rows.length) {
     return setting;
   }
-  const { columns, rows } = updateValueWithCurrentColumns(
-    setting,
-    breakoutColumns,
-  );
-  return { ...setting, columns, rows };
+  const newSetting = updateValueWithCurrentColumns(setting, breakoutColumns);
+  return { ...setting, ...newSetting };
 }
 
 export function isColumnValid(col: DatasetColumn) {
