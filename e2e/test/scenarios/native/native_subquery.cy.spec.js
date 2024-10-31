@@ -77,20 +77,22 @@ describe("scenarios > question > native subquery", () => {
         collection_id: ADMIN_PERSONAL_COLLECTION_ID,
       }).then(({ body: { id: questionId2 } }) => {
         openNativeEditor().realType("{{#people");
+        const timeoutOptions = { timeout: 5000 };
         cy.get(".ace_autocomplete")
           .should("be.visible")
-          .findByText(`${questionId2}-a-`, { timeout: 5000 });
+          .findByText(`${questionId2}-a-`, timeoutOptions);
         cy.get(".ace_autocomplete")
           .should("be.visible")
-          .findByText("Model in Bobby Tables's Personal Collection", {
-            timeout: 5000,
-          });
+          .findByText(
+            "Model in Bobby Tables's Personal Collection",
+            timeoutOptions,
+          );
         cy.get(".ace_autocomplete")
           .should("be.visible")
-          .findByText(`${questionId1}-a-`, { timeout: 5000 });
+          .findByText(`${questionId1}-a-`, timeoutOptions);
         cy.get(".ace_autocomplete")
           .should("be.visible")
-          .findByText("Question in Our analytics", { timeout: 5000 });
+          .findByText("Question in Our analytics", timeoutOptions);
       });
     });
   });
