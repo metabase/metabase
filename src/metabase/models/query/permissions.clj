@@ -85,7 +85,7 @@
        {:native? true})
 
      (m :guard (every-pred map? #(pos-int? (:source-table %))))
-     (apply merge-witl merge-source-ids
+     (apply merge-with merge-source-ids
       {:table-ids #{(:source-table m)}}
       (query->source-ids (dissoc m :source-table))))))
 
