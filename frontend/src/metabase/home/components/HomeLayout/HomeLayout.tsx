@@ -44,13 +44,13 @@ export const HomeLayout = () => {
   const [schema, setSchema] = useState<any[]>([]);
   const [messages, setMessages] = useState([]);
   const [threadId, setThreadId] = useState(null)
-  const [isChatHistoryOpen, setIsChatHistoryOpen] = useState(true);
+  const [isChatHistoryOpen, setIsChatHistoryOpen] = useState(false);
   const [showButton, setShowButton] = useState(false);
   const [insightDB, setInsightDB] = useState<number | null>(null);
   const [insightSchema, setInsightSchema] = useState<any[]>([]);
   const langchain_url =
-  "https://assistants-prod-9c6885f051b75a548b0496804051487b.default.us.langgraph.app";
-const langchain_key = "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";
+    "https://assistants-prod-9c6885f051b75a548b0496804051487b.default.us.langgraph.app";
+  const langchain_key = "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";
   const [client, setClient] = useState<any>(null);
   const [clientSmith, setSmithClient] = useState<any>(null);
 
@@ -92,7 +92,6 @@ const langchain_key = "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";
         dispatch(setInsightDBInputValue(rawDatabase.id as number));
       }
       if (cubeDatabase) {
-        setIsChatHistoryOpen(true);
         setShowButton(true);
         dispatch(setDBInputValue(cubeDatabase.id as number));
         dispatch(setCompanyName(formattedSiteName as string));
@@ -192,21 +191,21 @@ const langchain_key = "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";
 
   const handleStartNewChat = async () => {
     try {
-      if (!client) return; 
+      if (!client) return;
       const createdThread = await client.threads.create();
-  
+
       setSelectedThreadId(null);
       setThreadId(createdThread);
-  
+
       setMessages([]);
       setInputValue("");
-  
+
       setOldCardId(null);
     } catch (error) {
       console.error("Error creating new chat thread:", error);
     }
   };
-  
+
   const toggleChatHistory = () => {
     setIsChatHistoryOpen(!isChatHistoryOpen);
   };
@@ -228,7 +227,7 @@ const langchain_key = "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";
                     {schema.length > 0 ? (
                       <ChatSection>
                         <ChatPrompt
-                        client={client}
+                          client={client}
                           chatType={selectedChatType}
                           inputValue={inputValue}
                           setInputValue={setInputValue}
@@ -240,7 +239,7 @@ const langchain_key = "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";
                         <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100%" }}>
                           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "1rem" }}>
                             <p style={{ fontSize: "16px", color: "#76797D", fontWeight: "500", marginBottom: "1rem" }}>
-                            {t`Please Wait while we initialize the chat`}
+                              {t`Please Wait while we initialize the chat`}
                             </p>
                             <LoadingSpinner />
                           </div>
@@ -257,7 +256,7 @@ const langchain_key = "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";
                       {schema.length > 0 ? (
                         <ChatSection>
                           <ChatPrompt
-                          client={client}
+                            client={client}
                             chatType={selectedChatType}
                             inputValue={inputValue}
                             setInputValue={setInputValue}
@@ -269,7 +268,7 @@ const langchain_key = "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";
                           <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100%" }}>
                             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "1rem" }}>
                               <p style={{ fontSize: "16px", color: "#76797D", fontWeight: "500", marginBottom: "1rem" }}>
-                              {t`Please Wait while we initialize the chat`}
+                                {t`Please Wait while we initialize the chat`}
                               </p>
                               <LoadingSpinner />
                             </div>
@@ -333,7 +332,7 @@ const langchain_key = "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";
                 onClick={handleStartNewChat}
               >
                 <p style={{ fontSize: "14px", color: "#8A64DF", fontWeight: "500" }}>
-                {t`New Thread`}
+                  {t`New Thread`}
                 </p>
               </button>
             </Flex>
@@ -349,7 +348,7 @@ const langchain_key = "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";
                 }}
               >
                 <ChatAssistant
-                metabase_id_back={metabase_id_back}
+                  metabase_id_back={metabase_id_back}
                   client={client}
                   clientSmith={clientSmith}
                   selectedMessages={selectedChatHistory}

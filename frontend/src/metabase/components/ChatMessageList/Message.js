@@ -29,7 +29,12 @@ const Message = ({
           <ReactMarkdown
             key={index}
             components={{
-              p: ({ node, ...props }) => <span {...props} style={{ margin: 0, padding: 0, lineHeight: '1.2', display: 'block' }} />,
+              p: ({ node, ...props }) => <span {...props} style={{ margin: 0, padding: 0, lineHeight: '1.4', display: 'block', whiteSpace: 'normal' }} />,
+              li: ({ node, ordered, ...props }) => (
+                <li {...props} style={{ marginBottom: '0.5rem', marginLeft: '1.5rem', listStyleType: ordered ? 'decimal' : 'disc' }} />
+              ),
+              ol: ({ node, ...props }) => <ol {...props} style={{ padding: 0, margin: 0, marginTop: "1rem", marginBottom: "1rem" }} />,
+              ul: ({ node, ...props }) => <ul {...props} style={{ padding: 0, margin: 0 }} />,
             }}
           >
             {item.text}
@@ -39,7 +44,12 @@ const Message = ({
       return (
         <ReactMarkdown
           components={{
-            p: ({ node, ...props }) => <span {...props} style={{ margin: 0, padding: 0, lineHeight: '1.2', display: 'block' }} />,
+            p: ({ node, ...props }) => <span {...props} style={{ margin: 0, padding: 0, lineHeight: '1.4', display: 'block', whiteSpace: 'normal' }} />,
+            li: ({ node, ordered, ...props }) => (
+              <li {...props} style={{ marginBottom: '0.5rem', marginLeft: '1.5rem', listStyleType: ordered ? 'decimal' : 'disc' }} />
+            ),
+            ol: ({ node, ...props }) => <ol {...props} style={{ padding: 0, margin: 0, marginTop: "1rem", marginBottom: "1rem" }} />,
+            ul: ({ node, ...props }) => <ul {...props} style={{ padding: 0, margin: 0 }} />,
           }}
         >
           {message.text.text}
@@ -49,7 +59,12 @@ const Message = ({
       return (
         <ReactMarkdown
           components={{
-            p: ({ node, ...props }) => <span {...props} style={{ margin: 0, padding: 0, lineHeight: '1.2', display: 'block' }} />,
+            p: ({ node, ...props }) => <span {...props} style={{ margin: 0, padding: 0, lineHeight: '1.4', display: 'block', whiteSpace: 'normal' }} />,
+            li: ({ node, ordered, ...props }) => (
+              <li {...props} style={{ marginBottom: '0.5rem', marginLeft: '1.5rem', listStyleType: ordered ? 'decimal' : 'disc' }} />
+            ),
+            ol: ({ node, ...props }) => <ol {...props} style={{ padding: 0, margin: 0, marginTop: "1rem", marginBottom: "1rem" }} />,
+            ul: ({ node, ...props }) => <ul {...props} style={{ padding: 0, margin: 0 }} />,
           }}
         >
           {message.text}
@@ -58,14 +73,13 @@ const Message = ({
     }
     return null;
   };
-
   return (
     <div
       style={{
         display: "flex",
         flexDirection: "row",
         alignItems: "center",
-        marginBottom: "16px",
+        marginBottom: "8px",
       }}
     >
       {showIcon ? (
@@ -106,7 +120,7 @@ const Message = ({
         }}
       >
         {/* Render the message content */}
-        <span style={{ fontSize: "16px", whiteSpace: "pre-wrap", paddingRight: "2rem" }}>
+        <span style={{ fontSize: "16px", paddingRight: "2rem" }}>
           {renderMessageContent(message)}
         </span>
         {isLoading && (
