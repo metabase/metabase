@@ -64,10 +64,13 @@
 
       ;; TODO I strongly suspect that there are more indexes that would help performance, we should examine EXPLAIN.
 
-      (t2/query
-       (format "CREATE INDEX IF NOT EXISTS %s_tsvector_idx ON %s USING gin (search_vector)"
-               (str/replace (str (name active-table) "_" (random-uuid)) #"-" "_")
-               (name pending-table))))
+      (let [idx_prefix (str/replace (str (name active-table) "_" (random-uuid)) #"-" "_")
+            table-name (name pending-table)]
+        (t2/query
+         (format "CREATE UNIQUE INDEX IF NOT EXISTS %s_identity_idx ON %s (model, model_id)" idx_prefix table-name))
+        (t2/query
+         (format "CREATE INDEX IF NOT EXISTS %s_tsvector_idx ON %s USING gin (search_vector)" idx_prefix table-name))))
+
     (reset! reindexing? true)))
 
 (defn activate-pending!
@@ -104,14 +107,32 @@
                         (:searchable_text entity)
                         :text]])))
 
+(defn- upsert! [table entry]
+  (t2/query
+   {:insert-into   table
+    :values        [entry]
+    :on-conflict   [:model :model_id]
+    :do-update-set entry}))
+
+(defn- batch-upsert! [table entries]
+  (when (seq entries)
+    (t2/query
+     ;; The cost of dynamically calculating these keys should be small compared to the IO cost, so unoptimized.
+     (let [update-keys (vec (disj (set (keys (first entries))) :id :model :model_id))
+           excluded-kw (fn [column] (keyword (str "excluded." (name column))))]
+       {:insert-into   table
+        :values        entries
+        :on-conflict   [:model :model_id]
+        :do-update-set (zipmap update-keys (map excluded-kw update-keys))}))))
+
 (defn update!
   "Create the given search index entries"
   [entity]
   (let [entry (entity->entry entity)]
     (when @initialized?
-      (t2/insert! active-table entry))
+      (upsert! active-table entry))
     (when @reindexing?
-      (t2/insert! pending-table entry))))
+      (upsert! pending-table entry))))
 
 (defn- process-negation [term]
   (if (str/starts-with? term "-")
@@ -168,9 +189,9 @@
   [entities]
   (let [entries (map entity->entry entities)]
     (when @initialized?
-      (t2/insert! active-table entries))
+      (batch-upsert! active-table entries))
     (when @reindexing?
-      (t2/insert! pending-table entries))))
+      (batch-upsert! pending-table entries))))
 
 (defn search-query
   "Query fragment for all models corresponding to a query parameter `:search-term`."
