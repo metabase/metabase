@@ -287,11 +287,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
         },
         "pivot_table.collapsed_rows": {
           value: [],
-          rows: [
-            ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
-            ["field", ORDERS.USER_ID, null],
-            ["field", ORDERS.PRODUCT_ID, null],
-          ],
+          rows: ["CREATED_AT", "USER_ID", "PRODUCT_ID"],
         },
       },
     };
@@ -352,7 +348,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
   });
 
   it("should uncollapse a value when hiding the subtotals", () => {
-    const rows = testQuery.query.breakout;
+    const rows = ["SOURCE", "CATEGORY"];
     visitQuestionAdhoc({
       dataset_query: testQuery,
       display: "pivot",
@@ -851,22 +847,13 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
       display: "pivot",
       visualization_settings: {
         "pivot_table.column_split": {
-          rows: [
-            ["field", ORDERS.CREATED_AT, { "temporal-unit": "day" }],
-            ["field", ORDERS.PRODUCT_ID, null],
-          ],
+          rows: ["CREATED_AT", "PRODUCT_ID"],
           columns: [],
-          values: [
-            ["aggregation", 0],
-            ["aggregation", 1],
-          ],
+          values: ["sum", "count"],
         },
         "pivot_table.collapsed_rows": {
           value: [],
-          rows: [
-            ["field", ORDERS.CREATED_AT, { "temporal-unit": "day" }],
-            ["field", ORDERS.PRODUCT_ID, null],
-          ],
+          rows: ["CREATED_AT", "PRODUCT_ID"],
         },
       },
     });
@@ -920,10 +907,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
         },
         "pivot_table.collapsed_rows": {
           value: [],
-          rows: [
-            ["field", PEOPLE.STATE, { "source-field": ORDERS.USER_ID }],
-            ["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }],
-          ],
+          rows: ["STATE", "CREATED_AT"],
         },
       },
     });
@@ -961,10 +945,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
         },
         "pivot_table.collapsed_rows": {
           value: [],
-          rows: [
-            ["field", PEOPLE.STATE, { "source-field": ORDERS.USER_ID }],
-            ["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }],
-          ],
+          rows: ["STATE", "CREATED_AT"],
         },
       },
     });
@@ -1463,23 +1444,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
           },
           "pivot_table.collapsed_rows": {
             value: ['["Doohickey"]', '["Gadget"]', '["Gizmo"]', '["Widget"]'],
-            rows: [
-              ["expression", "test"],
-              [
-                "field",
-                PRODUCTS.RATING,
-                {
-                  "base-type": "type/Float",
-                  binning: {
-                    strategy: "num-bins",
-                    "min-value": 0,
-                    "max-value": 5.25,
-                    "num-bins": 8,
-                    "bin-width": 0.75,
-                  },
-                },
-              ],
-            ],
+            rows: ["test", "RATING"],
           },
         },
       },

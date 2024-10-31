@@ -90,13 +90,13 @@ describe("Visualizations > PivotTable > PivotTable", () => {
       });
 
       it("should collapse columns", () => {
-        const hiddenSettings = {
+        const hiddenSettings: VisualizationSettings = {
           ...settings,
           "pivot_table.collapsed_rows": {
-            rows: [cols[0].field_ref, cols[1].field_ref, cols[2].field_ref],
+            rows: [cols[0].name, cols[1].name, cols[2].name],
             value: ["2"],
           },
-        } as unknown as VisualizationSettings;
+        };
 
         setup({
           initialSettings: hiddenSettings,
@@ -124,13 +124,13 @@ describe("Visualizations > PivotTable > PivotTable", () => {
       });
 
       it("expanding collapsed columns", async () => {
-        const hiddenSettings = {
+        const hiddenSettings: VisualizationSettings = {
           ...settings,
           "pivot_table.collapsed_rows": {
-            rows: [cols[0].field_ref, cols[1].field_ref, cols[2].field_ref],
+            rows: [cols[0].name, cols[1].name, cols[2].name],
             value: ["2"],
           },
-        } as unknown as VisualizationSettings;
+        };
 
         setup({
           initialSettings: hiddenSettings,

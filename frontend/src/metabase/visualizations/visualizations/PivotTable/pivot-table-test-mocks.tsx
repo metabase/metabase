@@ -52,13 +52,13 @@ const pivotSettings = {
   "pivot.show_column_totals": true,
   "pivot.show_row_totals": true,
   "pivot_table.collapsed_rows": {
-    rows: [cols[0].field_ref, cols[1].field_ref, cols[2].field_ref],
+    rows: [cols[0].name, cols[1].name, cols[2].name],
     value: [],
   },
   "pivot_table.column_split": {
     columns: [],
-    rows: [cols[0].field_ref, cols[1].field_ref, cols[2].field_ref],
-    values: [cols[4].field_ref, cols[5].field_ref],
+    rows: [cols[0].name, cols[1].name, cols[2].name],
+    values: [cols[4].name, cols[5].name],
   },
   "table.column_formatting": [],
   column_settings: {},
