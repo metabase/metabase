@@ -140,8 +140,7 @@
 
 (defmulti spec
   "TODO write docstring"
-  ;; TODO use actual model instead of weird name
-  (fn [model-name] model-name))
+  (fn [search-model] search-model))
 
 (defmacro define-spec
   "Define a spec for a search model."
