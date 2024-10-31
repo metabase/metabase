@@ -106,9 +106,9 @@ export const refreshTokenAsync = createAsyncThunk(
         );
       }
       return response;
-    } catch (ex: unknown) {
-      if (ex instanceof Error) {
-        Error.captureStackTrace(ex, refreshTokenAsync);
+    } catch (exception: unknown) {
+      if (exception instanceof Error) {
+        Error.captureStackTrace(exception, refreshTokenAsync);
       }
 
       // The host app may have a lot of logs (and the sdk logs a lot too), so we
@@ -116,10 +116,10 @@ export const refreshTokenAsync = createAsyncThunk(
       console.error(
         "%cFailed to get auth session\n",
         "color: #FF2222; font-size: 16px; font-weight: bold;",
-        ex,
+        exception,
       );
 
-      throw ex;
+      throw exception;
     }
   },
 );
