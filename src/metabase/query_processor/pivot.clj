@@ -358,8 +358,9 @@
                                       (let [metadata-provider  (or (:lib/metadata query)
                                                                    (lib.metadata.jvm/application-database-metadata-provider (:database query)))]
                                         (into {}
-                                              (map-indexed (fn [i col] [(:name col) i]))
-                                              (lib/breakouts (lib/query metadata-provider query)))))
+                                              (comp (filter (comp #{:source/breakouts} :lib/source))
+                                                    (map-indexed (fn [i col] [(:name col) i])))
+                                              (lib/returned-columns (lib/query metadata-provider query)))))
         pivot-rows (when column-split-rows
                      (into [] (keep column-name->breakout-index) column-split-rows))
         pivot-cols (when column-split-columns
