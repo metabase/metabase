@@ -181,14 +181,9 @@
          "graph.metrics" ["expression"],
          "pivot_table.column_split"
          {"rows"
-          [["field" 39 {"base-type" "type/DateTime", "temporal-unit" "month"}]
-           ["expression" "expression"]
-           ["field"
-            33
-            {"base-type" "type/Float",
-             "binning" {"strategy" "num-bins", "min-value" 0, "max-value" 12, "num-bins" 8, "bin-width" 2}}]],
+          ["CREATED_AT" "expression" "TAX"],
           "columns" [],
-          "values" [["aggregation" 0]]},
+          "values" ["sum"]},
          "pivot_table.column_widths" {"leftHeaderWidths" [141 99 80], "totalLeftHeaderWidths" 320, "valueHeaderWidths" {}},
          "table.cell_column" "expression",
          "table.column_formatting"
@@ -205,15 +200,9 @@
     (is (= {:table.pivot_column "TAX"
             :graph.metrics ["expression"]
             :pivot_table.column_split
-            {:rows
-             [[:field 39 {:base-type :type/DateTime, :temporal-unit :month}]
-              [:expression "expression"]
-              [:field
-               33
-               {:base-type :type/Float
-                :binning {:strategy :num-bins, :min-value 0, :max-value 12, :num-bins 8, :bin-width 2}}]]
+            {:rows ["CREATED_AT" "expression" "TAX"]
              :columns []
-             :values [[:aggregation 0]]}
+             :values ["sum"]}
             :pivot_table.column_widths {:leftHeaderWidths [141 99 80], :totalLeftHeaderWidths 320, :valueHeaderWidths {}}
             :table.cell_column "expression"
             :table.column_formatting

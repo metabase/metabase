@@ -109,11 +109,8 @@ export type SeriesOrderSetting = {
   color?: string;
 };
 
-type ColumnKey = string;
-type ColumnName = string;
-
 export type ColumnFormattingSetting = {
-  columns: ColumnName[];
+  columns: string[]; // column names
   color?: string;
   type?: string;
   operator?: string;
@@ -122,18 +119,18 @@ export type ColumnFormattingSetting = {
 };
 
 export type PivotTableColumnSplitSetting = {
-  rows: ColumnName[];
-  columns: ColumnName[];
-  values: ColumnName[];
+  rows: string[];
+  columns: string[];
+  values: string[];
 };
 
 export type PivotTableCollapsedRowsSetting = {
-  rows: ColumnName[];
+  rows: string[];
   value: string[]; // identifiers for collapsed rows
 };
 
 export type TableColumnOrderSetting = {
-  name: ColumnName;
+  name: string;
   enabled: boolean;
   fieldRef?: FieldReference;
 };
@@ -175,7 +172,7 @@ export type VisualizationSettings = {
   "table.columns"?: TableColumnOrderSetting[];
   // Keys here can be modern (returned by `getColumnKey`) or legacy (`getLegacyColumnKey`).
   // Use `getColumnSettings` which checks for both keys.
-  column_settings?: Record<ColumnKey, ColumnSettings>;
+  column_settings?: Record<string, ColumnSettings>;
 
   // X-axis
   "graph.x_axis.title_text"?: string;
@@ -204,8 +201,8 @@ export type VisualizationSettings = {
   "graph.show_trendline"?: boolean;
 
   // Series
-  "graph.dimensions"?: ColumnName[];
-  "graph.metrics"?: ColumnName[];
+  "graph.dimensions"?: string[];
+  "graph.metrics"?: string[];
 
   // Series settings
   series_settings?: Record<string, SeriesSettings>;
