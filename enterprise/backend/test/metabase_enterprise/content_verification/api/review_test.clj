@@ -24,11 +24,12 @@
     (mt/with-premium-features #{:content-verification}
       (mt/with-temp [Card {card-id :id} {:name "Test Card"}]
         (mt/with-model-cleanup [ModerationReview]
-          (letfn [(moderate! [status text]
+          (letfn [(moderate! [{:keys [status reason]} text]
                     (normalized-response
                      (mt/user-http-request :crowberto :post 200 "moderation-review"
                                            {:text                text
                                             :status              status
+                                            :reason              reason
                                             :moderated_item_id   card-id
                                             :moderated_item_type "card"})))
                   (review-count [] (t2/count ModerationReview
@@ -50,12 +51,12 @@
                     :status              "verified"
                     :most_recent         true
                     :reason              nil}
-                   (moderate! "verified" "Looks good to me")))
+                   (moderate! {:status "verified"} "Looks good to me")))
             (testing "When adding a new moderation review, marks it as most recent"
               (is (= {:text        "hmm"
                       :status      nil
                       :most_recent true}
-                     (select-keys (moderate! nil "hmm") [:text :status :most_recent])))
+                     (select-keys (moderate! {:status nil} "hmm") [:text :status :most_recent])))
               (testing "And previous moderation reviews are marked as not :most_recent"
                 (is (= #{{:text "hmm" :most_recent true :status nil}
                          {:text "Looks good to me" :most_recent false :status "verified"}}
@@ -75,18 +76,39 @@
               ;; manually inserted many
 
               (is (> (review-count) moderation-review/max-moderation-reviews))
-              (moderate! "verified" "lookin good")
+              (moderate! {:status "verified"} "lookin good")
               ;; api ensures we never have more than our limit
 
               (is (<= (review-count) moderation-review/max-moderation-reviews)))
             (testing "Only allows for valid status"
               (doseq [status moderation-review/statuses]
-                (is (= status (:status (moderate! status "good")))))
+                (is (= status (:status (moderate! {:status status} "good")))))
               (mt/user-http-request :crowberto :post 400 "moderation-review"
                                     {:text                "not a chance this works"
                                      :status              "invalid status"
                                      :moderated_item_id   card-id
                                      :moderated_item_type "card"}))
+
+            (testing "Only allows for valid reason"
+              (doseq [status moderation-review/statuses]
+                (is (= status (:status (moderate! {:status status} "good")))))
+              (mt/user-http-request :crowberto :post 400 "moderation-review"
+                                    {:text                "not a chance this works"
+                                     :status              "verified"
+                                     :moderated_item_id   card-id
+                                     :reason              :invalid-reason
+                                     :moderated_item_type "card"}))
+
+            (testing "Allows for valid reason"
+              (doseq [reason (keys @#'moderation-review/reasons)]
+                (is (= reason (keyword (:reason (moderate! {:reason reason} "good"))))))
+              (mt/user-http-request :crowberto :post 400 "moderation-review"
+                                    {:text                "not a chance this works"
+                                     :status              nil
+                                     :moderated_item_id   card-id
+                                     :reason              :just-because
+                                     :moderated_item_type "card"}))
+
             (testing "Can't moderate a card that doesn't exist"
               (is (= "Not found."
                      (mt/user-http-request :crowberto :post 404 "moderation-review"

@@ -56,7 +56,8 @@
   (derive :hook/timestamped?))
 
 (t2/deftransforms :model/ModerationReview
-  {:moderated_item_type mi/transform-keyword})
+  {:moderated_item_type mi/transform-keyword
+   :reason mi/transform-keyword})
 
 (def max-moderation-reviews
   "The amount of moderation reviews we will keep on hand."
@@ -84,17 +85,17 @@
 
 (mu/defn create-review!
   "Create a new ModerationReview"
-  [params :-
-   [:map
-    [:moderated_item_id   ms/PositiveInt]
-    [:moderated_item_type moderation/moderated-item-types]
-    [:moderator_id        ms/PositiveInt]
-    [:status              {:optional true} Statuses]
-    [:reason              {:optional true} Reasons]
-    [:text                {:optional true} [:maybe :string]]]]
+  [review :- [:map
+              [:moderated_item_id   ms/PositiveInt]
+              [:moderated_item_type moderation/moderated-item-types]
+              [:moderator_id        ms/PositiveInt]
+              [:status              {:optional true} Statuses]
+              [:reason              {:optional true} Reasons]
+              [:text                {:optional true} [:maybe :string]]]]
+  ;; TODO: once we add "flagged" status, check that reason is only allowed for those.
   (t2/with-transaction [_conn]
-    (delete-extra-reviews! (:moderated_item_id params) (:moderated_item_type params))
-    (t2/update! ModerationReview {:moderated_item_id   (:moderated_item_id params)
-                                  :moderated_item_type (:moderated_item_type params)}
+    (delete-extra-reviews! (:moderated_item_id review) (:moderated_item_type review))
+    (t2/update! ModerationReview {:moderated_item_id   (:moderated_item_id review)
+                                  :moderated_item_type (:moderated_item_type review)}
                 {:most_recent false})
-    (first (t2/insert-returning-instances! ModerationReview (assoc params :most_recent true)))))
+    (first (t2/insert-returning-instances! ModerationReview (assoc review :most_recent true)))))
