@@ -10,7 +10,7 @@ title: Embedded analytics SDK - authentication
 
 Notes on handling authentication when working with the SDK.
 
-## Authenticate users from your back-end
+## Authenticating people from your server
 
 The SDK requires an endpoint in your app's backend that will sign someone into your Metabase and return a token. The SDK will use that token to authenticate calls to Metabase.
 
@@ -22,7 +22,8 @@ This example sets up an endpoint in an app, `/sso/metabase`, that creates a toke
 
 ```typescript
 const express = require("express");
-
+const cors = require("cors");
+const session = require("express-session")
 const jwt = require("jsonwebtoken");
 const fetch = require("node-fetch");
 
