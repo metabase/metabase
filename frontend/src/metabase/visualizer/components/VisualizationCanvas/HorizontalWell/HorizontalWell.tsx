@@ -32,7 +32,7 @@ export function HorizontalWell({
   ...props
 }: HorizontalWellProps) {
   const { active, setNodeRef, isOver } = useDroppable({
-    id: DROPPABLE_ID.HORIZONTAL_WELL,
+    id: DROPPABLE_ID.X_AXIS_WELL,
   });
 
   if (display !== "funnel") {

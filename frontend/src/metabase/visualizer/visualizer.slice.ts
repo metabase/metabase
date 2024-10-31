@@ -3,28 +3,43 @@ import {
   createSelector,
   createSlice,
 } from "@reduxjs/toolkit";
+import _ from "underscore";
 
 import { cardApi } from "metabase/api";
 import { createAsyncThunk } from "metabase/lib/redux";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
+import { getColumnNameFromKey } from "metabase-lib/v1/queries/utils/column-key";
+import { isNumeric } from "metabase-lib/v1/types/utils/isa";
 import type {
   Card,
   CardId,
   Dataset,
+  DatasetColumn,
   RawSeries,
+  RowValues,
+  VisualizationDisplay,
   VisualizationSettings,
 } from "metabase-types/api";
 import type {
   DraggedItem,
   VisualizerDataSource,
   VisualizerDataSourceId,
+  VisualizerDatasetColumn,
   VisualizerState,
 } from "metabase-types/store/visualizer";
 
-import { createDataSource } from "./utils";
+import {
+  createDataSource,
+  createDataSourceNameRef,
+  createVisualizerColumnReference,
+  getDataSourceIdFromNameRef,
+  isDataSourceNameRef,
+} from "./utils";
 
 const initialState: VisualizerState = {
   display: null,
+  columns: [],
+  referencedColumns: [],
   settings: {},
   cards: [],
   datasets: {},
@@ -78,6 +93,49 @@ const visualizerSlice = createSlice({
   name: "visualizer",
   initialState,
   reducers: {
+    importColumn: (
+      state,
+      action: PayloadAction<{
+        column: DatasetColumn;
+        dataSource: VisualizerDataSource;
+      }>,
+    ) => {
+      const { column, dataSource } = action.payload;
+      const columnRef = createVisualizerColumnReference(dataSource, column);
+
+      if (state.display === "funnel" && isNumeric(column)) {
+        const metric = getVisualizerMetricColumn({ visualizer: state });
+        const dimension = getVisualizerDimensionColumn({ visualizer: state });
+        if (metric.column && dimension.column) {
+          state.referencedColumns.push(columnRef);
+          state.columns[metric.index] = connectToVisualizerColumn(
+            metric.column,
+            columnRef.name,
+          );
+          state.columns[dimension.index] = connectToVisualizerColumn(
+            dimension.column,
+            createDataSourceNameRef(dataSource.id),
+          );
+        }
+      }
+    },
+    setDisplay: (state, action: PayloadAction<VisualizationDisplay | null>) => {
+      const display = action.payload;
+
+      state.display = display;
+      state.settings = {};
+      state.referencedColumns = [];
+
+      if (display === "funnel") {
+        const metric = createMetricColumn();
+        const dimension = createDimensionColumn();
+        state.columns = [metric, dimension];
+        state.settings = {
+          "funnel.metric": metric.name,
+          "funnel.dimension": dimension.name,
+        };
+      }
+    },
     updateSettings: (state, action: PayloadAction<VisualizationSettings>) => {
       state.settings = {
         ...state.settings,
@@ -94,6 +152,25 @@ const visualizerSlice = createSlice({
       delete state.loadingDataSources[source.id];
       delete state.datasets[source.id];
       delete state.loadingDatasets[source.id];
+
+      const [removedColumns, remainingColumns] = _.partition(
+        state.referencedColumns,
+        ref => ref.sourceId === source.id,
+      );
+      state.referencedColumns = remainingColumns;
+      const removedColumnsSet = new Set(removedColumns.map(c => c.name));
+
+      if (removedColumnsSet.size > 0) {
+        state.columns = state.columns.map(col => ({
+          ...col,
+          values: col.values.filter(v => {
+            if (isDataSourceNameRef(v)) {
+              return getDataSourceIdFromNameRef(v) !== source.id;
+            }
+            return !removedColumnsSet.has(v);
+          }),
+        }));
+      }
     },
     toggleDataSourceExpanded: (
       state,
@@ -142,8 +219,43 @@ const visualizerSlice = createSlice({
       })
       .addCase(fetchCardQuery.fulfilled, (state, action) => {
         const cardId = action.meta.arg;
-        state.datasets[`card:${cardId}`] = action.payload;
+        const dataset = action.payload;
+        state.datasets[`card:${cardId}`] = dataset;
         state.loadingDatasets[`card:${cardId}`] = false;
+
+        const card = state.cards.find(card => card.id === cardId);
+
+        if (state.display === "funnel") {
+          if (
+            card?.display === "scalar" &&
+            dataset.data?.cols?.length === 1 &&
+            isNumeric(dataset.data.cols[0]) &&
+            dataset.data.rows?.length === 1
+          ) {
+            const dataSource = createDataSource("card", cardId, card.name);
+            const columnRef = createVisualizerColumnReference(
+              dataSource,
+              dataset.data.cols[0],
+            );
+
+            const metric = getVisualizerMetricColumn({ visualizer: state });
+            const dimension = getVisualizerDimensionColumn({
+              visualizer: state,
+            });
+
+            if (metric.column && dimension.column) {
+              state.referencedColumns.push(columnRef);
+              state.columns[metric.index] = connectToVisualizerColumn(
+                metric.column,
+                columnRef.name,
+              );
+              state.columns[dimension.index] = connectToVisualizerColumn(
+                dimension.column,
+                createDataSourceNameRef(dataSource.id),
+              );
+            }
+          }
+        }
       })
       .addCase(fetchCardQuery.rejected, (state, action) => {
         const cardId = action.meta.arg;
@@ -156,6 +268,8 @@ const visualizerSlice = createSlice({
 });
 
 export const {
+  importColumn,
+  setDisplay,
   updateSettings,
   removeDataSource,
   toggleDataSourceExpanded,
@@ -184,27 +298,118 @@ export const getDraggedItem = (state: { visualizer: VisualizerState }) =>
 const getCards = (state: { visualizer: VisualizerState }) =>
   state.visualizer.cards;
 
+// Must remain private
+const getVisualizationColumns = (state: { visualizer: VisualizerState }) =>
+  state.visualizer.columns;
+
+const getVisualizerMetricColumn = (state: { visualizer: VisualizerState }) => {
+  const columns = getVisualizationColumns(state);
+  const index = columns.findIndex(
+    column => column.name === VISUALIZER_METRIC_COL_NAME,
+  );
+  return { column: columns[index], index };
+};
+
+const getVisualizerDimensionColumn = (state: {
+  visualizer: VisualizerState;
+}) => {
+  const columns = getVisualizationColumns(state);
+  const index = columns.findIndex(
+    column => column.name === VISUALIZER_DIMENSION_COL_NAME,
+  );
+  return { column: columns[index], index };
+};
+
+export const getReferencedColumns = (state: { visualizer: VisualizerState }) =>
+  state.visualizer.referencedColumns;
+
 export const getDataSources = createSelector([getCards], cards =>
   cards.map(card => createDataSource("card", card.id, card.name)),
 );
 
-export const getVisualizerRawSeries = createSelector(
-  [getVisualizationType, getDataSources, getDatasets, getSettings],
-  (display, dataSources, datasets, settings): RawSeries => {
-    const [source] = dataSources;
-    const dataset = source ? datasets[source.id] : null;
-
-    if (display == null || dataset == null) {
-      return [];
+export const getUsedDataSources = createSelector(
+  [getDataSources, getReferencedColumns],
+  (dataSources, referencedColumns) => {
+    if (dataSources.length === 1) {
+      return dataSources;
     }
 
+    const usedDataSourceIds = new Set(
+      referencedColumns.map(ref => ref.sourceId),
+    );
+    return dataSources.filter(dataSource =>
+      usedDataSourceIds.has(dataSource.id),
+    );
+  },
+);
+
+const getVisualizerDatasetData = createSelector(
+  [
+    getUsedDataSources,
+    getDatasets,
+    getReferencedColumns,
+    getVisualizationColumns,
+  ],
+  (usedDataSources, datasets, referencedColumns, cols): Dataset => {
+    if (usedDataSources.length === 1) {
+      const [source] = usedDataSources;
+      return datasets[source.id]?.data;
+    }
+
+    const referencedColumnValuesMap: Record<string, RowValues> = {};
+    referencedColumns.forEach(ref => {
+      const dataset = datasets[ref.sourceId];
+      if (!dataset) {
+        return;
+      }
+      const columnName = getColumnNameFromKey(ref.columnKey);
+      const columnIndex = dataset.data.cols.findIndex(
+        col => col.name === columnName,
+      );
+      if (columnIndex >= 0) {
+        const values = dataset.data.rows.map(row => row[columnIndex]);
+        referencedColumnValuesMap[ref.name] = values;
+      }
+    });
+
+    const unzippedRows = cols.map(column =>
+      column.values
+        .map(value => {
+          if (isDataSourceNameRef(value)) {
+            const id = getDataSourceIdFromNameRef(value);
+            const dataSource = usedDataSources.find(source => source.id === id);
+            return dataSource?.name ? [dataSource.name] : [];
+          }
+          const values = referencedColumnValuesMap[value];
+          if (!values) {
+            return [];
+          }
+          return values;
+        })
+        .flat(),
+    );
+
+    return {
+      cols,
+      rows: _.zip(...unzippedRows),
+      results_metadata: { columns: cols },
+    };
+  },
+);
+
+export const getVisualizerRawSeries = createSelector(
+  [getVisualizationType, getSettings, getVisualizerDatasetData],
+  (display, settings, data): RawSeries => {
+    if (!display) {
+      return [];
+    }
     return [
       {
         card: {
           display,
           visualization_settings: settings,
         },
-        ...dataset,
+        data,
       },
     ];
   },
@@ -215,3 +420,52 @@ export const getVisualizerComputedSettings = createSelector(
   rawSeries =>
     rawSeries.length > 0 ? getComputedSettingsForSeries(rawSeries) : {},
 );
+
+const VISUALIZER_METRIC_COL_NAME = "METRIC";
+const VISUALIZER_DIMENSION_COL_NAME = "DIMENSION";
+
+function createMetricColumn(): VisualizerDatasetColumn {
+  return {
+    base_type: "type/Integer",
+    effective_type: "type/Integer",
+    display_name: "METRIC",
+    field_ref: [
+      "field",
+      VISUALIZER_METRIC_COL_NAME,
+      { "base-type": "type/Integer" },
+    ],
+    name: VISUALIZER_METRIC_COL_NAME,
+    source: "artificial",
+
+    values: [],
+  };
+}
+
+function createDimensionColumn(): VisualizerDatasetColumn {
+  return {
+    base_type: "type/Text",
+    effective_type: "type/Text",
+    display_name: "DIMENSION",
+    field_ref: [
+      "field",
+      VISUALIZER_DIMENSION_COL_NAME,
+      { "base-type": "type/Text" },
+    ],
+    name: VISUALIZER_DIMENSION_COL_NAME,
+    source: "artificial",
+
+    values: [],
+  };
+}
+
+function connectToVisualizerColumn(
+  column: VisualizerDatasetColumn,
+  ref: string,
+) {
+  return {
+    ...column,
+    values: !column.values.includes(ref)
+      ? [...column.values, ref]
+      : column.values,
+  };
+}

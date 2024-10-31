@@ -8,9 +8,12 @@ import {
   getDataSources,
   getDatasets,
   getExpandedDataSources,
+  getReferencedColumns,
   removeDataSource,
   toggleDataSourceExpanded,
 } from "metabase/visualizer/visualizer.slice";
+import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
+import type { VisualizerDataSource } from "metabase-types/store/visualizer";
 
 import { ColumnListItem, type ColumnListItemProps } from "./ColumnListItem";
 import S from "./DatasetList.module.css";
@@ -19,6 +22,7 @@ export const DatasetList = () => {
   const dataSources = useSelector(getDataSources);
   const datasets = useSelector(getDatasets);
   const expandedDataSources = useSelector(getExpandedDataSources);
+  const referencedColumns = useSelector(getReferencedColumns);
   const dispatch = useDispatch();
 
   return (
@@ -62,7 +66,16 @@ export const DatasetList = () => {
             {isExpanded && dataset && dataset.data.cols && (
               <Box ml={12} mt={2}>
                 {dataset.data.cols.map(column => (
-                  <DraggableColumnListItem key={column.name} column={column} />
+                  <DraggableColumnListItem
+                    key={column.name}
+                    column={column}
+                    dataSource={source}
+                    isSelected={referencedColumns.some(
+                      c =>
+                        c.sourceId === source.id &&
+                        c.columnKey === getColumnKey(column),
+                    )}
+                  />
                 ))}
               </Box>
             )}
@@ -73,12 +86,23 @@ export const DatasetList = () => {
   );
 };
 
-function DraggableColumnListItem({ column, ...props }: ColumnListItemProps) {
+type DraggableColumnListItemProps = ColumnListItemProps & {
+  isSelected: boolean;
+  dataSource: VisualizerDataSource;
+};
+
+function DraggableColumnListItem({
+  column,
+  dataSource,
+  isSelected,
+  ...props
+}: DraggableColumnListItemProps) {
   const { attributes, listeners, isDragging, setNodeRef } = useDraggable({
     id: column.name,
     data: {
       type: DRAGGABLE_ID.COLUMN,
       column,
+      dataSource,
     },
   });
 
@@ -87,6 +111,7 @@ function DraggableColumnListItem({ column, ...props }: ColumnListItemProps) {
       {...props}
       {...attributes}
       {...listeners}
+      bg={isSelected ? "var(--mb-color-brand-lighter)" : undefined}
       column={column}
       style={{ visibility: isDragging ? "hidden" : "visible" }}
       ref={setNodeRef}

@@ -15,17 +15,22 @@ import {
 } from "metabase/visualizer/dnd/guards";
 import {
   getDraggedItem,
+  getVisualizationType,
+  importColumn,
+  setDisplay,
   setDraggedItem,
-  updateSettings,
 } from "metabase/visualizer/visualizer.slice";
+import type { VisualizationDisplay } from "metabase-types/api";
 
 import { DataImporter } from "../DataImporter";
 import { DataManager } from "../DataManager";
 import { DragOverlay as VisualizerDragOverlay } from "../DragOverlay";
 import { Header } from "../Header";
 import { VisualizationCanvas } from "../VisualizationCanvas";
+import { VisualizationPicker } from "../VisualizationPicker";
 
 export const VisualizerPage = () => {
+  const display = useSelector(getVisualizationType);
   const draggedItem = useSelector(getDraggedItem);
   const dispatch = useDispatch();
 
@@ -47,21 +52,24 @@ export const VisualizerPage = () => {
 
   const handleDragEnd = useCallback(
     ({ active, over }: DragEndEvent) => {
-      if (
-        over?.id === DROPPABLE_ID.VERTICAL_WELL &&
-        isDraggedColumnItem(active)
-      ) {
-        dispatch(updateSettings({ "funnel.metric": active.id }));
+      if (isDraggedColumnItem(active)) {
+        const { column, dataSource } = active.data.current;
+        if (over?.id === DROPPABLE_ID.X_AXIS_WELL) {
+          // dispatch(updateSettings({ "funnel.dimension": active.id }));
+        } else if (over?.id === DROPPABLE_ID.Y_AXIS_WELL) {
+          // dispatch(updateSettings({ "funnel.metric": active.id }));
+        } else if (over?.id === DROPPABLE_ID.CANVAS_MAIN) {
+          dispatch(importColumn({ column, dataSource }));
+        }
       }
-
-      if (
-        over?.id === DROPPABLE_ID.HORIZONTAL_WELL &&
-        isDraggedColumnItem(active)
-      ) {
-        dispatch(updateSettings({ "funnel.dimension": active.id }));
-      }
-
       dispatch(setDraggedItem(null));
+    },
+    [dispatch],
+  );
+
+  const handleChangeDisplay = useCallback(
+    (nextDisplay: string) => {
+      dispatch(setDisplay(nextDisplay as VisualizationDisplay));
     },
     [dispatch],
   );
@@ -83,7 +91,7 @@ export const VisualizerPage = () => {
             component="main"
             w="100%"
             m={10}
-            p="xl"
+            px="xl"
             bg="white"
             style={{
               borderRadius: "var(--default-border-radius)",
@@ -92,7 +100,16 @@ export const VisualizerPage = () => {
               boxShadow: "0 1px 2px 2px var(--mb-color-border)",
             }}
           >
-            <VisualizationCanvas />
+            <Flex direction="row" align="center" justify="space-between">
+              <p>Name your visualization</p>
+              <VisualizationPicker
+                value={display}
+                onChange={handleChangeDisplay}
+              />
+            </Flex>
+            <Box h="90%">
+              <VisualizationCanvas />
+            </Box>
           </Box>
         </Flex>
         <DragOverlay dropAnimation={null}>

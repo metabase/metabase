@@ -16,7 +16,7 @@ export function VerticalWell({
   style,
   ...props
 }: VerticalWellProps) {
-  const { setNodeRef } = useDroppable({ id: DROPPABLE_ID.VERTICAL_WELL });
+  const { setNodeRef } = useDroppable({ id: DROPPABLE_ID.Y_AXIS_WELL });
 
   if (display !== "funnel") {
     return null;

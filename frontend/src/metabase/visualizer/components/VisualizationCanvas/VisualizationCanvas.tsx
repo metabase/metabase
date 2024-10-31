@@ -1,9 +1,11 @@
+import { useDroppable } from "@dnd-kit/core";
 import { useCallback } from "react";
 import { t } from "ttag";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Center, Flex, Text } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
+import { DROPPABLE_ID } from "metabase/visualizer/dnd/constants";
 import {
   getVisualizationType,
   getVisualizerComputedSettings,
@@ -20,6 +22,8 @@ export function VisualizationCanvas() {
   const rawSeries = useSelector(getVisualizerRawSeries);
   const settings = useSelector(getVisualizerComputedSettings);
   const dispatch = useDispatch();
+
+  const { setNodeRef } = useDroppable({ id: DROPPABLE_ID.CANVAS_MAIN });
 
   const hasSeriesToShow = rawSeries.length > 0 && display;
 
@@ -39,7 +43,7 @@ export function VisualizationCanvas() {
   }
 
   return (
-    <Flex w="100%" h="100%">
+    <Flex w="100%" h="100%" ref={setNodeRef}>
       <VerticalWell display={display} settings={settings} />
       <Flex direction="column" style={{ flex: 1 }}>
         <Visualization rawSeries={rawSeries} />
