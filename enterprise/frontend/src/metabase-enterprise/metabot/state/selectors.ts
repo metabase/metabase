@@ -15,3 +15,8 @@ export const getUserMessages = createSelector(
   getMetabot,
   metabot => metabot.userMessages,
 );
+
+export const getIsProcessing = createSelector(
+  getMetabot,
+  metabot => metabot.isProcessing,
+);
