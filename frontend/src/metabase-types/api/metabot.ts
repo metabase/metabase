@@ -40,9 +40,6 @@ export type MetabotHistoryEntry =
   | MetabotHistoryToolEntry
   | MetabotHistoryMessageEntry;
 
-// export type MetabotHistory = MetabotHistoryEntry[];
-
-// TODO: temp - don't merge
 export type MetabotHistory = any;
 
 export type MetabotMessageReaction = {
@@ -60,25 +57,10 @@ export type MetabotChangeVisiualizationSettingsReaction = {
   visible_columns: string[];
 };
 
-export type MetabotApplyVisualizationsReaction = {
-  type: "metabot.reaction/apply-visualizations";
-  display: CardDisplayType;
-  filters: any; // TODO:
-  summarizations: any; // TODO:
-  groups: any; // TODO:
-};
-
-export type MetabotGoToQuestionReaction = {
-  type: "metabot.reaction/goto-question";
-  question_id: number | null;
-};
-
 export type MetabotReaction =
   | MetabotMessageReaction
   | MetabotChangeDisplayTypeReaction
-  | MetabotChangeVisiualizationSettingsReaction
-  | MetabotApplyVisualizationsReaction
-  | MetabotGoToQuestionReaction;
+  | MetabotChangeVisiualizationSettingsReaction;
 
 /* Metabot v3 - API Request Types */
 

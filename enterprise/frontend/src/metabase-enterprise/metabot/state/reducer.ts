@@ -3,11 +3,13 @@ import { type PayloadAction, createSlice } from "@reduxjs/toolkit";
 export interface MetabotState {
   userMessages: string[];
   visible: boolean;
+  isProcessing: boolean;
 }
 
 const initialState: MetabotState = {
   userMessages: [],
   visible: false,
+  isProcessing: false,
 };
 
 export const metabot = createSlice({
@@ -20,10 +22,13 @@ export const metabot = createSlice({
         state.userMessages = [];
       }
     },
+    setIsProcessing: (state, action: PayloadAction<boolean>) => {
+      state.isProcessing = action.payload;
+    },
     addUserMessage: (state, action: PayloadAction<string>) => {
       state.userMessages.push(action.payload);
     },
-    removeUserMessage: (state, action: PayloadAction<number>) => {
+    dismissUserMessage: (state, action: PayloadAction<number>) => {
       state.userMessages.splice(action.payload, 1);
     },
     clearUserMessages: state => {
