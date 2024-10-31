@@ -3,6 +3,7 @@ import type {
   FetchRequestTokenFn,
   SDKConfig,
 } from "embedding-sdk";
+import { getIsLocalhost } from "embedding-sdk/lib/is-localhost";
 import type { SdkStoreState } from "embedding-sdk/store/types";
 import api from "metabase/lib/api";
 import { createAsyncThunk } from "metabase/lib/redux";
@@ -18,8 +19,7 @@ export const initAuth = createAsyncThunk(
     // Setup JWT or API key
     const isValidJwtConfig =
       sdkConfig.jwtProviderUri && sdkConfig.jwtProviderUri?.length > 0;
-    const isValidApiKeyConfig =
-      sdkConfig.apiKey && window.location.hostname === "localhost";
+    const isValidApiKeyConfig = sdkConfig.apiKey && getIsLocalhost();
 
     if (isValidJwtConfig) {
       // JWT setup
@@ -78,12 +78,11 @@ export const refreshTokenAsync = createAsyncThunk(
 
     try {
       const response = await getRefreshToken(url);
+      const source = customGetRefreshToken
+        ? '"fetchRequestToken"'
+        : "jwtProvider endpoint";
 
       if (!response || typeof response !== "object") {
-        const source = customGetRefreshToken
-          ? '"fetchRequestToken"'
-          : "jwtProvider endpoint";
-
         throw new Error(
           `The ${source} must return an object with the shape {id:string, exp:number, iat:number, status:string}, got ${safeStringify(response)} instead`,
         );
@@ -103,7 +102,7 @@ export const refreshTokenAsync = createAsyncThunk(
       // Lastly if we don't have an error message or status check if we actually got the session id
       if (!("id" in response)) {
         throw new Error(
-          `"fetchRequestToken" must return an object with the shape {id:string, exp:number, iat:number, status:string}, got ${safeStringify(response)} instead`,
+          `${source} must return an object with the shape {id:string, exp:number, iat:number, status:string}, got ${safeStringify(response)} instead`,
         );
       }
       return response;
