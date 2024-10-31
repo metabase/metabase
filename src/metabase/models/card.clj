@@ -802,23 +802,27 @@
          (m/filter-vals some?)
          not-empty)))
 
+(defn eligible-mapping?
+  "Decide whether parameter mapping has strucuture so it can be updated presumably using [[update-mapping]]."
+  [{[dim [ref-kind]] :target :as _mapping}]
+  (and (= dim :dimension)
+       (#{:field :expression} ref-kind)))
+
 (defn- update-mapping
-  "Return modifed mapping, or nil, according to action."
-  [identifier->action mapping]
-  (let [[dim [ref-kind id-or-name :as ref]] (:target mapping)]
-    (if-not (and (= dim :dimension)
-                 (#{:field :expression} ref-kind))
-      mapping
-      (let [identifier (subvec ref 0 2)
-            [action arg] (get identifier->action identifier)]
-        (case action
-          :update (assoc-in mapping [:target 1] arg)
-          mapping))))
+  "Return modifed mapping according to action."
+  [identifier->action {[_dim ref] :target :as mapping}]
+  (let [identifier (subvec ref 0 2)
+        [action arg] (get identifier->action identifier)]
+    (case action
+      :update (assoc-in mapping [:target 1] arg)
+      mapping)))
 
 (defn- updates-for-dashcards
   [identifier->action dashcards]
   (not-empty (for [{:keys [id parameter_mappings]} dashcards
-                   :let [updated (into [] (keep #(update-mapping identifier->action %))
+                   :let [updated (into [] (map #(if (eligible-mapping? %)
+                                                  (update-mapping identifier->action %)
+                                                  %))
                                        parameter_mappings)]
                    :when (not= parameter_mappings updated)]
                [id {:parameter_mappings updated}])))
