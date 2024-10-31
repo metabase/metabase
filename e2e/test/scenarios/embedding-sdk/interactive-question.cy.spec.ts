@@ -94,15 +94,15 @@ describeSDK("scenarios > embedding-sdk > interactive-question", () => {
       expect(response?.statusCode).to.equal(202);
     });
 
-    tableInteractive().findByText("Product ID").should("be.visible");
+    tableInteractive().findByText("Max of Quantity").should("be.visible");
 
-    tableHeaderClick("Product ID");
+    tableHeaderClick("Max of Quantity");
 
-    popover().within(() => {
-      cy.findByTestId("click-actions-sort-control-formatting-hide").click();
-    });
+    popover()
+      .findByTestId("click-actions-sort-control-formatting-hide")
+      .click();
 
-    tableInteractive().findByText("Product ID").should("not.exist");
+    tableInteractive().findByText("Max of Quantity").should("not.exist");
   });
 
   it("can save a question to a default collection", () => {
