@@ -9,6 +9,9 @@ import {
 
 import { Popover, type PopoverProps } from "./index";
 
+// Not something we want to use a ton. This is only meant to help migrate
+// to Mantine popovers in situations where we pass an anchor as a reference for
+// positioning purposes.
 export const PopoverWithRef = ({
   anchorEl,
   children,
