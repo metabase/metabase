@@ -287,9 +287,11 @@ class ExpressionEditorTextfield extends React.Component<
   };
 
   handleKeyDownCapture = (event: KeyboardEvent) => {
-    // we want the Tab key to cause focus change when there are no suggestions shown
+    // We want the Tab key to cause focus change when there are no suggestions shown.
+    // If there are suggestions shown, it means 1 of them is selected, and in that case
+    // we want the Tab key to apply that suggestion - we let Ace take care of that.
     if (event.key === "Tab" && this.state.suggestions.length === 0) {
-      // Do not let Ace editor get this event
+      // Do not let Ace editor get this event.
       event.stopPropagation();
 
       // Redispatch the event from parent node of the Ace editor
