@@ -1,5 +1,5 @@
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { getQuestion } from "metabase/query_builder/selectors";
+import { useMetabotContext } from "metabase/metabot";
 import { useMetabotAgentMutation } from "metabase-enterprise/api";
 
 import {
@@ -13,7 +13,7 @@ import {
 
 export const useMetabotAgent = () => {
   const dispatch = useDispatch();
-  const question = useSelector(getQuestion);
+  const { getChatContext } = useMetabotContext();
 
   // TODO: fix typing issue
   const userMessages = useSelector(getUserMessages as any) as string[];
@@ -39,27 +39,9 @@ export const useMetabotAgent = () => {
     sendMessage: async (message: string) => {
       dispatch(clearUserMessages());
 
-      const result = await sendMessage({
-        message,
-        context: {
-          // TODO: add plugin that selects context from state
-          ...(question
-            ? {
-                question_id: question.id() || null,
-                question_display_type: question.display(),
-                available_fields: question
-                  .metadata()
-                  .fieldsList()
-                  .map(field => ({
-                    name: field.name,
-                    data_type: field.base_type,
-                    description: field.description,
-                  })),
-              }
-            : {}),
-        },
-        history: sendMessageReq.data?.history || [],
-      });
+      const context = getChatContext();
+      const history = sendMessageReq.data?.history || [];
+      const result = await sendMessage({ message, context, history });
 
       if (result.error) {
         throw result.error;

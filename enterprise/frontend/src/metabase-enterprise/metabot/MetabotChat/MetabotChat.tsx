@@ -27,11 +27,12 @@ export const MetabotChat = ({ onClose }: { onClose: () => void }) => {
   };
 
   const handleSend = () => {
-    if (!message.length || isLoading) {
+    const trimmedMessage = message.trim();
+    if (!trimmedMessage.length || isLoading) {
       return;
     }
     resetInput();
-    sendMessage(message)
+    sendMessage(trimmedMessage)
       .catch(err => console.error(err))
       .finally(() => textareaRef.current?.focus());
   };
@@ -122,8 +123,10 @@ export const MetabotChat = ({ onClose }: { onClose: () => void }) => {
           // TODO: find a way to not use an undocumented api...
           // @ts-expect-error - undocumented API for mantine Textarea when using autosize
           onHeightChange={handleMaybeExpandInput}
-          onKeyDown={event => {
-            if (event.key === "Enter") {
+          onKeyDown={e => {
+            if (e.key === "Enter") {
+              // prevent event from inserting new line
+              e.preventDefault();
               handleSend();
             }
           }}
