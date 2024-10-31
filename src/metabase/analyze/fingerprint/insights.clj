@@ -241,7 +241,7 @@
         xfn        #(nth % x-position)]
     (fingerprinters/with-error-handling
       ((map (fn [row]
-              ;; Convert string datetime into days-from-epoch early.
+              ;; Convert string datetimes or Instants into into days-from-epoch early.
               (update (vec row) x-position #(some-> %
                                                     fingerprinters/->temporal
                                                     ->millis-from-epoch
