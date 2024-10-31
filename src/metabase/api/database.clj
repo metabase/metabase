@@ -687,13 +687,14 @@
                                                    :table_id        [:in (t2/select-fn-set :id Table, :db_id id)]
                                                    :visibility_type [:not-in ["sensitive" "retired"]])
                                         (t2/hydrate :table)))]
-    (for [{:keys [id name display_name table base_type semantic_type]} fields]
+    (for [{:keys [id name display_name table table_id base_type semantic_type]} fields]
       {:id            id
        :name          name
        :display_name  display_name
        :base_type     base_type
        :semantic_type semantic_type
        :table_name    (:name table)
+       :table_id      table_id
        :schema        (:schema table "")})))
 
 ;;; ----------------------------------------- GET /api/database/:id/idfields -----------------------------------------
