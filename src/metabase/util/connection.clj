@@ -1,8 +1,9 @@
 (ns metabase.util.connection
-  (:require [metabase.util :as u]
+  (:require [clojure.set :as set]
+            [metabase.util :as u]
             [toucan2.core :as t2])
   (:import
-   (java.sql Connection ResultSet ResultSetMetaData)))
+   (java.sql Connection DatabaseMetaData ResultSet ResultSetMetaData)))
 
 (set! *warn-on-reflection* true)
 
@@ -11,6 +12,9 @@
             (fn [_]
               (when (.next rset)
                 (cb rset))))))
+
+(defn- qualified-name [{:keys [table column]}]
+  (str table "." column))
 
 (defn app-db-column-types
   "Returns a map of all column names to their respective type names for the given `table-name` in the provided
@@ -27,13 +31,44 @@
                                         [(.getString pks "COLUMN_NAME") true]))
                 fks (consume-rset fks (fn [^ResultSet fks]
                                         [(.getString fks "FKCOLUMN_NAME")
-                                         (str (.getString fks "PKTABLE_NAME")
-                                              "."
-                                              (.getString fks "PKCOLUMN_NAME"))]))]
+                                         {:table   (.getString fks "PKTABLE_NAME")
+                                          :column  (.getString fks "PKCOLUMN_NAME")
+                                          :cascade (= (.getInt fks "DELETE_RULE")
+                                                      DatabaseMetaData/importedKeyCascade)}]))]
             (consume-rset cols (fn [^ResultSet cols]
                                  (let [col (.getString cols "COLUMN_NAME")]
                                    [col {:type    (.getString cols "TYPE_NAME")
                                          :notnull (= (.getInt cols "NULLABLE")
                                                      ResultSetMetaData/columnNoNulls)
                                          :pk      (get pks col)
-                                         :fk      (get fks col)}])))))))))
+                                         :fk      (qualified-name (get fks col))
+                                         :fk-data (get fks col)}])))))))))
+
+
+(defn- group-rset [^ResultSet rset cb]
+  (u/group-by first second conj #{}
+              (iteration
+               (fn [_]
+                 (when (.next rset)
+                   (cb rset))))))
+
+(defn app-db-cascading-deletes
+  "Returns a map of the downstream relations that will have deletes cascade to them, for the given table."
+  [app-db table-names]
+  (t2/with-connection [^Connection conn]
+    (let [md (.getMetaData conn)]
+      (reduce (partial merge-with set/union)
+              nil
+              (for [table-name' table-names]
+                (let [table-name (cond-> (name table-name')
+                                   (= (:db-type app-db) :h2) u/upper-case-en)]
+                  (with-open [fks (.getImportedKeys md nil nil table-name)]
+                    (dissoc
+                     (group-rset fks (fn [^ResultSet fks]
+                                       (if (= (.getInt fks "DELETE_RULE") DatabaseMetaData/importedKeyCascade)
+                                         [(u/lower-case-en (.getString fks "PKTABLE_NAME"))
+                                          {:child-table   (name table-name')
+                                           :child-column  (u/lower-case-en (.getString fks "FKCOLUMN_NAME"))
+                                           :parent-column (u/lower-case-en (.getString fks "PKCOLUMN_NAME"))}]
+                                         [:skip nil])))
+                     :skip))))))))
