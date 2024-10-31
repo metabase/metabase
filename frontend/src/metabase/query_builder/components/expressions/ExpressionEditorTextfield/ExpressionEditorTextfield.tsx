@@ -290,7 +290,12 @@ class ExpressionEditorTextfield extends React.Component<
     // We want the Tab key to cause focus change when there are no suggestions shown.
     // If there are suggestions shown, it means 1 of them is selected, and in that case
     // we want the Tab key to apply that suggestion - we let Ace take care of that.
-    if (event.key === "Tab" && this.state.suggestions.length === 0) {
+    // Ace handles Shift + Tab correctly, so we don't handle that case here.
+    if (
+      event.key === "Tab" &&
+      !event.shiftKey &&
+      this.state.suggestions.length === 0
+    ) {
       // Do not let Ace editor get this event.
       event.stopPropagation();
 
