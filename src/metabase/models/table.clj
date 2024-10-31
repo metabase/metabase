@@ -1,5 +1,6 @@
 (ns metabase.models.table
   (:require
+   [honey.sql.helpers :as sql.helpers]
    [metabase.api.common :as api]
    [metabase.audit :as audit]
    [metabase.db.query :as mdb.query]
@@ -316,7 +317,7 @@
                   :database-name       :db.name}
    :where        [:and
                   [:= :visibility_type nil]
-                  [:not= :db_id 'audit/audit-db-id]]
+                  [:not= :db_id audit/audit-db-id]]
    :joins        {:db [:model/Database [:= :db.id :this.db_id]]}})
 
 (search/define-spec "segment"
@@ -351,7 +352,7 @@
                   :collection_name            :name
                   :collection_type            :type
                   :location                   true}
-   :where        [:not= :namespace nil]
+   :where        [:= :namespace nil]
    ;; depends on the current user, used for rendering and ranking
    ;; TODO not sure this is what it'll look like
    :bookmark     [:model/CollectionBookmark [:and
@@ -359,7 +360,7 @@
                                              ;; a magical alias, :current_user (or perhaps this clause can be implicit)
                                              [:= :bookmark.user_id :current_user/id]]]})
 
-(search/define-spec "card"
+(def ^:private base-card-spec
   {:model        :model/Card
    :attrs        {:archived      true
                   :collection-id :collection_id
@@ -385,17 +386,24 @@
    :bookmark     [:model/CardBookmark [:and
                                        [:= :bookmark.card_id :this.id]
                                        [:= :bookmark.user_id :current_user/id]]]
-   :where        [:and
-                  [:= :this.type "question"]
-                  [:not= :collection.namespace nil]]
+   :where        [:= :collection.namespace nil]
    :joins        {:collection [:model/Collection [:= :collection.id :this.collection_id]]
                   :r          [:model/Revision [:and
                                                 [:= :r.model_id :this.id]
-                                                ;; Interesting for inversion - this is a condition on whether to do the update.
-                                                ;; For now, let's just swallow up spurious updates (should be 2x amplification)
+                                                ;; Interesting for inversion, another condition on whether to update.
+                                                ;; For now, let's just swallow the extra update (2x amplification)
                                                 [:= :r.most_recent true]
                                                 [:= :r.model "Card"]]]
                   :mr         [:model/ModerationReview [:and
                                                         [:= :mr.moderated_item_type "card"]
                                                         [:= :mr.moderated_item_id :this.id]
                                                         [:= :mr.most_recent true]]]}})
+
+(search/define-spec "card"
+  (-> base-card-spec (sql.helpers/where [:= :this.type "question"])))
+
+(search/define-spec "dataset"
+  (-> base-card-spec (sql.helpers/where [:= :this.type "model"])))
+
+(search/define-spec "metric"
+  (-> base-card-spec (sql.helpers/where [:= :this.type "metric"])))

@@ -114,10 +114,10 @@
 
 (comment
   ;; This is useful introspection for migrating each search-model to a spec
-  (spec-index-query "card")
-  (into [] (map t2.realize/realize) (t2/reducible-query (spec-index-query "card")))
+  (spec-index-query "dataset")
+  (into [] (map t2.realize/realize) (t2/reducible-query (spec-index-query "dataset")))
   (->> {:search-string      nil
-        :models             #{"card"}
+        :models             #{"dataset"}
         :is-superuser?      true
         :current-user-id    (t2/select-one-pk :model/User :is_superuser true)
         :current-user-perms #{"/"}

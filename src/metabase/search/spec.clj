@@ -195,7 +195,8 @@
   "Define a spec for a search model."
   [search-model spec]
   ;; TODO validate spec shape, consistency, and completeness
-  `(let [spec# ~(assoc spec :name search-model)]
+  `(let [spec# ~spec
+         spec# (assoc spec# :name ~search-model)]
      (validate-spec! spec#)
      (defmethod spec ~search-model [~'_] spec#)))
 
