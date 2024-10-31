@@ -79,6 +79,8 @@ const BROWSE_CHAT = "/browse/chat";
 const BROWSE_SEMANTIC_LAYER = "/browse/semantic-layer";
 const BROWSE_LIBRARY = "/collection/2-library";
 const BROWSE_INSIGHTS = "/browse/insights";
+const BROWSE_MODELS_URL = "/browse/models";
+const NEW_MODEL_URL = "/model/new";
 
 function MainNavbarView({
   isAdmin,
@@ -183,6 +185,24 @@ function MainNavbarView({
                 {t`OmniAI layer`}
               </PaddedSidebarLink>
             )}
+            <PaddedSidebarLink
+              icon="database"
+              url={NEW_MODEL_URL}
+              isSelected={nonEntityItem?.url?.startsWith(NEW_MODEL_URL)}
+              onClick={onItemSelect}
+              aria-label={t`new model`}
+            >
+              {t`New Model`}
+            </PaddedSidebarLink>
+            <PaddedSidebarLink
+              icon="database"
+              url={BROWSE_MODELS_URL}
+              isSelected={nonEntityItem?.url?.startsWith(BROWSE_MODELS_URL)}
+              onClick={onItemSelect}
+              aria-label={t`Browse models`}
+            >
+              {t`Models`}
+            </PaddedSidebarLink>
             <PaddedSidebarLink
               icon="collection"
               url={BROWSE_LIBRARY}

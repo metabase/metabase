@@ -213,6 +213,15 @@ export const QuestionActions = ({
     });
   }
 
+  if (isQuestion) {
+    extraButtons.push({
+      title: t`Turn into a model`,
+      icon: "model",
+      action: handleTurnToModel,
+      testId: TURN_INTO_DATASET_TESTID,
+    });
+  }
+
   extraButtons.push(...PLUGIN_QUERY_BUILDER_HEADER.extraButtons(question));
 
   if (hasCollectionPermissions) {
