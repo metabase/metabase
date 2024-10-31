@@ -99,7 +99,7 @@
 
 (defn- spec-index-reducible [search-model]
   (->> (spec-index-query search-model)
-       (t2/reducible-query)
+       t2/reducible-query
        (eduction (map #(assoc % :model search-model)))))
 
 (defn- search-items-reducible []
