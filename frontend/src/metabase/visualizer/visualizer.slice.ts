@@ -237,8 +237,57 @@ const visualizerSlice = createSlice({
       })
       .addCase(fetchCardQuery.fulfilled, (state, action) => {
         const cardId = action.meta.arg;
-        state.datasets[`card:${cardId}`] = action.payload;
+        const dataset = action.payload;
+        state.datasets[`card:${cardId}`] = dataset;
         state.loadingDatasets[`card:${cardId}`] = false;
+
+        const card = state.cards.find(card => card.id === cardId);
+
+        if (card && state.display === "funnel") {
+          if (
+            card.display === "scalar" &&
+            dataset.data?.cols?.length === 1 &&
+            isNumeric(dataset.data.cols[0]) &&
+            dataset.data.rows?.length === 1
+          ) {
+            const dataSource = createDataSource("card", cardId, card.name);
+            const columnRef = createVisualizerColumnReference(
+              dataSource,
+              dataset.data.cols[0],
+            );
+
+            const metricColumnName = state.settings["funnel.metric"];
+            const metricColumnIndex = state.columns.findIndex(
+              column => column.name === metricColumnName,
+            );
+            const metricColumn = state.columns[metricColumnIndex];
+
+            const dimensionColumnName = state.settings["funnel.dimension"];
+            const dimensionColumnIndex = state.columns.findIndex(
+              column => column.name === dimensionColumnName,
+            );
+            const dimensionColumn = state.columns[dimensionColumnIndex];
+
+            if (dimensionColumn && metricColumn) {
+              state.referencedColumns.push(columnRef);
+
+              state.columns[metricColumnIndex] = {
+                ...metricColumn,
+                values: !metricColumn.values.includes(columnRef.name)
+                  ? [...metricColumn.values, columnRef.name]
+                  : metricColumn.values,
+              };
+
+              state.columns[dimensionColumnIndex] = {
+                ...dimensionColumn,
+                values: [
+                  ...dimensionColumn.values,
+                  createDataSourceNameRef(dataSource.id),
+                ],
+              };
+            }
+          }
+        }
       })
       .addCase(fetchCardQuery.rejected, (state, action) => {
         const cardId = action.meta.arg;
