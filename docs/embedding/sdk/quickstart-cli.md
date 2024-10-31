@@ -51,7 +51,7 @@ The script will walk you through the setup. There are a fair number of pieces to
 14. Prompts you to add the `<AnalyticsPage />` component to your page.
 15. Start your app, and view the page where you added the `<AnalyticsPage />` component, and you should see an embedded dashboard.
 
-Your Metabase should be running at [http://localhost:3366](http://localhost:3366). You can find your login credentials at `METABASE_LOGIN.json`.
+Your Metabase should be running at `http://localhost:3366`. You can find your login credentials at `METABASE_LOGIN.json`.
 
 ## Further reading
 
