@@ -67,29 +67,23 @@
           search.legacy/full-search-query
           (dissoc :limit)))))
 
+(defn- attrs->select-items [attrs]
+  (for [[k v] attrs :when v]
+    (let [as (keyword (u/->snake_case_en (name k)))]
+      (if (true? v) as [v as]))))
+
+;; TODO memoize
 (defn- spec-index-query [search-model]
   (let [spec (search.spec/spec search-model)]
     (u/remove-nils
-     {:select    (search.spec/qualify-columns :this
-                                              (into [:id
-                                                     [(:archived spec) :archived]
-                                                     (when (:created-at spec) :created_at)
-                                                     (when (:updated-at spec) :updated_at)]
-                                                    (concat
-                                                     (map (comp vec reverse) (:context spec))
-                                                     (:search-terms spec)
-                                                     (:render-terms spec))))
-      :from      [[(t2/table-name (:model spec)) :this]]
-      :where     (when (:skip spec)
-                   (reduce-kv
-                    (fn [acc k v]
-                      (conj acc
-                            (if (vector? v)
-                              (case (first v)
-                                :not [:= k (second v)])
-                              [:not [:= k v]])))
-                    [:and]
-                    (:skip spec)))
+     {:select (search.spec/qualify-columns :this
+                                           (into [:id]
+                                                 (concat
+                                                  (:search-terms spec)
+                                                  (mapcat (fn [k] (attrs->select-items (get spec k)))
+                                                          [:attrs :render-terms]))))
+      :from   [[(t2/table-name (:model spec)) :this]]
+      :where  (:where spec)
       :left-join (when (:joins spec)
                    (into []
                          cat

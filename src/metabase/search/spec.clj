@@ -3,7 +3,44 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.walk :as walk]
+   [malli.core :as mc]
+   [malli.error :as me]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
+
+(def ^:private SearchModel
+  [:enum "dashboard" "table" "dataset" "segment" "collection" "database" "action" "indexed-entity" "metric" "card"])
+
+(def ^:private AttrValue
+  "Key must be present, to show it's been explicitly considered.
+
+  - false: not present
+  - true: given by a column with the same name (snake case)
+  - keyword: given by the corresponding column
+  - vector: calculated by the given expression"
+  [:union :boolean :keyword vector?])
+
+(def ^:private Attrs
+  (into [:map] (for [k [:archived
+                        :collection-id
+                        :database-id
+                        :table-id
+                        :created-at]]
+                 [k AttrValue])))
+
+(def ^:private JoinMap
+  "We use our own schema instead of raw HoneySQL, so that we can invert it to calculate the update hooks."
+  [:map-of :keyword [:tuple :keyword vector?]])
+
+(def ^:private Specification
+  [:map
+   [:name SearchModel]
+   [:model :keyword]
+   [:attrs Attrs]
+   [:search-terms [:sequential {:min 1} :keyword]]
+   [:render-terms [:map-of :keyword AttrValue]]
+   [:where {:optional true} vector?]
+   [:joins {:optional true} JoinMap]])
 
 (defn- qualify-column* [table column]
   (if (str/includes? (name column) ".")
@@ -54,6 +91,13 @@
     (vector? expr)
     (union-find find-fields-expr table (rest expr))))
 
+(defn- find-fields-attr [table [k v]]
+  (when v
+    (if (true? v)
+      (when (nil? table)
+        #{k})
+      (find-fields-expr table v))))
+
 (defn- find-fields-select-item [table x]
   (cond
     (keyword? x)
@@ -63,33 +107,29 @@
     (find-fields-expr table (first x))))
 
 (defn- find-fields-select-items [table x]
-  (cond
-    (keyword? x)
-    (find-fields-kw table x)
-
-    (sequential? x)
-    (union-find find-fields-select-item table x)))
+  (union-find find-fields-select-item table x))
 
 (defn- find-fields-top [table x]
   (cond
-    (keyword? x)
-    (find-fields-kw table x)
-
     (map? x)
-    (union-find find-fields-expr table x)
+    (union-find find-fields-attr table x)
 
     (sequential? x)
-    (find-fields-select-items table x)))
+    (find-fields-select-items table x)
+
+    :else
+    (throw (ex-info "Unexpected format for fields" {:table table :x x}))))
 
 (defn- find-fields
   "Search within a definition for all the fields referenced on the given table alias."
   [table spec]
-  (set/union (find-fields-expr table (:archived spec))
-             (union-find
-              find-fields-top
-              table
-              ;; Remove the keys with special meanings (should probably switch this to an allowlist rather)
-              (vals (dissoc spec :skip :joins :bookmark :model :archived)))))
+  (into #{}
+        (map #(keyword (u/->snake_case_en (name %))))
+        (union-find
+         find-fields-top
+         table
+         ;; Remove the keys with special meanings (should probably switch this to an allowlist rather)
+         (vals (dissoc spec :name :native-query :where :joins :bookmark :model)))))
 
 (defn- replace-qualification [expr from to]
   (cond
@@ -142,11 +182,22 @@
   "TODO write docstring"
   (fn [search-model] search-model))
 
+(defn validate-spec!
+  "Check whether a given specification is valid"
+  [spec]
+  (when-let [info (mc/explain Specification spec)]
+    (throw (ex-info (str "Invalid search specification for " (:name spec) ": " (me/humanize info)) info)))
+  ;; validate consistency etc
+  ;; ... not sure what to check here actually, Malli has covered a lot!
+  )
+
 (defmacro define-spec
   "Define a spec for a search model."
   [search-model spec]
   ;; TODO validate spec shape, consistency, and completeness
-  `(defmethod spec ~search-model [~'_] ~(assoc spec :name search-model)))
+  `(let [spec# ~(assoc spec :name search-model)]
+     (validate-spec! spec#)
+     (defmethod spec ~search-model [~'_] spec#)))
 
 ;; TODO we should memoize this for production (based on spec values)
 (defn model-hooks

@@ -35,11 +35,11 @@
 
 (def ^:private example-spec
   {:model        :model/MadeUp
-   :context      {:collection_id :collection_id
-                  :db_id         :this.db_id
-                  :table_id      :related.table_id}
+   :attrs        {:collection-id true
+                  :db-id         :this.db_id
+                  :table-id      :related.table_id}
    :search-terms [:this.name :description]
-   :render-terms [[:related.field :related_field]]})
+   :render-terms {:related-field [:lower :related.field]}})
 
 (deftest test-find-fields
   (is (= #{:description :collection_id} (#'search.spec/find-fields nil example-spec)))
@@ -65,7 +65,9 @@
                                                       :creator_id
                                                       :dataset_query
                                                       :display
-                                                      :archived_directly},
+                                                      :archived_directly
+                                                      :created_at
+                                                      :updated_at},
                                       :where        [:= :updated.id :this.id]}},
                  :Collection       #{{:search-model "card",
                                       :fields       #{:authority_level :name :type :location},
@@ -89,15 +91,15 @@
                                 :where        [:= :updated.id :this.table_id]}
                                {:search-model "table",
                                 :fields
-                                #{:description :schema :name :active :id :db_id :initial_sync_status :display_name}
+                                #{:description :schema :name :active :id :db_id :initial_sync_status :display_name :created_at :updated_at}
                                 :where        [:= :updated.id :this.id]}},
                  :Database   #{{:search-model "table", :fields #{:name}, :where [:= :updated.id :this.db_id]}}
                  :Segment    #{{:search-model "segment"
-                                :fields       #{:description :archived :table_id :name :id}
+                                :fields       #{:description :archived :table_id :name :id :created_at :updated_at}
                                 :where        [:= :updated.id :this.id]}}
                  :Collection #{{:search-model "collection"
                                 :fields       #{:authority_level :archived :description :name :type :id
-                                                :archived_directly :location}
+                                                :archived_directly :location :created_at}
                                 :where        [:= :updated.id :this.id]}}}
          (#'search.spec/merge-hooks
           [(#'search.spec/search-model-hooks (search.spec/spec "table"))
