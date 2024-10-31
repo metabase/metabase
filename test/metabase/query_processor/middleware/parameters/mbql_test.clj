@@ -432,3 +432,22 @@
       (testing "Should prefer :value over :default"
         (is (= 59
                (venues-with-price {:default 1, :value 2})))))))
+
+(deftest ^:parallel time-granularity-parameters-test
+  (testing "time granularity parameters should update the matching clause in the breakouts and order-by clauses"
+    (let [by-unit  (fn [unit]
+                     [:field
+                      (mt/id :orders :created_at)
+                      {:base-type :type/DateTimeWithLocalTZ, :temporal-unit unit}])
+          query    {:database (mt/id)
+                    :type     :query
+                    :query    {:source-table (mt/id :orders)
+                               :aggregation  [[:count]]
+                               :breakout     [(by-unit :day)
+                                              (by-unit :month)]
+                               :order-by     [[:asc (by-unit :month)]]}
+                    :parameters [{:type   :temporal-unit
+                                  :target [:dimension (by-unit :month)]
+                                  :value  :week}]}]
+      (is (= ["2016-04-30T00:00:00Z" "2016-04-24T00:00:00Z" 1]
+             (first (mt/rows (mt/process-query query))))))))
