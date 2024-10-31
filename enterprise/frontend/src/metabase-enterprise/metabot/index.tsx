@@ -17,7 +17,7 @@ import {
 } from "./MetabotContext";
 import { metabotReducer, setVisible } from "./state";
 
-if (hasPremiumFeature("metabot_v3")) {
+if (!!true && hasPremiumFeature("metabot_v3")) {
   PLUGIN_METABOT.Metabot = Metabot;
 
   PLUGIN_METABOT.defaultMetabotContextValue = defaultContext;
