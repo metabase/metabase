@@ -1069,3 +1069,26 @@ describe("issue 42949", () => {
     popover().last().findByText("'abc'").should("be.visible");
   });
 });
+
+describe("issue 49342", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should be possible to leave the expression input with the Tab key (metabase#49342)", () => {
+    openOrdersTable({ mode: "notebook" });
+    cy.findByLabelText("Custom column").click();
+    enterCustomColumnDetails({ formula: "[Tot{Enter}", blur: false });
+    cy.get(".ace_text-input").first().focus().realPress("Tab");
+    cy.findByTestId("expression-name").should("be.focused");
+
+    cy.log("should contain focus within the popover");
+    cy.findByTestId("expression-name").realPress(["Shift", "Tab"]);
+    cy.get(".ace_text-input")
+      .first()
+      .should("be.focused")
+      .realPress(["Shift", "Tab"]);
+    cy.button("Cancel").should("be.focused");
+  });
+});
