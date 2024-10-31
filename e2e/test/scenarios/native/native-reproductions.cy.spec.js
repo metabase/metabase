@@ -4,7 +4,6 @@ import {
   POPOVER_ELEMENT,
   addPostgresDatabase,
   cartesianChartCircle,
-  createNativeQuestion,
   createQuestion,
   focusNativeEditor,
   modal,
@@ -590,7 +589,7 @@ describe("issue 34330", () => {
 
   it("should only call the autocompleter with all text typed (metabase#34330)", () => {
     const editor = openNativeEditor();
-    const query = "USER_ID";
+    const query = "USER";
     editor.realType(query);
 
     cy.wait("@autocomplete").then(({ request }) => {
@@ -617,17 +616,7 @@ describe("issue 34330", () => {
   });
 
   it("should call the autocompleter when backspacing to a 1-character prefix(metabase#34330)", () => {
-    createNativeQuestion(
-      {
-        native: {
-          query: "SE",
-        },
-      },
-      { visitQuestion: true },
-    );
-
-    cy.findByTestId("visibility-toggler").click();
-    focusNativeEditor().type("{backspace}");
+    openNativeEditor().realType("SE{backspace}");
 
     cy.wait("@autocomplete").then(({ request }) => {
       const url = new URL(request.url);
