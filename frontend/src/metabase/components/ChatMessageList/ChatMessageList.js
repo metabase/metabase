@@ -260,7 +260,7 @@ const ChatMessageList = ({
                   <>
                     {/* Render only the card for the current visualization index */}
                     {card && defaultQuestion.length > visualizationIdx && result.length > visualizationIdx && (
-                      <div key={`card-${visualizationIdx}`} style={{ display: "flex", flexDirection: "column", marginBottom: "2rem", height: "400px", width: "auto" }}>
+                      <div key={`card-${visualizationIdx}`} style={{ display: "flex", flexDirection: "column", height: "400px", width: "auto" }}>
                         <div style={{ flex: "1 0 50%", padding: "16px", overflow: "hidden", height: "400px", width: "auto", display: "flex", justifyContent: "center", alignItems: "center" }}>
                           <VisualizationResult
                             question={defaultQuestion[visualizationIdx]}

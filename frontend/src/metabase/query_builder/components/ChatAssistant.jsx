@@ -88,7 +88,6 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
             const cubeDatabase = databases.find(database => database.is_cube === true);
             const rawDatabase = databases.find(database => database.is_cube === false);
             if (cubeDatabase) {
-                setIsChatHistoryOpen(true);
                 setShowButton(true);
                 setDBInputValue(cubeDatabase.id);
                 setCompanyName(formattedSiteName)
@@ -402,8 +401,7 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
                 id: tempMessageId,
                 sender: "server",
                 text: "", // This will be updated with the actual content from the response chunks
-                isLoading: true,
-                isTemporary: true, // Marking as a temporary message
+                isLoading: true
             };
 
             // Append the user message and the temporary server message to the state
@@ -424,7 +422,7 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
         }
 
         // Clear the input field
-  
+
         setChatDisabled(true);
         setChatLoading(true);
         let currentMessage = ""; // To accumulate partial chunks
@@ -432,6 +430,7 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
         let lastMessageId = tempMessageId; // Track last message to update its loading state
         let cardGenerated = false; // Track if the card has been generated
         let finalMessageProcessed = false; // Track if the final message has been appended
+        let placeholderRemoved = false;
 
         try {
             const schema = chatType === 'insights' ? initialInsightSchema : initialSchema.schema;
@@ -455,8 +454,23 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
                     if (partialText.startsWith("\n")) {
                         partialText = partialText.replace(/^\n+/, ""); // Remove any leading newlines
                     }
-                    
+
                     setRunId(id)
+                    if (!placeholderRemoved && partialText.trim() !== "") {
+                        const placeholderMessages = [
+                            t`Scanning through your card collection and analyzing relevant tables...`,
+                            t`Identifying patterns in the data and cross-referencing cards with table structures...`,
+                            t`Exploring relationships between request and cards and extracting key metrics from tables...`,
+                            t`Mapping relevant cards and corresponding table columns for comprehensive analysis...`,
+                            t`Evaluating the semantic connections between cards and their associated table data...`
+                        ];
+                        setMessages((prevMessages) =>
+                            prevMessages.filter(
+                                (msg) => !placeholderMessages.includes(msg.text)
+                            )
+                        );
+                        placeholderRemoved = true;
+                    }
                     if (messageData && partialText) {
 
                         // Check if the current chunk contains the previous message or it's a new message
@@ -534,20 +548,20 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
                         } else if (tool_calls[0].name === "GenerateCardOutput") {
                             const { card_id } = tool_calls[0].args;
 
-                            const cardMessageId = Date.now() + Math.random();
-                            const cardTempMessage = {
-                                id: cardMessageId,
-                                sender: "server",
-                                text: t`Generating card...`, // Show progress text
-                                isLoading: true,
-                                isTemporary: true,
-                            };
+                            // const cardMessageId = Date.now() + Math.random();
+                            // const cardTempMessage = {
+                            //     id: cardMessageId,
+                            //     sender: "server",
+                            //     text: t`Generating card...`, // Show progress text
+                            //     isLoading: true,
+                            //     isTemporary: true,
+                            // };
 
-                            // Append the card generation message
-                            setMessages((prev) => [...prev, cardTempMessage]);
+                            // // Append the card generation message
+                            // setMessages((prev) => [...prev, cardTempMessage]);
 
                             // Show the card generation progress message
-                            showCardGenerationMessage(50, cardMessageId);
+                            // showCardGenerationMessage(50, cardMessageId);
 
                             // Fetch the dataset and show visualization
                             await handleGetDatasetQuery(card_id);
@@ -593,17 +607,17 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
                             const { card_id, explanation, python_code, result } = parsedContent;
 
                             if (card_id) {
-                                const cardMessageId = Date.now() + Math.random();
-                                const cardTempMessage = {
-                                    id: cardMessageId,
-                                    sender: "server",
-                                    text: t`Generating card...`, // Show progress text
-                                    isLoading: true,
-                                    isTemporary: true,
-                                };
+                                // const cardMessageId = Date.now() + Math.random();
+                                // const cardTempMessage = {
+                                //     id: cardMessageId,
+                                //     sender: "server",
+                                //     text: t`Generating card...`, // Show progress text
+                                //     isLoading: true,
+                                //     isTemporary: true,
+                                // };
 
-                                // Append the card generation message
-                                setMessages((prev) => [...prev, cardTempMessage]);
+                                // // Append the card generation message
+                                // setMessages((prev) => [...prev, cardTempMessage]);
 
                                 // Fetch the dataset and append the card
                                 await handleGetDatasetQuery(card_id);
@@ -756,50 +770,6 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
         }
     };
 
-    function showCardGenerationMessage(chunkInterval = 50, tempMessageId) {
-        const messages = [
-            t`Fetching the data from your database to generate the card...`,
-            t`Working with your database to gather the necessary information...`,
-            t`Generating the card with the requested data, please hold on for a moment...`,
-            t`Querying your database and preparing the card with all relevant insights...`,
-            t`The data is being processed and your card will be visible shortly...`
-        ];
-        const startTime = Date.now();
-
-        function chunkString(str, chunkSize) {
-            const chunks = [];
-            for (let i = 0; i < str.length; i += chunkSize) {
-                chunks.push(str.slice(i, i + chunkSize));
-            }
-            return chunks;
-        }
-
-        function getRandomMessage() {
-            return messages[Math.floor(Math.random() * messages.length)];
-        }
-
-        function simulateTyping(message, index = 0) {
-            const chunks = chunkString(message, 5); // Chunk size of 5 characters
-
-            if (index < chunks.length) {
-                setMessages((prev) => {
-                    return prev.map((msg) =>
-                        msg.id === tempMessageId
-                            ? {
-                                ...msg,
-                                text: msg.text + chunks[index], // Append chunks of text
-                            }
-                            : msg
-                    );
-                });
-                setTimeout(() => simulateTyping(message, index + 1), chunkInterval);
-            }
-        }
-
-        const selectedMessage = getRandomMessage();
-        simulateTyping(selectedMessage);
-    }
-
     // Updated emulateDataStream to integrate with chat messages
     function emulateDataStream(chunkInterval = 50, tempMessageId) {
         const messages = [
@@ -947,27 +917,11 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
     useEffect(() => {
         if (initialDbName !== null && initialCompanyName !== '' && initialSchema && initialSchema.schema && initialSchema.schema.length > 0) {
             setShowButton(true);
-            setIsChatHistoryOpen(true);
             setDBInputValue(initialDbName)
             setCompanyName(initialCompanyName)
             setSchema(initialSchema.schema)
         }
     }, [initialDbName, initialCompanyName, initialSchema])
-
-    // useEffect(() => {
-    //     if (toolWaitingResponse === "identifyRelevantTables" || toolWaitingResponse === "generateCode" || toolWaitingResponse === "identifyingTablesDone") {
-    //         ws.send(
-    //             JSON.stringify({
-    //                 type: "toolResponse",
-    //                 response: {
-    //                     function_name: toolWaitingResponse,
-    //                     response: "OK",
-    //                 },
-    //             })
-    //         );
-    //         setToolWaitingResponse(null);
-    //     }
-    // }, [toolWaitingResponse])
 
     return (
         <>
@@ -1067,37 +1021,35 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
                                                         backgroundColor: "transparent",
                                                     }}
                                                 />
-                                                <Button
-                                                    variant="filled"
-                                                    disabled={!client || schema.length < 1 || selectedThreadId}
-                                                    onClick={chatLoading ? stopMessage : sendMessage}
-                                                    style={{
-                                                        position: "absolute",
-                                                        right: "10px",
-                                                        bottom: "10px",
-                                                        borderRadius: "8px",
-                                                        width: "30px",
-                                                        height: "30px",
-                                                        padding: "0",
-                                                        minWidth: "0",
-                                                        backgroundColor: client && schema.length > 0 ? "#8A64DF" : "#F1EBFF",
-                                                        color: "#FFF",
-                                                        border: "none",
-                                                        cursor: client && schema.length > 0 ? "pointer" : "not-allowed",
-                                                        display: "flex",
-                                                        justifyContent: "center",
-                                                        alignItems: "center",
-                                                    }}
-                                                >
-                                                    {chatLoading ? (
-                                                        <SpinnerIcon
-                                                            iconSize={18}
-                                                            borderWidth={2}
-                                                        />
-                                                    ) : (
+                                                {!chatLoading ? (
+                                                    <Button
+                                                        variant="filled"
+                                                        disabled={!client || schema.length < 1 || selectedThreadId}
+                                                        onClick={chatLoading ? stopMessage : sendMessage}
+                                                        style={{
+                                                            position: "absolute",
+                                                            right: "10px",
+                                                            bottom: "10px",
+                                                            borderRadius: "8px",
+                                                            width: "30px",
+                                                            height: "30px",
+                                                            padding: "0",
+                                                            minWidth: "0",
+                                                            backgroundColor: client && schema.length > 0 ? "#8A64DF" : "#F1EBFF",
+                                                            color: "#FFF",
+                                                            border: "none",
+                                                            cursor: client && schema.length > 0 ? "pointer" : "not-allowed",
+                                                            display: "flex",
+                                                            justifyContent: "center",
+                                                            alignItems: "center",
+                                                        }}
+                                                    >
+
                                                         <Icon size={18} name="sendChat" style={{ paddingTop: "2px", paddingLeft: "2px" }} />
-                                                    )}
-                                                </Button>
+
+                                                    </Button>
+                                                ) : (null)}
+
                                             </>
 
                                         ) : (
