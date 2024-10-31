@@ -938,7 +938,7 @@
                         [:c.ordinal_position :database-position]
                         [:c.table_schema :table-schema]
                         [:c.table_name :table-name]
-                        [:c.data_type :database-type]
+                        [[:upper :c.data_type] :database-type]
                         [[:= :c.extra [:inline "auto_increment"]] :database-is-auto-increment]
                         [[:and
                           [:or [:= :column_default nil] [:= [:lower :column_default] [:inline "null"]]]
