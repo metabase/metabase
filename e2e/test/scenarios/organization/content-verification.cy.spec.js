@@ -2,6 +2,7 @@ import { ORDERS_COUNT_QUESTION_ID } from "e2e/support/cypress_sample_instance_da
 import {
   closeCommandPalette,
   commandPalette,
+  commandPaletteInput,
   commandPaletteSearch,
   createModerationReview,
   describeEE,
@@ -94,6 +95,10 @@ describeEE("scenarios > premium > content verification", () => {
         commandPalette()
           .findByRole("option", { name: "Orders, Count" })
           .find(".Icon-verified_filled");
+        commandPaletteInput().type("Orders");
+        commandPalette()
+          .findByRole("option", { name: "Orders, Count" })
+          .find(".Icon-verified_filled");
         closeCommandPalette();
 
         // 4. Search results
@@ -130,6 +135,11 @@ describeEE("scenarios > premium > content verification", () => {
 
         // 3. Recently viewed list
         openCommandPalette();
+        commandPalette()
+          .findByRole("option", { name: "Orders, Count" })
+          .find(".Icon-verified_filled")
+          .should("not.exist");
+        commandPaletteInput().type("Orders");
         commandPalette()
           .findByRole("option", { name: "Orders, Count" })
           .find(".Icon-verified_filled")
@@ -231,6 +241,18 @@ describeEE("scenarios > premium > content verification", () => {
         cy.contains(/verified this/).should("not.exist");
       });
       cy.findByLabelText("Close").click();
+
+      openCommandPalette();
+      commandPalette()
+        .findByRole("option", { name: "Orders, Count" })
+        .find(".Icon-verified_filled")
+        .should("not.exist");
+      commandPaletteInput().type("Orders");
+      commandPalette()
+        .findByRole("option", { name: "Orders, Count" })
+        .find(".Icon-verified_filled")
+        .should("not.exist");
+      closeCommandPalette();
 
       commandPaletteSearch("orders");
       cy.log(

@@ -1,135 +1,16 @@
 import fetchMock from "fetch-mock";
-import { useKBar } from "kbar";
-import { useEffect } from "react";
-import { Route, type WithRouterProps, withRouter } from "react-router";
 import _ from "underscore";
 
+import { screen, waitFor, within } from "__support__/ui";
 import {
-  setupDatabasesEndpoints,
-  setupRecentViewsEndpoints,
-  setupSearchEndpoints,
-} from "__support__/server-mocks";
-import {
-  mockScrollIntoView,
-  mockScrollTo,
-  renderWithProviders,
-  screen,
-  waitFor,
-  within,
-} from "__support__/ui";
-import { getAdminPaths } from "metabase/admin/app/reducers";
-import type { RecentItem, Settings } from "metabase-types/api";
-import {
-  createMockCollection,
-  createMockCollectionItem,
-  createMockDatabase,
   createMockRecentCollectionItem,
   createMockRecentTableItem,
 } from "metabase-types/api/mocks";
-import {
-  createMockAdminAppState,
-  createMockAdminState,
-  createMockSettingsState,
-} from "metabase-types/store/mocks";
 
-import { useCommandPaletteBasicActions } from "../hooks/useCommandPaletteBasicActions";
+import { type CommonSetupProps, commonSetup } from "./setup";
 
-import { PaletteResults } from "./PaletteResults";
-
-const TestComponent = withRouter(
-  ({ q, ...props }: WithRouterProps & { q?: string; isLoggedIn: boolean }) => {
-    useCommandPaletteBasicActions(props);
-
-    const { query } = useKBar();
-
-    useEffect(() => {
-      if (q) {
-        query.setSearch(q);
-      }
-    }, [q, query]);
-
-    return <PaletteResults />;
-  },
-);
-
-const DATABASE = createMockDatabase();
-
-const collection_1 = createMockCollection({
-  name: "lame collection",
-  id: 3,
-});
-
-//Verified, but no collection details present
-const model_1 = createMockCollectionItem({
-  model: "dataset",
-  name: "Foo Question",
-  moderated_status: "verified",
-  id: 1,
-});
-
-const model_2 = createMockCollectionItem({
-  model: "dataset",
-  name: "Bar Question",
-  collection: collection_1,
-  id: 2,
-});
-
-const dashboard = createMockCollectionItem({
-  model: "dashboard",
-  name: "Bar Dashboard",
-  collection: collection_1,
-  description: "Such Bar. Much Wow.",
-});
-
-const recents_1 = createMockRecentCollectionItem({
-  ..._.pick(model_1, "id", "name"),
-  model: "dataset",
-  moderated_status: "verified",
-  parent_collection: {
-    id: "root",
-    name: "Our analytics",
-  },
-});
-const recents_2 = createMockRecentCollectionItem({
-  ..._.pick(dashboard, "id", "name"),
-  model: "dashboard",
-  parent_collection: {
-    id: dashboard.collection?.id as number,
-    name: dashboard.collection?.name as string,
-  },
-});
-
-mockScrollTo();
-mockScrollIntoView();
-
-const setup = ({
-  query,
-  settings = {},
-  recents = [recents_1, recents_2],
-}: {
-  query?: string;
-  settings?: Partial<Settings>;
-  recents?: RecentItem[];
-} = {}) => {
-  setupDatabasesEndpoints([DATABASE]);
-  setupSearchEndpoints([model_1, model_2, dashboard]);
-  setupRecentViewsEndpoints(recents);
-
-  renderWithProviders(
-    <Route path="/" component={() => <TestComponent q={query} isLoggedIn />} />,
-    {
-      withKBar: true,
-      withRouter: true,
-      storeInitialState: {
-        admin: createMockAdminState({
-          app: createMockAdminAppState({
-            paths: getAdminPaths(),
-          }),
-        }),
-        settings: createMockSettingsState(settings),
-      },
-    },
-  );
+const setup = (props: CommonSetupProps = {}) => {
+  commonSetup({ ...props, isEE: false });
 };
 
 describe("PaletteResults", () => {
@@ -163,12 +44,12 @@ describe("PaletteResults", () => {
       await screen.findByRole("option", { name: "Foo Question" }),
     ).toHaveTextContent("Our analytics");
 
-    //Foo Question should be displayed with a verified badge
+    //Foo Question should be not be displayed with a verified badge in OSS
     expect(
-      await within(
+      within(
         await screen.findByRole("option", { name: "Foo Question" }),
-      ).findByRole("img", { name: /verified_filled/ }),
-    ).toBeInTheDocument();
+      ).queryByRole("img", { name: /verified_filled/ }),
+    ).not.toBeInTheDocument();
   });
 
   it("should show recent items with the same name", async () => {
@@ -220,17 +101,19 @@ describe("PaletteResults", () => {
   });
 
   it("should display collections that search results are from", async () => {
-    setup({ query: "ques" });
+    setup({
+      query: "ques",
+    });
     expect(
       await screen.findByRole("option", { name: "Foo Question" }),
     ).toHaveTextContent("Our analytics");
 
-    //Foo Question should be displayed with a verified badge
+    //Foo Question should not be displayed with a verified badge in OSS
     expect(
-      await within(
+      within(
         await screen.findByRole("option", { name: "Foo Question" }),
-      ).findByRole("img", { name: /verified_filled/ }),
-    ).toBeInTheDocument();
+      ).queryByRole("img", { name: /verified_filled/ }),
+    ).not.toBeInTheDocument();
 
     expect(
       await screen.findByRole("option", { name: "Bar Question" }),
