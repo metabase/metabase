@@ -7,7 +7,7 @@ export function popover() {
   return cy.get(POPOVER_ELEMENT);
 }
 
-const HOVERCARD_ELEMENT = ".emotion-HoverCard-dropdown[role='dialog']:visible";
+const HOVERCARD_ELEMENT = ".mantine-HoverCard-dropdown[role='dialog']:visible";
 
 export function hovercard() {
   cy.get(HOVERCARD_ELEMENT, { timeout: 6000 }).should("be.visible");
@@ -23,13 +23,13 @@ export function menu() {
 }
 
 export function modal() {
-  const MODAL_SELECTOR = ".emotion-Modal-content[role='dialog']";
+  const MODAL_SELECTOR = ".mantine-Modal-content[role='dialog']";
   const LEGACY_MODAL_SELECTOR = "[data-testid=modal]";
   return cy.get([MODAL_SELECTOR, LEGACY_MODAL_SELECTOR].join(","));
 }
 
 export function tooltip() {
-  return cy.get(".emotion-Tooltip-tooltip");
+  return cy.get(".mantine-Tooltip-tooltip");
 }
 
 export function entityPickerModal() {
@@ -41,7 +41,7 @@ export function entityPickerModalLevel(level) {
 }
 
 export function entityPickerModalItem(level, name) {
-  return entityPickerModalLevel(level).findByText(name).parents("button");
+  return entityPickerModalLevel(level).findByText(name).parents("a");
 }
 
 export function entityPickerModalTab(name) {

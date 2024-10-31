@@ -16,7 +16,7 @@ export const selectOverrides = {
         color: "text-dark",
       },
       comboboxProps: {
-        withinPortal: false,
+        withinPortal: true,
       },
     },
     classNames: {

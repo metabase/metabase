@@ -17,7 +17,7 @@ export const multiSelectOverrides = {
       ),
       withScrollArea: false,
       comboboxProps: {
-        withinPortal: false,
+        withinPortal: true,
         keepMounted: true,
       },
       clearButtonProps: {

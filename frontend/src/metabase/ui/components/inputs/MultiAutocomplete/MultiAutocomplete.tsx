@@ -171,6 +171,7 @@ export function MultiAutocomplete({
   return (
     <MultiSelect
       {...props}
+      role="combobox"
       data={items}
       value={visibleValues}
       searchValue={searchValue}
@@ -178,7 +179,7 @@ export function MultiAutocomplete({
       searchable
       hidePickedOptions
       comboboxProps={{
-        withinPortal: false,
+        withinPortal: true,
       }}
       autoFocus={autoFocus}
       onChange={handleChange}
