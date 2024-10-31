@@ -1783,6 +1783,9 @@ describe("issue 25374", () => {
 
   beforeEach(() => {
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card//*/query").as(
+      "dashcardQuery",
+    );
 
     restore();
     cy.signInAsAdmin();
@@ -1814,8 +1817,11 @@ describe("issue 25374", () => {
       });
 
       visitDashboard(dashboard_id);
+      cy.wait("@dashcardQuery");
+      cy.location("search").should("eq", "?equal_to=");
 
       filterWidget().type("1,2,3{enter}");
+      cy.wait("@dashcardQuery");
 
       cy.get(".CardVisualization")
         .should("contain", "COUNT(*)")
