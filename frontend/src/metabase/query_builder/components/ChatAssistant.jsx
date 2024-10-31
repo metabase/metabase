@@ -26,7 +26,7 @@ import toast from 'react-hot-toast';
 import { useSetting } from "metabase/common/hooks";
 
 
-const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages, selectedThreadId, setSelectedThreadId, chatType, oldCardId, insights, initial_message, setMessages, setInputValue, setThreadId, threadId, inputValue, messages, isChatHistoryOpen, setIsChatHistoryOpen, setShowButton, setShouldRefetchHistory }) => {
+const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages, selectedThreadId, setSelectedThreadId, chatType, oldCardId, insights, initial_message, setMessages, setInputValue, setThreadId, threadId, inputValue, messages, isChatHistoryOpen, setIsChatHistoryOpen, setShowButton, setShouldRefetchHistory, modelSchema }) => {
     const siteName = useSetting("site-name");
     const formattedSiteName = siteName
         ? siteName.replace(/\s+/g, "_").toLowerCase()
@@ -436,7 +436,7 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
             const schema = chatType === 'insights' ? initialInsightSchema : initialSchema.schema;
             const databaseID = chatType === 'insights' ? initialInsightDbName : initialDbName;
             const streamResponse = client.runs.stream(thread.thread_id, agent.assistant_id, {
-                input: { messages: messagesToSend, company_name: initialCompanyName, database_id: databaseID, schema: schema, session_token: metabase_id_back },
+                input: { messages: messagesToSend, company_name: initialCompanyName, database_id: databaseID, schema: modelSchema, session_token: metabase_id_back },
                 config: { recursion_limit: 25 },
                 streamMode: "messages",
             });

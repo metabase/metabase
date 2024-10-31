@@ -25,6 +25,7 @@ import { Client } from "@langchain/langgraph-sdk";
 import { Client as ClientSmith } from "langsmith/client";
 import { useSetting } from "metabase/common/hooks";
 import { t } from "ttag";
+import { CardApi } from "metabase/services";
 
 export const HomeLayout = () => {
   const initialMessage = useSelector(getInitialMessage);
@@ -53,7 +54,7 @@ export const HomeLayout = () => {
   const langchain_key = "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";
   const [client, setClient] = useState<any>(null);
   const [clientSmith, setSmithClient] = useState<any>(null);
-
+  const [modelSchema, setModelSchema] = useState([])
   const [shouldRefetchHistory, setShouldRefetchHistory] = useState(false); // State to trigger chat history refresh
   const siteName = useSetting("site-name");
   const formattedSiteName = siteName
@@ -72,6 +73,30 @@ export const HomeLayout = () => {
     }
 
   }, [langchain_url, langchain_key]);
+
+  useEffect(() => {
+    const getCards = async () => {
+        try {
+            const cardsList = await CardApi.list();
+            const modelCards = cardsList
+                .filter((card: any) => card.type === "model")
+                .map((card: any) => ({
+                    card__id: card.id,
+                    model_schema: card.result_metadata || [],
+                    name: card.name,
+                    description: card.description
+                }));
+
+            setModelSchema(modelCards); 
+        } catch (error) {
+            console.error("Error fetching cards:", error);
+        }
+    };
+
+    getCards();
+}, []);
+
+
 
   const dispatch = useDispatch();
   const {
@@ -368,6 +393,7 @@ export const HomeLayout = () => {
                   setIsChatHistoryOpen={setIsChatHistoryOpen}
                   setShowButton={setShowButton}
                   setShouldRefetchHistory={setShouldRefetchHistory}
+                  modelSchema={modelSchema}
                 />
               </Stack>
               {isChatHistoryOpen && selectedChatType !== "insights" && (
