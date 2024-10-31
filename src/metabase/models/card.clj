@@ -6,6 +6,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.walk :as walk]
+   [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.audit :as audit]
@@ -38,6 +39,7 @@
    [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
    [metabase.query-analysis :as query-analysis]
    [metabase.query-processor.util :as qp.util]
+   [metabase.search :as search]
    [metabase.util :as u]
    [metabase.util.embed :refer [maybe-populate-initially-published-at]]
    [metabase.util.honey-sql-2 :as h2x]
@@ -1004,3 +1006,54 @@
   (merge (select-keys card [:name :description :database_id :table_id])
           ;; Use `model` instead of `dataset` to mirror product terminology
          {:model? (= (keyword card-type) :model)}))
+
+;;;; ------------------------------------------------- Search ----------------------------------------------------------
+
+(def ^:private base-card-spec
+  {:model        :model/Card
+   :attrs        {:archived      true
+                  :collection-id :collection_id
+                  :database-id   false
+                  :table-id      false
+                  :created-at    true
+                  :updated-at    true}
+   :search-terms [:name :description]
+   ;; TODO this will need to go on a second search vector.
+   :native-query :dataset_query
+   :render-terms {:archived-directly          true
+                  :collection-authority_level :collection.authority_level
+                  :collection-location        :collection.location
+                  :collection-name            :collection.name
+                  :collection-position        true
+                  :collection-type            :collection.type
+                  :creator-id                 true
+                  :dataset-query              true
+                  :display                    true
+                  :last-edited-at             :r.timestamp
+                  :last-editor-id             :r.user_id
+                  :moderated-status           :mr.status}
+   :bookmark     [:model/CardBookmark [:and
+                                       [:= :bookmark.card_id :this.id]
+                                       [:= :bookmark.user_id :current_user/id]]]
+   :where        [:= :collection.namespace nil]
+   :joins        {:collection [:model/Collection [:= :collection.id :this.collection_id]]
+                  :r          [:model/Revision [:and
+                                                [:= :r.model_id :this.id]
+                                                ;; Interesting for inversion, another condition on whether to update.
+                                                ;; For now, let's just swallow the extra update (2x amplification)
+                                                [:= :r.most_recent true]
+                                                [:= :r.model "Card"]]]
+                  :mr         [:model/ModerationReview [:and
+                                                        [:= :mr.moderated_item_type "card"]
+                                                        [:= :mr.moderated_item_id :this.id]
+                                                        [:= :mr.most_recent true]]]}})
+
+(search/define-spec "card"
+  (-> base-card-spec (sql.helpers/where [:= :this.type "question"])))
+
+(search/define-spec "dataset"
+  (-> base-card-spec (sql.helpers/where [:= :this.type "model"])))
+
+(search/define-spec "metric"
+  (-> base-card-spec (sql.helpers/where [:= :this.type "metric"])))
+
