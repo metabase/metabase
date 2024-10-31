@@ -1875,15 +1875,17 @@ describe("issue 25374", () => {
     getDashboardCard().findAllByTestId("cell-data").should("have.text", "3");
 
     cy.button("Clear").click();
-    cy.location("search").should("eq", "?equal_to=");
+    cy.wait("@dashcardQuery");
     getDashboardCard().should(
       "contain.text",
       "There was a problem displaying this chart.",
     );
+    cy.location("search").should("eq", "?equal_to=");
 
     cy.button("Reset filter to default state").click();
-    cy.location("search").should("eq", "?equal_to=1%2C2%2C3");
+    cy.wait("@dashcardQuery");
     getDashboardCard().findAllByTestId("cell-data").should("have.text", "3");
+    cy.location("search").should("eq", "?equal_to=1%2C2%2C3");
 
     // Drill-through and go to the question
     getDashboardCard(0).findByText(questionDetails.name).click();
@@ -1907,6 +1909,7 @@ describe("issue 25374", () => {
     getDashboardCard().findAllByTestId("cell-data").should("have.text", "3");
 
     cy.button("Clear").click();
+    cy.wait("@dashcardQuery");
     cy.location("search").should("eq", "?equal_to=");
     getDashboardCard().should(
       "contain.text",
@@ -1915,6 +1918,7 @@ describe("issue 25374", () => {
 
     cy.button("Move, trash, and more…").click();
     popover().findByText("Reset all filters").should("be.visible").click();
+    cy.wait("@dashcardQuery");
     cy.location("search").should("eq", "?equal_to=1%2C2%2C3");
     cy.location("search").should("eq", "?equal_to=1%2C2%2C3");
     getDashboardCard().findAllByTestId("cell-data").should("have.text", "3");
