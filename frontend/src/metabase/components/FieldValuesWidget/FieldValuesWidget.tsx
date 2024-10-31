@@ -163,7 +163,8 @@ export function FieldValuesWidgetInner({
   const [isExpanded, setIsExpanded] = useState(false);
   const dispatch = useDispatch();
 
-  const isSingleValueSearch = valuesMode === "search" && !multi;
+  const isSingleValueSearch =
+    valuesMode === "search" && !multi && !disableSearch;
   const isListMode =
     !disableList &&
     (shouldList({ parameter, fields, disableSearch }) || isSingleValueSearch);
