@@ -14,7 +14,8 @@
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.o11y :refer [with-span]]))
 
 (defsetting ai-proxy-base-url
   (deferred-tru "URL for the a AI Proxy service")
@@ -25,7 +26,7 @@
   :export?    false
   :getter     (fn []
                 (if (premium-features/is-hosted?)
-                  "https://ai-proxy.coredev.metabase.com"
+                  "https://ai-service.coredev.metabase.com"
                   "http://localhost:8000")))
 
 (set! *warn-on-reflection* true)
@@ -80,6 +81,17 @@
     (cond-> response
       json? (update :body #(json/parse-string % true)))))
 
+(defn- post! [url options]
+  (let [response-metadata (promise)
+        response-status (promise)]
+    (with-span :info {:name :metabot-v3.client/request
+                      :url url
+                      :metadata response-metadata
+                      :status response-status}
+      (u/prog1 (maybe-parse-response-body-as-json (http/post url options))
+        (deliver response-metadata (some-> <> :body :metadata))
+        (deliver response-status (some-> <> :status))))))
+
 (defn- agent-endpoint-url []
   (str (ai-proxy-base-url) "/v1/agent/"))
 
@@ -104,8 +116,7 @@
                      (metabot-v3.context/log :llm.log/be->llm))
           _        (log/debugf "Request to AI Proxy:\n%s" (u/pprint-to-str body))
           options  (build-request-options body)
-          response (-> (http/post url options)
-                       maybe-parse-response-body-as-json)]
+          response (post! url options)]
       (metabot-v3.context/log (:body response) :llm.log/llm->be)
       (log/debugf "Response from AI Proxy:\n%s" (u/pprint-to-str (select-keys response #{:body :status :headers})))
       (if (= (:status response) 200)
