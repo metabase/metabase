@@ -63,7 +63,7 @@ const errorsThatIncludeMessage = (message: string) => {
 };
 
 /**
- * Checks if the error message has been console.error'd. and is visible on the page
+ * Checks if the error message has been console.error'd and is visible on the page
  */
 const expectErrorMessage = async (message: string) => {
   try {
@@ -97,7 +97,7 @@ describe("SDK auth errors", () => {
 
     console.error = jest.fn((...args) => {
       consoleErrorCalls.push(args);
-      // Uncomment to line below to debug these tests
+      // Uncomment the line below to debug these tests
       // originalConsoleError(...args);
     });
   });
@@ -145,9 +145,7 @@ describe("SDK auth errors", () => {
 
       await waitForRequest(() => getLastAuthProviderApiCall());
 
-      expect(
-        errorsThatIncludeMessage("error-embedding-sdk-disabled"),
-      ).toHaveLength(1);
+      await expectErrorMessage("error-embedding-sdk-disabled");
     });
 
     it("if a custom `fetchRequestToken` throws an error, it should display it", async () => {
@@ -160,7 +158,7 @@ describe("SDK auth errors", () => {
 
       await setup(config);
 
-      expect(errorsThatIncludeMessage("Custom error message")).toHaveLength(1);
+      await expectErrorMessage("Custom error message");
     });
   });
 });

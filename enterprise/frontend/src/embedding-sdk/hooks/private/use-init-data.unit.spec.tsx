@@ -191,7 +191,7 @@ describe("useInitData hook", () => {
 
       expect(screen.getByTestId("test-component")).toHaveAttribute(
         "data-error-message",
-        "Failed to fetch the user, is the session valid?",
+        "Failed to fetch the user, the session might be invalid.",
       );
     });
 
