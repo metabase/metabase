@@ -1,13 +1,13 @@
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { useMetabotContext } from "metabase/metabot";
-import { useMetabotAgentMutation } from "metabase-enterprise/api";
+import { METABOT_TAG, useMetabotAgentMutation } from "metabase-enterprise/api";
 
 import {
-  clearUserMessages,
+  dismissUserMessage,
+  getIsProcessing,
   getMetabotVisisble,
   getUserMessages,
-  processMetabotReactions,
-  removeUserMessage,
+  sendMessage,
   setVisible,
 } from "./state";
 
@@ -15,42 +15,30 @@ export const useMetabotAgent = () => {
   const dispatch = useDispatch();
   const { getChatContext } = useMetabotContext();
 
-  // TODO: fix typing issue
-  const userMessages = useSelector(getUserMessages as any) as string[];
+  // TODO: create an enterprise useSelector
+  const userMessages = useSelector(getUserMessages as any) as ReturnType<
+    typeof getUserMessages
+  >;
+  const isProcessing = useSelector(getIsProcessing as any) as ReturnType<
+    typeof getIsProcessing
+  >;
 
-  const [sendMessage, sendMessageReq] = useMetabotAgentMutation({
-    fixedCacheKey: "metabot",
+  const [, sendMessageReq] = useMetabotAgentMutation({
+    fixedCacheKey: METABOT_TAG,
   });
 
   return {
     visible: useSelector(getMetabotVisisble as any),
-    setVisible: (isVisible: boolean) => {
-      // TODO: do this in the setVisible action
-      if (!isVisible) {
-        sendMessageReq.reset();
-      }
-
-      dispatch(setVisible(isVisible));
-    },
+    setVisible: (isVisible: boolean) => dispatch(setVisible(isVisible)),
     userMessages,
-    removeUserMessage: (messageIndex: number) =>
-      dispatch(removeUserMessage(messageIndex)),
-    // TODO: need to handle not sending messages while we're
-    // processing playing through response messages
+    dismissUserMessage: (messageIndex: number) =>
+      dispatch(dismissUserMessage(messageIndex)),
     sendMessage: async (message: string) => {
-      dispatch(clearUserMessages());
-
       const context = getChatContext();
       const history = sendMessageReq.data?.history || [];
-      const result = await sendMessage({ message, context, history });
-
-      if (result.error) {
-        throw result.error;
-      }
-
-      const reactions = result.data?.reactions || [];
-      await dispatch(processMetabotReactions(reactions));
+      await dispatch(sendMessage({ message, context, history }));
     },
-    sendMessageReq,
+    isLoading: sendMessageReq.isLoading,
+    isProcessing,
   };
 };

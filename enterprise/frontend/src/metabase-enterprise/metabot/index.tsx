@@ -9,12 +9,8 @@ import {
 import { Flex, Text } from "metabase/ui";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
-import { Metabot } from "./Metabot";
-import {
-  MetabotContext,
-  MetabotProvider,
-  defaultContext,
-} from "./MetabotContext";
+import { Metabot } from "./components/Metabot";
+import { MetabotContext, MetabotProvider, defaultContext } from "./context";
 import { metabotReducer, setVisible } from "./state";
 
 if (!!true || hasPremiumFeature("metabot_v3")) {

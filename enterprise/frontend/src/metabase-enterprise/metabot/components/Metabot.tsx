@@ -3,8 +3,9 @@ import { tinykeys } from "tinykeys";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 
+import { useMetabotAgent } from "../hooks";
+
 import { MetabotChat } from "./MetabotChat";
-import { useMetabotAgent } from "./hooks";
 
 export const Metabot = () => {
   const { visible, setVisible } = useMetabotAgent();
