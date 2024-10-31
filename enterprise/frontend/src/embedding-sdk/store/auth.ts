@@ -53,7 +53,7 @@ export const initAuth = createAsyncThunk(
     }
     if (!siteSettings.payload) {
       const error = new Error(
-        "Failed to fetch the site settings, is the session valid?",
+        "Failed to fetch the site settings, the session might be invalid.",
       );
       console.error(error);
       throw error;
