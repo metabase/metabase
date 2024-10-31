@@ -3,9 +3,21 @@ import { renderToString } from "react-dom/server";
 
 import { EChartsTooltip } from "metabase/visualizations/components/ChartTooltip/EChartsTooltip";
 import { getTooltipBaseOption } from "metabase/visualizations/echarts/tooltip";
+import { getFriendlyName } from "metabase/visualizations/lib/utils";
+import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import type { DatasetColumn } from "metabase-types/api";
 
-const ChartItemTooltip = ({ params, metricName }: any) => {
+interface ChartItemTooltipProps {
+  metricColumnKey: string;
+  metricColumnName: string;
+  params: any;
+}
+
+const ChartItemTooltip = ({
+  params,
+  metricColumnKey,
+  metricColumnName,
+}: ChartItemTooltipProps) => {
   const data = params.data;
   let header = "";
   if (data.name) {
@@ -17,10 +29,20 @@ const ChartItemTooltip = ({ params, metricName }: any) => {
   } else {
     header = `${data.source} → ${data.target}`;
   }
+
   return (
     <EChartsTooltip
       header={header}
-      rows={[{ name: metricName, values: [params.value ?? data.value] }]}
+      rows={[
+        {
+          name: metricColumnName,
+          values: [
+            params.dataType === "node"
+              ? (data.columnValues[metricColumnKey] ?? 0)
+              : params.value,
+          ],
+        },
+      ]}
     />
   );
 };
@@ -29,6 +51,8 @@ export const getTooltipOption = (
   containerRef: React.RefObject<HTMLDivElement>,
   metricColumn: DatasetColumn,
 ): TooltipOption => {
+  const metricColumnName = getFriendlyName(metricColumn);
+  const metricColumnKey = getColumnKey(metricColumn);
   return {
     ...getTooltipBaseOption(containerRef),
     trigger: "item",
@@ -41,7 +65,8 @@ export const getTooltipOption = (
       return renderToString(
         <ChartItemTooltip
           params={params}
-          metricName={metricColumn.display_name}
+          metricColumnName={metricColumnName}
+          metricColumnKey={metricColumnKey}
         />,
       );
     },
