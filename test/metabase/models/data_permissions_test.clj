@@ -129,24 +129,6 @@
           (is (nil?  (create-queries-perm-value table-id-2)))
           (is (nil?  (create-queries-perm-value table-id-3))))))))
 
-(deftest native-queries-against-db-with-some-blocked-table-is-illegal-test
-  (mt/with-temp [:model/Card {card-id :id {db-id :database} :dataset_query} {:dataset_query (mt/native-query {:query "select 1"})}]
-    (mt/with-no-data-perms-for-all-users!
-      (data-perms/set-database-permission! (perms-group/all-users) db-id :perms/create-queries (data-perms/most-permissive-value :perms/create-queries))
-      (data-perms/set-database-permission! (perms-group/all-users) db-id :perms/view-data (data-perms/most-permissive-value :perms/view-data))
-      ;; rasta has access to the database:
-      (is (= "Can Run Query"
-             (:error (mt/user-http-request :rasta :post 202 (format "card/%d/query" card-id))
-                     "Can Run Query")))
-
-      ;; block a single table on the db:
-      (let [tables-in-db (map :id (:tables (t2/hydrate (t2/select-one :model/Database db-id) :tables)))
-            table-id (rand-nth tables-in-db)]
-        (data-perms/set-table-permissions! (perms-group/all-users) :perms/view-data {table-id :blocked}))
-
-      (is (= (str "Blocked: you are not allowed to run queries against Database " db-id ".")
-             (:error (mt/user-http-request :rasta :post 202 (format "card/%d/query" card-id))))))))
-
 (deftest database-permission-for-user-test
   (mt/with-temp [:model/PermissionsGroup           {group-id-1 :id}    {}
                  :model/PermissionsGroup           {group-id-2 :id}    {}

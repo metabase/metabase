@@ -327,3 +327,21 @@
                  #"Blocked: you are not allowed to run queries"
                  (mt/rows (process-query-for-card child-card)))
                 "Someone with `:blocked` permissions on ANY table in the database cannot run ANY card with native queries, including as a source for another card.")))))))
+
+(deftest native-queries-against-db-with-some-blocked-table-is-illegal-test
+  (mt/with-temp [:model/Card {card-id :id {db-id :database} :dataset_query} {:dataset_query (mt/native-query {:query "select 1"})}]
+    (mt/with-no-data-perms-for-all-users!
+      (data-perms/set-database-permission! (perms-group/all-users) db-id :perms/create-queries (data-perms/most-permissive-value :perms/create-queries))
+      (data-perms/set-database-permission! (perms-group/all-users) db-id :perms/view-data (data-perms/most-permissive-value :perms/view-data))
+      ;; rasta has access to the database:
+      (is (= "Can Run Query"
+             (:error (mt/user-http-request :rasta :post 202 (format "card/%d/query" card-id))
+                     "Can Run Query")))
+
+      ;; block a single table on the db:
+      (let [tables-in-db (map :id (:tables (t2/hydrate (t2/select-one :model/Database db-id) :tables)))
+            table-id (rand-nth tables-in-db)]
+        (data-perms/set-table-permissions! (perms-group/all-users) :perms/view-data {table-id :blocked}))
+
+      (is (= (str "Blocked: you are not allowed to run queries against Database " db-id ".")
+             (:error (mt/user-http-request :rasta :post 202 (format "card/%d/query" card-id))))))))
