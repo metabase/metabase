@@ -1789,7 +1789,7 @@ describe("issue 25374", () => {
 
     restore();
     cy.signInAsAdmin();
-    changeSynchronousBatchUpdateSetting(false); // prevent last_used_param_values from breaking test isolation
+    changeSynchronousBatchUpdateSetting(true); // prevent last_used_param_values from breaking test isolation
 
     cy.createNativeQuestionAndDashboard({
       questionDetails,
