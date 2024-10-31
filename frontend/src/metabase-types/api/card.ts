@@ -118,8 +118,14 @@ export type ColumnFormattingSetting = {
   highlight_row?: boolean;
 };
 
+export type PivotTableColumnSplitSetting = {
+  rows: string[];
+  columns: string[];
+  values: string[];
+};
+
 export type PivotTableCollapsedRowsSetting = {
-  rows: FieldReference[];
+  rows: string[];
   value: string[]; // identifiers for collapsed rows
 };
 
@@ -216,6 +222,7 @@ export type VisualizationSettings = {
   "funnel.rows"?: SeriesOrderSetting[];
 
   "table.column_formatting"?: ColumnFormattingSetting[];
+  "pivot_table.column_split"?: PivotTableColumnSplitSetting;
   "pivot_table.collapsed_rows"?: PivotTableCollapsedRowsSetting;
 
   // Scalar Settings

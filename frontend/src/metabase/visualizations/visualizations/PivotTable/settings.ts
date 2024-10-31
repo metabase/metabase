@@ -21,13 +21,13 @@ import type {
   Card,
   DatasetColumn,
   DatasetData,
+  PivotTableColumnSplitSetting,
   RowValue,
   Series,
   VisualizationSettings,
 } from "metabase-types/api";
 
 import { partitions } from "./partitions";
-import type { PivotSetting } from "./types";
 import {
   addMissingCardBreakouts,
   isColumnValid,
@@ -85,7 +85,7 @@ export const settings = {
       },
     }),
     getValue: (
-      [{ data, card }]: [{ data: DatasetData; card: Card }],
+      [{ data }]: [{ data: DatasetData; card: Card }],
       settings: Partial<VisualizationSettings> = {},
     ) => {
       const storedValue = settings[COLUMN_SPLIT_SETTING];
@@ -95,7 +95,7 @@ export const settings = {
       const columnsToPartition = data.cols.filter(
         col => !isPivotGroupColumn(col),
       );
-      let setting;
+      let setting: PivotTableColumnSplitSetting;
       if (storedValue == null) {
         const [dimensions, values] = _.partition(
           columnsToPartition,
@@ -119,7 +119,7 @@ export const settings = {
           rows = rest;
         }
         setting = _.mapObject({ rows, columns, values }, cols =>
-          cols.map(col => col.field_ref),
+          cols.map(col => col.name),
         );
       } else {
         setting = updateValueWithCurrentColumns(
@@ -128,7 +128,7 @@ export const settings = {
         );
       }
 
-      return addMissingCardBreakouts(setting as PivotSetting, card);
+      return addMissingCardBreakouts(setting, columnsToPartition);
     },
   },
   "pivot.show_row_totals": {
@@ -239,7 +239,7 @@ export const _columnSettings = {
       { settings }: { settings: VisualizationSettings },
     ) => {
       //Default to showing totals if appropriate
-      const rows = settings[COLUMN_SPLIT_SETTING].rows || [];
+      const rows = settings[COLUMN_SPLIT_SETTING]?.rows || [];
       return rows
         .slice(0, -1)
         .some((row: RowValue) => _.isEqual(row, column.field_ref));
@@ -249,7 +249,7 @@ export const _columnSettings = {
       columnSettings: DatasetColumn,
       { settings }: { settings: VisualizationSettings },
     ) => {
-      const rows = settings[COLUMN_SPLIT_SETTING].rows || [];
+      const rows = settings[COLUMN_SPLIT_SETTING]?.rows || [];
       // to show totals a column needs to be:
       //  - in the left header ("rows" in COLUMN_SPLIT_SETTING)
       //  - not the last column
