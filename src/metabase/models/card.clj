@@ -805,15 +805,15 @@
 (defn- update-mapping
   "Return modifed mapping, or nil, according to action."
   [identifier->action mapping]
-  (if-not (and (= :dimension (get-in mapping [:target 0]))
-               (#{:field :expression} (get-in mapping [:target 1 0])))
-    mapping
-    (let [dimension (get-in mapping [:target 1])
-          identifier (subvec dimension 0 2)
-          [action arg] (get identifier->action identifier)]
-      (case action
-        :update (assoc-in mapping [:target 1] arg)
-        mapping))))
+  (let [[dim [ref-kind id-or-name :as ref]] (:target mapping)]
+    (if-not (and (= dim :dimension)
+                 (#{:field :expression} ref-kind))
+      mapping
+      (let [identifier (subvec ref 0 2)
+            [action arg] (get identifier->action identifier)]
+        (case action
+          :update (assoc-in mapping [:target 1] arg)
+          mapping))))
 
 (defn- updates-for-dashcards
   [identifier->action dashcards]
