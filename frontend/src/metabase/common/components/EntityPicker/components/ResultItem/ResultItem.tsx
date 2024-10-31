@@ -46,15 +46,11 @@ export const ResultItem = ({
         />
         <Ellipsified style={{ fontWeight: "bold" }}>
           {getName(item)}
-          <PLUGIN_MODERATION.ModerationStatusIcon
-            status={item.moderated_status}
-            filled
-            ml="0.25rem"
-            style={{
-              verticalAlign: "bottom",
-            }}
-          />
         </Ellipsified>
+        <PLUGIN_MODERATION.ModerationStatusIcon
+          status={item.moderated_status}
+          filled
+        />
         {item.description && (
           <Tooltip
             maw="20rem"
