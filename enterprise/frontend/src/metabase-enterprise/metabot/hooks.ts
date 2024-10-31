@@ -25,6 +25,7 @@ export const useMetabotAgent = () => {
   return {
     visible: useSelector(getMetabotVisisble as any),
     setVisible: (isVisible: boolean) => {
+      // TODO: do this in the setVisible action
       if (!isVisible) {
         sendMessageReq.reset();
       }

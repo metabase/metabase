@@ -4,9 +4,13 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { createAsyncThunk } from "metabase/lib/redux";
-import { setUIControls, updateQuestion } from "metabase/query_builder/actions";
+import {
+  setUIControls,
+  updateCardVisualizationSettings,
+  updateQuestion,
+} from "metabase/query_builder/actions";
 import { setQuestionDisplayType } from "metabase/query_builder/components/chart-type-selector";
-import { getQuestion } from "metabase/query_builder/selectors";
+import { getQueryResults, getQuestion } from "metabase/query_builder/selectors";
 import * as Lib from "metabase-lib";
 import type { MetabotReaction } from "metabase-types/api";
 
@@ -34,6 +38,25 @@ export const processMetabotReactions = createAsyncThunk(
           .with({ type: "metabot.reaction/message" }, reaction => {
             dispatch(addUserMessage(reaction.message));
           })
+          .with(
+            { type: "metabot.reaction/change-table-visualization-settings" },
+            reaction => {
+              const queryResults = getQueryResults(state);
+              const queryResultCols = queryResults?.[0]?.data?.cols ?? [];
+              const columnNames = queryResultCols.map((col: any) => col.name);
+              const visibleColumnNames = new Set(reaction.visible_columns);
+              const tableColumns = columnNames.map((name: string) => ({
+                name,
+                enabled: visibleColumnNames.has(name),
+              }));
+
+              dispatch(
+                updateCardVisualizationSettings({
+                  "table.columns": tableColumns,
+                }),
+              );
+            },
+          )
           .with({ type: "metabot.reaction/change-display-type" }, reaction => {
             const display = reaction.display_type;
             const question = getQuestion(state);

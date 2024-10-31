@@ -55,6 +55,11 @@ export type MetabotChangeDisplayTypeReaction = {
   display_type: CardDisplayType;
 };
 
+export type MetabotChangeVisiualizationSettingsReaction = {
+  type: "metabot.reaction/change-table-visualization-settings";
+  visible_columns: string[];
+};
+
 export type MetabotApplyVisualizationsReaction = {
   type: "metabot.reaction/apply-visualizations";
   display: CardDisplayType;
@@ -71,6 +76,7 @@ export type MetabotGoToQuestionReaction = {
 export type MetabotReaction =
   | MetabotMessageReaction
   | MetabotChangeDisplayTypeReaction
+  | MetabotChangeVisiualizationSettingsReaction
   | MetabotApplyVisualizationsReaction
   | MetabotGoToQuestionReaction;
 
