@@ -50,8 +50,8 @@ export const InteractiveQuestionProvider = ({
   children,
   onBeforeSave,
   onSave,
+  isSaveEnabled = true,
   entityTypeFilter,
-  isSaveEnabled,
   saveToCollectionId,
 }: InteractiveQuestionProviderProps) => {
   const { id: cardId, isLoading: isLoadingValidatedId } = useValidatedEntityId({

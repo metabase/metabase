@@ -16,11 +16,11 @@ const QuestionEditorInner = () => {
   const {
     queryResults,
     runQuestion,
+    isSaveEnabled,
     question,
     originalQuestion,
     onSave,
     onCreate,
-    isSaveEnabled,
   } = useInteractiveQuestionContext();
 
   const [activeTab, setActiveTab] = useState<

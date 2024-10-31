@@ -9,11 +9,10 @@ export type SaveQuestionProps = {
 
   closeOnSuccess?: boolean;
   multiStep?: boolean;
-  initialCollectionId?: CollectionId | null;
 
   /**
    * The target collection to save the question to.
-   * Currently used for the embedding sdk.
+   * Currently used for the embedding SDK.
    *
    * When this is defined, the collection picker will be hidden and
    * the question will be saved to this collection.

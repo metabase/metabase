@@ -11,7 +11,7 @@ import type { CardEntityId, CardId } from "metabase-types/api";
 
 export type EntityTypeFilterKeys = "table" | "question" | "model" | "metric";
 
-export type InteractiveQuestionConfig = {
+type InteractiveQuestionConfig = {
   componentPlugins?: SdkPluginsConfig;
   onNavigateBack?: () => void;
   onBeforeSave?: (question?: Question) => Promise<void>;
