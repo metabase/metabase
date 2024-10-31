@@ -42,16 +42,17 @@ export function visitInteractiveQuestionStory(
   });
 }
 
-export function saveInteractiveQuestionAsNewQuestion(
-  name: string,
-  options: { collectionPath?: string[] } = {},
-) {
-  const { collectionPath } = options;
+export function saveInteractiveQuestionAsNewQuestion(options: {
+  questionName: string;
+  entityName: string;
+  collectionPickerPath?: string[];
+}) {
+  const { questionName, entityName, collectionPickerPath } = options;
 
   cy.intercept("POST", "/api/card").as("createCard");
 
   cy.findAllByTestId("cell-data").last().click();
-  popover().findByText("See these Orders").click();
+  popover().findByText(`See these ${entityName}`).click();
   cy.findByRole("button", { name: "Save" }).click();
 
   modal().within(() => {
@@ -59,14 +60,14 @@ export function saveInteractiveQuestionAsNewQuestion(
 
     cy.findByPlaceholderText("What is the name of your question?")
       .clear()
-      .type(name);
+      .type(questionName);
   });
 
-  if (collectionPath) {
+  if (collectionPickerPath) {
     cy.findByTestId("collection-picker-button").click();
 
     entityPickerModal().within(() => {
-      collectionPath.forEach(collectionName =>
+      collectionPickerPath.forEach(collectionName =>
         cy.findByText(collectionName).click(),
       );
 

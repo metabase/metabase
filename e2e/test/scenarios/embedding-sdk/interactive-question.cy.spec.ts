@@ -106,7 +106,10 @@ describeSDK("scenarios > embedding-sdk > interactive-question", () => {
   });
 
   it("can save a question to a default collection", () => {
-    saveInteractiveQuestionAsNewQuestion("Sample Orders 1");
+    saveInteractiveQuestionAsNewQuestion({
+      entityName: "Orders",
+      questionName: "Sample Orders 1",
+    });
 
     cy.wait("@createCard").then(({ response }) => {
       expect(response?.statusCode).to.equal(200);
@@ -116,8 +119,10 @@ describeSDK("scenarios > embedding-sdk > interactive-question", () => {
   });
 
   it("can save a question to a selected collection", () => {
-    saveInteractiveQuestionAsNewQuestion("Sample Orders 2", {
-      collectionPath: ["Our analytics", "First collection"],
+    saveInteractiveQuestionAsNewQuestion({
+      entityName: "Orders",
+      questionName: "Sample Orders 2",
+      collectionPickerPath: ["Our analytics", "First collection"],
     });
 
     cy.wait("@createCard").then(({ response }) => {
@@ -133,7 +138,10 @@ describeSDK("scenarios > embedding-sdk > interactive-question", () => {
       withCollectionPicker: false,
     });
 
-    saveInteractiveQuestionAsNewQuestion("Sample Orders 3");
+    saveInteractiveQuestionAsNewQuestion({
+      entityName: "Orders",
+      questionName: "Sample Orders 3",
+    });
 
     cy.wait("@createCard").then(({ response }) => {
       expect(response?.statusCode).to.equal(200);
