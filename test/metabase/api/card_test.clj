@@ -2657,7 +2657,7 @@
           (update-card card {:description "a new description"})
           (is (empty? (reviews card)))))
       (testing "Does not add nil moderation reviews when there are reviews but not verified"
-       ;; testing that we aren't just adding a nil moderation each time we update a card
+     ;; testing that we aren't just adding a nil moderation each time we update a card
         (with-card :verified
           (is (verified? card))
           (moderation-review/create-review! {:moderated_item_id   (u/the-id card)
@@ -3662,7 +3662,7 @@
               (mt/user-http-request :rasta :post (format "card/%d/query" (u/the-id card))))
             (blocked? [response] (or
                                   (= "You don't have permissions to do that." response)
-                                  (re-matches #"Blocked: you are not allowed to run queries against Database \d+."
+                                  (re-matches #"You do not have permissions to run this query"
                                               (:error response))))]
       ;;    | Data perms | Collection perms | outcome
       ;;    ------------ | ---------------- | --------
@@ -3703,8 +3703,7 @@
 
       ;; delete these in place so we can reset them below, you cannot set them twice in a row
       (perms/revoke-collection-permissions! (perms-group/all-users) collection)
-
-      (testing "should NOT be able to run the parent Card when data-perms and valid collection perms"
+      (testing "should NOT be able to run the parent Card with data-perms and valid collection perms"
         (mt/with-no-data-perms-for-all-users!
           (mt/with-non-admin-groups-no-collection-perms collection
             (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)

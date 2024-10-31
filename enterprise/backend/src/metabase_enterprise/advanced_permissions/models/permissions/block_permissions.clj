@@ -14,10 +14,9 @@
   [[metabase.models.collection]] for more details."
   :feature :advanced-permissions
   [{database-id :database :as query}]
-  (let [{:keys [table-ids native?]} (query-perms/query->source-ids query)]
+  (let [{:keys [table-ids]} (query-perms/query->source-ids query)]
     (when (or
            (= :blocked (data-perms/full-db-permission-for-user api/*current-user-id* :perms/view-data database-id))
-           native?
            (when (seq table-ids)
              (not= #{:unrestricted}
                    (set
