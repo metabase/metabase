@@ -751,7 +751,16 @@
            (and on-dashboard-before?
                 (not on-dashboard-after?)
                 delete-old-dashcards?))
-      (autoremove-dashcard-for-card! card-id old-dashboard-id))))
+      (autoremove-dashcard-for-card! card-id old-dashboard-id))
+
+    ;; we're moving from a collection to a dashboard, and the user has told us to remove the dashcards for other
+    ;; dashboards
+    (when (and on-dashboard-after?
+               (not on-dashboard-before?)
+               delete-old-dashcards?)
+      ;; TODO: should we publish events here? might be expensive, and it might not be right to show "card X was
+      ;; removed from the dashboard" since you can't restore to the previous state...
+      (t2/delete! :model/DashboardCard :card_id card-id :dashboard_id [:not= new-dashboard-id]))))
 
 (defn create-card!
   "Create a new Card. Metadata will be fetched off thread. If the metadata takes longer than [[metadata-sync-wait-ms]]
@@ -930,9 +939,8 @@
   (t2/with-transaction [_conn]
     (api/maybe-reconcile-collection-position! card-before-update card-updates)
 
-    (assert-is-valid-dashboard-internal-update card-updates card-before-update)
-
     (autoplace-or-remove-dashcards-for-card! card-before-update card-updates delete-old-dashcards?)
+    (assert-is-valid-dashboard-internal-update card-updates card-before-update)
 
     (when (and (card-is-verified? card-before-update)
                (changed? card-compare-keys card-before-update card-updates))

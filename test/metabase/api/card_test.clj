@@ -4050,7 +4050,16 @@
                    :model/Card {card-id :id} {}
                    :model/DashboardCard _ {:dashboard_id other-dash-id
                                            :card_id      card-id}]
-      (mt/user-http-request :rasta :put 400 (str "card/" card-id) {:dashboard_id dash-id}))))
+      (mt/user-http-request :rasta :put 400 (str "card/" card-id) {:dashboard_id dash-id})))
+  (testing "... unless we pass `delete_old_dashcards=true`"
+    (mt/with-temp [:model/Collection {coll-id :id} {}
+                   :model/Dashboard {dash-id :id} {:collection_id coll-id}
+                   :model/Dashboard {other-dash-id :id} {}
+                   :model/Card {card-id :id} {}
+                   :model/DashboardCard _ {:dashboard_id other-dash-id
+                                           :card_id      card-id}]
+      (mt/user-http-request :rasta :put 200 (str "card/" card-id "?delete_old_dashcards=true") {:dashboard_id dash-id})
+      (is (= #{dash-id} (t2/select-fn-set :dashboard_id :model/DashboardCard :card_id card-id))))))
 
 (deftest we-can-get-a-list-of-dashboards-a-card-appears-in
   (testing "a card in one dashboard"
