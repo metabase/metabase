@@ -30,12 +30,10 @@ export function multiLevelPivot(data, settings) {
     columns: columnColumnIndexes,
     rows: rowColumnIndexes,
     values: valueColumnIndexes,
-  } = _.mapObject(columnSplit, columnFieldRefs =>
-    columnFieldRefs
-      .map(field_ref =>
-        columnsWithoutPivotGroup.findIndex(col =>
-          _.isEqual(col.field_ref, field_ref),
-        ),
+  } = _.mapObject(columnSplit, columnNames =>
+    columnNames
+      .map(columnName =>
+        columnsWithoutPivotGroup.findIndex(col => col.name === columnName),
       )
       .filter(index => index !== -1),
   );
