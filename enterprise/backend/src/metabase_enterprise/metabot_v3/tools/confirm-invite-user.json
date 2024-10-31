@@ -1,0 +1,15 @@
+{
+    "name": "confirm-invite-user",
+    "description": "Invite a user to Metabase. Requires a valid email address. If the user has not supplied one, ask for it. Note that this tool does not actually invite the user - we will take care of that after the user confirms. But once you ask for confirmation, your job is over if the user agrees.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "email": {
+                "type": "string",
+                "description": "A valid email address of the user to invite"
+            }
+        },
+        "required": ["email"],
+        "additionalProperties": false
+    }
+}
