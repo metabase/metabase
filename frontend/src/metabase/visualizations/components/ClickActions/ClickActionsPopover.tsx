@@ -43,6 +43,16 @@ export class ClickActionsPopover extends Component<
 
   instance: tippy.Instance | null = null;
 
+  componentDidUpdate(prevProps: Readonly<ChartClickActionsProps>): void {
+    const { clicked } = this.props;
+    const { popoverAction } = this.state;
+    // Terrible way of doing this, but if when we update, we used to have a clicked object, and now we don't,
+    // and we still have a popoverAction in state, then clear it
+    if (prevProps.clicked && popoverAction && clicked === null) {
+      this.close();
+    }
+  }
+
   close = () => {
     this.setState({ popoverAction: null });
     if (this.props.onClose) {
@@ -136,7 +146,9 @@ export class ClickActionsPopover extends Component<
         ) : (
           <ClickActionsView
             clickActions={clickActions}
-            close={this.close}
+            close={() => {
+              this.close();
+            }}
             onClick={this.handleClickAction}
           />
         )}
