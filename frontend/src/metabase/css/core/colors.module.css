@@ -182,11 +182,11 @@
   /* Ocean */
   --mb-base-color-ocean-100: hsla(208, 100%, 9%, 1);
   --mb-base-color-ocean-90: hsla(208, 89%, 15%, 1);
-  --mb-base-color-ocean-80: hsla(208, 89%, 15%, 1);
+  --mb-base-color-ocean-80: hsla(208, 82%, 22%, 1);
   --mb-base-color-ocean-70: hsla(208, 80%, 31%, 1);
   --mb-base-color-ocean-60: hsla(208, 78%, 42%, 1);
   --mb-base-color-ocean-50: hsla(208, 68%, 53%, 1);
-  --mb-base-color-ocean-40: hsla(208, 68%, 53%, 1);
+  --mb-base-color-ocean-40: hsla(208, 72%, 60%, 1);
   --mb-base-color-ocean-30: hsla(208, 73%, 74%, 1);
   --mb-base-color-ocean-20: hsla(209, 73%, 88%, 1);
   --mb-base-color-ocean-10: hsla(208, 79%, 96%, 1);
@@ -199,11 +199,11 @@
   --mb-base-color-lobster-70: hsla(1, 69%, 37%, 1);
   --mb-base-color-lobster-60: hsla(1, 67%, 49%, 1);
   --mb-base-color-lobster-50: hsla(358, 71%, 62%, 1);
-  --mb-base-color-lobster-40: hsla(358, 71%, 62%, 1);
-  --mb-base-color-lobster-30: hsla(358, 71%, 62%, 1);
+  --mb-base-color-lobster-40: hsla(1, 84%, 69%, 1);
+  --mb-base-color-lobster-30: hsla(1, 85%, 81%, 1);
   --mb-base-color-lobster-20: hsla(2, 67%, 90%, 1);
   --mb-base-color-lobster-10: hsla(0, 76%, 97%, 1);
-  --mb-base-color-lobster-5: hsla(0, 76%, 97%, 1);
+  --mb-base-color-lobster-5: hsla(0, 100%, 99%, 1);
 
   /* Flamingo */
   --mb-base-color-flamingo-100: hsla(334, 75%, 10%, 1);
@@ -216,11 +216,13 @@
   --mb-base-color-flamingo-30: hsla(334, 79%, 80%, 1);
   --mb-base-color-flamingo-20: hsla(335, 79%, 91%, 1);
   --mb-base-color-flamingo-10: hsla(335, 67%, 96%, 1);
-  --mb-base-color-flamingo-5: hsla(330, 67%, 99%, 1) /* Mango */;
+  --mb-base-color-flamingo-5: hsla(330, 67%, 99%, 1);
+
+  /* Mango */
   --mb-base-color-mango-100: hsla(26, 89%, 7%, 1);
   --mb-base-color-mango-90: hsla(26, 79%, 13%, 1);
   --mb-base-color-mango-80: hsla(25, 73%, 20%, 1);
-  --mb-base-color-mango-70: hsla(25, 73%, 20%, 1);
+  --mb-base-color-mango-70: hsla(26, 70%, 29%, 1);
   --mb-base-color-mango-60: hsla(26, 69%, 39%, 1);
   --mb-base-color-mango-50: hsla(26, 68%, 48%, 1);
   --mb-base-color-mango-40: hsla(26, 79%, 54%, 1);
@@ -233,11 +235,11 @@
   --mb-base-color-dubloon-100: hsla(30, 100%, 98%, 1);
   --mb-base-color-dubloon-90: hsla(46, 88%, 10%, 1);
   --mb-base-color-dubloon-80: hsla(46, 82%, 15%, 1);
-  --mb-base-color-dubloon-70: hsla(46, 88%, 10%, 1);
+  --mb-base-color-dubloon-70: hsla(46, 79%, 22%, 1);
   --mb-base-color-dubloon-60: hsla(46, 76%, 30%, 1);
   --mb-base-color-dubloon-50: hsla(46, 76%, 37%, 1);
-  --mb-base-color-dubloon-40: hsla(46, 76%, 37%, 1);
-  --mb-base-color-dubloon-30: hsla(46, 76%, 37%, 1);
+  --mb-base-color-dubloon-40: hsla(46, 75%, 44%, 1);
+  --mb-base-color-dubloon-30: hsla(46, 81%, 52%, 1);
   --mb-base-color-dubloon-20: hsla(46, 94%, 74%, 1);
   --mb-base-color-dubloon-10: hsla(46, 96%, 90%, 1);
   --mb-base-color-dubloon-5: hsla(46, 96%, 90%, 1);
@@ -260,7 +262,7 @@
   --mb-base-color-seafoam-90: hsla(180, 34%, 12%, 1);
   --mb-base-color-seafoam-80: hsla(180, 80%, 14%, 1);
   --mb-base-color-seafoam-70: hsla(180, 70%, 21%, 1);
-  --mb-base-color-seafoam-60: hsla(180, 70%, 21%, 1);
+  --mb-base-color-seafoam-60: hsla(180, 44%, 33%, 1);
   --mb-base-color-seafoam-50: hsla(180, 74%, 34%, 1);
   --mb-base-color-seafoam-40: hsla(180, 42%, 46%, 1);
   --mb-base-color-seafoam-30: hsla(180, 47%, 60%, 1);
@@ -277,9 +279,9 @@
   --mb-base-color-octopus-50: hsla(240, 65%, 69%, 1);
   --mb-base-color-octopus-40: hsla(240, 69%, 74%, 1);
   --mb-base-color-octopus-30: hsla(240, 49%, 81%, 1);
-  --mb-base-color-octopus-20: hsla(240, 49%, 81%, 1);
+  --mb-base-color-octopus-20: hsla(240, 66%, 92%, 1);
   --mb-base-color-octopus-10: hsla(240, 100%, 97%, 1);
-  --mb-base-color-octopus-5: hsla(240, 100%, 97%, 1);
+  --mb-base-color-octopus-5: hsla(240, 100%, 99%, 1);
 }
 
 .textDefault {
