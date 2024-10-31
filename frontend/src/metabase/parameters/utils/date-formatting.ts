@@ -62,7 +62,7 @@ const serializersByOperatorName: Record<
       return null;
     }
     const options = operator
-      .getOptions()
+      .getOptionGroups()
       .flat()
       .filter(
         ({ test }) => _.find(values, (value: string) => test(value)) != null,

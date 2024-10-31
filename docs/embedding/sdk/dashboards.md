@@ -37,7 +37,7 @@ _\* Not available for `StaticDashboard`._
 
 ## Example embedded dashboard with `InteractiveDashboard` component
 
-```typescript jsx
+```typescript
 import React from "react";
 import {MetabaseProvider, InteractiveDashboard} from "@metabase/embedding-sdk-react";
 
@@ -72,7 +72,7 @@ This plugin allows you to add, remove, and modify the custom actions on the over
 
 The plugin's default configuration looks like this:
 
-```typescript jsx
+```typescript
 const plugins = {
   dashboard: {
     dashcardMenu: {
@@ -86,7 +86,7 @@ const plugins = {
 
 `dashcardMenu`: can be used in the InteractiveDashboard like this:
 
-```typescript jsx
+```typescript
 {% raw %}
 <InteractiveDashboard
   questionId={1}
@@ -103,7 +103,7 @@ const plugins = {
 
 To remove the download button from the dashcard menu, set `withDownloads` to `false`. To remove the edit link from the dashcard menu, set `withEditLink` to `false`.
 
-```typescript jsx
+```typescript
 const plugins = {
   dashboard: {
     dashcardMenu: {
@@ -119,7 +119,7 @@ const plugins = {
 
 You can add custom actions to the dashcard menu by adding an object to the `customItems` array. Each element can either be an object or a function that takes in the dashcard's question, and outputs a list of custom items in the form of:
 
-```typescript jsx
+```typescript
 {
     iconName: string;
     label: string;
@@ -130,7 +130,7 @@ You can add custom actions to the dashcard menu by adding an object to the `cust
 
 Here's an example:
 
-```typescript jsx
+```typescript
 const plugins: SdkPluginsConfig = {
   dashboard: {
     dashcardMenu: {
@@ -161,7 +161,7 @@ const plugins: SdkPluginsConfig = {
 
 If you want to replace the existing menu with your own component, you can do so by providing a function that returns a React component. This function also can receive the question as an argument.
 
-```typescript jsx
+```typescript
 const plugins: SdkPluginsConfig = {
   dashboard: {
     dashcardMenu: ({ question }) => (
@@ -177,7 +177,7 @@ Creating a dashboard could be done with `useCreateDashboardApi` hook or `CreateD
 
 ### Hook
 
-```typescript jsx
+```typescript
 const { createDashboard } = useCreateDashboardApi();
 
 const handleDashboardCreate = async () => {
@@ -199,7 +199,7 @@ Props:
 
 ### Component
 
-```typescript jsx
+```typescript
 const [dashboard, setDashboard] = useState<Dashboard | null>(null);
 
 if (dashboard) {

@@ -41,11 +41,11 @@ export function PieRowsPicker({
     if (!hasMultipleRings || hexColor == null) {
       return hexColor;
     }
-    const accentNumber = hexToAccentNumberMap.get(hexColor);
-    if (accentNumber == null) {
+    const accentKey = hexToAccentNumberMap.get(hexColor);
+    if (accentKey == null) {
       return hexColor;
     }
-    return color(getPickerColorAlias(accentNumber));
+    return color(getPickerColorAlias(accentKey));
   };
 
   const onChangeSeriesColor = (sliceKey: string, color: string) =>

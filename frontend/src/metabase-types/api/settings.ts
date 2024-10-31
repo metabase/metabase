@@ -225,6 +225,7 @@ interface InstanceSettings {
   "enable-public-sharing": boolean;
   "enable-xrays": boolean;
   "example-dashboard-id": number | null;
+  "instance-creation": string;
   "read-only-mode": boolean;
   "search-typeahead-enabled": boolean;
   "show-homepage-data": boolean;
@@ -340,6 +341,7 @@ interface PublicSettings {
   "update-channel": UpdateChannel;
   version: Version;
   "version-info-last-checked": string | null;
+  "airgap-enabled": boolean;
 }
 
 export type UserSettings = {

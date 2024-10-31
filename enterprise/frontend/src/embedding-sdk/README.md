@@ -76,24 +76,12 @@ Prerequisites:
 
 Currently, the SDK only works with Metabase version 50.
 
-You have the following options:
-
-### 1. Running on Docker
+### Running on Docker
 
 Start the Metabase container:
 
 ```bash
-docker run -d -p 3000:3000 --name metabase metabase/metabase-enterprise:v1.50.24
-```
-
-### 2. Running the Jar file
-
-1. Download the Jar file from https://downloads.metabase.com/enterprise/v1.50.24/metabase.jar
-2. Create a new directory and move the Metabase JAR into it.
-3. Change into your new Metabase directory and run the JAR.
-
-```bash
-java -jar metabase.jar
+docker run -d -p 3000:3000 --name metabase metabase/metabase-enterprise-head:latest
 ```
 
 ## Configuring Metabase
@@ -663,6 +651,18 @@ component.
 - **onLoadWithoutCards**: `(dashboard: Dashboard | null) => void;` - event handler that triggers after dashboard loads,
   but without its cards - at this stage dashboard title, tabs and cards grid is rendered, but cards content is not yet
   loaded.
+
+By default, this component takes full page height (100vh). You can override this with custom styles passed via `style` or `className` props.
+
+```tsx
+<EditableDashboard
+  style={{
+    height: 800,
+    overflow: "auto",
+  }}
+  dashboardId={dashboardId}
+/>
+```
 
 ### Creating Dashboards
 

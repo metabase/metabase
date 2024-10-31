@@ -1,11 +1,5 @@
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type Question from "metabase-lib/v1/Question";
-import type {
-  Dashboard,
-  DashboardCard,
-  Series,
-  VisualizationSettings,
-} from "metabase-types/api";
+import type { Series, VisualizationSettings } from "metabase-types/api";
 
 // this type is not full, we need to extend it later
 export type Widget = {
@@ -17,29 +11,12 @@ export type Widget = {
   widget: (() => JSX.Element | null) | undefined;
 };
 
-export type ChartSettingsWithStateProps = {
-  className?: string;
-  isDashboard?: boolean;
-  dashboard?: Dashboard;
-  dashcard?: DashboardCard;
-  initial?: {
-    section: string;
-    widget?: Widget;
-  };
-  onClose?: () => void;
+export type CommonChartSettingsProps = {
   series: Series;
-  computedSettings?: ComputedVisualizationSettings;
-  question?: Question;
-  noPreview?: boolean;
-  widgets?: Widget[];
-
-  onChange?: (
-    settings: ComputedVisualizationSettings,
-    question?: Question,
-  ) => void;
-  settings?: VisualizationSettings;
+  onChange?: (settings: VisualizationSettings, question?: Question) => void;
 };
 
-export type ChartSettingsProps = ChartSettingsWithStateProps & {
-  onDone?: (settings: VisualizationSettings) => void;
+// Only used for the tests in ChartSettings.unit.spec.tsx
+export type BaseChartSettingsTestProps = {
+  widgets?: Widget[];
 };

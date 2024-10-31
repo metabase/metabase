@@ -501,7 +501,9 @@ export const ADMIN_SETTINGS_SECTIONS = {
   },
   llm: {
     name: t`AI Features`,
-    getHidden: () => !PLUGIN_LLM_AUTODESCRIPTION.isEnabled(),
+    getHidden: settings => {
+      !PLUGIN_LLM_AUTODESCRIPTION.isEnabled() && !settings["airgap-enabled"];
+    },
     order: 131,
     settings: [
       {
@@ -520,7 +522,10 @@ export const ADMIN_SETTINGS_SECTIONS = {
   },
   cloud: {
     name: t`Cloud`,
-    getHidden: settings => settings["token-features"]?.hosting === true,
+    getHidden: settings => {
+      settings["token-features"]?.hosting === true &&
+        !settings["airgap-enabled"];
+    },
     order: 132,
     component: CloudPanel,
     settings: [],

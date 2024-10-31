@@ -37,7 +37,7 @@
 
 (set! *warn-on-reflection* true)
 
-(driver/register! :redshift, :parent #{:postgres ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
+(driver/register! :redshift, :parent #{:postgres})
 
 (doseq [[feature supported?] {:connection-impersonation  true
                               :describe-fields           true
