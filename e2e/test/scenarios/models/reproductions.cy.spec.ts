@@ -963,9 +963,7 @@ describe("issue 34574", () => {
     cy.intercept("GET", "/api/card/*/query_metadata").as("metadata");
     cy.intercept("GET", "/api/card/*").as("card");
     cy.intercept("GET", "/api/table/*/fks").as("fks");
-    cy.intercept("GET", "/api/collection/root/items?**").as(
-      "fetchRootCollectionItems",
-    );
+    cy.intercept("GET", "/api/collection/root/items?**").as("rootCollection");
   });
 
   it("should accept markdown for model description and render it properly (metabase#34574)", () => {
@@ -980,7 +978,7 @@ describe("issue 34574", () => {
     createQuestion(modelDetails).then(({ body: { id: modelId } }) =>
       visitModel(modelId),
     );
-    cy.wait(["@fetchRootCollectionItems", "@card", "@metadata"]);
+    cy.wait(["@rootCollection", "@card", "@metadata"]);
 
     cy.findByTestId("qb-header-action-panel").within(() => {
       // make sure the model fully loaded
@@ -994,7 +992,7 @@ describe("issue 34574", () => {
         "# Hello{enter}## World{enter}This is an **important** description!",
       );
       cy.realPress("Tab");
-      cy.wait(["@fetchRootCollectionItems", "@metadata"]);
+      cy.wait(["@rootCollection", "@metadata"]);
 
       cy.log("Make sure we immediately render the proper markdown");
       cy.findByTestId("editable-text").get("textarea").should("not.exist");
@@ -1012,7 +1010,7 @@ describe("issue 34574", () => {
       "Make sure the description is present in the collection entry tooltip",
     );
     cy.findByTestId("app-bar").findByText("Our analytics").click();
-    cy.wait(["@fetchRootCollectionItems", "@fetchRootCollectionItems"]);
+    cy.wait(["@rootCollection", "@rootCollection"]);
     cy.location("pathname").should("eq", "/collection/root");
     cy.findAllByTestId("collection-entry-name")
       .filter(`:contains(${modelDetails.name})`)
