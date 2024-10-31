@@ -609,20 +609,22 @@ export function FieldValuesWidgetInner({
             checkedColor={checkedColor}
           />
         ) : !isSimpleInput ? (
-          <MultiAutocomplete
-            data-testid="field-values-multi-autocomplete"
-            onSearchChange={onInputChange}
-            onChange={values => onChange(values.map(parseFreeformValue))}
-            value={value
-              .map(value => value?.toString())
-              .filter((v): v is string => v !== null && v !== undefined)}
-            data={options.concat(valueOptions).map(renderStringOption)}
-            placeholder={tokenFieldPlaceholder}
-            shouldCreate={shouldCreate}
-            autoFocus={autoFocus}
-            icon={prefix && <span data-testid="input-prefix">{prefix}</span>}
-            itemComponent={CustomItemComponent}
-          />
+          <Box pr="1rem">
+            <MultiAutocomplete
+              data-testid="field-values-multi-autocomplete"
+              onSearchChange={onInputChange}
+              onChange={values => onChange(values.map(parseFreeformValue))}
+              value={value
+                .map(value => value?.toString())
+                .filter((v): v is string => v !== null && v !== undefined)}
+              data={options.concat(valueOptions).map(renderStringOption)}
+              placeholder={tokenFieldPlaceholder}
+              shouldCreate={shouldCreate}
+              autoFocus={autoFocus}
+              icon={prefix && <span data-testid="input-prefix">{prefix}</span>}
+              itemComponent={CustomItemComponent}
+            />
+          </Box>
         ) : (
           <TokenField
             prefix={prefix}
