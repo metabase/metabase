@@ -1,10 +1,10 @@
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import type { DatasetColumn } from "metabase-types/api";
 import type {
-  VisualizerColumnImport,
   VisualizerDataSource,
   VisualizerDataSourceId,
   VisualizerDataSourceType,
+  VisualizerReferencedColumns,
 } from "metabase-types/store/visualizer";
 
 export function createDataSource(
@@ -20,10 +20,10 @@ export function createDataSource(
   };
 }
 
-export function createColumnImport(
+export function createVisualizerColumnReference(
   dataSource: VisualizerDataSource,
   column: DatasetColumn,
-): VisualizerColumnImport {
+): VisualizerReferencedColumns {
   return {
     sourceId: dataSource.id,
     columnKey: getColumnKey(column),

@@ -16,10 +16,10 @@ export type VisualizerDataSource = {
   name: string;
 };
 
-export type VisualizerColumnImport = {
+export type VisualizerReferencedColumns = {
   sourceId: VisualizerDataSourceId;
-  columnKey: string;
-  name: string;
+  columnKey: string; // in original dataset
+  name: string; // in combined dataset
 };
 
 export type VisualizerDatasetColumn = DatasetColumn & {
@@ -45,7 +45,7 @@ export type DraggedItem = DraggedColumn;
 export interface VisualizerState {
   display: VisualizationDisplay | null;
   columns: VisualizerDatasetColumn[];
-  importedColumns: VisualizerColumnImport[];
+  referencedColumns: VisualizerReferencedColumns[];
   settings: VisualizationSettings;
   cards: Card[];
   datasets: Record<VisualizerDataSourceId, Dataset>;

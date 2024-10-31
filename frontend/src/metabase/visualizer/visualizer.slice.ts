@@ -29,9 +29,9 @@ import type {
 } from "metabase-types/store/visualizer";
 
 import {
-  createColumnImport,
   createDataSource,
   createDataSourceNameRef,
+  createVisualizerColumnReference,
   getDataSourceIdFromNameRef,
   isDataSourceNameRef,
 } from "./utils";
@@ -39,7 +39,7 @@ import {
 const initialState: VisualizerState = {
   display: null,
   columns: [],
-  importedColumns: [],
+  referencedColumns: [],
   settings: {},
   cards: [],
   datasets: {},
@@ -100,11 +100,11 @@ const visualizerSlice = createSlice({
         dataSource: VisualizerDataSource;
       }>,
     ) => {
-      const importedColumn = createColumnImport(
+      const columnRef = createVisualizerColumnReference(
         action.payload.dataSource,
         action.payload.column,
       );
-      state.importedColumns.push(importedColumn);
+      state.referencedColumns.push(columnRef);
 
       if (state.display === "funnel" && isNumeric(action.payload.column)) {
         const metricColumnName = state.settings["funnel.metric"];
@@ -121,8 +121,8 @@ const visualizerSlice = createSlice({
           const metric = state.columns[metricColumnIndex];
           state.columns[metricColumnIndex] = {
             ...metric,
-            values: !metric.values.includes(importedColumn.name)
-              ? [...metric.values, importedColumn.name]
+            values: !metric.values.includes(columnRef.name)
+              ? [...metric.values, columnRef.name]
               : metric.values,
           };
 
@@ -142,7 +142,7 @@ const visualizerSlice = createSlice({
 
       state.display = display;
       state.settings = {};
-      state.importedColumns = [];
+      state.referencedColumns = [];
 
       if (display === "funnel") {
         const metric = createMetricColumn();
@@ -172,10 +172,10 @@ const visualizerSlice = createSlice({
       delete state.loadingDatasets[source.id];
 
       const [removedColumns, remainingColumns] = _.partition(
-        state.importedColumns,
-        columnImport => columnImport.sourceId === source.id,
+        state.referencedColumns,
+        ref => ref.sourceId === source.id,
       );
-      state.importedColumns = remainingColumns;
+      state.referencedColumns = remainingColumns;
       const removedColumnsSet = new Set(removedColumns.map(c => c.name));
 
       if (removedColumnsSet.size > 0) {
@@ -285,22 +285,22 @@ const getCards = (state: { visualizer: VisualizerState }) =>
 const getVisualizationColumns = (state: { visualizer: VisualizerState }) =>
   state.visualizer.columns;
 
-export const getImportedColumns = (state: { visualizer: VisualizerState }) =>
-  state.visualizer.importedColumns;
+export const getReferencedColumns = (state: { visualizer: VisualizerState }) =>
+  state.visualizer.referencedColumns;
 
 export const getDataSources = createSelector([getCards], cards =>
   cards.map(card => createDataSource("card", card.id, card.name)),
 );
 
 export const getUsedDataSources = createSelector(
-  [getDataSources, getImportedColumns],
-  (dataSources, importedColumns) => {
+  [getDataSources, getReferencedColumns],
+  (dataSources, referencedColumns) => {
     if (dataSources.length === 1) {
       return dataSources;
     }
 
     const usedDataSourceIds = new Set(
-      importedColumns.map(columnImport => columnImport.sourceId),
+      referencedColumns.map(ref => ref.sourceId),
     );
     return dataSources.filter(dataSource =>
       usedDataSourceIds.has(dataSource.id),
@@ -312,28 +312,28 @@ const getVisualizerDatasetData = createSelector(
   [
     getUsedDataSources,
     getDatasets,
-    getImportedColumns,
+    getReferencedColumns,
     getVisualizationColumns,
   ],
-  (usedDataSources, datasets, importedColumns, cols): Dataset => {
+  (usedDataSources, datasets, referencedColumns, cols): Dataset => {
     if (usedDataSources.length === 1) {
       const [source] = usedDataSources;
       return datasets[source.id]?.data;
     }
 
-    const importedColumnValuesMap: Record<string, RowValues> = {};
-    importedColumns.forEach(columnImport => {
-      const dataset = datasets[columnImport.sourceId];
+    const referencedColumnValuesMap: Record<string, RowValues> = {};
+    referencedColumns.forEach(ref => {
+      const dataset = datasets[ref.sourceId];
       if (!dataset) {
         return;
       }
-      const columnName = getColumnNameFromKey(columnImport.columnKey);
+      const columnName = getColumnNameFromKey(ref.columnKey);
       const columnIndex = dataset.data.cols.findIndex(
         col => col.name === columnName,
       );
       if (columnIndex >= 0) {
         const values = dataset.data.rows.map(row => row[columnIndex]);
-        importedColumnValuesMap[columnImport.name] = values;
+        referencedColumnValuesMap[ref.name] = values;
       }
     });
 
@@ -345,7 +345,7 @@ const getVisualizerDatasetData = createSelector(
             const dataSource = usedDataSources.find(source => source.id === id);
             return dataSource?.name ? [dataSource.name] : [];
           }
-          const values = importedColumnValuesMap[value];
+          const values = referencedColumnValuesMap[value];
           if (!values) {
             return [];
           }

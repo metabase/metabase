@@ -8,7 +8,7 @@ import {
   getDataSources,
   getDatasets,
   getExpandedDataSources,
-  getImportedColumns,
+  getReferencedColumns,
   removeDataSource,
   toggleDataSourceExpanded,
 } from "metabase/visualizer/visualizer.slice";
@@ -22,7 +22,7 @@ export const DatasetList = () => {
   const dataSources = useSelector(getDataSources);
   const datasets = useSelector(getDatasets);
   const expandedDataSources = useSelector(getExpandedDataSources);
-  const importedColumns = useSelector(getImportedColumns);
+  const referencedColumns = useSelector(getReferencedColumns);
   const dispatch = useDispatch();
 
   return (
@@ -70,7 +70,7 @@ export const DatasetList = () => {
                     key={column.name}
                     column={column}
                     dataSource={source}
-                    isSelected={importedColumns.some(
+                    isSelected={referencedColumns.some(
                       c =>
                         c.sourceId === source.id &&
                         c.columnKey === getColumnKey(column),
