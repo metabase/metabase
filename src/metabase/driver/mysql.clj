@@ -935,8 +935,8 @@
 (defmethod sql-jdbc.sync/describe-fields-sql :mysql
   [driver & {:keys [table-names]}]
   (sql/format {:select [[:c.column_name :name]
-                        [[:- :c.ordinal_position [:inline 1]] :database-position]
-                        [nil :table-schema]
+                        [:c.ordinal_position :database-position]
+                        [:c.table_schema :table-schema]
                         [:c.table_name :table-name]
                         [:c.data_type :database-type]
                         [[:= :c.extra [:inline "auto_increment"]] :database-is-auto-increment]
@@ -950,6 +950,7 @@
                :from [[:information_schema.columns :c]]
                :where
                [:and [:raw "c.table_schema not in ('information_schema','performance_schema','sys')"]
+                [:raw "c.table_name not in ('innodb_table_stats', 'innodb_index_stats')"]
                 (when (seq table-names) [:in [:lower :c.table_name] (map u/lower-case-en table-names)])]}
               :dialect (sql.qp/quote-style driver)))
 
