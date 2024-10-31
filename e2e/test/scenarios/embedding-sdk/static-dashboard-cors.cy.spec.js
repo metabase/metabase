@@ -91,9 +91,7 @@ describeSDK("scenarios > embedding-sdk > static-dashboard", () => {
 
     cy.get("#metabase-sdk-root").within(() => {
       cy.findByText("Error").should("be.visible");
-      cy.findByText(
-        "Could not authenticate: invalid JWT URI or JWT provider did not return a valid JWT token",
-      ).should("be.visible");
+      cy.findByText(/Failed to fetch the user/).should("be.visible");
     });
   });
 
@@ -154,9 +152,7 @@ describeSDK("scenarios > embedding-sdk > static-dashboard", () => {
 
     cy.get("#metabase-sdk-root").within(() => {
       cy.findByText("Error").should("be.visible");
-      cy.findByText(
-        "Could not authenticate: invalid JWT URI or JWT provider did not return a valid JWT token",
-      ).should("be.visible");
+      cy.findByText(/Failed to fetch the user/).should("be.visible");
     });
   });
 
