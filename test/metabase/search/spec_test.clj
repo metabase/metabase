@@ -53,8 +53,37 @@
   (is (= [:and :c.x [:or :c.y :b.z :c.xx]]
          (#'search.spec/replace-qualification [:and :a.x [:or :a.y :b.z :a.xx]] :a :c))))
 
-(deftest search-index-hooks-test
+(deftest search-model-hooks-test
   ;; TODO replace real specs with frozen test ones once things have stabilized
+
+  (is (= #:model{:Card             #{{:search-model "card",
+                                      :fields       #{:description
+                                                      :archived
+                                                      :collection_position
+                                                      :collection_id
+                                                      :name
+                                                      :creator_id
+                                                      :dataset_query
+                                                      :display
+                                                      :archived_directly},
+                                      :where        [:= :updated.id :this.id]}},
+                 :Collection       #{{:search-model "card",
+                                      :fields       #{:authority_level :name :type :location},
+                                      :where        [:= :updated.id :this.collection_id]}},
+                 :Revision         #{{:search-model "card",
+                                      :fields       #{:user_id :timestamp},
+                                      :where        [:and
+                                                     [:= :updated.model_id :this.id]
+                                                     [:= :updated.most_recent true]
+                                                     [:= :updated.model "Card"]]}},
+                 :ModerationReview #{{:search-model "card",
+                                      :fields       #{:status},
+                                      :where        [:and
+                                                     [:= :updated.moderated_item_type "card"]
+                                                     [:= :updated.moderated_item_id :this.id]
+                                                     [:= :updated.most_recent true]]}}}
+                 (#'search.spec/search-model-hooks (search.spec/spec "card"))))
+
   (is (= #:model{:Table      #{{:search-model "segment",
                                 :fields       #{:description :schema :name :db_id}
                                 :where        [:= :updated.id :this.table_id]}

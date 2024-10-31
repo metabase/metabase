@@ -1126,21 +1126,22 @@
   [r1 r2]
   #?(:clj
      (reify CollReduce
-       (coll-reduce [_ f1]
-         (let [acc1 (core.protocols/coll-reduce r1 f1)
-               acc2 (core.protocols/coll-reduce r2 f1 acc1)]
+       (coll-reduce [_ f]
+        #_{:clj-kondo/ignore [:reduce-without-init]}
+         (let [acc1 (reduce f r1)
+               acc2 (reduce f acc1 r2)]
            acc2))
-       (coll-reduce [_ f1 init]
-         (let [acc1 (core.protocols/coll-reduce r1 f1 init)
-               acc2 (core.protocols/coll-reduce r2 f1 acc1)]
+       (coll-reduce [_ f init]
+         (let [acc1 (reduce f init r1)
+               acc2 (reduce f acc1 r2)]
            acc2)))
      :cljs
      (reify IReduce
-       (-reduce [_ f1]
-         (let [acc1 (-reduce r1 f1)
-               acc2 (-reduce r2 f1 acc1)]
+       (-reduce [_ f]
+         (let [acc1 (reduce f r1)
+               acc2 (reduce f acc1 r2)]
            acc2))
-       (-reduce [_ f1 init]
-         (let [acc1 (-reduce r1 f1 init)
-               acc2 (-reduce r2 f1 acc1)]
+       (-reduce [_ f init]
+         (let [acc1 (reduce f init r1)
+               acc2 (reduce f acc1 r2)]
            acc2)))))
