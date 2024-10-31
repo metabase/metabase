@@ -92,7 +92,7 @@ export const refreshTokenAsync = createAsyncThunk(
           // For some errors, the BE gives us a message that explains it
           throw new Error(response.message);
         }
-        if ("status" in response && typeof response.status === "string") {
+        if (typeof response.status === "string") {
           // other times it just returns an error code
           throw new Error(
             `Failed to refresh token, got status: ${response.status}`,
