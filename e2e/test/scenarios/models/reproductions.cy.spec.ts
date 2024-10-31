@@ -1005,7 +1005,7 @@ describe("issue 34574", () => {
       "Make sure the markdown is properly preserved in the model details page",
     );
     // Let redux handle async actions so that they won't interfere with the action
-    // triggered by the next click. Test will flake without this.
+    // triggered by the next click. Test will flake without this due to wrong navigation.
     cy.wait(1);
     cy.findByRole("link", { name: "See more about this model" }).click();
     cy.wait("@fks");
