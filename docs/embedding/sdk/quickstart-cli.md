@@ -28,7 +28,7 @@ npx @metabase/embedding-sdk-react@latest start
 The script will walk you through the setup. There are a fair number of pieces to put together, so here's an overview of what the command does.
 
 1. Checks that you're installing the SDK in a React application.
-2. Looks for, or installs, the Embedded Analytics SDK.
+2. Looks for, or installs, the Embedded analytics SDK.
 3. Spins up a Metabase on Docker. This takes a bit. To see the Docker container's status, use the `docker ps` command. Or use the time to reflect on good choices you've made recently.
 4. Asks you for an email address to create the first admin account in Metabase.
 5. Generates a new API Key. The script will build a mock Express server that will use this key to authenticate its requests to your Metabase.

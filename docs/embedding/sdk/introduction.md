@@ -49,11 +49,11 @@ You'll need to enable the SDK in your Metabase, and install the SDK as a depende
 
 ### In Metabase
 
-Enable the Embedded Analytics SDK by going to **Admin settings > Settings > Embedding**. Toggle on the SDK, and hit **Configure**. Enter the origins for your website or app where you want to allow SDK embedding, separated by a space. Localhost is automatically included.
+Enable the Embedded analytics SDK by going to **Admin settings > Settings > Embedding**. Toggle on the SDK, and hit **Configure**. Enter the origins for your website or app where you want to allow SDK embedding, separated by a space. Localhost is automatically included.
 
 ### In your React application
 
-You can install the Embedded Analytics SDK for React via npm:
+You can install the Embedded analytics SDK for React via npm:
 
 ```bash
 npm install @metabase/embedding-sdk-react@51-stable
