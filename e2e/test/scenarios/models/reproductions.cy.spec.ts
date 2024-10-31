@@ -965,6 +965,7 @@ describe("issue 34574", () => {
     cy.intercept("PUT", "/api/card/*").as("updateCard");
     cy.intercept("GET", "/api/table/*/fks").as("fks");
     cy.intercept("GET", "/api/collection/root/items?**").as("rootCollection");
+    cy.intercept("POST", "api/dataset").as("dataset");
   });
 
   it("should accept markdown for model description and render it properly (metabase#34574)", () => {
@@ -979,7 +980,7 @@ describe("issue 34574", () => {
     createQuestion(modelDetails).then(({ body: { id: modelId } }) =>
       visitModel(modelId),
     );
-    cy.wait(["@rootCollection", "@card", "@metadata"]);
+    cy.wait(["@rootCollection", "@card", "@metadata", "@dataset"]);
 
     cy.findByTestId("qb-header-action-panel").within(() => {
       // make sure the model fully loaded
@@ -993,12 +994,11 @@ describe("issue 34574", () => {
         "# Hello{enter}## World{enter}This is an **important** description!",
       );
       cy.realPress("Tab");
-      cy.wait(["@rootCollection", "@metadata"]);
+      cy.wait(["@rootCollection", "@metadata", "@updateCard"]);
 
       cy.log("Make sure we immediately render the proper markdown");
       cy.findByTestId("editable-text").get("textarea").should("not.exist");
       cy.findByTestId("editable-text").within(assertMarkdownPreview);
-      cy.wait("@updateCard");
     });
 
     cy.log(
