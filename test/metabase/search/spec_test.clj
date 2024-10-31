@@ -10,10 +10,10 @@
   (models/keep-me))
 
 (deftest test-qualify-column
-  (is (= [:table.column :column] (search.spec/qualify-column :table :column)))
-  (is (= :qualified.column (search.spec/qualify-column :table :qualified.column)))
-  (is (= [:table.column :alias] (search.spec/qualify-column :table [:column :alias])))
-  (is (= [:qualified.column :alias] (search.spec/qualify-column :table [:qualified.column :alias]))))
+  (is (= [:table.column :column] (#'search.spec/qualify-column :table :column)))
+  (is (= :qualified.column (#'search.spec/qualify-column :table :qualified.column)))
+  (is (= [:table.column :alias] (#'search.spec/qualify-column :table [:column :alias])))
+  (is (= [:qualified.column :alias] (#'search.spec/qualify-column :table [:qualified.column :alias]))))
 
 (deftest test-qualify-columns
   (is (= [[:table.column :column]

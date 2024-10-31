@@ -5,23 +5,12 @@
    [clojure.walk :as walk]
    [toucan2.core :as t2]))
 
-(defmulti spec
-  "TODO write docstring"
-  ;; TODO use actual model instead of weird name
-  (fn [model-name] model-name))
-
-(defmacro define-spec
-  "Define a spec for a search model."
-  [search-model spec]
-  ;; TODO validate spec shape, consistency, and completeness
-  `(defmethod spec ~search-model [~'_] ~(assoc spec :name search-model)))
-
 (defn- qualify-column* [table column]
   (if (str/includes? (name column) ".")
     column
     (keyword (str (name table) "." (name column)))))
 
-(defn qualify-column
+(defn- qualify-column
   "Given a select-item, qualify the (potentially nested) column reference if it is naked."
   [table select-item]
   (cond
@@ -36,14 +25,6 @@
 
     :else
     select-item))
-
-(defn qualify-columns
-  "Given a list of select-item, qualify all naked column references to refer to the given table."
-  [table select-item]
-  (for [column select-item
-        :when (and column (or (not (vector? column))
-                              (some? (first column))))]
-    (qualify-column table column)))
 
 (defn- has-table? [table kw]
   (and (not (namespace kw))
@@ -148,6 +129,25 @@
   "Combine the search index hooks corresponding to different search models."
   [hooks]
   (reduce (partial merge-with set/union) {} hooks))
+
+(defn qualify-columns
+  "Given a list of select-item, qualify all naked column references to refer to the given table."
+  [table select-item]
+  (for [column select-item
+        :when (and column (or (not (vector? column))
+                              (some? (first column))))]
+    (qualify-column table column)))
+
+(defmulti spec
+  "TODO write docstring"
+  ;; TODO use actual model instead of weird name
+  (fn [model-name] model-name))
+
+(defmacro define-spec
+  "Define a spec for a search model."
+  [search-model spec]
+  ;; TODO validate spec shape, consistency, and completeness
+  `(defmethod spec ~search-model [~'_] ~(assoc spec :name search-model)))
 
 ;; TODO we should memoize this for production (based on spec values)
 (defn model-hooks
