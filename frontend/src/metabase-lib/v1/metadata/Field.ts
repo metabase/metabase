@@ -36,6 +36,7 @@ import {
   isScope,
   isState,
   isString,
+  isStringLike,
   isSummable,
   isTime,
   isTypeFK,
@@ -207,6 +208,10 @@ class FieldInner extends Base {
 
   isString() {
     return isString(this);
+  }
+
+  isStringLike() {
+    return isStringLike(this);
   }
 
   isAddress() {

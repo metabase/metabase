@@ -770,6 +770,20 @@
   ;; ee version becomes available
   false)
 
+(defenterprise impersonation-enforced-for-db?
+  "Returns a boolean if the current user has an enforced connection impersonation policy for a provided database. In OSS
+  this is always false. Will throw an error if [[api/*current-user-id*]] is not bound."
+  metabase-enterprise.advanced-permissions.api.util
+  [_db-or-id]
+  (when-not api/*current-user-id*
+    ;; If no *current-user-id* is bound we can't check for impersonations, so we should throw in this case to avoid
+    ;; returning `false` for users who should actually be using impersonations.
+    (throw (ex-info (str (tru "No current user found"))
+                    {:status-code 403})))
+  ;; oss doesn't have connection impersonation. But we throw if no current-user-id so the behavior doesn't change when
+  ;; ee version becomes available
+  false)
+
 (defn sandboxed-or-impersonated-user?
   "Returns a boolean if the current user uses sandboxing or connection impersonation for any database. In OSS is always
   false. Will throw an error if [[api/*current-user-id*]] is not bound."
