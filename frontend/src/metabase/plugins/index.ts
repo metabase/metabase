@@ -1,9 +1,9 @@
-import type {
-  ComponentType,
-  Dispatch,
-  HTMLAttributes,
-  ReactNode,
-  SetStateAction,
+import React, {
+  type ComponentType,
+  type Dispatch,
+  type HTMLAttributes,
+  type ReactNode,
+  type SetStateAction,
 } from "react";
 import { t } from "ttag";
 import _ from "underscore";
@@ -35,6 +35,7 @@ import type {
 } from "metabase/browse/models";
 import type { LinkProps } from "metabase/core/components/Link";
 import { getIconBase } from "metabase/lib/icon";
+import type { MetabotContext } from "metabase/metabot";
 import PluginPlaceholder from "metabase/plugins/components/PluginPlaceholder";
 import type { SearchFilterComponent } from "metabase/search/types";
 import type { GroupProps, IconName, IconProps } from "metabase/ui";
@@ -571,8 +572,22 @@ export const PLUGIN_RESOURCE_DOWNLOADS = {
   }) => true,
 };
 
+const defaultMetabotContextValue: MetabotContext = {
+  getChatContext: () => ({}) as any,
+  registerChatContextProvider: () => () => {},
+};
 export const PLUGIN_METABOT = {
   Metabot: () => null as React.ReactElement | null,
+  defaultMetabotContextValue,
+  MetabotContext: React.createContext(defaultMetabotContextValue),
+  getMetabotProvider: () => {
+    return ({ children }: { children: React.ReactNode }) =>
+      React.createElement(
+        PLUGIN_METABOT.MetabotContext.Provider,
+        { value: PLUGIN_METABOT.defaultMetabotContextValue },
+        children,
+      );
+  },
 };
 
 export const PLUGIN_GO_MENU = {

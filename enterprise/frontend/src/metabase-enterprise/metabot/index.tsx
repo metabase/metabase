@@ -10,10 +10,19 @@ import { Flex, Text } from "metabase/ui";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { Metabot } from "./Metabot";
+import {
+  MetabotContext,
+  MetabotProvider,
+  defaultContext,
+} from "./MetabotContext";
 import { metabotReducer, setVisible } from "./state";
 
-if (!!true || hasPremiumFeature("metabot_v3")) {
+if (hasPremiumFeature("metabot_v3")) {
   PLUGIN_METABOT.Metabot = Metabot;
+
+  PLUGIN_METABOT.defaultMetabotContextValue = defaultContext;
+  PLUGIN_METABOT.MetabotContext = MetabotContext;
+  PLUGIN_METABOT.getMetabotProvider = () => MetabotProvider;
 
   PLUGIN_REDUCERS.metabotPlugin = metabotReducer;
 

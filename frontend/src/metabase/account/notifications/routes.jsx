@@ -1,5 +1,5 @@
 import { ModalRoute } from "metabase/hoc/ModalRoute";
-import { Route } from "metabase/hoc/Title";
+import { Route } from "metabase/hoc/Route";
 
 import HelpModal from "./components/HelpModal";
 import ArchiveAlertModal from "./containers/ArchiveAlertModal";

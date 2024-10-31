@@ -1,5 +1,5 @@
 import PropTypes from "prop-types";
-import { Component, cloneElement } from "react";
+import { Component } from "react";
 import { Route as _Route } from "react-router";
 import _ from "underscore";
 
@@ -88,17 +88,3 @@ export const SetTitle = props => {
 SetTitle.propTypes = {
   title: PropTypes.string,
 };
-
-// react-router Route wrapper that adds a `title` property
-export class Route extends _Route {
-  static createRouteFromReactElement(element) {
-    if (element.props.title) {
-      element = cloneElement(element, {
-        component: title(element.props.title)(
-          element.props.component || (({ children }) => children),
-        ),
-      });
-    }
-    return _Route.createRouteFromReactElement(element);
-  }
-}

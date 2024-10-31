@@ -34,6 +34,26 @@ export const processMetabotReactions = createAsyncThunk(
           .with({ type: "metabot.reaction/message" }, reaction => {
             dispatch(addUserMessage(reaction.message));
           })
+          .with({ type: "metabot.reaction/change-display-type" }, reaction => {
+            const display = reaction.display_type;
+            const question = getQuestion(state);
+
+            if (!question) {
+              // TODO: allow reactions to force an error flow when an action can't be completed
+              console.error("TODO: something went wrong", { question });
+              return;
+            }
+
+            const newQuestion = setQuestionDisplayType(question, display);
+            dispatch(
+              updateQuestion(newQuestion, {
+                run: true,
+                shouldUpdateUrl: Lib.queryDisplayInfo(newQuestion.query())
+                  .isEditable,
+              }),
+            );
+            dispatch(setUIControls({ isShowingRawTable: false }) as any);
+          })
           .with({ type: "metabot.reaction/apply-visualizations" }, reaction => {
             const { display, filters, summarizations } = reaction;
             const question = getQuestion(state);
@@ -42,7 +62,7 @@ export const processMetabotReactions = createAsyncThunk(
             );
 
             if (!question) {
-              // TODO: can we throw here in a way that we can catch below?
+              // TODO: allow reactions to force an error flow when an action can't be completed
               console.error("TODO: something went wrong", { question });
               return;
             }
@@ -109,7 +129,7 @@ export const processMetabotReactions = createAsyncThunk(
           );
           dispatch(
             addUserMessage(
-              t`Oops! I'm able to finish this task. Please contact support.`,
+              t`Oops! I'm unable to finish this task. Please contact support.`,
             ),
           );
         } else {

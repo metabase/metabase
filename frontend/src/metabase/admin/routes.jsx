@@ -43,7 +43,7 @@ import {
 import CS from "metabase/css/core/index.css";
 import { withBackground } from "metabase/hoc/Background";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
-import { Route } from "metabase/hoc/Title";
+import { Route } from "metabase/hoc/Route";
 import {
   PLUGIN_ADMIN_ROUTES,
   PLUGIN_ADMIN_TOOLS,

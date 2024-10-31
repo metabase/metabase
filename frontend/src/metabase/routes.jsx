@@ -30,7 +30,7 @@ import { ArchiveDashboardModalConnected } from "metabase/dashboard/containers/Ar
 import { AutomaticDashboardAppConnected } from "metabase/dashboard/containers/AutomaticDashboardApp";
 import { DashboardAppConnected } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
-import { Route } from "metabase/hoc/Title";
+import { Route } from "metabase/hoc/Route";
 import { HomePage } from "metabase/home/components/HomePage";
 import { Onboarding } from "metabase/home/components/Onboarding";
 import { trackPageView } from "metabase/lib/analytics";
@@ -175,8 +175,18 @@ export const getRoutes = store => {
           <Route path="/question">
             <IndexRoute component={QueryBuilder} />
             <Route path="notebook" component={QueryBuilder} />
-            <Route path=":slug" component={QueryBuilder} />
-            <Route path=":slug/notebook" component={QueryBuilder} />
+            <Route
+              path=":slug"
+              component={QueryBuilder}
+              name="Question page"
+              description="Page to view the results of your question"
+            />
+            <Route
+              path=":slug/notebook"
+              component={QueryBuilder}
+              name="Question editor page"
+              description="Editor for making modifications to the question defintion"
+            />
             <Route path=":slug/metabot" component={QueryBuilder} />
             <Route path=":slug/:objectId" component={QueryBuilder} />
           </Route>

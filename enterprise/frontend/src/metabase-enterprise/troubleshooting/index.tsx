@@ -2,7 +2,7 @@ import { updateIn } from "icepick";
 import { t } from "ttag";
 
 import { LeftNavPaneItem } from "metabase/components/LeftNavPane";
-import { Route } from "metabase/hoc/Title";
+import { Route } from "metabase/hoc/Route";
 import {
   PLUGIN_ADMIN_SETTINGS_UPDATES,
   PLUGIN_ADMIN_TROUBLESHOOTING,

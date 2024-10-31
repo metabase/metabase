@@ -13,7 +13,7 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
-import { Route } from "metabase/hoc/Title";
+import { Route } from "metabase/hoc/Route";
 import { checkNotNull } from "metabase/lib/types";
 import SearchApp from "metabase/search/containers/SearchApp";
 import type { SearchFilters } from "metabase/search/types";

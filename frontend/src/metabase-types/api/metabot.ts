@@ -8,7 +8,9 @@ export type MetabotFeedbackType =
 
 /* Metabot v3 - Base Types */
 
-export type MetabotMetabotChatContext = Record<string, any>;
+export type MetabotChatContext = {
+  current_time_with_timezone: string;
+} & Record<string, any>;
 
 export type MetabotTool = {
   name: string; // TODO: make strictly typed - currently there's no tools
@@ -18,7 +20,7 @@ export type MetabotTool = {
 export type MetabotHistoryUserMessageEntry = {
   role: "user";
   message: string;
-  context: MetabotMetabotChatContext;
+  context: MetabotChatContext;
 };
 
 export type MetabotHistoryToolEntry = {
@@ -48,6 +50,11 @@ export type MetabotMessageReaction = {
   message: string;
 };
 
+export type MetabotChangeDisplayTypeReaction = {
+  type: "metabot.reaction/change-display-type";
+  display_type: CardDisplayType;
+};
+
 export type MetabotApplyVisualizationsReaction = {
   type: "metabot.reaction/apply-visualizations";
   display: CardDisplayType;
@@ -63,6 +70,7 @@ export type MetabotGoToQuestionReaction = {
 
 export type MetabotReaction =
   | MetabotMessageReaction
+  | MetabotChangeDisplayTypeReaction
   | MetabotApplyVisualizationsReaction
   | MetabotGoToQuestionReaction;
 
@@ -70,7 +78,7 @@ export type MetabotReaction =
 
 export type MetabotAgentRequest = {
   message: string;
-  context: MetabotMetabotChatContext;
+  context: MetabotChatContext;
   history: MetabotHistory[];
 };
 
