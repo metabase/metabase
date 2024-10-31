@@ -334,14 +334,14 @@
       (data-perms/set-database-permission! (perms-group/all-users) db-id :perms/create-queries (data-perms/most-permissive-value :perms/create-queries))
       (data-perms/set-database-permission! (perms-group/all-users) db-id :perms/view-data (data-perms/most-permissive-value :perms/view-data))
       ;; rasta has access to the database:
-      (is (= "Can Run Query"
-             (:error (mt/user-http-request :rasta :post 202 (format "card/%d/query" card-id))
-                     "Can Run Query")))
+      (is (= [[1]]
+             (mt/rows (mt/user-http-request :rasta :post 202 (format "card/%d/query" card-id)))))
 
       ;; block a single table on the db:
       (let [tables-in-db (map :id (:tables (t2/hydrate (t2/select-one :model/Database db-id) :tables)))
             table-id (rand-nth tables-in-db)]
         (data-perms/set-table-permissions! (perms-group/all-users) :perms/view-data {table-id :blocked}))
-
-      (is (= (str "Blocked: you are not allowed to run queries against Database " db-id ".")
-             (:error (mt/user-http-request :rasta :post 202 (format "card/%d/query" card-id))))))))
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Blocked: you are not allowed to run queries"
+           (mt/rows (mt/user-http-request :rasta :post (format "card/%d/query" card-id))))))))
