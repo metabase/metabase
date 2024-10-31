@@ -135,7 +135,6 @@ describeSDK("scenarios > embedding-sdk > interactive-question", () => {
   it("can save a question to a pre-defined collection", () => {
     visitInteractiveQuestionStory({
       saveToCollectionId: Number(THIRD_COLLECTION_ID),
-      withCollectionPicker: false,
     });
 
     saveInteractiveQuestionAsNewQuestion({

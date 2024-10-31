@@ -35,9 +35,11 @@ export const createQuestion = async (options: CreateQuestionOptions) => {
     return;
   }
 
-  const collectionId = !isNullOrUndefined(saveToCollectionId)
-    ? saveToCollectionId
-    : details.collection_id;
+  // `saveToCollectionId` is used to override the target collection of the question,
+  // this is mainly used for the embedding sdk.
+  const collectionId = isNullOrUndefined(saveToCollectionId)
+    ? details.collection_id
+    : saveToCollectionId;
 
   const displayName = details.name.trim();
   const description = details.description ? details.description.trim() : null;

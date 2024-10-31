@@ -32,7 +32,7 @@ export const SaveQuestionForm = ({
 
   const nameInputPlaceholder = getPlaceholder(question.type());
 
-  const isCollectionPickerEnabled = !isNullOrUndefined(saveToCollectionId);
+  const isCollectionPickerEnabled = isNullOrUndefined(saveToCollectionId);
 
   return (
     <Form>

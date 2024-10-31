@@ -9,7 +9,7 @@ export type SaveQuestionProps = {
 
   closeOnSuccess?: boolean;
   multiStep?: boolean;
-  initialCollectionId?: CollectionId;
+  initialCollectionId?: CollectionId | null;
 
   /**
    * The target collection to save the question to.
