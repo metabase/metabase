@@ -229,7 +229,6 @@
   [_ search-native-query]
   (searchable-columns "card" search-native-query))
 
-;; TODO use spec
 (defmethod searchable-columns "dashboard"
   [_ _]
   [:name
