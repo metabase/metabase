@@ -357,7 +357,7 @@
    ;; TODO not sure this is what it'll look like
    :bookmark     [:model/CollectionBookmark [:and
                                              [:= :bookmark.collection_id :this.id]
-                                             ;; a magical alias, :current_user (or perhaps this clause can be implicit)
+                                             ;; a magical alias, or perhaps this clause can be implicit
                                              [:= :bookmark.user_id :current_user/id]]]})
 
 (def ^:private base-card-spec

@@ -109,7 +109,8 @@
 (deftest search-models-to-update-test
   (is (= #{}
          (search.spec/search-models-to-update (t2/instance :model/Database {:id 123}))))
-  (is (= #{["table" [:= 123 :this.db_id]]}
+  (is (= #{["table" [:= 123 :this.db_id]]
+           ["database" [:= 123 :this.id]]}
          (search.spec/search-models-to-update (t2/instance :model/Database {:id 123 :name "databass"}))))
   (is (= #{["segment" [:= 321 :this.table_id]]
            ["table" [:= 321 :this.id]]}
