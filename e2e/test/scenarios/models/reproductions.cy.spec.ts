@@ -959,6 +959,12 @@ describe("issue 34574", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    cy.intercept("GET", "/api/card/*/query_metadata").as("metadata");
+    cy.intercept("GET", "/api/card/*").as("card");
+    cy.intercept("PUT", "/api/card/*").as("updateCard");
+    cy.intercept("GET", "/api/table/*/fks").as("fks");
+    cy.intercept("GET", "/api/collection/root/items?**").as("rootCollection");
+    cy.intercept("POST", "api/dataset").as("dataset");
   });
 
   it("should accept markdown for model description and render it properly (metabase#34574)", () => {
@@ -973,6 +979,7 @@ describe("issue 34574", () => {
     createQuestion(modelDetails).then(({ body: { id: modelId } }) =>
       visitModel(modelId),
     );
+    cy.wait(["@rootCollection", "@card", "@metadata", "@dataset"]);
 
     cy.findByTestId("qb-header-action-panel").within(() => {
       // make sure the model fully loaded
@@ -982,27 +989,32 @@ describe("issue 34574", () => {
 
     sidesheet().within(() => {
       cy.log("Set the model description to a markdown text");
-      cy.intercept("GET", "/api/card/*/query_metadata").as("metadata");
       cy.findByPlaceholderText("Add description").type(
         "# Hello{enter}## World{enter}This is an **important** description!",
       );
       cy.realPress("Tab");
-      cy.wait("@metadata");
+      cy.wait(["@rootCollection", "@metadata", "@updateCard"]);
 
       cy.log("Make sure we immediately render the proper markdown");
+      cy.findByTestId("editable-text").get("textarea").should("not.exist");
       cy.findByTestId("editable-text").within(assertMarkdownPreview);
     });
 
     cy.log(
       "Make sure the markdown is properly preserved in the model details page",
     );
+    // Let redux handle async actions so that they won't interfere with the action
+    // triggered by the next click. Test will flake without this due to wrong navigation.
+    cy.wait(1);
     cy.findByRole("link", { name: "See more about this model" }).click();
+    cy.wait("@fks");
     cy.findByLabelText("Description").within(assertMarkdownPreview);
 
     cy.log(
       "Make sure the description is present in the collection entry tooltip",
     );
     cy.findByTestId("app-bar").findByText("Our analytics").click();
+    cy.wait(["@rootCollection", "@rootCollection"]);
     cy.location("pathname").should("eq", "/collection/root");
     cy.findAllByTestId("collection-entry-name")
       .filter(`:contains(${modelDetails.name})`)
