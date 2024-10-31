@@ -546,8 +546,17 @@ export class NativeQueryEditor extends Component<
           phase = prefix;
 
           // Return the previous results (filtered by prefix).
-          callback(null, prepareResultsForAce(prefix, previous));
+          const preparedResults = prepareResultsForAce(prefix, previous);
 
+          if (preparedResults.length === 0) {
+            // if there are no results in the first phase, ACE won't accept the
+            // second phage for some reason, so perform the second phase immediately instead.
+            phase = null;
+            await complete(prefix, callback);
+            return;
+          }
+
+          callback(null, prepareResultsForAce(prefix, previous));
           // Retrigger the autocomplete, to be able to go to the other branch
           this._editor?.execCommand("startAutocomplete");
         } else {
