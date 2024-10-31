@@ -161,7 +161,8 @@
                       (not already-preprocessed?) preprocess-query)
               {:keys [table-ids card-ids native?]} (query->source-ids query)]
           (merge
-           {:card-ids card-ids}
+           (when (seq card-ids)
+             {:card-ids card-ids})
            (when (seq table-ids)
              {:perms/create-queries (zipmap table-ids (repeat :query-builder))
               :perms/view-data      (zipmap table-ids (repeat :unrestricted))})
@@ -190,7 +191,7 @@
 
 (defn required-perms-for-query
   "Returns a map representing the permissions requried to run `query`. The map has the optional keys
-  :paths (containing legacy permission paths), :perms/view-data, and :perms/create-queries."
+  :paths (containing legacy permission paths), :card-ids, :perms/view-data, and :perms/create-queries."
   [query & {:as perms-opts}]
   (if (empty? query)
     {}

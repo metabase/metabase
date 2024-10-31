@@ -144,7 +144,7 @@
             table-id (rand-nth tables-in-db)]
         (data-perms/set-table-permissions! (perms-group/all-users) :perms/view-data {table-id :blocked}))
 
-      (is (= "You do not have permissions to run this query."
+      (is (= (str "Blocked: you are not allowed to run queries against Database " db-id ".")
              (:error (mt/user-http-request :rasta :post 202 (format "card/%d/query" card-id))))))))
 
 (deftest database-permission-for-user-test
