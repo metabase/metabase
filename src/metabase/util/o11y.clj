@@ -7,13 +7,19 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- derefable? [v]
+(defn derefable?
+  "Is this value derefable?"
+  [v]
   (instance? clojure.lang.IDeref v))
 
-(defn- current-time-ns []
+(defn current-time-ns
+  "The current time in nanoseconds (good for calculating elapsed time)"
+  []
   (System/nanoTime))
 
-(defn- elapsed-ms-since [ns]
+(defn elapsed-ms-since
+  "The elapsed ms since an older nanoTime"
+  [ns]
   (double (/ (- (current-time-ns) ns) (* 1000 1000))))
 
 (defmacro with-span

@@ -11,9 +11,7 @@
   (reduce (fn [e {tool-name :name, tool-call-id :id, :keys [arguments]}]
             (let [result (promise)
                   {:keys [reactions output]}
-                  (o11y/with-span :info {:name tool-name
-                                         :arguments arguments
-                                         :result result}
+                  (o11y/with-span :info {:name tool-name}
                     (u/prog1 (metabot-v3.tools.interface/*invoke-tool* tool-name arguments)
                       (deliver result <>)))]
               (envelope/add-tool-response e tool-call-id output reactions)))
