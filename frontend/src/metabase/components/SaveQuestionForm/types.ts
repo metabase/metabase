@@ -16,6 +16,7 @@ export type FormValues = {
   collection_id: CollectionId | null | undefined;
   name: string;
   description: string;
+  isExample: boolean;
 };
 
 export type SaveQuestionFormProps = {

@@ -9278,6 +9278,258 @@ databaseChangeLog:
             tableName: metabase_database
             columnName: company_name
 
+  - changeSet:
+      id: v56.2024-10-31T10:00:00
+      author: jordigiam
+      comment: Create table chat_card with additional fields and constraints
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: chat_card
+      changes:
+        - createTable:
+            tableName: chat_card
+            remarks: Table to store chat card data with detailed structure
+            columns:
+              - column:
+                  name: id
+                  type: integer
+                  autoIncrement: true
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+              - column:
+                  name: created_at
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(254)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: text
+                  constraints:
+                    nullable: true
+              - column:
+                  name: display
+                  type: varchar(254)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: dataset_query
+                  type: text
+                  constraints:
+                    nullable: false
+              - column:
+                  name: visualization_settings
+                  type: text
+                  constraints:
+                    nullable: false
+              - column:
+                  name: creator_id
+                  type: integer
+                  constraints:
+                    nullable: false
+              - column:
+                  name: database_id
+                  type: integer
+                  constraints:
+                    nullable: false
+              - column:
+                  name: table_id
+                  type: integer
+                  constraints:
+                    nullable: true
+              - column:
+                  name: query_type
+                  type: varchar(16)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: archived
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: collection_id
+                  type: integer
+                  constraints:
+                    nullable: true
+              - column:
+                  name: public_uuid
+                  type: char(36)
+                  constraints:
+                    nullable: true
+                    unique: true
+              - column:
+                  name: made_public_by_id
+                  type: integer
+                  constraints:
+                    nullable: true
+              - column:
+                  name: enable_embedding
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: embedding_params
+                  type: text
+                  constraints:
+                    nullable: true
+              - column:
+                  name: cache_ttl
+                  type: integer
+                  constraints:
+                    nullable: true
+              - column:
+                  name: result_metadata
+                  type: text
+                  constraints:
+                    nullable: true
+              - column:
+                  name: collection_position
+                  type: smallint
+                  constraints:
+                    nullable: true
+              - column:
+                  name: entity_id
+                  type: char(21)
+                  constraints:
+                    nullable: true
+                    unique: true
+              - column:
+                  name: parameters
+                  type: text
+                  constraints:
+                    nullable: true
+              - column:
+                  name: parameter_mappings
+                  type: text
+                  constraints:
+                    nullable: true
+              - column:
+                  name: collection_preview
+                  type: boolean
+                  defaultValueBoolean: true
+                  constraints:
+                    nullable: false
+              - column:
+                  name: metabase_version
+                  type: varchar(100)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: type
+                  type: varchar(16)
+                  defaultValue: 'question'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: initially_published_at
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: true
+              - column:
+                  name: cache_invalidated_at
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: true
+              - column:
+                  name: last_used_at
+                  type: timestamp with time zone
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: view_count
+                  type: integer
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: archived_directly
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: dataset_query_metrics_v2_migration_backup
+                  type: text
+                  constraints:
+                    nullable: true
+              - column:
+                  name: original_card_id
+                  type: integer
+                  constraints:
+                    nullable: true
+            constraints:
+              - foreignKeyConstraint:
+                  baseTableName: chat_card
+                  baseColumnNames: made_public_by_id
+                  referencedTableName: core_user
+                  referencedColumnNames: id
+                  onDelete: cascade
+              - foreignKeyConstraint:
+                  baseTableName: chat_card
+                  baseColumnNames: source_card_id
+                  referencedTableName: report_card
+                  referencedColumnNames: id
+                  onDelete: cascade
+              - foreignKeyConstraint:
+                  baseTableName: chat_card
+                  baseColumnNames: collection_id
+                  referencedTableName: collection
+                  referencedColumnNames: id
+                  onDelete: set null
+              - foreignKeyConstraint:
+                  baseTableName: chat_card
+                  baseColumnNames: table_id
+                  referencedTableName: metabase_table
+                  referencedColumnNames: id
+                  onDelete: cascade
+              - foreignKeyConstraint:
+                  baseTableName: chat_card
+                  baseColumnNames: creator_id
+                  referencedTableName: core_user
+                  referencedColumnNames: id
+                  onDelete: cascade
+              - foreignKeyConstraint:
+                  baseTableName: chat_card
+                  baseColumnNames: database_id
+                  referencedTableName: metabase_database
+                  referencedColumnNames: id
+                  onDelete: cascade
+              - foreignKeyConstraint:
+                  baseTableName: chat_card
+                  baseColumnNames: original_card_id
+                  referencedTableName: report_card
+                  referencedColumnNames: id
+                  onDelete: SET NULL
+  - changeSet:
+      id: v57.2024-10-31T10:31:00
+      author: jordigiam
+      comment: Add isExample column to report_card
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: isExample
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
 
   
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<

@@ -10,6 +10,7 @@
    [metabase.api.bookmark :as api.bookmark]
    [metabase.api.cache :as api.cache]
    [metabase.api.card :as api.card]
+   [metabase.api.chat-card :as api.chat-card]
    [metabase.api.cloud-migration :as api.cloud-migration]
    [metabase.api.collection :as api.collection]
    [metabase.api.checkpoints :as api.checkpoints]
@@ -112,6 +113,7 @@
   (context "/bookmark"             [] (+auth api.bookmark/routes))
   (context "/card"                 [] (+auth api.card/routes))
   (context "/cloud-migration"      [] (+auth api.cloud-migration/routes))
+  (context "/chat_card"            [] api.chat-card/routes)
   (context "/collection"           [] (+auth api.collection/routes))
   (context "/checkpoints"          [] (+auth api.checkpoints/routes))
   (context "/company"              [] (+auth api.company/routes))

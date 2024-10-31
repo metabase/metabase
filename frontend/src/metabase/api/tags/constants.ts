@@ -6,6 +6,7 @@ export const TAG_TYPES = [
   "api-key",
   "bookmark",
   "card",
+  "chat_card",
   "cloud-migration",
   "collection",
   "dashboard",
@@ -41,6 +42,7 @@ export const TAG_TYPES = [
 export const TAG_TYPE_MAPPING = {
   collection: "collection",
   card: "card",
+  chat_card: "chat_card",
   dashboard: "dashboard",
   database: "database",
   "indexed-entity": "indexed-entity",

@@ -12,17 +12,17 @@ import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import FormTextArea from "metabase/core/components/FormTextArea";
 import CS from "metabase/css/core/index.css";
 import { Form } from "metabase/forms";
-import { DEFAULT_MODAL_Z_INDEX } from "metabase/ui";
 
 import { useSaveQuestionContext } from "./context";
 import type { SaveQuestionFormProps } from "./types";
+import Toggle from "metabase/core/components/Toggle";
+import { ToggleContainer, ToggleLabel } from "metabase/query_builder/components/template_tags/TagEditorParamParts";
 
 export const SaveQuestionForm = ({ onCancel }: SaveQuestionFormProps) => {
   const { question, originalQuestion, showSaveType, values } =
     useSaveQuestionContext();
 
   const nameInputPlaceholder = getPlaceholder(question.type());
-
   return (
     <Form>
       {showSaveType && (
@@ -52,6 +52,10 @@ export const SaveQuestionForm = ({ onCancel }: SaveQuestionFormProps) => {
               title={t`Description`}
               placeholder={t`It's optional but oh, so helpful`}
             />
+            <ToggleContainer>
+              <ToggleLabel>{t`Use it as OmniAI example`}</ToggleLabel>
+              <Toggle value={values.isExample} onChange={() => question.setIsExample(!values.isExample)} />
+            </ToggleContainer>
           </div>
         )}
       </TransitionGroup>

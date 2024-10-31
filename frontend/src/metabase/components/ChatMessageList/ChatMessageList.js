@@ -77,7 +77,7 @@ const ChatMessageList = ({
   }
   const formattedInsightsCode = insightsCode.join('\n\n');
 
-  let lastSender = null; 
+  let lastSender = null;
 
   return (
     <div
@@ -92,8 +92,8 @@ const ChatMessageList = ({
         const isLastServerMessage =
           index === messages.length - 1 && message.sender === "server" && message.isLoading;
 
-          const showIcon = message.sender !== lastSender;
-        lastSender = message.sender; 
+        const showIcon = message.sender !== lastSender;
+        lastSender = message.sender;
 
 
         // Extract the message visualization index
@@ -179,7 +179,7 @@ const ChatMessageList = ({
                             borderRadius: '5px',
                             cursor: 'pointer'
                           }} onClick={handleShowCode}>
-                             {showCode ? t`Show Text` : t`Show Code`}  &nbsp;&nbsp;<Icon name="chevronright" size={14} />
+                            {showCode ? t`Show Text` : t`Show Code`}  &nbsp;&nbsp;<Icon name="chevronright" size={14} />
                           </button>
 
                           {!showCode ? (
@@ -275,11 +275,27 @@ const ChatMessageList = ({
 
                         <Button
                           variant="outlined"
-                          style={{ width: "auto", cursor: "pointer", border: "1px solid #E0E0E0", borderRadius: "8px", marginBottom: "1rem", color: "#FFF", marginLeft: "auto", marginRight: 0, backgroundColor: "#8A64DF", display: "flex", alignItems: "center", padding: "0.5rem 1rem", lineHeight: "1" }}
-                          onClick={() => openModal(card[visualizationIdx], visualizationIdx)}
+                          style={{
+                            width: "auto",
+                            cursor: "pointer",
+                            border: "1px solid #E0E0E0",
+                            borderRadius: "8px",
+                            marginBottom: "1rem",
+                            color: "#FFF",
+                            marginLeft: "auto",
+                            marginRight: 0,
+                            backgroundColor: "#8A64DF",
+                            display: "flex",
+                            alignItems: "center",
+                            padding: "0.5rem 1rem",
+                            lineHeight: "1",
+                          }}
+                          onClick={() => openModal(card[visualizationIdx], card[visualizationIdx]?.original_card_id ? true : false)}
                         >
                           <Icon size={18} name="bookmark" style={{ marginRight: "0.5rem" }} />
-                          <span style={{ fontSize: "18px", fontWeight: "lighter" }}>Verify</span>
+                          <span style={{ fontSize: "18px", fontWeight: "lighter" }}>
+                            {card[visualizationIdx]?.original_card_id ? "Verify" : "Verify & Save"}
+                          </span>
                         </Button>
                       </div>
                     )}
@@ -313,7 +329,7 @@ const ChatMessageList = ({
                   style={{ width: '100%', marginBottom: '10px' }}
                 />
                 <Button variant="filled" onClick={handleSubmitCorrection}>
-                {t`Submit Correction`}
+                  {t`Submit Correction`}
                 </Button>
               </div>
             )}

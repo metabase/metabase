@@ -159,6 +159,43 @@ export const CardApi = {
   parameterSearch: GET("/api/card/:cardId/params/:paramId/search/:query"),
 };
 
+export const ChatCardApi = {
+  list: GET("/api/chat_card", (chatCards, { data }) =>
+    chatCards.filter(
+      chatCard =>
+        !data.q || chatCard.name.toLowerCase().indexOf(data.q.toLowerCase()) >= 0,
+    ),
+  ),
+  create: POST("/api/chat_card"),
+  uploadCSV: POST("/api/chat_card/from-csv", {
+    formData: true,
+    fetch: true,
+  }),
+  get: GET("/api/chat_card/:cardId"),
+  update: PUT("/api/chat_card/:id"),
+  delete: DELETE("/api/chat_card/:id"),
+  persist: POST("/api/chat_card/:id/persist"),
+  unpersist: POST("/api/chat_card/:id/unpersist"),
+  refreshModelCache: POST("/api/chat_card/:id/refresh"),
+  query: POST("/api/chat_card/:cardId/query"),
+  query_pivot: POST("/api/chat_card/pivot/:cardId/query"),
+  bookmark: {
+    create: POST("/api/chat_card/:id/bookmark"),
+    delete: DELETE("/api/chat_card/:id/bookmark"),
+  },
+  listPublic: GET("/api/chat_card/public"),
+  listEmbeddable: GET("/api/chat_card/embeddable"),
+  createPublicLink: POST("/api/chat_card/:id/public_link"),
+  deletePublicLink: DELETE("/api/chat_card/:id/public_link"),
+  // related
+  related: GET("/api/chat_card/:cardId/related"),
+  adHocRelated: POST("/api/chat_card/related"),
+  compatibleChatCards: GET("/api/chat_card/:cardId/series"),
+  parameterValues: GET("/api/chat_card/:cardId/params/:paramId/values"),
+  parameterSearch: GET("/api/chat_card/:cardId/params/:paramId/search/:query"),
+};
+
+
 export const ModelIndexApi = {
   list: GET("/api/model-index"),
   get: GET("/api/model-index/:id"),

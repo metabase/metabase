@@ -73,6 +73,7 @@ export type QuestionCreatorOpts = {
   display?: CardDisplayType;
   visualization_settings?: VisualizationSettings;
   dataset_query?: DatasetQuery;
+  isExample: boolean;
 };
 
 /**
@@ -487,6 +488,14 @@ class Question {
     return this.setCard(assoc(this.card(), "name", name));
   }
 
+  isExample(): boolean {
+    return this._card && this._card.isExample || true;
+  }
+
+  setIsExample(value: boolean) {
+    return this.setCard(assoc(this.card(), "isExample", value));
+  }
+
   collectionId(): CollectionId | null | undefined {
     return this._card && this._card.collection_id;
   }
@@ -842,6 +851,7 @@ class Question {
     dataset_query = type === "native"
       ? NATIVE_QUERY_TEMPLATE
       : STRUCTURED_QUERY_TEMPLATE,
+    isExample
   }: QuestionCreatorOpts = {}) {
     let card: CardObject = {
       name,
@@ -850,6 +860,7 @@ class Question {
       visualization_settings,
       dataset_query,
       type: cardType,
+      isExample: isExample
     };
 
     if (type === "native") {

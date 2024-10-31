@@ -477,7 +477,7 @@
 (api/defendpoint POST "/"
   "Create a new `Card`."
   [:as {{:keys [collection_id collection_position dataset_query description display name
-                parameters parameter_mappings result_metadata visualization_settings cache_ttl type], :as body} :body}]
+                parameters parameter_mappings result_metadata visualization_settings cache_ttl type isExample], :as body} :body}]
   {name                   ms/NonBlankString
    type                   [:maybe ::card-type]
    dataset_query          ms/Map
