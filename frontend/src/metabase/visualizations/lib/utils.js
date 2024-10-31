@@ -7,6 +7,7 @@ import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import { isDate, isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 
 export const MAX_SERIES = 100;
+export const MAX_REASONABLE_SANKEY_DIMENSION_CARDINALITY = 100;
 
 const SPLIT_AXIS_UNSPLIT_COST = -100;
 const SPLIT_AXIS_COST_FACTOR = 2;
@@ -421,3 +422,91 @@ export const getDefaultPivotColumn = (cols, rows) => {
     null
   );
 };
+
+const MAX_SANKEY_COLUMN_PAIRS_TO_CHECK = 3;
+
+function findSankeyColumnPair(dimensionColumns, rows) {
+  if (dimensionColumns.length < 2) {
+    return { source: null, target: null };
+  }
+
+  const pairsToCheck = Math.min(
+    dimensionColumns.length - 1,
+    MAX_SANKEY_COLUMN_PAIRS_TO_CHECK,
+  );
+  for (let i = 0; i < pairsToCheck; i++) {
+    const sourceCol = dimensionColumns[i];
+
+    const sourceValues = new Set(rows.map(row => row[sourceCol.index]));
+
+    const targetCol = dimensionColumns.slice(i + 1).find(maybeTarget => {
+      return rows.some(row => sourceValues.has(row[maybeTarget.index]));
+    });
+
+    if (targetCol) {
+      return {
+        source: sourceCol.column,
+        target: targetCol.column,
+      };
+    }
+  }
+
+  return { source: null, target: null };
+}
+
+export function getSankeyColumns(series) {
+  const { data } = series;
+  if (!data?.cols || !data?.rows) {
+    return { source: null, target: null, metric: null };
+  }
+
+  const { cols, rows } = data;
+
+  // Single pass through columns to categorize them - O(n)
+  const { dimensionColumns, metricColumn } = cols.reduce(
+    (acc, col, index) => {
+      if (isMetric(col)) {
+        // Take the first metric column we find
+        if (!acc.metricColumn) {
+          acc.metricColumn = col;
+        }
+      } else if (isDimension(col) && !isDate(col)) {
+        // Limited quick cardinality check before doing full computation
+        const uniqueValues = new Set();
+        const rowsToQuickCheck = Math.min(
+          rows.length,
+          MAX_REASONABLE_SANKEY_DIMENSION_CARDINALITY * 1.5,
+        );
+        for (let i = 0; i < rowsToQuickCheck; i++) {
+          uniqueValues.add(rows[i][index]);
+        }
+
+        // Only do full cardinality check if initial sample looks promising
+        if (
+          uniqueValues.size > 1 &&
+          uniqueValues.size <= MAX_REASONABLE_SANKEY_DIMENSION_CARDINALITY
+        ) {
+          const cardinality = getColumnCardinality(cols, rows, index);
+          if (
+            cardinality > 1 &&
+            cardinality <= MAX_REASONABLE_SANKEY_DIMENSION_CARDINALITY
+          ) {
+            acc.dimensionColumns.push({ column: col, index, cardinality });
+          }
+        }
+      }
+      return acc;
+    },
+    { dimensionColumns: [], metricColumn: null },
+  );
+
+  dimensionColumns.sort((a, b) => a.cardinality - b.cardinality);
+
+  const { source, target } = findSankeyColumnPair(dimensionColumns, rows);
+
+  return {
+    source: source?.name ?? null,
+    target: target?.name ?? null,
+    metric: metricColumn?.name ?? null,
+  };
+}

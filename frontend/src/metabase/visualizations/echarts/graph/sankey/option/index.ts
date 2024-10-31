@@ -17,9 +17,10 @@ export const getSankeyChartOption = (
   renderingContext: RenderingContext,
 ): EChartsCoreOption => {
   const { data, formatters } = chartModel;
-  const echartsData = data.nodes.map(node => ({
+  const nodes = data.nodes.map(node => ({
     ...node,
     name: formatters.node(node.value),
+    value: formatters.node(node.value),
     itemStyle: {
       color: chartModel.nodeColors[String(node.value)],
     },
@@ -32,6 +33,7 @@ export const getSankeyChartOption = (
   }));
 
   const series: SankeySeriesOption = {
+    animation: false,
     type: "sankey",
     ...layout.padding,
     nodeAlign: settings["sankey.node_align"],
@@ -47,7 +49,7 @@ export const getSankeyChartOption = (
       focus: "adjacency",
     },
     draggable: false,
-    data: echartsData,
+    nodes,
     links,
     lineStyle: {
       color: "gradient",
@@ -59,7 +61,6 @@ export const getSankeyChartOption = (
       textBorderWidth: SANKEY_CHART_STYLE.nodeLabels.textBorderWidth,
       textBorderColor: renderingContext.getColor("white"),
       fontFamily: renderingContext.fontFamily,
-      formatter: params => formatters.node(params.name),
     },
   };
 

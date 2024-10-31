@@ -7,6 +7,7 @@ import {
   dimensionSetting,
   metricSetting,
 } from "metabase/visualizations/lib/settings/utils";
+import { getSankeyColumns } from "metabase/visualizations/lib/utils";
 import {
   getDefaultSize,
   getMinSize,
@@ -23,16 +24,19 @@ export const SETTINGS_DEFINITIONS = {
     section: t`Data`,
     title: t`Source`,
     showColumnSetting: true,
+    getDefault: ([series]: RawSeries) => getSankeyColumns(series).source,
   }),
   ...dimensionSetting("sankey.target", {
     section: t`Data`,
     title: t`Target`,
     showColumnSetting: true,
+    getDefault: ([series]: RawSeries) => getSankeyColumns(series).target,
   }),
   ...metricSetting("sankey.value", {
     section: t`Data`,
     title: t`Value`,
     showColumnSetting: true,
+    getDefault: ([series]: RawSeries) => getSankeyColumns(series).metric,
   }),
   "sankey.node_align": {
     section: t`Display`,
