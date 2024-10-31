@@ -14,6 +14,7 @@ import {
   isValidDraggedItem,
 } from "metabase/visualizer/dnd/guards";
 import {
+  getDatasets,
   getDraggedItem,
   getVisualizationType,
   importColumn,
@@ -33,6 +34,9 @@ export const VisualizerPage = () => {
   const display = useSelector(getVisualizationType);
   const draggedItem = useSelector(getDraggedItem);
   const dispatch = useDispatch();
+
+  const datasets = useSelector(getDatasets);
+  const hasDatasets = Object.values(datasets).length > 0;
 
   const handleDragStart = useCallback(
     (event: DragStartEvent) => {
@@ -100,13 +104,15 @@ export const VisualizerPage = () => {
               boxShadow: "0 1px 2px 2px var(--mb-color-border)",
             }}
           >
-            <Flex direction="row" align="center" justify="space-between">
-              <p>Name your visualization</p>
-              <VisualizationPicker
-                value={display}
-                onChange={handleChangeDisplay}
-              />
-            </Flex>
+            {hasDatasets && (
+              <Flex direction="row" align="center" justify="space-between">
+                <p>Name your visualization</p>
+                <VisualizationPicker
+                  value={display}
+                  onChange={handleChangeDisplay}
+                />
+              </Flex>
+            )}
             <Box h="90%">
               <VisualizationCanvas />
             </Box>
