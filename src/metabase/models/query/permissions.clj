@@ -85,9 +85,9 @@
        {:native? true})
 
      (m :guard (every-pred map? #(pos-int? (:source-table %))))
-     (apply merge-with merge-source-ids
-      {:table-ids #{(:source-table m)}}
-      (query->source-ids (dissoc m :source-table))))))
+     (merge-with merge-source-ids
+                 {:table-ids #{(:source-table m)}}
+                 (query->source-ids (dissoc m :source-table))))))
 
 (mu/defn query->source-table-ids
   "Returns a sequence of all :source-table IDs referenced by a query. Convenience wrapper around `query->source-ids` if
