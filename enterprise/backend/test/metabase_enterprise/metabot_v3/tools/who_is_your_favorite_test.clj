@@ -5,6 +5,6 @@
 (deftest it-generates-a-reaction
   (is (= {:reactions
           [{:type :metabot.reaction/message
-            :message "You are... but don't tell anyone!",}],
+            :message "You are... but don't tell anyone!"}],
           :output "This current user is my favorite."}
          (tools.interface/*invoke-tool* :metabot.tool/who-is-your-favorite {}))))
