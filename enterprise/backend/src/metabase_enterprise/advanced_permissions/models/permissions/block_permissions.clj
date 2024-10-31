@@ -14,15 +14,14 @@
   [[metabase.models.collection]] for more details."
   :feature :advanced-permissions
   [{database-id :database :as query}]
-  (let [{:keys [table-ids]} (query-perms/query->source-ids query)]
-    (when (or
-           (= :blocked (data-perms/full-db-permission-for-user api/*current-user-id* :perms/view-data database-id))
-           (when (seq table-ids)
-             (not= #{:unrestricted}
-                   (set
-                    (map (partial data-perms/table-permission-for-user api/*current-user-id* :perms/view-data database-id)
-                         table-ids)))))
-      (throw (ex-info (tru "You do not have permissions to run this query.")
-                      {:type               qp.error-type/missing-required-permissions
-                       :actual-permissions @api/*current-user-permissions-set*
-                       :permissions-error? true})))))
+  (or
+   (not= :blocked (data-perms/full-db-permission-for-user api/*current-user-id* :perms/view-data database-id))
+   (let [table-ids (query-perms/query->source-table-ids query)]
+     (= #{:unrestricted}
+        (set
+         (map (partial data-perms/table-permission-for-user api/*current-user-id* :perms/view-data database-id)
+              table-ids))))
+   (throw (ex-info (tru "Blocked: you are not allowed to run queries against Database {0}." database-id)
+                   {:type               qp.error-type/missing-required-permissions
+                    :actual-permissions @api/*current-user-permissions-set*
+                    :permissions-error? true}))))
