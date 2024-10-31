@@ -65,43 +65,39 @@ describe("scenarios > public > question", () => {
     updateSetting("enable-public-sharing", true);
   });
 
-  it(
-    "adds filters to url as get params and renders the results correctly (metabase#7120, metabase#17033, metabase#21993)",
-    { tags: "@flaky" },
-    () => {
-      cy.createNativeQuestion(questionData).then(({ body: { id } }) => {
-        visitQuestion(id);
+  it("adds filters to url as get params and renders the results correctly (metabase#7120, metabase#17033, metabase#21993)", () => {
+    cy.createNativeQuestion(questionData).then(({ body: { id } }) => {
+      visitQuestion(id);
 
-        // Make sure metadata fully loaded before we continue
-        cy.get("[data-testid=cell-data]").contains("Winner");
+      // Make sure metadata fully loaded before we continue
+      cy.get("[data-testid=cell-data]").contains("Winner");
 
-        openNewPublicLinkDropdown("card");
+      openNewPublicLinkDropdown("card");
 
-        // Although we already have API helper `visitPublicQuestion`,
-        // it makes sense to use the UI here in order to check that the
-        // generated url originally doesn't include query params
-        visitPublicURL();
+      // Although we already have API helper `visitPublicQuestion`,
+      // it makes sense to use the UI here in order to check that the
+      // generated url originally doesn't include query params
+      visitPublicURL();
 
-        // On page load, query params are added
-        cy.location("search").should("eq", EXPECTED_QUERY_PARAMS);
+      // On page load, query params are added
+      cy.location("search").should("eq", EXPECTED_QUERY_PARAMS);
 
-        filterWidget().contains("Previous 30 Years");
-        filterWidget().contains("Affiliate");
+      filterWidget().contains("Previous 30 Years");
+      filterWidget().contains("Affiliate");
 
-        cy.wait("@publicQuery");
-        // Name of a city from the expected results
-        cy.get("[data-testid=cell-data]").contains("Winner");
+      cy.wait("@publicQuery");
+      // Name of a city from the expected results
+      cy.get("[data-testid=cell-data]").contains("Winner");
 
-        // Make sure we can download the public question (metabase#21993)
-        cy.get("@uuid").then(publicUuid => {
-          downloadAndAssert(
-            { fileType: "xlsx", questionId: id, publicUuid },
-            assertSheetRowsCount(5),
-          );
-        });
+      // Make sure we can download the public question (metabase#21993)
+      cy.get("@uuid").then(publicUuid => {
+        downloadAndAssert(
+          { fileType: "xlsx", questionId: id, publicUuid },
+          assertSheetRowsCount(5),
+        );
       });
-    },
-  );
+    });
+  });
 
   it("should only allow non-admin users to see a public link if one has already been created", () => {
     cy.createNativeQuestion(questionData).then(({ body: { id } }) => {
@@ -114,9 +110,9 @@ describe("scenarios > public > question", () => {
 
         cy.findByTestId("public-link-popover-content").within(() => {
           cy.findByText("Public link").should("be.visible");
-          cy.findByTestId("public-link-input").then($input =>
-            expect($input.val()).to.match(PUBLIC_QUESTION_REGEX),
-          );
+          cy.findByTestId("public-link-input").should($input => {
+            expect($input.val()).to.match(PUBLIC_QUESTION_REGEX);
+          });
           cy.findByText("Remove public URL").should("not.exist");
         });
       });
@@ -240,12 +236,13 @@ describe("scenarios > public > question", () => {
 });
 
 const visitPublicURL = () => {
+  cy.findByTestId("public-link-input").should($input => {
+    // Copied URL has no get params
+    expect($input.val()).to.match(PUBLIC_QUESTION_REGEX);
+  });
   cy.findByTestId("public-link-input")
     .invoke("val")
     .then(publicURL => {
-      // Copied URL has no get params
-      expect(publicURL).to.match(PUBLIC_QUESTION_REGEX);
-
       cy.signOut();
       cy.visit(publicURL);
     });
