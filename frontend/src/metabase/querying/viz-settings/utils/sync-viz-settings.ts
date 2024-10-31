@@ -60,6 +60,7 @@ export function syncVizSettings(
   nextSettings = syncTableColumns(nextSettings, newColumns, oldColumns);
   nextSettings = syncColumnSettings(nextSettings, newColumns, oldColumns);
   nextSettings = syncGraphMetrics(nextSettings, newColumns, oldColumns);
+  nextSettings = syncPivotColumnSplit(nextSettings, newColumns, oldColumns);
   return nextSettings;
 }
 
@@ -210,5 +211,49 @@ function syncGraphMetrics(
       createSetting: column => column.name,
       shouldCreateSetting: column => column.isAggregation,
     }),
+  };
+}
+
+function syncPivotColumnSplit(
+  settings: VisualizationSettings,
+  newColumns: ColumnInfo[],
+  oldColumns: ColumnInfo[],
+): VisualizationSettings {
+  const columnSplit = settings["pivot_table.column_split"];
+  if (!columnSplit) {
+    return settings;
+  }
+
+  return {
+    ...settings,
+    "pivot_table.column_split": {
+      rows: syncColumns({
+        settings: columnSplit.rows,
+        newColumns,
+        oldColumns,
+        getColumnName: setting => setting,
+        setColumnName: (_, newName) => newName,
+        createSetting: column => column.name,
+        shouldCreateSetting: () => false,
+      }),
+      columns: syncColumns({
+        settings: columnSplit.columns,
+        newColumns,
+        oldColumns,
+        getColumnName: setting => setting,
+        setColumnName: (_, newName) => newName,
+        createSetting: column => column.name,
+        shouldCreateSetting: () => false,
+      }),
+      values: syncColumns({
+        settings: columnSplit.values,
+        newColumns,
+        oldColumns,
+        getColumnName: setting => setting,
+        setColumnName: (_, newName) => newName,
+        createSetting: column => column.name,
+        shouldCreateSetting: () => false,
+      }),
+    },
   };
 }
