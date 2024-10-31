@@ -126,8 +126,16 @@ describe("scenarios > question > native", () => {
   });
 
   it("can save a question with no rows", () => {
-    openNativeEditor().type("select * from people where false");
-    runQuery();
+    visitQuestionAdhoc({
+      dataset_query: {
+        type: "native",
+        database: SAMPLE_DB_ID,
+        native: {
+          query: "select * from people where false",
+        },
+      },
+      visualization_settings: {},
+    });
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("No results!");
     cy.icon("contract").click();
