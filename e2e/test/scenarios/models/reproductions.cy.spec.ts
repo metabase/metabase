@@ -962,6 +962,7 @@ describe("issue 34574", () => {
     cy.signInAsAdmin();
     cy.intercept("GET", "/api/card/*/query_metadata").as("metadata");
     cy.intercept("GET", "/api/card/*").as("card");
+    cy.intercept("PUT", "/api/card/*").as("updateCard");
     cy.intercept("GET", "/api/table/*/fks").as("fks");
     cy.intercept("GET", "/api/collection/root/items?**").as("rootCollection");
   });
@@ -997,6 +998,7 @@ describe("issue 34574", () => {
       cy.log("Make sure we immediately render the proper markdown");
       cy.findByTestId("editable-text").get("textarea").should("not.exist");
       cy.findByTestId("editable-text").within(assertMarkdownPreview);
+      cy.wait("@updateCard");
     });
 
     cy.log(
