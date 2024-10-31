@@ -100,40 +100,22 @@ const visualizerSlice = createSlice({
         dataSource: VisualizerDataSource;
       }>,
     ) => {
-      const columnRef = createVisualizerColumnReference(
-        action.payload.dataSource,
-        action.payload.column,
-      );
-      state.referencedColumns.push(columnRef);
+      const { column, dataSource } = action.payload;
+      const columnRef = createVisualizerColumnReference(dataSource, column);
 
-      if (state.display === "funnel" && isNumeric(action.payload.column)) {
-        const metricColumnName = state.settings["funnel.metric"];
-        const metricColumnIndex = state.columns.findIndex(
-          column => column.name === metricColumnName,
-        );
-
-        const dimensionColumnName = state.settings["funnel.dimension"];
-        const dimensionColumnIndex = state.columns.findIndex(
-          column => column.name === dimensionColumnName,
-        );
-
-        if (metricColumnIndex !== -1 && dimensionColumnIndex !== -1) {
-          const metric = state.columns[metricColumnIndex];
-          state.columns[metricColumnIndex] = {
-            ...metric,
-            values: !metric.values.includes(columnRef.name)
-              ? [...metric.values, columnRef.name]
-              : metric.values,
-          };
-
-          const dimension = state.columns[dimensionColumnIndex];
-          state.columns[dimensionColumnIndex] = {
-            ...dimension,
-            values: [
-              ...dimension.values,
-              createDataSourceNameRef(action.payload.dataSource.id),
-            ],
-          };
+      if (state.display === "funnel" && isNumeric(column)) {
+        const metric = getVisualizerMetricColumn({ visualizer: state });
+        const dimension = getVisualizerDimensionColumn({ visualizer: state });
+        if (metric.column && dimension.column) {
+          state.referencedColumns.push(columnRef);
+          state.columns[metric.index] = connectToVisualizerColumn(
+            metric.column,
+            columnRef.name,
+          );
+          state.columns[dimension.index] = connectToVisualizerColumn(
+            dimension.column,
+            createDataSourceNameRef(dataSource.id),
+          );
         }
       }
     },
@@ -243,9 +225,9 @@ const visualizerSlice = createSlice({
 
         const card = state.cards.find(card => card.id === cardId);
 
-        if (card && state.display === "funnel") {
+        if (state.display === "funnel") {
           if (
-            card.display === "scalar" &&
+            card?.display === "scalar" &&
             dataset.data?.cols?.length === 1 &&
             isNumeric(dataset.data.cols[0]) &&
             dataset.data.rows?.length === 1
@@ -256,35 +238,21 @@ const visualizerSlice = createSlice({
               dataset.data.cols[0],
             );
 
-            const metricColumnName = state.settings["funnel.metric"];
-            const metricColumnIndex = state.columns.findIndex(
-              column => column.name === metricColumnName,
-            );
-            const metricColumn = state.columns[metricColumnIndex];
+            const metric = getVisualizerMetricColumn({ visualizer: state });
+            const dimension = getVisualizerDimensionColumn({
+              visualizer: state,
+            });
 
-            const dimensionColumnName = state.settings["funnel.dimension"];
-            const dimensionColumnIndex = state.columns.findIndex(
-              column => column.name === dimensionColumnName,
-            );
-            const dimensionColumn = state.columns[dimensionColumnIndex];
-
-            if (dimensionColumn && metricColumn) {
+            if (metric.column && dimension.column) {
               state.referencedColumns.push(columnRef);
-
-              state.columns[metricColumnIndex] = {
-                ...metricColumn,
-                values: !metricColumn.values.includes(columnRef.name)
-                  ? [...metricColumn.values, columnRef.name]
-                  : metricColumn.values,
-              };
-
-              state.columns[dimensionColumnIndex] = {
-                ...dimensionColumn,
-                values: [
-                  ...dimensionColumn.values,
-                  createDataSourceNameRef(dataSource.id),
-                ],
-              };
+              state.columns[metric.index] = connectToVisualizerColumn(
+                metric.column,
+                columnRef.name,
+              );
+              state.columns[dimension.index] = connectToVisualizerColumn(
+                dimension.column,
+                createDataSourceNameRef(dataSource.id),
+              );
             }
           }
         }
@@ -333,6 +301,24 @@ const getCards = (state: { visualizer: VisualizerState }) =>
 // Must remain private
 const getVisualizationColumns = (state: { visualizer: VisualizerState }) =>
   state.visualizer.columns;
+
+const getVisualizerMetricColumn = (state: { visualizer: VisualizerState }) => {
+  const columns = getVisualizationColumns(state);
+  const index = columns.findIndex(
+    column => column.name === VISUALIZER_METRIC_COL_NAME,
+  );
+  return { column: columns[index], index };
+};
+
+const getVisualizerDimensionColumn = (state: {
+  visualizer: VisualizerState;
+}) => {
+  const columns = getVisualizationColumns(state);
+  const index = columns.findIndex(
+    column => column.name === VISUALIZER_DIMENSION_COL_NAME,
+  );
+  return { column: columns[index], index };
+};
 
 export const getReferencedColumns = (state: { visualizer: VisualizerState }) =>
   state.visualizer.referencedColumns;
@@ -435,13 +421,20 @@ export const getVisualizerComputedSettings = createSelector(
     rawSeries.length > 0 ? getComputedSettingsForSeries(rawSeries) : {},
 );
 
+const VISUALIZER_METRIC_COL_NAME = "METRIC";
+const VISUALIZER_DIMENSION_COL_NAME = "DIMENSION";
+
 function createMetricColumn(): VisualizerDatasetColumn {
   return {
     base_type: "type/Integer",
     effective_type: "type/Integer",
     display_name: "METRIC",
-    field_ref: ["field", "METRIC", { "base-type": "type/Integer" }],
-    name: "METRIC",
+    field_ref: [
+      "field",
+      VISUALIZER_METRIC_COL_NAME,
+      { "base-type": "type/Integer" },
+    ],
+    name: VISUALIZER_METRIC_COL_NAME,
     source: "artificial",
 
     values: [],
@@ -453,10 +446,26 @@ function createDimensionColumn(): VisualizerDatasetColumn {
     base_type: "type/Text",
     effective_type: "type/Text",
     display_name: "DIMENSION",
-    field_ref: ["field", "DIMENSION", { "base-type": "type/Text" }],
-    name: "DIMENSION",
+    field_ref: [
+      "field",
+      VISUALIZER_DIMENSION_COL_NAME,
+      { "base-type": "type/Text" },
+    ],
+    name: VISUALIZER_DIMENSION_COL_NAME,
     source: "artificial",
 
     values: [],
+  };
+}
+
+function connectToVisualizerColumn(
+  column: VisualizerDatasetColumn,
+  ref: string,
+) {
+  return {
+    ...column,
+    values: !column.values.includes(ref)
+      ? [...column.values, ref]
+      : column.values,
   };
 }

@@ -4,7 +4,7 @@ import type {
   VisualizerDataSource,
   VisualizerDataSourceId,
   VisualizerDataSourceType,
-  VisualizerReferencedColumns,
+  VisualizerReferencedColumn,
 } from "metabase-types/store/visualizer";
 
 export function createDataSource(
@@ -23,7 +23,7 @@ export function createDataSource(
 export function createVisualizerColumnReference(
   dataSource: VisualizerDataSource,
   column: DatasetColumn,
-): VisualizerReferencedColumns {
+): VisualizerReferencedColumn {
   return {
     sourceId: dataSource.id,
     columnKey: getColumnKey(column),
