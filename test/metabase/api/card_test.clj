@@ -2657,7 +2657,7 @@
           (update-card card {:description "a new description"})
           (is (empty? (reviews card)))))
       (testing "Does not add nil moderation reviews when there are reviews but not verified"
-       ;; testing that we aren't just adding a nil moderation each time we update a card
+      ;; testing that we aren't just adding a nil moderation each time we update a card
         (with-card :verified
           (is (verified? card))
           (moderation-review/create-review! {:moderated_item_id   (u/the-id card)
@@ -3750,7 +3750,7 @@
                 (testing "Data perms prohibit running queries"
                   (is (thrown-with-msg?
                        clojure.lang.ExceptionInfo
-                       #"You do not have permissions to run this query."
+                       #"Blocked: you are not allowed to run queries"
                        (mt/rows (process-query-for-card child-card)))
                       "Even if the user has can-write? on a Card, they should not be able to run it because they are blocked on Card's db"))))
             (testing "view-data = unrestricted is required to allow running the query (#15131)"
