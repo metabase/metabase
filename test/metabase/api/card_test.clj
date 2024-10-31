@@ -2657,7 +2657,7 @@
           (update-card card {:description "a new description"})
           (is (empty? (reviews card)))))
       (testing "Does not add nil moderation reviews when there are reviews but not verified"
-        ;; testing that we aren't just adding a nil moderation each time we update a card
+       ;; testing that we aren't just adding a nil moderation each time we update a card
         (with-card :verified
           (is (verified? card))
           (moderation-review/create-review! {:moderated_item_id   (u/the-id card)
@@ -3742,18 +3742,19 @@
                   (is (not (mi/can-read? parent-card))))
                 (is (= "You don't have permissions to do that."
                        (process-query-for-card parent-card))))
-              (testing "Should be able to run the child Card (#15131)"
+              (testing "Should not be able to run the child Card due to Block permissions"
                 (mt/with-test-user :rasta
                   (is (not (mi/can-read? parent-card)))
                   (is (mi/can-read? allowed-collection))
                   (is (mi/can-read? child-card)))
+                (rasta-view-data-perm= :blocked)
                 (testing "Data perms prohibit running queries"
                   (is (thrown-with-msg?
                        clojure.lang.ExceptionInfo
                        #"You do not have permissions to run this query."
                        (mt/rows (process-query-for-card child-card)))
                       "Even if the user has can-write? on a Card, they should not be able to run it because they are blocked on Card's db"))))
-            (testing "view-data = unrestricted is required to allow running the query"
+            (testing "view-data = unrestricted is required to allow running the query (#15131)"
               (mt/with-restored-data-perms!
                 (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
                 (rasta-view-data-perm= :unrestricted)

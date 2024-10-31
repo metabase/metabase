@@ -1,6 +1,7 @@
 (ns metabase.query-processor.middleware.permissions
   "Middleware for checking that the current user has permissions to run the current query."
   (:require
+   [clojure.set :as set]
    [metabase.api.common
     :refer [*current-user-id* *current-user-permissions-set*]]
    [metabase.audit :as audit]
@@ -8,16 +9,13 @@
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.data-permissions :as data-perms]
-   [metabase.models.interface :as mi]
    [metabase.models.query.permissions :as query-perms]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
-   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
-
 (def ^:dynamic *card-id*
   "ID of the Card currently being executed, if there is one. Bind this in a Card-execution so we will use
   Card [Collection] perms checking rather than ad-hoc perms checking."
@@ -68,23 +66,6 @@
             (throw-inactive-table-error (lib.metadata.protocols/database (qp.store/metadata-provider))
                                         table)))))))
 
-(mu/defn- check-card-read-perms
-  "Check that the current user has permissions to read Card with `card-id`, or throw an Exception. "
-  [database-id :- ::lib.schema.id/database
-   card-id     :- ::lib.schema.id/card]
-  (qp.store/with-metadata-provider database-id
-    (let [card (or (some-> (lib.metadata.protocols/card (qp.store/metadata-provider) card-id)
-                           (update-keys u/->snake_case_en)
-                           (vary-meta assoc :type :model/Card))
-                   (throw (ex-info (tru "Card {0} does not exist." card-id)
-                                   {:type    qp.error-type/invalid-query
-                                    :card-id card-id})))]
-      (log/tracef "Required perms to run Card: %s" (pr-str (mi/perms-objects-set card :read)))
-      (when-not (mi/can-read? card)
-        (throw (perms-exception (tru "You do not have permissions to view Card {0}." (pr-str card-id))
-                                (mi/perms-objects-set card :read)
-                                {:card-id *card-id*}))))))
-
 (def ^:dynamic *param-values-query*
   "Used to allow users looking at a dashboard to view (possibly chained) filters."
   false)
@@ -105,22 +86,21 @@
 
 (mu/defn check-query-permissions*
   "Check that User with `user-id` has permissions to run `query`, or throw an exception."
-  [{database-id :database, :as outer-query} :- [:map [:database ::lib.schema.id/database]]]
+  [{database-id :database, {gtap-perms :gtaps} ::perms :as outer-query} :- [:map [:database ::lib.schema.id/database]]]
   (when *current-user-id*
     (log/tracef "Checking query permissions. Current user permissions = %s"
                 (pr-str (data-perms/permissions-for-user *current-user-id*)))
     (when (= audit/audit-db-id database-id)
       (check-audit-db-permissions outer-query))
     (check-query-does-not-access-inactive-tables outer-query)
-    (let [card-id (or *card-id* (:qp/source-card-id outer-query))
-          required-perms (query-perms/required-perms-for-query outer-query :already-preprocessed? true)]
+    (let [card-id         (or *card-id* (:qp/source-card-id outer-query))
+          required-perms  (query-perms/required-perms-for-query outer-query :already-preprocessed? true)
+          source-card-ids (:card-ids required-perms)]
       (cond
         card-id
         (do
-          (check-card-read-perms database-id card-id)
-
-          (when-not (query-perms/has-perm-for-query? outer-query :perms/view-data required-perms)
-            (throw (query-perms/perms-exception required-perms))))
+          (check-block-permissions outer-query)
+          (query-perms/check-card-read-perms database-id card-id))
 
         ;; set when querying for field values of dashboard filters, which only require
         ;; collection perms for the dashboard and not ad-hoc query perms
@@ -131,7 +111,14 @@
         :else
         (do
           (query-perms/check-data-perms outer-query required-perms :throw-exceptions? true)
-          ;; check perms for any Cards referenced by this query (if it is a native query)
+
+          ;; Check read perms for any source cards referenced by this query. Exclude any card IDs in the :gtaps key
+          ;; which have been temporarily granted permissions to power sandboxing
+          (when-let [card-ids (set/difference source-card-ids (:card-ids gtap-perms))]
+            (doseq [card-id card-ids]
+              (query-perms/check-card-read-perms database-id card-id)))
+
+          ;; recursively check perms for any Cards referenced by this query via template tags (if it is a native query)
           (doseq [{query :dataset-query} (lib/template-tags-referenced-cards
                                           (lib/query (qp.store/metadata-provider) outer-query))]
             (check-query-permissions* query)))))))
@@ -157,7 +144,7 @@
                                                 [:type [:enum :query :native]]]]
   (log/tracef "Checking query permissions. Current user perms set = %s" (pr-str @*current-user-permissions-set*))
   (when *card-id*
-    (check-card-read-perms database-id *card-id*))
+    (query-perms/check-card-read-perms database-id *card-id*))
   (when-not (query-perms/check-data-perms
              outer-query
              (query-perms/required-perms-for-query outer-query :already-preprocessed? true)
