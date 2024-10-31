@@ -23,6 +23,7 @@
 (defn- index-hits [term]
   (count (search.index/search term)))
 
+;; These helpers only mutate the temp local appdb.
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defmacro with-index
   "Ensure a clean, small index."

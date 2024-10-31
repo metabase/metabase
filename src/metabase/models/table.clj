@@ -407,3 +407,58 @@
 
 (search/define-spec "metric"
   (-> base-card-spec (sql.helpers/where [:= :this.type "metric"])))
+
+(search/define-spec "action"
+  {:model         :model/Action
+   :attrs         {:archived      true
+                   :collection-id :model.collection_id
+                   :database-id   :query_action.database_id
+                   :table-id      false
+                   :created-at    true
+                   :updated-at    true}
+   :search-terms  [:name :description]
+   :native-query  ::query_action.dataset_query
+   :render-terms  {:creator-id true
+                   :model-id   :model.id
+                   :model-name :model.name}
+   :where         [:= :collection.namespace nil]
+   :joins         {:model        [:model/Card [:= :model.id :this.model_id]]
+                   :query_action [:model/QueryAction [:= :query_action.action_id :this.id]]
+                   :collection   [:model/Collection [:= :collection.id :model.collection_id]]}})
+
+(search/define-spec "dashboard"
+  {:model        :model/Dashboard
+   :attrs        {:archived      true
+                  :collection-id true
+                  :database-id   false
+                  :table-id      false
+                  :created-at    true
+                  :updated-at    true}
+   :search-terms [:name :description]
+   :render-terms {:collection-name            :collection.name
+                  :collection-type            :collection.type
+                  :collection-authority_level :collection.authority_level
+                  :archived-directly          true
+                  :collection-position        true
+                  :creator-id                 true
+                  :last-editor-id             :r.user_id
+                  :last-edited-at             :r.timestamp}
+   :where        []
+   :joins        {:collection [:model/Collection [:= :collection.id :this.collection_id]]
+                  :r          [:model/Revision [:and
+                                                [:= :r.model_id :this.id]
+                                                ;; Interesting for inversion, another condition on whether to update.
+                                                ;; For now, let's just swallow the extra update (2x amplification)
+                                                [:= :r.most_recent true]
+                                                [:= :r.model "Dashboard"]]]}})
+(search/define-spec "database"
+  {:model        :model/Database
+   :attrs        {:archived      false
+                  :collection-id false
+                  ;; not sure if this is another bug
+                  :database-id   false
+                  :table-id      false
+                  :created-at    true
+                  :updated-at    true}
+   :search-terms [:name :description]
+   :render-terms {:initial-sync-status true}})

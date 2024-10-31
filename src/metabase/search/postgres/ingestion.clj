@@ -49,23 +49,25 @@
 
 (defn- legacy-search-items-query
   "Use an in-place search to get all the items we want to index. A *HACK* only used for search-models without a spec."
-  []
-  (let [spec-models (keys (methods search.spec/spec))
-        model-names (reduce disj (disj search.config/all-models "indexed-entity") spec-models)]
-    (if (empty? model-names)
-      ;; Legacy search will return a singleton with a nil record, let's rather not get back anything.
-      {:select [:wut] :where [:= 1 2]}
-      (-> {:search-string      nil
-           :models             model-names
-           ;; we want to see everything
-           :is-superuser?      true
-           :current-user-id    (t2/select-one-pk :model/User :is_superuser true)
-           :current-user-perms #{"/"}
-           :archived?          nil
-           ;; only need this for display data
-           :model-ancestors?   false}
-          search.legacy/full-search-query
-          (dissoc :limit)))))
+  ([]
+   (let [spec-models (keys (methods search.spec/spec))
+         model-names (reduce disj (disj search.config/all-models "indexed-entity") spec-models)]
+   (legacy-search-items-query model-names)))
+  ([model-names]
+     (if (empty? model-names)
+       ;; Legacy search will return a singleton with a nil record, let's rather not get back anything.
+       {:select [:*] :from :report_card :where [:inline [:= 1 2]]}
+       (-> {:search-string      nil
+            :models             model-names
+            ;; we want to see everything
+            :is-superuser?      true
+            :current-user-id    (t2/select-one-pk :model/User :is_superuser true)
+            :current-user-perms #{"/"}
+            :archived?          nil
+            ;; only need this for display data
+            :model-ancestors?   false}
+           search.legacy/full-search-query
+           (dissoc :limit)))))
 
 (defn- attrs->select-items [attrs]
   (for [[k v] attrs :when v]
@@ -83,7 +85,7 @@
                                                   (mapcat (fn [k] (attrs->select-items (get spec k)))
                                                           [:attrs :render-terms]))))
       :from   [[(t2/table-name (:model spec)) :this]]
-      :where  (:where spec)
+      :where  (:where spec [:inline [:= 1 1]])
       :left-join (when (:joins spec)
                    (into []
                          cat
@@ -114,10 +116,10 @@
 
 (comment
   ;; This is useful introspection for migrating each search-model to a spec
-  (spec-index-query "dataset")
-  (into [] (map t2.realize/realize) (t2/reducible-query (spec-index-query "dataset")))
+  (spec-index-query "database")
+  (into [] (map t2.realize/realize) (t2/reducible-query (spec-index-query "database")))
   (->> {:search-string      nil
-        :models             #{"dataset"}
+        :models             #{"action"}
         :is-superuser?      true
         :current-user-id    (t2/select-one-pk :model/User :is_superuser true)
         :current-user-perms #{"/"}
