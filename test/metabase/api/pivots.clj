@@ -70,10 +70,9 @@
 (defn pivot-card
   "A dashboard card query with a pivot table"
   []
-  (let [pivot-query (pivot-query false)
-        breakout    (-> pivot-query :query :breakout)]
+  (let [pivot-query (pivot-query false)]
     {:dataset_query pivot-query
      :visualization_settings
      {:pivot_table.column_split
-      {:rows    [(get breakout 1) (get breakout 0)]
-       :columns [(get breakout 2)]}}}))
+      {:rows    ["SOURCE" "STATE"]
+       :columns ["CATEGORY"]}}}))

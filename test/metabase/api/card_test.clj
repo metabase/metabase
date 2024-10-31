@@ -3450,9 +3450,9 @@
                                                             :aggregation [[:sum [:field "TOTAL" {:base-type :type/Float}]]]}}
                                                    ;; The FE sometimes used a field id instead of field by name - we need
                                                    ;; to handle this
-                                                   :visualization_settings {:pivot_table.column_split {:rows [[:field (mt/id :orders :user_id) nil]],
+                                                   :visualization_settings {:pivot_table.column_split {:rows    ["USER_ID"],
                                                                                                        :columns [],
-                                                                                                       :values [[:aggregation 0]]},
+                                                                                                       :values  ["sum"]},
                                                                             :table.cell_column "sum"}}]
           (with-cards-in-readable-collection! [model card]
             (is (=?
@@ -3468,9 +3468,9 @@
                                                     :query {:source-table (str "card__" (u/the-id model))
                                                             :breakout [[:field "USER_ID" {:base-type :type/Integer}]]
                                                             :aggregation [[:sum [:field "TOTAL" {:base-type :type/Float}]]]}}
-                                                   :visualization_settings {:pivot_table.column_split {:rows [[:field "USER_ID" nil]],
+                                                   :visualization_settings {:pivot_table.column_split {:rows    ["USER_ID"],
                                                                                                        :columns [],
-                                                                                                       :values [[:aggregation 0]]},
+                                                                                                       :values  ["sum"]},
                                                                             :table.cell_column "sum"}}]
           (with-cards-in-readable-collection! [model card]
             (is (=?
@@ -3899,12 +3899,9 @@
                                                  :source-table (format "card__%s" model-id)}}
                                                :visualization_settings
                                                {:pivot_table.column_split
-                                                {:rows
-                                                 [[:field "NAME" {:base-type :type/Text}]
-                                                  [:field "CREATED_AT" {:base-type :type/DateTime, :temporal-unit :month}]]
-                                                 :columns [[:field (mt/id :products :category) {:base-type    :type/Text
-                                                                                                :source-field (mt/id :orders :product_id)}]]
-                                                 :values  [[:aggregation 0]]}}}]
+                                                {:rows    ["NAME" "CREATED_AT"]
+                                                 :columns ["CATEGORY"]
+                                                 :values  ["sum"]}}}]
       ;; pivot row totals have a pivot-grouping of 1 (the second-last column in these results)
       ;; before fixing issue #46575, these rows would not be returned given the model + card setup
       (is (= [nil "Abbey Satterfield" "Doohickey" 1 347.91]
