@@ -2,9 +2,12 @@
   (:require
    #?@(:cljs (metabase.test-runner.assert-exprs.approximately-equal))
    [clojure.test :refer [deftest is testing]]
+   [clojure.test.check.generators :as gen]
+   [java-time.api :as t]
    [metabase.lib.breakout :as lib.breakout]
    [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
+   [metabase.lib.types.isa :as lib.types.isa]
    [metabase.util :as u]))
 
 ;; NOTE: Being able to *execute* these queries and grok the results would actually be really powerful, if we can
@@ -145,6 +148,194 @@
   ;; Duplicate breakouts are not allowed! So we want to check that logic.
   (let [before-breakouts (lib/breakouts before stage-number)
         after-breakouts  (lib/breakouts after  stage-number)
+        opts             {:same-binning-strategy? true
+                          :same-temporal-bucket?  true}
+        fresh?           (empty? (lib.breakout/existing-breakouts before stage-number column opts))]
+    (testing (str ":breakout stage " stage-number
+                  "\n\nBefore query\n" (u/pprint-to-str before)
+                  "\n\nwith column\n" (u/pprint-to-str column)
+                  "\n\nwith breakout clause\n" (u/pprint-to-str brk-clause)
+                  "\n")
+      (if fresh?
+        (testing "freshly added breakout columns"
+          (is (= false (boolean (lib.breakout/breakout-column? before stage-number column opts)))
+              "are not present before")
+          (is (= true  (boolean (lib.breakout/breakout-column? after  stage-number column opts)))
+              "are present after")
+          (testing "go at the end of the list"
+            (is (= (count after-breakouts)
+                   (inc (count before-breakouts))))
+            (is (=? brk-clause (last after-breakouts)))))
+        (testing "duplicate breakout columns are blocked"
+          (is (= (count after-breakouts)
+                 (count before-breakouts))))))))
+
+;; Filters =======================================================================================
+(add-step {:kind :filter})
+
+(comment
+  (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+      (lib/filterable-columns))
+  )
+
+#_(defmulti ^:private rand-column-value :effective-type)
+
+#_(defmethod rand-column-value :type/Boolean [_column] (choose [true false]))
+
+(defn- gen-int []
+  (- (rand-int 2000000) 1000000))
+
+#_(defmethod rand-column-value :type/Integer [_column] (gen-int))
+#_(defmethod rand-column-value :type/Number  [_column] (cond-> (gen-int)
+                                                       ;; Half the time, make it a float.
+                                                       (< (rand) 0.5) (+ (rand))))
+
+(def ^:private valid-ascii
+  (mapv char (range 0x20 0x7f)))
+
+(def ^:private han-unicode
+  (mapv char (range 0x4e00 0xa000)))
+
+(defn- gen-string
+  ([]
+   (if (< (rand) 0.1)
+     (gen-string han-unicode 40)
+     (gen-string valid-ascii 70)))
+  ([symbols max-len]
+   (apply str (repeatedly (inc (rand-int max-len)) #(rand-nth symbols)))))
+
+(defn- gen-time []
+  (t/local-time (rand-int 24) (rand-int 60) (rand-int 60) (rand-int 1000000000)))
+
+(defn- gen-date []
+  (t/plus (t/local-date (+ 2000 (rand-int 40)) 1 1)
+          (t/days (rand-int 365))))
+
+(defn- gen-datetime []
+  (t/local-date-time (gen-date) (gen-time)))
+
+(defn- gen-latitude []
+  ;; +/- 75 degrees is a generous but plausible range for latitudes.
+  (* 150 (- (rand) 0.5)))
+
+(defn- gen-longitude []
+  ;; +/- 180 degrees
+  (- (* 360 (rand))
+     180))
+
+(def ^:private fake-categories
+  (vec (for [i (range 1 41)]
+         (str "Fake Category " i))))
+
+(defn- gen-category []
+  ;; Just some made-up values that are clearly not random strings for debugging.
+  (rand-nth fake-categories))
+
+(defn- rand-column-value [{:keys [effective-type] :as column}]
+  (cond
+    ;; Numeric PKs and FKs are always integers.
+    (and (lib.types.isa/id? column)
+         (lib.types.isa/numeric? column))              (abs (gen-int))
+    (#{:type/BigInteger :type/Integer} effective-type) (gen-int)
+    (lib.types.isa/category? column)                   (gen-category)
+    (lib.types.isa/latitude? column)                   (gen-latitude)
+    (lib.types.isa/longitude? column)                  (gen-longitude)
+    (lib.types.isa/numeric? column)                    (cond-> (gen-int)
+                                                         (< (rand) 0.5) (+ (rand)))
+    (lib.types.isa/string-or-string-like? column)      (gen-string)
+    (lib.types.isa/time? column)                       (gen-time)
+    (lib.types.isa/date-without-time? column)          (gen-date)
+    (isa? effective-type :type/DateTime)               (gen-datetime)
+    :else (throw (ex-info " !!! Not sure what values to generate for column" {:effective-type effective-type
+                                                                         :column         column}))))
+
+(defmulti ^:private gen-filter-clause
+  (fn [_column operator]
+    (:short operator)))
+
+;; Binary operators like :<
+(doseq [[op f] [[:<  lib/<]
+                [:<= lib/<=]
+                [:>  lib/>]
+                [:>= lib/>=]]]
+  (defmethod gen-filter-clause op [column _op]
+    (f column (rand-column-value column))))
+
+;; Multi-value operators like := and :starts-with
+(doseq [[op f] [[:=                lib/=]
+                [:!=               lib/!=]
+                [:starts-with      lib/starts-with]
+                [:ends-with        lib/ends-with]
+                [:contains         lib/contains]
+                [:does-not-contain lib/does-not-contain]
+                ]]
+  (defmethod gen-filter-clause op [column _op]
+    (apply f column (repeatedly (inc (rand-int 4))
+                                #(rand-column-value column)))))
+
+(defmethod gen-filter-clause :between [column _op]
+  (let [lo (rand-column-value column)
+        hi (rand-column-value column)]
+    ;; TODO: Maybe make the LHS arg be the smaller? Right now they're random.
+    (lib/between column lo hi)))
+
+(defmethod gen-filter-clause :inside [column _op]
+  )
+
+;; Unary operators like `:is-empty`.
+(doseq [[op f] [[:is-empty  lib/is-empty]
+                [:not-empty lib/not-empty]
+                [:is-null   lib/is-null]
+                [:not-null  lib/not-null]]]
+  (defmethod gen-filter-clause op [column _op]
+    (f column)))
+
+(def ^:private ^:dynamic *filterable-columns* nil)
+
+(defn- skipped-operator? [op]
+  (#{:inside} (:short op)))
+
+;; TODO: Special case the temporal filtering, based on how the UI works. There are some interesting cases, and there
+;; are nestable temporal bucketing and other things.
+(defn- ^:private gen-filter []
+  (let [column   (rand-nth *filterable-columns*)
+        operator (rand-nth (remove skipped-operator? (:operators column)))]
+    (gen-filter-clause column operator)))
+
+(doseq [[op f] [[:and lib/and]
+                [:or  lib/or]]]
+  (defmethod gen-filter-clause op [_column _op]
+    (apply f (repeatedly (+ 2 (rand-int 3))
+                         gen-filter))))
+
+
+(comment
+  (gen-filter-clause (meta/field-metadata :people :name) {:short :starts-with})
+  *e
+
+
+  (for [table (meta/tables)
+        field (meta/fields table)
+        :let [md (meta/field-metadata table field)]]
+    [table field (vec (repeatedly 10 #(rand-column-value md)))])
+
+  (repeatedly 40 #(rand-column-value (meta/field-metadata :people :source)))
+  (lib.types.isa/numeric? (meta/field-metadata :orders :created-at))
+  (lib.types.isa/category? (meta/field-metadata :people :source))
+  )
+
+(defmethod next-steps* :filter [query _breakout]
+  (let [stage-number (choose-stage query)]
+    (binding [*filterable-columns* (lib/filterable-columns query stage-number)]
+      [:filter stage-number (gen-filter)])))
+
+(defmethod run-step* :filter [query [_filter stage-number filter-clause]]
+  (lib/filter query stage-number filter-clause))
+
+(defmethod before-and-after :filter [before after [_filter stage-number filter-clause]]
+  ;; START HERE: Write some tests for these filters.
+  #_(let [before-filters (lib/breakouts before stage-number)
+        after-filters  (lib/breakouts after  stage-number)
         opts             {:same-binning-strategy? true
                           :same-temporal-bucket?  true}
         fresh?           (empty? (lib.breakout/existing-breakouts before stage-number column opts))]
