@@ -139,10 +139,10 @@ export const ParametersWidgetContainer = styled(FullWidthContainer)<{
     css`
       --mb-color-text-secondary: color-mix(
         in srgb,
-        var(--mb-color-text-white) 65%,
+        var(--mb-base-color-white) 65%,
         transparent
       );
-      --mb-color-border: var(--mb-color-text-medium);
+      --mb-color-border: var(--mb-base-color-orion-60);
       --mb-color-background: var(--mb-color-bg-black);
     `}
 `;
