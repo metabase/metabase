@@ -84,7 +84,7 @@ export default function App() {
 
 ## Customizing interactive questions
 
-By default, the Embedded Analytics SDK provides a default layout for interactive questions that allows you to view your questions, apply filters and aggregations, and access functionality within the query builder.
+By default, the Embedded analytics SDK provides a default layout for interactive questions that allows you to view your questions, apply filters and aggregations, and access functionality within the query builder.
 
 Here's an example of using the `InteractiveQuestion` component with its default layout:
 
