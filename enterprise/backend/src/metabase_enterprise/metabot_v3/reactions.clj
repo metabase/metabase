@@ -112,3 +112,12 @@
   [:map
    [:type [:= :metabot.reaction/goto-question]]
    [:question_id integer?]])
+
+(defreaction :metabot.reaction/confirmed-api-call
+  [:map
+   [:type [:= :metabot.reaction/confirmed-api-call]]
+   [:description :string]
+   [:api-call [:map
+               [:endpoint :string]
+               [:method [:enum "POST" "GET" "PUT"]]
+               [:body :any]]]])
