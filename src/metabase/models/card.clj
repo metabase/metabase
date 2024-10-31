@@ -134,6 +134,19 @@
    :id
    {:default 0}))
 
+(methodical/defmethod t2/batched-hydrate [:model/Card :in_dashboards]
+  [_model k cards]
+  (mi/instances-with-hydrated-data
+   cards k
+   #(->> (t2/query {:select [[:dc.card_id :card_id] [:d.name :name] [:d.id :id]]
+                    :from [[:report_dashboardcard :dc]]
+                    :join [[:report_dashboard :d] [:= :dc.dashboard_id :d.id]]
+                    :where [:in :dc.card_id (map :id cards)]})
+         (group-by :card_id)
+         (m/map-vals (fn [dashes] (into #{} (map (fn [dash] (dissoc dash :card_id)) dashes)))))
+   :id
+   {:default []}))
+
 (defn- source-card-id
   [query]
   (when (map? query)

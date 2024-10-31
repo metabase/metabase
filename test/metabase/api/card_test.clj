@@ -4051,3 +4051,37 @@
                    :model/DashboardCard _ {:dashboard_id other-dash-id
                                            :card_id      card-id}]
       (mt/user-http-request :rasta :put 400 (str "card/" card-id) {:dashboard_id dash-id}))))
+
+(deftest we-can-get-a-list-of-dashboards-a-card-appears-in
+  (testing "a card in one dashboard"
+    (mt/with-temp [:model/Dashboard {dash-id :id} {:name "My Dashboard"}
+                   :model/Card {card-id :id} {}
+                   :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
+      (is (= [{:id dash-id :name "My Dashboard"}]
+             (mt/user-http-request :rasta :get 200 (str "card/" card-id "/dashboards"))))))
+
+  (testing "card in no dashboards"
+    (mt/with-temp [:model/Card {card-id :id} {}]
+      (is (= []
+             (mt/user-http-request :rasta :get 200 (str "card/" card-id "/dashboards"))))))
+
+  (testing "card in multiple dashboards"
+    (mt/with-temp [:model/Dashboard {dash-id1 :id} {:name "Dashboard One"}
+                   :model/Dashboard {dash-id2 :id} {:name "Dashboard Two"}
+                   :model/Card {card-id :id} {}
+                   :model/DashboardCard _ {:dashboard_id dash-id1 :card_id card-id}
+                   :model/DashboardCard _ {:dashboard_id dash-id2 :card_id card-id}]
+      (is (= [{:id dash-id1 :name "Dashboard One"}
+              {:id dash-id2 :name "Dashboard Two"}]
+             (mt/user-http-request :rasta :get 200 (str "card/" card-id "/dashboards"))))))
+
+  (testing "card in the same dashboard twice"
+    (mt/with-temp [:model/Dashboard {dash-id :id} {:name "My Dashboard"}
+                   :model/Card {card-id :id} {}
+                   :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}
+                   :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
+      (is (= [{:id dash-id :name "My Dashboard"}]
+             (mt/user-http-request :rasta :get 200 (str "card/" card-id "/dashboards"))))))
+
+  (testing "nonexistent card"
+    (mt/user-http-request :rasta :get 404 (str "card/invalid-id/dashboards"))))

@@ -223,6 +223,13 @@
                                 :user-id api/*current-user-id*
                                 :context (or context :question)})))))
 
+(api/defendpoint GET "/:id/dashboards"
+  "Get a list of `{:name ... :id ...}` pairs for all the dashboards this card appears in."
+  [id]
+  {id ms/PositiveInt}
+  (let [card (get-card id)]
+    (:in_dashboards (t2/hydrate card :in_dashboards))))
+
 (defn- dataset-query->query
   "Convert the `dataset_query` column of a Card to a MLv2 pMBQL query."
   [metadata-provider dataset-query]
