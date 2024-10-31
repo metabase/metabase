@@ -5,6 +5,7 @@ import { color } from "metabase/lib/colors";
 import { humanize, titleize } from "metabase/lib/formatting";
 import { getIcon } from "metabase/lib/icon";
 import { getName } from "metabase/lib/name";
+import { PLUGIN_MODERATION } from "metabase/plugins";
 import { FixedSizeIcon, Flex, Tooltip } from "metabase/ui";
 
 import type { SearchItem } from "../../types";
@@ -45,6 +46,14 @@ export const ResultItem = ({
         />
         <Ellipsified style={{ fontWeight: "bold" }}>
           {getName(item)}
+          <PLUGIN_MODERATION.ModerationStatusIcon
+            status={item.moderated_status}
+            filled
+            ml="0.25rem"
+            style={{
+              verticalAlign: "bottom",
+            }}
+          />
         </Ellipsified>
         {item.description && (
           <Tooltip
