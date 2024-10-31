@@ -48,7 +48,8 @@
                     :moderated_item_type "card"
                     :moderator_id        (mt/user->id :crowberto)
                     :status              "verified"
-                    :most_recent         true}
+                    :most_recent         true
+                    :reason              nil}
                    (moderate! "verified" "Looks good to me")))
             (testing "When adding a new moderation review, marks it as most recent"
               (is (= {:text        "hmm"
