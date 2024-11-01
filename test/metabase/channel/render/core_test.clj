@@ -1,4 +1,4 @@
-(ns metabase.pulse.render-test
+(ns metabase.channel.render.core-test
   (:require
    [clojure.test :refer :all]
    [hiccup.core :as hiccup]
@@ -7,7 +7,7 @@
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models
     :refer [Card Dashboard DashboardCard DashboardCardSeries]]
-   [metabase.pulse.render :as render]
+   [metabase.channel.render.core :as render]
    [metabase.pulse.render.test-util :as render.tu]
    [metabase.pulse.send :as pulse]
    [metabase.query-processor :as qp]

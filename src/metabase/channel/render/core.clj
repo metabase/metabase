@@ -1,4 +1,4 @@
-(ns metabase.pulse.render
+(ns metabase.channel.render.core
   (:require
    [hiccup.core :refer [h]]
    [metabase.formatter :as formatter]
