@@ -6,38 +6,40 @@ import { PivotTable } from "./PivotTable";
 
 const cols = [
   {
+    name: "field-123",
+    display_name: "field-123",
     source: "breakout",
     field_ref: ["field", 123, null],
-    display_name: "field-123",
-    name: "field-123",
   },
   {
+    name: "field-456",
+    display_name: "field-456",
     source: "breakout",
     field_ref: ["field", 456, null],
-    display_name: "field-456",
-    name: "field-456",
   },
   {
+    name: "field-789",
+    display_name: "field-789",
     source: "breakout",
     field_ref: ["field", 789, null],
-    display_name: "field-789",
-    name: "field-789",
   },
   {
-    source: "breakout",
-    field_ref: ["expression", "pivot-grouping"],
     name: "pivot-grouping",
     display_name: "pivot-grouping",
+    source: "breakout",
+    field_ref: ["expression", "pivot-grouping"],
   },
   {
+    name: "aggregation-1",
+    display_name: "aggregation-1",
     source: "aggregation",
     field_ref: ["aggregation", 1],
-    display_name: "aggregation-1",
   },
   {
+    name: "aggregation-2",
+    display_name: "aggregation-2",
     source: "aggregation",
     field_ref: ["aggregation", 2],
-    display_name: "aggregation-2",
   },
 ] as DatasetColumn[];
 
