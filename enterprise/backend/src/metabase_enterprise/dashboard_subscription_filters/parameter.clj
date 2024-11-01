@@ -1,4 +1,4 @@
-(ns metabase-enterprise.dashboard-subscription-filters.pulse
+(ns metabase-enterprise.dashboard-subscription-filters.parameter
   (:require
    [metabase.public-settings.premium-features :refer [defenterprise]]))
 

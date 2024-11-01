@@ -6,8 +6,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.params.shared :as shared.params]
    [metabase.models.serialization :as serdes]
-   #_{:clj-kondo/ignore [:metabase/ns-module-checker]}
-   [metabase.pulse.parameters :as pulse-params]
+   [metabase.public-settings :as public-settings]
    #_{:clj-kondo/ignore [:metabase/ns-module-checker]}
    [metabase.pulse.util :as pu]
    [metabase.server.middleware.session :as mw.session]
@@ -109,6 +108,27 @@
                  #(str "## " (shared.params/escape-chars % shared.params/escaped-chars-regex))))
     dashcard))
 
+(defn- escape-markdown-chars?
+  "Heading cards should not escape characters."
+  [dashcard]
+  (not= "heading" (get-in dashcard [:visualization_settings :virtual_card :display])))
+
+(defn process-virtual-dashcard
+  "Given a dashcard and the parameters on a dashboard, returns the dashcard with any parameter values appropriately
+  substituted into connected variables in the text."
+  [dashcard parameters]
+  (let [text               (-> dashcard :visualization_settings :text)
+        parameter-mappings (:parameter_mappings dashcard)
+        tag-names          (shared.params/tag_names text)
+        param-id->param    (into {} (map (juxt :id identity) parameters))
+        tag-name->param-id (into {} (map (juxt (comp second :target) :parameter_id) parameter-mappings))
+        tag->param         (reduce (fn [m tag-name]
+                                     (when-let [param-id (get tag-name->param-id tag-name)]
+                                       (assoc m tag-name (get param-id->param param-id))))
+                                   {}
+                                   tag-names)]
+    (update-in dashcard [:visualization_settings :text] shared.params/substitute-tags tag->param (public-settings/site-locale) (escape-markdown-chars? dashcard))))
+
 (defn- dashcard->part
   "Given a dashcard returns its part based on its type.
 
@@ -137,7 +157,7 @@
     :else
     (let [parameters (merge-default-values parameters)]
       (some-> dashcard
-              (pulse-params/process-virtual-dashcard parameters)
+              (process-virtual-dashcard parameters)
               escape-heading-markdown
               :visualization_settings
               (assoc :type :text)))))

@@ -5,6 +5,7 @@
    [metabase.channel.shared :as channel.shared]
    ;; TODO: integrations.slack should be migrated to channel.slack
    [metabase.integrations.slack :as slack]
+   [metabase.models.params.shared :as shared.params]
    [metabase.public-settings :as public-settings]
    [metabase.pulse.core :as pulse]
    [metabase.util.malli :as mu]
@@ -112,7 +113,7 @@
 (defn- filter-text
   [filter]
   (truncate-mrkdwn
-   (format "*%s*\n%s" (:name filter) (pulse/value-string filter))
+   (format "*%s*\n%s" (:name filter) (shared.params/value-string filter (public-settings/site-locale)))
    attachment-text-length-limit))
 
 (defn- slack-dashboard-header
@@ -126,7 +127,7 @@
         link-section    {:type "section"
                          :fields [{:type "mrkdwn"
                                    :text (format "<%s | *Sent from %s by %s*>"
-                                                 (pulse/dashboard-url (:id dashboard) parameters)
+                                                 (urls/dashboard-url (:id dashboard) parameters)
                                                  (public-settings/site-name)
                                                  creator-name)}]}
         filter-fields   (for [filter parameters]

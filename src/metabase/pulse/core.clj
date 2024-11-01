@@ -1,7 +1,6 @@
 (ns metabase.pulse.core
   "API namespace for the `metabase.pulse` module."
   (:require
-   [metabase.pulse.parameters]
    [metabase.pulse.preview]
    [metabase.pulse.render]
    [metabase.pulse.render.image-bundle]
@@ -12,7 +11,6 @@
 
 (comment
   metabase.pulse.send/keep-me
-  metabase.pulse.parameters/keep-me
   metabase.pulse.preview/keep-me
   metabase.pulse.render/keep-me
   metabase.pulse.render.image-bundle/keep-me
@@ -20,11 +18,6 @@
   metabase.pulse.render.style/keep-me)
 
 (p/import-vars
- [metabase.pulse.parameters
-  dashboard-url
-  parameters
-  process-virtual-dashcard
-  value-string]
  [metabase.pulse.preview
   render-dashboard-to-html
   style-tag-from-inline-styles

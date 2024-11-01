@@ -12,6 +12,7 @@
    [metabase.email.result-attachment :as email.result-attachment]
    [metabase.models.channel :as models.channel]
    [metabase.models.notification :as models.notification]
+   [metabase.models.params.shared :as shared.params]
    [metabase.public-settings :as public-settings]
    [metabase.pulse.core :as pulse]
    [metabase.util :as u]
@@ -231,7 +232,7 @@
                                            :width "50%"
                                            :padding "4px 16px 4px 8px"
                                            :vertical-align "baseline"})}
-                     (pulse/value-string filter)]]]])
+                     (shared.params/value-string filter (public-settings/site-locale))]]]])
                parameters)
         rows  (partition-all 2 cells)]
     (html
@@ -264,7 +265,7 @@
                               (-> notification-payload
                                   (assoc :computed {:dashboard_content   (html (vec (cons :div (map :content rendered-cards))))
                                                     :icon_cid            (:content-id icon-attachment)
-                                                    :dashboard_url       (pulse/dashboard-url (:id dashboard) parameters)
+                                                    :dashboard_url       (urls/dashboard-url (:id dashboard) parameters)
                                                     :dashboard_has_tabs? (some-> dashboard :tabs seq)
                                                     :management_text     (if (nil? non-user-email)
                                                                            "Manage your subscriptions"
