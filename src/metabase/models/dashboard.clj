@@ -668,6 +668,7 @@
   {:model        :model/Dashboard
    :attrs        {:archived      true
                   :collection-id true
+                  :creator-id    true
                   :database-id   false
                   :table-id      false
                   :created-at    true
@@ -678,7 +679,6 @@
                   :collection-authority_level :collection.authority_level
                   :archived-directly          true
                   :collection-position        true
-                  :creator-id                 true
                   :last-editor-id             :r.user_id
                   :last-edited-at             :r.timestamp}
    :where        []

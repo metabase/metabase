@@ -23,6 +23,7 @@
 (def ^:private Attrs
   (into [:map] (for [k [:archived
                         :collection-id
+                        :creator-id
                         :database-id
                         :table-id
                         :created-at]]

@@ -404,14 +404,14 @@
   {:model        :model/Action
    :attrs        {:archived      true
                   :collection-id :model.collection_id
+                  :creator-id true
                   :database-id   :query_action.database_id
                   :table-id      false
                   :created-at    true
                   :updated-at    true}
    :search-terms [:name :description]
    :native-query ::query_action.dataset_query
-   :render-terms {:creator-id true
-                  :model-id   :model.id
+   :render-terms {:model-id   :model.id
                   :model-name :model.name}
    :where        [:= :collection.namespace nil]
    :joins        {:model        [:model/Card [:= :model.id :this.model_id]]

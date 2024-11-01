@@ -1013,6 +1013,7 @@
   {:model        :model/Card
    :attrs        {:archived      true
                   :collection-id :collection_id
+                  :creator-id    true
                   :database-id   false
                   :table-id      false
                   :created-at    true
@@ -1026,7 +1027,6 @@
                   :collection-name            :collection.name
                   :collection-position        true
                   :collection-type            :collection.type
-                  :creator-id                 true
                   :dataset-query              true
                   :display                    true
                   :last-edited-at             :r.timestamp

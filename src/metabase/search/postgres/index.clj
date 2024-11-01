@@ -52,6 +52,7 @@
              [:model_rank :int :not-null]
              ;; permission related entities
              [:collection_id :int]
+             [:creator_id :int]
              [:database_id :int]
              [:table_id :int]
              ;; filter related
@@ -92,6 +93,7 @@
        [:model
         :model_rank
         :collection_id
+        :creator_id
         :database_id
         :display_data
         :legacy_input

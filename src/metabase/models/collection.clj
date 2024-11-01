@@ -1738,6 +1738,7 @@
 (search.spec/define-spec "collection"
   {:model        :model/Collection
    :attrs        {:collection-id :id
+                  :creator-id    false
                   :database-id   false
                   :table-id      false
                   :archived      true

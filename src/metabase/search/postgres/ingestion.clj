@@ -38,6 +38,7 @@
         :model
         :archived
         :collection_id
+        :creator_id
         :database_id
         :table_id])
       (update :archived boolean)

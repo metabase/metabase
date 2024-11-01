@@ -506,6 +506,7 @@
   {:model        :model/Database
    :attrs        {:archived      false
                   :collection-id false
+                  :creator-id    false
                   ;; not sure if this is another bug
                   :database-id   false
                   :table-id      false

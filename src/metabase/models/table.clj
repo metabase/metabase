@@ -303,6 +303,7 @@
 (search/define-spec "table"
   {:model        :model/Table
    :attrs        {:collection-id false
+                  :creator-id    false
                   :database-id   :db_id
                   :table-id      :id
                   :archived      [:not :active]

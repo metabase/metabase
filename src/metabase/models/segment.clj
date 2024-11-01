@@ -192,6 +192,7 @@
 (search/define-spec "segment"
   {:model        :model/Segment
    :attrs        {:collection-id :id
+                  :creator-id    false
                   :database-id   :table.db_id
                   :table-id      :table_id
                   :archived      true
