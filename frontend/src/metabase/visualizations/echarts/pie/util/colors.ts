@@ -1,53 +1,77 @@
+import { match } from "ts-pattern";
+
 import { aliases, colors } from "metabase/lib/colors";
-import { checkNumber } from "metabase/lib/types";
+import { isEmpty } from "metabase/lib/validate";
 
 const ACCENT_KEY_PREFIX = "accent";
 
-export function createHexToAccentNumberMap() {
-  const hexToAccentNumber = new Map<string, number>();
+type AccentKey = string;
 
-  for (const [key, hex] of Object.entries(colors)) {
-    if (!key.startsWith(ACCENT_KEY_PREFIX)) {
+const isAccentColorKey = (key: string) => key.startsWith(ACCENT_KEY_PREFIX);
+
+const extractAccentKey = (input: string): AccentKey => {
+  const withoutPrefix = input.slice(ACCENT_KEY_PREFIX.length);
+  return (
+    withoutPrefix.split("-").filter(segment => !isEmpty(segment))[0] ?? null
+  );
+};
+
+export function createHexToAccentNumberMap() {
+  const hexToAccentNumber = new Map<string, AccentKey>();
+
+  for (const [colorKey, hex] of Object.entries(colors)) {
+    if (!isAccentColorKey(colorKey)) {
       continue;
     }
-
-    const accentNumber = checkNumber(
-      Number(key.slice(ACCENT_KEY_PREFIX.length)),
-    );
-
-    hexToAccentNumber.set(hex, accentNumber);
+    const accentKey = extractAccentKey(colorKey);
+    if (accentKey) {
+      hexToAccentNumber.set(hex, accentKey);
+    }
   }
 
-  for (const [key, hexGetter] of Object.entries(aliases)) {
-    if (!key.startsWith(ACCENT_KEY_PREFIX)) {
+  for (const [colorKey, hexGetter] of Object.entries(aliases)) {
+    if (!isAccentColorKey(colorKey)) {
       continue;
     }
 
-    const accentNumber = checkNumber(
-      Number(key.slice(ACCENT_KEY_PREFIX.length, ACCENT_KEY_PREFIX.length + 1)),
-    );
-    const hex = hexGetter(colors);
-
-    hexToAccentNumber.set(hex, accentNumber);
+    const accentKey = extractAccentKey(colorKey);
+    if (accentKey) {
+      hexToAccentNumber.set(hexGetter(colors), accentKey);
+    }
   }
 
   return hexToAccentNumber;
 }
 
 export function getRingColorAlias(
-  accentColorNumber: number,
+  accentKey: AccentKey,
   ring: "inner" | "middle" | "outer",
 ) {
-  let suffix = "";
-  if (ring === "inner") {
-    suffix = "-dark";
-  } else if (ring === "outer") {
-    suffix = "-light";
-  }
+  const variant = match(ring)
+    .with("inner", () => "dark")
+    .with("outer", () => "light")
+    .otherwise(() => null);
 
-  return `${ACCENT_KEY_PREFIX}${accentColorNumber}${suffix}`;
+  return getColorName(accentKey, variant);
 }
 
-export function getPickerColorAlias(accentNumber: number) {
-  return `${ACCENT_KEY_PREFIX}${accentNumber}-dark`;
+export function getPickerColorAlias(accentKey: AccentKey) {
+  return getColorName(accentKey, "dark");
+}
+
+function getColorName(accentKey: AccentKey, variant: string | null) {
+  let colorName = ACCENT_KEY_PREFIX;
+
+  const isNumericKey = Number.isFinite(parseInt(accentKey));
+  if (isNumericKey) {
+    colorName += accentKey;
+  } else {
+    colorName += `-${accentKey}`;
+  }
+
+  if (variant != null) {
+    colorName += `-${variant}`;
+  }
+
+  return colorName;
 }

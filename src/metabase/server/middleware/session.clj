@@ -107,7 +107,7 @@
                                  :session-cookie-samesite normalized-value
                                  :http-status 400})))))
   :doc "See [Embedding Metabase in a different domain](../embedding/interactive-embedding.md#embedding-metabase-in-a-different-domain).
-        Related to [MB_EMBEDDING_APP_ORIGIN](#mb_embedding_app_origin). Read more about [interactive Embedding](../embedding/interactive-embedding.md).
+        Read more about [interactive Embedding](../embedding/interactive-embedding.md).
         Learn more about [SameSite cookies](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie/SameSite).")
 
 (defmulti default-session-cookie-attributes

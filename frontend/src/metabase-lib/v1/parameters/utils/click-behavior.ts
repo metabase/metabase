@@ -54,6 +54,7 @@ interface SourceFilters {
 
 interface ExtraData {
   dashboard?: Dashboard;
+  parameters?: Parameter[];
   dashboards?: Record<Dashboard["id"], Dashboard>;
 }
 
@@ -416,7 +417,7 @@ export function formatSourceForTarget(
     }
   }
 
-  return datum.value;
+  return parameter ? parseParameterValue(datum.value, parameter) : datum.value;
 }
 
 function formatDateForParameterType(
@@ -470,7 +471,7 @@ function getParameter(
   },
 ): Parameter | undefined {
   if (clickBehavior.type === "crossfilter") {
-    const parameters = extraData.dashboard?.parameters || [];
+    const parameters = extraData.parameters ?? [];
     return parameters.find(parameter => parameter.id === target.id);
   }
 
@@ -480,9 +481,11 @@ function getParameter(
     (clickBehavior.linkType === "dashboard" ||
       clickBehavior.linkType === "question")
   ) {
-    const dashboard =
-      extraData.dashboards?.[clickBehavior.targetId as DashboardId];
-    const parameters = dashboard?.parameters || [];
+    const dashboardId = clickBehavior.targetId as DashboardId;
+    const parameters =
+      extraData.dashboard?.id === dashboardId
+        ? (extraData.parameters ?? [])
+        : (extraData.dashboards?.[dashboardId]?.parameters ?? []);
     return parameters.find(parameter => parameter.id === target.id);
   }
 
