@@ -34,13 +34,7 @@
 (defn- ->entry [m]
   (-> m
       (select-keys
-       [:id
-        :model
-        :archived
-        :collection_id
-        :creator_id
-        :database_id
-        :table_id])
+       (into [:id :model] search.spec/attr-keys))
       (update :archived boolean)
       (assoc
        :display_data (display-data m)

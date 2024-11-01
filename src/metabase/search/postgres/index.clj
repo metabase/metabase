@@ -52,11 +52,16 @@
              [:model_rank :int :not-null]
              ;; permission related entities
              [:collection_id :int]
-             [:creator_id :int]
              [:database_id :int]
              [:table_id :int]
              ;; filter related
              [:archived :boolean]
+             [:creator_id :int]
+             [:created_at :timestamp]
+             [:last_edited_at :timestamp]
+             [:last_edited_by :int]
+             [:model_created_at :timestamp]
+             [:model_updated_at :timestamp]
              ;; useful for tracking the speed and age of the index
              [:created_at :timestamp
               [:default [:raw "CURRENT_TIMESTAMP"]]

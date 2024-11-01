@@ -666,21 +666,21 @@
 
 (search/define-spec "dashboard"
   {:model        :model/Dashboard
-   :attrs        {:archived      true
-                  :collection-id true
-                  :creator-id    true
-                  :database-id   false
-                  :table-id      false
-                  :created-at    true
-                  :updated-at    true}
+   :attrs        {:archived       true
+                  :collection-id  true
+                  :creator-id     true
+                  :database-id    false
+                  :last-editor-id :r.user_id
+                  :last-edited-at :r.timestamp
+                  :table-id       false
+                  :created-at     true
+                  :updated-at     true}
    :search-terms [:name :description]
    :render-terms {:collection-name            :collection.name
                   :collection-type            :collection.type
                   :collection-authority_level :collection.authority_level
                   :archived-directly          true
-                  :collection-position        true
-                  :last-editor-id             :r.user_id
-                  :last-edited-at             :r.timestamp}
+                  :collection-position        true}
    :where        []
    :joins        {:collection [:model/Collection [:= :collection.id :this.collection_id]]
                   :r          [:model/Revision [:and

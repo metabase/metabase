@@ -20,14 +20,35 @@
   - vector: calculated by the given expression"
   [:union :boolean :keyword vector?])
 
+(def ^:private explicit-attrs
+  "These attributes must be explicitly defined, omitting them could be a source of bugs."
+  [:archived
+   :collection-id
+   :created-at
+   :creator-id
+   :database-id
+   :table-id
+   :updated-at])
+
+(def ^:private optional-attrs
+  "These attributes may be omitted (for now) in the interest of brevity in the definitions."
+  [:last-edited-at
+   :last-editor-id
+   :verified])
+
+(def attr-keys
+  "Keys of a search-model that correspond to concrete columns in the index"
+  (into explicit-attrs optional-attrs))
+
+(assert (not-any? (set explicit-attrs) optional-attrs) "Attribute must only be mentioned in one list")
+
 (def ^:private Attrs
-  (into [:map] (for [k [:archived
-                        :collection-id
-                        :creator-id
-                        :database-id
-                        :table-id
-                        :created-at]]
-                 [k AttrValue])))
+  (into [:map {:closed true}]
+        (concat (for [k explicit-attrs] [k AttrValue])
+                (for [k optional-attrs] [k {:optional true} AttrValue]))))
+
+(def ^:private NonAttrKey
+  [:and :keyword [:not (into [:enum] attr-keys)]])
 
 (def ^:private JoinMap
   "We use our own schema instead of raw HoneySQL, so that we can invert it to calculate the update hooks."
@@ -39,7 +60,7 @@
    [:model :keyword]
    [:attrs Attrs]
    [:search-terms [:sequential {:min 1} :keyword]]
-   [:render-terms [:map-of :keyword AttrValue]]
+   [:render-terms [:map-of NonAttrKey AttrValue]]
    [:where {:optional true} vector?]
    [:joins {:optional true} JoinMap]])
 

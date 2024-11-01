@@ -1011,13 +1011,16 @@
 
 (def ^:private base-card-spec
   {:model        :model/Card
-   :attrs        {:archived      true
-                  :collection-id :collection_id
-                  :creator-id    true
-                  :database-id   false
-                  :table-id      false
-                  :created-at    true
-                  :updated-at    true}
+   :attrs        {:archived       true
+                  :collection-id  :collection_id
+                  :creator-id     true
+                  :database-id    false
+                  :table-id       false
+                  :last-edited-at :r.timestamp
+                  :last-editor-id :r.user_id
+                  :verified       [:= "verified" :mr.status]
+                  :created-at     true
+                  :updated-at     true}
    :search-terms [:name :description]
    ;; TODO this will need to go on a second search vector.
    :native-query :dataset_query
@@ -1029,8 +1032,6 @@
                   :collection-type            :collection.type
                   :dataset-query              true
                   :display                    true
-                  :last-edited-at             :r.timestamp
-                  :last-editor-id             :r.user_id
                   :moderated-status           :mr.status}
    :bookmark     [:model/CardBookmark [:and
                                        [:= :bookmark.card_id :this.id]
