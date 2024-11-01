@@ -61,6 +61,7 @@ export function syncVizSettings(
   nextSettings = syncColumnSettings(nextSettings, newColumns, oldColumns);
   nextSettings = syncGraphMetrics(nextSettings, newColumns, oldColumns);
   nextSettings = syncPivotColumnSplit(nextSettings, newColumns, oldColumns);
+  nextSettings = syncPivotCollapsedRows(nextSettings, newColumns, oldColumns);
   return nextSettings;
 }
 
@@ -93,14 +94,14 @@ function getSeriesColumns(series: SingleSeries): ColumnInfo[] {
   }));
 }
 
-type SyncColumnNamesOpts<T> = {
+type SyncColumnsOpts<T> = {
   settings: T[];
   newColumns: ColumnInfo[];
   oldColumns: ColumnInfo[];
   getColumnName: (setting: T) => string | undefined;
   setColumnName: (setting: T, newName: string) => T;
   createSetting: (column: ColumnInfo) => T;
-  shouldCreateSetting: (column: ColumnInfo) => boolean | undefined;
+  shouldCreateSetting?: (column: ColumnInfo) => boolean | undefined;
 };
 
 function syncColumns<T>({
@@ -110,8 +111,8 @@ function syncColumns<T>({
   getColumnName,
   setColumnName,
   createSetting,
-  shouldCreateSetting,
-}: SyncColumnNamesOpts<T>): T[] {
+  shouldCreateSetting = () => false,
+}: SyncColumnsOpts<T>): T[] {
   const newNameByKey = Object.fromEntries(
     newColumns.map(column => [column.key, column.name]),
   );
@@ -138,6 +139,30 @@ function syncColumns<T>({
     .map(createSetting);
 
   return [...remappedSettings, ...addedSettings];
+}
+
+type SyncColumnNamesOpts = {
+  settings: string[];
+  newColumns: ColumnInfo[];
+  oldColumns: ColumnInfo[];
+  shouldCreateSetting?: (column: ColumnInfo) => boolean | undefined;
+};
+
+function syncColumnNames({
+  settings,
+  newColumns,
+  oldColumns,
+  shouldCreateSetting,
+}: SyncColumnNamesOpts) {
+  return syncColumns({
+    settings,
+    newColumns,
+    oldColumns,
+    getColumnName: setting => setting,
+    setColumnName: (_, newName) => newName,
+    createSetting: column => column.name,
+    shouldCreateSetting,
+  });
 }
 
 function syncTableColumns(
@@ -202,13 +227,10 @@ function syncGraphMetrics(
 
   return {
     ...settings,
-    "graph.metrics": syncColumns({
+    "graph.metrics": syncColumnNames({
       settings: graphMetrics,
       newColumns,
       oldColumns,
-      getColumnName: setting => setting,
-      setColumnName: (_, newName) => newName,
-      createSetting: column => column.name,
       shouldCreateSetting: column => column.isAggregation,
     }),
   };
@@ -224,24 +246,56 @@ function syncPivotColumnSplit(
     return settings;
   }
 
-  const keys = ["rows", "columns", "values"] as const;
   return {
     ...settings,
-    "pivot_table.column_split": Object.fromEntries(
-      keys
-        .filter(key => columnSettings[key])
-        .map(key => [
-          key,
-          syncColumns({
-            settings: columnSettings[key] ?? [],
-            newColumns,
-            oldColumns,
-            getColumnName: setting => setting,
-            setColumnName: (_, newName) => newName,
-            createSetting: column => column.name,
-            shouldCreateSetting: () => false,
-          }),
-        ]),
-    ),
+    "pivot_table.column_split": {
+      ...columnSettings,
+      rows:
+        columnSettings.rows &&
+        syncColumnNames({
+          settings: columnSettings.rows,
+          newColumns,
+          oldColumns,
+        }),
+      columns:
+        columnSettings.columns &&
+        syncColumnNames({
+          settings: columnSettings.columns,
+          newColumns,
+          oldColumns,
+        }),
+      values:
+        columnSettings.values &&
+        syncColumnNames({
+          settings: columnSettings.values,
+          newColumns,
+          oldColumns,
+        }),
+    },
+  };
+}
+
+function syncPivotCollapsedRows(
+  settings: VisualizationSettings,
+  newColumns: ColumnInfo[],
+  oldColumns: ColumnInfo[],
+): VisualizationSettings {
+  const rowSettings = settings["pivot_table.collapsed_rows"];
+  if (!rowSettings) {
+    return settings;
+  }
+
+  return {
+    ...settings,
+    "pivot_table.collapsed_rows": {
+      ...rowSettings,
+      rows:
+        rowSettings.rows &&
+        syncColumnNames({
+          settings: rowSettings.rows,
+          newColumns,
+          oldColumns,
+        }),
+    },
   };
 }
