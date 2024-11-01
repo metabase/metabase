@@ -1056,4 +1056,3 @@
 
 (search/define-spec "metric"
   (-> base-card-spec (sql.helpers/where [:= :this.type "metric"])))
-

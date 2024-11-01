@@ -203,4 +203,3 @@
                   :table_name        :table.name
                   :table_schema      :table.schema}
    :joins        {:table [:model/Table [:= :table.id :this.table_id]]}})
-
