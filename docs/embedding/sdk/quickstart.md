@@ -8,7 +8,7 @@ title: Embedded analytics SDK - quickstart with sample app
 
 {% include plans-blockquote.html feature="Embedded analytics SDK" %}
 
-This guide sets up the embedded analytics SDK with the [sample React app](https://github.com/metabase/metabase-nodejs-react-sdk-embedding-sample), but you can follow along with your own application.
+This guide sets up the embedded analytics SDK with a [sample React app](https://github.com/metabase/metabase-nodejs-react-sdk-embedding-sample), but you can follow along with your own application.
 
 ## Prerequisites
 
@@ -39,13 +39,9 @@ Let's go.
 
 ## Install Metabase Enterprise Edition
 
-Install up Metabase Enterprise Edition for embedding
-
 You can run Metabase Pro on a Cloud plan (with a free trial)](https://www.metabase.com/pricing).
 
-Or run it locally.
-
-Here's a docker one-liner:
+Or run it locally. Here's a docker one-liner:
 
 ```sh
 docker run -d -p 3000:3000 --name metabase metabase/metabase-enterprise:latest
@@ -84,7 +80,7 @@ On the card that says **JWT**, click the **Setup** button.
 
 In **JWT IDENTITY PROVIDER URI** field, paste
 
-```
+```txt
 localhost:9090/sso/metabase
 ```
 
@@ -122,7 +118,7 @@ In `.env`, make sure `REACT_APP_METABASE_INSTANCE_URL` and `METABASE_INSTANCE_UR
 
 You're `.env` will look something like:
 
-```
+```txt
 # FRONTEND
 PORT=3100
 REACT_APP_METABASE_INSTANCE_URL="http://localhost:3000"
