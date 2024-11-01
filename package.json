@@ -325,6 +325,7 @@
     "ansi-regex": "5.0.1",
     "cookie": "^0.7.0",
     "d3-color": "^3.1.0",
+    "elliptic": "^6.6.0",
     "debug": "^4.3.4",
     "follow-redirects": "^1.15.5",
     "jsdom": "^22.1.0",
