@@ -1,5 +1,7 @@
 (ns metabase.api.pivots
   (:require
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.test :as mt]))
 
 (defn applicable-drivers
@@ -70,9 +72,14 @@
 (defn pivot-card
   "A dashboard card query with a pivot table"
   []
-  (let [pivot-query (pivot-query false)]
-    {:dataset_query pivot-query
+  (let [dataset-query     (pivot-query false)
+        metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+        query             (lib/query metadata-provider dataset-query)
+        breakouts         (into []
+                                (comp (filter (comp #{:source/breakouts} :lib/source)) (map :name))
+                                (lib/returned-columns query))]
+    {:dataset_query dataset-query
      :visualization_settings
      {:pivot_table.column_split
-      {:rows    ["SOURCE" "STATE"]
-       :columns ["CATEGORY"]}}}))
+      {:rows    [(get breakouts 1) (get breakouts 0)]
+       :columns [(get breakouts 2)]}}}))
