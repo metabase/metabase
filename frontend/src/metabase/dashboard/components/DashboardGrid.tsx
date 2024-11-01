@@ -536,7 +536,7 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
         onUpdateVisualizationSettings={
           this.props.onUpdateDashCardVisualizationSettings
         }
-        onReplaceAllVisualizationSettings={
+        onReplaceAllDashCardVisualizationSettings={
           this.props.onReplaceAllDashCardVisualizationSettings
         }
         mode={this.props.mode}

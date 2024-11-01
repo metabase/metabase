@@ -1260,8 +1260,11 @@
                   (t2/query {:insert-into table-name :values values})))
               (let [group-id (:id (t2/query-one {:select :id :from :permissions_group :where [:= :name "All Users"]}))]
                 (t2/query {:insert-into :permissions
-                           :values      [{:object   (format "/collection/%s/" example-collection-id)
-                                          :group_id group-id}]}))
+                           :values      [{:object        (format "/collection/%s/" example-collection-id)
+                                          :group_id      group-id
+                                          :perm_type     "perms/collection-access"
+                                          :perm_value    "read-and-write"
+                                          :collection_id example-collection-id}]}))
               (t2/query {:insert-into :setting
                          :values      [{:key   "example-dashboard-id"
                                         :value (str example-dashboard-id)}]})))))))
@@ -1598,7 +1601,7 @@
                      {:name         "User joined Email template"
                       :channel_type "channel/email"
                       :details      (json/generate-string {:type           "email/mustache-resource"
-                                                           :subject        "{{context.extra.user-invited-email-subject}}"
+                                                           :subject        "{{payload.custom.user_invited_email_subject}}"
                                                            :path           "metabase/email/new_user_invite.mustache"
                                                            :recipient-type :cc})
                       :created_at   :%now
@@ -1611,7 +1614,7 @@
        :channel_id      nil
        :template_id     template-id
        :recipients      [{:type    "notification-recipient/template"
-                          :details (json/generate-string {:pattern "{{event-info.object.email}}"})}]}])))
+                          :details (json/generate-string {:pattern "{{payload.event_info.object.email}}"})}]}])))
 
 (define-migration CreateSystemNotificationAlertCreated
   (let [template-id (t2/insert-returning-pk!
@@ -1632,7 +1635,7 @@
        :channel_id      nil
        :template_id     template-id
        :recipients      [{:type    "notification-recipient/template"
-                          :details (json/generate-string {:pattern "{{event-info.user.email}}"})}]}])))
+                          :details (json/generate-string {:pattern "{{payload.event_info.user.email}}"})}]}])))
 
 (define-migration CreateSystemNotificationSlackTokenError
   (let [template-id (t2/insert-returning-pk!
@@ -1653,7 +1656,7 @@
        :channel_id      nil
        :template_id     template-id
        :recipients      [{:type    "notification-recipient/template"
-                          :details (json/generate-string {:pattern     "{{context.admin-email}}"
+                          :details (json/generate-string {:pattern     "{{context.admin_email}}"
                                                           :is_optional true})}
                          {:type                 "notification-recipient/group"
                           :permissions_group_id (t2/select-one-pk :permissions_group :name "Administrators")}]}])))

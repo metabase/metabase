@@ -2,9 +2,11 @@ import { ORDERS_COUNT_QUESTION_ID } from "e2e/support/cypress_sample_instance_da
 import {
   closeCommandPalette,
   commandPalette,
+  commandPaletteInput,
   commandPaletteSearch,
   createModerationReview,
   describeEE,
+  getPartialPremiumFeatureError,
   openCommandPalette,
   openQuestionActions,
   popover,
@@ -34,8 +36,8 @@ describeEE("scenarios > premium > content verification", () => {
           moderated_item_type: "card",
         },
       }).then(({ body, status, statusText }) => {
-        expect(body).to.eq(
-          "Content verification is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/",
+        expect(body).to.deep.include(
+          getPartialPremiumFeatureError("Content verification"),
         );
         expect(status).to.eq(402);
         expect(statusText).to.eq("Payment Required");
@@ -93,6 +95,10 @@ describeEE("scenarios > premium > content verification", () => {
         commandPalette()
           .findByRole("option", { name: "Orders, Count" })
           .find(".Icon-verified_filled");
+        commandPaletteInput().type("Orders");
+        commandPalette()
+          .findByRole("option", { name: "Orders, Count" })
+          .find(".Icon-verified_filled");
         closeCommandPalette();
 
         // 4. Search results
@@ -129,6 +135,11 @@ describeEE("scenarios > premium > content verification", () => {
 
         // 3. Recently viewed list
         openCommandPalette();
+        commandPalette()
+          .findByRole("option", { name: "Orders, Count" })
+          .find(".Icon-verified_filled")
+          .should("not.exist");
+        commandPaletteInput().type("Orders");
         commandPalette()
           .findByRole("option", { name: "Orders, Count" })
           .find(".Icon-verified_filled")
@@ -230,6 +241,18 @@ describeEE("scenarios > premium > content verification", () => {
         cy.contains(/verified this/).should("not.exist");
       });
       cy.findByLabelText("Close").click();
+
+      openCommandPalette();
+      commandPalette()
+        .findByRole("option", { name: "Orders, Count" })
+        .find(".Icon-verified_filled")
+        .should("not.exist");
+      commandPaletteInput().type("Orders");
+      commandPalette()
+        .findByRole("option", { name: "Orders, Count" })
+        .find(".Icon-verified_filled")
+        .should("not.exist");
+      closeCommandPalette();
 
       commandPaletteSearch("orders");
       cy.log(

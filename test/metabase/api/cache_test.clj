@@ -8,14 +8,14 @@
   (mt/with-model-cleanup [:model/CacheConfig]
     (mt/with-premium-features #{}
       (testing "Advanced caching requires premium token"
-        (is (= "Granular Caching is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
-               (mt/user-http-request :crowberto :put 402 "cache/"
-                                     {:model    "question"
-                                      :model_id 123456789
-                                      :strategy {:type "nocache"}})))
-        (is (= "Granular Caching is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
-               (mt/user-http-request :crowberto :get 402 "cache/"
-                                     :model "question"))))
+        (mt/assert-has-premium-feature-error "Granular Caching"
+                                             (mt/user-http-request :crowberto :put 402 "cache/"
+                                                                   {:model    "question"
+                                                                    :model_id 123456789
+                                                                    :strategy {:type "nocache"}}))
+        (mt/assert-has-premium-feature-error "Granular Caching"
+                                             (mt/user-http-request :crowberto :get 402 "cache/"
+                                                                   :model "question")))
       (testing "Can operate on root settings though"
         (is (mt/user-http-request :crowberto :put 200 "cache/"
                                   {:model    "root"

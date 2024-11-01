@@ -919,6 +919,7 @@ class TableInteractive extends Component {
             column={query && Lib.fromLegacyColumn(query, stageIndex, column)}
             timezone={data.results_timezone}
             disabled={this.props.clicked != null || !hasMetadataPopovers}
+            openDelay={500}
             showFingerprintInfo
           >
             {renderTableHeaderWrapper(

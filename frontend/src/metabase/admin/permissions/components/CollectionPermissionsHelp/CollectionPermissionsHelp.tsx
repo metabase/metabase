@@ -40,7 +40,7 @@ export const CollectionPermissionsHelp = () => {
 
       <Text component="footer" align="center" py={24} weight={600}>
         {jt`${(
-          <ExternalLink href={url}>{t`Learn more`}</ExternalLink>
+          <ExternalLink key="link" href={url}>{t`Learn more`}</ExternalLink>
         )} about collection permissions`}
       </Text>
     </Flex>

@@ -11,7 +11,6 @@
    [metabase.audit :as audit]
    [metabase.config :as config]
    [metabase.db.query :as mdb.query]
-   [metabase.email.messages :as messages]
    [metabase.events :as events]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.core :as lib]
@@ -22,13 +21,14 @@
    [metabase.models.audit-log :as audit-log]
    [metabase.models.card.metadata :as card.metadata]
    [metabase.models.collection :as collection]
+   [metabase.models.data-permissions :as data-perms]
    [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
    [metabase.models.moderation-review :as moderation-review]
    [metabase.models.parameter-card :as parameter-card :refer [ParameterCard]]
    [metabase.models.params :as params]
    [metabase.models.permissions :as perms]
-   [metabase.models.pulse :as pulse]
+   [metabase.models.pulse :as models.pulse]
    [metabase.models.query :as query]
    [metabase.models.query.permissions :as query-perms]
    [metabase.models.revision :as revision]
@@ -193,6 +193,20 @@
   "Hydrate can_run_adhoc_query onto cards"
   [cards]
   (with-can-run-adhoc-query cards))
+
+;; note: perms lookup here in the course of fetching a card/model should hit a cache pre-warmed by
+;; the `:can_run_adhoc_query` above
+(mi/define-batched-hydration-method add-can-manage-db
+  :can_manage_db
+  "Hydrate can_manage_db onto cards. Indicates whether the current user has access to the database admin page for the
+  database powering this card."
+  [cards]
+  (map
+   (fn [card]
+     (assoc card
+            :can_manage_db
+            (data-perms/user-has-permission-for-database? api/*current-user-id* :perms/manage-database :yes (:database_id card))))
+   cards))
 
 (methodical/defmethod t2/batched-hydrate [:model/Card :parameter_usage_count]
   [_model k cards]
@@ -693,39 +707,24 @@
        (< 1 (count (get-in new-card [:dataset_query :query :breakout])))))
 
 (defn- delete-alert-and-notify!
-  "Removes all of the alerts and notifies all of the email recipients of the alerts change via `NOTIFY-FN!`"
-  [& {:keys [notify-fn! alerts actor]}]
-  (t2/delete! :model/Pulse :id [:in (map :id alerts)])
-  (doseq [{:keys [channels] :as alert} alerts
-          :let [email-channel (m/find-first #(= :email (:channel_type %)) channels)]]
-    (doseq [recipient (:recipients email-channel)]
-      (notify-fn! alert recipient actor))))
-
-(defn delete-alert-and-notify-archived!
-  "Removes all alerts and will email each recipient letting them know"
-  [& {:keys [alerts actor]}]
-  (delete-alert-and-notify! {:notify-fn! messages/send-alert-stopped-because-archived-email!
-                             :alerts     alerts
-                             :actor      actor}))
-
-(defn- delete-alert-and-notify-changed! [& {:keys [alerts actor]}]
-  (delete-alert-and-notify! {:notify-fn! messages/send-alert-stopped-because-changed-email!
-                             :alerts     alerts
-                             :actor      actor}))
+  "Removes all of the alerts and notifies all of the email recipients of the alerts change."
+  [topic actor alerts]
+  (t2/delete! :model/Pulse :id [:in (mapv u/the-id alerts)])
+  (events/publish-event! topic {:alerts alerts, :actor actor}))
 
 (defn- delete-alerts-if-needed! [& {:keys [old-card new-card actor]}]
   ;; If there are alerts, we need to check to ensure the card change doesn't invalidate the alert
-  (when-let [alerts (binding [pulse/*allow-hydrate-archived-cards* true]
-                      (seq (pulse/retrieve-alerts-for-cards {:card-ids [(:id new-card)]})))]
+  (when-let [alerts (binding [models.pulse/*allow-hydrate-archived-cards* true]
+                      (not-empty (models.pulse/retrieve-alerts-for-cards {:card-ids [(u/the-id new-card)]})))]
     (cond
 
       (card-archived? old-card new-card)
-      (delete-alert-and-notify-archived! :alerts alerts, :actor actor)
+      (delete-alert-and-notify! :event/card-update.alerts-deleted.card-archived actor alerts)
 
       (or (display-change-broke-alert? old-card new-card)
           (goal-missing? old-card new-card)
           (multiple-breakouts? new-card))
-      (delete-alert-and-notify-changed! :alerts alerts, :actor actor)
+      (delete-alert-and-notify! :event/card-update.alerts-deleted.card-became-invalid actor alerts)
 
       ;; The change doesn't invalidate the alert, do nothing
       :else
@@ -768,6 +767,92 @@
     :query_type ;; these first three may not even be changeable
     :dataset_query})
 
+(defn- breakout-->identifier->refs
+  "Generate mapping of of _ref identifier_ -> #{_ref..._}.
+
+  _ref identifier_ is a vector of first 2 elements of ref, eg. [:expression \"xix\"] or [:field 10]"
+  [breakouts]
+  (-> (group-by #(subvec % 0 2) breakouts)
+      (update-vals set)))
+
+(defn- action-for-identifier+refs
+  "Generate _action_ for combination of args.
+
+  _Action_ is to be performed on _parameter mapping_ of a _dashcard_. For more info see
+  the [[update-associated-parameters!]]'s docstring.
+
+  _Action_ has a form of [<action> & args]."
+  [after--identifier->refs identifier before--refs]
+  (let [after--refs (get after--identifier->refs identifier #{})]
+    (when (and (= 1 (count before--refs) (count after--refs))
+               (not= before--refs after--refs))
+      [:update (first after--refs)])))
+
+(defn- breakouts-->identifier->action
+  "Generate mapping of _identifier_ -> _action_.
+
+  _identifier_ is is a vector of first 2 elements of ref, eg. [:expression \"xix\"] or [:field 10]. Action is generated
+  in [[action-for-identifier+refs]] and performed later in [[update-mapping]]."
+  [breakout-before-update breakout-after-update]
+  (let [before--identifier->refs (breakout-->identifier->refs breakout-before-update)
+        after--identifier->refs  (breakout-->identifier->refs breakout-after-update)]
+    ;; Remove no-ops to avoid redundant db calls in [[update-associated-parameters!]].
+    (->> before--identifier->refs
+         (m/map-kv-vals #(action-for-identifier+refs after--identifier->refs %1 %2))
+         (m/filter-vals some?)
+         not-empty)))
+
+(defn eligible-mapping?
+  "Decide whether parameter mapping has strucuture so it can be updated presumably using [[update-mapping]]."
+  [{[dim [ref-kind]] :target :as _mapping}]
+  (and (= dim :dimension)
+       (#{:field :expression} ref-kind)))
+
+(defn- update-mapping
+  "Return modifed mapping according to action."
+  [identifier->action {[_dim ref] :target :as mapping}]
+  (let [identifier (subvec ref 0 2)
+        [action arg] (get identifier->action identifier)]
+    (case action
+      :update (assoc-in mapping [:target 1] arg)
+      mapping)))
+
+(defn- updates-for-dashcards
+  [identifier->action dashcards]
+  (not-empty (for [{:keys [id parameter_mappings]} dashcards
+                   :let [updated (into [] (map #(if (eligible-mapping? %)
+                                                  (update-mapping identifier->action %)
+                                                  %))
+                                       parameter_mappings)]
+                   :when (not= parameter_mappings updated)]
+               [id {:parameter_mappings updated}])))
+
+(defn- update-associated-parameters!
+  "Update _parameter mappings_ of _dashcards_ that target modified _card_, to reflect the modification.
+
+  This function handles only modifications to breakout.
+
+  Context. Card can have multiple multiple breakout elements referencing same field or expression, having different
+  _temporal unit_. Those refs can be targeted by dashboard _temporal unit parameter_. If refs change, and card is saved,
+  _parameter mappings_ have to be updated to target new, modified refs. This function takes care of that.
+
+  First mappings of _identifier_ -> _action_ are generated. _identifier_ is described
+  eg. in [[breakouts-->identifier->action]] docstring. Then, dashcards are fetched and updates are generated
+  by [[updates-for-dashcards]]. Updates are then executed."
+  [card-before card-after]
+  (let [card->breakout     #(-> % :dataset_query mbql.normalize/normalize :query :breakout)
+        breakout-before    (card->breakout card-before)
+        breakout-after     (card->breakout card-after)]
+    (when-some [identifier->action (breakouts-->identifier->action breakout-before breakout-after)]
+      (let [dashcards          (t2/select :model/DashboardCard :card_id (some :id [card-after card-before]))
+            updates            (updates-for-dashcards identifier->action dashcards)]
+        ;; Beware. This can have negative impact on card update performance as queries are fired in sequence. I'm not
+        ;; aware of more reasonable way.
+        (when (seq updates)
+          (t2/with-transaction [_conn]
+            (doseq [[id update] updates]
+              (t2/update! :model/DashboardCard :id id update))))))))
+
 (defn update-card!
   "Update a Card. Metadata is fetched asynchronously. If it is ready before [[metadata-sync-wait-ms]] elapses it will be
   included, otherwise the metadata will be saved to the database asynchronously."
@@ -793,7 +878,15 @@
                                     :present #{:collection_id :collection_position :description :cache_ttl :archived_directly}
                                     :non-nil #{:dataset_query :display :name :visualization_settings :archived
                                                :enable_embedding :type :parameters :parameter_mappings :embedding_params
-                                               :result_metadata :collection_preview :verified-result-metadata?})))
+                                               :result_metadata :collection_preview :verified-result-metadata?}))
+    ;; ok, now update dependent dashcard parameters
+    (try
+      (update-associated-parameters! card-before-update card-updates)
+      (catch Throwable e
+        (log/error "Update of dependent card parameters failed!")
+        (log/debug e
+                   "`card-before-update`:" (pr-str card-before-update)
+                   "`card-updates`:" (pr-str card-updates)))))
   ;; Fetch the updated Card from the DB
   (let [card (t2/select-one Card :id (:id card-before-update))]
     (delete-alerts-if-needed! :old-card card-before-update, :new-card card, :actor actor)
@@ -893,17 +986,16 @@
         template-tags      (some->> card :dataset_query :native :template-tags vals (keep :card-id))
         parameters-card-id (some->> card :parameters (keep (comp :card_id :values_source_config)))
         snippets           (some->> card :dataset_query :native :template-tags vals (keep :snippet-id))]
-    (set
-     (concat
-      (when (and (string? source-table)
-                 (str/starts-with? source-table "card__"))
-        [["Card" (parse-long (subs source-table 6))]])
-      (for [card-id template-tags]
-        ["Card" card-id])
-      (for [card-id parameters-card-id]
-        ["Card" card-id])
-      (for [snippet-id snippets]
-        ["NativeQuerySnippet" snippet-id])))))
+    (into {} (concat
+              (when (and (string? source-table)
+                         (str/starts-with? source-table "card__"))
+                {["Card" (parse-long (subs source-table 6))] {"Card" id}})
+              (for [card-id template-tags]
+                {["Card" card-id] {"Card" id}})
+              (for [card-id parameters-card-id]
+                {["Card" card-id] {"Card" id}})
+              (for [snippet-id snippets]
+                {["NativeQuerySnippet" snippet-id] {"Card" id}})))))
 
 ;;; ------------------------------------------------ Audit Log --------------------------------------------------------
 

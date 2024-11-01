@@ -146,5 +146,4 @@
                                    first)
         metric-name (:name metric-meta)]
     (assoc (lib.metadata.calculation/metadata query stage-number metric-aggregation)
-           :name metric-name
            :display-name metric-name)))

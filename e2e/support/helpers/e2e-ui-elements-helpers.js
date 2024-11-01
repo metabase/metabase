@@ -197,6 +197,12 @@ export const questionInfoButton = () => {
   return cy.findByTestId("qb-header-info-button");
 };
 
+/** Opens the question info sidesheet */
+export const openQuestionInfoSidesheet = () => {
+  questionInfoButton().click();
+  return sidesheet();
+};
+
 export const undo = () => {
   cy.findByTestId("toast-undo").findByText("Undo").click();
 };
@@ -339,4 +345,14 @@ export function removeMultiAutocompleteValue(index, filter) {
   return multiAutocompleteValue(index, filter)
     .findByRole("button", { hidden: true })
     .click();
+}
+
+export function repeatAssertion(assertFn, timeout = 4000, interval = 400) {
+  if (timeout <= 0) {
+    return;
+  }
+  assertFn();
+
+  cy.wait(interval);
+  repeatAssertion(assertFn, timeout - interval, interval);
 }
