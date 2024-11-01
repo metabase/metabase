@@ -24,17 +24,17 @@
   "These attributes must be explicitly defined, omitting them could be a source of bugs."
   [:archived
    :collection-id
-   :created-at
-   :creator-id
    :database-id
-   :table-id
-   :updated-at])
+   :table-id])
 
 (def ^:private optional-attrs
   "These attributes may be omitted (for now) in the interest of brevity in the definitions."
-  [:last-edited-at
+  [:created-at
+   :creator-id
+   :last-edited-at
    :last-editor-id
-   :verified])
+   :verified
+   :updated-at])
 
 (def attr-keys
   "Keys of a search-model that correspond to concrete columns in the index"
