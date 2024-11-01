@@ -192,7 +192,7 @@ describe("issue 8030 + 32444", () => {
             popover().within(() => {
               // the filter is connected only to the first card
               multiAutocompleteInput().type("1{enter}");
-              cy.findByText("Add filter").click();
+              cy.button("Add filter").click();
             });
             cy.wait("@getCardQuery1");
             cy.get("@getCardQuery1.all").should("have.length", 2);
@@ -587,7 +587,6 @@ describe("issues 15119 and 16112", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(reviewerFilter.name).click();
     popover().contains("adam").click();
-    multiAutocompleteInput().blur();
     cy.button("Add filter").click();
 
     cy.findByTestId("dashcard-container").should("contain", "adam");
