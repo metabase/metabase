@@ -1,5 +1,6 @@
 (ns metabase.search.postgres.index-test
   (:require
+   [cheshire.core :as json]
    [clojure.test :refer [deftest is testing]]
    [metabase.db :as mdb]
    [metabase.search.postgres.core :as search.postgres]
@@ -70,19 +71,28 @@
 
 (deftest related-update-test
   (with-index
-   (testing "The index is updated when models change"
-     ;; The second entry is "Revenue Project(ions)"
-     (is (= 2 (count #p (search.index/search "Trash"))))
+   (testing "The index is updated when model dependencies change"
+     (let [index-table    @#'search.index/active-table
+           table-idx      (t2/select-one [index-table :id :model_id] :model "table")
+           table-idx-id   (:id table-idx)
+           table-id       (:model_id table-idx)
+           legacy-input   #(-> (t2/select-one [index-table :legacy_input] table-idx-id)
+                               :legacy_input
+                               (json/parse-string true))
+           db-id          (t2/select-one-fn :db_id :model/Table table-id)
+           db-name-fn     (comp :database_name legacy-input)
+           orig-db-name   (db-name-fn)
+           alternate-name (str (random-uuid))]
 
-     (t2/update! :model/Card {:name "Projected Revenue"} {:name "Protected Avenue"})
-     ;; TODO wire up an actual hook
-     (search.ingestion/update-index! (t2/select-one :model/Card :name "Protected Avenue"))
+       (t2/update! :model/Database db-id {:name alternate-name})
+       (try
+         ;; TODO wire up an actual hook
+         (search.ingestion/update-index! (t2/select-one :model/Table :id table-id))
 
-     (is (= 1 (count (search.index/search "Projected Revenue"))))
-     (is (= 1 (count (search.index/search "Protected Avenue"))))
+         (is (= alternate-name (db-name-fn)))
 
-     (is (= 1 (count (search.index/search "Projected Revenue"))))
-     (is (= 0 (count (search.index/search "Protected Avenue")))))))
+         (finally
+           (t2/update! :model/Database db-id {:name orig-db-name})))))))
 
 (deftest consistent-subset-test
   (with-index

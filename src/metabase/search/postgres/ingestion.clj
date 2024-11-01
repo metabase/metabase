@@ -94,7 +94,7 @@
        (sql.helpers/where where-clause))))
 
 (defn- spec-index-reducible [search-model & [where-clause]]
-  (->> (spec-index-query search-model where-clause)
+  (->> (spec-index-query-where search-model where-clause)
        t2/reducible-query
        (eduction (map #(assoc % :model search-model)))))
 
