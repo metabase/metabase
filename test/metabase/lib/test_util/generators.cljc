@@ -2,13 +2,12 @@
   (:require
    #?@(:cljs (metabase.test-runner.assert-exprs.approximately-equal))
    [clojure.test :refer [deftest is testing]]
-   [clojure.test.check.generators :as gen]
-   [java-time.api :as t]
    [metabase.lib.breakout :as lib.breakout]
    [metabase.lib.core :as lib]
-   [metabase.lib.options :as lib.options]
+   [metabase.lib.equality :as lib.equality]
    [metabase.lib.test-metadata :as meta]
-   [metabase.lib.types.isa :as lib.types.isa]
+   [metabase.lib.test-util.generators.filters :as gen.filters]
+   [metabase.lib.test-util.generators.util :as gen.u]
    [metabase.util :as u]))
 
 ;; NOTE: Being able to *execute* these queries and grok the results would actually be really powerful, if we can
@@ -81,14 +80,6 @@
   (swap! step-kinds assoc kind step-def))
 
 ;; Helpers =======================================================================================
-(defn- choose
-  "Uniformly chooses among a seq of options.
-
-  Returns nil if the list is empty! This is handy for choose-and-do vs. do-nothing while writing the next steps."
-  [xs]
-  (when-not (empty? xs)
-    (rand-nth xs)))
-
 (defn- choose-stage
   "Chooses a stage to operator on. 80% act on -1, 20% chooses a stage by index (which might be the last stage)."
   [query]
@@ -121,9 +112,9 @@
 ;; TODO: If exhaustion is a goal, we should think about making these into generators or otherwise reifying the choices.
 (defmethod next-steps* :aggregate [query _aggregate]
   (let [stage-number (choose-stage query)
-        operator     (choose (lib/available-aggregation-operators query stage-number))
+        operator     (gen.u/choose (lib/available-aggregation-operators query stage-number))
         agg          (if (:requires-column? operator)
-                       (lib/aggregation-clause operator (choose (:columns operator)))
+                       (lib/aggregation-clause operator (gen.u/choose (:columns operator)))
                        (lib/aggregation-clause operator))]
     [:aggregate stage-number agg]))
 
@@ -132,11 +123,11 @@
 
 (defmethod next-steps* :breakout [query _breakout]
   (let [stage-number (choose-stage query)
-        column       (choose (lib/breakoutable-columns query stage-number))
+        column       (gen.u/choose (lib/breakoutable-columns query stage-number))
         ;; If this is a temporal column, we need to choose a unit for it. Nil if it's not temporal.
         ;; TODO: Don't always bucket/bin! We should sometimes choose the "Don't bin" option etc.
-        bucket       (choose (lib/available-temporal-buckets query stage-number column))
-        binning      (choose (lib/available-binning-strategies query stage-number column))
+        bucket       (gen.u/choose (lib/available-temporal-buckets query stage-number column))
+        binning      (gen.u/choose (lib/available-binning-strategies query stage-number column))
         brk-column   (cond-> column
                        bucket  (lib/with-temporal-bucket bucket)
                        binning (lib/with-binning binning))]
@@ -172,314 +163,36 @@
                  (count before-breakouts))))))))
 
 ;; Filters =======================================================================================
-(defn- gen-int []
-  (- (rand-int 2000000) 1000000))
-
-(def ^:private valid-ascii
-  (mapv char (range 0x20 0x7f)))
-
-(def ^:private han-unicode
-  (mapv char (range 0x4e00 0xa000)))
-
-(defn- gen-string
-  ([]
-   (if (< (rand) 0.1)
-     (gen-string han-unicode 40)
-     (gen-string valid-ascii 70)))
-  ([symbols max-len]
-   (apply str (repeatedly (inc (rand-int max-len)) #(rand-nth symbols)))))
-
-(defn- gen-time []
-  (t/local-time (rand-int 24) (rand-int 60) (rand-int 60) (rand-int 1000000000)))
-
-(defn- gen-time:minute []
-  (t/local-time (rand-int 24) (rand-int 60) 0 0))
-
-(defn- gen-date []
-  (t/plus (t/local-date (+ 2000 (rand-int 40)) 1 1)
-          (t/days (rand-int 365))))
-
-(defn- gen-datetime []
-  (t/local-date-time (gen-date) (gen-time)))
-
-(defn- gen-datetime:minute []
-  (t/local-date-time (gen-date) (gen-time:minute)))
-
-(defn- gen-latitude []
-  ;; +/- 75 degrees is a generous but plausible range for latitudes.
-  (* 150 (- (rand) 0.5)))
-
-(defn- gen-longitude []
-  ;; +/- 180 degrees
-  (- (* 360 (rand))
-     180))
-
-(def ^:private fake-categories
-  (vec (for [i (range 1 41)]
-         (str "Fake Category " i))))
-
-(defn- gen-category []
-  ;; Just some made-up values that are clearly not random strings for debugging.
-  (rand-nth fake-categories))
-
-(defn- rand-column-value [{:keys [effective-type] :as column}]
-  (cond
-    ;; Numeric PKs and FKs are always integers.
-    (and (lib.types.isa/id? column)
-         (lib.types.isa/numeric? column))              (abs (gen-int))
-    (#{:type/BigInteger :type/Integer} effective-type) (gen-int)
-    (lib.types.isa/category? column)                   (gen-category)
-    (lib.types.isa/latitude? column)                   (gen-latitude)
-    (lib.types.isa/longitude? column)                  (gen-longitude)
-    (lib.types.isa/numeric? column)                    (cond-> (gen-int)
-                                                         (< (rand) 0.5) (+ (rand)))
-    (lib.types.isa/string-or-string-like? column)      (gen-string)
-    (lib.types.isa/time? column)                       (gen-time)
-    (lib.types.isa/date-without-time? column)          (gen-date)
-    (isa? effective-type :type/DateTime)               (gen-datetime)
-    :else (throw (ex-info " !!! Not sure what values to generate for column" {:effective-type effective-type
-                                                                         :column         column}))))
-
-(defmulti ^:private gen-filter-clause
-  (fn [_column operator]
-    (:short operator)))
-
-;; Binary operators like :<
-(doseq [[op f] [[:<  lib/<]
-                [:<= lib/<=]
-                [:>  lib/>]
-                [:>= lib/>=]]]
-  (defmethod gen-filter-clause op [column _op]
-    (f column (rand-column-value column))))
-
-;; Multi-value operators like := and :starts-with
-(doseq [[op f] [[:=                lib/=]
-                [:!=               lib/!=]
-                [:starts-with      lib/starts-with]
-                [:ends-with        lib/ends-with]
-                [:contains         lib/contains]
-                [:does-not-contain lib/does-not-contain]]]
-  (defmethod gen-filter-clause op [column _op]
-    (apply f column (repeatedly (inc (rand-int 4))
-                                #(rand-column-value column)))))
-
-(defmethod gen-filter-clause :between [column _op]
-  (let [lo (rand-column-value column)
-        hi (rand-column-value column)]
-    ;; TODO: Maybe make the LHS arg be the smaller? Right now they're random.
-    (lib/between column lo hi)))
-
-;; Unary operators like `:is-empty`.
-(doseq [[op f] [[:is-empty  lib/is-empty]
-                [:not-empty lib/not-empty]
-                [:is-null   lib/is-null]
-                [:not-null  lib/not-null]]]
-  (defmethod gen-filter-clause op [column _op]
-    (f column)))
-
-(def ^:private ^:dynamic *filterable-columns* nil)
-
-(defn- skipped-operator? [op]
-  (#{:inside} (:short op)))
-
-(defn- gen-filter:unit [column]
-  (choose (if (lib.types.isa/date-without-time? column)
-            [:day :week :month :quarter :year]
-            [:minute :hour :day :week :month :quarter :year])))
-
-(defn- gen-filter:relative-current [column]
-  (lib/time-interval column :current (gen-filter:unit column)))
-
-(defn- gen-filter:relative-date [column]
-  ;; Current: day, week, month, quarter, year.
-  ;; Previous: N minutes/hours/days/weeks/months/quarters/years
-  ;; Next: N minutes/hours/days/weeks/months/quarters/years
-  ;; And "include this month"!
-  (if (< (rand) 0.2)
-    (gen-filter:relative-current column)
-    (let [past-future (choose [+ -])
-          unit        (gen-filter:unit column)
-          n           (choose (range 1 20))]
-      (cond-> (lib/time-interval column (past-future n) unit)
-        (< (rand) 0.2) (lib.options/update-options assoc :include-current true)))))
-
-(defmulti ^:private gen-filter:exclude-date-options identity)
-
-(defmethod gen-filter:exclude-date-options :hour-of-day [_unit]
-  (range 0 24))
-
-(defmethod gen-filter:exclude-date-options :day-of-week [_unit]
-  (take 7 (iterate #(t/plus % (t/days 1)) (t/local-date))))
-
-(defn- jan1 []
-  (let [year (t/year (t/local-date))]
-    (t/local-date year 1 1)))
-
-(defmethod gen-filter:exclude-date-options :month-of-year [_unit]
-  (->> (jan1)
-       (iterate #(t/plus % (t/months 1)))
-       (take 12)))
-
-(defmethod gen-filter:exclude-date-options :quarter-of-year [_unit]
-  (->> (jan1)
-       (iterate #(t/plus % (t/months 3)))
-       (take 4)))
-
-(defn- gen-filter:exclude-date [column]
-  ;; Excludes are stored currently as:
-  ;; [:!= {} [:field {:temporal-unit :month-of-year} 123] "2024-02-01" "2024-03-01"]
-  ;; to exclude February and March.
-  ;; The allowed units are: :day-of-week, :month-of-year, and :quarter-of-year; plus :hour-of-day for datetimes.
-  ;; Hours are 0-based numbers, the others use exemplar dates - the first of a month, the nearest Thursday to today.
-  (let [units    (cond-> [:day-of-week :month-of-year :quarter-of-year]
-                   (isa? (:effective-type column) :type/DateTime) (conj :hour-of-day))
-        unit     (choose units)
-        opts     (vec (gen-filter:exclude-date-options unit))
-        ;; Always one option, plus 40% chance of more.
-        selected (loop [sel #{(rand-nth opts)}]
-                   (if (< (rand) 0.4)
-                     (recur (conj sel (rand-nth opts)))
-                     sel))
-        ;; But if that selected everything, drop one at random.
-        selected (cond-> selected
-                   (= (count selected) (count opts)) (disj (rand-nth opts)))]
-    (apply lib/!= (lib/with-temporal-bucket column unit) selected)))
-
-(defn- specify-time? [column]
-  (and (isa? (:effective-type column) :type/DateTime)
-       (< (rand) 0.2)))
-
-(defn- gen-filter:date-binary [column operator]
-  (if (specify-time? column)
-    (operator (lib/with-temporal-bucket column :minute) (gen-datetime:minute))
-    (operator column (gen-date))))
-
-(defn- gen-filter:date-between [column]
-  ;; TODO: Swap the arguments to put the earlier one on the left.
-  (if (specify-time? column)
-    (lib/between (lib/with-temporal-bucket column :minute)
-                 (gen-datetime:minute) (gen-datetime:minute))
-    (lib/between column (gen-date) (gen-date))))
-
-(defn- gen-filter:date [column]
-  ;; - 30% relative date ranges
-  ;; - 20% exclude
-  ;; - 50% before/after/on/between
-  (let [r (rand)]
-    (cond
-      (< r 0.30) (gen-filter:relative-date column)
-      (< r 0.50) (gen-filter:exclude-date column)
-      (< r 0.60) (gen-filter:date-binary column lib/<)
-      (< r 0.70) (gen-filter:date-binary column lib/>)
-      (< r 0.85) (gen-filter:date-binary column lib/=)
-      :else      (gen-filter:date-between column))))
-
-(defn- gen-filter:datetime [column]
-  ;; TODO: There's actually no difference right now. Clean this up?
-  (gen-filter:date column))
-
-(defn- gen-filter:generic [column]
-  (when-let [operator (some->> (:operators column)
-                               (remove skipped-operator?)
-                               rand-nth)]
-    (gen-filter-clause column operator)))
-
-(defn- gen-filter:inside [col1 col2]
-  (let [[lat lon] (if (lib.types.isa/latitude? col1)
-                    [col1 col2]
-                    [col2 col1])
-        [lat-min lat-max] (sort (repeatedly 2 gen-latitude))
-        [lon-min lon-max] (sort (repeatedly 2 gen-longitude))]
-    ;; Yes, this is really the argument order for an `:inside` clause.
-    (lib/inside lat lon lat-max lon-min lat-min lon-max)))
-
-(defn- gen-filter:coordinate [column]
-  (let [counterpart? (if (lib.types.isa/latitude? column)
-                       lib.types.isa/longitude?
-                       lib.types.isa/latitude?)
-        counterparts (filter counterpart? *filterable-columns*)]
-    (if (and (seq counterparts)
-             (< (rand) 0.5))
-      ;; If we found a coordinate pair, generate an :inside filter 50% of the time.
-      (gen-filter:inside column (choose counterparts))
-      ;; Otherwise, generic filter on the original column.
-      (gen-filter:generic column))))
-
-;; TODO: Rather than naively generating filters here, we want to approach them like the UI.
-;; - Relative date ranges like "this year".
-;; - "Exclude" filters restricting eg. a particular month or days of the week.
-;; - Specific date ranges:
-;;   - Before, After and Between
-;;   - If introducing time for a :type/DateTime column, we bucket the column by minute.
-(defn- ^:private gen-filter []
-  (let [column (rand-nth *filterable-columns*)]
-    (cond
-      (lib.types.isa/coordinate? column)             (gen-filter:coordinate column)
-      (lib.types.isa/date-without-time? column)      (gen-filter:date column)
-      (isa? (:effective-type column) :type/DateTime) (gen-filter:datetime column)
-      :else
-      (let [result (gen-filter:generic column)]
-        ;; Sometimes we pick a column with no filter operators, and result is nil. Recur in that case to roll again.
-        (if (= result ::no-operators)
-          (recur)
-          result)))))
-
-(doseq [[op f] [[:and lib/and]
-                [:or  lib/or]]]
-  (defmethod gen-filter-clause op [_column _op]
-    (->> (repeatedly gen-filter)
-         (filter identity)
-         (take (+ 2 (rand-int 3)))
-         (apply f))))
-
-;;
 (add-step {:kind :filter})
-
-(comment
-  (let [query (lib/query meta/metadata-provider (meta/table-metadata :people))]
-    (def fs (vec (for [_ (range 500)]
-                   (last (next-steps* query :filter)))))
-    )
-
-  (def fg (group-by first fs))
-  (update-vals fg count)
-  (filter (comp t/local-date? last) (:!= fg))
-  *e
-  )
 
 (defmethod next-steps* :filter [query _filter]
   (let [stage-number (choose-stage query)]
-    (binding [*filterable-columns* (lib/filterable-columns query stage-number)]
-      [:filter stage-number (gen-filter)])))
+    [:filter stage-number (gen.filters/gen-filter (lib/filterable-columns query stage-number))]))
 
 (defmethod run-step* :filter [query [_filter stage-number filter-clause]]
   (lib/filter query stage-number filter-clause))
 
 (defmethod before-and-after :filter [before after [_filter stage-number filter-clause]]
-  ;; START HERE: Write some tests for these filters.
-  #_(let [before-filters (lib/breakouts before stage-number)
-        after-filters  (lib/breakouts after  stage-number)
-        opts             {:same-binning-strategy? true
-                          :same-temporal-bucket?  true}
-        fresh?           (empty? (lib.breakout/existing-breakouts before stage-number column opts))]
-    (testing (str ":breakout stage " stage-number
+  (let [before-filters (lib/filters before stage-number)
+        after-filters  (lib/filters after  stage-number)]
+    (testing (str ":filter stage " stage-number
                   "\n\nBefore query\n" (u/pprint-to-str before)
-                  "\n\nwith column\n" (u/pprint-to-str column)
-                  "\n\nwith breakout clause\n" (u/pprint-to-str brk-clause)
+                  "\n\nAfter query\n" (u/pprint-to-str after)
+                  "\n\nwith filter clause\n" (u/pprint-to-str filter-clause)
                   "\n")
-      (if fresh?
-        (testing "freshly added breakout columns"
-          (is (= false (boolean (lib.breakout/breakout-column? before stage-number column opts)))
-              "are not present before")
-          (is (= true  (boolean (lib.breakout/breakout-column? after  stage-number column opts)))
-              "are present after")
-          (testing "go at the end of the list"
-            (is (= (count after-breakouts)
-                   (inc (count before-breakouts))))
-            (is (=? brk-clause (last after-breakouts)))))
-        (testing "duplicate breakout columns are blocked"
-          (is (= (count after-breakouts)
-                 (count before-breakouts))))))))
+      (if (some #(lib.equality/= % filter-clause) before-filters)
+        (testing "with an existing, equivalent filter"
+          (testing "does not add a new one"
+            (is (= (count before-filters)
+                   (count after-filters)))))
+        (testing "with a new filter"
+          (testing "adds it to the end of the list"
+            (is (= (count after-filters)
+                   (inc (count before-filters))))
+            (is (=? filter-clause (last after-filters))))
+          (testing (str `lib/filter-operator " returns the right op")
+            (is (= (first filter-clause)
+                   (:short (lib/filter-operator after stage-number (last after-filters)))))))))))
 
 ;; Generator internals ===========================================================================
 (defn- run-step
