@@ -51,48 +51,48 @@
 
 (deftest incremental-update-test
   (with-index
-   (testing "The index is updated when models change"
+    (testing "The index is updated when models change"
      ;; The second entry is "Revenue Project(ions)"
-     (is (= 2 (count (search.index/search "Projected Revenue"))))
-     (is (= 0 (count (search.index/search "Protected Avenue"))))
+      (is (= 2 (count (search.index/search "Projected Revenue"))))
+      (is (= 0 (count (search.index/search "Protected Avenue"))))
 
-     (t2/update! :model/Card {:name "Projected Revenue"} {:name "Protected Avenue"})
+      (t2/update! :model/Card {:name "Projected Revenue"} {:name "Protected Avenue"})
      ;; TODO wire up an actual hook
-     (search.ingestion/update-index! (t2/select-one :model/Card :name "Protected Avenue"))
+      (search.ingestion/update-index! (t2/select-one :model/Card :name "Protected Avenue"))
 
-     (is (= 1 (count (search.index/search "Projected Revenue"))))
-     (is (= 1 (count (search.index/search "Protected Avenue"))))
+      (is (= 1 (count (search.index/search "Projected Revenue"))))
+      (is (= 1 (count (search.index/search "Protected Avenue"))))
 
      ;; TODO wire up the actual hook, and actually delete it
-     (search.ingestion/delete-model! (t2/select-one :model/Card :name "Protected Avenue"))
+      (search.ingestion/delete-model! (t2/select-one :model/Card :name "Protected Avenue"))
 
-     (is (= 1 (count (search.index/search "Projected Revenue"))))
-     (is (= 0 (count (search.index/search "Protected Avenue")))))))
+      (is (= 1 (count (search.index/search "Projected Revenue"))))
+      (is (= 0 (count (search.index/search "Protected Avenue")))))))
 
 (deftest related-update-test
   (with-index
-   (testing "The index is updated when model dependencies change"
-     (let [index-table    @#'search.index/active-table
-           table-idx      (t2/select-one [index-table :id :model_id] :model "table")
-           table-idx-id   (:id table-idx)
-           table-id       (:model_id table-idx)
-           legacy-input   #(-> (t2/select-one [index-table :legacy_input] table-idx-id)
-                               :legacy_input
-                               (json/parse-string true))
-           db-id          (t2/select-one-fn :db_id :model/Table table-id)
-           db-name-fn     (comp :database_name legacy-input)
-           orig-db-name   (db-name-fn)
-           alternate-name (str (random-uuid))]
+    (testing "The index is updated when model dependencies change"
+      (let [index-table    @#'search.index/active-table
+            table-idx      (t2/select-one [index-table :id :model_id] :model "table")
+            table-idx-id   (:id table-idx)
+            table-id       (:model_id table-idx)
+            legacy-input   #(-> (t2/select-one [index-table :legacy_input] table-idx-id)
+                                :legacy_input
+                                (json/parse-string true))
+            db-id          (t2/select-one-fn :db_id :model/Table table-id)
+            db-name-fn     (comp :database_name legacy-input)
+            orig-db-name   (db-name-fn)
+            alternate-name (str (random-uuid))]
 
-       (t2/update! :model/Database db-id {:name alternate-name})
-       (try
+        (t2/update! :model/Database db-id {:name alternate-name})
+        (try
          ;; TODO wire up an actual hook
-         (search.ingestion/update-index! (t2/select-one :model/Table :id table-id))
+          (search.ingestion/update-index! (t2/select-one :model/Table :id table-id))
 
-         (is (= alternate-name (db-name-fn)))
+          (is (= alternate-name (db-name-fn)))
 
-         (finally
-           (t2/update! :model/Database db-id {:name orig-db-name})))))))
+          (finally
+            (t2/update! :model/Database db-id {:name orig-db-name})))))))
 
 (deftest consistent-subset-test
   (with-index
