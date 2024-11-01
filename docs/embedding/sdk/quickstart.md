@@ -53,7 +53,9 @@ You can also [download the JAR](https://downloads.metabase.com/enterprise/latest
 java -jar metabase.jar
 ```
 
-If you get stuck, check out our [installation docs](../../installation-and-operation/installing-metabase.md)
+By default, Metabase will run at `http://localhost:3000`.
+
+If you get stuck, check out our [installation docs](../../installation-and-operation/installing-metabase.md).
 
 ## Activate your license
 
