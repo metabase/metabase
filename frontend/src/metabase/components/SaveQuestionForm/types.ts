@@ -16,7 +16,7 @@ export type SaveQuestionProps = {
    *
    * When this is defined, the collection picker will be hidden and
    * the question will be saved to this collection.
-   ***/
+   **/
   saveToCollectionId?: CollectionId;
 };
 
