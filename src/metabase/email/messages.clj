@@ -9,6 +9,7 @@
    [clojure.core.cache :as cache]
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase.channel.render.core :as channel.render]
    [metabase.config :as config]
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
@@ -20,7 +21,6 @@
    [metabase.models.user :refer [User]]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
-   [metabase.pulse.core :as pulse]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
@@ -59,7 +59,7 @@
 
       :else nil)))
       ;; NOTE: disabling whitelabeled URLs for now since some email clients don't render them correctly
-      ;; We need to extract them and embed as attachments like we do in metabase.pulse.render.image-bundle
+      ;; We need to extract them and embed as attachments like we do in metabase.channel.render.image-bundle
       ;; (data-uri-svg? url)               (themed-image-url url color)
       ;; :else                             url
 
@@ -84,12 +84,12 @@
   "Context that is used across multiple email templates, and that is the same for all emails"
   []
   {:applicationName           (public-settings/application-name)
-   :applicationColor          (pulse/primary-color)
+   :applicationColor          (channel.render/primary-color)
    :applicationLogoUrl        (logo-url)
-   :buttonStyle               (button-style (pulse/primary-color))
-   :colorTextLight            pulse/color-text-light
-   :colorTextMedium           pulse/color-text-medium
-   :colorTextDark             pulse/color-text-dark
+   :buttonStyle               (button-style (channel.render/primary-color))
+   :colorTextLight            channel.render/color-text-light
+   :colorTextMedium           channel.render/color-text-medium
+   :colorTextDark             channel.render/color-text-dark
    :siteUrl                   (public-settings/site-url)})
 
 ;;; ### Public Interface
@@ -311,7 +311,7 @@
             {:emailType                 "alert"
              :questionName              card-name
              :questionURL               (urls/card-url card-id)
-             :sectionStyle              (pulse/section-style)}
+             :sectionStyle              (channel.render/section-style)}
             (when alert-condition-map
               {:alertCondition (get alert-condition-map (pulse->alert-condition-kwd alert))})))))
 

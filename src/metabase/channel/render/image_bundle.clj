@@ -29,7 +29,7 @@
 
 (defn- write-byte-array-to-temp-file
   [^bytes img-bytes]
-  (let [f (doto (java.io.File/createTempFile "metabase_pulse_image_" ".png")
+  (let [f (doto (java.io.File/createTempFile "metabase_channel_image_" ".png")
             .deleteOnExit)]
     (with-open [fos (java.io.FileOutputStream. f)]
       (.write fos img-bytes))

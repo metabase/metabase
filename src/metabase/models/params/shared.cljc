@@ -16,7 +16,6 @@
    #?@(:clj
        ((java.time.format DateTimeFormatter)))))
 
-
 ;; Without this comment, the namespace-checker linter incorrectly detects moment as unused
 #?(:cljs (comment moment/keep-me))
 

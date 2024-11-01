@@ -2,10 +2,10 @@
   (:require
    [clojure.test :refer :all]
    [hickory.select :as hik.s]
-   [metabase.formatter :as formatter]
-   [metabase.channel.render.core :as render]
    [metabase.channel.render.color :as color]
+   [metabase.channel.render.core :as render]
    [metabase.channel.render.table :as table]
+   [metabase.formatter :as formatter]
    [metabase.pulse.render.test-util :as render.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))

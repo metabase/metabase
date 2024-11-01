@@ -1,10 +1,10 @@
 (ns metabase.notification.payload.core
   #_{:clj-kondo/ignore [:metabase/ns-module-checker]}
   (:require
+   [metabase.channel.render.style :as style]
    [metabase.models.notification :as models.notification]
    [metabase.notification.payload.execute :as notification.payload.execute]
    [metabase.public-settings :as public-settings]
-   [metabase.channel.render.style :as style]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -103,7 +103,7 @@
     (cond
       (= url "app/assets/img/logo.svg") "http://static.metabase.com/email_logo.png"
       ;; NOTE: disabling whitelabeled URLs for now since some email clients don't render them correctly
-      ;; We need to extract them and embed as attachments like we do in metabase.pulse.render.image-bundle
+      ;; We need to extract them and embed as attachments like we do in metabase.channel.render.image-bundle
       ;; (data-uri-svg? url)               (themed-image-url url color)
       :else nil)))
 

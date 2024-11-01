@@ -310,18 +310,18 @@
                      :id "acd0dfab",
                      :type "string/contains",
                      :sectionId "string"}]]
-   (t/testing "If a filter has multiple values, they are concatenated into a comma-separated string"
-     (t/is (= "CA, NY, and NJ"
-            (params/value-string (first parameters) "en"))))
+    (t/testing "If a filter has multiple values, they are concatenated into a comma-separated string"
+      (t/is (= "CA, NY, and NJ"
+               (params/value-string (first parameters) "en"))))
 
-   (t/testing "If a filter has a single default value, it is formatted appropriately"
-     (t/is (= "Q1, 2021"
-            (params/value-string (second parameters) "en"))))))
+    (t/testing "If a filter has a single default value, it is formatted appropriately"
+      (t/is (= "Q1, 2021"
+               (params/value-string (second parameters) "en"))))))
 
 (t/deftest param-val-or-default-test
   (let [param-val-or-default #'params/param-val-or-default]
     (t/testing "When the parameter’s :value key is missing, fallback to the :default key"
       (t/is (= "my default value"
-             (param-val-or-default {:default "my default value"}))))
+               (param-val-or-default {:default "my default value"}))))
     (t/testing "When the parameter’s :value is explicitly nil (i.e. for no-op filters), do not fallback to the :default key"
       (t/is (nil? (param-val-or-default {:value nil :default "my default value"}))))))

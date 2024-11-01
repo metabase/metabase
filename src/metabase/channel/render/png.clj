@@ -1,4 +1,4 @@
-(ns eetabase.channel.render.png
+(ns metabase.channel.render.png
   "Logic for rendering HTML to a PNG.
 
   Ported by @tlrobinson from
@@ -9,8 +9,8 @@
   (:require
    [clojure.walk :as walk]
    [hiccup.core :refer [html]]
-   [metabase.formatter :as formatter]
    [metabase.channel.render.style :as style]
+   [metabase.formatter :as formatter]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu])
   (:import
@@ -97,7 +97,7 @@
   "Wrap characters not supported by the installed Lato font in a span so that we can explicitly set the font to sans-serif.
   We do this to work around unexpected font-fallback behaviours in CSSBox.
 
-  Lato is properly loaded/registered in `metabase.pulse.render.style/regiter-fonts!`, which means the
+  Lato is properly loaded/registered in `metabase.channel.render.style/regiter-fonts!`, which means the
   java.awt GraphicsEnvironment has Lato available as a Physical font. The loaded physical font does not contain
   glyphs to properly render many international characters, and instead of falling back to another font on a per-glyph basis,
   it simply renders a '[?]', which is no good.

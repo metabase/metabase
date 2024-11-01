@@ -2,7 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [hiccup.core :as hiccup]
-   [metabase.pulse.render.png :as png]
+   [metabase.channel.render.png :as png]
    [metabase.channel.render.style :as style])
   (:import
    (java.awt Font GraphicsEnvironment)

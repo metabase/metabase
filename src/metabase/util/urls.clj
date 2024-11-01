@@ -39,8 +39,8 @@
                               "="
                               (codec/url-encode value)))))]
 
-    (str base-url (when (seq url-params)
-                    (str "?" (str/join "&" url-params)))))))
+     (str base-url (when (seq url-params)
+                     (str "?" (str/join "&" url-params)))))))
 
 (defn card-url
   "Return an appropriate URL for a `Card` with ID.

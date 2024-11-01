@@ -8,12 +8,12 @@
    [hickory.core :as hik]
    [hickory.render :as hik.r]
    [hickory.zip :as hik.z]
-   [metabase.email.result-attachment :as email.result-attachment]
    [metabase.channel.render.core :as render]
    [metabase.channel.render.image-bundle :as img]
-   [metabase.pulse.render.png :as png]
+   [metabase.channel.render.png :as png]
    [metabase.channel.render.style :as style]
-   [metabase.pulse.send :as pulse.send]
+   [metabase.channel.shared :as channel.shared]
+   [metabase.email.result-attachment :as email.result-attachment]
    [metabase.util.markdown :as markdown]
    [toucan2.core :as t2]))
 
@@ -53,7 +53,7 @@
             [:td {:style (style/style (merge table-style-map {:max-width "400px"}))}
              content])]
     (if card
-      (let [base-render (render/render-pulse-card :inline (pulse.send/defaulted-timezone card) card dashcard result)
+      (let [base-render (render/render-pulse-card :inline (channel.shared/defaulted-timezone card) card dashcard result)
             html-src    (-> base-render :content)
             img-src     (-> base-render
                             (png/render-html-to-png 1200)

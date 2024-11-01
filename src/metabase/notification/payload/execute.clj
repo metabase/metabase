@@ -1,5 +1,6 @@
 (ns metabase.notification.payload.execute
   (:require
+   #_{:clj-kondo/ignore [:metabase/ns-module-checker]}
    [malli.core :as mc]
    [metabase.api.common :as api]
    [metabase.models.dashboard-card :as dashboard-card]
@@ -7,10 +8,13 @@
    [metabase.models.params.shared :as shared.params]
    [metabase.models.serialization :as serdes]
    [metabase.public-settings :as public-settings]
-   #_{:clj-kondo/ignore [:metabase/ns-module-checker]}
-   [metabase.pulse.util :as pu]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.dashboard :as qp.dashboard]
+   [metabase.query-processor.middleware.permissions :as qp.perms]
+   [metabase.query-processor.pivot :as qp.pivot]
    [metabase.server.middleware.session :as mw.session]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.urls :as urls]
    [toucan2.core :as t2]))
@@ -129,6 +133,45 @@
                                    tag-names)]
     (update-in dashcard [:visualization_settings :text] shared.params/substitute-tags tag->param (public-settings/site-locale) (escape-markdown-chars? dashcard))))
 
+(defn execute-dashboard-subscription-card
+  "Returns subscription result for a card.
+
+  This function should be executed under pulse's creator permissions."
+  [{:keys [card_id dashboard_id] :as dashcard} parameters]
+  (try
+    (when-let [card (t2/select-one :model/Card :id card_id :archived false)]
+      (let [multi-cards    (dashboard-card/dashcard->multi-cards dashcard)
+            result-fn      (fn [card-id]
+                             {:card     (if (= card-id (:id card))
+                                          card
+                                          (t2/select-one :model/Card :id card-id))
+                              :dashcard dashcard
+                              ;; TODO should this be dashcard?
+                              :type     :card
+                              :result   (qp.dashboard/process-query-for-dashcard
+                                         :dashboard-id  dashboard_id
+                                         :card-id       card-id
+                                         :dashcard-id   (u/the-id dashcard)
+                                         :context       :dashboard-subscription
+                                         :export-format :api
+                                         :parameters    parameters
+                                         :constraints   {}
+                                         :middleware    {:process-viz-settings?             true
+                                                         :js-int-to-string?                 false
+                                                         :add-default-userland-constraints? false}
+                                         :make-run      (fn make-run [qp _export-format]
+                                                          (^:once fn* [query info]
+                                                            (qp
+                                                             (qp/userland-query query info)
+                                                             nil))))})
+            result         (result-fn card_id)
+            series-results (mapv (comp result-fn :id) multi-cards)]
+        (when-not (and (get-in dashcard [:visualization_settings :card.hide_empty])
+                       (is-card-empty? (assoc card :result (:result result))))
+          (update result :dashcard assoc :series-results series-results))))
+    (catch Throwable e
+      (log/warnf e "Error running query for Card %s" (:card_id dashcard)))))
+
 (defn- dashcard->part
   "Given a dashcard returns its part based on its type.
 
@@ -138,7 +181,7 @@
   (cond
     (:card_id dashcard)
     (let [parameters (merge-default-values parameters)]
-      (pu/execute-dashboard-subscription-card dashcard parameters))
+      (execute-dashboard-subscription-card dashcard parameters))
 
     (virtual-card-of-type? dashcard "iframe")
     nil
@@ -198,7 +241,44 @@
                            (dashcards->part cards parameters))))))
       (dashcards->part (t2/select :model/DashboardCard :dashboard_id dashboard-id) parameters))))
 
+;; TODO - this should be done async
+;; TODO - this and `execute-multi-card` should be made more efficient: eg. we query for the card several times
 (mu/defn execute-card :- [:maybe Part]
   "Returns the result for a card."
-  [& args]
-  (apply pu/execute-card args))
+  [creator-id :- pos-int?
+   card-id :- pos-int?
+   & {:as options}]
+  (try
+    (when-let [{query     :dataset_query
+                metadata  :result_metadata
+                card-type :type
+                :as       card} (t2/select-one :model/Card :id card-id, :archived false)]
+      (let [query         (assoc query :async? false)
+            process-fn (if (= :pivot (:display card))
+                         qp.pivot/run-pivot-query
+                         qp/process-query)
+            process-query (fn []
+                            (binding [qp.perms/*card-id* card-id]
+                              (process-fn
+                               (qp/userland-query
+                                (assoc query
+                                       :middleware {:skip-results-metadata?            true
+                                                    :process-viz-settings?             true
+                                                    :js-int-to-string?                 false
+                                                    :add-default-userland-constraints? false})
+                                (merge (cond-> {:executed-by creator-id
+                                                :context     :pulse
+                                                :card-id     card-id}
+                                         (= card-type :model)
+                                         (assoc :metadata/model-metadata metadata))
+                                       {:visualization-settings (:visualization_settings card)}
+                                       options)))))
+            result        (if creator-id
+                            (mw.session/with-current-user creator-id
+                              (process-query))
+                            (process-query))]
+        {:card   card
+         :result result
+         :type   :card}))
+    (catch Throwable e
+      (log/warnf e "Error running query for Card %s" card-id))))

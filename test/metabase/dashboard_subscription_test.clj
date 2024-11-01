@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.channel.impl.slack :as channel.slack]
+   [metabase.channel.render.body :as body]
    [metabase.email.result-attachment :as email.result-attachment]
    [metabase.models
     :refer [Card
@@ -20,7 +21,6 @@
    [metabase.models.permissions-group :as perms-group]
    [metabase.notification.test-util :as notification.tu]
    [metabase.public-settings :as public-settings]
-   [metabase.channel.render.body :as body]
    [metabase.pulse.send :as pulse.send]
    [metabase.pulse.test-util :as pulse.test-util]
    [metabase.test :as mt]

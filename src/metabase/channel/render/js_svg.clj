@@ -7,9 +7,9 @@
    [cheshire.core :as json]
    [clojure.string :as str]
    [metabase.channel.render.js-engine :as js]
+   [metabase.channel.render.style :as style]
    [metabase.config :as config]
-   [metabase.public-settings :as public-settings]
-   [metabase.channel.render.style :as style])
+   [metabase.public-settings :as public-settings])
   (:import
    (java.io ByteArrayInputStream ByteArrayOutputStream)
    (java.nio.charset StandardCharsets)
