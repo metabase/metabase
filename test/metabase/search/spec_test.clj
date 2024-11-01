@@ -39,20 +39,13 @@
                   :db-id         :this.db_id
                   :table-id      :related.table_id}
    :search-terms [:this.name :description]
-   :render-terms {:related-field [:lower :related.field]}})
+   :render-terms {:related-field [:lower :related.field]
+                  :funky-field   :%now}})
 
 (deftest test-find-fields
-  (is (= #{[nil :description]
-           [nil :collection_id]
-           [:related :table_id]
-           [:this :name]
-           [:related :field]
-           [:this :db_id]}
-         (#'search.spec/find-fields example-spec)))
-
-  (is (= #{:description :collection_id} (#'search.spec/find-fields nil example-spec)))
-  (is (= #{:name :db_id} (#'search.spec/find-fields :this example-spec)))
-  (is (= #{:table_id :field} (#'search.spec/find-fields :related example-spec))))
+  (is (= {:this    #{:name :description :collection_id :db_id}
+          :related #{:field :table_id}}
+         (#'search.spec/find-fields example-spec))))
 
 (deftest replace-qualification-test
   (is (= :column (#'search.spec/replace-qualification :column :table :sable)))

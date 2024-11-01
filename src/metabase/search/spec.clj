@@ -106,13 +106,10 @@
     kw))
 
 (defn- find-fields-kw [kw]
-  (let [table (get-table kw)]
-    #{[table (remove-table table kw)]}))
-
-(defn- union-find
-  "Aggregate the references within each element of xs using f"
-  [f xs]
-  (reduce set/union #{} (map f xs)))
+  ;; Filter out SQL functions
+  (when-not (str/starts-with? (name kw) "%")
+    (let [table (get-table kw)]
+      (list [(or table :this) (remove-table table kw)]))))
 
 (defn- find-fields-expr [expr]
   (cond
@@ -120,12 +117,12 @@
     (find-fields-kw expr)
 
     (vector? expr)
-    (union-find find-fields-expr (rest expr))))
+    (mapcat find-fields-expr (rest expr))))
 
 (defn- find-fields-attr [[k v]]
   (when v
     (if (true? v)
-      #{[nil (keyword (u/->snake_case_en (name k)))]}
+      [[:this (keyword (u/->snake_case_en (name k)))]]
       (find-fields-expr v))))
 
 (defn- find-fields-select-item [x]
@@ -139,27 +136,22 @@
 (defn- find-fields-top [x]
   (cond
     (map? x)
-    (union-find find-fields-attr x)
+    (mapcat find-fields-attr x)
 
     (sequential? x)
-    (union-find find-fields-select-item x)
+    (mapcat find-fields-select-item x)
 
     :else
     (throw (ex-info "Unexpected format for fields" {:x x}))))
 
 (defn- find-fields
   "Search within a definition for all the fields referenced on the given table alias."
-  ([spec]
-   (into #{}
-         (union-find
-          find-fields-top
-          ;; Remove the keys with special meanings (should probably switch this to an allowlist rather)
-          (vals (dissoc spec :name :native-query :where :joins :bookmark :model)))))
-  ([table spec]
-   (set
-    (for [[t f] (find-fields spec)
-          :when (= t table)]
-      f))))
+  [spec]
+  (u/group-by first second conj #{}
+              (mapcat
+               find-fields-top
+               ;; Remove the keys with special meanings (should probably switch this to an allowlist rather)
+               (vals (dissoc spec :name :native-query :where :joins :bookmark :model)))))
 
 (defn- replace-qualification [expr from to]
   (cond
@@ -183,16 +175,17 @@
 (defn- search-model-hooks
   "Generate a map indicating which search-models to update based on which fields are modified for a given model."
   [spec]
-  (let [s (:name spec)]
+  (let [s      (:name spec)
+        fields (find-fields spec)]
     (into {}
           (cons
            [(:model spec) #{{:search-model s
-                             :fields       (set/union (find-fields nil spec) (find-fields :this spec))
+                             :fields       (:this (find-fields spec))
                              :where        [:= :updated.id :this.id]}}]
            (for [[table-alias [model join-condition]] (:joins spec)]
-             (let [fields (find-fields table-alias spec)]
+             (let [table-fields (fields table-alias)]
                [model #{{:search-model s
-                         :fields       fields
+                         :fields       table-fields
                          :where        (replace-qualification join-condition table-alias :updated)}}]))))))
 
 (defn- merge-hooks
@@ -219,8 +212,8 @@
   [spec]
   (when-let [info (mc/explain Specification spec)]
     (throw (ex-info (str "Invalid search specification for " (:name spec) ": " (me/humanize info)) info)))
-  (doseq [table (into #{} (map first) (find-fields spec))
-          :when (and table (not= :this table))]
+  (doseq [table (keys (find-fields spec))
+          :when (not= :this table)]
     (assert (contains? (:joins spec) table) (str "Reference to table without a join: " table))))
 
 (defmacro define-spec
