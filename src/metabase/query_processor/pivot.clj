@@ -355,12 +355,13 @@
         column-split-columns        (seq (:columns column-split))
         column-name->breakout-index (when (or column-split-rows
                                               column-split-columns)
-                                      (let [metadata-provider  (or (:lib/metadata query)
-                                                                   (lib.metadata.jvm/application-database-metadata-provider (:database query)))]
+                                      (let [metadata-provider (or (:lib/metadata query)
+                                                                   (lib.metadata.jvm/application-database-metadata-provider (:database query)))
+                                           query              (lib/query metadata-provider query)]
                                         (into {}
                                               (comp (filter (comp #{:source/breakouts} :lib/source))
                                                     (map-indexed (fn [i col] [(:name col) i])))
-                                              (lib/returned-columns (lib/query metadata-provider query)))))
+                                              (lib/returned-columns query))))
         pivot-rows (when column-split-rows
                      (into [] (keep column-name->breakout-index) column-split-rows))
         pivot-cols (when column-split-columns
