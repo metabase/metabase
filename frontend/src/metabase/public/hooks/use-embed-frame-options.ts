@@ -16,6 +16,7 @@ export const useEmbedFrameOptions = ({ location }: { location: Location }) => {
     hide_parameters = DEFAULT_EMBED_DISPLAY_PARAMS.hideParameters,
     hide_download_button = null,
     downloads = DEFAULT_EMBED_DISPLAY_PARAMS.downloadsEnabled,
+    locale,
   } = parseHashOptions(location.hash) as EmbeddingHashOptions;
 
   const downloadsEnabled = PLUGIN_RESOURCE_DOWNLOADS.areDownloadsEnabled({
@@ -31,5 +32,6 @@ export const useEmbedFrameOptions = ({ location }: { location: Location }) => {
     hide_parameters,
     hide_download_button,
     downloadsEnabled,
+    locale,
   };
 };

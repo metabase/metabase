@@ -38,6 +38,7 @@ export type EmbeddingDisplayOptions = {
 
 export type AdditionalEmbeddingHashOptions = {
   hide_parameters?: string | null;
+  locale?: string;
 };
 
 export type EmbeddingHashOptions = EmbeddingDisplayOptions &
