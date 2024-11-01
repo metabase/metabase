@@ -386,16 +386,8 @@ export const PLUGIN_MODERATION = {
     undefined,
   getModerationTimelineEvents: (_reviews: any, _currentUser: BaseUser | null) =>
     [] as RevisionOrModerationEvent[],
-  useDashboardMenuItems: (
-    _model?: Dashboard,
-    _isModerator?: boolean,
-    _reload?: () => void,
-  ) => [],
-  useQuestionMenuItems: (
-    _model?: Question,
-    _isModerator?: boolean,
-    _reload?: () => void,
-  ) => [],
+  useDashboardMenuItems: (_model?: Dashboard, _reload?: () => void) => [],
+  useQuestionMenuItems: (_model?: Question, _reload?: () => void) => [],
 };
 
 export type InvalidateNowButtonProps = {

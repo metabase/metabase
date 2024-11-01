@@ -30,7 +30,6 @@ export const useGetExtraButtons = ({
   pathname,
   openSettingsSidebar,
   location,
-  isAdmin,
 }: DashboardFullscreenControls & {
   canResetFilters: boolean;
   onResetFilters: () => void;
@@ -39,7 +38,6 @@ export const useGetExtraButtons = ({
   pathname: string;
   openSettingsSidebar: () => void;
   location: Location;
-  isAdmin: boolean;
 }) => {
   const { refreshDashboard } = useRefreshDashboard({
     dashboardId: dashboard.id,
@@ -49,7 +47,6 @@ export const useGetExtraButtons = ({
 
   const moderationItems = PLUGIN_MODERATION.useDashboardMenuItems(
     dashboard,
-    isAdmin,
     refreshDashboard,
   );
 

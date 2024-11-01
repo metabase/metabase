@@ -162,7 +162,6 @@ export const dashboardActionButtons: Record<
         canEdit,
         location,
         openSettingsSidebar,
-        isAdmin,
       }) => {
         const { extraButtons } = useGetExtraButtons({
           canResetFilters,
@@ -174,7 +173,6 @@ export const dashboardActionButtons: Record<
           pathname: location?.pathname,
           openSettingsSidebar,
           location,
-          isAdmin,
         });
 
         return <DashboardActionMenu items={extraButtons} />;

@@ -1,6 +1,8 @@
 import { t } from "ttag";
 
 import { useEditItemVerificationMutation } from "metabase/api";
+import { useSelector } from "metabase/lib/redux";
+import { getUserIsAdmin } from "metabase/selectors/user";
 import type Question from "metabase-lib/v1/Question";
 import type { Dashboard, ModerationReview } from "metabase-types/api";
 
@@ -14,7 +16,6 @@ import { getVerifyQuestionTitle } from "../utils";
 
 export const useQuestionMenuItems = (
   question: Question,
-  isModerator: boolean,
   reload: () => void,
 ) => {
   const latestModerationReview = getLatestModerationReview(
@@ -22,7 +23,6 @@ export const useQuestionMenuItems = (
   );
 
   const items = useMenuItems({
-    isModerator,
     reload,
     moderated_item_id: question.id(),
     moderated_item_type: "card",
@@ -35,7 +35,6 @@ export const useQuestionMenuItems = (
 
 export const useDashboardMenuItems = (
   dashboard: Dashboard,
-  isModerator: boolean,
   reload: () => void,
 ) => {
   const latestModerationReview = getLatestModerationReview(
@@ -43,7 +42,6 @@ export const useDashboardMenuItems = (
   );
 
   const items = useMenuItems({
-    isModerator,
     reload,
     moderated_item_id: dashboard.id as number,
     moderated_item_type: "dashboard",
@@ -55,20 +53,19 @@ export const useDashboardMenuItems = (
 };
 
 const useMenuItems = ({
-  isModerator,
   reload,
   moderated_item_id,
   moderated_item_type,
   title,
   latestModerationReview,
 }: {
-  isModerator: boolean;
   reload: () => void;
   moderated_item_id: number;
   moderated_item_type: "card" | "dashboard";
   title: string;
   latestModerationReview?: ModerationReview;
 }) => {
+  const isModerator = useSelector(getUserIsAdmin);
   const [editItemVerification] = useEditItemVerificationMutation();
 
   const { name: verifiedIconName } = getStatusIcon(MODERATION_STATUS.verified);
