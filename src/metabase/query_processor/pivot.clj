@@ -7,7 +7,6 @@
    [medley.core :as m]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
-   [metabase.lib.equality :as lib.equality]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema :as lib.schema]
@@ -356,8 +355,8 @@
         column-name->breakout-index (when (or column-split-rows
                                               column-split-columns)
                                       (let [metadata-provider (or (:lib/metadata query)
-                                                                   (lib.metadata.jvm/application-database-metadata-provider (:database query)))
-                                           query              (lib/query metadata-provider query)]
+                                                                  (lib.metadata.jvm/application-database-metadata-provider (:database query)))
+                                            query              (lib/query metadata-provider query)]
                                         (into {}
                                               (comp (filter (comp #{:source/breakouts} :lib/source))
                                                     (map-indexed (fn [i col] [(:name col) i])))
