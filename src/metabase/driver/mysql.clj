@@ -928,6 +928,7 @@
    (map (fn [col]
           (-> col
               (update :pk? pos?)
+              (update :database-position int) ;; Comes in as biginteger
               (update :database-required pos?)
               (update :database-is-auto-increment pos?))))
    (apply (get-method driver/describe-fields :sql-jdbc) driver database args)))
@@ -935,7 +936,7 @@
 (defmethod sql-jdbc.sync/describe-fields-sql :mysql
   [driver & {:keys [table-names]}]
   (sql/format {:select [[:c.column_name :name]
-                        [:c.ordinal_position :database-position]
+                        [[:- :c.ordinal_position 1] :database-position]
                         [nil :table-schema]
                         [:c.table_name :table-name]
                         [[:upper :c.data_type] :database-type]
