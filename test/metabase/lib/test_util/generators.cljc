@@ -6,6 +6,7 @@
    [java-time.api :as t]
    [metabase.lib.breakout :as lib.breakout]
    [metabase.lib.core :as lib]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.util :as u]))
@@ -171,24 +172,8 @@
                  (count before-breakouts))))))))
 
 ;; Filters =======================================================================================
-(add-step {:kind :filter})
-
-(comment
-  (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
-      (lib/filterable-columns))
-  )
-
-#_(defmulti ^:private rand-column-value :effective-type)
-
-#_(defmethod rand-column-value :type/Boolean [_column] (choose [true false]))
-
 (defn- gen-int []
   (- (rand-int 2000000) 1000000))
-
-#_(defmethod rand-column-value :type/Integer [_column] (gen-int))
-#_(defmethod rand-column-value :type/Number  [_column] (cond-> (gen-int)
-                                                       ;; Half the time, make it a float.
-                                                       (< (rand) 0.5) (+ (rand))))
 
 (def ^:private valid-ascii
   (mapv char (range 0x20 0x7f)))
@@ -207,12 +192,18 @@
 (defn- gen-time []
   (t/local-time (rand-int 24) (rand-int 60) (rand-int 60) (rand-int 1000000000)))
 
+(defn- gen-time:minute []
+  (t/local-time (rand-int 24) (rand-int 60) 0 0))
+
 (defn- gen-date []
   (t/plus (t/local-date (+ 2000 (rand-int 40)) 1 1)
           (t/days (rand-int 365))))
 
 (defn- gen-datetime []
   (t/local-date-time (gen-date) (gen-time)))
+
+(defn- gen-datetime:minute []
+  (t/local-date-time (gen-date) (gen-time:minute)))
 
 (defn- gen-latitude []
   ;; +/- 75 degrees is a generous but plausible range for latitudes.
@@ -267,8 +258,7 @@
                 [:starts-with      lib/starts-with]
                 [:ends-with        lib/ends-with]
                 [:contains         lib/contains]
-                [:does-not-contain lib/does-not-contain]
-                ]]
+                [:does-not-contain lib/does-not-contain]]]
   (defmethod gen-filter-clause op [column _op]
     (apply f column (repeatedly (inc (rand-int 4))
                                 #(rand-column-value column)))))
@@ -278,9 +268,6 @@
         hi (rand-column-value column)]
     ;; TODO: Maybe make the LHS arg be the smaller? Right now they're random.
     (lib/between column lo hi)))
-
-(defmethod gen-filter-clause :inside [column _op]
-  )
 
 ;; Unary operators like `:is-empty`.
 (doseq [[op f] [[:is-empty  lib/is-empty]
@@ -295,36 +282,172 @@
 (defn- skipped-operator? [op]
   (#{:inside} (:short op)))
 
-;; TODO: Special case the temporal filtering, based on how the UI works. There are some interesting cases, and there
-;; are nestable temporal bucketing and other things.
-(defn- ^:private gen-filter []
-  (let [column   (rand-nth *filterable-columns*)
-        operator (rand-nth (remove skipped-operator? (:operators column)))]
+(defn- gen-filter:unit [column]
+  (choose (if (lib.types.isa/date-without-time? column)
+            [:day :week :month :quarter :year]
+            [:minute :hour :day :week :month :quarter :year])))
+
+(defn- gen-filter:relative-current [column]
+  (lib/time-interval column :current (gen-filter:unit column)))
+
+(defn- gen-filter:relative-date [column]
+  ;; Current: day, week, month, quarter, year.
+  ;; Previous: N minutes/hours/days/weeks/months/quarters/years
+  ;; Next: N minutes/hours/days/weeks/months/quarters/years
+  ;; And "include this month"!
+  (if (< (rand) 0.2)
+    (gen-filter:relative-current column)
+    (let [past-future (choose [+ -])
+          unit        (gen-filter:unit column)
+          n           (choose (range 1 20))]
+      (cond-> (lib/time-interval column (past-future n) unit)
+        (< (rand) 0.2) (lib.options/update-options assoc :include-current true)))))
+
+(defmulti ^:private gen-filter:exclude-date-options identity)
+
+(defmethod gen-filter:exclude-date-options :hour-of-day [_unit]
+  (range 0 24))
+
+(defmethod gen-filter:exclude-date-options :day-of-week [_unit]
+  (take 7 (iterate #(t/plus % (t/days 1)) (t/local-date))))
+
+(defn- jan1 []
+  (let [year (t/year (t/local-date))]
+    (t/local-date year 1 1)))
+
+(defmethod gen-filter:exclude-date-options :month-of-year [_unit]
+  (->> (jan1)
+       (iterate #(t/plus % (t/months 1)))
+       (take 12)))
+
+(defmethod gen-filter:exclude-date-options :quarter-of-year [_unit]
+  (->> (jan1)
+       (iterate #(t/plus % (t/months 3)))
+       (take 4)))
+
+(defn- gen-filter:exclude-date [column]
+  ;; Excludes are stored currently as:
+  ;; [:!= {} [:field {:temporal-unit :month-of-year} 123] "2024-02-01" "2024-03-01"]
+  ;; to exclude February and March.
+  ;; The allowed units are: :day-of-week, :month-of-year, and :quarter-of-year; plus :hour-of-day for datetimes.
+  ;; Hours are 0-based numbers, the others use exemplar dates - the first of a month, the nearest Thursday to today.
+  (let [units    (cond-> [:day-of-week :month-of-year :quarter-of-year]
+                   (isa? (:effective-type column) :type/DateTime) (conj :hour-of-day))
+        unit     (choose units)
+        opts     (vec (gen-filter:exclude-date-options unit))
+        ;; Always one option, plus 40% chance of more.
+        selected (loop [sel #{(rand-nth opts)}]
+                   (if (< (rand) 0.4)
+                     (recur (conj sel (rand-nth opts)))
+                     sel))
+        ;; But if that selected everything, drop one at random.
+        selected (cond-> selected
+                   (= (count selected) (count opts)) (disj (rand-nth opts)))]
+    (apply lib/!= (lib/with-temporal-bucket column unit) selected)))
+
+(defn- specify-time? [column]
+  (and (isa? (:effective-type column) :type/DateTime)
+       (< (rand) 0.2)))
+
+(defn- gen-filter:date-binary [column operator]
+  (if (specify-time? column)
+    (operator (lib/with-temporal-bucket column :minute) (gen-datetime:minute))
+    (operator column (gen-date))))
+
+(defn- gen-filter:date-between [column]
+  ;; TODO: Swap the arguments to put the earlier one on the left.
+  (if (specify-time? column)
+    (lib/between (lib/with-temporal-bucket column :minute)
+                 (gen-datetime:minute) (gen-datetime:minute))
+    (lib/between column (gen-date) (gen-date))))
+
+(defn- gen-filter:date [column]
+  ;; - 30% relative date ranges
+  ;; - 20% exclude
+  ;; - 50% before/after/on/between
+  (let [r (rand)]
+    (cond
+      (< r 0.30) (gen-filter:relative-date column)
+      (< r 0.50) (gen-filter:exclude-date column)
+      (< r 0.60) (gen-filter:date-binary column lib/<)
+      (< r 0.70) (gen-filter:date-binary column lib/>)
+      (< r 0.85) (gen-filter:date-binary column lib/=)
+      :else      (gen-filter:date-between column))))
+
+(defn- gen-filter:datetime [column]
+  ;; TODO: There's actually no difference right now. Clean this up?
+  (gen-filter:date column))
+
+(defn- gen-filter:generic [column]
+  (when-let [operator (some->> (:operators column)
+                               (remove skipped-operator?)
+                               rand-nth)]
     (gen-filter-clause column operator)))
+
+(defn- gen-filter:inside [col1 col2]
+  (let [[lat lon] (if (lib.types.isa/latitude? col1)
+                    [col1 col2]
+                    [col2 col1])
+        [lat-min lat-max] (sort (repeatedly 2 gen-latitude))
+        [lon-min lon-max] (sort (repeatedly 2 gen-longitude))]
+    ;; Yes, this is really the argument order for an `:inside` clause.
+    (lib/inside lat lon lat-max lon-min lat-min lon-max)))
+
+(defn- gen-filter:coordinate [column]
+  (let [counterpart? (if (lib.types.isa/latitude? column)
+                       lib.types.isa/longitude?
+                       lib.types.isa/latitude?)
+        counterparts (filter counterpart? *filterable-columns*)]
+    (if (and (seq counterparts)
+             (< (rand) 0.5))
+      ;; If we found a coordinate pair, generate an :inside filter 50% of the time.
+      (gen-filter:inside column (choose counterparts))
+      ;; Otherwise, generic filter on the original column.
+      (gen-filter:generic column))))
+
+;; TODO: Rather than naively generating filters here, we want to approach them like the UI.
+;; - Relative date ranges like "this year".
+;; - "Exclude" filters restricting eg. a particular month or days of the week.
+;; - Specific date ranges:
+;;   - Before, After and Between
+;;   - If introducing time for a :type/DateTime column, we bucket the column by minute.
+(defn- ^:private gen-filter []
+  (let [column (rand-nth *filterable-columns*)]
+    (cond
+      (lib.types.isa/coordinate? column)             (gen-filter:coordinate column)
+      (lib.types.isa/date-without-time? column)      (gen-filter:date column)
+      (isa? (:effective-type column) :type/DateTime) (gen-filter:datetime column)
+      :else
+      (let [result (gen-filter:generic column)]
+        ;; Sometimes we pick a column with no filter operators, and result is nil. Recur in that case to roll again.
+        (if (= result ::no-operators)
+          (recur)
+          result)))))
 
 (doseq [[op f] [[:and lib/and]
                 [:or  lib/or]]]
   (defmethod gen-filter-clause op [_column _op]
-    (apply f (repeatedly (+ 2 (rand-int 3))
-                         gen-filter))))
+    (->> (repeatedly gen-filter)
+         (filter identity)
+         (take (+ 2 (rand-int 3)))
+         (apply f))))
 
+;;
+(add-step {:kind :filter})
 
 (comment
-  (gen-filter-clause (meta/field-metadata :people :name) {:short :starts-with})
+  (let [query (lib/query meta/metadata-provider (meta/table-metadata :people))]
+    (def fs (vec (for [_ (range 500)]
+                   (last (next-steps* query :filter)))))
+    )
+
+  (def fg (group-by first fs))
+  (update-vals fg count)
+  (filter (comp t/local-date? last) (:!= fg))
   *e
-
-
-  (for [table (meta/tables)
-        field (meta/fields table)
-        :let [md (meta/field-metadata table field)]]
-    [table field (vec (repeatedly 10 #(rand-column-value md)))])
-
-  (repeatedly 40 #(rand-column-value (meta/field-metadata :people :source)))
-  (lib.types.isa/numeric? (meta/field-metadata :orders :created-at))
-  (lib.types.isa/category? (meta/field-metadata :people :source))
   )
 
-(defmethod next-steps* :filter [query _breakout]
+(defmethod next-steps* :filter [query _filter]
   (let [stage-number (choose-stage query)]
     (binding [*filterable-columns* (lib/filterable-columns query stage-number)]
       [:filter stage-number (gen-filter)])))
