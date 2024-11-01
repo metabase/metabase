@@ -98,7 +98,7 @@ function DraggableColumnListItem({
   ...props
 }: DraggableColumnListItemProps) {
   const { attributes, listeners, isDragging, setNodeRef } = useDraggable({
-    id: column.name,
+    id: `${DRAGGABLE_ID.COLUMN}:${dataSource.id}:${column.name}`,
     data: {
       type: DRAGGABLE_ID.COLUMN,
       column,
