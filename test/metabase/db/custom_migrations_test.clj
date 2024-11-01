@@ -2215,15 +2215,6 @@
             native-dataset-query (json/generate-string {:type "native"
                                                         :database database-id
                                                         :native native-query})
-            parameter-mappings-without-stage-numbers [{:card_id 1
-                                                       :parameter_id (str (random-uuid))
-                                                       :target ["dimension" ["field" 200 {:base-type "type/Integer"}]]}
-                                                      {:card_id 1
-                                                       :parameter_id (str (random-uuid))
-                                                       :target ["strange-long-forgotten-target" ["field" "count" {:base-type "type/Integer"}]]}
-                                                      {:card_id 1
-                                                       :parameter_id (str (random-uuid))
-                                                       :target ["dimension" ["field" 275 {:base-type "type/Text"}]]}]
             single-stage-question-id (t2/insert-returning-pks! (t2/table-name :model/Card)
                                                                {:name                   "Single-stage Question"
                                                                 :created_at             :%now
@@ -2268,8 +2259,18 @@
                                                             :visualization_settings "{}"
                                                             :database_id            database-id
                                                             :collection_id          nil})
+            parameter-mappings-without-stage-numbers (fn [card-id]
+                                                       [{:card_id card-id
+                                                         :parameter_id (str (random-uuid))
+                                                         :target ["dimension" ["field" 200 {:base-type "type/Integer"}]]}
+                                                        {:card_id card-id
+                                                         :parameter_id (str (random-uuid))
+                                                         :target ["strange-long-forgotten-target" ["field" "count" {:base-type "type/Integer"}]]}
+                                                        {:card_id card-id
+                                                         :parameter_id (str (random-uuid))
+                                                         :target ["dimension" ["field" 275 {:base-type "type/Text"}]]}])
             create-dashcard (fn create-dashcard
-                              ([card-id] (create-dashcard card-id parameter-mappings-without-stage-numbers))
+                              ([card-id] (create-dashcard card-id (parameter-mappings-without-stage-numbers card-id)))
                               ([card-id pmappings]
                                (t2/insert-returning-pks! :model/DashboardCard
                                                          {:dashboard_id dashboard-id
@@ -2286,33 +2287,36 @@
             multi-stage-dashcard2-id (create-dashcard multi-stage-question-id [])
             multi-stage-dashcard3-id (create-dashcard multi-stage-question-id)
             multi-stage-model-dashcard-id (create-dashcard multi-stage-model-id)
-            stage-0-pattern [{:card_id 1,
-                              :parameter_id string?
-                              :target ["dimension" ["field" 200 {:base-type "type/Integer"}] {:stage-number 0}]}
-                             {:card_id 1
-                              :parameter_id string?
-                              :target ["strange-long-forgotten-target" ["field" "count" {:base-type "type/Integer"}]]}
-                             {:card_id 1
-                              :parameter_id string?
-                              :target ["dimension" ["field" 275 {:base-type "type/Text"}] {:stage-number 0}]}]
-            stage-2-pattern [{:card_id 1
-                              :parameter_id string?
-                              :target ["dimension" ["field" 200 {:base-type "type/Integer"}] {:stage-number 2}]}
-                             {:card_id 1
-                              :parameter_id string?
-                              :target ["strange-long-forgotten-target" ["field" "count" {:base-type "type/Integer"}]]}
-                             {:card_id 1
-                              :parameter_id string?
-                              :target ["dimension" ["field" 275 {:base-type "type/Text"}] {:stage-number 2}]}]
-            no-stage-pattern [{:card_id 1
-                               :parameter_id string?
-                               :target ["dimension" ["field" 200 {:base-type "type/Integer"}]]}
-                              {:card_id 1
-                               :parameter_id string?
-                               :target ["strange-long-forgotten-target" ["field" "count" {:base-type "type/Integer"}]]}
-                              {:card_id 1
-                               :parameter_id string?
-                               :target ["dimension" ["field" 275 {:base-type "type/Text"}]]}]
+            stage-0-pattern (fn [card-id]
+                              [{:card_id card-id
+                                :parameter_id string?
+                                :target ["dimension" ["field" 200 {:base-type "type/Integer"}] {:stage-number 0}]}
+                               {:card_id card-id
+                                :parameter_id string?
+                                :target ["strange-long-forgotten-target" ["field" "count" {:base-type "type/Integer"}]]}
+                               {:card_id card-id
+                                :parameter_id string?
+                                :target ["dimension" ["field" 275 {:base-type "type/Text"}] {:stage-number 0}]}])
+            stage-2-pattern (fn [card-id]
+                              [{:card_id card-id
+                                :parameter_id string?
+                                :target ["dimension" ["field" 200 {:base-type "type/Integer"}] {:stage-number 2}]}
+                               {:card_id card-id
+                                :parameter_id string?
+                                :target ["strange-long-forgotten-target" ["field" "count" {:base-type "type/Integer"}]]}
+                               {:card_id card-id
+                                :parameter_id string?
+                                :target ["dimension" ["field" 275 {:base-type "type/Text"}] {:stage-number 2}]}])
+            no-stage-pattern (fn [card-id]
+                               [{:card_id card-id
+                                 :parameter_id string?
+                                 :target ["dimension" ["field" 200 {:base-type "type/Integer"}]]}
+                                {:card_id card-id
+                                 :parameter_id string?
+                                 :target ["strange-long-forgotten-target" ["field" "count" {:base-type "type/Integer"}]]}
+                                {:card_id card-id
+                                 :parameter_id string?
+                                 :target ["dimension" ["field" 275 {:base-type "type/Text"}]]}])
             query-parameter-mappings (fn []
                                        (->> (t2/query {:select   [:parameter_mappings]
                                                        :from     [:report_dashboardcard]
@@ -2326,19 +2330,19 @@
                                             (map #(-> % :parameter_mappings (json/parse-string true)))))]
         (migrate!)
         (testing "After the migration, dimension parameter_mappings have stage numbers"
-          (is (=? [stage-0-pattern
-                   stage-0-pattern
-                   stage-2-pattern
+          (is (=? [(stage-0-pattern single-stage-question-id)
+                   (stage-0-pattern native-question-id)
+                   (stage-2-pattern multi-stage-question-id)
                    []
-                   stage-2-pattern
-                   stage-0-pattern]
+                   (stage-2-pattern multi-stage-question-id)
+                   (stage-0-pattern multi-stage-model-id)]
                   (query-parameter-mappings))))
         (migrate! :down 49)
         (testing "After reversing the migration, parameter_mappings have no stage numbers"
-          (is (=? [no-stage-pattern
-                   no-stage-pattern
-                   no-stage-pattern
+          (is (=? [(no-stage-pattern single-stage-question-id)
+                   (no-stage-pattern native-question-id)
+                   (no-stage-pattern multi-stage-question-id)
                    []
-                   no-stage-pattern
-                   no-stage-pattern]
+                   (no-stage-pattern multi-stage-question-id)
+                   (no-stage-pattern multi-stage-model-id)]
                   (query-parameter-mappings))))))))
