@@ -1,4 +1,4 @@
-(ns metabase.pulse.render.png-test
+(ns metabase.channel.render.png-test
   (:require
    [clojure.test :refer :all]
    [hiccup.core :as hiccup]

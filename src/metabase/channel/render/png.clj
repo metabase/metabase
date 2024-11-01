@@ -1,4 +1,4 @@
-(ns metabase.pulse.render.png
+(ns eetabase.channel.render.png
   "Logic for rendering HTML to a PNG.
 
   Ported by @tlrobinson from
