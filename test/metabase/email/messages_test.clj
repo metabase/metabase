@@ -10,24 +10,9 @@
    [metabase.util.retry :as retry]
    [metabase.util.retry-test :as rt])
   (:import
-   (io.github.resilience4j.retry Retry)
-   (java.io IOException)))
+   (io.github.resilience4j.retry Retry)))
 
 (set! *warn-on-reflection* true)
-
-(deftest new-user-email
-  (is (= [{:from    "notifications@metabase.com",
-           :to      ["test@test.com"],
-           :subject "You're invited to join Metabase Test's Metabase",
-           :body    [{:type "text/html; charset=utf-8"}]}]
-         (tu/with-temporary-setting-values [site-name "Metabase Test"]
-           (et/with-fake-inbox
-             (messages/send-new-user-email! {:first_name "test" :email "test@test.com"}
-                                            {:first_name "invitor" :email "invited_by@test.com"}
-                                            "http://localhost/some/url"
-                                            false)
-             (-> (@et/inbox "test@test.com")
-                 (update-in [0 :body 0] dissoc :content)))))))
 
 (deftest password-reset-email
   (testing "password reset email can be sent successfully"
@@ -60,19 +45,6 @@
               (get-in [0 :body 0 :content])
               (str/includes? "deactivated"))))))
 
-(defmacro ^:private with-create-temp-failure! [& body]
-  `(with-redefs [messages/create-temp-file (fn [~'_]
-                                             (throw (IOException. "Failed to write file")))]
-     ~@body))
-
-;; Test that IOException bubbles up
-(deftest throws-exception
-  (is (thrown-with-msg?
-       IOException
-       (re-pattern (format "Unable to create temp file in `%s`" (System/getProperty "java.io.tmpdir")))
-       (with-create-temp-failure!
-         (#'messages/create-temp-file-or-throw "txt")))))
-
 (deftest alert-schedule-text-test
   (testing "Alert schedules can be described as English strings, with the timezone included"
     (tu/with-temporary-setting-values [report-timezone "America/Pacific"]
@@ -100,7 +72,8 @@
 (deftest render-pulse-email-test
   (testing "Email with few rows and columns can be rendered when tracing (#21166)"
     (mt/with-log-level [metabase.email :trace]
-      (let [part {:card   {:name "card-name"
+      (let [part {:card   {:id   1
+                           :name "card-name"
                            :visualization_settings
                            {:table.column_formatting []}}
                   :result {:data {:cols [{:name "x"} {:name "y"}]

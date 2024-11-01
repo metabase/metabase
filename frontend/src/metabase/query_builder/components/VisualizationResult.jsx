@@ -139,6 +139,7 @@ export default class VisualizationResult extends Component {
             onSelectTimelineEvents={this.props.selectTimelineEvents}
             onDeselectTimelineEvents={this.props.deselectTimelineEvents}
             onOpenChartSettings={this.props.onOpenChartSettings}
+            onUpdateQuestion={this.props.onUpdateQuestion}
             onUpdateWarnings={this.props.onUpdateWarnings}
             onUpdateVisualizationSettings={
               this.props.onUpdateVisualizationSettings

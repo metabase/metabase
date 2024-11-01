@@ -41,7 +41,7 @@ const propTypes = {
   allLoading: PropTypes.bool,
   allLoaded: PropTypes.bool,
   allFetched: PropTypes.bool,
-  allError: PropTypes.bool,
+  allError: PropTypes.object,
   dispatch: PropTypes.func,
 };
 

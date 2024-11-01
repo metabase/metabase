@@ -2,7 +2,8 @@ import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen } from "__support__/ui";
 
-import type { RelativeDatePickerValue } from "../types";
+import { DATE_PICKER_UNITS } from "../constants";
+import type { DatePickerUnit, RelativeDatePickerValue } from "../types";
 
 import { RelativeDatePicker } from "./RelativeDatePicker";
 
@@ -11,12 +12,14 @@ const TAB_CASES = TABS.flatMap(fromTab => TABS.map(toTab => [fromTab, toTab]));
 
 interface SetupOpts {
   value?: RelativeDatePickerValue;
+  availableUnits?: ReadonlyArray<DatePickerUnit>;
   canUseRelativeOffsets?: boolean;
   isNew?: boolean;
 }
 
 function setup({
   value,
+  availableUnits = DATE_PICKER_UNITS,
   canUseRelativeOffsets = false,
   isNew = false,
 }: SetupOpts = {}) {
@@ -26,6 +29,7 @@ function setup({
   renderWithProviders(
     <RelativeDatePicker
       value={value}
+      availableUnits={availableUnits}
       canUseRelativeOffsets={canUseRelativeOffsets}
       isNew={isNew}
       onChange={onChange}
