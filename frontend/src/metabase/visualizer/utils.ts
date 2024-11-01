@@ -23,11 +23,19 @@ export function createDataSource(
 export function createVisualizerColumnReference(
   dataSource: VisualizerDataSource,
   column: DatasetColumn,
+  otherReferencedColumns: VisualizerReferencedColumn[],
 ): VisualizerReferencedColumn {
+  let name = column.name;
+
+  const hasDuplicate = otherReferencedColumns.some(ref => ref.name === name);
+  if (hasDuplicate) {
+    name = `${dataSource.name} - ${name}`;
+  }
+
   return {
     sourceId: dataSource.id,
     columnKey: getColumnKey(column),
-    name: column.name,
+    name,
   };
 }
 

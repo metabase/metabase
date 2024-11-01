@@ -101,7 +101,12 @@ const visualizerSlice = createSlice({
       }>,
     ) => {
       const { column, dataSource } = action.payload;
-      const columnRef = createVisualizerColumnReference(dataSource, column);
+
+      const columnRef = createVisualizerColumnReference(
+        dataSource,
+        column,
+        state.referencedColumns,
+      );
 
       if (state.display === "funnel" && isNumeric(column)) {
         const metric = getVisualizerMetricColumn({ visualizer: state });
@@ -236,6 +241,7 @@ const visualizerSlice = createSlice({
             const columnRef = createVisualizerColumnReference(
               dataSource,
               dataset.data.cols[0],
+              state.referencedColumns,
             );
 
             const metric = getVisualizerMetricColumn({ visualizer: state });
