@@ -221,17 +221,7 @@ function visitDashboardById(dashboard_id, config) {
   }).then(({ status, body: { dashcards, tabs } }) => {
     const dashboardAlias = "getDashboard" + dashboard_id;
 
-    cy.intercept(
-      {
-        method: "GET",
-        url: `/api/dashboard/${dashboard_id}*`,
-      },
-      req => {
-        req.reply(res => {
-          res.body.last_used_param_values = {}; // remove param values to prevent random redirects caused by cached redirect
-        });
-      },
-    ).as(dashboardAlias);
+    cy.intercept("GET", `/api/dashboard/${dashboard_id}*`).as(dashboardAlias);
 
     const canViewDashboard = hasAccess(status);
 

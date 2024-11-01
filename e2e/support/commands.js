@@ -1,8 +1,6 @@
 import "./commands/ui/button";
 import "./commands/ui/icon";
 
-import "./commands/utils/waitAlias";
-
 import "./commands/api";
 
 import "./commands/user/createUser";

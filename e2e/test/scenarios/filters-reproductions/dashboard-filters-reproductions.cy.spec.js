@@ -1781,6 +1781,19 @@ describe("issue 25374", () => {
   };
 
   beforeEach(() => {
+    // we are overriding the intercept set in e2e/support/helpers/e2e-misc-helpers.js
+    cy.intercept(
+      {
+        method: "GET",
+        url: "/api/dashboard/*?dashboard_load_id=**",
+      },
+      req => {
+        req.reply(res => {
+          res.body.last_used_param_values = {}; // remove param values to prevent random redirects caused by cached redirect
+        });
+      },
+    ).as("getDashboard");
+
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
     restore();
     cy.signInAsAdmin();
@@ -1812,7 +1825,7 @@ describe("issue 25374", () => {
 
       visitDashboard(dashboard_id);
 
-      cy.waitAlias(/getDashboard/);
+      cy.wait("@getDashboard");
 
       filterWidget().type("1,2,3{enter}");
       cy.findByDisplayValue("1,2,3");
@@ -1860,7 +1873,7 @@ describe("issue 25374", () => {
     dashboardParameterSidebar().findByLabelText("Default value").type("1,2,3");
     saveDashboard();
 
-    cy.waitAlias(/getDashboard/);
+    cy.wait("@getDashboard");
 
     cy.location("search").should("eq", "?equal_to=1%2C2%2C3");
 
@@ -1889,7 +1902,7 @@ describe("issue 25374", () => {
     dashboardParameterSidebar().findByLabelText("Default value").type("1,2,3");
     saveDashboard();
 
-    cy.waitAlias(/getDashboard/);
+    cy.wait("@getDashboard");
 
     cy.button("Clear").click();
     cy.location("search").should("eq", "?equal_to=");
