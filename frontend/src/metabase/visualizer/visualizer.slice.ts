@@ -108,11 +108,12 @@ const visualizerSlice = createSlice({
         state.referencedColumns,
       );
 
+      state.referencedColumns.push(columnRef);
+
       if (state.display === "funnel" && isNumeric(column)) {
         const metric = getVisualizerMetricColumn({ visualizer: state });
         const dimension = getVisualizerDimensionColumn({ visualizer: state });
         if (metric.column && dimension.column) {
-          state.referencedColumns.push(columnRef);
           state.columns[metric.index] = connectToVisualizerColumn(
             metric.column,
             columnRef.name,
