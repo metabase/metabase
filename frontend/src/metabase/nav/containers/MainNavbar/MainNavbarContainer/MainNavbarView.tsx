@@ -175,17 +175,15 @@ function MainNavbarView({
             {hasDataAccess && (
               <PaddedSidebarLink
                 icon="semantic_layer"
-                url={BROWSE_SEMANTIC_LAYER}
-                isSelected={nonEntityItem?.url?.startsWith(
-                  BROWSE_SEMANTIC_LAYER,
-                )}
+                url={BROWSE_MODELS_URL}
+                isSelected={nonEntityItem?.url?.startsWith(BROWSE_MODELS_URL)}
                 onClick={onItemSelect}
                 aria-label={t`Browse semantic layer`}
               >
                 {t`OmniAI layer`}
               </PaddedSidebarLink>
             )}
-            <PaddedSidebarLink
+            {/* <PaddedSidebarLink
               icon="database"
               url={NEW_MODEL_URL}
               isSelected={nonEntityItem?.url?.startsWith(NEW_MODEL_URL)}
@@ -193,8 +191,8 @@ function MainNavbarView({
               aria-label={t`new model`}
             >
               {t`New Model`}
-            </PaddedSidebarLink>
-            <PaddedSidebarLink
+            </PaddedSidebarLink> */}
+            {/* <PaddedSidebarLink
               icon="database"
               url={BROWSE_MODELS_URL}
               isSelected={nonEntityItem?.url?.startsWith(BROWSE_MODELS_URL)}
@@ -202,7 +200,7 @@ function MainNavbarView({
               aria-label={t`Browse models`}
             >
               {t`Models`}
-            </PaddedSidebarLink>
+            </PaddedSidebarLink> */}
             <PaddedSidebarLink
               icon="collection"
               url={BROWSE_LIBRARY}
