@@ -88,6 +88,7 @@
    card-type :- ::lib.schema.metadata/card.type]
   (and (binding [lib.schema.expression/*suppress-expression-type-check?* true]
          (mr/validate ::lib.schema/query query))
+       (:database query)
        (boolean (can-run-method query card-type))))
 
 (defmulti can-save-method
