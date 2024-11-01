@@ -81,7 +81,7 @@ export const HomeLayout = () => {
             const modelCards = cardsList
                 .filter((card: any) => card.type === "model")
                 .map((card: any) => ({
-                    card__id: card.id,
+                    id: `card__${card.id}`,
                     model_schema: card.result_metadata || [],
                     name: card.name,
                     description: card.description
