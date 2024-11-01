@@ -356,7 +356,7 @@
                                               column-split-columns)
                                       (let [metadata-provider (or (:lib/metadata query)
                                                                   (lib.metadata.jvm/application-database-metadata-provider (:database query)))
-                                            query              (lib/query metadata-provider query)]
+                                            query             (lib/query metadata-provider query)]
                                         (into {}
                                               (comp (filter (comp #{:source/breakouts} :lib/source))
                                                     (map-indexed (fn [i col] [(:name col) i])))
