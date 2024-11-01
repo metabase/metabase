@@ -279,7 +279,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
         "pivot_table.column_split": {
           rows: ["CREATED_AT", "USER_ID", "PRODUCT_ID"],
           columns: [],
-          values: [["aggregation", 0]],
+          values: ["count"],
         },
         "pivot_table.collapsed_rows": {
           value: [],
