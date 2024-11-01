@@ -66,7 +66,7 @@
    :left-join [:pulse [:and
                        [:= :pulse.archived false]
                        [:= :pulse.dashboard_id :report_dashboard.id]]
-               :collection [:= :collection.id :report_dashboard.collection_id]]
+               :collection [:= :collection.id :report_dashboard.collection_id]
                :moderation_review [:and
                                    [:= :moderation_review.moderated_item_id :report_dashboard.id]
                                    [:= :moderation_review.moderated_item_type (h2x/literal "dashboard")]
