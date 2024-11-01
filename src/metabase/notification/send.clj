@@ -63,21 +63,21 @@
           retry-config    default-retry-config
           retry-errors    (volatile! [])
           retry-report    (fn []
-                           {:attempted_retries (count @retry-errors)
+                            {:attempted_retries (count @retry-errors)
                             ;; we want the last retry to be the most recent
-                            :retry_errors       (reverse @retry-errors)})
+                             :retry_errors       (reverse @retry-errors)})
           channel         (or (:channel handler)
-                            {:type (:channel_type handler)})
+                              {:type (:channel_type handler)})
           send!           (fn []
-                           (try
-                             (channel/send! channel message)
-                             (catch Exception e
-                               (when (should-retry-sending? e (:type channel))
-                                 (vswap! retry-errors conj {:message   (u/strip-error e)
-                                                            :timestamp (t/offset-date-time)})
-                                 (log/warnf e "[Notification %d] Failed to send to channel %s , retrying..."
-                                            notification-id (handler->channel-name handler))
-                                 (throw e)))))
+                            (try
+                              (channel/send! channel message)
+                              (catch Exception e
+                                (when (should-retry-sending? e (:type channel))
+                                  (vswap! retry-errors conj {:message   (u/strip-error e)
+                                                             :timestamp (t/offset-date-time)})
+                                  (log/warnf e "[Notification %d] Failed to send to channel %s , retrying..."
+                                             notification-id (handler->channel-name handler))
+                                  (throw e)))))
           retrier         (retry/make retry-config)]
       (log/debugf "[Notification %d] Sending a message to channel %s" notification-id (handler->channel-name handler))
       (task-history/with-task-history {:task            "channel-send"
@@ -87,13 +87,13 @@
                                                             (update :task_details merge (retry-report))))
                                        :on-fail-info    (fn [update-map _result]
                                                           (update update-map :task_details merge (retry-report)))
-                                       :task_details    (merge {:retry_config      retry-config
-                                                                :channel_id        (:id channel)
-                                                                :channel_type      (:type channel)
-                                                                :template_id       (:template_id handler)
-                                                                :notification_id   notification-id
-                                                                :notification_type payload-type
-                                                                :recipient_ids     (map :id (:recipients handler))})}
+                                       :task_details    {:retry_config      retry-config
+                                                         :channel_id        (:id channel)
+                                                         :channel_type      (:type channel)
+                                                         :template_id       (:template_id handler)
+                                                         :notification_id   notification-id
+                                                         :notification_type payload-type
+                                                         :recipient_ids     (map :id (:recipients handler))}}
 
         (retrier send!)
         (log/debugf "[Notification %d] Sent to channel %s with %d retries"
@@ -108,8 +108,7 @@
     (hydrate-notification-handler
      (t2/select :model/NotificationHandler :notification_id (:id notification-info)))
     ;; pulse-based notifications: dashboard subs, alerts
-    (or (:handlers notification-info)
-        [])))
+    (vec (:handlers notification-info))))
 
 ;; TODO: should this be a multimethod?
 (defn- do-after-notification-sent
@@ -141,28 +140,28 @@
           notification-payload (notification.payload/notification-payload notification-info)]
       (if (notification.payload/should-send-notification? notification-payload)
         (do
-         (log/debugf "[Notification %d] Found %d handlers" (:id notification-info) (count handlers))
-         (task-history/with-task-history
+          (log/debugf "[Notification %d] Found %d handlers" (:id notification-info) (count handlers))
+          (task-history/with-task-history
            {:task          "notification-send"
             :task_details {:notification_id       (:id notification-info)
                            :notification_handlers (map #(select-keys % [:id :channel_type :channel_id :template_id]) handlers)}}
-           (doseq [handler handlers]
-             (let [channel-type (:channel_type handler)
-                   messages     (channel/render-notification
-                                 channel-type
-                                 notification-payload
-                                 (:template handler)
-                                 (:recipients handler))]
-               (log/debugf "[Notification %d] Got %d messages for channel %s with template %d"
-                           (:id notification-info) (count messages)
-                           (handler->channel-name handler)
-                           (-> handler :template :id))
-               (doseq [message messages]
-                 (log/infof "[Notification %d] Sending message to channel %s"
-                            (:id notification-info) (:channel_type handler))
-                 (channel-send-retrying! (:id notification-info) (:payload_type notification-info) handler message))))
-           (do-after-notification-sent notification-info)
-           (log/infof "[Notification %d] Sent successfully" (:id notification-info))))
+            (doseq [handler handlers]
+              (let [channel-type (:channel_type handler)
+                    messages     (channel/render-notification
+                                  channel-type
+                                  notification-payload
+                                  (:template handler)
+                                  (:recipients handler))]
+                (log/debugf "[Notification %d] Got %d messages for channel %s with template %d"
+                            (:id notification-info) (count messages)
+                            (handler->channel-name handler)
+                            (-> handler :template :id))
+                (doseq [message messages]
+                  (log/infof "[Notification %d] Sending message to channel %s"
+                             (:id notification-info) (:channel_type handler))
+                  (channel-send-retrying! (:id notification-info) (:payload_type notification-info) handler message))))
+            (do-after-notification-sent notification-info)
+            (log/infof "[Notification %d] Sent successfully" (:id notification-info))))
         (log/infof "[Notification %d] Skipping" (:id notification-info))))
     (catch Exception e
       (log/errorf e "[Notification %d] Failed to send" (:id notification-info))

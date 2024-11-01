@@ -59,8 +59,8 @@
   [dashboard-subscription-id non-user-email]
   (str (urls/unsubscribe-url)
        "?hash=" (generate-dashboard-sub-unsubscribe-hash dashboard-subscription-id non-user-email)
-                "&email=" non-user-email
-                "&pulse-id=" dashboard-subscription-id))
+       "&email=" non-user-email
+       "&pulse-id=" dashboard-subscription-id))
 
 (defn- render-part
   [timezone part options]
@@ -82,8 +82,8 @@
     :email/mustache-text
     (stencil/render-string (:body details) payload)
     (do
-     (log/warnf "Unknown email template type: %s" (:type details))
-     nil)))
+      (log/warnf "Unknown email template type: %s" (:type details))
+      nil)))
 
 (defn- render-message-body
   [template message-context attachments]
@@ -233,16 +233,16 @@
                                            :vertical-align "baseline"})}
                      (pulse/value-string filter)]]]])
                parameters)
-        rows  (partition 2 2 nil cells)]
+        rows  (partition-all 2 cells)]
     (html
-     [:table {:style (pulse/style {:table-layout :fixed
+     [:table {:style (pulse/style {:table-layout    :fixed
                                    :border-collapse :collapse
-                                   :cellpadding "0"
-                                   :cellspacing "0"
-                                   :width "100%"
-                                   :font-size  "12px"
-                                   :font-weight 700
-                                   :margin-top "8px"})}
+                                   :cellpadding     "0"
+                                   :cellspacing     "0"
+                                   :width           "100%"
+                                   :font-size       "12px"
+                                   :font-weight     700
+                                   :margin-top      "8px"})}
       (for [row rows]
         [:tr {} row])])))
 

@@ -11,7 +11,6 @@
 (mu/defmethod notification.payload/payload :notification/alert
   [{:keys [creator_id alert] :as _notification-info} :- notification.payload/Notification]
   (let [card_id (:card_id alert)]
-    ;; TODO: maybe we shouldn't call this result beacuse there is a nested result
     {:card_part   (notification.execute/execute-card creator_id card_id
                                                      ;; for query_execution's context purposes
                                                      ;; TODO: check whether we can remove this or name it?

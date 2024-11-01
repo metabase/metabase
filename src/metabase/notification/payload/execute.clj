@@ -19,13 +19,13 @@
 (defn is-card-empty?
   "Check if the card is empty"
   [card]
-  (if-let [result (:result card)]
-    (or (zero? (-> result :row_count))
-        ;; Many aggregations result in [[nil]] if there are no rows to aggregate after filters
-        (= [[nil]]
-           (-> result :data :rows)))
-    ;; Text cards have no result; treat as empty
-    true))
+  (let [result (:result card)]
+    (or
+     ;; Text cards have no result; treat as empty
+     (nil? result)
+     (zero? (-> result :row_count))
+     ;; Many aggregations result in [[nil]] if there are no rows to aggregate after filters
+     (= [[nil]] (-> result :data :rows)))))
 
 (defn- tab->part
   [{:keys [name]}]
@@ -120,19 +120,15 @@
     (let [parameters (merge-default-values parameters)]
       (pu/execute-dashboard-subscription-card dashcard parameters))
 
-    ;; iframes
     (virtual-card-of-type? dashcard "iframe")
     nil
 
-    ;; actions
     (virtual-card-of-type? dashcard "action")
     nil
 
-    ;; link cards
     (virtual-card-of-type? dashcard "link")
     (dashcard-link-card->part dashcard)
 
-    ;; placeholder cards aren't displayed
     (virtual-card-of-type? dashcard "placeholder")
     nil
 
@@ -149,10 +145,7 @@
 (defn- dashcards->part
   [dashcards parameters]
   (let [ordered-dashcards (sort dashboard-card/dashcard-comparator dashcards)]
-    (doall (for [dashcard ordered-dashcards
-                 :let     [part (dashcard->part dashcard parameters)]
-                 :when    (some? part)]
-             part))))
+    (doall (keep #(dashcard->part % parameters) ordered-dashcards))))
 
 (def Part
   "Part."

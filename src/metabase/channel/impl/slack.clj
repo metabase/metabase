@@ -150,8 +150,8 @@
   [_channel-type {:keys [payload creator]} _template channel-ids]
   (let [parameters (:parameters payload)
         dashboard  (:dashboard payload)]
-       (for [channel-id channel-ids]
-        {:channel-id  channel-id
-         :attachments (remove nil?
-                              (flatten [(slack-dashboard-header dashboard (:common_name creator) parameters)
-                                        (create-slack-attachment-data (:dashboard_parts payload))]))})))
+    (for [channel-id channel-ids]
+      {:channel-id  channel-id
+       :attachments (remove nil?
+                            (flatten [(slack-dashboard-header dashboard (:common_name creator) parameters)
+                                      (create-slack-attachment-data (:dashboard_parts payload))]))})))
