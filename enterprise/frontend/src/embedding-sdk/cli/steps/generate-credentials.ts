@@ -13,6 +13,8 @@ import {
   printWithPadding,
 } from "../utils/print";
 
+const CREDENTIAL_FILE_NAME = "METABASE_LOGIN.json";
+
 export const generateCredentials: CliStepMethod = async state => {
   printEmptyLines();
   printWithPadding("Setting up a local Metabase instance.");
@@ -24,23 +26,15 @@ export const generateCredentials: CliStepMethod = async state => {
       OUTPUT_STYLES.error("Please enter a valid email address."),
   });
 
-  const password = generatePassword();
-  console.log(`[debug] Password is ${password}`);
+  const password = generatePassword({ total: 14, digit: 1 });
 
-  const credentialFile = "METABASE_LOGIN.json";
-
-  await addFileToGitIgnore(credentialFile);
+  await addFileToGitIgnore(CREDENTIAL_FILE_NAME);
 
   // Store the login credentials to a file.
   await fs.writeFile(
-    `./${credentialFile}`,
+    `./${CREDENTIAL_FILE_NAME}`,
     JSON.stringify({ email, password }, null, 2),
   );
 
-  return [
-    {
-      type: "success",
-    },
-    { ...state, email, password },
-  ];
+  return [{ type: "success" }, { ...state, email, password }];
 };
