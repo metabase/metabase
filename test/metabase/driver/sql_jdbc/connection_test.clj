@@ -240,6 +240,11 @@
       (is (= 20
              (sql-jdbc.conn/jdbc-data-warehouse-unreturned-connection-timeout-seconds))))))
 
+(deftest ^:parallel include-debug-unreturned-connection-stack-traces-test
+  (testing "We should be setting debugUnreturnedConnectionStackTraces (#47981)"
+    (is (=? {"debugUnreturnedConnectionStackTraces" true}
+            (sql-jdbc.conn/data-warehouse-connection-pool-properties :h2 (mt/db))))))
+
 (defn- init-h2-tcp-server [port]
   (let [args   ["-tcp" "-tcpPort", (str port), "-tcpAllowOthers" "-tcpDaemon"]
         server (Server/createTcpServer (into-array args))]

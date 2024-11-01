@@ -148,6 +148,24 @@ For setting the maximum, see [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_ap
    ;; things after a certain timeout but it's better to be safe than sorry -- it seems like in practice some
    ;; connections disappear into the ether
    "unreturnedConnectionTimeout"  (jdbc-data-warehouse-unreturned-connection-timeout-seconds)
+   ;; [From dox] If true, and if unreturnedConnectionTimeout is set to a positive value, then the pool will capture
+   ;; the stack trace (via an Exception) of all Connection checkouts, and the stack traces will be printed when
+   ;; unreturned checked-out Connections timeout. This is intended to debug applications with Connection leaks, that
+   ;; is applications that occasionally fail to return Connections, leading to pool growth, and eventually
+   ;; exhaustion (when the pool hits maxPoolSize with all Connections checked-out and lost). This parameter should
+   ;; only be set while debugging, as capturing the stack trace will slow down every Connection check-out.
+   ;;
+   ;; Although we set this unconditionally to true here, note that these exceptions are not actually logged by
+   ;; default because we set the com.mchange log level to ERROR in our log4j2.xml config, and c3p0 logs the exceptions
+   ;; at INFO level. Therefore, you need to update the log level to INFO via a custom log4j config in order to see the
+   ;; stack traces in the logs.
+   ;;
+   ;; As noted in the C3P0 docs, this does add some overhead to create the Exception at Connection checkout.
+   ;; criterium/quick-bench indicates this is ~600ns of overhead per Exception created on my laptop. This doesn't seem
+   ;; worth adding another user-configurable knob to disable it given that we also unconditionally set
+   ;; testConnectionOnCheckout, above, which adds an order of magnitude more overhead per checkout (but still deemed
+   ;; acceptable).
+   "debugUnreturnedConnectionStackTraces" true
    ;; Set the data source name so that the c3p0 JMX bean has a useful identifier, which incorporates the DB ID, driver,
    ;; and name from the details
    "dataSourceName"               (format "db-%d-%s-%s"
