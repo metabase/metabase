@@ -29,12 +29,12 @@
        (str/join " ")))
 
 (defn- display-data [m]
-  (select-keys m [:name :display_name :description]))
+  (select-keys m [:name :display_name :description :collection_name]))
 
 (defn- ->entry [m]
   (-> m
       (select-keys
-       (into [:id :model] search.spec/attr-keys))
+       (into [:id :model] search.spec/attr-columns))
       (update :archived boolean)
       (assoc
        :display_data (display-data m)
@@ -111,7 +111,7 @@
 
 (comment
   ;; This is useful introspection for migrating each search-model to a spec
-  (spec-index-query "database")
+  (spec-index-query "collection")
   (into [] (map t2.realize/realize) (t2/reducible-query (spec-index-query "database")))
   (->> {:search-string      nil
         :models             #{"action"}

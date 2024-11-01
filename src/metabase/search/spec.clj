@@ -37,9 +37,13 @@
    :verified
    :updated-at])
 
-(def attr-keys
+(def ^:private attr-keys
   "Keys of a search-model that correspond to concrete columns in the index"
   (into explicit-attrs optional-attrs))
+
+(def attr-columns
+  "Columns of an ingestion query that correspond to concrete columns in the index"
+  (mapv (comp keyword u/->snake_case_en name) attr-keys))
 
 (assert (not-any? (set explicit-attrs) optional-attrs) "Attribute must only be mentioned in one list")
 
@@ -52,7 +56,7 @@
   ;; This is rather slow, not great for REPL development.
   (if config/is-dev?
     :keyword
-    [:and :keyword [:not (into [:enum] attr-keys)]]))
+    [:and :keyword [:not (into [:enum] attr-columns)]]))
 
 (def ^:private JoinMap
   "We use our own schema instead of raw HoneySQL, so that we can invert it to calculate the update hooks."

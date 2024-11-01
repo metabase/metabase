@@ -203,15 +203,17 @@
 
 (defn search-query
   "Query fragment for all models corresponding to a query parameter `:search-term`."
-  [search-term]
-  {:select [:model_id :model]
-   :from   [active-table]
-   :where  (if-not search-term
-             [:= [:inline 1] [:inline 1]]
-             [:raw
-              "search_vector @@ to_tsquery('"
-              tsv-language "', "
-              [:lift (to-tsquery-expr search-term)] ")"])})
+  ([search-term]
+   (search-query search-term [:model_id :model]))
+  ([search-term select-items]
+   {:select select-items
+    :from   [active-table]
+    :where  (if-not search-term
+              [:= [:inline 1] [:inline 1]]
+              [:raw
+               "search_vector @@ to_tsquery('"
+               tsv-language "', "
+               [:lift (to-tsquery-expr search-term)] ")"])}))
 
 (defn search
   "Use the index table to search for records."
