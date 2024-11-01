@@ -168,7 +168,6 @@ describe("syncVizSettings", () => {
         { name: "ID_2", key: "PRODUCTS__ID" },
         { name: "ID_3", key: "PEOPLE__ID" },
       ];
-
       const oldSettings = createMockVisualizationSettings({
         column_settings: {
           '["name","ID"]': { column_title: "@ID" },
@@ -211,7 +210,6 @@ describe("syncVizSettings", () => {
         { name: "ID_2", key: "PRODUCTS__ID", isAggregation: true },
         { name: "ID_3", key: "PEOPLE__ID" },
       ];
-
       const oldSettings = createMockVisualizationSettings({
         "graph.metrics": ["ID", "ID_2"],
       });
@@ -232,7 +230,6 @@ describe("syncVizSettings", () => {
         { name: "ID_2", key: "PRODUCTS__ID" },
         { name: "ID_3", key: "PEOPLE__ID" },
       ];
-
       const oldSettings = createMockVisualizationSettings({
         "graph.metrics": ["ID", "ID_2"],
       });
@@ -318,6 +315,28 @@ describe("syncVizSettings", () => {
           rows: ["ID_3"],
           value: ["1"],
         },
+      });
+    });
+
+    it("should skip empty properties and do not set an empty value", () => {
+      const oldColumns: ColumnInfo[] = [
+        { name: "ID", key: "ID" },
+        { name: "ID_2", key: "PEOPLE__ID" },
+        { name: "count", key: "count" },
+      ];
+      const newColumns: ColumnInfo[] = [
+        { name: "ID", key: "ID" },
+        { name: "ID_2", key: "PRODUCTS__ID" },
+        { name: "ID_3", key: "PEOPLE__ID" },
+        { name: "count", key: "count" },
+      ];
+      const oldSettings = createMockVisualizationSettings({
+        "pivot_table.column_split": {},
+      });
+
+      const newSettings = syncVizSettings(oldSettings, newColumns, oldColumns);
+      expect(newSettings).toEqual({
+        "pivot_table.column_split": {},
       });
     });
 
