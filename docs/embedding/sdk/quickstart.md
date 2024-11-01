@@ -88,7 +88,7 @@ In **JWT IDENTITY PROVIDER URI** field, paste
 localhost:9090/sso/metabase
 ```
 
-Or substitute your Cloud URL for /localhost.
+Or substitute your Cloud URL for `/localhost`.
 
 ### String used by the JWT signing key
 
