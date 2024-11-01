@@ -11,7 +11,9 @@
 (defn legacy-results
   "Use the source tables directly to search for records."
   [search-term & {:as opts}]
-  (t2/query (#'search.postgres/in-place-query (assoc opts :search-engine :search.engine/in-place :search-term search-term))))
+  (-> (assoc opts :search-engine :search.engine/in-place :search-term search-term)
+      (#'search.postgres/in-place-query)
+      t2/query))
 
 (def legacy-models
   "Just the identity of the matches"
@@ -23,7 +25,7 @@
 (defn- index-hits [term]
   (count (search.index/search term)))
 
-;; These helpers only mutate the temp local appdb.
+;; These helpers only mutate the temp local AppDb.
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defmacro with-index
   "Ensure a clean, small index."

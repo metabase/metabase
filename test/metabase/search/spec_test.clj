@@ -42,6 +42,14 @@
    :render-terms {:related-field [:lower :related.field]}})
 
 (deftest test-find-fields
+  (is (= #{[nil :description]
+           [nil :collection_id]
+           [:related :table_id]
+           [:this :name]
+           [:related :field]
+           [:this :db_id]}
+         (#'search.spec/find-fields example-spec)))
+
   (is (= #{:description :collection_id} (#'search.spec/find-fields nil example-spec)))
   (is (= #{:name :db_id} (#'search.spec/find-fields :this example-spec)))
   (is (= #{:table_id :field} (#'search.spec/find-fields :related example-spec))))

@@ -91,67 +91,71 @@
          (str/starts-with? (name kw) (str (name table) "."))
          (not (str/includes? (name kw) ".")))))
 
+(defn- get-table [kw]
+  (let [parts (str/split (name kw) #"\.")]
+    (when (> (count parts) 1)
+      (keyword (first parts)))))
+
 (defn- remove-table [table kw]
   (if (and table (not (namespace kw)))
     (keyword (subs (name kw) (inc (count (name table)))))
     kw))
 
-(defn- find-fields-kw [table kw]
-  (when (has-table? table kw)
-    #{(remove-table table kw)}))
+(defn- find-fields-kw [kw]
+  (let [table (get-table kw)]
+    #{[table (remove-table table kw)]}))
 
 (defn- union-find
   "Aggregate the references within each element of xs using f"
-  [f table xs]
-  (reduce set/union #{} (map (partial f table) xs)))
+  [f xs]
+  (reduce set/union #{} (map f xs)))
 
-(defn- find-fields-expr [table expr]
+(defn- find-fields-expr [expr]
   (cond
     (keyword? expr)
-    (find-fields-kw table expr)
+    (find-fields-kw expr)
 
     (vector? expr)
-    (union-find find-fields-expr table (rest expr))))
+    (union-find find-fields-expr (rest expr))))
 
-(defn- find-fields-attr [table [k v]]
+(defn- find-fields-attr [[k v]]
   (when v
     (if (true? v)
-      (when (nil? table)
-        #{k})
-      (find-fields-expr table v))))
+      #{[nil (keyword (u/->snake_case_en (name k)))]}
+      (find-fields-expr v))))
 
-(defn- find-fields-select-item [table x]
+(defn- find-fields-select-item [x]
   (cond
     (keyword? x)
-    (find-fields-kw table x)
+    (find-fields-kw x)
 
     (vector? x)
-    (find-fields-expr table (first x))))
+    (find-fields-expr (first x))))
 
-(defn- find-fields-select-items [table x]
-  (union-find find-fields-select-item table x))
-
-(defn- find-fields-top [table x]
+(defn- find-fields-top [x]
   (cond
     (map? x)
-    (union-find find-fields-attr table x)
+    (union-find find-fields-attr x)
 
     (sequential? x)
-    (find-fields-select-items table x)
+    (union-find find-fields-select-item x)
 
     :else
-    (throw (ex-info "Unexpected format for fields" {:table table :x x}))))
+    (throw (ex-info "Unexpected format for fields" {:x x}))))
 
 (defn- find-fields
   "Search within a definition for all the fields referenced on the given table alias."
-  [table spec]
-  (into #{}
-        (map #(keyword (u/->snake_case_en (name %))))
-        (union-find
-         find-fields-top
-         table
-         ;; Remove the keys with special meanings (should probably switch this to an allowlist rather)
-         (vals (dissoc spec :name :native-query :where :joins :bookmark :model)))))
+  ([spec]
+   (into #{}
+         (union-find
+          find-fields-top
+          ;; Remove the keys with special meanings (should probably switch this to an allowlist rather)
+          (vals (dissoc spec :name :native-query :where :joins :bookmark :model)))))
+  ([table spec]
+   (set
+    (for [[t f] (find-fields spec)
+          :when (= t table)]
+      f))))
 
 (defn- replace-qualification [expr from to]
   (cond
@@ -209,6 +213,7 @@
   [spec]
   (when-let [info (mc/explain Specification spec)]
     (throw (ex-info (str "Invalid search specification for " (:name spec) ": " (me/humanize info)) info)))
+  (find-fields spec)
   ;; validate consistency etc
   ;; ... not sure what to check here actually, Malli has covered a lot!
   )
