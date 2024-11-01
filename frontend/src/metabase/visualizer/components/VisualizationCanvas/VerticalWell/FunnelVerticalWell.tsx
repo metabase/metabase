@@ -30,7 +30,7 @@ export function FunnelVerticalWell({ settings }: FunnelVerticalWellProps) {
       }}
       ref={setNodeRef}
     >
-      <WellItem>
+      <WellItem style={{ position: "absolute", transform: "rotate(-90deg)" }}>
         <Text truncate>{metric}</Text>
       </WellItem>
     </Flex>
