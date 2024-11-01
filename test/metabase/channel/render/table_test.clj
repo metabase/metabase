@@ -1,11 +1,11 @@
-(ns metabase.pulse.render.table-test
+(ns metabase.channel.render.table-test
   (:require
    [clojure.test :refer :all]
    [hickory.select :as hik.s]
    [metabase.formatter :as formatter]
    [metabase.pulse.render :as render]
    [metabase.channel.render.color :as color]
-   [metabase.pulse.render.table :as table]
+   [metabase.channel.render.table :as table]
    [metabase.pulse.render.test-util :as render.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))

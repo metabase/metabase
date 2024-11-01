@@ -1,4 +1,4 @@
-(ns metabase.pulse.render.table
+(ns metabase.channel.render.table
   (:require
    [clojure.string :as str]
    [hiccup.core :refer [h]]
