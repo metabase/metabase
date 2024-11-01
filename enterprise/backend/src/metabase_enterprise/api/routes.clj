@@ -53,7 +53,9 @@
       "/metabot-v3" []
       (->> metabot-v3/routes
            +auth
-           (ee.api.common/+require-premium-feature :metabot-v3 (deferred-tru "MetaBot"))))
+           ;; TODO: THE FEATURE BELOW SHOULD BE `:metabot-v3`!!!!!!!
+           ;; TODO: DO NOT MERGE UNTIL THIS IS CHANGED
+           (ee.api.common/+require-premium-feature :scim (deferred-tru "MetaBot"))))
     (context
       "/scim" []
       (ee.api.common/+require-premium-feature :scim (deferred-tru "SCIM configuration") scim/routes))
