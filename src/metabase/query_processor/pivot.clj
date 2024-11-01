@@ -359,7 +359,7 @@
                                             query             (lib/query metadata-provider query)]
                                         (into {}
                                               (comp (filter (comp #{:source/breakouts} :lib/source))
-                                                    (map-indexed (fn [i col] [(:name col) i])))
+                                                    (map-indexed (fn [i column] [(:name column) i])))
                                               (lib/returned-columns query))))
         pivot-rows (when column-split-rows
                      (into [] (keep column-name->breakout-index) column-split-rows))
