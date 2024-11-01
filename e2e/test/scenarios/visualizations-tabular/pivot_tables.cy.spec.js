@@ -216,9 +216,9 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
       display: "pivot",
       visualization_settings: {
         "pivot_table.column_split": {
-          rows: [b2, b3],
-          columns: [b1],
-          values: [["aggregation", 0]],
+          rows: ["CATEGORY", "SOURCE"],
+          columns: ["CREATED_AT"],
+          values: ["count"],
         },
       },
     });
@@ -277,11 +277,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
       display: "pivot",
       visualization_settings: {
         "pivot_table.column_split": {
-          rows: [
-            ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
-            ["field", ORDERS.USER_ID, null],
-            ["field", ORDERS.PRODUCT_ID, null],
-          ],
+          rows: ["CREATED_AT", "USER_ID", "PRODUCT_ID"],
           columns: [],
           values: [["aggregation", 0]],
         },
@@ -316,7 +312,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
       display: "pivot",
       visualization_settings: {
         "pivot_table.column_split": {
-          rows: testQuery.query.breakout,
+          rows: ["SOURCE", "CATEGORY"],
           columns: [],
           values: [],
         },
@@ -896,14 +892,9 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
       display: "pivot",
       visualization_settings: {
         "pivot_table.column_split": {
-          rows: [
-            ["field", PEOPLE.STATE, { "source-field": ORDERS.USER_ID }],
-            ["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }],
-          ],
-          columns: [
-            ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
-          ],
-          values: [["aggregation", 0]],
+          rows: ["STATE", "CREATED_AT"],
+          columns: ["CATEGORY"],
+          values: ["sum"],
         },
         "pivot_table.collapsed_rows": {
           value: [],
@@ -934,14 +925,9 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
       display: "pivot",
       visualization_settings: {
         "pivot_table.column_split": {
-          rows: [
-            ["field", PEOPLE.STATE, { "source-field": ORDERS.USER_ID }],
-            ["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }],
-          ],
-          columns: [
-            ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
-          ],
-          values: [["aggregation", 0]],
+          rows: ["STATE", "CREATED_AT"],
+          columns: ["CATEGORY"],
+          values: ["sum"],
         },
         "pivot_table.collapsed_rows": {
           value: [],
@@ -1047,9 +1033,9 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
       rows: ratingField,
       columns: createdAtField,
       "pivot_table.column_split": {
-        rows: [ratingField],
-        columns: [createdAtField],
-        values: [["aggregation", 0]],
+        rows: ["RATING"],
+        columns: ["CREATED_AT"],
+        values: ["count"],
       },
     };
 
@@ -1179,12 +1165,9 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
       display: "pivot",
       visualization_settings: {
         "pivot_table.column_split": {
-          rows: [
-            ["field", PRODUCTS.CATEGORY, { "base-type": "type/Text" }],
-            ["field", PRODUCTS.EAN, { "base-type": "type/Text" }],
-          ],
-          columns: [["field", "count", { "base-type": "type/Integer" }]],
-          values: [["aggregation", 0]],
+          rows: ["CATEGORY", "EAN"],
+          columns: ["count"],
+          values: ["count"],
         },
       },
     });
@@ -1248,9 +1231,9 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
           display: "pivot",
           visualization_settings: {
             "pivot_table.column_split": {
-              rows: [createdAtField],
-              columns: [categoryField],
-              values: [["aggregation", 0]],
+              rows: ["CREATED_AT"],
+              columns: ["CATEGORY"],
+              values: ["count"],
             },
             "pivot_table.column_widths": {
               leftHeaderWidths: [141],
@@ -1435,12 +1418,9 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
         },
         visualization_settings: {
           "pivot_table.column_split": {
-            rows: [
-              ["expression", "test"],
-              ["field", PRODUCTS.RATING],
-            ],
+            rows: ["test", "RATING"],
             columns: [],
-            values: [["aggregation", 0]],
+            values: ["count"],
           },
           "pivot_table.collapsed_rows": {
             value: ['["Doohickey"]', '["Gadget"]', '["Gizmo"]', '["Widget"]'],
