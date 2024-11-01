@@ -8,6 +8,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.walk :as lib.walk]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.query.permissions :as query-perms]
    [metabase.public-settings.premium-features :refer [defenterprise]]
@@ -83,6 +84,16 @@
   but we definitely don't want users passing it in themselves. So remove it if it's present."
   [query]
   (dissoc query ::query-perms/perms))
+
+(defn remove-source-card-keys
+  "Pre-processing middlewre. Removes any instances of the `:qp/stage-is-from-source-card` key which is added by the
+  fetch-source-query middleware when source cards are resolved in a query. Since we rely on this for permission enforcement,
+  we want to disallow users from passing it in themselves (like `remove-permissions-key` above)."
+  [query]
+  (lib.walk/walk
+   query
+   (fn [_query _path-type _path stage-or-join]
+     (dissoc stage-or-join :qp/stage-is-from-source-card))))
 
 (mu/defn check-query-permissions*
   "Check that User with `user-id` has permissions to run `query`, or throw an exception."
