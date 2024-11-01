@@ -242,7 +242,7 @@ export const _columnSettings = {
       const rows = settings[COLUMN_SPLIT_SETTING]?.rows || [];
       return rows
         .slice(0, -1)
-        .some((row: RowValue) => _.isEqual(row, column.field_ref));
+        .some((row: RowValue) => _.isEqual(row, column.name));
     },
     getHidden: (
       column: DatasetColumn,
@@ -255,7 +255,7 @@ export const _columnSettings = {
       //  - not the last column
       return !rows
         .slice(0, -1)
-        .some((row: RowValue) => _.isEqual(row, column.field_ref));
+        .some((row: RowValue) => _.isEqual(row, column.name));
     },
   },
   column_title: {
