@@ -201,7 +201,7 @@
   [driver db]
   (comp
    (describe-fields-xf driver db)
-   (map-indexed (fn [i col] (assoc col :database-position i)))))
+   (map-indexed (fn [i col] (dissoc (assoc col :database-position i) :table-schema)))))
 
 (defmulti describe-table-fields
   "Returns a set of column metadata for `table` using JDBC Connection `conn`."
