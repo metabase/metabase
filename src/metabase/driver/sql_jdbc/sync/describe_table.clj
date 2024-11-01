@@ -179,8 +179,7 @@
                semantic-type  (calculated-semantic-type driver (:name col) (:database-type col))
                json?          (isa? base-type :type/JSON)]
            (merge
-            (u/select-non-nil-keys col [:table-schema
-                                        :table-name
+            (u/select-non-nil-keys col [:table-name
                                         :pk?
                                         :name
                                         :database-type
@@ -188,7 +187,8 @@
                                         :field-comment
                                         :database-required
                                         :database-is-auto-increment])
-            {:base-type         base-type
+            {:table-schema      (:table-schema col) ;; can be nil
+             :base-type         base-type
              ;; json-unfolding is true by default for JSON fields, but this can be overridden at the DB level
              :json-unfolding    json?}
             (when semantic-type
