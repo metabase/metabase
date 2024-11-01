@@ -18,6 +18,7 @@
     :refer [SearchableModel SearchContext]]
    [metabase.search.filter :as search.filter]
    [metabase.search.fulltext :as search.fulltext]
+   [metabase.search.legacy :as search.legacy]
    [metabase.search.scoring :as scoring]
    [metabase.util.i18n :refer [tru deferred-tru]]
    [metabase.util.log :as log]
@@ -159,7 +160,7 @@
                            name)
          :context        (when (and match-context-thunk
                                     (empty?
-                                     (remove matching-columns search.config/displayed-columns)))
+                                     (remove matching-columns search.legacy/displayed-columns)))
                            (match-context-thunk))
          :collection     (if (and archived_directly (not= "collection" model))
                            (select-keys (collection/trash-collection)

@@ -105,7 +105,6 @@
    ;; returned for Card and Action
    :dataset_query       :text))
 
-
 (mu/defn- canonical-columns :- [:sequential HoneySQLColumn]
   "Returns a seq of lists of canonical columns for the search query with the given `model` Will return column names
   prefixed with the `model` name so that it can be used in criteria. Projects a `nil` for columns the `model` doesn't
