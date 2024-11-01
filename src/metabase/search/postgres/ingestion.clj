@@ -52,22 +52,22 @@
   ([]
    (let [spec-models (keys (methods search.spec/spec))
          model-names (reduce disj (disj search.config/all-models "indexed-entity") spec-models)]
-   (legacy-search-items-query model-names)))
+     (legacy-search-items-query model-names)))
   ([model-names]
-     (if (empty? model-names)
+   (if (empty? model-names)
        ;; Legacy search will return a singleton with a nil record, let's rather not get back anything.
-       {:select [:*] :from :report_card :where [:inline [:= 1 2]]}
-       (-> {:search-string      nil
-            :models             model-names
+     {:select [:*] :from :report_card :where [:inline [:= 1 2]]}
+     (-> {:search-string      nil
+          :models             model-names
             ;; we want to see everything
-            :is-superuser?      true
-            :current-user-id    (t2/select-one-pk :model/User :is_superuser true)
-            :current-user-perms #{"/"}
-            :archived?          nil
+          :is-superuser?      true
+          :current-user-id    (t2/select-one-pk :model/User :is_superuser true)
+          :current-user-perms #{"/"}
+          :archived?          nil
             ;; only need this for display data
-            :model-ancestors?   false}
-           search.legacy/full-search-query
-           (dissoc :limit)))))
+          :model-ancestors?   false}
+         search.legacy/full-search-query
+         (dissoc :limit)))))
 
 (defn- attrs->select-items [attrs]
   (for [[k v] attrs :when v]

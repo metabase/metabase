@@ -83,13 +83,13 @@
       (doseq [term (take 1 example-terms)]
         (testing term
           ;; there is no ranking, so order is non-deterministic
-          (is (= (set (hybrid term))
-                 (set (#'search.postgres/minimal-with-perms
-                       term
-                       {:current-user-id    (mt/user->id :crowberto)
-                        :is-superuser?      true
-                        :archived?          false
-                        :current-user-perms #{"/"}
-                        :model-ancestors?   false
-                        :models             search/all-models
-                        :search-string      term})))))))))
+          (is (= (normalize* (hybrid term))
+                 (normalize* (#'search.postgres/minimal-with-perms
+                              term
+                              {:current-user-id    (mt/user->id :crowberto)
+                               :is-superuser?      true
+                               :archived?          false
+                               :current-user-perms #{"/"}
+                               :model-ancestors?   false
+                               :models             search/all-models
+                               :search-string      term})))))))))
