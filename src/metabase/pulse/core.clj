@@ -3,7 +3,7 @@
   (:require
    [metabase.pulse.preview]
    [metabase.pulse.render]
-   [metabase.pulse.render.image-bundle]
+   [metabase.channel.render.image-bundle]
    [metabase.pulse.render.style]
    [metabase.pulse.send]
    [potemkin :as p]))

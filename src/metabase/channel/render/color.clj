@@ -1,4 +1,4 @@
-(ns metabase.pulse.render.color
+(ns metabase.channel.render.color
   "Namespaces that uses the Nashorn javascript engine to invoke some shared javascript code that we use to determine
   the background color of pulse table cells"
   (:require

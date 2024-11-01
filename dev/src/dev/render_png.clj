@@ -11,7 +11,7 @@
    [metabase.models.card :as card]
    [metabase.notification.payload.execute :as notification.payload.execute]
    [metabase.pulse.render :as render]
-   [metabase.pulse.render.image-bundle :as img]
+   [metabase.channel.render.image-bundle :as img]
    [metabase.pulse.render.png :as png]
    [metabase.pulse.render.style :as style]
    [metabase.pulse.send :as pulse]

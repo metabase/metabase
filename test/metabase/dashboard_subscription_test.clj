@@ -20,7 +20,7 @@
    [metabase.models.permissions-group :as perms-group]
    [metabase.notification.test-util :as notification.tu]
    [metabase.public-settings :as public-settings]
-   [metabase.pulse.render.body :as body]
+   [metabase.channel.render.body :as body]
    [metabase.pulse.send :as pulse.send]
    [metabase.pulse.test-util :as pulse.test-util]
    [metabase.test :as mt]

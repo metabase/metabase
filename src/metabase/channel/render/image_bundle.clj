@@ -1,4 +1,4 @@
-(ns metabase.pulse.render.image-bundle
+(ns metabase.channel.render.image-bundle
   "Logic related to creating image bundles, and some predefined ones. An image bundle contains the data needed to
   either encode the image inline in a URL (when `render-type` is `:inline`), or create the hashes/references needed
   for an attached image (`render-type` of `:attachment`)"

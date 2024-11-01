@@ -1,8 +1,8 @@
-(ns metabase.pulse.render.color-test
+(ns metabase.channel.render.color-test
   (:require
    [clojure.test :refer :all]
    [metabase.channel.render.js-engine :as js]
-   [metabase.pulse.render.color :as color]
+   [metabase.channel.render.color :as color]
    [metabase.test :as mt]))
 
 (def ^:private red "#ff0000")

@@ -10,7 +10,7 @@
    [hickory.zip :as hik.z]
    [metabase.email.result-attachment :as email.result-attachment]
    [metabase.pulse.render :as render]
-   [metabase.pulse.render.image-bundle :as img]
+   [metabase.channel.render.image-bundle :as img]
    [metabase.pulse.render.png :as png]
    [metabase.pulse.render.style :as style]
    [metabase.pulse.send :as pulse.send]

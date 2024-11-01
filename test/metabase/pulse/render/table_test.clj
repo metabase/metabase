@@ -4,7 +4,7 @@
    [hickory.select :as hik.s]
    [metabase.formatter :as formatter]
    [metabase.pulse.render :as render]
-   [metabase.pulse.render.color :as color]
+   [metabase.channel.render.color :as color]
    [metabase.pulse.render.table :as table]
    [metabase.pulse.render.test-util :as render.tu]
    [metabase.test :as mt]
