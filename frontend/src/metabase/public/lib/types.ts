@@ -36,6 +36,13 @@ export type EmbeddingDisplayOptions = {
   downloads: boolean | null;
 };
 
+export type AdditionalEmbeddingHashOptions = {
+  hide_parameters?: string | null;
+};
+
+export type EmbeddingHashOptions = EmbeddingDisplayOptions &
+  AdditionalEmbeddingHashOptions;
+
 export type CodeSampleParameters = {
   siteUrl: string;
   secretKey: string;
