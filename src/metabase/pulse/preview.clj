@@ -12,7 +12,7 @@
    [metabase.pulse.render :as render]
    [metabase.channel.render.image-bundle :as img]
    [metabase.pulse.render.png :as png]
-   [metabase.pulse.render.style :as style]
+   [metabase.channel.render.style :as style]
    [metabase.pulse.send :as pulse.send]
    [metabase.util.markdown :as markdown]
    [toucan2.core :as t2]))

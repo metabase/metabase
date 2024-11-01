@@ -9,7 +9,7 @@
    [metabase.channel.render.js-engine :as js]
    [metabase.config :as config]
    [metabase.public-settings :as public-settings]
-   [metabase.pulse.render.style :as style])
+   [metabase.channel.render.style :as style])
   (:import
    (java.io ByteArrayInputStream ByteArrayOutputStream)
    (java.nio.charset StandardCharsets)

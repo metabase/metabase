@@ -1,11 +1,11 @@
 (ns metabase.notification.payload.impl.dashboard-subscription
   #_{:clj-kondo/ignore [:metabase/ns-module-checker]}
   (:require
+   [metabase.channel.render.style :as style]
    [metabase.models.params.shared :as shared.params]
    [metabase.notification.payload.core :as notification.payload]
    [metabase.notification.payload.execute :as notification.execute]
    [metabase.public-settings.premium-features :refer [defenterprise]]
-   [metabase.pulse.render.style :as style]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 

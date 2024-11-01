@@ -4,7 +4,7 @@
    [metabase.pulse.preview]
    [metabase.pulse.render]
    [metabase.channel.render.image-bundle]
-   [metabase.pulse.render.style]
+   [metabase.channel.render.style]
    [metabase.pulse.send]
    [potemkin :as p]))
 

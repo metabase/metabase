@@ -5,7 +5,7 @@
    [medley.core :as m]
    [metabase.formatter]
    [metabase.channel.render.color :as color]
-   [metabase.pulse.render.style :as style])
+   [metabase.channel.render.style :as style])
   (:import
    (metabase.formatter NumericWrapper)))
 

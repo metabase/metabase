@@ -6,7 +6,7 @@
    [metabase.channel.render.body :as body]
    [metabase.channel.render.image-bundle :as image-bundle]
    [metabase.pulse.render.png :as png]
-   [metabase.pulse.render.style :as style]
+   [metabase.channel.render.style :as style]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]

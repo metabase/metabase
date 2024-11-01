@@ -4,7 +4,7 @@
    [metabase.models.notification :as models.notification]
    [metabase.notification.payload.execute :as notification.payload.execute]
    [metabase.public-settings :as public-settings]
-   [metabase.pulse.render.style :as style]
+   [metabase.channel.render.style :as style]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]

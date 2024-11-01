@@ -13,7 +13,7 @@
    [metabase.pulse.render :as render]
    [metabase.channel.render.image-bundle :as img]
    [metabase.pulse.render.png :as png]
-   [metabase.pulse.render.style :as style]
+   [metabase.channel.render.style :as style]
    [metabase.pulse.send :as pulse]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]

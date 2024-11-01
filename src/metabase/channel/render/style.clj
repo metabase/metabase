@@ -1,4 +1,4 @@
-(ns metabase.pulse.render.style
+(ns metabase.channel.render.style
   "CSS styles and related helper code for Pulse rendering."
   (:require
    [clojure.java.io :as io]

@@ -10,7 +10,7 @@
    [clojure.walk :as walk]
    [hiccup.core :refer [html]]
    [metabase.formatter :as formatter]
-   [metabase.pulse.render.style :as style]
+   [metabase.channel.render.style :as style]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu])
   (:import

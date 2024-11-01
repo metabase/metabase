@@ -24,7 +24,7 @@
    [metabase.models.pulse-channel :as pulse-channel]
    [metabase.models.pulse-test :as pulse-test]
    [metabase.notification.test-util :as notification.tu]
-   [metabase.pulse.render.style :as style]
+   [metabase.channel.render.style :as style]
    [metabase.pulse.test-util :as pulse.test-util]
    [metabase.server.request.util :as req.util]
    [metabase.test :as mt]
