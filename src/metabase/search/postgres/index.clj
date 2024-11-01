@@ -57,7 +57,6 @@
              ;; filter related
              [:archived :boolean]
              [:creator_id :int]
-             [:created_at :timestamp]
              [:last_edited_at :timestamp]
              [:last_edited_by :int]
              [:model_created_at :timestamp]
@@ -107,12 +106,14 @@
       (update :display_data json/generate-string)
       (update :legacy_input json/generate-string)
       (assoc
-       :model_id      (:id entity)
-       :search_vector [:to_tsvector
-                       [:inline tsv-language]
-                       [:cast
-                        (:searchable_text entity)
-                        :text]])))
+       :model_id         (:id entity)
+       :model_created_at (:created_at entity)
+       :model_updated_at (:updated_at entity)
+       :search_vector    [:to_tsvector
+                          [:inline tsv-language]
+                          [:cast
+                           (:searchable_text entity)
+                           :text]])))
 
 (defn- upsert! [table entry]
   (t2/query

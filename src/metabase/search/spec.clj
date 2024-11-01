@@ -5,6 +5,7 @@
    [clojure.walk :as walk]
    [malli.core :as mc]
    [malli.error :as me]
+   [metabase.config :as config]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -48,7 +49,10 @@
                 (for [k optional-attrs] [k {:optional true} AttrValue]))))
 
 (def ^:private NonAttrKey
-  [:and :keyword [:not (into [:enum] attr-keys)]])
+  ;; This is rather slow, not great for REPL development.
+  (if config/is-dev?
+    :keyword
+    [:and :keyword [:not (into [:enum] attr-keys)]]))
 
 (def ^:private JoinMap
   "We use our own schema instead of raw HoneySQL, so that we can invert it to calculate the update hooks."
@@ -205,7 +209,9 @@
     (qualify-column table column)))
 
 (defmulti spec
-  "TODO write docstring"
+  "Register a metabase model as a search-model.
+  Once we're trying up the fulltext search project, we can inline a detailed explanation.
+  For now, see its schema, and the existing definitions that use it."
   (fn [search-model] search-model))
 
 (defn validate-spec!
@@ -213,10 +219,9 @@
   [spec]
   (when-let [info (mc/explain Specification spec)]
     (throw (ex-info (str "Invalid search specification for " (:name spec) ": " (me/humanize info)) info)))
-  (find-fields spec)
-  ;; validate consistency etc
-  ;; ... not sure what to check here actually, Malli has covered a lot!
-  )
+  (doseq [table (into #{} (map first) (find-fields spec))
+          :when (and table (not= :this table))]
+    (assert (contains? (:joins spec) table) (str "Reference to table without a join: " table))))
 
 (defmacro define-spec
   "Define a spec for a search model."
