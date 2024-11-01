@@ -228,18 +228,20 @@ function syncPivotColumnSplit(
   return {
     ...settings,
     "pivot_table.column_split": Object.fromEntries(
-      keys.map(key => [
-        key,
-        syncColumns({
-          settings: columnSettings[key] ?? [],
-          newColumns,
-          oldColumns,
-          getColumnName: setting => setting,
-          setColumnName: (_, newName) => newName,
-          createSetting: column => column.name,
-          shouldCreateSetting: () => false,
-        }),
-      ]),
+      keys
+        .filter(key => columnSettings[key])
+        .map(key => [
+          key,
+          syncColumns({
+            settings: columnSettings[key] ?? [],
+            newColumns,
+            oldColumns,
+            getColumnName: setting => setting,
+            setColumnName: (_, newName) => newName,
+            createSetting: column => column.name,
+            shouldCreateSetting: () => false,
+          }),
+        ]),
     ),
   };
 }
