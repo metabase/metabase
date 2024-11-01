@@ -57,12 +57,12 @@
                       :created-at "past3days"})))))
 
     (testing "verified"
-      (is (= #{"dataset" "card" "metric"}
+      (is (= #{"dataset" "card" "metric" "dashboard"}
              (search.filter/search-context->applicable-models
               (merge default-search-ctx
                      {:verified true}))))
 
-      (is (= #{"dataset"}
+      (is (= #{"dataset" "dashboard"}
              (search.filter/search-context->applicable-models
               (merge default-search-ctx
                      {:models   #{"dashboard" "dataset" "table"}

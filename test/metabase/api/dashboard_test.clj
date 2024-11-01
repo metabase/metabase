@@ -4916,6 +4916,7 @@
       (is (= (mt/$ids orders !year.$created_at)
              (t2/select-one-fn #(get-in % [:parameter_mappings 0 :target 1])
                                :model/DashboardCard :id dashcard-id))))))
+
 (deftest querying-a-dashboard-returns-moderated_status
     (mt/dataset test-data
       (mt/with-temp [:model/Dashboard {dashboard-id :id} {:last_viewed_at #t "2000-01-01"}
