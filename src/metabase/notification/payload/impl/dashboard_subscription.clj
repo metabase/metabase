@@ -1,10 +1,9 @@
 (ns metabase.notification.payload.impl.dashboard-subscription
+  #_{:clj-kondo/ignore [:metabase/ns-module-checker]}
   (:require
    [metabase.notification.payload.core :as notification.payload]
    [metabase.notification.payload.execute :as notification.execute]
-   #_{:clj-kondo/ignore [:metabase/ns-module-checker]}
    [metabase.pulse.parameters :as pulse-params]
-   #_{:clj-kondo/ignore [:metabase/ns-module-checker]}
    [metabase.pulse.render.style :as style]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))

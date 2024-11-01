@@ -1,8 +1,8 @@
 (ns metabase.notification.payload.impl.alert
+  #_{:clj-kondo/ignore [:metabase/ns-module-checker]}
   (:require
    [metabase.notification.payload.core :as notification.payload]
    [metabase.notification.payload.execute :as notification.execute]
-   #_{:clj-kondo/ignore [:metabase/ns-module-checker]}
    [metabase.pulse.render.style :as style]
    [metabase.util.malli :as mu]
    [metabase.util.ui-logic :as ui-logic]
