@@ -4,7 +4,6 @@
    [metabase.pulse.preview]
    [metabase.pulse.render]
    [metabase.pulse.render.image-bundle]
-   [metabase.pulse.render.js-svg]
    [metabase.pulse.render.style]
    [metabase.pulse.send]
    [potemkin :as p]))
@@ -14,7 +13,6 @@
   metabase.pulse.preview/keep-me
   metabase.pulse.render/keep-me
   metabase.pulse.render.image-bundle/keep-me
-  metabase.pulse.render.js-svg/keep-me
   metabase.pulse.render.style/keep-me)
 
 (p/import-vars
@@ -33,8 +31,6 @@
  [metabase.pulse.render.image-bundle
   image-bundle->attachment
   make-image-bundle]
- [metabase.pulse.render.js-svg
-  icon]
   ;; TODO -- this stuff is also used by emails, it probably should belong in some sort of common place
  [metabase.pulse.render.style
   color-text-light

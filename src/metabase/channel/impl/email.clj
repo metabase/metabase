@@ -7,6 +7,7 @@
    [metabase.channel.core :as channel]
    [metabase.channel.params :as channel.params]
    [metabase.channel.shared :as channel.shared]
+   [metabase.channel.render.js-svg :as render.js-svg]
    [metabase.email :as email]
    [metabase.email.messages :as messages]
    [metabase.email.result-attachment :as email.result-attachment]
@@ -116,7 +117,7 @@
   The available icons are defined in [[js-svg/icon-paths]]."
   [icon-name]
   (let [color     (pulse/primary-color)
-        png-bytes (pulse/icon icon-name color)]
+        png-bytes (render.js-svg/icon icon-name color)]
     (-> (pulse/make-image-bundle :attachment png-bytes)
         (pulse/image-bundle->attachment))))
 

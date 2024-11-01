@@ -1,4 +1,4 @@
-(ns metabase.pulse.render.js-engine
+(ns metabase.channel.render.js-engine
   "Graal polyglot context suitable for executing javascript code.
 
   We run the js in interpreted mode and turn off the warning with the `(option \"engine.WarnInterpreterOnly\"
