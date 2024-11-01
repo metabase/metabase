@@ -130,6 +130,7 @@ const visualizerSlice = createSlice({
 
       state.display = display;
       state.settings = {};
+      state.columns = [];
       state.referencedColumns = [];
 
       if (display === "funnel") {
