@@ -80,7 +80,8 @@
   (when-let [query (:search-string search-context)]
     (into
      [:or]
-     (for [column           (->> (search.config/searchable-columns model search-native-query)
+     (for [column           (->> (let [search-columns-fn (requiring-resolve 'metabase.search.legacy/searchable-columns)]
+                                   (search-columns-fn model search-native-query))
                                  (map #(search.config/column-with-model-alias model %)))
            wildcarded-token (->> (search.util/normalize query)
                                  search.util/tokenize
@@ -205,6 +206,10 @@
   [query join-type table]
   (->> (get query join-type) (partition 2) (map first) (some #(= % table)) boolean))
 
+;; We won't need this post-legacy as it defines the joins à la carte.
+(defn- search-model->revision-model [model]
+  ((requiring-resolve 'metabase.search.legacy/search-model->revision-model) model))
+
 (doseq [model ["dashboard" "card" "dataset" "metric"]]
   (defmethod build-optional-filter-query [:last-edited-by model]
     [_filter model query editor-ids]
@@ -213,7 +218,7 @@
       (not (joined-with-table? query :join :revision))
       (-> (sql.helpers/join :revision [:= :revision.model_id (search.config/column-with-model-alias model :id)])
           (sql.helpers/where [:= :revision.most_recent true]
-                             [:= :revision.model (search.config/search-model->revision-model model)]))
+                             [:= :revision.model (search-model->revision-model model)]))
       (= 1 (count editor-ids))
       (sql.helpers/where [:= :revision.user_id (first editor-ids)])
 
@@ -228,7 +233,7 @@
       (not (joined-with-table? query :join :revision))
       (-> (sql.helpers/join :revision [:= :revision.model_id (search.config/column-with-model-alias model :id)])
           (sql.helpers/where [:= :revision.most_recent true]
-                             [:= :revision.model (search.config/search-model->revision-model model)]))
+                             [:= :revision.model (search-model->revision-model model)]))
       true
       ;; on UI we showed the the last edit info from revision.timestamp
       ;; not the model.updated_at column
@@ -242,6 +247,7 @@
                             (search.config/column-with-model-alias model :updated_at)
                             last-edited-at)))
 
+;; TODO this is equivalent to checking whether the model's attr is truthy
 (defn- feature->supported-models
   "Return A map of filter to its support models.
 
@@ -252,7 +258,7 @@
   (merge
    ;; models support search-native-query if there are additional columns to search when the `search-native-query`
    ;; argument is true
-   {:search-native-query (->> (dissoc (methods search.config/searchable-columns) :default)
+   {:search-native-query (->> (dissoc (methods (requiring-resolve 'metabase.search.legacy/searchable-columns)) :default)
                               (filter (fn [[model f]]
                                         (seq (set/difference (set (f model true)) (set (f model false))))))
                               (map first)

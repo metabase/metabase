@@ -158,15 +158,16 @@
   the text match, if there is one. If there is no match, the score is 0."
   [search-native-query weighted-scorers query-tokens search-result]
   ;; TODO is pmap over search-result worth it?
-  (let [scores (for [column      (search.config/searchable-columns (:model search-result) search-native-query)
+  (let [scores (for [column (let [search-columns-fn (requiring-resolve 'metabase.search.legacy/searchable-columns)]
+                              (search-columns-fn (:model search-result) search-native-query))
                      {:keys [scorer name weight]
                       :as   _ws} weighted-scorers
-                     :let        [matched-text (-> search-result
-                                                   (get column)
-                                                   (search.config/column->string (:model search-result) column))
-                                  match-tokens (some-> matched-text search.util/normalize search.util/tokenize)
-                                  raw-score (scorer query-tokens match-tokens)]
-                     :when       (and matched-text (pos? raw-score))]
+                     :let [matched-text (-> search-result
+                                            (get column)
+                                            (search.config/column->string (:model search-result) column))
+                           match-tokens (some-> matched-text search.util/normalize search.util/tokenize)
+                           raw-score    (scorer query-tokens match-tokens)]
+                     :when (and matched-text (pos? raw-score))]
                  {:score               raw-score
                   :name                (str "text-" name)
                   :weight              weight
