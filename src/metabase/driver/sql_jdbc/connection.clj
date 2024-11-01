@@ -137,9 +137,16 @@ For setting the maximum, see [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_ap
    ;;
    ;; Kill idle connections above the minPoolSize after 5 minutes.
    "maxIdleTimeExcessConnections" (* 5 60)
-   ;; kill connections after this amount of time if they haven't been returned -- this should be the same as the query
-   ;; timeout. This theoretically shouldn't happen since the QP should kill things after a certain timeout but it's
-   ;; better to be safe than sorry -- it seems like in practice some connections disappear into the ether
+   ;; [From dox] Seconds. If set, if an application checks out but then fails to check-in [i.e. close()] a Connection
+   ;; within the specified period of time, the pool will unceremoniously destroy() the Connection. This permits
+   ;; applications with occasional Connection leaks to survive, rather than eventually exhausting the Connection
+   ;; pool. And that's a shame. Zero means no timeout, applications are expected to close() their own
+   ;; Connections. Obviously, if a non-zero value is set, it should be to a value longer than any Connection should
+   ;; reasonably be checked-out. Otherwise, the pool will occasionally kill Connections in active use, which is bad.
+   ;;
+   ;; This should be the same as the query timeout. This theoretically shouldn't happen since the QP should kill
+   ;; things after a certain timeout but it's better to be safe than sorry -- it seems like in practice some
+   ;; connections disappear into the ether
    "unreturnedConnectionTimeout"  (jdbc-data-warehouse-unreturned-connection-timeout-seconds)
    ;; Set the data source name so that the c3p0 JMX bean has a useful identifier, which incorporates the DB ID, driver,
    ;; and name from the details
