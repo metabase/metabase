@@ -1037,3 +1037,55 @@
           (mt/with-test-user :crowberto
             (is (false? (mi/can-read? card)))
             (is (false? (mi/can-write? card)))))))))
+
+(deftest breakouts-->identifier->action-fn-test
+  (are [b1 b2 expected--identifier->action] (= expected--identifier->action
+                                               (#'card/breakouts-->identifier->action b1 b2))
+    [[:field 10 {:temporal-unit :day}]]
+    nil
+    nil
+
+    [[:expression "x" {:temporal-unit :day}]]
+    nil
+    nil
+
+    [[:expression "x" {:temporal-unit :day}]]
+    [[:expression "x" {:temporal-unit :month}]]
+    {[:expression "x"] [:update [:expression "x" {:temporal-unit :month}]]}
+
+    [[:expression "x" {:temporal-unit :day}]]
+    [[:expression "x" {:temporal-unit :day}]]
+    nil
+
+    [[:field 10 {:temporal-unit :day}] [:expression "x" {:temporal-unit :day}]]
+    [[:expression "x" {:temporal-unit :day}] [:field 10 {:temporal-unit :month}]]
+    {[:field 10] [:update [:field 10 {:temporal-unit :month}]]}
+
+    [[:field 10 {:temporal-unit :year}] [:field 10 {:temporal-unit :day-of-week}]]
+    [[:field 10 {:temporal-unit :year}]]
+    nil))
+
+(deftest update-for-dashcard-fn-test
+  (are [indetifier->action quasi-dashcards expected-quasi-dashcards]
+       (= expected-quasi-dashcards
+          (#'card/updates-for-dashcards indetifier->action quasi-dashcards))
+
+    {[:field 10] [:update [:field 10 {:temporal-unit :month}]]}
+    [{:parameter_mappings []}]
+    nil
+
+    {[:field 10] [:update [:field 10 {:temporal-unit :month}]]}
+    [{:id 1 :parameter_mappings [{:target [:dimension [:field 10 nil]]}]}]
+    [[1 {:parameter_mappings [{:target [:dimension [:field 10 {:temporal-unit :month}]]}]}]]
+
+    {[:field 10] [:noop]}
+    [{:id 1 :parameter_mappings [{:target [:dimension [:field 10 nil]]}]}]
+    nil
+
+    {[:field 10] [:update [:field 10 {:temporal-unit :month}]]}
+    [{:id 1 :parameter_mappings [{:target [:dimension [:field 10 {:temporal-unit :year}]]}
+                                 {:target [:dimension [:field 33 {:temporal-unit :month}]]}
+                                 {:target [:dimension [:field 10 {:temporal-unit :day}]]}]}]
+    [[1 {:parameter_mappings [{:target [:dimension [:field 10 {:temporal-unit :month}]]}
+                              {:target [:dimension [:field 33 {:temporal-unit :month}]]}
+                              {:target [:dimension [:field 10 {:temporal-unit :month}]]}]}]]))
