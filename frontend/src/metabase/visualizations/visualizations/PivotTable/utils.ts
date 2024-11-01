@@ -75,7 +75,7 @@ export function addMissingCardBreakouts(
   if (breakoutColumns.length <= columns.length + rows.length) {
     return setting;
   }
-  const newSetting = updateValueWithCurrentColumns(setting, breakoutColumns);
+  const newSetting = updateValueWithCurrentColumns(setting, availableColumns);
   return { ...setting, ...newSetting };
 }
 

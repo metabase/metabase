@@ -26,10 +26,14 @@ describe("ChartSettingFieldsPartition", () => {
           { name: "rows", title: "Rows", columnFilter: x => Boolean(x) },
         ]}
         columns={[
-          createMockColumn({ field_ref: fieldRef, display_name: fieldName }),
+          createMockColumn({
+            name: fieldName,
+            field_ref: fieldRef,
+            display_name: fieldName,
+          }),
         ]}
         getColumnTitle={column => column.display_name}
-        value={{ rows: [fieldRef] }}
+        value={{ rows: [fieldName] }}
       />,
     );
     expect(screen.queryByText("Drag fields here")).not.toBeInTheDocument();
