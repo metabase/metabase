@@ -10,7 +10,7 @@
    [hiccup.core :as hiccup]
    [hickory.core :as hik]
    [metabase.channel.render.js-svg :as js-svg]
-   [metabase.pulse.render :as render]
+   [metabase.channel.render.core :as render]
    [metabase.channel.render.image-bundle :as image-bundle]
    [metabase.pulse.util :as pu]
    [metabase.query-processor :as qp]

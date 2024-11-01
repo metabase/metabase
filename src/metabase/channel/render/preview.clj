@@ -1,4 +1,4 @@
-(ns metabase.pulse.preview
+(ns metabase.channel.render.preview
   "Improve the feedback loop for Dashboard Subscription outputs."
   (:require
    [clojure.data.csv :as csv]
@@ -9,7 +9,7 @@
    [hickory.render :as hik.r]
    [hickory.zip :as hik.z]
    [metabase.email.result-attachment :as email.result-attachment]
-   [metabase.pulse.render :as render]
+   [metabase.channel.render.core :as render]
    [metabase.channel.render.image-bundle :as img]
    [metabase.pulse.render.png :as png]
    [metabase.channel.render.style :as style]

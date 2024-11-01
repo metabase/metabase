@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [hickory.select :as hik.s]
    [metabase.formatter :as formatter]
-   [metabase.pulse.render :as render]
+   [metabase.channel.render.core :as render]
    [metabase.channel.render.color :as color]
    [metabase.channel.render.table :as table]
    [metabase.pulse.render.test-util :as render.tu]

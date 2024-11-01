@@ -1,8 +1,8 @@
 (ns metabase.pulse.core
   "API namespace for the `metabase.pulse` module."
   (:require
-   [metabase.pulse.preview]
-   [metabase.pulse.render]
+   [metabase.channel.render.preview]
+   [metabase.channel.render.core]
    [metabase.channel.render.image-bundle]
    [metabase.channel.render.style]
    [metabase.pulse.send]
@@ -11,7 +11,7 @@
 (comment
   metabase.pulse.send/keep-me
   metabase.pulse.preview/keep-me
-  metabase.pulse.render/keep-me
+  metabase.channel.render.core/keep-me
   metabase.pulse.render.image-bundle/keep-me
   metabase.pulse.render.style/keep-me)
 
@@ -20,7 +20,7 @@
   render-dashboard-to-html
   style-tag-from-inline-styles
   style-tag-nonce-middleware]
- [metabase.pulse.render
+ [metabase.channel.render.core
   detect-pulse-chart-type
   png-from-render-info
   render-pulse-card
