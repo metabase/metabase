@@ -4864,3 +4864,55 @@
             ;; dashcards and parameters for each dashcard, linked to a single card. Following is the proof
             ;; of things working as described.
             (is (= 1 @call-count))))))))
+
+;; Exception during scheduled (grouper) update of UserParameterValue is thrown. It is not relevant in context
+;; of tested functionality.
+;; TODO: Address the exception!
+(deftest dependent-dashcard-parameters-test
+  (mt/with-temp [:model/Card {card-id :id} {:name "c1"
+                                            :dataset_query (mt/mbql-query
+                                                             orders
+                                                             {:aggregation [[:count]]
+                                                              :breakout
+                                                              [!day.$created_at]})}
+                 :model/Dashboard {dashboard-id :id} {:name "d1"
+                                                      :parameters []}
+                 :model/DashboardCard {dashcard-id :id} {:card_id card-id
+                                                         :dashboard_id dashboard-id
+                                                         :parameter_mappings []}]
+    (t2/update! :model/Dashboard :id dashboard-id {:parameters [{:name "TIME Gr"
+                                                                 :slug "tgr"
+                                                                 :id "30d7efb0"
+                                                                 :type :temporal-unit
+                                                                 :sectionId "temporal-unit"}]})
+    (t2/update! :model/DashboardCard :id dashcard-id {:parameter_mappings [{:parameter_id "30d7efb0"
+                                                                            :type :temporal-unit
+                                                                            :card_id card-id
+                                                                            :target [:dimension
+                                                                                     (mt/$ids orders !day.$created_at)]}]})
+    (testing "Baseline"
+      (is (=? [["2016-04-01T00:00:00Z" 1]
+               ["2016-05-01T00:00:00Z" 19]]
+              (->> (mt/user-http-request
+                    :crowberto :post 202
+                    (format "dashboard/%d/dashcard/%d/card/%d/query" dashboard-id dashcard-id card-id)
+                    {:parameters [{:id "30d7efb0"
+                                   :type "temporal-unit"
+                                   :value "month"
+                                   :target
+                                   [:dimension
+                                    (mt/$ids orders !day.$created_at)]}]})
+                   mt/rows
+                   (take 2)))))
+    (mt/user-http-request
+     :crowberto :put 200
+     (format "card/%d" card-id)
+     {:dataset_query (mt/mbql-query
+                       orders
+                       {:aggregation [[:count]]
+                        :breakout
+                        [!year.$created_at]})})
+    (testing "Mapping is adjusted to new target (#49202)"
+      (is (= (mt/$ids orders !year.$created_at)
+             (t2/select-one-fn #(get-in % [:parameter_mappings 0 :target 1])
+                               :model/DashboardCard :id dashcard-id))))))
