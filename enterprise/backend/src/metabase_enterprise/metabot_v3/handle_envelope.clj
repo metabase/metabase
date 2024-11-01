@@ -1,4 +1,4 @@
-(ns metabase-enterprise.metabot-v3.handle-response
+(ns metabase-enterprise.metabot-v3.handle-envelope
   "Code for handling responses from AI Proxy ([[metabase-enterprise.metabot-v3.client]])."
   (:require
    [metabase-enterprise.metabot-v3.client :as metabot-v3.client]

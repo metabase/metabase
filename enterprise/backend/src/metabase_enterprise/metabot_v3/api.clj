@@ -7,7 +7,7 @@
    [metabase-enterprise.metabot-v3.client.schema :as metabot-v3.client.schema]
    [metabase-enterprise.metabot-v3.context :as metabot-v3.context]
    [metabase-enterprise.metabot-v3.envelope :as metabot-v3.envelope]
-   [metabase-enterprise.metabot-v3.handle-response :as metabot-v3.handle-response]
+   [metabase-enterprise.metabot-v3.handle-envelope :as metabot-v3.handle-envelope]
    [metabase-enterprise.metabot-v3.reactions :as metabot-v3.reactions]
    [metabase.api.common :as api]
    [metabase.util :as u]
@@ -29,7 +29,7 @@
               (mtx/key-transformer {:encode u/->snake_case_en}))))
 
 (defn- request [message context history]
-  (let [env (metabot-v3.handle-response/handle-envelope
+  (let [env (metabot-v3.handle-envelope/handle-envelope
              (metabot-v3.envelope/add-user-message
               (metabot-v3.envelope/create context history)
               message))]
