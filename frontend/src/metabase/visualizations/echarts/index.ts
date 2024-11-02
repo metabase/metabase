@@ -2,9 +2,9 @@ import {
   BarChart,
   CustomChart,
   LineChart,
+  SankeyChart,
   ScatterChart,
   SunburstChart,
-  SankeyChart,
 } from "echarts/charts";
 import {
   BrushComponent,
