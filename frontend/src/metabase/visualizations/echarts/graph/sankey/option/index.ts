@@ -35,10 +35,18 @@ export const getSankeyChartOption = (
   const series: SankeySeriesOption = {
     animation: false,
     type: "sankey",
+    labelLayout: params => {
+      if (params.dataType === "edge") {
+        return {
+          hideOverlap: true,
+        };
+      }
+      return { hideOverlap: false };
+    },
     ...layout.padding,
     nodeAlign: settings["sankey.node_align"],
     edgeLabel: {
-      show: true,
+      show: settings["sankey.show_edge_labels"],
       formatter: params =>
         typeof params.value === "number" ? formatters.value(params.value) : "",
       color: renderingContext.getColor("text-light"),

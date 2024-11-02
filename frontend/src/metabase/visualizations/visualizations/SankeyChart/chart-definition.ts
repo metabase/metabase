@@ -18,6 +18,8 @@ import type {
 } from "metabase/visualizations/types";
 import type { RawSeries } from "metabase-types/api";
 
+import { hasCyclicFlow } from "./utils/cycle-detection";
+
 export const SETTINGS_DEFINITIONS = {
   ...columnSettings({ hidden: true }),
   ...dimensionSetting("sankey.source", {
@@ -60,6 +62,13 @@ export const SETTINGS_DEFINITIONS = {
       ],
     },
   },
+  "sankey.show_edge_labels": {
+    section: t`Display`,
+    title: t`Show edge labels`,
+    widget: "toggle",
+    default: false,
+    inline: true,
+  },
 };
 
 export const SANKEY_CHART_DEFINITION = {
@@ -81,6 +90,19 @@ export const SANKEY_CHART_DEFINITION = {
       throw new ChartSettingsError(t`Which columns do you want to use?`, {
         section: `Data`,
       });
+    }
+
+    if (
+      hasCyclicFlow(
+        rawSeries[0].data.rows,
+        sankeyColumns.source.index,
+        sankeyColumns.target.index,
+      )
+    ) {
+      throw new ChartSettingsError(
+        t`Sankey charts cannot contain cycles. Please check your data for circular references.`,
+        { section: "Data" },
+      );
     }
   },
   settings: {

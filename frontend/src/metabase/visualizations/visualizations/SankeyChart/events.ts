@@ -4,6 +4,8 @@ import { useMemo } from "react";
 import type {
   ColumnKey,
   SankeyChartModel,
+  SankeyLink,
+  SankeyNode,
 } from "metabase/visualizations/echarts/graph/sankey/model/types";
 import { useClickedStateTooltipSync } from "metabase/visualizations/echarts/tooltip";
 import type { EChartsSeriesMouseEvent } from "metabase/visualizations/echarts/types";
@@ -46,7 +48,7 @@ export const useChartEvents = (
     () => [
       {
         eventName: "click",
-        handler: (event: EChartsSeriesMouseEvent) => {
+        handler: (event: EChartsSeriesMouseEvent<SankeyLink | SankeyNode>) => {
           const data: ClickObject = {
             event: event.event.event,
             settings,

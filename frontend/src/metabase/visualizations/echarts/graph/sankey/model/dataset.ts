@@ -30,7 +30,7 @@ export const getSankeyChartColumns = <TColumn extends DatasetColumn>(
   const target = getColumnDescriptors([settings["sankey.target"]], columns)[0];
   const value = getColumnDescriptors([settings["sankey.value"]], columns)[0];
 
-  if (!source || !target || !value) {
+  if (!source.column || !target.column || !value.column) {
     return null;
   }
 
