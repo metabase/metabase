@@ -16,8 +16,7 @@ import type {
   ComputedVisualizationSettings,
   VisualizationSettingsDefinitions,
 } from "metabase/visualizations/types";
-import { isDimension, isMetric } from "metabase-lib/v1/expressions";
-import { isDate } from "metabase-lib/v1/types/utils/isa";
+import { isDate, isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetData, RawSeries } from "metabase-types/api";
 
 import { hasCyclicFlow } from "./utils/cycle-detection";
