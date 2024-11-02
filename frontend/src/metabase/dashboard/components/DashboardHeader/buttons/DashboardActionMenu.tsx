@@ -1,9 +1,11 @@
+import type { Location } from "history";
 import type { MouseEvent } from "react";
 import { t } from "ttag";
 
 import EntityMenu from "metabase/components/EntityMenu";
+import { useRefreshDashboard } from "metabase/dashboard/hooks";
 import type { DashboardFullscreenControls } from "metabase/dashboard/types";
-import { PLUGIN_DASHBOARD_HEADER } from "metabase/plugins";
+import { PLUGIN_DASHBOARD_HEADER, PLUGIN_MODERATION } from "metabase/plugins";
 import type { Dashboard } from "metabase-types/api";
 
 export const DashboardActionMenu = (props: { items: any[] }) => (
@@ -18,7 +20,7 @@ export const DashboardActionMenu = (props: { items: any[] }) => (
   />
 );
 
-export const getExtraButtons = ({
+export const useGetExtraButtons = ({
   canResetFilters,
   onResetFilters,
   onFullscreenChange,
@@ -27,6 +29,7 @@ export const getExtraButtons = ({
   canEdit,
   pathname,
   openSettingsSidebar,
+  location,
 }: DashboardFullscreenControls & {
   canResetFilters: boolean;
   onResetFilters: () => void;
@@ -34,7 +37,19 @@ export const getExtraButtons = ({
   canEdit: boolean;
   pathname: string;
   openSettingsSidebar: () => void;
+  location: Location;
 }) => {
+  const { refreshDashboard } = useRefreshDashboard({
+    dashboardId: dashboard.id,
+    parameterQueryParams: location.query,
+    refetchData: false,
+  });
+
+  const moderationItems = PLUGIN_MODERATION.useDashboardMenuItems(
+    dashboard,
+    refreshDashboard,
+  );
+
   const extraButtons = [];
 
   if (canResetFilters) {
@@ -57,6 +72,8 @@ export const getExtraButtons = ({
       icon: "gear",
       action: openSettingsSidebar,
     });
+
+    extraButtons.push(...moderationItems);
 
     extraButtons.push({
       separator: true,
@@ -91,5 +108,5 @@ export const getExtraButtons = ({
     });
   }
 
-  return extraButtons;
+  return { extraButtons };
 };
