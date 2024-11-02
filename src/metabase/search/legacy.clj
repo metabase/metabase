@@ -562,7 +562,7 @@
 
 (defmethod search.api/model-set :search.engine/in-place
   [search-ctx]
-  (let [model-queries (for [model (search.filter/search-context->applicable-models
+  (let [model-queries (for [model (search.filter/legacy-search-context->applicable-models
                                    ;; It's unclear why we don't use the existing :models
                                    (assoc search-ctx :models search.config/all-models))]
                         {:nest (sql.helpers/limit (search-query-for-model model search-ctx) 1)})

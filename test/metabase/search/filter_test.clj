@@ -20,13 +20,13 @@
   (testing "without optional filters"
     (testing "return :models as is"
       (is (= search.config/all-models
-             (search.filter/search-context->applicable-models
+             (search.filter/legacy-search-context->applicable-models
               default-search-ctx)))
       (is (= #{}
-             (search.filter/search-context->applicable-models
+             (search.filter/legacy-search-context->applicable-models
               (assoc default-search-ctx :models #{}))))
       (is (= search.config/all-models
-             (search.filter/search-context->applicable-models
+             (search.filter/legacy-search-context->applicable-models
               (merge default-search-ctx
                      {:archived? true})))))))
 
@@ -34,67 +34,67 @@
   (testing "optional filters will return intersection of support models and provided models\n"
     (testing "created by"
       (is (= #{"dashboard" "dataset" "action" "card" "metric"}
-             (search.filter/search-context->applicable-models
+             (search.filter/legacy-search-context->applicable-models
               (merge default-search-ctx
                      {:created-by #{1}}))))
 
       (is (= #{"dashboard" "dataset"}
-             (search.filter/search-context->applicable-models
+             (search.filter/legacy-search-context->applicable-models
               (merge default-search-ctx
                      {:models #{"dashboard" "dataset" "table"}
                       :created-by #{1}})))))
 
     (testing "created at"
       (is (= #{"dashboard" "table" "dataset" "collection" "database" "action" "card" "metric"}
-             (search.filter/search-context->applicable-models
+             (search.filter/legacy-search-context->applicable-models
               (merge default-search-ctx
                      {:created-at "past3days"}))))
 
       (is (= #{"dashboard" "table" "dataset"}
-             (search.filter/search-context->applicable-models
+             (search.filter/legacy-search-context->applicable-models
               (merge default-search-ctx
                      {:models #{"dashboard" "dataset" "table"}
                       :created-at "past3days"})))))
 
     (testing "verified"
       (is (= #{"dataset" "card" "metric"}
-             (search.filter/search-context->applicable-models
+             (search.filter/legacy-search-context->applicable-models
               (merge default-search-ctx
                      {:verified true}))))
 
       (is (= #{"dataset"}
-             (search.filter/search-context->applicable-models
+             (search.filter/legacy-search-context->applicable-models
               (merge default-search-ctx
                      {:models   #{"dashboard" "dataset" "table"}
                       :verified true})))))
 
     (testing "last edited by"
       (is (= #{"dashboard" "dataset" "card" "metric"}
-             (search.filter/search-context->applicable-models
+             (search.filter/legacy-search-context->applicable-models
               (merge default-search-ctx
                      {:last-edited-by #{1}}))))
 
       (is (= #{"dashboard" "dataset"}
-             (search.filter/search-context->applicable-models
+             (search.filter/legacy-search-context->applicable-models
               (merge default-search-ctx
                      {:models         #{"dashboard" "dataset" "table"}
                       :last-edited-by #{1}})))))
 
     (testing "last edited at"
       (is (= #{"dashboard" "dataset" "action" "metric" "card"}
-             (search.filter/search-context->applicable-models
+             (search.filter/legacy-search-context->applicable-models
               (merge default-search-ctx
                      {:last-edited-at "past3days"}))))
 
       (is (= #{"dashboard" "dataset"}
-             (search.filter/search-context->applicable-models
+             (search.filter/legacy-search-context->applicable-models
               (merge default-search-ctx
                      {:models   #{"dashboard" "dataset" "table"}
                       :last-edited-at "past3days"})))))
 
     (testing "search native query"
       (is (= #{"dataset" "action" "card" "metric"}
-             (search.filter/search-context->applicable-models
+             (search.filter/legacy-search-context->applicable-models
               (merge default-search-ctx
                      {:search-native-query true})))))))
 

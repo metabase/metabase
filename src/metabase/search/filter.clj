@@ -247,8 +247,7 @@
                             (search.config/column-with-model-alias model :updated_at)
                             last-edited-at)))
 
-;; TODO this is equivalent to checking whether the model's attr is truthy
-(defn- feature->supported-models
+(defn- legacy-feature->supported-models
   "Return A map of filter to its support models.
 
   E.g: {:created-by #{\"card\" \"dataset\" \"dashboard\" \"action\"}}
@@ -258,7 +257,7 @@
   (merge
    ;; models support search-native-query if there are additional columns to search when the `search-native-query`
    ;; argument is true
-   {:search-native-query (->> (dissoc (methods (requiring-resolve 'metabase.search.legacy/searchable-columns)) :default)
+   {:search-native-query (->> (dissoc (methods @(requiring-resolve 'metabase.search.legacy/searchable-columns)) :default)
                               (filter (fn [[model f]]
                                         (seq (set/difference (set (f model true)) (set (f model false))))))
                               (map first)
@@ -273,11 +272,30 @@
 ;;                                        Public functions                                         ;;
 ;; ------------------------------------------------------------------------------------------------;;
 
-(mu/defn search-context->applicable-models :- [:set SearchableModel]
+(def ^:private context->attr
+  {:created-at          :created-at
+   :created-by          :creator-id
+   :last-edited-at      :last-edited-at
+   :last-edited-by      :last-editor-id
+   :search-native-query :native-query
+   :verified            :verified})
+
+(defn- search-context->applicable-models
+  "blah"
+  [search-context]
+  (let [required (keep context->attr (keys search-context))]
+    (into #{}
+          (remove nil?)
+          (for [search-model (:models search-context)
+                :let [spec ((requiring-resolve 'metabase.search.spec/spec) search-model)]]
+            (when (every? (:attrs spec) required)
+              (:name spec))))))
+
+(defn legacy-search-context->applicable-models
   "Returns a set of models that are applicable given the search context.
 
   If the context has optional filters, the models will be restricted for the set of supported models only."
-  [search-context :- SearchContext]
+  [search-context]
   (let [{:keys [created-at
                 created-by
                 last-edited-at
@@ -285,7 +303,7 @@
                 models
                 search-native-query
                 verified]}        search-context
-        feature->supported-models (feature->supported-models)]
+        feature->supported-models (legacy-feature->supported-models)]
     (cond-> models
       (some? created-at)          (set/intersection (:created-at feature->supported-models))
       (some? created-by)          (set/intersection (:created-by feature->supported-models))
@@ -293,6 +311,10 @@
       (some? last-edited-by)      (set/intersection (:last-edited-by feature->supported-models))
       (true? search-native-query) (set/intersection (:search-native-query feature->supported-models))
       (true? verified)            (set/intersection (:verified feature->supported-models)))))
+
+(comment
+  (search-context->applicable-models {:last-edited-at 1 :verified true :models (disj search.config/all-models "indexed-entity")})
+  (legacy-search-context->applicable-models {:last-edited-at 1 :verified true :models (disj search.config/all-models "indexed-entity")}))
 
 (mu/defn build-filters :- :map
   "Build the search filters for a model."
