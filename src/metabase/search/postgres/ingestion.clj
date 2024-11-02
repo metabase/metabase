@@ -74,7 +74,7 @@
   (let [spec (search.spec/spec search-model)]
     (u/remove-nils
      {:select (search.spec/qualify-columns :this
-                                           (into [:id]
+                                           (into [(-> spec :attrs :id (or :id))]
                                                  (concat
                                                   (:search-terms spec)
                                                   (mapcat (fn [k] (attrs->select-items (get spec k)))
@@ -114,7 +114,7 @@
   (spec-index-query "collection")
   (into [] (map t2.realize/realize) (t2/reducible-query (spec-index-query "database")))
   (->> {:search-string      nil
-        :models             #{"action"}
+        :models             #{"indexed-entity"}
         :is-superuser?      true
         :current-user-id    (t2/select-one-pk :model/User :is_superuser true)
         :current-user-perms #{"/"}

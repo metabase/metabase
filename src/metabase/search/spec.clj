@@ -30,7 +30,8 @@
 
 (def ^:private optional-attrs
   "These attributes may be omitted (for now) in the interest of brevity in the definitions."
-  [:created-at
+  [:id ; unlike the others, this is implictly true
+   :created-at
    :creator-id
    :last-edited-at
    :last-editor-id
