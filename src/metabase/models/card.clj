@@ -1030,6 +1030,10 @@
                   :collection-name            :collection.name
                   :collection-position        true
                   :collection-type            :collection.type
+                  ;; This field can become stale, unless we change to calculate it just-in-time.
+                  :dashboardcard-count        {:select [:%count.*]
+                                               :from   [:report_dashboardcard]
+                                               :where  [:= :report_dashboardcard.card_id :this.id]}
                   :dataset-query              true
                   :display                    true
                   :moderated-status           :mr.status}

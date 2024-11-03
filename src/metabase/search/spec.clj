@@ -18,8 +18,9 @@
   - false: not present
   - true: given by a column with the same name (snake case)
   - keyword: given by the corresponding column
-  - vector: calculated by the given expression"
-  [:union :boolean :keyword vector?])
+  - vector: calculated by the given expression
+  - map: a sub-select"
+  [:union :boolean :keyword vector? :map])
 
 (def ^:private explicit-attrs
   "These attributes must be explicitly defined, omitting them could be a source of bugs."
