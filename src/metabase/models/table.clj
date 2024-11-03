@@ -306,7 +306,9 @@
                   :creator-id    false
                   :database-id   :db_id
                   :table-id      :id
-                  :archived      [:not :active]
+                  ;; legacy search uses :active for this, but then has a rule to only ever show active tables
+                  ;; so we moved that to the where clause
+                  :archived      false
                   :created-at    true
                   :updated-at    true}
    :search-terms [:name :description :display_name]
@@ -316,6 +318,7 @@
                   :table-schema        :schema
                   :database-name       :db.name}
    :where        [:and
+                  [:not :active]
                   [:= :visibility_type nil]
                   [:not= :db_id audit/audit-db-id]]
    :joins        {:db [:model/Database [:= :db.id :this.db_id]]}})
