@@ -406,13 +406,13 @@
                   :collection-id  :model.collection_id
                   :creator-id     true
                   :database-id    :query_action.database_id
+                  :dataset-query  :query_action.dataset_query
                   ;; workaround for actions not having revisions (yet)
                   :last-edited-at :updated_at
                   :table-id       false
                   :created-at     true
                   :updated-at     true}
    :search-terms [:name :description]
-   :native-query ::query_action.dataset_query
    :render-terms {:model-id   :model.id
                   :model-name :model.name}
    :where        [:= :collection.namespace nil]

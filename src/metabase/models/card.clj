@@ -1015,6 +1015,7 @@
                   :collection-id  :collection_id
                   :creator-id     true
                   :database-id    false
+                  :dataset-query  true
                   :table-id       false
                   :last-edited-at :r.timestamp
                   :last-editor-id :r.user_id
@@ -1022,8 +1023,6 @@
                   :created-at     true
                   :updated-at     true}
    :search-terms [:name :description]
-   ;; TODO this will need to go on a second search vector.
-   :native-query :dataset_query
    :render-terms {:archived-directly          true
                   :collection-authority_level :collection.authority_level
                   :collection-location        :collection.location
@@ -1034,7 +1033,6 @@
                   :dashboardcard-count        {:select [:%count.*]
                                                :from   [:report_dashboardcard]
                                                :where  [:= :report_dashboardcard.card_id :this.id]}
-                  :dataset-query              true
                   :display                    true
                   :moderated-status           :mr.status}
    :bookmark     [:model/CardBookmark [:and

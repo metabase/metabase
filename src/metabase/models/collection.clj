@@ -1746,8 +1746,6 @@
                   :updated-at    false}
    :search-terms [:name]
    :render-terms {:archived-directly          true
-                  ;; TODO this must be inserted dynamically, since it is user specific
-                  ;; bookmark
                   ;; Why not make this a search term? I suspect it was just overlooked before.
                   :description                true
                   :collection_authority_level :authority_level

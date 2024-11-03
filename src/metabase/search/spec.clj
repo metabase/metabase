@@ -34,6 +34,7 @@
   [:id ; unlike the others, this is implictly true
    :created-at
    :creator-id
+   :dataset-query
    :last-edited-at
    :last-editor-id
    :verified

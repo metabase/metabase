@@ -54,6 +54,8 @@
              ;; permission related entities
              [:collection_id :int]
              [:database_id :int]
+             ;; leaving as just text for now, but perhaps we want it to be JSON, and have a tsvector field too
+             [:dataset_query :text]
              [:table_id :int]
              ;; filter related
              [:archived :boolean]
