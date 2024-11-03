@@ -128,7 +128,10 @@
          (batch-update!))))
 
 ;; TODO think about how we're going to handle cascading deletes.
-;; One idea is to queue a general purge command.
+;; Ideas:
+;; - Queue full re-index (rather expensive)
+;; - Queue "purge" (empty left join to the model) - needs special case for indexed-entity
+;; - Pre-delete hook using pre-calculated PK-based graph
 (defn delete-model!
   "Given a deleted instance, delete all the corresponding search entries."
   [instance]
