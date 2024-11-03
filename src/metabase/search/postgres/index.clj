@@ -58,7 +58,7 @@
              [:dataset_query :text]
              [:table_id :int]
              ;; filter related
-             [:archived :boolean]
+             [:archived :boolean :not-null [:default false]]
              [:created_by :int]
              [:last_edited_at :timestamp]
              [:last_edited_by :int]
