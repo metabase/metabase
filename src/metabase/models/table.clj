@@ -318,7 +318,7 @@
                   :table-schema        :schema
                   :database-name       :db.name}
    :where        [:and
-                  [:not :active]
+                  :active
                   [:= :visibility_type nil]
                   [:not= :db_id audit/audit-db-id]]
    :joins        {:db [:model/Database [:= :db.id :this.db_id]]}})
