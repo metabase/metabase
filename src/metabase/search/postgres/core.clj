@@ -149,8 +149,8 @@
       (t2/exists? :search_index
                   (-> (search.index/search-query (:search-string search-ctx))
                       (sql.helpers/where [:= :model m]))))
-    ;; TODO use only the models that apply to the given filters
-    (:models search-ctx search.config/all-models))))
+    ;; regardless of :models in search-ctx, search across all of them.
+    search.config/all-models)))
 
 (defn no-scoring
   "Do no scoring, whatsoever"
