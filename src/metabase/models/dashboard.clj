@@ -683,9 +683,9 @@
                   :collection-position        true}
    :where        []
    :bookmark     [:model/DashboardBookmark [:and
-                                             [:= :bookmark.dashboard_id :this.id]
+                                            [:= :bookmark.dashboard_id :this.id]
                                              ;; a magical alias, or perhaps this clause can be implicit
-                                             [:= :bookmark.user_id :current_user/id]]]
+                                            [:= :bookmark.user_id :current_user/id]]]
    :joins        {:collection [:model/Collection [:= :collection.id :this.collection_id]]
                   :r          [:model/Revision [:and
                                                 [:= :r.model_id :this.id]
