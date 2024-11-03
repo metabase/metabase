@@ -3,6 +3,7 @@
    [cheshire.core :as json]
    [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
+   [metabase.search.spec :as search.spec]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -56,11 +57,12 @@
              [:table_id :int]
              ;; filter related
              [:archived :boolean]
-             [:creator_id :int]
+             [:created_by :int]
              [:last_edited_at :timestamp]
              [:last_edited_by :int]
              [:model_created_at :timestamp]
              [:model_updated_at :timestamp]
+             [:verified :boolean]
              ;; useful for tracking the speed and age of the index
              [:created_at :timestamp
               [:default [:raw "CURRENT_TIMESTAMP"]]
@@ -94,19 +96,14 @@
 (defn- entity->entry [entity]
   (-> entity
       (select-keys
-       [:model
-        :model_rank
-        :collection_id
-        :creator_id
-        :database_id
-        :display_data
-        :legacy_input
-        :table_id
-        :archived])
+       ;; remove attrs that get aliased
+       (remove #{:id :created_at :creator_id :last_editor_id :updated_at} (conj search.spec/attr-columns :model :model_rank)))
       (update :display_data json/generate-string)
       (update :legacy_input json/generate-string)
       (assoc
        :model_id         (:id entity)
+       :created_by       (:creator_id entity)
+       :last_edited_by   (:last_editor_id entity)
        :model_created_at (:created_at entity)
        :model_updated_at (:updated_at entity)
        :search_vector    [:to_tsvector
