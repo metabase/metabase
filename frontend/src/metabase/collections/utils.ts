@@ -1,12 +1,18 @@
 import { t } from "ttag";
+import _ from "underscore";
 
+import { cardApi } from "metabase/api";
+import type { DispatchFn } from "metabase/lib/redux";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
+import type Question from "metabase-lib/v1/Question";
 import type {
   Collection,
   CollectionEssentials,
   CollectionId,
   CollectionItem,
 } from "metabase-types/api";
+
+import type { MoveDestination } from "./types";
 
 export function nonPersonalOrArchivedCollection(
   collection: Collection,
@@ -263,3 +269,34 @@ export const getCollectionPathAsString = (collection: CollectionEssentials) => {
 };
 
 export const collectionPathSeparator = "/";
+
+export const getAffectedDashboardsFromMove = async (
+  items: CollectionItem[] | Question[],
+  destination: MoveDestination,
+  dispatch: DispatchFn,
+) => {
+  const data = await Promise.all(
+    items.map(card =>
+      dispatch(
+        cardApi.endpoints.getCardDashboards.initiate({
+          id: _.isFunction(card.id) ? card.id() : card.id,
+        }),
+      ),
+    ),
+  );
+
+  // Once we have all the info, map over all the responses and add the card id it belongs to
+  // while also removing the destination dashboards from the list of associated dashboards.
+  if (data.every(d => d.isSuccess)) {
+    return data
+      .map(d => ({
+        cardId: d.originalArgs.id,
+        dashboards: d.data.filter(
+          dashboards => dashboards.id !== destination.id,
+        ),
+      }))
+      .filter(cd => cd.dashboards.length > 0);
+  } else {
+    return [];
+  }
+};

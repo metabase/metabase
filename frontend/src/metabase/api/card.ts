@@ -4,6 +4,7 @@ import type {
   CardQueryMetadata,
   CardQueryRequest,
   CreateCardRequest,
+  DashboardId,
   Dataset,
   GetCardRequest,
   GetEmbeddableCard,
@@ -224,6 +225,15 @@ export const cardApi = Api.injectEndpoints({
         updateCardPropertyMutation<"enable_embedding">(),
       updateCardEmbeddingParams:
         updateCardPropertyMutation<"embedding_params">(),
+      getCardDashboards: builder.query<
+        { id: DashboardId; name: string }[],
+        Pick<Card, "id">
+      >({
+        query: ({ id }) => ({
+          method: "GET",
+          url: `/api/card/${id}/dashboards`,
+        }),
+      }),
     };
   },
 });
@@ -251,5 +261,6 @@ export const {
     deleteCardPublicLink,
     updateCardEnableEmbedding,
     updateCardEmbeddingParams,
+    getCardDashboards,
   },
 } = cardApi;
