@@ -55,12 +55,13 @@ const Questions = createEntity({
         dispatch,
         cardApi.endpoints.createCard,
       ),
-    update: (entityQuery, dispatch) =>
-      entityCompatibleQuery(
+    update: (entityQuery, dispatch) => {
+      return entityCompatibleQuery(
         entityQuery,
         dispatch,
         cardApi.endpoints.updateCard,
-      ),
+      );
+    },
     delete: ({ id }, dispatch) =>
       entityCompatibleQuery(id, dispatch, cardApi.endpoints.deleteCard),
   },
@@ -122,6 +123,7 @@ const Questions = createEntity({
             ? {
                 dashboard_id: destination.id,
                 archived,
+                delete_old_dashcards: true,
               }
             : {
                 collection_id: canonicalCollectionId(destination.id),
@@ -226,6 +228,7 @@ const Questions = createEntity({
     "collection_position",
     "collection_preview",
     "result_metadata",
+    "delete_old_dashcards",
   ],
 
   getAnalyticsMetadata([object], { action }, getState) {

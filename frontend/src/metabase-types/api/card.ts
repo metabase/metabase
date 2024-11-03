@@ -344,7 +344,8 @@ export interface UpdateCardRequest {
   archived?: boolean;
   enable_embedding?: boolean;
   embedding_params?: EmbeddingParameters;
-  collection_id?: CollectionId;
+  collection_id?: CollectionId | null;
+  dashboard_id?: DashboardId | null;
   collection_position?: number;
   result_metadata?: Field[];
   cache_ttl?: number;

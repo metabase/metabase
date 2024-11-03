@@ -1,15 +1,20 @@
-import { memo, useMemo } from "react";
+import { memo, useMemo, useState } from "react";
 import { msgid, ngettext } from "ttag";
 import _ from "underscore";
 
 import CollectionCopyEntityModal from "metabase/collections/components/CollectionCopyEntityModal";
-import { isTrashedCollection } from "metabase/collections/utils";
+import {
+  getAffectedDashboardsFromMove,
+  isTrashedCollection,
+} from "metabase/collections/utils";
 import { BulkActionBar } from "metabase/components/BulkActionBar";
 import Modal from "metabase/components/Modal";
 import { BulkMoveModal } from "metabase/containers/MoveModal";
-import type { Collection, CollectionItem } from "metabase-types/api";
+import { useDispatch } from "metabase/lib/redux";
+import type { Collection, CollectionItem, Dashboard } from "metabase-types/api";
 
 import { ArchivedBulkActions } from "./ArchivedBulkActions";
+import { QuestionMoveConfirmModal } from "./QuestionMoveConfirmModal";
 import { UnarchivedBulkActions } from "./UnarchivedBulkActions";
 
 type CollectionBulkActionsProps = {
@@ -22,6 +27,10 @@ type CollectionBulkActionsProps = {
   clearSelected: () => void;
 };
 
+type Destination =
+  | (Pick<Collection, "id"> & { model: "collection" })
+  | (Pick<Dashboard, "id"> & { model: "dashboard" });
+
 export const CollectionBulkActions = memo(
   ({
     selected,
@@ -32,6 +41,11 @@ export const CollectionBulkActions = memo(
     setSelectedAction,
     clearSelected,
   }: CollectionBulkActionsProps) => {
+    const dispatch = useDispatch();
+    const [selectedCards, setSelectedCards] = useState<any[]>([]);
+    const [rememberedDestination, setRememberedDestination] =
+      useState<Destination | null>(null);
+
     const isVisible = selected.length > 0;
 
     const hasSelectedItems = useMemo(
@@ -42,22 +56,77 @@ export const CollectionBulkActions = memo(
     const handleCloseModal = () => {
       setSelectedItems(null);
       setSelectedAction(null);
+      setRememberedDestination(null);
+      setSelectedCards([]);
       clearSelected();
     };
 
     const tryOrClear = (promise: Promise<any>) =>
       promise.finally(() => clearSelected());
 
-    const handleBulkMove = async (
-      collection: Pick<Collection, "id"> & Partial<Collection>,
-    ) => {
+    const handleConfirmedBulkQuestionMove = async () => {
+      if (rememberedDestination) {
+        await doMove(rememberedDestination);
+        handleCloseModal();
+      }
+    };
+
+    const doMove = async (destination: Destination) => {
       if (selectedItems) {
         await tryOrClear(
           Promise.all(
-            selectedItems.map(item => item.setCollection?.(collection)),
+            selectedItems.map(item => item.setCollection?.(destination)),
           ),
         );
-        handleCloseModal();
+      }
+      handleCloseModal();
+    };
+
+    const handleBulkMove = async (destination: Destination) => {
+      if (selectedItems) {
+        // If the destination is a collection, then move the items
+        if (destination.model === "collection") {
+          await doMove(destination);
+        }
+
+        // otherwise, destination is a dashboard
+        else if (destination.model === "dashboard") {
+          //determine if we need to display a confirmation modal
+
+          //Check how many items are cards that appear in a dashboard
+          const potentialConfirmCards = selectedItems.filter(
+            item =>
+              item.model === "card" &&
+              item.dashboard_count &&
+              item.dashboard_count > 0,
+          );
+
+          //If there are none, then do the move
+          if (potentialConfirmCards.length === 0) {
+            await doMove(destination);
+          }
+
+          //Otherwise, get the names of the affected dashboards and display the modal
+          else {
+            const cardDashboards = await getAffectedDashboardsFromMove(
+              potentialConfirmCards,
+              destination,
+              dispatch,
+            );
+
+            // If after all the processing, we determine there are affected dashboards,
+            // Set the state to show the info modal.
+            if (cardDashboards.length > 0) {
+              setSelectedCards(cardDashboards);
+              setSelectedAction(null);
+              setRememberedDestination(destination);
+            }
+            //If no dashboards are actually affected, then do the move without a confirmation modal
+            else {
+              await doMove(destination);
+            }
+          }
+        }
       }
     };
 
@@ -111,6 +180,13 @@ export const CollectionBulkActions = memo(
             }
           />
         )}
+
+        <QuestionMoveConfirmModal
+          cardDashboards={selectedCards}
+          selectedItems={selectedItems || []}
+          onConfirm={handleConfirmedBulkQuestionMove}
+          onClose={handleCloseModal}
+        />
       </>
     );
   },

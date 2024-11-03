@@ -4,8 +4,12 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { useUpdateCardMutation } from "metabase/api";
+import { QuestionMoveConfirmModal } from "metabase/collections/components/CollectionBulkActions/QuestionMoveConfirmModal";
 import type { MoveDestination } from "metabase/collections/types";
-import { canonicalCollectionId } from "metabase/collections/utils";
+import {
+  canonicalCollectionId,
+  getAffectedDashboardsFromMove,
+} from "metabase/collections/utils";
 import ConfirmContent from "metabase/components/ConfirmContent";
 import Modal from "metabase/components/Modal";
 import { MoveModal } from "metabase/containers/MoveModal";
@@ -23,7 +27,10 @@ interface MoveQuestionModalProps {
   onClose: () => void;
 }
 
-type ConfirmationTypes = "dashboard-to-dashboard" | "dashboard-to-collection";
+type ConfirmationTypes =
+  | "dashboard-to-dashboard"
+  | "dashboard-to-collection"
+  | "collection-to-dashboard";
 
 export const MoveQuestionModal = ({
   question,
@@ -36,6 +43,7 @@ export const MoveQuestionModal = ({
   const [confirmMoveState, setConfirmMoveState] = useState<{
     type: ConfirmationTypes;
     destination: MoveDestination;
+    affectedDashboards?: any[];
   } | null>(null);
   const [deleteOldDashcards, setDeleteOldDashcards] = useState<
     boolean | undefined
@@ -44,7 +52,7 @@ export const MoveQuestionModal = ({
   const handleMove = async (destination: MoveDestination) => {
     const update =
       destination.model === "dashboard"
-        ? { dashboard_id: destination.id }
+        ? { dashboard_id: destination.id as number }
         : {
             dashboard_id: null,
             collection_id: canonicalCollectionId(destination.id),
@@ -88,14 +96,32 @@ export const MoveQuestionModal = ({
       .finally(() => onClose());
   };
 
-  const handleChooseMoveLocation = (destination: MoveDestination) => {
+  const handleChooseMoveLocation = async (destination: MoveDestination) => {
     const wasDq = _.isNumber(question.dashboardId());
     const isDq = destination.model === "dashboard";
+    const dashCount = question.dashboardCount();
 
     if (wasDq && !isDq) {
       setConfirmMoveState({ type: "dashboard-to-collection", destination });
     } else if (wasDq && isDq) {
       setConfirmMoveState({ type: "dashboard-to-dashboard", destination });
+    } else if (!wasDq && isDq && dashCount > 0) {
+      //Find out if any other dashboards will be affected
+      const dashboards = await getAffectedDashboardsFromMove(
+        [question],
+        destination,
+        dispatch,
+      );
+      if (dashboards.length > 0) {
+        setDeleteOldDashcards(true);
+        setConfirmMoveState({
+          type: "collection-to-dashboard",
+          destination,
+          affectedDashboards: dashboards,
+        });
+      } else {
+        handleMove(destination);
+      }
     } else {
       handleMove(destination);
     }
@@ -169,6 +195,20 @@ export const MoveQuestionModal = ({
           confirmButtonText={t`Okay`}
         />
       </Modal>
+    );
+  }
+
+  if (
+    confirmMoveState?.type === "collection-to-dashboard" &&
+    confirmMoveState.affectedDashboards
+  ) {
+    return (
+      <QuestionMoveConfirmModal
+        selectedItems={[question]}
+        cardDashboards={confirmMoveState.affectedDashboards}
+        onConfirm={() => handleMove(confirmMoveState.destination)}
+        onClose={onClose}
+      />
     );
   }
 
