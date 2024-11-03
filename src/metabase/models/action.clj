@@ -402,13 +402,15 @@
 
 (search/define-spec "action"
   {:model        :model/Action
-   :attrs        {:archived      true
-                  :collection-id :model.collection_id
-                  :creator-id true
-                  :database-id   :query_action.database_id
-                  :table-id      false
-                  :created-at    true
-                  :updated-at    true}
+   :attrs        {:archived       true
+                  :collection-id  :model.collection_id
+                  :creator-id     true
+                  :database-id    :query_action.database_id
+                  ;; workaround for actions not having revisions (yet)
+                  :last-edited-at :updated_at
+                  :table-id       false
+                  :created-at     true
+                  :updated-at     true}
    :search-terms [:name :description]
    :native-query ::query_action.dataset_query
    :render-terms {:model-id   :model.id
