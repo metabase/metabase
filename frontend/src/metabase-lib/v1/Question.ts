@@ -499,6 +499,10 @@ class Question {
     return this._card.dashboard_id;
   }
 
+  dashboardCount(): number {
+    return this._card.dashboard_count;
+  }
+
   setDashboardId(dashboardId: DashboardId | null | undefined) {
     return this.setCard(assoc(this.card(), "dashboard_id", dashboardId));
   }

@@ -2,6 +2,7 @@ import type { ColorName } from "metabase/lib/colors/types";
 import type { IconName, IconProps } from "metabase/ui";
 import type {
   CollectionEssentials,
+  Dashboard,
   PaginationRequest,
   PaginationResponse,
   VisualizationDisplay,
@@ -131,7 +132,9 @@ export interface CollectionItem {
     opts?: Record<string, unknown>,
   ) => Promise<void>;
   setPinned?: (isPinned: boolean) => void;
-  setCollection?: (collection: Pick<Collection, "id">) => void;
+  setCollection?: (
+    collection: Pick<Collection, "id"> | Pick<Dashboard, "id">,
+  ) => void;
   setCollectionPreview?: (isEnabled: boolean) => void;
 }
 
