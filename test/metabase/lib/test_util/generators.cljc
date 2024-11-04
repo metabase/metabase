@@ -8,6 +8,7 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util.generators.filters :as gen.filters]
    [metabase.lib.test-util.generators.util :as gen.u]
+   [metabase.lib.types.isa :as lib.types.isa]
    [metabase.util :as u]))
 
 ;; NOTE: Being able to *execute* these queries and grok the results would actually be really powerful, if we can
@@ -193,6 +194,63 @@
           (testing (str `lib/filter-operator " returns the right op")
             (is (= (first filter-clause)
                    (:short (lib/filter-operator after stage-number (last after-filters)))))))))))
+
+;; Expressions ===================================================================================
+;; We only support a few basic expressions for now. It would be good to exercise all the expression types eventually,
+;; but the main objective here is to generate *some* expressions so they can be consumed by filters, aggregations, etc.
+;; since that's a major bug source.
+(add-step {:kind :expression})
+
+(defn- gen-expression:number [column]
+  (lib/+ column 1))
+
+(defn- gen-expression:string [column]
+  (lib/concat column "__concat"))
+
+(defn- gen-expression [columns]
+  (let [numbers (map #(vector gen-expression:number %) (filter lib.types.isa/number? columns))
+        strings (map #(vector gen-expression:string %) (filter lib.types.isa/string? columns))
+        [f col] (gen.u/choose (concat numbers strings))]
+    (f col)))
+
+(def ^:private identifier-chars-initial
+  (str "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+       "abcdefghijklmnopqrstuvwxyz"
+       "_"))
+
+(def ^:private identifier-chars
+  (str identifier-chars-initial "0123456789"))
+
+(def ^:private expr-name-chars
+  (str identifier-chars " []<>+!@$%&*^()"))
+
+(defn- gen-expression-name []
+  (let [len (gen.u/choose (range 3 30))]
+    (apply str (repeatedly len #(gen.u/choose expr-name-chars)))))
+
+(defmethod next-steps* :expression [query _expression]
+  (let [stage-number (choose-stage query)
+        ;; Always adding at the end for now. Editing will come later.
+        expr-pos     (count (lib/expressions query stage-number))]
+    (when-let [expr-clause (gen-expression (lib/expressionable-columns query stage-number expr-pos))]
+      [:expression stage-number (gen-expression-name) expr-clause])))
+
+(defmethod run-step* :expression [query [_expression stage-number expr-name expr-clause]]
+  (lib/expression query stage-number expr-name expr-clause))
+
+(defmethod before-and-after :expression [before after [_expression stage-number expr-name _expr-clause]]
+  (let [before-exprs (lib/expressions before stage-number)
+        after-exprs  (lib/expressions after stage-number)]
+    (testing "adding an expression"
+      (testing "adds it to the expressions list"
+        (is (= (inc (count before-exprs))
+               (count after-exprs))))
+      (testing "adds it to visible columns"
+        (is (=? [{:lib/type   :metadata/column
+                  :lib/source :source/expressions
+                  :name       expr-name
+                  :id         (symbol "nil #_\"key is not present.\"")}]
+                (filter #(= (:name %) expr-name) (lib/visible-columns after stage-number))))))))
 
 ;; Generator internals ===========================================================================
 (defn- run-step
