@@ -7,7 +7,6 @@
    [medley.core :as m]
    [metabase.analytics.prometheus :as prometheus]
    [metabase.email :as email]
-   [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.util :as tu]
    [metabase.util :as u :refer [prog1]]
@@ -369,7 +368,7 @@
                               :subject "101 Reasons to use Metabase"
                               :body    "101. Metabase will make you a better person"}
                              recipients)))]
-    (mt/with-temporary-setting-values
+    (tu/with-temporary-setting-values
       [email-smtp-host "fake_smtp_host"
        email-smtp-port 587]
       (with-redefs [email/email-throttler (#'email/make-email-throttler 3)]
