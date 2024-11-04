@@ -87,12 +87,12 @@ For more gory details, see [Limitations](#limitations).
 ## Accepted data types
 
 | [Data type](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview#examples-of-data-types) | Works with `convertTimezone` |
-| ------------------------------------------------------------------------------------------------ | ---------------------------- |
-| String                                                                                           | ❌                           |
-| Number                                                                                           | ❌                           |
-| Timestamp                                                                                        | ✅                           |
-| Boolean                                                                                          | ❌                           |
-| JSON                                                                                             | ❌                           |
+| ------------------------------------------------------------------------------------------------------------------------------ | ---------------------------- |
+| String                                                                                                                         | ❌                           |
+| Number                                                                                                                         | ❌                           |
+| Timestamp                                                                                                                      | ✅                           |
+| Boolean                                                                                                                        | ❌                           |
+| JSON                                                                                                                           | ❌                           |
 
 We use "timestamp" and "datetime" to talk about any temporal data type that's supported by Metabase.
 
@@ -115,6 +115,7 @@ Note that the first part of the timestamp is in UTC (same thing as GMT). The tim
 `convertTimezone` is currently unavailable for the following databases:
 
 - Amazon Athena
+- Databricks
 - Druid
 - MongoDB
 - Presto

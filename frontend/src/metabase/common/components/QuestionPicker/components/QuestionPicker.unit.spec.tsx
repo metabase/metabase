@@ -2,24 +2,30 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import { useState } from "react";
 
+import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
   setupCollectionItemsEndpoint,
   setupRecentViewsAndSelectionsEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
+import { mockSettings } from "__support__/settings";
 import {
   mockGetBoundingClientRect,
   mockScrollBy,
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
+  within,
 } from "__support__/ui";
 import type { CollectionId, CollectionItem } from "metabase-types/api";
 import {
   createMockCard,
   createMockCollection,
   createMockCollectionItem,
+  createMockSettings,
+  createMockTokenFeatures,
 } from "metabase-types/api/mocks";
+import { createMockState } from "metabase-types/store/mocks";
 
 import type {
   QuestionPickerItem,
@@ -43,6 +49,15 @@ const myQuestion = createMockCollectionItem({
     collection_id: 3,
   }),
   model: "card",
+});
+
+const myVerifiedQuestion = createMockCollectionItem({
+  ...createMockCard({
+    id: 103,
+    name: "My Verified Question",
+    collection_id: 3,
+  }),
+  moderated_status: "verified",
 });
 
 const myModel = createMockCollectionItem({
@@ -84,7 +99,7 @@ const collectionTree: NestedCollectionItem[] = [
             id: 3,
             name: "Collection 3",
             model: "collection",
-            descendants: [myQuestion, myModel, myMetric],
+            descendants: [myQuestion, myModel, myMetric, myVerifiedQuestion],
             location: "/4/",
             can_write: true,
             is_personal: false,
@@ -191,6 +206,23 @@ const setupPicker = async ({
 }: SetupOpts = {}) => {
   commonSetup();
 
+  const tokenFeatures = createMockTokenFeatures({
+    content_verification: true,
+    official_collections: true,
+  });
+  const settings = createMockSettings();
+
+  const settingValuesWithToken = {
+    ...settings,
+    "token-features": tokenFeatures,
+  };
+
+  const state = createMockState({
+    settings: mockSettings(settingValuesWithToken),
+  });
+
+  setupEnterprisePlugins();
+
   function TestComponent() {
     const [path, setPath] = useState<QuestionPickerStatePath>();
 
@@ -207,7 +239,7 @@ const setupPicker = async ({
     );
   }
 
-  renderWithProviders(<TestComponent />);
+  renderWithProviders(<TestComponent />, { storeInitialState: state });
 
   await waitForLoaderToBeRemoved();
 };
@@ -288,6 +320,12 @@ describe("QuestionPicker", () => {
     expect(
       await screen.findByRole("button", { name: /My Question/ }),
     ).toHaveAttribute("data-active", "true");
+
+    expect(
+      await within(
+        await screen.findByRole("button", { name: /My Verified Question/ }),
+      ).findByRole("img", { name: /verified_filled/ }),
+    ).toBeInTheDocument();
   });
 });
 
