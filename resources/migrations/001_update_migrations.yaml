@@ -10087,6 +10087,22 @@ databaseChangeLog:
                   constraints:
                     nullable: true
 
+  - changeSet:
+      id: v52.2024-11-01T08:00:00
+      author: ranquild
+      comment: Migrates pivot table viz settings in report_card.visualization_settings.
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.MigrateLegacyCardPivotVizSettings"
+
+  - changeSet:
+      id: v52.2024-11-01T09:00:00
+      author: ranquild
+      comment: Migrates pivot table viz settings in report_dashboardcard.visualization_settings.
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.MigrateLegacyDashboardCardPivotVizSettings"
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
