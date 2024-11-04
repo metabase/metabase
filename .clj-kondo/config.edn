@@ -340,7 +340,8 @@
                                      metabase.query-analysis.failure-map}
     metabase.related               #{metabase.related}
     metabase.sample-data           #{metabase.sample-data}
-    metabase.search                #{metabase.search}
+    metabase.search                #{metabase.search
+                                     metabase.search.spec}
     metabase.server                #{metabase.server
                                      metabase.server.handler
                                      metabase.server.middleware.auth
