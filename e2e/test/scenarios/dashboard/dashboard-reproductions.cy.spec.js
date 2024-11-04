@@ -332,6 +332,7 @@ describe("issue 16559", () => {
 
     cy.intercept("GET", "/api/collection/tree?*").as("getCollections");
     cy.intercept("PUT", "/api/dashboard/*").as("saveDashboard");
+    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
   });
 
   it("should always show the most recent revision (metabase#16559)", () => {
@@ -351,6 +352,7 @@ describe("issue 16559", () => {
     editDashboard();
     openQuestionsSidebar();
     sidebar().findByText("Orders, Count").click();
+    cy.wait("@cardQuery");
     cy.button("Save").click();
     cy.wait("@saveDashboard");
 
