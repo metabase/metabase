@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
+import type { MoveDestination } from "metabase/collections/types";
 import EntityMenu from "metabase/components/EntityMenu";
 import Modal from "metabase/components/Modal";
 import { MoveModal } from "metabase/containers/MoveModal";
@@ -9,7 +10,6 @@ import Link from "metabase/core/components/Link";
 import * as Urls from "metabase/lib/urls";
 import ArchiveModelModal from "metabase/questions/containers/ArchiveQuestionModal";
 import type Question from "metabase-lib/v1/Question";
-import type { CollectionId } from "metabase-types/api";
 
 import {
   ModelFootnote,
@@ -22,7 +22,7 @@ interface Props {
   model: Question;
   hasEditDefinitionLink: boolean;
   onChangeName: (name?: string) => void;
-  onChangeCollection: ({ id }: { id: CollectionId }) => void;
+  onChangeCollection: (destination: MoveDestination) => void;
 }
 
 type HeaderModal = "move" | "archive";
@@ -59,7 +59,7 @@ function ModelDetailHeader({
   const handleCloseModal = useCallback(() => setModal(null), []);
 
   const handleCollectionChange = useCallback(
-    (collection: { id: CollectionId }) => {
+    (collection: MoveDestination) => {
       onChangeCollection(collection);
       handleCloseModal();
     },

@@ -27,7 +27,7 @@ export type OnMoveWithOneItem<D = MoveDestination> = (
 ) => Promise<any> | void;
 export type OnMoveWithSourceAndDestination = (
   source: Collection | CollectionItem,
-  destination: { id: CollectionId },
+  destination: MoveDestination,
 ) => Promise<any>;
 export type OnMoveById = (id: CollectionId) => void;
 export type OnPin = () => void | null;

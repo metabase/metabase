@@ -204,7 +204,13 @@ export const MoveQuestionModal = ({
   ) {
     return (
       <QuestionMoveConfirmModal
-        selectedItems={[question]}
+        selectedItems={[
+          {
+            name: question.displayName() as string,
+            id: question.id(),
+            model: "card",
+          },
+        ]}
         cardDashboards={confirmMoveState.affectedDashboards}
         onConfirm={() => handleMove(confirmMoveState.destination)}
         onClose={onClose}
