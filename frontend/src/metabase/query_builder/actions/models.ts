@@ -30,6 +30,10 @@ export const turnQuestionIntoModel =
   () => async (dispatch: Dispatch, getState: GetState) => {
     const question = getQuestion(getState());
 
+    if (!question) {
+      return;
+    }
+
     await dispatch(
       Questions.actions.update(
         {
@@ -46,6 +50,10 @@ export const turnQuestionIntoModel =
 
     const metadata = getMetadata(getState());
     const dataset = metadata.question(question.id());
+
+    if (!dataset) {
+      return;
+    }
 
     await dispatch(loadMetadataForCard(dataset.card()));
 
