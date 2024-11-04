@@ -31,7 +31,7 @@
 
 (def ^:private optional-attrs
   "These attributes may be omitted (for now) in the interest of brevity in the definitions."
-  [:id ; unlike the others, this is implictly true
+  [:id
    :created-at
    :creator-id
    :dataset-query
@@ -40,6 +40,9 @@
    :pinned
    :verified
    :updated-at])
+
+(def ^:private default-attrs
+  {:id true})
 
 (def ^:private attr-keys
   "Keys of a search-model that correspond to concrete columns in the index"
@@ -230,8 +233,9 @@
   "Define a spec for a search model."
   [search-model spec]
   ;; TODO validate spec shape, consistency, and completeness
-  `(let [spec# ~spec
-         spec# (assoc spec# :name ~search-model)]
+  `(let [spec# (-> ~spec
+                   (assoc :name ~search-model)
+                   (update :attrs #(merge default-attrs %)))]
      (validate-spec! spec#)
      (defmethod spec ~search-model [~'_] spec#)))
 

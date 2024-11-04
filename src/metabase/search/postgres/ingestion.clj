@@ -74,11 +74,10 @@
   (let [spec (search.spec/spec search-model)]
     (u/remove-nils
      {:select (search.spec/qualify-columns :this
-                                           (into [(-> spec :attrs :id (or :id))]
-                                                 (concat
-                                                  (:search-terms spec)
-                                                  (mapcat (fn [k] (attrs->select-items (get spec k)))
-                                                          [:attrs :render-terms]))))
+                                           (concat
+                                            (:search-terms spec)
+                                            (mapcat (fn [k] (attrs->select-items (get spec k)))
+                                                    [:attrs :render-terms])))
       :from   [[(t2/table-name (:model spec)) :this]]
       :where  (:where spec [:inline [:= 1 1]])
       :left-join (when (:joins spec)
