@@ -767,13 +767,6 @@ Example: `Offset(Sum([Total]), -1)` would get the `Sum([Total])` value from the 
 ## Limitations
 
 - [Aggregation expressions](#aggregations) can only be used in the **Summarize** section of the query builder.
-- Functions that return a boolean value, like [isempty](#isempty) or [contains](#contains), cannot be used to create a custom column. To create a custom column based on one of these functions, you must combine them with another function, like `case`.
-
-  For example, to create a new custom column that contains `true` if `[Title]` contain `'Wallet'`, you can use the custom expression
-
-  ```
-  case(contains([Title], 'Wallet'), true, false)
-  ```
 
 ## Database limitations
 
