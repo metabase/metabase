@@ -1095,6 +1095,14 @@
   (testing "A pivot download will use the user-configured measures order (#48442)."
     (mt/dataset test-data
       (mt/with-temp [:model/Card card {:display                :pivot
+                                       :dataset_query          {:database (mt/id)
+                                                                :type     :query
+                                                                :query
+                                                                {:source-table (mt/id :products)
+                                                                 :aggregation  [[:count]
+                                                                                [:sum [:field (mt/id :products :price) {:base-type :type/Float}]]
+                                                                                [:avg [:field (mt/id :products :rating) {:base-type :type/Float}]]]
+                                                                 :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]]}}
                                        :visualization_settings {:pivot_table.column_split
                                                                 {:rows    [[:field (mt/id :products :category) {:base-type :type/Text}]]
                                                                  :columns []
@@ -1104,16 +1112,8 @@
                                                                 :column_settings
                                                                 {"[\"name\",\"count\"]" {:column_title "Count Renamed"}
                                                                  "[\"name\",\"sum\"]"   {:column_title "Sum Renamed"}
-                                                                 "[\"name\",\"avg\"]"   {:column_title "Average Renamed"}}}
-                                       :dataset_query          {:database (mt/id)
-                                                                :type     :query
-                                                                :query
-                                                                {:source-table (mt/id :products)
-                                                                 :aggregation  [[:count]
-                                                                                [:sum [:field (mt/id :products :price) {:base-type :type/Float}]]
-                                                                                [:avg [:field (mt/id :products :rating) {:base-type :type/Float}]]]
-                                                                 :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]]}}}]
-        (let [expected-header ["Category" "Sum of Price" "Count" "Average of Rating"]
+                                                                 "[\"name\",\"avg\"]"   {:column_title "Average Renamed"}}}}]
+        (let [expected-header   ["Category" "Sum of Price" "Count" "Average of Rating"]
               formatted-results (all-downloads card {:export-format :csv :format-rows false :pivot true})]
           (is (= {:unsaved-card-download    expected-header
                   :card-download            expected-header
@@ -1122,7 +1122,43 @@
                   :public-dashcard-download expected-header}
                  (update-vals formatted-results first))))
         (testing "The column title changes are used when format-rows is true"
-          (let [expected-header ["Category" "Sum Renamed" "Count Renamed" "Average Renamed"]
+          (let [expected-header   ["Category" "Sum Renamed" "Count Renamed" "Average Renamed"]
+                formatted-results (all-downloads card {:export-format :csv :format-rows true :pivot true})]
+            (is (= {:unsaved-card-download    expected-header
+                    :card-download            expected-header
+                    :public-question-download expected-header
+                    :dashcard-download        expected-header
+                    :public-dashcard-download expected-header}
+                   (update-vals formatted-results first)))))))))
+
+(deftest pivot-rows-order-test
+  (testing "A pivot download will use the user-configured rows order."
+    (mt/dataset test-data
+      (mt/with-temp [:model/Card card {:display                :pivot
+                                       :dataset_query          {:database (mt/id)
+                                                                :type     :query
+                                                                :query
+                                                                {:source-table (mt/id :products)
+                                                                 :aggregation  [[:count]]
+                                                                 :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]
+                                                                                [:field (mt/id :products :created_at) {:base-type :type/DateTime :temporal-unit :year}]]}}
+                                       :visualization_settings {:pivot_table.column_split
+                                                                {:rows    [[:field (mt/id :products :created_at) {:base-type :type/DateTime :temporal-unit :year}]
+                                                                           [:field (mt/id :products :category) {:base-type :type/Text}]]
+                                                                 :columns []
+                                                                 :values  [[:aggregation 0]]}
+                                                                :column_settings
+                                                                {"[\"name\",\"count\"]" {:column_title "Count Renamed"}}}}]
+        (let [expected-header   ["Created At" "Category" "Count"]
+              formatted-results (all-downloads card {:export-format :csv :format-rows false :pivot true})]
+          (is (= {:unsaved-card-download    expected-header
+                  :card-download            expected-header
+                  :public-question-download expected-header
+                  :dashcard-download        expected-header
+                  :public-dashcard-download expected-header}
+                 (update-vals formatted-results first))))
+        (testing "The column title changes are used when format-rows is true"
+          (let [expected-header   ["Created At" "Category" "Count Renamed"]
                 formatted-results (all-downloads card {:export-format :csv :format-rows true :pivot true})]
             (is (= {:unsaved-card-download    expected-header
                     :card-download            expected-header
