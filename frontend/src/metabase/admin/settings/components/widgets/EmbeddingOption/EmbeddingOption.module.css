@@ -1,0 +1,23 @@
+.Primary {
+  fill: var(--mb-color-icon-primary);
+}
+
+.Disabled > .Primary {
+  fill: var(--mb-color-icon-disabled);
+}
+
+.SecondaryStroke {
+  stroke: var(--mb-color-icon-secondary);
+}
+
+.Disabled > .SecondaryStroke {
+  stroke: var(--mb-color-background-disabled);
+}
+
+.SecondaryFill {
+  fill: var(--mb-color-icon-secondary);
+}
+
+.Disabled > .SecondaryFill {
+  fill: var(--mb-color-background-disabled);
+}
