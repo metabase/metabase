@@ -15,8 +15,8 @@
 (def ^:private AttrValue
   "Key must be present, to show it's been explicitly considered.
 
-  - false: not present
-  - true: given by a column with the same name (snake case)
+  - false: not present [not: consider making the nil instead, since it implies writing NULL to the column]
+  - true: given by a column with the same name (snake case) [note: consider removing this sugar, just repeat the column]
   - keyword: given by the corresponding column
   - vector: calculated by the given expression
   - map: a sub-select"
