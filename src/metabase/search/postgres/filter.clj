@@ -1,4 +1,6 @@
-(ns metabase.search.postgres.filter)
+(ns metabase.search.postgres.filter
+  (:require
+   [metabase.search.spec :as search.spec]))
 
 (def ^:private context->attr
   {:created-at          :created-at
@@ -17,7 +19,7 @@
     (into #{}
           (remove nil?)
           (for [search-model (:models search-context)
-                :let [spec ((requiring-resolve 'metabase.search.spec/spec) search-model)]]
+                :let [spec (search.spec/spec search-model)]]
             (when (every? (:attrs spec) required)
               (:name spec))))))
 
@@ -26,4 +28,3 @@
   (require 'metabase.search.in-place.filter)
   (search-context->applicable-models {:last-edited-at 1 :verified true :models (disj metabase.search.config/all-models "indexed-entity")})
   (metabase.search.in-place.filter/search-context->applicable-models {:last-edited-at 1 :verified true :models (disj metabase.search.config/all-models "indexed-entity")}))
-
