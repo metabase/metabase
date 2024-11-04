@@ -205,13 +205,6 @@
   [query join-type table]
   (->> (get query join-type) (partition 2) (map first) (some #(= % table)) boolean))
 
-(defn search-model->revision-model
-  "Return the apporpriate revision model given a search model."
-  [model]
-  (case model
-    "dataset" (recur "card")
-    (str/capitalize model)))
-
 (doseq [model ["dashboard" "card" "dataset" "metric"]]
   (defmethod build-optional-filter-query [:last-edited-by model]
     [_filter model query editor-ids]
