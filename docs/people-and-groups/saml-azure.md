@@ -15,7 +15,7 @@ First, follow our guide to [enable SAML authentication](authenticating-with-saml
 
 ## Add an Enterprise Application in Microsoft Entra ID
 
-Go to Mircrosoft Entra admin center and click on **Enterprise Applications** under Applications from the side bar. Once there, click on **+ New Application** in the bar on the top of the page.
+Go to Microsoft Entra admin center and click on **Enterprise Applications** under Applications from the side bar. Once there, click on **+ New Application** in the bar on the top of the page.
 
 ![AZEnterpriseApp](images/saml-azure-ad-enterprise-app.png)
 
