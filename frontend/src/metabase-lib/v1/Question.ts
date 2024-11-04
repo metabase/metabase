@@ -105,7 +105,7 @@ class Question {
   constructor(
     card: any,
     metadata?: Metadata,
-    parameterValues?: ParameterValues,
+    parameterValues?: ParameterValues | Record<ParameterId, Parameter["value"]>,
   ) {
     this._card = card;
     this._metadata =
