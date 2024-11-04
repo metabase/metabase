@@ -247,6 +247,8 @@ export type EmbedVisualizationSettings = {
   iframe?: string;
 };
 
+export type VisualizationSettingKey = keyof VisualizationSettings;
+
 export type CardId = number;
 export type CardEntityId = BaseEntityId;
 

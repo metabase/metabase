@@ -1,15 +1,26 @@
 import { useMemo } from "react";
 
 import {
-  type InteractiveQuestionContextType,
-  useInteractiveQuestionContext,
-} from "embedding-sdk/components/private/InteractiveQuestion/context";
-import { BaseChartSettings } from "metabase/visualizations/components/ChartSettings/BaseChartSettings";
-import { useChartSettingsState } from "metabase/visualizations/components/ChartSettings/hooks";
-import type { Widget } from "metabase/visualizations/components/ChartSettings/types";
+  BaseChartSettings,
+  type Widget,
+  useChartSettingsState,
+} from "metabase/visualizations/components/ChartSettings";
 import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import type Question from "metabase-lib/v1/Question";
-import type { VisualizationSettings } from "metabase-types/api";
+import type {
+  VisualizationSettingKey,
+  VisualizationSettings,
+} from "metabase-types/api";
+
+import {
+  type InteractiveQuestionContextType,
+  useInteractiveQuestionContext,
+} from "../../context";
+
+import {
+  type QuestionSettingKey,
+  VisualizationSettingsDisplayNames,
+} from "./viz-key-translation";
 
 export const QuestionSettingInner = ({
   settingKey,
@@ -17,7 +28,7 @@ export const QuestionSettingInner = ({
   queryResults,
   updateQuestion,
 }: {
-  settingKey: keyof VisualizationSettings;
+  settingKey: VisualizationSettingKey;
   question: Question;
   queryResults?: any[];
   updateQuestion: InteractiveQuestionContextType["updateQuestion"];
@@ -43,6 +54,7 @@ export const QuestionSettingInner = ({
 
   const widget = useMemo(
     () =>
+      // TODO: Create a way to just get a single widget and its dependencies
       getSettingsWidgetsForSeries(
         transformedSeries,
         handleChangeSettings,
@@ -66,8 +78,10 @@ export const QuestionSettingInner = ({
 export const QuestionSetting = ({
   settingKey,
 }: {
-  settingKey: keyof VisualizationSettings;
+  settingKey: QuestionSettingKey;
 }) => {
+  const vizSettingKey = VisualizationSettingsDisplayNames[settingKey];
+
   const { question, queryResults, updateQuestion } =
     useInteractiveQuestionContext();
 
@@ -77,7 +91,7 @@ export const QuestionSetting = ({
 
   return (
     <QuestionSettingInner
-      settingKey={settingKey}
+      settingKey={vizSettingKey}
       question={question}
       queryResults={queryResults}
       updateQuestion={updateQuestion}
