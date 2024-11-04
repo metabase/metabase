@@ -24,9 +24,8 @@
   (model-rankings model (count model-rankings)))
 
 (defn- searchable-text [m]
-  ;; TODO use spec instead
   ;; For now, we never index the native query content
-  (->> (search.config/searchable-columns (:model m) false)
+  (->> (:search-terms (search.spec/spec (:model m)))
        (map m)
        (str/join " ")))
 
