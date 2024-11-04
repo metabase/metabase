@@ -80,7 +80,7 @@ describe("Input", () => {
 
         expect(screen.queryByText("Search")).not.toBeInTheDocument();
         await userEvent.hover(leftIcon);
-        expect(screen.getByText("Search")).toBeInTheDocument();
+        expect(await screen.findByText("Search")).toBeInTheDocument();
       });
 
       it("does not show tooltip when leftIconTooltip is not provided", async () => {
@@ -99,7 +99,7 @@ describe("Input", () => {
 
         expect(screen.queryByText("Close")).not.toBeInTheDocument();
         await userEvent.hover(rightIcon);
-        expect(screen.getByText("Close")).toBeInTheDocument();
+        expect(await screen.findByText("Close")).toBeInTheDocument();
       });
 
       it("does not show tooltip when rightIconTooltip is not provided", async () => {
@@ -118,7 +118,7 @@ describe("Input", () => {
 
         expect(screen.queryByText("Clear")).not.toBeInTheDocument();
         await userEvent.hover(resetButton);
-        expect(screen.getByText("Clear")).toBeInTheDocument();
+        expect(await screen.findByText("Clear")).toBeInTheDocument();
       });
     });
   });

@@ -14,15 +14,16 @@ const DEFAULT_PROPS: PaginationControlsProps = {
 };
 
 const setup = (props: Partial<PaginationControlsProps> = {}) => {
-  const { container } = render(
-    <PaginationControls {...DEFAULT_PROPS} {...props} />,
+  render(
+    <div data-testid="test-container">
+      <PaginationControls {...DEFAULT_PROPS} {...props} />,
+    </div>,
   );
 
   const previousPageButton = screen.queryByLabelText("Previous page");
   const nextPageButton = screen.queryByLabelText("Next page");
 
   return {
-    container,
     previousPageButton,
     nextPageButton,
   };
@@ -63,14 +64,15 @@ describe("PaginationControls", () => {
   });
 
   it("should return null when total is provided and it is less than page size", () => {
-    const { container } = setup({
+    setup({
       total: 25,
       pageSize: 50,
       onNextPage: () => {},
       onPreviousPage: () => {},
     });
+    const container = screen.getByTestId("test-container");
 
-    expect(container).toBeEmpty();
+    expect(container).toBeEmptyDOMElement();
   });
 
   it("should call pagination callbacks when buttons clicked", async () => {
@@ -95,12 +97,14 @@ describe("PaginationControls", () => {
   });
 
   it("should render correct item range for the first page", () => {
-    const { container } = setup();
+    setup();
+    const container = screen.getByTestId("test-container");
     expect(container).toHaveTextContent("1 - 25");
   });
 
   it("should render correct item range for not the first page", () => {
-    const { container } = setup({ page: 5 });
+    setup({ page: 5 });
+    const container = screen.getByTestId("test-container");
     expect(container).toHaveTextContent("251 - 275");
   });
 });

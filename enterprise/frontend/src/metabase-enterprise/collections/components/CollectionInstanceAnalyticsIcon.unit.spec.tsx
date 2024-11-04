@@ -58,7 +58,7 @@ describe("CollectionInstanceAnalyticsIcon", () => {
         });
         expect(queryOfficialIcon()).toBeInTheDocument();
         await userEvent.hover(queryOfficialIcon());
-        expect(screen.getByRole("tooltip")).toHaveTextContent(
+        expect(await screen.findByRole("tooltip")).toHaveTextContent(
           `This is a read-only Usage Analytics ${entity}`,
         );
       });

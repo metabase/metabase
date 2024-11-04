@@ -211,7 +211,7 @@ describe("Actions > ActionParametersInputForm", () => {
 
       await userEvent.hover(editActionTrigger);
 
-      expect(screen.getByText("Edit this action")).toBeInTheDocument();
+      expect(await screen.findByText("Edit this action")).toBeInTheDocument();
 
       await userEvent.click(editActionTrigger);
 

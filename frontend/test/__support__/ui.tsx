@@ -412,8 +412,12 @@ export function createMockClipboardData(
   return clipboardData as unknown as DataTransfer;
 }
 
+export function renderWithTheme(children: React.ReactElement) {
+  return testingLibraryRender(<ThemeProvider>{children}</ThemeProvider>);
+}
+
 // eslint-disable-next-line import/export -- we're intentionally overriding the render function
-export { renderWithProviders as render };
+export { renderWithTheme as render };
 
 // eslint-disable-next-line import/export -- we're intentionally overriding the render function
 export * from "@testing-library/react";

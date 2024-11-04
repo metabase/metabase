@@ -58,7 +58,9 @@ describe("StaticSkeleton", () => {
 
       await userEvent.hover(screen.getByText(MARKDOWN_AS_TEXT));
 
-      expect(screen.getByRole("tooltip")).toHaveTextContent(MARKDOWN_AS_TEXT);
+      expect(await screen.findByRole("tooltip")).toHaveTextContent(
+        MARKDOWN_AS_TEXT,
+      );
     });
   });
 });

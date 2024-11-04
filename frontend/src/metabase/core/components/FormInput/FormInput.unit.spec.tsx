@@ -130,6 +130,6 @@ describe("FormInput", () => {
     );
 
     await userEvent.hover(screen.getByLabelText("info icon"));
-    expect(screen.getByText(infoTooltipText)).toBeInTheDocument();
+    expect(await screen.findByText(infoTooltipText)).toBeInTheDocument();
   });
 });

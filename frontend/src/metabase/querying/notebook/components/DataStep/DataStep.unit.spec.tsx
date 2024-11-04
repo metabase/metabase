@@ -324,7 +324,7 @@ describe("DataStep", () => {
       setup();
 
       await userEvent.hover(screen.getByText("Orders"));
-      expect(screen.getByRole("tooltip")).toHaveTextContent(
+      expect(await screen.findByRole("tooltip")).toHaveTextContent(
         `${METAKEY}+click to open in new tab`,
       );
     });
