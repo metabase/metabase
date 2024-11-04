@@ -298,7 +298,7 @@
   "Returns a SQL query ([sql & params]) for use in the default JDBC implementation of [[metabase.driver/describe-fields]],
  i.e. [[describe-fields]]."
   {:added    "0.49.1"
-   :arglists '([driver & {:keys [schema-names table-names]}])}
+   :arglists '([driver & {:keys [schema-names table-names details]}])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
@@ -310,7 +310,7 @@
     []
     (eduction
      (describe-fields-xf driver db)
-     (sql-jdbc.execute/reducible-query db (describe-fields-sql driver args)))))
+     (sql-jdbc.execute/reducible-query db (describe-fields-sql driver (assoc args :details (:details db)))))))
 
 (defn- describe-table-fks*
   [_driver ^Connection conn {^String schema :schema, ^String table-name :name} & [^String db-name-or-nil]]

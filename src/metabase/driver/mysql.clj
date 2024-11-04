@@ -934,12 +934,14 @@
    (apply (get-method driver/describe-fields :sql-jdbc) driver database args)))
 
 (defmethod sql-jdbc.sync/describe-fields-sql :mysql
-  [driver & {:keys [table-names]}]
+  [driver & {:keys [table-names details]}]
   (sql/format {:select [[:c.column_name :name]
                         [[:- :c.ordinal_position 1] :database-position]
                         [nil :table-schema]
                         [:c.table_name :table-name]
-                        [[:upper :c.data_type] :database-type]
+                        (if (str/includes? (:additional-options details) "tinyInt1isBit=false")
+                          [[:upper :c.data_type] :database-type]
+                          [[:if [:= :column_type [:inline "tinyint(1)"]] [:inline "BIT"] [:upper :c.data_type]] :database-type])
                         [[:= :c.extra [:inline "auto_increment"]] :database-is-auto-increment]
                         [[:and
                           [:or [:= :column_default nil] [:= [:lower :column_default] [:inline "null"]]]
