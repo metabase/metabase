@@ -8,6 +8,7 @@ export type TypeWithModel<Id, Model extends string> = {
   model: Model;
   name: string;
   can_write?: boolean;
+  moderated_status?: "verified" | null;
 };
 
 export type IsFolder<
