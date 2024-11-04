@@ -59,8 +59,13 @@
               (lib.tu/mock-metadata-provider
                {:cards [metric]}))])))
 
-(def adjust
-  (comp #'metrics/adjust #'fetch-source-query/resolve-source-cards))
+(defn- adjust
+  [query]
+  (-> query
+      (assoc-in [:info :pivot/original-query] query)
+      (#'fetch-source-query/resolve-source-cards)
+      (#'metrics/adjust)
+      (dissoc :info)))
 
 (defn- check-prometheus-metrics!
   [& {expected-metrics-count  :metabase-query-processor/metrics-adjust
