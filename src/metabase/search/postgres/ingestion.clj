@@ -146,7 +146,7 @@
       (search.index/delete! id search-models))))
 
 (defn- index-model-entries [search-model where-clause]
-  (-> (#'metabase.search.postgres.ingestion/spec-index-query search-model)
+  (-> (spec-index-query search-model)
       (sql.helpers/where where-clause)))
 
 (comment
