@@ -94,7 +94,7 @@
   (when-not @#'search.index/initialized?
     (throw (ex-info "Search index is not initialized. Use [[init!]] to ensure it exists."
                     {:search-engine :postgres})))
-  (->> (assoc (search.index/search-query search-term) :select [:legacy_input])
+  (->> (search.index/search-query search-term [:legacy_input])
        (t2/query)
        (map :legacy_input)
        (map #(json/parse-string % keyword))
@@ -103,11 +103,6 @@
                  (update :updated_at parse-datetime)
                  (update :last_edited_at parse-datetime)))))
 
-;; filters:
-;; - the obvious ones in the ui
-;; - db-id
-;; - personal collection (include / exclude), including sub
-
 (defn- minimal-with-perms
   "Search via index, and return potentially stale information, without applying filters,
   but applying permissions. Does not perform ranking."
@@ -115,12 +110,8 @@
   (when-not @#'search.index/initialized?
     (throw (ex-info "Search index is not initialized. Use [[init!]] to ensure it exists."
                     {:search-engine :postgres})))
-  (->> (search.legacy/add-collection-join-and-where-clauses
-        (assoc (search.index/search-query search-term)
-               :select [:legacy_input])
-        ;; we just need this to not be "collection"
-        "__search_index__"
-        search-ctx)
+  (->> (let [base-query (search.index/search-query search-term [:legacy_input])]
+         (search.legacy/add-collection-join-and-where-clauses base-query nil search-ctx))
        (t2/query)
        (map :legacy_input)
        (map #(json/parse-string % keyword))
@@ -158,8 +149,8 @@
       (t2/exists? :search_index
                   (-> (search.index/search-query (:search-string search-ctx))
                       (sql.helpers/where [:= :model m]))))
-    ;; TODO use only the models that apply to the given filters
-    (:models search-ctx search.config/all-models))))
+    ;; regardless of :models in search-ctx, search across all of them.
+    search.config/all-models)))
 
 (defn no-scoring
   "Do no scoring, whatsoever"

@@ -175,11 +175,12 @@
        :from   (from-clause-for-model model)}
       (search.filter/build-filters model context)))
 
+;; This isn't a legacy method, we can keep it if we just find a new home.
 (mu/defn add-collection-join-and-where-clauses
   "Add a `WHERE` clause to the query to only return Collections the Current User has access to; join against Collection,
   so we can return its `:name`."
   [honeysql-query :- ms/Map
-   model :- :string
+   model :- [:maybe :string]
    {:keys [filter-items-in-personal-collection
            archived
            current-user-id
