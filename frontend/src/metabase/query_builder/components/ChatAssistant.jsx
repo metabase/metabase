@@ -434,11 +434,7 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
 
         try {
             const schema = chatType === 'insights' ? initialInsightSchema : initialSchema.schema;
-            const databaseID = (() => {
-                if (initialCompanyName === "demo") return 15;
-                if (initialCompanyName === "pompeii") return 4;
-                return chatType === 'insights' ? initialInsightDbName : initialDbName;
-            })();
+            const databaseID = chatType === 'insights' ? initialInsightDbName : initialDbName;
             
             const streamResponse = client.runs.stream(thread.thread_id, agent.assistant_id, {
                 input: { messages: messagesToSend, company_name: initialCompanyName, database_id: databaseID, schema: modelSchema, session_token: metabase_id_back, collection_id: 2 },
