@@ -75,7 +75,7 @@
   (with-index
     (testing "The index is updated when model dependencies change"
       (let [index-table    @#'search.index/active-table
-            table-id   (t2/select-one-pk :model/Table :name "Indexed Table")
+            table-id       (t2/select-one-pk :model/Table :name "Indexed Table")
             legacy-input   #(-> (t2/select-one [index-table :legacy_input] :model "table" :model_id table-id)
                                 :legacy_input
                                 (json/parse-string true))
