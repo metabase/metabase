@@ -1513,3 +1513,28 @@ describe("Issue 48851", () => {
     popover().button("Add filter").should("be.visible");
   });
 });
+
+describe("issue 49321", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should not require multiple clicks to apply a filter (metabase#49321)", () => {
+    openProductsTable({ mode: "notebook" });
+    filter({ mode: "notebook" });
+    popover().within(() => {
+      cy.findByText("Title").click();
+      cy.findByText("Is").click();
+    });
+    popover().last().findByText("Contains").click();
+
+    popover().invoke("width").should("eq", 380);
+
+    popover()
+      .findByPlaceholderText("Enter some text")
+      .type("aaaaaaaaaa, bbbbbbbbbbb,");
+
+    popover().invoke("width").should("eq", 380);
+  });
+});
