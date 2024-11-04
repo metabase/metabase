@@ -194,7 +194,10 @@
                [:display :string]
                [:parent_collection ::pc]
                [:moderated_status ::verified]]]
-     [:dashboard [:map [:parent_collection ::pc]]]
+     [:dashboard
+      [:map
+       [:parent_collection ::pc]
+       [:moderated_status ::verified]]]
      [:table [:map
               [:display_name :string]
               [:table_schema [:maybe :string]]
@@ -341,10 +344,16 @@
                          [:dash.collection_id :entity-coll-id]
                          [:c.id :collection_id]
                          [:c.name :collection_name]
-                         [:c.authority_level :collection_authority_level]]
+                         [:c.authority_level :collection_authority_level]
+                         [:mr.status :moderated-status]]
                 :from [[:report_dashboard :dash]]
                 :where [:in :dash.id dashboard-ids]
-                :left-join [[:collection :c]
+                :left-join [[:moderation_review :mr]
+                            [:and
+                             [:= :mr.moderated_item_id :dash.id]
+                             [:= :mr.moderated_item_type "dashboard"]
+                             [:= :mr.most_recent true]]
+                            [:collection :c]
                             [:and
                              [:= :c.id :dash.collection_id]
                              [:= :c.archived false]]]})))
@@ -359,6 +368,7 @@
      :model :dashboard
      :can_write (mi/can-write? dashboard)
      :timestamp (str timestamp)
+     :moderated_status (:moderated-status dashboard)
      :parent_collection (fill-parent-coll dashboard)}))
 
 ;; ================== Recent Collections ==================
