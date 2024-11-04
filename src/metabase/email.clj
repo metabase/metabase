@@ -13,7 +13,8 @@
    [postal.support :refer [make-props]]
    [throttle.core :as throttle])
   (:import
-   (javax.mail Session)))
+   (javax.mail Session)
+   (throttle.core Throttler)))
 
 (set! *warn-on-reflection* true)
 
@@ -126,7 +127,7 @@
           thorttle-check (fn []
                            (dotimes [_ (count recipients)]
                              (throttle/check email-throttler true)))]
-      (if (> (count recipients) (email-rate-limit-per-second))
+      (if (> (count recipients) (.attempts-threshold ^Throttler email-throttler))
         (do
          (log/warn "Email throttling is enabled and the number of recipients exceeds the rate limit per second. Skip throttling."
                    {:email-subject (:subject email)
