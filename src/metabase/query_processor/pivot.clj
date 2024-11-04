@@ -353,46 +353,39 @@
   [query        :- [:map
                     [:database ::lib.schema.id/database]]
    viz-settings :- [:maybe :map]]
-  (let [column-split          (:pivot_table.column_split viz-settings)
-        column-split-rows     (seq (:rows column-split))
-        column-split-columns  (seq (:columns column-split))
-        column-split-measures (seq (:values column-split))
-        metadata-provider     (or (:lib/metadata query)
-                                  (lib.metadata.jvm/application-database-metadata-provider (:database query)))
-        mlv2-query            (lib/query metadata-provider query)
-        breakouts             (into []
-                                    (map-indexed (fn [i col]
-                                                   (cond-> col
-                                                     true                         (assoc ::i i)
-                                                     ;; if the col has a card-id, we swap the :lib/source to say source/card
-                                                     ;; this allows `lib/find-matching-column` to properly match a column that has a join-alias
-                                                     ;; but whose source is a model
-                                                     (contains? col :lib/card-id) (assoc :lib/source :source/card))))
-                                    (concat (lib/breakouts-metadata mlv2-query)
-                                            (lib/aggregations-metadata mlv2-query)))
-        index-in-breakouts    (when (or column-split-rows
-                                        column-split-columns
-                                        column-split-measures)
-                                (fn [legacy-ref]
-                                  (try
-                                    (::i (lib.equality/find-column-for-legacy-ref
-                                          mlv2-query
-                                          -1
-                                          legacy-ref
-                                          breakouts))
-                                    (catch Throwable e
-                                      (log/errorf e "Error finding matching column for ref %s" (pr-str legacy-ref))
-                                      nil))))
-        pivot-rows            (when column-split-rows
-                                (into [] (keep index-in-breakouts) column-split-rows))
-        pivot-cols            (when column-split-columns
-                                (into [] (keep index-in-breakouts) column-split-columns))
-        pivot-measures        (when column-split-measures
-                                (into [] (keep index-in-breakouts) column-split-measures))]
-    (when (or pivot-rows pivot-cols pivot-measures)
-      {:pivot-rows     pivot-rows
-       :pivot-cols     pivot-cols
-       :pivot-measures pivot-measures})))
+  (let [{:keys [rows columns values]} (:pivot_table.column_split viz-settings)
+        metadata-provider             (or (:lib/metadata query)
+                                          (lib.metadata.jvm/application-database-metadata-provider (:database query)))
+        mlv2-query                    (lib/query metadata-provider query)
+        breakouts                     (into []
+                                            (map-indexed (fn [i col]
+                                                           (cond-> col
+                                                             true                         (assoc ::idx i)
+                                                             ;; if the col has a card-id, we swap the :lib/source to say
+                                                             ;; source/card this allows `lib/find-matching-column` to properly
+                                                             ;; match a column that has a join-alias but whose source is a
+                                                             ;; model
+                                                             (contains? col :lib/card-id) (assoc :lib/source :source/card))))
+                                            (concat (lib/breakouts-metadata mlv2-query)
+                                                    (lib/aggregations-metadata mlv2-query)))
+        index-in-breakouts            (fn index-in-breakouts [legacy-ref]
+                                        (try
+                                          (::idx (lib.equality/find-column-for-legacy-ref
+                                                  mlv2-query
+                                                  -1
+                                                  legacy-ref
+                                                  breakouts))
+                                          (catch Throwable e
+                                            (log/errorf e "Error finding matching column for ref %s" (pr-str legacy-ref))
+                                            nil)))
+        process-refs                  (fn process-refs [refs]
+                                        (when (seq refs)
+                                          (into [] (keep index-in-breakouts) refs)))
+        pivot-opts                    {:pivot-rows     (process-refs rows)
+                                       :pivot-cols     (process-refs columns)
+                                       :pivot-measures (process-refs values)}]
+    (when (some some? (vals pivot-opts))
+      pivot-opts)))
 
 (mu/defn- column-mapping-for-subquery :- ::pivot-column-mapping
   [num-canonical-cols            :- ::lib.schema.common/int-greater-than-or-equal-to-zero
