@@ -16,6 +16,7 @@ import {
   createMockNativeDatasetQuery,
   createMockStructuredDatasetQuery,
 } from "./query";
+import { createMockUser } from "./user";
 
 const MOCK_CARD_ENTITY_ID = createMockEntityId();
 export const createMockCard = (opts?: Partial<Card>): Card => ({
@@ -118,6 +119,7 @@ export const createMockModerationReview = (
   status: "verified",
   created_at: "2015-01-01T20:10:30.200",
   most_recent: true,
+  user: createMockUser({ id: 1 }),
   ...opts,
 });
 
