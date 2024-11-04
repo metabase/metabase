@@ -51,6 +51,7 @@
              [:legacy_input :text]
              ;; scoring related
              [:model_rank :int :not-null]
+             [:pinned :boolean]
              ;; permission related entities
              [:collection_id :int]
              [:database_id :int]

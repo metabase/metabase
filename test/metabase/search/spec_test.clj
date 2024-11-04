@@ -60,18 +60,19 @@
   (is (= #:model{:Card             #{{:search-model "card",
                                       :fields       #{:description
                                                       :archived
+                                                      :archived_directly
                                                       :collection_position
                                                       :collection_id
-                                                      :name
                                                       :creator_id
                                                       :dataset_query
                                                       :display
-                                                      :archived_directly
+                                                      :name
+                                                      :type
                                                       :created_at
                                                       :updated_at},
                                       :where        [:= :updated.id :this.id]}},
                  :Collection       #{{:search-model "card",
-                                      :fields       #{:authority_level :name :type :location},
+                                      :fields       #{:authority_level :name :namespace :type :location},
                                       :where        [:= :updated.id :this.collection_id]}},
                  :Revision         #{{:search-model "card",
                                       :fields       #{:user_id :timestamp},
@@ -92,7 +93,8 @@
                                 :where        [:= :updated.id :this.table_id]}
                                {:search-model "table",
                                 :fields
-                                #{:description :schema :name :active :id :db_id :initial_sync_status :display_name :created_at :updated_at}
+                                #{:active :description :schema :name :id :db_id :initial_sync_status :display_name
+                                  :visibility_type :created_at :updated_at}
                                 :where        [:= :updated.id :this.id]}},
                  :Database   #{{:search-model "table", :fields #{:name}, :where [:= :updated.id :this.db_id]}}
                  :Segment    #{{:search-model "segment"
@@ -100,7 +102,7 @@
                                 :where        [:= :updated.id :this.id]}}
                  :Collection #{{:search-model "collection"
                                 :fields       #{:authority_level :archived :description :name :type :id
-                                                :archived_directly :location :created_at}
+                                                :archived_directly :location :namespace :created_at}
                                 :where        [:= :updated.id :this.id]}}}
          (#'search.spec/merge-hooks
           [(#'search.spec/search-model-hooks (search.spec/spec "table"))
@@ -109,7 +111,7 @@
 
 (deftest search-models-to-update-test
   (is (= #{}
-         (search.spec/search-models-to-update (t2/instance :model/Database {:id 123}))))
+         (search.spec/search-models-to-update (t2/instance :model/Database {}))))
   (is (= #{["table" [:= 123 :this.db_id]]
            ["database" [:= 123 :this.id]]}
          (search.spec/search-models-to-update (t2/instance :model/Database {:id 123 :name "databass"}))))

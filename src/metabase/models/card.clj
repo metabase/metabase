@@ -1019,6 +1019,7 @@
                   :table-id       false
                   :last-edited-at :r.timestamp
                   :last-editor-id :r.user_id
+                  :pinned         [:> [:coalesce :collection_position [:inline 0]] [:inline 0]]
                   :verified       [:= "verified" :mr.status]
                   :created-at     true
                   :updated-at     true}
@@ -1027,6 +1028,7 @@
                   :collection-authority_level :collection.authority_level
                   :collection-location        :collection.location
                   :collection-name            :collection.name
+                  ;; This is used for legacy ranking, in future it will be replaced by :pinned
                   :collection-position        true
                   :collection-type            :collection.type
                   ;; This field can become stale, unless we change to calculate it just-in-time.

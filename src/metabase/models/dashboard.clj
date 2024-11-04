@@ -672,6 +672,7 @@
                   :database-id    false
                   :last-editor-id :r.user_id
                   :last-edited-at :r.timestamp
+                  :pinned         [:> [:coalesce :collection_position [:inline 0]] [:inline 0]]
                   :table-id       false
                   :created-at     true
                   :updated-at     true}
@@ -680,6 +681,7 @@
                   :collection-type            :collection.type
                   :collection-authority_level :collection.authority_level
                   :archived-directly          true
+                  ;; This is used for legacy ranking, in future it will be replaced by :pinned
                   :collection-position        true}
    :where        []
    :bookmark     [:model/DashboardBookmark [:and

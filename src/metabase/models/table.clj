@@ -320,5 +320,5 @@
    :where        [:and
                   :active
                   [:= :visibility_type nil]
-                  [:not= :db_id audit/audit-db-id]]
+                  [:not= :db_id [:inline audit/audit-db-id]]]
    :joins        {:db [:model/Database [:= :db.id :this.db_id]]}})

@@ -37,6 +37,7 @@
    :dataset-query
    :last-edited-at
    :last-editor-id
+   :pinned
    :verified
    :updated-at])
 
@@ -155,10 +156,12 @@
   "Search within a definition for all the fields referenced on the given table alias."
   [spec]
   (u/group-by first second conj #{}
-              (mapcat
-               find-fields-top
-               ;; Remove the keys with special meanings (should probably switch this to an allowlist rather)
-               (vals (dissoc spec :name :native-query :where :joins :bookmark :model)))))
+              (concat
+               (mapcat
+                find-fields-top
+                ;; Remove the keys with special meanings (should probably switch this to an allowlist rather)
+                (vals (dissoc spec :name :native-query :where :joins :bookmark :model)))
+               (find-fields-expr (:where spec)))))
 
 (defn- replace-qualification [expr from to]
   (cond
