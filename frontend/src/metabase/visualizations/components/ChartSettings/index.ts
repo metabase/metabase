@@ -1,1 +1,2 @@
-export * from "./ChartSettings";
+export { QuestionChartSettings } from "./QuestionChartSettings";
+export { DashboardChartSettings } from "./DashboardChartSettings";

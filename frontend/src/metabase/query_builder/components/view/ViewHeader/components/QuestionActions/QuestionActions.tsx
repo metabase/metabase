@@ -9,7 +9,7 @@ import BookmarkToggle from "metabase/core/components/BookmarkToggle";
 import Button from "metabase/core/components/Button";
 import Tooltip from "metabase/core/components/Tooltip";
 import { color } from "metabase/lib/colors";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { canUseMetabotOnDatabase } from "metabase/metabot/utils";
 import {
@@ -24,7 +24,6 @@ import { trackTurnIntoModelClicked } from "metabase/query_builder/analytics";
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import { uploadFile } from "metabase/redux/uploads";
-import { getUserIsAdmin } from "metabase/selectors/user";
 import { Icon, Menu } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -78,8 +77,6 @@ export const QuestionActions = ({
 }: Props) => {
   const [uploadMode, setUploadMode] = useState<UploadMode>(UploadMode.append);
   const isMetabotEnabled = useSetting("is-metabot-enabled");
-
-  const isModerator = useSelector(getUserIsAdmin) && question.canWrite?.();
 
   const dispatch = useDispatch();
 
@@ -147,9 +144,8 @@ export const QuestionActions = ({
     });
   }
 
-  const moderationItems = PLUGIN_MODERATION.useMenuItems(
+  const moderationItems = PLUGIN_MODERATION.useQuestionMenuItems(
     question,
-    isModerator,
     reload,
   );
   extraButtons.push(...moderationItems);

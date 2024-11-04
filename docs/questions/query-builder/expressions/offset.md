@@ -4,7 +4,7 @@ title: Offset
 
 # Offset
 
-> ⚠️ The `Offset` function is currently unavailable for MySQL/MariaDB.
+> ⚠️ The `Offset` function is currently unavailable for MySQL/MariaDB, MongoDB, and Druid.
 
 The `Offset` function returns the value of an expression in a different row. `Offset` can only be used in the query builder's Summarize step (you cannot use `Offset` to create a custom column).
 
@@ -25,12 +25,12 @@ Because `Offset` refers to other rows, the order of the breakouts matters (the b
 The `Offset` function returns whatever value is in the offset row.
 
 | [Data type](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview#examples-of-data-types) | Returned by `Offset` |
-| ------------------------------------------------------------------------------------------------ | -------------------- |
-| String                                                                                           | ✅                    |
-| Number                                                                                           | ✅                    |
-| Timestamp                                                                                        | ✅                    |
-| Boolean                                                                                          | ✅                    |
-| JSON                                                                                             | ✅                    |
+| ------------------------------------------------------------------------------------------------------------------------------ | -------------------- |
+| String                                                                                                                         | ✅                   |
+| Number                                                                                                                         | ✅                   |
+| Timestamp                                                                                                                      | ✅                   |
+| Boolean                                                                                                                        | ✅                   |
+| JSON                                                                                                                           | ✅                   |
 
 ## Example year-over-year (YoY) time series comparison using `Offset`
 
@@ -85,7 +85,6 @@ The above expression adds up this period's total, plus the totals for the previo
 The `Offset` function compares with SQL's `LAG` and `LEAD` window functions.
 
 For example, if you're trying to create a line chart with two series to compare a) this month's order counts with b) the previous month's order counts, you'd `count` the orders for this month, then use an `offset` expression to count the previous month's orders, like so:
-
 
 ```
 Offset(count, -1)

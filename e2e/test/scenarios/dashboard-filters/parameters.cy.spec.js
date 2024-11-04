@@ -88,14 +88,14 @@ describe("scenarios > dashboard > parameters", () => {
     filterWidget().contains("Text").click();
 
     // After typing "Ga", you should see this name!
-    popover().within(() => multiAutocompleteInput().type("Ga"));
+    popover().within(() => cy.findByPlaceholderText("Search").type("Ga"));
     cy.wait("@dashboard");
     popover().last().contains("Gabrielle Considine");
 
     // Continue typing a "d" and you see "Gadget"
     popover()
       .first()
-      .within(() => multiAutocompleteInput().type("d"));
+      .within(() => cy.findByPlaceholderText("Search").type("d"));
     cy.wait("@dashboard");
 
     popover()
