@@ -7,12 +7,12 @@
    [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
    [metabase.models.collection :as collection]
-   [metabase.models.permissions :as perms]
    [metabase.search.api :as search.api]
    [metabase.search.config
     :as search.config
     :refer [SearchContext SearchableModel]]
-   [metabase.search.filter :as search.filter]
+   [metabase.search.in-place.filter :as search.filter]
+   [metabase.search.permissions :as search.permissions]
    [metabase.search.scoring :as scoring]
    [metabase.search.util :as search.util]
    [metabase.util :as u]
@@ -415,56 +415,6 @@
        :from   (from-clause-for-model model)}
       (search.filter/build-filters model context)))
 
-;; This isn't a legacy method, we can keep it if we just find a new home.
-(mu/defn add-collection-join-and-where-clauses
-  "Add a `WHERE` clause to the query to only return Collections the Current User has access to; join against Collection,
-  so we can return its `:name`."
-  [honeysql-query :- ms/Map
-   model :- [:maybe :string]
-   {:keys [filter-items-in-personal-collection
-           archived
-           current-user-id
-           is-superuser?]} :- SearchContext]
-  (let [collection-id-col        (if (= model "collection")
-                                   :collection.id
-                                   :collection_id)
-        collection-filter-clause (collection/visible-collection-filter-clause
-                                  collection-id-col
-                                  {:include-archived-items    :all
-                                   :include-trash-collection? true
-                                   :permission-level          (if archived
-                                                                :write
-                                                                :read)}
-                                  {:current-user-id current-user-id
-                                   :is-superuser?   is-superuser?})]
-    (cond-> honeysql-query
-      true
-      (sql.helpers/where collection-filter-clause (perms/audit-namespace-clause :collection.namespace nil))
-      ;; add a JOIN against Collection *unless* the source table is already Collection
-      (not= model "collection")
-      (sql.helpers/left-join [:collection :collection]
-                             [:= collection-id-col :collection.id])
-
-      (some? filter-items-in-personal-collection)
-      (sql.helpers/where
-       (case filter-items-in-personal-collection
-         "only"
-         (concat [:or]
-                 ;; sub personal collections
-                 (for [id (t2/select-pks-set :model/Collection :personal_owner_id [:not= nil])]
-                   [:like :collection.location (format "/%d/%%" id)])
-                 ;; top level personal collections
-                 [[:and
-                   [:= :collection.location "/"]
-                   [:not= :collection.personal_owner_id nil]]])
-
-         "exclude"
-         (conj [:or]
-               (into
-                [:and [:= :collection.personal_owner_id nil]]
-                (for [id (t2/select-pks-set :model/Collection :personal_owner_id [:not= nil])]
-                  [:not-like :collection.location (format "/%d/%%" id)]))
-               [:= collection-id-col nil]))))))
 
 (mu/defn- shared-card-impl
   [model :- :metabase.models.card/type
@@ -475,7 +425,7 @@
                              [:and
                               [:= :bookmark.card_id :card.id]
                               [:= :bookmark.user_id (:current-user-id search-ctx)]])
-      (add-collection-join-and-where-clauses "card" search-ctx)
+      (search.permissions/add-collection-join-and-where-clauses "card" search-ctx)
       (add-card-db-id-clause (:table-db-id search-ctx))
       (with-last-editing-info "card")
       (with-moderated-status "card")))
@@ -487,7 +437,7 @@
                              [:= :model.id :action.model_id])
       (sql.helpers/left-join :query_action
                              [:= :query_action.action_id :action.id])
-      (add-collection-join-and-where-clauses model search-ctx)))
+      (search.permissions/add-collection-join-and-where-clauses model search-ctx)))
 
 (defmethod search-query-for-model "card"
   [_model search-ctx]
@@ -512,7 +462,7 @@
                              [:and
                               [:= :bookmark.collection_id :collection.id]
                               [:= :bookmark.user_id (:current-user-id search-ctx)]])
-      (add-collection-join-and-where-clauses model search-ctx)))
+      (search.permissions/add-collection-join-and-where-clauses model search-ctx)))
 
 (defmethod search-query-for-model "database"
   [model search-ctx]
@@ -526,7 +476,7 @@
                               [:= :bookmark.dashboard_id :dashboard.id]
                               [:= :bookmark.user_id (:current-user-id search-ctx)]])
       (with-moderated-status "dashboard")
-      (add-collection-join-and-where-clauses model search-ctx)
+      (search.permissions/add-collection-join-and-where-clauses model search-ctx)
       (with-last-editing-info "dashboard")))
 
 (defn- add-model-index-permissions-clause
@@ -562,7 +512,7 @@
 
 (defmethod search.api/model-set :search.engine/in-place
   [search-ctx]
-  (let [model-queries (for [model (search.filter/legacy-search-context->applicable-models
+  (let [model-queries (for [model (search.filter/search-context->applicable-models
                                    ;; It's unclear why we don't use the existing :models
                                    (assoc search-ctx :models search.config/all-models))]
                         {:nest (sql.helpers/limit (search-query-for-model model search-ctx) 1)})

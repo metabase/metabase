@@ -16,8 +16,8 @@
    [metabase.search.config
     :as search.config
     :refer [SearchableModel SearchContext]]
-   [metabase.search.filter :as search.filter]
    [metabase.search.fulltext :as search.fulltext]
+   [metabase.search.in-place.filter :as search.filter]
    [metabase.search.legacy :as search.legacy]
    [metabase.search.scoring :as scoring]
    [metabase.util.i18n :refer [tru deferred-tru]]
@@ -309,7 +309,7 @@
     (when (and (seq ids)
                (not= (count models) 1))
       (throw (ex-info (tru "Filtering by ids work only when you ask for a single model") {:status-code 400})))
-    (assoc ctx :models (search.filter/legacy-search-context->applicable-models ctx))))
+    (assoc ctx :models (search.filter/search-context->applicable-models ctx))))
 
 (defn- to-toucan-instance [row]
   (let [model (-> row :model search.config/model-to-db-model :db-model)]

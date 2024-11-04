@@ -1,4 +1,4 @@
-(ns metabase.search.filter
+(ns metabase.search.in-place.filter
   "Namespace that defines the filters that are applied to the search results.
 
   There are required filters and optional filters.
@@ -19,6 +19,7 @@
    [metabase.search.config
     :as search.config
     :refer [SearchableModel SearchContext]]
+   [metabase.search.permissions :as search.permissions]
    [metabase.search.util :as search.util]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
@@ -64,15 +65,6 @@
      [:= (search.config/column-with-model-alias model :active) true]
      [:= (search.config/column-with-model-alias model :visibility_type) nil]]))
 
-(defn- sandboxed-or-impersonated-user? []
-  ;; TODO FIXME -- search actually currently still requires [[metabase.api.common/*current-user*]] to be bound,
-  ;; because [[metabase.public-settings.premium-features/sandboxed-or-impersonated-user?]] requires it to be bound.
-  ;; Since it's part of the search context it would be nice if we could run search without having to bind that stuff at
-  ;; all.
-  (assert @@(requiring-resolve 'metabase.api.common/*current-user*)
-          "metabase.api.common/*current-user* must be bound in order to use search for an indexed entity")
-  (premium-features/sandboxed-or-impersonated-user?))
-
 (mu/defn- search-string-clause-for-model
   [model                :- SearchableModel
    search-context       :- SearchContext
@@ -87,7 +79,7 @@
                                  search.util/tokenize
                                  (map search.util/wildcard-match))]
        (cond
-         (and (= model "indexed-entity") (sandboxed-or-impersonated-user?))
+         (and (= model "indexed-entity") (search.permissions/sandboxed-or-impersonated-user?))
          [:= 0 1]
 
          (and (#{"card" "dataset"} model) (= column (search.config/column-with-model-alias model :dataset_query)))
@@ -272,26 +264,7 @@
 ;;                                        Public functions                                         ;;
 ;; ------------------------------------------------------------------------------------------------;;
 
-(def ^:private context->attr
-  {:created-at          :created-at
-   :created-by          :creator-id
-   :last-edited-at      :last-edited-at
-   :last-edited-by      :last-editor-id
-   :search-native-query :native-query
-   :verified            :verified})
-
-(defn- search-context->applicable-models
-  "blah"
-  [search-context]
-  (let [required (keep context->attr (keys search-context))]
-    (into #{}
-          (remove nil?)
-          (for [search-model (:models search-context)
-                :let [spec ((requiring-resolve 'metabase.search.spec/spec) search-model)]]
-            (when (every? (:attrs spec) required)
-              (:name spec))))))
-
-(defn legacy-search-context->applicable-models
+(defn search-context->applicable-models
   "Returns a set of models that are applicable given the search context.
 
   If the context has optional filters, the models will be restricted for the set of supported models only."
@@ -311,10 +284,6 @@
       (some? last-edited-by)      (set/intersection (:last-edited-by feature->supported-models))
       (true? search-native-query) (set/intersection (:search-native-query feature->supported-models))
       (true? verified)            (set/intersection (:verified feature->supported-models)))))
-
-(comment
-  (search-context->applicable-models {:last-edited-at 1 :verified true :models (disj search.config/all-models "indexed-entity")})
-  (legacy-search-context->applicable-models {:last-edited-at 1 :verified true :models (disj search.config/all-models "indexed-entity")}))
 
 (mu/defn build-filters :- :map
   "Build the search filters for a model."

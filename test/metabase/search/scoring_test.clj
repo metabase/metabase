@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.search.config :as search.config]
-   [metabase.search.filter-test :as search.filter-test]
+   [metabase.search.in-place.filter-test :as search.filter-test]
    [metabase.search.legacy :as search.legacy]
    [metabase.search.scoring :as scoring]
    [metabase.test :as mt]
