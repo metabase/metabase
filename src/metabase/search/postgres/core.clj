@@ -94,7 +94,7 @@
   (when-not @#'search.index/initialized?
     (throw (ex-info "Search index is not initialized. Use [[init!]] to ensure it exists."
                     {:search-engine :postgres})))
-  (->> (assoc (search.index/search-query search-term) :select [:legacy_input])
+  (->> (search.index/search-query search-term [:legacy_input])
        (t2/query)
        (map :legacy_input)
        (map #(json/parse-string % keyword))

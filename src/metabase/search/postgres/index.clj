@@ -47,8 +47,8 @@
              ;; search
              [:search_vector :tsvector :not-null]
              ;; results
-             [:display_data :text]
-             [:legacy_input :text]
+             [:display_data :text :not-null]
+             [:legacy_input :text :not-null]
              ;; scoring related
              [:model_rank :int :not-null]
              [:pinned :boolean]
@@ -100,7 +100,10 @@
   (-> entity
       (select-keys
        ;; remove attrs that get aliased
-       (remove #{:id :created_at :creator_id :last_editor_id :updated_at} (conj search.spec/attr-columns :model :model_rank)))
+       (remove #{:id :created_at :creator_id :last_editor_id :updated_at}
+               (conj search.spec/attr-columns
+                     :model :model_rank
+                     :display_data :legacy_input)))
       (update :display_data json/generate-string)
       (update :legacy_input json/generate-string)
       (assoc
