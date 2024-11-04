@@ -145,6 +145,16 @@
     (when @reindexing?
       (upsert! pending-table entry))))
 
+(defn delete!
+  "Remove any entries corresponding directly to a given model instance."
+  [id search-models]
+  ;; In practice, we expect this to be 1-1, but the data model does not preclude it.
+  (when (seq search-models)
+    (when @initialized?
+      (t2/delete! active-table :model_id id :model [:in search-models]))
+    (when @reindexing?
+      (t2/delete! pending-table :model_id id :model [:in search-models]))))
+
 (defn- process-negation [term]
   (if (str/starts-with? term "-")
     (str "!" (subs term 1))

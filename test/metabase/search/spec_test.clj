@@ -58,7 +58,8 @@
   ;; TODO replace real specs with frozen test ones once things have stabilized
 
   (is (= #:model{:Card             #{{:search-model "card",
-                                      :fields       #{:description
+                                      :fields       #{:id
+                                                      :description
                                                       :archived
                                                       :archived_directly
                                                       :collection_position
