@@ -76,25 +76,25 @@ export const HomeLayout = () => {
 
   useEffect(() => {
     const getCards = async () => {
-        try {
-            const cardsList = await CardApi.list();
-            const modelCards = cardsList
-                .filter((card: any) => card.type === "model")
-                .map((card: any) => ({
-                    id: `card__${card.id}`,
-                    model_schema: card.result_metadata || [],
-                    name: card.name,
-                    description: card.description
-                }));
+      try {
+        const cardsList = await CardApi.list();
+        const modelCards = cardsList
+          .filter((card: any) => card.type === "model")
+          .map((card: any) => ({
+            id: `card__${card.id}`,
+            model_schema: card.result_metadata || [],
+            name: card.name,
+            description: card.description
+          }));
 
-            setModelSchema(modelCards); 
-        } catch (error) {
-            console.error("Error fetching cards:", error);
-        }
+        setModelSchema(modelCards);
+      } catch (error) {
+        console.error("Error fetching cards:", error);
+      }
     };
 
     getCards();
-}, []);
+  }, []);
 
 
 
@@ -108,20 +108,16 @@ export const HomeLayout = () => {
   useMemo(() => {
     if (databases) {
       setHasDatabases(databases.length > 0)
-      const cubeDatabase = databases.find(
-        database => database.is_cube === true,
-      );
-      const rawDatabase = databases.find(database => database.is_cube === false);
-      if (rawDatabase) {
-        setInsightDB(rawDatabase.id as number)
-        dispatch(setInsightDBInputValue(rawDatabase.id as number));
-      }
-      if (cubeDatabase) {
+      if (databases.length > 0) {
+        setInsightDB(databases[0].id as number)
+        dispatch(setInsightDBInputValue(databases[0].id as number));
+        
         setShowButton(true);
-        dispatch(setDBInputValue(cubeDatabase.id as number));
+        dispatch(setDBInputValue(databases[0].id as number));
         dispatch(setCompanyName(formattedSiteName as string));
-        setDbId(cubeDatabase.id as number)
-      }
+        setDbId(databases[0].id as number)
+      } 
+      
     }
   }, [databases]);
 
