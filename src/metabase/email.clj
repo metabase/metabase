@@ -3,13 +3,15 @@
    [malli.core :as mc]
    [metabase.analytics.prometheus :as prometheus]
    [metabase.models.setting :as setting :refer [defsetting]]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.util.retry :as retry]
    [postal.core :as postal]
-   [postal.support :refer [make-props]])
+   [postal.support :refer [make-props]]
+   [throttle.core :as throttle])
   (:import
    (javax.mail Session)))
 
@@ -95,12 +97,54 @@
                   (assert (#{:tls :ssl :none :starttls} (keyword new-value))))
                 (setting/set-value-of-type! :keyword :email-smtp-security new-value)))
 
+(defsetting email-rate-limit-per-second
+  (deferred-tru "The maximum number of emails that can be sent per second. The quotas are based on the total number of recipients")
+  :export?    true
+  :type       :integer
+  :visibility :settings-manager
+  :audit      :getter)
+
+(defn- make-email-throttler
+  [rate-limit]
+  (throttle/make-throttler
+   :email
+   :attempt-ttl-ms     1000
+   :initial-delay-ms   1000
+   :attempts-threshold rate-limit))
+
+(defonce ^:private email-throttler (when-let [rate-limit (email-rate-limit-per-second)]
+                                     (make-email-throttler rate-limit)))
+
+(defn check-email-throttle
+  "Check if the email throttler is enabled and if so, throttle the email sending based on the total number of recipients.
+
+  If the number of recipients exceeds the rate limit per second, we max-out the throttle limit but silience the exception.
+  This is to avoid creating regression bugs due to the throttling mechanism."
+  [email]
+  (when email-throttler
+    (let [recipients (set (mapcat #(% email) [:to :bcc]))
+          thorttle-check (fn []
+                           (dotimes [_ (count recipients)]
+                             (throttle/check email-throttler true)))]
+      (if (> (count recipients) (email-rate-limit-per-second))
+        (do
+         (log/warn "Email throttling is enabled and the number of recipients exceeds the rate limit per second. Skip throttling."
+                   {:email-subject (:subject email)
+                    :recipients    (count recipients)
+                    :rate-limit    (email-rate-limit-per-second)})
+         (u/ignore-exceptions (thorttle-check)))
+        (thorttle-check)))))
+
 ;; ## PUBLIC INTERFACE
 
-(def ^{:arglists '([smtp-credentials email-details])} send-email!
+(defn send-email!
   "Internal function used to send messages. Should take 2 args - a map of SMTP credentials, and a map of email details.
-   Provided so you can swap this out with an \"inbox\" for test purposes."
-  postal/send-message)
+  Provided so you can swap this out with an \"inbox\" for test purposes.
+
+  If email-rate-limit-per-second is set, this function will throttle the email sending based on the total number of recipients."
+  [smtp-credentials email-details]
+  (check-email-throttle email-details)
+  (postal/send-message smtp-credentials email-details))
 
 (defsetting email-configured?
   "Check if email is enabled and that the mandatory settings are configured."

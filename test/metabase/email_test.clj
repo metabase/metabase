@@ -7,6 +7,7 @@
    [medley.core :as m]
    [metabase.analytics.prometheus :as prometheus]
    [metabase.email :as email]
+   [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.util :as tu]
    [metabase.util :as u :refer [prog1]]
@@ -359,3 +360,36 @@
               (is (re-find
                    #"(?s)Content-Disposition: attachment.+filename=.+this-is-quite-[\-\s?=0-9a-zA-Z]+-characters.csv"
                    (m/mapply email/send-message! params-with-problematic-file))))))))))
+
+(deftest throttle-test
+  (let [send-email (fn [recipients]
+                     (email/send-email!
+                      {}
+                      (merge {:from    "awesome@metabase.com"
+                              :subject "101 Reasons to use Metabase"
+                              :body    "101. Metabase will make you a better person"}
+                             recipients)))]
+    (mt/with-temporary-setting-values
+      [email-smtp-host "fake_smtp_host"
+       email-smtp-port 587]
+      (with-redefs [email/email-throttler (#'email/make-email-throttler 3)]
+        (testing "throttle based on the number of recipients"
+          (send-email {:to ["1@metabase.com"
+                            "2@metabase.com"]
+                       :bcc ["3@metabase.com"]})
+          (is (thrown-with-msg?
+               Exception
+               #"Too many attempts!.*"
+               (send-email {:to ["4@metabase.com"]})))))
+      (testing "skip throttling if the total number of recipients of an email exceed the limit"
+        (with-redefs [email/email-throttler (#'email/make-email-throttler 2)]
+          ;; sending is fine even tho the the limit is 2
+          (send-email {:to ["1@metabase.com"
+                            "2@metabase.com"]
+                       :bcc ["3@metabase.com"]})
+
+          (testing "but still max-out the limit"
+            (is (thrown-with-msg?
+                 Exception
+                 #"Too many attempts!.*"
+                 (send-email {:to ["2@metabase.com"]})))))))))
