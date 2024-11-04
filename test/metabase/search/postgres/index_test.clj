@@ -85,7 +85,7 @@
 
         (t2/update! :model/Database db-id {:name alternate-name})
         ;; TODO wire up an actual hook
-        (search.ingestion/update-index! (t2/select-one :model/Table :id table-id))
+        (search.ingestion/update-index! (t2/select-one :model/Database :id db-id))
 
         (is (= alternate-name (db-name-fn)))))))
 
