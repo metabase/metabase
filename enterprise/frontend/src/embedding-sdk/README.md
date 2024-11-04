@@ -46,7 +46,7 @@ java -jar metabase.jar
 
 By default, Metabase will run at `http://localhost:3000`.
 
-If you get stuck, check out our [installation docs](../../installation-and-operation/installing-metabase.md).
+If you get stuck, check out our [installation docs](https://www.metabase.com/docs/latest/installation-and-operation/installing-metabase).
 
 ## Docs
 
