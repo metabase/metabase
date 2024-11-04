@@ -28,13 +28,12 @@ export type BucketListItem = {
   selected?: boolean;
 };
 
-// TODO: Can I remove commented out stuff?
 export interface BaseBucketPickerPopoverProps {
   query: Lib.Query;
   stageIndex: number;
   items: BucketListItem[];
   selectedBucket: Lib.Bucket | NoBucket;
-  // isEditing: boolean;
+  isEditing: boolean;
   triggerLabel?: string;
   hasArrowIcon?: boolean;
   hasChevronDown?: boolean;
@@ -49,7 +48,7 @@ function _BaseBucketPickerPopover({
   stageIndex,
   items,
   selectedBucket,
-  // isEditing,
+  isEditing,
   triggerLabel,
   hasArrowIcon = true,
   color = "brand",
@@ -83,7 +82,7 @@ function _BaseBucketPickerPopover({
     setIsOpened(false);
   }, [items, selectedBucket, checkBucketIsSelected]);
 
-  const triggerContentBucket = selectedBucket ?? defaultBucket;
+  const triggerContentBucket = isEditing ? selectedBucket : defaultBucket;
   const triggerContentBucketDisplayInfo = triggerContentBucket
     ? Lib.displayInfo(query, stageIndex, triggerContentBucket)
     : undefined;
