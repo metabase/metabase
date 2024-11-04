@@ -122,17 +122,22 @@ export type PivotTableColumnSplitSetting = {
   rows?: string[];
   columns?: string[];
   values?: string[];
+
+  row_refs?: FieldReference[];
+  column_refs?: FieldReference[];
+  value_refs?: FieldReference[];
 };
 
 export type PivotTableCollapsedRowsSetting = {
-  rows: string[];
-  value: string[]; // identifiers for collapsed rows
+  rows?: string[];
+  value?: string[]; // identifiers for collapsed rows
+
+  row_refs?: FieldReference[];
 };
 
 export type TableColumnOrderSetting = {
   name: string;
   enabled: boolean;
-  fieldRef?: FieldReference;
 };
 
 export type StackType = "stacked" | "normalized" | null;

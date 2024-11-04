@@ -9,6 +9,8 @@ import type StructuredQuery from "metabase-lib/v1/queries/StructuredQuery";
 import type {
   DatasetColumn,
   DatasetData,
+  FieldReference,
+  PivotTableCollapsedRowsSetting,
   PivotTableColumnSplitSetting,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -26,13 +28,54 @@ import {
 import { partitions } from "./partitions";
 import type { CustomColumnWidth, HeaderItem } from "./types";
 
+function migratePivotSetting(
+  columns: DatasetColumn[],
+  columnNames: string[] | undefined,
+  fieldRefs: FieldReference[] | undefined,
+): string[] | undefined {
+  if (columnNames != null || fieldRefs == null) {
+    return columnNames;
+  }
+
+  const columnNameByFieldRef = Object.fromEntries(
+    columns.map(column => [JSON.stringify(column.field_ref), column.name]),
+  );
+
+  return fieldRefs
+    .map(fieldRef => columnNameByFieldRef[JSON.stringify(fieldRef)])
+    .filter(Boolean);
+}
+
+export function migrateColumnSplitSetting(
+  setting: PivotTableColumnSplitSetting,
+  columns: DatasetColumn[],
+): PivotTableColumnSplitSetting {
+  return {
+    rows: migratePivotSetting(columns, setting.rows, setting.row_refs),
+    columns: migratePivotSetting(columns, setting.columns, setting.column_refs),
+    values: migratePivotSetting(columns, setting.values, setting.value_refs),
+  };
+}
+
+export function migrateCollapsedRowsSetting(
+  setting: PivotTableCollapsedRowsSetting,
+  columns: DatasetColumn[],
+): PivotTableCollapsedRowsSetting {
+  return {
+    rows: migratePivotSetting(columns, setting.rows, setting.row_refs),
+    value: setting.value,
+  };
+}
+
 // adds or removes columns from the pivot settings based on the current query
 export function updateValueWithCurrentColumns(
   storedValue: PivotTableColumnSplitSetting,
   columns: DatasetColumn[],
 ) {
   const currentQueryColumnNames = columns.map(c => c.name);
-  const currentSettingColumnNames = Object.values(storedValue).flat();
+  const currentSettingColumnNames = partitions.flatMap(
+    ({ name }) => storedValue[name] ?? [],
+  );
   const toAdd = _.difference(
     currentQueryColumnNames,
     currentSettingColumnNames,
@@ -43,9 +86,15 @@ export function updateValueWithCurrentColumns(
   );
 
   // remove toRemove
-  const value = _.mapObject(storedValue, (columnNames: string[]) =>
-    columnNames.filter(columnName => !toRemove.includes(columnName)),
-  );
+  const value: PivotTableColumnSplitSetting = {
+    ...storedValue,
+    ...Object.fromEntries(
+      partitions.map(({ name }) => [
+        name,
+        storedValue[name]?.filter(columnName => toRemove.includes(columnName)),
+      ]),
+    ),
+  };
 
   // add toAdd to first partitions where it matches the filter
   for (const columnName of toAdd) {
@@ -58,6 +107,7 @@ export function updateValueWithCurrentColumns(
       }
     }
   }
+
   return value;
 }
 
