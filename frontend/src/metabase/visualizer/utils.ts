@@ -1,3 +1,4 @@
+import visualizations from "metabase/visualizations";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import type { DatasetColumn } from "metabase-types/api";
 import type {
@@ -51,3 +52,9 @@ export function getDataSourceIdFromNameRef(str: string) {
   const [, dataSourceId] = str.split("_");
   return dataSourceId;
 }
+
+export const vizTypes = Array.from(visualizations).map(([vizType, viz]) => ({
+  label: viz.uiName,
+  value: vizType,
+  icon: viz.iconName,
+}));
