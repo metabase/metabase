@@ -33,11 +33,13 @@
   [& body]
   `(when (= :postgres (mdb/db-type))
      (mt/dataset ~(symbol "test-data")
-       (mt/with-temp [:model/Card {} {:name "Customer Satisfaction" :collection_id 1}
-                      :model/Card {} {:name "The Latest Revenue Projections" :collection_id 1}
-                      :model/Card {} {:name "Projected Revenue" :collection_id 1}
-                      :model/Card {} {:name "Employee Satisfaction" :collection_id 1}
-                      :model/Card {} {:name "Projected Satisfaction" :collection_id 1}]
+       (mt/with-temp [:model/Card     {}           {:name "Customer Satisfaction" :collection_id 1}
+                      :model/Card     {}           {:name "The Latest Revenue Projections" :collection_id 1}
+                      :model/Card     {}           {:name "Projected Revenue" :collection_id 1}
+                      :model/Card     {}           {:name "Employee Satisfaction" :collection_id 1}
+                      :model/Card     {}           {:name "Projected Satisfaction" :collection_id 1}
+                      :model/Database {db-id# :id} {:name "Indexed Database"}
+                      :model/Table    {}           {:name "Indexed Table", :db_id db-id#}]
          (search.index/reset-index!)
          (search.ingestion/populate-index!)
          ~@body))))
@@ -73,26 +75,19 @@
   (with-index
     (testing "The index is updated when model dependencies change"
       (let [index-table    @#'search.index/active-table
-            table-idx      (t2/select-one [index-table :id :model_id] :model "table")
-            table-idx-id   (:id table-idx)
-            table-id       (:model_id table-idx)
-            legacy-input   #(-> (t2/select-one [index-table :legacy_input] table-idx-id)
+            table-id   (t2/select-one-pk :model/Table :name "Indexed Table")
+            legacy-input   #(-> (t2/select-one [index-table :legacy_input] :model "table" :model_id table-id)
                                 :legacy_input
                                 (json/parse-string true))
             db-id          (t2/select-one-fn :db_id :model/Table table-id)
             db-name-fn     (comp :database_name legacy-input)
-            orig-db-name   (db-name-fn)
             alternate-name (str (random-uuid))]
 
         (t2/update! :model/Database db-id {:name alternate-name})
-        (try
-         ;; TODO wire up an actual hook
-          (search.ingestion/update-index! (t2/select-one :model/Table :id table-id))
+        ;; TODO wire up an actual hook
+        (search.ingestion/update-index! (t2/select-one :model/Table :id table-id))
 
-          (is (= alternate-name (db-name-fn)))
-
-          (finally
-            (t2/update! :model/Database db-id {:name orig-db-name})))))))
+        (is (= alternate-name (db-name-fn)))))))
 
 (deftest consistent-subset-test
   (with-index
