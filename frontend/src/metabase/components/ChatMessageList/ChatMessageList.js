@@ -223,7 +223,7 @@ const ChatMessageList = ({
             {/* Display visualization only for this message's card */}
             {message.showVisualization && visualizationIdx !== undefined && (
               <>
-                {!card ? (
+                {!card || card.length <= visualizationIdx ? (
                   <Skeleton
                     variant="rect"
                     animate={true}
