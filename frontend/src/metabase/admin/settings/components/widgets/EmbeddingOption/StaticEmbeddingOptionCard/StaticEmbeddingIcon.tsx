@@ -1,6 +1,7 @@
+import cx from "classnames";
+
 import EmbeddingOptionS from "../EmbeddingOption.module.css";
 import type { EmbeddingOptionIconProps } from "../types";
-
 export const StaticEmbeddingIcon = ({ disabled }: EmbeddingOptionIconProps) => {
   return (
     <svg
@@ -8,7 +9,9 @@ export const StaticEmbeddingIcon = ({ disabled }: EmbeddingOptionIconProps) => {
       height="34"
       fill="white"
       xmlns="http://www.w3.org/2000/svg"
-      className={disabled && EmbeddingOptionS.Disabled}
+      className={cx(EmbeddingOptionS.EmbeddingOptionIcon, {
+        [EmbeddingOptionS.Disabled]: disabled,
+      })}
     >
       <rect
         x="1.25"

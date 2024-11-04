@@ -1,3 +1,5 @@
+import cx from "classnames";
+
 import EmbeddingOptionS from "../EmbeddingOption.module.css";
 import type { EmbeddingOptionIconProps } from "../types";
 
@@ -8,7 +10,9 @@ export const SdkIcon = ({ disabled }: EmbeddingOptionIconProps) => {
       height="32"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
-      className={disabled && EmbeddingOptionS.Disabled}
+      className={cx(EmbeddingOptionS.EmbeddingOptionIcon, {
+        [EmbeddingOptionS.Disabled]: disabled,
+      })}
     >
       <g clipPath="url(#a)">
         <rect
