@@ -88,12 +88,10 @@ export function saveDashboard({
   cy.button(buttonLabel).click();
 
   if (awaitRequest) {
-    cy.wait("@saveDashboardCards").then(() => {
-      cy.findByText(editBarText).should("not.exist");
-    });
-  } else {
-    cy.findByText(editBarText).should("not.exist");
+    cy.wait("@saveDashboardCards");
   }
+
+  cy.findByText(editBarText).should("not.exist");
   cy.wait(waitMs); // this is stupid but necessary to due to the dashboard resizing and detaching elements
 }
 
