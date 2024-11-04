@@ -38,7 +38,7 @@
   com.draines/postal                        {:mvn/version "2.0.5"}              ; SMTP library
   ; Detect the charset in uploaded CSV files
   com.github.albfernandez/juniversalchardet {:mvn/version "2.5.0"}
-  com.github.seancorfield/honeysql          {:mvn/version "2.6.1126"}           ; Honey SQL 2. SQL generation from Clojure data maps
+  com.github.seancorfield/honeysql          {:mvn/version "2.6.1203"}           ; Honey SQL 2. SQL generation from Clojure data maps
   com.github.seancorfield/next.jdbc         {:mvn/version "1.3.925"}            ; Talk to JDBC DBs
   com.github.steffan-westcott/clj-otel-api  {:mvn/version "0.2.6"}              ; Telemetry library
   com.github.vertical-blank/sql-formatter   {:mvn/version "2.0.4"}              ; Java SQL formatting library https://github.com/vertical-blank/sql-formatter
@@ -55,7 +55,6 @@
   com.vladsch.flexmark/flexmark             {:mvn/version "0.64.8"}             ; Markdown parsing
   com.vladsch.flexmark/flexmark-ext-autolink
   {:mvn/version "0.64.8"}             ; Flexmark extension for auto-linking bare URLs
-  commons-fileupload/commons-fileupload     {:mvn/version "1.5"}                ; ring/ring-core 1.9.6 uses v1.4, but we want 1.5 due to a CVE. When we upgrade to the forthcoming ring/ring-core 1.10.0 we can remove this.
   commons-codec/commons-codec               {:mvn/version "1.16.1"}             ; Apache Commons -- useful codec util fns
   commons-io/commons-io                     {:mvn/version "2.15.1"}             ; Apache Commons -- useful IO util fns
   commons-net/commons-net                   {:mvn/version "3.10.0"}             ; Apache Commons -- useful network utils. Transitive dep of Snowplow, pinned due to CVE-2021-37533
@@ -76,11 +75,11 @@
   instaparse/instaparse                     {:mvn/version "1.4.12"}             ; Make your own parser
   junegunn/grouper                          {:mvn/version "0.1.1"}              ; Batch processing helper
   clj-commons/clj-yaml                      {:mvn/version "1.0.27"}             ; Clojure wrapper for YAML library SnakeYAML
-  io.github.camsaul/toucan2                 {:mvn/version "1.0.538"}
+  io.github.camsaul/toucan2                 {:mvn/version "1.0.554"}
   io.github.eerohele/pp                     {:git/tag "2024-01-04.60"           ; super fast pretty-printing library
                                              :git/sha "a428751"
                                              :git/url "https://github.com/eerohele/pp"}
-  io.github.metabase/macaw                  {:mvn/version "0.2.10"}             ; Parse native SQL queries
+  io.github.metabase/macaw                  {:mvn/version "0.2.20"}             ; Parse native SQL queries
   ;; The 2.X line of Resilience4j requires Java 17, so we cannot upgrade this dependency until that is our minimum JVM version
   io.github.resilience4j/resilience4j-retry {:mvn/version "1.7.1" #_"must be 1.7.1"} ; Support for retrying operations
   io.prometheus/simpleclient_hotspot        {:mvn/version "0.16.0"}             ; prometheus jvm collector
@@ -98,7 +97,7 @@
                                                           org.bouncycastle/bcpkix-jdk18on
                                                           org.bouncycastle/bcprov-jdk18on]}
   metabase/throttle                         {:mvn/version "1.0.2"}              ; Tools for throttling access to API endpoints and other code pathways
-  methodical/methodical                     {:mvn/version "1.0.123"}            ; drop-in replacements for Clojure multimethods and adds several advanced features
+  methodical/methodical                     {:mvn/version "1.0.124"}            ; drop-in replacements for Clojure multimethods and adds several advanced features
   metosin/malli                             {:mvn/version "0.16.3"}             ; Data-driven Schemas for Clojure/Script and babashka
   nano-id/nano-id                           {:mvn/version "1.1.0"}              ; NanoID generator for generating entity_ids
   net.cgrand/macrovich                      {:mvn/version "0.2.2"}              ; utils for writing macros for both Clojure & ClojureScript
@@ -159,8 +158,8 @@
   ;; v. 12 of jetty-server triggers "a org/eclipse/jetty/io/EofException has been compiled by a more recent version of
   ;; the Java Runtime (class file version 61.0), this version of the Java Runtime only recognizes class file versions
   ;; up to 55.0"
-  org.eclipse.jetty/jetty-server            {:mvn/version "11.0.20" #_"must be 11"} ; web server
-  org.eclipse.jetty.websocket/websocket-jetty-server {:mvn/version "11.0.20"}   ; ring-jetty-adapter needs that
+  org.eclipse.jetty/jetty-server            {:mvn/version "11.0.24" #_"must be 11"} ; web server
+  org.eclipse.jetty.websocket/websocket-jetty-server {:mvn/version "11.0.24"}   ; ring-jetty-adapter needs that
   org.flatland/ordered                      {:mvn/version "1.15.11"}            ; ordered maps & sets
   org.graalvm.js/js                         {:mvn/version "22.3.5"}             ; JavaScript engine
   org.jsoup/jsoup                           {:mvn/version "1.17.2"}             ; required by hickory
@@ -182,8 +181,8 @@
   redux/redux                               {:git/url "https://github.com/metabase/redux"
                                              :sha "4a37feaf817a2a6b5ef688c927f6fd4375964433"}
   riddley/riddley                           {:mvn/version "0.2.0"}              ; code walking lib -- used interally by Potemkin, manifold, etc.
-  ring/ring-core                            {:mvn/version "1.12.0"}             ; HTTP abstraction
-  ring/ring-jetty-adapter                   {:mvn/version "1.12.0"              ; Jetty adapter
+  ring/ring-core                            {:mvn/version "1.13.0"}             ; HTTP abstraction
+  ring/ring-jetty-adapter                   {:mvn/version "1.13.0"              ; Jetty adapter
                                              :exclusions [org.eclipse.jetty/jetty-server
                                                           org.eclipse.jetty.websocket/websocket-jetty-server]}
   ring/ring-json                            {:mvn/version "0.5.1"}              ; Ring middleware for reading/writing JSON automatically
@@ -800,9 +799,10 @@
   {:exec-args {:only ["test/metabase/notification"
                       "test/metabase/channel"
                       metabase.api.channel-test
+                      metabase.events.notification-test
                       metabase.models.channel-test
                       metabase.models.notification-test
-                      metabase.events.notification-test]}}
+                      metabase.task.notification-test]}}
 
   ;; test all MBQL related stuff: MLv2, the legacy shared `metabase.legacy-mbql` code, and the QP
   ;;

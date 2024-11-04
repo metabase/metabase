@@ -21,9 +21,6 @@ export const getSegmentedControlOverrides =
             padding: fullWidth
               ? `${theme.spacing.sm} ${theme.spacing.md}`
               : theme.spacing.sm,
-            fontSize: theme.fontSizes.md,
-            fontWeight: "normal",
-            lineHeight: "1rem",
             "&:hover": {
               color: theme.fn.themeColor("brand"),
             },

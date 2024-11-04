@@ -1414,3 +1414,102 @@ describe("issue 45877", () => {
     });
   });
 });
+
+describe("issue 47887", () => {
+  beforeEach(() => {
+    restore("setup");
+    cy.signInAsAdmin();
+  });
+
+  it("Case expression with type/Date default value and type/DateTime case value has Date filter popover enabled (metabase#47887)", () => {
+    visitQuestionAdhoc({
+      dataset_query: {
+        database: SAMPLE_DB_ID,
+        type: "query",
+        query: {
+          "source-table": PEOPLE_ID,
+          expressions: {
+            asdfdsa: [
+              "case",
+              [
+                [
+                  [
+                    "=",
+                    [
+                      "field",
+                      SAMPLE_DATABASE.PEOPLE.NAME,
+                      { "base-type": "type/Text" },
+                    ],
+                    "Won",
+                  ],
+                  [
+                    "datetime-add",
+                    [
+                      "field",
+                      SAMPLE_DATABASE.PEOPLE.CREATED_AT,
+                      { "base-type": "type/DateTimeWithLocalTZ" },
+                    ],
+                    0,
+                    "month",
+                  ],
+                ],
+              ],
+              {
+                default: [
+                  "datetime-add",
+                  [
+                    "field",
+                    SAMPLE_DATABASE.PEOPLE.BIRTH_DATE,
+                    { "base-type": "type/Date" },
+                  ],
+                  0,
+                  "month",
+                ],
+              },
+            ],
+          },
+        },
+        parameters: [],
+      },
+    });
+
+    cy.findByTestId("notebook-button").click();
+    cy.findAllByTestId("action-buttons").last().findByText("Filter").click();
+
+    popover().within(() => {
+      cy.findByLabelText("asdfdsa").click();
+      cy.findByText("Specific dates…").click();
+    });
+  });
+});
+
+describe("Issue 48851", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+    cy.viewport(1050, 300);
+  });
+
+  const manyValues = Array(12)
+    .fill(0)
+    .map(() => Math.round(Math.random() * 1000_000_000_000).toString(36))
+    .join(", ");
+
+  it("should not overflow the filter popover, even when there are a lot of values (metabase#48851)", () => {
+    openProductsTable();
+    tableHeaderClick("Title");
+
+    popover().within(() => {
+      cy.findByText("Filter by this column").click();
+      cy.findByText("Is").click();
+    });
+
+    popover().last().findByText("Contains").click();
+    popover()
+      .first()
+      .findByPlaceholderText("Enter some text")
+      .type(manyValues, { timeout: 0 });
+
+    popover().button("Add filter").should("be.visible");
+  });
+});

@@ -62,7 +62,7 @@ const DatePickerFooter: React.FC<React.PropsWithChildren<Props>> = ({
         operator,
         field,
         start,
-        operator === "between" && !end ? start : end,
+        ...(operator === "between" ? [end ?? start] : []),
       ]);
     }
   };

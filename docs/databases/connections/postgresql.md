@@ -38,6 +38,25 @@ The database username for the account that you want to use to connect to your da
 
 The password for the username that you use to connect to the database.
 
+### Use an authentication provider
+
+{% include plans-blockquote.html feature="Authenticating with a provider" %}
+
+Instead of a password, you can authenticate with a supported provider.
+
+Only for self-hosted Pro and Enterprise plans.
+
+#### Azure Managed Identity
+
+To use Azure Managed Identity, you'll need to input your [client ID](https://learn.microsoft.com/en-us/previous-versions/azure/postgresql/single-server/how-to-connect-with-managed-identity#retrieving-the-access-token-from-azure-instance-metadata-service).
+
+#### Oauth
+
+To use Oauth as a provider, you'll need to input your:
+
+- Auth token URL
+- Auth token request headers (a JSON map)
+
 ### Schemas
 
 You can specify which schemas you want to sync and scan. Options are:
@@ -83,11 +102,7 @@ See the PostgreSQL docs for a table about the different [SSL Modes](https://jdbc
 
 If you set the SSL Mode to either "verify-ca" or "verify-full", you'll need to specify a root certificate (PEM). You have the option of using a **Local file path** or an **Uploaded file path**. If you're on Metabase Cloud, you'll need to select **Uploaded file path** and upload your certificate.
 
-### Use an SSH tunnel
-
-See our [guide to SSH tunneling](../ssh-tunnel.md).
-
-### Authenticate client certificate
+#### Authenticate client certificate
 
 Toggle on to bring up client certificate options.
 
@@ -108,6 +123,12 @@ openssl pkcs8 -topk8 -inform PEM -outform DER -in client-key.pem -out client-key
 ```
 
 Note: if you're using GCP and you managed to issue client certificates, everything will be given in PEM format, you only need to transform the client-key.pem into a client-key.der for the "SSL Client Key"
+
+### Use an SSH tunnel
+
+See our [guide to SSH tunneling](../ssh-tunnel.md).
+
+## Advanced settings
 
 ### Unfold JSON Columns
 

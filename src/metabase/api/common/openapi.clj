@@ -176,7 +176,7 @@
         ctype                     (if (:multipart (meta handler-var))
                                     "multipart/form-data"
                                     "application/json")]
-    ;; summary is the string in the sidebar of rapidoc
+    ;; summary is the string in the sidebar of Scalar
     {method (cond-> {:summary     (str (u/upper-case-en (name method)) " " full-path)
                      :description (or (:orig-doc data)
                                       (:doc data))
@@ -205,4 +205,9 @@
 (comment
   ;; See what is the result of generation, could be helpful debugging what's wrong with display in rapidoc
   ;; `resolve` is to appease clj-kondo which will complain for #'
-  (defendpoint->path-item nil "/path" (resolve 'metabase-enterprise.serialization.api/POST_export)))
+  (defendpoint->path-item nil "/path" (resolve 'metabase-enterprise.serialization.api/POST_export))
+  (openapi-object (resolve 'metabase.api.pulse/routes))
+  (->> (openapi-object (resolve 'metabase.api.routes/routes))
+       :paths
+       (map #(second (str/split (key %) #"/")))
+       set))

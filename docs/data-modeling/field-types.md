@@ -144,6 +144,10 @@ While data types themselves can't be edited in Metabase, admins can manually [ca
 
 See [Working with JSON](./json-unfolding.md).
 
+### Arrays
+
+Metabase currently does not support array types with any database. You'll only be able to use **Is empty** or **Is not empty** filters on columns containing arrays.
+
 ## Further Reading
 
 - [Exploring data with Metabase's data browser](https://www.metabase.com/learn/getting-started/data-browser.html).

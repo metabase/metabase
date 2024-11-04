@@ -11,6 +11,7 @@ import { useGetDefaultCollectionId } from "metabase/collections/hooks";
 import { FormProvider } from "metabase/forms";
 import { isNotNull } from "metabase/lib/types";
 import type Question from "metabase-lib/v1/Question";
+import type { CollectionId } from "metabase-types/api";
 
 import { SAVE_QUESTION_SCHEMA } from "./schema";
 import type { FormValues, SaveQuestionProps } from "./types";
@@ -25,6 +26,7 @@ type SaveQuestionContextType = {
   setValues: (values: FormValues) => void;
   showSaveType: boolean;
   multiStep: boolean;
+  saveToCollectionId?: CollectionId;
 };
 
 export const SaveQuestionContext =
@@ -53,6 +55,7 @@ export const SaveQuestionProvider = ({
   onCreate,
   onSave,
   multiStep = false,
+  saveToCollectionId,
   children,
 }: PropsWithChildren<SaveQuestionProps>) => {
   const [originalQuestion] = useState(latestOriginalQuestion); // originalQuestion from props changes during saving
@@ -68,8 +71,15 @@ export const SaveQuestionProvider = ({
 
   const handleSubmit = useCallback(
     async (details: FormValues) =>
-      submitQuestion(originalQuestion, details, question, onSave, onCreate),
-    [originalQuestion, question, onSave, onCreate],
+      submitQuestion({
+        originalQuestion,
+        details,
+        question,
+        onSave,
+        onCreate,
+        saveToCollectionId,
+      }),
+    [originalQuestion, question, onSave, onCreate, saveToCollectionId],
   );
 
   // we care only about the very first result as question can be changed before
@@ -103,6 +113,7 @@ export const SaveQuestionProvider = ({
             setValues,
             showSaveType,
             multiStep,
+            saveToCollectionId,
           }}
         >
           {children}

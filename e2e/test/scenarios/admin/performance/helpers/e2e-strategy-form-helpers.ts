@@ -86,7 +86,6 @@ export const getScheduleComponent = (componentType: ScheduleComponentType) =>
   cacheStrategyForm().findByLabelText(getScheduleComponentLabel(componentType));
 
 export const openSidebar = (type: "question" | "dashboard") => {
-  // this will change when we move to having a dashboard settings sidesheet
   if (type === "dashboard") {
     cy.findByTestId("dashboard-header").icon("ellipsis").click();
   }

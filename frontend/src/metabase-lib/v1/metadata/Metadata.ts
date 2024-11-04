@@ -112,7 +112,7 @@ class Metadata {
   }
 
   /**
-   * @deprecated load data via RTK Query - useGetTableQuery or useGetTableMetadataQuery
+   * @deprecated load data via RTK Query - useGetTableQuery or useGetTableQueryMetadataQuery
    */
   table(tableId: TableId | undefined | null): Table | null {
     return (tableId != null && this.tables[tableId]) || null;

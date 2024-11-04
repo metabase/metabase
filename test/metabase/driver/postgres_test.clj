@@ -193,11 +193,11 @@
   (mt/test-driver :postgres
     (testing "Make sure that Tables / Fields with dots in their names get escaped properly"
       (mt/dataset dots-in-names
-        (= {:columns ["id" "dotted.name"]
-            :rows    [[1 "toucan_cage"]
-                      [2 "four_loko"]
-                      [3 "ouija_board"]]}
-           (mt/rows+column-names (mt/run-mbql-query objects.stuff)))))
+        (is (= {:columns ["id" "dotted.name"]
+                :rows    [[1 "toucan_cage"]
+                          [2 "four_loko"]
+                          [3 "ouija_board"]]}
+               (mt/rows+column-names (mt/run-mbql-query objects.stuff))))))
     (testing "make sure schema/table/field names with hyphens in them work correctly (#8766)"
       (let [details (mt/dbdef->connection-details :postgres :db {:database-name "hyphen-names-test"})
             spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
@@ -389,13 +389,13 @@
 (deftest ^:parallel json-query-test
   (let [boop-identifier (h2x/identifier :field "boop" "bleh -> meh")]
     (testing "Transforming MBQL query with JSON in it to postgres query works"
-      (let [boop-field {:nfc-path [:bleh :meh] :database-type "bigint"}]
+      (let [boop-field {:nfc-path [:bleh :meh] :database-type "decimal"}]
         (is (= [::postgres/json-query
                 [::h2x/identifier :field ["boop" "bleh"]]
-                "bigint"
+                "decimal"
                 [:meh]]
                (#'sql.qp/json-query :postgres boop-identifier boop-field)))
-        (is (= ["(boop.bleh#>> array[?]::text[])::bigint" "meh"]
+        (is (= ["(boop.bleh#>> array[?]::text[])::decimal" "meh"]
                (sql/format-expr (#'sql.qp/json-query :postgres boop-identifier boop-field))))))
     (testing "What if types are weird and we have lists"
       (let [weird-field {:nfc-path [:bleh "meh" :foobar 1234] :database-type "bigint"}]
@@ -561,7 +561,7 @@
           (mt/with-db database
             (sync-tables/sync-tables-and-database! database)
             (is (= #{{:name              "trivial_json → a",
-                      :database-type     "bigint",
+                      :database-type     "decimal",
                       :base-type         :type/Integer,
                       :database-position 0,
                       :json-unfolding    false,
@@ -586,7 +586,7 @@
           (mt/with-db database
             (sync-tables/sync-tables-and-database! database)
             (is (= #{{:name              "trivial_json → a",
-                      :database-type     "bigint",
+                      :database-type     "decimal",
                       :base-type         :type/Integer,
                       :database-position 0,
                       :json-unfolding    false,
@@ -832,34 +832,41 @@
     (do-with-enums-db!
      (fn [db]
        (testing "check that we can actually fetch the enum types from a DB"
-         (is (= #{(keyword "bird type") :bird_status}
-                (#'postgres/enum-types :postgres db))))
+         (is (= #{"bird type" "bird_status"}
+                (#'postgres/enum-types db))))
 
        (testing "check that describe-table properly describes the database & base types of the enum fields"
-         (is (= {:name   "birds"
-                 :fields #{{:name                       "name"
-                            :database-type              "varchar"
-                            :base-type                  :type/Text
-                            :pk?                        true
-                            :database-position          0
-                            :database-required          true
-                            :database-is-auto-increment false
-                            :json-unfolding             false}
-                           {:name                       "status"
-                            :database-type              "bird_status"
-                            :base-type                  :type/PostgresEnum
-                            :database-position          1
-                            :database-required          true
-                            :database-is-auto-increment false
-                            :json-unfolding             false}
-                           {:name                       "type"
-                            :database-type              "bird type"
-                            :base-type                  :type/PostgresEnum
-                            :database-position          2
-                            :database-required          true
-                            :database-is-auto-increment false
-                            :json-unfolding             false}}}
-                (driver/describe-table :postgres db {:name "birds"}))))
+         (is (=? [{:table-schema               "public"
+                   :table-name                 "birds"
+                   :name                       "name"
+                   :database-type              "varchar"
+                   :base-type                  :type/Text
+                   :pk?                        true
+                   :database-position          0
+                   :database-required          true
+                   :database-is-auto-increment false
+                   :json-unfolding             false}
+                  {:table-schema               "public"
+                   :table-name                 "birds"
+                   :name                       "status"
+                   :database-type              "bird_status"
+                   :base-type                  :type/PostgresEnum
+                   :database-position          1
+                   :database-required          true
+                   :database-is-auto-increment false
+                   :json-unfolding             false}
+                  {:table-schema               "public"
+                   :table-name                 "birds"
+                   :name                       "type"
+                   :database-type              "bird type"
+                   :base-type                  :type/PostgresEnum
+                   :database-position          2
+                   :database-required          true
+                   :database-is-auto-increment false
+                   :json-unfolding             false}]
+                 (->> (driver/describe-fields :postgres db {:table-names ["birds"]})
+                      (into #{})
+                      (sort-by :database-position)))))
 
        (testing "check that when syncing the DB the enum types get recorded appropriately"
          (let [table-id (t2/select-one-pk Table :db_id (u/the-id db), :name "birds")]
