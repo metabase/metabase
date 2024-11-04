@@ -16,7 +16,7 @@ export const QuestionMoveConfirmModal = ({
   onClose,
 }: {
   cardDashboards: CardDashboards[];
-  selectedItems: CollectionItem[];
+  selectedItems: Pick<CollectionItem, "id" | "model" | "name">[];
   onConfirm: () => void;
   onClose: () => void;
 }) => {

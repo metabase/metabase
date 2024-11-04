@@ -47,6 +47,8 @@ export const createMockCard = (opts?: Partial<Card>): Card => ({
   embedding_params: null,
   initially_published_at: null,
   can_manage_db: true,
+  dashboard_id: null,
+  dashboard_count: null,
   ...opts,
 });
 
