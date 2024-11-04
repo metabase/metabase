@@ -7,7 +7,7 @@
    :created-by          :creator-id
    :last-edited-at      :last-edited-at
    :last-edited-by      :last-editor-id
-   :search-native-query :native-query
+   :search-native-query :dataset-query
    :verified            :verified})
 
 (defn- search-context->applicable-models
