@@ -39,7 +39,6 @@ export const zoomInRow =
 export const RESET_ROW_ZOOM = "metabase/qb/RESET_ROW_ZOOM";
 export const resetRowZoom = () => (dispatch: Dispatch) => {
   dispatch({ type: RESET_ROW_ZOOM });
-  // @ts-expect-error it does nothing, so safe to remove it
   dispatch(updateUrl());
 };
 
@@ -105,6 +104,11 @@ export const followForeignKey = createThunkAction(
   },
 );
 
+interface FKInfo {
+  status: number;
+  value: string | number | null;
+}
+
 export const LOAD_OBJECT_DETAIL_FK_REFERENCES =
   "metabase/qb/LOAD_OBJECT_DETAIL_FK_REFERENCES";
 export const loadObjectDetailFKReferences = createThunkAction(
@@ -123,7 +127,10 @@ export const loadObjectDetailFKReferences = createThunkAction(
       const card: Card = getCard(state);
       const queryResult = getFirstQueryResult(state);
 
-      async function getFKCount(card: Card, fk: ForeignKey) {
+      async function getFKCount(
+        card: Card,
+        fk: ForeignKey,
+      ): Promise<FKInfo | undefined> {
         const metadata = getMetadata(getState());
         const databaseId = new Question(card, metadata).databaseId();
         const tableId = fk.origin?.table_id;
@@ -142,7 +149,7 @@ export const loadObjectDetailFKReferences = createThunkAction(
           .setQuery(query)
           .datasetQuery();
 
-        const info: Record<"value" | "status", number | string | null> = {
+        const info: FKInfo = {
           status: 0,
           value: null,
         };
@@ -169,11 +176,11 @@ export const loadObjectDetailFKReferences = createThunkAction(
       // skipping that for now because it's easier to just run this each time
 
       // run a query on FK origin table where FK origin field = objectDetailIdValue
-      const fkReferences: Record<FieldId, any> = {};
+      const fkReferences: Record<FieldId, FKInfo | undefined> = {};
       for (let i = 0; i < tableForeignKeys.length; i++) {
         const fk = tableForeignKeys[i];
         const info = await getFKCount(card, fk);
-        fkReferences[fk.origin?.id as FieldId] = info;
+        fkReferences[fk.origin.id] = info;
       }
 
       // It's possible that while we were running those queries, the object

@@ -178,7 +178,7 @@ export const navigateToNewCardInsideQB = createThunkAction(
         const card = getCardAfterVisualizationClick(nextCard, previousCard);
         const url = Urls.serializedQuestion(card);
         if (shouldOpenInBlankWindow(url, { blankOnMetaOrCtrlKey: true })) {
-          dispatch(openUrl(url, {}));
+          dispatch(openUrl(url));
         } else {
           dispatch(onCloseSidebars());
           if (!cardQueryIsEquivalent(previousCard, nextCard)) {

@@ -77,7 +77,7 @@ export const runDirtyQuestionQuery =
   () => async (dispatch: Dispatch, getState: GetState) => {
     const areResultsDirty = getIsResultDirty(getState());
     const queryResults = getQueryResults(getState());
-    const hasResults = !!queryResults;
+    const hasResults = Boolean(queryResults);
 
     if (hasResults && !areResultsDirty) {
       const question = getQuestion(getState());

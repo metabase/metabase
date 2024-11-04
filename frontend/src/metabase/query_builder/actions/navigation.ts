@@ -8,6 +8,7 @@ import { createThunkAction } from "metabase/lib/redux";
 import { equals } from "metabase/lib/utils";
 import { getLocation } from "metabase/selectors/routing";
 import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
 import { isAdHocModelOrMetricQuestion } from "metabase-lib/v1/metadata/utils/models";
 import type { Dispatch } from "metabase-types/store";
 
@@ -128,7 +129,7 @@ export const UPDATE_URL = "metabase/qb/UPDATE_URL";
 export const updateUrl = createThunkAction(
   UPDATE_URL,
   (
-    question,
+    question?: Question | null,
     {
       dirty,
       replaceState,
@@ -141,6 +142,10 @@ export const updateUrl = createThunkAction(
     (dispatch, getState) => {
       if (!question) {
         question = getQuestion(getState());
+
+        if (!question) {
+          return;
+        }
       }
 
       if (dirty == null) {
@@ -197,12 +202,9 @@ export const updateUrl = createThunkAction(
         (locationDescriptor.hash || "") === (window.location.hash || "");
       const isSameCard =
         currentState && isEqualCard(currentState.card, newState.card);
-      // TODO: looks like a bug
       const isSameMode =
-        // @ts-expect-error mode is not presented in a returned object
-        getQueryBuilderModeFromLocation(locationDescriptor).mode ===
-        // @ts-expect-error mode is not presented in a returned object
-        getQueryBuilderModeFromLocation(window.location).mode;
+        getQueryBuilderModeFromLocation(locationDescriptor).queryBuilderMode ===
+        getQueryBuilderModeFromLocation(window.location).queryBuilderMode;
 
       if (isSameCard && isSameURL) {
         return;
