@@ -26,29 +26,26 @@ export const onCancelCreateNewModel = () => async (dispatch: Dispatch) => {
   await dispatch(push("/"));
 };
 
-export const turnQuestionIntoDataset =
+export const turnQuestionIntoModel =
   () => async (dispatch: Dispatch, getState: GetState) => {
     const question = getQuestion(getState());
-
-    if (!question) {
-      return;
-    }
 
     await dispatch(
       Questions.actions.update(
         {
           id: question.id(),
         },
-        question.setType("model").setPinned(true).setDisplay("table").card(),
+        question
+          .setType("model")
+          .setPinned(true)
+          .setDisplay("table")
+          .setSettings({})
+          .card(),
       ),
     );
 
     const metadata = getMetadata(getState());
     const dataset = metadata.question(question.id());
-
-    if (!dataset) {
-      return;
-    }
 
     await dispatch(loadMetadataForCard(dataset.card()));
 
