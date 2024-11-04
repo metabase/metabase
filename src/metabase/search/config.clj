@@ -74,7 +74,7 @@
 (assert (= all-models (set models-search-order)) "The models search order has to include all models")
 
 (defn search-model->revision-model
-  "Return the apporpriate revision model given a search model."
+  "Return the appropriate revision model given a search model."
   [model]
   (case model
     "dataset" (recur "card")
@@ -197,6 +197,7 @@
   "All of the result components that by default are displayed by the frontend."
   #{:name :display_name :collection_name :description})
 
+;; TODO use spec
 (defmulti searchable-columns
   "The columns that can be searched for each model."
   {:arglists '([model search-native-query])}

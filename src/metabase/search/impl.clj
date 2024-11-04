@@ -149,8 +149,8 @@
   [{:as result :keys [all-scores relevant-scores name display_name collection_id collection_name
                       collection_authority_level collection_type collection_effective_ancestors effective_parent
                       archived_directly model]}]
-  (let [matching-columns    (into #{} (remove nil? (map :column relevant-scores)))
-        match-context-thunk (first (keep :match-context-thunk relevant-scores))
+  (let [matching-columns    (into #{} (keep :column relevant-scores))
+        match-context-thunk (some :match-context-thunk relevant-scores)
         remove-thunks       (partial mapv #(dissoc % :match-context-thunk))]
     (-> result
         (assoc

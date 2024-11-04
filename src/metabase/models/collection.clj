@@ -21,6 +21,8 @@
    [metabase.models.serialization :as serdes]
    [metabase.permissions.util :as perms.u]
    [metabase.public-settings.premium-features :as premium-features]
+   ;; Trying to use metabase.search would cause a circular reference ;_;
+   [metabase.search.spec :as search.spec]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs tru]]
@@ -1730,3 +1732,30 @@
                                                  (collection.root/is-root-collection? item)))
                                         (:archived item)
                                         (mi/can-write? item)))))))
+
+;;;; ------------------------------------------------- Search ----------------------------------------------------------
+
+(search.spec/define-spec "collection"
+  {:model        :model/Collection
+   :attrs        {:collection-id :id
+                  :creator-id    false
+                  :database-id   false
+                  :table-id      false
+                  :archived      true
+                  :created-at    true
+                  :updated-at    false}
+   :search-terms [:name]
+   :render-terms {:archived-directly          true
+                  ;; Why not make this a search term? I suspect it was just overlooked before.
+                  :description                true
+                  :collection_authority_level :authority_level
+                  :collection_name            :name
+                  :collection_type            :type
+                  :location                   true}
+   :where        [:= :namespace nil]
+   ;; depends on the current user, used for rendering and ranking
+   ;; TODO not sure this is what it'll look like
+   :bookmark     [:model/CollectionBookmark [:and
+                                             [:= :bookmark.collection_id :this.id]
+                                             ;; a magical alias, or perhaps this clause can be implicit
+                                             [:= :bookmark.user_id :current_user/id]]]})

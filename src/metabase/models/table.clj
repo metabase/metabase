@@ -11,6 +11,7 @@
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.serialization :as serdes]
    [metabase.public-settings.premium-features :refer [defenterprise]]
+   [metabase.search :as search]
    [metabase.util :as u]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -296,3 +297,28 @@
 (defmethod audit-log/model-details Table
   [table _event-type]
   (select-keys table [:id :name :db_id]))
+
+;;;; ------------------------------------------------- Search ----------------------------------------------------------
+
+(search/define-spec "table"
+  {:model        :model/Table
+   :attrs        {:collection-id false
+                  :creator-id    false
+                  :database-id   :db_id
+                  :table-id      :id
+                  ;; legacy search uses :active for this, but then has a rule to only ever show active tables
+                  ;; so we moved that to the where clause
+                  :archived      false
+                  :created-at    true
+                  :updated-at    true}
+   :search-terms [:name :description :display_name]
+   :render-terms {:initial-sync-status true
+                  :table-description   :description
+                  :table-name          :name
+                  :table-schema        :schema
+                  :database-name       :db.name}
+   :where        [:and
+                  :active
+                  [:= :visibility_type nil]
+                  [:not= :db_id [:inline audit/audit-db-id]]]
+   :joins        {:db [:model/Database [:= :db.id :this.db_id]]}})
