@@ -1,5 +1,6 @@
 (ns metabase.search.postgres.index-test
   (:require
+   [cheshire.core :as json]
    [clojure.test :refer [deftest is testing]]
    [metabase.db :as mdb]
    [metabase.search.postgres.core :as search.postgres]
@@ -32,11 +33,13 @@
   [& body]
   `(when (= :postgres (mdb/db-type))
      (mt/dataset ~(symbol "test-data")
-       (mt/with-temp [:model/Card {} {:name "Customer Satisfaction" :collection_id 1}
-                      :model/Card {} {:name "The Latest Revenue Projections" :collection_id 1}
-                      :model/Card {} {:name "Projected Revenue" :collection_id 1}
-                      :model/Card {} {:name "Employee Satisfaction" :collection_id 1}
-                      :model/Card {} {:name "Projected Satisfaction" :collection_id 1}]
+       (mt/with-temp [:model/Card     {}           {:name "Customer Satisfaction" :collection_id 1}
+                      :model/Card     {}           {:name "The Latest Revenue Projections" :collection_id 1}
+                      :model/Card     {}           {:name "Projected Revenue" :collection_id 1}
+                      :model/Card     {}           {:name "Employee Satisfaction" :collection_id 1}
+                      :model/Card     {}           {:name "Projected Satisfaction" :collection_id 1}
+                      :model/Database {db-id# :id} {:name "Indexed Database"}
+                      :model/Table    {}           {:name "Indexed Table", :db_id db-id#}]
          (search.index/reset-index!)
          (search.ingestion/populate-index!)
          ~@body))))
@@ -47,6 +50,44 @@
           rows-before (count-rows)]
       (search.ingestion/populate-index!)
       (is (= rows-before (count-rows))))))
+
+(deftest incremental-update-test
+  (with-index
+    (testing "The index is updated when models change"
+     ;; The second entry is "Revenue Project(ions)"
+      (is (= 2 (count (search.index/search "Projected Revenue"))))
+      (is (= 0 (count (search.index/search "Protected Avenue"))))
+
+      (t2/update! :model/Card {:name "Projected Revenue"} {:name "Protected Avenue"})
+     ;; TODO wire up an actual hook
+      (search.ingestion/update-index! (t2/select-one :model/Card :name "Protected Avenue"))
+
+      (is (= 1 (count (search.index/search "Projected Revenue"))))
+      (is (= 1 (count (search.index/search "Protected Avenue"))))
+
+     ;; TODO wire up the actual hook, and actually delete it
+      (search.ingestion/delete-model! (t2/select-one :model/Card :name "Protected Avenue"))
+
+      (is (= 1 (count (search.index/search "Projected Revenue"))))
+      (is (= 0 (count (search.index/search "Protected Avenue")))))))
+
+(deftest related-update-test
+  (with-index
+    (testing "The index is updated when model dependencies change"
+      (let [index-table    @#'search.index/active-table
+            table-id       (t2/select-one-pk :model/Table :name "Indexed Table")
+            legacy-input   #(-> (t2/select-one [index-table :legacy_input] :model "table" :model_id table-id)
+                                :legacy_input
+                                (json/parse-string true))
+            db-id          (t2/select-one-fn :db_id :model/Table table-id)
+            db-name-fn     (comp :database_name legacy-input)
+            alternate-name (str (random-uuid))]
+
+        (t2/update! :model/Database db-id {:name alternate-name})
+        ;; TODO wire up an actual hook
+        (search.ingestion/update-index! (t2/select-one :model/Database :id db-id))
+
+        (is (= alternate-name (db-name-fn)))))))
 
 (deftest consistent-subset-test
   (with-index

@@ -233,7 +233,6 @@
 (defmacro define-spec
   "Define a spec for a search model."
   [search-model spec]
-  ;; TODO validate spec shape, consistency, and completeness
   `(let [spec# (-> ~spec
                    (assoc :name ~search-model)
                    (update :attrs #(merge ~default-attrs %)))]
