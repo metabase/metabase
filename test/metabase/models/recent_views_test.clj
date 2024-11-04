@@ -99,6 +99,7 @@
              :name "name",
              :parent_collection {:id coll-id, :name "my coll", :authority_level nil}
              :id dash-id,
+             :moderated_status nil
              :timestamp String
              :model :dashboard}]
            (mt/with-test-user :rasta
@@ -242,6 +243,7 @@
                    :name "my dash",
                    :description "this is my dash",
                    :model :dashboard,
+                   :moderated_status nil
                    :can_write true,
                    :parent_collection {:id "ID", :name "parent", :authority_level nil}}
                   {:description nil,
