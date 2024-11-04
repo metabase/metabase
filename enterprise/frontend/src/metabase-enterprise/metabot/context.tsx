@@ -1,6 +1,6 @@
 import dayjs from "dayjs";
 import type React from "react";
-import { createContext, useCallback, useState } from "react";
+import { createContext, useCallback, useRef } from "react";
 
 import { useStore } from "metabase/lib/redux";
 import type {
@@ -22,7 +22,7 @@ export const MetabotProvider = ({
 }: {
   children: React.ReactNode;
 }) => {
-  const [providerFns, setProviderFns] = useState<ChatContextProviderFn[]>([]);
+  const providerFnsRef = useRef<Set<ChatContextProviderFn>>(new Set());
   const store = useStore();
 
   const getChatContext = useCallback(() => {
@@ -32,7 +32,7 @@ export const MetabotProvider = ({
       current_time_with_timezone: dayjs.tz(dayjs()).format(),
     };
 
-    return providerFns.reduce((chatContext, providerFn) => {
+    return [...providerFnsRef.current].reduce((chatContext, providerFn) => {
       try {
         const partialContext = providerFn(state) || {};
         return Object.assign(chatContext, partialContext);
@@ -41,12 +41,12 @@ export const MetabotProvider = ({
         return chatContext;
       }
     }, baseContext);
-  }, [providerFns, store]);
+  }, [store]);
 
   const registerChatContextProvider = useCallback(
     (providerFn: ChatContextProviderFn) => {
-      setProviderFns(providerFns => [...providerFns, providerFn]);
-      return () => setProviderFns(fns => fns.filter(fn => fn === providerFn));
+      providerFnsRef.current.add(providerFn);
+      return () => providerFnsRef.current.delete(providerFn);
     },
     [],
   );
