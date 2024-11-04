@@ -2,6 +2,8 @@
 title: Databricks
 ---
 
+# Databricks
+
 To add a database connection, click on the **gear** icon in the top right, and navigate to **Admin settings** > **Databases** > **Add a database**. Then select **Databricks**.
 
 You can edit these settings at any time. Just remember to save your changes.
@@ -28,7 +30,9 @@ See [Personal Access Token (PAT)](https://docs.databricks.com/en/dev-tools/auth/
 
 ## Catalog
 
-For now, you can only select one catalog. Metabase doesn't support multi-catalog connections.
+For now, you can only select one catalog. Metabase doesn't support multi-catalog connections. If you want to use more than one catalog in Metabase, you can set up multiple connections, each selecting a different catalog.
+
+You can't sync Databricks's legacy catalogs, however, including the `samples` or `hive_metastore` catalogs.
 
 ## Schemas
 
@@ -58,7 +62,3 @@ Note that only the `*` wildcard is supported; you can't use other special charac
 You can append options to the connection string that Metabase uses to connect to your database. E.g., `IgnoreTransactions=0`.
 
 See [Compute settings for the Databricks JDBC Driver](https://docs.databricks.com/en/integrations/jdbc/compute.html).
-
-## Limitations
-
-Currently, you can't sync Databricks's `samples` catalog.

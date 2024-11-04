@@ -55,7 +55,7 @@ const isCompatible = (expectedType, inferredType) => {
   }
   if (
     expectedType === "expression" &&
-    ["datetime", "number", "string"].includes(inferredType)
+    ["datetime", "number", "string", "boolean"].includes(inferredType)
   ) {
     return true;
   }
