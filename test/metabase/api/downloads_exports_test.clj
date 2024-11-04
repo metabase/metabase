@@ -1177,3 +1177,43 @@
                     :dashcard-download        expected-header
                     :public-dashcard-download expected-header}
                    (update-vals formatted-results first)))))))))
+
+(deftest pivot-non-numeric-values-in-aggregations
+  (testing "A pivot table with an aggegation that results in non-numeric values (eg. Dates) will still worl (#49353)."
+    (mt/dataset test-data
+      (mt/with-temp [:model/Card card {:display                :pivot
+                                       :dataset_query          {:database (mt/id)
+                                                                :type     :query
+                                                                :query
+                                                                {:source-table (mt/id :products)
+                                                                 :aggregation  [[:count]
+                                                                                [:min
+                                                                                 [:field (mt/id :products :created_at)
+                                                                                 {:base-type :type/DateTime :temporal-unit :year}]]]
+                                                                 :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]
+                                                                                [:field (mt/id :products :created_at)
+                                                                                 {:base-type :type/DateTime :temporal-unit :year}]]}}
+                                       :visualization_settings {:pivot_table.column_split
+                                                                {:rows    [[:field (mt/id :products :created_at) {:base-type :type/DateTime :temporal-unit :year}]
+                                                                           [:field (mt/id :products :category) {:base-type :type/Text}]]
+                                                                 :columns []
+                                                                 :values  [[:aggregation 0] [:aggregation 1]]}
+                                                                :column_settings
+                                                                {"[\"name\",\"count\"]" {:column_title "Count Renamed"}}}}]
+        (let [expected-header   ["Created At" "Category" "Count" "Min of Created At: Year"]
+              formatted-results (all-downloads card {:export-format :csv :format-rows false :pivot true})]
+          (is (= {:unsaved-card-download    expected-header
+                  :card-download            expected-header
+                  :public-question-download expected-header
+                  :dashcard-download        expected-header
+                  :public-dashcard-download expected-header}
+                 (update-vals formatted-results first))))
+        (testing "The column title changes are used when format-rows is true"
+          (let [expected-header   ["Created At" "Category" "Count Renamed" "Min of Created At: Year"]
+                formatted-results (all-downloads card {:export-format :csv :format-rows true :pivot true})]
+            (is (= {:unsaved-card-download    expected-header
+                    :card-download            expected-header
+                    :public-question-download expected-header
+                    :dashcard-download        expected-header
+                    :public-dashcard-download expected-header}
+                   (update-vals formatted-results first)))))))))
