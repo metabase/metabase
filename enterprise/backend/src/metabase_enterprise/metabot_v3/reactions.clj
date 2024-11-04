@@ -113,11 +113,21 @@
    [:type [:= :metabot.reaction/goto-question]]
    [:question_id integer?]])
 
-(defreaction :metabot.reaction/confirmed-api-call
+(defreaction :metabot.reaction/confirmation
   [:map
-   [:type [:= :metabot.reaction/confirmed-api-call]]
+   [:type [:= :metabot.reaction/confirmation]]
    [:description :string]
+   [:options [:map-of :keyword [:vector [:ref ::reaction]]]]])
+
+(defreaction :metabot.reaction/api-call
+  [:map
+   [:type [:= :metabot.reaction/api-call]]
    [:api-call [:map
-               [:endpoint :string]
-               [:method [:enum "POST" "GET" "PUT"]]
-               [:body :any]]]])
+               [:method :string]
+               [:url :string]
+               [:body [:map-of :any :any]]]]])
+
+(defreaction :metabot.reaction/writeback
+  [:map
+   [:type [:= :metabot.reaction/writeback]]
+   [:message :string]])
