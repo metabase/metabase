@@ -440,6 +440,7 @@
                                                   ::add/position      0}]
                             outer-price (-> price
                                             (assoc-in [2 ::add/source-table] ::add/source)
+                                            (assoc-in [2 :qp/ignore-coercion] true)
                                             (update-in [2 ::add/source-alias] prefix-alias)
                                             (update-in [2 ::add/desired-alias] prefix-alias))
                             count-opts {:name "COOL.strange count"
@@ -545,7 +546,8 @@
                                       ::add/position      0
                                       ::add/source-alias  "Products_Renamed__ID"
                                       ::add/source-table  ::add/source
-                                      :join-alias         "Products_Renamed"}]
+                                      :join-alias         "Products_Renamed"
+                                      :qp/ignore-coercion true}]
                                     [:field
                                      "CC"
                                      {::add/desired-alias "CC"

@@ -191,15 +191,17 @@
                               :order-by [[:asc $name]]
                               :limit    3}))]
       (is (query= (mt/mbql-query venues
-                    {:fields   [[:field (mt/id :categories :id) {:join-alias "cat"}]
-                                [:field (mt/id :categories :name) {:join-alias "cat"}]]
+                    {:fields   [[:field (mt/id :categories :id) {:join-alias "cat", :qp/ignore-coercion true}]
+                                [:field (mt/id :categories :name) {:join-alias "cat", :qp/ignore-coercion true}]]
                      :joins    [{:alias           "cat"
                                  :source-query    {:source-table $$categories}
                                  :source-metadata source-metadata
                                  :strategy        :left-join
                                  :condition       [:= $category_id [:field "ID" {:base-type :type/BigInteger, :join-alias "cat"}]]
-                                 :fields          [&cat.categories.id
-                                                   &cat.categories.name]}]
+                                 :fields          [[:field (mt/id :categories :id) {:join-alias "cat"
+                                                                                    :qp/ignore-coercion true}]
+                                                   [:field (mt/id :categories :name) {:join-alias "cat"
+                                                                                      :qp/ignore-coercion true}]]}]
                      :order-by [[:asc $name]]
                      :limit    3})
                   resolved)))))

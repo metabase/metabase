@@ -64,8 +64,7 @@
      (for [{field-name               :name
             base-type                :base_type
             field-id                 :id
-            [ref-type :as field-ref] :field_ref
-            coercion-strategy        :coercion_strategy} source-metadata]
+            [ref-type :as field-ref] :field_ref} source-metadata]
        ;; return field-ref directly if it's a `:field` clause already. It might include important info such as
        ;; `:join-alias` or `:source-field`. Remove binning/temporal bucketing info. The Field should already be getting
        ;; bucketed in the source query; don't need to apply bucketing again in the parent query. Mark the field as
@@ -74,15 +73,15 @@
          (or (and not-multiply-bracketed?
                   (some-> (lib.util.match/match-one field-ref :field)
                           (mbql.u/update-field-options dissoc :binning :temporal-unit)
-                          (cond-> coercion-strategy (mbql.u/assoc-field-options :qp/ignore-coercion true))))
+                          (mbql.u/assoc-field-options :qp/ignore-coercion true)))
              ;; otherwise construct a field reference that can be used to refer to this Field.
              ;; Force string id field if expression contains just field. See issue #28451.
              (if (and (not= ref-type :expression)
                       not-multiply-bracketed?
                       field-id)
                ;; If we have a Field ID, return a `:field` (id) clause
-               [:field field-id (cond-> nil coercion-strategy (assoc :qp/ignore-coercion true))]
-               ;; otherwise return a `:field` (name) clause, e.g. for a Field that's the result of an aggregation or
+               [:field field-id {:qp/ignore-coercion true}]
+               ;; OTHERWISE return a `:field` (name) clause, e.g. for a Field that's the result of an aggregation or
                ;; expression. We don't need to mark as ignore-coercion here because these won't grab the field metadata
                [:field field-name {:base-type base-type}])))))))
 

@@ -83,7 +83,7 @@
     (for [{field-name :name, base-type :base_type, field-id :id} source-metadata]
       (if (and field-id (not (contains? duplicate-ids field-id)))
         ;; field-id is a unique reference, use it
-        [:field field-id   {:join-alias alias}]
+        [:field field-id   {:join-alias alias, :qp/ignore-coercion true}]
         [:field field-name {:base-type base-type, :join-alias alias}]))))
 
 (mu/defn- handle-all-fields :- mbql.s/Join

@@ -163,7 +163,7 @@
            (mt/mbql-query checkins
              {:aggregation [[:count]]
               :breakout    [!month.$date]}))]
-      (is (=? {:fields [[:field (mt/id :checkins :date) nil]
+      (is (=? {:fields [[:field (mt/id :checkins :date) {:qp/ignore-coercion true}]
                         [:field "count" {:base-type :type/BigInteger}]]}
               (add-implicit-fields
                (:query (lib.tu.macros/mbql-query checkins
@@ -218,8 +218,10 @@
                                           :display_name "Category → Name"
                                           :base_type    :type/Text
                                           :source_alias "CATEGORIES__via__CATEGORY_ID"}]})]
-          (is (=? (lib.tu.macros/$ids [$venues.id
-                                       (mbql.u/update-field-options field-ref dissoc :temporal-unit)
+          (is (=? (lib.tu.macros/$ids [(mbql.u/update-field-options $venues.id assoc :qp/ignore-coercion true)
+                                       (-> field-ref
+                                           (mbql.u/update-field-options dissoc :temporal-unit)
+                                           (mbql.u/update-field-options assoc :qp/ignore-coercion true))
                                        $venues.category-id->categories.name])
                   (get-in (qp.add-implicit-clauses/add-implicit-clauses query)
                           [:query :fields]))))))))

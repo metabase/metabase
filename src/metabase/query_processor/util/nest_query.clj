@@ -183,6 +183,12 @@
    (lib.util.match/match-one (concat breakouts aggregations)
      :expression)))
 
+(defn- ignore-coercion
+  [query]
+  (lib.util.match/replace query
+    [:field (id :guard int?) opts]
+    [:field id (assoc opts :qp/ignore-coercion true)]))
+
 (defn nest-expressions
   "Pushes the `:source-table`/`:source-query`, `:expressions`, and `:joins` in the top-level of the query into a
   `:source-query` and updates `:expression` references and `:field` clauses with `:join-alias`es accordingly. See
@@ -196,5 +202,6 @@
             source-query                            (assoc source-query :expressions expressions)]
         (-> inner-query
             (dissoc :source-query :expressions)
+            ignore-coercion
             (assoc :source-query source-query)
             add/add-alias-info)))))
