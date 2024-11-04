@@ -9,8 +9,9 @@ import {
   PLUGIN_COLLECTIONS,
   PLUGIN_CONTENT_VERIFICATION,
 } from "metabase/plugins";
-import { Box, Flex, Group, Icon, Stack, Title } from "metabase/ui";
-
+import { Box, Button, Flex, Group, Icon, Stack, Title } from "metabase/ui";
+import { useDispatch } from "metabase/lib/redux";
+import { push } from "react-router-redux";
 import type { ModelResult } from "../types";
 import { isRecentModel } from "../types";
 import { filterModels } from "../utils";
@@ -31,6 +32,7 @@ const { availableModelFilters, useModelFilterSettings, ModelFilterControls } =
   PLUGIN_CONTENT_VERIFICATION;
 
 export const BrowseModels = () => {
+  const dispatch = useDispatch();
   /** Mapping of filter names to true if the filter is active or false if it is inactive */
   const [actualModelFilters, setActualModelFilters] = useModelFilterSettings();
 
@@ -86,7 +88,7 @@ export const BrowseModels = () => {
     <BrowseContainer>
       <BrowseHeader role="heading" data-testid="browse-models-header">
         <BrowseSection>
-          <Flex
+        <Flex
             w="100%"
             h="2.25rem"
             direction="row"
@@ -99,6 +101,22 @@ export const BrowseModels = () => {
                 {t`Models`}
               </Group>
             </Title>
+            <Title order={2} color="text-dark" onClick={() => dispatch(push(`/model/new`))} style={{cursor: "pointer"}}>
+              <Group spacing="sm">
+              <Icon name="database" size={18} color={"var(--mb-color-brand)"} />
+                {t`New Model`}
+              </Group>
+            </Title>
+
+            {/* <Button
+              variant="link"
+              onClick={() => dispatch(push(`/model/new`))}
+              aria-label={t`New Model`}
+              style={{ display: 'flex', alignItems: 'center' }}
+            >
+              <Icon name="database" size={16} style={{ marginRight: '0.5rem', paddingTop: '0.5rem' }} color={"var(--mb-color-brand)"} />
+              {t`New Model`}
+            </Button> */}
             {doVerifiedModelsExist && (
               <ModelFilterControls
                 actualModelFilters={actualModelFilters}

@@ -120,7 +120,7 @@ export const useCommandPaletteBasicActions = ({
       ],
     );
 
-    /*if (hasNativeWrite) {
+    if (hasNativeWrite) {
       actions.push({
         id: "new_model",
         name: t`New model`,
@@ -131,7 +131,7 @@ export const useCommandPaletteBasicActions = ({
           dispatch(push("model/new"));
         },
       });
-    }*/
+    }
 
     if (hasDatabaseWithActionsEnabled && hasNativeWrite && hasModels) {
       actions.push({
@@ -146,7 +146,7 @@ export const useCommandPaletteBasicActions = ({
     }
 
     const browseActions: Action[] = [
-      /*{
+      {
         id: "navigate_models",
         name: t`Browse models`,
         section: "basic",
@@ -154,7 +154,7 @@ export const useCommandPaletteBasicActions = ({
         perform: () => {
           dispatch(push("/browse/models"));
         },
-      },*/
+      },
       {
         id: "navigate_data",
         name: t`Browse Raw data`,

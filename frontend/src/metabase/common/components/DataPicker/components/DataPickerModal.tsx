@@ -2,6 +2,7 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type {
+  CollectionItemModel,
   DatabaseId,
   RecentItem,
   TableId,
@@ -9,17 +10,21 @@ import type {
 import type { EntityTab } from "../../EntityPicker";
 import { EntityPickerModal, defaultOptions } from "../../EntityPicker";
 import { useLogRecentItem } from "../../EntityPicker/hooks/use-log-recent-item";
-import type { QuestionPickerItem } from "../../QuestionPicker";
+import { QuestionPicker, type QuestionPickerItem } from "../../QuestionPicker";
 import type {
   DataPickerModalOptions,
   DataPickerValue,
   NotebookDataPickerValueItem,
 } from "../types";
 import {
+  createShouldShowItem,
+  isModelItem,
   isValidValueItem,
 } from "../utils";
 import { TablePicker } from "./TablePicker";
 import { useListDatabasesQuery } from "metabase/api";
+import { useAvailableData } from "../hooks";
+import { useSetting } from "metabase/common/hooks";
 
 interface Props {
   /**
@@ -32,6 +37,8 @@ interface Props {
   onChange: (value: TableId) => void;
   onClose: () => void;
 }
+
+const MODEL_PICKER_MODELS: CollectionItemModel[] = ["dataset"];
 
 const options: DataPickerModalOptions = {
   ...defaultOptions,
@@ -49,6 +56,7 @@ export const DataPickerModal = ({
   onChange,
   onClose,
 }: Props) => {
+  const hasNestedQueriesEnabled = useSetting("enable-nested-queries");
   const { tryLogRecentItem } = useLogRecentItem();
 
   const { data: databases } = useListDatabasesQuery({ saved: false });
@@ -106,6 +114,10 @@ export const DataPickerModal = ({
     return null;
   }, [databases, databaseId]);
 
+  const modelsShouldShowItem = useMemo(() => {
+    return createShouldShowItem(["dataset"], databaseId);
+  }, [databaseId]);
+
   const showRawDataTab = singleDatabase
     ? !singleDatabase.is_cube
     : true;
@@ -114,7 +126,26 @@ export const DataPickerModal = ({
     ? singleDatabase.is_cube
     : true;
 
+    const { hasModels } = useAvailableData({
+      databaseId,
+    });
   const tabs: EntityTab<NotebookDataPickerValueItem["model"]>[] = [
+    hasModels && hasNestedQueriesEnabled
+      ? {
+          displayName: t`Models`,
+          model: "dataset" as const,
+          icon: "model",
+          element: (
+            <QuestionPicker
+              initialValue={isModelItem(value) ? value : undefined}
+              models={MODEL_PICKER_MODELS}
+              options={options}
+              shouldShowItem={modelsShouldShowItem}
+              onItemSelect={handleCardChange}
+            />
+          ),
+        }
+      : undefined,
     showRawDataTab && {
       displayName: t`Raw Data`,
       model: "table" as const,
