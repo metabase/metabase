@@ -274,7 +274,6 @@
   [_ _]
   [:name])
 
-
 (def ^:private default-columns
   "Columns returned for all models."
   [:id :name :description :archived :created_at :updated_at])
@@ -298,7 +297,6 @@
    [:table.schema      :table_schema]
    [:table.name        :table_name]
    [:table.description :table_description]])
-
 
 (defmulti columns-for-model
   "The columns that will be returned by the query for `model`, excluding `:model`, which is added automatically.
@@ -410,7 +408,6 @@
   (-> {:select (select-clause-for-model model)
        :from   (from-clause-for-model model)}
       (search.filter/build-filters model context)))
-
 
 (mu/defn- shared-card-impl
   [model :- :metabase.models.card/type
