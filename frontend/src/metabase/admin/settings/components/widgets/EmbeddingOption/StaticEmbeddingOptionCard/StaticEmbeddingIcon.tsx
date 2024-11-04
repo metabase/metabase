@@ -16,16 +16,16 @@ export const StaticEmbeddingIcon = ({ disabled }: EmbeddingOptionIconProps) => {
         width="37.5"
         height="29.5"
         rx="2.75"
+        stroke="var(--mb-color-embedding-option-secondary)"
         strokeWidth="2.5"
-        className={EmbeddingOptionS.SecondaryStroke}
       />
       <path
         d="M14 12a2 2 0 0 1 2-2h17a2 2 0 0 1 2 2v5H14v-5ZM14 19h9v9h-7a2 2 0 0 1-2-2v-7ZM25 19h10v7a2 2 0 0 1-2 2h-8v-9Z"
-        className={EmbeddingOptionS.Primary}
+        fill="var(--mb-color-embedding-option-primary)"
       />
       <path
         d="M5 10h6v18H7a2 2 0 0 1-2-2V10ZM5 6a2 2 0 0 1 2-2h26a2 2 0 0 1 2 2v2H5V6Z"
-        className={EmbeddingOptionS.SecondaryFill}
+        fill="var(--mb-color-embedding-option-secondary)"
       />
     </svg>
   );

@@ -1,25 +1,11 @@
-.Primary {
-  fill: var(--mb-color-icon-primary);
-}
-
-.SecondaryStroke {
-  stroke: var(--mb-color-icon-secondary);
-}
-
-.SecondaryFill {
-  fill: var(--mb-color-icon-secondary);
+:root {
+  --mb-color-embedding-option-primary: var(--mb-color-icon-primary);
+  --mb-color-embedding-option-secondary: var(--mb-color-icon-secondary);
 }
 
 .Disabled {
-  & > .Primary {
-    fill: var(--mb-color-icon-disabled);
-  }
-
-  & > .SecondaryStroke {
-    stroke: var(--mb-color-background-disabled);
-  }
-
-  & > .SecondaryFill {
-    fill: var(--mb-color-background-disabled);
-  }
+  --mb-color-embedding-option-primary: var(--mb-color-icon-primary-disabled);
+  --mb-color-embedding-option-secondary: var(
+    --mb-color-icon-secondary-disabled
+  );
 }
