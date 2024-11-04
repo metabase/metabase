@@ -70,13 +70,14 @@
   [:map-of :keyword [:tuple :keyword vector?]])
 
 (def ^:private Specification
-  [:map
+  [:map {:closed true}
    [:name SearchModel]
    [:model :keyword]
    [:attrs Attrs]
    [:search-terms [:sequential {:min 1} :keyword]]
    [:render-terms [:map-of NonAttrKey AttrValue]]
    [:where {:optional true} vector?]
+   [:bookmark {:optional true} vector?]
    [:joins {:optional true} JoinMap]])
 
 (defn- qualify-column* [table column]
@@ -235,7 +236,7 @@
   ;; TODO validate spec shape, consistency, and completeness
   `(let [spec# (-> ~spec
                    (assoc :name ~search-model)
-                   (update :attrs #(merge default-attrs %)))]
+                   (update :attrs #(merge ~default-attrs %)))]
      (validate-spec! spec#)
      (defmethod spec ~search-model [~'_] spec#)))
 
