@@ -939,7 +939,7 @@
                         [[:- :c.ordinal_position 1] :database-position]
                         [nil :table-schema]
                         [:c.table_name :table-name]
-                        (if (str/includes? (:additional-options details) "tinyInt1isBit=false")
+                        (if (some-> details :additional-options (str/includes? "tinyInt1isBit=false"))
                           [[:upper :c.data_type] :database-type]
                           [[:if [:= :column_type [:inline "tinyint(1)"]] [:inline "BIT"] [:upper :c.data_type]] :database-type])
                         [[:= :c.extra [:inline "auto_increment"]] :database-is-auto-increment]
