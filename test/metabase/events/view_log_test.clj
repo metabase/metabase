@@ -61,7 +61,12 @@
              (latest-view (mt/user->id :crowberto) (u/id coll))))))))
 
 (deftest update-view-dashboard-timestamp-test
-  (let [now           (t/offset-date-time)
+  ;; the DB might save `last_used_at` with a different level of precision than the JVM does, on some machines
+  ;; `offset-date-time` returns nanosecond precision (9 decimal places) but `last_viewed_at` is coming back with
+  ;; microsecond precision (6 decimal places). We don't care about such a small difference, just strip it off of the
+  ;; times we're comparing.
+  (let [now           (-> (t/offset-date-time)
+                          (.withNano 0))
         one-hour-ago  (t/minus now (t/hours 1))
         two-hours-ago (t/minus now (t/hours 2))]
     (testing "update with multiple dashboards of the same ids will set timestamp to the latest"

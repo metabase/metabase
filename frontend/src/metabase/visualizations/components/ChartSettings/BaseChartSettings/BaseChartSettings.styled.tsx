@@ -1,18 +1,8 @@
-import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
 import Radio from "metabase/core/components/Radio";
 
-interface SectionContainerProps {
-  isDashboard: boolean;
-}
-
-export const SectionContainer = styled.div<SectionContainerProps>`
-  ${({ isDashboard }) =>
-    isDashboard &&
-    css`
-      margin-top: 1rem;
-    `}
+export const SectionContainer = styled.div`
   width: 100%;
 
   ${Radio.RadioGroupVariants.join(", ")} {
