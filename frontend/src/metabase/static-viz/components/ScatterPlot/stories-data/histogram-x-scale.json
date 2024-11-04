@@ -1406,16 +1406,16 @@
       ],
       "viz-settings": {
         "graph.y_axis.title_text": "Special Defense",
-        "metabase.shared.models.visualization-settings/column-settings": {
-          "{:metabase.shared.models.visualization-settings/field-id 1478}": {},
-          "{:metabase.shared.models.visualization-settings/field-id 1491}": {},
-          "{:metabase.shared.models.visualization-settings/field-id 1504}": {},
-          "{:metabase.shared.models.visualization-settings/field-id 1497}": {}
+        "metabase.models.visualization-settings/column-settings": {
+          "{:metabase.models.visualization-settings/field-id 1478}": {},
+          "{:metabase.models.visualization-settings/field-id 1491}": {},
+          "{:metabase.models.visualization-settings/field-id 1504}": {},
+          "{:metabase.models.visualization-settings/field-id 1497}": {}
         },
         "graph.series_order_dimension": null,
         "graph.metrics": ["sp_defense"],
         "graph.series_order": null,
-        "metabase.shared.models.visualization-settings/global-column-settings": {},
+        "metabase.models.visualization-settings/global-column-settings": {},
         "series_settings": { "sp_defense": { "color": "#88BF4D" } },
         "graph.x_axis.scale": "histogram",
         "graph.dimensions": ["defense"]

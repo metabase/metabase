@@ -21,8 +21,8 @@
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.shared.util.i18n :as i18n]
    [metabase.util :as u]
+   [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
@@ -88,6 +88,7 @@
    card-type :- ::lib.schema.metadata/card.type]
   (and (binding [lib.schema.expression/*suppress-expression-type-check?* true]
          (mr/validate ::lib.schema/query query))
+       (:database query)
        (boolean (can-run-method query card-type))))
 
 (defmulti can-save-method
@@ -421,3 +422,12 @@
   [a-query stage-number card-id f & args]
   (let [{q :query, n :stage-number} (wrap-native-query-with-mbql a-query stage-number card-id)]
     (apply f q n args)))
+
+(defn serializable
+  "Given a query, ensure it doesn't have any keys or structures that aren't safe for serialization.
+
+  For example, any Atoms or Delays or should be removed."
+  [a-query]
+  (-> a-query
+      (dissoc a-query :lib/metadata)
+      lib.cache/discard-query-cache))

@@ -12,14 +12,6 @@ import {
   ViewHeaderIconButtonContainer,
   ViewRunButtonWithTooltip,
 } from "metabase/query_builder/components/view/ViewHeader/ViewTitleHeader.styled";
-import {
-  ExploreResultsLink,
-  FilterHeaderButton,
-  QuestionActions,
-  QuestionNotebookButton,
-  QuestionSummarizeWidget,
-  ToggleNativeQueryPreview,
-} from "metabase/query_builder/components/view/ViewHeader/components";
 import { canExploreResults } from "metabase/query_builder/components/view/ViewHeader/utils";
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
@@ -29,6 +21,13 @@ import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { Dataset } from "metabase-types/api";
 import type { DatasetEditorTab, QueryBuilderMode } from "metabase-types/store";
+
+import { ExploreResultsLink } from "../ExploreResultsLink";
+import { FilterHeaderButton } from "../FilterHeaderButton";
+import { QuestionActions } from "../QuestionActions";
+import { QuestionNotebookButton } from "../QuestionNotebookButton";
+import { QuestionSummarizeWidget } from "../QuestionSummarizeWidget";
+import { ToggleNativeQueryPreview } from "../ToggleNativeQueryPreview";
 
 interface ViewTitleHeaderRightSideProps {
   question: Question;

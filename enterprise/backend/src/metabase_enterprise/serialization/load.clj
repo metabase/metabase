@@ -31,7 +31,7 @@
    [metabase.models.setting :as setting]
    [metabase.models.table :refer [Table]]
    [metabase.models.user :as user :refer [User]]
-   [metabase.shared.models.visualization-settings :as mb.viz]
+   [metabase.models.visualization-settings :as mb.viz]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]

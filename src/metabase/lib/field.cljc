@@ -19,18 +19,17 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.lib.schema.temporal-bucketing
-    :as lib.schema.temporal-bucketing]
+   [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
-   [metabase.shared.util.i18n :as i18n]
-   [metabase.shared.util.time :as shared.ut]
    [metabase.util :as u]
    [metabase.util.humanization :as u.humanization]
+   [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.time :as u.time]))
 
 (mu/defn resolve-column-name-in-metadata :- [:maybe ::lib.schema.metadata/column]
   "Find the column with `column-name` in a sequence of `column-metadatas`."
@@ -163,12 +162,12 @@
    metadata
    [_tag {source-uuid :lib/uuid :keys [base-type binning effective-type join-alias source-field temporal-unit], :as opts} :as field-ref]]
   (let [metadata (merge
-                  {:lib/type        :metadata/column
-                   :lib/source-uuid source-uuid}
+                  {:lib/type        :metadata/column}
                   metadata
                   {:display-name (or (:display-name opts)
                                      (lib.metadata.calculation/display-name query stage-number field-ref))})]
     (cond-> metadata
+      source-uuid    (assoc :lib/source-uuid source-uuid)
       base-type      (assoc :base-type base-type, :effective-type base-type)
       effective-type (assoc :effective-type effective-type)
       temporal-unit  (assoc ::temporal-unit temporal-unit)
@@ -344,8 +343,8 @@
 (defn- fingerprint-based-default-unit [fingerprint]
   (u/ignore-exceptions
     (when-let [{:keys [earliest latest]} (-> fingerprint :type :type/DateTime)]
-      (let [days (shared.ut/day-diff (shared.ut/coerce-to-timestamp earliest)
-                                     (shared.ut/coerce-to-timestamp latest))]
+      (let [days (u.time/day-diff (u.time/coerce-to-timestamp earliest)
+                                  (u.time/coerce-to-timestamp latest))]
         (when-not (NaN? days)
           (condp > days
             1 :minute

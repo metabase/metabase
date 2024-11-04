@@ -15,8 +15,8 @@
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
-   [metabase.shared.util.i18n :as i18n]
    [metabase.util :as u]
+   [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
@@ -399,7 +399,8 @@
   [query stage-number table]
   (merge (default-display-info query stage-number table)
          {:is-source-table (= (lib.util/source-table-id query) (:id table))
-          :schema (:schema table)}))
+          :schema (:schema table)
+          :visibility-type (:visibility-type table)}))
 
 (def ColumnMetadataWithSource
   "Schema for the column metadata that should be returned by [[metadata]]."

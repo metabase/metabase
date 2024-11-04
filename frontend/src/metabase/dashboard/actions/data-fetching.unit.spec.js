@@ -16,7 +16,7 @@ import { createMockDashboardState } from "metabase-types/store/mocks";
 
 import { dashboardReducers } from "../reducers";
 
-import { fetchDashboard } from "./data-fetching-typed";
+import { fetchDashboard } from "./data-fetching";
 
 function setup({ dashboards = [] }) {
   const database = createSampleDatabase();

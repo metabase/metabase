@@ -73,6 +73,7 @@ describe("FilterPopover", () => {
         expect(screen.getByTestId("date-picker")).toBeInTheDocument();
       });
     });
+
     describe("filter operator selection", () => {
       it("should have an operator selector", () => {
         setup({ filter: NUMERIC_FILTER });
@@ -80,6 +81,7 @@ describe("FilterPopover", () => {
         expect(screen.getByText("1234")).toBeInTheDocument();
       });
     });
+
     describe("filter options", () => {
       it("should not show a control to the user if the filter has no options", () => {
         setup({ filter: RELATIVE_DAY_FILTER });
@@ -125,6 +127,7 @@ describe("FilterPopover", () => {
       });
     });
   });
+
   describe("filter rendering", () => {
     describe("no-value filters", () => {
       it.each(["is-null", "not-null", "is-empty", "not-empty"])(

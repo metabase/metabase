@@ -474,6 +474,7 @@ describe.skip(
       });
     }
     const nativeQuery = "select (random() * random() * random()), pg_sleep(2)";
+
     beforeEach(() => {
       cy.intercept("POST", "/api/dataset").as("dataset");
       cy.intercept("POST", "/api/card/*/query").as("cardQuery");
@@ -708,6 +709,7 @@ describe("scenarios > admin > license and billing", () => {
       status: "something",
     });
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();

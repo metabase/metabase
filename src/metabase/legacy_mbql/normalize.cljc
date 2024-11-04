@@ -36,8 +36,8 @@
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.shared.util.i18n :as i18n]
    [metabase.util :as u]
+   [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 

@@ -68,7 +68,7 @@ const SummarizeInner = ({
   });
 
   return (
-    <Stack className={CS.overflowHidden} h="inherit" w="100%">
+    <Stack className={CS.overflowHidden} h="100%" w="100%">
       <Stack className={CS.overflowYScroll}>
         <SummarizeAggregationItemList
           query={query}

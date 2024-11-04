@@ -3,17 +3,18 @@
    [malli.core :as mc]
    [malli.transform :as mtx]
    [metabase.events :as events]
-   [metabase.events.schema :as events.schema]
    [metabase.models.notification :as models.notification]
+   [metabase.models.task-history :as task-history]
    [metabase.notification.core :as notification]
-   [metabase.public-settings :as public-settings]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
 (derive :metabase/event ::notification)
 
-(def ^:private supported-topics #{:event/user-invited})
+(def ^:private supported-topics #{:event/user-invited
+                                  :event/alert-create
+                                  :event/slack-token-invalid})
 
 (def ^:private hydrate-transformer
   (mtx/transformer
@@ -35,7 +36,7 @@
 
 (defn- hydrate!
   "Given a schema and value, hydrate the keys that are marked as to-hydrate.
-  Hydrated keys have the :hydrate properties that can be added by [[events.schema/with-hydration]].
+  Hydrated keys have the :hydrate properties that can be added by [[metabase.events.schema/with-hydration]].
 
     (hydrate! [:map
                 [:user_id {:hydrate {:key :user
@@ -46,29 +47,37 @@
   [schema value]
   (mc/decode schema value hydrate-transformer))
 
+(defn maybe-hydrate-event-info
+  "Hydrate event-info if the topic has a schema."
+  [topic event-info]
+  (cond->> event-info
+    (some? (events/topic->schema topic))
+    (hydrate! (events/topic->schema topic))))
+
 (defn- notifications-for-topic
   "Returns notifications for a given topic if it is supported and has notifications."
   [topic]
   (when (supported-topics topic)
     (models.notification/notifications-for-event topic)))
 
-(defn- enriched-event-info
-  [topic event-info]
-  ;; DO NOT delete or rename these fields, they are used in the notification templates
-  {:settings    {:application-name (public-settings/application-name)
-                 :site-name        (public-settings/site-name)}
-   :event-info  (cond->> event-info
-                  (some? (events.schema/topic->schema topic))
-                  (hydrate! (events.schema/topic->schema topic)))
-   :event-topic topic})
+(def ^:dynamic *skip-sending-notification?*
+  "Used as a hack for when we need to skip sending notifications for certain events.
+
+  It's an escape hatch until we implement conditional notifications."
+  false)
 
 (defn- maybe-send-notification-for-topic!
   [topic event-info]
-  (when-let [notifications (notifications-for-topic topic)]
-    (let [enriched-event-info (enriched-event-info topic event-info)]
-      (log/infof "Found %d notifications for event: %s" (count notifications) topic)
-      (doseq [notification notifications]
-        (notification/*send-notification!* (assoc notification :payload enriched-event-info))))))
+  (when-not *skip-sending-notification?*
+    (when-let [notifications (notifications-for-topic topic)]
+      (task-history/with-task-history {:task         "notification-trigger"
+                                       :task_details {:trigger_type     :notification-subscription/system-event
+                                                      :event_name       topic
+                                                      :notification_ids (map :id notifications)}}
+        (log/infof "Found %d notifications for event: %s" (count notifications) topic)
+        (doseq [notification notifications]
+          (notification/*send-notification!* (assoc notification :payload {:event_info  (maybe-hydrate-event-info topic event-info)
+                                                                           :event_topic topic})))))))
 
 (methodical/defmethod events/publish-event! ::notification
   [topic event-info]

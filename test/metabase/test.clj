@@ -148,7 +148,6 @@
   with-fake-inbox]
 
  [client
-  authenticate
   build-url
   client
   real-client
@@ -276,7 +275,8 @@
   with-temporary-setting-values
   with-temporary-raw-setting-values
   with-user-in-groups
-  with-verified-cards!]
+  with-verified-cards!
+  works-after]
 
  [tu.async
   wait-for-result
@@ -294,7 +294,8 @@
 
  [tu.public-setings
   with-premium-features
-  with-additional-premium-features]
+  with-additional-premium-features
+  assert-has-premium-feature-error]
 
  [u.random
   random-name

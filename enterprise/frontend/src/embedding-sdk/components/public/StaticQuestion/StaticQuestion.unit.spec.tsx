@@ -1,3 +1,4 @@
+import { act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
@@ -85,7 +86,7 @@ const setup = ({
 
   setupCardQueryEndpoints(card, TEST_DATASET);
 
-  renderWithProviders(
+  return renderWithProviders(
     <StaticQuestion
       questionId={TEST_QUESTION_ID}
       showVisualizationSelector={showVisualizationSelector}
@@ -173,5 +174,20 @@ describe("StaticQuestion", () => {
       target: TEST_PARAM.target,
       value: 1024,
     });
+  });
+
+  it("should cancel the request when the component unmounts", async () => {
+    const abortSpy = jest.spyOn(AbortController.prototype, "abort");
+
+    const { unmount } = setup();
+    await act(async () => unmount());
+
+    // two requests should've been made initially
+    expect(fetchMock.calls(`path:/api/card/1`).length).toBe(1);
+    expect(fetchMock.calls(`path:/api/card/1/query`).length).toBe(1);
+
+    // consequently, two abort calls should've been made for the two requests
+    expect(abortSpy).toHaveBeenCalledTimes(2);
+    abortSpy.mockRestore();
   });
 });

@@ -23,6 +23,7 @@ describe("Aggregation", () => {
     it("should format basic aggregation", () => {
       expect(aggregationForMBQL(["count"]).displayName()).toEqual("Count");
     });
+
     it("should format custom aggregation", () => {
       expect(
         aggregationForMBQL([
@@ -32,6 +33,7 @@ describe("Aggregation", () => {
         ]).displayName(),
       ).toEqual("Sum(Total) + 42");
     });
+
     it("should format custom aggregation with expression inside aggregation", () => {
       expect(
         aggregationForMBQL([
@@ -40,6 +42,7 @@ describe("Aggregation", () => {
         ]).displayName(),
       ).toEqual("Sum(Total + 42)");
     });
+
     it("should format named aggregation", () => {
       expect(
         aggregationForMBQL([
@@ -49,6 +52,7 @@ describe("Aggregation", () => {
         ]).displayName(),
       ).toEqual("named");
     });
+
     it("should format aggregation with aggregation-options but not display-name", () => {
       expect(
         aggregationForMBQL([
@@ -59,10 +63,12 @@ describe("Aggregation", () => {
       ).toEqual("Sum of Total");
     });
   });
+
   describe("isValid", () => {
     it("should be true for basic aggregation", () => {
       expect(aggregationForMBQL(["count"]).isValid()).toBe(true);
     });
+
     it("should be true for custom aggregation", () => {
       expect(
         aggregationForMBQL([
@@ -72,6 +78,7 @@ describe("Aggregation", () => {
         ]).isValid(),
       ).toBe(true);
     });
+
     it("should be true for custom aggregation with expression inside aggregation", () => {
       expect(
         aggregationForMBQL([
@@ -80,6 +87,7 @@ describe("Aggregation", () => {
         ]).isValid(),
       ).toBe(true);
     });
+
     it("should be true for named aggregation", () => {
       expect(
         aggregationForMBQL([
@@ -89,6 +97,7 @@ describe("Aggregation", () => {
         ]).isValid(),
       ).toBe(true);
     });
+
     it("should be true for aggregation with aggregation-options but not display-name", () => {
       expect(
         aggregationForMBQL([

@@ -4,20 +4,19 @@
   (:require
    #?@(:clj
        [[metabase.legacy-mbql.jvm-util :as mbql.jvm-u]
-        [metabase.models.dispatch :as models.dispatch]
-        [metabase.util.i18n]])
+        [metabase.models.dispatch :as models.dispatch]])
    [clojure.string :as str]
    [metabase.legacy-mbql.predicates :as mbql.preds]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.schema.helpers :as schema.helpers]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.shared.util.i18n :as i18n]
-   [metabase.shared.util.namespaces :as shared.ns]
-   [metabase.shared.util.time :as shared.ut]
    [metabase.util :as u]
+   [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.namespaces :as shared.ns]
+   [metabase.util.time :as u.time]))
 
 (shared.ns/import-fns
  [schema.helpers
@@ -352,11 +351,11 @@
 (defn- temporal-case-expression
   "Creates a `:case` expression with a condition for each value of the given unit."
   [column unit n]
-  (let [user-locale #?(:clj  (metabase.util.i18n/user-locale)
+  (let [user-locale #?(:clj  (i18n/user-locale)
                        :cljs nil)]
     [:case
      (vec (for [raw-value (range 1 (inc n))]
-            [[:= column raw-value] (shared.ut/format-unit raw-value unit user-locale)]))
+            [[:= column raw-value] (u.time/format-unit raw-value unit user-locale)]))
      {:default ""}]))
 
 (defn- desugar-temporal-names

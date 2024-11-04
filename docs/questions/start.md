@@ -63,3 +63,7 @@ Create links or embeds for the good people of the internet.
 ### [Exporting](./sharing/exporting-results.md)
 
 The different ways you can export the results of questions and dashboards.
+
+### [Tooltips](./sharing/tooltips.md)
+
+Customize tooltips on bar, line, and area charts.

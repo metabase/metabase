@@ -33,6 +33,7 @@ describe("command palette utils", () => {
       expect(result).toHaveLength(3);
       expect(result[0]).toBe("Basic");
     });
+
     it("should return an empty list if there are no items", () => {
       const items: PaletteActionImpl[] = [];
       const result = processSection("Basic", items);
@@ -124,11 +125,13 @@ describe("command palette utils", () => {
       const index = 0;
       expect(navigateActionIndex(items, index, 1)).toBe(1);
     });
+
     it("should navigate to the previous index", () => {
       const items = [NORMAL, NORMAL, NORMAL];
       const index = 1;
       expect(navigateActionIndex(items, index, -1)).toBe(0);
     });
+
     it("should navigate not navigate off the list", () => {
       const items = [NORMAL, NORMAL, NORMAL];
       expect(navigateActionIndex(items, 0, -1)).toBe(0);
@@ -136,6 +139,7 @@ describe("command palette utils", () => {
       expect(navigateActionIndex(items, 2, 1)).toBe(2);
       expect(navigateActionIndex(items, 2, 10)).toBe(2);
     });
+
     it("should handle indexes being out of normal bounds", () => {
       const items = [NORMAL, NORMAL, NORMAL];
       expect(navigateActionIndex(items, -3, -1)).toBe(0);
@@ -144,16 +148,19 @@ describe("command palette utils", () => {
       expect(navigateActionIndex(items, 20, 1)).toBe(2);
       expect(navigateActionIndex(items, 20, -1)).toBe(2);
     });
+
     it("should navigate past strings", () => {
       const items = [NORMAL, "foo", NORMAL, NORMAL];
       expect(navigateActionIndex(items, 0, 1)).toBe(2);
       expect(navigateActionIndex(items, 2, -1)).toBe(0);
     });
+
     it("should navigate past disabled items", () => {
       const items = [NORMAL, DISABLED, NORMAL, NORMAL];
       expect(navigateActionIndex(items, 0, 1)).toBe(2);
       expect(navigateActionIndex(items, 2, -1)).toBe(0);
     });
+
     it("should handle disabled items and strings near boundries", () => {
       const short = [DISABLED, NORMAL, NORMAL, NORMAL, "foo"];
       expect(navigateActionIndex(short, 3, 1)).toBe(3);

@@ -48,7 +48,7 @@
    [metabase.models.params.chain-filter-test :as chain-filter-test]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
-   [metabase.models.pulse :as pulse]
+   [metabase.models.pulse :as models.pulse]
    [metabase.models.revision :as revision]
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.query-processor :as qp]
@@ -3664,6 +3664,7 @@
                      (parse-export-format-results
                       (mt/user-real-request :rasta :post 200 url
                                             {:request-options {:as :byte-array}}
+                                            :format_rows true
                                             :parameters (json/generate-string [{:id    "_PRICE_"
                                                                                 :value 4}]))
                       export-format))))))))))
@@ -4364,7 +4365,7 @@
             (testing "Pulse starts as unarchived"
               (is (false? (:archived bad-pulse))))
             (testing "Pulse is now archived"
-              (is (true? (:archived (pulse/update-pulse! {:id bad-pulse-id :archived true})))))))))))
+              (is (true? (:archived (models.pulse/update-pulse! {:id bad-pulse-id :archived true})))))))))))
 
 (deftest handle-broken-subscriptions-due-to-bad-parameters-test
   (testing "When a subscriptions is broken, archive it and notify the dashboard and subscription creator (#30100)"
@@ -4506,7 +4507,8 @@
             (is (= expected
                    (->> (mt/user-http-request
                          :crowberto :post 200
-                         (format "/dashboard/%s/dashcard/%s/card/%s/query/%s?format_rows=%s"                                   dashboard-id dashcard-id card-id (name export-format) apply-formatting?))
+                         (format "/dashboard/%s/dashcard/%s/card/%s/query/%s" dashboard-id dashcard-id card-id (name export-format))
+                         :format_rows apply-formatting?)
                         ((get output-helper export-format)))))))))))
 (deftest can-restore
   (let [can-restore? (fn [dash-id user]
@@ -4862,3 +4864,69 @@
             ;; dashcards and parameters for each dashcard, linked to a single card. Following is the proof
             ;; of things working as described.
             (is (= 1 @call-count))))))))
+
+;; Exception during scheduled (grouper) update of UserParameterValue is thrown. It is not relevant in context
+;; of tested functionality.
+;; TODO: Address the exception!
+(deftest dependent-dashcard-parameters-test
+  (mt/with-temp [:model/Card {card-id :id} {:name "c1"
+                                            :dataset_query (mt/mbql-query
+                                                             orders
+                                                             {:aggregation [[:count]]
+                                                              :breakout
+                                                              [!day.$created_at]})}
+                 :model/Dashboard {dashboard-id :id} {:name "d1"
+                                                      :parameters []}
+                 :model/DashboardCard {dashcard-id :id} {:card_id card-id
+                                                         :dashboard_id dashboard-id
+                                                         :parameter_mappings []}]
+    (t2/update! :model/Dashboard :id dashboard-id {:parameters [{:name "TIME Gr"
+                                                                 :slug "tgr"
+                                                                 :id "30d7efb0"
+                                                                 :type :temporal-unit
+                                                                 :sectionId "temporal-unit"}]})
+    (t2/update! :model/DashboardCard :id dashcard-id {:parameter_mappings [{:parameter_id "30d7efb0"
+                                                                            :type :temporal-unit
+                                                                            :card_id card-id
+                                                                            :target [:dimension
+                                                                                     (mt/$ids orders !day.$created_at)]}]})
+    (testing "Baseline"
+      (is (=? [["2016-04-01T00:00:00Z" 1]
+               ["2016-05-01T00:00:00Z" 19]]
+              (->> (mt/user-http-request
+                    :crowberto :post 202
+                    (format "dashboard/%d/dashcard/%d/card/%d/query" dashboard-id dashcard-id card-id)
+                    {:parameters [{:id "30d7efb0"
+                                   :type "temporal-unit"
+                                   :value "month"
+                                   :target
+                                   [:dimension
+                                    (mt/$ids orders !day.$created_at)]}]})
+                   mt/rows
+                   (take 2)))))
+    (mt/user-http-request
+     :crowberto :put 200
+     (format "card/%d" card-id)
+     {:dataset_query (mt/mbql-query
+                       orders
+                       {:aggregation [[:count]]
+                        :breakout
+                        [!year.$created_at]})})
+    (testing "Mapping is adjusted to new target (#49202)"
+      (is (= (mt/$ids orders !year.$created_at)
+             (t2/select-one-fn #(get-in % [:parameter_mappings 0 :target 1])
+                               :model/DashboardCard :id dashcard-id))))))
+
+(deftest querying-a-dashboard-returns-moderated_status
+  (mt/dataset test-data
+    (mt/with-temp [:model/Dashboard {dashboard-id :id} {:last_viewed_at #t "2000-01-01"}
+                   :model/ModerationReview _ {:moderated_item_id dashboard-id
+                                              :moderated_item_type "dashboard"
+                                              :moderator_id (mt/user->id :crowberto)
+                                              :most_recent true
+                                              :status "verified"}]
+      (is (malli= [:sequential
+                   [:map
+                    [:most_recent [:= true]]
+                    [:moderator_id [:= (mt/user->id :crowberto)]]]]
+                  (:moderation_reviews (mt/user-http-request :crowberto :get 200 (str "dashboard/" dashboard-id))))))))

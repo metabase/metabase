@@ -787,6 +787,7 @@ describe("SaveQuestionModal", () => {
       await userEvent.click(collDropdown());
       await waitFor(() => expect(newCollBtn()).toBeInTheDocument());
     });
+
     it("should open new collection modal and return to dashboard modal when clicking close", async () => {
       await setup(getQuestion());
       await userEvent.click(collDropdown());
@@ -797,6 +798,7 @@ describe("SaveQuestionModal", () => {
       await userEvent.click(cancelBtn());
       await waitFor(() => expect(questionModalTitle()).toBeInTheDocument());
     });
+
     describe("new collection location", () => {
       beforeEach(async () => {
         await setup(getQuestion(), null, {
@@ -806,6 +808,7 @@ describe("SaveQuestionModal", () => {
           },
         });
       });
+
       it("should create collection inside nested folder", async () => {
         await userEvent.click(collDropdown());
         await waitFor(() => expect(newCollBtn()).toBeInTheDocument());
@@ -817,6 +820,7 @@ describe("SaveQuestionModal", () => {
         await userEvent.click(newCollBtn());
         await screen.findByText("Give it a name");
       });
+
       it("should create collection inside root folder", async () => {
         await userEvent.click(collDropdown());
         await waitFor(() => expect(newCollBtn()).toBeInTheDocument());

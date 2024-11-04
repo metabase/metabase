@@ -6,6 +6,7 @@ import type { DashCardId, DashboardId } from "./dashboard";
 import type { Database, DatabaseId } from "./database";
 import type { BaseEntityId } from "./entity-id";
 import type { Field } from "./field";
+import type { ModerationReview } from "./moderation";
 import type { PaginationRequest, PaginationResponse } from "./pagination";
 import type { Parameter } from "./parameters";
 import type { DatasetQuery, FieldReference, PublicDatasetQuery } from "./query";
@@ -39,6 +40,7 @@ export interface Card<Q extends DatasetQuery = DatasetQuery>
   can_write: boolean;
   can_restore: boolean;
   can_delete: boolean;
+  can_manage_db: boolean;
   initially_published_at: string | null;
 
   database_id?: DatabaseId;
@@ -151,6 +153,15 @@ export type VisualizationSettings = {
   "graph.show_values"?: boolean;
   "stackable.stack_type"?: StackType;
   "graph.show_stack_values"?: StackValuesDisplay;
+  "graph.max_categories_enabled"?: boolean;
+  "graph.max_categories"?: number;
+  "graph.other_category_aggregation_fn"?:
+    | "sum"
+    | "avg"
+    | "min"
+    | "max"
+    | "stddev"
+    | "median";
 
   // Table
   "table.columns"?: TableColumnOrderSetting[];
@@ -236,16 +247,8 @@ export type EmbedVisualizationSettings = {
   iframe?: string;
 };
 
-export interface ModerationReview {
-  status: ModerationReviewStatus;
-  moderator_id: number;
-  created_at: string;
-  most_recent?: boolean;
-}
-
 export type CardId = number;
 export type CardEntityId = BaseEntityId;
-export type ModerationReviewStatus = "verified" | null;
 
 export type CardFilterOption =
   | "all"

@@ -2,7 +2,8 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 
 import * as Urls from "metabase/lib/urls";
-import { HeadBreadcrumbs } from "metabase/query_builder/components/view/ViewHeader/components";
+
+import { HeadBreadcrumbs } from "../HeaderBreadcrumbs";
 
 HeaderCollectionBadge.propTypes = {
   question: PropTypes.object.isRequired,

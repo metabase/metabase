@@ -13,7 +13,7 @@
    [metabase.lib.schema.util :as lib.schema.util]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
-   [metabase.shared.util.i18n :as i18n]
+   [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
 
 (defmethod lib.metadata.calculation/describe-top-level-key-method :breakout

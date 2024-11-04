@@ -6,9 +6,9 @@ import Databases from "metabase/entities/databases";
 import { updateModelIndexes } from "metabase/entities/model-indexes/actions";
 import Questions from "metabase/entities/questions";
 import Revision from "metabase/entities/revisions";
-import { loadCard } from "metabase/lib/card";
 import { shouldOpenInBlankWindow } from "metabase/lib/dom";
 import { createThunkAction } from "metabase/lib/redux";
+import { isNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
 import { copy } from "metabase/lib/utils";
 import { loadMetadataForCard } from "metabase/questions/actions";
@@ -47,6 +47,7 @@ import { zoomInRow } from "../object-detail";
 import { clearQueryResult, runQuestionQuery } from "../querying";
 import { onCloseSidebars } from "../ui";
 
+import { loadCard } from "./card";
 import { API_UPDATE_QUESTION, SOFT_RELOAD_CARD } from "./types";
 import { updateQuestion } from "./updateQuestion";
 
@@ -258,6 +259,7 @@ export const apiUpdateQuestion = (
 
     const isResultDirty = getIsResultDirty(getState());
     const isModel = question.type() === "model";
+    const isMetric = question.type() === "metric";
 
     const { isNative } = Lib.queryDisplayInfo(question.query());
 
@@ -278,6 +280,7 @@ export const apiUpdateQuestion = (
           question,
           originalQuestion,
         ),
+        excludeVisualisationSettings: isMetric,
       },
     );
 
@@ -359,12 +362,17 @@ async function reduxCreateQuestion(question: Question, dispatch: Dispatch) {
 async function reduxUpdateQuestion(
   question: Question,
   dispatch: Dispatch,
-  { excludeDatasetQuery = false },
+  { excludeDatasetQuery = false, excludeVisualisationSettings = false },
 ) {
   const fullCard = question.card();
-  const card = excludeDatasetQuery
-    ? _.omit(fullCard, "dataset_query")
-    : fullCard;
+
+  const keysToOmit = [
+    excludeDatasetQuery ? "dataset_query" : null,
+    excludeVisualisationSettings ? "visualization_settings" : null,
+  ].filter(isNotNull);
+
+  const card = _.omit(fullCard, ...keysToOmit);
+
   const action = await dispatch(
     Questions.actions.update({ id: question.id() }, card),
   );

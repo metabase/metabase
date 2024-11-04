@@ -419,7 +419,7 @@ describe("scenarios > models", () => {
       });
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Pick the metric you want to see").click();
+      cy.findByText("Pick a function or metric").click();
       selectFromDropdown("Count of rows");
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -711,7 +711,7 @@ function getCollectionItemRow(itemName) {
 }
 
 function getCollectionItemCard(itemName) {
-  return cy.findByText(itemName).parent();
+  return cy.findByText(itemName).closest("a");
 }
 
 function getResults() {

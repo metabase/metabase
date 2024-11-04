@@ -21,6 +21,7 @@ describe("issue 11727", { tags: "@external" }, () => {
       },
     },
   };
+
   beforeEach(() => {
     restore("postgres-12");
     cy.signInAsAdmin();

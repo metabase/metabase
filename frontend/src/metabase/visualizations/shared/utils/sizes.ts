@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import { CARD_SIZE_DEFAULTS_JSON } from "cljs/metabase.shared.dashboards.constants";
+import { CARD_SIZE_DEFAULTS_JSON } from "cljs/metabase.models.dashboard.constants";
 import { DEFAULT_CARD_SIZE } from "metabase/lib/dashboard_grid";
 import type { VisualizationDisplay } from "metabase-types/api";
 

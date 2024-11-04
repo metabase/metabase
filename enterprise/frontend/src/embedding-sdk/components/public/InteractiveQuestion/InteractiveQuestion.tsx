@@ -1,12 +1,14 @@
 import type { PropsWithChildren } from "react";
 
+import { EditorViewControl } from "embedding-sdk/components/private/EditorViewControl";
 import {
   BackButton,
+  ChartTypeSelector,
+  Editor,
+  EditorButton,
   Filter,
   FilterBar,
   FilterButton,
-  Notebook,
-  NotebookButton,
   QuestionResetButton,
   QuestionVisualization,
   SaveButton,
@@ -24,6 +26,7 @@ import {
   type InteractiveQuestionResultProps,
 } from "embedding-sdk/components/private/InteractiveQuestionResult";
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
+import type { FlexibleSizeProps } from "embedding-sdk/components/private/util/FlexibleSizeComponent";
 
 export type InteractiveQuestionProps = PropsWithChildren<{
   questionId?: InteractiveQuestionProviderProps["cardId"];
@@ -41,13 +44,17 @@ export const _InteractiveQuestion = ({
   customTitle,
   plugins,
   height,
+  width,
+  className,
+  style,
   children = null,
   onBeforeSave,
   onSave,
   isSaveEnabled,
   entityTypeFilter,
 }: InteractiveQuestionProps &
-  InteractiveQuestionResultProps): JSX.Element | null => (
+  InteractiveQuestionResultProps &
+  FlexibleSizeProps): JSX.Element | null => (
   <InteractiveQuestionProvider
     cardId={questionId}
     componentPlugins={plugins}
@@ -59,6 +66,9 @@ export const _InteractiveQuestion = ({
     {children ?? (
       <InteractiveQuestionResult
         height={height}
+        width={width}
+        className={className}
+        style={style}
         customTitle={customTitle}
         withResetButton={withResetButton}
         withTitle={withTitle}
@@ -78,11 +88,17 @@ const InteractiveQuestion = withPublicComponentWrapper(
   Title: typeof Title;
   Summarize: typeof Summarize;
   SummarizeButton: typeof SummarizeButton;
-  Notebook: typeof Notebook;
-  NotebookButton: typeof NotebookButton;
+  /** @deprecated Use `InteractiveQuestion.Editor` instead */
+  Notebook: typeof Editor;
+  Editor: typeof Editor;
+  /** @deprecated Use `InteractiveQuestion.EditorButton` instead */
+  NotebookButton: typeof EditorButton;
+  EditorButton: typeof EditorButton;
   QuestionVisualization: typeof QuestionVisualization;
   SaveQuestionForm: typeof SdkSaveQuestionForm;
   SaveButton: typeof SaveButton;
+  ChartTypeSelector: typeof ChartTypeSelector;
+  EditorViewControl: typeof EditorViewControl;
 };
 
 InteractiveQuestion.BackButton = BackButton;
@@ -93,10 +109,16 @@ InteractiveQuestion.ResetButton = QuestionResetButton;
 InteractiveQuestion.Title = Title;
 InteractiveQuestion.Summarize = Summarize;
 InteractiveQuestion.SummarizeButton = SummarizeButton;
-InteractiveQuestion.Notebook = Notebook;
-InteractiveQuestion.NotebookButton = NotebookButton;
+/** @deprecated Use `InteractiveQuestion.Editor` instead */
+InteractiveQuestion.Notebook = Editor;
+InteractiveQuestion.Editor = Editor;
+/** @deprecated Use `InteractiveQuestion.EditorButton` instead */
+InteractiveQuestion.NotebookButton = EditorButton;
+InteractiveQuestion.EditorButton = EditorButton;
 InteractiveQuestion.QuestionVisualization = QuestionVisualization;
 InteractiveQuestion.SaveQuestionForm = SdkSaveQuestionForm;
 InteractiveQuestion.SaveButton = SaveButton;
+InteractiveQuestion.ChartTypeSelector = ChartTypeSelector;
+InteractiveQuestion.EditorViewControl = EditorViewControl;
 
 export { InteractiveQuestion };

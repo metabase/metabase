@@ -1,5 +1,6 @@
 (ns metabase.analytics.stats-test
   (:require
+   [clojure.java.io :as io]
    [clojure.set :as set]
    [clojure.test :refer :all]
    [java-time.api :as t]
@@ -423,6 +424,23 @@
                     config/current-minor-version (constantly nil)]
         (is false? (@#'stats/csv-upload-available?))))))
 
+(deftest deployment-model-test
+  (testing "deployment model correctly reports cloud/docker/jar"
+    (with-redefs [premium-features/is-hosted? (constantly true)]
+      (is (= "cloud" (@#'stats/deployment-model))))
+
+    ;; Lets just mock io/file to always return an existing (temp) file, to validate that we're doing a filesystem check
+    ;; to determine whether we're in a Docker container
+    (mt/with-temp-file [mock-file]
+      (spit mock-file "Temp file!")
+      (with-redefs [premium-features/is-hosted? (constantly false)
+                    io/file                     (constantly (java.io.File. mock-file))]
+        (is (= "docker" (@#'stats/deployment-model)))))
+
+    (with-redefs [premium-features/is-hosted? (constantly false)
+                  stats/in-docker?            (constantly false)]
+      (is (= "jar" (@#'stats/deployment-model))))))
+
 (deftest no-features-enabled-but-not-available-test
   (testing "Ensure that a feature cannot be reported as enabled if it is not also available"
     ;; Clear premium features so (most of) the features are considered unavailable
@@ -461,3 +479,13 @@
 
       ;; make sure features are not duplicated
       (is (= (count included-features) (count included-features-set))))))
+
+(deftest snowplow-grouped-metric-info-test
+  (testing "query_executions"
+    (let [{:keys [query_executions query_executions_24h]} (#'stats/->snowplow-grouped-metric-info)]
+      (doseq [k (keys query_executions)]
+        (testing (str "> key " k))
+        (is (contains? query_executions_24h k))
+        (is (not (< (get query_executions k)
+                    (get query_executions_24h k)))
+            "There are never more query executions in the 24h version than all-of-time.")))))

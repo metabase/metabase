@@ -1,9 +1,10 @@
 import { createSelector } from "@reduxjs/toolkit";
-import { t } from "ttag";
+import { jt, t } from "ttag";
 import _ from "underscore";
 
 import { SMTPConnectionForm } from "metabase/admin/settings/components/Email/SMTPConnectionForm";
 import { DashboardSelector } from "metabase/components/DashboardSelector";
+import ExternalLink from "metabase/core/components/ExternalLink";
 import MetabaseSettings from "metabase/lib/settings";
 import { newVersionAvailable } from "metabase/lib/utils";
 import {
@@ -13,6 +14,7 @@ import {
   PLUGIN_LLM_AUTODESCRIPTION,
 } from "metabase/plugins";
 import { refreshCurrentUser } from "metabase/redux/user";
+import { getDocsUrlForVersion } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
 
 import {
@@ -170,6 +172,12 @@ export const ADMIN_SETTINGS_SECTIONS = {
         key: "enable-xrays",
         display_name: t`Enable X-ray features`,
         type: "boolean",
+      },
+      {
+        key: "allowed-iframe-hosts",
+        display_name: t`Allowed domains for iframes in dashboards`,
+        description: jt`You should make sure to trust the sources you allow your users to embed in dashboards. ${(<ExternalLink key="docs" href={getDocsUrl("configuring-metabase/settings", "allowed-domains-for-iframes-in-dashboards")}>{t`Learn more`}</ExternalLink>)}`,
+        type: "text",
       },
     ],
   },
@@ -493,7 +501,9 @@ export const ADMIN_SETTINGS_SECTIONS = {
   },
   llm: {
     name: t`AI Features`,
-    getHidden: () => !PLUGIN_LLM_AUTODESCRIPTION.isEnabled(),
+    getHidden: settings => {
+      !PLUGIN_LLM_AUTODESCRIPTION.isEnabled() && !settings["airgap-enabled"];
+    },
     order: 131,
     settings: [
       {
@@ -512,7 +522,10 @@ export const ADMIN_SETTINGS_SECTIONS = {
   },
   cloud: {
     name: t`Cloud`,
-    getHidden: settings => settings["token-features"]?.hosting === true,
+    getHidden: settings => {
+      settings["token-features"]?.hosting === true &&
+        !settings["airgap-enabled"];
+    },
     order: 132,
     component: CloudPanel,
     settings: [],
@@ -629,3 +642,8 @@ export const getActiveSection = createSelector(
     }
   },
 );
+
+export function getDocsUrl(page, anchor) {
+  const version = MetabaseSettings.get("version");
+  return getDocsUrlForVersion(version, page, anchor);
+}

@@ -17,6 +17,7 @@ import {
   getDashboardCard,
   getFullName,
   getIframeBody,
+  mockSlackConfigured,
   modal,
   openAndAddEmailsToSubscriptions,
   openNewPublicLinkDropdown,
@@ -402,6 +403,7 @@ describe("issue 22524", () => {
       },
     },
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -787,6 +789,7 @@ describe("issue 17657", () => {
       dashboard_id: ORDERS_DASHBOARD_ID,
     });
   }
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -958,6 +961,7 @@ describe("issue 17547", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    mockSlackConfigured();
 
     cy.createQuestion(questionDetails).then(({ body: { id: questionId } }) => {
       setUpAlert(questionId);

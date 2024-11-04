@@ -12,13 +12,10 @@ import {
 
 import { updateQuestion } from "./core";
 
-export const updateCardVisualizationSettings =
+export const onUpdateVisualizationSettings =
   (settings: VisualizationSettings) =>
   async (dispatch: Dispatch, getState: GetState) => {
     const question = getQuestion(getState());
-    if (!question) {
-      return;
-    }
 
     const previousQueryBuilderMode = getPreviousQueryBuilderMode(getState());
     const queryBuilderMode = getQueryBuilderMode(getState());
@@ -34,40 +31,37 @@ export const updateCardVisualizationSettings =
       settings["table.column_widths"] === undefined;
 
     if (
-      (isEditingDatasetMetadata || wasJustEditingModel) &&
-      isColumnWidthResetEvent
+      !question ||
+      ((isEditingDatasetMetadata || wasJustEditingModel) &&
+        isColumnWidthResetEvent)
     ) {
       return;
     }
 
     // The check allows users without data permission to resize/rearrange columns
     const { isEditable } = Lib.queryDisplayInfo(question.query());
-    const hasWritePermissions = isEditable;
     await dispatch(
       updateQuestion(question.updateSettings(settings), {
-        shouldUpdateUrl: hasWritePermissions,
+        shouldUpdateUrl: isEditable,
       }),
     );
   };
 
-export const replaceAllCardVisualizationSettings =
-  (settings: VisualizationSettings, newQuestion: Question) =>
-  async (dispatch: Dispatch, getState: GetState) => {
-    const oldQuestion = getQuestion(getState());
-    const updatedQuestion = (newQuestion ?? oldQuestion).setSettings(settings);
-    const { isEditable } = Lib.queryDisplayInfo(updatedQuestion.query());
-    const hasWritePermissions = isEditable;
-
-    await dispatch(
-      updateQuestion(updatedQuestion, {
-        // rerun the query when it is changed alongside settings
-        run: newQuestion != null && hasWritePermissions,
-        shouldUpdateUrl: hasWritePermissions,
-      }),
-    );
-  };
-
-// these are just temporary mappings to appease the existing QB code and it's naming prefs
-export const onUpdateVisualizationSettings = updateCardVisualizationSettings;
 export const onReplaceAllVisualizationSettings =
-  replaceAllCardVisualizationSettings;
+  (settings: VisualizationSettings, newQuestion?: Question) =>
+  async (dispatch: Dispatch, getState: GetState) => {
+    const question = newQuestion ?? getQuestion(getState());
+    if (question) {
+      const updatedQuestion = question.setSettings(settings);
+      const { isEditable } = Lib.queryDisplayInfo(updatedQuestion.query());
+      const hasWritePermissions = isEditable;
+
+      await dispatch(
+        updateQuestion(updatedQuestion, {
+          // rerun the query when it is changed alongside settings
+          run: newQuestion != null && hasWritePermissions,
+          shouldUpdateUrl: hasWritePermissions,
+        }),
+      );
+    }
+  };
