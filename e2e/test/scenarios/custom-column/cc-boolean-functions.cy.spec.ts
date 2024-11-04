@@ -693,7 +693,9 @@ describe("scenarios > custom column > boolean functions", () => {
         .findByText(parameterDetails.name)
         .click();
       popover().findByText(expressionName).click();
+      cy.intercept("GET", "/api/dashboard/*").as("getDashboard");
       saveDashboard();
+      cy.wait("@getDashboard");
 
       cy.log("verify click behavior");
       getDashboardCard().within(() => {
