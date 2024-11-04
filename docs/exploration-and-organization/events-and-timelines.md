@@ -32,7 +32,6 @@ Collections can have timelines, and timelines can contain events. In practice wh
 - You can have multiple timelines for the same collection.
 - Timelines associated with collections do not apply to that collection's sub-collections.
 
-
 ### Adding events when viewing a collection
 
 When viewing a [collection](collections.md), you can view, add, or edit events by clicking on the **calendar** icon in the upper right.
@@ -97,7 +96,7 @@ To archive a timeline:
 
 ### View archived events and timelines
 
-> Archived events and timelines can only be viewed from the collection. They don't show up in the [main archive](../exploration-and-organization/history.md).
+> Archived events and timelines can only be viewed from the collection. They don't show up in the [Trash](../exploration-and-organization/delete-and-restore.md).
 
 To view (and resurrect) archived timelines and events:
 

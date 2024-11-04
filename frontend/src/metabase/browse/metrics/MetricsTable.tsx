@@ -3,10 +3,8 @@ import { push } from "react-router-redux";
 import { c, t } from "ttag";
 
 import {
-  skipToken,
   useCreateBookmarkMutation,
   useDeleteBookmarkMutation,
-  useGetCardQueryQuery,
 } from "metabase/api";
 import { getCollectionName } from "metabase/collections/utils";
 import { EllipsifiedCollectionPath } from "metabase/common/components/EllipsifiedPath/EllipsifiedCollectionPath";
@@ -36,8 +34,6 @@ import {
   type IconName,
   Menu,
   Skeleton,
-  Text,
-  Tooltip,
 } from "metabase/ui";
 import { Repeat } from "metabase/ui/components/feedback/Skeleton/Repeat";
 import { SortDirection, type SortingOptions } from "metabase-types/api/sorting";
@@ -48,17 +44,10 @@ import {
   CollectionTableCell,
   NameColumn,
   TableRow,
-  Value,
-  ValueTableCell,
-  ValueWrapper,
 } from "../components/BrowseTable.styled";
 
 import type { MetricResult } from "./types";
-import {
-  getDatasetValueForMetric,
-  getMetricDescription,
-  sortMetrics,
-} from "./utils";
+import { getMetricDescription, sortMetrics } from "./utils";
 
 type MetricsTableProps = {
   metrics?: MetricResult[];
@@ -90,10 +79,6 @@ const collectionProps: ResponsiveProps = {
   hideAtContainerBreakpoint: "sm",
 };
 
-const valueProps = {
-  ...sharedProps,
-};
-
 const menuProps = {
   ...sharedProps,
 };
@@ -114,16 +99,14 @@ export function MetricsTable({
   const handleSortingOptionsChange = skeleton ? undefined : setSortingOptions;
 
   /** The name column has an explicitly set width. The remaining columns divide the remaining width. This is the percentage allocated to the collection column */
-  const valueWidth = 25;
   const collectionWidth = 30;
-  const descriptionWidth = 100 - collectionWidth - valueWidth;
+  const descriptionWidth = 100 - collectionWidth;
 
   return (
     <Table aria-label={skeleton ? undefined : t`Table of metrics`}>
       <colgroup>
         {/* <col> for Name column */}
         <NameColumn {...nameProps} />
-        <TableColumn {...valueProps} width={`${valueWidth}%`} />
         <TableColumn {...collectionProps} width={`${collectionWidth}%`} />
         <TableColumn {...descriptionProps} width={`${descriptionWidth}%`} />
         <TableColumn {...menuProps} width={DOTMENU_WIDTH} />
@@ -143,11 +126,6 @@ export function MetricsTable({
           >
             {t`Name`}
           </SortableColumnHeader>
-          <ColumnHeader
-            style={{
-              textAlign: "right",
-            }}
-          >{t`Value`}</ColumnHeader>
           <SortableColumnHeader
             name="collection"
             sortingOptions={sortingOptions}
@@ -235,7 +213,6 @@ function MetricRow({ metric }: { metric?: MetricResult }) {
   return (
     <TableRow onClick={handleClick}>
       <NameCell metric={metric} />
-      <ValueCell metric={metric} />
       <CollectionCell metric={metric} />
       <DescriptionCell metric={metric} />
       <MenuCell metric={metric} />
@@ -448,48 +425,5 @@ function MenuCell({ metric }: { metric?: MetricResult }) {
         </Menu.Dropdown>
       </Menu>
     </Cell>
-  );
-}
-
-function ValueCell({ metric }: { metric?: MetricResult }) {
-  const { data, isLoading, error } = useGetCardQueryQuery(
-    metric ? { cardId: metric.id } : skipToken,
-  );
-
-  const emptyCell = (
-    <ValueTableCell>
-      <ValueWrapper>
-        <Value data-testid="metric-value" />
-      </ValueWrapper>
-    </ValueTableCell>
-  );
-
-  if (error) {
-    return emptyCell;
-  }
-
-  if (!metric || isLoading || !data) {
-    return (
-      <ValueTableCell>
-        <ValueWrapper data-testid="metric-value">
-          <SkeletonText />
-        </ValueWrapper>
-      </ValueTableCell>
-    );
-  }
-
-  const value = getDatasetValueForMetric(data);
-  if (!value) {
-    return emptyCell;
-  }
-
-  return (
-    <ValueTableCell>
-      <ValueWrapper>
-        <Tooltip label={<Text>{value.label}</Text>}>
-          <Value data-testid="metric-value">{value.value}</Value>
-        </Tooltip>
-      </ValueWrapper>
-    </ValueTableCell>
   );
 }

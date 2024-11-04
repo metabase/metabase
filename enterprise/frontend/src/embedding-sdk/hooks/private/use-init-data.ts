@@ -25,6 +25,12 @@ interface InitDataLoaderParameters {
 export const useInitData = ({ config }: InitDataLoaderParameters) => {
   const { allowConsoleLog = true } = config;
 
+  // This is outside of a useEffect otherwise calls done on the first render could use the wrong value
+  // This is the case for example for the locale json files
+  if (api.basename !== config.metabaseInstanceUrl) {
+    api.basename = config.metabaseInstanceUrl;
+  }
+
   const dispatch = useSdkDispatch();
   const loginStatus = useSdkSelector(getLoginStatus);
 
@@ -54,8 +60,6 @@ export const useInitData = ({ config }: InitDataLoaderParameters) => {
     if (loginStatus.status !== "uninitialized") {
       return;
     }
-
-    api.basename = config.metabaseInstanceUrl;
 
     setupSdkAuth(config, dispatch);
   }, [config, dispatch, loginStatus.status]);

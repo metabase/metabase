@@ -28,7 +28,10 @@ const DatabaseAuthCodeDescription = (): JSX.Element | null => {
   return (
     <span>
       {jt`${(
-        <ExternalLink href={authCodeUrl.href}>{t`Click here`}</ExternalLink>
+        <ExternalLink
+          key="link"
+          href={authCodeUrl.href}
+        >{t`Click here`}</ExternalLink>
       )} to get an auth code.`}
       {engine === "bigquery" && (
         <span>

@@ -65,6 +65,16 @@ describeEE(
       }).then(({ status }) => {
         expect(status).to.eq(403);
       });
+
+      cy.log(
+        "should not allow access to the database/create page (metabase-private#236)",
+      );
+      cy.visit("/admin/databases/create");
+      cy.findByRole("img", { name: /key/ }).should("exist");
+      cy.findByRole("status").should(
+        "contain.text",
+        "Sorry, you don’t have permission to see that.",
+      );
     });
   },
 );

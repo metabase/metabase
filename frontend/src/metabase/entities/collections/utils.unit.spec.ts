@@ -320,7 +320,7 @@ describe("entities > collections > utils", () => {
         const [transformed] = buildCollectionTree([collection]);
         expect(transformed.icon).toEqual({
           color: expect.any(String),
-          name: "badge",
+          name: "official_collection",
           tooltip: "Official collection",
         });
       });
@@ -371,13 +371,14 @@ describe("entities > collections > utils", () => {
       {
         name: "Official collection",
         collection: createMockCollection({ authority_level: "official" }),
-        expectedIcon: "badge",
+        expectedIcon: "official_collection",
       },
     ];
 
     describe("OSS", () => {
       testCasesOSS.forEach(testCase => {
         const { name, collection, expectedIcon } = testCase;
+
         it(`returns '${expectedIcon}' for '${name}'`, () => {
           expect(getCollectionIcon(collection)).toMatchObject({
             name: expectedIcon,
@@ -393,6 +394,7 @@ describe("entities > collections > utils", () => {
 
       testCasesEE.forEach(testCase => {
         const { name, collection, expectedIcon } = testCase;
+
         it(`returns '${expectedIcon}' for '${name}'`, () => {
           expect(getCollectionIcon(collection)).toMatchObject({
             name: expectedIcon,

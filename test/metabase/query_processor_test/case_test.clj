@@ -1,4 +1,4 @@
-(ns metabase.query-processor-test.case-test
+(ns ^:mb/driver-tests metabase.query-processor-test.case-test
   (:require
    [clojure.test :refer :all]
    [metabase.models :refer [Card Segment]]

@@ -1,4 +1,4 @@
-(ns metabase.driver.druid-jdbc-test
+(ns ^:mb/driver-tests metabase.driver.druid-jdbc-test
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]

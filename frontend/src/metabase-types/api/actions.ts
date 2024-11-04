@@ -18,7 +18,7 @@ export interface WritebackActionBase {
   model_id: CardId;
   name: string;
   description: string | null;
-  parameters: WritebackParameter[];
+  parameters?: WritebackParameter[];
   visualization_settings?: ActionFormSettings;
   archived: boolean;
   creator_id: UserId;
@@ -170,3 +170,7 @@ export interface WritebackActionListQuery {
 export interface GetActionRequest {
   id: number;
 }
+export type GetPublicAction = Pick<
+  WritebackActionBase,
+  "id" | "name" | "public_uuid" | "model_id"
+>;

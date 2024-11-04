@@ -1,4 +1,4 @@
-(ns metabase.test.data.dataset-definition-test
+(ns ^:mb/driver-tests metabase.test.data.dataset-definition-test
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]

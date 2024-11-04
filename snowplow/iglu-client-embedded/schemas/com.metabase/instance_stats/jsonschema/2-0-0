@@ -1,0 +1,211 @@
+{
+  "$schema": "http://iglucentral.com/schemas/com.snowplowanalytics.self-desc/schema/jsonschema/1-0-0#",
+  "description": "Schema for daily stats ping, tracking instance metrics and settings",
+  "self": {
+    "vendor": "com.metabase",
+    "name": "instance_stats",
+    "format": "jsonschema",
+    "version": "2-0-0"
+  },
+  "type": "object",
+  "properties": {
+    "analytics_uuid": {
+      "description": "The UUID for the instance",
+      "type": "string",
+      "maxLength": 255
+    },
+    "features": {
+      "description": "Features",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "description": "A single instance feature",
+        "properties": {
+          "name": {
+            "description": "The unique name of the feature",
+            "type": "string",
+            "maxLength": 255
+          },
+          "available": {
+            "description": "Whether the feature is available, i.e. can it be enabled/disabled or is it always on",
+            "type": "boolean"
+          },
+          "enabled": {
+            "description": "Whether the feature is enabled, i.e. can it be used by the users/instance",
+            "type": "boolean"
+          }
+        },
+        "required": ["name", "available", "enabled"],
+        "additionalProperties": true
+      }
+    },
+    "grouped_metrics": {
+      "description": "Key-value pairs of grouped metrics, with tags.",
+      "type": "array",
+      "items": {
+        "description": "a Grouped Metric, which has a key a value and tags",
+        "type": "object",
+        "properties": {
+          "name": {
+            "description": "The unique name of the grouped metric",
+            "type": "string",
+            "maxLength": 255
+          },
+          "values": {
+            "description": "Values for the grouped metric",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "description": "Items in a groped metric value",
+              "properties": {
+                "group": {
+                  "type": "string",
+                  "description": "The group name",
+                  "maxLength": 255
+                },
+                "value": {
+                  "type": "number",
+                  "description": "The value for the group",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": ["group", "value"],
+              "additionalProperties": false
+            }
+          },
+          "tags": {
+            "description": "Tags that can be used flagging teams / features the grouped_metric belongs to",
+            "type": "array",
+            "items": {
+              "description": "a single tag",
+              "type": "string",
+              "maxLength": 255
+            }
+          }
+        },
+        "required": ["name", "values", "tags"],
+        "additionalProperties": false
+      }
+    },
+    "instance_attributes": {
+      "description": "Key-value pairs of instance attributes",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "description": "A single instance attribute",
+        "properties": {
+          "key": {
+            "description": "The key for this attribute",
+            "type": "string",
+            "maxLength": 255
+          },
+          "value": {
+            "description": "The value of this attribute",
+            "type": ["string", "boolean", "integer", "null"],
+            "maxLength": 255,
+            "minimum": 0,
+            "maximum": 2147483647
+          }
+        },
+        "required": ["key", "value"]
+      }
+    },
+    "metadata": {
+      "description": "Metadata about the anonymous stats collection",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "description": "A single metadata key/value",
+        "properties": {
+          "key": {
+            "description": "The key for this metadata",
+            "type": "string",
+            "maxLength": 255
+          },
+          "value": {
+            "description": "The value of this metadata",
+            "type": ["string", "boolean", "integer", "null"],
+            "maxLength": 255,
+            "minimum": 0,
+            "maximum": 2147483647
+          }
+        },
+        "required": ["key", "value"]
+      }
+    },
+    "metrics": {
+      "description": "Key-value pairs of metrics, with tags.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "description": "A single metric attribute",
+        "properties": {
+          "name": {
+            "description": "The unique name of the metric",
+            "type": "string",
+            "maxLength": 255
+          },
+          "value": {
+            "type": "integer",
+            "description": "The value of the metric",
+            "minimum": 0,
+            "maximum": 2147483647
+          },
+          "tags": {
+            "type": "array",
+            "description": "Tags that can be used for flagging teams / features the metric belongs to",
+            "items": {
+              "description": "a tag",
+              "type": "string",
+              "maxLength": 255
+            }
+          }
+        },
+        "required": ["name", "value", "tags"]
+      }
+    },
+    "settings": {
+      "type": "array",
+      "description": "Key-value pairs of settings, with tags.",
+      "items": {
+        "type": "object",
+        "description": "A single setting attribute",
+        "properties": {
+          "key": {
+            "type": "string",
+            "maxLength": 255,
+            "description": "The unique name of the setting"
+          },
+          "value": {
+            "type": ["string", "boolean", "integer", "null"],
+            "description": "The value of this setting",
+            "maxLength": 255,
+            "minimum": 0,
+            "maximum": 2147483647
+          },
+          "tags": {
+            "type": "array",
+            "description": "Tags that can be used for flagging teams / features the setting belongs to",
+            "items": {
+              "description": "a tag for the setting to help categorize it",
+              "type": "string",
+              "maxLength": 255
+            }
+          }
+        },
+        "required": ["key", "value", "tags"]
+      }
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "analytics_uuid",
+    "features",
+    "grouped_metrics",
+    "instance_attributes",
+    "metadata",
+    "metrics",
+    "settings"
+  ]
+}

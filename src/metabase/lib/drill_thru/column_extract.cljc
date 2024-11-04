@@ -23,7 +23,7 @@
    [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
    [metabase.lib.schema.extraction :as lib.schema.extraction]
    [metabase.lib.types.isa :as lib.types.isa]
-   [metabase.shared.util.i18n :as i18n]
+   [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
 
 (defn- column-extract-drill-for-column [query column]

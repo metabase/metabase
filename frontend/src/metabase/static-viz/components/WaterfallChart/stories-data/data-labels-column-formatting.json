@@ -212,18 +212,18 @@
         "graph.dimensions": ["stage"],
         "graph.show_values": true,
         "graph.metrics": ["count"],
-        "metabase.shared.models.visualization-settings/column-settings": {
-          "{:metabase.shared.models.visualization-settings/column-name \"count\"}": {
-            "metabase.shared.models.visualization-settings/number-style": "currency",
-            "metabase.shared.models.visualization-settings/currency": "AED",
-            "metabase.shared.models.visualization-settings/number-separators": ".",
-            "metabase.shared.models.visualization-settings/decimals": 5,
-            "metabase.shared.models.visualization-settings/scale": 1.235,
-            "metabase.shared.models.visualization-settings/prefix": "$",
-            "metabase.shared.models.visualization-settings/suffix": " units"
+        "metabase.models.visualization-settings/column-settings": {
+          "{:metabase.models.visualization-settings/column-name \"count\"}": {
+            "metabase.models.visualization-settings/number-style": "currency",
+            "metabase.models.visualization-settings/currency": "AED",
+            "metabase.models.visualization-settings/number-separators": ".",
+            "metabase.models.visualization-settings/decimals": 5,
+            "metabase.models.visualization-settings/scale": 1.235,
+            "metabase.models.visualization-settings/prefix": "$",
+            "metabase.models.visualization-settings/suffix": " units"
           }
         },
-        "metabase.shared.models.visualization-settings/global-column-settings": {}
+        "metabase.models.visualization-settings/global-column-settings": {}
       },
       "native_form": {
         "query": "SELECT \"source\".\"stage\" AS \"stage\", COUNT(*) AS \"count\" FROM (SELECT \"csv_upload_data\".\"csv_upload_simple_user_flow_funnel_20231216110456\".\"_mb_row_id\" AS \"_mb_row_id\", \"csv_upload_data\".\"csv_upload_simple_user_flow_funnel_20231216110456\".\"user_id\" AS \"user_id\", \"csv_upload_data\".\"csv_upload_simple_user_flow_funnel_20231216110456\".\"stage\" AS \"stage\", \"csv_upload_data\".\"csv_upload_simple_user_flow_funnel_20231216110456\".\"conversion\" AS \"conversion\" FROM \"csv_upload_data\".\"csv_upload_simple_user_flow_funnel_20231216110456\") AS \"source\" GROUP BY \"source\".\"stage\" ORDER BY \"source\".\"stage\" ASC",

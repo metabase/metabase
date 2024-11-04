@@ -1,4 +1,4 @@
-(ns metabase.driver.bigquery-cloud-sdk-test
+(ns ^:mb/driver-tests metabase.driver.bigquery-cloud-sdk-test
   (:require
    [cheshire.core :as json]
    [clojure.core.async :as a]
@@ -24,7 +24,7 @@
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
-   (com.google.cloud.bigquery BigQuery TableResult)))
+   (com.google.cloud.bigquery TableResult)))
 
 (set! *warn-on-reflection* true)
 
@@ -770,15 +770,40 @@
                      first))))))))
 
 (deftest sync-table-with-array-test
-  (testing "Tables with ARRAY (REPEATED) columns can be synced successfully"
+  (testing "Tables with RECORD and ARRAY (REPEATED) columns can be synced successfully"
     (do-with-temp-obj "table_array_type_%s"
-                      (fn [tbl-nm] ["CREATE TABLE `%s.%s` AS SELECT 1 AS int_col, GENERATE_ARRAY(1,10) AS array_col"
+                      (fn [tbl-nm] ["CREATE TABLE `%s.%s` AS SELECT 1 AS int_col,
+                                     GENERATE_ARRAY(1,10) AS array_col,
+                                     STRUCT('Sam' AS name) AS primary,
+                                     [STRUCT('Rudisha' AS name)] AS participants"
                                     test-db-name
                                     tbl-nm])
                       (fn [tbl-nm] ["DROP TABLE IF EXISTS `%s.%s`" test-db-name tbl-nm])
                       (fn [tbl-nm]
                         (is (= [{:name "int_col" :database-type "INTEGER" :base-type :type/Integer :database-position 0 :database-partitioned false :table-name tbl-nm :table-schema test-db-name}
-                                {:name "array_col" :database-type "ARRAY" :base-type :type/Array :database-position 1 :database-partitioned false :table-name tbl-nm :table-schema test-db-name}]
+                                {:name "array_col" :database-type "ARRAY" :base-type :type/Array :database-position 1 :database-partitioned false :table-name tbl-nm :table-schema test-db-name}
+                                {:name "primary",
+                                 :table-name tbl-nm
+                                 :table-schema test-db-name
+                                 :database-type "RECORD",
+                                 :base-type :type/Dictionary,
+                                 :database-partitioned false,
+                                 :database-position 2,
+                                 :nested-fields
+                                 #{{:name "name",
+                                    :table-name tbl-nm
+                                    :table-schema test-db-name
+                                    :database-type "STRING",
+                                    :base-type :type/Text,
+                                    :nfc-path ["primary"],
+                                    :database-position 2}}}
+                                {:name "participants",
+                                 :table-name tbl-nm
+                                 :table-schema test-db-name
+                                 :database-type "ARRAY",
+                                 :base-type :type/Array,
+                                 :database-partitioned false,
+                                 :database-position 3}]
                                (driver/describe-fields :bigquery-cloud-sdk (mt/db) {:table-names [tbl-nm] :schema-names [test-db-name]}))
                             "`describe-fields` should detect the correct base-type for array type columns")))))
 
@@ -803,12 +828,12 @@
     (let [fake-execute-called (atom false)
           orig-fn             @#'bigquery/execute-bigquery]
       (testing "Retry functionality works as expected"
-        (with-redefs [bigquery/execute-bigquery (fn [^BigQuery client ^String sql parameters _]
+        (with-redefs [bigquery/execute-bigquery (fn [& args]
                                                   (if-not @fake-execute-called
                                                     (do (reset! fake-execute-called true)
                                                         ;; simulate a transient error being thrown
                                                         (throw (ex-info "Transient error" {:retryable? true})))
-                                                    (orig-fn client sql parameters nil)))]
+                                                    (apply orig-fn args)))]
           ;; run any other test that requires a successful query execution
           (table-rows-sample-test)
           ;; make sure that the fake exception was thrown, and thus the query execution was retried
@@ -819,13 +844,12 @@
     (let [fake-execute-called (atom false)
           orig-fn        @#'bigquery/execute-bigquery]
       (testing "Should not retry query on cancellation"
-        (with-redefs [bigquery/execute-bigquery (fn [^BigQuery client ^String sql parameters _]
-                                                  ;; We only want to simulate exception on the query that we're testing and not on possible db setup queries
-                                                  (if (and (re-find #"notRetryCancellationExceptionTest" sql) (not @fake-execute-called))
+        (with-redefs [bigquery/execute-bigquery (fn [& args]
+                                                  (if (not @fake-execute-called)
                                                     (do (reset! fake-execute-called true)
                                                         ;; Simulate a cancellation happening
                                                         (throw (ex-info "Query cancelled" {::bigquery/cancelled? true})))
-                                                    (orig-fn client sql parameters nil)))]
+                                                    (apply orig-fn args)))]
           (try
             (qp/process-query {:native {:query "SELECT CURRENT_TIMESTAMP() AS notRetryCancellationExceptionTest"} :database (mt/id)
                                :type     :native})
@@ -879,7 +903,7 @@
   (mt/test-driver :bigquery-cloud-sdk
     (testing "BigQuery queries which fail on later pages are caught properly"
       (let [page-counter (atom 3)
-            orig-exec    @#'bigquery/execute-bigquery
+            orig-exec    @#'bigquery/reducible-bigquery-results
             wrap-result  (fn wrap-result [^TableResult result]
                            (proxy [TableResult] []
                              (getSchema [] (.getSchema result))
@@ -889,24 +913,24 @@
                                (if (zero? @page-counter)
                                  nil
                                  (wrap-result (.getNextPage result))))))]
-        (with-redefs [bigquery/execute-bigquery (fn [^BigQuery client ^String sql parameters cancel-chan]
-                                                  (wrap-result (orig-exec client sql parameters cancel-chan)))]
-          (binding [bigquery/*page-size*     100 ; small pages so there are several
+        (with-redefs [bigquery/reducible-bigquery-results (fn [page & args]
+                                                            (apply orig-exec (wrap-result page) args))]
+          (binding [bigquery/*page-size*     10 ; small pages so there are several
                     bigquery/*page-callback* (fn []
                                                (let [pages (swap! page-counter #(max (dec %) 0))]
                                                  (log/debugf "*page-callback counting down: %d to go" pages)))]
             (mt/dataset test-data
-                        ;; *page-size* is inexact - should be 300 but give it a wide margin.
-              (is (< 10
-                     (count (mt/rows (mt/process-query (mt/query orders))))
-                     500)))))))))
+              (is (thrown-with-msg?
+                   clojure.lang.ExceptionInfo
+                   #"Cannot get next page from BigQuery"
+                   (mt/process-query (mt/query orders)))))))))))
 
 (deftest later-page-fetch-throws-test
   (mt/test-driver :bigquery-cloud-sdk
     (testing "BigQuery queries which fail on later pages are caught properly"
       (let [count-before (count (future-thread-names))
             page-counter (atom 3)
-            orig-exec    @#'bigquery/execute-bigquery
+            orig-exec    @#'bigquery/reducible-bigquery-results
             wrap-result  (fn wrap-result [^TableResult result]
                            (proxy [TableResult] []
                              (getSchema [] (.getSchema result))
@@ -916,8 +940,8 @@
                                (if (zero? @page-counter)
                                  (throw (ex-info "onoes BigQuery failed to fetch a later page" {}))
                                  (wrap-result (.getNextPage result))))))]
-        (with-redefs [bigquery/execute-bigquery (fn [^BigQuery client ^String sql parameters cancel-chan]
-                                                  (wrap-result (orig-exec client sql parameters cancel-chan)))]
+        (with-redefs [bigquery/reducible-bigquery-results (fn [page & args]
+                                                            (apply orig-exec (wrap-result page) args))]
           (dotimes [_ 10]
             (reset! page-counter 3)
             (binding [bigquery/*page-size*     100 ; small pages so there are several
@@ -942,13 +966,11 @@
                     bigquery/*page-size*     page-size
                     bigquery/*page-callback* (fn [] (a/put! canceled-chan true))]
             (mt/dataset test-data
-              ;; Page size does not guarantee the size of the response but orders table is ~20k rows.
-              (is (< 0
-                     (-> (mt/query orders {:query {:limit max-rows}})
-                         mt/process-query
-                         mt/rows
-                         count)
-                     1000)))))))))
+              (is (thrown-with-msg?
+                   Exception
+                   #"Query cancelled"
+                   (-> (mt/query orders {:query {:limit max-rows}})
+                       mt/process-query))))))))))
 
 (defn- synced-tables [db-attributes]
   (t2.with-temp/with-temp [Database db db-attributes]
@@ -1123,3 +1145,27 @@
                  :breakout [[:field %bigthings.bd
                              {:type :type/Decimal
                               :binning {:strategy "default"}}]]})))))))
+
+(deftest bigquery-process-stop-test
+  (mt/test-driver
+    :bigquery-cloud-sdk
+    (sync/sync-database! (mt/db) {:scan :schema})
+    (let [before-names (future-thread-names)]
+      (doseq [:let [callbacks (atom 0)]
+              [stop-tag stopper] [[:exception #(throw (Exception. "My Exception"))]
+                                  [:cancelled #(a/>!! qp.pipeline/*canceled-chan* true)]]
+              [tag callback] [[:initial-query stopper]
+                              [:during-page #(when (>= (swap! callbacks inc) 2)
+                                               (stopper))]]]
+        (testing (format "%s %s" tag stop-tag)
+          (reset! callbacks 0)
+          (binding [bigquery/*page-callback* callback
+                    bigquery/*page-size* 10]
+            (let [query  {:database (mt/id)
+                          :type "native"
+                          :native {:query (format "select * from `%s.orders` limit 100" test-db-name)}}
+                  result (mt/user-http-request :crowberto :post 202 "dataset" query)]
+              (is (= "failed" (:status result)))
+              (is (= (if (= :cancelled stop-tag) "Query cancelled" "My Exception")
+                     (:error result)))))))
+      (is (< (count before-names) (+ (count (future-thread-names)) 5))))))

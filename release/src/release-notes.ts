@@ -5,7 +5,7 @@ import { getMilestoneIssues, hasBeenReleased } from "./github";
 import type { Issue, ReleaseProps } from "./types";
 import {
   isEnterpriseVersion,
-  isRCVersion,
+  isPreReleaseVersion,
   isValidVersionString,
 } from "./version-helpers";
 
@@ -267,7 +267,7 @@ export async function publishRelease({
     name: getReleaseTitle(version),
     body: generateReleaseNotes({ version, checksum, issues }),
     draft: true,
-    prerelease: isRCVersion(version),
+    prerelease: isPreReleaseVersion(version), // this api arg has never worked, but maybe it will someday! 🤞
   };
 
   return github.rest.repos.createRelease(payload);

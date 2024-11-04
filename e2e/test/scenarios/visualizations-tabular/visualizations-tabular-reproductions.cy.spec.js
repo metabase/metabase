@@ -105,6 +105,7 @@ describe("issue 11249", () => {
       "graph.metrics": ["avg"],
     },
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -183,6 +184,7 @@ describe("issue 15353", () => {
     },
     display: "pivot",
   };
+
   beforeEach(() => {
     cy.intercept("POST", "/api/dataset/pivot").as("pivotDataset");
 
@@ -227,6 +229,7 @@ describe("issue 18976, 18817", () => {
       "table.cell_column": "1",
     },
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -298,6 +301,7 @@ describe("issue 18996", () => {
       },
     },
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -333,6 +337,7 @@ describe.skip("issue 19373", () => {
 
   const ROW_TOTALS_INDEX = 4;
   const GRAND_TOTALS_INDEX = 4;
+
   beforeEach(() => {
     cy.intercept("POST", "/api/dataset/pivot").as("pivotDataset");
 
@@ -391,6 +396,7 @@ describe("issue 21392", () => {
     },
     database: SAMPLE_DB_ID,
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -467,6 +473,7 @@ describe("issue 23076", () => {
       },
     },
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -593,6 +600,7 @@ describe("issue 25250", () => {
       ],
     },
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -678,6 +686,7 @@ describe("issue 37726", () => {
       },
     },
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsNormalUser();
@@ -847,6 +856,7 @@ describe("issue 42697", () => {
       },
     },
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsNormalUser();
@@ -876,6 +886,7 @@ describe("issue 42697", () => {
 
 describe("issue 14148", { tags: "@external" }, () => {
   const PG_DB_ID = 2;
+
   beforeEach(() => {
     restore("postgres-12");
     cy.signInAsAdmin();

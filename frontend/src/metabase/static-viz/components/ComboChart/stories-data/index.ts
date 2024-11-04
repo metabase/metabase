@@ -27,6 +27,9 @@ import barHistogramXScale from "./bar-histogram-x-scale.json";
 import barLinearXScale from "./bar-linear-x-scale.json";
 import barLogYScaleStackedNegative from "./bar-log-y-scale-stacked-negative.json";
 import barLogYScaleStacked from "./bar-log-y-scale-stacked.json";
+import barMaxCategoriesDefault from "./bar-max-categories-default.json";
+import barMaxCategoriesStackedNormalized from "./bar-max-categories-stacked-normalized.json";
+import barMaxCategoriesStacked from "./bar-max-categories-stacked.json";
 import barMinHeightLimit from "./bar-min-height-limit.json";
 import barOrdinalXScaleAutoRotatedLabels from "./bar-ordinal-x-scale-auto-rotated-labels.json";
 import barOrdinalXScale from "./bar-ordinal-x-scale.json";
@@ -91,6 +94,7 @@ import noGoodAxisSplit from "./no-good-axis-split.json";
 import nullCategoryValueFormatting from "./null-category-value-formatting.json";
 import numberOfInsightsError39608 from "./number-of-insights-error-39608.json";
 import numericXAxisIncludesZero37082 from "./numeric-x-axis-includes-zero-37082.json";
+import offsetBasedTimezone47835 from "./offset-based-timezone-47835.json";
 import powYScaleCustomYAxisRange from "./pow-y-scale-custom-y-axis-range.json";
 import safariNonIanaTimezoneRepro44128 from "./safari-non-iana-timezone-repro-44128.json";
 import seriesOrderSettingsDoNotMatchSeriesCount from "./series-order-settings-do-not-match-series-count.json";
@@ -225,6 +229,9 @@ export const data = {
   barStackedSeriesLabelsAndTotalsOrdinal,
   barStackedSeriesLabelsNormalizedAutoCompactness,
   barStackedLabelsNullVsZero,
+  barMaxCategoriesDefault,
+  barMaxCategoriesStacked,
+  barMaxCategoriesStackedNormalized,
   barMinHeightLimit,
   comboDataLabelsAutoCompactnessPropagatesFromLine,
   comboDataLabelsAutoCompactnessPropagatesFromTotals,
@@ -236,4 +243,5 @@ export const data = {
   seriesOrderSettingsDoNotMatchSeriesCount,
   trendGoalLinesWithScalingPowScaleCustomRange,
   barStackedAllLabelsTimeseriesWithGap45717,
+  offsetBasedTimezone47835,
 };

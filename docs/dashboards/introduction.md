@@ -94,6 +94,33 @@ Link cards are specialized cards that let you search and link to other items in 
 
 To add a link card to a dashboard, click the **pencil** icon to enter dashboard editing mode, then click on the **link** icon. Click on the input field in the link card to search your Metabase for an item to link to, or paste an external link.
 
+## Iframe cards
+
+[Iframes](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/iframe) allow you to nest one HTML page in another HTML page. With iframe cards in Metabase, you can embed a webpage in your dashboard. You can embe:
+
+- Spreadsheets or surveys for data entry or workflows
+- Videos or slides for contextualizing and storytelling on dashboards
+- Live charts and visualizations from other tools
+
+To add an iframe card to a dashboard, click the **pencil** icon to enter dashboard editing mode, then click on the **link** icon and select **Iframe**. Then paste the iframe URL. Here's an iframe for our video on how to create a dashboard:
+
+```html
+<iframe
+  width="560"
+  height="315"
+  src="https://www.youtube.com/embed/W-i9E5_Wjmw?si=qWeMGxEymVOIHiXo"
+  title="YouTube video player"
+  frameborder="0"
+  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+  referrerpolicy="strict-origin-when-cross-origin"
+  allowfullscreen
+></iframe>
+```
+
+And behold, a dashboard with an embedded video:
+
+![Dashboard with iframe of video](./images/dashboard-with-iframe.png)
+
 ## Dashboard tabs
 
 You can add multiple tabs to a dashboard to keep your cards organized.
@@ -265,6 +292,11 @@ There is one important limitation with the `fullscreen` option: for security rea
 For [questions](../questions/start.md), dashboards, and [models](../data-modeling/models.md), Metabase keeps a version history for the previous fifteen versions of that item.
 
 See [History](../exploration-and-organization/history.md).
+
+## Deleting a dashboard
+
+You can move a dashboard to Trash or permanently delete a dashboard that you no longer need.
+See [Archiving a dashboard](../exploration-and-organization/delete-and-restore.md).
 
 ## Tips on creating helpful dashboards
 

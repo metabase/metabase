@@ -1,14 +1,21 @@
+import type { QueryModalType } from "metabase/query_builder/constants";
+import type { Widget } from "metabase/visualizations/components/ChartSettings/types";
 import type {
   Card,
   DashboardId,
   Dataset,
   Field,
   ParameterValueOrArray,
+  TimelineEventId,
 } from "metabase-types/api";
 
 export type QueryBuilderMode = "view" | "notebook" | "dataset";
 export type DatasetEditorTab = "query" | "metadata";
 export type QueryBuilderQueryStatus = "idle" | "running" | "complete";
+export type InitialChartSettingState = {
+  section?: string | null;
+  widget?: Widget | null;
+};
 
 export type ForeignKeyReference = {
   status: number;
@@ -26,16 +33,22 @@ export interface QueryBuilderUIControls {
   isShowingChartTypeSidebar: boolean;
   isShowingChartSettingsSidebar: boolean;
   isShowingQuestionDetailsSidebar: boolean;
+  isShowingQuestionInfoSidebar: boolean;
+  isShowingSnippetSidebar: boolean;
   isShowingTimelineSidebar: boolean;
   isNativeEditorOpen: boolean;
-  initialChartSetting: null;
+  initialChartSetting: InitialChartSettingState;
   isShowingRawTable: boolean;
-  queryBuilderMode: QueryBuilderMode;
+  queryBuilderMode: QueryBuilderMode | false;
   previousQueryBuilderMode: boolean;
   snippetCollectionId: number | null;
   datasetEditorTab: DatasetEditorTab;
   isShowingNotebookNativePreview: boolean;
   notebookNativePreviewSidebarWidth: number | null;
+  showSidebarTitle: boolean;
+  modal: QueryModalType | null;
+  modalContext: TimelineEventId | null;
+  dataReferenceStack: null;
 }
 
 export interface QueryBuilderLoadingControls {

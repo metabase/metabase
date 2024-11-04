@@ -2,6 +2,7 @@ import moment from "moment"; // eslint-disable-line no-restricted-imports -- dep
 import { t } from "ttag";
 import _ from "underscore";
 
+import { formatValue } from "metabase/lib/formatting";
 import { formatDateTimeRangeWithUnit } from "metabase/lib/formatting/date";
 import { isEmpty } from "metabase/lib/validate";
 import { computeChange } from "metabase/visualizations/lib/numeric";
@@ -10,12 +11,7 @@ import { formatChange } from "metabase/visualizations/visualizations/SmartScalar
 import * as Lib from "metabase-lib";
 import { isDate } from "metabase-lib/v1/types/utils/isa";
 
-export function computeTrend(
-  series,
-  insights,
-  settings,
-  { formatValue, getColor },
-) {
+export function computeTrend(series, insights, settings, { getColor }) {
   try {
     const comparisons = settings["scalar.comparisons"] || [];
     const currentMetricData = getCurrentMetricData({
@@ -28,7 +24,7 @@ export function computeTrend(
       currentMetricData;
 
     const displayValue = formatValue(value, formatOptions);
-    const displayDate = formatDateStr({ date, dateUnitSettings, formatValue });
+    const displayDate = formatDateStr({ date, dateUnitSettings });
 
     return {
       trend: {
@@ -45,7 +41,6 @@ export function computeTrend(
             currentMetricData,
             series,
             settings,
-            formatValue,
             getColor,
           }),
         ),
@@ -63,7 +58,6 @@ function buildComparisonObject({
   currentMetricData,
   series,
   settings,
-  formatValue,
   getColor,
 }) {
   const { formatOptions, value } = currentMetricData;
@@ -73,7 +67,6 @@ function buildComparisonObject({
       comparison,
       currentMetricData,
       series,
-      formatValue,
     }) || {};
 
   const percentChange = !isEmpty(comparisonValue)
@@ -89,7 +82,6 @@ function buildComparisonObject({
     comparisonValue,
     formatOptions,
     percentChange,
-    formatValue,
   });
 
   const changeColor = !isEmpty(changeArrowIconName)
@@ -114,12 +106,7 @@ function buildComparisonObject({
   };
 }
 
-function computeComparison({
-  comparison,
-  currentMetricData,
-  series,
-  formatValue,
-}) {
+function computeComparison({ comparison, currentMetricData, series }) {
   const { type } = comparison;
 
   if (type === COMPARISON_TYPES.ANOTHER_COLUMN) {
@@ -134,7 +121,6 @@ function computeComparison({
     return computeTrendPreviousValue({
       currentMetricData,
       series,
-      formatValue,
     });
   }
 
@@ -146,7 +132,6 @@ function computeComparison({
       comparison,
       currentMetricData,
       series,
-      formatValue,
     });
   }
 
@@ -283,7 +268,7 @@ function computeTrendStaticValue({ comparison }) {
   };
 }
 
-function computeTrendPreviousValue({ currentMetricData, series, formatValue }) {
+function computeTrendPreviousValue({ currentMetricData, series }) {
   const [
     {
       data: { rows },
@@ -303,7 +288,6 @@ function computeTrendPreviousValue({ currentMetricData, series, formatValue }) {
     nextValueRowIndex: latestRowIndex,
     nextDate: date,
     dateUnitSettings,
-    formatValue,
   });
 }
 
@@ -314,7 +298,6 @@ function computeComparisonPreviousValue({
   nextValueRowIndex,
   nextDate,
   dateUnitSettings,
-  formatValue,
 }) {
   const previousRowIndex = _.findLastIndex(rows, (row, i) => {
     if (i >= nextValueRowIndex) {
@@ -339,7 +322,6 @@ function computeComparisonPreviousValue({
     nextDate,
     prevDate,
     dateUnitSettings,
-    formatValue,
   });
 
   return {
@@ -348,12 +330,7 @@ function computeComparisonPreviousValue({
   };
 }
 
-function computeTrendPeriodsAgo({
-  comparison,
-  currentMetricData,
-  series,
-  formatValue,
-}) {
+function computeTrendPeriodsAgo({ comparison, currentMetricData, series }) {
   const [
     {
       data: { rows },
@@ -384,7 +361,6 @@ function computeTrendPeriodsAgo({
     nextDate: date,
     dateUnitSettings,
     dateUnitsAgo,
-    formatValue,
   });
 }
 
@@ -396,7 +372,6 @@ function computeComparisonPeriodsAgo({
   nextDate,
   dateUnitSettings,
   dateUnitsAgo,
-  formatValue,
 }) {
   const dateUnitDisplay = Lib.describeTemporalUnit(
     dateUnitSettings.dateUnit,
@@ -427,7 +402,6 @@ function computeComparisonPeriodsAgo({
           dateUnitSettings,
           nextDate,
           prevDate,
-          formatValue,
         });
 
   // if no row exists with date "X periods ago"
@@ -516,7 +490,6 @@ function computeComparisonStrPreviousValue({
   dateUnitSettings,
   prevDate,
   nextDate,
-  formatValue,
 }) {
   const isSameDay = moment.parseZone(prevDate).isSame(nextDate, "day");
   const isSameYear = moment.parseZone(prevDate).isSame(nextDate, "year");
@@ -530,13 +503,12 @@ function computeComparisonStrPreviousValue({
     date: prevDate,
     dateUnitSettings,
     options,
-    formatValue,
   });
 
   return t`vs. ${formattedDateStr}`;
 }
 
-function formatDateStr({ date, dateUnitSettings, options, formatValue }) {
+function formatDateStr({ date, dateUnitSettings, options }) {
   const { dateColumn, dateColumnSettings, dateUnit, queryType } =
     dateUnitSettings;
 
@@ -578,7 +550,6 @@ function computeChangeTypeWithOptions({
   comparisonValue,
   formatOptions,
   percentChange,
-  formatValue,
 }) {
   if (isEmpty(comparisonValue)) {
     return {

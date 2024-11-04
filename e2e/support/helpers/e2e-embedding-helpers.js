@@ -169,7 +169,7 @@ export function openStaticEmbeddingModal({
     cy.findByRole("button", { name: "Save" }).click();
   }
 
-  cy.findByTestId("sharing-pane-static-embed-button").click();
+  cy.findByText("Static embedding").click();
 
   if (acceptTerms) {
     cy.findByTestId("accept-legalese-terms-button").click();

@@ -1,3 +1,4 @@
+import { OTHER_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import {
   getXAxisModel,
   getYAxesModels,
@@ -28,6 +29,10 @@ import type { RawSeries, SingleSeries } from "metabase-types/api";
 
 import type { ShowWarning } from "../../types";
 
+import {
+  createOtherGroupSeriesModel,
+  groupSeriesIntoOther,
+} from "./other-series";
 import { getStackModels } from "./stack";
 import { getAxisTransforms } from "./transforms";
 import { getTrendLines } from "./trend-line";
@@ -91,13 +96,7 @@ export const getCartesianChartModel = (
     cardsColumns,
     hiddenSeries,
     settings,
-    renderingContext,
   );
-
-  // We currently ignore sorting and visibility settings on combined cards
-  const seriesModels = hasMultipleCards
-    ? unsortedSeriesModels
-    : getSortedSeriesModels(unsortedSeriesModels, settings);
 
   const unsortedDataset = getJoinedCardsDataset(
     rawSeries,
@@ -109,14 +108,33 @@ export const getCartesianChartModel = (
     settings["graph.x_axis.scale"],
     showWarning,
   );
-  const scaledDataset = scaleDataset(dataset, seriesModels, settings);
+
+  const sortedSeriesModels = hasMultipleCards
+    ? unsortedSeriesModels
+    : getSortedSeriesModels(unsortedSeriesModels, settings);
+
+  const scaledDataset = scaleDataset(dataset, sortedSeriesModels, settings);
+
+  const { ungroupedSeriesModels: seriesModels, groupedSeriesModels } =
+    groupSeriesIntoOther(sortedSeriesModels, settings);
+
+  const [sampleGroupedModel] = groupedSeriesModels;
+  if (sampleGroupedModel) {
+    seriesModels.push(
+      createOtherGroupSeriesModel(
+        sampleGroupedModel.column,
+        sampleGroupedModel.columnIndex,
+        settings,
+        !hiddenSeries.includes(OTHER_DATA_KEY),
+      ),
+    );
+  }
 
   const xAxisModel = getXAxisModel(
     dimensionModel,
     rawSeries,
     scaledDataset,
     settings,
-    renderingContext,
     showWarning,
   );
   const yAxisScaleTransforms = getAxisTransforms(
@@ -130,6 +148,7 @@ export const getCartesianChartModel = (
     stackModels,
     xAxisModel,
     seriesModels,
+    groupedSeriesModels,
     yAxisScaleTransforms,
     settings,
     showWarning,
@@ -139,13 +158,7 @@ export const getCartesianChartModel = (
     seriesLabelsFormatters,
     stackedLabelsFormatters,
     isCompactFormatting,
-  } = getFormatters(
-    seriesModels,
-    stackModels,
-    scaledDataset,
-    settings,
-    renderingContext,
-  );
+  } = getFormatters(seriesModels, stackModels, scaledDataset, settings);
 
   const dataDensity = getComboChartDataDensity(
     seriesModels,
@@ -166,7 +179,6 @@ export const getCartesianChartModel = (
     true,
     stackModels,
     isCompactFormatting,
-    renderingContext,
   );
 
   const trendLinesModel = getTrendLines(
@@ -195,5 +207,6 @@ export const getCartesianChartModel = (
     seriesLabelsFormatters,
     stackedLabelsFormatters,
     dataDensity,
+    groupedSeriesModels,
   };
 };

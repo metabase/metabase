@@ -2,6 +2,7 @@ import type { FocusEvent } from "react";
 import { useCallback, useMemo, useState } from "react";
 import { useMount } from "react-use";
 import { t } from "ttag";
+import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
@@ -10,21 +11,28 @@ import {
   SidesheetCard,
   SidesheetTabPanelContainer,
 } from "metabase/common/components/Sidesheet";
+import { InsightsTabOrLink } from "metabase/common/components/Sidesheet/components/InsightsTabOrLink";
+import { SidesheetEditableDescription } from "metabase/common/components/Sidesheet/components/SidesheetEditableDescription";
 import SidesheetS from "metabase/common/components/Sidesheet/sidesheet.module.css";
 import { Timeline } from "metabase/common/components/Timeline";
 import { getTimelineEvents } from "metabase/common/components/Timeline/utils";
 import { useRevisionListQuery } from "metabase/common/hooks";
-import { EntityIdCard } from "metabase/components/EntityIdCard";
-import EditableText from "metabase/core/components/EditableText";
 import { revertToRevision, updateDashboard } from "metabase/dashboard/actions";
 import { DASHBOARD_DESCRIPTION_MAX_LENGTH } from "metabase/dashboard/constants";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { PLUGIN_MODERATION } from "metabase/plugins";
 import { getUser } from "metabase/selectors/user";
 import { Stack, Tabs, Text } from "metabase/ui";
-import type { Dashboard, Revision, User } from "metabase-types/api";
+import type {
+  Dashboard,
+  ModerationReview,
+  Revision,
+  User,
+} from "metabase-types/api";
 
 import { DashboardDetails } from "./DashboardDetails";
-import DashboardInfoSidebarS from "./DashboardInfoSidebar.module.css";
+import { DashboardEntityIdCard } from "./DashboardEntityIdCard";
+import { InsightsUpsellTab } from "./components/InsightsUpsellTab";
 
 interface DashboardInfoSidebarProps {
   dashboard: Dashboard;
@@ -38,6 +46,7 @@ interface DashboardInfoSidebarProps {
 enum Tab {
   Overview = "overview",
   History = "history",
+  Insights = "insights",
 }
 
 export function DashboardInfoSidebar({
@@ -112,6 +121,7 @@ export function DashboardInfoSidebar({
               {!isIADashboard && (
                 <Tabs.Tab value={Tab.History}>{t`History`}</Tabs.Tab>
               )}
+              <InsightsTabOrLink dashboard={dashboard} />
             </Tabs.List>
             <SidesheetTabPanelContainer>
               <Tabs.Panel value={Tab.Overview}>
@@ -129,7 +139,11 @@ export function DashboardInfoSidebar({
                   canWrite={canWrite}
                   revisions={revisions}
                   currentUser={currentUser}
+                  moderationReviews={dashboard.moderation_reviews}
                 />
+              </Tabs.Panel>
+              <Tabs.Panel value={Tab.Insights}>
+                <InsightsUpsellTab model="dashboard" />
               </Tabs.Panel>
             </SidesheetTabPanelContainer>
           </Tabs>
@@ -157,29 +171,26 @@ const OverviewTab = ({
   return (
     <Stack spacing="lg">
       <SidesheetCard title={t`Description`} pb="md">
-        <div className={DashboardInfoSidebarS.EditableTextContainer}>
-          <EditableText
-            initialValue={dashboard.description}
-            isDisabled={!canWrite}
-            onChange={handleDescriptionChange}
-            onFocus={() => setDescriptionError("")}
-            onBlur={handleDescriptionBlur}
-            isOptional
-            isMultiline
-            isMarkdown
-            placeholder={t`Add description`}
-          />
-        </div>
+        <SidesheetEditableDescription
+          description={dashboard.description}
+          onChange={handleDescriptionChange}
+          canWrite={canWrite}
+          onFocus={() => setDescriptionError("")}
+          onBlur={handleDescriptionBlur}
+        />
         {!!descriptionError && (
           <Text color="error" size="xs" mt="xs">
             {descriptionError}
           </Text>
         )}
+        <PLUGIN_MODERATION.ModerationReviewTextForDashboard
+          dashboard={dashboard}
+        />
       </SidesheetCard>
       <SidesheetCard>
         <DashboardDetails dashboard={dashboard} />
       </SidesheetCard>
-      <EntityIdCard entityId={dashboard.entity_id} />
+      <DashboardEntityIdCard dashboard={dashboard} />
     </Stack>
   );
 };
@@ -188,16 +199,32 @@ const HistoryTab = ({
   canWrite,
   revisions,
   currentUser,
+  moderationReviews,
 }: {
   canWrite: boolean;
   revisions?: Revision[];
   currentUser: User | null;
+  moderationReviews: ModerationReview[];
 }) => {
   const dispatch = useDispatch();
+
+  const events = useMemo(() => {
+    const moderationEvents = PLUGIN_MODERATION.getModerationTimelineEvents(
+      moderationReviews,
+      currentUser,
+    );
+    const revisionEvents = getTimelineEvents({ revisions, currentUser });
+
+    return [...revisionEvents, ...moderationEvents].sort(
+      (a, b) =>
+        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
+    );
+  }, [moderationReviews, revisions, currentUser]);
+
   return (
     <SidesheetCard>
       <Timeline
-        events={getTimelineEvents({ revisions, currentUser })}
+        events={events}
         data-testid="dashboard-history-list"
         revert={revision => dispatch(revertToRevision(revision))}
         canWrite={canWrite}

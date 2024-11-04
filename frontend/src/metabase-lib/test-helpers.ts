@@ -266,6 +266,7 @@ export const queryDrillThru = (
   const drills = Lib.availableDrillThrus(
     query,
     stageIndex,
+    undefined,
     clickObject.column,
     clickObject.value,
     clickObject.data,

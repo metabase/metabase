@@ -1,4 +1,4 @@
-(ns metabase.driver.sql-jdbc.sync.describe-table-test
+(ns ^:mb/driver-tests metabase.driver.sql-jdbc.sync.describe-table-test
   (:require
    [cheshire.core :as json]
    [clojure.java.jdbc :as jdbc]
@@ -43,12 +43,6 @@
       (or (uses-default-describe-table? driver)
           (uses-default-describe-fields? driver)))
     (descendants driver/hierarchy :sql-jdbc))))
-
-(deftest ^:parallel describe-fields-nested-field-columns-test
-  (testing (str "Drivers that support describe-fields should not support the nested field columns feature."
-                "It is possible to support both in the future but this has not been implemented yet.")
-    (is (empty? (filter #(driver.u/supports? % :describe-fields nil)
-                        (mt/normal-drivers-with-feature :nested-field-columns))))))
 
 (deftest ^:parallel describe-table-test
   (mt/test-driver :h2
@@ -148,6 +142,44 @@
                                             :schema-names [(:schema table)]
                                             :table-names [(:name table)]))
                (:fields (driver/describe-table driver db table))))))
+
+(defmethod driver/database-supports? [::driver/driver ::describe-pks]
+  [driver _feature database]
+  ;; This is a decent proxy for drivers that set the `pk?` metadata field.
+  (driver/database-supports? driver :metadata/key-constraints database))
+
+;; These drivers set the `:pk?` field even though they do no support key-constriants
+(doseq [driver [:mongo :sqlite]]
+  (defmethod driver/database-supports? [driver ::describe-pks]
+    [_driver _feature _database]
+    true))
+
+(deftest describe-fields-shared-attributes-test
+  (testing "common metadata attributes"
+    (mt/test-drivers (mt/normal-drivers-with-feature :actions)
+      (is (=?
+           [[0 false true (driver/database-supports? driver/*driver* ::describe-pks (mt/db))]
+            [1 false false false]
+            [2 false false false]
+            [3 false false false]
+            [4 false false false]
+            [5 false false false]]
+           (sort-by
+            :first
+            (map (juxt :database-position :database-required :database-is-auto-increment (comp boolean :pk?))
+                 (describe-fields-for-table (mt/db) (t2/select-one Table :id (mt/id :venues))))))))
+    (mt/test-drivers (mt/normal-drivers-without-feature :actions)
+      (is (=?
+           [[0 (driver/database-supports? driver/*driver* ::describe-pks (mt/db))]
+            [1 false]
+            [2 false]
+            [3 false]
+            [4 false]
+            [5 false]]
+           (sort-by
+            :first
+            (map (juxt :database-position (comp boolean :pk?))
+                 (describe-fields-for-table (mt/db) (t2/select-one Table :id (mt/id :venues))))))))))
 
 (deftest database-types-fallback-test
   (mt/test-drivers (apply disj (sql-jdbc-drivers-using-default-describe-table-or-fields-impl)
@@ -295,7 +327,7 @@
                     :visibility-type :normal,
                     :nfc-path [:json_bit "genres"]}
                    {:name "json_bit → 1234",
-                    :database-type "bigint",
+                    :database-type "decimal",
                     :base-type :type/Integer,
                     :database-position 0,
                     :json-unfolding false,
@@ -489,7 +521,7 @@
                     :visibility-type   :normal
                     :nfc-path          [:jsoncol "mybool"]}
                    {:name              "jsoncol → myint"
-                    :database-type     "double precision"
+                    :database-type     "decimal"
                     :base-type         :type/Number
                     :database-position 0
                     :json-unfolding    false
@@ -554,7 +586,7 @@
                                (t2/select-one Table :db_id (mt/id) :name "json_with_pk")))))
               (testing "if table doesn't have pk, we fail to detect the change in type but it still syncable"
                 (is (= [{:name              "json_col → int_turn_string"
-                         :database-type     "bigint"
+                         :database-type     "decimal"
                          :base-type         :type/Integer
                          :database-position 0
                          :json-unfolding    false

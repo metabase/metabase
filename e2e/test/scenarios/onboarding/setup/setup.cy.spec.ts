@@ -387,15 +387,6 @@ describe("scenarios > setup", () => {
         .click();
     });
 
-    cy.log(
-      "Make sure the embedding secret key is set after embedding has been autoenabled",
-    );
-    cy.wait("@properties").then(request => {
-      expect(request.response?.body["embedding-secret-key"]?.length).to.equal(
-        64,
-      );
-    });
-
     cy.location("pathname").should("eq", "/");
 
     main()

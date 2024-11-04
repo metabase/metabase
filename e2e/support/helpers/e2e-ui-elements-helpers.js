@@ -197,6 +197,12 @@ export const questionInfoButton = () => {
   return cy.findByTestId("qb-header-info-button");
 };
 
+/** Opens the question info sidesheet */
+export const openQuestionInfoSidesheet = () => {
+  questionInfoButton().click();
+  return sidesheet();
+};
+
 export const undo = () => {
   cy.findByTestId("toast-undo").findByText("Undo").click();
 };
@@ -284,6 +290,28 @@ export function tableHeaderClick(headerString) {
   });
 }
 
+export function assertTableData({ columns, firstRows = [] }) {
+  tableInteractive()
+    .findAllByTestId("header-cell")
+    .should("have.length", columns.length);
+
+  columns.forEach((column, index) => {
+    tableInteractive()
+      .findAllByTestId("header-cell")
+      .eq(index)
+      .should("have.text", column);
+  });
+
+  firstRows.forEach((row, rowIndex) => {
+    row.forEach((cell, cellIndex) => {
+      tableInteractiveBody()
+        .findAllByTestId("cell-data")
+        .eq(columns.length * rowIndex + cellIndex)
+        .should("have.text", cell);
+    });
+  });
+}
+
 /**
  * selects the global new button
  * @param {*} menuItem optional, if provided, will click the New button and return the menu item with the text provided
@@ -317,4 +345,14 @@ export function removeMultiAutocompleteValue(index, filter) {
   return multiAutocompleteValue(index, filter)
     .findByRole("button", { hidden: true })
     .click();
+}
+
+export function repeatAssertion(assertFn, timeout = 4000, interval = 400) {
+  if (timeout <= 0) {
+    return;
+  }
+  assertFn();
+
+  cy.wait(interval);
+  repeatAssertion(assertFn, timeout - interval, interval);
 }

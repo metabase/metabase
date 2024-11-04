@@ -7,6 +7,7 @@ import { SidesheetCardSection } from "metabase/common/components/Sidesheet";
 import DateTime from "metabase/components/DateTime";
 import Link from "metabase/core/components/Link";
 import Styles from "metabase/css/core/index.css";
+import { collection as collectionUrl } from "metabase/lib/urls";
 import { getUserName } from "metabase/lib/user";
 import { DashboardPublicLinkPopover } from "metabase/sharing/components/PublicLinkPopover";
 import { Box, FixedSizeIcon, Flex, Text } from "metabase/ui";
@@ -54,29 +55,28 @@ export const DashboardDetails = ({ dashboard }: { dashboard: Dashboard }) => {
           </Flex>
         )}
       </SidesheetCardSection>
-      <SidesheetCardSection
-        title={c(
-          "This is a heading that appears above the name of a collection - a collection that a dashboard is saved in. Feel free to translate this heading as though it said 'Saved in collection', if you think that would make more sense in your language.",
-        ).t`Saved in`}
-      >
-        <Flex gap="sm" align="top">
-          <FixedSizeIcon
-            name="folder"
-            className={SidebarStyles.IconMargin}
-            color="var(--mb-color-brand)"
-          />
-          <div>
-            <Text>
-              <Link
-                to={`/collection/${dashboard.collection_id}`}
-                variant="brand"
-              >
-                {dashboard.collection?.name}
-              </Link>
-            </Text>
-          </div>
-        </Flex>
-      </SidesheetCardSection>
+      {dashboard.collection && (
+        <SidesheetCardSection
+          title={c(
+            "This is a heading that appears above the name of a collection - a collection that a dashboard is saved in. Feel free to translate this heading as though it said 'Saved in collection', if you think that would make more sense in your language.",
+          ).t`Saved in`}
+        >
+          <Flex gap="sm" align="top">
+            <FixedSizeIcon
+              name="folder"
+              className={SidebarStyles.IconMargin}
+              color="var(--mb-color-brand)"
+            />
+            <div>
+              <Text>
+                <Link to={collectionUrl(dashboard.collection)} variant="brand">
+                  {dashboard.collection?.name}
+                </Link>
+              </Text>
+            </div>
+          </Flex>
+        </SidesheetCardSection>
+      )}
       <SharingDisplay dashboard={dashboard} />
     </>
   );

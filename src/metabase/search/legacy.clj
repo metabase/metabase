@@ -116,12 +116,12 @@
 
 (mu/defn- with-moderated-status :- :map
   [query :- :map
-   model :- [:enum "card" "dataset"]]
+   model :- [:enum "card" "dataset" "dashboard"]]
   (-> query
       (replace-select :moderated_status :mr.status)
       (sql.helpers/left-join [:moderation_review :mr]
                              [:and
-                              [:= :mr.moderated_item_type "card"]
+                              [:= :mr.moderated_item_type (if (= model "dashboard") model "card")]
                               [:= :mr.moderated_item_id (search.config/column-with-model-alias model :id)]
                               [:= :mr.most_recent true]])))
 
@@ -284,6 +284,7 @@
                              [:and
                               [:= :bookmark.dashboard_id :dashboard.id]
                               [:= :bookmark.user_id (:current-user-id search-ctx)]])
+      (with-moderated-status "dashboard")
       (add-collection-join-and-where-clauses model search-ctx)
       (with-last-editing-info "dashboard")))
 
@@ -314,7 +315,6 @@
 (defmethod search-query-for-model "table"
   [model {:keys [current-user-perms table-db-id], :as search-ctx}]
   (when (seq current-user-perms)
-
     (-> (base-query-for-model model search-ctx)
         (add-table-db-id-clause table-db-id)
         (sql.helpers/left-join :metabase_database [:= :table.db_id :metabase_database.id]))))

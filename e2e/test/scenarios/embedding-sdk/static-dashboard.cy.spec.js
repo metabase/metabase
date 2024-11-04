@@ -23,6 +23,9 @@ describeSDK("scenarios > embedding-sdk > static-dashboard", () => {
     cy.signInAsAdmin();
     setTokenFeatures("all");
     setupJwt();
+    cy.request("PUT", "/api/setting", {
+      "enable-embedding-sdk": true,
+    });
 
     const textCard = getTextCardDetails({ col: 16, text: "Text text card" });
     const questionCard = {
@@ -52,9 +55,7 @@ describeSDK("scenarios > embedding-sdk > static-dashboard", () => {
     cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
       "dashcardQuery",
     );
-  });
 
-  it("should show dashboard content", () => {
     cy.get("@dashboardId").then(dashboardId => {
       visitFullAppEmbeddingUrl({
         url: EMBEDDING_SDK_STORY_HOST,
@@ -75,15 +76,23 @@ describeSDK("scenarios > embedding-sdk > static-dashboard", () => {
       expect(response?.statusCode).to.equal(200);
     });
 
-    cy.get("#metabase-sdk-root")
-      .should("be.visible")
-      .within(() => {
-        cy.findByText("Embedding Sdk Test Dashboard").should("be.visible"); // dashboard title
+    cy.get("#metabase-sdk-root").should("be.visible");
+  });
 
-        cy.findByText("Text text card").should("be.visible"); // text card content
+  it("should show dashboard content", () => {
+    cy.get("#metabase-sdk-root").within(() => {
+      cy.findByText("Embedding Sdk Test Dashboard").should("be.visible"); // dashboard title
 
-        cy.wait("@dashcardQuery");
-        cy.findByText("Test question card").should("be.visible"); // question card content
-      });
+      cy.findByText("Text text card").should("be.visible"); // text card content
+
+      cy.wait("@dashcardQuery");
+      cy.findByText("Test question card").should("be.visible"); // question card content
+    });
+  });
+
+  it("should show fullscreen mode control by default", () => {
+    cy.get("#metabase-sdk-root").within(() => {
+      cy.icon("expand").should("be.visible"); // enter full screen control
+    });
   });
 });

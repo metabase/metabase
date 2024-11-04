@@ -1,4 +1,4 @@
-import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import moment, { type Moment } from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -62,7 +62,7 @@ const serializersByOperatorName: Record<
       return null;
     }
     const options = operator
-      .getOptions()
+      .getOptionGroups()
       .flat()
       .filter(
         ({ test }) => _.find(values, (value: string) => test(value)) != null,
@@ -126,16 +126,24 @@ function parseDateRangeValue(value: string) {
   return { start: moment(start, true), end: moment(end, true) };
 }
 
+function formatSingleDate(date: Moment) {
+  if (date.hours() || date.minutes()) {
+    return date.format("MMMM D, YYYY hh:mm A");
+  } else {
+    return date.format("MMMM D, YYYY");
+  }
+}
+
 export function formatRangeWidget(value: string): string | null {
   const { start, end } = parseDateRangeValue(value);
   return start.isValid() && end.isValid()
-    ? start.format("MMMM D, YYYY") + " - " + end.format("MMMM D, YYYY")
+    ? formatSingleDate(start) + " - " + formatSingleDate(end)
     : null;
 }
 
 function formatSingleWidget(value: string): string | null {
   const m = moment(value, true);
-  return m.isValid() ? m.format("MMMM D, YYYY") : null;
+  return m.isValid() ? formatSingleDate(m) : null;
 }
 
 function formatMonthYearWidget(value: string): string | null {
@@ -169,7 +177,7 @@ export function formatDateValue(
   }, null);
 }
 
-// This should miror the logic in `metabase.shared.parameters.parameters`
+// This should miror the logic in `metabase.models.params.shared`
 export function formatDateValueForType(
   value: string,
   type: string,

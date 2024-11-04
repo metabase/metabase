@@ -1,4 +1,4 @@
-(ns metabase.query-processor-test.parameters-test
+(ns ^:mb/driver-tests metabase.query-processor-test.parameters-test
   "Tests for support for parameterized queries in drivers that support it. (There are other tests for parameter support
   in various places; these are mainly for high-level verification that parameters are working.)"
   (:require

@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useMemo } from "react";
 import { useDeepCompareEffect } from "react-use";
 
 import {
@@ -9,19 +9,17 @@ import {
 import { isValidCollectionId } from "metabase/collections/utils";
 import { useSelector } from "metabase/lib/redux";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
-import type {
-  CollectionItemModel,
-  ListCollectionItemsRequest,
-} from "metabase-types/api";
+import type { CollectionItemModel } from "metabase-types/api";
 
+import { useEnsureCollectionSelected } from "../../CollectionPicker";
 import { CollectionItemPickerResolver } from "../../CollectionPicker/components/CollectionItemPickerResolver";
 import { getPathLevelForItem } from "../../CollectionPicker/utils";
-import {
-  DelayedLoadingSpinner,
-  NestedItemPicker,
-  type PickerState,
-} from "../../EntityPicker";
-import type { QuestionPickerItem, QuestionPickerOptions } from "../types";
+import { DelayedLoadingSpinner, NestedItemPicker } from "../../EntityPicker";
+import type {
+  QuestionPickerItem,
+  QuestionPickerOptions,
+  QuestionPickerStatePath,
+} from "../types";
 import {
   getCollectionIdPath,
   getQuestionPickerValueModel,
@@ -36,11 +34,14 @@ export const defaultOptions: QuestionPickerOptions = {
 };
 
 interface QuestionPickerProps {
-  onItemSelect: (item: QuestionPickerItem) => void;
   initialValue?: Pick<QuestionPickerItem, "model" | "id">;
-  options: QuestionPickerOptions;
   models?: CollectionItemModel[];
+  options: QuestionPickerOptions;
+  path: QuestionPickerStatePath | undefined;
   shouldShowItem?: (item: QuestionPickerItem) => boolean;
+  onInit: (item: QuestionPickerItem) => void;
+  onItemSelect: (item: QuestionPickerItem) => void;
+  onPathChange: (path: QuestionPickerStatePath) => void;
 }
 
 const useGetInitialCollection = (
@@ -82,20 +83,19 @@ const useGetInitialCollection = (
 };
 
 export const QuestionPicker = ({
-  onItemSelect,
   initialValue,
-  options,
   models = ["dataset", "card"],
+  options,
+  path: pathProp,
   shouldShowItem,
+  onInit,
+  onItemSelect,
+  onPathChange,
 }: QuestionPickerProps) => {
-  const [path, setPath] = useState<
-    PickerState<QuestionPickerItem, ListCollectionItemsRequest>
-  >(() =>
-    getStateFromIdPath({
-      idPath: ["root"],
-      models,
-    }),
-  );
+  const defaultPath = useMemo(() => {
+    return getStateFromIdPath({ idPath: ["root"], models });
+  }, [models]);
+  const path = pathProp ?? defaultPath;
 
   const { currentCollection, currentQuestion, isLoading } =
     useGetInitialCollection(initialValue);
@@ -108,10 +108,10 @@ export const QuestionPicker = ({
         idPath: getCollectionIdPath(folder, userPersonalCollectionId),
         models,
       });
-      setPath(newPath);
       onItemSelect(folder);
+      onPathChange(newPath);
     },
-    [setPath, onItemSelect, userPersonalCollectionId, models],
+    [onItemSelect, onPathChange, userPersonalCollectionId, models],
   );
 
   const handleItemSelect = useCallback(
@@ -125,10 +125,10 @@ export const QuestionPicker = ({
 
       const newPath = path.slice(0, pathLevel + 1);
       newPath[newPath.length - 1].selectedItem = item;
-      setPath(newPath);
       onItemSelect(item);
+      onPathChange(newPath);
     },
-    [setPath, onItemSelect, path, userPersonalCollectionId],
+    [onItemSelect, onPathChange, path, userPersonalCollectionId],
   );
 
   useDeepCompareEffect(
@@ -143,7 +143,7 @@ export const QuestionPicker = ({
         });
 
         // start with the current item selected if we can
-        newPath[newPath.length - 1].selectedItem = currentQuestion
+        const newSelectedItem: QuestionPickerItem = currentQuestion
           ? {
               id: currentQuestion.id,
               name: currentQuestion.name,
@@ -155,11 +155,21 @@ export const QuestionPicker = ({
               model: "collection",
             };
 
-        setPath(newPath);
+        newPath[newPath.length - 1].selectedItem = newSelectedItem;
+
+        onPathChange(newPath);
       }
     },
-    [currentCollection, userPersonalCollectionId],
+    [currentCollection, userPersonalCollectionId, onPathChange],
   );
+
+  useEnsureCollectionSelected({
+    currentCollection,
+    enabled: path === defaultPath,
+    options,
+    useRootCollection: initialValue?.id == null,
+    onInit,
+  });
 
   if (isLoading) {
     return <DelayedLoadingSpinner />;

@@ -3,15 +3,15 @@ import { useMemo } from "react";
 import type { Table } from "metabase-types/api";
 
 import { ItemList, ListBox } from "../../EntityPicker";
-import type { NotebookDataPickerValueItem } from "../types";
+import type { DataPickerValueItem } from "../types";
 
 interface Props {
   error: unknown;
   isLoading: boolean;
   isCurrentLevel: boolean;
-  selectedItem: NotebookDataPickerValueItem | null;
+  selectedItem: DataPickerValueItem | null;
   tables: Table[] | undefined;
-  onClick: (item: NotebookDataPickerValueItem) => void;
+  onClick: (item: DataPickerValueItem) => void;
 }
 
 const isFolder = () => false;
@@ -24,7 +24,7 @@ export const TableList = ({
   tables,
   onClick,
 }: Props) => {
-  const items: NotebookDataPickerValueItem[] | undefined = useMemo(() => {
+  const items: DataPickerValueItem[] | undefined = useMemo(() => {
     return tables?.map(table => ({
       id: table.id,
       model: "table",

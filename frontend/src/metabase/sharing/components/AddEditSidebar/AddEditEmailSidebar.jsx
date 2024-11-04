@@ -129,26 +129,6 @@ function _AddEditEmailSidebar({
             onChange={toggleSkipIfEmpty}
           />
         </div>
-        <div
-          className={cx(
-            CS.textBold,
-            CS.py2,
-            CS.flex,
-            CS.justifyBetween,
-            CS.alignCenter,
-            CS.borderTop,
-          )}
-        >
-          <div className={cx(CS.flex, CS.alignCenter)}>
-            <Heading>{t`Attach results`}</Heading>
-            <Icon
-              name="info"
-              className={cx(CS.textMedium, CS.ml1)}
-              size={12}
-              tooltip={t`Attachments can contain up to 2,000 rows of data.`}
-            />
-          </div>
-        </div>
         <EmailAttachmentPicker
           cards={pulse.cards}
           pulse={pulse}

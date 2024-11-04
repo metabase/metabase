@@ -39,7 +39,7 @@ To add an Official badge to a collection, an admin can visit the collection and 
 [Administrators can give you different kinds of access](../permissions/collections.md) to each collection:
 
 - **View access:** you can see the collection and its contents, but you can't modify anything or put anything new into the collection.
-- **Curate access:** you can edit, move, or archive the collection and its contents. You can also move or save new things in it and create new collections inside of it, and can also pin items in the collection to the top of the screen. Only administrators can edit permissions for collections, however.
+- **Curate access:** you can edit, move, or delete the collection and its contents. You can also move or save new things in it and create new collections inside of it, and can also pin items in the collection to the top of the screen. Only administrators can edit permissions for collections, however.
 - **No access:** you can't see the collection or its contents. If you have access to a dashboard, but it contains questions that are saved in a collection you don't have access to, those questions will show a permissions notification instead of the chart or table.
 
 ## Your personal collection
@@ -78,6 +78,14 @@ If you're trying to move several things at once, click on the checkboxes next to
 ![Selecting questions](./images/question-checkbox.png)
 
 Note that you have to have Curate permission for the collection that you're moving a question into _and_ the collection you're moving the question out of. Metabase admins can move items into (and out of) anyone's [personal collection](#your-personal-collection).
+
+## Cleaning up collections
+
+{% include plans-blockquote.html feature="Collection cleanup" %}
+
+It's possible to ask too many questions. Fortunately, you can clean up collections by [trashing items](./delete-and-restore.md) that people haven't even looked at for a period of time. Cleaning up old questions and dashboards can keep your Metabase from getting too cluttered, and you can always resurrect items from the trash if you need to.
+
+On a collection page, click on the three-dot menu (**...**) and select **Clean things up**. Metabase will pull up a modal where you can select unused items to move to the trash. You can set how long items need to go unnoticed before they're culled by setting **Not used in over**, which you can set to trash items from one month ago to over two years ago. There's also a toggle to include/exclude items in sub-collections.
 
 ## Events and timelines
 

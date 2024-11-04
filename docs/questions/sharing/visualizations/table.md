@@ -171,7 +171,7 @@ Gives you various options for how commas and periods are used to separate the nu
 - 100000.00
 - 100'000.00
 
-### Minimum number of decimal places
+### Number of decimal places
 
 Forces the number to be displayed with exactly this many decimal places.
 

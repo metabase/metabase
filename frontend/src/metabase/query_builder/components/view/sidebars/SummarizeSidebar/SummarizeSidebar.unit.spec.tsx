@@ -141,12 +141,25 @@ describe("SummarizeSidebar", () => {
       expect(onQueryChange).not.toHaveBeenCalled();
     });
 
+    it("should allow to remove last not default aggregation (metabase#48033)", async () => {
+      await setup({
+        query: createQueryWithClauses({
+          aggregations: [{ operatorName: "count" }],
+        }),
+      });
+
+      const countButton = screen.getByLabelText("Count");
+      await userEvent.click(within(countButton).getByLabelText("close icon"));
+
+      expect(screen.queryByLabelText("Count")).not.toBeInTheDocument();
+    });
+
     it("should allow to add the default aggregation manually after it was removed", async () => {
       const { getNextAggregations, onQueryChange } = await setup();
 
       const countButton = screen.getByLabelText("Count");
       await userEvent.click(within(countButton).getByLabelText("close icon"));
-      await userEvent.click(screen.getByText("Add a metric"));
+      await userEvent.click(screen.getByText("Add a function or metric"));
       await userEvent.click(await screen.findByText("Count of rows"));
 
       const aggregations = getNextAggregations();

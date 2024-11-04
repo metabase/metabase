@@ -3,11 +3,11 @@
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
+   [metabase.models.visualization-settings :as mb.viz]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor.streaming.common :as common]
-   [metabase.shared.formatting.constants :as constants]
-   [metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.util.date-2 :as u.date]
+   [metabase.util.formatting.constants :as constants]
    [metabase.util.log :as log])
   (:import
    (com.ibm.icu.text RuleBasedNumberFormat)
@@ -87,7 +87,7 @@
   "The Java pattern for DateTimeFormatter is `a` for AM/PM and `A` for milli-of-day. However, to reconcile formats with
   Moment.js on the FE, we use `h:mm A` to denote AM/PM in our code base. This function replaces time format patterns
   that use the MB 'A' with 'a' so  that DateTimeFormatter properly formats times. We should consider looking into
-  `metabase.shared.util.time` to see if we can eliminate this altogether."
+  [[metabase.util.time]] to see if we can eliminate this altogether."
   [time-style default-time-style]
   (str/replace (or time-style default-time-style) #"A" "a"))
 

@@ -1,4 +1,4 @@
-(ns metabase.query-processor-test.alternative-date-test
+(ns ^:mb/driver-tests metabase.query-processor-test.alternative-date-test
   "Tests for columns that mimic dates: integral types as UNIX timestamps and string columns as ISO8601DateTimeString and
   related types."
   (:require
@@ -490,9 +490,9 @@
 
 (defmethod yyyymmddhhmmss-dates-expected-rows :redshift
   [_driver]
-  [[1 "foo" #t "2019-04-21T16:43Z[UTC]"]
-   [2 "bar" #t "2020-04-21T16:43Z[UTC]"]
-   [3 "baz" #t "2021-04-21T16:43Z[UTC]"]])
+  [[1 "foo" (OffsetDateTime/from #t "2019-04-21T16:43Z[UTC]")]
+   [2 "bar" (OffsetDateTime/from #t "2020-04-21T16:43Z[UTC]")]
+   [3 "baz" (OffsetDateTime/from #t "2021-04-21T16:43Z[UTC]")]])
 
 (doseq [driver [:h2 :postgres]]
   (defmethod yyyymmddhhmmss-dates-expected-rows driver

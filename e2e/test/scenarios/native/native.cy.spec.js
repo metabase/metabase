@@ -3,8 +3,10 @@ import {
   USER_GROUPS,
   WRITABLE_DB_ID,
 } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { THIRD_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
+  createQuestion,
   entityPickerModal,
   filter,
   filterField,
@@ -18,6 +20,19 @@ import {
   visitCollection,
   visitQuestionAdhoc,
 } from "e2e/support/helpers";
+
+const { ORDERS_ID } = SAMPLE_DATABASE;
+
+const ORDERS_SCALAR_METRIC = {
+  name: "Count of orders",
+  type: "metric",
+  description: "A metric",
+  query: {
+    "source-table": ORDERS_ID,
+    aggregation: [["count"]],
+  },
+  display: "scalar",
+};
 
 describe("scenarios > question > native", () => {
   beforeEach(() => {
@@ -495,32 +510,25 @@ describe("scenarios > native question > data reference sidebar", () => {
 
   it("should show tables", () => {
     openNativeEditor();
-    cy.icon("reference").click();
-    cy.get("[data-testid='sidebar-header-title']").findByText(
-      "Sample Database",
-    );
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("ORDERS").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(
-      "Confirmed Sample Company orders for a product, from a user.",
-    );
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("9 columns");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("QUANTITY").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Number of products bought.");
-    // clicking the title should navigate back
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("QUANTITY").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("ORDERS").click();
-    cy.get("[data-testid='sidebar-header-title']")
-      .findByText("Sample Database")
-      .click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Data Reference");
+    referenceButton().click();
+
+    sidebarHeaderTitle().should("have.text", "Sample Database");
+
+    dataReferenceSidebar().within(() => {
+      cy.findByText("ORDERS").click();
+      cy.findByText(
+        "Confirmed Sample Company orders for a product, from a user.",
+      );
+      cy.findByText("9 columns");
+      cy.findByText("QUANTITY").click();
+      cy.findByText("Number of products bought.");
+
+      cy.log("clicking the title should navigate back");
+      cy.findByText("QUANTITY").click();
+      cy.findByText("ORDERS").click();
+      sidebarHeaderTitle().findByText("Sample Database").click();
+      cy.findByText("Data Reference");
+    });
   });
 
   it("should show models", () => {
@@ -544,23 +552,63 @@ describe("scenarios > native question > data reference sidebar", () => {
     });
 
     openNativeEditor();
-    cy.icon("reference").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("2 models");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Native Products Model").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("A model of the Products table"); // description
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Bobby Tables's Personal Collection"); // collection
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("1 column");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("RENAMED_ID").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("No description");
+    referenceButton().click();
+
+    dataReferenceSidebar().within(() => {
+      cy.findByText("2 models");
+      cy.findByText("Native Products Model").click();
+      cy.findByText("A model of the Products table"); // description
+      cy.findByText("Bobby Tables's Personal Collection"); // collection
+      cy.findByText("1 column");
+      cy.findByText("RENAMED_ID").click();
+      cy.findByText("No description");
+    });
+  });
+
+  describe("metrics", () => {
+    it("should not show metrics when they are not defined on the selected table", () => {
+      openNativeEditor();
+      referenceButton().click();
+      sidebarHeaderTitle().should("have.text", "Sample Database");
+
+      dataReferenceSidebar().within(() => {
+        cy.findByText("ORDERS").click();
+        cy.findByText(/metric/).should("not.exist");
+      });
+    });
+
+    it("should show metrics defined on tables", () => {
+      createQuestion(ORDERS_SCALAR_METRIC);
+
+      openNativeEditor();
+      referenceButton().click();
+      sidebarHeaderTitle().should("have.text", "Sample Database");
+
+      dataReferenceSidebar().within(() => {
+        cy.findByText("ORDERS").click();
+        cy.findByText("1 metric").should("be.visible");
+
+        cy.findByText("Count of orders").should("be.visible").click();
+        cy.findByText("A metric").should("be.visible");
+
+        cy.log("clicking the title should navigate back");
+        cy.findByText("Count of orders").should("be.visible").click();
+      });
+    });
   });
 });
+
+function referenceButton() {
+  return cy.icon("reference");
+}
+
+function sidebarHeaderTitle() {
+  return cy.findByTestId("sidebar-header-title");
+}
+
+function dataReferenceSidebar() {
+  return cy.findByTestId("sidebar-right");
+}
 
 const runQuery = () => {
   cy.findByTestId("native-query-editor-container").within(() => {

@@ -1,4 +1,4 @@
-(ns metabase.api.public-test
+(ns ^:mb/driver-tests metabase.api.public-test
   "Tests for `api/public/` (public links) endpoints."
   (:require
    [cheshire.core :as json]
@@ -18,9 +18,11 @@
     :refer [Card Collection Dashboard DashboardCard DashboardCardSeries
             Database Dimension Field FieldValues]]
    [metabase.models.interface :as mi]
+   [metabase.models.params :as params]
    [metabase.models.params.chain-filter-test :as chain-filter-test]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
+   [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.process-userland-query-test :as process-userland-query-test]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -312,16 +314,16 @@
 
         (testing ":json download response format"
           (is (= [{:Count "100"}]
-                 (client/client :get 200 (str "public/card/" uuid "/query/json")))))
+                 (client/client :get 200 (str "public/card/" uuid "/query/json?format_rows=true")))))
 
         (testing ":csv download response format"
           (is (= "Count\n100\n"
-                 (client/client :get 200 (str "public/card/" uuid "/query/csv"), :format :csv))))
+                 (client/client :get 200 (str "public/card/" uuid "/query/csv?format_rows=true"), :format :csv))))
 
         (testing ":xlsx download response format"
           (is (= [{:col "Count"} {:col 100.0}]
                  (parse-xlsx-response
-                  (client/client :get 200 (str "public/card/" uuid "/query/xlsx"))))))))))
+                  (client/client :get 200 (str "public/card/" uuid "/query/xlsx?format_rows=true"))))))))))
 
 (deftest execute-public-card-as-user-without-perms-test
   (testing "A user that doesn't have permissions to run the query normally should still be able to run a public Card as if they weren't logged in"
@@ -1841,3 +1843,90 @@
                            :crowberto :get 200
                            (format "public/card/%s/query/%s?format_rows=%s" uuid (name export-format) apply-formatting?))
                           ((get output-helper export-format))))))))))))
+
+;; This test is same as [[metabase.api.dashboard-test/dashboard-param-values-param-fields-hydration-test]]
+;; adjusted to run with PUBLIC dashboard.
+(deftest ^:synchronized public-dashboard-param-values-param-fields-hydration-test
+  (let [public-dashboard-uuid (str (random-uuid))]
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp
+        [:model/Dashboard     d   {:name "D"
+                                   :public_uuid public-dashboard-uuid
+                                   :parameters [{:name      "State filter param 1"
+                                                 :slug      "p1"
+                                                 :id        "p1"
+                                                 :type      "location"}
+                                                {:name      "State filter param 2"
+                                                 :slug      "p2"
+                                                 :id        "p2"
+                                                 :type      "text"}
+                                                {:name      "State filter param 3"
+                                                 :slug      "p3"
+                                                 :id        "p3"
+                                                 :type      "text"}]}
+         :model/Card          c1  (let [query {:database (mt/id)
+                                               :type     :native
+                                               :native   {:query "select * from people"}}]
+                                    {:name "C1"
+                                     :type :model
+                                     :database_id (mt/id)
+                                     :dataset_query query
+                                     :result_metadata
+                                     (mapv (fn [{col-name :name :as meta}]
+                                             ;; Map model's metadata to corresponding field id
+                                             (assoc meta :id  (mt/id :people (keyword (u/lower-case-en col-name)))))
+                                           (-> (qp/process-query query)
+                                               :data :results_metadata :columns))})
+
+         :model/Card          c2 (let [query {:database (mt/id)
+                                              :type :query
+                                              :query {:source-table (str "card__" (:id c1))
+                                                      :aggregation
+                                                      [[:distinct [:field "STATE" {:base-type :type/Text}]]]}}]
+                                   {:name "C2"
+                                    :database_id (mt/id)
+                                    :dataset_query query
+                                    :result_metadata (-> (qp/process-query query)
+                                                         :data :results_metadata :columns)})
+         :model/DashboardCard _dc1 {:dashboard_id       (:id d)
+                                    :card_id            (:id c2)
+                                    :parameter_mappings
+                                    [{:parameter_id "p1"
+                                      :target [:dimension [:field "STATE" {:base-type :type/Text}]]}
+                                     {:parameter_id "p2"
+                                      :target [:dimension [:field "NAME" {:base-type :type/Text}]]}
+                                     {:parameter_id "p3"
+                                      :target [:dimension [:field "CITY" {:base-type :type/Text}]]}]}
+         :model/DashboardCard _dc2 {:dashboard_id       (:id d)
+                                    :card_id            (:id c2)
+                                    :parameter_mappings
+                                    [{:parameter_id "p1"
+                                      :target [:dimension [:field "STATE" {:base-type :type/Text}]]}
+                                     {:parameter_id "p2"
+                                      :target [:dimension [:field "NAME" {:base-type :type/Text}]]}
+                                     {:parameter_id "p3"
+                                      :target [:dimension [:field "CITY" {:base-type :type/Text}]]}]}]
+        (let [call-count (volatile! 0)
+              orig-filterable-columns-for-query params/filterable-columns-for-query]
+          (with-redefs [params/filterable-columns-for-query
+                        (fn [& args]
+                          (vswap! call-count inc)
+                          (apply orig-filterable-columns-for-query args))]
+            (let [response (client/client :get 200 (format "public/dashboard/%s" (:public_uuid d)))]
+              (testing "Baseline: expected :param_fields(#42829)"
+                (is (=? {(mt/id :people :name)  {:name "NAME"}
+                         (mt/id :people :state) {:name "STATE"}
+                         (mt/id :people :city)  {:name "CITY"}}
+                        (get response :param_fields))))
+              (testing "Baseline: expected :param_values (#42829)"
+                (is (=? {(mt/id :people :state) {:values ["AK" "AL"]}}
+                        (-> (get response :param_values)
+                            ;; Take just first 2 values for testing purposes
+                            (update-in [(mt/id :people :state) :values] (partial take 2))))))
+              (testing "Reasonable amount of `filterable-columns` calls performed during dashboard load"
+                ;; Current implementation of [[metabase.models.params/dashcards->param-field-ids]] is supposed
+                ;; to compute `filterable-columns` only once per card per dashboard load, thanks to use of (1) context
+                ;; sharing of it between :param_fields and :param_values hydration. This test defines multiple
+                ;; dashcards and parameters for each dashcard, linked to a single card. Following is the proof
+                ;; of things working as described.
+                (is (= 1 @call-count))))))))))

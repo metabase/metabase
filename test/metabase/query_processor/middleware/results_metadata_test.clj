@@ -1,4 +1,4 @@
-(ns metabase.query-processor.middleware.results-metadata-test
+(ns ^:mb/driver-tests metabase.query-processor.middleware.results-metadata-test
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]

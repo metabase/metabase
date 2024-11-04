@@ -196,19 +196,185 @@ describe("scenarios > visualizations > drillthroughs > table_drills", () => {
     });
   });
 
-  it("should display proper drills for native query", () => {
-    cy.createNativeQuestion(
-      {
-        name: "table_drills",
-        native: { query: "select * from orders limit 3" },
-      },
-      { visitQuestion: true },
-    );
+  describe("native query", () => {
+    it("should display proper drills on cell click for unaggregated query", () => {
+      cy.createNativeQuestion(
+        {
+          name: "table_drills",
+          native: { query: "select * from reviews limit 3" },
+        },
+        { visitQuestion: true },
+      );
 
-    cy.get("[data-testid=cell-data]").contains("1").first().click();
-    popover()
-      .findByText("Drill-through doesn’t work on SQL questions.")
-      .should("be.visible");
+      // FK cell drills
+      cy.get("[data-testid=cell-data]").filter(":contains(1)").eq(1).click();
+      popover().within(() => {
+        cy.findByText("Filter by this value").should("be.visible");
+      });
+
+      // Short text cell drills
+      cy.get("[data-testid=cell-data]").contains("christ").click();
+      popover().within(() => {
+        cy.findByText("Is christ").should("be.visible");
+        cy.findByText("Is not christ").should("be.visible");
+      });
+
+      // Number cell drills
+      cy.get("[data-testid=cell-data]").contains("5").first().click();
+      popover().within(() => {
+        cy.findByText(">").should("be.visible");
+        cy.findByText("<").should("be.visible");
+        cy.findByText("=").should("be.visible");
+        cy.findByText("≠").should("be.visible");
+      });
+
+      cy.get("[data-testid=cell-data]")
+        .contains("Ad perspiciatis quis")
+        .click();
+      popover().within(() => {
+        cy.findByText("Is this").should("be.visible");
+        cy.findByText("Is not this").should("be.visible");
+      });
+
+      cy.get("[data-testid=cell-data]").contains("May 15, 20").click();
+      popover().within(() => {
+        cy.findByText("Before").should("be.visible");
+        cy.findByText("After").should("be.visible");
+        cy.findByText("On").should("be.visible");
+        cy.findByText("Not on").should("be.visible");
+      });
+
+      tableHeaderClick("ID");
+      popover().within(() => {
+        cy.icon("arrow_down").should("be.visible");
+        cy.icon("arrow_up").should("be.visible");
+        cy.icon("gear").should("be.visible");
+
+        cy.findByText("Filter by this column").should("be.visible");
+        cy.findByText("Distinct values").should("be.visible");
+      });
+
+      tableHeaderClick("REVIEWER");
+      popover().within(() => {
+        cy.icon("arrow_down").should("be.visible");
+        cy.icon("arrow_up").should("be.visible");
+        cy.icon("gear").should("be.visible");
+
+        cy.findByText("Filter by this column").should("be.visible");
+        cy.findByText("Distribution").should("be.visible");
+        cy.findByText("Distinct values").should("be.visible");
+      });
+
+      tableHeaderClick("RATING");
+      popover().within(() => {
+        cy.icon("arrow_down").should("be.visible");
+        cy.icon("arrow_up").should("be.visible");
+        cy.icon("gear").should("be.visible");
+
+        cy.findByText("Filter by this column").should("be.visible");
+        cy.findByText("Sum over time").should("be.visible");
+        cy.findByText("Distribution").should("be.visible");
+
+        cy.findByText("Sum").should("be.visible");
+        cy.findByText("Avg").should("be.visible");
+        cy.findByText("Distinct values").should("be.visible");
+      });
+    });
+
+    it("should display proper drills on cell click for query aggregated by category", () => {
+      cy.createNativeQuestion(
+        {
+          name: "table_drills",
+          native: {
+            query: `
+                  SELECT
+                    REVIEWS.REVIEWER AS REVIEWER,
+                    COUNT(*) AS count
+                  FROM
+                    REVIEWS
+                  GROUP BY
+                    REVIEWS.REVIEWER
+                  LIMIT
+                    10
+                  `,
+          },
+        },
+        { visitQuestion: true },
+      );
+
+      cy.findByTestId("TableInteractive-root")
+        .findByText("abbey-heidenreich")
+        .click();
+
+      popover().within(() => {
+        cy.findByText("Is abbey-heidenreich").should("be.visible");
+        cy.findByText("Is not abbey-heidenreich").should("be.visible");
+      });
+
+      cy.get("[data-testid=cell-data]").contains("1").first().click();
+      popover().within(() => {
+        cy.findByText(">").should("be.visible");
+        cy.findByText("<").should("be.visible");
+        cy.findByText("=").should("be.visible");
+        cy.findByText("≠").should("be.visible");
+      });
+
+      tableHeaderClick("REVIEWER");
+      popover().within(() => {
+        cy.icon("arrow_down").should("be.visible");
+        cy.icon("arrow_up").should("be.visible");
+        cy.icon("gear").should("be.visible");
+
+        cy.findByText("Filter by this column").should("be.visible");
+      });
+
+      tableHeaderClick("COUNT");
+      popover().within(() => {
+        cy.icon("arrow_down").should("be.visible");
+        cy.icon("arrow_up").should("be.visible");
+        cy.icon("gear").should("be.visible");
+
+        cy.findByText("Filter by this column").should("be.visible");
+      });
+    });
+
+    it("should display proper drills on cell click for query aggregated by date", () => {
+      cy.createNativeQuestion(
+        {
+          name: "table_drills",
+          native: {
+            query: `
+            SELECT
+              DATE_TRUNC('month', REVIEWS.CREATED_AT) AS "Created At",
+              COUNT(*) AS "count"
+            FROM
+              REVIEWS
+            GROUP BY
+              DATE_TRUNC('month', REVIEWS.CREATED_AT)
+            LIMIT
+              10
+                  `,
+          },
+        },
+        { visitQuestion: true },
+      );
+
+      cy.get("[data-testid=cell-data]").contains("June").first().click();
+      popover().within(() => {
+        cy.findByText("Before").should("be.visible");
+        cy.findByText("After").should("be.visible");
+        cy.findByText("On").should("be.visible");
+        cy.findByText("Not on").should("be.visible");
+      });
+
+      cy.get("[data-testid=cell-data]").contains("4").first().click();
+      popover().within(() => {
+        cy.findByText(">").should("be.visible");
+        cy.findByText("<").should("be.visible");
+        cy.findByText("=").should("be.visible");
+        cy.findByText("≠").should("be.visible");
+      });
+    });
   });
 });
 

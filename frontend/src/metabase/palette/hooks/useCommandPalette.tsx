@@ -26,7 +26,11 @@ import {
 } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import { Icon, type IconName } from "metabase/ui";
-import { type RecentItem, isRecentTableItem } from "metabase-types/api";
+import {
+  type RecentItem,
+  isRecentCollectionItem,
+  isRecentTableItem,
+} from "metabase-types/api";
 
 import type { PaletteAction } from "../types";
 import { filterRecentItems } from "../utils";
@@ -100,9 +104,6 @@ export const useCommandPalette = ({
         section: "docs",
         keywords: debouncedSearchText, // Always match the debouncedSearchText string
         icon: "document",
-        perform: () => {
-          window.open(link);
-        },
         extra: {
           href: link,
         },
@@ -129,14 +130,11 @@ export const useCommandPalette = ({
     if (!isSearchTypeaheadEnabled) {
       return [
         {
-          id: `search-disabled`,
+          id: `search-without-typeahead`,
           name: t`View search results for "${debouncedSearchText}"`,
           section: "search",
           keywords: debouncedSearchText,
           icon: "link" as const,
-          perform: () => {
-            dispatch(push(searchLocation));
-          },
           priority: Priority.HIGH,
           extra: {
             href: searchLocation,
@@ -173,7 +171,6 @@ export const useCommandPalette = ({
             icon: "link" as IconName,
             perform: () => {
               trackSearchClick("view_more", 0, "command-palette");
-              dispatch(push(searchLocation));
             },
             priority: Priority.HIGH,
             extra: {
@@ -196,7 +193,7 @@ export const useCommandPalette = ({
                 trackSearchClick("item", index, "command-palette");
               },
               extra: {
-                isVerified: result.moderated_status === "verified",
+                moderatedStatus: result.moderated_status,
                 href: wrappedResult.getUrl(),
                 iconColor: icon.color,
                 subtext: getSearchResultSubtext(wrappedResult),
@@ -241,8 +238,9 @@ export const useCommandPalette = ({
           section: "recent",
           perform: () => {},
           extra: {
-            isVerified:
-              item.model !== "table" && item.moderated_status === "verified",
+            moderatedStatus: isRecentCollectionItem(item)
+              ? item.moderated_status
+              : null,
             href: Urls.modelToUrl(item),
             iconColor: icon.color,
             subtext: getRecentItemSubtext(item),
@@ -301,6 +299,7 @@ export const getSearchResultSubtext = (wrappedSearchResult: any) => {
   if (wrappedSearchResult.model === "indexed-entity") {
     return jt`a record in ${(
       <Icon
+        key="icon"
         name="model"
         style={{
           verticalAlign: "bottom",

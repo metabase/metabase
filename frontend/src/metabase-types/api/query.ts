@@ -1,3 +1,4 @@
+import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   CardId,
   DatabaseId,
@@ -19,6 +20,7 @@ export interface StructuredDatasetQuery {
 
   // Database is null when missing data permissions to the database
   database: DatabaseId | null;
+  parameters?: UiParameter[];
 }
 
 export interface NativeDatasetQuery {
@@ -27,7 +29,7 @@ export interface NativeDatasetQuery {
 
   // Database is null when missing data permissions to the database
   database: DatabaseId | null;
-  parameters?: unknown[];
+  parameters?: UiParameter[];
 }
 
 export type DatasetQuery = StructuredDatasetQuery | NativeDatasetQuery;

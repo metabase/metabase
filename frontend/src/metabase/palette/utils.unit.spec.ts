@@ -1,5 +1,12 @@
+import type { LocationDescriptor } from "history";
+
 import type { PaletteActionImpl } from "./types";
-import { navigateActionIndex, processResults, processSection } from "./utils";
+import {
+  locationDescriptorToURL,
+  navigateActionIndex,
+  processResults,
+  processSection,
+} from "./utils";
 
 interface mockAction {
   name: string;
@@ -26,6 +33,7 @@ describe("command palette utils", () => {
       expect(result).toHaveLength(3);
       expect(result[0]).toBe("Basic");
     });
+
     it("should return an empty list if there are no items", () => {
       const items: PaletteActionImpl[] = [];
       const result = processSection("Basic", items);
@@ -117,11 +125,13 @@ describe("command palette utils", () => {
       const index = 0;
       expect(navigateActionIndex(items, index, 1)).toBe(1);
     });
+
     it("should navigate to the previous index", () => {
       const items = [NORMAL, NORMAL, NORMAL];
       const index = 1;
       expect(navigateActionIndex(items, index, -1)).toBe(0);
     });
+
     it("should navigate not navigate off the list", () => {
       const items = [NORMAL, NORMAL, NORMAL];
       expect(navigateActionIndex(items, 0, -1)).toBe(0);
@@ -129,6 +139,7 @@ describe("command palette utils", () => {
       expect(navigateActionIndex(items, 2, 1)).toBe(2);
       expect(navigateActionIndex(items, 2, 10)).toBe(2);
     });
+
     it("should handle indexes being out of normal bounds", () => {
       const items = [NORMAL, NORMAL, NORMAL];
       expect(navigateActionIndex(items, -3, -1)).toBe(0);
@@ -137,16 +148,19 @@ describe("command palette utils", () => {
       expect(navigateActionIndex(items, 20, 1)).toBe(2);
       expect(navigateActionIndex(items, 20, -1)).toBe(2);
     });
+
     it("should navigate past strings", () => {
       const items = [NORMAL, "foo", NORMAL, NORMAL];
       expect(navigateActionIndex(items, 0, 1)).toBe(2);
       expect(navigateActionIndex(items, 2, -1)).toBe(0);
     });
+
     it("should navigate past disabled items", () => {
       const items = [NORMAL, DISABLED, NORMAL, NORMAL];
       expect(navigateActionIndex(items, 0, 1)).toBe(2);
       expect(navigateActionIndex(items, 2, -1)).toBe(0);
     });
+
     it("should handle disabled items and strings near boundries", () => {
       const short = [DISABLED, NORMAL, NORMAL, NORMAL, "foo"];
       expect(navigateActionIndex(short, 3, 1)).toBe(3);
@@ -204,6 +218,52 @@ describe("command palette utils", () => {
       expect(navigateActionIndex(items, 2, -3)).toBe(2);
       expect(navigateActionIndex(items, 3, -2)).toBe(3);
       expect(navigateActionIndex(items, 3, -4)).toBe(3);
+    });
+  });
+
+  describe("locationDescriptorToURL", () => {
+    it(`should return the string if locationDescriptor is a string`, () => {
+      expect(locationDescriptorToURL("/a/b/c")).toBe(`/a/b/c`);
+    });
+
+    it("should return the correct URL when a LocationDescriptor is provided", () => {
+      const locationDescriptor: LocationDescriptor = { pathname: "/a/b/c" };
+      expect(locationDescriptorToURL(locationDescriptor)).toBe(`/a/b/c`);
+    });
+
+    it("should return the correct URL when query is provided", () => {
+      const locationDescriptor = {
+        pathname: "/a/b/c",
+        query: { en: "hello", es: "hola" },
+      };
+      expect(locationDescriptorToURL(locationDescriptor)).toBe(
+        `/a/b/c?en=hello&es=hola`,
+      );
+    });
+
+    it("should return the correct URL when pathname and hash are provided", () => {
+      const locationDescriptor = { pathname: "/a/b/c", hash: "top" };
+      expect(locationDescriptorToURL(locationDescriptor)).toBe(`/a/b/c#top`);
+    });
+
+    it("should return the correct URL with pathname, query, and hash", () => {
+      const locationDescriptor = {
+        pathname: "/a/b/c",
+        query: { en: "hello", es: "hola" },
+        hash: "top",
+      };
+      expect(locationDescriptorToURL(locationDescriptor)).toBe(
+        `/a/b/c?en=hello&es=hola#top`,
+      );
+    });
+
+    it("should handle empty values appropriately", () => {
+      const locationDescriptor: LocationDescriptor = {
+        pathname: "/a/b/c",
+        query: undefined,
+        hash: undefined,
+      };
+      expect(locationDescriptorToURL(locationDescriptor)).toBe(`/a/b/c`);
     });
   });
 });
