@@ -239,7 +239,7 @@
                             (search.config/column-with-model-alias model :updated_at)
                             last-edited-at)))
 
-(defn- legacy-feature->supported-models
+(defn- feature->supported-models
   "Return A map of filter to its support models.
 
   E.g: {:created-by #{\"card\" \"dataset\" \"dashboard\" \"action\"}}
@@ -276,7 +276,7 @@
                 models
                 search-native-query
                 verified]}        search-context
-        feature->supported-models (legacy-feature->supported-models)]
+        feature->supported-models (feature->supported-models)]
     (cond-> models
       (some? created-at)          (set/intersection (:created-at feature->supported-models))
       (some? created-by)          (set/intersection (:created-by feature->supported-models))

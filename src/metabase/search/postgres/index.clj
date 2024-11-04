@@ -60,9 +60,9 @@
              [:table_id :int]
              ;; filter related
              [:archived :boolean :not-null [:default false]]
-             [:created_by :int]
+             [:creator_id :int]
              [:last_edited_at :timestamp]
-             [:last_edited_by :int]
+             [:last_editor_id :int]
              [:model_created_at :timestamp]
              [:model_updated_at :timestamp]
              [:verified :boolean]
@@ -100,7 +100,7 @@
   (-> entity
       (select-keys
        ;; remove attrs that get aliased
-       (remove #{:id :created_at :creator_id :last_editor_id :updated_at}
+       (remove #{:id :created_at :updated_at}
                (conj search.spec/attr-columns
                      :model :model_rank
                      :display_data :legacy_input)))
@@ -108,8 +108,6 @@
       (update :legacy_input json/generate-string)
       (assoc
        :model_id         (:id entity)
-       :created_by       (:creator_id entity)
-       :last_edited_by   (:last_editor_id entity)
        :model_created_at (:created_at entity)
        :model_updated_at (:updated_at entity)
        :search_vector    [:to_tsvector

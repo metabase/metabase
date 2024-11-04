@@ -16,8 +16,8 @@
    [metabase.search.config
     :as search.config
     :refer [SearchableModel SearchContext]]
+   [metabase.search.filter :as search.filter]
    [metabase.search.fulltext :as search.fulltext]
-   [metabase.search.in-place.filter :as search.filter]
    [metabase.search.scoring :as scoring]
    [metabase.util.i18n :refer [tru deferred-tru]]
    [metabase.util.log :as log]
@@ -228,13 +228,13 @@
 
 ;; This forwarding is here for tests, we should clean those up.
 
-(defmethod search.api/results :default [search-ctx]
+(defmethod search.api/results nil [search-ctx]
   (search.api/results (assoc search-ctx :search-engine default-engine)))
 
-(defmethod search.api/model-set :default [search-ctx]
+(defmethod search.api/model-set nil [search-ctx]
   (search.api/model-set (assoc search-ctx :search-engine default-engine)))
 
-(defmethod search.api/score :default [results search-ctx]
+(defmethod search.api/score nil [results search-ctx]
   (search.api/score results (assoc search-ctx :search-engine default-engine)))
 
 (mr/def ::search-context.input
