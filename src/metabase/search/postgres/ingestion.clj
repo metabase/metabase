@@ -70,30 +70,33 @@
     (let [as (keyword (u/->snake_case_en (name k)))]
       (if (true? v) as [v as]))))
 
-;; TODO memoize
-(defn- spec-index-query
-  ([search-model]
-   (let [spec (search.spec/spec search-model)]
-     (u/remove-nils
-      {:select    (search.spec/qualify-columns :this
-                                               (concat
-                                                (:search-terms spec)
-                                                (mapcat (fn [k] (attrs->select-items (get spec k)))
-                                                        [:attrs :render-terms])))
-       :from      [[(t2/table-name (:model spec)) :this]]
-       :where     (:where spec [:inline [:= 1 1]])
-       :left-join (when (:joins spec)
-                    (into []
-                          cat
-                          (for [[join-alias [join-model join-condition]] (:joins spec)]
-                            [[(t2/table-name join-model) join-alias]
-                             join-condition])))})))
-  ([search-model where-clause]
-   (-> (spec-index-query search-model)
-       (sql.helpers/where where-clause))))
+(defn- spec-index-query*
+  [search-model]
+  (let [spec (search.spec/spec search-model)]
+    (u/remove-nils
+     {:select    (search.spec/qualify-columns :this
+                                              (concat
+                                               (:search-terms spec)
+                                               (mapcat (fn [k] (attrs->select-items (get spec k)))
+                                                       [:attrs :render-terms])))
+      :from      [[(t2/table-name (:model spec)) :this]]
+      :where     (:where spec [:inline [:= 1 1]])
+      :left-join (when (:joins spec)
+                   (into []
+                         cat
+                         (for [[join-alias [join-model join-condition]] (:joins spec)]
+                           [[(t2/table-name join-model) join-alias]
+                            join-condition])))})))
+
+(def ^{:private true, :arglists '([search-model])} spec-index-query
+  (memoize spec-index-query*))
+
+(defn- spec-index-query-where [search-model where-clause]
+  (-> (spec-index-query search-model)
+      (sql.helpers/where where-clause)))
 
 (defn- spec-index-reducible [search-model & [where-clause]]
-  (->> (spec-index-query search-model where-clause)
+  (->> (spec-index-query-where search-model where-clause)
        t2/reducible-query
        (eduction (map #(assoc % :model search-model)))))
 
