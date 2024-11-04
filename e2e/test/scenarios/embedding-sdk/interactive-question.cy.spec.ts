@@ -1,22 +1,22 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
+  FIRST_COLLECTION_ID,
+  THIRD_COLLECTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
+import {
   createQuestion,
-  modal,
   popover,
   restore,
   setTokenFeatures,
   tableHeaderClick,
   tableInteractive,
-  visitFullAppEmbeddingUrl,
 } from "e2e/support/helpers";
+import { describeSDK } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
+import { setupJwt } from "e2e/support/helpers/e2e-jwt-helpers";
 import {
-  EMBEDDING_SDK_STORY_HOST,
-  describeSDK,
-} from "e2e/support/helpers/e2e-embedding-sdk-helpers";
-import {
-  JWT_SHARED_SECRET,
-  setupJwt,
-} from "e2e/support/helpers/e2e-jwt-helpers";
+  saveInteractiveQuestionAsNewQuestion,
+  visitInteractiveQuestionStory,
+} from "e2e/test/scenarios/embedding-sdk/helpers/save-interactive-question-e2e-helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -49,20 +49,7 @@ describeSDK("scenarios > embedding-sdk > interactive-question", () => {
     cy.intercept("GET", "/api/user/current").as("getUser");
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
 
-    cy.get("@questionId").then(questionId => {
-      visitFullAppEmbeddingUrl({
-        url: EMBEDDING_SDK_STORY_HOST,
-        qs: {
-          id: "embeddingsdk-interactivequestion--default",
-          viewMode: "story",
-        },
-        onBeforeLoad: (window: any) => {
-          window.JWT_SHARED_SECRET = JWT_SHARED_SECRET;
-          window.METABASE_INSTANCE_URL = Cypress.config().baseUrl;
-          window.QUESTION_ID = questionId;
-        },
-      });
-    });
+    visitInteractiveQuestionStory();
 
     cy.wait("@getUser").then(({ response }) => {
       expect(response?.statusCode).to.equal(200);
@@ -118,28 +105,47 @@ describeSDK("scenarios > embedding-sdk > interactive-question", () => {
     tableInteractive().findByText("Max of Quantity").should("not.exist");
   });
 
-  it("can save a question", () => {
-    cy.intercept("POST", "/api/card").as("createCard");
-
-    cy.findAllByTestId("cell-data").last().click();
-
-    popover().findByText("See these Orders").click();
-
-    cy.findByRole("button", { name: "Save" }).click();
-
-    modal().within(() => {
-      cy.findByRole("radiogroup").findByText("Save as new question").click();
-
-      cy.findByPlaceholderText("What is the name of your question?")
-        .clear()
-        .type("Foo Bar Orders");
-
-      cy.findByRole("button", { name: "Save" }).click();
+  it("can save a question to a default collection", () => {
+    saveInteractiveQuestionAsNewQuestion({
+      entityName: "Orders",
+      questionName: "Sample Orders 1",
     });
 
     cy.wait("@createCard").then(({ response }) => {
       expect(response?.statusCode).to.equal(200);
-      expect(response?.body.name).to.equal("Foo Bar Orders");
+      expect(response?.body.name).to.equal("Sample Orders 1");
+      expect(response?.body.collection_id).to.equal(null);
+    });
+  });
+
+  it("can save a question to a selected collection", () => {
+    saveInteractiveQuestionAsNewQuestion({
+      entityName: "Orders",
+      questionName: "Sample Orders 2",
+      collectionPickerPath: ["Our analytics", "First collection"],
+    });
+
+    cy.wait("@createCard").then(({ response }) => {
+      expect(response?.statusCode).to.equal(200);
+      expect(response?.body.name).to.equal("Sample Orders 2");
+      expect(response?.body.collection_id).to.equal(FIRST_COLLECTION_ID);
+    });
+  });
+
+  it("can save a question to a pre-defined collection", () => {
+    visitInteractiveQuestionStory({
+      saveToCollectionId: Number(THIRD_COLLECTION_ID),
+    });
+
+    saveInteractiveQuestionAsNewQuestion({
+      entityName: "Orders",
+      questionName: "Sample Orders 3",
+    });
+
+    cy.wait("@createCard").then(({ response }) => {
+      expect(response?.statusCode).to.equal(200);
+      expect(response?.body.name).to.equal("Sample Orders 3");
+      expect(response?.body.collection_id).to.equal(THIRD_COLLECTION_ID);
     });
   });
 });

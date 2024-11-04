@@ -39,6 +39,7 @@ on:
         #   - nightly
         #   - beta
         #   - latest
+        #   - none (skips everything)
         required: true
       tag_rollout:
         description: Rollout % (0-100)
@@ -54,7 +55,15 @@ on:
         default: true
 
 jobs:
+  green-check-stub:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 2
+    steps:
+    - name: Stub
+      run: echo "Stub to make this job successful even if all the rest of the steps are skipped"
   check-version:
+    # skips everything if the tag_name is 'none' because all later jobs depend on this job
+    if: ${{ inputs.tag_name != 'none' }}
     runs-on: ubuntu-22.04
     timeout-minutes: 5
     outputs:
@@ -185,7 +194,7 @@ jobs:
 
           return upload_path;
 
-    - name: Upload to s3 latest path
+    - name: Upload to s3 ${{ inputs.tag_name }} path
       run: | # sh
         aws s3 cp \
           s3://${{ vars.AWS_S3_DOWNLOADS_BUCKET }}/${{ steps.source_path.outputs.result }}/metabase.jar \
@@ -270,7 +279,8 @@ jobs:
     steps:
     - uses: actions/checkout@v4
       with:
-        fetch-depth: 0 # fetch all history
+        fetch-depth: 0 # we want all branches and tags
+        fetch-tags: true
     - name: Add and push git tag
       run: | # sh
 
@@ -333,7 +343,6 @@ jobs:
           });
 
           fs.writeFileSync('version-info.json', JSON.stringify(newVersionInfo));
-
     - name: Upload new version-info.json to S3
       run: |
         if [[ "${{ matrix.edition }}" == "ee" ]]; then
