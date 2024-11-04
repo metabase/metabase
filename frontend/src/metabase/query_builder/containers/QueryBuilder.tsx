@@ -329,7 +329,7 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
   ]);
 
   useEffect(() => {
-    if (allLoaded && hasQuestion) {
+    if (allLoaded && hasQuestion && collectionId) {
       showTimelinesForCollection(collectionId);
     }
   }, [allLoaded, hasQuestion, collectionId, showTimelinesForCollection]);

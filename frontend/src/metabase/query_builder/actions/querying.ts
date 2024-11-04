@@ -10,6 +10,7 @@ import { getSensibleDisplays } from "metabase/visualizations";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import { isAdHocModelOrMetricQuestion } from "metabase-lib/v1/metadata/utils/models";
+import type { Dataset } from "metabase-types/api";
 import type { Dispatch, GetState } from "metabase-types/store";
 
 import {
@@ -77,9 +78,8 @@ export const runDirtyQuestionQuery =
   () => async (dispatch: Dispatch, getState: GetState) => {
     const areResultsDirty = getIsResultDirty(getState());
     const queryResults = getQueryResults(getState());
-    const hasResults = Boolean(queryResults);
 
-    if (hasResults && !areResultsDirty) {
+    if (queryResults && !areResultsDirty) {
       const question = getQuestion(getState());
 
       if (!question) {
@@ -182,7 +182,7 @@ export const CLEAR_QUERY_RESULT = "metabase/query_builder/CLEAR_QUERY_RESULT";
 export const clearQueryResult = createAction(CLEAR_QUERY_RESULT);
 
 export const QUERY_COMPLETED = "metabase/qb/QUERY_COMPLETED";
-export const queryCompleted = (question: Question, queryResults: any) => {
+export const queryCompleted = (question: Question, queryResults: Dataset[]) => {
   return async (dispatch: Dispatch, getState: GetState) => {
     const [{ data, error }] = queryResults;
     const prevCard = getCard(getState());
@@ -250,8 +250,6 @@ export const cancelQuery = () => (dispatch: Dispatch, getState: GetState) => {
   if (isRunning) {
     const { cancelQueryDeferred } = getState().qb;
     if (cancelQueryDeferred) {
-      // it could have type Deferred + resolve/reject, please fix other similar places
-      // @ts-expect-error probably it never worked, promise.resolve() doesn't exist in spec
       cancelQueryDeferred.resolve();
     }
     dispatch(setDocumentTitle(""));

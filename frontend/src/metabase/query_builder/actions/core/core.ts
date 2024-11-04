@@ -245,6 +245,8 @@ export const apiCreateQuestion = (question: Question) => {
     if (isModel || isMetric) {
       dispatch(runQuestionQuery());
     }
+
+    return createdQuestion;
   };
 };
 
