@@ -120,7 +120,7 @@
   (batch-update! (search-items-reducible)))
 
 (defn update-index!
-  "Given a new or updated instance, create or update all the corresponding search entries."
+  "Given a new or updated instance, create or update all the corresponding search entries if needed."
   [instance]
   (when-let [updates (seq (search.spec/search-models-to-update instance))]
     (->> (for [[search-model where-clause] updates]
