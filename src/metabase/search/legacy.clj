@@ -219,10 +219,6 @@
   {:arglists '([model search-context])}
   (fn [model _] model))
 
-(def ^:const displayed-columns
-  "All of the result components that by default are displayed by the frontend."
-  #{:name :display_name :collection_name :description})
-
 (defmulti searchable-columns
   "The columns that can be searched for each model."
   {:arglists '([model search-native-query])}
