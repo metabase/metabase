@@ -3,6 +3,7 @@
    [cheshire.core :as json]
    [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
+   [metabase.search.spec :as search.spec]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -46,16 +47,25 @@
              ;; search
              [:search_vector :tsvector :not-null]
              ;; results
-             [:display_data :text]
-             [:legacy_input :text]
+             [:display_data :text :not-null]
+             [:legacy_input :text :not-null]
              ;; scoring related
              [:model_rank :int :not-null]
+             [:pinned :boolean]
              ;; permission related entities
              [:collection_id :int]
              [:database_id :int]
+             ;; leaving as just text for now, but perhaps we want it to be JSON, and have a tsvector field too
+             [:dataset_query :text]
              [:table_id :int]
              ;; filter related
-             [:archived :boolean]
+             [:archived :boolean :not-null [:default false]]
+             [:created_by :int]
+             [:last_edited_at :timestamp]
+             [:last_edited_by :int]
+             [:model_created_at :timestamp]
+             [:model_updated_at :timestamp]
+             [:verified :boolean]
              ;; useful for tracking the speed and age of the index
              [:created_at :timestamp
               [:default [:raw "CURRENT_TIMESTAMP"]]
@@ -89,23 +99,24 @@
 (defn- entity->entry [entity]
   (-> entity
       (select-keys
-       [:model
-        :model_rank
-        :collection_id
-        :database_id
-        :display_data
-        :legacy_input
-        :table_id
-        :archived])
+       ;; remove attrs that get aliased
+       (remove #{:id :created_at :creator_id :last_editor_id :updated_at}
+               (conj search.spec/attr-columns
+                     :model :model_rank
+                     :display_data :legacy_input)))
       (update :display_data json/generate-string)
       (update :legacy_input json/generate-string)
       (assoc
-       :model_id      (:id entity)
-       :search_vector [:to_tsvector
-                       [:inline tsv-language]
-                       [:cast
-                        (:searchable_text entity)
-                        :text]])))
+       :model_id         (:id entity)
+       :created_by       (:creator_id entity)
+       :last_edited_by   (:last_editor_id entity)
+       :model_created_at (:created_at entity)
+       :model_updated_at (:updated_at entity)
+       :search_vector    [:to_tsvector
+                          [:inline tsv-language]
+                          [:cast
+                           (:searchable_text entity)
+                           :text]])))
 
 (defn- upsert! [table entry]
   (t2/query
@@ -195,15 +206,17 @@
 
 (defn search-query
   "Query fragment for all models corresponding to a query parameter `:search-term`."
-  [search-term]
-  {:select [:model_id :model]
-   :from   [active-table]
-   :where  (if-not search-term
-             [:= [:inline 1] [:inline 1]]
-             [:raw
-              "search_vector @@ to_tsquery('"
-              tsv-language "', "
-              [:lift (to-tsquery-expr search-term)] ")"])})
+  ([search-term]
+   (search-query search-term [:model_id :model]))
+  ([search-term select-items]
+   {:select select-items
+    :from   [active-table]
+    :where  (if-not search-term
+              [:= [:inline 1] [:inline 1]]
+              [:raw
+               "search_vector @@ to_tsquery('"
+               tsv-language "', "
+               [:lift (to-tsquery-expr search-term)] ")"])}))
 
 (defn search
   "Use the index table to search for records."
