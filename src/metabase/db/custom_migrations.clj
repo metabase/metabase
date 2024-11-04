@@ -1668,13 +1668,15 @@
       (m/update-existing "pivot_table.column_split"
                          (fn [column-settings]
                            (-> column-settings
-                               (m/assoc-some "row_refs" (get column-settings "rows"))
-                               (m/assoc-some "column_refs" (get column-settings "columns"))
-                               (m/assoc-some "value_refs" (get column-settings "values")))))
+                               (m/assoc-some "row_refs" (get column-settings "rows")
+                                             "column_refs" (get column-settings "columns")
+                                             "value_refs" (get column-settings "values"))
+                               (dissoc "rows" "columns" "values"))))
       (m/update-existing "pivot_table.collapsed_rows"
                          (fn [column-settings]
                            (-> column-settings
-                               (m/assoc-some "row_refs" (get column-settings "rows")))))))
+                               (m/assoc-some "row_refs" (get column-settings "rows"))
+                               (dissoc "rows"))))))
 
 (defn- rollback-legacy-pivot-viz-settings
   "Restores legacy field ref-based pivot settings and overwrites new column name-based settings if they exist."
@@ -1683,13 +1685,15 @@
       (m/update-existing "pivot_table.column_split"
                          (fn [column-settings]
                            (-> column-settings
-                               (m/assoc-some "rows" (get column-settings "row_refs"))
-                               (m/assoc-some "columns" (get column-settings "column_refs"))
-                               (m/assoc-some "values" (get column-settings "value_refs")))))
+                               (m/assoc-some "rows" (get column-settings "row_refs")
+                                             "columns" (get column-settings "column_refs")
+                                             "values" (get column-settings "value_refs"))
+                               (dissoc "row_refs" "column_refs" "value_refs"))))
       (m/update-existing "pivot_table.collapsed_rows"
                          (fn [column-settings]
                            (-> column-settings
-                               (m/assoc-some "rows" (get column-settings "row_refs")))))))
+                               (m/assoc-some "rows" (get column-settings "row_refs"))
+                               (dissoc "row_refs"))))))
 
 (defn- update-legacy-card-pivot-viz-settings
   "Updates card visualization settings by applying `update-viz-settings-fn`."

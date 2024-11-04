@@ -86,15 +86,12 @@ export function updateValueWithCurrentColumns(
   );
 
   // remove toRemove
-  const value: PivotTableColumnSplitSetting = {
-    ...storedValue,
-    ...Object.fromEntries(
-      partitions.map(({ name }) => [
-        name,
-        storedValue[name]?.filter(columnName => toRemove.includes(columnName)),
-      ]),
-    ),
-  };
+  const value: PivotTableColumnSplitSetting = Object.fromEntries(
+    partitions.map(({ name }) => [
+      name,
+      storedValue[name]?.filter(columnName => !toRemove.includes(columnName)),
+    ]),
+  );
 
   // add toAdd to first partitions where it matches the filter
   for (const columnName of toAdd) {
