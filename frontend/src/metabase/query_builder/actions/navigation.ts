@@ -18,6 +18,7 @@ import {
   getOriginalQuestion,
   getQueryBuilderMode,
   getQuestion,
+  getUiControls,
   getZoomedObjectId,
 } from "../selectors";
 import { getQueryBuilderModeFromLocation } from "../typed-utils";
@@ -150,6 +151,7 @@ export const updateUrl = createThunkAction(
 
       if (dirty == null) {
         const originalQuestion = getOriginalQuestion(getState());
+        const uiControls = getUiControls(getState());
         const isAdHocModelOrMetric = isAdHocModelOrMetricQuestion(
           question,
           originalQuestion,
@@ -157,7 +159,8 @@ export const updateUrl = createThunkAction(
         dirty =
           !originalQuestion ||
           (!isAdHocModelOrMetric &&
-            question.isDirtyComparedTo(originalQuestion));
+            (question.isDirtyComparedTo(originalQuestion) ||
+              uiControls.isModifiedFromNotebook));
       }
 
       const { isNative } = Lib.queryDisplayInfo(question.query());
