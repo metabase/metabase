@@ -4,11 +4,12 @@
    [metabase.search.api :as search.api]
    [metabase.search.postgres.core :as search.postgres]))
 
-;; We have a bunch of experimental flavors! 🧄🌶🍊
-(derive :search.engine/hybrid :search.engine/fulltext)
-(derive :search.engine/hybrid-multi :search.engine/fulltext)
-(derive :search.engine/minimal :search.engine/fulltext)
-(derive :search.engine/minimal-with-perms :search.engine/fulltext)
+;; We have a bunch of experimental flavors!
+(doseq [flavor [:search.engine/hybrid
+                :search.engine/hybrid-multi
+                :search.engine/minimal
+                :search.engine/minimal-with-perms]]
+  (derive flavor :search.engine/fulltext))
 
 (defmulti supported-db? "Does the app db support fulltext search?" identity)
 
@@ -17,7 +18,7 @@
 (defmethod supported-db? :postgres [_]
   (public-settings/experimental-fulltext-search-enabled))
 
-;; For now we now that the app db is postgres. We can make these multimethods when that changes.
+;; For now, we know that the app db is postgres. We can extract multimethods if this changes.
 
 (defmethod search.api/results :search.engine/fulltext
   [search-ctx]
