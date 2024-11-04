@@ -330,6 +330,7 @@ describe("issue 16559", () => {
       visitDashboard(response.body.id);
     });
 
+    cy.intercept("GET", "/api/collection/tree?*").as("getCollections");
     cy.intercept("PUT", "/api/dashboard/*").as("saveDashboard");
   });
 
@@ -424,7 +425,7 @@ describe("issue 16559", () => {
     entityPickerModal().within(() => {
       cy.findByText("First collection").click();
       cy.button("Move").click();
-      cy.wait("@saveDashboard");
+      cy.wait(["@saveDashboard", "@getCollections"]);
     });
 
     openDashboardInfoSidebar();
