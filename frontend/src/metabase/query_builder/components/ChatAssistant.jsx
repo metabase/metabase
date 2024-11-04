@@ -191,51 +191,57 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
         if (client && selectedMessages && selectedThreadId && selectedMessages.length > 0) {
             // Clear existing messages
             setMessages([]);
-            let visualizationIdx = 0;
             setThreadId(selectedThreadId);
-
+    
             const processMessages = async () => {
                 let newMessages = [];
-
-                // Step 1: Loop through the messages and find the one with the card_id
+                let visualizationIdx = 0;
+    
+                // Loop through each selected message
                 for (let i = 0; i < selectedMessages.length; i++) {
                     const message = selectedMessages[i];
                     const senderType = message.type === "human" ? "user" : "server";
-
-                    // Step 2: Check if this message contains the card_id
+                    
+                    // Attempt to parse JSON content if message is from AI or contains tool data
                     let card_id = null;
                     try {
-                        const parsedContent = JSON.parse(message.content);
-                        if (parsedContent.card_id) {
-                            card_id = parsedContent.card_id;
+                        if (typeof message.content === "string") {
+                            const parsedContent = JSON.parse(message.content);
+                            card_id = parsedContent.card_id || null;
+                        } else if (Array.isArray(message.content)) {
+                            message.content.forEach((contentPart) => {
+                                if (contentPart.partial_json) {
+                                    const parsedToolData = JSON.parse(contentPart.partial_json);
+                                    if (parsedToolData.card_data && parsedToolData.card_data.dataset_query) {
+                                        card_id = parsedToolData.card_data.dataset_query.query.card_id || null;
+                                    }
+                                }
+                            });
                         }
                     } catch (error) {
-                        // If it's not a valid JSON, just continue to add the message
+                        // If parsing fails, move on to add message normally
                     }
-
-                    // Step 3: If the message contains a card_id, skip rendering it but handle visualization
+    
+                    // Handle visualization if `card_id` is present
                     if (card_id) {
-                        // Generate the visualization for the card
+                        // Fetch data for this card
                         await handleGetDatasetQuery(card_id);
-
-                        // Add a visualization message to the list (this replaces the card_id message)
+    
+                        // Create a message specifically for the visualization
                         const visualizationMessage = {
                             id: Date.now() + Math.random(),
                             sender: "server",
-                            text: "", // Visualizations typically don’t need text
+                            text: "", // No text, as this is for visualization only
                             showVisualization: true,
-                            visualizationIdx,
+                            visualizationIdx: visualizationIdx++,
                             isLoading: false,
                         };
-
-                        // Add the visualization message in place of the card_id message
+    
                         newMessages.push(visualizationMessage);
-
-                        // Skip the card_id message (don't add it to newMessages)
-                        continue;
+                        continue; // Skip to next message since `card_id` messages don’t need text
                     }
-
-                    // Step 4: Add the regular messages (not the card_id message)
+    
+                    // Standard message structure for non-card messages
                     const newMessageObj = {
                         id: generateRandomId(),
                         text: message.content,
@@ -245,19 +251,19 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
                         isLoading: false,
                         thread_id: selectedThreadId,
                     };
-
+    
                     // Add the regular message to the list
                     newMessages.push(newMessageObj);
                 }
-
-                // Step 5: After processing all messages, update the state
+    
+                // Update the messages state with the processed messages
                 setMessages((prev) => [...prev, ...newMessages]);
             };
-
-            // Call the processMessages function to handle the logic
+    
             processMessages();
         }
     }, [client, selectedMessages, selectedThreadId]);
+    
 
     useEffect(() => {
         if (inputRef.current) {
@@ -544,22 +550,6 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
                         } else if (tool_calls[0].name === "GenerateCardOutput") {
                             const { card_id } = tool_calls[0].args;
 
-                            // const cardMessageId = Date.now() + Math.random();
-                            // const cardTempMessage = {
-                            //     id: cardMessageId,
-                            //     sender: "server",
-                            //     text: t`Generating card...`, // Show progress text
-                            //     isLoading: true,
-                            //     isTemporary: true,
-                            // };
-
-                            // // Append the card generation message
-                            // setMessages((prev) => [...prev, cardTempMessage]);
-
-                            // Show the card generation progress message
-                            // showCardGenerationMessage(50, cardMessageId);
-
-                            // Fetch the dataset and show visualization
                             await handleGetDatasetQuery(card_id);
 
                             setMessages((prev) => {
@@ -568,7 +558,7 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
                                     sender: "server",
                                     text: "", // Visualizations typically don’t have text
                                     showVisualization: true,
-                                    visualizationIdx,
+                                    visualizationIdx: visualizationIdx++,
                                     isLoading: false,
                                 };
 
@@ -624,7 +614,7 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
                                         sender: "server",
                                         text: "", // Visualizations typically don’t have text
                                         showVisualization: true,
-                                        visualizationIdx,
+                                        visualizationIdx: visualizationIdx++,
                                         isLoading: false,
                                     };
 
