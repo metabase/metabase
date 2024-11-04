@@ -32,6 +32,8 @@ export async function loadLocalization(locale) {
           },
         };
   setLocalization(translationsObject);
+
+  return translationsObject;
 }
 
 // Tell moment.js to use the value of the start-of-week Setting for its current locale

@@ -15,7 +15,10 @@ export const LocaleProvider = ({
     if (locale) {
       setIsLoadingLocale(true);
       setLocaleHeader(locale);
-      loadLocalization(locale).then(() => setIsLoadingLocale(false));
+      loadLocalization(locale).then(translatedObject => {
+        setIsLoadingLocale(false);
+        window.MetabaseUserLocalization = translatedObject;
+      });
     }
   }, [locale]);
 
