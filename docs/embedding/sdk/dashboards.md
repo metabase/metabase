@@ -35,6 +35,18 @@ You can embed a dashboard using the one of the dashboard components:
 
 _\* Not available for `StaticDashboard`._
 
+By default, dashboard components take full page height (100vh). You can override this with custom styles passed via `style` or `className` props.
+
+```tsx
+<EditableDashboard
+  style={{
+    height: 800,
+    minHeight: "auto",
+  }}
+  dashboardId={dashboardId}
+/>
+```
+
 ## Example embedded dashboard with `InteractiveDashboard` component
 
 ```typescript

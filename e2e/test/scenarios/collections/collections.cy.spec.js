@@ -1249,5 +1249,5 @@ function moveItemToCollection(itemName, collectionName) {
 
 // the button element that gets attributes is 2 levels up from the text
 function findPickerItem(name) {
-  return cy.findByText(name).parent().parent();
+  return cy.findByText(name).closest("button");
 }

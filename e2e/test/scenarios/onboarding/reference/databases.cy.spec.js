@@ -87,11 +87,13 @@ describe("scenarios > reference > databases", () => {
       startNewQuestion();
       entityPickerModal().within(() => {
         entityPickerModalTab("Tables").click();
-        cy.get("[data-index='0']").should("have.text", "a");
-        cy.get("[data-index='1']").should("have.text", "b");
-        cy.get("[data-index='2']").should("have.text", "c");
-        cy.get("[data-index='3']").should("have.text", "d");
-        cy.get("[data-index='4']").should("have.text", "Sample Database");
+        cy.findByTestId("item-picker-level-0").within(() => {
+          cy.get("[data-index='0']").should("contain.text", "a");
+          cy.get("[data-index='1']").should("contain.text", "b");
+          cy.get("[data-index='2']").should("contain.text", "c");
+          cy.get("[data-index='3']").should("contain.text", "d");
+          cy.get("[data-index='4']").should("contain.text", "Sample Database");
+        });
       });
     });
 

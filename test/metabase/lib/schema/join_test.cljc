@@ -13,9 +13,13 @@
   (is (=? {:stages ["should have at least 1 elements" ["end of input"]]}
           (mu.humanize/humanize (mc/explain ::lib.schema.join/join {:stages []}))))
   ;; not sure why these errors are repeated.
-  (is (=? {:stages [[{:joins [{:stages [[{:lib/type "missing required key"}
-                                         "Invalid stage :lib/type: expected :mbql.stage/native or :mbql.stage/mbql"]]}]}
-                     "An initial MBQL stage of a query must have :source-table or :source-card"]]}
+  (is (=? {:lib/type "missing required key"
+           :stages [{:joins [{:stages [[{:lib/type "missing required key"}
+                                        "Invalid stage :lib/type: expected :mbql.stage/native or :mbql.stage/mbql"]]
+                              :lib/options "missing required key"
+                              :conditions  "should have at least 1 elements"}]}]}
           (mu.humanize/humanize (mc/explain ::lib.schema/query {:stages [{:lib/type :mbql.stage/mbql
                                                                           :joins    [{:lib/type :mbql/join
-                                                                                      :stages   [{}]}]}]})))))
+                                                                                      :stages   [{}]
+                                                                                      :conditions []
+                                                                                      :alias      "join alias"}]}]})))))
