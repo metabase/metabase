@@ -11,7 +11,7 @@ import {
   performUndo,
   resumeUndo,
 } from "metabase/redux/undo";
-import { Portal, Progress, Transition } from "metabase/ui";
+import { Progress, Transition } from "metabase/ui";
 import type { Undo } from "metabase-types/store/undo";
 
 import CS from "./UndoListing.module.css";
@@ -174,10 +174,8 @@ export function UndoListing() {
 
 export const FloatingUndoList = ({ children }: { children: ReactNode }) => {
   return (
-    <Portal>
-      <UndoList data-testid="undo-list" aria-label="undo-list">
-        {children}
-      </UndoList>
-    </Portal>
+    <UndoList data-testid="undo-list" aria-label="undo-list">
+      {children}
+    </UndoList>
   );
 };
