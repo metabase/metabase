@@ -58,6 +58,15 @@ Under "Tell Metabase about your identity provider", enter the following:
 
 Click on **Save and Enable** below, and you should now be able to log in via Microsoft Entra ID.
 
+### Send group membership to Metabase for group mapping
+
+If you want to send to Metabase the user group membership, then you need to do the following on step 2 in "Set up Single Sign-On with SAML" on Azure:
+1) Click on "Edit" on the right of "Attributes & Claims"
+2) On the top then click on "Add a group claim"
+3) On the menu that appears for "Which groups associated with the user should be returned in the claim?" select "All groups"
+4) Click on Save
+5) Then add the group mapping on the Metabase SAML configuration
+
 ## Further reading
 
 - [User provisioning](./user-provisioning.md)
