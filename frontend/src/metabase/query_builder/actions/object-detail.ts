@@ -181,16 +181,7 @@ export const loadObjectDetailFKReferences = createThunkAction(
         const fk = tableForeignKeys[i];
         const info = await getFKCount(card, fk);
 
-        if (fk.origin) {
-          const key =
-            typeof fk.origin.id === "number"
-              ? // FieldId
-                fk.origin.id
-              : // FieldReference
-                fk.origin.id.toString();
-
-          fkReferences[key] = info;
-        }
+        fkReferences[fk.origin_id] = info;
       }
 
       // It's possible that while we were running those queries, the object
