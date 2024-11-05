@@ -16,13 +16,24 @@
 
 (defn- active-filter-combinations []
   ;; We ignore :archived? as we've moved some of these filters to the `:where` clause as a simplifying optimization.
-  ;; We ignore :card-db-id as legacy search implements this sneakily inside the models themselves.
+  ;; We ignore :card-db-id as legacy search implements this filter sneakily inside the models themselves.
   (math.combo/subsets (remove #{:archived? :table-db-id} (filter-keys))))
 
+(defn with-all-models [search-ctx]
+  (assoc search-ctx :models search.config/all-models))
+
 (deftest search-context->applicable-models-test
+  (testing "All models are relevant if we're not looking in the trash"
+    (is (= search.config/all-models
+           (search.filter/search-context->applicable-models (with-all-models {:archived? false})))))
+
+  (testing "We only search for certain models in the trash"
+    (is (= #{"dashboard" "dataset" "segment" "collection" "action" "metric" "card"}
+           (search.filter/search-context->applicable-models (with-all-models {:archived? true})))))
+
   (doseq [active-filters (active-filter-combinations)]
     (testing (str "Consistent models included when filtering on " (vec active-filters))
-      (let [search-ctx (assoc (zipmap active-filters (repeat true)) :models search.config/all-models)]
+      (let [search-ctx (with-all-models (zipmap active-filters (repeat true)))]
         (is (= (search.in-place.filter/search-context->applicable-models search-ctx)
                (search.filter/search-context->applicable-models search-ctx)))))))
 

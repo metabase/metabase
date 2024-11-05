@@ -26,17 +26,21 @@
   (into {} (for [k (vals context-key->attr)]
              [k (keyword (str "search_index." (u/->snake_case_en (name k))))])))
 
+(defn- remove-if-falsey [m k]
+  (if (m k) m (dissoc m k)))
+
 (defn search-context->applicable-models
   "Returns a set of models that are applicable given the search context.
 
   If the context has optional filters, the models will be restricted for the set of supported models only."
-  [search-context]
-  (if (= :search.engine/in-place (:search-engine search-context))
-    (search.in-place.filter/search-context->applicable-models search-context)
-    (let [required (keep context-key->attr (keys search-context))]
+  [search-ctx]
+  (if (= :search.engine/in-place (:search-engine search-ctx))
+    (search.in-place.filter/search-context->applicable-models search-ctx)
+    ;; Archived is an eccentric one - we treat it as false for models that don't map it
+    (let [required (->> (remove-if-falsey search-ctx :archived?) keys (keep context-key->attr))]
       (into #{}
             (remove nil?)
-            (for [search-model (:models search-context)
+            (for [search-model (:models search-ctx)
                   :let [spec (search.spec/spec search-model)]]
               (when (every? (:attrs spec) required)
                 (:name spec)))))))

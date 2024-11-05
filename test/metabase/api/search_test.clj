@@ -842,7 +842,7 @@
     (mt/with-temp [Table _ {:name "RoundTable"}]
       (do-test-users [user [:crowberto :rasta]]
         (is (= [(default-table-search-row "RoundTable")]
-               (search-request-data user :q "RoundTable")))))))
+               (search-request-data user :q "RoundTable" :models "table")))))))
 
 (deftest table-test-2
   (testing "You should not see hidden tables"
