@@ -1,4 +1,7 @@
 (ns ^:mb/once metabase.search.in-place.filter-test
+  ;; Left renaming search.filter out of this PR to save a ton of noise.
+  ;; This comment is way up here, because cljfmt doesn't like it in the middle of the :require.
+  #_{:clj-kondo/ignore [:consistent-alias]}
   (:require
    [clojure.test :refer :all]
    [metabase.audit :as audit]

@@ -11,7 +11,7 @@
    [metabase.search.config
     :as search.config
     :refer [SearchContext SearchableModel]]
-   [metabase.search.in-place.filter :as search.filter]
+   [metabase.search.in-place.filter :as search.in-place.filter]
    [metabase.search.permissions :as search.permissions]
    [metabase.search.scoring :as scoring]
    [metabase.search.util :as search.util]
@@ -407,7 +407,7 @@
   [model :- SearchableModel context :- SearchContext]
   (-> {:select (select-clause-for-model model)
        :from   (from-clause-for-model model)}
-      (search.filter/build-filters model context)))
+      (search.in-place.filter/build-filters model context)))
 
 (mu/defn- shared-card-impl
   [model :- :metabase.models.card/type
@@ -505,7 +505,7 @@
 
 (defmethod search.api/model-set :search.engine/in-place
   [search-ctx]
-  (let [model-queries (for [model (search.filter/search-context->applicable-models
+  (let [model-queries (for [model (search.in-place.filter/search-context->applicable-models
                                    ;; It's unclear why we don't use the existing :models
                                    (assoc search-ctx :models search.config/all-models))]
                         {:nest (sql.helpers/limit (search-query-for-model model search-ctx) 1)})
