@@ -182,13 +182,22 @@
 (defenterprise new-table-view-data-permission-level
   "Returns the view-data permission level to set for a new table in a given group and database. This is `blocked`
   if the group has `blocked` for the DB or any table in the DB; otherwise it is `unrestricted`."
-  :feature :advanced-permissions
+  ;; We use :feature :none here since sandboxing uses a different feature flag from block perms so we need to check the
+  ;; flag in the function body.
+  :feature :none
   [db-id group-id]
-  (if (t2/exists? :model/DataPermissions
-                  :db_id db-id
-                  :perm_type :perms/view-data
-                  :perm_value :blocked
-                  :group_id group-id)
+  (if (or
+       (and
+        (premium-features/enable-advanced-permissions?)
+        (t2/exists? :model/DataPermissions
+                    :db_id db-id
+                    :perm_type :perms/view-data
+                    :perm_value :blocked
+                    :group_id group-id))
+       (and
+        (premium-features/enable-sandboxes?)
+        (t2/exists? :model/GroupTableAccessPolicy
+                    :group_id group-id)))
     :blocked
     :unrestricted))
 
