@@ -5,6 +5,7 @@ import type { ReactionHandler } from "./types";
 import {
   changeAxesLabels,
   changeDisplayType,
+  changeSeriesSettings,
   changeTableVisualizationSettings,
 } from "./visualizations";
 
@@ -22,4 +23,5 @@ export const reactionHandlers: ReactionHandlers = {
     changeTableVisualizationSettings,
   "metabot.reaction/change-display-type": changeDisplayType,
   "metabot.reaction/change-axes-labels": changeAxesLabels,
+  "metabot.reaction/change-series-settings": changeSeriesSettings,
 };
