@@ -46,28 +46,19 @@ const setup = async (config: SDKConfig) => {
 const mockJwtProviderResponse = (response: any) =>
   fetchMock.get(AUTH_PROVIDER_URL, response);
 const getLastAuthProviderApiCall = () => fetchMock.lastCall(AUTH_PROVIDER_URL);
-const originalConsoleError = console.error;
 
-// Will store the args of the console.error calls
-let consoleErrorCalls: any[][] = [];
-const errorsThatIncludeMessage = (message: string) => {
-  return consoleErrorCalls.filter(args =>
-    args.some((arg: any) => {
-      return (
-        arg instanceof Error &&
-        (arg.toString().includes(message) ||
-          arg.cause?.toString().includes(message))
-      );
-    }),
-  );
-};
+let consoleErrorSpy: jest.SpyInstance;
 
 /**
  * Checks if the error message has been console.error'd and is visible on the page
  */
 const expectErrorMessage = async (message: string) => {
   try {
-    expect(errorsThatIncludeMessage(message)).toHaveLength(1);
+    const errors = consoleErrorSpy.mock.calls.map(call => call[2]);
+    const errorMessages = errors.map(error =>
+      error instanceof Error ? error.message : error,
+    );
+    expect(errorMessages).toContainEqual(expect.stringContaining(message));
     await waitFor(() => {
       expect(
         screen.getByText(new RegExp(message, "i"), { exact: false }),
@@ -95,16 +86,11 @@ describe("SDK auth errors", () => {
     setupCardEndpoints(MOCK_CARD);
     setupCardQueryEndpoints(MOCK_CARD, {} as any);
 
-    console.error = jest.fn((...args) => {
-      consoleErrorCalls.push(args);
-      // Uncomment the line below to debug these tests
-      // originalConsoleError(...args);
-    });
+    consoleErrorSpy = jest.spyOn(console, "error");
   });
 
   afterEach(() => {
-    consoleErrorCalls = [];
-    console.error = originalConsoleError;
+    jest.resetAllMocks();
   });
 
   describe("jwt authentication", () => {
