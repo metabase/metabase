@@ -224,7 +224,7 @@ export const MoveQuestionModal = ({
       initialCollectionId={question.collectionId() ?? "root"}
       onClose={onClose}
       onMove={handleChooseMoveLocation}
-      canMoveToDashboard
+      canMoveToDashboard={question.type() === "question"}
     />
   );
 };
