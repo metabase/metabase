@@ -193,4 +193,8 @@
            (search-expr "\"Big Data\" \"Big Mistake"))))
 
   (is (= "'partial' <-> 'quoted' <-> 'and' <-> 'or' <-> '-split':*"
-         (search-expr "\"partial quoted AND OR -split"))))
+         (search-expr "\"partial quoted AND OR -split")))
+
+  (testing "dangerous characters"
+    (is (= "'you' & '<-' & 'pointing':*"
+           (search-expr "you <- pointing")))))
