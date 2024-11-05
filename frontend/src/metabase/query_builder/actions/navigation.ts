@@ -205,15 +205,17 @@ export const updateUrl = createThunkAction(
         (locationDescriptor.hash || "") === (window.location.hash || "");
       const isSameCard =
         currentState && isEqualCard(currentState.card, newState.card);
-      const isSameMode =
-        getQueryBuilderModeFromLocation(locationDescriptor).queryBuilderMode ===
-        getQueryBuilderModeFromLocation(window.location).queryBuilderMode;
 
       if (isSameCard && isSameURL) {
         return;
       }
 
       if (replaceState == null) {
+        const isSameMode =
+          getQueryBuilderModeFromLocation(locationDescriptor)
+            .queryBuilderMode ===
+          getQueryBuilderModeFromLocation(window.location).queryBuilderMode;
+
         // if the serialized card is identical replace the previous state instead of adding a new one
         // e.x. when saving a new card we want to replace the state and URL with one with the new card ID
         replaceState = isSameCard && isSameMode;
