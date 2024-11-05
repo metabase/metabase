@@ -913,7 +913,7 @@ function lackPermissionsView(isQbQuestion, shouldExist) {
     }
   }
 
-  cy.findByText(/You do not have permissions to run this query/).should(
+  cy.findByText(/Blocked: you are not allowed to run queries/).should(
     shouldExist ? "exist" : "not.exist",
   );
 }

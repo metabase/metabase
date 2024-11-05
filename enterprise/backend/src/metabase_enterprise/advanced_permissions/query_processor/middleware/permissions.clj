@@ -31,17 +31,18 @@
   [{db-id :database, :as query}]
   ;; Remove the :native key (containing the transpiled MBQL) so that this helper function doesn't think the query is
   ;; a native query. Actual native queries are dispatched to a different method by the :type key.
-  (let [{:keys [table-ids native?]} (query-perms/query->source-ids (dissoc query :native))
-        table-perms (if native?
-                      ;; Still require native perms
-                      (data-perms/native-download-permission-for-user api/*current-user-id* db-id)
-                      (into #{}
-                            (map (fn [table-id]
-                                   (data-perms/table-permission-for-user api/*current-user-id* :perms/download-results db-id table-id))
-                                 table-ids)))]
+  (let [{:keys [table-ids card-ids native?]} (query-perms/query->source-ids (dissoc query :native))
+        table-perms (if (or native? (seq card-ids))
+                      ;; If we detect any native subqueries/joins, even with source-card IDs, require full native
+                      ;; download perms
+                      [(data-perms/native-download-permission-for-user api/*current-user-id* db-id)]
+                      (map (fn [table-id]
+                             (data-perms/table-permission-for-user api/*current-user-id* :perms/download-results db-id table-id))
+                           table-ids))
+        table-perms-set (set table-perms)]
     ;; The download perm level for a query should be equal to the lowest perm level of any table referenced by the query.
-    (or (table-perms :no)
-        (table-perms :ten-thousand-rows)
+    (or (table-perms-set :no)
+        (table-perms-set :ten-thousand-rows)
         :one-million-rows)))
 
 (defenterprise apply-download-limit
