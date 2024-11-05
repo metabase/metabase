@@ -1,0 +1,42 @@
+{
+  "name": "change-series-settings",
+  "description": "Change visualization settings for series on cartesian charts. Make sure that the visualization type is `line`, `bar`, `area`, or `combo` before calling this tool.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "series_settings": {
+        "type": "array",
+        "description": "Settings for series. Only include the settings you want to change.",
+        "items": {
+          "type": "object",
+          "properties": {
+            "key": {
+              "type": "string",
+              "description": "The series key in series_settings map."
+            },
+            "title": {
+              "type": ["string", "null"],
+              "description": "The title of the series."
+            },
+            "color": {
+              "type": ["string", "null"],
+              "description": "The color of the series."
+            },
+            "show_series_values": {
+              "type": ["boolean", "null"],
+              "description": "Whether to show the series values."
+            },
+            "axis": {
+              "type": ["string", "null"],
+              "description": "The axis of the series."
+            }
+          },
+          "required": ["key", "title", "color", "show_series_values", "axis"],
+          "additionalProperties": false
+        }
+      }
+    },
+    "required": ["series_settings"],
+    "additionalProperties": false
+  }
+}

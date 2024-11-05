@@ -103,6 +103,22 @@
    [:type [:= :metabot.reaction/change-table-visualization-settings]]
    [:visible-columns [:vector :string]]])
 
+(defreaction :metabot.reaction/change-axes-labels
+  [:map
+   [:type [:= :metabot.reaction/change-axes-labels]]
+   [:x_axis_label [:maybe :string]]
+   [:y_axis_label [:maybe :string]]])
+
+(defreaction :metabot.reaction/change-series-settings
+  [:map
+   [:type [:= :metabot.reaction/change-series-settings]]
+   [:series_settings [:vector [:map
+                              [:key :string]
+                              [:title [:maybe :string]]
+                              [:color [:maybe :string]]
+                              [:show_series_values [:maybe boolean?]]
+                              [:axis [:maybe :string]]]]]])
+
 (defreaction :metabot.reaction/change-display-type
   [:map
    [:type [:= :metabot.reaction/change-display-type]]

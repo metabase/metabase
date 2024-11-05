@@ -1,3 +1,4 @@
+import type { SeriesSettings } from "./card";
 import type { CardDisplayType } from "./visualization";
 
 export type MetabotFeedbackType =
@@ -52,6 +53,19 @@ export type MetabotChangeDisplayTypeReaction = {
   display_type: CardDisplayType;
 };
 
+export type MetabotChangeAxesLabelsReaction = {
+  type: "metabot.reaction/change-axes-labels";
+  x_axis_label: string | null;
+  y_axis_label: string | null;
+};
+
+type SeriesSettingsEntry = SeriesSettings & { key: string };
+
+export type MetabotChangeSeriesSettingsReaction = {
+  type: "metabot.reaction/change-series-settings";
+  series_settings: SeriesSettingsEntry[];
+};
+
 export type MetabotChangeVisiualizationSettingsReaction = {
   type: "metabot.reaction/change-table-visualization-settings";
   visible_columns: string[];
@@ -60,7 +74,9 @@ export type MetabotChangeVisiualizationSettingsReaction = {
 export type MetabotReaction =
   | MetabotMessageReaction
   | MetabotChangeDisplayTypeReaction
-  | MetabotChangeVisiualizationSettingsReaction;
+  | MetabotChangeVisiualizationSettingsReaction
+  | MetabotChangeAxesLabelsReaction
+  | MetabotChangeSeriesSettingsReaction;
 
 /* Metabot v3 - API Request Types */
 
