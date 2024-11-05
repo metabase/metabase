@@ -79,6 +79,7 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
     const [chatDisabled, setChatDisabled] = useState(false);
     const [isFeedbackVisible, setIsFeedbackVisible] = useState(false);
     const [loading, setLoading] = useState(true);
+    const [manualCancel, setManualCancel] = useState(false)
 
     const databases = data?.data;
     useEffect(() => {
@@ -672,21 +673,29 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
                     }
                 }
 
+
+
                 if (event === "error" && data) {
-                    removeExistingMessage(t`Please wait until we generate the response....`)
-                    setMessages((prev) => [
-                        ...prev,
-                        {
-                            id: Date.now() + Math.random(),
-                            sender: "server",
-                            text: t`There was an error processing your request. Please contact team Omniloy for assistance.`,
-                            typeMessage: 'error',
-                            isLoading: false,
-                            showVisualization: false,
-                            showSuggestionButton: false
-                        },
-                    ])
+                    if (data.error === "UserInterrupt") {
+                        console.log(data.message)
+                    } else {
+                        removeExistingMessage(t`Please wait until we generate the response....`)
+                        setMessages((prev) => [
+                            ...prev,
+                            {
+                                id: Date.now() + Math.random(),
+                                sender: "server",
+                                text: t`There was an error processing your request. Please contact team Omniloy for assistance.`,
+                                typeMessage: 'error',
+                                isLoading: false,
+                                showVisualization: false,
+                                showSuggestionButton: false
+                            },
+                        ])
+                    }
                 }
+
+
             }
             const list = await client.runs.list(thread.thread_id);
             if (list && list.length > 0 && thread.thread_id) {
@@ -882,6 +891,19 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
     };
 
     const stopMessage = async () => {
+        setManualCancel(true)
+        setMessages((prev) => {
+            const manualCancel = {
+                id: Date.now() + Math.random(),
+                sender: "server",
+                text: "",
+                showVisualization: false,
+                isLoading: false,
+                manualCancel: true
+            };
+
+            return [...prev, manualCancel];
+        });
         const list = await client.runs.list(thread.thread_id);
         if (list && list.length > 0 && thread.thread_id) {
             setRunId(list[0].run_id)
@@ -1034,7 +1056,7 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
                                                     height: "30px",
                                                     padding: "0",
                                                     minWidth: "0",
-                                                    backgroundColor:"#8A64DF",
+                                                    backgroundColor: "#8A64DF",
                                                     color: "#FFF",
                                                     border: "none",
                                                     cursor: "pointer",
@@ -1046,7 +1068,7 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
                                                 {client && schema.length > 0 && !chatLoading && !selectedThreadId && !chatDisabled ? (
                                                     <Icon size={18} name="sendChat" style={{ paddingTop: "2px", paddingLeft: "2px" }} />
                                                 ) : (
-                                                    <Icon size={18} name="stop" style={{ paddingTop: "2px"}} /> 
+                                                    <Icon size={18} name="stop" style={{ paddingTop: "2px" }} />
                                                 )}
                                             </Button>
                                         </>
