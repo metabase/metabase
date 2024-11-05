@@ -9,6 +9,7 @@
   - Static Embedding Dashboard/dashcard downloads
   - Dashboard Subscription Attachments
   - Alert attachments"
+  #_{:clj-kondo/ignore [:deprecated-namespace]}
   (:require
    [cheshire.core :as json]
    [clojure.data.csv :as csv]

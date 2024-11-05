@@ -9,7 +9,7 @@
    [clojure.zip :as zip]
    [hiccup.core :as hiccup]
    [hickory.core :as hik]
-   [metabase.channel.render.core :as render]
+   [metabase.channel.render.core :as channel.render]
    [metabase.channel.render.image-bundle :as image-bundle]
    [metabase.channel.render.js.svg :as js.svg]
    [metabase.notification.payload.execute :as notification.execute]
@@ -146,7 +146,7 @@
                   image-bundle/make-image-bundle (fn [_ s]
                                                    {:image-src   s
                                                     :render-type :inline})]
-      (let [content (-> (render/render-pulse-card :inline "UTC" card nil results)
+      (let [content (-> (channel.render/render-pulse-card :inline "UTC" card nil results)
                         :content)]
         (-> content
             (edit-nodes img-node-with-svg? img-node->svg-node) ;; replace the :img tag with its parsed SVG.
@@ -166,7 +166,7 @@
                   image-bundle/make-image-bundle (fn [_ s]
                                                    {:image-src   s
                                                     :render-type :inline})]
-      (let [content (-> (render/render-pulse-card :inline "UTC" card nil results)
+      (let [content (-> (channel.render/render-pulse-card :inline "UTC" card nil results)
                         :content)]
         (-> content
             (edit-nodes img-node-with-svg? img-node->svg-node) ;; replace the :img tag with its parsed SVG.
@@ -187,7 +187,7 @@
                    image-bundle/make-image-bundle (fn [_ s]
                                                     {:image-src   s
                                                      :render-type :inline})]
-       (let [content (-> (render/render-pulse-card :inline "UTC" card dashcard result)
+       (let [content (-> (channel.render/render-pulse-card :inline "UTC" card dashcard result)
                          :content)]
          (-> content
              (edit-nodes img-node-with-svg? img-node->svg-node) ;; replace the :img tag with its parsed SVG.
