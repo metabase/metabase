@@ -45,6 +45,24 @@ export function getQuery(card) {
   }
 }
 
+/*
+  We want to use the target parameter default value only when doing otherwise
+  will crash the card. In other cases we want to be able to reset the parameter
+  default value, e.g. pass `null` if it's not required or overwrite the default
+  value. See metabase#40038.
+ */
+function getCardParameterValue(value, card, mapping) {
+  const parameter = card.parameters?.find(cardParameter =>
+    _.isEqual(cardParameter.target, mapping?.target),
+  );
+  return value == null &&
+    parameter != null &&
+    parameter.required &&
+    parameter.default != null
+    ? parameter.default
+    : value;
+}
+
 // NOTE Atte Keinänen 7/5/17: Still used in dashboards and public questions.
 // Query builder uses `Question.getResults` which contains similar logic.
 export function applyParameters(
@@ -80,7 +98,10 @@ export function applyParameters(
 
     const queryParameter = {
       type,
-      value: normalizeParameterValue(type, value),
+      value: normalizeParameterValue(
+        type,
+        getCardParameterValue(value, card, mapping),
+      ),
       id: parameter.id,
     };
 
