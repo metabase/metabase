@@ -4,10 +4,12 @@ import { isNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type {
+  ColumnNameCollapsedRowsSetting,
   ColumnNameColumnSplitSetting,
   DatasetColumn,
   FieldRefColumnSplitSetting,
   FieldReference,
+  PivotTableCollapsedRowsSetting,
   PivotTableColumnSplitSetting,
 } from "metabase-types/api";
 
@@ -16,15 +18,22 @@ type PivotOptions = {
   pivot_cols: number[];
 };
 
-function isColumnNameColumnSplit(
+export function isColumnNameColumnSplitSetting(
   setting: PivotTableColumnSplitSetting,
 ): setting is ColumnNameColumnSplitSetting {
   const { rows = [], columns = [], values = [] } = setting;
   return (
-    rows.every(row => typeof row === "string") &&
-    columns.every(row => typeof row === "string") &&
-    values.every(row => typeof row === "string")
+    rows.every(value => typeof value === "string") &&
+    columns.every(value => typeof value === "string") &&
+    values.every(value => typeof value === "string")
   );
+}
+
+export function isColumnNameCollapsedRowsSetting(
+  setting: PivotTableCollapsedRowsSetting,
+): setting is ColumnNameCollapsedRowsSetting {
+  const { rows = [] } = setting;
+  return rows.every(value => typeof value === "string");
 }
 
 function getColumnNamePivotOptions(
@@ -81,7 +90,7 @@ export function getPivotOptions(question: Question) {
   const setting: PivotTableColumnSplitSetting =
     question.setting("pivot_table.column_split") ?? {};
 
-  if (isColumnNameColumnSplit(setting)) {
+  if (isColumnNameColumnSplitSetting(setting)) {
     return getColumnNamePivotOptions(query, stageIndex, setting);
   } else {
     return getFieldRefPivotOptions(query, stageIndex, setting);
@@ -105,7 +114,7 @@ export function migratePivotColumnSplitSetting(
   setting: PivotTableColumnSplitSetting,
   columns: DatasetColumn[],
 ): ColumnNameColumnSplitSetting {
-  if (isColumnNameColumnSplit(setting)) {
+  if (isColumnNameColumnSplitSetting(setting)) {
     return setting;
   }
 

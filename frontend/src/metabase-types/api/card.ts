@@ -134,10 +134,19 @@ export type PivotTableColumnSplitSetting =
   | ColumnNameColumnSplitSetting
   | FieldRefColumnSplitSetting;
 
-export type PivotTableCollapsedRowsSetting = {
-  rows?: string[] | (FieldReference | null)[];
+export type ColumnNameCollapsedRowsSetting = {
+  rows?: string[];
   value?: string[]; // identifiers for collapsed rows
 };
+
+export type FieldRefCollapsedRowsSetting = {
+  rows?: (FieldReference | null)[];
+  value?: string[];
+};
+
+export type PivotTableCollapsedRowsSetting =
+  | ColumnNameCollapsedRowsSetting
+  | FieldRefCollapsedRowsSetting;
 
 export type TableColumnOrderSetting = {
   name: string;

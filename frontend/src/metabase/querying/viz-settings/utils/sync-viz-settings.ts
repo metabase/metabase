@@ -3,6 +3,10 @@ import {
   getColumnKey,
   getColumnNameFromKey,
 } from "metabase-lib/v1/queries/utils/column-key";
+import {
+  isColumnNameCollapsedRowsSetting,
+  isColumnNameColumnSplitSetting,
+} from "metabase-lib/v1/queries/utils/pivot";
 import type {
   ColumnSettings,
   Series,
@@ -242,7 +246,7 @@ function syncPivotColumnSplit(
   oldColumns: ColumnInfo[],
 ): VisualizationSettings {
   const columnSettings = settings["pivot_table.column_split"];
-  if (!columnSettings) {
+  if (!columnSettings || !isColumnNameColumnSplitSetting(columnSettings)) {
     return settings;
   }
 
@@ -281,7 +285,7 @@ function syncPivotCollapsedRows(
   oldColumns: ColumnInfo[],
 ): VisualizationSettings {
   const rowSettings = settings["pivot_table.collapsed_rows"];
-  if (!rowSettings) {
+  if (!rowSettings || !isColumnNameCollapsedRowsSetting(rowSettings)) {
     return settings;
   }
 
