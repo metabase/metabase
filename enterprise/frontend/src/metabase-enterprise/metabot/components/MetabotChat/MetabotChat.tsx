@@ -124,8 +124,9 @@ export const MetabotChat = ({ onClose }: { onClose: () => void }) => {
           onHeightChange={handleMaybeExpandInput}
           onKeyDown={e => {
             if (e.key === "Enter") {
-              // prevent event from inserting new line
+              // prevent event from inserting new line + interacting with other content
               e.preventDefault();
+              e.stopPropagation();
               handleSend();
             }
           }}
