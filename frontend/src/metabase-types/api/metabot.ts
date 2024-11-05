@@ -52,6 +52,12 @@ export type MetabotChangeDisplayTypeReaction = {
   display_type: CardDisplayType;
 };
 
+export type MetabotChangeAxesLabelsReaction = {
+  type: "metabot.reaction/change-axes-labels";
+  x_axis_label: string | null;
+  y_axis_label: string | null;
+};
+
 export type MetabotChangeVisiualizationSettingsReaction = {
   type: "metabot.reaction/change-table-visualization-settings";
   visible_columns: string[];
@@ -60,7 +66,8 @@ export type MetabotChangeVisiualizationSettingsReaction = {
 export type MetabotReaction =
   | MetabotMessageReaction
   | MetabotChangeDisplayTypeReaction
-  | MetabotChangeVisiualizationSettingsReaction;
+  | MetabotChangeVisiualizationSettingsReaction
+  | MetabotChangeAxesLabelsReaction;
 
 /* Metabot v3 - API Request Types */
 

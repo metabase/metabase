@@ -103,6 +103,12 @@
    [:type [:= :metabot.reaction/change-table-visualization-settings]]
    [:visible-columns [:vector :string]]])
 
+(defreaction :metabot.reaction/change-axes-labels
+  [:map
+   [:type [:= :metabot.reaction/change-axes-labels]]
+   [:x_axis_label [:maybe :string]]
+   [:y_axis_label [:maybe :string]]])
+
 (defreaction :metabot.reaction/change-display-type
   [:map
    [:type [:= :metabot.reaction/change-display-type]]

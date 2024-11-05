@@ -3,6 +3,7 @@ import type { MetabotReaction } from "metabase-types/api";
 import { showMessage } from "./messages";
 import type { ReactionHandler } from "./types";
 import {
+  changeAxesLabels,
   changeDisplayType,
   changeTableVisualizationSettings,
 } from "./visualizations";
@@ -20,4 +21,5 @@ export const reactionHandlers: ReactionHandlers = {
   "metabot.reaction/change-table-visualization-settings":
     changeTableVisualizationSettings,
   "metabot.reaction/change-display-type": changeDisplayType,
+  "metabot.reaction/change-axes-labels": changeAxesLabels,
 };
