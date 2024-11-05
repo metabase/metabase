@@ -15,6 +15,7 @@
    [metabase.models.pulse :as models.pulse]
    [metabase.models.task-history :as task-history]
    [metabase.notification.core :as notification]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.pulse.core :as pulse]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.task :as task]

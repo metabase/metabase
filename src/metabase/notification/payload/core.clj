@@ -95,8 +95,7 @@
                  [:alert     :map]]]]]
     [:notification/testing   :map]]])
 
-;; TODO: from metabase.email.messages
-(defn logo-url
+(defn- logo-url
   "Return the URL for the application logo. If the logo is the default, return a URL to the Metabase logo."
   []
   (let [url (public-settings/application-logo-url)]
@@ -107,8 +106,7 @@
       ;; (data-uri-svg? url)               (themed-image-url url color)
       :else nil)))
 
-;; TODO: from metabase.email.messages
-(defn button-style
+(defn- button-style
   "Return a CSS style string for a button with the given color."
   [color]
   (str "display: inline-block; "

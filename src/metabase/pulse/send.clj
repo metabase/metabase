@@ -93,6 +93,8 @@
                           (select-keys (-> pulse :cards first) [:include_xls :include_csv :pivot_results :format_rows]))
      :handlers     [(get-notification-handler pulse-channel :notification/alert)]}))
 
+(def ^:private send-notification! (requiring-resolve 'metabase.notification.core/*send-notification!*))
+
 (defn- send-pulse!*
   [{:keys [channels channel-ids] :as pulse} dashboard]
   (let [;; `channel-ids` is the set of channels to send to now, so only send to those. Note the whole set of channels
@@ -101,7 +103,7 @@
                      channels)]
     (doseq [pulse-channel channels]
       (try
-        ((requiring-resolve 'metabase.notification.core/*send-notification!*) (notification-info pulse dashboard pulse-channel))
+        (send-notification! (notification-info pulse dashboard pulse-channel))
         (catch Exception e
           (log/errorf e "[Pulse %d] Error sending to %s channel" (:id pulse) (:channel_type pulse-channel)))))
     nil))

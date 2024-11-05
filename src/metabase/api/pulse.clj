@@ -28,6 +28,7 @@
    [metabase.notification.core :as notification]
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings.premium-features :as premium-features]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.pulse.core :as pulse]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]

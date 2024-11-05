@@ -78,7 +78,7 @@
 
 (def ^:private execute-dashboard (requiring-resolve 'metabase.notification.payload.execute/execute-dashboard))
 
-(defn render-dashboard-to-hiccup
+(defn- render-dashboard-to-hiccup
   "Given a dashboard ID, renders all of the dashcards to hiccup datastructure."
   [dashboard-id]
   (let [user              (t2/select-one :model/User)
