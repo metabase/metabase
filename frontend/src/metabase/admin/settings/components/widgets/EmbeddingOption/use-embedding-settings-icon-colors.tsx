@@ -2,6 +2,7 @@ export type UseEmbeddingSettingsIconColorsProps = {
   disabled: boolean;
 };
 
+/* eslint-disable no-restricted-syntax -- we should find a way to use semantic colors here */
 export const useEmbeddingSettingsIconColors = ({
   disabled,
 }: UseEmbeddingSettingsIconColorsProps) => {

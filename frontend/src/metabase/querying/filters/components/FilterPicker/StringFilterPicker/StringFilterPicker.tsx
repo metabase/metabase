@@ -13,7 +13,7 @@ import { StringFilterValuePicker } from "../../FilterValuePicker";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
 import { FilterPickerFooter } from "../FilterPickerFooter";
 import { FilterPickerHeader } from "../FilterPickerHeader";
-import { MAX_WIDTH, MIN_WIDTH } from "../constants";
+import { WIDTH } from "../constants";
 import type { FilterPickerWidgetProps } from "../types";
 
 export function StringFilterPicker({
@@ -66,8 +66,7 @@ export function StringFilterPicker({
   return (
     <Box
       component="form"
-      miw={MIN_WIDTH}
-      maw={MAX_WIDTH}
+      w={WIDTH}
       data-testid="string-filter-picker"
       onSubmit={handleSubmit}
     >

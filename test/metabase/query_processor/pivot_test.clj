@@ -210,12 +210,9 @@
                                           (mt/id :products :created_at)
                                           {:base-type :type/DateTime, :temporal-unit :month}]]
                            :aggregation [[:count]]})
-          viz-settings  (select-keys
-                         (mt/query products
-                           {:pivot_table.column_split
-                            {:rows    [$id]
-                             :columns [[:field "RATING" {:base-type :type/Integer}]]}})
-                         [:pivot_table.column_split])
+          viz-settings  {:pivot_table.column_split
+                         {:rows    ["ID"]
+                          :columns ["RATING"]}}
           pivot-options (#'qp.pivot/pivot-options query viz-settings)]
       (is (= {:pivot-rows [], :pivot-cols [] :pivot-measures nil}
              pivot-options))
@@ -240,10 +237,9 @@
           (testing "Sanity check: query should work in non-pivot mode"
             (is (=? {:status :completed}
                     (qp/process-query query))))
-          (let [viz-settings  (mt/$ids products
-                                {:pivot_table.column_split
-                                 {:rows    [$category]
-                                  :columns [$created_at]}})
+          (let [viz-settings  {:pivot_table.column_split
+                               {:rows    ["CATEGORY"]
+                                :columns ["CREATED_AT"]}}
                 pivot-options (#'qp.pivot/pivot-options query viz-settings)]
             (is (= {:pivot-rows [0], :pivot-cols [1] :pivot-measures nil}
                    pivot-options))
@@ -270,8 +266,8 @@
                                                                    [:field %people.id {:join-alias "People - User"}]]}
                                      :aggregation  [[:sum [:field "sum" {:base-type :type/Number}]]]
                                      :breakout     [[:field "ID" {:base-type :type/Number}]]})
-              viz-settings (mt/$ids orders {:pivot_table.column_split
-                                            {:columns     [[:field "ID" {:base-type :type/Number}]]}})]
+              viz-settings {:pivot_table.column_split
+                            {:columns ["ID"]}}]
           (testing "for a regular query"
             (is (=? {:status :completed}
                     (qp/process-query query))))
@@ -300,8 +296,8 @@
                                orders {:source-table (str "card__" (u/the-id card))
                                        :aggregation  [[:sum [:field "sum" {:base-type :type/Number}]]]
                                        :breakout     [[:field "ID" {:base-type :type/Number}]]})
-                viz-settings (mt/$ids orders {:pivot_table.column_split
-                                              {:columns     [[:field "ID" {:base-type :type/Number}]]}})]
+                viz-settings {:pivot_table.column_split
+                              {:columns ["ID"]}}]
             (testing "for a regular query"
               (is (=? {:status :completed}
                       (qp/process-query query))))
@@ -335,10 +331,8 @@
                                      :aggregation  [[:sum [:field "SUBTOTAL" {:base-type :type/Number}]]]
                                      :breakout     [[:field "Rating Bucket" {:base-type  :type/Number
                                                                              :join-alias "model A - Product"}]]})
-              viz-settings (mt/$ids orders {:pivot_table.column_split
-                                            {:columns     [[:field "Rating Bucket"
-                                                            {:base-type  :type/Number
-                                                             :join-alias "model A - Product"}]]}})]
+              viz-settings {:pivot_table.column_split
+                            {:columns ["Rating Bucket"]}}]
           (testing "for a regular query"
             (is (=? {:status :completed}
                     (qp/process-query query))))

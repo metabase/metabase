@@ -111,3 +111,20 @@
   [time-str]
   (or (second (re-matches (re-pattern (str "(.*?)" (optional offset-part) \$)) time-str))
       time-str))
+
+(def ^:const month-keywords
+  "Mapping of human-friendly keywords to literal month numbers.
+
+  1 = January."
+  {:jan 1
+   :feb 2
+   :mar 3
+   :apr 4
+   :may 5
+   :jun 6
+   :jul 7
+   :aug 8
+   :sep 9
+   :oct 10
+   :nov 11
+   :dec 12})
