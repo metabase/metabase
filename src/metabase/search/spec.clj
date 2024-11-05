@@ -221,6 +221,11 @@
   For now, see its schema, and the existing definitions that use it."
   (fn [search-model] search-model))
 
+(defn specifications
+  "A mapping from each search-model to its specification."
+  []
+  (into {} (for [[s spec-fn] (methods spec)] [s (spec-fn s)])))
+
 (defn validate-spec!
   "Check whether a given specification is valid"
   [spec]
