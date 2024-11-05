@@ -287,7 +287,7 @@ const ChatMessageList = ({
                 )}
               </>
             )}
-            {message.showFeedback && (
+            {message.showFeedback && !message.manualCancel && (
               <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '10px' }}>
                 <Icon
                   name="thumbs_up"
