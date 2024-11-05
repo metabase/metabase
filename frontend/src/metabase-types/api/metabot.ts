@@ -57,10 +57,33 @@ export type MetabotChangeVisiualizationSettingsReaction = {
   visible_columns: string[];
 };
 
+export type MetabotConfirmationReaction = {
+  type: "metabot.reaction/confirmation";
+  description: string;
+  options: Record<string, MetabotReaction[]>;
+};
+
+export type MetabotWriteBackReaction = {
+  type: "metabot.reaction/writeback";
+  message: string;
+};
+
+export type MetabotApiCallReaction = {
+  type: "metabot.reaction/api-call";
+  api_call: {
+    method: string;
+    url: string;
+    body?: Record<string, any>;
+  };
+};
+
 export type MetabotReaction =
   | MetabotMessageReaction
   | MetabotChangeDisplayTypeReaction
-  | MetabotChangeVisiualizationSettingsReaction;
+  | MetabotChangeVisiualizationSettingsReaction
+  | MetabotConfirmationReaction
+  | MetabotWriteBackReaction
+  | MetabotApiCallReaction;
 
 /* Metabot v3 - API Request Types */
 
