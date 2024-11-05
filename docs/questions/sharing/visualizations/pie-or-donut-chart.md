@@ -16,7 +16,6 @@ Pie and sunburst charts work best when when the number of possible breakout valu
 
 Pie charts should be used to communicate a general sense of the relative sizes of breakouts. If precise comparison is important so people can see the exact differences between values, or you have more than a few breakouts (like customers per country), it's usually better to use a bar or row chart.
 
-
 ## How to create a pie or sunburst chart
 
 Pie and sunburst charts display a single metric across one or more breakouts. Both pie/donut charts and sunburst charts are available in the "Pie chart" option in the visualization sidebar.
@@ -51,7 +50,7 @@ You can choose which breakouts to assign to the inner, middle, or outer rings of
 
 ![](../../images/sunburst-two-levels.png)
 
-You don't need to include the percentages in your query. Metabase will automatically compute the percentage of the total for each value of the metric (for example, Metabase will compute that 23 Cats make up 31.9% of all pets). 
+You don't need to include the percentages in your query. Metabase will automatically compute the percentage of the total for each value of the metric (for example, Metabase will compute that 23 Cats make up 31.9% of all pets).
 
 ## Pie and sunburst chart settings
 
