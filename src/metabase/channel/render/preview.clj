@@ -8,7 +8,7 @@
    [hickory.core :as hik]
    [hickory.render :as hik.r]
    [hickory.zip :as hik.z]
-   [metabase.channel.render.core :as channel.render]
+   [metabase.channel.render.card :as render.card]
    [metabase.channel.render.image-bundle :as img]
    [metabase.channel.render.png :as png]
    [metabase.channel.render.style :as style]
@@ -53,7 +53,7 @@
             [:td {:style (style/style (merge table-style-map {:max-width "400px"}))}
              content])]
     (if card
-      (let [base-render (channel.render/render-pulse-card :inline (channel.shared/defaulted-timezone card) card dashcard result)
+      (let [base-render (render.card/render-pulse-card :inline (channel.shared/defaulted-timezone card) card dashcard result)
             html-src    (-> base-render :content)
             img-src     (-> base-render
                             (png/render-html-to-png 1200)

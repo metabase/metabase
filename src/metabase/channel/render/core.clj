@@ -22,6 +22,7 @@
   style-tag-from-inline-styles
   style-tag-nonce-middleware]
  [render.card
+  detect-pulse-chart-type
   render-pulse-card
   render-pulse-card-for-display
   render-pulse-section
