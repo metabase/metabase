@@ -11,7 +11,7 @@
 (mu/defmethod metabot-v3.tools.interface/*invoke-tool* :metabot.tool/confirm-invite-user
   [_tool-name {:keys [email], :as args}]
   {:reactions [{:type :metabot.reaction/confirmation
-                :description (format "Invite a user with email '%s' to Metabase" email)
+                :description (format "Invite a user with email '%s' to Metabase?" email)
                 :options {:yes [{:type :metabot.reaction/api-call
                                  :api-call {:method "POST"
                                             :url "/api/user"
