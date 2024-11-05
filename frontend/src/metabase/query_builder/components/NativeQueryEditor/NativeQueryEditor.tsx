@@ -360,6 +360,12 @@ export class NativeQueryEditor extends Component<
     100,
   );
 
+  handleSelectionChange = () => {
+    if (this._editor && this.props.setNativeEditorSelectedRange) {
+      this.props.setNativeEditorSelectedRange(this._editor.getSelectionRange());
+    }
+  };
+
   handleKeyDown = (e: KeyboardEvent) => {
     const { isRunning, cancelQuery, enableRun } = this.props;
 
@@ -421,7 +427,7 @@ export class NativeQueryEditor extends Component<
     // listen to onChange events
     editor.getSession().on("change", this.onChange);
     editor.getSelection().on("changeCursor", this.handleCursorChange);
-    editor.getSelection().on("changeSelection", this.handleCursorChange);
+    editor.getSelection().on("changeSelection", this.handleSelectionChange);
 
     const minLineNumberWidth = 20;
     editor.getSession().gutterRenderer = {
