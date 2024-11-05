@@ -24,7 +24,7 @@ yarn add @metabase/embedding-sdk-react
 
 The SDK version tracks with the Metabase version.
 
-So, for example, if you're on Metabase version `1.51.1`, you should use the SDK `1.51`.
+So, for example, if you're on Metabase version `1.51.x`, you should use the SDK with the tag `51-stable`.
 
 See [Versioning](https://www.metabase.com/docs/latest/embedding/sdk/version).
 
