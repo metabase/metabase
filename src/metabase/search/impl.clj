@@ -16,8 +16,8 @@
    [metabase.search.config
     :as search.config
     :refer [SearchableModel SearchContext]]
-   [metabase.search.filter :as search.filter]
    [metabase.search.fulltext :as search.fulltext]
+   [metabase.search.in-place.filter :as search.filter]
    [metabase.search.scoring :as scoring]
    [metabase.util.i18n :refer [tru deferred-tru]]
    [metabase.util.log :as log]
@@ -141,6 +141,10 @@
              (assoc search-result :effective_location nil)))
          search-results)))
 
+(def ^:private ^:const displayed-columns
+  "All the result components that by default are displayed by the frontend."
+  #{:name :display_name :collection_name :description})
+
 ;;; TODO OMG mix of kebab-case and snake_case here going to make me throw up, we should use all kebab-case in Clojure
 ;;; land and then convert the stuff that actually gets sent over the wire in the REST API to snake_case in the API
 ;;; endpoint itself, not in the search impl.
@@ -159,7 +163,7 @@
                            name)
          :context        (when (and match-context-thunk
                                     (empty?
-                                     (remove matching-columns search.config/displayed-columns)))
+                                     (remove matching-columns displayed-columns)))
                            (match-context-thunk))
          :collection     (if (and archived_directly (not= "collection" model))
                            (select-keys (collection/trash-collection)

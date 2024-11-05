@@ -1,4 +1,4 @@
-(ns metabase.search.filter
+(ns metabase.search.in-place.filter
   "Namespace that defines the filters that are applied to the search results.
 
   There are required filters and optional filters.
@@ -19,6 +19,7 @@
    [metabase.search.config
     :as search.config
     :refer [SearchableModel SearchContext]]
+   [metabase.search.permissions :as search.permissions]
    [metabase.search.util :as search.util]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
@@ -64,15 +65,6 @@
      [:= (search.config/column-with-model-alias model :active) true]
      [:= (search.config/column-with-model-alias model :visibility_type) nil]]))
 
-(defn- sandboxed-or-impersonated-user? []
-  ;; TODO FIXME -- search actually currently still requires [[metabase.api.common/*current-user*]] to be bound,
-  ;; because [[metabase.public-settings.premium-features/sandboxed-or-impersonated-user?]] requires it to be bound.
-  ;; Since it's part of the search context it would be nice if we could run search without having to bind that stuff at
-  ;; all.
-  (assert @@(requiring-resolve 'metabase.api.common/*current-user*)
-          "metabase.api.common/*current-user* must be bound in order to use search for an indexed entity")
-  (premium-features/sandboxed-or-impersonated-user?))
-
 (mu/defn- search-string-clause-for-model
   [model                :- SearchableModel
    search-context       :- SearchContext
@@ -80,13 +72,14 @@
   (when-let [query (:search-string search-context)]
     (into
      [:or]
-     (for [column           (->> (search.config/searchable-columns model search-native-query)
+     (for [column           (->> (let [search-columns-fn (requiring-resolve 'metabase.search.legacy/searchable-columns)]
+                                   (search-columns-fn model search-native-query))
                                  (map #(search.config/column-with-model-alias model %)))
            wildcarded-token (->> (search.util/normalize query)
                                  search.util/tokenize
                                  (map search.util/wildcard-match))]
        (cond
-         (and (= model "indexed-entity") (sandboxed-or-impersonated-user?))
+         (and (= model "indexed-entity") (search.permissions/sandboxed-or-impersonated-user?))
          [:= 0 1]
 
          (and (#{"card" "dataset"} model) (= column (search.config/column-with-model-alias model :dataset_query)))
@@ -205,6 +198,10 @@
   [query join-type table]
   (->> (get query join-type) (partition 2) (map first) (some #(= % table)) boolean))
 
+;; We won't need this post-legacy as it defines the joins à la carte.
+(defn- search-model->revision-model [model]
+  ((requiring-resolve 'metabase.search.legacy/search-model->revision-model) model))
+
 (doseq [model ["dashboard" "card" "dataset" "metric"]]
   (defmethod build-optional-filter-query [:last-edited-by model]
     [_filter model query editor-ids]
@@ -213,7 +210,7 @@
       (not (joined-with-table? query :join :revision))
       (-> (sql.helpers/join :revision [:= :revision.model_id (search.config/column-with-model-alias model :id)])
           (sql.helpers/where [:= :revision.most_recent true]
-                             [:= :revision.model (search.config/search-model->revision-model model)]))
+                             [:= :revision.model (search-model->revision-model model)]))
       (= 1 (count editor-ids))
       (sql.helpers/where [:= :revision.user_id (first editor-ids)])
 
@@ -228,7 +225,7 @@
       (not (joined-with-table? query :join :revision))
       (-> (sql.helpers/join :revision [:= :revision.model_id (search.config/column-with-model-alias model :id)])
           (sql.helpers/where [:= :revision.most_recent true]
-                             [:= :revision.model (search.config/search-model->revision-model model)]))
+                             [:= :revision.model (search-model->revision-model model)]))
       true
       ;; on UI we showed the the last edit info from revision.timestamp
       ;; not the model.updated_at column
@@ -242,7 +239,7 @@
                             (search.config/column-with-model-alias model :updated_at)
                             last-edited-at)))
 
-(defn- feature->supported-models
+(defn- legacy-feature->supported-models
   "Return A map of filter to its support models.
 
   E.g: {:created-by #{\"card\" \"dataset\" \"dashboard\" \"action\"}}
@@ -252,7 +249,7 @@
   (merge
    ;; models support search-native-query if there are additional columns to search when the `search-native-query`
    ;; argument is true
-   {:search-native-query (->> (dissoc (methods search.config/searchable-columns) :default)
+   {:search-native-query (->> (dissoc (methods @(requiring-resolve 'metabase.search.legacy/searchable-columns)) :default)
                               (filter (fn [[model f]]
                                         (seq (set/difference (set (f model true)) (set (f model false))))))
                               (map first)
@@ -267,11 +264,11 @@
 ;;                                        Public functions                                         ;;
 ;; ------------------------------------------------------------------------------------------------;;
 
-(mu/defn search-context->applicable-models :- [:set SearchableModel]
+(defn search-context->applicable-models
   "Returns a set of models that are applicable given the search context.
 
   If the context has optional filters, the models will be restricted for the set of supported models only."
-  [search-context :- SearchContext]
+  [search-context]
   (let [{:keys [created-at
                 created-by
                 last-edited-at
@@ -279,7 +276,7 @@
                 models
                 search-native-query
                 verified]}        search-context
-        feature->supported-models (feature->supported-models)]
+        feature->supported-models (legacy-feature->supported-models)]
     (cond-> models
       (some? created-at)          (set/intersection (:created-at feature->supported-models))
       (some? created-by)          (set/intersection (:created-by feature->supported-models))

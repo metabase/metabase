@@ -6,6 +6,7 @@
    [metabase.api.common :as api]
    [metabase.search.config :as search.config]
    [metabase.search.legacy :as search.legacy]
+   [metabase.search.permissions :as search.permissions]
    [metabase.search.postgres.index :as search.index]
    [metabase.search.postgres.ingestion :as search.ingestion]
    [toucan2.core :as t2])
@@ -111,7 +112,7 @@
     (throw (ex-info "Search index is not initialized. Use [[init!]] to ensure it exists."
                     {:search-engine :postgres})))
   (->> (let [base-query (search.index/search-query search-term [:legacy_input])]
-         (search.legacy/add-collection-join-and-where-clauses base-query nil search-ctx))
+         (search.permissions/add-collection-join-and-where-clauses base-query nil search-ctx))
        (t2/query)
        (map :legacy_input)
        (map #(json/parse-string % keyword))
