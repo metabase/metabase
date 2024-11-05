@@ -7,17 +7,19 @@ type ModifyQuestionProps = InteractiveQuestionProps;
 export const ModifyQuestion = ({
   questionId,
   plugins,
-  isSaveEnabled,
   onSave,
   onBeforeSave,
   entityTypeFilter,
+  isSaveEnabled,
+  saveToCollectionId,
 }: ModifyQuestionProps = {}) => (
   <QuestionEditor
     questionId={questionId}
     plugins={plugins}
-    isSaveEnabled={isSaveEnabled}
     onSave={onSave}
     onBeforeSave={onBeforeSave}
     entityTypeFilter={entityTypeFilter}
+    isSaveEnabled={isSaveEnabled}
+    saveToCollectionId={saveToCollectionId}
   />
 );
