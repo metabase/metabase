@@ -140,10 +140,7 @@ export const BulkMoveModal = ({
       ? t`Move ${selectedItems.length} items?`
       : t`Move "${selectedItems[0].name}"?`;
 
-  const canMoveToDashboard = true;
-  // selectedItems.length === 1 &&
-  // selectedItems[0].model === "card" &&
-  // selectedItems[0].dashboard_count === 0;
+  const canMoveToDashboard = selectedItems.every(item => item.model === "card");
 
   const models: CollectionPickerModel[] = canMoveToDashboard
     ? ["collection", "dashboard"]
