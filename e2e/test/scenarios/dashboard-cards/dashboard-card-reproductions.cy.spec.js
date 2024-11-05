@@ -1887,9 +1887,7 @@ SELECT 'group_2', 'sub_group_2', 52, 'group_2__sub_group_2';
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-  });
 
-  it("passes values from unused columns of row visualization to click behavior (metabase#46318)", () => {
     createNativeQuestionAndDashboard({
       questionDetails: {
         name: "46318",
@@ -1920,7 +1918,9 @@ SELECT 'group_2', 'sub_group_2', 52, 'group_2__sub_group_2';
       cy.button("Done").click();
     });
     saveDashboard();
+  });
 
+  it("passes values from unused columns of row visualization to click behavior (metabase#46318)", () => {
     cy.findAllByRole("graphics-symbol").eq(0).click();
     cy.location("href").should(
       "eq",
