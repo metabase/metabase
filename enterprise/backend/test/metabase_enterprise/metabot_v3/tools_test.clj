@@ -102,6 +102,6 @@
             (format "Output check failed: %s"
                     (pr-str (last history))))))))
 
-(deftest ^:metabot-v3 test-tool-cases
+(deftest ^:metabot-v3/e2e test-tool-cases
   (doseq [test-case test-cases]
     (run-tool-test-case test-case)))
