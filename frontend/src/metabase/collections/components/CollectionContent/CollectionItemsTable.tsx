@@ -77,7 +77,7 @@ export type CollectionItemsTableProps = {
   selected: CollectionItem[];
   toggleItem: (item: CollectionItem) => void;
   onClick: (item: CollectionItem) => void;
-  visibleColumns: CollectionContentTableColumn[];
+  visibleColumns?: CollectionContentTableColumn[];
   EmptyContentComponent?: ComponentType<{
     collection?: Collection;
   }>;
