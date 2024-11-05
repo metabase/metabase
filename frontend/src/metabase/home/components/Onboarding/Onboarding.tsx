@@ -409,7 +409,7 @@ export const Onboarding = () => {
                   <Text>
                     {t`You can:`}
                     <ul className={S.list}>
-                      <li>{jt`organize questions into a ${
+                      <li>{jt`Organize questions into a ${
                         showMetabaseLinks ? (
                           <ExternalLink href={dashboardTabsDocsLink} key="tabs">
                             {t`dashboard with tabs`}
@@ -417,9 +417,9 @@ export const Onboarding = () => {
                         ) : (
                           t`dashboard with tabs`
                         )
-                      } and add text cards.`}</li>
-                      <li>{jt`add ${(<b key="filters">{t`filters`}</b>)} to dashboards and connect them to fields on questions to narrow the results.`}</li>
-                      <li>{t`drill-through your dashboard and charts to see more detailed data underneath.`}</li>
+                      } and add text, link, and iframe cards.`}</li>
+                      <li>{jt`Add ${(<b key="filters">{t`filters`}</b>)} to dashboards and connect them to fields on questions to narrow the results.`}</li>
+                      <li>{t`Drill-through charts on your dashboard, or set up custom destinations on click.`}</li>
                     </ul>
                   </Text>
 
@@ -431,7 +431,7 @@ export const Onboarding = () => {
                           trackChecklistItemCTAClicked("dashboard")
                         }
                       >
-                        <Button variant="outline">{t`Edit a sample dashboard`}</Button>
+                        <Button variant="outline">{t`See a sample dashboard`}</Button>
                       </Link>
                     </Box>
                   )}
@@ -446,7 +446,7 @@ export const Onboarding = () => {
               data-testid="subscription-item"
             >
               <Accordion.Control icon={<Icon name="subscription" />}>
-                {t`Get dashboard updates by email`}
+                {t`Get dashboard results by email or Slack`}
               </Accordion.Control>
               <Accordion.Panel>
                 <Stack spacing="lg">
@@ -468,7 +468,7 @@ export const Onboarding = () => {
                           key="subscription-slack"
                           to="/admin/settings/notifications"
                         >{t`Slack`}</Link>
-                      )} first.`}
+                      )}.`}
                     </Text>
                   )}
                   <Text>
@@ -479,16 +479,14 @@ export const Onboarding = () => {
                         className={S.inlineIcon}
                       />
                     )} ${(
-                      <i key="sharing">{t`sharing`}</i>
+                      <b key="sharing">{t`Sharing`}</b>
                     )} icon on the top bar, then click on ${(
                       <Icon
                         key="subscription-icon"
                         name="subscription"
                         className={S.inlineIcon}
                       />
-                    )} ${(
-                      <b key="subscriptions">{t`Subscriptions`}</b>
-                    )}. On a sidebar on the right set up a dashboard subscription via email or Slack.`}
+                    )} ${(<b key="subscriptions">{t`Subscriptions`}</b>)}.`}
                   </Text>
                   {exampleDashboardId && (
                     <Box data-testid="subscription-cta">
@@ -529,7 +527,7 @@ export const Onboarding = () => {
                           key="alert-slack"
                           to="/admin/settings/notifications"
                         >{t`Slack`}</Link>
-                      )} first.`}
+                      )}.`}
                     </Text>
                   )}
                   <Text>
