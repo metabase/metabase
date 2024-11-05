@@ -107,12 +107,12 @@ export const PivotTableCell = styled.div<PivotTableCellProps>`
   font-weight: ${props => (props.isBold ? "bold" : "normal")};
   cursor: ${props => (props.onClick ? "pointer" : "default")};
   color: ${getColor};
-  box-shadow: -1px 0 0 0 var(--mb-color-border) inset;
+  box-shadow: -1px 0 0 0 var(--mb-color-orion-alpha-20) inset;
   border-bottom: 1px solid
     ${props =>
       props.isBorderedHeader
         ? "var(--mb-color-bg-dark)"
-        : "var(--mb-color-border)"};
+        : "var(--mb-color-orion-alpha-20)"};
   background-color: ${getCellBackgroundColor};
   ${props =>
     props.hasTopBorder &&
@@ -134,7 +134,7 @@ interface PivotTableTopLeftCellsContainerProps {
 export const PivotTableTopLeftCellsContainer = styled.div<PivotTableTopLeftCellsContainerProps>`
   display: flex;
   align-items: flex-end;
-  box-shadow: -1px 0 0 0 var(--mb-color-border) inset;
+  box-shadow: -1px 0 0 0 var(--mb-color-orion-alpha-20) inset;
   background-color: ${props =>
     getCellBackgroundColor({
       isEmphasized: true,
