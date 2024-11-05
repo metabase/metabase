@@ -37,10 +37,29 @@
   [e]
   (:context e))
 
+(defn- message->reaction
+  [msg]
+  {:type :metabot.reaction/message
+   :repl/message-color :green
+   :repl/message-emoji "🤖"
+   :message (:content msg)})
+
 (defn reactions
-  "Gets the reactions from the envelope."
+  "Gets the reactions from the envelope. Includes messages from the LLM itself if applicable."
   [e]
-  (:reactions e))
+  (let [last-user-msg-idx (->> (history e)
+                               (map-indexed vector)
+                               (filter #(= (:role (second %)) :user))
+                               last
+                               first)
+        llm-message-reactions (->> (history e)
+                                   (drop (inc last-user-msg-idx))
+                                   (filter #(= (:role %) :assistant))
+                                   (filter #(not-empty (:content %)))
+                                   (map message->reaction)
+                                   (into []))]
+    (into llm-message-reactions
+          (:reactions e))))
 
 (defn add-reactions
   "Add new reactions to the envelope."
