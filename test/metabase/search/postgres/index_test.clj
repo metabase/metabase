@@ -197,4 +197,8 @@
 
   (testing "dangerous characters"
     (is (= "'you' & '<-' & 'pointing':*"
-           (search-expr "you <- pointing")))))
+           (search-expr "you <- pointing"))))
+
+  (testing "single quotes"
+    (is (= "'you''re':*"
+           (search-expr "you're")))))

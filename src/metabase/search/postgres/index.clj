@@ -156,7 +156,7 @@
       (t2/delete! pending-table :model_id id :model [:in search-models]))))
 
 (defn- quote* [s]
-  (str "'" s "'"))
+  (str "'" (str/replace s "'" "''") "'"))
 
 (defn- process-phrase [word-or-phrase]
   ;; a phrase is quoted even if the closing quotation mark has not been typed yet
