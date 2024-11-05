@@ -42,9 +42,9 @@
                          (= card-type :model)
                          (assoc-in [:info :metadata/model-metadata] result_metadata)))
         png-bytes     (channel.render/render-pulse-card-to-png (channel.render/defaulted-timezone card)
-                                                       card
-                                                       query-results
-                                                       1000)]
+                                                               card
+                                                               query-results
+                                                               1000)]
     (open-png-bytes png-bytes)))
 
 (defn render-pulse-card

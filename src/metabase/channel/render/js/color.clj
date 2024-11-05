@@ -47,9 +47,9 @@
   ;; `viz-settings` are small, pass those as JSON so that they can be deserialized to pure JS objects once in JS
   ;; code
   (js.engine/execute-fn-name (js-engine) "makeCellBackgroundGetter"
-                      rows
-                      (json/generate-string cols)
-                      (json/generate-string viz-settings)))
+                             rows
+                             (json/generate-string cols)
+                             (json/generate-string viz-settings)))
 
 (defn get-background-color
   "Get the correct color for a cell in a pulse table. Returns color as string suitable for use CSS, e.g. a hex string or

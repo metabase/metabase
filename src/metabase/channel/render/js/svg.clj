@@ -142,16 +142,16 @@
   Returns a byte array of a png file."
   [data settings]
   (let [svg-string (.asString (js.engine/execute-fn-name (context) "funnel" (json/generate-string data)
-                                                  (json/generate-string settings)))]
+                                                         (json/generate-string settings)))]
     (svg-string->bytes svg-string)))
 
 (defn javascript-visualization
   "Clojure entrypoint to render javascript visualizations."
   [cards-with-data dashcard-viz-settings]
   (let [response (.asString (js.engine/execute-fn-name (context) "javascript_visualization"
-                                                (json/generate-string cards-with-data)
-                                                (json/generate-string dashcard-viz-settings)
-                                                (json/generate-string (public-settings/application-colors))))]
+                                                       (json/generate-string cards-with-data)
+                                                       (json/generate-string dashcard-viz-settings)
+                                                       (json/generate-string (public-settings/application-colors))))]
     (-> response
         (json/parse-string true)
         (update :type (fnil keyword "unknown")))))
@@ -160,17 +160,17 @@
   "Clojure entrypoint to render a row chart."
   [settings data]
   (let [svg-string (.asString (js.engine/execute-fn-name (context) "row_chart"
-                                                  (json/generate-string settings)
-                                                  (json/generate-string data)
-                                                  (json/generate-string (public-settings/application-colors))))]
+                                                         (json/generate-string settings)
+                                                         (json/generate-string data)
+                                                         (json/generate-string (public-settings/application-colors))))]
     (svg-string->bytes svg-string)))
 
 (defn gauge
   "Clojure entrypoint to render a gauge chart. Returns a byte array of a png file"
   [card data]
   (let [js-res (js.engine/execute-fn-name (context) "gauge"
-                                   (json/generate-string card)
-                                   (json/generate-string data))
+                                          (json/generate-string card)
+                                          (json/generate-string data))
         svg-string (.asString js-res)]
     (svg-string->bytes svg-string)))
 
@@ -178,9 +178,9 @@
   "Clojure entrypoint to render a progress bar. Returns a byte array of a png file"
   [value goal settings]
   (let [js-res (js.engine/execute-fn-name (context) "progress"
-                                   (json/generate-string {:value value :goal goal})
-                                   (json/generate-string settings)
-                                   (json/generate-string (public-settings/application-colors)))
+                                          (json/generate-string {:value value :goal goal})
+                                          (json/generate-string settings)
+                                          (json/generate-string (public-settings/application-colors)))
         svg-string (.asString js-res)]
     (svg-string->bytes svg-string)))
 

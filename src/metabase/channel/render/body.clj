@@ -21,8 +21,8 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
   (:import
-   (java.text DecimalFormat DecimalFormatSymbols)
-   (java.net URL)))
+   (java.net URL)
+   (java.text DecimalFormat DecimalFormatSymbols)))
 
 (set! *warn-on-reflection* true)
 

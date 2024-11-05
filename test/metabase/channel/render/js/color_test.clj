@@ -27,8 +27,8 @@
   the real color picking script"
   [script & body]
   `(with-redefs [js.color/js-engine (let [delay# (delay (doto (js.engine/context)
-                                                         (js.engine/load-js-string ~script ~(name (gensym "color-src")))))]
-                                     (fn [] @delay#))]
+                                                          (js.engine/load-js-string ~script ~(name (gensym "color-src")))))]
+                                      (fn [] @delay#))]
      ~@body))
 
 (deftest color-test
@@ -36,7 +36,7 @@
     (with-test-js-engine! test-script
       (let [color-selector (js.color/make-color-selector {:cols [{:name "test"}]
                                                           :rows [[1] [2] [3] [4]]}
-                                                      {"even" red, "odd" green})]
+                                                         {"even" red, "odd" green})]
         (is (= [red green red green]
                (for [row-index (range 0 4)]
                  (js.color/get-background-color color-selector "any value" "any column" row-index))))))))
@@ -47,7 +47,7 @@
     (with-test-js-engine! test-script
       (let [color-selector (js.color/make-color-selector {:cols [{:name "test"}]
                                                           :rows [[1] [2] [3] [4]]}
-                                                      {:even red, :odd  green})]
+                                                         {:even red, :odd  green})]
         (is (= [red green red green]
                (for [row-index (range 0 4)]
                  (js.color/get-background-color color-selector "any value" "any column" row-index))))))))
@@ -59,10 +59,10 @@
                (fn []
                  (js.color/get-background-color (js.color/make-color-selector {:cols [{:name "test"}]
                                                                                :rows [[5] [5]]}
-                                                                        {:table.column_formatting [{:columns ["test"],
-                                                                                                    :type :single,
-                                                                                                    :operator "=",
-                                                                                                    :value 5,
-                                                                                                    :color "#ff0000",
-                                                                                                    :highlight_row true}]})
-                                             "any value" "test" 1))))))
+                                                                              {:table.column_formatting [{:columns ["test"],
+                                                                                                          :type :single,
+                                                                                                          :operator "=",
+                                                                                                          :value 5,
+                                                                                                          :color "#ff0000",
+                                                                                                          :highlight_row true}]})
+                                                "any value" "test" 1))))))
