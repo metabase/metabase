@@ -41,8 +41,7 @@ import {
 } from "../MainNavbar.styled";
 import { SidebarCollectionLink, SidebarLink } from "../SidebarItems";
 import { DwhUploadCSV } from "../SidebarItems/DwhUploadCSV/DwhUploadCSV";
-import { SidebarOnboardingSection } from "../SidebarItems/SidebarOnboardingSection";
-import { trackOnboardingChecklistOpened } from "../SidebarItems/SidebarOnboardingSection/analytics";
+import { trackOnboardingChecklistOpened } from "../analytics";
 import type { SelectedItem } from "../types";
 
 import BookmarkList from "./BookmarkList";
@@ -250,12 +249,6 @@ export function MainNavbarView({
           )}
         </div>
         <WhatsNewNotification />
-        <SidebarOnboardingSection
-          collections={collections}
-          databases={databases}
-          hasDataAccess={hasDataAccess}
-          isAdmin={isAdmin}
-        />
       </SidebarContentRoot>
     </ErrorBoundary>
   );
