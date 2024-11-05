@@ -360,7 +360,7 @@
         index-in-breakouts (into {}
                                  (comp (filter (comp #{:source/breakouts} :lib/source))
                                        (map-indexed (fn [i column] [(:name column) i])))
-                           (lib/returned-columns query))
+                                 (lib/returned-columns query))
         process-columns    (fn process-columns [column-names]
                              (when (seq column-names)
                                (into [] (keep index-in-breakouts) column-names)))
