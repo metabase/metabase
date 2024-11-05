@@ -1,4 +1,5 @@
 (ns metabase.notification.payload.execute
+  #_{:clj-kondo/ignore [:metabase/ns-module-checker]}
   (:require
    [malli.core :as mc]
    [metabase.api.common :as api]
@@ -6,9 +7,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.params.shared :as shared.params]
    [metabase.models.serialization :as serdes]
-   #_{:clj-kondo/ignore [:metabase/ns-module-checker]}
    [metabase.pulse.parameters :as pulse-params]
-   #_{:clj-kondo/ignore [:metabase/ns-module-checker]}
    [metabase.pulse.util :as pu]
    [metabase.server.middleware.session :as mw.session]
    [metabase.util :as u]
