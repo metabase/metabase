@@ -44,6 +44,7 @@ export const DashboardLoadingAndErrorWrapper = styled(
 
 export const DashboardStyled = styled.div`
   display: flex;
+  flex: 1 0 auto;
   flex-direction: column;
   min-height: 100%;
   width: 100%;
@@ -132,6 +133,18 @@ export const ParametersWidgetContainer = styled(FullWidthContainer)<{
         ${hasScroll
           ? "var(--mb-color-border)"
           : getDashboardBodyBgColor(isNightMode)};
+    `}
+
+    ${({ isNightMode }) =>
+    isNightMode &&
+    css`
+      --mb-color-text-secondary: color-mix(
+        in srgb,
+        var(--mb-base-color-white) 65%,
+        transparent
+      );
+      --mb-color-border: var(--mb-base-color-orion-60);
+      --mb-color-background: var(--mb-color-bg-black);
     `}
 `;
 
