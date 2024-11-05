@@ -16,7 +16,7 @@ export const CollectionIcon = ({
   question: Question;
 }) => {
   if (!collection?.type) {
-    return <PLUGIN_MODERATION.QuestionModerationIcon question={question} />;
+    return <PLUGIN_MODERATION.EntityModerationIcon question={question} />;
   }
 
   return (

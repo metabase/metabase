@@ -62,10 +62,19 @@
 
 (mu/defn add-pivot-measures :- ::pivot-spec
   "Given a pivot-spec map without the `:pivot-measures` key, determine what key(s) the measures will be and assoc that value into `:pivot-measures`."
-  [pivot-spec :- ::pivot-spec]
-  (-> pivot-spec
-      (assoc :pivot-measures (pivot-measures pivot-spec))
-      (assoc :pivot-grouping (pivot-grouping-key (:column-titles pivot-spec)))))
+  [{measure-indices :pivot-measures :as pivot-spec} :- ::pivot-spec]
+  (let [pivot-grouping-key (pivot-grouping-key (:column-titles pivot-spec))]
+    (cond-> pivot-spec
+      ;; if pivot-measures don't already exist (from the pivot qp), we add them ourselves, assuming lowest ID -> highest ID sort order
+      (not (seq measure-indices)) (assoc :pivot-measures (pivot-measures pivot-spec))
+      ;; otherwise, we modify indices to skip over whatever the pivot-grouping idx is, so we pull the correct values per row
+      (seq measure-indices)       (update :pivot-measures (fn [indices]
+                                                            (mapv (fn [idx]
+                                                                    (if (>= idx pivot-grouping-key)
+                                                                      (inc idx)
+                                                                      idx))
+                                                                  indices)))
+      true                       (assoc :pivot-grouping pivot-grouping-key))))
 
 (mu/defn add-totals-settings :- ::pivot-spec
   "Given a pivot-spec map and `viz-settings`, add the `:row-totals?` and `:col-totals?` keys."
