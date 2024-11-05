@@ -70,7 +70,7 @@
        :pivot_cols [1]}))))
 
 (defn pivot-card
-  "A dashboard card query with a pivot table"
+  "A dashboard card query with a pivot table."
   []
   (let [dataset-query     (pivot-query false)
         metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
@@ -83,3 +83,14 @@
      {:pivot_table.column_split
       {:rows    [(get breakouts 1) (get breakouts 0)]
        :columns [(get breakouts 2)]}}}))
+
+(defn legacy-pivot-card
+  "A dashboard card query with a pivot table. Uses legacy field ref-based viz settings."
+  []
+  (let [dataset-query (pivot-query false)
+        breakout      (-> dataset-query :query :breakout)]
+    {:dataset_query dataset-query
+     :visualization_settings
+     {:pivot_table.column_split
+      {:rows    [(get breakout 1) (get breakout 0)]
+       :columns [(get breakout 2)]}}}))
