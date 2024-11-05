@@ -11,7 +11,7 @@
    [hickory.core :as hik]
    [metabase.channel.render.core :as render]
    [metabase.channel.render.image-bundle :as image-bundle]
-   [metabase.channel.render.js-svg :as js-svg]
+   [metabase.channel.render.js.svg :as js.svg]
    [metabase.notification.payload.execute :as notification.execute]
    [metabase.query-processor :as qp]
    [metabase.query-processor.card :as qp.card]
@@ -97,7 +97,7 @@
      (= tag :img)
      (str/starts-with? src "<svg"))))
 
-(def ^:private parse-svg #'js-svg/parse-svg-string)
+(def ^:private parse-svg #'js.svg/parse-svg-string)
 
 (defn- img-node->svg-node
   "Modifies an intentionally malformed [:img {:src \"<svg>...</svg>\"}] node by parsing the svg string and replacing the
@@ -142,7 +142,7 @@
   (let [{:keys [visualization_settings] :as card} (t2/select-one :model/Card :id card-id)
         query                                     (qp.card/query-for-card card [] nil {:process-viz-settings? true} nil)
         results                                   (qp/process-query (assoc query :viz-settings visualization_settings))]
-    (with-redefs [js-svg/svg-string->bytes       identity
+    (with-redefs [js.svg/svg-string->bytes       identity
                   image-bundle/make-image-bundle (fn [_ s]
                                                    {:image-src   s
                                                     :render-type :inline})]
@@ -162,7 +162,7 @@
   (let [{:keys [visualization_settings] :as card} (t2/select-one :model/Card :id card-id)
         query                                     (qp.card/query-for-card card [] nil {:process-viz-settings? true} nil)
         results                                   (qp.pivot/run-pivot-query (assoc query :viz-settings visualization_settings))]
-    (with-redefs [js-svg/svg-string->bytes       identity
+    (with-redefs [js.svg/svg-string->bytes       identity
                   image-bundle/make-image-bundle (fn [_ s]
                                                    {:image-src   s
                                                     :render-type :inline})]
@@ -183,7 +183,7 @@
    (let [dashcard                  (t2/select-one :model/DashboardCard :id dashcard-id)
          card                      (t2/select-one :model/Card :id (:card_id dashcard))
          {:keys [result dashcard]} (notification.execute/execute-dashboard-subscription-card dashcard parameters)]
-     (with-redefs [js-svg/svg-string->bytes       identity
+     (with-redefs [js.svg/svg-string->bytes       identity
                    image-bundle/make-image-bundle (fn [_ s]
                                                     {:image-src   s
                                                      :render-type :inline})]

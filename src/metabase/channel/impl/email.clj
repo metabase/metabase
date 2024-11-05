@@ -7,7 +7,7 @@
    [metabase.channel.core :as channel]
    [metabase.channel.params :as channel.params]
    [metabase.channel.render.core :as channel.render]
-   [metabase.channel.render.js-svg :as render.js-svg]
+   [metabase.channel.render.js.svg :as js.svg]
    [metabase.channel.shared :as channel.shared]
    [metabase.email :as email]
    [metabase.email.messages :as messages]
@@ -117,7 +117,7 @@
   The available icons are defined in [[js-svg/icon-paths]]."
   [icon-name]
   (let [color     (channel.render/primary-color)
-        png-bytes (render.js-svg/icon icon-name color)]
+        png-bytes (js.svg/icon icon-name color)]
     (-> (channel.render/make-image-bundle :attachment png-bytes)
         (channel.render/image-bundle->attachment))))
 

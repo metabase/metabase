@@ -6,7 +6,7 @@
   (:require
    [cheshire.core :as json]
    [clojure.string :as str]
-   [metabase.channel.render.js-engine :as js]
+   [metabase.channel.render.js.engine :as js.engine]
    [metabase.channel.render.style :as style]
    [metabase.config :as config]
    [metabase.public-settings :as public-settings])
@@ -32,20 +32,20 @@
 
 (defn- load-viz-bundle [^Context context]
   (doto context
-    (js/load-resource bundle-path)
-    (js/load-resource interface-path)))
+    (js.engine/load-resource bundle-path)
+    (js.engine/load-resource interface-path)))
 
 (def ^:private static-viz-context-delay
   "Delay containing a graal js context. It has the chart bundle and the above `src-api` in its environment suitable
   for creating charts."
-  (delay (load-viz-bundle (js/context))))
+  (delay (load-viz-bundle (js.engine/context))))
 
 (defn- context
   "Returns a static viz context. In dev mode, this will be a new context each time. In prod or test modes, it will
   return the derefed contents of `static-viz-context-delay`."
   ^Context []
   (if config/is-dev?
-    (load-viz-bundle (js/context))
+    (load-viz-bundle (js.engine/context))
     @static-viz-context-delay))
 
 (defn- post-process
@@ -141,14 +141,14 @@
   "Clojure entrypoint to render a funnel chart. Data should be vec of [[Step Measure]] where Step is {:name name :format format-options} and Measure is {:format format-options} and you go and look to frontend/src/metabase/static-viz/components/FunnelChart/types.ts for the actual format options.
   Returns a byte array of a png file."
   [data settings]
-  (let [svg-string (.asString (js/execute-fn-name (context) "funnel" (json/generate-string data)
+  (let [svg-string (.asString (js.engine/execute-fn-name (context) "funnel" (json/generate-string data)
                                                   (json/generate-string settings)))]
     (svg-string->bytes svg-string)))
 
 (defn javascript-visualization
   "Clojure entrypoint to render javascript visualizations."
   [cards-with-data dashcard-viz-settings]
-  (let [response (.asString (js/execute-fn-name (context) "javascript_visualization"
+  (let [response (.asString (js.engine/execute-fn-name (context) "javascript_visualization"
                                                 (json/generate-string cards-with-data)
                                                 (json/generate-string dashcard-viz-settings)
                                                 (json/generate-string (public-settings/application-colors))))]
@@ -159,7 +159,7 @@
 (defn row-chart
   "Clojure entrypoint to render a row chart."
   [settings data]
-  (let [svg-string (.asString (js/execute-fn-name (context) "row_chart"
+  (let [svg-string (.asString (js.engine/execute-fn-name (context) "row_chart"
                                                   (json/generate-string settings)
                                                   (json/generate-string data)
                                                   (json/generate-string (public-settings/application-colors))))]
@@ -168,7 +168,7 @@
 (defn gauge
   "Clojure entrypoint to render a gauge chart. Returns a byte array of a png file"
   [card data]
-  (let [js-res (js/execute-fn-name (context) "gauge"
+  (let [js-res (js.engine/execute-fn-name (context) "gauge"
                                    (json/generate-string card)
                                    (json/generate-string data))
         svg-string (.asString js-res)]
@@ -177,7 +177,7 @@
 (defn progress
   "Clojure entrypoint to render a progress bar. Returns a byte array of a png file"
   [value goal settings]
-  (let [js-res (js/execute-fn-name (context) "progress"
+  (let [js-res (js.engine/execute-fn-name (context) "progress"
                                    (json/generate-string {:value value :goal goal})
                                    (json/generate-string settings)
                                    (json/generate-string (public-settings/application-colors)))

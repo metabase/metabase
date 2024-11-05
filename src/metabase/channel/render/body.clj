@@ -3,9 +3,9 @@
    [clojure.string :as str]
    [hiccup.core :refer [h]]
    [medley.core :as m]
-   [metabase.channel.render.color :as color]
    [metabase.channel.render.image-bundle :as image-bundle]
-   [metabase.channel.render.js-svg :as js-svg]
+   [metabase.channel.render.js.color :as js.color]
+   [metabase.channel.render.js.svg :as js.svg]
    [metabase.channel.render.style :as style]
    [metabase.channel.render.table :as table]
    [metabase.formatter :as formatter]
@@ -18,9 +18,11 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-trs trs tru]]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
   (:import
-   (java.text DecimalFormat DecimalFormatSymbols)))
+   (java.text DecimalFormat DecimalFormatSymbols)
+   (java.net URL)))
 
 (set! *warn-on-reflection* true)
 
@@ -205,8 +207,15 @@
 ;;; |                                                     render                                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(def RenderedPartCard
+  "Schema used for functions that operate on pulse card contents and their attachments"
+  [:map
+   [:attachments                  [:maybe [:map-of :string (ms/InstanceOfClass URL)]]]
+   [:content                      [:sequential :any]]
+   [:render/text {:optional true} [:maybe :string]]])
+
 (defmulti render
-  "Render a Pulse as `chart-type` (e.g. `:bar`, `:scalar`, etc.) and `render-type` (either `:inline` or `:attachment`)."
+  "Render a Part as `chart-type` (e.g. `:bar`, `:scalar`, etc.) and `render-type` (either `:inline` or `:attachment`)."
   {:arglists '([chart-type render-type timezone-id card dashcard data])}
   (fn [chart-type _render-type _timezone-id _card _dashcard _data]
     chart-type))
@@ -222,7 +231,7 @@
       [ordered-cols ordered-rows])
     [(:cols data) (:rows data)]))
 
-(mu/defmethod render :table :- formatter/RenderedPulseCard
+(mu/defmethod render :table :- RenderedPartCard
   [_chart-type
    _render-type
    timezone-id :- [:maybe :string]
@@ -235,7 +244,7 @@
                                         (assoc :cols ordered-cols))
         table-body                  [:div
                                      (table/render-table
-                                      (color/make-color-selector unordered-data viz-settings)
+                                      (js.color/make-color-selector unordered-data viz-settings)
                                       {:cols-for-color-lookup (mapv :name ordered-cols)
                                        :col-names             (common/column-titles ordered-cols (::mb.viz/column-settings viz-settings) format-rows?)}
                                       (prep-for-html-rendering timezone-id card data))
@@ -330,7 +339,7 @@
                (DecimalFormat. base))]
      (.format fmt value))))
 
-(mu/defmethod render :progress :- formatter/RenderedPulseCard
+(mu/defmethod render :progress :- RenderedPartCard
   [_chart-type
    render-type
    _timezone-id
@@ -347,7 +356,7 @@
         settings     (assoc settings :format (:x settings))
         image-bundle (image-bundle/make-image-bundle
                       render-type
-                      (js-svg/progress value goal settings))]
+                      (js.svg/progress value goal settings))]
     {:attachments
      (when image-bundle
        (image-bundle/image-bundle->attachment image-bundle))
@@ -373,11 +382,11 @@
     (assoc card-with-data :timeline_events timeline-events)
     card-with-data))
 
-(mu/defmethod render :gauge :- formatter/RenderedPulseCard
+(mu/defmethod render :gauge :- RenderedPartCard
   [_chart-type render-type _timezone-id :- [:maybe :string] card _dashcard data]
   (let [image-bundle (image-bundle/make-image-bundle
                       render-type
-                      (js-svg/gauge card data))]
+                      (js.svg/gauge card data))]
     {:attachments
      (when image-bundle
        (image-bundle/image-bundle->attachment image-bundle))
@@ -387,14 +396,14 @@
       [:img {:style (style/style {:display :block :width :100%})
              :src   (:image-src image-bundle)}]]}))
 
-(mu/defmethod render :row :- formatter/RenderedPulseCard
+(mu/defmethod render :row :- RenderedPartCard
   [_chart-type render-type _timezone-id card _dashcard {:keys [rows cols] :as _data}]
   (let [viz-settings (get card :visualization_settings)
         data {:rows rows
               :cols cols}
         image-bundle   (image-bundle/make-image-bundle
                         render-type
-                        (js-svg/row-chart viz-settings data))]
+                        (js.svg/row-chart viz-settings data))]
     {:attachments
      (when image-bundle
        (image-bundle/image-bundle->attachment image-bundle))
@@ -411,7 +420,7 @@
                (when (= col-name (:name col))
                  [idx col])))))
 
-(mu/defmethod render :scalar :- formatter/RenderedPulseCard
+(mu/defmethod render :scalar :- RenderedPartCard
   [_chart-type _render-type timezone-id _card _dashcard {:keys [cols rows viz-settings]}]
   (let [field-name    (:scalar.field viz-settings)
         [row-idx col] (or (when field-name
@@ -441,7 +450,7 @@
 ;; As of 2024-03-21, isomorphic chart types include: line, area, bar (LAB), and trend charts
 ;; Because this effort began with LAB charts, this method is written to handle multi-series dashcards.
 ;; Trend charts were added more recently and will not have multi-series.
-(mu/defmethod render :javascript_visualization :- formatter/RenderedPulseCard
+(mu/defmethod render :javascript_visualization :- RenderedPartCard
   [_chart-type render-type _timezone-id card dashcard data]
   (let [series-cards-results                   (:series-results dashcard)
         cards-with-data                        (->> series-cards-results
@@ -451,12 +460,12 @@
                                                     (m/distinct-by #(get-in % [:card :id])))
         viz-settings                           (or (get dashcard :visualization_settings)
                                                    (get card :visualization_settings))
-        {rendered-type :type content :content} (js-svg/javascript-visualization cards-with-data viz-settings)]
+        {rendered-type :type content :content} (js.svg/javascript-visualization cards-with-data viz-settings)]
     (case rendered-type
       :svg
       (let [image-bundle (image-bundle/make-image-bundle
                           render-type
-                          (js-svg/svg-string->bytes content))]
+                          (js.svg/svg-string->bytes content))]
         {:attachments
          (when image-bundle
            (image-bundle/image-bundle->attachment image-bundle))
@@ -468,7 +477,7 @@
       :html
       {:content [:div content] :attachments nil})))
 
-(mu/defmethod render :smartscalar :- formatter/RenderedPulseCard
+(mu/defmethod render :smartscalar :- RenderedPartCard
   [_chart-type _render-type timezone-id _card _dashcard {:keys [cols insights viz-settings]}]
   (letfn [(col-of-type [t c] (or (isa? (:effective_type c) t)
                                  ;; computed and agg columns don't have an effective type
@@ -555,7 +564,7 @@
                              [k value])) funnel-viz raw-rows)]
       (remove nil? rows-data))))
 
-(mu/defmethod render :funnel_normal :- formatter/RenderedPulseCard
+(mu/defmethod render :funnel_normal :- RenderedPartCard
   [_chart-type render-type _timezone-id card _dashcard {:keys [rows cols viz-settings] :as data}]
   (let [[x-axis-rowfn
          y-axis-rowfn] (formatter/graphing-column-row-fns card data)
@@ -570,7 +579,7 @@
                         (assoc jsviz-settings :step    {:name   (:display_name x-col)
                                                         :format (:x jsviz-settings)}
                                :measure {:format (:y jsviz-settings)}))
-        svg           (js-svg/funnel rows settings)
+        svg           (js.svg/funnel rows settings)
         image-bundle  (image-bundle/make-image-bundle render-type svg)]
     {:attachments
      (image-bundle/image-bundle->attachment image-bundle)
@@ -580,14 +589,14 @@
       [:img {:style (style/style {:display :block :width :100%})
              :src   (:image-src image-bundle)}]]}))
 
-(mu/defmethod render :funnel :- formatter/RenderedPulseCard
+(mu/defmethod render :funnel :- RenderedPartCard
   [_chart-type render-type timezone-id card dashcard data]
   (let [viz-settings (get card :visualization_settings)]
     (if (= (get viz-settings :funnel.type) "bar")
       (render :javascript_visualization render-type timezone-id card dashcard data)
       (render :funnel_normal render-type timezone-id card dashcard data))))
 
-(mu/defmethod render :empty :- formatter/RenderedPulseCard
+(mu/defmethod render :empty :- RenderedPartCard
   [_chart-type render-type _timezone-id _card _dashcard _data]
   (let [image-bundle (image-bundle/no-results-image-bundle render-type)]
     {:attachments
@@ -604,7 +613,7 @@
        (trs "No results")]]
      :render/text (trs "No results")}))
 
-(mu/defmethod render :attached :- formatter/RenderedPulseCard
+(mu/defmethod render :attached :- RenderedPartCard
   [_chart-type render-type _timezone-id _card _dashcard _data]
   (let [image-bundle (image-bundle/attached-image-bundle render-type)]
     {:attachments
@@ -620,7 +629,7 @@
                       :color      style/color-gray-4})}
        (trs "This question has been included as a file attachment")]]}))
 
-(mu/defmethod render :unknown :- formatter/RenderedPulseCard
+(mu/defmethod render :unknown :- RenderedPartCard
   [_chart-type _render-type _timezone-id _card _dashcard _data]
   {:attachments
    nil
@@ -634,10 +643,10 @@
     [:br]
     (trs "Please view this card in Metabase.")]})
 
-(mu/defmethod render :card-error :- formatter/RenderedPulseCard
+(mu/defmethod render :card-error :- RenderedPartCard
   [_chart-type _render-type _timezone-id _card _dashcard _data]
   @card-error-rendered-info)
 
-(mu/defmethod render :render-error :- formatter/RenderedPulseCard
+(mu/defmethod render :render-error :- RenderedPartCard
   [_chart-type _render-type _timezone-id _card _dashcard _data]
   @error-rendered-info)
