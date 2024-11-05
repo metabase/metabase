@@ -60,9 +60,9 @@
   [dashboard-subscription-id non-user-email]
   (str (urls/unsubscribe-url)
        "?"
-       (codec/form-encode {:hash (generate-dashboard-sub-unsubscribe-hash dashboard-subscription-id non-user-email)
-                           :email non-user-email
-                           :pulse-id= dashboard-subscription-id})))
+       (codec/form-encode {:hash     (generate-dashboard-sub-unsubscribe-hash dashboard-subscription-id non-user-email)
+                           :email    non-user-email
+                           :pulse-id dashboard-subscription-id})))
 
 (defn- render-part
   [timezone part options]
