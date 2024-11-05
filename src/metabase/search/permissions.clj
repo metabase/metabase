@@ -49,6 +49,7 @@
       (sql.helpers/left-join [:collection :collection]
                              [:= collection-id-col :collection.id])
 
+      ;; TODO This is not really about permissions, it should really be handled in search.filter
       (some? filter-items-in-personal-collection)
       (sql.helpers/where
        (case filter-items-in-personal-collection

@@ -196,7 +196,8 @@
                   :database-id   :table.db_id
                   :table-id      :table_id
                   :archived      true
-                  :created-at    true
+                  ;; Matching legacy behavior, where this cannot be filtered on.
+                  ;:created-at    true
                   :updated-at    true}
    :search-terms [:name :description]
    :render-terms {:table_description :table.description

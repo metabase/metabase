@@ -1,13 +1,13 @@
 (ns metabase.search.spec-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models :as models]
+   [metabase.models]
    [metabase.search.spec :as search.spec]
    [toucan2.core :as t2]))
 
 (comment
   ;; Making sure we load the real specs for each model
-  (models/keep-me))
+  (metabase.models/keep-me))
 
 (deftest test-qualify-column
   (is (= [:table.column :column] (#'search.spec/qualify-column :table :column)))
@@ -99,7 +99,7 @@
                                 :where        [:= :updated.id :this.id]}},
                  :Database   #{{:search-model "table", :fields #{:name}, :where [:= :updated.id :this.db_id]}}
                  :Segment    #{{:search-model "segment"
-                                :fields       #{:description :archived :table_id :name :id :created_at :updated_at}
+                                :fields       #{:description :archived :table_id :name :id :updated_at}
                                 :where        [:= :updated.id :this.id]}}
                  :Collection #{{:search-model "collection"
                                 :fields       #{:authority_level :archived :description :name :type :id

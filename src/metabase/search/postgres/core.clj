@@ -5,6 +5,7 @@
    [honey.sql.helpers :as sql.helpers]
    [metabase.api.common :as api]
    [metabase.search.config :as search.config]
+   [metabase.search.filter :as search.filter]
    [metabase.search.legacy :as search.legacy]
    [metabase.search.permissions :as search.permissions]
    [metabase.search.postgres.index :as search.index]
@@ -89,13 +90,13 @@
     (OffsetDateTime/parse s)))
 
 (defn- minimal
-  "Search via index, and return potentially stale information, without applying filters or
-  restricting to collections we have access to."
-  [search-term & {:as _search-ctx}]
+  "Search via index, and return potentially stale information, without restricting to collections we have access to."
+  [search-term & {:as search-ctx}]
   (when-not @#'search.index/initialized?
     (throw (ex-info "Search index is not initialized. Use [[init!]] to ensure it exists."
                     {:search-engine :postgres})))
   (->> (search.index/search-query search-term [:legacy_input])
+       (search.filter/where-clause search-ctx)
        (t2/query)
        (map :legacy_input)
        (map #(json/parse-string % keyword))
@@ -105,14 +106,14 @@
                  (update :last_edited_at parse-datetime)))))
 
 (defn- minimal-with-perms
-  "Search via index, and return potentially stale information, without applying filters,
-  but applying permissions. Does not perform ranking."
+  "Search via index, and return potentially stale information, but applying permissions. Does not perform ranking."
   [search-term & {:as search-ctx}]
   (when-not @#'search.index/initialized?
     (throw (ex-info "Search index is not initialized. Use [[init!]] to ensure it exists."
                     {:search-engine :postgres})))
   (->> (let [base-query (search.index/search-query search-term [:legacy_input])]
          (search.permissions/add-collection-join-and-where-clauses base-query nil search-ctx))
+       (search.filter/where-clause search-ctx)
        (t2/query)
        (map :legacy_input)
        (map #(json/parse-string % keyword))
