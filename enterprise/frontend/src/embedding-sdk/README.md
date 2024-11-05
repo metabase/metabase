@@ -6,6 +6,26 @@ With Metabase's Embedded analytics SDK, you can embed individual [Metabase](http
 
 [Learn more](https://www.metabase.com/docs/latest/embedding/sdk/introduction).
 
+## Installing Metabase Enterprise Edition
+
+You can run Metabase Pro on a Cloud plan (with a free trial)](https://www.metabase.com/pricing).
+
+Or run it locally. Here's a docker one-liner:
+
+```sh
+docker run -d -p 3000:3000 --name metabase metabase/metabase-enterprise:latest
+```
+
+You can also [download the JAR](https://downloads.metabase.com/enterprise/latest/metabase.jar), and run it like so:
+
+```sh
+java -jar metabase.jar
+```
+
+By default, Metabase will run at `http://localhost:3000`.
+
+If you get stuck, check out our [installation docs](https://www.metabase.com/docs/latest/installation-and-operation/installing-metabase).
+
 ## Installing the SDK
 
 You can install Metabase Embedded analytics SDK for React via npm:
@@ -27,26 +47,6 @@ The SDK version tracks with the Metabase version.
 So, for example, if you're on Metabase version `1.51.x`, you should use the SDK with the tag `51-stable`.
 
 See [Versioning](https://www.metabase.com/docs/latest/embedding/sdk/version).
-
-## Installing Metabase Enterprise Edition
-
-You can run Metabase Pro on a Cloud plan (with a free trial)](https://www.metabase.com/pricing).
-
-Or run it locally. Here's a docker one-liner:
-
-```sh
-docker run -d -p 3000:3000 --name metabase metabase/metabase-enterprise:latest
-```
-
-You can also [download the JAR](https://downloads.metabase.com/enterprise/latest/metabase.jar), and run it like so:
-
-```sh
-java -jar metabase.jar
-```
-
-By default, Metabase will run at `http://localhost:3000`.
-
-If you get stuck, check out our [installation docs](https://www.metabase.com/docs/latest/installation-and-operation/installing-metabase).
 
 ## Docs
 
