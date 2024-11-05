@@ -1,4 +1,3 @@
-import { act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
@@ -8,6 +7,7 @@ import {
   setupUnauthorizedCardEndpoints,
 } from "__support__/server-mocks";
 import {
+  act,
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,

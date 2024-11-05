@@ -58,8 +58,8 @@ export function BrowseMetrics() {
             justify="space-between"
             align="center"
           >
-            <Title order={1} color="text-dark">
-              <Group spacing="sm">
+            <Title order={1} c="text-dark">
+              <Group gap="sm">
                 <Icon
                   size={24}
                   color="var(--mb-color-icon-primary)"
@@ -79,7 +79,7 @@ export function BrowseMetrics() {
       </BrowseHeader>
       <BrowseMain>
         <BrowseSection>
-          <Stack mb="lg" spacing="md" w="100%">
+          <Stack mb="lg" gap="md" w="100%">
             {isEmpty ? (
               <MetricsEmptyState />
             ) : (

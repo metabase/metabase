@@ -122,7 +122,7 @@ export function ModelUploadModal({
         </Text>
         <Radio.Group
           value={uploadMode}
-          onChange={(val: UploadMode) => setUploadMode(val)}
+          onChange={val => setUploadMode(val as UploadMode)}
           pl="1px"
         >
           <Radio label={t`Create a new model`} value={UploadMode.create} />
@@ -139,7 +139,7 @@ export function ModelUploadModal({
         </Radio.Group>
         {uploadMode !== UploadMode.create && (
           <Select
-            icon={<Icon name="model" />}
+            leftSection={<Icon name="model" />}
             placeholder="Select a model"
             value={tableId ? String(tableId) : ""}
             data={

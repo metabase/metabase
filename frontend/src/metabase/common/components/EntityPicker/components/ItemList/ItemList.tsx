@@ -97,7 +97,7 @@ export const ItemList = <
                 </Flex>
               }
               active={isSelected}
-              icon={<Icon {...icon} />}
+              leftSection={<Icon {...icon} />}
               onClick={(e: React.MouseEvent) => {
                 e.preventDefault(); // prevent form submission
                 e.stopPropagation(); // prevent parent onClick

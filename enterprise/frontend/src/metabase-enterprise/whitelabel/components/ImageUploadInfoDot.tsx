@@ -33,7 +33,7 @@ export const ImageUploadInfoDot = ({ type }: CustomFileUploadInfoDot) => {
         <Icon name="info" color={theme.fn.themeColor("text-light")} />
       </HoverCard.Target>
       <HoverCard.Dropdown>
-        <Stack p="md" spacing="sm" maw={DESCRIPTIONS_WIDTHS[type]}>
+        <Stack p="md" gap="sm" maw={DESCRIPTIONS_WIDTHS[type]}>
           {DESCRIPTIONS[type].map((message, index) => (
             <Text key={index} size="sm">
               {message}

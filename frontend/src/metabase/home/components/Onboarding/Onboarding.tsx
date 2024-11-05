@@ -202,8 +202,8 @@ export const Onboarding = () => {
             item: S.item,
             label: S.label,
           }}
-          onChange={(value: ChecklistItemValue | null) =>
-            handleValueChange(value)
+          onChange={(value: string | null) =>
+            handleValueChange(value as ChecklistItemValue | null)
           }
         >
           <Box mb={64}>
@@ -213,7 +213,7 @@ export const Onboarding = () => {
                 {t`Connect to your database`}
               </Accordion.Control>
               <Accordion.Panel>
-                <Stack spacing="lg">
+                <Stack gap="lg">
                   <img
                     alt={`${applicationName} data stack`}
                     className={S.image}
@@ -242,7 +242,7 @@ export const Onboarding = () => {
                 {t`Invite people`}
               </Accordion.Control>
               <Accordion.Panel>
-                <Stack spacing="lg">
+                <Stack gap="lg">
                   <img
                     alt={`Admin panel with the "Invite someone" button`}
                     className={S.image}
@@ -259,7 +259,7 @@ export const Onboarding = () => {
                     <Text>{t`Don't be shy with invites. Metabase Starter plan includes 5 users, and Pro includes 10 users without the need to pay additionally.`}</Text>
                   )}
 
-                  <Group spacing={0} data-testid="invite-cta">
+                  <Group gap={0} data-testid="invite-cta">
                     <Link
                       to="/admin/people"
                       onClick={() =>
@@ -289,7 +289,7 @@ export const Onboarding = () => {
                 {t`Create automatic dashboards`}
               </Accordion.Control>
               <Accordion.Panel>
-                <Stack spacing="lg">
+                <Stack gap="lg">
                   <VideoTutorial
                     id="FOAXF4p1AL0"
                     ref={iframeRefs["x-ray"]}
@@ -329,7 +329,7 @@ export const Onboarding = () => {
                 {t`Make an interactive chart with the query builder`}
               </Accordion.Control>
               <Accordion.Panel>
-                <Stack spacing="lg">
+                <Stack gap="lg">
                   <VideoTutorial
                     id="N9pR8KyaWzY"
                     ref={iframeRefs["notebook"]}
@@ -360,7 +360,7 @@ export const Onboarding = () => {
                 {t`Query with SQL`}
               </Accordion.Control>
               <Accordion.Panel>
-                <Stack spacing="lg">
+                <Stack gap="lg">
                   <VideoTutorial
                     id="_iiG_MoxdAE"
                     ref={iframeRefs["sql"]}
@@ -399,7 +399,7 @@ export const Onboarding = () => {
                 {t`Create and filter a dashboard`}
               </Accordion.Control>
               <Accordion.Panel>
-                <Stack spacing="lg">
+                <Stack gap="lg">
                   <VideoTutorial
                     id="FAst1nabBck"
                     ref={iframeRefs["dashboard"]}
@@ -449,7 +449,7 @@ export const Onboarding = () => {
                 {t`Get dashboard updates by email`}
               </Accordion.Control>
               <Accordion.Panel>
-                <Stack spacing="lg">
+                <Stack gap="lg">
                   <VideoTutorial
                     id="8zjKBpDTEzI"
                     ref={iframeRefs["subscription"]}
@@ -510,7 +510,7 @@ export const Onboarding = () => {
                 {t`Get alerts when metrics behave unexpectedly`}
               </Accordion.Control>
               <Accordion.Panel>
-                <Stack spacing="lg">
+                <Stack gap="lg">
                   <VideoTutorial
                     id="MIUH3BsvIeA"
                     ref={iframeRefs["alert"]}
@@ -625,7 +625,7 @@ export const Onboarding = () => {
             )}
             {isPaidPlan && (
               <Box className={S.support} data-testid="help-section" p="lg">
-                <Stack spacing="xs">
+                <Stack gap="xs">
                   <Title order={4}>{t`Need to talk with someone?`}</Title>
                   <Text>{t`Reach out to engineers who can help with technical troubleshooting. Not your typical support agents.`}</Text>
                 </Stack>

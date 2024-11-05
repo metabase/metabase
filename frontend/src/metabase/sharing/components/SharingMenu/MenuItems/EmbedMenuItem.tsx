@@ -18,7 +18,7 @@ export function EmbedMenuItem({ onClick }: { onClick: () => void }) {
     <Menu.Item
       data-testid="embed-menu-embed-modal-item"
       py="sm"
-      icon={
+      leftSection={
         <Center mr="xs">
           <Icon name="embed" />
         </Center>
@@ -32,7 +32,7 @@ export function EmbedMenuItem({ onClick }: { onClick: () => void }) {
           to="/admin/settings/embedding-in-other-applications"
           target="_blank"
         >
-          <Stack spacing="xs">
+          <Stack gap="xs">
             <Title order={4}>{t`Embedding is off`}</Title>
             <Text size="sm">{t`Enable it in settings`}</Text>
           </Stack>

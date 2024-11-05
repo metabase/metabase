@@ -138,7 +138,7 @@ export function SidebarOnboardingSection({
           <Menu position={isMobileSafe ? "right-end" : "top"} shadow="md">
             <Menu.Target>
               <Button
-                leftIcon={<Icon name="add_data" />}
+                leftSection={<Icon name="add_data" />}
                 fullWidth
               >{t`Add data`}</Button>
             </Menu.Target>
@@ -184,11 +184,11 @@ function SidebarOnboardingMenuItem({
 }: OnboaringMenuItemProps) {
   return (
     <Menu.Item
-      icon={<Icon name={icon} />}
+      leftSection={<Icon name={icon} />}
       style={{ alignItems: "flex-start" }}
       onClick={onClick}
     >
-      <Stack spacing="xs">
+      <Stack gap="xs">
         <Title c="inherit" order={4}>
           {title}
         </Title>

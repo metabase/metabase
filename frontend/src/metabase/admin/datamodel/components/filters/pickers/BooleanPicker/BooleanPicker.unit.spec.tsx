@@ -1,7 +1,7 @@
-import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { createMockMetadata } from "__support__/metadata";
+import { render, screen } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
 import Question from "metabase-lib/v1/Question";
 import type StructuredQuery from "metabase-lib/v1/queries/StructuredQuery";

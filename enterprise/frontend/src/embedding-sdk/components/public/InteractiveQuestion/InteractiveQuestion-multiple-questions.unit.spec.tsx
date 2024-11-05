@@ -1,5 +1,3 @@
-import { waitForElementToBeRemoved, within } from "@testing-library/react";
-
 import {
   setupAlertsEndpoints,
   setupCardEndpoints,
@@ -8,7 +6,12 @@ import {
   setupDatabaseEndpoints,
   setupTableEndpoints,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitForElementToBeRemoved,
+  within,
+} from "__support__/ui";
 import { createMockJwtConfig } from "embedding-sdk/test/mocks/config";
 import { setupSdkState } from "embedding-sdk/test/server-mocks/sdk-init";
 import type { Card, Dataset } from "metabase-types/api";

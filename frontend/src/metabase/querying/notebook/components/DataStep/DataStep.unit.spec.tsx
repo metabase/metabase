@@ -1,4 +1,3 @@
-import { fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { createMockMetadata } from "__support__/metadata";
@@ -7,7 +6,13 @@ import {
   setupRecentViewsAndSelectionsEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
-import { getIcon, renderWithProviders, screen, within } from "__support__/ui";
+import {
+  fireEvent,
+  getIcon,
+  renderWithProviders,
+  screen,
+  within,
+} from "__support__/ui";
 import { METAKEY } from "metabase/lib/browser";
 import type { IconName } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -319,7 +324,7 @@ describe("DataStep", () => {
       setup();
 
       await userEvent.hover(screen.getByText("Orders"));
-      expect(screen.getByRole("tooltip")).toHaveTextContent(
+      expect(await screen.findByRole("tooltip")).toHaveTextContent(
         `${METAKEY}+click to open in new tab`,
       );
     });

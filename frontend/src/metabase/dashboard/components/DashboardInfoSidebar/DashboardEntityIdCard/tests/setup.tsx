@@ -14,7 +14,9 @@ export const setup = ({
   dashboard?: Dashboard;
 } & RenderWithProvidersOptions = {}) => {
   return renderWithProviders(
-    <DashboardEntityIdCard dashboard={dashboard} />,
+    <div data-testid="test-container">
+      <DashboardEntityIdCard dashboard={dashboard} />
+    </div>,
     renderOptions,
   );
 };
