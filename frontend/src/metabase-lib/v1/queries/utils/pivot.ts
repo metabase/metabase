@@ -1,0 +1,87 @@
+import _ from "underscore";
+
+import { isNotNull } from "metabase/lib/types";
+import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
+import type {
+  ColumnNameColumnSplitSetting,
+  FieldRefColumnSplitSetting,
+  PivotTableColumnSplitSetting,
+} from "metabase-types/api";
+
+type PivotOptions = {
+  pivot_rows: number[];
+  pivot_cols: number[];
+};
+
+function isColumnNameColumnSplit(
+  setting: PivotTableColumnSplitSetting,
+): setting is ColumnNameColumnSplitSetting {
+  const { rows = [], columns = [], values = [] } = setting;
+  return (
+    rows.every(row => typeof row === "string") &&
+    columns.every(row => typeof row === "string") &&
+    values.every(row => typeof row === "string")
+  );
+}
+
+function getColumnNamePivotOptions(
+  query: Lib.Query,
+  stageIndex: number,
+  setting: ColumnNameColumnSplitSetting,
+): PivotOptions {
+  const returnedColumns = Lib.returnedColumns(query, stageIndex);
+  const breakoutColumnNames = returnedColumns
+    .map(column => Lib.displayInfo(query, stageIndex, column))
+    .filter(columnInfo => columnInfo.isBreakout)
+    .map(columnInfo => columnInfo.name);
+
+  const { rows, columns } = _.mapObject(setting, columnNames => {
+    return columnNames
+      .map(columnName => breakoutColumnNames.indexOf(columnName))
+      .filter(columnIndex => columnIndex >= 0);
+  });
+
+  return { pivot_rows: rows ?? [], pivot_cols: columns ?? [] };
+}
+
+function getFieldRefPivotOptions(
+  query: Lib.Query,
+  stageIndex: number,
+  setting: FieldRefColumnSplitSetting,
+): PivotOptions {
+  const returnedColumns = Lib.returnedColumns(query, stageIndex);
+  const breakoutColumns = returnedColumns.filter(
+    column => Lib.displayInfo(query, stageIndex, column).isBreakout,
+  );
+
+  const { rows, columns } = _.mapObject(setting, fieldRefs => {
+    if (breakoutColumns.length === 0) {
+      return [];
+    }
+
+    const nonEmptyFieldRefs = fieldRefs.filter(isNotNull);
+    const breakoutIndexes = Lib.findColumnIndexesFromLegacyRefs(
+      query,
+      stageIndex,
+      breakoutColumns,
+      nonEmptyFieldRefs,
+    );
+    return breakoutIndexes.filter(breakoutIndex => breakoutIndex >= 0);
+  });
+
+  return { pivot_rows: rows ?? [], pivot_cols: columns ?? [] };
+}
+
+export function getPivotOptions(question: Question) {
+  const query = question.query();
+  const stageIndex = -1;
+  const setting: PivotTableColumnSplitSetting =
+    question.setting("pivot_table.column_split") ?? {};
+
+  if (isColumnNameColumnSplit(setting)) {
+    return getColumnNamePivotOptions(query, stageIndex, setting);
+  } else {
+    return getFieldRefPivotOptions(query, stageIndex, setting);
+  }
+}

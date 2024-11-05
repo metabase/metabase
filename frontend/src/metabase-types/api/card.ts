@@ -118,21 +118,25 @@ export type ColumnFormattingSetting = {
   highlight_row?: boolean;
 };
 
-export type PivotTableColumnSplitSetting = {
+export type ColumnNameColumnSplitSetting = {
   rows?: string[];
   columns?: string[];
   values?: string[];
-
-  row_refs?: FieldReference[];
-  column_refs?: FieldReference[];
-  value_refs?: FieldReference[];
 };
 
-export type PivotTableCollapsedRowsSetting = {
-  rows?: string[];
-  value?: string[]; // identifiers for collapsed rows
+export type FieldRefColumnSplitSetting = {
+  rows?: (FieldReference | null)[];
+  columns?: (FieldReference | null)[];
+  values?: (FieldReference | null)[];
+};
 
-  row_refs?: FieldReference[];
+export type PivotTableColumnSplitSetting =
+  | ColumnNameColumnSplitSetting
+  | FieldRefColumnSplitSetting;
+
+export type PivotTableCollapsedRowsSetting = {
+  rows?: string[] | (FieldReference | null)[];
+  value?: string[]; // identifiers for collapsed rows
 };
 
 export type TableColumnOrderSetting = {
