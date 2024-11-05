@@ -4,7 +4,7 @@
    [clojure.test :refer [deftest is testing]]
    [macaw.util :as u]
    [metabase.db :as mdb]
-   [metabase.models :as models]
+   [metabase.models]
    [metabase.search :as search]
    [metabase.search.postgres.core :as search.postgres]
    [metabase.search.postgres.index-test :refer [legacy-results]]
@@ -14,7 +14,7 @@
 
 (comment
   ;; We load this to ensure all the search-models are registered
-  models/keep-me)
+  metabase.models/keep-me)
 
 (def ^:private hybrid
   (comp t2.realize/realize #'search.postgres/hybrid))

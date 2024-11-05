@@ -2,20 +2,26 @@
   (:require
    [clojure.math.combinatorics :as math.combo]
    [clojure.test :refer :all]
+   [metabase.models]
    [metabase.search.config :as search.config]
    [metabase.search.filter :as search.filter]
    [metabase.search.in-place.filter :as search.in-place.filter]))
+
+(comment
+  ;; We load this to ensure all the search-models are registered
+  metabase.models/keep-me)
 
 (defn- filter-keys []
   (keys @#'search.filter/context-key->attr))
 
 (defn- active-filter-combinations []
-  ;; We ignore :archived? as we've moved some of these filters to the :where clause as a simplifying optimization.
-  (math.combo/subsets (remove #{:archived?} (filter-keys))))
+  ;; We ignore :archived? as we've moved some of these filters to the `:where` clause as a simplifying optimization.
+  ;; We ignore :card-db-id as legacy search implements this sneakily inside the models themselves.
+  (math.combo/subsets (remove #{:archived? :table-db-id} (filter-keys))))
 
 (deftest search-context->applicable-models-test
   (doseq [active-filters (active-filter-combinations)]
-    (testing (str "Consistent models included when filtering on " active-filters)
+    (testing (str "Consistent models included when filtering on " (vec active-filters))
       (let [search-ctx (assoc (zipmap active-filters (repeat true)) :models search.config/all-models)]
         (is (= (search.in-place.filter/search-context->applicable-models search-ctx)
                (search.filter/search-context->applicable-models search-ctx)))))))
@@ -24,6 +30,7 @@
   {:archived?           true
    :created-at          "2024-10-01"
    :created-by          [123]
+   :table-db-id         231
    :last-edited-by      [321]
    :last-edited-at      "2024-10-02"
    :search-native-query true
@@ -50,6 +57,7 @@
                       [:>= [:cast :search_index.created_at :date] #t"2024-10-01"]
                       [:< [:cast :search_index.created_at :date] #t"2024-10-02"]
                       [:in :search_index.creator_id [123]]
+                      [:= :search_index.database_id 231]
                       [:>= [:cast :search_index.last_edited_at :date] #t"2024-10-02"]
                       [:< [:cast :search_index.last_edited_at :date] #t"2024-10-03"]
                       [:in :search_index.last_editor_id [321]]

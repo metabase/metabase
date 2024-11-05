@@ -1,13 +1,13 @@
 (ns metabase.search.spec-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models :as models]
+   [metabase.models]
    [metabase.search.spec :as search.spec]
    [toucan2.core :as t2]))
 
 (comment
   ;; Making sure we load the real specs for each model
-  (models/keep-me))
+  (metabase.models/keep-me))
 
 (deftest test-qualify-column
   (is (= [:table.column :column] (#'search.spec/qualify-column :table :column)))

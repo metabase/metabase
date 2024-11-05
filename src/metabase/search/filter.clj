@@ -18,6 +18,8 @@
    :last-edited-at      :last-edited-at
    :last-edited-by      :last-editor-id
    :search-native-query :dataset-query
+   ;; this actually has nothing to do with tables anymore, as we also filter cards.
+   :table-db-id         :database-id
    :verified            :verified})
 
 (def ^:private attr->index-key
@@ -74,6 +76,8 @@
 (defmethod where-clause* :last-edited-at [_ k v] (date-range-filter-clause k v))
 
 (defmethod where-clause* :last-edited-by [_ k v] [:in k v])
+
+(defmethod where-clause* :table-db-id [_ k v] [:= k v])
 
 (defmethod where-clause* :verified [_ k v]
   (assert (true? v) "filter for non-verified cards is not supported")
