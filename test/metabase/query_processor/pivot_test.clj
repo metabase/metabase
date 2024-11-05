@@ -191,7 +191,7 @@
   (testing "`pivot-options` correctly generates pivot-rows and pivot-cols from a card's viz settings"
     (let [query         (api.pivots/pivot-query false)
           viz-settings  (:visualization_settings (api.pivots/pivot-card))
-          pivot-options {:pivot-rows [1 0], :pivot-cols [2]}]
+          pivot-options {:pivot-rows [1 0], :pivot-cols [2] :pivot-measures nil}]
       (is (= pivot-options
              (#'qp.pivot/pivot-options query viz-settings)))
       (are [num-breakouts expected] (= expected
@@ -217,7 +217,7 @@
                              :columns [[:field "RATING" {:base-type :type/Integer}]]}})
                          [:pivot_table.column_split])
           pivot-options (#'qp.pivot/pivot-options query viz-settings)]
-      (is (= {:pivot-rows [], :pivot-cols []}
+      (is (= {:pivot-rows [], :pivot-cols [] :pivot-measures nil}
              pivot-options))
       (is (= [[0 1] [1] [0] []]
              (#'qp.pivot/breakout-combinations 2 (:pivot-rows pivot-options) (:pivot-cols pivot-options)))))))
@@ -245,7 +245,7 @@
                                  {:rows    [$category]
                                   :columns [$created_at]}})
                 pivot-options (#'qp.pivot/pivot-options query viz-settings)]
-            (is (= {:pivot-rows [0], :pivot-cols [1]}
+            (is (= {:pivot-rows [0], :pivot-cols [1] :pivot-measures nil}
                    pivot-options))
             (is (= [[0 1] [1] [0] []]
                    (#'qp.pivot/breakout-combinations 2 (:pivot-rows pivot-options) (:pivot-cols pivot-options))))
