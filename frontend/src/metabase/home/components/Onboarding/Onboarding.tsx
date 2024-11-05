@@ -610,14 +610,15 @@ export const Onboarding = () => {
                   mb={12}
                 >{t`Get the most out of ${applicationName}`}</Title>
                 <Text>
-                  {t`There are more tutorials and guides to explore.`}
-                  <br />
+                  {t`${applicationName} can do a lot. To learn more—about ${applicationName}, data visualization, modeling, and other data topics—check out our `}
                   {jt`${(
-                    <ExternalLink
-                      href="https://www.youtube.com/playlist?list=PLzmftu0Z5MYGY0aA3rgIGwSCifECMeuG6"
-                      key="playlist"
-                    >{t`Click here to continue learning`}</ExternalLink>
-                  )} about data visualization, modeling, and other advanced topics.`}
+                    <ExternalLink href="https://www.metabase.com/docs/latest">{t`Docs`}</ExternalLink>
+                  )}`}
+                  {t` and `}
+                  {jt`${(
+                    <ExternalLink href="https://www.metabase.com/learn">{t`Learn`}</ExternalLink>
+                  )}`}
+                  {t` sites.`}
                 </Text>
               </Box>
             )}
