@@ -1529,12 +1529,20 @@ describe("issue 49321", () => {
     });
     popover().last().findByText("Contains").click();
 
-    popover().invoke("width").should("eq", 380);
+    popover().then($popover => {
+      const { width } = $popover[0].getBoundingClientRect();
+      cy.wrap(width).as("initialWidth");
+    });
 
     popover()
       .findByPlaceholderText("Enter some text")
       .type("aaaaaaaaaa, bbbbbbbbbbb,");
 
-    popover().invoke("width").should("eq", 380);
+    cy.get("@initialWidth").then(initialWidth => {
+      popover().should($popover => {
+        const { width } = $popover[0].getBoundingClientRect();
+        expect(width).to.eq(initialWidth);
+      });
+    });
   });
 });
