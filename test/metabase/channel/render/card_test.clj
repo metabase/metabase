@@ -4,8 +4,8 @@
    [hiccup.core :as hiccup]
    [hickory.core :as hik]
    [hickory.select :as hik.s]
+   [metabase.channel.render.card :as channel.render.card]
    [metabase.channel.render.core :as channel.render]
-   [metabase.channel.shared :as channel.shared]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models
     :refer [Card Dashboard DashboardCard DashboardCardSeries]]
@@ -24,7 +24,7 @@
    (render-pulse-card card (qp/process-query query)))
 
   ([card results]
-   (channel.render/render-pulse-card-for-display (channel.shared/defaulted-timezone card) card results)))
+   (channel.render/render-pulse-card-for-display (channel.render/defaulted-timezone card) card results)))
 
 (defn- hiccup->hickory
   [content]
@@ -191,7 +191,7 @@
                    DashboardCard dc1 {:dashboard_id (:id dashboard) :card_id (:id card)
                                       :visualization_settings {:card.description "Visualization description"}}]
       (is (= "<p>Visualization description</p>\n"
-             (last (:content (#'channel.render/make-description-if-needed dc1 card {:channel.render/include-description? true}))))))))
+             (last (:content (#'channel.render.card/make-description-if-needed dc1 card {:channel.render/include-description? true}))))))))
 
 (deftest ^:parallel make-description-if-needed-test-2
   (testing "Fallback to Card's description if Visualization Settings's description not exists"
@@ -199,7 +199,7 @@
                    Dashboard     dashboard {}
                    DashboardCard dc1 {:dashboard_id (:id dashboard) :card_id (:id card)}]
       (is (= "<p>Card description</p>\n"
-             (last (:content (#'channel.render/make-description-if-needed dc1 card {:channel.render/include-description? true}))))))))
+             (last (:content (#'channel.render.card/make-description-if-needed dc1 card {:channel.render/include-description? true}))))))))
 
 (deftest ^:parallel make-description-if-needed-test-3
   (testing "Test markdown converts to html"
@@ -207,7 +207,7 @@
                    Dashboard     dashboard {}
                    DashboardCard dc1 {:dashboard_id (:id dashboard) :card_id (:id card)}]
       (is (= "<h1>Card description</h1>\n"
-             (last (:content (#'channel.render/make-description-if-needed dc1 card {:channel.render/include-description? true}))))))))
+             (last (:content (#'channel.render.card/make-description-if-needed dc1 card {:channel.render/include-description? true}))))))))
 
 (deftest ^:parallel table-rendering-of-percent-types-test
   (testing "If a column is marked as a :type/Percentage semantic type it should render as a percent"
@@ -251,7 +251,7 @@
                   (let [expected      (mapv (fn [row]
                                               (format "%.2f%%" (* 100 (peek row))))
                                             (get-in query-results [:data :rows]))
-                        rendered-card (channel.render/render-pulse-card :inline (channel.shared/defaulted-timezone card) card nil query-results)
+                        rendered-card (channel.render/render-pulse-card :inline (channel.render/defaulted-timezone card) card nil query-results)
                         doc           (hiccup->hickory (:content rendered-card))
                         rows          (hik.s/select (hik.s/tag :tr) doc)
                         tax-rate-col  2]
@@ -275,7 +275,7 @@
                               :dataset_query (mt/mbql-query venues {:limit 1})}]
       (mt/with-temp-env-var-value! [mb-site-url "https://mb.com"]
         (let [rendered-card-content (:content (channel.render/render-pulse-card :inline
-                                                                        (channel.shared/defaulted-timezone card)
+                                                                        (channel.render/defaulted-timezone card)
                                                                         card
                                                                         nil
                                                                         (qp/process-query (:dataset_query card))

@@ -6,13 +6,15 @@
    [metabase.channel.render.png :as png]
    [metabase.channel.render.style :as style]
    [metabase.models.dashboard-card :as dashboard-card]
+   [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.markdown :as markdown]
-   [metabase.util.urls :as urls]))
+   [metabase.util.urls :as urls]
+   [toucan2.core :as t2]))
 
 ;;; I gave these keys below namespaces to make them easier to find usages for but didn't use `metabase.channel.render` so
 ;;; we can keep this as an internal namespace you don't need to know about outside of the module.
@@ -237,3 +239,9 @@
   ^bytes [rendered-info :- body/RenderedPartCard width]
   ;; TODO huh? why do we need this indirection?
   (png/render-html-to-png rendered-info width))
+
+(mu/defn defaulted-timezone :- :string
+  "Returns the timezone ID for the given `card`. Either the report timezone (if applicable) or the JVM timezone."
+  [card]
+  (or (some->> card :database_id (t2/select-one :model/Database :id) qp.timezone/results-timezone-id)
+      (qp.timezone/system-timezone-id)))

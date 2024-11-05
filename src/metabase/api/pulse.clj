@@ -10,7 +10,6 @@
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.channel.render.core :as channel.render]
-   [metabase.channel.shared :as channel.shared]
    [metabase.config :as config]
    [metabase.email :as email]
    [metabase.events :as events]
@@ -277,7 +276,7 @@
      :body   (html5
               [:html
                [:body {:style "margin: 0;"}
-                (channel.render/render-pulse-card-for-display (channel.shared/defaulted-timezone card)
+                (channel.render/render-pulse-card-for-display (channel.render/defaulted-timezone card)
                                                               card
                                                               result
                                                               {:channel.render/include-title? true, :channel.render/include-buttons? true})]])}))
@@ -311,7 +310,7 @@
         result    (pulse-card-query-results card)
         data      (:data result)
         card-type (channel.render/detect-pulse-chart-type card nil data)
-        card-html (html (channel.render/render-pulse-card-for-display (channel.shared/defaulted-timezone card)
+        card-html (html (channel.render/render-pulse-card-for-display (channel.render/defaulted-timezone card)
                                                                       card
                                                                       result
                                                                       {:channel.render/include-title? true}))]
@@ -331,7 +330,7 @@
   {id ms/PositiveInt}
   (let [card   (api/read-check Card id)
         result (pulse-card-query-results card)
-        ba     (channel.render/render-pulse-card-to-png (channel.shared/defaulted-timezone card)
+        ba     (channel.render/render-pulse-card-to-png (channel.render/defaulted-timezone card)
                                                         card
                                                         result
                                                         preview-card-width

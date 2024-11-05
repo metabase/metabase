@@ -2,6 +2,7 @@
   (:require
    [metabase.channel.render.card :as render.card]
    [metabase.channel.render.image-bundle :as image-bundle]
+   [metabase.channel.render.js.svg :as js.svg]
    [metabase.channel.render.preview :as render.preview]
    [metabase.channel.render.style :as style]
    [potemkin :as p]))
@@ -23,9 +24,12 @@
   style-tag-nonce-middleware]
  [render.card
   detect-pulse-chart-type
+  defaulted-timezone
   render-pulse-card
   render-pulse-card-for-display
   render-pulse-section
   render-pulse-card-to-png
   render-pulse-card-to-base64
-  png-from-render-info])
+  png-from-render-info]
+ [js.svg
+  icon])
