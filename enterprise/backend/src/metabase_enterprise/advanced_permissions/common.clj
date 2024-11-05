@@ -184,20 +184,13 @@
   if the group has `blocked` for the DB or any table in the DB; otherwise it is `unrestricted`."
   ;; We use :feature :none here since sandboxing uses a different feature flag from block perms so we need to check the
   ;; flag in the function body.
-  :feature :none
+  :feature :advanced-permissions
   [db-id group-id]
-  (if (or
-       (and
-        (premium-features/enable-advanced-permissions?)
-        (t2/exists? :model/DataPermissions
-                    :db_id db-id
-                    :perm_type :perms/view-data
-                    :perm_value :blocked
-                    :group_id group-id))
-       (and
-        (premium-features/enable-sandboxes?)
-        (t2/exists? :model/GroupTableAccessPolicy
-                    :group_id group-id)))
+  (if (t2/exists? :model/DataPermissions
+                  :db_id db-id
+                  :perm_type :perms/view-data
+                  :perm_value :blocked
+                  :group_id group-id)
     :blocked
     :unrestricted))
 
