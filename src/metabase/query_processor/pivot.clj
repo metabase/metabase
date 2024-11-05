@@ -420,10 +420,8 @@
   [query        :- [:map
                     [:database ::lib.schema.id/database]]
    viz-settings :- [:maybe :map]]
-  (let [column-split         (:pivot_table.column_split viz-settings)
-        column-split-rows    (seq (:rows column-split))
-        column-split-columns (seq (:columns column-split))]
-    (if (and (every? string? column-split-rows) (every? string? column-split-columns))
+  (let [{:keys [rows columns]} (:pivot_table.column_split viz-settings)]
+    (if (and (every? string? rows) (every? string? columns))
       (column-name-pivot-options query viz-settings)
       (field-ref-pivot-options query viz-settings))))
 
