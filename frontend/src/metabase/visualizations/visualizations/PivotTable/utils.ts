@@ -67,7 +67,7 @@ export function updateValueWithCurrentColumns(
       const column = columns.find(c => c.name === columnName);
       if (column != null && (filter == null || filter(column))) {
         value[name] = value[name] ?? [];
-        value[name]?.push(column.name);
+        value[name].push(column.name);
         break;
       }
     }

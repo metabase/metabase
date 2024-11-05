@@ -18,7 +18,6 @@ describe("ChartSettingFieldsPartition", () => {
   });
 
   it("should render column when value is provided", () => {
-    const fieldRef = ["field", 14];
     const fieldName = "my column";
     render(
       <ChartSettingFieldsPartition
@@ -28,7 +27,6 @@ describe("ChartSettingFieldsPartition", () => {
         columns={[
           createMockColumn({
             name: fieldName,
-            field_ref: fieldRef,
             display_name: fieldName,
           }),
         ]}
