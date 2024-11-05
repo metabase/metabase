@@ -5,11 +5,11 @@
    [hickory.core :as hik]
    [hickory.select :as hik.s]
    [metabase.channel.render.core :as render]
+   [metabase.channel.shared :as channel.shared]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models
     :refer [Card Dashboard DashboardCard DashboardCardSeries]]
    [metabase.pulse.render.test-util :as render.tu]
-   [metabase.pulse.send :as pulse]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -24,7 +24,7 @@
    (render-pulse-card card (qp/process-query query)))
 
   ([card results]
-   (render/render-pulse-card-for-display (pulse/defaulted-timezone card) card results)))
+   (render/render-pulse-card-for-display (channel.shared/defaulted-timezone card) card results)))
 
 (defn- hiccup->hickory
   [content]
@@ -251,7 +251,7 @@
                   (let [expected      (mapv (fn [row]
                                               (format "%.2f%%" (* 100 (peek row))))
                                             (get-in query-results [:data :rows]))
-                        rendered-card (render/render-pulse-card :inline (pulse/defaulted-timezone card) card nil query-results)
+                        rendered-card (render/render-pulse-card :inline (channel.shared/defaulted-timezone card) card nil query-results)
                         doc           (hiccup->hickory (:content rendered-card))
                         rows          (hik.s/select (hik.s/tag :tr) doc)
                         tax-rate-col  2]
@@ -275,7 +275,7 @@
                               :dataset_query (mt/mbql-query venues {:limit 1})}]
       (mt/with-temp-env-var-value! [mb-site-url "https://mb.com"]
         (let [rendered-card-content (:content (render/render-pulse-card :inline
-                                                                        (pulse/defaulted-timezone card)
+                                                                        (channel.shared/defaulted-timezone card)
                                                                         card
                                                                         nil
                                                                         (qp/process-query (:dataset_query card))

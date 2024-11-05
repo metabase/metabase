@@ -1,27 +1,12 @@
 (ns metabase.pulse.send
   "Code related to sending Pulses (Alerts or Dashboard Subscriptions)."
   (:require
-   [metabase.models.dashboard :as dashboard :refer [Dashboard]]
-   [metabase.models.database :refer [Database]]
    [metabase.models.interface :as mi]
-   [metabase.models.pulse :as models.pulse :refer [Pulse]]
-   [metabase.query-processor.timezone :as qp.timezone]
+   [metabase.models.pulse :as models.pulse]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
-
-(defn- database-id [card]
-  (or (:database_id card)
-      (get-in card [:dataset_query :database])))
-
-(mu/defn defaulted-timezone :- :string
-  "Returns the timezone ID for the given `card`. Either the report timezone (if applicable) or the JVM timezone."
-  [card :- (ms/InstanceOf :model/Card)]
-  (or (some->> card database-id (t2/select-one Database :id) qp.timezone/results-timezone-id)
-      (qp.timezone/system-timezone-id)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         Creating Notifications To Send                                         |
@@ -134,8 +119,8 @@
     (send-pulse! pulse :channel-ids [312]) ; Send only to Channel with :id = 312"
   [{:keys [dashboard_id], :as pulse} & {:keys [channel-ids]}]
   {:pre [(map? pulse) (integer? (:creator_id pulse))]}
-  (let [dashboard (t2/select-one Dashboard :id dashboard_id)
-        pulse     (-> (mi/instance Pulse pulse)
+  (let [dashboard (t2/select-one :model/Dashboard :id dashboard_id)
+        pulse     (-> (mi/instance :model/Pulse pulse)
                       ;; This is usually already done by this step, in the `send-pulses` task which uses `retrieve-pulse`
                       ;; to fetch the Pulse.
                       models.pulse/hydrate-notification
