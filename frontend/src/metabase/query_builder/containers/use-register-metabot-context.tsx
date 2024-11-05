@@ -10,7 +10,10 @@ export const useRegisterMetabotContext = () => {
 
     const queryResults = getQueryResults(state);
     const queryResultCols = queryResults?.[0]?.data?.cols ?? [];
-    const columnNames = queryResultCols.map((col: any) => col.name);
+    const columnNames = queryResultCols.map((col: any) => ({
+      name: col.name,
+      ...(col.description && { description: col.description }),
+    }));
 
     const vizSettings = question?.card()?.visualization_settings || {};
     const columnSettings = vizSettings["table.columns"] || [];
@@ -18,9 +21,8 @@ export const useRegisterMetabotContext = () => {
       columnSettings.filter(col => !col.enabled).map(c => c.name),
     );
 
-    const [hidden_columns, visible_columns] = _.partition(
-      columnNames,
-      colName => disabledColumnNames.has(colName),
+    const [hidden_columns, visible_columns] = _.partition(columnNames, col =>
+      disabledColumnNames.has(col.name),
     );
 
     return {
