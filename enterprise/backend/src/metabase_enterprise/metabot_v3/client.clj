@@ -23,7 +23,7 @@
   (deferred-tru "URL for the a AI Proxy service")
   :type       :string
   :encryption :no
-  :default    "https://ai-service.coredev.metabase.com"
+  :default    "http://localhost:8000"
   :visibility :internal
   :export?    false)
 
