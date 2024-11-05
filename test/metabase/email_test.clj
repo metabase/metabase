@@ -12,7 +12,8 @@
    [metabase.util :as u :refer [prog1]]
    [metabase.util.retry :as retry]
    [metabase.util.retry-test :as rt]
-   [postal.message :as message])
+   [postal.message :as message]
+   [throttle.core :as throttle])
   (:import
    (java.io File)
    (javax.activation MimeType)))
@@ -371,24 +372,52 @@
     (tu/with-temporary-setting-values
       [email-smtp-host "fake_smtp_host"
        email-smtp-port 587]
-      (with-redefs [email/email-throttler (#'email/make-email-throttler 3)]
-        (testing "throttle based on the number of recipients"
-          (send-email {:to ["1@metabase.com"
-                            "2@metabase.com"]
-                       :bcc ["3@metabase.com"]})
-          (is (thrown-with-msg?
-               Exception
-               #"Too many attempts!.*"
-               (send-email {:to ["4@metabase.com"]})))))
+      (testing "throttle based on the number of recipients"
+        (testing "with 3 separate emails"
+          (with-redefs [email/email-throttler (#'email/make-email-throttler 3)]
+            (is (some? (send-email {:to ["1@metabase.com"]})))
+            (is (some? (send-email {:bcc ["2@metabase.com"]})))
+            (is (some? (send-email {:to ["3@metabase.com"]})))
+            (is (thrown-with-msg?
+                 Exception
+                 #"Too many attempts!.*"
+                 (send-email {:to ["4@metabase.com"]}))))
+
+          (testing "with 1 small then 1 big event"
+            (with-redefs [email/email-throttler (#'email/make-email-throttler 3)]
+              (is (some? (send-email {:to ["1@metabase.com"]})))
+              (is (thrown-with-msg?
+                   Exception
+                   #"Too many attempts!.*"
+                   (send-email {:bcc ["2@metabase.com" "3@metabase.com"]
+                                :to ["4@metabase.com"]})))))))
+
       (testing "skip throttling if the total number of recipients of an email exceed the limit"
         (with-redefs [email/email-throttler (#'email/make-email-throttler 2)]
           ;; sending is fine even tho the the limit is 2
           (send-email {:to ["1@metabase.com"
                             "2@metabase.com"]
                        :bcc ["3@metabase.com"]})
-
           (testing "but still max-out the limit"
             (is (thrown-with-msg?
                  Exception
                  #"Too many attempts!.*"
-                 (send-email {:to ["2@metabase.com"]})))))))))
+                 (send-email {:to ["2@metabase.com"]}))))))
+
+      (testing "keep retrying will eventually send the email"
+        (with-redefs [email/email-throttler (throttle/make-throttler
+                                             :email
+                                             :attempt-ttl-ms     100
+                                             :initial-delay-ms   100
+                                             :attempts-threshold 2)]
+          (is (some? (send-email {:to ["1@metabase.com" "2@metabase.com"]})))
+          (is (thrown-with-msg?
+               Exception
+               #"Too many attempts!.*"
+               (send-email {:to ["3@metabase.com"]})))
+          (is (some? (u/poll {:thunk       (fn [] (try (send-email {:to ["3@metabase.com"]})
+                                                    (catch Exception _
+                                                      nil)))
+                              :done?       some?
+                              :timeout-ms  200
+                              :interval-ms 10}))))))))

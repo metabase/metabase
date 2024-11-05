@@ -98,8 +98,9 @@
                   (assert (#{:tls :ssl :none :starttls} (keyword new-value))))
                 (setting/set-value-of-type! :keyword :email-smtp-security new-value)))
 
-(defsetting email-rate-limit-per-second
-  (deferred-tru "The maximum number of emails that can be sent per second. The quotas are based on the total number of recipients")
+(defsetting email-max-recipients-per-second
+  (deferred-tru "The maximum number of recipients, across emails, that can be sent per second.
+                In case an email has total number of recipients exceeding this limit, the throttling mechanism will be maxed-out but the exception will be silenced.")
   :export?    true
   :type       :integer
   :visibility :settings-manager
@@ -113,7 +114,7 @@
    :initial-delay-ms   1000
    :attempts-threshold rate-limit))
 
-(defonce ^:private email-throttler (when-let [rate-limit (email-rate-limit-per-second)]
+(defonce ^:private email-throttler (when-let [rate-limit (email-max-recipients-per-second)]
                                      (make-email-throttler rate-limit)))
 
 (defn check-email-throttle
@@ -123,18 +124,18 @@
   This is to avoid creating regression bugs due to the throttling mechanism."
   [email]
   (when email-throttler
-    (let [recipients (set (mapcat #(% email) [:to :bcc]))
-          thorttle-check (fn []
-                           (dotimes [_ (count recipients)]
-                             (throttle/check email-throttler true)))]
+    (let [recipients      (into #{} (mapcat email) [:to :bcc])
+          throttle-check! (fn []
+                            (dotimes [_ (count recipients)]
+                              (throttle/check email-throttler true)))]
       (if (> (count recipients) (.attempts-threshold ^Throttler email-throttler))
         (do
          (log/warn "Email throttling is enabled and the number of recipients exceeds the rate limit per second. Skip throttling."
                    {:email-subject (:subject email)
                     :recipients    (count recipients)
-                    :rate-limit    (email-rate-limit-per-second)})
-         (u/ignore-exceptions (thorttle-check)))
-        (thorttle-check)))))
+                    :rate-limit    (email-max-recipients-per-second)})
+         (u/ignore-exceptions (throttle-check!)))
+        (throttle-check!)))))
 
 ;; ## PUBLIC INTERFACE
 
