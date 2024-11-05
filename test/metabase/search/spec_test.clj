@@ -99,7 +99,7 @@
                                 :where        [:= :updated.id :this.id]}},
                  :Database   #{{:search-model "table", :fields #{:name}, :where [:= :updated.id :this.db_id]}}
                  :Segment    #{{:search-model "segment"
-                                :fields       #{:description :archived :table_id :name :id :created_at :updated_at}
+                                :fields       #{:description :archived :table_id :name :id :updated_at}
                                 :where        [:= :updated.id :this.id]}}
                  :Collection #{{:search-model "collection"
                                 :fields       #{:authority_level :archived :description :name :type :id
