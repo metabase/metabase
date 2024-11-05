@@ -21,6 +21,7 @@ import {
   getTable,
   join,
   leftSidebar,
+  main,
   modal,
   moveColumnDown,
   newButton,
