@@ -4,6 +4,7 @@ import {
   type StructuredQuestionDetails,
   assertQueryBuilderRowCount,
   assertTableData,
+  changeSynchronousBatchUpdateSetting,
   createDashboard,
   createQuestion,
   editDashboard,
@@ -625,6 +626,17 @@ describe("scenarios > custom column > boolean functions", () => {
       );
     }
 
+    beforeEach(() => {
+      cy.signInAsAdmin();
+      changeSynchronousBatchUpdateSetting(true);
+      cy.signInAsNormalUser();
+    });
+
+    afterEach(() => {
+      cy.signInAsAdmin();
+      changeSynchronousBatchUpdateSetting(false);
+    });
+
     it("should be able setup an 'open question' click behavior", () => {
       createDashboardWithQuestion().then(dashboard =>
         visitDashboard(dashboard.id),
@@ -681,7 +693,9 @@ describe("scenarios > custom column > boolean functions", () => {
         .findByText(parameterDetails.name)
         .click();
       popover().findByText(expressionName).click();
+      cy.intercept("GET", "/api/dashboard/*").as("getDashboard");
       saveDashboard();
+      cy.wait("@getDashboard");
 
       cy.log("verify click behavior");
       getDashboardCard().within(() => {
