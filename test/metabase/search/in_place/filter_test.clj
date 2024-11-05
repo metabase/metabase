@@ -1,9 +1,10 @@
-(ns ^:mb/once metabase.search.filter-test
+(ns ^:mb/once metabase.search.in-place.filter-test
   (:require
    [clojure.test :refer :all]
    [metabase.audit :as audit]
    [metabase.search.config :as search.config]
-   [metabase.search.filter :as search.filter]
+   [metabase.search.in-place.filter :as search.filter]
+   [metabase.search.permissions :as search.permissions]
    [metabase.test :as mt]))
 
 (def default-search-ctx
@@ -111,11 +112,11 @@
     false
     [{:join [:a [:= :a.b :c.d]]} :join :d]
 
-       ;; work with multiple join types
+    ;; work with multiple join types
     false
     [{:join [:a [:= :a.b :c.d]]} :left-join :d]
 
-       ;; do the same with other join types too
+    ;; do the same with other join types too
     true
     [{:left-join [:a [:= :a.b :c.d]]} :left-join :a]
 
@@ -367,7 +368,7 @@
 
 (deftest build-filters-indexed-entity-test
   (testing "users that are not sandboxed or impersonated can search for indexed entity"
-    (with-redefs [search.filter/sandboxed-or-impersonated-user? (constantly false)]
+    (with-redefs [search.permissions/sandboxed-or-impersonated-user? (constantly false)]
       (is (= [:and
               [:or [:like [:lower :model-index-value.name] "%foo%"]]
               [:inline [:= 1 1]]]
@@ -378,7 +379,7 @@
 
 (deftest build-filters-indexed-entity-test-2
   (testing "otherwise search result is empty"
-    (with-redefs [search.filter/sandboxed-or-impersonated-user? (constantly true)]
+    (with-redefs [search.permissions/sandboxed-or-impersonated-user? (constantly true)]
       (is (= [:and
               [:or [:= 0 1]]
               [:inline [:= 1 1]]]

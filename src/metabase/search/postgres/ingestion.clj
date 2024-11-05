@@ -1,13 +1,8 @@
 (ns metabase.search.postgres.ingestion
-  "Use to populate the search. For now it leverage the legacy search code, to avoid duplication.
-  Unfortunately, this makes it difficult to share logic for re-indexing individual models efficiently,
-  and to determine when changes to related entities should cause an item to be re-indexed.
-  For this reason we'll want to move to using a spec-based approach next."
   (:require
    [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
    [metabase.search.config :as search.config]
-   [metabase.search.legacy :as search.legacy]
    [metabase.search.postgres.index :as search.index]
    [metabase.search.spec :as search.spec]
    [metabase.util :as u]
@@ -42,28 +37,6 @@
        :legacy_input m
        :searchable_text (searchable-text m)
        :model_rank (model-rank (:model m)))))
-
-(defn- legacy-search-items-query
-  "Use an in-place search to get all the items we want to index. A *HACK* only used for search-models without a spec."
-  ([]
-   (let [spec-models (keys (methods search.spec/spec))
-         model-names (reduce disj (disj search.config/all-models "indexed-entity") spec-models)]
-     (legacy-search-items-query model-names)))
-  ([model-names]
-   (if (empty? model-names)
-       ;; Legacy search will return a singleton with a nil record, let's rather not get back anything.
-     {:select [:*] :from :report_card :where [:inline [:= 1 2]]}
-     (-> {:search-string      nil
-          :models             model-names
-            ;; we want to see everything
-          :is-superuser?      true
-          :current-user-id    (t2/select-one-pk :model/User :is_superuser true)
-          :current-user-perms #{"/"}
-          :archived?          nil
-            ;; only need this for display data
-          :model-ancestors?   false}
-         search.legacy/full-search-query
-         (dissoc :limit)))))
 
 (defn- attrs->select-items [attrs]
   (for [[k v] attrs :when v]
@@ -101,9 +74,7 @@
        (eduction (map #(assoc % :model search-model)))))
 
 (defn- search-items-reducible []
-  (reduce u/rconcat
-          (t2/reducible-query (legacy-search-items-query))
-          (map spec-index-reducible (keys (methods search.spec/spec)))))
+  (reduce u/rconcat [] (map spec-index-reducible (keys (methods search.spec/spec)))))
 
 (defn- batch-update! [search-items-reducible]
   (->> search-items-reducible
@@ -148,28 +119,6 @@
     (when search-models
       (search.index/delete! id search-models))))
 
-(defn- index-model-entries [search-model where-clause]
-  (-> (spec-index-query search-model)
-      (sql.helpers/where where-clause)))
-
 (comment
   (t2/query
-   (index-model-entries "table" [:= 1 :this.db_id])))
-
-(comment
-  ;; This is useful introspection for migrating each search-model to a spec
-  (spec-index-query "collection")
-  (into [] (map t2.realize/realize) (t2/reducible-query (spec-index-query "database")))
-  (->> {:search-string      nil
-        :models             #{"indexed-entity"}
-        :is-superuser?      true
-        :current-user-id    (t2/select-one-pk :model/User :is_superuser true)
-        :current-user-perms #{"/"}
-        :archived?          false
-        :model-ancestors?   false}
-       (search.legacy/full-search-query)
-       #_:select
-       #_(remove (fn [[cast :as fields]]
-                   (or (= :model (last fields))
-                       (and (vector? cast) (nil? (second cast))))))
-       #_(sort-by first)))
+   (spec-index-query-where "table" [:= 1 :this.db_id])))
