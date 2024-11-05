@@ -3,6 +3,8 @@
    [clojure.test :refer :all]
    [metabase.audit :as audit]
    [metabase.search.config :as search.config]
+   ;; Left rename out of this PR to save a ton of noise
+   #_{:clj-kondo/ignore [:consistent-alias]}
    [metabase.search.in-place.filter :as search.filter]
    [metabase.search.permissions :as search.permissions]
    [metabase.test :as mt]))
