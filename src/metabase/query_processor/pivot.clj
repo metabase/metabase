@@ -355,7 +355,6 @@
    viz-settings :- [:maybe :map]]
   (let [{:keys [rows columns values]} (:pivot_table.column_split viz-settings)
         metadata-provider  (or (:lib/metadata query)
-                               (qp.store/metadata-provider)
                                (lib.metadata.jvm/application-database-metadata-provider (:database query)))
         query              (lib/query metadata-provider query)
         index-in-breakouts (into {}
