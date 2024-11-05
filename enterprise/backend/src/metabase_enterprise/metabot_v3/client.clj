@@ -17,19 +17,15 @@
    [metabase.util.malli :as mu]
    [metabase.util.o11y :refer [with-span]]))
 
+(set! *warn-on-reflection* true)
+
 (defsetting ai-proxy-base-url
   (deferred-tru "URL for the a AI Proxy service")
   :type       :string
   :encryption :no
+  :default    "https://ai-service.coredev.metabase.com"
   :visibility :internal
-  :setter     :none
-  :export?    false
-  :getter     (fn []
-                (if (premium-features/is-hosted?)
-                  "https://ai-service.coredev.metabase.com"
-                  "http://localhost:8000")))
-
-(set! *warn-on-reflection* true)
+  :export?    false)
 
 (def ^:dynamic ^:private *debug* false)
 

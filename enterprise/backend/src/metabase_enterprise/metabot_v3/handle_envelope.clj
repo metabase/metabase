@@ -12,7 +12,7 @@
             (let [result (promise)
                   {:keys [reactions output]}
                   (o11y/with-span :info {:name tool-name}
-                    (u/prog1 (metabot-v3.tools.interface/*invoke-tool* tool-name arguments)
+                    (u/prog1 (metabot-v3.tools.interface/*invoke-tool* tool-name (assoc arguments :metabot-v3/tool-call-id tool-call-id))
                       (deliver result <>)))]
               (envelope/add-tool-response e tool-call-id output reactions)))
           e
