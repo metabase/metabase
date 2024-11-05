@@ -23,7 +23,7 @@ export const Default = {
   args: {},
 };
 
-export const WithoutSomeColumns = {
+export const WithTypeAndNameColumn = {
   render: Template,
 
   args: {
