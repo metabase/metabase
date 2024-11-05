@@ -549,6 +549,7 @@
     metabase.api.util                                             api.util
     metabase.async.streaming-response.thread-pool                 thread-pool
     metabase.channel.core                                         channel
+    metabase.channel.render.core                                  channel.render
     metabase.cmd.copy.h2                                          copy.h2
     metabase.config                                               config
     metabase.config.file                                          config.file
