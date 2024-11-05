@@ -16,17 +16,17 @@ Use `regexextract` to create custom columns with shorter, more readable labels f
 - chart labels, or
 - embedding parameters.
 
-| Syntax                                                        | Example                                 |
-|---------------------------------------------------------------|-----------------------------------------|
-| `regexextract(text, regular_expression)`                      | `regexextract("regexextract", "ex(.*)")`|
-| Gets a specific part of your text using a regular expression. | "extract"                               |
+| Syntax                                                        | Example                                  |
+| ------------------------------------------------------------- | ---------------------------------------- |
+| `regexextract(text, regular_expression)`                      | `regexextract("regexextract", "ex(.*)")` |
+| Gets a specific part of your text using a regular expression. | "extract"                                |
 
 ## Searching and cleaning text
 
 Let's say that you have web data with a lot of different URLs, and you want to map each URL to a shorter, more readable campaign name.
 
 | URL                                                   | Campaign Name |
-|-------------------------------------------------------|---------------|
+| ----------------------------------------------------- | ------------- |
 | https://www.metabase.com/docs/?utm_campaign=alice     | alice         |
 | https://www.metabase.com/learn/?utm_campaign=neo      | neo           |
 | https://www.metabase.com/glossary/?utm_campaign=candy | candy         |
@@ -43,13 +43,13 @@ Now, you can use **Campaign Name** in places where you need clean labels, such a
 
 ## Accepted data types
 
-| [Data type](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview#examples-of-data-types) | Works with `regexextract`  |
-| ----------------------- | -------------------- |
-| String                  | ✅                   |
-| Number                  | ❌                   |
-| Timestamp               | ❌                   |
-| Boolean                 | ❌                   |
-| JSON                    | ❌                   |
+| [Data type](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview#examples-of-data-types) | Works with `regexextract` |
+| ------------------------------------------------------------------------------------------------------------------------------ | ------------------------- |
+| String                                                                                                                         | ✅                        |
+| Number                                                                                                                         | ❌                        |
+| Timestamp                                                                                                                      | ❌                        |
+| Boolean                                                                                                                        | ❌                        |
+| JSON                                                                                                                           | ❌                        |
 
 ## Limitations
 
