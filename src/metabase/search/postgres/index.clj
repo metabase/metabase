@@ -155,23 +155,29 @@
     (when @reindexing?
       (t2/delete! pending-table :model_id id :model [:in search-models]))))
 
-(defn- process-negation [term]
-  (if (str/starts-with? term "-")
-    (str "!" (subs term 1))
-    term))
+(defn- quote* [s]
+  (str "'" (str/replace s "'" "''") "'"))
 
 (defn- process-phrase [word-or-phrase]
   ;; a phrase is quoted even if the closing quotation mark has not been typed yet
-  (if (str/starts-with? word-or-phrase "\"")
+  (cond
     ;; quoted phrases must be matched sequentially
+    (str/starts-with? word-or-phrase "\"")
     (as-> word-or-phrase <>
       ;; remove the quote mark(s)
       (str/replace <> #"^\"|\"$" "")
       (str/trim <>)
       (str/split <> #"\s+")
+      (map quote* <>)
       (str/join " <-> " <>))
+
+    ;; negation
+    (str/starts-with? word-or-phrase "-")
+    (str "!" (quote* (subs word-or-phrase 1)))
+
     ;; just a regular word
-    word-or-phrase))
+    :else
+    (quote* word-or-phrase)))
 
 (defn- split-preserving-quotes
   "Break up the words in the search input, preserving quoted and partially quoted segments."
@@ -181,8 +187,7 @@
 (defn- process-clause [words-and-phrases]
   (->> words-and-phrases
        (remove #{"and"})
-       (map (comp process-phrase
-                  process-negation))
+       (map process-phrase)
        (str/join " & ")))
 
 (defn- complete-last-word
