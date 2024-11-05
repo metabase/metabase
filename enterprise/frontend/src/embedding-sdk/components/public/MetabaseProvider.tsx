@@ -104,15 +104,12 @@ export const MetabaseProviderInternal = ({
   );
 };
 
-export const MetabaseProvider = memo(function MetabaseProvider({
-  // @ts-expect-error -- we don't want to expose the store prop
-  // eslint-disable-next-line react/prop-types
-  store = undefined,
-  ...props
-}: MetabaseProviderProps) {
+export const MetabaseProvider = memo(function MetabaseProvider(
+  props: MetabaseProviderProps,
+) {
   // This makes the store stable across re-renders, but still not a singleton:
   // we need a different store for each test or each storybook story
-  const storeRef = useRef(store);
+  const storeRef = useRef<Store<SdkStoreState, Action> | undefined>(undefined);
   if (!storeRef.current) {
     storeRef.current = getSdkStore();
   }
