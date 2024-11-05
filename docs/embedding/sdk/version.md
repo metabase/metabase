@@ -8,9 +8,9 @@ title: Embedded analytics SDK - versions
 
 {% include plans-blockquote.html feature="Embedded analytics SDK" %}
 
-The SDK version tracks with the Metabase version.
+The SDK stable version tracks with the Metabase version.
 
-So, for example, if you're on Metabase version `1.51.1`, you should use the SDK `1.51`.
+So, for example, if you're on Metabase version `1.51.2`, you should use the SDK `51-stable`.
 
 ## Version pinning when using the SDK with Metabase Cloud
 
