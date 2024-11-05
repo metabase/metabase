@@ -124,16 +124,17 @@
   This is to avoid creating regression bugs due to the throttling mechanism."
   [email]
   (when email-throttler
-    (let [recipients      (into #{} (mapcat email) [:to :bcc])
-          throttle-check! (fn []
-                            (dotimes [_ (count recipients)]
-                              (throttle/check email-throttler true)))]
-      (if (> (count recipients) (.attempts-threshold ^Throttler email-throttler))
+    (let [recipients         (into #{} (mapcat email) [:to :bcc])
+          throttle-threshold (.attempts-threshold ^Throttler email-throttler)
+          throttle-check!    (fn []
+                               (dotimes [_ (count recipients)]
+                                 (throttle/check email-throttler true)))]
+      (if (> (count recipients) throttle-threshold)
         (do
          (log/warn "Email throttling is enabled and the number of recipients exceeds the rate limit per second. Skip throttling."
-                   {:email-subject (:subject email)
-                    :recipients    (count recipients)
-                    :rate-limit    (email-max-recipients-per-second)})
+                   {:email-subject  (:subject email)
+                    :recipients     (count recipients)
+                    :max-recipients throttle-threshold})
          (u/ignore-exceptions (throttle-check!)))
         (throttle-check!)))))
 
