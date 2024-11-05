@@ -74,6 +74,7 @@ export const HomeLayout = () => {
 
   }, [langchain_url, langchain_key]);
 
+
   useEffect(() => {
     const getCards = async () => {
       try {
@@ -82,7 +83,10 @@ export const HomeLayout = () => {
           .filter((card: any) => card.type === "model")
           .map((card: any) => ({
             id: `card__${card.id}`,
-            model_schema: card.result_metadata || [],
+            model_schema: (card.result_metadata || []).map((metadata: any) => {
+              const { field_ref, ...rest } = metadata; 
+              return rest;
+            }),
             name: card.name,
             description: card.description
           }));
@@ -92,7 +96,7 @@ export const HomeLayout = () => {
         console.error("Error fetching cards:", error);
       }
     };
-
+  
     getCards();
   }, []);
 
