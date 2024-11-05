@@ -353,28 +353,24 @@
   [query        :- [:map
                     [:database ::lib.schema.id/database]]
    viz-settings :- [:maybe :map]]
-  (let [column-split         (:pivot_table.column_split viz-settings)
-        column-split-rows    (seq (:rows column-split))
-        column-split-columns (seq (:columns column-split))
-        column-name->breakout-index (when (or column-split-rows
-                                              column-split-columns)
-                                      (let [metadata-provider (or (:lib/metadata query)
-                                                                  (lib.metadata.jvm/application-database-metadata-provider (:database query)))
-                                            query             (lib/query metadata-provider query)]
-                                        (into {}
-                                              (comp (filter (comp #{:source/breakouts} :lib/source))
-                                                    (map-indexed (fn [i column] [(:name column) i])))
-                                              (lib/returned-columns query))))
-        pivot-rows (when column-split-rows
-                     (into [] (keep column-name->breakout-index) column-split-rows))
-        pivot-cols (when column-split-columns
-                     (into [] (keep column-name->breakout-index) column-split-columns))]
-    {:pivot-rows pivot-rows
-     :pivot-cols pivot-cols}))
+  (let [{:keys [rows columns values]} (:pivot_table.column_split viz-settings)
+        metadata-provider  (or (:lib/metadata query)
+                               (lib.metadata.jvm/application-database-metadata-provider (:database query)))
+        query              (lib/query metadata-provider query)
+        index-in-breakouts (into {}
+                                 (comp (filter (comp #{:source/breakouts} :lib/source))
+                                       (map-indexed (fn [i column] [(:name column) i])))
+                           (lib/returned-columns query))
+        process-columns    (fn process-columns [column-names]
+                             (when (seq column-names)
+                               (into [] (keep index-in-breakouts) column-names)))
+        pivot-opts         {:pivot-rows     (process-columns rows)
+                            :pivot-cols     (process-columns columns)
+                            :pivot-measures (process-columns values)}]
+    (when (some some? (vals pivot-opts))
+      pivot-opts)))
 
-(mu/defn- field-ref-pivot-options :- [:map
-                                      [:pivot-rows [:maybe [:sequential [:int {:min 0}]]]]
-                                      [:pivot-cols [:maybe [:sequential [:int {:min 0}]]]]]
+(mu/defn- field-ref-pivot-options ::pivot-opts
   "Looks at the `pivot_table.column_split` key in the card's visualization settings and generates `pivot-rows` and
   `pivot-cols` to use for generating subqueries. Supports field ref-based settings only."
   [query        :- [:map
@@ -414,9 +410,7 @@
     (when (some some? (vals pivot-opts))
       pivot-opts)))
 
-(mu/defn- pivot-options :- [:map
-                            [:pivot-rows [:maybe [:sequential [:int {:min 0}]]]]
-                            [:pivot-cols [:maybe [:sequential [:int {:min 0}]]]]]
+(mu/defn- pivot-options :- ::pivot-opts
   "Looks at the `pivot_table.column_split` key in the card's visualization settings and generates `pivot-rows` and
   `pivot-cols` to use for generating subqueries. Supports both column name and field ref-based settings."
   [query        :- [:map
