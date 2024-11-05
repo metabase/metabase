@@ -5,7 +5,7 @@ import ChatPrompt from "metabase/browse/components/ChatItems/Prompt";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
   getInitialMessage,
-  setInitialMessage,
+  setInitialMessage
 } from "metabase/redux/initialMessage";
 import { setDBInputValue, setCompanyName, setInsightDBInputValue, getDBInputValue } from "metabase/redux/initialDb";
 import { setInitialSchema, setInitialInsightSchema } from "metabase/redux/initialSchema";
@@ -73,7 +73,7 @@ export const HomeLayout = () => {
     }
 
   }, [langchain_url, langchain_key]);
-
+  
 
   useEffect(() => {
     const getCards = async () => {
@@ -379,10 +379,9 @@ export const HomeLayout = () => {
                   selectedMessages={selectedChatHistory}
                   selectedThreadId={selectedThreadId}
                   chatType={selectedChatType}
-                  oldCardId={oldCardId}
-                  insights={insights}
                   setSelectedThreadId={setSelectedThreadId}
                   initial_message={initialMessage}
+                  setInitialMessage={setInitialMessage}
                   setMessages={setMessages}
                   setInputValue={setInputValue}
                   setThreadId={setThreadId}
@@ -390,11 +389,10 @@ export const HomeLayout = () => {
                   inputValue={inputValue}
                   messages={messages}
                   isChatHistoryOpen={isChatHistoryOpen}
-                  setIsChatHistoryOpen={setIsChatHistoryOpen}
                   setShowButton={setShowButton}
                   setShouldRefetchHistory={setShouldRefetchHistory}
                   modelSchema={modelSchema}
-                />
+              />
               </Stack>
               {isChatHistoryOpen && selectedChatType !== "insights" && (
                 <Stack
