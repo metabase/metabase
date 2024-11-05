@@ -1634,16 +1634,15 @@
 (mr/def ::check-keys-for-query-type
   [:and
    [:fn
-    {:error/message "Query must specify either `:native` or `:query`, but not both."}
-    (every-pred
-     (some-fn :native :query)
-     (complement (every-pred :native :query)))]
+    {:error/message "Query must specify at most one of `:native` or `:query`, but not both."}
+    (complement (every-pred :native :query))]
    [:fn
-    {:error/message "Native queries must specify `:native`; MBQL queries must specify `:query`."}
+    {:error/message "Native queries must not specify `:query`; MBQL queries must not specify `:native`."}
     (fn [{native :native, mbql :query, query-type :type}]
       (core/case query-type
-        :native native
-        :query  mbql))]])
+        :native (core/not mbql)
+        :query  (core/not native)
+        false))]])
 
 (mr/def ::check-query-does-not-have-source-metadata
   "`:source-metadata` is added to queries when `card__id` source queries are resolved. It contains info about the
@@ -1666,7 +1665,7 @@
 (mr/def ::Query
   [:and
    [:map
-    [:database ::DatabaseID]
+    [:database   {:optional true} ::DatabaseID]
 
     [:type
      [:enum

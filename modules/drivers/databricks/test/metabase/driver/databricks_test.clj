@@ -1,7 +1,9 @@
 (ns ^:mb/driver-tests metabase.driver.databricks-test
   (:require
+   [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase.config :as config]
    [metabase.driver :as driver]
    [metabase.driver.databricks :as databricks]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -242,6 +244,17 @@
 (deftest additional-options-test
   (mt/test-driver
     :databricks
+    (testing "Connections with UserAgentEntry"
+      (sql-jdbc.conn/with-connection-spec-for-testing-connection
+       [spec [:databricks (:details (mt/db))]]
+        (is (= [{:a 1}] (jdbc/query spec ["select 1 as a"]))))
+      (with-redefs [config/mb-version-info {:tag "invalid agent"}]
+        (sql-jdbc.conn/with-connection-spec-for-testing-connection
+         [spec [:databricks (:details (mt/db))]]
+          (is (thrown-with-msg?
+               Exception
+               #"Incorrect format for User-Agent entry"
+               (jdbc/query spec ["select 1 as a"]))))))
     (testing "Additional options are added to :subname key of generated spec"
       (is (re-find #";IgnoreTransactions=0$"
                    (->> {:http-path "p/a/t/h",

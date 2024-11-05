@@ -1,6 +1,6 @@
 (ns metabase.notification.payload.execute
+  #_{:clj-kondo/ignore [:metabase/ns-module-checker]}
   (:require
-   #_{:clj-kondo/ignore [:metabase/ns-module-checker]}
    [malli.core :as mc]
    [metabase.api.common :as api]
    [metabase.models.dashboard-card :as dashboard-card]
