@@ -62,9 +62,7 @@
                                         (metabot-v3.envelope/add-user-message
                                          (metabot-v3.envelope/create context history)
                                          input))]
-                               (if-let [reactions (seq (metabot-v3.envelope/reactions env))]
-                                 (handle-reactions reactions)
-                                 (handle-reactions [(metabot-v3.envelope/last-assistant-message->reaction env)]))
+                               (handle-reactions (metabot-v3.envelope/reactions env))
                                (metabot-v3.envelope/history env))))
                          (catch Throwable e
                            #_{:clj-kondo/ignore [:discouraged-var]}

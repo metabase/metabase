@@ -33,9 +33,7 @@
              (metabot-v3.envelope/add-user-message
               (metabot-v3.envelope/create context history)
               message))]
-    {:reactions (if-let [reactions (seq (metabot-v3.envelope/reactions env))]
-                  (encode-reactions reactions)
-                  (encode-reactions [(metabot-v3.envelope/last-assistant-message->reaction env)]))
+    {:reactions (encode-reactions (metabot-v3.envelope/reactions env))
      :history (metabot-v3.envelope/history env)}))
 
 (api/defendpoint POST "/agent"
