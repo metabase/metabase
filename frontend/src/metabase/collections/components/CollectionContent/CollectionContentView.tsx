@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { usePrevious } from "react-use";
 import { t } from "ttag";
@@ -7,6 +7,10 @@ import ErrorBoundary from "metabase/ErrorBoundary";
 import { deletePermanently } from "metabase/archive/actions";
 import { ArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner";
 import { CollectionBulkActions } from "metabase/collections/components/CollectionBulkActions";
+import {
+  type CollectionContentTableColumn,
+  DEFAULT_VISIBLE_COLUMNS_LIST,
+} from "metabase/collections/components/CollectionContent/constants";
 import PinnedItemOverview from "metabase/collections/components/PinnedItemOverview";
 import Header from "metabase/collections/containers/CollectionHeader";
 import type {
@@ -20,6 +24,7 @@ import {
   isRootTrashCollection,
   isTrashedCollection,
 } from "metabase/collections/utils";
+import { getVisibleColumnsMap } from "metabase/components/ItemsTable/utils";
 import ItemsDragLayer from "metabase/containers/dnd/ItemsDragLayer";
 import Bookmarks from "metabase/entities/bookmarks";
 import Collections from "metabase/entities/collections";
@@ -58,6 +63,7 @@ export const CollectionContentView = ({
   uploadFile,
   uploadsEnabled,
   canCreateUploadInDb,
+  visibleColumns = DEFAULT_VISIBLE_COLUMNS_LIST,
 }: {
   databases?: Database[];
   bookmarks?: Bookmark[];
@@ -70,6 +76,7 @@ export const CollectionContentView = ({
   uploadFile: UploadFile;
   uploadsEnabled: boolean;
   canCreateUploadInDb: boolean;
+  visibleColumns?: CollectionContentTableColumn[];
 }) => {
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [selectedItems, setSelectedItems] = useState<CollectionItem[] | null>(
@@ -121,6 +128,11 @@ export const CollectionContentView = ({
   }, [bookmarks, collectionId]);
 
   const dispatch = useDispatch();
+
+  const visibleColumnsMap = useMemo(
+    () => getVisibleColumnsMap(visibleColumns),
+    [visibleColumns],
+  );
 
   const onDrop = (acceptedFiles: File[]) => {
     if (!acceptedFiles.length) {
@@ -299,6 +311,7 @@ export const CollectionContentView = ({
               selectedItems={selected}
               pinnedItems={pinnedItems}
               collection={collection}
+              visibleColumnsMap={visibleColumnsMap}
             />
           </CollectionRoot>
         );

@@ -3,6 +3,8 @@ import moment from "moment-timezone"; // eslint-disable-line no-restricted-impor
 import { Route } from "react-router";
 
 import { getIcon, renderWithProviders, screen } from "__support__/ui";
+import { DEFAULT_VISIBLE_COLUMNS_LIST } from "metabase/collections/components/CollectionContent";
+import { getVisibleColumnsMap } from "metabase/components/ItemsTable/utils";
 import type { ItemWithLastEditInfo } from "metabase/components/LastEditInfoLabel/LastEditInfoLabel";
 import {
   DEFAULT_DATE_STYLE,
@@ -53,6 +55,8 @@ function getCollectionItem({
   };
 }
 
+const VISIBLE_COLUMNS_MAP = getVisibleColumnsMap(DEFAULT_VISIBLE_COLUMNS_LIST);
+
 describe("BaseItemsTable", () => {
   const ITEM = getCollectionItem();
 
@@ -71,6 +75,7 @@ describe("BaseItemsTable", () => {
               sort_direction: SortDirection.Asc,
             }}
             onSortingOptionsChange={jest.fn()}
+            visibleColumnsMap={VISIBLE_COLUMNS_MAP}
             {...props}
           />
         )}
