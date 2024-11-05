@@ -120,7 +120,7 @@ const QuestionEditorInner = () => {
       </Tabs>
 
       {/* Refer to the SaveQuestionProvider for context on why we have to do it like this */}
-      {isSaveModalOpen && question && (
+      {isSaveEnabled && isSaveModalOpen && question && (
         <SaveQuestionModal
           question={question}
           originalQuestion={originalQuestion ?? null}
@@ -142,6 +142,7 @@ export const QuestionEditor = ({
   onSave,
   plugins,
   entityTypeFilter,
+  saveToCollectionId,
 }: InteractiveQuestionProps) => (
   <InteractiveQuestion
     questionId={questionId}
@@ -150,6 +151,7 @@ export const QuestionEditor = ({
     onBeforeSave={onBeforeSave}
     isSaveEnabled={isSaveEnabled}
     entityTypeFilter={entityTypeFilter}
+    saveToCollectionId={saveToCollectionId}
   >
     <QuestionEditorInner />
   </InteractiveQuestion>
