@@ -1,7 +1,7 @@
 import { IndexRedirect } from "react-router";
 import { t } from "ttag";
 
-import { Route } from "metabase/hoc/Title";
+import { Route } from "metabase/hoc/Route";
 import {
   PLUGIN_ADMIN_PERMISSIONS_DATABASE_GROUP_ROUTES,
   PLUGIN_ADMIN_PERMISSIONS_DATABASE_ROUTES,
