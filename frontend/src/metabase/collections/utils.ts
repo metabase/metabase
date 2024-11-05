@@ -290,10 +290,9 @@ export const getAffectedDashboardsFromMove = async (
   if (data.every(d => d.isSuccess)) {
     return data
       .map(d => ({
-        cardId: d.originalArgs.id,
-        dashboards: d.data.filter(
-          dashboards => dashboards.id !== destination.id,
-        ),
+        cardId: d.originalArgs?.id,
+        dashboards:
+          d.data?.filter(dashboards => dashboards.id !== destination.id) || [],
       }))
       .filter(cd => cd.dashboards.length > 0);
   } else {
