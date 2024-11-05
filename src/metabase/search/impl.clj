@@ -228,14 +228,20 @@
 
 ;; This forwarding is here for tests, we should clean those up.
 
-(defmethod search.api/results nil [search-ctx]
-  (search.api/results (assoc search-ctx :search-engine default-engine)))
+(defn- apply-default-engine [{:keys [search-engine] :as search-ctx}]
+  (when (= default-engine search-engine)
+    (throw (ex-info "Missing implementation for default search-engine" {:search-engine search-engine})))
+  (log/debugf "Missing implementation for %s so instead using %s" search-engine default-engine)
+  (assoc search-ctx :search-engine default-engine))
 
-(defmethod search.api/model-set nil [search-ctx]
-  (search.api/model-set (assoc search-ctx :search-engine default-engine)))
+(defmethod search.api/results :default [search-ctx]
+  (search.api/results (apply-default-engine search-ctx)))
 
-(defmethod search.api/score nil [results search-ctx]
-  (search.api/score results (assoc search-ctx :search-engine default-engine)))
+(defmethod search.api/model-set :default [search-ctx]
+  (search.api/model-set (apply-default-engine search-ctx)))
+
+(defmethod search.api/score :default [results search-ctx]
+  (search.api/score results (apply-default-engine search-ctx)))
 
 (mr/def ::search-context.input
   [:map {:closed true}
