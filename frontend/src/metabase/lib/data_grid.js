@@ -4,6 +4,7 @@ import _ from "underscore";
 
 import { formatColumn, formatValue } from "metabase/lib/formatting";
 import { makeCellBackgroundGetter } from "metabase/visualizations/lib/table_format";
+import { migratePivotColumnSplitSetting } from "metabase-lib/v1/queries/utils/pivot";
 
 export function isPivotGroupColumn(col) {
   return col.name === "pivot-grouping";
@@ -18,10 +19,13 @@ export const COLUMN_SORT_ORDER_ASC = "ascending";
 export const COLUMN_SORT_ORDER_DESC = "descending";
 
 export function multiLevelPivot(data, settings) {
-  const columnSplit = settings[COLUMN_SPLIT_SETTING];
-  if (columnSplit == null) {
+  if (!settings[COLUMN_SPLIT_SETTING]) {
     return null;
   }
+  const columnSplit = migratePivotColumnSplitSetting(
+    settings[COLUMN_SPLIT_SETTING] ?? {},
+    data.cols,
+  );
   const columnsWithoutPivotGroup = data.cols.filter(
     col => !isPivotGroupColumn(col),
   );
