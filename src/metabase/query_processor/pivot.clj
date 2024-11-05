@@ -412,7 +412,10 @@
 
 (mu/defn- pivot-options :- ::pivot-opts
   "Looks at the `pivot_table.column_split` key in the card's visualization settings and generates `pivot-rows` and
-  `pivot-cols` to use for generating subqueries. Supports both column name and field ref-based settings."
+  `pivot-cols` to use for generating subqueries. Supports both column name and field ref-based settings.
+
+  Field ref-based visualization settings are considered legacy and are not used for new questions. To not break existing
+  questions we need to support both old- and new-style settings until they are fully migrated."
   [query        :- [:map
                     [:database ::lib.schema.id/database]]
    viz-settings :- [:maybe :map]]

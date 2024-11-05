@@ -131,6 +131,9 @@ export type FieldRefColumnSplitSetting = {
   values: (FieldReference | null)[];
 };
 
+// Field ref-based visualization settings are considered legacy and are not used
+// for new questions. To not break existing questions we need to support both
+// old- and new-style settings until they are fully migrated.
 export type PivotTableColumnSplitSetting =
   | ColumnNameColumnSplitSetting
   | FieldRefColumnSplitSetting;

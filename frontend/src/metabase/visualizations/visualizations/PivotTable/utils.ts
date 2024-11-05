@@ -46,6 +46,10 @@ export function updateValueWithCurrentColumns(
     currentSettingColumnNames,
     currentQueryColumnNames,
   );
+  // if there are no modifications, it's important to return the original,
+  // potentially legacy settings that use field refs. If the migrated settings
+  // are returned here it would make all saved legacy questions become ad-hoc,
+  // which we should avoid.
   if (toAdd.length === 0 && toRemove.length === 0) {
     return storedValue;
   }

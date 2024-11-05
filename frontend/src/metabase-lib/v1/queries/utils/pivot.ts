@@ -110,6 +110,14 @@ function migratePivotSetting(
     .filter(isNotNull);
 }
 
+// Field ref-based visualization settings are considered legacy and are not used
+// for new questions. To not break existing questions we need to support both
+// old- and new-style settings until they are fully migrated.
+//
+// We cannot auto-migrate the settings on read because all existing questions
+// visualized as pivot tables would become ad-hoc. To avoid that we only migrate
+// the settings when they are modified, and all code that reads the settings
+// runs the migration without storing the new value.
 export function migratePivotColumnSplitSetting(
   setting: PivotTableColumnSplitSetting,
   columns: DatasetColumn[],
