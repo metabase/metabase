@@ -202,7 +202,6 @@
         complete?      (not (str/ends-with? trimmed "\""))
         ;; TODO also only complete if search-typeahead-enabled and the context is the search palette
         maybe-complete (if complete? complete-last-word identity)]
-    #p
     (->> (split-preserving-quotes trimmed)
          (remove str/blank?)
          (partition-by #{"or"})
