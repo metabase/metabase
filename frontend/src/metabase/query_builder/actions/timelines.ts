@@ -18,7 +18,8 @@ export const SHOW_TIMELINE_EVENTS = "metabase/qb/SHOW_TIMELINE_EVENTS";
 export const showTimelineEvents = createAction(SHOW_TIMELINE_EVENTS);
 
 export const showTimelinesForCollection =
-  (collectionId: CollectionId) => (dispatch: Dispatch, getState: GetState) => {
+  (collectionId?: CollectionId | null) =>
+  (dispatch: Dispatch, getState: GetState) => {
     const fetchedTimelines: Timeline[] = getFetchedTimelines(getState());
     const collectionTimelines = collectionId
       ? fetchedTimelines.filter(t => t.collection_id === collectionId)
