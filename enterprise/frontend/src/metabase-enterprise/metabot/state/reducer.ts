@@ -1,39 +1,74 @@
 import { type PayloadAction, createSlice } from "@reduxjs/toolkit";
 
+import type {
+  MetabotChatContext,
+  MetabotHistory,
+  MetabotReaction,
+} from "metabase-types/api";
+
+import { sendMessageRequest } from "./actions";
+
 export interface MetabotState {
-  userMessages: string[];
-  visible: boolean;
   isProcessing: boolean;
+  userMessages: string[];
+  confirmationOptions: Record<string, MetabotReaction[]> | undefined;
+  lastSentContext: MetabotChatContext | undefined;
+  lastHistoryValue: MetabotHistory | undefined;
+  visible: boolean;
 }
 
 const initialState: MetabotState = {
-  userMessages: [],
-  visible: false,
   isProcessing: false,
+  userMessages: [],
+  confirmationOptions: undefined,
+  lastSentContext: undefined,
+  lastHistoryValue: undefined,
+  visible: false,
 };
 
 export const metabot = createSlice({
   name: "metabase-enterprise/metabot",
   initialState,
   reducers: {
-    setVisible: (state, { payload: visible }: PayloadAction<boolean>) => {
-      state.visible = visible;
-      if (!visible) {
-        state.userMessages = [];
-      }
-    },
-    setIsProcessing: (state, action: PayloadAction<boolean>) => {
-      state.isProcessing = action.payload;
-    },
     addUserMessage: (state, action: PayloadAction<string>) => {
       state.userMessages.push(action.payload);
-    },
-    dismissUserMessage: (state, action: PayloadAction<number>) => {
-      state.userMessages.splice(action.payload, 1);
     },
     clearUserMessages: state => {
       state.userMessages = [];
     },
+    dismissUserMessage: (state, action: PayloadAction<number>) => {
+      state.userMessages.splice(action.payload, 1);
+    },
+    setIsProcessing: (state, action: PayloadAction<boolean>) => {
+      state.isProcessing = action.payload;
+    },
+    setVisible: (state, { payload: visible }: PayloadAction<boolean>) => {
+      state.visible = visible;
+
+      if (!visible) {
+        state.isProcessing = false;
+        state.userMessages = [];
+        state.confirmationOptions = undefined;
+        state.lastSentContext = undefined;
+        state.lastHistoryValue = undefined;
+      }
+    },
+    setConfirmationOptions: (
+      state,
+      action: PayloadAction<Record<string, MetabotReaction[]> | undefined>,
+    ) => {
+      state.confirmationOptions = action.payload;
+    },
+  },
+  extraReducers: builder => {
+    builder
+      .addCase(sendMessageRequest.pending, (state, action) => {
+        state.lastSentContext = action.meta.arg.context;
+        state.lastHistoryValue = action.meta.arg.history;
+      })
+      .addCase(sendMessageRequest.fulfilled, (state, action) => {
+        state.lastHistoryValue = action.payload?.data?.history;
+      });
   },
 });
 

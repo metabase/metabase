@@ -4,11 +4,12 @@ import { METABOT_TAG, useMetabotAgentMutation } from "metabase-enterprise/api";
 
 import {
   dismissUserMessage,
+  getConfirmationOptions,
   getIsProcessing,
   getMetabotVisisble,
   getUserMessages,
-  sendMessage,
   setVisible,
+  submitInput,
 } from "./state";
 
 export const useMetabotAgent = () => {
@@ -19,6 +20,9 @@ export const useMetabotAgent = () => {
   const userMessages = useSelector(getUserMessages as any) as ReturnType<
     typeof getUserMessages
   >;
+  const confirmationOptions = useSelector(
+    getConfirmationOptions as any,
+  ) as ReturnType<typeof getConfirmationOptions>;
   const isProcessing = useSelector(getIsProcessing as any) as ReturnType<
     typeof getIsProcessing
   >;
@@ -31,12 +35,13 @@ export const useMetabotAgent = () => {
     visible: useSelector(getMetabotVisisble as any),
     setVisible: (isVisible: boolean) => dispatch(setVisible(isVisible)),
     userMessages,
+    confirmationOptions,
     dismissUserMessage: (messageIndex: number) =>
       dispatch(dismissUserMessage(messageIndex)),
-    sendMessage: async (message: string) => {
+    submitInput: async (message: string) => {
       const context = getChatContext();
       const history = sendMessageReq.data?.history || [];
-      await dispatch(sendMessage({ message, context, history }));
+      await dispatch(submitInput({ message, context, history }));
     },
     isLoading: sendMessageReq.isLoading,
     isProcessing,

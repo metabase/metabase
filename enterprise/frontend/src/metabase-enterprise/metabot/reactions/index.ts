@@ -1,6 +1,8 @@
 import type { MetabotReaction } from "metabase-types/api";
 
-import { showMessage } from "./messages";
+import { apiCall } from "./api";
+import { requireUserConfirmation, showMessage } from "./messages";
+import { writeBack } from "./metabot";
 import type { ReactionHandler } from "./types";
 import {
   changeDisplayType,
@@ -16,8 +18,11 @@ type ReactionHandlers = {
 };
 
 export const reactionHandlers: ReactionHandlers = {
-  "metabot.reaction/message": showMessage,
+  "metabot.reaction/change-display-type": changeDisplayType,
   "metabot.reaction/change-table-visualization-settings":
     changeTableVisualizationSettings,
-  "metabot.reaction/change-display-type": changeDisplayType,
+  "metabot.reaction/confirmation": requireUserConfirmation,
+  "metabot.reaction/message": showMessage,
+  "metabot.reaction/api-call": apiCall,
+  "metabot.reaction/writeback": writeBack,
 };
