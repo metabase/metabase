@@ -104,7 +104,7 @@
                               ;; TODO this should just become part of the spec e.g. :search-by-id?
                               [:in :model ["card" "dataset" "metric" "dashboard" "action"]]]))
     (reduce (fn [qry [ctx-key attr-key]]
-              (let [v (search-context ctx-key)]
+              (let [v (get search-context ctx-key)]
                 (if (some? v)
                   (sql.helpers/where qry (or (where-clause* ctx-key (attr->index-key attr-key) v) false-clause))
                   qry)))
