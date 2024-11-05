@@ -5,7 +5,9 @@ import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type {
   ColumnNameColumnSplitSetting,
+  DatasetColumn,
   FieldRefColumnSplitSetting,
+  FieldReference,
   PivotTableColumnSplitSetting,
 } from "metabase-types/api";
 
@@ -84,4 +86,32 @@ export function getPivotOptions(question: Question) {
   } else {
     return getFieldRefPivotOptions(query, stageIndex, setting);
   }
+}
+
+function migratePivotSetting(
+  columns: DatasetColumn[],
+  fieldRefs: (FieldReference | null)[] = [],
+): string[] {
+  const columnNameByFieldRef = Object.fromEntries(
+    columns.map(column => [JSON.stringify(column.field_ref), column.name]),
+  );
+
+  return fieldRefs
+    .map(fieldRef => columnNameByFieldRef[JSON.stringify(fieldRef)])
+    .filter(isNotNull);
+}
+
+export function migratePivotColumnSplitSetting(
+  setting: PivotTableColumnSplitSetting,
+  columns: DatasetColumn[],
+): ColumnNameColumnSplitSetting {
+  if (isColumnNameColumnSplit(setting)) {
+    return setting;
+  }
+
+  return {
+    rows: migratePivotSetting(columns, setting.rows),
+    columns: migratePivotSetting(columns, setting.columns),
+    values: migratePivotSetting(columns, setting.values),
+  };
 }

@@ -6,11 +6,10 @@ import { sumArray } from "metabase/lib/arrays";
 import { isPivotGroupColumn } from "metabase/lib/data_grid";
 import { measureText } from "metabase/lib/measure-text";
 import type StructuredQuery from "metabase-lib/v1/queries/StructuredQuery";
+import { migratePivotColumnSplitSetting } from "metabase-lib/v1/queries/utils/pivot";
 import type {
   DatasetColumn,
   DatasetData,
-  FieldReference,
-  PivotTableCollapsedRowsSetting,
   PivotTableColumnSplitSetting,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -28,53 +27,15 @@ import {
 import { partitions } from "./partitions";
 import type { CustomColumnWidth, HeaderItem } from "./types";
 
-function migratePivotSetting(
-  columns: DatasetColumn[],
-  columnNames: string[] | undefined,
-  fieldRefs: FieldReference[] | undefined,
-): string[] | undefined {
-  if (columnNames != null || fieldRefs == null) {
-    return columnNames;
-  }
-
-  const columnNameByFieldRef = Object.fromEntries(
-    columns.map(column => [JSON.stringify(column.field_ref), column.name]),
-  );
-
-  return fieldRefs
-    .map(fieldRef => columnNameByFieldRef[JSON.stringify(fieldRef)])
-    .filter(Boolean);
-}
-
-export function migrateColumnSplitSetting(
-  setting: PivotTableColumnSplitSetting,
-  columns: DatasetColumn[],
-): PivotTableColumnSplitSetting {
-  return {
-    rows: migratePivotSetting(columns, setting.rows, setting.row_refs),
-    columns: migratePivotSetting(columns, setting.columns, setting.column_refs),
-    values: migratePivotSetting(columns, setting.values, setting.value_refs),
-  };
-}
-
-export function migrateCollapsedRowsSetting(
-  setting: PivotTableCollapsedRowsSetting,
-  columns: DatasetColumn[],
-): PivotTableCollapsedRowsSetting {
-  return {
-    rows: migratePivotSetting(columns, setting.rows, setting.row_refs),
-    value: setting.value,
-  };
-}
-
 // adds or removes columns from the pivot settings based on the current query
 export function updateValueWithCurrentColumns(
   storedValue: PivotTableColumnSplitSetting,
   columns: DatasetColumn[],
-) {
+): PivotTableColumnSplitSetting {
+  const migratedValue = migratePivotColumnSplitSetting(storedValue, columns);
   const currentQueryColumnNames = columns.map(c => c.name);
-  const currentSettingColumnNames = partitions.flatMap(
-    ({ name }) => storedValue[name] ?? [],
+  const currentSettingColumnNames = Object.values(migratedValue).flatMap(
+    columnNames => columnNames ?? [],
   );
   const toAdd = _.difference(
     currentQueryColumnNames,
@@ -84,12 +45,15 @@ export function updateValueWithCurrentColumns(
     currentSettingColumnNames,
     currentQueryColumnNames,
   );
+  if (toAdd.length === 0 && toRemove.length === 0) {
+    return storedValue;
+  }
 
   // remove toRemove
-  const value: PivotTableColumnSplitSetting = Object.fromEntries(
+  const value = Object.fromEntries(
     partitions.map(({ name }) => [
       name,
-      storedValue[name]?.filter(columnName => !toRemove.includes(columnName)),
+      migratedValue[name]?.filter(columnName => !toRemove.includes(columnName)),
     ]),
   );
 
@@ -114,7 +78,7 @@ export function updateValueWithCurrentColumns(
 export function addMissingCardBreakouts(
   setting: PivotTableColumnSplitSetting,
   availableColumns: DatasetColumn[],
-) {
+): PivotTableColumnSplitSetting {
   const { rows = [], columns = [] } = setting;
   const breakoutColumns = availableColumns.filter(
     column => column.source === "breakout",
@@ -122,8 +86,7 @@ export function addMissingCardBreakouts(
   if (breakoutColumns.length <= columns.length + rows.length) {
     return setting;
   }
-  const newSetting = updateValueWithCurrentColumns(setting, availableColumns);
-  return { ...setting, ...newSetting };
+  return updateValueWithCurrentColumns(setting, availableColumns);
 }
 
 export function isColumnValid(col: DatasetColumn) {

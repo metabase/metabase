@@ -16,13 +16,13 @@ import { formatColumn } from "metabase/lib/formatting";
 import { ChartSettingIconRadio } from "metabase/visualizations/components/settings/ChartSettingIconRadio";
 import { ChartSettingsTableFormatting } from "metabase/visualizations/components/settings/ChartSettingsTableFormatting";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
+import { migratePivotColumnSplitSetting } from "metabase-lib/v1/queries/utils/pivot";
 import { isDimension } from "metabase-lib/v1/types/utils/isa";
 import type {
   Card,
   DatasetColumn,
   DatasetData,
   PivotTableColumnSplitSetting,
-  RowValue,
   Series,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -32,8 +32,6 @@ import {
   addMissingCardBreakouts,
   isColumnValid,
   isFormattablePivotColumn,
-  migrateCollapsedRowsSetting,
-  migrateColumnSplitSetting,
   updateValueWithCurrentColumns,
 } from "./utils";
 
@@ -64,14 +62,8 @@ export const settings = {
       // This is accomplished by snapshotting part of the column split setting *inside* this setting.
       // `value` the is the actual data for this setting
       // `rows` is value we check against the current setting to see if we should use `value`
-      const { rows, value } = migrateCollapsedRowsSetting(
-        settings[COLLAPSED_ROWS_SETTING] || {},
-        data.cols,
-      );
-      const { rows: currentRows } = migrateColumnSplitSetting(
-        settings[COLUMN_SPLIT_SETTING] || {},
-        data.cols,
-      );
+      const { rows, value } = settings[COLLAPSED_ROWS_SETTING] || {};
+      const { rows: currentRows } = settings[COLUMN_SPLIT_SETTING] || {};
       if (!_.isEqual(rows, currentRows)) {
         return { value: [], rows: currentRows };
       }
@@ -89,6 +81,10 @@ export const settings = {
       [{ data }]: [{ data: DatasetData }],
       settings: VisualizationSettings,
     ) => ({
+      value: migratePivotColumnSplitSetting(
+        settings[COLUMN_SPLIT_SETTING] ?? {},
+        data?.cols ?? [],
+      ),
       partitions,
       columns: data == null ? [] : data.cols,
       settings,
@@ -135,7 +131,7 @@ export const settings = {
         );
       } else {
         setting = updateValueWithCurrentColumns(
-          migrateColumnSplitSetting(storedValue, data.cols),
+          storedValue,
           columnsToPartition,
         );
       }
@@ -252,9 +248,7 @@ export const _columnSettings = {
     ) => {
       //Default to showing totals if appropriate
       const rows = settings[COLUMN_SPLIT_SETTING]?.rows || [];
-      return rows
-        .slice(0, -1)
-        .some((row: RowValue) => _.isEqual(row, column.name));
+      return rows.slice(0, -1).some(row => _.isEqual(row, column.name));
     },
     getHidden: (
       column: DatasetColumn,
@@ -265,9 +259,7 @@ export const _columnSettings = {
       // to show totals a column needs to be:
       //  - in the left header ("rows" in COLUMN_SPLIT_SETTING)
       //  - not the last column
-      return !rows
-        .slice(0, -1)
-        .some((row: RowValue) => _.isEqual(row, column.name));
+      return !rows.slice(0, -1).some(row => _.isEqual(row, column.name));
     },
   },
   column_title: {
