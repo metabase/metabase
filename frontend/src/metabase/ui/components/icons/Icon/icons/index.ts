@@ -351,6 +351,8 @@ import sql_component from "./sql.svg?component";
 import sql_source from "./sql.svg?source";
 import star_component from "./star.svg?component";
 import star_source from "./star.svg?source";
+import stop_component from "./stop.svg?component";
+import stop_source from "./stop.svg?source";
 import star_filled_component from "./star_filled.svg?component";
 import star_filled_source from "./star_filled.svg?source";
 import stepped_component from "./stepped.svg?component";
@@ -1134,6 +1136,10 @@ export const Icons = {
   star: {
     component: star_component,
     source: star_source,
+  },
+  stop: {
+    component: stop_component,
+    source: stop_source,
   },
   store: {
     component: store_component,

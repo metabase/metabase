@@ -19,14 +19,12 @@ import { useSelector } from "metabase/lib/redux";
 import { getDBInputValue, getInsightDBInputValue } from "metabase/redux/initialDb";
 import { getInitialSchema, getInitialInsightSchema } from "metabase/redux/initialSchema";
 import { useListDatabasesQuery, useGetDatabaseMetadataWithoutParamsQuery, skipToken } from "metabase/api";
-import { SemanticError } from "metabase/components/ErrorPages";
-import { SpinnerIcon } from "metabase/components/LoadingSpinner/LoadingSpinner.styled";
 import { t } from "ttag";
 import toast from 'react-hot-toast';
 import { useSetting } from "metabase/common/hooks";
 
 
-const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages, selectedThreadId, setSelectedThreadId, chatType, oldCardId, insights, initial_message, setMessages, setInputValue, setThreadId, threadId, inputValue, messages, isChatHistoryOpen, setIsChatHistoryOpen, setShowButton, setShouldRefetchHistory, modelSchema }) => {
+const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages, selectedThreadId, setSelectedThreadId, chatType, initial_message, setInitialMessage, setMessages, setInputValue, setThreadId, threadId, inputValue, messages, isChatHistoryOpen, setShowButton, setShouldRefetchHistory, modelSchema }) => {
     const siteName = useSetting("site-name");
     const formattedSiteName = siteName
         ? siteName.replace(/\s+/g, "_").toLowerCase()
@@ -192,16 +190,16 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
             // Clear existing messages
             setMessages([]);
             setThreadId(selectedThreadId);
-    
+
             const processMessages = async () => {
                 let newMessages = [];
                 let visualizationIdx = 0;
-    
+
                 // Loop through each selected message
                 for (let i = 0; i < selectedMessages.length; i++) {
                     const message = selectedMessages[i];
                     const senderType = message.type === "human" ? "user" : "server";
-                    
+
                     // Attempt to parse JSON content if message is from AI or contains tool data
                     let card_id = null;
                     try {
@@ -221,12 +219,12 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
                     } catch (error) {
                         // If parsing fails, move on to add message normally
                     }
-    
+
                     // Handle visualization if `card_id` is present
                     if (card_id) {
                         // Fetch data for this card
                         await handleGetDatasetQuery(card_id);
-    
+
                         // Create a message specifically for the visualization
                         const visualizationMessage = {
                             id: Date.now() + Math.random(),
@@ -236,11 +234,11 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
                             visualizationIdx: visualizationIdx++,
                             isLoading: false,
                         };
-    
+
                         newMessages.push(visualizationMessage);
                         continue; // Skip to next message since `card_id` messages don’t need text
                     }
-    
+
                     // Standard message structure for non-card messages
                     const newMessageObj = {
                         id: generateRandomId(),
@@ -251,19 +249,19 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
                         isLoading: false,
                         thread_id: selectedThreadId,
                     };
-    
+
                     // Add the regular message to the list
                     newMessages.push(newMessageObj);
                 }
-    
+
                 // Update the messages state with the processed messages
                 setMessages((prev) => [...prev, ...newMessages]);
             };
-    
+
             processMessages();
         }
     }, [client, selectedMessages, selectedThreadId]);
-    
+
 
     useEffect(() => {
         if (inputRef.current) {
@@ -281,7 +279,8 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
     };
 
     const openModal = (cardData, cardIndex) => {
-        dispatch(push(`/question/${cardData.id}`));
+        const route = `/question/${cardData.id}`;
+        window.open(route, "_blank"); // Opens the route in a new tab
     };
 
     const closeModal = () => {
@@ -375,18 +374,19 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
         }
     }
 
-    const sendMessage = async () => {
-        if (!inputValue.trim() || !client || !agent || !thread) return;
+    const sendMessage = async (messageContent) => {
+        const content = messageContent || inputValue;
+        if (!content.trim() || !client || !agent || !thread) return;
 
         setIsLoading(true);  // Set loading to true when the message is sent
         let visualizationIdx = messages.filter((msg) => msg.showVisualization).length;
 
         // Prepare the user message to be sent
-        let messagesToSend = [{ role: "human", content: inputValue }];
+        let messagesToSend = [{ role: "human", content }];
         const userMessage = {
             id: Date.now() + Math.random(),
             sender: "user",
-            text: inputValue,
+            text: content,
             visualizationIdx,
             showVisualization: false,
             isLoading: true,
@@ -721,7 +721,6 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
                 },
             ]);
         } finally {
-            setInputValue("")
             setChatDisabled(false);
             setChatLoading(false);
             setShouldRefetchHistory(true);
@@ -891,14 +890,12 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
     }
 
     useEffect(() => {
-        if (initial_message.message) {
-            setInputValue(initial_message.message);
-            if (client, agent, thread) {
-                sendMessage();
-            }
-
+        if (initial_message.message && client && agent && thread) {
+            sendMessage(initial_message.message);
+            dispatch(setInitialMessage(""));  // Clear initial message after sending to avoid re-triggering
         }
-    }, [initial_message, client, agent, thread]);
+    }, [initial_message.message, client, agent, thread]);
+
 
     useEffect(() => {
         if (initialDbName !== null && initialCompanyName !== '' && initialSchema && initialSchema.schema && initialSchema.schema.length > 0) {
@@ -908,6 +905,7 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
             setSchema(initialSchema.schema)
         }
     }, [initialDbName, initialCompanyName, initialSchema])
+
 
     return (
         <>
@@ -985,8 +983,20 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
                                                 ref={inputRef}
                                                 value={inputValue}
                                                 onChange={handleInputChange}
-                                                disabled={!client || chatLoading || schema.length < 1 || selectedThreadId || chatDisabled}
-                                                onKeyPress={handleKeyPress}
+                                                onKeyPress={(e) => {
+                                                    if (
+                                                        e.key === "Enter" &&
+                                                        !e.shiftKey &&
+                                                        client &&
+                                                        !chatLoading &&
+                                                        schema.length > 0 &&
+                                                        !selectedThreadId &&
+                                                        !chatDisabled
+                                                    ) {
+                                                        e.preventDefault();
+                                                        sendMessage();
+                                                    }
+                                                }}
                                                 placeholder={t`Enter a prompt here...`}
                                                 style={{
                                                     width: "100%",
@@ -996,7 +1006,7 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
                                                     minHeight: "100px",
                                                     maxHeight: "220px",
                                                     padding: "12px",
-                                                    paddingRight: "50px", // Space for the send button
+                                                    paddingRight: "50px",
                                                     lineHeight: "24px",
                                                     border: "none",
                                                     outline: "none",
@@ -1005,37 +1015,41 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
                                                     backgroundColor: "transparent",
                                                 }}
                                             />
-                                            {!chatLoading ? (
-                                                <Button
-                                                    variant="filled"
-                                                    disabled={!client || schema.length < 1 || selectedThreadId}
-                                                    onClick={chatLoading ? stopMessage : sendMessage}
-                                                    style={{
-                                                        position: "absolute",
-                                                        right: "10px",
-                                                        bottom: "10px",
-                                                        borderRadius: "8px",
-                                                        width: "30px",
-                                                        height: "30px",
-                                                        padding: "0",
-                                                        minWidth: "0",
-                                                        backgroundColor: client && schema.length > 0 ? "#8A64DF" : "#F1EBFF",
-                                                        color: "#FFF",
-                                                        border: "none",
-                                                        cursor: client && schema.length > 0 ? "pointer" : "not-allowed",
-                                                        display: "flex",
-                                                        justifyContent: "center",
-                                                        alignItems: "center",
-                                                    }}
-                                                >
 
+                                            <Button
+                                                variant="filled"
+                                                onClick={() => {
+                                                    if (client && schema.length > 0 && !chatLoading && !selectedThreadId && !chatDisabled) {
+                                                        sendMessage();
+                                                    } else {
+                                                        stopMessage();
+                                                    }
+                                                }}
+                                                style={{
+                                                    position: "absolute",
+                                                    right: "10px",
+                                                    bottom: "10px",
+                                                    borderRadius: "8px",
+                                                    width: "30px",
+                                                    height: "30px",
+                                                    padding: "0",
+                                                    minWidth: "0",
+                                                    backgroundColor:"#8A64DF",
+                                                    color: "#FFF",
+                                                    border: "none",
+                                                    cursor: "pointer",
+                                                    display: "flex",
+                                                    justifyContent: "center",
+                                                    alignItems: "center",
+                                                }}
+                                            >
+                                                {client && schema.length > 0 && !chatLoading && !selectedThreadId && !chatDisabled ? (
                                                     <Icon size={18} name="sendChat" style={{ paddingTop: "2px", paddingLeft: "2px" }} />
-
-                                                </Button>
-                                            ) : (null)}
-
+                                                ) : (
+                                                    <Icon size={18} name="stop" style={{ paddingTop: "2px"}} /> 
+                                                )}
+                                            </Button>
                                         </>
-
                                     ) : (
                                         <Button
                                             variant="filled"
