@@ -1,7 +1,7 @@
 import { type PropsWithChildren, useEffect, useState } from "react";
 
 import { setLocaleHeader } from "metabase/lib/api";
-import { loadLocalization } from "metabase/lib/i18n";
+import { loadLocalization, setUserLocale } from "metabase/lib/i18n";
 
 export const LocaleProvider = ({
   children,
@@ -17,7 +17,7 @@ export const LocaleProvider = ({
       setLocaleHeader(locale);
       loadLocalization(locale).then(translatedObject => {
         setIsLoadingLocale(false);
-        window.MetabaseUserLocalization = translatedObject;
+        setUserLocale(translatedObject);
       });
     }
   }, [locale]);
