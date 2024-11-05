@@ -90,8 +90,7 @@
     (OffsetDateTime/parse s)))
 
 (defn- minimal
-  "Search via index, and return potentially stale information, without applying filters or
-  restricting to collections we have access to."
+  "Search via index, and return potentially stale information, without restricting to collections we have access to."
   [search-term & {:as search-ctx}]
   (when-not @#'search.index/initialized?
     (throw (ex-info "Search index is not initialized. Use [[init!]] to ensure it exists."
@@ -107,8 +106,7 @@
                  (update :last_edited_at parse-datetime)))))
 
 (defn- minimal-with-perms
-  "Search via index, and return potentially stale information, without applying filters,
-  but applying permissions. Does not perform ranking."
+  "Search via index, and return potentially stale information, but applying permissions. Does not perform ranking."
   [search-term & {:as search-ctx}]
   (when-not @#'search.index/initialized?
     (throw (ex-info "Search index is not initialized. Use [[init!]] to ensure it exists."
