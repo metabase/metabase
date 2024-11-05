@@ -10,6 +10,7 @@ const COLOR_VARIANTS = {
   },
   gray: {
     color: "var(--mb-color-text-black)",
+    /* eslint-disable no-restricted-syntax -- we should find a way to use semantic colors here */
     background: "var(--mb-base-color-gray-20)",
   },
 };
