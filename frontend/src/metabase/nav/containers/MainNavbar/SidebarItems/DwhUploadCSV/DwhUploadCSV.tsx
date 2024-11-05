@@ -13,7 +13,7 @@ import {
   type UploadFileProps,
   uploadFile as uploadFileAction,
 } from "metabase/redux/uploads";
-import { Button, Icon } from "metabase/ui";
+import { Box, Button, Icon } from "metabase/ui";
 
 import { trackDWHUploadCSVClicked } from "./analytics";
 
@@ -67,7 +67,7 @@ export const DwhUploadCSV = () => {
   const triggerUploadInput = () => uploadInputRef.current?.click();
 
   return (
-    <>
+    <Box px="md" mt="md">
       <Button
         color="brand"
         fullWidth={true}
@@ -89,6 +89,6 @@ export const DwhUploadCSV = () => {
         onClose={closeModelUploadModal}
         onUpload={handleFileUpload}
       />
-    </>
+    </Box>
   );
 };
