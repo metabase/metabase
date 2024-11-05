@@ -6,7 +6,7 @@ title: "Embedded analytics SDK - dashboards"
 
 {% include beta-blockquote.html %}
 
-{% include plans-blockquote.html feature="Embedded analytics SDK" %}
+{% include plans-blockquote.html feature="Embedded analytics SDK" sdk=true %}
 
 You can embed an interactive, editable, or static dashboard.
 

@@ -6,7 +6,7 @@ title: Embedded analytics SDK - Using the SDK with Next.js
 
 {% include beta-blockquote.html %}
 
-{% include plans-blockquote.html feature="Embedded analytics SDK" %}
+{% include plans-blockquote.html feature="Embedded analytics SDK" sdk=true %}
 
 Some notes on using the Embedded analytics SDK with [Next.js](https://nextjs.org/).
 
