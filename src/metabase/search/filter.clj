@@ -31,7 +31,7 @@
 
   If the context has optional filters, the models will be restricted for the set of supported models only."
   [search-context]
-  (if (= :search-engine/in-place (:search-engine search-context))
+  (if (= :search.engine/in-place (:search-engine search-context))
     (search.in-place.filter/search-context->applicable-models search-context)
     (let [required (keep context-key->attr (keys search-context))]
       (into #{}
