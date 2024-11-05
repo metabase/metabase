@@ -77,35 +77,35 @@ export const refreshTokenAsync = createAsyncThunk(
     // In this way we also support standard thrown Errors in the custom fetchRequestToken user provided function
 
     try {
-      const response = await getRefreshToken(url);
+      const session = await getRefreshToken(url);
       const source = customGetRefreshToken
         ? '"fetchRequestToken"'
         : "jwtProvider endpoint";
 
-      if (!response || typeof response !== "object") {
+      if (!session || typeof session !== "object") {
         throw new Error(
-          `The ${source} must return an object with the shape {id:string, exp:number, iat:number, status:string}, got ${safeStringify(response)} instead`,
+          `The ${source} must return an object with the shape {id:string, exp:number, iat:number, status:string}, got ${safeStringify(session)} instead`,
         );
       }
-      if ("status" in response && response.status !== "ok") {
-        if ("message" in response && typeof response.message === "string") {
+      if ("status" in session && session.status !== "ok") {
+        if ("message" in session && typeof session.message === "string") {
           // For some errors, the BE gives us a message that explains it
-          throw new Error(response.message);
+          throw new Error(session.message);
         }
-        if (typeof response.status === "string") {
+        if (typeof session.status === "string") {
           // other times it just returns an error code
           throw new Error(
-            `Failed to refresh token, got status: ${response.status}`,
+            `Failed to refresh token, got status: ${session.status}`,
           );
         }
       }
       // Lastly if we don't have an error message or status, check if we actually got the session ID
-      if (!("id" in response)) {
+      if (!("id" in session)) {
         throw new Error(
-          `The ${source} must return an object with the shape {id:string, exp:number, iat:number, status:string}, got ${safeStringify(response)} instead`,
+          `The ${source} must return an object with the shape {id:string, exp:number, iat:number, status:string}, got ${safeStringify(session)} instead`,
         );
       }
-      return response;
+      return session;
     } catch (exception: unknown) {
       if (exception instanceof Error) {
         Error.captureStackTrace(exception, refreshTokenAsync);
