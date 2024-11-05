@@ -31,7 +31,7 @@ export type UseChartSettingsStateReturned = {
     question: Question,
   ) => void;
   chartSettingsRawSeries: Series;
-  transformedSeries?: RawSeries | TransformedSeries;
+  transformedSeries: RawSeries | TransformedSeries;
 };
 
 export const useChartSettingsState = ({

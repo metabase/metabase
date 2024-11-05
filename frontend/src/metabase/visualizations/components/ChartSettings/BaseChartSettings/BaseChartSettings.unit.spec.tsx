@@ -1,3 +1,5 @@
+import type { FunctionComponent } from "react";
+
 import { fireEvent, renderWithProviders, screen } from "__support__/ui";
 import registerVisualizations from "metabase/visualizations/register";
 import { createMockCard, createMockDataset } from "metabase-types/api/mocks";
@@ -18,16 +20,25 @@ const DEFAULT_PROPS = {
     },
   ],
   settings: {},
+  transformedSeries: [],
 };
 
-function widget(widget: Partial<Widget> = {}): Widget {
+function widget(
+  partialWidget: Partial<
+    Widget<"test.widget.id"> & {
+      widget: FunctionComponent<any>;
+    }
+  > = {},
+): Widget<"test.widget.id"> {
+  const EmptyComponent: FunctionComponent<any> = () => null;
+
   return {
-    id: "id-" + Math.random(),
+    id: "test.widget.id",
     title: "title-" + Math.random(),
-    widget: () => null,
+    widget: EmptyComponent,
     section: "section-" + Math.random(),
     props: {},
-    ...widget,
+    ...partialWidget,
   };
 }
 

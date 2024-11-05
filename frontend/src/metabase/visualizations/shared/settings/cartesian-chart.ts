@@ -327,8 +327,10 @@ export const isXAxisScaleValid = (
   }
 
   return (
-    !isWaterfall ||
-    (xAxisScale && !WATERFALL_UNSUPPORTED_X_AXIS_SCALES.includes(xAxisScale))
+    (!isWaterfall ||
+      (xAxisScale &&
+        !WATERFALL_UNSUPPORTED_X_AXIS_SCALES.includes(xAxisScale))) ??
+    false
   );
 };
 
@@ -340,7 +342,11 @@ export const getDefaultGoalLabel = () => t`Goal`;
  * @param data - property on the series object from the `rawSeries` array
  * @returns object containing column names
  */
-export function getDefaultScatterColumns(data: DatasetData) {
+export function getDefaultScatterColumns(data: DatasetData): {
+  dimensions: (DatasetColumn["name"] | null)[];
+  metrics: (DatasetColumn["name"] | null)[];
+  bubble?: DatasetColumn["name"] | null;
+} {
   const dimensions = data.cols.filter(isDimension);
   const metrics = data.cols.filter(isMetric);
 
@@ -370,7 +376,11 @@ export function getDefaultBubbleSizeCol(data: DatasetData) {
   return getDefaultScatterColumns(data).bubble;
 }
 
-export function getDefaultColumns(series: RawSeries) {
+export function getDefaultColumns(series: RawSeries): {
+  dimensions: (DatasetColumn["name"] | null)[];
+  metrics: (DatasetColumn["name"] | null)[];
+  bubble?: DatasetColumn["name"] | null;
+} {
   if (series[0].card.display === "scatter") {
     return getDefaultScatterColumns(series[0].data);
   } else {
@@ -378,7 +388,11 @@ export function getDefaultColumns(series: RawSeries) {
   }
 }
 
-function getDefaultLineAreaBarColumns(series: RawSeries) {
+function getDefaultLineAreaBarColumns(series: RawSeries): {
+  dimensions: (DatasetColumn["name"] | null)[];
+  metrics: (DatasetColumn["name"] | null)[];
+  bubble?: DatasetColumn["name"] | null;
+} {
   const [
     {
       card: { display },

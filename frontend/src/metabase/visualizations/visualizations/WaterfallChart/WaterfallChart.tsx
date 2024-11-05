@@ -14,7 +14,6 @@ import {
 import type {
   ComputedVisualizationSettings,
   VisualizationProps,
-  VisualizationSettingsDefinitions,
 } from "metabase/visualizations/types";
 
 import { CartesianChart } from "../CartesianChart";
@@ -64,7 +63,7 @@ Object.assign(
       ...GRAPH_DISPLAY_VALUES_SETTINGS,
       ...GRAPH_DATA_SETTINGS,
       ...TOOLTIP_SETTINGS,
-    } as any as VisualizationSettingsDefinitions,
+    },
   }),
 );
 

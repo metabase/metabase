@@ -20,7 +20,7 @@ export const useChartSettingsSections = ({
   const sections: Record<string, Widget[]> = useMemo(() => {
     const sectionObj: Record<string, Widget[]> = {};
     for (const widget of widgets) {
-      if (widget.widget && !widget.hidden) {
+      if (widget.widget && !widget.hidden && widget.section) {
         sectionObj[widget.section] = sectionObj[widget.section] || [];
         sectionObj[widget.section].push(widget);
       }

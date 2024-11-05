@@ -50,6 +50,10 @@ export const ColumnFormattingAction: LegacyDrill = ({ question, clicked }) => {
       widget => widget.id === "column_settings",
     );
 
+    if (!columnSettingsWidget) {
+      return null;
+    }
+
     const extraProps = {
       ...columnSettingsWidget,
       props: {

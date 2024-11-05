@@ -75,7 +75,7 @@ export const BaseChartSettings = ({
     [chartSettings, series],
   );
 
-  const styleWidget = useMemo(() => {
+  const styleWidget: Widget | null = useMemo(() => {
     const seriesSettingsWidget =
       currentWidget && widgets.find(widget => widget.id === "series_settings");
 
@@ -132,7 +132,7 @@ export const BaseChartSettings = ({
     return null;
   }, [computedSettings, currentWidget, transformedSeries, widgets]);
 
-  const formattingWidget = useMemo(() => {
+  const formattingWidget: Widget | null = useMemo(() => {
     const widget =
       currentWidget && widgets.find(widget => widget.id === currentWidget.id);
 

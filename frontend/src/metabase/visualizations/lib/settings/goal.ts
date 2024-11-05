@@ -2,6 +2,7 @@ import { t } from "ttag";
 
 import { getDefaultGoalLabel } from "metabase/visualizations/shared/settings/cartesian-chart";
 import type { ChartGoal } from "metabase/visualizations/shared/types/settings";
+import type { VisualizationSettingsDefinitions } from "metabase/visualizations/types";
 import type { VisualizationSettings } from "metabase-types/api";
 
 import { getStackOffset } from "./stacking";
@@ -23,7 +24,7 @@ export const getChartGoal = (
   };
 };
 
-export const GRAPH_GOAL_SETTINGS = {
+export const GRAPH_GOAL_SETTINGS: VisualizationSettingsDefinitions = {
   "graph.show_goal": {
     section: t`Display`,
     title: t`Goal line`,

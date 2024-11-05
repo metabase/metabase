@@ -1,5 +1,6 @@
 import type { EmbeddingParameters } from "metabase/public/lib/types";
 import type { PieRow } from "metabase/visualizations/echarts/pie/model/types";
+import type { AggregationType } from "metabase-types/api/dataset";
 
 import type { Collection, CollectionId, LastEditInfo } from "./collection";
 import type { DashCardId, DashboardId } from "./dashboard";
@@ -155,13 +156,7 @@ export type VisualizationSettings = {
   "graph.show_stack_values"?: StackValuesDisplay;
   "graph.max_categories_enabled"?: boolean;
   "graph.max_categories"?: number;
-  "graph.other_category_aggregation_fn"?:
-    | "sum"
-    | "avg"
-    | "min"
-    | "max"
-    | "stddev"
-    | "median";
+  "graph.other_category_aggregation_fn"?: AggregationType;
 
   // Table
   "table.columns"?: TableColumnOrderSetting[];
@@ -197,7 +192,9 @@ export type VisualizationSettings = {
 
   // Series
   "graph.dimensions"?: string[];
-  "graph.metrics"?: string[];
+
+  // is there a case where we have null values here?
+  "graph.metrics"?: (string | null)[];
 
   // Series settings
   series_settings?: Record<string, SeriesSettings>;

@@ -86,7 +86,7 @@ export type QuestionChangeClickAction = ClickActionBase &
 
 export type PopoverClickAction = ClickActionBase & {
   popoverProps?: Record<string, unknown>;
-  popover: (props: ClickActionPopoverProps) => JSX.Element;
+  popover: (props: ClickActionPopoverProps) => JSX.Element | null;
 };
 
 type UrlClickActionBase = {
