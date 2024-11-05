@@ -242,8 +242,16 @@
 
 (deftest ^:parallel include-debug-unreturned-connection-stack-traces-test
   (testing "We should be setting debugUnreturnedConnectionStackTraces (#47981)"
-    (is (=? {"debugUnreturnedConnectionStackTraces" true}
+    (is (=? {"debugUnreturnedConnectionStackTraces" boolean?}
             (sql-jdbc.conn/data-warehouse-connection-pool-properties :h2 (mt/db))))))
+
+(deftest debug-unreturned-connection-stack-traces-test
+  (testing "We should be able to set jdbc-data-warehouse-debug-unreturned-connection-stack-traces via env var (#47981)"
+    (doseq [setting [true false]]
+      (mt/with-temp-env-var-value! [mb-jdbc-data-warehouse-debug-unreturned-connection-stack-traces (str setting)]
+        (is (= setting
+               (sql-jdbc.conn/jdbc-data-warehouse-debug-unreturned-connection-stack-traces))
+            (str "setting=" setting))))))
 
 (defn- init-h2-tcp-server [port]
   (let [args   ["-tcp" "-tcpPort", (str port), "-tcpAllowOthers" "-tcpDaemon"]

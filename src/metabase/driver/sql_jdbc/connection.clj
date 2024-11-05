@@ -103,6 +103,20 @@ For setting the maximum, see [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_ap
                     (long (/ qp.pipeline/*query-timeout-ms* 1000))))
   :setter     :none)
 
+(setting/defsetting jdbc-data-warehouse-debug-unreturned-connection-stack-traces
+  "Tell c3p0 to log a stack trace for any connections killed due to exceeding the timeout specified in
+  [[jdbc-data-warehouse-unreturned-connection-timeout-seconds]].
+
+  Note: even if this value is set to true, the exceptions are not logged by default because we set the com.mchange log
+  level to ERROR in our log4j2.xml config, and c3p0 logs the exceptions at INFO level. You need to update the
+  com.mchange log level to INFO via a custom log4j config in order to see the stack traces in the logs."
+  :visibility :internal
+  :type       :boolean
+  :default    false
+  :export?    false
+  :setter     :none
+  :doc        false)
+
 (defmethod data-warehouse-connection-pool-properties :default
   [driver database]
   {;; only fetch one new connection at a time, rather than batching fetches (default = 3 at a time). This is done in
@@ -155,17 +169,16 @@ For setting the maximum, see [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_ap
    ;; exhaustion (when the pool hits maxPoolSize with all Connections checked-out and lost). This parameter should
    ;; only be set while debugging, as capturing the stack trace will slow down every Connection check-out.
    ;;
-   ;; Although we set this unconditionally to true here, note that these exceptions are not actually logged by
-   ;; default because we set the com.mchange log level to ERROR in our log4j2.xml config, and c3p0 logs the exceptions
-   ;; at INFO level. Therefore, you need to update the log level to INFO via a custom log4j config in order to see the
-   ;; stack traces in the logs.
+   ;; N.B. Even if this is set to true, these exceptions are not actually logged by default because we set the
+   ;; com.mchange log level to ERROR in our log4j2.xml config, and c3p0 logs the exceptions at INFO level. Therefore,
+   ;; you need to update the log level to INFO via a custom log4j config in order to see the stack traces in the logs.
    ;;
    ;; As noted in the C3P0 docs, this does add some overhead to create the Exception at Connection checkout.
-   ;; criterium/quick-bench indicates this is ~600ns of overhead per Exception created on my laptop. This doesn't seem
-   ;; worth adding another user-configurable knob to disable it given that we also unconditionally set
-   ;; testConnectionOnCheckout, above, which adds an order of magnitude more overhead per checkout (but still deemed
-   ;; acceptable).
-   "debugUnreturnedConnectionStackTraces" true
+   ;; criterium/quick-bench indicates this is ~600ns of overhead per Exception created on my laptop, which is small
+   ;; compared to the overhead added by testConnectionCheckout, above. The memory usage will depend on the size of the
+   ;; stack trace, but clj-memory-meter reports ~800 bytes for a fresh Exception created at the REPL (which presumably
+   ;; has a smaller-than-average stack).
+   "debugUnreturnedConnectionStackTraces" (jdbc-data-warehouse-debug-unreturned-connection-stack-traces)
    ;; Set the data source name so that the c3p0 JMX bean has a useful identifier, which incorporates the DB ID, driver,
    ;; and name from the details
    "dataSourceName"               (format "db-%d-%s-%s"
