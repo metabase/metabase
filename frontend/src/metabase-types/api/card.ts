@@ -119,15 +119,15 @@ export type ColumnFormattingSetting = {
 };
 
 export type ColumnNameColumnSplitSetting = {
-  rows?: string[];
-  columns?: string[];
-  values?: string[];
+  rows: string[];
+  columns: string[];
+  values: string[];
 };
 
 export type FieldRefColumnSplitSetting = {
-  rows?: (FieldReference | null)[];
-  columns?: (FieldReference | null)[];
-  values?: (FieldReference | null)[];
+  rows: (FieldReference | null)[];
+  columns: (FieldReference | null)[];
+  values: (FieldReference | null)[];
 };
 
 export type PivotTableColumnSplitSetting =
@@ -135,13 +135,13 @@ export type PivotTableColumnSplitSetting =
   | FieldRefColumnSplitSetting;
 
 export type ColumnNameCollapsedRowsSetting = {
-  rows?: string[];
-  value?: string[]; // identifiers for collapsed rows
+  rows: string[];
+  value: string[]; // identifiers for collapsed rows
 };
 
 export type FieldRefCollapsedRowsSetting = {
-  rows?: (FieldReference | null)[];
-  value?: string[];
+  rows: (FieldReference | null)[];
+  value: string[];
 };
 
 export type PivotTableCollapsedRowsSetting =

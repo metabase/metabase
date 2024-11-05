@@ -8,6 +8,7 @@ import { measureText } from "metabase/lib/measure-text";
 import type StructuredQuery from "metabase-lib/v1/queries/StructuredQuery";
 import { migratePivotColumnSplitSetting } from "metabase-lib/v1/queries/utils/pivot";
 import type {
+  ColumnNameColumnSplitSetting,
   DatasetColumn,
   DatasetData,
   PivotTableColumnSplitSetting,
@@ -50,11 +51,10 @@ export function updateValueWithCurrentColumns(
   }
 
   // remove toRemove
-  const value = Object.fromEntries(
-    partitions.map(({ name }) => [
-      name,
-      migratedValue[name]?.filter(columnName => !toRemove.includes(columnName)),
-    ]),
+  const value: ColumnNameColumnSplitSetting = _.mapObject(
+    migratedValue,
+    columnNames =>
+      columnNames?.filter(columnName => !toRemove.includes(columnName)),
   );
 
   // add toAdd to first partitions where it matches the filter

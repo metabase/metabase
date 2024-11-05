@@ -254,27 +254,21 @@ function syncPivotColumnSplit(
     ...settings,
     "pivot_table.column_split": {
       ...columnSettings,
-      rows:
-        columnSettings.rows &&
-        syncColumnNames({
-          settings: columnSettings.rows,
-          newColumns,
-          oldColumns,
-        }),
-      columns:
-        columnSettings.columns &&
-        syncColumnNames({
-          settings: columnSettings.columns,
-          newColumns,
-          oldColumns,
-        }),
-      values:
-        columnSettings.values &&
-        syncColumnNames({
-          settings: columnSettings.values,
-          newColumns,
-          oldColumns,
-        }),
+      rows: syncColumnNames({
+        settings: columnSettings.rows ?? [],
+        newColumns,
+        oldColumns,
+      }),
+      columns: syncColumnNames({
+        settings: columnSettings.columns ?? [],
+        newColumns,
+        oldColumns,
+      }),
+      values: syncColumnNames({
+        settings: columnSettings.values ?? [],
+        newColumns,
+        oldColumns,
+      }),
     },
   };
 }
@@ -293,13 +287,11 @@ function syncPivotCollapsedRows(
     ...settings,
     "pivot_table.collapsed_rows": {
       ...rowSettings,
-      rows:
-        rowSettings.rows &&
-        syncColumnNames({
-          settings: rowSettings.rows,
-          newColumns,
-          oldColumns,
-        }),
+      rows: syncColumnNames({
+        settings: rowSettings.rows ?? [],
+        newColumns,
+        oldColumns,
+      }),
     },
   };
 }

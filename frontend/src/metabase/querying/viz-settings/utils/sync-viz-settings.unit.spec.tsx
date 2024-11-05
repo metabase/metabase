@@ -318,28 +318,6 @@ describe("syncVizSettings", () => {
       });
     });
 
-    it("should skip empty properties and do not set an empty value", () => {
-      const oldColumns: ColumnInfo[] = [
-        { name: "ID", key: "ID" },
-        { name: "ID_2", key: "PEOPLE__ID" },
-        { name: "count", key: "count" },
-      ];
-      const newColumns: ColumnInfo[] = [
-        { name: "ID", key: "ID" },
-        { name: "ID_2", key: "PRODUCTS__ID" },
-        { name: "ID_3", key: "PEOPLE__ID" },
-        { name: "count", key: "count" },
-      ];
-      const oldSettings = createMockVisualizationSettings({
-        "pivot_table.column_split": {},
-      });
-
-      const newSettings = syncVizSettings(oldSettings, newColumns, oldColumns);
-      expect(newSettings).toEqual({
-        "pivot_table.column_split": {},
-      });
-    });
-
     it("should handle removing columns with column.name changes", () => {
       const oldColumns: ColumnInfo[] = [
         { name: "ID", key: "ID" },

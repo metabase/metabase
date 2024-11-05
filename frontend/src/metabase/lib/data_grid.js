@@ -23,7 +23,7 @@ export function multiLevelPivot(data, settings) {
     return null;
   }
   const columnSplit = migratePivotColumnSplitSetting(
-    settings[COLUMN_SPLIT_SETTING] ?? {},
+    settings[COLUMN_SPLIT_SETTING] ?? { rows: [], columns: [], values: [] },
     data.cols,
   );
   const columnsWithoutPivotGroup = data.cols.filter(

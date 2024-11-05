@@ -82,7 +82,7 @@ export const settings = {
       settings: VisualizationSettings,
     ) => ({
       value: migratePivotColumnSplitSetting(
-        settings[COLUMN_SPLIT_SETTING] ?? {},
+        settings[COLUMN_SPLIT_SETTING] ?? { rows: [], columns: [], values: [] },
         data?.cols ?? [],
       ),
       partitions,
