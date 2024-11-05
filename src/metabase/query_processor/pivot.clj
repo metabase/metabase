@@ -358,7 +358,7 @@
                                (lib.metadata.jvm/application-database-metadata-provider (:database query)))
         query              (lib/query metadata-provider query)
         index-in-breakouts (into {}
-                                 (comp (filter (comp #{:source/breakouts} :lib/source))
+                                 (comp (filter (comp #{:source/breakouts :source/aggregations} :lib/source))
                                        (map-indexed (fn [i column] [(:name column) i])))
                                  (lib/returned-columns query))
         process-columns    (fn process-columns [column-names]
