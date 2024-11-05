@@ -1,4 +1,4 @@
-(ns metabase.channel.render.js-svg
+(ns metabase.channel.render.js.svg
   "Functions to render charts as svg strings by using graal's js engine. A bundle is built by `yarn build-static-viz`
   which has charting library. This namespace has some wrapper functions to invoke those functions. Interop is very
   strange, as the jvm datastructures, not just serialized versions are used. This is why we have the `toJSArray` and

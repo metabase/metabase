@@ -1,4 +1,4 @@
-(ns metabase.channel.render.color-test
+(ns metabase.channel.render.js.color-test
   (:require
    [clojure.test :refer :all]
    [metabase.channel.render.color :as color]

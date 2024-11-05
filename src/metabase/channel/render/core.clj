@@ -5,6 +5,7 @@
    [metabase.channel.render.image-bundle :as image-bundle]
    [metabase.channel.render.png :as png]
    [metabase.channel.render.style :as style]
+   [metabase.channel.render.preview :as preview]
    [metabase.formatter :as formatter]
    [metabase.models.dashboard-card :as dashboard-card]
    [metabase.util :as u]
@@ -27,7 +28,9 @@
   color-text-dark
   primary-color
   section-style
-  style])
+  style]
+ [preview
+  #_render-pulse-card-for-display])
 
 ;;; I gave these keys below namespaces to make them easier to find usages for but didn't use `metabase.channel.render` so
 ;;; we can keep this as an internal namespace you don't need to know about outside of the module.
@@ -202,6 +205,7 @@
                              pulse-body)]]]]}
        text (assoc :render/text text)))))
 
+;; preview
 (mu/defn render-pulse-card-for-display
   "Same as `render-pulse-card` but isn't intended for an email, rather for previewing so there is no need for
   attachments"
@@ -228,6 +232,7 @@
                                                :margin-bottom :20px})}
                     content]})))
 
+;; preview
 (mu/defn render-pulse-card-to-png :- bytes?
   "Render a `pulse-card` as a PNG. `data` is the `:data` from a QP result."
   (^bytes [timezone-id pulse-card result width]

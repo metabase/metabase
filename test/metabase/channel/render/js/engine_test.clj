@@ -1,7 +1,7 @@
-(ns metabase.channel.render.js-engine-test
+(ns metabase.channel.render.js.engine-test
   (:require
    [clojure.test :refer :all]
-   [metabase.channel.render.js-engine :as js]
+   [metabase.channel.render.js.engine :as js]
    [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
