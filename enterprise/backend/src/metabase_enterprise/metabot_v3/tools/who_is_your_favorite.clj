@@ -5,6 +5,4 @@
 
 (mu/defmethod metabot-v3.tools.interface/*invoke-tool* :metabot.tool/who-is-your-favorite
   [_tool-name _arg-map]
-  {:reactions [{:type :metabot.reaction/message
-                :message "You are... but don't tell anyone!"}]
-   :output "This current user is my favorite."})
+  {:output "You are... but don't tell anyone!"})
