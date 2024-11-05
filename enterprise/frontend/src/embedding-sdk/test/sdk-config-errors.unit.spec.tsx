@@ -86,7 +86,11 @@ describe("SDK auth errors", () => {
     setupCardEndpoints(MOCK_CARD);
     setupCardQueryEndpoints(MOCK_CARD, {} as any);
 
-    consoleErrorSpy = jest.spyOn(console, "error");
+    consoleErrorSpy = jest
+      .spyOn(console, "error")
+      // Mock the implementation to avoid spamming the terminal as we do expect errors to be logged in these tests
+      // Comment the next line to debug the tests
+      .mockImplementation(() => {});
   });
 
   afterEach(() => {
