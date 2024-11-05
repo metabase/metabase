@@ -7,6 +7,7 @@ title: API changelog
 ## Metabase 0.52.0
 
 - `POST /api/user/:id/send_invite` has been removed.
+- `GET /:id/fields` now includes the Table ID.
 
 ## Metabase 0.51.0
 
