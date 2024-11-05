@@ -650,6 +650,61 @@
               (meta/id :people :latitude)]]
             (lib.breakout/existing-breakouts query -1 (meta/field-metadata :people :latitude))))))
 
+(deftest ^:parallel existing-breakouts-multiple-implicit-joins-test
+  (let [base   (lib/query meta/metadata-provider (meta/table-metadata :ic/reports))
+        groups (lib/group-columns (lib/breakoutable-columns base))
+        by-fk  (m/index-by :fk-field-id groups)
+        ;; Implicitly joining on both :created-by and :updated-by.
+        name-by-created-by (->> (get by-fk (meta/id :ic/reports :created-by))
+                                lib/columns-group-columns
+                                (m/find-first #(= (:id %) (meta/id :ic/accounts :name))))
+        name-by-updated-by (->> (get by-fk (meta/id :ic/reports :updated-by))
+                                lib/columns-group-columns
+                                (m/find-first #(= (:id %) (meta/id :ic/accounts :name))))]
+    (testing "implicit joins through two FKs to the same column"
+      (testing "both exist"
+        (is (some? name-by-created-by))
+        (is (some? name-by-updated-by)))
+      (testing "are distinct"
+        (is (not= name-by-created-by name-by-updated-by)))
+      (testing "are not considered 'existing breakouts'"
+        (is (nil? (-> base
+                      (lib/breakout name-by-created-by)
+                      (lib.breakout/existing-breakouts -1 name-by-updated-by))))
+        (is (nil? (-> base
+                      (lib/breakout name-by-updated-by)
+                      (lib.breakout/existing-breakouts -1 name-by-created-by))))))))
+
+(deftest ^:parallel existing-breakouts-multiple-explicit-joins-test
+  (let [base (-> (lib/query meta/metadata-provider (meta/table-metadata :ic/reports))
+                 (lib/join (lib/join-clause (meta/table-metadata :ic/accounts)
+                                            [(lib/= (meta/field-metadata :ic/reports :created-by)
+                                                    (meta/field-metadata :ic/accounts :id))]))
+                 (lib/join (lib/join-clause (meta/table-metadata :ic/accounts)
+                                            [(lib/= (meta/field-metadata :ic/reports :updated-by)
+                                                    (meta/field-metadata :ic/accounts :id))])))
+        groups (lib/group-columns (lib/breakoutable-columns base))
+        joined (filter #(= (:metabase.lib.column-group/group-type %) :group-type/join.explicit) groups)
+        name-by-created-by (->> (nth joined 0)
+                                lib/columns-group-columns
+                                (m/find-first #(= (:id %) (meta/id :ic/accounts :name))))
+        name-by-updated-by (->> (nth joined 1)
+                                lib/columns-group-columns
+                                (m/find-first #(= (:id %) (meta/id :ic/accounts :name))))]
+    (testing "explicit joins through two FKs to the same column"
+      (testing "both exist"
+        (is (some? name-by-created-by))
+        (is (some? name-by-updated-by)))
+      (testing "are distinct"
+        (is (not= name-by-created-by name-by-updated-by)))
+      (testing "are not considered 'existing breakouts'"
+        (is (nil? (-> base
+                      (lib/breakout name-by-created-by)
+                      (lib.breakout/existing-breakouts -1 name-by-updated-by))))
+        (is (nil? (-> base
+                      (lib/breakout name-by-updated-by)
+                      (lib.breakout/existing-breakouts -1 name-by-created-by))))))))
+
 (deftest ^:parallel remove-existing-breakouts-for-column-test
   (let [query  (-> (lib/query meta/metadata-provider (meta/table-metadata :people))
                    (lib/aggregate (lib/count))
