@@ -39,10 +39,10 @@
 
    ;; This fails
    #_{:description "A less formal request with three emails listed"
-    :input-message "Hey, can you send invites to these folks? jake.peralta@example.com, terry.jeffords@example.com, rosa.diaz@example.com"
-    :expected-tool-calls [{:name :metabot.tool/confirm-invite-user :arguments {:email "jake.peralta@example.com"}}
-                          {:name :metabot.tool/confirm-invite-user :arguments {:email "terry.jeffords@example.com"}}
-                          {:name :metabot.tool/confirm-invite-user :arguments {:email "rosa.diaz@example.com"}}]}
+     :input-message "Hey, can you send invites to these folks? jake.peralta@example.com, terry.jeffords@example.com, rosa.diaz@example.com"
+     :expected-tool-calls [{:name :metabot.tool/confirm-invite-user :arguments {:email "jake.peralta@example.com"}}
+                           {:name :metabot.tool/confirm-invite-user :arguments {:email "terry.jeffords@example.com"}}
+                           {:name :metabot.tool/confirm-invite-user :arguments {:email "rosa.diaz@example.com"}}]}
 
    {:description "A very brief message asking for two invites"
     :input-message "Invite steve.rogers@avengers.com, natasha.romanoff@avengers.com"
