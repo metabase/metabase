@@ -1,4 +1,4 @@
-(ns metabase.pulse.render.body-test
+(ns metabase.channel.render.body-test
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -6,12 +6,12 @@
    [clojure.zip :as zip]
    [hiccup.core :refer [html]]
    [hickory.select :as hik.s]
+   [metabase.channel.render.body :as body]
    [metabase.formatter :as formatter]
    [metabase.models :refer [Card]]
-   [metabase.pulse.render.body :as body]
+   [metabase.notification.payload.execute :as notification.execute]
    [metabase.pulse.render.test-util :as render.tu]
    [metabase.pulse.send :as pulse.send]
-   [metabase.pulse.util :as pu]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
@@ -631,7 +631,7 @@
                                                                                                    [:avg [:field (mt/id :orders :subtotal) nil]]]}}
                                                          :creator_id    (mt/user->id :crowberto)}]
           (let [data                   (qp/process-query dataset-query)
-                combined-cards-results [(pu/execute-card (:creator_id card) (:id card) nil)]
+                combined-cards-results [(notification.execute/execute-card (:creator_id card) (:id card) nil)]
                 cards-with-data        (map
                                         (comp
                                          #'body/add-dashcard-timeline-events

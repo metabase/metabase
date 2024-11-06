@@ -1,4 +1,4 @@
-(ns metabase.pulse.render.js-svg
+(ns metabase.channel.render.js-svg
   "Functions to render charts as svg strings by using graal's js engine. A bundle is built by `yarn build-static-viz`
   which has charting library. This namespace has some wrapper functions to invoke those functions. Interop is very
   strange, as the jvm datastructures, not just serialized versions are used. This is why we have the `toJSArray` and
@@ -6,10 +6,10 @@
   (:require
    [cheshire.core :as json]
    [clojure.string :as str]
+   [metabase.channel.render.js-engine :as js]
+   [metabase.channel.render.style :as style]
    [metabase.config :as config]
-   [metabase.public-settings :as public-settings]
-   [metabase.pulse.render.js-engine :as js]
-   [metabase.pulse.render.style :as style])
+   [metabase.public-settings :as public-settings])
   (:import
    (java.io ByteArrayInputStream ByteArrayOutputStream)
    (java.nio.charset StandardCharsets)

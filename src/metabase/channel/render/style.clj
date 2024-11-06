@@ -1,4 +1,4 @@
-(ns metabase.pulse.render.style
+(ns metabase.channel.render.style
   "CSS styles and related helper code for Pulse rendering."
   (:require
    [clojure.java.io :as io]
@@ -11,7 +11,7 @@
 
 (set! *warn-on-reflection* true)
 
-;; TODO - we should move other CSS definitions from `metabase.pulse.render` namespaces into this one, so they're all
+;; TODO - we should move other CSS definitions from `metabase.channel.render` namespaces into this one, so they're all
 ;; in one place.
 
 (defn style

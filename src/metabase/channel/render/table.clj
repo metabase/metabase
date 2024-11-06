@@ -1,11 +1,11 @@
-(ns metabase.pulse.render.table
+(ns metabase.channel.render.table
   (:require
    [clojure.string :as str]
    [hiccup.core :refer [h]]
    [medley.core :as m]
-   [metabase.formatter]
-   [metabase.pulse.render.color :as color]
-   [metabase.pulse.render.style :as style])
+   [metabase.channel.render.color :as color]
+   [metabase.channel.render.style :as style]
+   [metabase.formatter])
   (:import
    (metabase.formatter NumericWrapper)))
 

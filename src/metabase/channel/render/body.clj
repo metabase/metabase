@@ -1,17 +1,17 @@
-(ns metabase.pulse.render.body
+(ns metabase.channel.render.body
   (:require
    [clojure.string :as str]
    [hiccup.core :refer [h]]
    [medley.core :as m]
+   [metabase.channel.render.color :as color]
+   [metabase.channel.render.image-bundle :as image-bundle]
+   [metabase.channel.render.js-svg :as js-svg]
+   [metabase.channel.render.style :as style]
+   [metabase.channel.render.table :as table]
    [metabase.formatter :as formatter]
    [metabase.models.timeline-event :as timeline-event]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.public-settings :as public-settings]
-   [metabase.pulse.render.color :as color]
-   [metabase.pulse.render.image-bundle :as image-bundle]
-   [metabase.pulse.render.js-svg :as js-svg]
-   [metabase.pulse.render.style :as style]
-   [metabase.pulse.render.table :as table]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.query-processor.streaming.common :as common]
    [metabase.types :as types]

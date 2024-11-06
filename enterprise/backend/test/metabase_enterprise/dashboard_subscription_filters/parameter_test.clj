@@ -1,7 +1,7 @@
-(ns ^:mb/once metabase-enterprise.dashboard-subscription-filters.pulse-test
+(ns ^:mb/once metabase-enterprise.dashboard-subscription-filters.parameter-test
   (:require
    [clojure.test :refer :all]
-   [metabase.pulse.parameters :as pulse-params]
+   [metabase.notification.payload.impl.dashboard-subscription :as notification.dashboard-subscription]
    [metabase.test :as mt]))
 
 (deftest parameters-test
@@ -10,7 +10,7 @@
       (is (= [{:id "1" :v "a"}
               {:id "2" :v "b"}
               {:id "3" :v "yes"}]
-             (pulse-params/the-parameters
+             (notification.dashboard-subscription/the-parameters
               [{:id "1" :v "a"} {:id "2" :v "b"}]
               [{:id "1" :v "no, since it's trumped by the pulse"} {:id "3" :v "yes"}])))))
 
@@ -18,6 +18,6 @@
     (mt/with-premium-features #{}
       (is (= [{:id "1" :v "no, since it's trumped by the pulse"}
               {:id "3" :v "yes"}]
-             (pulse-params/the-parameters
+             (notification.dashboard-subscription/the-parameters
               [{:id "1" :v "a"} {:id "2" :v "b"}]
               [{:id "1" :v "no, since it's trumped by the pulse"} {:id "3" :v "yes"}]))))))

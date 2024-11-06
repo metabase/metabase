@@ -2,11 +2,12 @@
   (:require
    [clojure.string :as str]
    [metabase.channel.core :as channel]
+   [metabase.channel.render.core :as channel.render]
    [metabase.channel.shared :as channel.shared]
    ;; TODO: integrations.slack should be migrated to channel.slack
    [metabase.integrations.slack :as slack]
+   [metabase.models.params.shared :as shared.params]
    [metabase.public-settings :as public-settings]
-   [metabase.pulse.core :as pulse]
    [metabase.util.malli :as mu]
    [metabase.util.markdown :as markdown]
    [metabase.util.urls :as urls]))
@@ -40,7 +41,7 @@
           {card-id :id card-name :name :as card} card]
       {:title           (or (-> dashcard :visualization_settings :card.title)
                             card-name)
-       :rendered-info   (pulse/render-pulse-card :inline (channel.shared/defaulted-timezone card) card dashcard result)
+       :rendered-info   (channel.render/render-pulse-card :inline (channel.shared/defaulted-timezone card) card dashcard result)
        :title_link      (urls/card-url card-id)
        :attachment-name "image.png"
        :channel-id      channel-id
@@ -71,7 +72,7 @@
                                 (if (:render/text rendered-info)
                                   (-> (f attachment-data)
                                       (assoc :text (:render/text rendered-info)))
-                                  (let [image-bytes (pulse/png-from-render-info rendered-info slack-width)
+                                  (let [image-bytes (channel.render/png-from-render-info rendered-info slack-width)
                                         image-url   (slack/upload-file! image-bytes attachment-name channel-id)]
                                     (-> (f attachment-data)
                                         (assoc :image_url image-url)))))))
@@ -112,7 +113,7 @@
 (defn- filter-text
   [filter]
   (truncate-mrkdwn
-   (format "*%s*\n%s" (:name filter) (pulse/value-string filter))
+   (format "*%s*\n%s" (:name filter) (shared.params/value-string filter (public-settings/site-locale)))
    attachment-text-length-limit))
 
 (defn- slack-dashboard-header
@@ -126,7 +127,7 @@
         link-section    {:type "section"
                          :fields [{:type "mrkdwn"
                                    :text (format "<%s | *Sent from %s by %s*>"
-                                                 (pulse/dashboard-url (:id dashboard) parameters)
+                                                 (urls/dashboard-url (:id dashboard) parameters)
                                                  (public-settings/site-name)
                                                  creator-name)}]}
         filter-fields   (for [filter parameters]

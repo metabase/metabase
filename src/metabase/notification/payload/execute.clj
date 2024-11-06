@@ -7,10 +7,14 @@
    [metabase.models.interface :as mi]
    [metabase.models.params.shared :as shared.params]
    [metabase.models.serialization :as serdes]
-   [metabase.pulse.parameters :as pulse-params]
-   [metabase.pulse.util :as pu]
+   [metabase.public-settings :as public-settings]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.dashboard :as qp.dashboard]
+   [metabase.query-processor.middleware.permissions :as qp.perms]
+   [metabase.query-processor.pivot :as qp.pivot]
    [metabase.server.middleware.session :as mw.session]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.urls :as urls]
    [toucan2.core :as t2]))
@@ -108,6 +112,66 @@
                  #(str "## " (shared.params/escape-chars % shared.params/escaped-chars-regex))))
     dashcard))
 
+(defn- escape-markdown-chars?
+  "Heading cards should not escape characters."
+  [dashcard]
+  (not= "heading" (get-in dashcard [:visualization_settings :virtual_card :display])))
+
+(defn process-virtual-dashcard
+  "Given a dashcard and the parameters on a dashboard, returns the dashcard with any parameter values appropriately
+  substituted into connected variables in the text."
+  [dashcard parameters]
+  (let [text               (-> dashcard :visualization_settings :text)
+        parameter-mappings (:parameter_mappings dashcard)
+        tag-names          (shared.params/tag_names text)
+        param-id->param    (into {} (map (juxt :id identity) parameters))
+        tag-name->param-id (into {} (map (juxt (comp second :target) :parameter_id) parameter-mappings))
+        tag->param         (reduce (fn [m tag-name]
+                                     (when-let [param-id (get tag-name->param-id tag-name)]
+                                       (assoc m tag-name (get param-id->param param-id))))
+                                   {}
+                                   tag-names)]
+    (update-in dashcard [:visualization_settings :text] shared.params/substitute-tags tag->param (public-settings/site-locale) (escape-markdown-chars? dashcard))))
+
+(defn execute-dashboard-subscription-card
+  "Returns subscription result for a card.
+
+  This function should be executed under pulse's creator permissions."
+  [{:keys [card_id dashboard_id] :as dashcard} parameters]
+  (try
+    (when-let [card (t2/select-one :model/Card :id card_id :archived false)]
+      (let [multi-cards    (dashboard-card/dashcard->multi-cards dashcard)
+            result-fn      (fn [card-id]
+                             {:card     (if (= card-id (:id card))
+                                          card
+                                          (t2/select-one :model/Card :id card-id))
+                              :dashcard dashcard
+                              ;; TODO should this be dashcard?
+                              :type     :card
+                              :result   (qp.dashboard/process-query-for-dashcard
+                                         :dashboard-id  dashboard_id
+                                         :card-id       card-id
+                                         :dashcard-id   (u/the-id dashcard)
+                                         :context       :dashboard-subscription
+                                         :export-format :api
+                                         :parameters    parameters
+                                         :constraints   {}
+                                         :middleware    {:process-viz-settings?             true
+                                                         :js-int-to-string?                 false
+                                                         :add-default-userland-constraints? false}
+                                         :make-run      (fn make-run [qp _export-format]
+                                                          (^:once fn* [query info]
+                                                            (qp
+                                                             (qp/userland-query query info)
+                                                             nil))))})
+            result         (result-fn card_id)
+            series-results (mapv (comp result-fn :id) multi-cards)]
+        (when-not (and (get-in dashcard [:visualization_settings :card.hide_empty])
+                       (is-card-empty? (assoc card :result (:result result))))
+          (update result :dashcard assoc :series-results series-results))))
+    (catch Throwable e
+      (log/warnf e "Error running query for Card %s" (:card_id dashcard)))))
+
 (defn- dashcard->part
   "Given a dashcard returns its part based on its type.
 
@@ -117,7 +181,7 @@
   (cond
     (:card_id dashcard)
     (let [parameters (merge-default-values parameters)]
-      (pu/execute-dashboard-subscription-card dashcard parameters))
+      (execute-dashboard-subscription-card dashcard parameters))
 
     (virtual-card-of-type? dashcard "iframe")
     nil
@@ -136,7 +200,7 @@
     :else
     (let [parameters (merge-default-values parameters)]
       (some-> dashcard
-              (pulse-params/process-virtual-dashcard parameters)
+              (process-virtual-dashcard parameters)
               escape-heading-markdown
               :visualization_settings
               (assoc :type :text)))))
@@ -177,7 +241,44 @@
                            (dashcards->part cards parameters))))))
       (dashcards->part (t2/select :model/DashboardCard :dashboard_id dashboard-id) parameters))))
 
+;; TODO - this should be done async
+;; TODO - this and `execute-multi-card` should be made more efficient: eg. we query for the card several times
 (mu/defn execute-card :- [:maybe Part]
   "Returns the result for a card."
-  [& args]
-  (apply pu/execute-card args))
+  [creator-id :- pos-int?
+   card-id :- pos-int?
+   & {:as options}]
+  (try
+    (when-let [{query     :dataset_query
+                metadata  :result_metadata
+                card-type :type
+                :as       card} (t2/select-one :model/Card :id card-id, :archived false)]
+      (let [query         (assoc query :async? false)
+            process-fn (if (= :pivot (:display card))
+                         qp.pivot/run-pivot-query
+                         qp/process-query)
+            process-query (fn []
+                            (binding [qp.perms/*card-id* card-id]
+                              (process-fn
+                               (qp/userland-query
+                                (assoc query
+                                       :middleware {:skip-results-metadata?            true
+                                                    :process-viz-settings?             true
+                                                    :js-int-to-string?                 false
+                                                    :add-default-userland-constraints? false})
+                                (merge (cond-> {:executed-by creator-id
+                                                :context     :pulse
+                                                :card-id     card-id}
+                                         (= card-type :model)
+                                         (assoc :metadata/model-metadata metadata))
+                                       {:visualization-settings (:visualization_settings card)}
+                                       options)))))
+            result        (if creator-id
+                            (mw.session/with-current-user creator-id
+                              (process-query))
+                            (process-query))]
+        {:card   card
+         :result result
+         :type   :card}))
+    (catch Throwable e
+      (log/warnf e "Error running query for Card %s" card-id))))

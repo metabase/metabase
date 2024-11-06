@@ -4,8 +4,8 @@
    [clj-http.client :as http]
    [java-time.api :as t]
    [metabase.channel.core :as channel]
+   [metabase.channel.render.core :as channel.render]
    [metabase.channel.shared :as channel.shared]
-   [metabase.pulse.core :as pulse]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -88,7 +88,7 @@
                                            :question_name (:name card)
                                            :question_url  (urls/card-url (:id card))
                                            :visualization (let [{:keys [card dashcard result]} card_part]
-                                                            (pulse/render-pulse-card-to-base64
+                                                            (channel.render/render-pulse-card-to-base64
                                                              (channel.shared/defaulted-timezone card) card dashcard result image-width))
                                            :raw_data      (qp-result->raw-data (:result card_part))}
                       :sent_at            (t/offset-date-time)}]
