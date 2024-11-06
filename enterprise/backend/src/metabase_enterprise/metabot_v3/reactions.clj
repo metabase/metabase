@@ -108,11 +108,6 @@
    [:type [:= :metabot.reaction/change-display-type]]
    [:display-type [:enum "pie" "table" "bar" "line" "row" "area" "scalar"]]])
 
-(defreaction :metabot.reaction/sort-query
-  [:map
-   [:column :string]
-   [:direction {:optional true} [:enum "asc" "desc"]]])
-
 (defreaction :metabot.reaction/goto-question
   [:map
    [:type [:= :metabot.reaction/goto-question]]
@@ -136,3 +131,13 @@
   [:map
    [:type [:= :metabot.reaction/writeback]]
    [:message :string]])
+
+(defreaction :metabot.reaction/aggregate-query
+  [:map
+   [:operator :string]
+   [:column :string]])
+
+(defreaction :metabot.reaction/sort-query
+  [:map
+   [:column :string]
+   [:direction [:enum "asc" "desc"]]])

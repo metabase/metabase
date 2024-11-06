@@ -77,10 +77,16 @@ export type MetabotApiCallReaction = {
   };
 };
 
+export type MetabotAggregateQueryReaction = {
+  type: "metabot.reaction/aggregate-query";
+  operator: string;
+  column: string;
+};
+
 export type MetabotSortQueryReaction = {
   type: "metabot.reaction/sort-query";
   column: string;
-  direction?: "asc" | "desc";
+  direction: "asc" | "desc";
 };
 
 export type MetabotReaction =
@@ -90,6 +96,7 @@ export type MetabotReaction =
   | MetabotConfirmationReaction
   | MetabotWriteBackReaction
   | MetabotApiCallReaction
+  | MetabotAggregateQueryReaction
   | MetabotSortQueryReaction;
 
 /* Metabot v3 - API Request Types */
