@@ -1,11 +1,10 @@
 import { search } from "@inquirer/prompts";
-import toggle from "inquirer-toggle";
 import ora from "ora";
 
 import type { CliStepMethod } from "embedding-sdk/cli/types/cli";
 import type { Settings } from "metabase-types/api/settings";
 
-import { CLI_SHOWN_DB_ENGINES } from "../constants/database";
+import { CLI_SHOWN_DB_ENGINES, SAMPLE_DB_ID } from "../constants/database";
 import { addDatabaseConnection } from "../utils/add-database-connection";
 import { askForDatabaseConnectionInfo } from "../utils/ask-for-db-connection-info";
 import { fetchInstanceSettings } from "../utils/fetch-instance-settings";
@@ -15,14 +14,12 @@ export const addDatabaseConnectionStep: CliStepMethod = async state => {
     instanceUrl: state.instanceUrl ?? "",
   });
 
-  const hasDatabase = await toggle({
-    message:
-      "Do you have a database to connect to? This will be used to embed your data.",
-    default: true,
-  });
-
-  if (!hasDatabase || !settings || !settings.engines) {
+  if (!settings || !settings.engines) {
     return [{ type: "error", message: "Aborted." }, state];
+  }
+
+  if (state.useSampleDatabase) {
+    return [{ type: "success" }, { ...state, databaseId: SAMPLE_DB_ID }];
   }
 
   const engineChoices = getEngineChoices(settings);

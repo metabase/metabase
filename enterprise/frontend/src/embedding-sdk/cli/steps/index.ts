@@ -3,6 +3,7 @@ export * from "./create-api-key";
 export * from "./generate-credentials";
 export * from "./poll-metabase-instance";
 export * from "./setup-metabase-instance";
+export * from "./ask-if-has-database";
 export * from "./show-metabase-cli-title";
 export * from "./start-local-metabase-container";
 export * from "./check-if-react-project";
