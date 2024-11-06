@@ -109,15 +109,14 @@ For setting the maximum, see [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_ap
   "Tell c3p0 to log a stack trace for any connections killed due to exceeding the timeout specified in
   [[jdbc-data-warehouse-unreturned-connection-timeout-seconds]].
 
-  Note: even if this value is set to true, the exceptions are not logged by default because we set the com.mchange log
-  level to ERROR in our log4j2.xml config, and c3p0 logs the exceptions at INFO level. You need to update the
-  com.mchange log level to INFO via a custom log4j config in order to see the stack traces in the logs."
+  Note: You also need to update the com.mchange log level to INFO or higher in the log4j configs in order to see the
+  stack traces in the logs."
   :visibility :internal
   :type       :boolean
   :default    false
   :export?    false
   :setter     :none
-  :doc        false)
+  :doc        false) ; This setting is documented in other-env-vars.md.
 
 (defmethod data-warehouse-connection-pool-properties :default
   [driver database]
@@ -170,10 +169,6 @@ For setting the maximum, see [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_ap
    ;; is applications that occasionally fail to return Connections, leading to pool growth, and eventually
    ;; exhaustion (when the pool hits maxPoolSize with all Connections checked-out and lost). This parameter should
    ;; only be set while debugging, as capturing the stack trace will slow down every Connection check-out.
-   ;;
-   ;; N.B. Even if this is set to true, these exceptions are not actually logged by default because we set the
-   ;; com.mchange log level to ERROR in our log4j2.xml config, and c3p0 logs the exceptions at INFO level. Therefore,
-   ;; you need to update the log level to INFO via a custom log4j config in order to see the stack traces in the logs.
    ;;
    ;; As noted in the C3P0 docs, this does add some overhead to create the Exception at Connection checkout.
    ;; criterium/quick-bench indicates this is ~600ns of overhead per Exception created on my laptop, which is small
