@@ -5,10 +5,46 @@ import type {
   MetabotAggregateQueryReaction,
   MetabotBreakoutQueryReaction,
   MetabotLimitQueryReaction,
+  MetabotRelativeDateFilterQueryReaction,
   MetabotSortQueryReaction,
 } from "metabase-types/api";
 
 import type { ReactionHandler } from "./types";
+
+export const relativeDateFilterQuery: ReactionHandler<
+  MetabotRelativeDateFilterQueryReaction
+> =
+  reaction =>
+  async ({ dispatch, getState }) => {
+    const question = getQuestion(getState());
+    if (!question) {
+      return;
+    }
+
+    const query = question.query();
+    const stageIndex = -1;
+    const columns = Lib.filterableColumns(query, stageIndex);
+    const column = columns.find(
+      column =>
+        Lib.displayInfo(query, stageIndex, column).displayName ===
+        reaction.column,
+    );
+    if (!column) {
+      return;
+    }
+
+    const newClause = Lib.relativeDateFilterClause({
+      column,
+      value: reaction.value,
+      bucket: reaction.unit,
+      offsetValue: null,
+      offsetBucket: null,
+      options: {},
+    });
+    const newQuery = Lib.filter(query, stageIndex, newClause);
+    const newQuestion = question.setQuery(newQuery);
+    await dispatch(updateQuestion(newQuestion, { run: true }));
+  };
 
 export const aggregateQuery: ReactionHandler<MetabotAggregateQueryReaction> =
   reaction =>

@@ -1,0 +1,29 @@
+{
+  "name": "relative-date-filter-query",
+  "description": "Applies a relative date filter to the current query. This filter is relative to the current moment of time. Examples are last 2 months, this year, next 5 weeks.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "column": {
+        "type": "string",
+        "description": "The column to apply filter for. Choose an appropriate column name based on user input from filterable_columns.date list."
+      },
+      "direction": {
+        "type": "string",
+        "description": "The direction of the date interval. Possible values are last, current, next. Last means intervals in the past, like last 30 days. Current means intervals including this moment, like this week. Next means intervals in the future, like next 2 months.",
+        "enum": ["last", "current", "next"]
+      },
+      "value": {
+        "type": "number",
+        "description": "How long the date range is, in units of time. Example: for 'last 5 weeks' the value is 5, for 'next 3 years' the value is 3. For current intervals there is no value and it should be set to zero."
+      },
+      "unit": {
+        "type": "string",
+        "description": "Unit of time used for the date interval.",
+        "enum": ["day", "week", "month", "quarter", "year"]
+      }
+    },
+    "additionalProperties": false,
+    "required": ["column", "direction", "value", "unit"]
+  }
+}

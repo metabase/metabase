@@ -7,6 +7,7 @@ import {
   aggregateQuery,
   breakoutQuery,
   limitQuery,
+  relativeDateFilterQuery,
   sortQuery,
 } from "./queries";
 import type { ReactionHandler } from "./types";
@@ -31,6 +32,7 @@ export const reactionHandlers: ReactionHandlers = {
   "metabot.reaction/message": showMessage,
   "metabot.reaction/api-call": apiCall,
   "metabot.reaction/writeback": writeBack,
+  "metabot.reaction/relative-date-filter-query": relativeDateFilterQuery,
   "metabot.reaction/aggregate-query": aggregateQuery,
   "metabot.reaction/breakout-query": breakoutQuery,
   "metabot.reaction/sort-query": sortQuery,

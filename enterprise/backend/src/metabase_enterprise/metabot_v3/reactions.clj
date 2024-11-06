@@ -132,6 +132,12 @@
    [:type [:= :metabot.reaction/writeback]]
    [:message :string]])
 
+(defreaction :metabot.reaction/relative-date-filter-query
+  [:map
+   [:column :string]
+   [:value [:or [:enum "current"] integer?]]
+   [:unit [:enum "day", "week", "month", "quarter", "year"]]])
+
 (defreaction :metabot.reaction/aggregate-query
   [:map
    [:operator :string]

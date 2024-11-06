@@ -77,6 +77,13 @@ export type MetabotApiCallReaction = {
   };
 };
 
+export type MetabotRelativeDateFilterQueryReaction = {
+  type: "metabot.reaction/relative-date-filter-query";
+  column: string;
+  value: number | "current";
+  unit: "day" | "week" | "month" | "quarter" | "year";
+};
+
 export type MetabotAggregateQueryReaction = {
   type: "metabot.reaction/aggregate-query";
   operator: string;
@@ -106,6 +113,7 @@ export type MetabotReaction =
   | MetabotConfirmationReaction
   | MetabotWriteBackReaction
   | MetabotApiCallReaction
+  | MetabotRelativeDateFilterQueryReaction
   | MetabotAggregateQueryReaction
   | MetabotBreakoutQueryReaction
   | MetabotSortQueryReaction

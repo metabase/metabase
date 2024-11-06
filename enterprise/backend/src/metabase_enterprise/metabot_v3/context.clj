@@ -5,6 +5,7 @@
    [metabase.config :as config]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib.types.isa :as lib.types.isa]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
@@ -57,15 +58,20 @@
   [{query :current_query :as context}]
   (merge context
          (when query
-           (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (:database query))
-                 query (lib/query metadata-provider query)
-                 aggregation-operators (lib/available-aggregation-operators query)]
+           (let [metadata-provider     (lib.metadata.jvm/application-database-metadata-provider (:database query))
+                 query                 (lib/query metadata-provider query)
+                 aggregation-operators (lib/available-aggregation-operators query)
+                 filterable-columns    (lib/filterable-columns query)]
              {:current_query
               {:aggregation_operators (mapv (fn [operator]
                                               {:operator (lib/display-name query operator)
                                                :columns (mapv #(lib/display-name query %)
                                                               (lib/aggregation-operator-columns operator))})
                                             aggregation-operators)
+               :filterable_columns {:date (into []
+                                                (comp (filter lib.types.isa/date-or-datetime?)
+                                                      (map #(lib/display-name query %)))
+                                                filterable-columns)}
                :breakoutable_columns  (mapv #(lib/display-name query %)
                                             (lib/breakoutable-columns query))
                :orderable_columns     (mapv #(lib/display-name query %)
