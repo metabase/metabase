@@ -14,6 +14,7 @@ import {
   getDatasets,
   getDraggedItem,
   getVisualizationType,
+  getVisualizerComputedSettings,
   setDisplay,
   setDraggedItem,
 } from "metabase/visualizer/visualizer.slice";
@@ -28,6 +29,7 @@ import { VisualizationPicker } from "../VisualizationPicker";
 
 export const VisualizerPage = () => {
   const display = useSelector(getVisualizationType);
+  const settings = useSelector(getVisualizerComputedSettings);
   const draggedItem = useSelector(getDraggedItem);
   const dispatch = useDispatch();
 
@@ -53,11 +55,11 @@ export const VisualizerPage = () => {
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
       if (display) {
-        handleVisualizerDragEnd(display, { event, dispatch });
+        handleVisualizerDragEnd(display, { event, settings, dispatch });
       }
       dispatch(setDraggedItem(null));
     },
-    [display, dispatch],
+    [display, settings, dispatch],
   );
 
   const handleChangeDisplay = useCallback(
