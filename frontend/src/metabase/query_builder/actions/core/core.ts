@@ -8,6 +8,7 @@ import Questions from "metabase/entities/questions";
 import Revision from "metabase/entities/revisions";
 import { shouldOpenInBlankWindow } from "metabase/lib/dom";
 import { createThunkAction } from "metabase/lib/redux";
+import { isNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
 import { copy } from "metabase/lib/utils";
 import { loadMetadataForCard } from "metabase/questions/actions";
@@ -22,6 +23,14 @@ import {
   cardIsEquivalent,
   cardQueryIsEquivalent,
 } from "metabase-lib/v1/queries/utils/card";
+import type {
+  Card,
+  Database,
+  DatasetQuery,
+  ParameterId,
+  ParameterValuesMap,
+} from "metabase-types/api";
+import type { Dispatch, GetState } from "metabase-types/store";
 
 import { trackNewQuestionSaved } from "../../analytics";
 import {
@@ -65,21 +74,27 @@ export const reloadCard = createThunkAction(RELOAD_CARD, () => {
 
     dispatch(resetQB());
 
+    if (!outdatedQuestion) {
+      return;
+    }
+
     const action = await dispatch(
       Questions.actions.fetch({ id: outdatedQuestion.id() }, { reload: true }),
     );
     const card = Questions.HACK_getObjectFromAction(action);
 
-    // We need to manually massage the paramters into the parameterValues shape,
+    // We need to manually massage the parameters into the parameterValues shape,
     // to be able to pass them to new Question.
     // We could use _parameterValues here but prefer not to use internal fields.
-    const parameterValues = outdatedQuestion.parameters().reduce(
-      (acc, next) => ({
-        ...acc,
-        [next.id]: next.value,
-      }),
-      {},
-    );
+    const parameterValues: ParameterValuesMap = outdatedQuestion
+      .parameters()
+      .reduce(
+        (acc, next) => ({
+          ...acc,
+          [next.id]: next.value,
+        }),
+        {},
+      );
 
     const question = new Question(
       card,
@@ -110,8 +125,11 @@ export const reloadCard = createThunkAction(RELOAD_CARD, () => {
  *     - `navigateToNewCardInsideQB` is being called (see below)
  */
 export const SET_CARD_AND_RUN = "metabase/qb/SET_CARD_AND_RUN";
-export const setCardAndRun = (nextCard, { shouldUpdateUrl = true } = {}) => {
-  return async (dispatch, getState) => {
+export const setCardAndRun = (
+  nextCard: Card,
+  { shouldUpdateUrl = true } = {},
+) => {
+  return async (dispatch: Dispatch, getState: GetState) => {
     // clone
     const card = copy(nextCard);
 
@@ -183,25 +201,30 @@ export const navigateToNewCardInsideQB = createThunkAction(
 
 // DEPRECATED, still used in a couple places
 export const setDatasetQuery =
-  (datasetQuery, options) => (dispatch, getState) => {
+  (datasetQuery: DatasetQuery) => (dispatch: Dispatch, getState: GetState) => {
     if (datasetQuery instanceof Query) {
       datasetQuery = datasetQuery.datasetQuery();
     }
 
     const question = getQuestion(getState());
-    dispatch(updateQuestion(question.setDatasetQuery(datasetQuery), options));
+
+    if (!question) {
+      return;
+    }
+
+    dispatch(updateQuestion(question.setDatasetQuery(datasetQuery)));
   };
 
 export const API_CREATE_QUESTION = "metabase/qb/API_CREATE_QUESTION";
-export const apiCreateQuestion = question => {
-  return async (dispatch, getState) => {
+export const apiCreateQuestion = (question: Question) => {
+  return async (dispatch: Dispatch, getState: GetState) => {
     const submittableQuestion = getSubmittableQuestion(getState(), question);
     const createdQuestion = await reduxCreateQuestion(
       submittableQuestion,
       dispatch,
     );
 
-    const databases = Databases.selectors.getList(getState());
+    const databases: Database[] = Databases.selectors.getList(getState());
     if (databases && !databases.some(d => d.is_saved_questions)) {
       dispatch({ type: Databases.actionTypes.INVALIDATE_LISTS_ACTION });
     }
@@ -224,12 +247,17 @@ export const apiCreateQuestion = question => {
     if (isModel || isMetric) {
       dispatch(runQuestionQuery());
     }
+
+    return createdQuestion;
   };
 };
 
 export { API_UPDATE_QUESTION };
-export const apiUpdateQuestion = (question, { rerunQuery } = {}) => {
-  return async (dispatch, getState) => {
+export const apiUpdateQuestion = (
+  question: Question,
+  { rerunQuery }: { rerunQuery?: boolean } = {},
+) => {
+  return async (dispatch: Dispatch, getState: GetState) => {
     const originalQuestion = getOriginalQuestion(getState());
     question = question || getQuestion(getState());
 
@@ -286,7 +314,7 @@ export const apiUpdateQuestion = (question, { rerunQuery } = {}) => {
 export const SET_PARAMETER_VALUE = "metabase/qb/SET_PARAMETER_VALUE";
 export const setParameterValue = createAction(
   SET_PARAMETER_VALUE,
-  (parameterId, value) => {
+  (parameterId: ParameterId, value: string | string[]) => {
     return { id: parameterId, value: normalizeValue(value) };
   },
 );
@@ -307,7 +335,7 @@ export const setParameterValueToDefault = createThunkAction(
   },
 );
 
-function normalizeValue(value) {
+function normalizeValue(value: string | string[]) {
   if (value === "") {
     return null;
   }
@@ -330,14 +358,14 @@ export const revertToRevision = createThunkAction(
   },
 );
 
-async function reduxCreateQuestion(question, dispatch) {
+async function reduxCreateQuestion(question: Question, dispatch: Dispatch) {
   const action = await dispatch(Questions.actions.create(question.card()));
   return question.setCard(Questions.HACK_getObjectFromAction(action));
 }
 
 async function reduxUpdateQuestion(
-  question,
-  dispatch,
+  question: Question,
+  dispatch: Dispatch,
   { excludeDatasetQuery = false, excludeVisualisationSettings = false },
 ) {
   const fullCard = question.card();
@@ -345,7 +373,7 @@ async function reduxUpdateQuestion(
   const keysToOmit = [
     excludeDatasetQuery ? "dataset_query" : null,
     excludeVisualisationSettings ? "visualization_settings" : null,
-  ].filter(Boolean);
+  ].filter(isNotNull);
 
   const card = _.omit(fullCard, ...keysToOmit);
 
