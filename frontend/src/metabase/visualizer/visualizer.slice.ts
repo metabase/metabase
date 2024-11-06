@@ -1,3 +1,4 @@
+import type { DragEndEvent } from "@dnd-kit/core";
 import {
   type PayloadAction,
   createSelector,
@@ -29,13 +30,14 @@ import type {
   VisualizerState,
 } from "metabase-types/store/visualizer";
 
-import { DROPPABLE_ID } from "./dnd/constants";
+import { DROPPABLE_ID } from "./constants";
 import {
   createDataSource,
   createDataSourceNameRef,
   createVisualizerColumnReference,
   getDataSourceIdFromNameRef,
   isDataSourceNameRef,
+  isDraggedColumnItem,
 } from "./utils";
 
 const initialState: VisualizerState = {
@@ -95,60 +97,19 @@ const visualizerSlice = createSlice({
   name: "visualizer",
   initialState,
   reducers: {
-    importColumn: (
-      state,
-      action: PayloadAction<{
-        column: DatasetColumn;
-        dataSource: VisualizerDataSource;
-        context?: string;
-      }>,
-    ) => {
-      const { column, dataSource, context } = action.payload;
+    handleDrop: (state, action: PayloadAction<DragEndEvent>) => {
+      state.draggedItem = null;
 
-      const columnRef = createVisualizerColumnReference(
-        dataSource,
-        column,
-        state.referencedColumns,
-      );
-
-      state.referencedColumns.push(columnRef);
-
-      if (state.display === "funnel" && isNumeric(column)) {
-        const metric = getVisualizerMetricColumn({ visualizer: state });
-        const dimension = getVisualizerDimensionColumn({ visualizer: state });
-        if (metric.column && dimension.column) {
-          state.columns[metric.index] = connectToVisualizerColumn(
-            metric.column,
-            columnRef.name,
-          );
-          state.columns[dimension.index] = connectToVisualizerColumn(
-            dimension.column,
-            createDataSourceNameRef(dataSource.id),
-          );
-        }
+      if (!state.display) {
+        return;
       }
 
-      if (state.display && isCartesianChart(state.display)) {
-        if (context === DROPPABLE_ID.X_AXIS_WELL) {
-          const dimension = getVisualizerDimensionColumn({ visualizer: state });
-          if (dimension.column) {
-            state.columns[dimension.index] = mergeIntoVisualizerColumn(
-              dimension.column,
-              column,
-              columnRef.name,
-            );
-          }
-        }
-        if (context === DROPPABLE_ID.Y_AXIS_WELL) {
-          const metric = getVisualizerMetricColumn({ visualizer: state });
-          if (metric.column) {
-            state.columns[metric.index] = mergeIntoVisualizerColumn(
-              metric.column,
-              column,
-              columnRef.name,
-            );
-          }
-        }
+      const event = action.payload;
+
+      if (isCartesianChart(state.display)) {
+        cartesianDropHandler(state, event);
+      } else if (state.display === "funnel") {
+        funnelDropHandler(state, event);
       }
     },
     setDisplay: (state, action: PayloadAction<VisualizationDisplay | null>) => {
@@ -325,7 +286,7 @@ const visualizerSlice = createSlice({
 });
 
 export const {
-  importColumn,
+  handleDrop,
   setDisplay,
   updateSettings,
   removeDataSource,
@@ -490,6 +451,74 @@ export const getVisualizerComputedSettings = createSelector(
   rawSeries =>
     rawSeries.length > 0 ? getComputedSettingsForSeries(rawSeries) : {},
 );
+
+type DropHandler = (state: VisualizerState, event: DragEndEvent) => void;
+
+const cartesianDropHandler: DropHandler = (state, { active, over }) => {
+  if (!over || !isDraggedColumnItem(active)) {
+    return;
+  }
+
+  const { column, dataSource } = active.data.current;
+  const columnRef = createVisualizerColumnReference(
+    dataSource,
+    column,
+    state.referencedColumns,
+  );
+
+  if (over.id === DROPPABLE_ID.X_AXIS_WELL) {
+    const dimension = getVisualizerDimensionColumn({ visualizer: state });
+    if (dimension.column) {
+      state.columns[dimension.index] = mergeIntoVisualizerColumn(
+        dimension.column,
+        column,
+        columnRef.name,
+      );
+      state.referencedColumns.push(columnRef);
+    }
+  }
+
+  if (over.id === DROPPABLE_ID.Y_AXIS_WELL) {
+    const metric = getVisualizerMetricColumn({ visualizer: state });
+    if (metric.column) {
+      state.columns[metric.index] = mergeIntoVisualizerColumn(
+        metric.column,
+        column,
+        columnRef.name,
+      );
+      state.referencedColumns.push(columnRef);
+    }
+  }
+};
+
+const funnelDropHandler: DropHandler = (state, { active, over }) => {
+  if (!over || !isDraggedColumnItem(active)) {
+    return;
+  }
+
+  const { column, dataSource } = active.data.current;
+  const columnRef = createVisualizerColumnReference(
+    dataSource,
+    column,
+    state.referencedColumns,
+  );
+
+  if (over.id === DROPPABLE_ID.CANVAS_MAIN && isNumeric(column)) {
+    const metric = getVisualizerMetricColumn({ visualizer: state });
+    const dimension = getVisualizerDimensionColumn({ visualizer: state });
+    if (metric.column && dimension.column) {
+      state.columns[metric.index] = connectToVisualizerColumn(
+        metric.column,
+        columnRef.name,
+      );
+      state.columns[dimension.index] = connectToVisualizerColumn(
+        dimension.column,
+        createDataSourceNameRef(dataSource.id),
+      );
+      state.referencedColumns.push(columnRef);
+    }
+  }
+};
 
 const VISUALIZER_METRIC_COL_NAME = "METRIC";
 const VISUALIZER_DIMENSION_COL_NAME = "DIMENSION";

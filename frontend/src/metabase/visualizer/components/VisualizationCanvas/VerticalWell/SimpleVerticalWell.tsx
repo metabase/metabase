@@ -1,7 +1,7 @@
 import { useDroppable } from "@dnd-kit/core";
 
 import { Flex, Text } from "metabase/ui";
-import { DROPPABLE_ID } from "metabase/visualizer/dnd/constants";
+import { DROPPABLE_ID } from "metabase/visualizer/constants";
 
 import { WellItem } from "../WellItem";
 

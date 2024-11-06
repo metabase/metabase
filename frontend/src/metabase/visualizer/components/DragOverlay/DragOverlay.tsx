@@ -1,5 +1,5 @@
 import { Box, type BoxProps } from "metabase/ui";
-import { DRAGGABLE_ID } from "metabase/visualizer/dnd/constants";
+import { DRAGGABLE_ID } from "metabase/visualizer/constants";
 import type { DraggedItem } from "metabase-types/store/visualizer";
 
 import { ColumnListItem } from "../DataManager";

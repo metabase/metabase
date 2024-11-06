@@ -1,12 +1,17 @@
-import visualizations from "metabase/visualizations";
+import type { Active } from "@dnd-kit/core";
+
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import type { DatasetColumn } from "metabase-types/api";
 import type {
+  DraggedColumn,
+  DraggedItem,
   VisualizerDataSource,
   VisualizerDataSourceId,
   VisualizerDataSourceType,
   VisualizerReferencedColumn,
 } from "metabase-types/store/visualizer";
+
+import { DRAGGABLE_ID } from "./constants";
 
 export function createDataSource(
   type: VisualizerDataSourceType,
@@ -53,8 +58,12 @@ export function getDataSourceIdFromNameRef(str: string) {
   return dataSourceId;
 }
 
-export const vizTypes = Array.from(visualizations).map(([vizType, viz]) => ({
-  label: viz.uiName,
-  value: vizType,
-  icon: viz.iconName,
-}));
+type DndItem = Omit<Active, "rect">;
+
+export function isDraggedColumnItem(item: DndItem): item is DraggedColumn {
+  return item.data?.current?.type === DRAGGABLE_ID.COLUMN;
+}
+
+export function isValidDraggedItem(item: DndItem): item is DraggedItem {
+  return isDraggedColumnItem(item);
+}

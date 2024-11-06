@@ -5,7 +5,7 @@ import { t } from "ttag";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Center, Flex, Text } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
-import { DROPPABLE_ID } from "metabase/visualizer/dnd/constants";
+import { DROPPABLE_ID } from "metabase/visualizer/constants";
 import {
   getDatasets,
   getVisualizationType,

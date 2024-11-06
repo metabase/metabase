@@ -9,13 +9,12 @@ import { useUnmount } from "react-use";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Box, Flex } from "metabase/ui";
-import { isValidDraggedItem } from "metabase/visualizer/dnd/guards";
-import { handleVisualizerDragEnd } from "metabase/visualizer/dnd/handlers";
+import { isValidDraggedItem } from "metabase/visualizer/utils";
 import {
   getDatasets,
   getDraggedItem,
   getVisualizationType,
-  getVisualizerComputedSettings,
+  handleDrop,
   resetVisualizer,
   setDisplay,
   setDraggedItem,
@@ -31,7 +30,6 @@ import { VisualizationPicker } from "../VisualizationPicker";
 
 export const VisualizerPage = () => {
   const display = useSelector(getVisualizationType);
-  const settings = useSelector(getVisualizerComputedSettings);
   const draggedItem = useSelector(getDraggedItem);
   const dispatch = useDispatch();
 
@@ -60,12 +58,9 @@ export const VisualizerPage = () => {
 
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
-      if (display) {
-        handleVisualizerDragEnd(display, { event, settings, dispatch });
-      }
-      dispatch(setDraggedItem(null));
+      dispatch(handleDrop(event));
     },
-    [display, settings, dispatch],
+    [dispatch],
   );
 
   const handleChangeDisplay = useCallback(

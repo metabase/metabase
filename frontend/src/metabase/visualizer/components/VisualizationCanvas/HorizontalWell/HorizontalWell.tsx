@@ -15,12 +15,18 @@ interface HorizontalWellProps extends FlexProps {
   onChangeSettings: (settings: VisualizationSettings) => void;
 }
 
-export function HorizontalWell({ display, ...props }: HorizontalWellProps) {
+export function HorizontalWell({
+  display,
+  onChangeSettings,
+  ...props
+}: HorizontalWellProps) {
   if (isCartesianChart(display)) {
     return <CartesianHorizontalWell {...props} />;
   }
   if (display === "funnel") {
-    return <FunnelHorizontalWell {...props} />;
+    return (
+      <FunnelHorizontalWell {...props} onChangeSettings={onChangeSettings} />
+    );
   }
   return null;
 }

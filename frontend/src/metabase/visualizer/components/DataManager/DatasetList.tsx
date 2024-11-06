@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Box, Flex, Icon, Text } from "metabase/ui";
-import { DRAGGABLE_ID } from "metabase/visualizer/dnd/constants";
+import { DRAGGABLE_ID } from "metabase/visualizer/constants";
 import {
   getDataSources,
   getDatasets,

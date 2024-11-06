@@ -3,7 +3,7 @@ import { useDroppable } from "@dnd-kit/core";
 import { useSelector } from "metabase/lib/redux";
 import { Flex, type FlexProps, Text } from "metabase/ui";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
-import { DROPPABLE_ID } from "metabase/visualizer/dnd/constants";
+import { DROPPABLE_ID } from "metabase/visualizer/constants";
 import { getVisualizerDimensionColumn } from "metabase/visualizer/visualizer.slice";
 
 import { WellItem } from "../WellItem";
