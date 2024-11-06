@@ -10,11 +10,11 @@ title: Now
 
 Let's say you have some project data, and you want to add a status column for each task. We'll assume today's date and time is November 22, 2022, 12:00:00.
 
-| Task     | Start                       | Deadline                    | Status          |
-|----------|-----------------------------|-----------------------------|-----------------|
-| Draft    | November 1, 2022, 12:00:00  | November 30, 2022, 12:00:00 | In progress     |
-| Review   | November 15, 2022, 12:00:00 | November 19, 2022, 12:00:00 | Needs extension |
-| Edit     | November 22, 2022, 12:00:00 | November 22, 2022, 12:00:00 | DUE RIGHT NOW!  |
+| Task   | Start                       | Deadline                    | Status          |
+| ------ | --------------------------- | --------------------------- | --------------- |
+| Draft  | November 1, 2022, 12:00:00  | November 30, 2022, 12:00:00 | In progress     |
+| Review | November 15, 2022, 12:00:00 | November 19, 2022, 12:00:00 | Needs extension |
+| Edit   | November 22, 2022, 12:00:00 | November 22, 2022, 12:00:00 | DUE RIGHT NOW!  |
 
 To mark a task in progress, you'd use the expression:
 
@@ -44,13 +44,13 @@ case(now >= [Start] AND now < [Deadline], "In progress",
 
 ## Data types
 
-| [Data type](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview#examples-of-data-types) | Returned by `now`  |
-| ----------------------- | -------------------- |
-| String                  | ❌                   |
-| Number                  | ❌                   |
-| Timestamp               | ✅                   |
-| Boolean                 | ❌                   |
-| JSON                    | ❌                   |
+| [Data type](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview#examples-of-data-types) | Returned by `now` |
+| ------------------------------------------------------------------------------------------------------------------------------ | ----------------- |
+| String                                                                                                                         | ❌                |
+| Number                                                                                                                         | ❌                |
+| Timestamp                                                                                                                      | ✅                |
+| Boolean                                                                                                                        | ❌                |
+| JSON                                                                                                                           | ❌                |
 
 `now` returns a `timestamp with time zone` if time zones are supported by your database, otherwise `now` returns a `timestamp without time zone`.
 
