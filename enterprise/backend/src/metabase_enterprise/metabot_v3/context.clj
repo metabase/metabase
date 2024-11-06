@@ -66,5 +66,7 @@
                                                :columns (mapv #(lib/display-name query %)
                                                               (lib/aggregation-operator-columns operator))})
                                             aggregation-operators)
+               :breakoutable_columns  (mapv #(lib/display-name query %)
+                                            (lib/breakoutable-columns query))
                :orderable_columns     (mapv #(lib/display-name query %)
                                             (lib/orderable-columns query))}}))))
