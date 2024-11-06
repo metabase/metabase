@@ -217,7 +217,7 @@
                                                                                   (assoc :collection_id "DoesNotExist")))))))]
                   (testing "ERROR /api/ee/serialization/import"
                     (let [res (binding [api.serialization/*additive-logging* false]
-                                (mt/user-http-request :crowberto :post 200 "ee/serialization/import"
+                                (mt/user-http-request :crowberto :post 500 "ee/serialization/import"
                                                       {:request-options {:headers {"content-type" "multipart/form-data"}}}
                                                       {:file ba}))
                           log (slurp (io/input-stream res))]
@@ -261,6 +261,13 @@
                                  "error_count" 1
                                  "models"      "Collection,Dashboard"}
                                 (-> (snowplow-test/pop-event-data-and-user-id!) last :data))))))))
+
+              (testing "Client error /api/ee/serialization/import"
+                (let [res (mt/user-http-request :crowberto :post 422 "ee/serialization/import"
+                                                {:request-options {:headers {"content-type" "multipart/form-data"}}}
+                                                {:file (.getBytes "not an archive" "UTF-8")})
+                      log (slurp (io/input-stream res))]
+                  (is (re-find #"Cannot unpack archive" log))))
 
               (mt/with-dynamic-redefs [serdes/extract-one (extract-one-error (:entity_id card)
                                                                              (mt/dynamic-value serdes/extract-one))]
