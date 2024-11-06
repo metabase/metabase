@@ -392,17 +392,31 @@
                    (send-email {:bcc ["2@metabase.com" "3@metabase.com"]
                                 :to ["4@metabase.com"]})))))))
 
-      (testing "skip throttling if the total number of recipients of an email exceed the limit"
-        (with-redefs [email/email-throttler (#'email/make-email-throttler 2)]
-          ;; sending is fine even tho the the limit is 2
-          (send-email {:to ["1@metabase.com"
-                            "2@metabase.com"]
-                       :bcc ["3@metabase.com"]})
-          (testing "but still max-out the limit"
-            (is (thrown-with-msg?
-                 Exception
-                 #"Too many attempts!.*"
-                 (send-email {:to ["2@metabase.com"]}))))))
+      (testing "if an email has # of recipients greater than the limit"
+        (testing "we skip throttle check if we haven't reached the limit"
+          (with-redefs [email/email-throttler (#'email/make-email-throttler 2)]
+            (send-email {:to ["1@metabase.com"]})
+            ;; this one got through because we haven't reached the limit
+            (send-email {:to ["2@metabase.com"
+                              "3@metabase.com"]
+                         :bcc ["4@metabase.com"]})
+            (testing "senidng another will fail because we maxed-out the limit"
+              (is (thrown-with-msg?
+                   Exception
+                   #"Too many attempts!.*"
+                   (send-email {:to ["5@metabase.com"]}))))))
+
+        (testing "still throttle if we already at limit"
+          (testing "we skip throttle check if we haven't reached the limit"
+            (with-redefs [email/email-throttler (#'email/make-email-throttler 2)]
+              ;; sending is fine even tho the the limit is 2
+              (send-email {:to ["1@metabase.com"]})
+              (send-email {:to ["2@metabase.com"]})
+              (testing "but still max-out the limit"
+                (is (thrown-with-msg?
+                     Exception
+                     #"Too many attempts!.*"
+                     (send-email {:to ["3@metabase.com"]}))))))))
 
       (testing "keep retrying will eventually send the email"
         (with-redefs [email/email-throttler (throttle/make-throttler

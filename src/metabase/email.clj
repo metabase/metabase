@@ -120,23 +120,33 @@
 (defn check-email-throttle
   "Check if the email throttler is enabled and if so, throttle the email sending based on the total number of recipients.
 
-  If the number of recipients exceeds the rate limit per second, we max-out the throttle limit but silience the exception.
-  This is to avoid creating regression bugs due to the throttling mechanism."
+  If an email has # of recipients greater than the rate limit:
+    a) Skip the throttle check if we haven't breached the rate limit yet.
+    b) If we have breached the rate limit, throttle like a normal email
+
+  We need a) to to avoid creating regression bugs due to the new throttling mechanism."
   [email]
   (when email-throttler
-    (let [recipients         (into #{} (mapcat email) [:to :bcc])
-          throttle-threshold (.attempts-threshold ^Throttler email-throttler)
-          throttle-check!    (fn []
-                               (dotimes [_ (count recipients)]
-                                 (throttle/check email-throttler true)))]
-      (if (> (count recipients) throttle-threshold)
-        (do
-         (log/warn "Email throttling is enabled and the number of recipients exceeds the rate limit per second. Skip throttling."
-                   {:email-subject  (:subject email)
-                    :recipients     (count recipients)
-                    :max-recipients throttle-threshold})
-         (u/ignore-exceptions (throttle-check!)))
-        (throttle-check!)))))
+    (when-some [recipients (into #{} (mapcat email) [:to :bcc])]
+      (let [throttle-threshold (.attempts-threshold ^Throttler email-throttler)
+            throttle-check!    (fn [ignore-if-not-breached?]
+                                 ;; check the the first time to see if we have breached the rate limit
+                                 (throttle/check email-throttler true)
+                                 (let [check-the-rest! (fn []
+                                                            ;; dec because we already checked once above
+                                                           (dotimes [_ (dec (count recipients))]
+                                                             (throttle/check email-throttler true)))]
+                                   (if ignore-if-not-breached?
+                                     (do
+                                      (log/warn "Email throttling is enabled and the number of recipients exceeds the rate limit per second. Skip throttling."
+                                                {:email-subject  (:subject email)
+                                                 :recipients     (count recipients)
+                                                 :max-recipients throttle-threshold})
+                                      (u/ignore-exceptions (check-the-rest!)))
+                                     (check-the-rest!))))]
+        (if (> (count recipients) throttle-threshold)
+          (throttle-check! true)
+          (throttle-check! false))))))
 
 ;; ## PUBLIC INTERFACE
 
