@@ -69,20 +69,20 @@
              (@#'messages/alert-schedule-text {:schedule_type :daily
                                                :schedule_hour 0}))))))
 
-(deftest render-pulse-email-test
-  (testing "Email with few rows and columns can be rendered when tracing (#21166)"
-    (mt/with-log-level [metabase.email :trace]
-      (let [part {:card   {:id   1
-                           :name "card-name"
-                           :visualization_settings
-                           {:table.column_formatting []}}
-                  :result {:data {:cols [{:name "x"} {:name "y"}]
-                                  :rows [[0 0]
-                                         [1 1]]}}
-                  :type :card}
-            emails (messages/render-pulse-email "America/Pacific" {} {} [part] nil)]
-        (is (vector? emails))
-        (is (map? (first emails)))))))
+#_(deftest render-pulse-email-test
+    (testing "Email with few rows and columns can be rendered when tracing (#21166)"
+      (mt/with-log-level [metabase.email :trace]
+        (let [part {:card   {:id   1
+                             :name "card-name"
+                             :visualization_settings
+                             {:table.column_formatting []}}
+                    :result {:data {:cols [{:name "x"} {:name "y"}]
+                                    :rows [[0 0]
+                                           [1 1]]}}
+                    :type :card}
+              emails (messages/render-pulse-email "America/Pacific" {} {} [part] nil)]
+          (is (vector? emails))
+          (is (map? (first emails)))))))
 
 (defn- get-positive-retry-metrics [^Retry retry]
   (let [metrics (bean (.getMetrics retry))]

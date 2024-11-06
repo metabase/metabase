@@ -13,7 +13,9 @@
  [notification.payload
   notification-payload
   Notification
-  NotificationPayload])
+  NotificationPayload]
+ [notification.send
+  send-notification-sync!])
 
 (def ^:dynamic *send-notification!*
   "The function to send a notification. Defaults to `notification.send/send-notification-async!`."

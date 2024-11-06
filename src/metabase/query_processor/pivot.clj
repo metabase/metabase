@@ -347,9 +347,32 @@
               qp.pipeline/*reduce*  (or reduce qp.pipeline/*reduce*)]
       (qp/process-query first-query rff))))
 
-(mu/defn- pivot-options :- ::pivot-opts
-  "Given a pivot table query and a card ID, looks at the `pivot_table.column_split` key in the card's visualization
-  settings and generates pivot-rows and pivot-cols to use for generating subqueries."
+(mu/defn- column-name-pivot-options :- ::pivot-opts
+  "Looks at the `pivot_table.column_split` key in the card's visualization settings and generates `pivot-rows` and
+  `pivot-cols` to use for generating subqueries. Supports column name-based settings only."
+  [query        :- [:map
+                    [:database ::lib.schema.id/database]]
+   viz-settings :- [:maybe :map]]
+  (let [{:keys [rows columns values]} (:pivot_table.column_split viz-settings)
+        metadata-provider  (or (:lib/metadata query)
+                               (lib.metadata.jvm/application-database-metadata-provider (:database query)))
+        query              (lib/query metadata-provider query)
+        index-in-breakouts (into {}
+                                 (comp (filter (comp #{:source/breakouts} :lib/source))
+                                       (map-indexed (fn [i column] [(:name column) i])))
+                                 (lib/returned-columns query))
+        process-columns    (fn process-columns [column-names]
+                             (when (seq column-names)
+                               (into [] (keep index-in-breakouts) column-names)))
+        pivot-opts         {:pivot-rows     (process-columns rows)
+                            :pivot-cols     (process-columns columns)
+                            :pivot-measures (process-columns values)}]
+    (when (some some? (vals pivot-opts))
+      pivot-opts)))
+
+(mu/defn- field-ref-pivot-options :- ::pivot-opts
+  "Looks at the `pivot_table.column_split` key in the card's visualization settings and generates `pivot-rows` and
+  `pivot-cols` to use for generating subqueries. Supports field ref-based settings only."
   [query        :- [:map
                     [:database ::lib.schema.id/database]]
    viz-settings :- [:maybe :map]]
@@ -386,6 +409,20 @@
                                        :pivot-measures (process-refs values)}]
     (when (some some? (vals pivot-opts))
       pivot-opts)))
+
+(mu/defn- pivot-options :- ::pivot-opts
+  "Looks at the `pivot_table.column_split` key in the card's visualization settings and generates `pivot-rows` and
+  `pivot-cols` to use for generating subqueries. Supports both column name and field ref-based settings.
+
+  Field ref-based visualization settings are considered legacy and are not used for new questions. To not break existing
+  questions we need to support both old- and new-style settings until they are fully migrated."
+  [query        :- [:map
+                    [:database ::lib.schema.id/database]]
+   viz-settings :- [:maybe :map]]
+  (let [{:keys [rows columns]} (:pivot_table.column_split viz-settings)]
+    (if (and (every? string? rows) (every? string? columns))
+      (column-name-pivot-options query viz-settings)
+      (field-ref-pivot-options query viz-settings))))
 
 (mu/defn- column-mapping-for-subquery :- ::pivot-column-mapping
   [num-canonical-cols            :- ::lib.schema.common/int-greater-than-or-equal-to-zero
