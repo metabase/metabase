@@ -768,16 +768,12 @@ describe("issue 31274", () => {
 
       secondTextCard().realHover();
 
-      visibleActionsPanel().should("have.length", 1);
-
       cy.log(
         "Make sure cypress can click the element, which means it is not covered by another",
       );
 
-      visibleActionsPanel().within(() => {
-        cy.icon("close").click({
-          position: "top",
-        });
+      visibleActionsPanel().should("have.length", 1).icon("close").click({
+        position: "top",
       });
 
       cy.findAllByTestId("dashcard").should("have.length", 2);
