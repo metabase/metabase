@@ -1,13 +1,19 @@
-import {
-  type UseEmbeddingSettingsIconColorsProps,
-  useEmbeddingSettingsIconColors,
-} from "../use-embedding-settings-icon-colors";
+import cx from "classnames";
 
-export const SdkIcon = ({ disabled }: UseEmbeddingSettingsIconColorsProps) => {
-  const { primary, secondary } = useEmbeddingSettingsIconColors({ disabled });
+import EmbeddingOptionS from "../EmbeddingOption.module.css";
+import type { EmbeddingOptionIconProps } from "../types";
 
+export const SdkIcon = ({ disabled }: EmbeddingOptionIconProps) => {
   return (
-    <svg width="40" height="32" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <svg
+      width="40"
+      height="32"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={cx(EmbeddingOptionS.EmbeddingOptionIcon, {
+        [EmbeddingOptionS.Disabled]: disabled,
+      })}
+    >
       <g clipPath="url(#a)">
         <rect
           x="1.25"
@@ -15,12 +21,12 @@ export const SdkIcon = ({ disabled }: UseEmbeddingSettingsIconColorsProps) => {
           width="37.5"
           height="29.5"
           rx="2.75"
-          stroke={secondary}
+          stroke="var(--mb-color-embedding-option-secondary)"
           strokeWidth="2.5"
         />
         <path
           d="M20 14.11c1.03 0 1.87.84 1.87 1.89 0 1-.84 1.85-1.87 1.85-1.03 0-1.87-.85-1.87-1.85 0-1.05.84-1.89 1.87-1.89ZM15.37 24c.63.38 2.01-.2 3.6-1.7-.52-.59-1.03-1.23-1.51-1.9a22.965 22.965 0 0 1-2.4-.36c-.51 2.14-.32 3.61.31 3.96Zm.71-5.74-.29-.51c-.11.29-.22.58-.29.86.27.06.57.11.88.16l-.3-.51Zm6.54-.76.81-1.5-.81-1.5c-.3-.53-.62-1-.91-1.47C21.17 13 20.6 13 20 13c-.6 0-1.17 0-1.71.03-.29.47-.61.94-.91 1.47l-.81 1.5.81 1.5c.3.53.62 1 .91 1.47.54.03 1.11.03 1.71.03.6 0 1.17 0 1.71-.03.29-.47.61-.94.91-1.47ZM20 10.78c-.19.22-.39.45-.59.72h1.18c-.2-.27-.4-.5-.59-.72Zm0 10.44c.19-.22.39-.45.59-.72h-1.18c.2.27.4.5.59.72ZM24.62 8c-.62-.38-2 .2-3.59 1.7.52.59 1.03 1.23 1.51 1.9.82.08 1.63.2 2.4.36.51-2.14.32-3.61-.32-3.96Zm-.7 5.74.29.51c.11-.29.22-.58.29-.86-.27-.06-.57-.11-.88-.16l.3.51Zm1.45-7.05c1.47.84 1.63 3.05 1.01 5.63 2.54.75 4.37 1.99 4.37 3.68 0 1.69-1.83 2.93-4.37 3.68.62 2.58.46 4.79-1.01 5.63-1.46.84-3.45-.12-5.37-1.95-1.92 1.83-3.91 2.79-5.38 1.95-1.46-.84-1.62-3.05-1-5.63-2.54-.75-4.37-1.99-4.37-3.68 0-1.69 1.83-2.93 4.37-3.68-.62-2.58-.46-4.79 1-5.63 1.47-.84 3.46.12 5.38 1.95 1.92-1.83 3.91-2.79 5.37-1.95ZM25.08 16c.34.75.64 1.5.89 2.26 2.1-.63 3.28-1.53 3.28-2.26 0-.73-1.18-1.63-3.28-2.26-.25.76-.55 1.51-.89 2.26Zm-10.16 0c-.34-.75-.64-1.5-.89-2.26-2.1.63-3.28 1.53-3.28 2.26 0 .73 1.18 1.63 3.28 2.26.25-.76.55-1.51.89-2.26Zm9 2.26-.3.51c.31-.05.61-.1.88-.16-.07-.28-.18-.57-.29-.86l-.29.51Zm-2.89 4.04c1.59 1.5 2.97 2.08 3.59 1.7.64-.35.83-1.82.32-3.96-.77.16-1.58.28-2.4.36-.48.67-.99 1.31-1.51 1.9Zm-4.95-8.56.3-.51c-.31.05-.61.1-.88.16.07.28.18.57.29.86l.29-.51Zm2.89-4.04C17.38 8.2 16 7.62 15.37 8c-.63.35-.82 1.82-.31 3.96a23.018 23.018 0 0 1 2.4-.36c.48-.67.99-1.31 1.51-1.9Z"
-          fill={primary}
+          fill="var(--mb-color-embedding-option-primary)"
         />
       </g>
     </svg>
