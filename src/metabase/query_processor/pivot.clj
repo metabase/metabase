@@ -357,13 +357,14 @@
         metadata-provider  (or (:lib/metadata query)
                                (lib.metadata.jvm/application-database-metadata-provider (:database query)))
         query              (lib/query metadata-provider query)
-        index-in-breakouts (into {}
-                                 (comp (filter (comp #{:source/breakouts} :lib/source))
-                                       (map-indexed (fn [i column] [(:name column) i])))
-                                 (lib/returned-columns query))
+        returned-columns   (lib/returned-columns query)
+        {:source/keys [aggregations breakouts]} (group-by :lib/source returned-columns)
+        column-name->index (into {}
+                                 (map-indexed (fn [i column] [(:name column) i]))
+                                 (concat breakouts aggregations))
         process-columns    (fn process-columns [column-names]
                              (when (seq column-names)
-                               (into [] (keep index-in-breakouts) column-names)))
+                               (into [] (keep column-name->index) column-names)))
         pivot-opts         {:pivot-rows     (process-columns rows)
                             :pivot-cols     (process-columns columns)
                             :pivot-measures (process-columns values)}]

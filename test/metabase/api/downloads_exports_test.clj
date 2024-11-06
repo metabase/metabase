@@ -1095,11 +1095,9 @@
                                                                                 [:avg [:field (mt/id :products :rating) {:base-type :type/Float}]]]
                                                                  :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]]}}
                                        :visualization_settings {:pivot_table.column_split
-                                                                {:rows    [[:field (mt/id :products :category) {:base-type :type/Text}]]
+                                                                {:rows    ["CATEGORY"]
                                                                  :columns []
-                                                                 :values  [[:aggregation 1]
-                                                                           [:aggregation 0]
-                                                                           [:aggregation 2]]}
+                                                                 :values  ["sum" "count" "avg"]}
                                                                 :column_settings
                                                                 {"[\"name\",\"count\"]" {:column_title "Count Renamed"}
                                                                  "[\"name\",\"sum\"]"   {:column_title "Sum Renamed"}
@@ -1134,10 +1132,9 @@
                                                                  :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]
                                                                                 [:field (mt/id :products :created_at) {:base-type :type/DateTime :temporal-unit :year}]]}}
                                        :visualization_settings {:pivot_table.column_split
-                                                                {:rows    [[:field (mt/id :products :created_at) {:base-type :type/DateTime :temporal-unit :year}]
-                                                                           [:field (mt/id :products :category) {:base-type :type/Text}]]
+                                                                {:rows    ["CREATED_AT" "CATEGORY"]
                                                                  :columns []
-                                                                 :values  [[:aggregation 0]]}
+                                                                 :values  ["count"]}
                                                                 :column_settings
                                                                 {"[\"name\",\"count\"]" {:column_title "Count Renamed"}}}}]
         (let [expected-header   ["Created At" "Category" "Count"]
