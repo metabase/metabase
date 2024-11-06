@@ -252,13 +252,20 @@
         ;; [[metabase.query-processor.middleware.add-dimension-projections]] pre-processing middleware adds keys to
         ;; track which Fields it adds or needs to remap, and then the post-processing middleware does the actual
         ;; remapping based on that info)
+        ;; :qp/ignore-coercion is for preprocessing only, and the FE shouldn't see it
         namespaced-options         (not-empty (into {}
                                                     (filter (fn [[k _v]]
-                                                              (and (keyword? k) (namespace k))))
+                                                              (and (not (#{:qp/ignore-coercion} k))
+                                                                   (keyword? k) (namespace k))))
                                                     opts))]
     ;; TODO -- I think we actually need two `:field_ref` columns -- one for referring to the Field at the SAME
     ;; level, and one for referring to the Field from the PARENT level.
-    (cond-> {:field_ref (mbql.u/remove-namespaced-options clause)}
+    (cond-> {:field_ref (-> clause
+                            mbql.u/remove-namespaced-options
+                            ;; original-temporal-unit is for the preprocessing phase only,
+                            ;; but has to survive conversions to and from legacy and pMBQL
+                            ;; it should not end up in the field reference
+                            (mbql.u/update-field-options dissoc :original-temporal-unit))}
       (:base-type opts)
       (assoc :base_type (:base-type opts))
 
