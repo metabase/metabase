@@ -1,0 +1,15 @@
+{
+  "name": "sort-query",
+  "description": "Sort the results of the current query.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "column": {
+        "type": "string",
+        "description": "The column to apply sorting for. Choose an appropriate column name based on user input from orderable_columns list."
+      }
+    },
+    "additionalProperties": false,
+    "required": ["column"]
+  }
+}

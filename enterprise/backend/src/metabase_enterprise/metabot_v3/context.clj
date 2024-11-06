@@ -3,6 +3,8 @@
    [cheshire.core :as json]
    [clojure.java.io :as io]
    [metabase.config :as config]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
@@ -52,6 +54,11 @@
 
   This should be a 'sparse' hydration rather than `SELECT * FROM dashboard WHERE id = 1` -- we should only include
   information needed for the LLM to do its thing rather than everything in the world."
-  [context :- ::context]
-  ;; TODO
-  context)
+  [{query :current_query :as context}]
+  (merge context
+         (when query
+           (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (:database query))
+                 query (lib/query metadata-provider query)]
+             {:current_query
+              {:orderable_columns (mapv #(lib/display-name query %)
+                                        (lib/orderable-columns query))}}))))

@@ -108,6 +108,10 @@
    [:type [:= :metabot.reaction/change-display-type]]
    [:display-type [:enum "pie" "table" "bar" "line" "row" "area" "scalar"]]])
 
+(defreaction :metabot.reaction/sort-query
+  [:map
+    [:column :string]])
+
 (defreaction :metabot.reaction/goto-question
   [:map
    [:type [:= :metabot.reaction/goto-question]]
