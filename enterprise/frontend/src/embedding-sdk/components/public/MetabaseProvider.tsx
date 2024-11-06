@@ -57,7 +57,7 @@ export const MetabaseProviderInternal = ({
   theme,
   store,
   className,
-  locale,
+  locale = "en",
 }: InternalMetabaseProviderProps): JSX.Element => {
   const { fontFamily } = theme ?? {};
   useInitData({ config });
