@@ -15,10 +15,3 @@ export const notifyUnknownReaction: ReactionHandler<
     dispatch(addUserMessage(t`Whoops, I actually can’t do this. Sorry.`));
   };
 };
-
-export const notifyUnkownError: ReactionHandler<void> = () => {
-  return ({ dispatch }) => {
-    dispatch(clearUserMessages());
-    dispatch(addUserMessage(t`I can’t do that, unfortunately.`));
-  };
-};
