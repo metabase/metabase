@@ -69,6 +69,55 @@
             (mt/run-mbql-query venues
               {:aggregation [[:count]]}))))))
 
+(deftest describe-fields-test
+  (mt/test-driver
+    :snowflake
+    (is (=? [{:name "id"
+              :database-type "NUMBER"
+              :database-required false
+              :database-is-auto-increment true
+              :base-type :type/Number
+              :json-unfolding false
+              :database-position 0
+              :pk? true}
+             {:name "name"
+              :database-type "VARCHAR"
+              :database-required false
+              :database-is-auto-increment false
+              :base-type :type/Text
+              :json-unfolding false
+              :database-position 1}
+             {:name "category_id"
+              :database-type "NUMBER"
+              :database-required false
+              :database-is-auto-increment false
+              :base-type :type/Number
+              :json-unfolding false
+              :database-position 2}
+             {:name "latitude"
+              :database-type "DOUBLE"
+              :database-required false
+              :database-is-auto-increment false
+              :base-type :type/Float
+              :json-unfolding false
+              :database-position 3}
+             {:name "longitude"
+              :database-type "DOUBLE"
+              :database-required false
+              :database-is-auto-increment false
+              :base-type :type/Float
+              :json-unfolding false
+              :database-position 4}
+             {:name "price"
+              :database-type "NUMBER"
+              :database-required false
+              :database-is-auto-increment false
+              :base-type :type/Number
+              :json-unfolding false
+              :database-position 5}]
+    (sort-by :database-position
+             (into [] (driver/describe-fields :snowflake (mt/db) {:table-names ["venues"]})))))))
+
 (deftest ^:parallel quote-name-test
   (is (nil? (#'driver.snowflake/quote-name nil)))
   (is (= "\"alma\"" (#'driver.snowflake/quote-name "alma")))

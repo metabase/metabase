@@ -6,6 +6,7 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [clojure.string :as str]
+   [honey.sql :as sql]
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.driver :as driver]
@@ -55,6 +56,7 @@
                               :convert-timezone                       true
                               :datetime-diff                          true
                               :identifiers-with-spaces                true
+                              :describe-fields                        true
                               :now                                    true}]
   (defmethod driver/database-supports? [:snowflake feature] [_driver _feature _db] supported?))
 
@@ -751,3 +753,26 @@
                   (not host) (assoc :host (str account ".snowflakecomputing.com"))
                   (not port) (assoc :port 443))]
     (driver/incorporate-ssh-tunnel-details :sql-jdbc details)))
+
+(defmethod sql-jdbc.sync/describe-fields-sql :snowflake
+  [driver & {:keys [schema-names table-names details]}]
+  (sql/format {:select [[:c.COLUMN_NAME :name]
+                        [[:- :c.ORDINAL_POSITION [:inline 1]] :database-position]
+                        [:c.TABLE_SCHEMA :table-schema]
+                        [:c.TABLE_NAME :table-name]
+                        [[:upper :c.DATA_TYPE] :database-type]
+                        [[:!= :c.IDENTITY_GENERATION nil] :database-is-auto-increment]
+                        [[:and
+                          [:or [:= :COLUMN_DEFAULT nil] [:= [:lower :COLUMN_DEFAULT] [:inline "null"]]]
+                          [:= :IS_NULLABLE [:inline "NO"]]
+                          [:not [:!= :c.IDENTITY_GENERATION nil]]]
+                         :database-required]
+                        [[:= :c.IS_IDENTITY [:inline "YES"]] :pk?]
+                        [:c.*]
+                        [[:nullif :c.COMMENT [:inline ""]] :field-comment]]
+               :from [[[:raw (format "\"%s\".\"%s\".\"%s\"" (:db details) "INFORMATION_SCHEMA" "COLUMNS")] :c]]
+               :where
+               [:and [:not [:in :c.TABLE_SCHEMA [[:inline "INFORMATION_SCHEMA"]]]]
+                (when (seq schema-names) [:in [:lower :c.TABLE_SCHEMA] (map u/lower-case-en schema-names)])
+                (when (seq table-names) [:in [:lower :c.TABLE_NAME] (map u/lower-case-en table-names)])]}
+              :dialect (sql.qp/quote-style driver)))
