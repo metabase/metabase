@@ -2,11 +2,11 @@
   (:require
    [clojure.string :as str]
    [metabase.channel.core :as channel]
-   [metabase.channel.shared :as channel.shared]
+   [metabase.channel.render.core :as channel.render]
    ;; TODO: integrations.slack should be migrated to channel.slack
    [metabase.integrations.slack :as slack]
+   [metabase.models.params.shared :as shared.params]
    [metabase.public-settings :as public-settings]
-   [metabase.pulse.core :as pulse]
    [metabase.util.malli :as mu]
    [metabase.util.markdown :as markdown]
    [metabase.util.urls :as urls]))
@@ -32,25 +32,25 @@
                  :text {:type "mrkdwn"
                         :text (truncate-mrkdwn mrkdwn block-text-length-limit)}}]})))
 
-(defn- payload->attachment-data
-  [payload channel-id]
-  (case (:type payload)
+(defn- part->attachment-data
+  [part channel-id]
+  (case (:type part)
     :card
-    (let [{:keys [card dashcard result]}         payload
+    (let [{:keys [card dashcard result]}         part
           {card-id :id card-name :name :as card} card]
       {:title           (or (-> dashcard :visualization_settings :card.title)
                             card-name)
-       :rendered-info   (pulse/render-pulse-card :inline (channel.shared/defaulted-timezone card) card dashcard result)
+       :rendered-info   (channel.render/render-pulse-card :inline (channel.render/defaulted-timezone card) card dashcard result)
        :title_link      (urls/card-url card-id)
        :attachment-name "image.png"
        :channel-id      channel-id
        :fallback        card-name})
 
     :text
-    (text->markdown-block (:text payload))
+    (text->markdown-block (:text part))
 
     :tab-title
-    (text->markdown-block (format "# %s" (:text payload)))))
+    (text->markdown-block (format "# %s" (:text part)))))
 
 (def ^:private slack-width
   "Maximum width of the rendered PNG of HTML to be sent to Slack. Content that exceeds this width (e.g. a table with
@@ -71,7 +71,7 @@
                                 (if (:render/text rendered-info)
                                   (-> (f attachment-data)
                                       (assoc :text (:render/text rendered-info)))
-                                  (let [image-bytes (pulse/png-from-render-info rendered-info slack-width)
+                                  (let [image-bytes (channel.render/png-from-render-info rendered-info slack-width)
                                         image-url   (slack/upload-file! image-bytes attachment-name channel-id)]
                                     (-> (f attachment-data)
                                         (assoc :image_url image-url)))))))
@@ -95,12 +95,12 @@
 ;; ------------------------------------------------------------------------------------------------;;
 
 (mu/defmethod channel/render-notification [:channel/slack :notification/alert] :- [:sequential SlackMessage]
-  [_channel-type {:keys [payload card]} _template channel-ids]
+  [_channel-type {:keys [payload]} _template channel-ids]
   (let [attachments [{:blocks [{:type "header"
                                 :text {:type "plain_text"
-                                       :text (str "🔔 " (:name card))
+                                       :text (str "🔔 " (-> payload :card :name))
                                        :emoji true}}]}
-                     (payload->attachment-data payload (slack/files-channel))]]
+                     (part->attachment-data (:card_part payload) (slack/files-channel))]]
     (for [channel-id channel-ids]
       {:channel-id  channel-id
        :attachments attachments})))
@@ -112,13 +112,13 @@
 (defn- filter-text
   [filter]
   (truncate-mrkdwn
-   (format "*%s*\n%s" (:name filter) (pulse/value-string filter))
+   (format "*%s*\n%s" (:name filter) (shared.params/value-string filter (public-settings/site-locale)))
    attachment-text-length-limit))
 
 (defn- slack-dashboard-header
   "Returns a block element that includes a dashboard's name, creator, and filters, for inclusion in a
   Slack dashboard subscription"
-  [pulse dashboard]
+  [dashboard creator-name parameters]
   (let [header-section  {:type "header"
                          :text {:type "plain_text"
                                 :text (:name dashboard)
@@ -126,11 +126,10 @@
         link-section    {:type "section"
                          :fields [{:type "mrkdwn"
                                    :text (format "<%s | *Sent from %s by %s*>"
-                                                 (pulse/dashboard-url (:id dashboard) (pulse/parameters pulse dashboard))
+                                                 (urls/dashboard-url (:id dashboard) parameters)
                                                  (public-settings/site-name)
-                                                 (-> pulse :creator :common_name))}]}
-        filters         (pulse/parameters pulse dashboard)
-        filter-fields   (for [filter filters]
+                                                 creator-name)}]}
+        filter-fields   (for [filter parameters]
                           {:type "mrkdwn"
                            :text (filter-text filter)})
         filter-section  (when (seq filter-fields)
@@ -143,14 +142,16 @@
   [parts]
   (let [channel-id (slack/files-channel)]
     (for [part  parts
-          :let  [attachment (payload->attachment-data part channel-id)]
+          :let  [attachment (part->attachment-data part channel-id)]
           :when attachment]
       attachment)))
 
 (mu/defmethod channel/render-notification [:channel/slack :notification/dashboard-subscription] :- [:sequential SlackMessage]
-  [_channel-type {:keys [payload dashboard pulse]} _template channel-ids]
-  (for [channel-id channel-ids]
-    {:channel-id  channel-id
-     :attachments (remove nil?
-                          (flatten [(slack-dashboard-header pulse dashboard)
-                                    (create-slack-attachment-data payload)]))}))
+  [_channel-type {:keys [payload creator]} _template channel-ids]
+  (let [parameters (:parameters payload)
+        dashboard  (:dashboard payload)]
+    (for [channel-id channel-ids]
+      {:channel-id  channel-id
+       :attachments (remove nil?
+                            (flatten [(slack-dashboard-header dashboard (:common_name creator) parameters)
+                                      (create-slack-attachment-data (:dashboard_parts payload))]))})))

@@ -5,10 +5,11 @@
    [clojure.test :refer :all]
    [metabase-enterprise.test :as met]
    [metabase.api.alert :as api.alert]
-   [metabase.email.messages :as messages]
-   [metabase.models
-    :refer [Card Pulse PulseCard PulseChannel PulseChannelRecipient]]
+   [metabase.models :refer [Card Pulse PulseCard PulseChannel PulseChannelRecipient]]
    [metabase.models.pulse :as models.pulse]
+   [metabase.notification.payload.execute :as notification.payload.execute]
+   [metabase.notification.send :as notification.send]
+   [metabase.notification.test-util :as notification.tu]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.pulse.send :as pulse.send]
    [metabase.pulse.test-util :as pulse.test-util]
@@ -16,6 +17,10 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.tools.with-temp :as t2.with-temp]))
+
+(use-fixtures :each (fn [thunk]
+                      (notification.tu/with-send-notification-sync
+                        (thunk))))
 
 (set! *warn-on-reflection* true)
 
@@ -28,7 +33,7 @@
                 (t2.with-temp/with-temp [Card card {:dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
                   ;; `with-gtaps!` binds the current test user; we don't want that falsely affecting results
                   (mt/with-test-user nil
-                    (pulse.test-util/send-pulse-created-by-user! user-kw card)))))]
+                    (pulse.test-util/send-alert-created-by-user! user-kw card)))))]
       (is (= [[100]]
              (send-pulse-created-by-user! :crowberto)))
       (is (= [[10]]
@@ -47,7 +52,8 @@
                  PulseChannelRecipient _ {:pulse_channel_id (:id pc)
                                           :user_id          (mt/user->id :rasta)}]
     (mt/with-temporary-setting-values [email-from-address "metamailman@metabase.com"]
-      (-> (#'pulse.send/execute-pulse (models.pulse/retrieve-pulse pulse) nil) first :result))))
+      (let [pulse (models.pulse/retrieve-pulse pulse)]
+        (-> (notification.payload.execute/execute-card (:creator_id pulse) (-> pulse :cards first :id)) :result)))))
 
 (deftest dashboard-subscription-send-event-test
   (testing "When we send a pulse, we also log the event:"
@@ -68,15 +74,15 @@
                                          :user_id          (mt/user->id :rasta)}]
         (mt/with-temporary-setting-values [email-from-address "metamailman@metabase.com"]
           (mt/with-fake-inbox
-            (with-redefs [pulse.send/send-retrying!  (fn [_ _] :noop)]
+            (with-redefs [notification.send/channel-send-retrying!  (fn [_ _ _ _] :noop)]
               (mt/with-test-user :lucky
                 (pulse.send/send-pulse! pulse)))
             (is (= {:topic    :subscription-send
                     :user_id  (mt/user->id :crowberto)
                     :model    "Pulse"
                     :model_id (:id pulse)
-                    :details  {:recipients [[(dissoc (mt/fetch-user :rasta) :last_login :is_qbnewb :is_superuser :date_joined)]]
-                               :filters    []}}
+                    :details  {:recipients [(dissoc (mt/fetch-user :rasta) :last_login :is_qbnewb :is_superuser :date_joined)]
+                               :filters    nil}}
                    (mt/latest-audit-log-entry :subscription-send (:id pulse))))))))))
 
 (deftest alert-send-event-test
@@ -95,16 +101,14 @@
                                                         :user_id          (mt/user->id :rasta)}]
         (mt/with-temporary-setting-values [email-from-address "metamailman@metabase.com"]
           (mt/with-fake-inbox
-            (with-redefs [messages/render-pulse-email  (fn [_ _ _ [{:keys [result]}] _]
-                                                         [{:result result}])]
-              (mt/with-test-user :lucky
-                (pulse.send/send-pulse! pulse)))
+            (mt/with-test-user :lucky
+              (pulse.send/send-pulse! pulse))
             (is (= {:topic    :alert-send
                     :user_id  (mt/user->id :crowberto)
                     :model    "Pulse"
                     :model_id (:id pulse)
-                    :details  {:recipients [[(dissoc (mt/fetch-user :rasta) :last_login :is_qbnewb :is_superuser :date_joined)]]
-                               :filters    []}}
+                    :details  {:recipients [(dissoc (mt/fetch-user :rasta) :last_login :is_qbnewb :is_superuser :date_joined)]
+                               :filters    nil}}
                    (mt/latest-audit-log-entry :alert-send (:id pulse))))))))))
 
 (deftest e2e-sandboxed-pulse-test

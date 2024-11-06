@@ -1,12 +1,32 @@
 # Metabase embedded analytics SDK
 
-> This SDK is actively being developed. You can expect some changes to the API. The SDK currently only works with a specific version of Metabase.
+> This SDK is in public beta and actively being developed. You can expect some changes to the API, especially during the beta. The SDK currently only works with a Metabase 1.51 or higher.
 
 With Metabase's Embedded analytics SDK, you can embed individual [Metabase](https://www.metabase.com/) components with React (like standalone charts, dashboards, the query builder, and more). You can manage access and interactivity per component, and you have advanced customization for seamless styling.
 
 [Learn more](https://www.metabase.com/docs/latest/embedding/sdk/introduction).
 
-## Installation
+## Installing Metabase Enterprise Edition
+
+You can run Metabase Pro on a Cloud plan (with a free trial)](https://www.metabase.com/pricing).
+
+Or run it locally. Here's a docker one-liner:
+
+```sh
+docker run -d -p 3000:3000 --name metabase metabase/metabase-enterprise:latest
+```
+
+You can also [download the JAR](https://downloads.metabase.com/enterprise/latest/metabase.jar), and run it like so:
+
+```sh
+java -jar metabase.jar
+```
+
+By default, Metabase will run at `http://localhost:3000`.
+
+If you get stuck, check out our [installation docs](https://www.metabase.com/docs/latest/installation-and-operation/installing-metabase).
+
+## Installing the SDK
 
 You can install Metabase Embedded analytics SDK for React via npm:
 
@@ -19,6 +39,14 @@ or using yarn:
 ```bash
 yarn add @metabase/embedding-sdk-react
 ```
+
+## Which SDK version to use
+
+The SDK version tracks with the Metabase version.
+
+So, for example, if you're on Metabase version `1.51.x`, you should use the SDK with the tag `51-stable`.
+
+See [Versioning](https://www.metabase.com/docs/latest/embedding/sdk/version).
 
 ## Docs
 

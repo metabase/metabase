@@ -21,6 +21,7 @@ To see what's new, check out all the [major release announcements](https://www.m
 
 - [v1.51.2](https://github.com/metabase/metabase/releases/tag/v1.51.2)
 - [v1.51.1](https://github.com/metabase/metabase/releases/tag/v1.51.1)
+- [v1.50.32](https://github.com/metabase/metabase/releases/tag/v1.50.32)
 - [v1.50.31](https://github.com/metabase/metabase/releases/tag/v1.50.31)
 - [v1.50.30](https://github.com/metabase/metabase/releases/tag/v1.50.30)
 - [v1.50.29](https://github.com/metabase/metabase/releases/tag/v1.50.29)
@@ -214,6 +215,7 @@ To see what's new, check out all the [major release announcements](https://www.m
 
 - [v0.51.2](https://github.com/metabase/metabase/releases/tag/v0.51.2)
 - [v0.51.1](https://github.com/metabase/metabase/releases/tag/v0.51.1)
+- [v0.50.32](https://github.com/metabase/metabase/releases/tag/v0.50.32)
 - [v0.50.31](https://github.com/metabase/metabase/releases/tag/v0.50.31)
 - [v0.50.30](https://github.com/metabase/metabase/releases/tag/v0.50.30)
 - [v0.50.29](https://github.com/metabase/metabase/releases/tag/v0.50.29)

@@ -1166,7 +1166,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
       visualization_settings: {
         "pivot_table.column_split": {
           rows: ["CATEGORY", "EAN"],
-          columns: ["count"],
+          columns: [],
           values: ["count"],
         },
       },
