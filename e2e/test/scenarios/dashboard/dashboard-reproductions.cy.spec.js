@@ -12,6 +12,7 @@ import {
   appBar,
   assertDatasetReqIsSandboxed,
   assertQueryBuilderRowCount,
+  assertTabSelected,
   cartesianChartCircle,
   closeDashboardInfoSidebar,
   closeDashboardSettingsSidebar,
@@ -762,7 +763,11 @@ describe("issue 31274", () => {
       visitDashboard(dashboard.id);
       editDashboard(dashboard.id);
 
-      getDashboardCard(1).realHover();
+      assertTabSelected("Tab 1");
+
+      getDashboardCard(1).realHover({
+        scrollBehavior: "top", // prevents flaky tests
+      });
 
       cy.log(
         "Make sure cypress can click the element, which means it is not covered by another",
