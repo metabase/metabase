@@ -358,7 +358,7 @@
                                (lib.metadata.jvm/application-database-metadata-provider (:database query)))
         query              (lib/query metadata-provider query)
         returned-columns   (lib/returned-columns query)
-        {:source/keys [aggregations breakouts]} (group-by :lib/source returned-columns)
+        {:keys [aggregations breakouts]} (group-by :lib/source returned-columns)
         column-name->index (into {}
                                  (map-indexed (fn [i column] [(:name column) i]))
                                  (concat breakouts aggregations))
