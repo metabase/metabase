@@ -162,6 +162,8 @@ Dashboards are a fixed aspect ratio, so if you'd like to ensure they're automati
 ></iframe>
 ```
 
+Note: we recommend that you use up to version 4.3.2 of iframe-resizer on your application due to licensing changes after that
+
 ## Custom destinations on dashboards in static embeds
 
 You can only use the **URL** option for [custom destinations](..//dashboards/interactive.md#custom-destinations) on dashboards with static embedding. External URLs will open in a new tab or window.
