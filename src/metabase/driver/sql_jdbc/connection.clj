@@ -9,6 +9,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
+   [metabase.logger :as logger]
    [metabase.models.interface :as mi]
    [metabase.models.setting :as setting]
    [metabase.query-processor.pipeline :as qp.pipeline]
@@ -22,7 +23,8 @@
    [toucan2.core :as t2])
   (:import
    (com.mchange.v2.c3p0 DataSources)
-   (javax.sql DataSource)))
+   (javax.sql DataSource)
+   (org.apache.logging.log4j Level)))
 
 (set! *warn-on-reflection* true)
 
@@ -178,7 +180,13 @@ For setting the maximum, see [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_ap
    ;; compared to the overhead added by testConnectionCheckout, above. The memory usage will depend on the size of the
    ;; stack trace, but clj-memory-meter reports ~800 bytes for a fresh Exception created at the REPL (which presumably
    ;; has a smaller-than-average stack).
-   "debugUnreturnedConnectionStackTraces" (jdbc-data-warehouse-debug-unreturned-connection-stack-traces)
+   "debugUnreturnedConnectionStackTraces" (u/prog1 (jdbc-data-warehouse-debug-unreturned-connection-stack-traces)
+                                            (when (and <> (not (logger/level-enabled? 'com.mchange Level/INFO)))
+                                              (log/warn "jdbc-data-warehouse-debug-unreturned-connection-stack-traces"
+                                                        "is enabled, but INFO logging is not enabled for the"
+                                                        "com.mchange namespace. You must raise the log level for"
+                                                        "com.mchange to INFO via a custom log4j config in order to"
+                                                        "see stacktraces in the logs.")))
    ;; Set the data source name so that the c3p0 JMX bean has a useful identifier, which incorporates the DB ID, driver,
    ;; and name from the details
    "dataSourceName"               (format "db-%d-%s-%s"

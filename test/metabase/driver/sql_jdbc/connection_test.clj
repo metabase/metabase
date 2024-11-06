@@ -253,6 +253,29 @@
                (sql-jdbc.conn/jdbc-data-warehouse-debug-unreturned-connection-stack-traces))
             (str "setting=" setting))))))
 
+(deftest debug-unreturned-connection-stack-traces-misconfigured-c3p0-log-warning-test
+  (testing "We should log a warning if debug stack traces are enabled but c3p0 INFO logs are not (#47981)\n"
+    ;; kondo thinks the c3p0-log-level binding is unused
+    #_{:clj-kondo/ignore [:unused-binding]}
+    (letfn [(warning-found? [warnings]
+              (boolean (some #(str/includes?
+                               (:message %)
+                               "You must raise the log level for com.mchange to INFO")
+                             warnings)))
+            (warnings-logged? [c3p0-log-level setting warning-expected?]
+              (mt/with-temp-env-var-value! [mb-jdbc-data-warehouse-debug-unreturned-connection-stack-traces setting]
+                (mt/with-log-level [com.mchange c3p0-log-level]
+                  (mt/with-log-messages-for-level [warnings :warn]
+                    (and (= setting
+                            (get (sql-jdbc.conn/data-warehouse-connection-pool-properties :h2 (mt/db))
+                                 "debugUnreturnedConnectionStackTraces"))
+                         (= warning-expected? (warning-found? (warnings))))))))]
+      (are [c3p0-log-level setting warning-expected?] (warnings-logged? c3p0-log-level setting warning-expected?)
+        :error true  true
+        :error false false
+        :info  true  false
+        :info  false false))))
+
 (defn- init-h2-tcp-server [port]
   (let [args   ["-tcp" "-tcpPort", (str port), "-tcpAllowOthers" "-tcpDaemon"]
         server (Server/createTcpServer (into-array args))]
