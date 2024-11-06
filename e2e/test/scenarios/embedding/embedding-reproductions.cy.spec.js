@@ -1033,7 +1033,7 @@ describe("issue 8490", () => {
 
     createDashboardWithQuestions({
       dashboardDetails: {
-        name: "Dashboard",
+        name: "Dashboard to test locale",
         enable_embedding: true,
       },
       questions: [
@@ -1056,14 +1056,17 @@ describe("issue 8490", () => {
             "graph.metrics": ["count"],
           },
           display: "bar",
+          enable_embedding: true,
         },
       ],
     }).then(({ dashboard, questions: [question] }) => {
       cy.wrap(dashboard.id).as("dashboardId");
+      cy.wrap(question.id).as("questionId");
     });
   });
 
   it("static embeddings should respect `#locale` hash in the URL (metabase#8490)", () => {
+    cy.log("test a static embedded dashboard");
     cy.get("@dashboardId").then(dashboardId => {
       visitEmbeddedPage(
         {
@@ -1084,6 +1087,32 @@ describe("issue 8490", () => {
 
       // PDF export
       cy.findByText("PDF로 내보내기").should("be.visible");
+
+      // Powered by
+      cy.findByText("제공:").should("be.visible");
+
+      // Aggregation "count"
+      cy.findByText("카운트").should("be.visible");
+    });
+
+    cy.log("test a static embedded question");
+    cy.get("@questionId").then(questionId => {
+      visitEmbeddedPage(
+        {
+          resource: { question: questionId },
+          params: {},
+        },
+        {
+          additionalHashOptions: {
+            locale: "ko",
+          },
+        },
+      );
+    });
+
+    cy.findByTestId("embed-frame").within(() => {
+      // X-axis labels: Jan 2023
+      cy.findByText("4월 2022").should("be.visible");
 
       // Powered by
       cy.findByText("제공:").should("be.visible");
