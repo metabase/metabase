@@ -16,19 +16,24 @@ You can export the results of a question as:
 - .csv
 - .xlsx
 - .json
+- .png (if a chart)
 
+You can choose between downloading the results as:
 
-If you don't see this option, you may not have [permissions to download results](../../permissions/data.md#download-results-permissions).
+- **Formatted**: With any [formatting changes](../../data-modeling/formatting.md) you've applied in Metabase.
+- **Unformatted**: Metabase will export the raw results of the question without applying any of the [formatting you applied](../../data-modeling/formatting.md) to the columns in the question. For example, if you formatted a floating point number to display only the first two decimal digits in the table results, exporting the unformatted results would include additional decimal digits (if any) found in the raw results.
+
+If you don't see the option to export results, you may not have [permissions to download results](../../permissions/data.md#download-results-permissions).
+
+### Exporting pivot tables
+
+If you're exporting a pivot table, you'll have the option to keep the table pivoted. By default, Metabase will export the unpivoted results.
 
 ### Maximum number of rows you can download
 
 You can download up to 1 million rows.
 
-### Exporting unformatted results
-
-You can export the unformatted results of a question by holding the `option` key on a Mac or the `Alt` key on PC when selecting the file format for your download.
-
-Metabase will export the raw results of a question without applying any of the [formatting you applied](../../data-modeling/formatting.md) to the columns in the question. For example, if you formatted a floating point number to display only the first two decimal digits in the table results, exporting the unformatted results would include additional decimal digits (if any) found in the raw results.
+You can change this limit with an environment variable: [`MB_DOWNLOAD_ROW_LIMIT`](../../configuring-metabase/environment-variables.md).
 
 ## Exporting data via a public link
 

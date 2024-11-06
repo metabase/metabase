@@ -2,6 +2,7 @@ import { t } from "ttag";
 
 import ExternalLink from "metabase/core/components/ExternalLink";
 import Link from "metabase/core/components/Link";
+import { PLUGIN_MODERATION } from "metabase/plugins";
 import { Box, Flex, Icon, Text } from "metabase/ui";
 
 import type { PaletteActionImpl } from "../types";
@@ -70,16 +71,18 @@ export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
           <Text component="span" c="inherit" lh="1rem">
             {item.name}
           </Text>
-          {item.extra?.isVerified && (
-            <Icon
-              name="verified_filled"
+          {item.extra?.moderatedStatus && (
+            <PLUGIN_MODERATION.ModerationStatusIcon
+              status={item.extra.moderatedStatus}
+              filled
+              size={14}
               color={
                 active ? "var(--mb-color-text-white)" : "var(--mb-color-brand)"
               }
               style={{
-                verticalAlign: "sub",
-                marginLeft: "0.25rem",
+                verticalAlign: "text-bottom",
               }}
+              ml="0.5rem"
             />
           )}
           {subtext && (

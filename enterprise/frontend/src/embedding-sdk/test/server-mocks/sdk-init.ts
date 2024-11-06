@@ -1,4 +1,3 @@
-import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
   setupCurrentUserEndpoint,
   setupPropertiesEndpoints,
@@ -38,13 +37,12 @@ export const setupSdkState = ({
   tokenFeatures?: TokenFeatures;
   settingDefinitions?: SettingDefinition[];
   sdkState?: SdkState;
-} & Partial<SdkStoreState>) => {
+} & Partial<SdkStoreState> = {}) => {
   const settingValuesWithToken = {
     ...settingValues,
     "token-features": tokenFeatures,
   };
 
-  setupEnterprisePlugins();
   setupCurrentUserEndpoint(currentUser);
   setupSettingsEndpoints(settingDefinitions);
   setupPropertiesEndpoints(settingValuesWithToken);

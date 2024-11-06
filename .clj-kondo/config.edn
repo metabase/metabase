@@ -130,7 +130,7 @@
      metabase.channel.core/send!
      metabase.models.notification/create-notification!
      metabase.driver.sql-jdbc.execute/execute-prepared-statement!
-     metabase.pulse/send-pulse!
+     metabase.pulse.send/send-pulse!
      metabase.query-processor.store/store-database!
      next.jdbc/execute!}}
 
@@ -298,7 +298,8 @@
     metabase.audit                 #{metabase.audit}
     metabase.bootstrap             #{metabase.bootstrap}
     metabase.cmd                   #{}                                                              ; there are no namespaces here since you shouldn't be using this in any other module.
-    metabase.channel               #{metabase.channel.core}
+    metabase.channel               #{metabase.channel.core
+                                     metabase.channel.render.core}
     metabase.config                #{metabase.config}
     metabase.core                  #{metabase.core.initialization-status}                           ; TODO -- only namespace used outside of EE, this probably belongs in `metabase.server` anyway since that's the only place it's used.
     metabase.db                    #{metabase.db
@@ -307,7 +308,8 @@
                                      metabase.db.setup}                                             ; TODO these are only calling `metabase.db.setup/setup-db!` and there's a slightly different version in `metabase.db`
     metabase.driver                :any                                                             ; TODO -- 19 namespaces!!!! CRY
     metabase.email                 #{metabase.email
-                                     metabase.email.messages}                                       ; TODO -- consolidate these into a real API namespace.
+                                     metabase.email.messages
+                                     metabase.email.result-attachment}                              ; TODO -- consolidate these into a real API namespace.
     metabase.embed                 #{metabase.embed.settings}
     metabase.events                #{metabase.events}
     metabase.formatter             #{metabase.formatter}
@@ -325,20 +327,14 @@
     metabase.metabot               #{metabase.metabot}
     metabase.models                :any                                                             ; TODO -- scream, 62 namespaces used elsewhere, but to be fair a lot of these don't *need* to be required.
     metabase.moderation            #{metabase.moderation}
-    metabase.notification          #{metabase.notification.core}
+    metabase.notification          #{metabase.notification.core
+                                     metabase.notification.payload.core}
     metabase.permissions           #{metabase.permissions.util}                                     ; TODO -- this is currently the only namespace in this module. Give it a real API namespace?
     metabase.plugins               #{metabase.plugins
                                      metabase.plugins.classloader}                                  ; TODO -- not 100% sure the classloader belongs here
     metabase.public-settings       #{metabase.public-settings
                                      metabase.public-settings.premium-features}
-    metabase.pulse                 #{metabase.pulse
-                                     metabase.pulse.markdown
-                                     metabase.pulse.parameters
-                                     metabase.pulse.preview
-                                     metabase.pulse.render
-                                     metabase.pulse.render.image-bundle
-                                     metabase.pulse.render.js-svg
-                                     metabase.pulse.render.style}                                   ; TODO -- consolidate these into a real API namespace.
+    metabase.pulse                 #{metabase.pulse.core}
     metabase.query-processor       :any                                                             ; TODO omg scream, 29 namespaces used outside of the module. WHAT THE HECC
     metabase.query-analysis        #{metabase.query-analysis
                                      metabase.query-analysis.failure-map}
@@ -552,6 +548,7 @@
     metabase.api.util                                             api.util
     metabase.async.streaming-response.thread-pool                 thread-pool
     metabase.channel.core                                         channel
+    metabase.channel.render.core                                  channel.render
     metabase.cmd.copy.h2                                          copy.h2
     metabase.config                                               config
     metabase.config.file                                          config.file
@@ -622,7 +619,7 @@
     metabase.models.permissions-group-membership                  perms-group-membership
     metabase.models.permissions-revision                          perms-revision
     metabase.models.permissions.parse                             perms-parse
-    metabase.models.pulse                                         pulse
+    metabase.models.pulse                                         models.pulse
     metabase.models.pulse-channel                                 pulse-channel
     metabase.models.pulse-channel-recipient                       pulse-channel-recipient
     metabase.models.query.permissions                             query-perms
@@ -634,8 +631,7 @@
     metabase.plugins.initialize                                   plugins.init
     metabase.public-settings                                      public-settings
     metabase.public-settings.premium-features                     premium-features
-    metabase.pulse                                                pulse ; NB some conflicts with metabase.models.pulse
-    metabase.pulse.markdown                                       markdown
+    metabase.pulse.core                                           pulse
     metabase.pulse.render                                         render
     metabase.pulse.render.body                                    body
     metabase.pulse.render.style                                   style
@@ -720,6 +716,7 @@
     metabase.util.macros                                          u.macros
     metabase.util.malli                                           mu
     metabase.util.malli.schema                                    ms
+    metabase.util.markdown                                        markdown
     metabase.util.password                                        u.password
     metabase.util.schema                                          su
     metabase.util.ui-logic                                        ui-logic
@@ -771,7 +768,7 @@
   metabase.models.setting/defsetting                                                    clj-kondo.lint-as/def-catch-all
   metabase.public-settings.premium-features/defenterprise-schema                        clj-kondo.lint-as/def-catch-all
   metabase.public-settings.premium-features/define-premium-feature                      clojure.core/def
-  metabase.pulse-test/with-pulse-for-card                                               clojure.core/let
+  metabase.pulse.send-test/with-pulse-for-card                                          clojure.core/let
   metabase.query-processor-test.pipeline-queries-test/pmbql-query                       clojure.core/->
   metabase.query-processor-test.pipeline-queries-test/run-pmbql-query                   clojure.core/->
   metabase.query-processor.error-type/deferror                                          clojure.core/def

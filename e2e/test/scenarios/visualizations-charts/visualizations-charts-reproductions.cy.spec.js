@@ -7,6 +7,7 @@ import {
   cartesianChartCircle,
   chartPathWithFillColor,
   createQuestion,
+  describeEE,
   echartsContainer,
   editDashboard,
   filter,
@@ -24,9 +25,11 @@ import {
   saveDashboard,
   saveSavedQuestion,
   selectFilterOperator,
+  setTokenFeatures,
   sidebar,
   summarize,
   testPairedTooltipValues,
+  updateSetting,
   visitAlias,
   visitDashboard,
   visitQuestionAdhoc,
@@ -1205,5 +1208,57 @@ describe("issue 43077", () => {
     cy.findAllByTestId("legend-item").first().click();
 
     cy.wait(100).then(() => expect(cardRequestSpy).not.to.have.been.called);
+  });
+});
+
+describeEE("issue 49160", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+    setTokenFeatures("all");
+  });
+
+  it("pie chart should have a placeholder", () => {
+    visitQuestionAdhoc({
+      dataset_query: {
+        type: "query",
+        query: {
+          "source-table": PRODUCTS_ID,
+        },
+        database: SAMPLE_DB_ID,
+      },
+      display: "pie",
+    });
+
+    // Shows pie placeholder
+    echartsContainer().findByText("18,760").should("be.visible");
+    cy.findByTestId("qb-header-action-panel").findByText("Summarize").click();
+
+    cy.findByLabelText("Rating").click();
+    echartsContainer().findByText("200").should("be.visible");
+    echartsContainer().findByText("TOTAL").should("be.visible");
+  });
+
+  it("pie chart should work when instance colors have overrides", () => {
+    updateSetting("application-colors", { "accent0-light": "#98b4ce" });
+
+    visitQuestionAdhoc({
+      dataset_query: {
+        type: "query",
+        query: {
+          "source-table": PRODUCTS_ID,
+          aggregation: [["count"]],
+          breakout: [["field", PRODUCTS.CATEGORY, null]],
+        },
+        database: SAMPLE_DB_ID,
+      },
+      display: "pie",
+    });
+
+    echartsContainer().findByText("200").should("be.visible");
+
+    cy.findByTestId("viz-settings-button").click();
+
+    leftSidebar().findByText("Gizmo");
   });
 });

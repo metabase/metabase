@@ -92,6 +92,14 @@
      (mbql.u/wrap-field-id-if-needed field)
      (parse-param-value-for-type query param-type param-value (mbql.u/unwrap-field-or-expression-clause field))]))
 
+(defn- update-breakout-unit-in [query subkey target-field-id temporal-unit new-unit]
+  (lib.util.match/replace-in
+    query [:query subkey]
+    [(tag :guard #{:field :expression})
+     (_ :guard #(= target-field-id %))
+     (opts :guard #(= temporal-unit (:temporal-unit %)))]
+    [tag target-field-id (assoc opts :temporal-unit new-unit)]))
+
 (defn- update-breakout-unit
   [query
    {[_dimension [_field target-field-id {:keys [base-type temporal-unit]}]] :target
@@ -107,12 +115,9 @@
                        :is-curated true
                        :base-type  base-type
                        :unit       new-unit})))
-    (lib.util.match/replace-in
-      query [:query :breakout]
-      [(tag :guard #{:field :expression})
-       (_ :guard #(= target-field-id %))
-       (opts :guard #(= temporal-unit (:temporal-unit %)))]
-      [tag target-field-id (assoc opts :temporal-unit new-unit)])))
+    (-> query
+        (update-breakout-unit-in :breakout target-field-id temporal-unit new-unit)
+        (update-breakout-unit-in :order-by target-field-id temporal-unit new-unit))))
 
 (defn expand
   "Expand parameters for MBQL queries in `query` (replacing Dashboard or Card-supplied params with the appropriate

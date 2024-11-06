@@ -1,0 +1,54 @@
+{{> metabase/email/_dashsub_alert_header }}
+  <body style="padding: 0px">
+    <table class="background" width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #F9F9F9; padding: 20px; table-layout: fixed;">
+      <tr>
+        <td>
+          <div class="container" style="background-color: white; max-width: 555px; border-radius: 24px; margin: 0 auto; padding: 30px;">
+            <table class="header">
+              <tr>
+                <td width="28px">
+                  <img class="icon" style="padding-top: 4px; padding-right: 16px; width: 100%; height: auto; max-width: 20px" src="cid:{{computed.icon_cid}}"/>
+                </td>
+                <td>
+                  <a class="title" href="{{computed.card_url}}" style="font-size: 20px; font-weight: 700; padding-bottom: 4px;">
+                    {{payload.card.name}}
+                  </a>
+                </td>
+              </tr>
+              <tr>
+                <td>&#8202;</td>
+                <td>
+                  <div style="color: {{payload.style.color_text_dark}}; font-size: 14px">
+                    {{computed.alert_schedule}}
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td>&#8202;</td>
+                <td>
+                  <div class="sender" style="color: {{payload.style.color_text_light}}; font-size: 12px">
+                    Sent by {{creator.common_name}}
+                  </div>
+                </td>
+              </tr>
+            </table>
+            {{{computed.alert_content}}}
+            <p style="color: {{payload.style.color_text_medium}}; font-size: 12px; font-weight: 400">
+            {{computed.alert_condition}}
+            </p>
+            {{#payload.alert.alert_first_only}}
+              <p style="color: {{payload.style.color_text_medium}}; font-size: 12px; font-weight: 400">
+              We’ll stop sending you alerts about this question now.
+              </p>
+            {{/payload.alert.alert_first_only}}
+            <hr>
+            <div class="footer" style="font-size: 11px; width: max-content; margin: 0 auto">
+              Sent from <a href="{{context.site_url}}" style="color: {{context.application_color}}">{{context.site_url}}</a>.
+              <a href="{{computed.management_url}}" style="color: {{context.application_color}}">{{computed.management_text}}</a>
+            </div>
+          </div>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

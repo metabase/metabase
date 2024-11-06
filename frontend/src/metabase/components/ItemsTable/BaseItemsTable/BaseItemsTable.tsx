@@ -1,6 +1,7 @@
 import type { HTMLAttributes, PropsWithChildren } from "react";
 import { useMemo } from "react";
 
+import type { CollectionContentTableColumnsMap } from "metabase/collections/components/CollectionContent";
 import type {
   CreateBookmark,
   DeleteBookmark,
@@ -119,7 +120,7 @@ export type BaseItemsTableProps = {
   ItemComponent?: (props: ItemRendererProps) => JSX.Element;
   includeColGroup?: boolean;
   onClick?: (item: CollectionItem) => void;
-  showActionMenu?: boolean;
+  visibleColumnsMap: CollectionContentTableColumnsMap;
 } & Partial<Omit<HTMLAttributes<HTMLTableElement>, "onCopy" | "onClick">>;
 
 export const BaseItemsTable = ({
@@ -145,7 +146,7 @@ export const BaseItemsTable = ({
   isInDragLayer = false,
   ItemComponent = DefaultItemRenderer,
   includeColGroup = true,
-  showActionMenu = true,
+  visibleColumnsMap,
   onClick,
   ...props
 }: BaseItemsTableProps) => {
@@ -158,11 +159,13 @@ export const BaseItemsTable = ({
       {includeColGroup && (
         <colgroup>
           {canSelect && <Columns.Select.Col />}
-          <Columns.Type.Col />
-          <Columns.Name.Col isInDragLayer={isInDragLayer} />
-          <Columns.LastEditedBy.Col />
-          <Columns.LastEditedAt.Col />
-          {showActionMenu && <Columns.ActionMenu.Col />}
+          {visibleColumnsMap["type"] && <Columns.Type.Col />}
+          {visibleColumnsMap["name"] && (
+            <Columns.Name.Col isInDragLayer={isInDragLayer} />
+          )}
+          {visibleColumnsMap["lastEditedBy"] && <Columns.LastEditedBy.Col />}
+          {visibleColumnsMap["lastEditedAt"] && <Columns.LastEditedAt.Col />}
+          {visibleColumnsMap["actionMenu"] && <Columns.ActionMenu.Col />}
           <Columns.RightEdge.Col />
         </colgroup>
       )}
@@ -181,25 +184,33 @@ export const BaseItemsTable = ({
                 onSelectNone={onSelectNone}
               />
             )}
-            <Columns.Type.Header
-              sortingOptions={sortingOptions}
-              onSortingOptionsChange={onSortingOptionsChange}
-            />
-            <Columns.Name.Header
-              sortingOptions={sortingOptions}
-              onSortingOptionsChange={onSortingOptionsChange}
-            />
-            <Columns.LastEditedBy.Header
-              sortingOptions={sortingOptions}
-              onSortingOptionsChange={onSortingOptionsChange}
-              isTrashed={isTrashed}
-            />
-            <Columns.LastEditedAt.Header
-              sortingOptions={sortingOptions}
-              onSortingOptionsChange={onSortingOptionsChange}
-              isTrashed={isTrashed}
-            />
-            {showActionMenu && <Columns.ActionMenu.Header />}
+            {visibleColumnsMap["type"] && (
+              <Columns.Type.Header
+                sortingOptions={sortingOptions}
+                onSortingOptionsChange={onSortingOptionsChange}
+              />
+            )}
+            {visibleColumnsMap["name"] && (
+              <Columns.Name.Header
+                sortingOptions={sortingOptions}
+                onSortingOptionsChange={onSortingOptionsChange}
+              />
+            )}
+            {visibleColumnsMap["lastEditedBy"] && (
+              <Columns.LastEditedBy.Header
+                sortingOptions={sortingOptions}
+                onSortingOptionsChange={onSortingOptionsChange}
+                isTrashed={isTrashed}
+              />
+            )}
+            {visibleColumnsMap["lastEditedAt"] && (
+              <Columns.LastEditedAt.Header
+                sortingOptions={sortingOptions}
+                onSortingOptionsChange={onSortingOptionsChange}
+                isTrashed={isTrashed}
+              />
+            )}
+            {visibleColumnsMap["actionMenu"] && <Columns.ActionMenu.Header />}
             <Columns.RightEdge.Header />
           </tr>
         </thead>
@@ -220,7 +231,7 @@ export const BaseItemsTable = ({
         onMove={onMove}
         onToggleSelected={onToggleSelected}
         onClick={onClick}
-        showActionMenu={showActionMenu}
+        visibleColumnsMap={visibleColumnsMap}
       />
     </Table>
   );

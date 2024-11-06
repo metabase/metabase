@@ -149,18 +149,19 @@
 
 (deftest delete-template-set-null-on-existing-handlers-test
   (testing "if a channel template is deleted, then set null on existing notification_handler"
-    (mt/with-temp [:model/Channel         chn-1   (assoc api.channel-test/default-test-channel :name "Channel 1")
-                   :model/ChannelTemplate tmpl-1 {:channel_type (:type chn-1)}]
-      (let [noti (models.notification/create-notification!
-                  default-system-event-notification
-                  [default-user-invited-subscription]
-                  [{:channel_type (:type chn-1)
-                    :channel_id   (:id chn-1)
-                    :template_id  (:id tmpl-1)
-                    :recipients   [{:type     :notification-recipient/user
-                                    :user_id  (mt/user->id :rasta)}]}])]
-        (t2/delete! :model/ChannelTemplate (:id tmpl-1))
-        (is (=? {:template_id nil} (t2/select-one :model/NotificationHandler :notification_id (:id noti))))))))
+    (mt/with-model-cleanup [:model/Notification]
+      (mt/with-temp [:model/Channel         chn-1   (assoc api.channel-test/default-test-channel :name "Channel 1")
+                     :model/ChannelTemplate tmpl-1 {:channel_type (:type chn-1)}]
+        (let [noti (models.notification/create-notification!
+                    default-system-event-notification
+                    [default-user-invited-subscription]
+                    [{:channel_type (:type chn-1)
+                      :channel_id   (:id chn-1)
+                      :template_id  (:id tmpl-1)
+                      :recipients   [{:type     :notification-recipient/user
+                                      :user_id  (mt/user->id :rasta)}]}])]
+          (t2/delete! :model/ChannelTemplate (:id tmpl-1))
+          (is (=? {:template_id nil} (t2/select-one :model/NotificationHandler :notification_id (:id noti)))))))))
 
 (deftest cross-check-channel-type-and-template-type-test
   (testing "can't create a handler with a template that has different channel type"

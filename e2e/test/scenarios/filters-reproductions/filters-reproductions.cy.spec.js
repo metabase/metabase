@@ -1482,3 +1482,67 @@ describe("issue 47887", () => {
     });
   });
 });
+
+describe("Issue 48851", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+    cy.viewport(1050, 300);
+  });
+
+  const manyValues = Array(12)
+    .fill(0)
+    .map(() => Math.round(Math.random() * 1000_000_000_000).toString(36))
+    .join(", ");
+
+  it("should not overflow the filter popover, even when there are a lot of values (metabase#48851)", () => {
+    openProductsTable();
+    tableHeaderClick("Title");
+
+    popover().within(() => {
+      cy.findByText("Filter by this column").click();
+      cy.findByText("Is").click();
+    });
+
+    popover().last().findByText("Contains").click();
+    popover()
+      .first()
+      .findByPlaceholderText("Enter some text")
+      .type(manyValues, { timeout: 0 });
+
+    popover().button("Add filter").should("be.visible");
+  });
+});
+
+describe("issue 49321", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should not require multiple clicks to apply a filter (metabase#49321)", () => {
+    openProductsTable({ mode: "notebook" });
+    filter({ mode: "notebook" });
+    popover().within(() => {
+      cy.findByText("Title").click();
+      cy.findByText("Is").click();
+    });
+    popover().last().findByText("Contains").click();
+
+    popover().then($popover => {
+      const { width } = $popover[0].getBoundingClientRect();
+      cy.wrap(width).as("initialWidth");
+    });
+
+    popover()
+      .findByPlaceholderText("Enter some text")
+      .type("aaaaaaaaaa, bbbbbbbbbbb,");
+
+    cy.get("@initialWidth").then(initialWidth => {
+      popover().should($popover => {
+        const { width } = $popover[0].getBoundingClientRect();
+        expect(width).to.eq(initialWidth);
+      });
+    });
+  });
+});
