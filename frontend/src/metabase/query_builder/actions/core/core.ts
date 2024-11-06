@@ -27,8 +27,8 @@ import type {
   Card,
   Database,
   DatasetQuery,
-  Parameter,
   ParameterId,
+  ParameterValuesMap,
 } from "metabase-types/api";
 import type { Dispatch, GetState } from "metabase-types/store";
 
@@ -86,8 +86,9 @@ export const reloadCard = createThunkAction(RELOAD_CARD, () => {
     // We need to manually massage the parameters into the parameterValues shape,
     // to be able to pass them to new Question.
     // We could use _parameterValues here but prefer not to use internal fields.
-    const parameterValues: Record<ParameterId, Parameter["value"]> =
-      outdatedQuestion.parameters().reduce(
+    const parameterValues: ParameterValuesMap = outdatedQuestion
+      .parameters()
+      .reduce(
         (acc, next) => ({
           ...acc,
           [next.id]: next.value,
