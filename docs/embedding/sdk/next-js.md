@@ -67,6 +67,7 @@ const DynamicAnalytics = dynamic(
   },
 );
 ```
+
 ## Handling authentication
 
 If you authenticate with Metabase using JWT, you can create a Route handler that signs people in to Metabase.

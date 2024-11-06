@@ -56,8 +56,7 @@ title: Driver interface changelog
 
 - The `:skip-drop-db?` option sometimes passed to methods for loading and destroying test data is no longer passed,
   you can remove code that checks for it. Test data code is now better about avoiding unneeded/redundant calls to
-  `metabase.test.data.interface/create-db!`, so test data loading code should not need to call `DROP DATABASE IF
-  EXISTS` before loading test data.
+  `metabase.test.data.interface/create-db!`, so test data loading code should not need to call `DROP DATABASE IF EXISTS` before loading test data.
 
 - Test data loading for JDBC-based databases has been overhauled somewhat. The multimethod
   `metabase.test.data.sql-jdbc.load-data/load-data!` and helper functions for it have been removed in favor of several
@@ -90,7 +89,7 @@ title: Driver interface changelog
 
 - Similarly, `metabase.test.data.sql-jdbc.execute/execute-sql!` and helper functions like
   `metabase.test.data.sql-jdbc.execute/sequentially-execute-sql!` are now called with a `java.sql.Connection`
-  instead of both a `DatabaseDefinition` and either `:server` or `:db` *context*; the appropriate connection type is
+  instead of both a `DatabaseDefinition` and either `:server` or `:db` _context_; the appropriate connection type is
   created automatically and passed in in the calling code. Update your method implementations and usages
   accordingly.
 
@@ -110,8 +109,8 @@ title: Driver interface changelog
   drivers by default. Previously, those depended on the `:foreign-keys` feature. If your driver supports `:left-join`,
   the test for remapping and implicit joins will be now executed.
 
--  The`:parameterized-sql` driver feature has been added to distinguish drivers that don't support parametrized SQL in
-   tests. Currently, this is disabled only for `:sparksql`.
+- The`:parameterized-sql` driver feature has been added to distinguish drivers that don't support parametrized SQL in
+  tests. Currently, this is disabled only for `:sparksql`.
 
 - The test methods `metabase.test.data.interface/supports-time-type?` and
   `metabase.test.data.interface/supports-timestamptz-type?` have been removed and replaced by the features
@@ -121,7 +120,7 @@ title: Driver interface changelog
 
 - Drivers that use `metabase.driver.sql.query-processor/->honeysql` can implement
   `:metabase.driver.sql.query-processor/nfc-path` to include the nfc-path in the field identifier. So that record-like
-  fields can be referenced with `<table>.<record>.<record-field>`. See `bigquery-cloud-sdk` for an example. Defaults to  `nil` to indicate that the path should not be part of the identifier.
+  fields can be referenced with `<table>.<record>.<record-field>`. See `bigquery-cloud-sdk` for an example. Defaults to `nil` to indicate that the path should not be part of the identifier.
 
 - `:test/dynamic-dataset-loading` feature has been added. It enables drivers to bail out of tests that require
   creation of new, not pre-loaded, dataset during test run time.
@@ -134,7 +133,7 @@ title: Driver interface changelog
 ## Metabase 0.50.17
 
 - Added method `metabase.driver/incorporate-auth-provider-details` for driver specific behavior required to
-  incorporate response of an auth-provider into the DB details.  In most cases this means setting the :password
+  incorporate response of an auth-provider into the DB details. In most cases this means setting the :password
   and/or :username based on the auth-provider and its response.
 
 ## Metabase 0.50.16
@@ -212,11 +211,11 @@ title: Driver interface changelog
 
 - New feature `:metadata/key-constraints` has been added to signify that a driver support defining and enforcing foreign
   key constraints at the schema level. This is a different, stronger condition than `:foreign-keys`. Some databases
-  (Presto, Athena, etc.) support *querying* over foreign key relationships (`:foreign-keys`) but do not track or enforce
+  (Presto, Athena, etc.) support _querying_ over foreign key relationships (`:foreign-keys`) but do not track or enforce
   those relationships in the schema. Defaults to `true` in `:sql` and `:sql-jdbc` drivers; set to `false` in the
   first-party SparkSQL, Presto and Athena drivers.
 
-- New feature `:connection/multiple-databases` has been added to indicate whether a *connection* to this driver
+- New feature `:connection/multiple-databases` has been added to indicate whether a _connection_ to this driver
   corresponds to multiple databases or just one. The default is `false`, where a connection specifies a single database.
   This is the common case for classic relational DBs like Postgres, and some cloud databases. In contrast, a driver like
   Athena sets this to `true` because it connects to an S3 bucket and treats each file within it as a database.
@@ -300,6 +299,7 @@ title: Driver interface changelog
   which has access to `value` and therefore provides more flexibility for choosing the right conversion unit.
 
 ## Metabase 0.48.0
+
 - The MBQL schema in `metabase.mbql.schema` now uses [Malli](https://github.com/metosin/malli) instead of
   [Schema](https://github.com/plumatic/schema). If you were using this namespace in combination with Schema, you'll
   want to update your code to use Malli instead.
@@ -313,9 +313,9 @@ title: Driver interface changelog
 
 - The following functions in `metabase.query-processor.store` (`qp.store`) are now deprecated
 
-  * `qp.store/database`
-  * `qp.store/table`
-  * `qp.store/field`
+  - `qp.store/database`
+  - `qp.store/table`
+  - `qp.store/field`
 
   Update usages of the to the corresponding functions in `metabase.lib.metadata` (`lib.metadata`):
 
@@ -347,7 +347,7 @@ title: Driver interface changelog
   new function takes a Field as returned by `lib.metadata/field`, i.e. a `kebab-case` map.
 
 - Tests should try to avoid using any of the `with-temp` helpers or application database objects; instead, use the
-  metadata functions above and and the helper *metadata providers* in `metabase.lib`, `metabase.lib.test-util`, and
+  metadata functions above and and the helper _metadata providers_ in `metabase.lib`, `metabase.lib.test-util`, and
   `metabase.query-processor.test-util` for mocking them, such as `mock-metadata-provider`,
   `metabase-provider-with-cards-for-queries`, `remap-metadata-provider`, and `merged-mock-metadata-provider`.
 
@@ -579,7 +579,7 @@ to note when porting your driver:
    `:inline` to force the SQL to be generated inline instead: `{:select [[[:inline 1]]]}` becomes `SELECT 1`. Numbers
    generated by the SQL query processor code should automatically be inlined, but you may need to make sure any
    numbers you generate are wrapped in `:inline` if they can end up as expressions inside a `GROUP BY` clause. Some
-   databases can recognize expressions as being the same thing only when they are *not* parameterized:
+   databases can recognize expressions as being the same thing only when they are _not_ parameterized:
 
    ```sql
    -- This is okay
@@ -593,8 +593,8 @@ to note when porting your driver:
    GROUP BY x + ?
    ```
 
-  Exercise caution when `:inline`ing things -- take care not to use it on untrusted strings or other avenues for SQL
-  injection. Only inlining things that are a `number?` is a safe bet.
+Exercise caution when `:inline`ing things -- take care not to use it on untrusted strings or other avenues for SQL
+injection. Only inlining things that are a `number?` is a safe bet.
 
 Please read [Differences between Honey SQL 1.x and
 2.x](https://github.com/seancorfield/honeysql/blob/develop/doc/differences-from-1-x.md) for more information on the
@@ -635,8 +635,7 @@ Similarly, `metabase.util.honeysql-extensions/->AtTimeZone` has been removed; us
 
 - The `:expressions` map in an MBQL query now uses strings as keys rather than keywords (see
   [#14647](https://github.com/metabase/metabase/issues/14647)). You only need to be concerned with this if you are
-  accessing or manipulating this map directly. Drivers deriving from `:sql` implementing `->honeysql` for `[<driver>
-  :expression]` may need to be updated. A utility function, `metabase.mbql.util/expression-with-name`, has been
+  accessing or manipulating this map directly. Drivers deriving from `:sql` implementing `->honeysql` for `[<driver> :expression]` may need to be updated. A utility function, `metabase.mbql.util/expression-with-name`, has been
   available since at least Metabase 0.35.0 and handles both types of keys. It is highly recommended that you use this
   function rather than accessing `:expressions` directly, as doing so can make your driver compatible with both 0.42.0
   and with 0.43.0 and newer.
@@ -699,7 +698,7 @@ If you were manipulating Field or Table aliases, we consolidated a lot of overla
   escaping disallowed characters), implement this method.
 
 - `metabase.driver.sql-jdbc.sync.interface/filtered-syncable-schemas` has been added, and will eventually replace
-  `metabase.driver.sql-jdbc.sync.interface/syncable-schemas`.  It serves a similar purpose, except that it's also
+  `metabase.driver.sql-jdbc.sync.interface/syncable-schemas`. It serves a similar purpose, except that it's also
   passed the inclusion and exclusion patterns (ex: `auth*,data*`) to further filter schemas that will be synced.
 
 ### Deprecated methods and vars
@@ -721,7 +720,7 @@ The following methods and vars are slated for removal in Metabase 0.45.0 unless 
   do something special; use the [#19610 information](https://github.com/metabase/metabase/pull/19610) if you need to escape the alias
   for one reason or another. This method is still slated for removal in Metabase 0.44.0.
 
-- `metabase.driver.sql.query-processor/*field-options*` is now unused and is no longer bound automatically.  If you need field options for some reason, see our SQL Server driver for an example on how to create it.
+- `metabase.driver.sql.query-processor/*field-options*` is now unused and is no longer bound automatically. If you need field options for some reason, see our SQL Server driver for an example on how to create it.
 
 - `metabase.driver.sql.query-processor/*table-alias*` is now unused and is no longer bound automatically. Use or
   override `:metabase.query-processor.util.add-alias-info/source-table` from the [#19610
@@ -753,12 +752,12 @@ The following methods and vars are slated for removal in Metabase 0.45.0 unless 
 Before 0.42.0, this information was tracked in our Wiki. You can find changes for versions before 0.42.0 in the
 table below:
 
-| Version | Wiki page |
-|---------|-----------|
-| 0.41.0 | [changes](https://github.com/metabase/metabase/wiki/What's-new-in-0.41.0-for-Metabase-driver-authors) |
-| 0.40.0 | No changes. |
-| 0.39.0 | No changes. |
-| 0.38.0 | [changes](https://github.com/metabase/metabase/wiki/What's-new-in-0.38.0-for-Metabase-driver-authors) |
-| 0.37.0 | [changes](https://github.com/metabase/metabase/wiki/What's-new-in-0.37.0-for-Metabase-driver-authors) |
-| 0.36.0 | [changes](https://github.com/metabase/metabase/wiki/What's-new-in-0.36.0-for-Metabase-driver-authors) |
-| 0.35.0 | [changes](https://github.com/metabase/metabase/wiki/What's-new-in-0.35.0-for-Metabase-driver-authors) |
+| Version | Wiki page                                                                                             |
+| ------- | ----------------------------------------------------------------------------------------------------- |
+| 0.41.0  | [changes](https://github.com/metabase/metabase/wiki/What's-new-in-0.41.0-for-Metabase-driver-authors) |
+| 0.40.0  | No changes.                                                                                           |
+| 0.39.0  | No changes.                                                                                           |
+| 0.38.0  | [changes](https://github.com/metabase/metabase/wiki/What's-new-in-0.38.0-for-Metabase-driver-authors) |
+| 0.37.0  | [changes](https://github.com/metabase/metabase/wiki/What's-new-in-0.37.0-for-Metabase-driver-authors) |
+| 0.36.0  | [changes](https://github.com/metabase/metabase/wiki/What's-new-in-0.36.0-for-Metabase-driver-authors) |
+| 0.35.0  | [changes](https://github.com/metabase/metabase/wiki/What's-new-in-0.35.0-for-Metabase-driver-authors) |

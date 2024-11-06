@@ -64,9 +64,9 @@ If you want to send the user group membership to Metabase, then you need to add 
 
 1. To the right of "Attributes & Claims", click on "Edit."
 2. Click "Add a group claim."
-3 On the menu that appears for "Which groups associated with the user should be returned in the claim?", select "All groups."
-4. Click on Save.
-5. Then add the group mapping on the Metabase SAML configuration.
+   3 On the menu that appears for "Which groups associated with the user should be returned in the claim?", select "All groups."
+3. Click on Save.
+4. Then add the group mapping on the Metabase SAML configuration.
 
 ## Further reading
 
