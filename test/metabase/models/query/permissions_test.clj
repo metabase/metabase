@@ -307,15 +307,17 @@
 
 (deftest ^:parallel native-query-source-card-id-join-permissions-test
   (testing "MBQL query with native source card (#30077)"
-    (mt/with-temp [:model/Card {card-id :id} {:dataset_query {:query (mt/native-query "SELECT * FROM orders")}}]
+    (mt/with-temp [:model/Card {card-id :id} {:dataset_query {:database (mt/id)
+                                                              :type :native
+                                                              :native {:query "SELECT * FROM orders"}}}]
       (let [query {:database (mt/id)
                    :type     :query
                    :query    {:source-table (mt/id :products)
                               :joins        [{:alias "Join Alias"
+                                              :condition [:= true false]
                                               :source-query
                                               {:qp/stage-is-from-source-card card-id
-                                               :native "SELECT * FROM orders"}
-                                              :condition [:= true false]}]}}]
+                                               :native "SELECT * FROM orders"}}]}}]
         ;; The source card of the joined native query is detected, and we don't require full native perms
         (is (= {:card-ids             #{card-id}
                 :perms/create-queries {(mt/id :products) :query-builder}

@@ -411,3 +411,46 @@
                  :type                  :native
                  :qp/compiled-from-mbql {:source-table (u/the-id table)}
                  :native                {:query "SELECT * FROM VENUES"}}))))))))
+
+(deftest e2e-native-query-source-card-id-join-perms-test
+  (testing "Make sure that a native source card joined to an MBQL query checks card read perms rather than full native access"
+    (mt/with-temp [:model/User {user-id :id} {}
+                   :model/Card {card-id :id} {:dataset_query {:database (mt/id)
+                                                              :type :native
+                                                              :native {:query "SELECT * FROM venues"}}}]
+      (mt/with-no-data-perms-for-all-users!
+        (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder)
+        (let [query (mt/mbql-query checkins
+                      {:joins    [{:fields       [$id]
+                                   :source-table (format "card__%d" card-id)
+                                   :alias        "card"
+                                   :condition    [:= $venue_id &card.venues.id]
+                                   :strategy     :left-join}]
+                       :order-by [[:asc $id]]
+                       :limit    2})]
+          (mt/with-current-user user-id
+            (is (= 2 (count (mt/rows (qp/process-query query)))))))))))
+
+(deftest e2e-ignore-user-supplied-source-card-key-test
+  (testing "Make sure that you can't bypass native query permissions by including :qp/stage-is-from-source-card in a
+           join"
+    (mt/with-temp [:model/User {user-id :id} {}
+                   :model/Card {card-id :id} {:dataset_query {:database (mt/id)
+                                                              :type :native
+                                                              :native {:query "SELECT * FROM venues"}}}]
+      (mt/with-no-data-perms-for-all-users!
+        (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder)
+        (let [query (mt/mbql-query checkins
+                      {:joins    [{:fields       [$id]
+                                   :alias        "v"
+                                   :source-query {:native "SELECT * from orders"}
+                                   :condition    [:= true true]
+                                                ;; Make sure we can't just pass in this key and join to arbitrary SQL!
+                                   :qp/stage-is-from-source-card card-id}]
+                       :order-by [[:asc $id]]
+                       :limit    2})]
+          (mt/with-current-user user-id
+            (is (thrown-with-msg?
+                 ExceptionInfo
+                 perms-error-msg
+                 (qp/process-query query)))))))))
