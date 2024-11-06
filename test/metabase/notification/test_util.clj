@@ -6,7 +6,6 @@
    [metabase.events.notification :as events.notification]
    [metabase.notification.core :as notification]
    [metabase.notification.payload.core :as notification.payload]
-   [metabase.notification.send :as notification.send]
    [metabase.test :as mt]
    [metabase.util :as u]))
 
@@ -39,7 +38,7 @@
 (defmacro with-send-notification-sync
   "Notifications are sent async by default, wrap the body in this macro to send them synchronously."
   [& body]
-  `(binding [notification/*send-notification!* #'notification.send/send-notification-sync!]
+  `(binding [notification/*default-options* {:notification/sync? true}]
      ~@body))
 
 (defn do-with-captured-channel-send!
@@ -49,8 +48,8 @@
       (with-redefs
        [channel/send! (fn [channel message]
                         (swap! channel-messages update (:type channel) u/conjv message))]
-        (thunk)
-        @channel-messages))))
+       (thunk)
+       @channel-messages))))
 
 (defmacro with-captured-channel-send!
   "Macro that captures all messages sent to channels in the body of the macro.
@@ -85,7 +84,7 @@
   "Macro that sets up the notification testing environment."
   [& body]
   `(mt/with-model-cleanup [:model/Notification]
-     (notification.tu/with-send-notification-sync
+     (with-send-notification-sync
        ~@body)))
 
 ;; ------------------------------------------------------------------------------------------------;;
