@@ -89,6 +89,11 @@ export type MetabotSortQueryReaction = {
   direction: "asc" | "desc";
 };
 
+export type MetabotLimitQueryReaction = {
+  type: "metabot.reaction/limit-query";
+  limit: number;
+};
+
 export type MetabotReaction =
   | MetabotMessageReaction
   | MetabotChangeDisplayTypeReaction
@@ -97,7 +102,8 @@ export type MetabotReaction =
   | MetabotWriteBackReaction
   | MetabotApiCallReaction
   | MetabotAggregateQueryReaction
-  | MetabotSortQueryReaction;
+  | MetabotSortQueryReaction
+  | MetabotLimitQueryReaction;
 
 /* Metabot v3 - API Request Types */
 

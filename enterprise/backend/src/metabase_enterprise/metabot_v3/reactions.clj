@@ -141,3 +141,7 @@
   [:map
    [:column :string]
    [:direction [:enum "asc" "desc"]]])
+
+(defreaction :metabot.reaction/limit-query
+  [:map
+   [:limit integer?]])

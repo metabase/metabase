@@ -3,6 +3,7 @@ import { getQuestion } from "metabase/query_builder/selectors";
 import * as Lib from "metabase-lib";
 import type {
   MetabotAggregateQueryReaction,
+  MetabotLimitQueryReaction,
   MetabotSortQueryReaction,
 } from "metabase-types/api";
 
@@ -66,6 +67,21 @@ export const sortQuery: ReactionHandler<MetabotSortQueryReaction> =
     }
 
     const newQuery = Lib.orderBy(query, stageIndex, column, reaction.direction);
+    const newQuestion = question.setQuery(newQuery);
+    await dispatch(updateQuestion(newQuestion, { run: true }));
+  };
+
+export const limitQuery: ReactionHandler<MetabotLimitQueryReaction> =
+  reaction =>
+  async ({ dispatch, getState }) => {
+    const question = getQuestion(getState());
+    if (!question) {
+      return;
+    }
+
+    const query = question.query();
+    const stageIndex = -1;
+    const newQuery = Lib.limit(query, stageIndex, reaction.limit);
     const newQuestion = question.setQuery(newQuery);
     await dispatch(updateQuestion(newQuestion, { run: true }));
   };
