@@ -1,6 +1,6 @@
 {
   "name": "change-table-visualization-settings",
-  "description": "Use this tool only to show or hide columns in a table. Make sure that the visualization type is `table` before calling this tool. Do not ever rename columns. Renaming columns is done with the change-column-settings tool.",
+  "description": "This tool is used only to show or hide columns on a table visualization. Make sure that the visualization type is `table` before calling this tool. Must not use this tool to rename columns or change other column settings, there is change-column-settings tool for that.",
   "parameters": {
     "type": "object",
     "properties": {
