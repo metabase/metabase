@@ -10,13 +10,13 @@ Syntax: `CountIf(condition)`.
 
 Example: in the table below, `CountIf([Plan] = "Basic")` would return 3.
 
-| ID  | Plan        |
-|-----|-------------|
-| 1   | Basic       |
-| 2   | Basic       |
-| 3   | Basic       |
-| 4   | Business    |
-| 5   | Premium     |
+| ID  | Plan     |
+| --- | -------- |
+| 1   | Basic    |
+| 2   | Basic    |
+| 3   | Basic    |
+| 4   | Business |
+| 5   | Premium  |
 
 > [Aggregations](../expressions-list.md#aggregations) like `CountIf` should be added to the query builder's [**Summarize** menu](../../query-builder/introduction.md#summarizing-and-grouping-by) > **Custom Expression** (scroll down in the menu if needed).
 
@@ -28,13 +28,13 @@ Example: in the table below, `CountIf([Plan] = "Basic")` would return 3.
 
 We'll use the following sample data to show you `CountIf` with [required](#required-conditions), [optional](#optional-conditions), and [mixed](#some-required-and-some-optional-conditions) conditions.
 
-| ID  | Plan        | Active Subscription |
-|-----|-------------| --------------------|
-| 1   | Basic       | true                |
-| 2   | Basic       | true                |
-| 3   | Basic       | false               |
-| 4   | Business    | false               |
-| 5   | Premium     | true                |
+| ID  | Plan     | Active Subscription |
+| --- | -------- | ------------------- |
+| 1   | Basic    | true                |
+| 2   | Basic    | true                |
+| 3   | Basic    | false               |
+| 4   | Business | false               |
+| 5   | Premium  | true                |
 
 ### Required conditions
 
@@ -77,13 +77,13 @@ In general, to get a conditional count for a category or group, such as the numb
 
 Using the sample data:
 
-| ID  | Plan        | Active Subscription |
-|-----|-------------| --------------------|
-| 1   | Basic       | true                |
-| 2   | Basic       | true                |
-| 3   | Basic       | false               |
-| 4   | Business    | false               |
-| 5   | Premium     | true                |
+| ID  | Plan     | Active Subscription |
+| --- | -------- | ------------------- |
+| 1   | Basic    | true                |
+| 2   | Basic    | true                |
+| 3   | Basic    | false               |
+| 4   | Business | false               |
+| 5   | Premium  | true                |
 
 Count the total number of inactive subscriptions per plan:
 
@@ -101,23 +101,23 @@ CountIf([Payment], [Plan] != true)
 
 To view your conditional counts by plan, set the **Group by** column to "Plan".
 
-| Plan      | Total Inactive Subscriptions |
-|-----------|------------------------------|
-| Basic     | 1                            |
-| Business  | 1                            |
-| Premium   | 0                            |
+| Plan     | Total Inactive Subscriptions |
+| -------- | ---------------------------- |
+| Basic    | 1                            |
+| Business | 1                            |
+| Premium  | 0                            |
 
 > Tip: when sharing your work with other people, it's helpful to use the `OR` filter, even though the `!=` filter is shorter. The inclusive `OR` filter makes it easier to understand which categories (e.g., plans) are included in your conditional count.
 
 ## Accepted data types
 
-| [Data type](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview#examples-of-data-types) | Works with `CountIf`      |
-| ------------------------------------------------------------------------------------------------ | ------------------------- |
-| String                                                                                           | ❌                        |
-| Number                                                                                           | ❌                        |
-| Timestamp                                                                                        | ❌                        |
-| Boolean                                                                                          | ✅                        |
-| JSON                                                                                             | ❌                        |
+| [Data type](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview#examples-of-data-types) | Works with `CountIf` |
+| ------------------------------------------------------------------------------------------------------------------------------ | -------------------- |
+| String                                                                                                                         | ❌                   |
+| Number                                                                                                                         | ❌                   |
+| Timestamp                                                                                                                      | ❌                   |
+| Boolean                                                                                                                        | ✅                   |
+| JSON                                                                                                                           | ❌                   |
 
 `CountIf` accepts a [function](../expressions-list.md#functions) or [conditional statement](../expressions.md#conditional-operators) that returns a boolean value (`true` or `false`).
 
@@ -126,10 +126,12 @@ To view your conditional counts by plan, set the **Group by** column to "Plan".
 Different ways to do the same thing, because it's fun to try new things.
 
 **Metabase**
+
 - [case](#case)
 - [CumulativeCount](#cumulativecount)
 
 **Other tools**
+
 - [SQL](#sql)
 - [Spreadsheets](#spreadsheets)
 - [Python](#python)
@@ -150,13 +152,13 @@ CountIf([Plan] = "Basic")
 
 The `case` version lets you count a different column when the condition isn't met. For example, if you've got data from different sources:
 
-| ID: Source A  | Plan: Source A | ID: Source B  | Plan: Source B       |
-|---------------|----------------|---------------| ---------------------|
-| 1             | Basic          |               |                      |
-|               |                | B             | basic                |
-|               |                | C             | basic                |
-| 4             | Business       | D             | business             |
-| 5             | Premium        | E             | premium              |
+| ID: Source A | Plan: Source A | ID: Source B | Plan: Source B |
+| ------------ | -------------- | ------------ | -------------- |
+| 1            | Basic          |              |                |
+|              |                | B            | basic          |
+|              |                | C            | basic          |
+| 4            | Business       | D            | business       |
+| 5            | Premium        | E            | premium        |
 
 To count the total number of Basic plans across both sources, you could create a `case` expression to:
 
@@ -174,18 +176,18 @@ Count(case([Plan: Source A] = "Basic", [ID: Source A],
 
 If our sample data is a time series:
 
-| ID  | Plan        | Active Subscription | Created Date     |
-|-----|-------------| --------------------|------------------|
-| 1   | Basic       | true                | October 1, 2020  |
-| 2   | Basic       | true                | October 1, 2020  |
-| 3   | Basic       | false               | October 1, 2020  |
-| 4   | Business    | false               | November 1, 2020 |
-| 5   | Premium     | true                | November 1, 2020 |
+| ID  | Plan     | Active Subscription | Created Date     |
+| --- | -------- | ------------------- | ---------------- |
+| 1   | Basic    | true                | October 1, 2020  |
+| 2   | Basic    | true                | October 1, 2020  |
+| 3   | Basic    | false               | October 1, 2020  |
+| 4   | Business | false               | November 1, 2020 |
+| 5   | Premium  | true                | November 1, 2020 |
 
 And we want to get the running count of active plans like this:
 
 | Created Date: Month | Total Active Plans to Date |
-|---------------------|----------------------------|
+| ------------------- | -------------------------- |
 | October 2020        | 2                          |
 | November 2020       | 3                          |
 

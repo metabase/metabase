@@ -1,5 +1,5 @@
 (ns metabase.query-processor.middleware.update-used-cards-test
- #_{:clj-kondo/ignore [:deprecated-namespace]}
+  #_{:clj-kondo/ignore [:deprecated-namespace]}
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
