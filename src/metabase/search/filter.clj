@@ -100,7 +100,7 @@
   [search-context qry]
   (as-> qry qry
     (sql.helpers/where qry (when (seq (:models search-context))
-                             [:in :model (:models search-context)]))
+                             [:in :model (map #(vector :inline %) (:models search-context))]))
     (sql.helpers/where qry (when-let [ids (:ids search-context)]
                              [:and
                               [:in :model_id ids]

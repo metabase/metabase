@@ -54,9 +54,11 @@
    [metabase.models.view-log :as view-log]
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings.premium-features :refer [defenterprise]]
+   [metabase.search.postgres.ingestion :as search.ingestion]
    [metabase.util :as u]
    [methodical.core :as methodical]
    [potemkin :as p]
+   [toucan2.core :as t2]
    [toucan2.model :as t2.model]))
 
 ;; Fool the linter
@@ -192,3 +194,7 @@
        (when (isa? metabase-models-keyword :metabase/model)
          metabase-models-keyword)))
    (next-method symb)))
+
+(t2/define-after-insert :metabase/model
+  [model]
+  (search.ingestion/update-index! model))

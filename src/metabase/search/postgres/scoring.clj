@@ -4,61 +4,83 @@
 (def ^:private seconds-in-a-day 86400)
 
 (defn- truthy
-  "Return 1 for true values of a potentially nullable column."
+  "Prefer it when a (potentially nullable) boolean is true."
   [column]
   [:coalesce [:cast column :integer] [:inline 0]])
 
-(defn- saturated-fraction
-  "The fraction of a positive value compared to an upper ceiling value. Capped at 1."
+(defn- fraction
+  "Prefer items whose value is closer to achieving some saturation point. Items beyond that point are equivalent."
   [column ceiling]
-  [:coalesce [:least [:/ column ceiling] [:inline 1]] [:inline 0]])
+  [:coalesce [:least [:/ column [:inline (double ceiling)]] [:inline 1]] [:inline 0]])
 
-(defn- saturated-duration [from-column to-column ceiling-in-days]
+(defn- duration-fraction
+  "Score at item based on the duration between two dates, where less is better."
+  [from-column to-column ceiling-in-days]
   (let [ceiling [:inline ceiling-in-days]]
-    [:/ [:greatest
-         [:- ceiling
-          [:coalesce
-           [:/
-            ;; Use seconds for granularity in the fraction.
-            [:extract :epoch [:- to-column from-column]]
-            [:inline seconds-in-a-day]]
-           ceiling]]
-         [:inline 0]]
-     ceiling]))
+    [:coalesce
+     [:/
+      [:greatest
+       [:- ceiling
+        [:/
+         ;; Use seconds for granularity in the fraction.
+         [[:raw "EXTRACT(epoch FROM (" [:- to-column from-column] [:raw "))"]]]
+         [:inline (double seconds-in-a-day)]]]
+       [:inline 0]]
+      ceiling]
+     [:inline 0]]))
 
-(defn- idx-rank [idx-col len]
+(defn- idx-rank
+  "Prefer items whose value is earlier in some list."
+  [idx-col len]
   (if (pos? len)
     [:/ [:- [:inline (dec len)] idx-col] [:inline len]]
     [:inline 1]))
 
-(defn- multiply-columns [column-names]
+(defn- sum-columns [column-names]
   (if (seq column-names)
-    (reduce (fn [expr col] [:* expr col])
+    (reduce (fn [expr col] [:+ expr col])
             (first column-names)
             (rest column-names))
     [:inline 1]))
 
-(defn- weighted-score [{column-alias :alias w :weight}]
-  [:* [:inline (or w 0)] column-alias])
+(defn- weighted-score [[column-alias expr]]
+  ;; this repetition of the form sucks
+  [:* [:inline (search.config/weights column-alias 0)]
+   #_(keyword (str (name column-alias) "_score"))
+   expr])
 
-(defn- select-items [rankers]
-  (into [[(multiply-columns (map weighted-score rankers))
-          :total_score]]
-        (for [{column-alias :alias expr :expr} rankers]
-          [expr column-alias])))
+(defn- select-items [scorers]
+  (concat
+        (for [[column-alias expr] scorers]
+          [expr column-alias])
+        [[(sum-columns (map weighted-score scorers))
+          :total_score]] ))
 
 (defn scorers [{:keys [stale-time-in-days dashboard-count-ceiling model-count]}]
   {:pinned    (truthy :pinned)
-   ;; :bookmarked ...
-   :recency   (saturated-duration [:now] :updated_at stale-time-in-days)
-   :dashboard (saturated-fraction :dashboardcard_count dashboard-count-ceiling)
-   :model     (idx-rank :model_index model-count)})
+   ;; :bookmarked user specific join
+   :recency   (duration-fraction :model_updated_at [:now] stale-time-in-days)
+   ;:dashboard (fraction :dashboardcard_count dashboard-count-ceiling)
+   :model     (idx-rank :model_rank model-count)})
 
-(honey.sql/format
- (apply honey.sql.helpers/select {:from :a} (select-items [])))
+(def select-items-4real
+  (select-items (scorers {:stale-time-in-days      search.config/stale-time-in-days
+                          :dashboard-count-ceiling search.config/dashboard-count-ceiling
+                          :model-count             (count search.config/all-models)})))
 
-(honey.sql/format
- (apply honey.sql.helpers/select {:from :a}
-        (select-items [{:alias :a :expr (truthy :pinned)}
-                       {:alias :b :expr (saturated-duration [:now] :updated_at search.config/stale-time-in-days)}]))
- )
+(defn ranking-clause [qry]
+  (apply honey.sql.helpers/select qry select-items-4real))
+
+(comment
+  (honey.sql/format
+   (apply honey.sql.helpers/select {:from :a} (select-items {})))
+
+  (honey.sql/format
+   (apply honey.sql.helpers/select {:from :a}
+          (select-items {:a (truthy :pinned)
+                         :b (duration-fraction [:now] :updated_at search.config/stale-time-in-days)})))
+
+  )
+(prn
+ (honey.sql/format
+  (apply honey.sql.helpers/select {:from :search_index} select-items-4real)))

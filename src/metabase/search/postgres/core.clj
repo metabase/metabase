@@ -89,6 +89,16 @@
   (when s
     (OffsetDateTime/parse s)))
 
+(defn- rehydrate [index-row]
+  (-> (merge
+       (json/parse-string (:legacy_input index-row) keyword)
+       (select-keys #p index-row [:total_score :pinned]))
+      (update :created_at parse-datetime)
+      (update :updated_at parse-datetime)
+      (update :last_edited_at parse-datetime)))
+
+(defn prrn [x] (prn x) x)
+
 (defn- minimal
   "Search via index, and return potentially stale information, without restricting to collections we have access to."
   [search-term & {:as search-ctx}]
@@ -97,13 +107,16 @@
                     {:search-engine :postgres})))
   (->> (search.index/search-query search-term [:legacy_input])
        (search.filter/where-clause search-ctx)
+       (metabase.search.postgres.scoring/ranking-clause)
+
+       (#(honey.sql.helpers/order-by % [:total_score :desc]))
+       (#(honey.sql.helpers/limit % 2))
+
+       #_(honey.sql/format)
+       #_prrn
+
        (t2/query)
-       (map :legacy_input)
-       (map #(json/parse-string % keyword))
-       (map #(-> %
-                 (update :created_at parse-datetime)
-                 (update :updated_at parse-datetime)
-                 (update :last_edited_at parse-datetime)))))
+       (map rehydrate)))
 
 (defn- minimal-with-perms
   "Search via index, and return potentially stale information, but applying permissions. Does not perform ranking."
@@ -114,13 +127,9 @@
   (->> (let [base-query (search.index/search-query search-term [:legacy_input])]
          (search.permissions/add-collection-join-and-where-clauses base-query nil search-ctx))
        (search.filter/where-clause search-ctx)
+       (#(apply sql.helpers/select % metabase.search.postgres.scoring/select-items-4real))
        (t2/query)
-       (map :legacy_input)
-       (map #(json/parse-string % keyword))
-       (map #(-> %
-                 (update :created_at parse-datetime)
-                 (update :updated_at parse-datetime)
-                 (update :last_edited_at parse-datetime)))))
+       (map rehydrate)))
 
 (def ^:private default-engine hybrid-multi)
 
