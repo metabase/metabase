@@ -1,7 +1,6 @@
 (ns metabase.notification.payload.impl.dashboard-subscription
-  #_{:clj-kondo/ignore [:metabase/ns-module-checker]}
   (:require
-   [metabase.channel.render.style :as style]
+   [metabase.channel.render.core :as channel.render]
    [metabase.models.params.shared :as shared.params]
    [metabase.notification.payload.core :as notification.payload]
    [metabase.notification.payload.execute :as notification.execute]
@@ -35,9 +34,9 @@
                                           (= part-type :card)
                                           (zero? (get-in part [:result :row_count] 0))))))
      :dashboard              dashboard
-     :style                  {:color_text_dark   style/color-text-dark
-                              :color_text_light  style/color-text-light
-                              :color_text_medium style/color-text-medium}
+     :style                  {:color_text_dark   channel.render/color-text-dark
+                              :color_text_light  channel.render/color-text-light
+                              :color_text_medium channel.render/color-text-medium}
      :parameters             parameters
      :dashboard_subscription dashboard_subscription}))
 

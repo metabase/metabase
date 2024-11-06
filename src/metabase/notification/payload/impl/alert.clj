@@ -1,7 +1,6 @@
 (ns metabase.notification.payload.impl.alert
-  #_{:clj-kondo/ignore [:metabase/ns-module-checker]}
   (:require
-   [metabase.channel.render.style :as style]
+   [metabase.channel.render.core :as channel.render]
    [metabase.notification.payload.core :as notification.payload]
    [metabase.notification.payload.execute :as notification.execute]
    [metabase.util.malli :as mu]
@@ -16,9 +15,9 @@
                                                      ;; TODO: check whether we can remove this or name it?
                                                      :pulse-id (:id alert))
      :card        (t2/select-one :model/Card card_id)
-     :style       {:color_text_dark   style/color-text-dark
-                   :color_text_light  style/color-text-light
-                   :color_text_medium style/color-text-medium}
+     :style       {:color_text_dark   channel.render/color-text-dark
+                   :color_text_light  channel.render/color-text-light
+                   :color_text_medium channel.render/color-text-medium}
      :alert       alert}))
 
 (defn- goal-met? [{:keys [alert_above_goal], :as alert} card_part]
