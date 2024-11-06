@@ -13,7 +13,7 @@ import { Metabot } from "./components/Metabot";
 import { MetabotContext, MetabotProvider, defaultContext } from "./context";
 import { metabotReducer, setVisible } from "./state";
 
-if (!!true || hasPremiumFeature("metabot_v3")) {
+if (hasPremiumFeature("metabot_v3")) {
   PLUGIN_METABOT.Metabot = Metabot;
 
   PLUGIN_METABOT.defaultMetabotContextValue = defaultContext;
