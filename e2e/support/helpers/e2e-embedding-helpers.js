@@ -49,7 +49,7 @@ export function visitEmbeddedPage(
   payload,
   {
     setFilters = {},
-    additionalHashOptions: { hideFilters = [], locale },
+    additionalHashOptions: { hideFilters = [], locale } = {},
     pageStyle = {},
     onBeforeLoad,
     qs,
