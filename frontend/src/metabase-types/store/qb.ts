@@ -1,3 +1,4 @@
+import type { Deferred } from "metabase/lib/promise";
 import type { QueryModalType } from "metabase/query_builder/constants";
 import type { Widget } from "metabase/visualizations/components/ChartSettings/types";
 import type {
@@ -69,7 +70,7 @@ export interface QueryBuilderState {
   queryStatus: QueryBuilderQueryStatus;
   queryResults: Dataset[] | null;
   queryStartTime: number | null;
-  cancelQueryDeferred: Promise<void> | null;
+  cancelQueryDeferred: Deferred<void> | null;
 
   card: Card | null;
   originalCard: Card | null;

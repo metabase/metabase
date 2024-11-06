@@ -23,7 +23,7 @@ This example sets up an endpoint in an app, `/sso/metabase`, that creates a toke
 ```typescript
 const express = require("express");
 const cors = require("cors");
-const session = require("express-session")
+const session = require("express-session");
 const jwt = require("jsonwebtoken");
 const fetch = require("node-fetch");
 
