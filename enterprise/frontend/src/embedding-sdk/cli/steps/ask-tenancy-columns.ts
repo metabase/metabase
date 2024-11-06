@@ -5,6 +5,11 @@ import type { CliStepMethod } from "../types/cli";
 import { printHelperText } from "../utils/print";
 
 export const askForTenancyColumns: CliStepMethod = async state => {
+  // The sample database does not have tenancy columns.
+  if (state.useSampleDatabase) {
+    return [{ type: "success" }, state];
+  }
+
   printHelperText(
     `e.g. does your table have a customer_id column to isolate tenants?`,
   );

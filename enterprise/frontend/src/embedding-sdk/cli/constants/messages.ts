@@ -35,10 +35,16 @@ export const getEmbeddingFailedMessage = (reason: string) => `
   Reason: ${reason}
 `;
 
-export const getMetabaseInstanceSetupCompleteMessage = (instanceUrl: string) =>
+export const getMetabaseInstanceSetupCompleteMessage = (
+  instanceUrl: string,
+  email: string,
+  password: string,
+) =>
   // eslint-disable-next-line no-unconditional-metabase-links-render -- link for the CLI message
   `
   Metabase is running at ${blue(instanceUrl)}
+
+  Login with email "${email}" and password "${password}".
   You can find your login credentials at METABASE_LOGIN.json
 
   Metabase will phone home some data collected via Snowplow.
