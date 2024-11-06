@@ -158,6 +158,59 @@
   [value]
   (moment value parse-time-formats))
 
+;;; ----------------------------------------------- constructors -----------------------------------------------------
+(defn local-time
+  "Constructs a platform time value (eg. Moment, LocalTime) for the given hour and minute, plus optional seconds and
+  milliseconds.
+
+  If called without arguments, returns the current time."
+  ([]
+   ;; Actually a full datetime, but Moment doesn't have freestanding time values.
+   (moment))
+  ([hours minutes]
+   (moment #js {:hours hours, :minutes minutes}))
+  ([hours minutes seconds]
+   (moment #js {:hours hours, :minutes minutes, :seconds seconds}))
+  ([hours minutes seconds millis]
+   (moment #js {:hours hours, :minutes minutes, :seconds seconds, :milliseconds millis})))
+
+(declare truncate)
+
+(defn local-date
+  "Constructs a platform date value (eg. Moment, LocalDate) for the given year, month and day.
+
+  Day is 1-31. January = 1, or you can specify keywords like `:jan`, `:jun`."
+  ([] (truncate (moment) :day))
+  ([year month day]
+   (moment #js {:year  year
+                :day   day
+                ;; Moment uses 0-based months, unlike Metabase.
+                :month (dec (or (common/month-keywords month) month))})))
+
+(defn local-date-time
+  "Constructs a platform datetime (eg. Moment, LocalDateTime).
+
+  Accepts either:
+  - no arguments (current datetime)
+  - a local date and local time (see [[local-date]] and [[local-time]]); or
+  - year, month, day, hour, and minute, plus optional seconds and millis."
+  ([] (moment))
+  ([a-date a-time]
+   (when-not (and (valid? a-date) (valid? a-time))
+     (throw (ex-info "Expected valid Moments for date and time" {:date a-date
+                                                                 :time a-time})))
+   (let [^moment/Moment d (.clone a-date)
+         ^moment/Moment t a-time]
+     (doseq [unit ["hour" "minute" "second" "millisecond"]]
+       (.set d unit (.get t unit)))
+     d))
+  ([year month day hours minutes]
+   (local-date-time (local-date year month day) (local-time hours minutes)))
+  ([year month day hours minutes seconds]
+   (local-date-time (local-date year month day) (local-time hours minutes seconds)))
+  ([year month day hours minutes seconds millis]
+   (local-date-time (local-date year month day) (local-time hours minutes seconds millis))))
+
 ;;; ------------------------------------------------ arithmetic ------------------------------------------------------
 
 (declare unit-diff)

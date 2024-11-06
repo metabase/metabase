@@ -4,6 +4,7 @@ import {
   type StructuredQuestionDetails,
   assertQueryBuilderRowCount,
   assertTableData,
+  changeSynchronousBatchUpdateSetting,
   createDashboard,
   createQuestion,
   editDashboard,
@@ -624,6 +625,17 @@ describe("scenarios > custom column > boolean functions", () => {
         },
       );
     }
+
+    beforeEach(() => {
+      cy.signInAsAdmin();
+      changeSynchronousBatchUpdateSetting(true);
+      cy.signInAsNormalUser();
+    });
+
+    afterEach(() => {
+      cy.signInAsAdmin();
+      changeSynchronousBatchUpdateSetting(false);
+    });
 
     it("should be able setup an 'open question' click behavior", () => {
       createDashboardWithQuestion().then(dashboard =>

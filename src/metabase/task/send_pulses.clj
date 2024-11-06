@@ -4,6 +4,7 @@
   `SendPulse` job will send a pulse to all channels that are scheduled to run at the same time.
   For example if you have an Alert that has scheduled to send to both slack and emails at 6am, this job will be triggered
   and send the pulse to both channels. "
+  #_{:clj-kondo/ignore [:deprecated-namespace]}
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
@@ -14,6 +15,7 @@
    [metabase.driver :as driver]
    [metabase.models.pulse :as models.pulse]
    [metabase.models.task-history :as task-history]
+   [metabase.notification.core :as notification]
    [metabase.pulse.core :as pulse]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.task :as task]
@@ -54,7 +56,8 @@
                                                     :channel-ids (seq channel-ids)}}
       (when-let [pulse (models.pulse/retrieve-notification pulse-id :archived false)]
         (log/debugf "Starting Pulse Execution: %d" pulse-id)
-        (pulse/send-pulse! pulse :channel-ids channel-ids)
+        (binding [notification/*send-notification!* notification/send-notification-sync!]
+          (pulse/send-pulse! pulse :channel-ids channel-ids))
         (log/debugf "Finished Pulse Execution: %d" pulse-id)
         :done))
     (catch Throwable e

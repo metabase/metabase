@@ -1,6 +1,7 @@
 (ns metabase.api.pulse
   "`/api/pulse` endpoints. These are all authenticated. For unauthenticated `/api/pulse/unsubscribe` endpoints,
   see [[metabase.api.pulse.unsubscribe]]."
+  #_{:clj-kondo/ignore [:deprecated-namespace]}
   (:require
    [clojure.set :refer [difference]]
    [compojure.core :refer [GET POST PUT]]
@@ -9,6 +10,7 @@
    [metabase.api.alert :as api.alert]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
+   [metabase.channel.render.core :as channel.render]
    [metabase.config :as config]
    [metabase.email :as email]
    [metabase.events :as events]
@@ -22,6 +24,7 @@
     :as pulse-channel
     :refer [channel-types PulseChannel]]
    [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
+   [metabase.notification.core :as notification]
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.pulse.core :as pulse]
@@ -273,15 +276,15 @@
      :body   (html5
               [:html
                [:body {:style "margin: 0;"}
-                (pulse/render-pulse-card-for-display (pulse/defaulted-timezone card)
-                                                     card
-                                                     result
-                                                     {:pulse/include-title? true, :pulse/include-buttons? true})]])}))
+                (channel.render/render-pulse-card-for-display (channel.render/defaulted-timezone card)
+                                                              card
+                                                              result
+                                                              {:channel.render/include-title? true, :channel.render/include-buttons? true})]])}))
 
 (api/defendpoint GET "/preview_dashboard/:id"
   "Get HTML rendering of a Dashboard with `id`.
 
-  This endpoint relies on a custom middleware defined in `metabase.pulse.preview/style-tag-nonce-middleware` to
+  This endpoint relies on a custom middleware defined in `metabase.channel.render.core/style-tag-nonce-middleware` to
   allow the style tag to render properly, given our Content Security Policy setup. This middleware is attached to these
   routes at the bottom of this namespace using `metabase.api.common/define-routes`."
   [id]
@@ -289,7 +292,7 @@
   (api/read-check :model/Dashboard id)
   {:status  200
    :headers {"Content-Type" "text/html"}
-   :body    (pulse/style-tag-from-inline-styles
+   :body    (channel.render/style-tag-from-inline-styles
              (html5
               [:head
                [:meta {:charset "utf-8"}]
@@ -297,7 +300,7 @@
                        :rel  "stylesheet"
                        :href "https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,100;0,300;0,400;0,700;0,900;1,100;1,300;1,400;1,700;1,900&display=swap"}]]
               [:body [:h2 (format "Backend Artifacts Preview for Dashboard %s" id)]
-               (pulse/render-dashboard-to-html id)]))})
+               (channel.render/render-dashboard-to-html id)]))})
 
 (api/defendpoint GET "/preview_card_info/:id"
   "Get JSON object containing HTML rendering of a Card with `id` and other information."
@@ -306,11 +309,11 @@
   (let [card      (api/read-check Card id)
         result    (pulse-card-query-results card)
         data      (:data result)
-        card-type (pulse/detect-pulse-chart-type card nil data)
-        card-html (html (pulse/render-pulse-card-for-display (pulse/defaulted-timezone card)
-                                                             card
-                                                             result
-                                                             {:pulse/include-title? true}))]
+        card-type (channel.render/detect-pulse-chart-type card nil data)
+        card-html (html (channel.render/render-pulse-card-for-display (channel.render/defaulted-timezone card)
+                                                                      card
+                                                                      result
+                                                                      {:channel.render/include-title? true}))]
     {:id              id
      :pulse_card_type card-type
      :pulse_card_html card-html
@@ -327,11 +330,11 @@
   {id ms/PositiveInt}
   (let [card   (api/read-check Card id)
         result (pulse-card-query-results card)
-        ba     (pulse/render-pulse-card-to-png (pulse/defaulted-timezone card)
-                                               card
-                                               result
-                                               preview-card-width
-                                               {:pulse/include-title? true})]
+        ba     (channel.render/render-pulse-card-to-png (channel.render/defaulted-timezone card)
+                                                        card
+                                                        result
+                                                        preview-card-width
+                                                        {:channel.render/include-title? true})]
     {:status 200, :headers {"Content-Type" "image/png"}, :body (ByteArrayInputStream. ba)}))
 
 (api/defendpoint POST "/test"
@@ -353,7 +356,8 @@
   ;; make sure any email addresses that are specified are allowed before sending the test Pulse.
   (doseq [channel channels]
     (pulse-channel/validate-email-domains channel))
-  (pulse/send-pulse! (assoc body :creator_id api/*current-user-id*))
+  (binding [notification/*send-notification!* notification/send-notification-sync!]
+    (pulse/send-pulse! (assoc body :creator_id api/*current-user-id*)))
   {:ok true})
 
 (api/defendpoint DELETE "/:id/subscription"
@@ -367,6 +371,6 @@
   api/generic-204-no-content)
 
 (def ^:private style-nonce-middleware
-  (partial pulse/style-tag-nonce-middleware "/api/pulse/preview_dashboard"))
+  (partial channel.render/style-tag-nonce-middleware "/api/pulse/preview_dashboard"))
 
 (api/define-routes style-nonce-middleware)

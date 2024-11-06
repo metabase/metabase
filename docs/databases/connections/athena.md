@@ -113,7 +113,6 @@ This policy provides read-only permissions for data in S3. You'll need to specif
 
 There may be additional permissions required for other Athena functionality, like federated queries. For details, check out the [Athena docs](https://docs.aws.amazon.com/athena/latest/ug/security-iam-athena).
 
-
 ```json
 {
   "Version": "2012-10-17",
@@ -209,14 +208,13 @@ If Metabase also needs to create tables, you'll need additional AWS Glue permiss
         "glue:CreatePartition",
         "glue:DeletePartition",
         "glue:UpdatePartition",
-        "glue:GetCatalogImportStatus",
+        "glue:GetCatalogImportStatus"
       ],
       "Resource": "*"
     }
   ]
 }
 ```
-
 
 ## Further reading
 
