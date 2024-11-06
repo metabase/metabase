@@ -10050,6 +10050,48 @@ databaseChangeLog:
                   constraints:
                     nullable: true
 
+  - changeSet:
+      id: v52.2024-11-06T10:30:00
+      author: escherize
+      comment: Add expiration_date column to moderation_review
+      preConditions:
+        - not:
+            - columnExists:
+                tableName: moderation_review
+                columnName: expiration_date
+      changes:
+        - addColumn:
+            tableName: moderation_review
+            columns:
+              - column:
+                  name: expiration_date
+                  type: ${timestamp_type}
+                  defaultValue: null
+                  remarks: The time that we automatically convert this moderation review's status from verified to expired
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v52.2024-11-06T11:30:00
+      author: escherize
+      comment: Add notified_at column to moderation_review
+      preConditions:
+        - not:
+            - columnExists:
+                tableName: moderation_review
+                columnName: notified_at
+      changes:
+        - addColumn:
+            tableName: moderation_review
+            columns:
+              - column:
+                  name: notified_at
+                  type: ${timestamp_type}
+                  defaultValue: null
+                  remarks: A bit to track when or if we have notified users that this moderation review will expire soon
+                  constraints:
+                    nullable: true
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
