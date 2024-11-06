@@ -1,12 +1,15 @@
 (ns metabase.pulse.send-test
   "These are mostly Alerts test, dashboard subscriptions could be found in
   [[metabase.dashboard-subscription-test]]."
+  #_{:clj-kondo/ignore [:deprecated-namespace]}
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.channel.core :as channel]
    [metabase.channel.http-test :as channel.http-test]
+   [metabase.channel.render.body :as body]
+   [metabase.channel.render.core :as channel.render]
    [metabase.email :as email]
    [metabase.integrations.slack :as slack]
    [metabase.models :refer [Card Collection Pulse PulseCard PulseChannel PulseChannelRecipient]]
@@ -17,8 +20,6 @@
    [metabase.notification.test-util :as notification.tu]
    [metabase.public-settings :as public-settings]
    [metabase.pulse.core :as pulse]
-   [metabase.pulse.render :as render]
-   [metabase.pulse.render.body :as body]
    [metabase.pulse.send :as pulse.send]
    [metabase.pulse.test-util :as pulse.test-util]
    [metabase.test :as mt]
@@ -167,7 +168,7 @@
 
 (defn- produces-bytes? [{:keys [rendered-info]}]
   (when rendered-info
-    (pos? (alength (or (render/png-from-render-info rendered-info 500)
+    (pos? (alength (or (channel.render/png-from-render-info rendered-info 500)
                        (byte-array 0))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

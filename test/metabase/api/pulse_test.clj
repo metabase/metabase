@@ -8,6 +8,7 @@
    [metabase.api.channel-test :as api.channel-test]
    [metabase.api.pulse :as api.pulse]
    [metabase.channel.http-test :as channel.http-test]
+   [metabase.channel.render.style :as style]
    [metabase.http-client :as client]
    [metabase.integrations.slack :as slack]
    [metabase.models
@@ -24,7 +25,6 @@
    [metabase.models.pulse-channel :as pulse-channel]
    [metabase.models.pulse-test :as pulse-test]
    [metabase.notification.test-util :as notification.tu]
-   [metabase.pulse.render.style :as style]
    [metabase.pulse.test-util :as pulse.test-util]
    [metabase.server.request.util :as req.util]
    [metabase.test :as mt]

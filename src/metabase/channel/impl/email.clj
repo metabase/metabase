@@ -6,14 +6,14 @@
    [medley.core :as m]
    [metabase.channel.core :as channel]
    [metabase.channel.params :as channel.params]
-   [metabase.channel.shared :as channel.shared]
+   [metabase.channel.render.core :as channel.render]
    [metabase.email :as email]
    [metabase.email.messages :as messages]
    [metabase.email.result-attachment :as email.result-attachment]
    [metabase.models.channel :as models.channel]
    [metabase.models.notification :as models.notification]
+   [metabase.models.params.shared :as shared.params]
    [metabase.public-settings :as public-settings]
-   [metabase.pulse.core :as pulse]
    [metabase.util :as u]
    [metabase.util.encryption :as encryption]
    [metabase.util.i18n :refer [trs]]
@@ -68,7 +68,7 @@
   [timezone part options]
   (case (:type part)
     :card
-    (pulse/render-pulse-section timezone part options)
+    (channel.render/render-pulse-section timezone part options)
 
     :text
     {:content (markdown/process-markdown (:text part) :html)}
@@ -114,12 +114,12 @@
 (defn- icon-bundle
   "Bundle an icon.
 
-  The available icons are defined in [[js-svg/icon-paths]]."
+  The available icons are defined in [[render.js.svg/icon-paths]]."
   [icon-name]
-  (let [color     (pulse/primary-color)
-        png-bytes (pulse/icon icon-name color)]
-    (-> (pulse/make-image-bundle :attachment png-bytes)
-        (pulse/image-bundle->attachment))))
+  (let [color     (channel.render/primary-color)
+        png-bytes (channel.render/icon icon-name color)]
+    (-> (channel.render/make-image-bundle :attachment png-bytes)
+        (channel.render/image-bundle->attachment))))
 
 (defn- construct-email
   ([subject recipients message]
@@ -178,8 +178,8 @@
   (let [{:keys [card_part
                 alert
                 card]}     payload
-        timezone           (channel.shared/defaulted-timezone card)
-        rendered-card      (render-part timezone card_part {:pulse/include-title? true})
+        timezone           (channel.render/defaulted-timezone card)
+        rendered-card      (render-part timezone card_part {:channel.render/include-title? true})
         icon-attachment    (apply make-message-attachment (icon-bundle :bell))
         attachments        (concat [icon-attachment]
                                    (email-attachment rendered-card
@@ -212,39 +212,39 @@
   (let [cells (map
                (fn [filter]
                  [:td {:class "filter-cell"
-                       :style (pulse/style {:width "50%"
-                                            :padding "0px"
-                                            :vertical-align "baseline"})}
+                       :style (channel.render/style {:width "50%"
+                                                     :padding "0px"
+                                                     :vertical-align "baseline"})}
                   [:table {:cellpadding "0"
                            :cellspacing "0"
                            :width "100%"
                            :height "100%"}
                    [:tr
                     [:td
-                     {:style (pulse/style {:color pulse/color-text-medium
-                                           :min-width "100px"
-                                           :width "50%"
-                                           :padding "4px 4px 4px 0"
-                                           :vertical-align "baseline"})}
+                     {:style (channel.render/style {:color channel.render/color-text-medium
+                                                    :min-width "100px"
+                                                    :width "50%"
+                                                    :padding "4px 4px 4px 0"
+                                                    :vertical-align "baseline"})}
                      (:name filter)]
                     [:td
-                     {:style (pulse/style {:color pulse/color-text-dark
-                                           :min-width "100px"
-                                           :width "50%"
-                                           :padding "4px 16px 4px 8px"
-                                           :vertical-align "baseline"})}
-                     (pulse/value-string filter)]]]])
+                     {:style (channel.render/style {:color channel.render/color-text-dark
+                                                    :min-width "100px"
+                                                    :width "50%"
+                                                    :padding "4px 16px 4px 8px"
+                                                    :vertical-align "baseline"})}
+                     (shared.params/value-string filter (public-settings/site-locale))]]]])
                parameters)
         rows  (partition-all 2 cells)]
     (html
-     [:table {:style (pulse/style {:table-layout    :fixed
-                                   :border-collapse :collapse
-                                   :cellpadding     "0"
-                                   :cellspacing     "0"
-                                   :width           "100%"
-                                   :font-size       "12px"
-                                   :font-weight     700
-                                   :margin-top      "8px"})}
+     [:table {:style (channel.render/style {:table-layout    :fixed
+                                            :border-collapse :collapse
+                                            :cellpadding     "0"
+                                            :cellspacing     "0"
+                                            :width           "100%"
+                                            :font-size       "12px"
+                                            :font-weight     700
+                                            :margin-top      "8px"})}
       (for [row rows]
         [:tr {} row])])))
 
@@ -254,8 +254,8 @@
                 dashboard_subscription
                 parameters
                 dashboard]} payload
-        timezone            (some->> dashboard_parts (some :card) channel.shared/defaulted-timezone)
-        rendered-cards      (mapv #(render-part timezone % {:pulse/include-title? true}) dashboard_parts)
+        timezone            (some->> dashboard_parts (some :card) channel.render/defaulted-timezone)
+        rendered-cards      (mapv #(render-part timezone % {:channel.render/include-title? true}) dashboard_parts)
         icon-attachment     (apply make-message-attachment (icon-bundle :dashboard))
         attachments         (concat
                              [icon-attachment]
@@ -266,7 +266,7 @@
                               (-> notification-payload
                                   (assoc :computed {:dashboard_content   (html (vec (cons :div (map :content rendered-cards))))
                                                     :icon_cid            (:content-id icon-attachment)
-                                                    :dashboard_url       (pulse/dashboard-url (:id dashboard) parameters)
+                                                    :dashboard_url       (urls/dashboard-url (:id dashboard) parameters)
                                                     :dashboard_has_tabs? (some-> dashboard :tabs seq)
                                                     :management_text     (if (nil? non-user-email)
                                                                            "Manage your subscriptions"

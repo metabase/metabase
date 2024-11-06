@@ -6,15 +6,14 @@
    [clojure.java.io :as io]
    [dev.util :as dev.u]
    [hiccup.core :as hiccup]
+   [metabase.channel.render.core :as channel.render]
+   [metabase.channel.render.image-bundle :as img]
+   [metabase.channel.render.png :as png]
+   [metabase.channel.render.style :as style]
    [metabase.email.result-attachment :as email.result-attachment]
    [metabase.models :refer [Card]]
    [metabase.models.card :as card]
    [metabase.notification.payload.execute :as notification.payload.execute]
-   [metabase.pulse.render :as render]
-   [metabase.pulse.render.image-bundle :as img]
-   [metabase.pulse.render.png :as png]
-   [metabase.pulse.render.style :as style]
-   [metabase.pulse.send :as pulse]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util.markdown :as markdown]
@@ -42,10 +41,10 @@
                        (cond-> dataset_query
                          (= card-type :model)
                          (assoc-in [:info :metadata/model-metadata] result_metadata)))
-        png-bytes     (render/render-pulse-card-to-png (pulse/defaulted-timezone card)
-                                                       card
-                                                       query-results
-                                                       1000)]
+        png-bytes     (channel.render/render-pulse-card-to-png (channel.render/defaulted-timezone card)
+                                                               card
+                                                               query-results
+                                                               1000)]
     (open-png-bytes png-bytes)))
 
 (defn render-pulse-card
@@ -53,8 +52,8 @@
   [card-id]
   (let [{:keys [dataset_query] :as card} (t2/select-one card/Card :id card-id)
         query-results (qp/process-query dataset_query)]
-    (render/render-pulse-card
-     :inline (pulse/defaulted-timezone card)
+    (channel.render/render-pulse-card
+     :inline (channel.render/defaulted-timezone card)
      card
      nil
      query-results)))
@@ -81,7 +80,7 @@
         dashboard-results (notification.payload.execute/execute-dashboard (:id dashboard) (:id user) nil)]
     (doseq [{:keys [card dashcard result] :as dashboard-result} dashboard-results]
       (let [render    (if card
-                        (render/render-pulse-card :inline (pulse/defaulted-timezone card) card dashcard result)
+                        (channel.render/render-pulse-card :inline (channel.render/defaulted-timezone card) card dashcard result)
                         {:content     [:div {:style (style/style {:font-family             "Lato"
                                                                   :font-size               "0.875em"
                                                                   :font-weight             "400"
@@ -133,7 +132,7 @@
             [:td {:style (style/style (merge table-style-map {:max-width "400px"}))}
              content])]
     (if card
-      (let [base-render (render/render-pulse-card :inline (pulse/defaulted-timezone card) card dashcard result)
+      (let [base-render (channel.render/render-pulse-card :inline (channel.render/defaulted-timezone card) card dashcard result)
             html-src    (-> base-render :content)
             img-src     (-> base-render
                             (png/render-html-to-png 1200)
