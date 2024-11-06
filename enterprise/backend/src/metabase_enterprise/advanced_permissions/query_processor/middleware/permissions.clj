@@ -35,14 +35,13 @@
         table-perms (if (or native? (seq card-ids))
                       ;; If we detect any native subqueries/joins, even with source-card IDs, require full native
                       ;; download perms
-                      [(data-perms/native-download-permission-for-user api/*current-user-id* db-id)]
-                      (map (fn [table-id]
-                             (data-perms/table-permission-for-user api/*current-user-id* :perms/download-results db-id table-id))
-                           table-ids))
-        table-perms-set (set table-perms)]
+                      #{(data-perms/native-download-permission-for-user api/*current-user-id* db-id)}
+                      (set (map (fn [table-id]
+                                  (data-perms/table-permission-for-user api/*current-user-id* :perms/download-results db-id table-id))
+                                table-ids)))]
     ;; The download perm level for a query should be equal to the lowest perm level of any table referenced by the query.
-    (or (table-perms-set :no)
-        (table-perms-set :ten-thousand-rows)
+    (or (table-perms :no)
+        (table-perms :ten-thousand-rows)
         :one-million-rows)))
 
 (defenterprise apply-download-limit

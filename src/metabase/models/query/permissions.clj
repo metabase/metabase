@@ -276,6 +276,7 @@
   "Checks whether the current user has sufficient view data and query permissions to run `query`. Returns `true` if the
   user has perms for the query, and throws an exception otherwise (exceptions can be disabled by setting
   `throw-exceptions?` to `false`).
+
   If the [:gtap ::perms] path is present in the query, these perms are implicitly granted to the current user."
   [{{gtap-perms :gtaps} ::perms, :as query} required-perms & {:keys [throw-exceptions?]
                                                               :or   {throw-exceptions? true}}]
