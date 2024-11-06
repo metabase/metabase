@@ -752,7 +752,6 @@ describe("issue 31274", () => {
     cy.signInAsAdmin();
   });
 
-  // cypress automatically scrolls to the element, but we don't need it in this test
   it("should not clip dashcard actions (metabase#31274)", () => {
     cy.createDashboard().then(({ body: dashboard }) => {
       const dashcards = createTextCards(3);
@@ -766,7 +765,7 @@ describe("issue 31274", () => {
       assertTabSelected("Tab 1");
 
       getDashboardCard(1).realHover({
-        scrollBehavior: "top", // prevents flaky tests
+        scrollBehavior: false, // prevents flaky tests
       });
 
       cy.log(
@@ -775,6 +774,7 @@ describe("issue 31274", () => {
 
       visibleActionsPanel().should("have.length", 1).icon("close").click({
         position: "top",
+        scrollBehavior: false, // prevents flaky tests
       });
 
       cy.findAllByTestId("dashcard").should("have.length", 2);
