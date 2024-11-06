@@ -19,7 +19,7 @@ import Toggle from "metabase/core/components/Toggle";
 import { ToggleContainer, ToggleLabel } from "metabase/query_builder/components/template_tags/TagEditorParamParts";
 
 export const SaveQuestionForm = ({ onCancel }: SaveQuestionFormProps) => {
-  const { question, originalQuestion, showSaveType, values } =
+  const { question, originalQuestion, showSaveType, values, setValues } =
     useSaveQuestionContext();
 
   const nameInputPlaceholder = getPlaceholder(question.type());
@@ -39,8 +39,8 @@ export const SaveQuestionForm = ({ onCancel }: SaveQuestionFormProps) => {
           vertical
         />
       )}
-      <TransitionGroup>
-        {values.saveType === "create" && (
+      {values.saveType === "create" && (
+        <TransitionGroup>
           <div className={CS.overflowHidden}>
             <FormInput
               name="name"
@@ -54,11 +54,16 @@ export const SaveQuestionForm = ({ onCancel }: SaveQuestionFormProps) => {
             />
             <ToggleContainer>
               <ToggleLabel>{t`Use it as OmniAI example`}</ToggleLabel>
-              <Toggle value={values.isExample} onChange={() => question.setIsExample(!values.isExample)} />
+              <Toggle value={values.isExample} onChange={() => {
+                setValues({
+                  ...values,
+                  isExample: !values.isExample,
+                });
+              }} />
             </ToggleContainer>
           </div>
-        )}
-      </TransitionGroup>
+        </TransitionGroup>
+      )}
       <FormFooter>
         <FormErrorMessage inline />
         <Button type="button" onClick={onCancel}>{t`Cancel`}</Button>
