@@ -162,7 +162,7 @@ Dashboards are a fixed aspect ratio, so if you'd like to ensure they're automati
 ></iframe>
 ```
 
-Note: we recommend that you use up to version 4.3.2 of iframe-resizer on your application due to licensing changes after that
+Due to iframe-resizer's licensing changes, we recommend that you use iframe-resizer version 4.3.2 or lower. 
 
 ## Custom destinations on dashboards in static embeds
 
