@@ -1,4 +1,4 @@
-import type { SeriesSettings } from "./card";
+import type { ColumnSettings, SeriesSettings } from "./card";
 import type { CardDisplayType } from "./visualization";
 
 export type MetabotFeedbackType =
@@ -66,6 +66,13 @@ export type MetabotChangeSeriesSettingsReaction = {
   series_settings: SeriesSettingsEntry[];
 };
 
+type ColumnSettingsEntry = ColumnSettings & { key: string };
+
+export type MetabotChangeColumnSettingsReaction = {
+  type: "metabot.reaction/change-column-settings";
+  column_settings: ColumnSettingsEntry[];
+};
+
 export type MetabotChangeVisiualizationSettingsReaction = {
   type: "metabot.reaction/change-table-visualization-settings";
   visible_columns: string[];
@@ -76,7 +83,8 @@ export type MetabotReaction =
   | MetabotChangeDisplayTypeReaction
   | MetabotChangeVisiualizationSettingsReaction
   | MetabotChangeAxesLabelsReaction
-  | MetabotChangeSeriesSettingsReaction;
+  | MetabotChangeSeriesSettingsReaction
+  | MetabotChangeColumnSettingsReaction;
 
 /* Metabot v3 - API Request Types */
 

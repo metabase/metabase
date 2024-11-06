@@ -9,25 +9,45 @@ import type { State } from "metabase-types/store";
 import {
   getQueryResults,
   getQuestion,
+  getRawSeries,
   getTransformedSeries,
   getVisualizationSettings,
 } from "../selectors";
 
 const getVisualizationSettingsWithDefaults = (state: State) => {
-  const computedVisualizationSettings = getVisualizationSettings(
-    state,
-  ) as ComputedVisualizationSettings;
   const transformedSeries = getTransformedSeries(state);
-  const result = { ...computedVisualizationSettings };
+  const rawSeries = getRawSeries(state);
+  const hydratedVisualizationSettings: ComputedVisualizationSettings = {
+    ...getVisualizationSettings(state),
+  };
 
-  if (typeof computedVisualizationSettings.series === "function") {
+  if (typeof hydratedVisualizationSettings.series === "function") {
+    const seriesSettings: ComputedVisualizationSettings["series_settings"] = {};
     transformedSeries.forEach(series => {
-      result[keyForSingleSeries(series)] =
-        computedVisualizationSettings.series(series);
+      seriesSettings[keyForSingleSeries(series)] =
+        hydratedVisualizationSettings.series(series);
     });
+    hydratedVisualizationSettings.series_settings = seriesSettings;
   }
 
-  return result;
+  if (typeof hydratedVisualizationSettings.column === "function") {
+    const columnSettings: ComputedVisualizationSettings["column_settings"] = {
+      ...hydratedVisualizationSettings.column_settings,
+    };
+    rawSeries.forEach(series => {
+      series.data.cols.forEach(col => {
+        const columnSetting = hydratedVisualizationSettings.column?.(col);
+        if (columnSetting) {
+          // Use column name as key instead of column key because LLMs are bad with stringified json keys like `["name","column_name"]`
+          columnSettings[col.name] = columnSetting;
+        }
+      });
+    });
+
+    hydratedVisualizationSettings.column_settings = columnSettings;
+  }
+
+  return hydratedVisualizationSettings;
 };
 
 export const useRegisterMetabotContext = () => {

@@ -8,8 +8,10 @@ import {
 import { setQuestionDisplayType } from "metabase/query_builder/components/chart-type-selector";
 import { getQueryResults, getQuestion } from "metabase/query_builder/selectors";
 import * as Lib from "metabase-lib";
+import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import type {
   MetabotChangeAxesLabelsReaction,
+  MetabotChangeColumnSettingsReaction,
   MetabotChangeDisplayTypeReaction,
   MetabotChangeSeriesSettingsReaction,
   MetabotChangeVisiualizationSettingsReaction,
@@ -109,5 +111,32 @@ export const changeSeriesSettings: ReactionHandler<
 
     await dispatch(
       onUpdateVisualizationSettings({ series_settings: newSeriesSettings }),
+    );
+  };
+
+export const changeColumnSettings: ReactionHandler<
+  MetabotChangeColumnSettingsReaction
+> =
+  reaction =>
+  async ({ dispatch, getState }) => {
+    const columnSettings =
+      getQuestion(getState())?.settings().column_settings ?? {};
+
+    const newColumnSettings = { ...columnSettings };
+
+    reaction.column_settings.forEach(settings => {
+      const columnKey = getColumnKey({ name: settings.key });
+      const onlyIncludedSettings = Object.fromEntries(
+        Object.entries(settings).filter(([_, value]) => value !== null),
+      );
+
+      newColumnSettings[columnKey] = {
+        ...newColumnSettings[columnKey],
+        ...onlyIncludedSettings,
+      };
+    });
+
+    await dispatch(
+      onUpdateVisualizationSettings({ column_settings: newColumnSettings }),
     );
   };

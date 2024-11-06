@@ -4,6 +4,7 @@ import { showMessage } from "./messages";
 import type { ReactionHandler } from "./types";
 import {
   changeAxesLabels,
+  changeColumnSettings,
   changeDisplayType,
   changeSeriesSettings,
   changeTableVisualizationSettings,
@@ -24,4 +25,5 @@ export const reactionHandlers: ReactionHandlers = {
   "metabot.reaction/change-display-type": changeDisplayType,
   "metabot.reaction/change-axes-labels": changeAxesLabels,
   "metabot.reaction/change-series-settings": changeSeriesSettings,
+  "metabot.reaction/change-column-settings": changeColumnSettings,
 };
