@@ -154,6 +154,16 @@ const visualizerSlice = createSlice({
     setDisplay: (state, action: PayloadAction<VisualizationDisplay | null>) => {
       const display = action.payload;
 
+      if (
+        display &&
+        state.display &&
+        isCartesianChart(display) &&
+        isCartesianChart(state.display)
+      ) {
+        state.display = display;
+        return;
+      }
+
       state.display = display;
       state.settings = {};
       state.columns = [];
