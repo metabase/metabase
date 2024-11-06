@@ -75,11 +75,11 @@ If you select "Don't cache results" for a question, dashboard, or database, Meta
 You can set caching policies for different entities.
 
 - [Setting a default caching policy](#default-caching-policy)
-- [Database caching policy (specific to each connected database)](#database-caching-policy)*
-- [Dashboard caching](#dashboard-caching-policy)*
-- [Question caching](#question-caching-policy)*
+- [Database caching policy (specific to each connected database)](#database-caching-policy)\*
+- [Dashboard caching](#dashboard-caching-policy)\*
+- [Question caching](#question-caching-policy)\*
 
-_* Denotes [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) features._
+_\* Denotes [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) features._
 
 ### Default caching policy
 

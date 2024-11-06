@@ -24,6 +24,7 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.markdown :as markdown]
    [metabase.util.urls :as urls]
+   [ring.util.codec :as codec]
    [stencil.core :as stencil]))
 
 (def ^:private EmailMessage
@@ -60,9 +61,10 @@
 (defn- unsubscribe-url-for-non-user
   [dashboard-subscription-id non-user-email]
   (str (urls/unsubscribe-url)
-       "?hash=" (generate-dashboard-sub-unsubscribe-hash dashboard-subscription-id non-user-email)
-       "&email=" non-user-email
-       "&pulse-id=" dashboard-subscription-id))
+       "?"
+       (codec/form-encode {:hash     (generate-dashboard-sub-unsubscribe-hash dashboard-subscription-id non-user-email)
+                           :email    non-user-email
+                           :pulse-id dashboard-subscription-id})))
 
 (defn- render-part
   [timezone part options]

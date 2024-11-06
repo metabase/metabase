@@ -2874,17 +2874,18 @@
   (mt/test-drivers (api.pivots/applicable-drivers)
     (mt/dataset test-data
       (testing "POST /api/card/pivot/:card-id/query"
-        (t2.with-temp/with-temp [:model/Card card (api.pivots/pivot-card)]
-          (let [result (mt/user-http-request :rasta :post 202 (format "card/pivot/%d/query" (u/the-id card)))
-                rows   (mt/rows result)]
-            (is (= 1144 (:row_count result)))
-            (is (= "completed" (:status result)))
-            (is (= 6 (count (get-in result [:data :cols]))))
-            (is (= 1144 (count rows)))
+        (doseq [card-attributes [(api.pivots/pivot-card) (api.pivots/legacy-pivot-card)]]
+          (t2.with-temp/with-temp [:model/Card card card-attributes]
+            (let [result (mt/user-http-request :rasta :post 202 (format "card/pivot/%d/query" (u/the-id card)))
+                  rows   (mt/rows result)]
+              (is (= 1144 (:row_count result)))
+              (is (= "completed" (:status result)))
+              (is (= 6 (count (get-in result [:data :cols]))))
+              (is (= 1144 (count rows)))
 
-            (is (= ["AK" "Affiliate" "Doohickey" 0 18 81] (first rows)))
-            (is (= ["MS" "Organic" "Gizmo" 0 16 42] (nth rows 445)))
-            (is (= [nil nil nil 7 18760 69540] (last rows)))))))))
+              (is (= ["AK" "Affiliate" "Doohickey" 0 18 81] (first rows)))
+              (is (= ["MS" "Organic" "Gizmo" 0 16 42] (nth rows 445)))
+              (is (= [nil nil nil 7 18760 69540] (last rows))))))))))
 
 (deftest ^:parallel dataset-card
   (testing "Setting a question to a dataset makes it viz type table"
@@ -3450,9 +3451,9 @@
                                                             :aggregation [[:sum [:field "TOTAL" {:base-type :type/Float}]]]}}
                                                    ;; The FE sometimes used a field id instead of field by name - we need
                                                    ;; to handle this
-                                                   :visualization_settings {:pivot_table.column_split {:rows [[:field (mt/id :orders :user_id) nil]],
+                                                   :visualization_settings {:pivot_table.column_split {:rows    ["USER_ID"],
                                                                                                        :columns [],
-                                                                                                       :values [[:aggregation 0]]},
+                                                                                                       :values  ["sum"]},
                                                                             :table.cell_column "sum"}}]
           (with-cards-in-readable-collection! [model card]
             (is (=?
@@ -3468,9 +3469,9 @@
                                                     :query {:source-table (str "card__" (u/the-id model))
                                                             :breakout [[:field "USER_ID" {:base-type :type/Integer}]]
                                                             :aggregation [[:sum [:field "TOTAL" {:base-type :type/Float}]]]}}
-                                                   :visualization_settings {:pivot_table.column_split {:rows [[:field "USER_ID" nil]],
+                                                   :visualization_settings {:pivot_table.column_split {:rows    ["USER_ID"],
                                                                                                        :columns [],
-                                                                                                       :values [[:aggregation 0]]},
+                                                                                                       :values  ["sum"]},
                                                                             :table.cell_column "sum"}}]
           (with-cards-in-readable-collection! [model card]
             (is (=?
@@ -3899,12 +3900,9 @@
                                                  :source-table (format "card__%s" model-id)}}
                                                :visualization_settings
                                                {:pivot_table.column_split
-                                                {:rows
-                                                 [[:field "NAME" {:base-type :type/Text}]
-                                                  [:field "CREATED_AT" {:base-type :type/DateTime, :temporal-unit :month}]]
-                                                 :columns [[:field (mt/id :products :category) {:base-type    :type/Text
-                                                                                                :source-field (mt/id :orders :product_id)}]]
-                                                 :values  [[:aggregation 0]]}}}]
+                                                {:rows    ["NAME" "CREATED_AT"]
+                                                 :columns ["CATEGORY"]
+                                                 :values  ["sum"]}}}]
       ;; pivot row totals have a pivot-grouping of 1 (the second-last column in these results)
       ;; before fixing issue #46575, these rows would not be returned given the model + card setup
       (is (= [nil "Abbey Satterfield" "Doohickey" 1 347.91]
