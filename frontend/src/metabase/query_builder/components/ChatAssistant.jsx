@@ -708,6 +708,7 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
             }
             setChatDisabled(false);
             setChatLoading(false);
+            setIsLoading(false);
         } catch (error) {
             setChatDisabled(false);
             setChatLoading(false);
