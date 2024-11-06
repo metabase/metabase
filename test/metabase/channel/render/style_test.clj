@@ -1,7 +1,7 @@
-(ns metabase.pulse.render.style-test
+(ns metabase.channel.render.style-test
   (:require
    [clojure.test :refer :all]
-   [metabase.pulse.render.style :as style]
+   [metabase.channel.render.style :as style]
    [metabase.test :as mt]))
 
 (deftest ^:parallel filter-out-nil-test

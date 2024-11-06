@@ -1,9 +1,9 @@
-(ns metabase.pulse.render.png-test
+(ns metabase.channel.render.png-test
   (:require
    [clojure.test :refer :all]
    [hiccup.core :as hiccup]
-   [metabase.pulse.render.png :as png]
-   [metabase.pulse.render.style :as style])
+   [metabase.channel.render.png :as png]
+   [metabase.channel.render.style :as style])
   (:import
    (java.awt Font GraphicsEnvironment)
    (java.awt.image BufferedImage)

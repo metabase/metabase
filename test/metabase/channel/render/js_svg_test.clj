@@ -1,4 +1,4 @@
-(ns ^:mb/once metabase.pulse.render.js-svg-test
+(ns ^:mb/once metabase.channel.render.js-svg-test
   "Testing of the svgs produced by the graal js engine and the static-viz bundle. The model is
 
   query-results -> js engine with bundle -> svg-string -> svg png renderer
@@ -9,8 +9,8 @@
    [cheshire.core :as json]
    [clojure.set :as set]
    [clojure.test :refer :all]
-   [metabase.pulse.render.js-engine :as js]
-   [metabase.pulse.render.js-svg :as js-svg])
+   [metabase.channel.render.js-engine :as js]
+   [metabase.channel.render.js-svg :as js-svg])
   (:import
    (org.apache.batik.anim.dom SVGOMDocument)
    (org.graalvm.polyglot Context Value)

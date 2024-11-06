@@ -1,28 +1,42 @@
-(ns metabase.pulse.render
+(ns metabase.channel.render.core
   (:require
    [hiccup.core :refer [h]]
+   [metabase.channel.render.body :as body]
+   [metabase.channel.render.image-bundle :as image-bundle]
+   [metabase.channel.render.png :as png]
+   [metabase.channel.render.style :as style]
    [metabase.formatter :as formatter]
    [metabase.models.dashboard-card :as dashboard-card]
-   [metabase.pulse.render.body :as body]
-   [metabase.pulse.render.image-bundle :as image-bundle]
-   [metabase.pulse.render.png :as png]
-   [metabase.pulse.render.style :as style]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.markdown :as markdown]
-   [metabase.util.urls :as urls]))
+   [metabase.util.urls :as urls]
+   [potemkin :as p]))
 
-;;; I gave these keys below namespaces to make them easier to find usages for but didn't use `metabase.pulse.render` so
+(p/import-vars
+ [image-bundle
+  image-bundle->attachment
+  make-image-bundle]
+  ;; TODO -- this stuff is also used by emails, it probably should belong in some sort of common place
+ [style
+  color-text-light
+  color-text-medium
+  color-text-dark
+  primary-color
+  section-style
+  style])
+
+;;; I gave these keys below namespaces to make them easier to find usages for but didn't use `metabase.channel.render` so
 ;;; we can keep this as an internal namespace you don't need to know about outside of the module.
 (mr/def ::options
   "Options for Pulse (i.e. Alert/Dashboard Subscription) rendering."
   [:map
-   [:pulse/include-buttons?     {:description "default: false", :optional true} :boolean]
-   [:pulse/include-title?       {:description "default: false", :optional true} :boolean]
-   [:pulse/include-description? {:description "default: false", :optional true} :boolean]])
+   [:channel.render/include-buttons?     {:description "default: false", :optional true} :boolean]
+   [:channel.render/include-title?       {:description "default: false", :optional true} :boolean]
+   [:channel.render/include-description? {:description "default: false", :optional true} :boolean]])
 
 (defn- card-href
   [card]
@@ -30,10 +44,10 @@
 
 (mu/defn- make-title-if-needed :- [:maybe formatter/RenderedPulseCard]
   [render-type card dashcard options :- [:maybe ::options]]
-  (when (:pulse/include-title? options)
+  (when (:channel.render/include-title? options)
     (let [card-name    (or (-> dashcard :visualization_settings :card.title)
                            (-> card :name))
-          image-bundle (when (:pulse/include-buttons? options)
+          image-bundle (when (:channel.render/include-buttons? options)
                          (image-bundle/external-link-image-bundle render-type))]
       {:attachments (when image-bundle
                       (image-bundle/image-bundle->attachment image-bundle))
@@ -50,14 +64,14 @@
                              :rel    "noopener noreferrer"}
                          (h card-name)]]
                        [:td {:style (style/style {:text-align :right})}
-                        (when (:pulse/include-buttons? options)
+                        (when (:channel.render/include-buttons? options)
                           [:img {:style (style/style {:width :16px})
                                  :width 16
                                  :src   (:image-src image-bundle)}])]]]]})))
 
 (mu/defn- make-description-if-needed :- [:maybe formatter/RenderedPulseCard]
   [dashcard card options :- [:maybe ::options]]
-  (when (:pulse/include-description? options)
+  (when (:channel.render/include-description? options)
     (when-let [description (or (get-in dashcard [:visualization_settings :card.description])
                                (:description card))]
       {:attachments {}
@@ -205,8 +219,8 @@
   ([timezone-id
     {card :card, dashcard :dashcard, result :result, :as _part}
     options :- [:maybe ::options]]
-   (let [options                       (merge {:pulse/include-title?       true
-                                               :pulse/include-description? true}
+   (let [options                       (merge {:channel.render/include-title?       true
+                                               :channel.render/include-description? true}
                                               options)
          {:keys [attachments content]} (render-pulse-card :attachment timezone-id card dashcard result options)]
      {:attachments attachments

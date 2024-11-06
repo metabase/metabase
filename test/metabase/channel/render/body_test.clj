@@ -1,4 +1,4 @@
-(ns metabase.pulse.render.body-test
+(ns metabase.channel.render.body-test
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -6,12 +6,12 @@
    [clojure.zip :as zip]
    [hiccup.core :refer [html]]
    [hickory.select :as hik.s]
+   [metabase.channel.render.body :as body]
    [metabase.formatter :as formatter]
    [metabase.models :refer [Card]]
-   [metabase.pulse.render.body :as body]
+   [metabase.notification.payload.execute :as notification.execute]
    [metabase.pulse.render.test-util :as render.tu]
    [metabase.pulse.send :as pulse.send]
-   [metabase.pulse.util :as pu]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
@@ -631,7 +631,7 @@
                                                                                                    [:avg [:field (mt/id :orders :subtotal) nil]]]}}
                                                          :creator_id    (mt/user->id :crowberto)}]
           (let [data                   (qp/process-query dataset-query)
-                combined-cards-results [(pu/execute-card card card nil)]
+                combined-cards-results [(notification.execute/execute-card (:creator_id card) (:id card) nil)]
                 cards-with-data        (map
                                         (comp
                                          #'body/add-dashcard-timeline-events
@@ -654,9 +654,9 @@
                                  [:field (mt/id :reviews :reviewer) {:base-type :type/Text}]],
                   :filter       [:between [:field (mt/id :reviews :product_id) {:base-type :type/Integer}] 0 10]}}
             viz {:pivot_table.column_split
-                 {:rows    [[:field (mt/id :reviews :reviewer) {:base-type :type/Text}]],
-                  :columns [[:field (mt/id :reviews :created_at) {:base-type :type/DateTime, :temporal-unit :week}]],
-                  :values  [[:aggregation 0]]}
+                 {:rows    ["REVIEWER"],
+                  :columns ["CREATED_AT"],
+                  :values  ["sum"]}
                  :column_settings
                  {(format "[\"ref\",[\"field\",%s,{\"base-type\":\"type/DateTime\"}]]" (mt/id :reviews :created_at))
                   {:pivot_table.column_sort_order "ascending"}}}]
@@ -981,9 +981,9 @@
       (mt/with-temp [:model/Card {card-id :id}
                      {:display                :pivot
                       :visualization_settings {:pivot_table.column_split
-                                               {:rows    [[:field (mt/id :products :category) {:base-type :type/Text}]]
-                                                :columns [[:field (mt/id :products :created_at) {:base-type :type/DateTime :temporal-unit :year}]]
-                                                :values  [[:aggregation 0]]}
+                                               {:rows    ["CATEGORY"]
+                                                :columns ["CREATED_AT"]
+                                                :values  ["sum"]}
                                                :column_settings
                                                {"[\"name\",\"sum\"]" {:number_style       "currency"
                                                                       :currency_in_header false}}}

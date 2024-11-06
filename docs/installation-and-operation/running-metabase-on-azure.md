@@ -16,7 +16,7 @@ On the resource group page, click on the **+ Add** button in the top bar to crea
 
 ![Create a Resource Group](images/AZResource_group_Add.png)
 
-Click **Next**  until you see the **Create** button, then click it.
+Click **Next** until you see the **Create** button, then click it.
 
 When selecting the region for your Metabase, you should consider the location of your users and your data warehouse, as well as the infrastructure costs and privacy laws that might restrict cross-border data transfers.
 
@@ -58,7 +58,7 @@ On the next screen, select or enter the following:
 - **Data Source**: can be left as `None`.
 - **Location**: the same one you used for your Resource Group and VNET.
 - **Version**: use the latest one you can.
-- **Compute + Storage**: you can re-dimension your database,  but you must select the `General Purpose` tier, as it's the only tier that provides a Private Link.
+- **Compute + Storage**: you can re-dimension your database, but you must select the `General Purpose` tier, as it's the only tier that provides a Private Link.
 
 Then choose an admin username and password of your choice.
 
@@ -73,16 +73,17 @@ On the left menu, click on **Private endpoint connection** which is situated und
 ![Azure Database for PostgreSQL](images/AZPostgreSQLMain.png)
 
 Now click on the button of the top bar with a plus sign that says **Private endpoint**. In the page that opens:
-1) Provide a name for this link (any name that describes what you are trying to do is fine, like `metabase_link`). Select the region where the database lives, click **Next**.
-2) On the **Resource** section of the configuration, ensure that **Resource type** is set to `Microsoft.DBforPostgreSQL/servers` which will enable you to select in the dropdown below the server created in the previous step, and leave **Target sub-resource** with the default value
-3) On the **Configuration** section, the only value that needs to be changed is the **Subnet** one, where you need to select the **private** subnet that you created on the first step of this guide, and leave everything else as it is.
+
+1. Provide a name for this link (any name that describes what you are trying to do is fine, like `metabase_link`). Select the region where the database lives, click **Next**.
+2. On the **Resource** section of the configuration, ensure that **Resource type** is set to `Microsoft.DBforPostgreSQL/servers` which will enable you to select in the dropdown below the server created in the previous step, and leave **Target sub-resource** with the default value
+3. On the **Configuration** section, the only value that needs to be changed is the **Subnet** one, where you need to select the **private** subnet that you created on the first step of this guide, and leave everything else as it is.
 
 ![Azure PrivateLink config](images/AZPrivateLink.png)
 
 Now go to the last step and click **Create**. Once the endpoint is created, you will need do two things before proceeding:
 
-1) In the page of database server you just created go to the database **Connection Security** item and **deny all public network access**.
-2) In the page of the VNET you created in the previous step, go to **Connected devices** setting and you should see a device connected to the network. Take note of the IP address, as you'll need it in Step 5 (this is the IP address that the network has given to the database server).
+1. In the page of database server you just created go to the database **Connection Security** item and **deny all public network access**.
+2. In the page of the VNET you created in the previous step, go to **Connected devices** setting and you should see a device connected to the network. Take note of the IP address, as you'll need it in Step 5 (this is the IP address that the network has given to the database server).
 
 ## Step 5: Create web application (deploy Metabase)
 
@@ -90,6 +91,7 @@ At last, the step where all the magic comes together: go to your resource group 
 ![Azure web app](images/AZMarketplaceWebApp.png)
 
 Now set up the following values on the page (resource group should be the same as in the first step):
+
 - **Name**: The name must be unique, as the subdomain is shared across all Azure deployments.
 - **Publish**: Docker Container.
 - **Operating System**: Linux.
@@ -103,7 +105,7 @@ Now go to the next step where you will select:
 - **Image source**: DockerHub.
 - **Access Type**: Public.
 - **Image and tag**: metabase/metabase:latest (or choose any other docker image tag of your preference, like our Enterprise Edition). To find the latest version, check our [Community Edition Dockerhub repository](https://hub.docker.com/r/metabase/metabase/tags?page=1&ordering=last_updated) and also our [Enterprise Edition Dockerhub Repository](https://hub.docker.com/r/metabase/metabase-enterprise/tags?page=1&ordering=last_updated).
-- **Startup command**:  Leave this field empty.
+- **Startup command**: Leave this field empty.
 
 Click **Next** until you get to the last section, then click **Create**, and wait while your application initializes.
 
@@ -127,17 +129,18 @@ postgresql://databasePrivateIPAddress:port/postgres?user=user@name_of_your_datab
 
 For example, if your values are:
 
-1) **database private IP address**: 10.0.2.4
-2) **database port**: 5432 (in the case of Postgres, MySQL/MariaDB default port is 3306)
-3) **name of the database server**: metabase-app-database
-4) **username of the database**: metabase
-5) **password**: Password1!
+1. **database private IP address**: 10.0.2.4
+2. **database port**: 5432 (in the case of Postgres, MySQL/MariaDB default port is 3306)
+3. **name of the database server**: metabase-app-database
+4. **username of the database**: metabase
+5. **password**: Password1!
 
 then your connection string would be:
 
 ```
 postgresql://10.0.2.4:5432/postgres?user=metabase%40metabase-app-database&password=Password1!&ssl=true&sslmode=require
 ```
+
 Note: the "@" character has been replaced for "%40", as the "@" will no longer work in versions > 43
 
 Click **Save** and the instance will restart.
@@ -148,7 +151,7 @@ Once it finishes, you should be able to visit your Metabase at the URL shown in 
 
 ### How to enable Health checks
 
-Enabling health checking in Metabase is a good practice.  Go to your **web app** -> **Monitoring** -> **Health Check** -> **Enable health check**, and include in the path `/api/health`.
+Enabling health checking in Metabase is a good practice. Go to your **web app** -> **Monitoring** -> **Health Check** -> **Enable health check**, and include in the path `/api/health`.
 
 ### How to upgrade
 
@@ -156,7 +159,7 @@ Go to the Metabase web app you created and click on **Deployment** -> **Deployme
 
 Change the version of the container to the new version in the **Full Image Name and Tag** text field under **Registry settings**, and click on **Save**. Available versions of the Metabase Docker image can be found on [Docker Hub](https://hub.docker.com/r/metabase/metabase/tags?page=1&ordering=last_updated).
 
-**Important**: always ensure you have backed up the Metabase application database before upgrading, *especially* when doing so between major versions. Metabase also doesn't officially support downgrading versions.
+**Important**: always ensure you have backed up the Metabase application database before upgrading, _especially_ when doing so between major versions. Metabase also doesn't officially support downgrading versions.
 
 ### How to see the logs
 
@@ -194,4 +197,4 @@ In the example above the connection string would be
 postgresql://10.0.2.4:5432/metabase?user=metabase@metabase-app-database&password=Password1!&ssl=true&sslmode=require
 ```
 
-If you have trouble connecting, refer to the [postgres configuration instructions](../installation-and-operation/configuring-application-database.md#postgresql) as you may run into a problem with an `@` symbol in the username portion of the connection string.  Using a combination of `MB_DB_CONNECTION_URI` with separate `MB_DB_USER` and `MB_DB_PASSWORD` fields also works.
+If you have trouble connecting, refer to the [postgres configuration instructions](../installation-and-operation/configuring-application-database.md#postgresql) as you may run into a problem with an `@` symbol in the username portion of the connection string. Using a combination of `MB_DB_CONNECTION_URI` with separate `MB_DB_USER` and `MB_DB_PASSWORD` fields also works.

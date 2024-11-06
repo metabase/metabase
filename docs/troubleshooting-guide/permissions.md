@@ -34,7 +34,6 @@ If you have a different issue, see [related problems](#do-you-have-a-different-p
 - [Getting a "permission denied" error message][permission-denied].
 - [Checking someone's access to a table or schema](./data-permissions.md#checking-someones-access-to-a-table-or-schema)
 
-
 ## Do you have a different problem?
 
 - [I can't save my question or dashboard][proxies].
@@ -46,7 +45,6 @@ If you can’t solve your problem using the troubleshooting guides:
 
 - Search or ask the [Metabase community][discourse].
 - Search for [known bugs or limitations][known-issues].
-
 
 [admin-permissions]: ../permissions/start.md
 [collection-permissions]: ../permissions/collections.md
