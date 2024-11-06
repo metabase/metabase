@@ -16,7 +16,7 @@ export const askForTenancyColumns: CliStepMethod = async state => {
 
   const hasTenancyIsolation = await toggle({
     message: `Is your tenancy isolation based on a column?`,
-    default: true,
+    default: false,
   });
 
   if (!hasTenancyIsolation) {
