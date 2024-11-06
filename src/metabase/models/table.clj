@@ -81,7 +81,7 @@
           (data-perms/set-new-table-permissions! non-admin-groups table :perms/create-queries :no))
         (do
           ;; Normal tables start out with unrestricted data access in all groups, but query access only in All Users
-          (data-perms/set-new-table-permissions! (conj non-magic-groups all-users-group) table :perms/view-data :unrestricted)
+          (data-perms/set-new-table-permissions! non-admin-groups table :perms/view-data :unrestricted)
           (data-perms/set-new-table-permissions! [all-users-group] table :perms/create-queries :query-builder)
           (data-perms/set-new-table-permissions! non-magic-groups table :perms/create-queries :no)))
       ;; Download permissions
