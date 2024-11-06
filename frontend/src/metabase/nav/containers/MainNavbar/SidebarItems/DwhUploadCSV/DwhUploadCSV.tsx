@@ -79,7 +79,7 @@ export const DwhUploadCSV = () => {
         {t`Upload CSV`}
       </Button>
       <UploadInput
-        id="dwh-csv-upload-input"
+        id="dwh-upload-csv-input"
         ref={uploadInputRef}
         onChange={handleFileInput}
       />

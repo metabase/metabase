@@ -45,7 +45,7 @@ describeWithSnowplow(
       it(`${testFile.valid ? "Can" : "Cannot"} upload ${
         testFile.fileName
       } to "Our analytics" using DWH`, () => {
-        uploadFile("#dwh-csv-upload-input", "Our analytics", testFile);
+        uploadFile("#dwh-upload-csv-input", "Our analytics", testFile);
 
         expectGoodSnowplowEvent({
           event: "csv_upload_clicked",
