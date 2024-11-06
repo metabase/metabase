@@ -49,7 +49,7 @@ export const getMetabaseInstanceSetupCompleteMessage = (
   Metabase is running at ${blue(instanceUrl)}
 
   Login with email "${blue(email)}" and password "${blue(password)}".
-  You can find your login credentials at "${blue(SAMPLE_CREDENTIALS_FILE_NAME)}".
+  You can also find your login credentials at "${blue(SAMPLE_CREDENTIALS_FILE_NAME)}".
 
   Metabase will phone home some data collected via Snowplow.
   We don’t collect any usernames, emails, server IPs, database details of any kind, or
