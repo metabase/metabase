@@ -1742,13 +1742,13 @@
                   :database-id   false
                   :table-id      false
                   :archived      true
+                  :official      [:= "official" :authority_level]
                   :created-at    true
                   :updated-at    false}
    :search-terms [:name]
    :render-terms {:archived-directly          true
                   ;; Why not make this a search term? I suspect it was just overlooked before.
                   :description                true
-                  :collection_authority_level :authority_level
                   :collection_name            :name
                   :collection_type            :type
                   :location                   true}

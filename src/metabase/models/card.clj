@@ -1019,13 +1019,13 @@
                   :table-id       false
                   :last-edited-at :r.timestamp
                   :last-editor-id :r.user_id
+                  :official       [:= "official" :collection.authority_level]
                   :pinned         [:> [:coalesce :collection_position [:inline 0]] [:inline 0]]
                   :verified       [:= "verified" :mr.status]
                   :created-at     true
                   :updated-at     true}
    :search-terms [:name :description]
    :render-terms {:archived-directly          true
-                  :collection-authority_level :collection.authority_level
                   :collection-location        :collection.location
                   :collection-name            :collection.name
                   ;; This is used for legacy ranking, in future it will be replaced by :pinned
