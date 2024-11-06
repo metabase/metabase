@@ -44,13 +44,13 @@ export type EmbeddingDisplayOptions = {
  * Properties here exists only in the document (just `hide_parameters` since `locale` is a new one),
  * but not in the UI.
  */
-export type AdditionalEmbeddingHashOptions = {
+export type EmbeddingAdditionalHashOptions = {
   hide_parameters?: string | null;
   locale?: string;
 };
 
 export type EmbeddingHashOptions = EmbeddingDisplayOptions &
-  AdditionalEmbeddingHashOptions;
+  EmbeddingAdditionalHashOptions;
 
 export type CodeSampleParameters = {
   siteUrl: string;

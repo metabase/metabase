@@ -15,9 +15,9 @@ import { openSharingMenu } from "./e2e-sharing-helpers";
  * {@link QuestionResource} or {@link DashboardResource}
  * @property {object} params
  *
- * @typedef {import("metabase/public/lib/types").AdditionalEmbeddingHashOptions} AdditionalEmbeddingHashOptions
+ * @typedef {import("metabase/public/lib/types").EmbeddingAdditionalHashOptions} EmbeddingAdditionalHashOptions
  *
- * @typedef {AdditionalEmbeddingHashOptions['hide_parameters']} HiddenFilters
+ * @typedef {EmbeddingAdditionalHashOptions['hide_parameters']} HiddenFilters
  *
  * @typedef {object} PageStyle
  * @property {boolean} [bordered]
@@ -106,7 +106,7 @@ export function visitEmbeddedPage(
   /**
    * Get the URL hash from the page style and/or hidden filters parameters
    *
-   * @param {PageStyle & AdditionalEmbeddingHashOptions['locale']} hashOptions
+   * @param {PageStyle & EmbeddingAdditionalHashOptions['locale']} hashOptions
    * @param {HiddenFilters} hiddenFilters
    *
    * @returns string

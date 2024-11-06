@@ -33,7 +33,7 @@ import { type DispatchFn, useDispatch } from "metabase/lib/redux";
 import { LocaleProvider } from "metabase/public/LocaleProvider";
 import type { PublicOrEmbeddedDashboardEventHandlersProps } from "metabase/public/containers/PublicOrEmbeddedDashboard/types";
 import { useDashboardLoadHandlers } from "metabase/public/containers/PublicOrEmbeddedDashboard/use-dashboard-load-handlers";
-import type { AdditionalEmbeddingHashOptions } from "metabase/public/lib/types";
+import type { EmbeddingAdditionalHashOptions } from "metabase/public/lib/types";
 import { setErrorPage } from "metabase/redux/app";
 import type { DashboardId } from "metabase-types/api";
 import type { State } from "metabase-types/store";
@@ -75,7 +75,7 @@ type PublicOrEmbeddedDashboardProps = OwnProps &
   ReduxProps &
   DashboardDisplayOptionControls &
   EmbedDisplayParams &
-  Pick<AdditionalEmbeddingHashOptions, "locale">;
+  Pick<EmbeddingAdditionalHashOptions, "locale">;
 
 const initializeData = async ({
   dashboardId,

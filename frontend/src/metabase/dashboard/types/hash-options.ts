@@ -1,5 +1,5 @@
 import type {
-  AdditionalEmbeddingHashOptions,
+  EmbeddingAdditionalHashOptions,
   EmbeddingDisplayOptions,
 } from "metabase/public/lib/types";
 
@@ -14,5 +14,5 @@ export type DashboardControlsHashOptions = {
 export type DashboardUrlHashOptions = Partial<
   EmbeddingDisplayOptions &
     DashboardControlsHashOptions &
-    AdditionalEmbeddingHashOptions
+    EmbeddingAdditionalHashOptions
 >;
