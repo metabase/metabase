@@ -41,8 +41,6 @@
     (reify qp.si/StreamingResultsWriter
       (begin! [_ {{:keys [ordered-cols results_timezone format-rows?]
                    :or   {format-rows? true}} :data} viz-settings]
-        ;; TODO -- wouldn't it make more sense if the JSON downloads used `:name` preferentially? Seeing how JSON is
-        ;; probably going to be parsed programmatically
         (let [cols           (common/column-titles ordered-cols (::mb.viz/column-settings viz-settings) format-rows?)
               pivot-grouping (qp.pivot.postprocess/pivot-grouping-key cols)]
           (when pivot-grouping (vreset! pivot-grouping-idx pivot-grouping))
@@ -50,9 +48,7 @@
                         pivot-grouping (m/remove-nth pivot-grouping))]
             (vreset! col-names names))
           (vreset! ordered-formatters
-                   (if format-rows?
-                     (mapv #(formatter/create-formatter results_timezone % viz-settings) ordered-cols)
-                     (vec (repeat (count ordered-cols) identity))))
+                   (mapv #(formatter/create-formatter results_timezone % viz-settings format-rows?) ordered-cols))
           (.write writer "[\n")))
 
       (write-row! [_ row row-num _ {:keys [output-order]}]
@@ -67,8 +63,8 @@
                                    pivot-grouping-key (m/remove-nth pivot-grouping-key))]
           ;; when a pivot-grouping col exists, we check its group number. When it's zero,
           ;; we keep it, otherwise don't include it in the results as it's a row representing a subtotal of some kind
-          (when (or (= qp.pivot.postprocess/NON_PIVOT_ROW_GROUP group)
-                    (not group))
+          (when (or (not group)
+                    (= qp.pivot.postprocess/NON_PIVOT_ROW_GROUP (int group)))
             (when-not (zero? row-num)
               (.write writer ",\n"))
             (json/generate-stream

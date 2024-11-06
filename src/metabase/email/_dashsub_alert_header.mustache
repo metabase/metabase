@@ -1,0 +1,86 @@
+<!doctype html>
+<html>
+  <head>
+    {{!--- Empty head to make style element work in Yahoo mail on Android: https://www.caniemail.com/features/html-style/}}
+  </head>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,400;0,700;0,900;1,400;1,700;1,900&display=swap');
+
+      {{!--- Styles are mostly inline for maximum compatibility with email clients.  --}}
+
+      body {
+        font-size: 14px;
+        color: {{payload.style.color_text_dark}};
+        font-family: "Lato", "Lucida Grande", "Lucida Sans Unicode", Tahoma, Sans-Serif;
+      }
+
+      {{!-- Override margin of pulse charts/tables since it's not required for email (it is for Slack) --}}
+      .pulse-body {
+        margin: 0px !important;
+      }
+
+      {{!-- General formatting for links. Marked as important since otherwise Gmail will sometimes override it --}}
+      a {
+        color: {{context.application_color}} !important;
+        text-decoration: none !important;
+      }
+
+      a:hover, a:active {
+         text-decoration: underline;
+      }
+
+      {{!-- Formatting for header elements of Markdown cards --}}
+      h1, h2, h3, h4, h5, h6 {
+        color: {{payload.style.color_text_dark}};
+        font-weight: 900;
+      }
+
+      h1 {
+        font-size: 20px;
+        line-height: 24px;
+      }
+
+      h2 {
+        font-size: 18px;
+        line-height: 22px;
+      }
+
+      h3 {
+        font-size: 16px;
+        line-height: 20px;
+      }
+
+      h4, h5, h6 {
+        font-size: 14px;
+        line-height: 18px;
+      }
+
+      hr {
+        border-width: 0;
+        background: #F0F0F0;
+        height: 1px;
+        margin-top: 20px;
+        margin-bottom: 20px;
+      }
+
+      {{!-- Emails on smaller devices should have less of our UI chrome to make the content easier to read --}}
+      @media screen and (max-width: 450px) {
+        .background {
+          background-color: #ffffff !important;
+          padding: 0px !important;
+        }
+        .container {
+          padding: 10px !important;
+        }
+
+        {{!-- Collapse filters to a single column on small screens --}}
+        .filter-cell {
+          width: 100% !important;
+          display: block !important;
+          line-height: 12px !important;
+        }
+      }
+    </style>
+  </head>

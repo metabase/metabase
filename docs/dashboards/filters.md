@@ -60,6 +60,8 @@ Single Date and Date Range will provide a calendar widget, while the other optio
 
 You can add a time grouping widget to a dashboard to change how charts are grouped by time. For example, you may want to look at the time series charts grouped by month by default, but give people the option to view the results by other groupings: by week, by quarter, and so on.
 
+> Time grouping parameter widget can only be connected to questions built with the [graphical query builder](../questions/query-builder/introduction.md).
+
 This widget doesn't filter data in the charts; the widget just changes the time granularity for any cards that have a datetime field connected to the widget.
 
 You can group by:
@@ -127,6 +129,8 @@ To undo this auto-connecting of cards, click on the toast that pops up when Meta
 ## Filtering dashboards with native/SQL questions
 
 If you're trying to connect a filter to a card with a native/SQL questions, you'll need to [add a variable or field filter to your query](../questions/native-editor/sql-parameters.md). For an in-depth article, check out [Adding filters to dashboards with SQL questions](https://www.metabase.com/learn/dashboards/filters).
+
+You can't connect a time grouping parameter widget to a card with a SQL question.
 
 ## Wiring up dashboard filters to text cards
 

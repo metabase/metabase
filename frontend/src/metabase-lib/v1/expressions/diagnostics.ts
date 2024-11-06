@@ -17,7 +17,7 @@ import {
   adjustOptions,
   useShorthands,
 } from "./recursive-parser";
-import { COMPARISON_OPS, LOGICAL_OPS, resolve } from "./resolver";
+import { resolve } from "./resolver";
 import { OPERATOR, TOKEN, tokenize } from "./tokenizer";
 import type { ErrorWithMessage } from "./types";
 
@@ -121,13 +121,6 @@ export function diagnose({
 
     if (isErrorWithMessage(mbqlOrError)) {
       return mbqlOrError;
-    }
-
-    if (startRule === "expression" && isBooleanExpression(mbqlOrError)) {
-      throw new ResolverError(
-        t`Custom columns do not support boolean expressions`,
-        mbqlOrError.node,
-      );
     }
   } catch (err) {
     if (isErrorWithMessage(err)) {
@@ -257,15 +250,6 @@ function prattCompiler({
   });
 
   return mbql;
-}
-
-function isBooleanExpression(
-  expr: unknown,
-): expr is [string, ...Expr[]] & { node?: Node } {
-  return (
-    Array.isArray(expr) &&
-    (LOGICAL_OPS.includes(expr[0]) || COMPARISON_OPS.includes(expr[0]))
-  );
 }
 
 function isErrorWithMessage(err: unknown): err is ErrorWithMessage {

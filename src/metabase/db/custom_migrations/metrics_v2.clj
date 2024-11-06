@@ -23,8 +23,11 @@
                                 :collection
                                 {:name coll-name, :slug slug, :description desc})]
              (let [all-users-group-id (t2/select-one-fn :id :permissions_group :name "All Users")]
-               (t2/insert! :permissions {:object   (format "/collection/%s/read/" collection-id)
-                                         :group_id all-users-group-id}))
+               (t2/insert! :permissions {:object        (format "/collection/%s/read/" collection-id)
+                                         :group_id      all-users-group-id
+                                         :perm_type     "perms/collection-access"
+                                         :perm_value    "read"
+                                         :collection_id collection-id}))
              collection-id))))))
 
 (defn- add-metric-id

@@ -9,6 +9,7 @@
   - Static Embedding Dashboard/dashcard downloads
   - Dashboard Subscription Attachments
   - Alert attachments"
+  #_{:clj-kondo/ignore [:deprecated-namespace]}
   (:require
    [cheshire.core :as json]
    [clojure.data.csv :as csv]
@@ -19,7 +20,7 @@
    [dk.ative.docjure.spreadsheet :as spreadsheet]
    [metabase.formatter :as formatter]
    [metabase.public-settings :as public-settings]
-   [metabase.pulse :as pulse]
+   [metabase.pulse.core :as pulse]
    [metabase.pulse.test-util :as pulse.test-util]
    [metabase.test :as mt])
   (:import
@@ -56,7 +57,9 @@
       :xlsx (read-xlsx pivot results)
       :json (tabulate-maps results))))
 
-(defn- card-download
+(defn card-download
+  "Provides the result of the card download via the card api in `export-format`,
+  formatting rows if `format-rows` is true, and pivoting the results if `pivot` is true."
   [{:keys [id] :as _card} {:keys [export-format format-rows pivot]}]
   (->> (mt/user-http-request :crowberto :post 200
                              (format "card/%d/query/%s" id (name export-format))
@@ -75,9 +78,9 @@
                                             :was-pivot (boolean pivot)
                                             :info {:visualization-settings (:visualization_settings card)}
                                             :middleware
-                                            {:format-rows?    format-rows
-                                             :pivot?          (boolean pivot)
-                                             :userland-query? true})))
+                                            {:userland-query? true}))
+                             :format_rows   format-rows
+                             :pivot_results (boolean pivot))
        (process-results pivot export-format)))
 
 (defn public-question-download
@@ -158,8 +161,7 @@
                                                   :alert_condition "rows"}
                    :model/PulseCard _ (merge
                                        (when (= :csv  export-format) {:include_csv true})
-                                       (when (= :json export-format) {:include_json true})
-                                       (when (= :xlsx export-format) {:include_xlsx true})
+                                       (when (= :xlsx export-format) {:include_xls true})
                                        {:format_rows format-rows}
                                        {:pivot_results pivot}
                                        {:pulse_id pulse-id
@@ -183,8 +185,7 @@
                                                     :dashboard_id (:dashboard_id card-or-dashcard)}
                      :model/PulseCard _ (merge
                                          (when (= :csv  export-format) {:include_csv true})
-                                         (when (= :json export-format) {:include_json true})
-                                         (when (= :xlsx export-format) {:include_xlsx true})
+                                         (when (= :xlsx export-format) {:include_xls true})
                                          {:format_rows format-rows}
                                          {:pivot_results pivot}
                                          {:pulse_id          pulse-id
@@ -205,8 +206,7 @@
                                                     :dashboard_id dashboard-id}
                      :model/PulseCard _ (merge
                                          (when (= :csv  export-format) {:include_csv true})
-                                         (when (= :json export-format) {:include_json true})
-                                         (when (= :xlsx export-format) {:include_xlsx true})
+                                         (when (= :xlsx export-format) {:include_xls true})
                                          {:format_rows format-rows}
                                          {:pivot_results pivot}
                                          {:pulse_id          pulse-id
@@ -264,9 +264,9 @@
       (mt/with-temp [:model/Card card
                      {:display                :pivot
                       :visualization_settings {:pivot_table.column_split
-                                               {:rows    [[:field (mt/id :products :category) {:base-type :type/Text}]]
-                                                :columns [[:field (mt/id :products :created_at) {:base-type :type/DateTime :temporal-unit :year}]]
-                                                :values  [[:aggregation 0]]}
+                                               {:rows    ["CATEGORY"]
+                                                :columns ["CREATED_AT"]
+                                                :values  ["sum"]}
                                                :column_settings
                                                {"[\"name\",\"sum\"]" {:number_style       "currency"
                                                                       :currency_in_header false}}}
@@ -319,9 +319,9 @@
         (mt/with-temp [:model/Card card
                        {:display                :pivot
                         :visualization_settings {:pivot_table.column_split
-                                                 {:rows    [[:field (mt/id :products :category) {:base-type :type/Text}]]
-                                                  :columns [[:field (mt/id :products :created_at) {:base-type :type/DateTime :temporal-unit :year}]]
-                                                  :values  [[:aggregation 0]]}
+                                                 {:rows    ["CATEGORY"]
+                                                  :columns ["CREATED_AT"]
+                                                  :values  ["sum"]}
                                                  :pivot.show_row_totals    row-totals?
                                                  :pivot.show_column_totals col-totals?
                                                  :column_settings
@@ -373,11 +373,9 @@
                    :model/Card pivot-card
                    {:display                :pivot
                     :visualization_settings {:pivot_table.column_split
-                                             {:rows    [[:field "C" {:base-type :type/Text}]
-                                                        [:field "D" {:base-type :type/Text}]]
-                                              :columns [[:field "A" {:base-type :type/Text}]
-                                                        [:field "B" {:base-type :type/Text}]]
-                                              :values  [[:aggregation 0]]}}
+                                             {:rows    ["C" "D"]
+                                              :columns ["A" "B"]
+                                              :values  ["sum"]}}
                     :dataset_query          {:database (mt/id)
                                              :type     :query
                                              :query
@@ -463,10 +461,9 @@
       (mt/with-temp [:model/Card {pivot-card-id :id}
                      {:display                :pivot
                       :visualization_settings {:pivot_table.column_split
-                                               {:rows    [[:field (mt/id :products :created_at) {:base-type :type/DateTime :temporal-unit :year}]]
-                                                :columns [[:field (mt/id :products :category) {:base-type :type/Text}]]
-                                                :values  [[:aggregation 0]
-                                                          [:aggregation 1]]}}
+                                               {:rows    ["CREATED_AT"]
+                                                :columns ["CATEGORY"]
+                                                :values  ["sum" "avg"]}}
                       :dataset_query          {:database (mt/id)
                                                :type     :query
                                                :query
@@ -500,10 +497,9 @@
       (mt/with-temp [:model/Card {pivot-card-id :id}
                      {:display                :pivot
                       :visualization_settings {:pivot_table.column_split
-                                               {:rows    [[:field (mt/id :products :created_at) {:base-type :type/DateTime :temporal-unit :month}]
-                                                          [:field (mt/id :products :category) {:base-type :type/Text}]]
+                                               {:rows    ["CREATED_AT" "CATEGORY"]
                                                 :columns []
-                                                :values  [[:aggregation 0]]}}
+                                                :values  ["sum"]}}
                       :dataset_query          {:database (mt/id)
                                                :type     :query
                                                :query
@@ -531,8 +527,8 @@
                      {:display                :pivot
                       :visualization_settings {:pivot_table.column_split
                                                {:rows    []
-                                                :columns [[:field (mt/id :products :category) {:base-type :type/Text}]]
-                                                :values  [[:aggregation 0]]}}
+                                                :columns ["CATEGORY"]
+                                                :values  ["sum"]}}
                       :dataset_query          {:database (mt/id)
                                                :type     :query
                                                :query
@@ -555,11 +551,9 @@
       (mt/with-temp [:model/Card {pivot-card-id :id}
                      {:display                :pivot
                       :visualization_settings {:pivot_table.column_split
-                                               {:rows    [[:field (mt/id :products :category) {:base-type :type/Text}]
-                                                          [:field (mt/id :products :created_at) {:base-type     :type/DateTime
-                                                                                                 :temporal-unit :year}]]
+                                               {:rows    ["CATEGORY" "CREATED_AT"]
                                                 :columns []
-                                                :values  [[:aggregation 0] [:aggregation 1]]}}
+                                                :values  ["sum" "count"]}}
                       :dataset_query          {:database (mt/id)
                                                :type     :query
                                                :query
@@ -604,10 +598,9 @@
       (mt/with-temp [:model/Card {pivot-card-id :id}
                      {:display                :pivot
                       :visualization_settings {:pivot_table.column_split
-                                               {:rows    [[:field (mt/id :products :created_at) {:base-type :type/DateTime, :temporal-unit :month}]],
-                                                :columns [[:field (mt/id :products :category) {:base-type :type/Text}]],
-                                                :values  [[:aggregation 0]
-                                                          [:aggregation 1]]}}
+                                               {:rows    ["CREATED_AT"],
+                                                :columns ["CATEGORY"],
+                                                :values  ["sum" "avg"]}}
                       :dataset_query          {:database (mt/id)
                                                :type     :query
                                                :query
@@ -632,10 +625,9 @@
       (mt/with-temp [:model/Card {pivot-card-id :id}
                      {:display                :pivot
                       :visualization_settings {:pivot_table.column_split
-                                               {:rows    [[:field (mt/id :products :created_at) {:base-type :type/DateTime :temporal-unit :month}]
-                                                          [:field (mt/id :products :category) {:base-type :type/Text}]]
+                                               {:rows    ["CREATED_AT" "CATEGORY"]
                                                 :columns []
-                                                :values  [[:aggregation 0]]}}
+                                                :values  ["sum"]}}
                       :dataset_query          {:database (mt/id)
                                                :type     :query
                                                :query
@@ -671,8 +663,8 @@
                      {:display                :pivot
                       :visualization_settings {:pivot_table.column_split
                                                {:rows    []
-                                                :columns [[:field (mt/id :products :category) {:base-type :type/Text}]]
-                                                :values  [[:aggregation 0]]}}
+                                                :columns ["CATEGORY"]
+                                                :values  ["sum"]}}
                       :dataset_query          {:database (mt/id)
                                                :type     :query
                                                :query
@@ -706,10 +698,9 @@
         (mt/with-temp [:model/Card {pivot-card-id :id}
                        {:display                :pivot
                         :visualization_settings {:pivot_table.column_split
-                                                 {:rows    [[:field (mt/id :products :created_at) {:base-type :type/DateTime :temporal-unit :month}]
-                                                            [:field (mt/id :products :category) {:base-type :type/Text}]]
+                                                 {:rows    ["CREATED_AT" "CATEGORY"]
                                                   :columns []
-                                                  :values  [[:aggregation 0]]}}
+                                                  :values  ["sum"]}}
                         :dataset_query          {:database (mt/id)
                                                  :type     :query
                                                  :query
@@ -734,8 +725,8 @@
                        {:display                :pivot
                         :visualization_settings {:pivot_table.column_split
                                                  {:rows    []
-                                                  :columns [[:field (mt/id :products :category) {:base-type :type/Text}]]
-                                                  :values  [[:aggregation 0]]}}
+                                                  :columns ["CATEGORY"]
+                                                  :values  ["sum"]}}
                         :dataset_query          {:database (mt/id)
                                                  :type     :query
                                                  :query
@@ -986,8 +977,8 @@
                          {:display                :pivot
                           :visualization_settings {:pivot_table.column_split
                                                    {:rows    []
-                                                    :columns [[:field (mt/id :products :category) {:base-type :type/Text}]]
-                                                    :values  [[:aggregation 0]]}}
+                                                    :columns ["CATEGORY"]
+                                                    :values  ["sum"]}}
                           :dataset_query          {:database (mt/id)
                                                    :type     :query
                                                    :query
@@ -1003,15 +994,37 @@
               (is (= 2
                      (count (second data)))))))))))
 
+(deftest unpivoted-pivot-results-use-correct-formatters-in-xlsx
+  (testing "If a pivot question is downloaded or exported unpivoted as XLSX, the formatters are set up properly (#48158)"
+    (mt/dataset test-data
+      (mt/with-temp [:model/Card {pivot-card-id :id}
+                     {:display                :pivot
+                      :visualization_settings {:pivot_table.column_split
+                                               {:rows    []
+                                                :columns ["CATEGORY"]
+                                                :values  ["count"]}
+                                               :column_settings {"[\"name\",\"count\"]" {:number_style "percent"}}}
+                      :dataset_query          {:database (mt/id)
+                                               :type     :query
+                                               :query
+                                               {:source-table (mt/id :products)
+                                                :aggregation  [[:count] #_[:sum [:field (mt/id :products :price) {:base-type :type/Float}]]]
+                                                :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]]}}}]
+        (let [result   (mt/user-http-request :crowberto :post 200
+                                             (format "card/%d/query/xlsx?format_rows=true" pivot-card-id)
+                                             {})
+              data   (process-results false :xlsx result)]
+          (is (= ["Doohickey" "4,200.00%"] (second data))))))))
+
 (deftest format-rows-value-affects-xlsx-exports
   (testing "Format-rows true/false is respected for xlsx exports."
     (mt/dataset test-data
       (mt/with-temp [:model/Card card
                      {:display                :pivot
                       :visualization_settings {:pivot_table.column_split
-                                               {:rows    [[:field (mt/id :products :category) {:base-type :type/Text}]]
-                                                :columns [[:field (mt/id :products :created_at) {:base-type :type/DateTime :temporal-unit :year}]]
-                                                :values  [[:aggregation 0]]}
+                                               {:rows    ["CATEGORY"]
+                                                :columns ["CREATED_AT"]
+                                                :values  ["sum"]}
                                                :column_settings
                                                {"[\"name\",\"sum\"]" {:number_style       "currency"
                                                                       :currency_in_header false}}}
@@ -1023,11 +1036,125 @@
                                                 :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]
                                                                [:field (mt/id :products :created_at) {:base-type :type/DateTime :temporal-unit :year}]]}}}]
         (is (= [["Category" "Created At" "Sum of Price"]
-                ["Doohickey" "2016" "632.14"]
-                ["Doohickey" "2017" "854.19"]]
+                ["Doohickey" "2016" "[$$]632.14"]
+                ["Doohickey" "2017" "[$$]854.19"]]
                (take 3 (card-download card {:export-format :xlsx :format-rows true :pivot true})))
             ;; Excel will apply a default format which is seen here. The 'actual' data in the cells is unformatted.
             (= [["Category" "Created At" "Sum of Price"]
                 ["Doohickey" "January 1, 2016, 12:00 AM" "632.14"]
                 ["Doohickey" "January 1, 2017, 12:00 AM" "854.19"]]
                (take 3 (card-download card {:export-format :xlsx :format-rows false :pivot true}))))))))
+
+(deftest unformatted-downloads-and-exports-keep-numbers-as-numbers
+  (testing "Unformatted numbers in downloads remain numbers."
+    (mt/dataset test-data
+      (mt/with-temp [:model/Card card {:display       :table
+                                       :dataset_query {:database (mt/id)
+                                                       :type     :native
+                                                       :native   {:query "SELECT 1234.567 as A"}}}]
+        (testing "CSV downloads respect the formatted/unformatted setting"
+          (let [formatted-results   (all-downloads card {:export-format :csv :format-rows true})
+                unformatted-results (all-downloads card {:export-format :csv :format-rows false})]
+            (is (= {:unsaved-card-download    [["A"] ["1,234.57"]]
+                    :card-download            [["A"] ["1,234.57"]]
+                    :public-question-download [["A"] ["1,234.57"]]
+                    :dashcard-download        [["A"] ["1,234.57"]]
+                    :public-dashcard-download [["A"] ["1,234.57"]]}
+                   formatted-results))
+            (is (= {:unsaved-card-download    [["A"] ["1234.567"]]
+                    :card-download            [["A"] ["1234.567"]]
+                    :public-question-download [["A"] ["1234.567"]]
+                    :dashcard-download        [["A"] ["1234.567"]]
+                    :public-dashcard-download [["A"] ["1234.567"]]}
+                   unformatted-results))))
+        (testing "JSON downloads respect the formatted/unformatted setting"
+          (let [formatted-results   (all-downloads card {:export-format :json :format-rows true})
+                unformatted-results (all-downloads card {:export-format :json :format-rows false})]
+            (is (= {:unsaved-card-download    [["A"] ["1,234.57"]]
+                    :card-download            [["A"] ["1,234.57"]]
+                    :public-question-download [["A"] ["1,234.57"]]
+                    :dashcard-download        [["A"] ["1,234.57"]]
+                    :public-dashcard-download [["A"] ["1,234.57"]]}
+                   formatted-results))
+            (is (= {:unsaved-card-download    [["A"] [1234.567]]
+                    :card-download            [["A"] [1234.567]]
+                    :public-question-download [["A"] [1234.567]]
+                    :dashcard-download        [["A"] [1234.567]]
+                    :public-dashcard-download [["A"] [1234.567]]}
+                   unformatted-results))))))))
+
+(deftest pivot-measures-order-test
+  (testing "A pivot download will use the user-configured measures order (#48442)."
+    (mt/dataset test-data
+      (mt/with-temp [:model/Card card {:display                :pivot
+                                       :dataset_query          {:database (mt/id)
+                                                                :type     :query
+                                                                :query
+                                                                {:source-table (mt/id :products)
+                                                                 :aggregation  [[:count]
+                                                                                [:sum [:field (mt/id :products :price) {:base-type :type/Float}]]
+                                                                                [:avg [:field (mt/id :products :rating) {:base-type :type/Float}]]]
+                                                                 :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]]}}
+                                       :visualization_settings {:pivot_table.column_split
+                                                                {:rows    [[:field (mt/id :products :category) {:base-type :type/Text}]]
+                                                                 :columns []
+                                                                 :values  [[:aggregation 1]
+                                                                           [:aggregation 0]
+                                                                           [:aggregation 2]]}
+                                                                :column_settings
+                                                                {"[\"name\",\"count\"]" {:column_title "Count Renamed"}
+                                                                 "[\"name\",\"sum\"]"   {:column_title "Sum Renamed"}
+                                                                 "[\"name\",\"avg\"]"   {:column_title "Average Renamed"}}}}]
+        (let [expected-header   ["Category" "Sum of Price" "Count" "Average of Rating"]
+              formatted-results (all-downloads card {:export-format :csv :format-rows false :pivot true})]
+          (is (= {:unsaved-card-download    expected-header
+                  :card-download            expected-header
+                  :public-question-download expected-header
+                  :dashcard-download        expected-header
+                  :public-dashcard-download expected-header}
+                 (update-vals formatted-results first))))
+        (testing "The column title changes are used when format-rows is true"
+          (let [expected-header   ["Category" "Sum Renamed" "Count Renamed" "Average Renamed"]
+                formatted-results (all-downloads card {:export-format :csv :format-rows true :pivot true})]
+            (is (= {:unsaved-card-download    expected-header
+                    :card-download            expected-header
+                    :public-question-download expected-header
+                    :dashcard-download        expected-header
+                    :public-dashcard-download expected-header}
+                   (update-vals formatted-results first)))))))))
+
+(deftest pivot-rows-order-test
+  (testing "A pivot download will use the user-configured rows order."
+    (mt/dataset test-data
+      (mt/with-temp [:model/Card card {:display                :pivot
+                                       :dataset_query          {:database (mt/id)
+                                                                :type     :query
+                                                                :query
+                                                                {:source-table (mt/id :products)
+                                                                 :aggregation  [[:count]]
+                                                                 :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]
+                                                                                [:field (mt/id :products :created_at) {:base-type :type/DateTime :temporal-unit :year}]]}}
+                                       :visualization_settings {:pivot_table.column_split
+                                                                {:rows    [[:field (mt/id :products :created_at) {:base-type :type/DateTime :temporal-unit :year}]
+                                                                           [:field (mt/id :products :category) {:base-type :type/Text}]]
+                                                                 :columns []
+                                                                 :values  [[:aggregation 0]]}
+                                                                :column_settings
+                                                                {"[\"name\",\"count\"]" {:column_title "Count Renamed"}}}}]
+        (let [expected-header   ["Created At" "Category" "Count"]
+              formatted-results (all-downloads card {:export-format :csv :format-rows false :pivot true})]
+          (is (= {:unsaved-card-download    expected-header
+                  :card-download            expected-header
+                  :public-question-download expected-header
+                  :dashcard-download        expected-header
+                  :public-dashcard-download expected-header}
+                 (update-vals formatted-results first))))
+        (testing "The column title changes are used when format-rows is true"
+          (let [expected-header   ["Created At" "Category" "Count Renamed"]
+                formatted-results (all-downloads card {:export-format :csv :format-rows true :pivot true})]
+            (is (= {:unsaved-card-download    expected-header
+                    :card-download            expected-header
+                    :public-question-download expected-header
+                    :dashcard-download        expected-header
+                    :public-dashcard-download expected-header}
+                   (update-vals formatted-results first)))))))))

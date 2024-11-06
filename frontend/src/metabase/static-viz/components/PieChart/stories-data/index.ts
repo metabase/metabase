@@ -37,6 +37,7 @@ import showPercentagesOnChartDense from "./show-percentages-on-chart-dense.json"
 import showPercentagesOnChart from "./show-percentages-on-chart.json";
 import singleDimension from "./single-dimension.json";
 import smallMinimumSlicePercentage from "./small-min-slice-percentage.json";
+import sunburstOtherLabel from "./sunburst-other-label.json";
 import threeRingsNoLabels from "./three-rings-no-labels.json";
 import threeRingsOtherSlices from "./three-rings-other-slices.json";
 import threeRingsPercentagesAndLabels from "./three-rings-percentages-and-labels.json";
@@ -98,4 +99,5 @@ export const data = {
   threeRingsPercentagesOnChart,
   labelsWithPercent,
   labelsOnChart,
+  sunburstOtherLabel,
 };

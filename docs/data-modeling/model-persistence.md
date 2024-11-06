@@ -48,13 +48,13 @@ Once you've turned on model persistence for your Metabase, you'll need to set it
 
 {% include plans-blockquote.html feature="Individual model persistence" %}
 
-You can also toggle persistence on or off for individual models. When viewing a model, click on the **...** in the upper right and select **Turn model persistence on/off** (you'll need [Curate access](../permissions/collections.md#curate-access) to the model's collection to do this).
+You can also toggle persistence on or off for individual models. When viewing a model, click on the **...** in the upper right and select **Edit settings**. Toggle **Persist model data** on (you'll need [Curate access](../permissions/collections.md#curate-access) to the model's collection to do this).
 
 Toggling persistence for individual models is useful for models with data that updates at different frequencies than the schedule you set for other models in that database, or for models that are used more or less than other models in that database.
 
 ## Refreshing a model's persisted results
 
-To refresh a model's results, go to the model and click on the **i** info icon. In the info sidebar that opens, you'll see a note about when Metabase last refreshed the model's results, and an icon to refresh the results.
+To refresh a model's results, go to the model and click on the three-dot menu (**...**) and select **Edit settings**. In the info sidebar that opens, you'll see a note about when Metabase last refreshed the model's results, and an icon to refresh the results.
 
 ## View model persistence logs
 

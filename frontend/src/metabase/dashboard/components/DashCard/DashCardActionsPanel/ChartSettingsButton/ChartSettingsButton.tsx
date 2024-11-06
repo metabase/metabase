@@ -1,8 +1,9 @@
+import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
-import ModalWithTrigger from "metabase/components/ModalWithTrigger";
-import CS from "metabase/css/core/index.css";
-import { ChartSettingsWithState } from "metabase/visualizations/components/ChartSettings";
+import { DEFAULT_Z_INDEX } from "metabase/components/Popover/constants";
+import { Modal } from "metabase/ui";
+import { DashboardChartSettings } from "metabase/visualizations/components/ChartSettings";
 import type {
   Dashboard,
   DashboardCard,
@@ -10,7 +11,7 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
-import { DashCardActionButton } from "../DashCardActionButton/DashCardActionButton";
+import { DashCardActionButton } from "../DashCardActionButton";
 
 interface Props {
   series: Series;
@@ -25,29 +26,39 @@ export function ChartSettingsButton({
   dashcard,
   onReplaceAllVisualizationSettings,
 }: Props) {
+  const [isOpened, { open, close }] = useDisclosure(false);
+
   return (
-    <ModalWithTrigger
-      wide
-      tall
-      triggerElement={
-        <DashCardActionButton
-          as="div"
-          tooltip={t`Visualization options`}
-          aria-label={t`Show visualization options`}
-        >
-          <DashCardActionButton.Icon name="palette" />
-        </DashCardActionButton>
-      }
-      enableMouseEvents
-    >
-      <ChartSettingsWithState
-        className={CS.spread}
-        series={series}
-        onChange={onReplaceAllVisualizationSettings}
-        isDashboard
-        dashboard={dashboard}
-        dashcard={dashcard}
-      />
-    </ModalWithTrigger>
+    <>
+      <DashCardActionButton
+        as="div"
+        tooltip={t`Visualization options`}
+        aria-label={t`Show visualization options`}
+        onClick={open}
+      >
+        <DashCardActionButton.Icon name="palette" />
+      </DashCardActionButton>
+
+      {/* zIndex is a hack for now until the inner popovers are converted to mantine */}
+      <Modal.Root
+        opened={isOpened}
+        onClose={close}
+        size="85%"
+        zIndex={DEFAULT_Z_INDEX - 1}
+      >
+        <Modal.Overlay />
+        <Modal.Content mih="85%">
+          <Modal.Body>
+            <DashboardChartSettings
+              series={series}
+              onChange={onReplaceAllVisualizationSettings}
+              dashboard={dashboard}
+              dashcard={dashcard}
+              onClose={close}
+            />
+          </Modal.Body>
+        </Modal.Content>
+      </Modal.Root>
+    </>
   );
 }

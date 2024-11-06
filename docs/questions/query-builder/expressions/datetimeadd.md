@@ -76,12 +76,12 @@ case(between(now, [Opened On], [Finish By]), "Yes", "No")
 ## Accepted data types
 
 | [Data type](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview#examples-of-data-types) | Works with `datetimeAdd` |
-| ------------------------------------------------------------------------------------------------ | ------------------------ |
-| String                                                                                           | ❌                       |
-| Number                                                                                           | ❌                       |
-| Timestamp                                                                                        | ✅                       |
-| Boolean                                                                                          | ❌                       |
-| JSON                                                                                             | ❌                       |
+| ------------------------------------------------------------------------------------------------------------------------------ | ------------------------ |
+| String                                                                                                                         | ❌                       |
+| Number                                                                                                                         | ❌                       |
+| Timestamp                                                                                                                      | ✅                       |
+| Boolean                                                                                                                        | ❌                       |
+| JSON                                                                                                                           | ❌                       |
 
 We use "timestamp" and "datetime" to talk about any temporal data type that's supported by Metabase. For more info about these data types in Metabase, see [Timezones](../../../configuring-metabase/timezones.md#data-types).
 

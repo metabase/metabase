@@ -85,11 +85,13 @@ export const AlertPopover = forwardRef(function _AlertPopover(
         isOpen={showingElement === "update-modal"}
         onClose={onClose}
       >
-        <UpdateAlertModalContent
-          alert={editingAlert}
-          onCancel={onClose}
-          onAlertUpdated={onClose}
-        />
+        {editingAlert && (
+          <UpdateAlertModalContent
+            alert={editingAlert}
+            onCancel={onClose}
+            onAlertUpdated={onClose}
+          />
+        )}
       </Modal>
     </>
   );

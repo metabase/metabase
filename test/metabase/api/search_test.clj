@@ -1179,8 +1179,9 @@
 
         (testing "error if doesn't have premium-features"
           (mt/with-premium-features #{}
-            (is (= "Content Management or Official Collections is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
-                   (mt/user-http-request :crowberto :get 402 "search" :q search-term :verified true)))))))))
+            (mt/assert-has-premium-feature-error
+             "Content Management or Official Collections"
+             (mt/user-http-request :crowberto :get 402 "search" :q search-term :verified true))))))))
 
 (deftest created-at-api-test
   (let [search-term "created-at-filtering"]
