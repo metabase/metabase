@@ -1178,7 +1178,7 @@
                                                                  :aggregation  [[:count]
                                                                                 [:min
                                                                                  [:field (mt/id :products :created_at)
-                                                                                 {:base-type :type/DateTime :temporal-unit :year}]]]
+                                                                                  {:base-type :type/DateTime :temporal-unit :year}]]]
                                                                  :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]
                                                                                 [:field (mt/id :products :created_at)
                                                                                  {:base-type :type/DateTime :temporal-unit :year}]]}}
