@@ -189,6 +189,7 @@ const visualizerSlice = createSlice({
     setDraggedItem: (state, action: PayloadAction<DraggedItem | null>) => {
       state.draggedItem = action.payload;
     },
+    resetVisualizer: () => initialState,
   },
   extraReducers: builder => {
     builder
@@ -282,6 +283,7 @@ export const {
   removeDataSource,
   toggleDataSourceExpanded,
   setDraggedItem,
+  resetVisualizer,
 } = visualizerSlice.actions;
 
 export const { reducer } = visualizerSlice;

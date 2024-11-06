@@ -5,6 +5,7 @@ import {
   type DragStartEvent,
 } from "@dnd-kit/core";
 import { useCallback } from "react";
+import { useUnmount } from "react-use";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Box, Flex } from "metabase/ui";
@@ -15,6 +16,7 @@ import {
   getDraggedItem,
   getVisualizationType,
   getVisualizerComputedSettings,
+  resetVisualizer,
   setDisplay,
   setDraggedItem,
 } from "metabase/visualizer/visualizer.slice";
@@ -35,6 +37,10 @@ export const VisualizerPage = () => {
 
   const datasets = useSelector(getDatasets);
   const hasDatasets = Object.values(datasets).length > 0;
+
+  useUnmount(() => {
+    dispatch(resetVisualizer());
+  });
 
   const handleDragStart = useCallback(
     (event: DragStartEvent) => {
