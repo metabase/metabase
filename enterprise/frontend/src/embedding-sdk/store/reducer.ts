@@ -9,7 +9,7 @@ import type {
   SdkStoreState,
 } from "embedding-sdk/store/types";
 import type { SdkUsageProblem } from "embedding-sdk/types/usage-problem";
-import { createAsyncThunk } from "metabase/lib/redux";
+import {createAsyncThunk } from "metabase/lib/redux";
 
 import { initAuth, refreshTokenAsync } from "./auth";
 import { getSessionTokenState } from "./selectors";

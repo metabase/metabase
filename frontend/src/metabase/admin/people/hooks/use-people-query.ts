@@ -3,18 +3,25 @@ import { useEffect, useMemo, useState } from "react";
 import { usePagination } from "metabase/hooks/use-pagination";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 
-import { USER_STATUS } from "../constants";
+import { USER_STATUS, type UserStatus } from "../constants";
 
 const MIN_SEARCH_LENGTH = 2;
+
+export type UsePeopleQueryPayload = {
+  status: UserStatus;
+  searchText: string;
+  page: number;
+  pageSize: number;
+};
 
 // NOTE: EntityLoader is wrapped with PaginationState hoc, however,
 // it is not the best place to store pagination state since we might want to
 // change it from the ancestors, for instance, when we change list filter props.
 // If users change any filters, we should reset the page state.
-export const usePeopleQuery = pageSize => {
+export const usePeopleQuery = (pageSize: number) => {
   const { handleNextPage, handlePreviousPage, setPage, page } = usePagination();
 
-  const [status, setStatus] = useState(USER_STATUS.active);
+  const [status, setStatus] = useState<UserStatus>(USER_STATUS.active);
   const [searchInputValue, setSearchInputValue] = useState("");
 
   const [searchText, setSearchText] = useState("");
@@ -31,12 +38,12 @@ export const usePeopleQuery = pageSize => {
     return () => clearTimeout(timerId);
   }, [searchInputValue, setPage]);
 
-  const updateStatus = status => {
+  const updateStatus = (status: UserStatus) => {
     setPage(0);
     setStatus(status);
   };
 
-  const query = useMemo(
+  const query: UsePeopleQueryPayload = useMemo(
     () => ({
       status,
       searchText,

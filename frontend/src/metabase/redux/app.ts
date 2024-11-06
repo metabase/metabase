@@ -1,8 +1,4 @@
-import {
-  type PayloadAction,
-  createAction,
-  createSlice,
-} from "@reduxjs/toolkit";
+import { type PayloadAction, createSlice } from "@reduxjs/toolkit";
 import { LOCATION_CHANGE, push } from "react-router-redux";
 
 import {
@@ -10,7 +6,11 @@ import {
   openInBlankWindow,
   shouldOpenInBlankWindow,
 } from "metabase/lib/dom";
-import { combineReducers, handleActions } from "metabase/lib/redux";
+import {
+  combineReducers,
+  createAction,
+  handleActions,
+} from "metabase/lib/redux";
 import type {
   Dispatch,
   TempStorage,

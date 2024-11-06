@@ -1,8 +1,7 @@
-import { createAction } from "redux-actions";
 import { t } from "ttag";
 
 import { defer } from "metabase/lib/promise";
-import { createThunkAction } from "metabase/lib/redux";
+import { createAction, createThunkAction } from "metabase/lib/redux";
 import { syncVizSettingsWithSeries } from "metabase/querying/viz-settings/utils/sync-viz-settings";
 import { getWhiteLabeledLoadingMessageFactory } from "metabase/selectors/whitelabel";
 import { runQuestionQuery as apiRunQuestionQuery } from "metabase/services";
@@ -31,11 +30,11 @@ export const SET_SHOW_LOADING_COMPLETE_FAVICON =
   "metabase/qb/SET_SHOW_LOADING_COMPLETE_FAVICON";
 const showLoadingCompleteFavicon = createAction(
   SET_SHOW_LOADING_COMPLETE_FAVICON,
-  () => true,
+  () => ({ payload: true }),
 );
 const hideLoadingCompleteFavicon = createAction(
   SET_SHOW_LOADING_COMPLETE_FAVICON,
-  () => false,
+  () => ({ payload: false }),
 );
 
 const LOAD_COMPLETE_UI_CONTROLS = "metabase/qb/LOAD_COMPLETE_UI_CONTROLS";

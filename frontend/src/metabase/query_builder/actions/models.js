@@ -1,8 +1,8 @@
 import { push } from "react-router-redux";
-import { createAction } from "redux-actions";
 import { t } from "ttag";
 
 import Questions from "metabase/entities/questions";
+import { createAction } from "metabase/lib/redux";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { addUndo } from "metabase/redux/undo";
 import { getMetadata } from "metabase/selectors/metadata";

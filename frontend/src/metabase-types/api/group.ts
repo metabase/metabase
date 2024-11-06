@@ -23,3 +23,5 @@ export type BaseGroupInfo = {
   id: GroupId;
   name: string;
 };
+
+export type GroupUserMembership = Record<GroupId, Member[]>;

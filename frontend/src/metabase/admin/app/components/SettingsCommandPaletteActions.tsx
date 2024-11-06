@@ -22,8 +22,8 @@ type AdminSection = {
 export const SettingsCommandPaletteActions = () => {
   const dispatch = useDispatch();
 
-  useMount(() => {
-    dispatch(initializeSettings());
+  useMount(async () => {
+    await dispatch(initializeSettings());
   });
 
   const sections = useSelector<Record<string, AdminSection>>(state =>

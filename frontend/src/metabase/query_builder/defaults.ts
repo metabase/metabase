@@ -1,10 +1,19 @@
+import { t } from "ttag";
+
 import type {
+  QueryBuilderDashboardState,
   QueryBuilderLoadingControls,
   QueryBuilderQueryStatus,
   QueryBuilderUIControls,
 } from "metabase-types/store";
 
 export const DEFAULT_UI_CONTROLS: QueryBuilderUIControls = {
+  initialChartSettings: { section: t`Data` },
+  showSidebarTitle: true,
+  isShowingNotebookNativePreview: false,
+  isShowingQuestionDetailsSidebar: false,
+  notebookNativePreviewSidebarWidth: null,
+  scrollToLastColumn: false,
   dataReferenceStack: null,
   isModifiedFromNotebook: false,
   isShowingDataReference: false,
@@ -24,11 +33,7 @@ export const DEFAULT_UI_CONTROLS: QueryBuilderUIControls = {
   previousQueryBuilderMode: false,
   snippetCollectionId: null,
   datasetEditorTab: "query", // "query" / "metadata"
-  isShowingQuestionDetailsSidebar: false,
   isShowingSnippetSidebar: false,
-  isShowingNotebookNativePreview: false,
-  notebookNativePreviewSidebarWidth: null,
-  showSidebarTitle: false,
   modal: null,
   modalContext: null,
 };
@@ -39,7 +44,7 @@ export const DEFAULT_LOADING_CONTROLS: QueryBuilderLoadingControls = {
   timeoutId: "",
 };
 
-export const DEFAULT_DASHBOARD_STATE = {
+export const DEFAULT_DASHBOARD_STATE: QueryBuilderDashboardState = {
   dashboardId: null,
   isEditing: false,
 };

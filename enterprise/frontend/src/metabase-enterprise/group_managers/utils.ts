@@ -10,7 +10,7 @@ import type { UserWithGroupManagerPermission } from "./types/user";
 const REVOKE_MANAGING_CONFIRMATION = {
   title: t`Are you sure?`,
   message: t`You will not be able to manage users of this group anymore.`,
-};
+} as const;
 
 const canAccessPeople = (user?: UserWithGroupManagerPermission) =>
   user?.permissions?.is_group_manager ?? false;
@@ -59,7 +59,7 @@ export const getRemoveMembershipConfirmation = (
   currentUser: User,
   currentUserMemberships: Member[],
   deletedMembershipId: number,
-): Partial<ConfirmationState> | null => {
+): Pick<ConfirmationState, "title" | "message"> | null => {
   const isRemovingSelf =
     currentUserMemberships.find(
       membership => membership.membership_id === deletedMembershipId,
@@ -73,7 +73,7 @@ export const getRemoveMembershipConfirmation = (
 export const getChangeMembershipConfirmation = (
   currentUser: User,
   updatedMembership: Member,
-): Partial<ConfirmationState> | null => {
+): Pick<ConfirmationState, "title" | "message"> | null => {
   const isRevokingFromSelf =
     updatedMembership.user_id === currentUser.id &&
     !updatedMembership.is_group_manager;

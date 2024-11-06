@@ -101,7 +101,7 @@ export interface DashboardState {
   dashcardData: DashCardDataMap;
 
   parameterValues: Record<ParameterId, ParameterValueOrArray>;
-  draftParameterValues: Record<ParameterId, ParameterValueOrArray | null>;
+  draftParameterValues: Record<ParameterId, ParameterValueOrArray>;
 
   loadingDashCards: DashboardCardsLoadingState;
   loadingControls: DashboardLoadingControls;

@@ -1,4 +1,4 @@
-import { createAction } from "redux-actions";
+import { createAction } from "metabase/lib/redux";
 
 import { getFetchedTimelines } from "../selectors";
 

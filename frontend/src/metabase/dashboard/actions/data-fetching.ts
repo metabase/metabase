@@ -1,4 +1,3 @@
-import { createAction } from "@reduxjs/toolkit";
 import type { Query } from "history";
 import { getIn } from "icepick";
 import { denormalize, normalize, schema } from "normalizr";
@@ -29,7 +28,11 @@ import {
 import Dashboards from "metabase/entities/dashboards";
 import type { Deferred } from "metabase/lib/promise";
 import { defer } from "metabase/lib/promise";
-import { createAsyncThunk, createThunkAction } from "metabase/lib/redux";
+import {
+  createAction,
+  createAsyncThunk,
+  createThunkAction,
+} from "metabase/lib/redux";
 import { equals } from "metabase/lib/utils";
 import { uuid } from "metabase/lib/uuid";
 import {
@@ -178,7 +181,7 @@ type FetchCardDataActionArgs = {
   };
 };
 
-type FetchCardDataActionReturned =
+export type FetchCardDataActionReturned =
   | {
       dashcard_id: DashCardId;
       card_id: CardId;

@@ -11,7 +11,7 @@ import { runQuestionQuery } from "metabase/query_builder/actions";
 import { CardApi, MetabaseApi } from "metabase/services";
 import type { CardId, CollectionId, TableId } from "metabase-types/api";
 import type { Dispatch, State } from "metabase-types/store";
-import type { FileUploadState } from "metabase-types/store/upload";
+import type { FileUpload, FileUploadState } from "metabase-types/store/upload";
 import { UploadMode } from "metabase-types/store/upload";
 
 export const UPLOAD_DATA_FILE_TYPES = [".csv", ".tsv"];
@@ -29,10 +29,18 @@ export const MAX_UPLOAD_STRING = "50";
 
 const CLEAR_AFTER_MS = 8000;
 
-const uploadStart = createAction(UPLOAD_FILE_START);
-const uploadEnd = createAction(UPLOAD_FILE_END);
-const uploadError = createAction(UPLOAD_FILE_ERROR);
-const clearUpload = createAction(UPLOAD_FILE_CLEAR);
+const uploadStart =
+  createAction<Pick<FileUpload, "id" | "name" | "collectionId" | "tableId">>(
+    UPLOAD_FILE_START,
+  );
+const uploadEnd =
+  createAction<Pick<FileUpload, "id" | "uploadMode" | "modelId">>(
+    UPLOAD_FILE_END,
+  );
+
+const uploadError =
+  createAction<Pick<FileUpload, "id" | "message" | "error">>(UPLOAD_FILE_ERROR);
+const clearUpload = createAction<Pick<FileUpload, "id">>(UPLOAD_FILE_CLEAR);
 export const clearAllUploads = createAction(UPLOAD_FILE_CLEAR_ALL);
 
 export const getAllUploads = (state: State) => state.upload;

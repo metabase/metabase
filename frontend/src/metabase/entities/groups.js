@@ -1,10 +1,10 @@
 import { assocIn } from "icepick";
 
+import { CLEAR_MEMBERSHIPS } from "metabase/admin/people/events";
 import {
-  CLEAR_MEMBERSHIPS,
-  CREATE_MEMBERSHIP,
-  DELETE_MEMBERSHIP,
-} from "metabase/admin/people/events";
+  createMembership,
+  deleteMembership,
+} from "metabase/admin/people/people";
 import { permissionApi } from "metabase/api";
 import { createEntity, entityCompatibleQuery } from "metabase/lib/entities";
 
@@ -63,8 +63,10 @@ const Groups = createEntity({
       },
   },
 
-  reducer: (state = {}, { type, payload, error }) => {
-    if (type === CREATE_MEMBERSHIP && !error) {
+  reducer: (state = {}, action) => {
+    const { type, payload, error } = action;
+
+    if (createMembership.fulfilled.match(action) && !error) {
       const { membership, group_id } = payload;
       const members = state[group_id]?.members;
       if (members) {
@@ -75,7 +77,7 @@ const Groups = createEntity({
       }
     }
 
-    if (type === DELETE_MEMBERSHIP && !error) {
+    if (deleteMembership.fulfilled.match(action) && !error) {
       const { membershipId, groupId } = payload;
       const members = state[groupId]?.members;
       if (members) {

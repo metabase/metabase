@@ -28,7 +28,7 @@ describe("SettingsEditor", () => {
     await setupAllowedDomains();
 
     expect(
-      screen.getByText(/approved domains for notifications/i),
+      await screen.findByText(/approved domains for notifications/i),
     ).toBeInTheDocument();
   });
 });

@@ -8,6 +8,14 @@ import {
 } from "metabase/dashboard/actions";
 import TimelineEvents from "metabase/entities/timeline-events";
 import { copy } from "metabase/lib/utils";
+import {
+  CLOSED_NATIVE_EDITOR_SIDEBARS,
+  DEFAULT_DASHBOARD_STATE,
+  DEFAULT_LOADING_CONTROLS,
+  DEFAULT_QUERY_STATUS,
+  DEFAULT_UI_CONTROLS,
+  UI_CONTROLS_SIDEBAR_DEFAULTS,
+} from "metabase/query_builder/defaults";
 
 import {
   API_CREATE_QUESTION,
@@ -64,14 +72,6 @@ import {
   onOpenQuestionSettings,
   onOpenTimelines,
 } from "./actions";
-import {
-  CLOSED_NATIVE_EDITOR_SIDEBARS,
-  DEFAULT_DASHBOARD_STATE,
-  DEFAULT_LOADING_CONTROLS,
-  DEFAULT_QUERY_STATUS,
-  DEFAULT_UI_CONTROLS,
-  UI_CONTROLS_SIDEBAR_DEFAULTS,
-} from "./defaults";
 
 function setUIControls(state, changes) {
   const { queryBuilderMode: currentQBMode, ...currentState } = state;

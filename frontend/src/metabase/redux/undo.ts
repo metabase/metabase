@@ -47,7 +47,7 @@ const PAUSE_UNDO = "metabase/questions/PAUSE_UNDO";
 export const pauseUndo = createAction(PAUSE_UNDO, (undo: Undo) => {
   clearTimeoutForUndo(undo);
 
-  return { ...undo, pausedAt: Date.now(), timeoutId: null };
+  return { payload: { ...undo, pausedAt: Date.now(), timeoutId: null } };
 });
 
 const RESUME_UNDO = "metabase/questions/RESUME_UNDO";
@@ -100,9 +100,7 @@ export const getIsRecentlyAutoConnectedDashcard = createSelector(
 
 export const dismissUndo = createAction(
   DISMISS_UNDO,
-  ({ undoId }: { undoId: Undo["id"] }) => {
-    return undoId;
-  },
+  ({ undoId }: { undoId: Undo["id"] }) => ({ payload: undoId }),
 );
 
 export const dismissAllUndo = createAction(DISMISS_ALL_UNDO);

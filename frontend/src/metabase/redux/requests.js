@@ -1,32 +1,38 @@
 import { assoc, getIn, updateIn } from "icepick";
-import { createAction, handleActions } from "redux-actions";
+import { handleActions } from "redux-actions";
+
+import { createAction } from "metabase/lib/redux";
 
 export const setRequestLoading = createAction(
   "metabase/requests/SET_REQUEST_LOADING",
   (statePath, queryKey) => ({
-    statePath,
-    queryKey,
+    payload: {
+      statePath,
+      queryKey,
+    },
   }),
 );
 export const setRequestPromise = createAction(
   "metabase/requests/SET_REQUEST_PROMISE",
   (statePath, queryKey, queryPromise) => ({
-    statePath,
-    queryKey,
-    queryPromise,
+    payload: {
+      statePath,
+      queryKey,
+      queryPromise,
+    },
   }),
 );
 export const setRequestLoaded = createAction(
   "metabase/requests/SET_REQUEST_LOADED",
-  (statePath, queryKey) => ({ statePath, queryKey }),
+  (statePath, queryKey) => ({ payload: { statePath, queryKey } }),
 );
 export const setRequestError = createAction(
   "metabase/requests/SET_REQUEST_ERROR",
-  (statePath, queryKey, error) => ({ statePath, queryKey, error }),
+  (statePath, queryKey, error) => ({ payload: { statePath, queryKey, error } }),
 );
 export const setRequestUnloaded = createAction(
   "metabase/requests/SET_REQUEST_UNLOADED",
-  statePath => ({ statePath }),
+  statePath => ({ payload: { statePath } }),
 );
 
 const initialRequestState = {

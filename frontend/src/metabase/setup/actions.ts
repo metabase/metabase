@@ -1,4 +1,3 @@
-import { createAction } from "@reduxjs/toolkit";
 import { t } from "ttag";
 
 import { createDatabase } from "metabase/admin/databases/database";
@@ -8,7 +7,7 @@ import {
   updateSettings,
 } from "metabase/admin/settings/settings";
 import { loadLocalization } from "metabase/lib/i18n";
-import { createAsyncThunk } from "metabase/lib/redux";
+import { createAction, createAsyncThunk } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
 import { getSetting } from "metabase/selectors/settings";
 import { SetupApi } from "metabase/services";

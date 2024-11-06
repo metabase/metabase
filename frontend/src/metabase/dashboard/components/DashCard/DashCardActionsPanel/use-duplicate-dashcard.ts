@@ -2,6 +2,7 @@ import { useCallback } from "react";
 
 import {
   FETCH_CARD_DATA,
+  type FetchCardDataActionReturned,
   addDashCardToDashboard,
 } from "metabase/dashboard/actions";
 import { getExistingDashCards } from "metabase/dashboard/actions/utils";
@@ -64,10 +65,10 @@ export function useDuplicateDashCard({
       dispatch(
         // Manually copying the card data by dispatching the `FETCH_CARD_DATA` action directly,
         // as opposed to using the `fetchCardData` thunk, will send a request to re-fetch the data
-        createAction(FETCH_CARD_DATA)({
+        createAction<FetchCardDataActionReturned>(FETCH_CARD_DATA)({
           dashcard_id: newId,
           card_id: dashcard.card_id,
-          result: dashcardDataMap[dashcard.id][dashcard?.card_id],
+          result: dashcardDataMap[dashcard.id][dashcard?.card_id] ?? null,
         }),
       );
     }

@@ -30,6 +30,7 @@ import type {
   ParameterId,
   ParameterMappingOptions,
   ParameterTarget,
+  ParameterValueOrArray,
   TemporalUnit,
   ValuesQueryType,
   ValuesSourceConfig,
@@ -449,7 +450,10 @@ export const setParameterValue = createThunkAction(
 );
 
 export const SET_PARAMETER_VALUES = "metabase/dashboard/SET_PARAMETER_VALUES";
-export const setParameterValues = createAction(SET_PARAMETER_VALUES);
+export const setParameterValues =
+  createAction<Record<ParameterId, ParameterValueOrArray>>(
+    SET_PARAMETER_VALUES,
+  );
 
 // Auto-apply filters
 const APPLY_DRAFT_PARAMETER_VALUES =

@@ -66,7 +66,11 @@ export const userApi = Api.injectEndpoints({
         url: `/api/user/${id}`,
       }),
       invalidatesTags: (_, error, id) =>
-        invalidateTags(error, [listTag("user"), idTag("user", id)]),
+        invalidateTags(error, [
+          listTag("user"),
+          idTag("user", id),
+          listTag("permissions-group"),
+        ]),
     }),
     reactivateUser: builder.mutation<User, UserId>({
       query: id => ({

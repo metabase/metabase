@@ -1,7 +1,6 @@
-import { createAction } from "redux-actions";
-
 import type { Deferred } from "metabase/lib/promise";
 import { defer } from "metabase/lib/promise";
+import { createAction } from "metabase/lib/redux";
 import { closeNavbar } from "metabase/redux/app";
 import {
   MetabotApi,
@@ -14,6 +13,7 @@ import type {
   GetState,
   MetabotEntityId,
   MetabotEntityType,
+  MetabotUiControls,
   State,
 } from "metabase-types/store";
 
@@ -73,12 +73,14 @@ export const RESET = "metabase/metabot/RESET";
 export const reset = createAction(RESET);
 
 export const SET_UI_CONTROLS = "metabase/qb/SET_UI_CONTROLS";
-export const setUIControls = createAction(SET_UI_CONTROLS);
+export const setUIControls = createAction<MetabotUiControls>(SET_UI_CONTROLS);
 
 export const UPDATE_QUESTION = "metabase/metabot/UPDATE_QUESTION";
 export const updateQuestion = createAction(
   UPDATE_QUESTION,
-  (question: Question) => question.card(),
+  (question: Question) => ({
+    payload: question.card(),
+  }),
 );
 
 export const CANCEL_QUERY = "metabase/metabot/CANCEL_QUERY";
@@ -91,7 +93,7 @@ export const cancelQuery = () => (dispatch: Dispatch, getState: GetState) => {
 };
 
 export const UPDATE_PROMPT = "metabase/metabot/UPDATE_PROMPT";
-export const updatePrompt = createAction(UPDATE_PROMPT);
+export const updatePrompt = createAction<string>(UPDATE_PROMPT);
 
 export const RUN_PROMPT_QUERY = "metabase/metabot/RUN_PROMPT_QUERY";
 export const RUN_PROMPT_QUERY_FULFILLED =

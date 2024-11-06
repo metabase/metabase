@@ -93,7 +93,7 @@ export type UpdatePasswordRequest = {
 };
 
 export type ListUsersRequest = {
-  status?: "deactivated" | "all";
+  status?: "deactivated" | "all" | "active";
   query?: string;
   group_id?: number;
   include_deactivated?: boolean;
