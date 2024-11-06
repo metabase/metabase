@@ -7,6 +7,7 @@ import _ from "underscore";
 
 import { cardApi } from "metabase/api";
 import { createAsyncThunk } from "metabase/lib/redux";
+import { isCartesianChart } from "metabase/visualizations";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import { getColumnNameFromKey } from "metabase-lib/v1/queries/utils/column-key";
 import { isNumeric } from "metabase-lib/v1/types/utils/isa";
@@ -133,14 +134,26 @@ const visualizerSlice = createSlice({
       state.columns = [];
       state.referencedColumns = [];
 
-      if (display === "funnel") {
+      if (!display) {
+        return;
+      }
+
+      if (isCartesianChart(display) || display === "funnel") {
         const metric = createMetricColumn();
         const dimension = createDimensionColumn();
         state.columns = [metric, dimension];
-        state.settings = {
-          "funnel.metric": metric.name,
-          "funnel.dimension": dimension.name,
-        };
+
+        if (display === "funnel") {
+          state.settings = {
+            "funnel.metric": metric.name,
+            "funnel.dimension": dimension.name,
+          };
+        } else {
+          state.settings = {
+            "graph.metrics": [metric.name],
+            "graph.dimensions": [dimension.name],
+          };
+        }
       }
     },
     updateSettings: (state, action: PayloadAction<VisualizationSettings>) => {
@@ -288,7 +301,7 @@ export const {
 
 export const { reducer } = visualizerSlice;
 
-export const getSettings = (state: { visualizer: VisualizerState }) =>
+const getRawSettings = (state: { visualizer: VisualizerState }) =>
   state.visualizer.settings;
 
 export const getVisualizationType = (state: { visualizer: VisualizerState }) =>
@@ -404,6 +417,21 @@ const getVisualizerDatasetData = createSelector(
       rows: _.zip(...unzippedRows),
       results_metadata: { columns: cols },
     };
+  },
+);
+
+export const getSettings = createSelector(
+  [getVisualizationType, getRawSettings],
+  (display, settings) => {
+    if (display && isCartesianChart(display)) {
+      // Visualizer wells display labels
+      return {
+        ...settings,
+        "graph.x_axis.labels_enabled": false,
+        "graph.y_axis.labels_enabled": false,
+      };
+    }
+    return settings;
   },
 );
 
