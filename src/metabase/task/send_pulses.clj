@@ -14,6 +14,7 @@
    [metabase.driver :as driver]
    [metabase.models.pulse :as models.pulse]
    [metabase.models.task-history :as task-history]
+   [metabase.notification.core :as notification]
    [metabase.pulse.core :as pulse]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.task :as task]
@@ -54,7 +55,8 @@
                                                     :channel-ids (seq channel-ids)}}
       (when-let [pulse (models.pulse/retrieve-notification pulse-id :archived false)]
         (log/debugf "Starting Pulse Execution: %d" pulse-id)
-        (pulse/send-pulse! pulse :channel-ids channel-ids)
+        (binding [notification/*send-notification!* notification/send-notification-sync!]
+          (pulse/send-pulse! pulse :channel-ids channel-ids))
         (log/debugf "Finished Pulse Execution: %d" pulse-id)
         :done))
     (catch Throwable e
