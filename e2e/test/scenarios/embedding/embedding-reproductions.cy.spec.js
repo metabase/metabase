@@ -1033,7 +1033,7 @@ describe("issue 8490", () => {
 
     createDashboardWithQuestions({
       dashboardDetails: {
-        name: "Dashboard with a parameter",
+        name: "Dashboard",
         enable_embedding: true,
       },
       questions: [
