@@ -1,5 +1,7 @@
-(ns metabase.pulse.core
-  "API namespace for the `metabase.pulse` module."
+(ns ^:deprecated metabase.pulse.core
+  "API namespace for the `metabase.pulse` module.
+
+  This namespace is deprecated, soon everything will be migrated to notifications."
   (:require
    [metabase.pulse.send]
    [potemkin :as p]))
@@ -9,5 +11,4 @@
 
 (p/import-vars
  [metabase.pulse.send
-  defaulted-timezone
   send-pulse!])

@@ -3,7 +3,7 @@
    [clojure.string :as str]
    [hiccup.core :refer [h]]
    [medley.core :as m]
-   [metabase.channel.render.color :as color]
+   [metabase.channel.render.js.color :as js.color]
    [metabase.channel.render.style :as style]
    [metabase.formatter])
   (:import
@@ -169,4 +169,4 @@
               :cellpadding "0"
               :cellspacing "0"}
       (render-table-head (vec col-names) header)
-      (render-table-body (partial color/get-background-color color-selector) normalized-zero cols-for-color-lookup rows)])))
+      (render-table-body (partial js.color/get-background-color color-selector) normalized-zero cols-for-color-lookup rows)])))

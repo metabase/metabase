@@ -7,11 +7,11 @@
    [hiccup.core :refer [html]]
    [hickory.select :as hik.s]
    [metabase.channel.render.body :as body]
+   [metabase.channel.render.core :as channel.render]
    [metabase.formatter :as formatter]
    [metabase.models :refer [Card]]
    [metabase.notification.payload.execute :as notification.execute]
    [metabase.pulse.render.test-util :as render.tu]
-   [metabase.pulse.send :as pulse.send]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
@@ -847,7 +847,7 @@
 
 (defn- render-card
   [render-type card data]
-  (body/render render-type :attachment (pulse.send/defaulted-timezone card) card nil data))
+  (body/render render-type :attachment (channel.render/defaulted-timezone card) card nil data))
 
 (deftest render-cards-are-thread-safe-test-for-js-visualization
   (mt/with-temp [:model/Card card {:dataset_query          (mt/mbql-query orders

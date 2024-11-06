@@ -1,10 +1,10 @@
-(ns metabase.channel.render.color
+(ns metabase.channel.render.js.color
   "Namespaces that uses the Nashorn javascript engine to invoke some shared javascript code that we use to determine
   the background color of pulse table cells"
   (:require
    [cheshire.core :as json]
    [clojure.java.io :as io]
-   [metabase.channel.render.js-engine :as js]
+   [metabase.channel.render.js.engine :as js.engine]
    [metabase.formatter]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.malli :as mu])
@@ -17,12 +17,12 @@
 
 (def ^:private ^{:arglists '([])} js-engine
   ;; As of 2024/05/13, a single color selector js engine takes 3.5 MiB of memory
-  (js/threadlocal-fifo-memoizer
+  (js.engine/threadlocal-fifo-memoizer
    (fn []
      (let [file-url (io/resource js-file-path)]
        (assert file-url (trs "Can''t find JS color selector at ''{0}''" js-file-path))
-       (doto (js/context)
-         (js/load-resource  js-file-path))))
+       (doto (js.engine/context)
+         (js.engine/load-resource  js-file-path))))
    5))
 
 (def ^:private QueryResults
@@ -46,10 +46,10 @@
   ;; expensive. The JS code is written to deal with `rows` in it's native Nashorn format but since `cols` and
   ;; `viz-settings` are small, pass those as JSON so that they can be deserialized to pure JS objects once in JS
   ;; code
-  (js/execute-fn-name (js-engine) "makeCellBackgroundGetter"
-                      rows
-                      (json/generate-string cols)
-                      (json/generate-string viz-settings)))
+  (js.engine/execute-fn-name (js-engine) "makeCellBackgroundGetter"
+                             rows
+                             (json/generate-string cols)
+                             (json/generate-string viz-settings)))
 
 (defn get-background-color
   "Get the correct color for a cell in a pulse table. Returns color as string suitable for use CSS, e.g. a hex string or
@@ -59,4 +59,4 @@
   (let [cell-value (if (instance? NumericWrapper cell-value)
                      (:num-value cell-value)
                      cell-value)]
-    (.asString (js/execute-fn color-selector cell-value row-index column-name))))
+    (.asString (js.engine/execute-fn color-selector cell-value row-index column-name))))

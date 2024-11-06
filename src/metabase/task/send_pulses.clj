@@ -4,6 +4,7 @@
   `SendPulse` job will send a pulse to all channels that are scheduled to run at the same time.
   For example if you have an Alert that has scheduled to send to both slack and emails at 6am, this job will be triggered
   and send the pulse to both channels. "
+  #_{:clj-kondo/ignore [:deprecated-namespace]}
   (:require
    [clojure.set :as set]
    [clojure.string :as str]

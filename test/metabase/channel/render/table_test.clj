@@ -2,8 +2,8 @@
   (:require
    [clojure.test :refer :all]
    [hickory.select :as hik.s]
-   [metabase.channel.render.color :as color]
-   [metabase.channel.render.core :as render]
+   [metabase.channel.render.core :as channel.render]
+   [metabase.channel.render.js.color :as js.color]
    [metabase.channel.render.table :as table]
    [metabase.formatter :as formatter]
    [metabase.pulse.render.test-util :as render.tu]
@@ -81,7 +81,7 @@
             "9"       "rgba(0, 0, 255, 0.75)"
             "1.001,5" "rgba(0, 0, 255, 0.75)"
             "1,001.5" "rgba(0, 0, 255, 0.75)"}
-           (-> (color/make-color-selector query-results (:visualization_settings render.tu/test-card))
+           (-> (js.color/make-color-selector query-results (:visualization_settings render.tu/test-card))
                (#'table/render-table 0 {:col-names             ["a" "b" "c"]
                                         :cols-for-color-lookup ["a" "b" "c"]} (query-results->header+rows query-results))
                find-table-body
@@ -156,7 +156,7 @@
                                               :visibility_type :sensitive
                                               :semantic_type   nil}]
                                       :rows [[1 2]]}}
-                hiccup-render (:content (render/render-pulse-card :attachment "UTC" card nil data-map))
+                hiccup-render (:content (channel.render/render-pulse-card :attachment "UTC" card nil data-map))
                 header-els    (render.tu/nodes-with-tag hiccup-render :th)]
             (is (= ["A"]
                    (map last header-els))))))
@@ -172,7 +172,7 @@
                    (mapv (fn [row-el] (mapcat :content (:content row-el))) row-els)))))))))
 
 (defn- render-table [dashcard results]
-  (render/render-pulse-card :attachment "America/Los_Angeles" render.tu/test-card dashcard results))
+  (channel.render/render-pulse-card :attachment "America/Los_Angeles" render.tu/test-card dashcard results))
 
 (deftest attachment-rows-limit-test
   (doseq [[test-explanation env-var-value expected]

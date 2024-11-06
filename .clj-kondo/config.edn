@@ -299,9 +299,7 @@
     metabase.bootstrap             #{metabase.bootstrap}
     metabase.cmd                   #{}                                                              ; there are no namespaces here since you shouldn't be using this in any other module.
     metabase.channel               #{metabase.channel.core
-                                     metabase.channel.render.core
-                                     metabase.channel.render.preview
-                                     metabase.channel.shared}
+                                     metabase.channel.render.core}
     metabase.config                #{metabase.config}
     metabase.core                  #{metabase.core.initialization-status}                           ; TODO -- only namespace used outside of EE, this probably belongs in `metabase.server` anyway since that's the only place it's used.
     metabase.db                    #{metabase.db
@@ -330,7 +328,7 @@
     metabase.models                :any                                                             ; TODO -- scream, 62 namespaces used elsewhere, but to be fair a lot of these don't *need* to be required.
     metabase.moderation            #{metabase.moderation}
     metabase.notification          #{metabase.notification.core
-                                     metabase.notification.payload.execute}
+                                     metabase.notification.payload.core}
     metabase.permissions           #{metabase.permissions.util}                                     ; TODO -- this is currently the only namespace in this module. Give it a real API namespace?
     metabase.plugins               #{metabase.plugins
                                      metabase.plugins.classloader}                                  ; TODO -- not 100% sure the classloader belongs here
@@ -550,6 +548,7 @@
     metabase.api.util                                             api.util
     metabase.async.streaming-response.thread-pool                 thread-pool
     metabase.channel.core                                         channel
+    metabase.channel.render.core                                  channel.render
     metabase.cmd.copy.h2                                          copy.h2
     metabase.config                                               config
     metabase.config.file                                          config.file
