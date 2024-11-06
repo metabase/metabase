@@ -67,8 +67,9 @@ describe("scenarios > admin > datamodel > field > field type", () => {
     });
   }
 
-  function searchFieldType(type) {
-    cy.findByPlaceholderText("Find...").type(type);
+  function searchFieldType(value) {
+    // .type() is flaky when used for ListSearchField - typed characters can sometimes get rearranged while typing
+    cy.findByPlaceholderText("Find...").invoke("val", value).trigger("blur");
   }
 
   function getFKTargetField(targetField) {
