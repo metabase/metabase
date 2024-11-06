@@ -13,6 +13,9 @@ export type CliState = Partial<{
   token: string;
   databaseId: number;
 
+  /** The user does not have a database yet, so we should use the sample database. */
+  shouldUseSampleDatabase: boolean;
+
   /** Metabase instance settings */
   settings: Settings;
 

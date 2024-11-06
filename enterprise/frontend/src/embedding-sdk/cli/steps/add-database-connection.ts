@@ -1,5 +1,4 @@
 import { search } from "@inquirer/prompts";
-import toggle from "inquirer-toggle";
 import ora from "ora";
 
 import type { CliStepMethod } from "embedding-sdk/cli/types/cli";
@@ -15,13 +14,7 @@ export const addDatabaseConnectionStep: CliStepMethod = async state => {
     instanceUrl: state.instanceUrl ?? "",
   });
 
-  const hasDatabase = await toggle({
-    message:
-      "Do you have a database to connect to? This will be used to embed your data.",
-    default: true,
-  });
-
-  if (!hasDatabase || !settings || !settings.engines) {
+  if (!settings || !settings.engines) {
     return [{ type: "error", message: "Aborted." }, state];
   }
 
