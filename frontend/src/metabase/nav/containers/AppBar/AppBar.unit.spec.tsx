@@ -2,7 +2,10 @@ import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Route } from "react-router";
 
-import { setupCollectionsEndpoints } from "__support__/server-mocks";
+import {
+  setupCardEndpoints,
+  setupCollectionsEndpoints,
+} from "__support__/server-mocks";
 import { renderWithProviders } from "__support__/ui";
 import { DEFAULT_EMBED_OPTIONS } from "metabase/redux/embed";
 import { createMockCard } from "metabase-types/api/mocks";
@@ -168,6 +171,7 @@ describe("AppBar", () => {
 
 function setup(embedOptions: Partial<EmbedOptions>) {
   setupCollectionsEndpoints({ collections: [] });
+  setupCardEndpoints(createMockCard());
 
   return renderWithProviders(<Route path="*" component={AppBar} />, {
     withRouter: true,
