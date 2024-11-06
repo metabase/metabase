@@ -1,6 +1,10 @@
 import { blue, green, yellow } from "chalk";
 
-import { CONTAINER_NAME, SDK_NPM_LINK } from "./config";
+import {
+  CONTAINER_NAME,
+  SAMPLE_CREDENTIALS_FILE_NAME,
+  SDK_NPM_LINK,
+} from "./config";
 
 export const PACKAGE_JSON_NOT_FOUND_MESSAGE = `
   Could not find a package.json file in the current directory.
@@ -35,11 +39,17 @@ export const getEmbeddingFailedMessage = (reason: string) => `
   Reason: ${reason}
 `;
 
-export const getMetabaseInstanceSetupCompleteMessage = (instanceUrl: string) =>
+export const getMetabaseInstanceSetupCompleteMessage = (
+  instanceUrl: string,
+  email: string,
+  password: string,
+) =>
   // eslint-disable-next-line no-unconditional-metabase-links-render -- link for the CLI message
   `
   Metabase is running at ${blue(instanceUrl)}
-  You can find your login credentials at METABASE_LOGIN.json
+
+  Login with email "${blue(email)}" and password "${blue(password)}".
+  You can also find your login credentials at "${blue(SAMPLE_CREDENTIALS_FILE_NAME)}".
 
   Metabase will phone home some data collected via Snowplow.
   We don’t collect any usernames, emails, server IPs, database details of any kind, or
