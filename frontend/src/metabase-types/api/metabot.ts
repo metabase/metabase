@@ -80,6 +80,7 @@ export type MetabotApiCallReaction = {
 export type MetabotSortQueryReaction = {
   type: "metabot.reaction/sort-query";
   column: string;
+  direction?: "asc" | "desc";
 };
 
 export type MetabotReaction =

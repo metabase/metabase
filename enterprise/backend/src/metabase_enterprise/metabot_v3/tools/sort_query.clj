@@ -8,7 +8,8 @@
   (some? (:current_query context)))
 
 (mu/defmethod metabot-v3.tools.interface/*invoke-tool* :metabot.tool/sort-query
-  [_tool-name {:keys [column], :as _argument-map}]
+  [_tool-name {:keys [column direction], :as _argument-map}]
   {:reactions [{:type :metabot.reaction/sort-query
-                :column column}]
+                :column column
+                :direction direction}]
    :output "success"})

@@ -25,7 +25,12 @@ export const sortQuery: ReactionHandler<MetabotSortQueryReaction> =
       return;
     }
 
-    const newQuery = Lib.orderBy(query, stageIndex, column);
+    const newQuery = Lib.orderBy(
+      Lib.removeOrderBys(query, stageIndex),
+      stageIndex,
+      column,
+      reaction.direction,
+    );
     const newQuestion = question.setQuery(newQuery);
     await dispatch(updateQuestion(newQuestion, { run: true }));
   };

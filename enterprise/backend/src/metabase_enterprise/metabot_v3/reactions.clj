@@ -110,7 +110,8 @@
 
 (defreaction :metabot.reaction/sort-query
   [:map
-    [:column :string]])
+    [:column :string]
+    [:direction {:optional true} [:enum "asc" "desc"]]])
 
 (defreaction :metabot.reaction/goto-question
   [:map
