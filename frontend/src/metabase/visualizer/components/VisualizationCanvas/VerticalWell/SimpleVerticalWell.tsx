@@ -1,19 +1,16 @@
 import { useDroppable } from "@dnd-kit/core";
 
 import { Flex, Text } from "metabase/ui";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import { DROPPABLE_ID } from "metabase/visualizer/dnd/constants";
 
 import { WellItem } from "../WellItem";
 
-interface FunnelVerticalWellProps {
-  settings: ComputedVisualizationSettings;
+interface SimpleVerticalWellProps {
+  name: string;
 }
 
-export function FunnelVerticalWell({ settings }: FunnelVerticalWellProps) {
+export function SimpleVerticalWell({ name }: SimpleVerticalWellProps) {
   const { setNodeRef } = useDroppable({ id: DROPPABLE_ID.Y_AXIS_WELL });
-
-  const metric = settings["funnel.metric"];
 
   return (
     <Flex
@@ -31,7 +28,7 @@ export function FunnelVerticalWell({ settings }: FunnelVerticalWellProps) {
       ref={setNodeRef}
     >
       <WellItem style={{ position: "absolute", transform: "rotate(-90deg)" }}>
-        <Text truncate>{metric}</Text>
+        <Text truncate>{name}</Text>
       </WellItem>
     </Flex>
   );

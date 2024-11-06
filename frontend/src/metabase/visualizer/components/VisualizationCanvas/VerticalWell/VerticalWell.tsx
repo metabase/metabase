@@ -1,16 +1,17 @@
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type { VisualizationDisplay } from "metabase-types/api";
 
-import { FunnelVerticalWell } from "./FunnelVerticalWell";
+import { SimpleVerticalWell } from "./SimpleVerticalWell";
 
 interface VerticalWellProps {
   display: VisualizationDisplay;
   settings: ComputedVisualizationSettings;
 }
 
-export function VerticalWell({ display, ...props }: VerticalWellProps) {
+export function VerticalWell({ display, settings }: VerticalWellProps) {
   if (display === "funnel") {
-    return <FunnelVerticalWell {...props} />;
+    const name = settings["funnel.metric"];
+    return <SimpleVerticalWell name={name} />;
   }
   return null;
 }
