@@ -11,7 +11,7 @@ import { Grid } from "metabase/ui";
 export const DatabaseGrid = styled(Grid)`
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr));
-  gap: 0 1rem;
+  gap: 1rem;
   margin: 0;
   width: 100%;
 
@@ -25,8 +25,8 @@ export const DatabaseGrid = styled(Grid)`
 
 export const DatabaseCard = styled(Card)`
   padding: 1.5rem;
-  margin-bottom: 1rem;
   box-shadow: none;
+  margin: 0;
 
   &:hover {
     color: var(--mb-color-brand);
