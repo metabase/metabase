@@ -10,7 +10,7 @@ import { createAsyncThunk } from "metabase/lib/redux";
 import { isCartesianChart } from "metabase/visualizations";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import { getColumnNameFromKey } from "metabase-lib/v1/queries/utils/column-key";
-import { isNumeric } from "metabase-lib/v1/types/utils/isa";
+import { isDate, isNumeric } from "metabase-lib/v1/types/utils/isa";
 import type {
   Card,
   CardId,
@@ -29,6 +29,7 @@ import type {
   VisualizerState,
 } from "metabase-types/store/visualizer";
 
+import { DROPPABLE_ID } from "./dnd/constants";
 import {
   createDataSource,
   createDataSourceNameRef,
@@ -99,9 +100,10 @@ const visualizerSlice = createSlice({
       action: PayloadAction<{
         column: DatasetColumn;
         dataSource: VisualizerDataSource;
+        context?: string;
       }>,
     ) => {
-      const { column, dataSource } = action.payload;
+      const { column, dataSource, context } = action.payload;
 
       const columnRef = createVisualizerColumnReference(
         dataSource,
@@ -123,6 +125,29 @@ const visualizerSlice = createSlice({
             dimension.column,
             createDataSourceNameRef(dataSource.id),
           );
+        }
+      }
+
+      if (state.display && isCartesianChart(state.display)) {
+        if (context === DROPPABLE_ID.X_AXIS_WELL) {
+          const dimension = getVisualizerDimensionColumn({ visualizer: state });
+          if (dimension.column) {
+            state.columns[dimension.index] = mergeIntoVisualizerColumn(
+              dimension.column,
+              column,
+              columnRef.name,
+            );
+          }
+        }
+        if (context === DROPPABLE_ID.Y_AXIS_WELL) {
+          const metric = getVisualizerMetricColumn({ visualizer: state });
+          if (metric.column) {
+            state.columns[metric.index] = mergeIntoVisualizerColumn(
+              metric.column,
+              column,
+              columnRef.name,
+            );
+          }
         }
       }
     },
@@ -325,7 +350,9 @@ const getCards = (state: { visualizer: VisualizerState }) =>
 const getVisualizationColumns = (state: { visualizer: VisualizerState }) =>
   state.visualizer.columns;
 
-const getVisualizerMetricColumn = (state: { visualizer: VisualizerState }) => {
+export const getVisualizerMetricColumn = (state: {
+  visualizer: VisualizerState;
+}) => {
   const columns = getVisualizationColumns(state);
   const index = columns.findIndex(
     column => column.name === VISUALIZER_METRIC_COL_NAME,
@@ -333,7 +360,7 @@ const getVisualizerMetricColumn = (state: { visualizer: VisualizerState }) => {
   return { column: columns[index], index };
 };
 
-const getVisualizerDimensionColumn = (state: {
+export const getVisualizerDimensionColumn = (state: {
   visualizer: VisualizerState;
 }) => {
   const columns = getVisualizationColumns(state);
@@ -374,11 +401,6 @@ const getVisualizerDatasetData = createSelector(
     getVisualizationColumns,
   ],
   (usedDataSources, datasets, referencedColumns, cols): Dataset => {
-    if (usedDataSources.length === 1) {
-      const [source] = usedDataSources;
-      return datasets[source.id]?.data;
-    }
-
     const referencedColumnValuesMap: Record<string, RowValues> = {};
     referencedColumns.forEach(ref => {
       const dataset = datasets[ref.sourceId];
@@ -506,4 +528,41 @@ function connectToVisualizerColumn(
       ? [...column.values, ref]
       : column.values,
   };
+}
+
+function mergeIntoVisualizerColumn(
+  visualizerColumn: VisualizerDatasetColumn,
+  column: DatasetColumn,
+  columnRef: string,
+) {
+  const nextColumn = {
+    ...visualizerColumn,
+    base_type: column.base_type,
+    effective_type: column.effective_type,
+    display_name: column.display_name,
+    values: [columnRef],
+  };
+
+  // TODO Remove manual MBQL manipulation
+  if (isDate(column)) {
+    const opts = { "base-type": column.base_type };
+    const temporalUnit = maybeGetTemporalUnit(column);
+    if (temporalUnit) {
+      opts["temporal-unit"] = temporalUnit;
+    }
+    nextColumn.field_ref = [
+      visualizerColumn?.field_ref?.[0] ?? "field",
+      visualizerColumn?.field_ref?.[1] ?? nextColumn.name,
+      opts,
+    ];
+  }
+
+  return nextColumn;
+}
+
+function maybeGetTemporalUnit(col: DatasetColumn) {
+  const maybeOpts = col.field_ref?.[2];
+  if (maybeOpts && "temporal-unit" in maybeOpts) {
+    return maybeOpts["temporal-unit"];
+  }
 }

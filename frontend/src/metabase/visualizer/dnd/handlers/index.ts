@@ -1,5 +1,7 @@
+import { isCartesianChart } from "metabase/visualizations";
 import type { VisualizationDisplay } from "metabase-types/api";
 
+import { cartesianDropHandler } from "./cartesian";
 import { funnelDropHandler } from "./funnel";
 import type { VizDropHandlerOpts } from "./types";
 
@@ -13,5 +15,9 @@ export function handleVisualizerDragEnd(
   display: VisualizationDisplay,
   opts: VizDropHandlerOpts,
 ) {
-  handlers[display]?.(opts);
+  if (isCartesianChart(display)) {
+    cartesianDropHandler(opts);
+  } else {
+    handlers[display]?.(opts);
+  }
 }

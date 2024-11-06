@@ -1,8 +1,10 @@
 import { useDroppable } from "@dnd-kit/core";
 
+import { useSelector } from "metabase/lib/redux";
 import { Flex, type FlexProps, Text } from "metabase/ui";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import { DROPPABLE_ID } from "metabase/visualizer/dnd/constants";
+import { getVisualizerDimensionColumn } from "metabase/visualizer/visualizer.slice";
 
 import { WellItem } from "../WellItem";
 
@@ -15,11 +17,11 @@ export function CartesianHorizontalWell({
   style,
   ...props
 }: CartesianHorizontalWellProps) {
+  const dimension = useSelector(getVisualizerDimensionColumn);
+
   const { active, setNodeRef, isOver } = useDroppable({
     id: DROPPABLE_ID.X_AXIS_WELL,
   });
-
-  const [mainDimension] = settings["graph.dimensions"] ?? [];
 
   return (
     <Flex
@@ -42,7 +44,7 @@ export function CartesianHorizontalWell({
       ref={setNodeRef}
     >
       <WellItem>
-        <Text truncate>{mainDimension}</Text>
+        <Text truncate>{dimension.column.display_name}</Text>
       </WellItem>
     </Flex>
   );
