@@ -737,7 +737,7 @@ describe("issue 31274", () => {
         size_x: 2,
         size_y: 2,
         row: (length - index - 1) * 2,
-        text: `Text card ${index + 1}`,
+        text: `Text ${index + 1}`,
       });
     });
   };
