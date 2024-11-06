@@ -746,10 +746,6 @@ describe("issue 31274", () => {
     return cy.findAllByTestId("dashboardcard-actions-panel").filter(":visible");
   }
 
-  function secondTextCard() {
-    return cy.findAllByTestId("editing-dashboard-text-preview").eq(1).parent();
-  }
-
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -766,7 +762,7 @@ describe("issue 31274", () => {
       visitDashboard(dashboard.id);
       editDashboard(dashboard.id);
 
-      secondTextCard().realHover();
+      getDashboardCard(1).realHover();
 
       cy.log(
         "Make sure cypress can click the element, which means it is not covered by another",
