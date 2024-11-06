@@ -77,6 +77,13 @@ describe("nav > containers > MainNavbar", () => {
     });
   });
 
+  describe("DWH Upload CSV", () => {
+    it("should not render 'upload CSV' button", () => {
+      setup({ user: createMockUser({ is_superuser: true }) });
+      expect(screen.queryByTestId("dwh-upload-csv")).not.toBeInTheDocument();
+    });
+  });
+
   describe("browse databases link", () => {
     it("should render", async () => {
       await setup();

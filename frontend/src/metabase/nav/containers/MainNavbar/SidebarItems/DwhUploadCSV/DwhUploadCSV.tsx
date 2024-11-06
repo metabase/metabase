@@ -67,7 +67,7 @@ export const DwhUploadCSV = () => {
   const triggerUploadInput = () => uploadInputRef.current?.click();
 
   return (
-    <Box px="md" mt="md">
+    <Box data-testid="dwh-upload-csv" mt="md" px="md">
       <Button
         color="brand"
         fullWidth={true}

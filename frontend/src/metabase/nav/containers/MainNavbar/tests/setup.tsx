@@ -2,6 +2,7 @@ import dayjs from "dayjs";
 import fetchMock from "fetch-mock";
 import { Route } from "react-router";
 
+import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
   setupCardsEndpoints,
   setupCollectionByIdEndpoint,
@@ -22,6 +23,7 @@ import type { Card, Dashboard, DashboardId, User } from "metabase-types/api";
 import {
   createMockCollection,
   createMockDatabase,
+  createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
 import type { DashboardState } from "metabase-types/store";
@@ -34,7 +36,7 @@ import {
 
 import MainNavbar from "../MainNavbar";
 
-type SetupOpts = {
+export type SetupOpts = {
   pathname?: string;
   route?: string;
   user?: User | null;
@@ -46,6 +48,8 @@ type SetupOpts = {
   models?: ModelResult[];
   canCurateRootCollection?: boolean;
   instanceCreationDate?: string;
+  hasEnterprisePlugins?: boolean;
+  hasDWHAttached?: boolean;
 };
 
 export const PERSONAL_COLLECTION_BASE = createMockCollection({
@@ -71,6 +75,8 @@ export async function setup({
   withAdditionalDatabase = true,
   canCurateRootCollection = false,
   instanceCreationDate = dayjs().toISOString(),
+  hasEnterprisePlugins = false,
+  hasDWHAttached = false,
 }: SetupOpts = {}) {
   const SAMPLE_DATABASE = createMockDatabase({
     id: 1,
@@ -154,13 +160,20 @@ export async function setup({
     entities: createMockEntitiesState({ dashboards: dashboardsForEntities }),
     settings: createMockSettingsState({
       "uploads-settings": {
-        db_id: isUploadEnabled ? SAMPLE_DATABASE.id : null,
+        db_id: hasDWHAttached || isUploadEnabled ? SAMPLE_DATABASE.id : null,
         schema_name: null,
         table_prefix: null,
       },
       "instance-creation": instanceCreationDate,
+      "token-features": createMockTokenFeatures({
+        attached_dwh: hasDWHAttached,
+      }),
     }),
   });
+
+  if (hasEnterprisePlugins) {
+    setupEnterprisePlugins();
+  }
 
   renderWithProviders(
     <Route
