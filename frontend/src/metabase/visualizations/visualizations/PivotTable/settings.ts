@@ -16,18 +16,18 @@ import { formatColumn } from "metabase/lib/formatting";
 import { ChartSettingIconRadio } from "metabase/visualizations/components/settings/ChartSettingIconRadio";
 import { ChartSettingsTableFormatting } from "metabase/visualizations/components/settings/ChartSettingsTableFormatting";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
+import { migratePivotColumnSplitSetting } from "metabase-lib/v1/queries/utils/pivot";
 import { isDimension } from "metabase-lib/v1/types/utils/isa";
 import type {
   Card,
   DatasetColumn,
   DatasetData,
-  RowValue,
+  PivotTableColumnSplitSetting,
   Series,
   VisualizationSettings,
 } from "metabase-types/api";
 
 import { partitions } from "./partitions";
-import type { PivotSetting } from "./types";
 import {
   addMissingCardBreakouts,
   isColumnValid,
@@ -50,9 +50,13 @@ export const settings = {
     hidden: true,
     readDependencies: [COLUMN_SPLIT_SETTING],
     getValue: (
-      series: Series,
+      [{ data }]: Series,
       settings: Partial<VisualizationSettings> = {},
     ) => {
+      if (data == null) {
+        return undefined;
+      }
+
       // This is hack. Collapsed rows depend on the current column split setting.
       // If the query changes or the rows are reordered, we ignore the current collapsed row setting.
       // This is accomplished by snapshotting part of the column split setting *inside* this setting.
@@ -77,6 +81,10 @@ export const settings = {
       [{ data }]: [{ data: DatasetData }],
       settings: VisualizationSettings,
     ) => ({
+      value: migratePivotColumnSplitSetting(
+        settings[COLUMN_SPLIT_SETTING] ?? { rows: [], columns: [], values: [] },
+        data?.cols ?? [],
+      ),
       partitions,
       columns: data == null ? [] : data.cols,
       settings,
@@ -85,7 +93,7 @@ export const settings = {
       },
     }),
     getValue: (
-      [{ data, card }]: [{ data: DatasetData; card: Card }],
+      [{ data }]: [{ data: DatasetData; card: Card }],
       settings: Partial<VisualizationSettings> = {},
     ) => {
       const storedValue = settings[COLUMN_SPLIT_SETTING];
@@ -95,7 +103,7 @@ export const settings = {
       const columnsToPartition = data.cols.filter(
         col => !isPivotGroupColumn(col),
       );
-      let setting;
+      let setting: PivotTableColumnSplitSetting;
       if (storedValue == null) {
         const [dimensions, values] = _.partition(
           columnsToPartition,
@@ -119,7 +127,7 @@ export const settings = {
           rows = rest;
         }
         setting = _.mapObject({ rows, columns, values }, cols =>
-          cols.map(col => col.field_ref),
+          cols.map(col => col.name),
         );
       } else {
         setting = updateValueWithCurrentColumns(
@@ -128,7 +136,7 @@ export const settings = {
         );
       }
 
-      return addMissingCardBreakouts(setting as PivotSetting, card);
+      return addMissingCardBreakouts(setting, columnsToPartition);
     },
   },
   "pivot.show_row_totals": {
@@ -239,23 +247,19 @@ export const _columnSettings = {
       { settings }: { settings: VisualizationSettings },
     ) => {
       //Default to showing totals if appropriate
-      const rows = settings[COLUMN_SPLIT_SETTING].rows || [];
-      return rows
-        .slice(0, -1)
-        .some((row: RowValue) => _.isEqual(row, column.field_ref));
+      const rows = settings[COLUMN_SPLIT_SETTING]?.rows || [];
+      return rows.slice(0, -1).some(row => _.isEqual(row, column.name));
     },
     getHidden: (
       column: DatasetColumn,
       columnSettings: DatasetColumn,
       { settings }: { settings: VisualizationSettings },
     ) => {
-      const rows = settings[COLUMN_SPLIT_SETTING].rows || [];
+      const rows = settings[COLUMN_SPLIT_SETTING]?.rows || [];
       // to show totals a column needs to be:
       //  - in the left header ("rows" in COLUMN_SPLIT_SETTING)
       //  - not the last column
-      return !rows
-        .slice(0, -1)
-        .some((row: RowValue) => _.isEqual(row, column.field_ref));
+      return !rows.slice(0, -1).some(row => _.isEqual(row, column.name));
     },
   },
   column_title: {

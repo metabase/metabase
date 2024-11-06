@@ -222,6 +222,52 @@
   [value]
   (t/local-time value))
 
+;;; ----------------------------------------------- constructors -----------------------------------------------------
+(defn local-time
+  "Constructs a platform time value (eg. Moment, LocalTime) for the given hour and minute, plus optional seconds and
+  milliseconds.
+
+  If called with no arguments, returns the current time."
+  ([]
+   (t/local-time))
+  ([hours minutes]
+   (local-time hours minutes 0 0))
+  ([hours minutes seconds]
+   (local-time hours minutes seconds 0))
+  ([hours minutes seconds millis]
+   (t/local-time hours minutes seconds (* 1000000 millis))))
+
+(defn local-date
+  "Constructs a platform date value (eg. Moment, LocalDate) for the given year, month and day.
+
+  Day is 1-31. January = 1, or you can specify keywords like `:jan`, `:jun`.
+
+  If called with no arguments, returns the current date."
+  ([]
+   (t/local-date))
+  ([year month day]
+   (t/local-date year
+                 (or (common/month-keywords month) month)
+                 day)))
+
+(defn local-date-time
+  "Constructs a platform datetime (eg. Moment, LocalDateTime).
+
+  Accepts either:
+  - no arguments (returns the current datetime)
+  - a local date and local time (see [[local-date]] and [[local-time]]); or
+  - year, month, day, hour, and minute, plus optional seconds and millis."
+  ([]
+   (t/local-date-time))
+  ([a-date a-time]
+   (t/local-date-time a-date a-time))
+  ([year month day hours minutes]
+   (local-date-time (local-date year month day) (local-time hours minutes)))
+  ([year month day hours minutes seconds]
+   (local-date-time (local-date year month day) (local-time hours minutes seconds)))
+  ([year month day hours minutes seconds millis]
+   (local-date-time (local-date year month day) (local-time hours minutes seconds millis))))
+
 ;;; ------------------------------------------------ arithmetic ------------------------------------------------------
 
 (defn unit-diff

@@ -20,7 +20,7 @@ You can export the results of a question as:
 
 You can choose between downloading the results as:
 
-- **Formatted**: With any [formatting changes](../../data-modeling/formatting.md) you've  applied in Metabase.
+- **Formatted**: With any [formatting changes](../../data-modeling/formatting.md) you've applied in Metabase.
 - **Unformatted**: Metabase will export the raw results of the question without applying any of the [formatting you applied](../../data-modeling/formatting.md) to the columns in the question. For example, if you formatted a floating point number to display only the first two decimal digits in the table results, exporting the unformatted results would include additional decimal digits (if any) found in the raw results.
 
 If you don't see the option to export results, you may not have [permissions to download results](../../permissions/data.md#download-results-permissions).
