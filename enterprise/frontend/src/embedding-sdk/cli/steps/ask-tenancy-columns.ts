@@ -24,9 +24,11 @@ export const askForTenancyColumns: CliStepMethod = async state => {
   }
 
   if (!state.chosenTables) {
-    const message = "You have not selected any tables.";
+    printHelperText(
+      "You have not selected any tables. Continuing without tenancy isolation.",
+    );
 
-    return [{ type: "error", message }, state];
+    return [{ type: "success" }, state];
   }
 
   const tenancyColumnNames: Record<string, string> = {};
@@ -82,9 +84,11 @@ export const askForTenancyColumns: CliStepMethod = async state => {
   }
 
   if (Object.keys(tenancyColumnNames).length === 0) {
-    const message = "Your tables do not have any multi-tenancy column.";
+    printHelperText(
+      "Your tables do not have any multi-tenancy column. Continuing without tenancy isolation.",
+    );
 
-    return [{ type: "error", message }, state];
+    return [{ type: "success" }, state];
   }
 
   return [{ type: "success" }, { ...state, tenancyColumnNames }];
