@@ -40,7 +40,7 @@ You can set the following types of permissions on a database, schema, or table:
 
 {% include plans-blockquote.html feature="View data permissions" %}
 
-The **View data** permission determines what data people can see when viewing questions, dashboards, models, and metrics. View data permissions also determines whether a group can view the models and metrics browsers in the sidebar. To [browse databases](../exploration-and-organization/exploration.md#browse-your-databases), a group will also need [Create queries](#create-queries-permissions) permissions for the relevant data.
+The **View data** permission determines what data people can see when viewing questions, dashboards, models, and metrics. View data permissions also determine whether a group can view the models and metrics browsers in the sidebar. To [browse databases](../exploration-and-organization/exploration.md#browse-your-databases), a group will also need [Create queries](#create-queries-permissions) permissions for the relevant data.
 
 Permission levels include:
 
