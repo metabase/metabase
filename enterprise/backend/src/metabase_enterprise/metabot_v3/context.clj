@@ -71,9 +71,9 @@
                                                        (map #(lib/display-name query %)))
                                                  filterable-columns)
                :boolean_filterable_columns (into []
-                                              (comp (filter lib.types.isa/boolean?)
-                                                    (map #(lib/display-name query %)))
-                                              filterable-columns)
+                                                 (comp (filter lib.types.isa/boolean?)
+                                                       (map #(lib/display-name query %)))
+                                                 filterable-columns)
                :date_filterable_columns    (into []
                                                  (comp (filter lib.types.isa/date-or-datetime?)
                                                        (map #(lib/display-name query %)))
