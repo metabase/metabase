@@ -29,9 +29,10 @@
            archived
            current-user-id
            is-superuser?]} :- SearchContext]
-  (let [collection-id-col        (if (= model "collection")
-                                   :collection.id
-                                   :collection_id)
+  (let [collection-id-col        (cond
+                                   (= model "collection") :collection.id
+                                   (= model "search-index") :search_index.collection_id
+                                   :else :collection_id)
         collection-filter-clause (collection/visible-collection-filter-clause
                                   collection-id-col
                                   {:include-archived-items    :all

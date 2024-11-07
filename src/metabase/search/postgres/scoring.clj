@@ -57,9 +57,14 @@
   ;; TODO bookmarked (user specific)
   {:text      [:ts_rank :search_vector :query]
    :pinned    (truthy :pinned)
-   :recency   (inverse-duration :model_updated_at [:now] search.config/stale-time-in-days)
+   :bookmarked [:case
+                [:and [:= :model "card"] [:!= nil :card_bookmark.card_id]] [:inline 1]
+                [:and [:= :model "collection"] [:!= nil :collection_bookmark.collection_id]] [:inline 1]
+                [:and [:= :model "dashboard"] [:!= nil :dashboard_bookmark.dashboard_id]] [:inline 1]
+                :else [:inline 0]]
+   :recency (inverse-duration :model_updated_at [:now] search.config/stale-time-in-days)
    :dashboard (size :dashboardcard_count search.config/dashboard-count-ceiling)
-   :model     (idx-rank :model_rank (count search.config/all-models))})
+   :model (idx-rank :model_rank (count search.config/all-models))})
 
 (def ^:private precalculated-select-items (select-items scorers))
 
@@ -67,4 +72,9 @@
   "Add a bunch of SELECT columns for the individual and total scores, and a corresponding ORDER BY."
   [qry]
   (-> (apply sql.helpers/select qry precalculated-select-items)
+      ;; todo: must join only on current user
+      (sql.helpers/left-join
+       :card_bookmark [:and [:= :model [:inline "card"]] [:= :model_id :card_id]]
+       :collection_bookmark [:and [:= :model [:inline "collection"]] [:= :model_id :collection_bookmark.collection_id]]
+       :dashboard_bookmark [:and [:= :model [:inline "dashboard"]] [:= :model_id :dashboard_id]])
       (sql.helpers/order-by [:total_score :desc])))
