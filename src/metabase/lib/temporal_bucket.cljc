@@ -297,7 +297,7 @@
                                              :metabase.lib.field/original-effective-type original-effective-type)
                                       (m/assoc-some :metabase.lib.field/original-temporal-unit original-temporal-unit)
                                       ;; lbrdnk TODO: Following should happen only if new unit is coarser.
-                                      (m/assoc-some :metabase.lib.field/inherent-temporal-unit unit))]
+                                      (m/assoc-some :inherited-temporal-unit unit))]
       [tag options id-or-name])
     ;; `unit` is `nil`: remove the temporal bucket and remember it :metabase.lib.field/original-temporal-unit.
     (let [original-effective-type (:metabase.lib.field/original-effective-type options)

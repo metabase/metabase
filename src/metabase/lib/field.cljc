@@ -96,8 +96,8 @@
                     {::original-effective-type original-effective-type})
                   (when-let [original-temporal-unit (::original-temporal-unit opts)]
                     {::original-temporal-unit original-temporal-unit})
-                  (when-let [inherent-temporal-unit (::inherent-temporal-unit opts)]
-                    {::inherent-temporal-unit inherent-temporal-unit})
+                  (when-let [inherited-temporal-unit (:inherited-temporal-unit opts)]
+                    {:inherited-temporal-unit inherited-temporal-unit})
                   ;; TODO -- some of the other stuff in `opts` probably ought to be merged in here as well. Also, if
                   ;; the Field is temporally bucketed, the base-type/effective-type would probably be affected, right?
                   ;; We should probably be taking that into consideration?
@@ -332,9 +332,10 @@
           (assoc ::temporal-unit unit
                  ::original-effective-type original-effective-type)
           (m/assoc-some ::original-temporal-unit original-temporal-unit)
+          ;; lbrdnk TODO: "Unhairify".
           (cond->
            (lib.temporal-bucket/coarser-truncation-unit unit original-temporal-unit)
-            (assoc ::inherent-temporal-unit unit)))
+            (assoc :inherited-temporal-unit unit)))
       (cond-> (dissoc metadata ::temporal-unit ::original-effective-type)
         original-effective-type (assoc :effective-type original-effective-type)
         original-temporal-unit  (assoc ::original-temporal-unit original-temporal-unit)))))
@@ -360,7 +361,7 @@
   (lib.temporal-bucket/available-temporal-buckets-for-type
    ((some-fn :effective-type :base-type) field-metadata)
    ;; lbrdnk TODO: "Unhairify" following!
-   (if-not (some? (::inherent-temporal-unit field-metadata))
+   (if-not (some? (:inherited-temporal-unit field-metadata))
      (or (some-> field-metadata :fingerprint fingerprint-based-default-unit)
          :month)
      :just-dont-do-that)
@@ -444,8 +445,8 @@
                                    {::original-effective-type original-effective-type})
                                  (when-let [original-temporal-unit (::original-temporal-unit metadata)]
                                    {::original-temporal-unit original-temporal-unit})
-                                 (when-let [inherent-temporal-unit (::inherent-temporal-unit metadata)]
-                                   {::inherent-temporal-unit inherent-temporal-unit})
+                                 (when-let [inherited-temporal-unit (:inherited-temporal-unit metadata)]
+                                   {:inherited-temporal-unit inherited-temporal-unit})
                                  (when-let [binning (::binning metadata)]
                                    {:binning binning})
                                  (when-let [source-field-id (when-not inherited-column?
