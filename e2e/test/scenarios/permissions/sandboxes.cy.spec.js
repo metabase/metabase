@@ -595,6 +595,10 @@ describeEE("formatting > sandboxes", () => {
        * Until the underlying issue is fixed, "normal" scenario will be skipped.
        *
        * Related issues: metabase#10474, metabase#14629
+       *
+       * Update 2024/11/07:
+       * It's expected that this test fails - the issue is still there.
+       * See https://github.com/metabase/metabase/issues/49671 for a proposed fix.
        */
       ["normal", "workaround"].forEach(test => {
         it(
