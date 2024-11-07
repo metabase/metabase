@@ -50,8 +50,10 @@
              [:display_data :text :not-null]
              [:legacy_input :text :not-null]
              ;; scoring related
+             [:dashboardcard_count :int]
              [:model_rank :int :not-null]
              [:pinned :boolean]
+             [:verified :boolean]
              ;; permission related entities
              [:collection_id :int]
              [:database_id :int]
@@ -65,7 +67,6 @@
              [:last_editor_id :int]
              [:model_created_at :timestamp]
              [:model_updated_at :timestamp]
-             [:verified :boolean]
              ;; useful for tracking the speed and age of the index
              [:created_at :timestamp
               [:default [:raw "CURRENT_TIMESTAMP"]]

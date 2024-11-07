@@ -11,23 +11,21 @@
 (defn- fraction
   "Prefer items whose value is closer to achieving some saturation point. Items beyond that point are equivalent."
   [column ceiling]
-  [:coalesce [:least [:/ column [:inline (double ceiling)]] [:inline 1]] [:inline 0]])
+  [:least [:/ [:coalesce column [:inline 0]] [:inline (double ceiling)]] [:inline 1]])
 
 (defn- duration-fraction
   "Score at item based on the duration between two dates, where less is better."
   [from-column to-column ceiling-in-days]
   (let [ceiling [:inline ceiling-in-days]]
-    [:coalesce
-     [:/
-      [:greatest
-       [:- ceiling
-        [:/
-         ;; Use seconds for granularity in the fraction.
-         [[:raw "EXTRACT(epoch FROM (" [:- to-column from-column] [:raw "))"]]]
-         [:inline (double seconds-in-a-day)]]]
-       [:inline 0]]
-      ceiling]
-     [:inline 0]]))
+    [:/
+     [:greatest
+      [:- ceiling
+       [:/
+        ;; Use seconds for granularity in the fraction.
+        [[:raw "EXTRACT(epoch FROM (" [:- to-column from-column] [:raw "))"]]]
+        [:inline (double seconds-in-a-day)]]]
+      [:inline 0]]
+     ceiling]))
 
 (defn- idx-rank
   "Prefer items whose value is earlier in some list."
@@ -60,7 +58,7 @@
   {:pinned    (truthy :pinned)
    ;; :bookmarked user specific join
    :recency   (duration-fraction :model_updated_at [:now] stale-time-in-days)
-   ;:dashboard (fraction :dashboardcard_count dashboard-count-ceiling)
+   :dashboard (fraction :dashboardcard_count dashboard-count-ceiling)
    :model     (idx-rank :model_rank model-count)})
 
 (def select-items-4real

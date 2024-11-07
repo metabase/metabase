@@ -1011,18 +1011,21 @@
 
 (def ^:private base-search-spec
   {:model        :model/Card
-   :attrs        {:archived       true
-                  :collection-id  :collection_id
-                  :creator-id     true
-                  :database-id    false
-                  :dataset-query  true
-                  :table-id       false
-                  :last-edited-at :r.timestamp
-                  :last-editor-id :r.user_id
-                  :pinned         [:> [:coalesce :collection_position [:inline 0]] [:inline 0]]
-                  :verified       [:= "verified" :mr.status]
-                  :created-at     true
-                  :updated-at     true}
+   :attrs        {:archived            true
+                  :collection-id       :collection_id
+                  :creator-id          true
+                  :database-id         false
+                  :dataset-query       true
+                  :dashboardcard-count {:select [:%count.*]
+                                        :from   [:report_dashboardcard]
+                                        :where  [:= :report_dashboardcard.card_id :this.id]}
+                  :table-id            false
+                  :last-edited-at      :r.timestamp
+                  :last-editor-id      :r.user_id
+                  :pinned              [:> [:coalesce :collection_position [:inline 0]] [:inline 0]]
+                  :verified            [:= "verified" :mr.status]
+                  :created-at          true
+                  :updated-at          true}
    :search-terms [:name :description]
    :render-terms {:archived-directly          true
                   :collection-authority_level :collection.authority_level
@@ -1032,9 +1035,6 @@
                   :collection-position        true
                   :collection-type            :collection.type
                   ;; This field can become stale, unless we change to calculate it just-in-time.
-                  :dashboardcard-count        {:select [:%count.*]
-                                               :from   [:report_dashboardcard]
-                                               :where  [:= :report_dashboardcard.card_id :this.id]}
                   :display                    true
                   :moderated-status           :mr.status}
    :bookmark     [:model/CardBookmark [:and

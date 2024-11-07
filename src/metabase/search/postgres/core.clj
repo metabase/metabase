@@ -110,10 +110,9 @@
        (metabase.search.postgres.scoring/ranking-clause)
 
        (#(honey.sql.helpers/order-by % [:total_score :desc]))
-       (#(honey.sql.helpers/limit % 2))
 
-       #_(honey.sql/format)
-       #_prrn
+       (honey.sql/format)
+       prrn
 
        (t2/query)
        (map rehydrate)))
