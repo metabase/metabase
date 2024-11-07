@@ -127,21 +127,17 @@
   [email]
   (when email-throttler
     (when-some [recipients (into #{} (mapcat email) [:to :bcc])]
-      (let [throttle-threshold          (.attempts-threshold ^Throttler email-throttler)
-            check-one!                  #(throttle/check email-throttler true)
-            recipients-more-than-limit? (> (count recipients) throttle-threshold)]
+      (let [throttle-threshold (.attempts-threshold ^Throttler email-throttler)
+            check-one!         #(throttle/check email-throttler true)]
         (check-one!)
         (try
           (dotimes [_ (dec (count recipients))]
             (throttle/check email-throttler true))
-          (catch Exception e
-            (if recipients-more-than-limit?
-              ;; suppress the exception
-              (log/warn "Email throttling is enabled and the number of recipients exceeds the rate limit per second. Skip throttling."
-                        {:email-subject  (:subject email)
-                         :recipients     (count recipients)
-                         :max-recipients throttle-threshold})
-              (throw e))))))))
+          (catch Exception _e
+            (log/warn "Email throttling is enabled and the number of recipients exceeds the rate limit per second. Skip throttling."
+                      {:email-subject  (:subject email)
+                       :recipients     (count recipients)
+                       :max-recipients throttle-threshold})))))))
 
 ;; ## PUBLIC INTERFACE
 
