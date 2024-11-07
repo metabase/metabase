@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useLayoutEffect } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useDispatch } from "metabase/lib/redux";
 import { Box, Button, Icon } from "metabase/ui";
 import Input from "metabase/core/components/Input";
@@ -6,11 +6,10 @@ import TextArea from "metabase/core/components/TextArea";
 import ChatMessageList from "metabase/components/ChatMessageList/ChatMessageList";
 import FeedbackDialog from "metabase/components/FeedbackDialog/FeedbackDialog";
 import CubeRequestDialog from "metabase/components/CubeRequest/CubeRequestDialog";
-import { CardApi } from "metabase/services";
+import { ChatCardApi } from "metabase/services";
 import Question from "metabase-lib/v1/Question";
 import { push } from "react-router-redux";
 import Modal from "metabase/components/Modal";
-import { Tabs } from "metabase/ui";
 import { generateRandomId } from "metabase/lib/utils";
 import {
     adhocQuestionHash
@@ -279,9 +278,14 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
         }
     };
 
-    const openModal = (cardData, cardIndex) => {
-        const route = `/question/${cardData.id}`;
-        window.open(route, "_blank"); // Opens the route in a new tab
+    const openModal = (cardData, isReportCard) => {
+        if (isReportCard) {
+            const route = `/question/${cardData.id}`;
+            window.open(route, "_blank"); // Opens the route in a new tab
+        } else {
+            const route = `/question/${cardData.hash}`;
+            window.open(route, "_blank"); // Opens the route in a new tab
+        }
     };
 
     const closeModal = () => {
@@ -295,26 +299,28 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
             setIsLoading(true); // Show loading state
 
             // Fetch the card details using the provided cardId
-            const fetchedCard = await CardApi.get({ cardId });
-            const queryCard = await CardApi.query({ cardId });
+            const fetchedCard = await ChatCardApi.get({ cardId });
+            const queryCard = await ChatCardApi.query({ cardId });
             const getDatasetQuery = fetchedCard?.dataset_query;
 
             if (!getDatasetQuery) {
                 throw new Error("No dataset query found for this card.");
             }
-
+            
             // Create a new question object based on the fetched card's dataset query
             const newQuestion = Question.create({
                 databaseId: getDatasetQuery.database,
                 name: fetchedCard.name,
-                type: "query",
+                type: fetchedCard.query_type,
                 display: fetchedCard.display,
                 visualization_settings: {},
                 dataset_query: getDatasetQuery,
             });
 
             // Generate a unique hash for this question
-            const itemToHash = {
+            let itemToHash;
+            if (fetchedCard.query_type === "query") {
+            itemToHash = {
                 dataset_query: {
                     database: getDatasetQuery.database,
                     type: getDatasetQuery.type,
@@ -325,6 +331,19 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
                 visualization_settings: {},
                 type: "question",
             };
+        } else {
+            itemToHash = {
+                dataset_query: {
+                    database: getDatasetQuery.database,
+                    type: getDatasetQuery.type,
+                    native: getDatasetQuery.native
+                },
+
+                display: fetchedCard.display,
+                visualization_settings: {},
+                type: "question",
+            };
+        }
             const hash = adhocQuestionHash(itemToHash);
             // Append new values safely by ensuring prevCard is always an array
             setCard((prevCard) => Array.isArray(prevCard) ? [...prevCard, { ...fetchedCard, hash, typeQuery: getDatasetQuery.type }] : [{ ...fetchedCard, hash, typeQuery: getDatasetQuery.type }]);
@@ -371,7 +390,7 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
     const redirect = async () => {
         if (selectedHash) {
             dispatch(push(`/question#${selectedHash}`));
-            // const deletedCard = await CardApi.delete({ id: id });
+            // const deletedCard = await ChatCardApi.delete({ id: id });
         }
     }
 

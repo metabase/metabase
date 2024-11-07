@@ -16,7 +16,7 @@
    [steffan-westcott.clj-otel.api.trace.span :as span]
    [toucan2.core :as t2]))
 
-(def ^:private model->db-model {:card "Card" :dashboard "Dashboard"})
+(def ^:private model->db-model {:card "Card" :dashboard "Dashboard" :chat_card "ChatCard"})
 
 ;; these are all maybes as sometimes revisions don't exist, or users might be missing the names, etc
 (def ^:private LastEditInfo
@@ -39,7 +39,7 @@
   `:card`. Gets the last edited information from the revisions table. If you need this information from a put route,
   use `@api/*current-user*` and a current timestamp since revisions are events and asynchronous."
   [items
-   model :- [:enum :dashboard :card]]
+   model :- [:enum :dashboard :chat_card :card]]
   (let [ids (into #{} (map :id) items)]
     (span/with-span!
       {:name       "with-last-edit-info"

@@ -19,11 +19,12 @@ const updateQuestion = async (
   const collectionId = canonicalCollectionId(originalQuestion.collectionId());
   const displayName = originalQuestion.displayName();
   const description = originalQuestion.description();
-
+  const isExample = originalQuestion.isExample();
   const updatedQuestion = newQuestion
     .setDisplayName(displayName)
     .setDescription(description)
-    .setCollectionId(collectionId);
+    .setCollectionId(collectionId)
+    .setIsExample(isExample);
 
   await onSave(updatedQuestion.setId(originalQuestion.id()));
 };
@@ -40,12 +41,12 @@ export const createQuestion = async (
   const collectionId = canonicalCollectionId(details.collection_id);
   const displayName = details.name.trim();
   const description = details.description ? details.description.trim() : null;
-
+  const isExample = details.isExample;
   const newQuestion = question
     .setDisplayName(displayName)
     .setDescription(description)
-    .setCollectionId(collectionId);
-
+    .setCollectionId(collectionId)
+    .setIsExample(isExample);
   await onCreate(newQuestion);
 };
 
@@ -110,6 +111,8 @@ export const getInitialValues = (
       originalQuestion.canWrite()
         ? "overwrite"
         : "create",
+    isExample: 
+      question.isExample()
   };
 };
 

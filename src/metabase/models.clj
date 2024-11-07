@@ -5,6 +5,7 @@
    [metabase.models.bookmark :as bookmark]
    [metabase.models.cache-config :as cache-config]
    [metabase.models.card :as card]
+   [metabase.models.chat-card :as chat-card]
    [metabase.models.collection :as collection]
    [metabase.models.collection-permission-graph-revision
     :as c-perm-revision]
@@ -115,6 +116,7 @@
  [bookmark BookmarkOrdering]
  [cache-config CacheConfig]
  [card Card]
+ [chat-card ChatCard]
  [collection Collection]
  [c-perm-revision CollectionPermissionGraphRevision]
  [dashboard Dashboard]

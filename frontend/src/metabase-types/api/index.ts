@@ -5,6 +5,7 @@ export * from "./alert";
 export * from "./automagic-dashboards";
 export * from "./bookmark";
 export * from "./card";
+export * from "./chat-card";
 export * from "./click-behavior";
 export * from "./collection";
 export * from "./cube";

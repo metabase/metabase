@@ -20,6 +20,7 @@
    [metabase.models.card :as card :refer [Card]]
    [metabase.models.collection :as collection :refer [Collection]]
    [metabase.models.checkpoints :as checkpoints]
+   [metabase.models.chat-card :as chat-card]
    [metabase.models.company :as company]
    [metabase.models.cubes_requests :as cubes_requests]
    [metabase.models.data-permissions :as data-perms]

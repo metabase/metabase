@@ -45,7 +45,7 @@ export interface Card<Q extends DatasetQuery = DatasetQuery>
   based_on_upload?: number | null; // table id of upload table, if any
 
   archived: boolean;
-
+  isExample: boolean;
   creator?: UserInfo;
 }
 
@@ -266,6 +266,7 @@ export interface CreateCardRequest {
   collection_position?: number;
   result_metadata?: Field[];
   cache_ttl?: number;
+  isExample: boolean;
 }
 
 export interface UpdateCardRequest {

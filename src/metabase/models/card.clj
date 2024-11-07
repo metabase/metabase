@@ -611,10 +611,10 @@
   the transaction yet. If you pass true here it is important to call the event after the cards are successfully
   created."
   ([card creator] (create-card! card creator false))
-  ([{:keys [dataset_query result_metadata parameters parameter_mappings type] :as card-data} creator delay-event?]
+  ([{:keys [dataset_query result_metadata parameters parameter_mappings type isExample] :as card-data} creator delay-event?]
    (let [data-keys                          [:dataset_query :description :display :name :visualization_settings
                                              :parameters :parameter_mappings :collection_id :collection_position
-                                             :cache_ttl :type]
+                                             :cache_ttl :type :isExample]
          ;; `zipmap` instead of `select-keys` because we want to get `nil` values for keys that aren't present. Required
          ;; by `api/maybe-reconcile-collection-position!`
          card-data                          (-> (zipmap data-keys (map card-data data-keys))

@@ -389,6 +389,7 @@
     metabase.api.card                                             api.card
     metabase.api.card-test                                        api.card-test
     metabase.api.collection                                       api.collection
+    metabase.api.chat-card                                        api.chat-card
     metabase.api.checkpoints                                      api.checkpoints
     metabase.api.company                                          api.company
     metabase.api.cubes_requests                                   api.cubes_requests
@@ -482,6 +483,7 @@
     metabase.models.activity                                      activity
     metabase.models.application-permissions-revision              a-perm-revision
     metabase.models.bookmark                                      bookmark
+    metabase.models.chat-card                                     chat-card
     metabase.models.collection                                    collection
     metabase.models.checkpoints                                   checkpoints
     metabase.models.company                                       company

@@ -8,6 +8,7 @@ export function createCard(name = null) {
     display: "table",
     visualization_settings: {},
     dataset_query: {},
+    isExample: false,
   };
 }
 
@@ -54,6 +55,7 @@ function getCleanCard(card) {
     visualization_settings: card.visualization_settings,
     original_card_id: card.original_card_id,
     type: card.type,
+    isExample: card.isExample
   };
 }
 
