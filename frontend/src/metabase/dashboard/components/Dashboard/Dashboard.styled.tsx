@@ -134,6 +134,18 @@ export const ParametersWidgetContainer = styled(FullWidthContainer)<{
           ? "var(--mb-color-border)"
           : getDashboardBodyBgColor(isNightMode)};
     `}
+
+    ${({ isNightMode }) =>
+    isNightMode &&
+    css`
+      --mb-color-text-secondary: color-mix(
+        in srgb,
+        var(--mb-base-color-white) 65%,
+        transparent
+      );
+      --mb-color-border: var(--mb-base-color-orion-60);
+      --mb-color-background: var(--mb-color-bg-black);
+    `}
 `;
 
 export const ParametersAndCardsContainer = styled.div<{

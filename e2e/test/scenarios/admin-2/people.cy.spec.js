@@ -255,9 +255,17 @@ describe("scenarios > admin > people", () => {
       showUserOptions(normalUserName);
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Edit user").click();
-      cy.findByDisplayValue(normal.first_name).click().clear().type(NEW_NAME);
 
-      clickButton("Update");
+      modal().within(() => {
+        cy.log("Should display error messages (metabase#46449)");
+        cy.findByLabelText("First name").click().clear().type(" ");
+        clickButton("Update");
+        cy.findByText(/non-blank string./).should("exist");
+
+        cy.findByLabelText("First name").click().clear().type(NEW_NAME);
+        clickButton("Update", { timeout: 4000 });
+      });
+
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(NEW_FULL_NAME);
       cy.location().should(loc => expect(loc.pathname).to.eq("/admin/people"));
@@ -872,8 +880,8 @@ function showUserOptions(full_name) {
     });
 }
 
-function clickButton(button_name) {
-  cy.button(button_name).should("not.be.disabled").click();
+function clickButton(button_name, opts = {}) {
+  cy.button(button_name, opts).should("not.be.disabled").click();
 }
 
 function assertTableRowsCount(length) {

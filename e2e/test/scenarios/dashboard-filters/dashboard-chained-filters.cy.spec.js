@@ -173,7 +173,12 @@ describe("scenarios > dashboard > chained filter", () => {
       popover()
         .first()
         .within(() => {
-          multiAutocompleteInput().type("An");
+          if (has_field_values === "search") {
+            multiAutocompleteInput().type("An");
+          }
+          if (has_field_values === "list") {
+            cy.findByRole("textbox").type("An");
+          }
         });
 
       popover()

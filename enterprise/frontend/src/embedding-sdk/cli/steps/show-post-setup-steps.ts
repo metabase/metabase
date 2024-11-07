@@ -27,6 +27,8 @@ export const showPostSetupSteps: CliStepMethod = async state => {
 
   const STEP_3 = getMetabaseInstanceSetupCompleteMessage(
     state.instanceUrl ?? "",
+    state.email ?? "",
+    state.password ?? "",
   );
 
   const POST_SETUP_STEPS = [];

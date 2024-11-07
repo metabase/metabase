@@ -10,6 +10,7 @@ import {
   FilterBar,
   FilterButton,
   QuestionResetButton,
+  QuestionSettings,
   QuestionVisualization,
   SaveButton,
   SdkSaveQuestionForm,
@@ -34,7 +35,11 @@ export type InteractiveQuestionProps = PropsWithChildren<{
 }> &
   Pick<
     InteractiveQuestionProviderProps,
-    "onBeforeSave" | "onSave" | "isSaveEnabled" | "entityTypeFilter"
+    | "onBeforeSave"
+    | "onSave"
+    | "entityTypeFilter"
+    | "isSaveEnabled"
+    | "saveToCollectionId"
   >;
 
 export const _InteractiveQuestion = ({
@@ -50,8 +55,9 @@ export const _InteractiveQuestion = ({
   children = null,
   onBeforeSave,
   onSave,
-  isSaveEnabled,
   entityTypeFilter,
+  isSaveEnabled,
+  saveToCollectionId,
 }: InteractiveQuestionProps &
   InteractiveQuestionResultProps &
   FlexibleSizeProps): JSX.Element | null => (
@@ -60,8 +66,9 @@ export const _InteractiveQuestion = ({
     componentPlugins={plugins}
     onBeforeSave={onBeforeSave}
     onSave={onSave}
-    isSaveEnabled={isSaveEnabled}
     entityTypeFilter={entityTypeFilter}
+    isSaveEnabled={isSaveEnabled}
+    saveToCollectionId={saveToCollectionId}
   >
     {children ?? (
       <InteractiveQuestionResult
@@ -99,6 +106,7 @@ const InteractiveQuestion = withPublicComponentWrapper(
   SaveButton: typeof SaveButton;
   ChartTypeSelector: typeof ChartTypeSelector;
   EditorViewControl: typeof EditorViewControl;
+  QuestionSettings: typeof QuestionSettings;
 };
 
 InteractiveQuestion.BackButton = BackButton;
@@ -120,5 +128,6 @@ InteractiveQuestion.SaveQuestionForm = SdkSaveQuestionForm;
 InteractiveQuestion.SaveButton = SaveButton;
 InteractiveQuestion.ChartTypeSelector = ChartTypeSelector;
 InteractiveQuestion.EditorViewControl = EditorViewControl;
+InteractiveQuestion.QuestionSettings = QuestionSettings;
 
 export { InteractiveQuestion };

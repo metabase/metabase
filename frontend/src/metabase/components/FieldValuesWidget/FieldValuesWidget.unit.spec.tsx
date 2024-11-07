@@ -132,11 +132,24 @@ describe("FieldValuesWidget", () => {
     describe("has_field_values = search", () => {
       const field = metadata.field(PEOPLE.EMAIL);
 
-      it("should not call fetchFieldValues", async () => {
-        const { fetchFieldValues } = await setup({
-          fields: [field],
+      describe("multi = true", () => {
+        it("should not call fetchFieldValues", async () => {
+          const { fetchFieldValues } = await setup({
+            fields: [field],
+            multi: true,
+          });
+          expect(fetchFieldValues).not.toHaveBeenCalled();
         });
-        expect(fetchFieldValues).not.toHaveBeenCalled();
+      });
+
+      describe("multi = false", () => {
+        it("should call fetchFieldValues", async () => {
+          const { fetchFieldValues } = await setup({
+            fields: [field],
+            multi: false,
+          });
+          expect(fetchFieldValues).toHaveBeenCalledWith(field);
+        });
       });
 
       it("should have 'Search by Vendor' as the placeholder text", async () => {

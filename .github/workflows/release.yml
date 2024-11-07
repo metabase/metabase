@@ -11,26 +11,40 @@ on:
       commit:
         description: 'A full-length commit SHA-1 hash'
         required: true
-      skip-docker:
-        description: 'Skip Docker image publishing'
+      release-channel:
+        description: 'The release channel to publish to (optional)'
+        type: choice
+        options:
+          - none
+          - latest
+          - beta
+          - nightly
+        required: true
+        default: 'none'
+      auto:
+        description: 'auto-patch release DO NOT SET MANUALLY'
         type: boolean
         default: false
-      skip-s3:
-        description: 'Skip S3 artifact publishing'
-        type: boolean
-        default: false
-      skip-version-info:
-        description: 'Skip publishing version-info.json'
-        type: boolean
-        default: false
-      skip-tag:
-        description: 'Skip tagging the release'
-        type: boolean
-        default: false
-      skip-release-notes:
-        description: 'Skip publishing release notes'
-        type: boolean
-        default: false
+  workflow_call:
+    inputs:
+      version:
+        description: 'Metabase version (e.g. v0.46.3)'
+        type: string
+        required: true
+      commit:
+        description: 'A full-length commit SHA-1 hash'
+        type: string
+        required: true
+      release-channel:
+        description: 'The release channel to publish to (optional)'
+        type: string
+        # options:
+        #   - none
+        #   - latest
+        #   - beta
+        #   - nightly
+        required: true
+        default: 'none'
       auto:
         description: 'auto-patch release DO NOT SET MANUALLY'
         type: boolean
@@ -185,6 +199,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: metabase-${{ matrix.edition }}-uberjar
+        overwrite: true
         path: |
           ./metabase.jar
           ./COMMIT-ID
@@ -192,7 +207,6 @@ jobs:
           ./version.properties
 
   upload-to-s3:
-    if: ${{ inputs.skip-s3 != true }}
     runs-on: ubuntu-22.04
     needs: download-uberjar
     timeout-minutes: 15
@@ -242,7 +256,6 @@ jobs:
 
 
   verify-s3-download:
-    if: ${{ inputs.skip-s3 != true }}
     runs-on: ubuntu-22.04
     needs: upload-to-s3
     timeout-minutes: 15
@@ -276,7 +289,6 @@ jobs:
       run: grep -q $(sha256sum ./metabase-downloaded.jar) SHA256.sum && echo "checksums match" || exit 1
 
   containerize:
-    if: ${{ inputs.skip-docker != true }}
     runs-on: ubuntu-22.04
     needs: [check-version, download-uberjar]
     timeout-minutes: 15
@@ -361,7 +373,6 @@ jobs:
         echo "Finished!"
 
   verify-docker-pull:
-    if: ${{ inputs.skip-docker != true }}
     runs-on: ubuntu-22.04
     needs: containerize
     timeout-minutes: 15
@@ -410,7 +421,6 @@ jobs:
       timeout-minutes: 3
 
   push-tags:
-    if: ${{ inputs.skip-tag != true }}
     permissions: write-all
     needs: [verify-s3-download, verify-docker-pull, check-version]
     runs-on: ubuntu-22.04
@@ -461,7 +471,7 @@ jobs:
         $GITHUB_WORKSPACE/release/reorder-tags.sh ${{ needs.check-version.outputs.ee }} ${{ inputs.commit }}
 
   trigger-docs-update:
-    if: ${{ !inputs.auto && inputs.skip-release-notes != true }}
+    if: ${{ !inputs.auto }}
     needs:
       - push-tags
       - check-version
@@ -577,7 +587,7 @@ jobs:
             });
 
   draft-release-notes:
-    if: ${{ !inputs.auto && inputs.skip-release-notes != true }}
+    if: ${{ !inputs.auto }}
     needs: push-tags
     runs-on: ubuntu-22.04
     timeout-minutes: 15
@@ -629,7 +639,6 @@ jobs:
             });
 
   publish-version-info:
-    if: ${{ !inputs.auto && inputs.skip-version-info != true }}
     runs-on: ubuntu-22.04
     needs: [push-tags, check-version]
     timeout-minutes: 15
@@ -640,6 +649,11 @@ jobs:
       AWS_S3_STATIC_BUCKET: ${{ vars.AWS_S3_STATIC_BUCKET }}
       AWS_REGION: ${{ vars.AWS_REGION }}
     steps:
+    - name: Finish early
+      if: ${{ inputs.auto }}
+      run: |
+        echo "skipping version info update for nightly patch"
+        exit 0
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v4
       with:
@@ -687,22 +701,20 @@ jobs:
         --distribution-id ${{ vars.AWS_CLOUDFRONT_STATIC_ID }} \
         --paths "/version-info.json" "/version-info-ee.json"
 
-  tag-nightly:
-    if: false
-    needs: [push-tags, verify-docker-pull, verify-s3-download, check-version]
+  set-release-channel:
+    needs: publish-version-info
     uses: ./.github/workflows/release-tag.yml
     secrets: inherit
     with:
       version: ${{ inputs.version }}
-      tag_name: nightly
+      tag_name: ${{ inputs.release-channel }}
       tag_rollout: 100
       tag_ee: true
       tag_oss: true
 
   publish-complete-message:
-    if: ${{ !inputs.auto }}
     runs-on: ubuntu-22.04
-    needs: [draft-release-notes, verify-docker-pull, verify-s3-download, publish-version-info]
+    needs: set-release-channel
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
@@ -719,34 +731,7 @@ jobs:
           script: | # js
             const { sendPublishCompleteMessage } = require('${{ github.workspace }}/release/dist/index.cjs');
 
-            await sendPublishCompleteMessage({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              version: '${{ inputs.version }}',
-              runId: '${{ github.run_id }}',
-              channelName: '${{ vars.SLACK_RELEASE_CHANNEL }}',
-              generalChannelName: 'general',
-            }).catch(console.error);
-
-  auto-publish-complete-message:
-    if: ${{ inputs.auto }}
-    runs-on: ubuntu-22.04
-    needs: tag-nightly
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          sparse-checkout: release
-      - name: Prepare build scripts
-        run: cd ${{ github.workspace }}/release && yarn && yarn build
-      - name: Send auto publish complete message
-        uses: actions/github-script@v7
-        env:
-          SLACK_RELEASE_CHANNEL: ${{ vars.SLACK_RELEASE_CHANNEL }}
-          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
-        with:
-          script: | # js
-            const { sendPublishCompleteMessage } = require('${{ github.workspace }}/release/dist/index.cjs');
+            const isAutoRelease = '${{ inputs.auto }}' === 'true';
 
             await sendPublishCompleteMessage({
               owner: context.repo.owner,
@@ -754,7 +739,7 @@ jobs:
               version: '${{ inputs.version }}',
               runId: '${{ github.run_id }}',
               channelName: '${{ vars.SLACK_RELEASE_CHANNEL }}',
-              generalChannelName: '',
+              generalChannelName: !isAutoRelease ? '${{ vars.SLACK_GENERAL_CHANNEL }}' : '',
             }).catch(console.error);
 
   manage-milestones:

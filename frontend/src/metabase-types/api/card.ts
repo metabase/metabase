@@ -6,6 +6,7 @@ import type { DashCardId, DashboardId } from "./dashboard";
 import type { Database, DatabaseId } from "./database";
 import type { BaseEntityId } from "./entity-id";
 import type { Field } from "./field";
+import type { ModerationReview } from "./moderation";
 import type { PaginationRequest, PaginationResponse } from "./pagination";
 import type { Parameter } from "./parameters";
 import type { DatasetQuery, FieldReference, PublicDatasetQuery } from "./query";
@@ -118,15 +119,42 @@ export type ColumnFormattingSetting = {
   highlight_row?: boolean;
 };
 
-export type PivotTableCollapsedRowsSetting = {
-  rows: FieldReference[];
+export type ColumnNameColumnSplitSetting = {
+  rows: string[];
+  columns: string[];
+  values: string[];
+};
+
+export type FieldRefColumnSplitSetting = {
+  rows: (FieldReference | null)[];
+  columns: (FieldReference | null)[];
+  values: (FieldReference | null)[];
+};
+
+// Field ref-based visualization settings are considered legacy and are not used
+// for new questions. To not break existing questions we need to support both
+// old- and new-style settings until they are fully migrated.
+export type PivotTableColumnSplitSetting =
+  | ColumnNameColumnSplitSetting
+  | FieldRefColumnSplitSetting;
+
+export type ColumnNameCollapsedRowsSetting = {
+  rows: string[];
   value: string[]; // identifiers for collapsed rows
 };
+
+export type FieldRefCollapsedRowsSetting = {
+  rows: (FieldReference | null)[];
+  value: string[];
+};
+
+export type PivotTableCollapsedRowsSetting =
+  | ColumnNameCollapsedRowsSetting
+  | FieldRefCollapsedRowsSetting;
 
 export type TableColumnOrderSetting = {
   name: string;
   enabled: boolean;
-  fieldRef?: FieldReference;
 };
 
 export type StackType = "stacked" | "normalized" | null;
@@ -216,6 +244,7 @@ export type VisualizationSettings = {
   "funnel.rows"?: SeriesOrderSetting[];
 
   "table.column_formatting"?: ColumnFormattingSetting[];
+  "pivot_table.column_split"?: PivotTableColumnSplitSetting;
   "pivot_table.collapsed_rows"?: PivotTableCollapsedRowsSetting;
 
   // Scalar Settings
@@ -246,16 +275,10 @@ export type EmbedVisualizationSettings = {
   iframe?: string;
 };
 
-export interface ModerationReview {
-  status: ModerationReviewStatus;
-  moderator_id: number;
-  created_at: string;
-  most_recent?: boolean;
-}
+export type VisualizationSettingKey = keyof VisualizationSettings;
 
 export type CardId = number;
 export type CardEntityId = BaseEntityId;
-export type ModerationReviewStatus = "verified" | null;
 
 export type CardFilterOption =
   | "all"
