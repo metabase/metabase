@@ -5,6 +5,7 @@ import { requireUserConfirmation, showMessage } from "./messages";
 import { writeBack } from "./metabot";
 import {
   aggregateQuery,
+  booleanFilterQuery,
   breakoutQuery,
   limitQuery,
   relativeDateFilterQuery,
@@ -32,6 +33,7 @@ export const reactionHandlers: ReactionHandlers = {
   "metabot.reaction/message": showMessage,
   "metabot.reaction/api-call": apiCall,
   "metabot.reaction/writeback": writeBack,
+  "metabot.reaction/boolean-filter-query": booleanFilterQuery,
   "metabot.reaction/relative-date-filter-query": relativeDateFilterQuery,
   "metabot.reaction/aggregate-query": aggregateQuery,
   "metabot.reaction/breakout-query": breakoutQuery,

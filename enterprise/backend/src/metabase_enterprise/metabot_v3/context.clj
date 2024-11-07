@@ -2,6 +2,7 @@
   (:require
    [cheshire.core :as json]
    [clojure.java.io :as io]
+   [medley.core :as m]
    [metabase.config :as config]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
@@ -63,15 +64,18 @@
                  aggregation-operators (lib/available-aggregation-operators query)
                  filterable-columns    (lib/filterable-columns query)]
              {:current_query
-              {:aggregation_operators (mapv (fn [operator]
+              {:aggregation_operators (m/map-vals (fn [operator]
                                               {:operator (lib/display-name query operator)
                                                :columns (mapv #(lib/display-name query %)
                                                               (lib/aggregation-operator-columns operator))})
                                             aggregation-operators)
-               :filterable_columns {:date (into []
-                                                (comp (filter lib.types.isa/date-or-datetime?)
-                                                      (map #(lib/display-name query %)))
-                                                filterable-columns)}
+               :filterable_columns  (m/map-vals (fn [predicate]
+                                                  (into []
+                                                        (comp (filter predicate)
+                                                              (map #(lib/display-name query %)))
+                                                        filterable-columns))
+                                                {:boolean lib.types.isa/boolean?}
+                                                {:date    lib.types.isa/date-or-datetime?})
                :breakoutable_columns  (mapv #(lib/display-name query %)
                                             (lib/breakoutable-columns query))
                :orderable_columns     (mapv #(lib/display-name query %)

@@ -1,0 +1,19 @@
+{
+  "name": "boolean-filter-query",
+  "description": "Filters based on a boolean column. Requires a column and a value, which is true or false.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "column": {
+        "type": "string",
+        "description": "The column to apply filter for. Choose an appropriate column name based on user input from filterable_columns.boolean list."
+      },
+      "value": {
+        "type": "boolean",
+        "description": "The filter value."
+      }
+    },
+    "additionalProperties": false,
+    "required": ["column", "value"]
+  }
+}

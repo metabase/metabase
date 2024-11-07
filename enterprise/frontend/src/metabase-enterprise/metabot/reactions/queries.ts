@@ -3,6 +3,7 @@ import { getQuestion } from "metabase/query_builder/selectors";
 import * as Lib from "metabase-lib";
 import type {
   MetabotAggregateQueryReaction,
+  MetabotBooleanFilterQueryReaction,
   MetabotBreakoutQueryReaction,
   MetabotLimitQueryReaction,
   MetabotRelativeDateFilterQueryReaction,
@@ -10,6 +11,38 @@ import type {
 } from "metabase-types/api";
 
 import type { ReactionHandler } from "./types";
+
+export const booleanFilterQuery: ReactionHandler<
+  MetabotBooleanFilterQueryReaction
+> =
+  reaction =>
+  async ({ dispatch, getState }) => {
+    const question = getQuestion(getState());
+    if (!question) {
+      return;
+    }
+
+    const query = question.query();
+    const stageIndex = -1;
+    const columns = Lib.filterableColumns(query, stageIndex);
+    const column = columns.find(
+      column =>
+        Lib.displayInfo(query, stageIndex, column).displayName ===
+        reaction.column,
+    );
+    if (!column) {
+      return;
+    }
+
+    const newClause = Lib.booleanFilterClause({
+      operator: "=",
+      column,
+      values: [reaction.value],
+    });
+    const newQuery = Lib.filter(query, stageIndex, newClause);
+    const newQuestion = question.setQuery(newQuery);
+    await dispatch(updateQuestion(newQuestion, { run: true }));
+  };
 
 export const relativeDateFilterQuery: ReactionHandler<
   MetabotRelativeDateFilterQueryReaction

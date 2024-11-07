@@ -77,6 +77,12 @@ export type MetabotApiCallReaction = {
   };
 };
 
+export type MetabotBooleanFilterQueryReaction = {
+  type: "metabot.reaction/boolean-filter-query";
+  column: string;
+  value: boolean;
+};
+
 export type MetabotRelativeDateFilterQueryReaction = {
   type: "metabot.reaction/relative-date-filter-query";
   column: string;
@@ -113,6 +119,7 @@ export type MetabotReaction =
   | MetabotConfirmationReaction
   | MetabotWriteBackReaction
   | MetabotApiCallReaction
+  | MetabotBooleanFilterQueryReaction
   | MetabotRelativeDateFilterQueryReaction
   | MetabotAggregateQueryReaction
   | MetabotBreakoutQueryReaction

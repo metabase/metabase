@@ -132,6 +132,11 @@
    [:type [:= :metabot.reaction/writeback]]
    [:message :string]])
 
+(defreaction :metabot.reaction/boolean-filter-query
+  [:map
+   [:column :string]
+   [:value :boolean]])
+
 (defreaction :metabot.reaction/relative-date-filter-query
   [:map
    [:column :string]
