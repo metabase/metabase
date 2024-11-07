@@ -14,6 +14,7 @@
    [metabase-enterprise.metabot-v3.tools.limit-query]
    [metabase-enterprise.metabot-v3.tools.relative-date-filter-query]
    [metabase-enterprise.metabot-v3.tools.sort-query]
+   [metabase-enterprise.metabot-v3.tools.string-filter-query]
    [metabase-enterprise.metabot-v3.tools.who-is-your-favorite]
    [metabase.config :as config]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -36,6 +37,7 @@
   metabase-enterprise.metabot-v3.tools.relative-date-filter-query/keep-me
   metabase-enterprise.metabot-v3.tools.limit-query/keep-me
   metabase-enterprise.metabot-v3.tools.sort-query/keep-me
+  metabase-enterprise.metabot-v3.tools.string-filter-query/keep-me
   metabase-enterprise.metabot-v3.tools.who-is-your-favorite/keep-me)
 
 (mu/defn- reducible-tool-metadata-file-paths :- (lib.schema.common/instance-of-class clojure.lang.IReduceInit)

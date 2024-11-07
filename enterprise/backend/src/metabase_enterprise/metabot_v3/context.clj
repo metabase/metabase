@@ -74,8 +74,9 @@
                                                         (comp (filter predicate)
                                                               (map #(lib/display-name query %)))
                                                         filterable-columns))
-                                                {:boolean lib.types.isa/boolean?}
-                                                {:date    lib.types.isa/date-or-datetime?})
+                                                {:string  lib.types.isa/string?
+                                                 :boolean lib.types.isa/boolean?
+                                                 :date    lib.types.isa/date-or-datetime?})
                :breakoutable_columns  (mapv #(lib/display-name query %)
                                             (lib/breakoutable-columns query))
                :orderable_columns     (mapv #(lib/display-name query %)

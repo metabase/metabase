@@ -77,6 +77,19 @@ export type MetabotApiCallReaction = {
   };
 };
 
+export type MetabotStringFilterQueryReaction = {
+  type: "metabot.reaction/string-filter-query";
+  column: string;
+  operator:
+    | "="
+    | "!="
+    | "contains"
+    | "does-not-contain"
+    | "starts-with"
+    | "ends-with";
+  values: string[];
+};
+
 export type MetabotBooleanFilterQueryReaction = {
   type: "metabot.reaction/boolean-filter-query";
   column: string;
@@ -120,6 +133,7 @@ export type MetabotReaction =
   | MetabotConfirmationReaction
   | MetabotWriteBackReaction
   | MetabotApiCallReaction
+  | MetabotStringFilterQueryReaction
   | MetabotBooleanFilterQueryReaction
   | MetabotRelativeDateFilterQueryReaction
   | MetabotAggregateQueryReaction

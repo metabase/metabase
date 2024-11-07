@@ -1,0 +1,28 @@
+{
+  "name": "string-filter-query",
+  "description": "Filters based on a string column. Requires a column, an operator, and a list of values.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "column": {
+        "type": "string",
+        "description": "The column to apply filter for. Choose an appropriate column name based on user input from filterable_columns.string list."
+      },
+      "operator": {
+        "type": "string",
+        "description": "The filter operator. '=' means equals to. '!=' means not equals to.",
+        "enum": ["=", "!=", "contains", "does-not-contain", "starts-with", "ends-with"]
+      },
+      "values": {
+        "type": "array",
+        "description": "Filter values.",
+        "items": {
+          "type": "string"
+        },
+        "minItems": 1
+      }
+    },
+    "additionalProperties": false,
+    "required": ["column", "operator", "values"]
+  }
+}
