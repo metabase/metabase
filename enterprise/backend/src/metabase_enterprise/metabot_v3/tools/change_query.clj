@@ -15,10 +15,10 @@
                       order-bys
                       limits], :as _argument-map}]
   {:reactions [{:type                  :metabot.reaction/change-query
-                :number-filters        number-filters
-                :relative-date-filters relative-date-filters
-                :aggregations          aggregations
-                :breakouts             breakouts
-                :order-bys             order-bys
-                :limits                limits}]
+                :number-filters        (or number-filters [])
+                :relative-date-filters (or relative-date-filters [])
+                :aggregations          (or aggregations [])
+                :breakouts             (or breakouts [])
+                :order-bys             (or order-bys [])
+                :limits                (or limits [])}]
    :output "success"})

@@ -134,22 +134,22 @@
 
 (defreaction :metabot.reaction/change-query
   [:map
-   [:number-filters [:maybe [:vector [:map
-                                      [:column :string]
-                                      [:operator [:enum "=" "!=" ">" "<" ">=" "<="]]
-                                      [:value number?]]]]]
-   [:relative-date-filters [:maybe [:vector [:map
-                                             [:column :string]
-                                             [:direction [:enum "last" "current" "next"]]
-                                             [:value integer?]
-                                             [:unit [:enum "day", "week", "month", "quarter", "year"]]]]]]
-   [:aggregations [:maybe [:vector [:map
-                                    [:operator :string]
-                                    [:column [:maybe :string]]]]]]
-   [:breakouts [:maybe [:vector [:map
-                                 [:column :string]]]]]
-   [:order-bys [:maybe [:vector [:map
-                                 [:column :string]
-                                 [:direction [:maybe [:enum "asc" "desc"]]]]]]]
-   [:limits [:maybe [:vector [:map
-                              [:limit integer?]]]]]])
+   [:number-filters [:vector [:map
+                              [:column :string]
+                              [:operator [:enum "=" "!=" ">" "<" ">=" "<="]]
+                              [:value number?]]]]
+   [:relative-date-filters [:vector [:map
+                                     [:column :string]
+                                     [:direction [:enum "last" "current" "next"]]
+                                     [:value integer?]
+                                     [:unit [:enum "day", "week", "month", "quarter", "year"]]]]]
+   [:aggregations [:vector [:map
+                            [:operator :string]
+                            [:column [:maybe :string]]]]]
+   [:breakouts [:vector [:map
+                         [:column :string]]]]
+   [:order-bys [:vector [:map
+                         [:column :string]
+                         [:direction [:maybe [:enum "asc" "desc"]]]]]]
+   [:limits [:vector [:map
+                      [:limit integer?]]]]])

@@ -110,12 +110,12 @@ export type MetabotLimitQueryDetails = {
 
 export type MetabotChangeQueryReaction = {
   type: "metabot.reaction/change-query";
-  number_filter_details: MetabotNumberFilterDetails[] | null;
-  relative_date_filters: MetabotRelativeDateFilterDetails[] | null;
-  aggregations: MetabotAggregateQueryDetails[] | null;
-  breakouts: MetabotBreakoutQueryDetails[] | null;
-  order_bys: MetabotOrderByQueryDetails[] | null;
-  limits: MetabotLimitQueryDetails[] | null;
+  number_filters: MetabotNumberFilterDetails[];
+  relative_date_filters: MetabotRelativeDateFilterDetails[];
+  aggregations: MetabotAggregateQueryDetails[];
+  breakouts: MetabotBreakoutQueryDetails[];
+  order_bys: MetabotOrderByQueryDetails[];
+  limits: MetabotLimitQueryDetails[];
 };
 
 export type MetabotReaction =

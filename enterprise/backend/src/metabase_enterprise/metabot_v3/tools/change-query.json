@@ -25,7 +25,7 @@
             },
             "value": {
               "type": "number",
-              "description": "The filter value.",
+              "description": "The filter value."
             }
           },
           "required": ["operator", "column", "value"],
