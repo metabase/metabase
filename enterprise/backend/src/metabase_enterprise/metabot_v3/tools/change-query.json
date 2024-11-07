@@ -28,7 +28,7 @@
               "description": "The filter value."
             }
           },
-          "required": ["operator", "column", "value"],
+          "required": ["column", "operator", "value"],
           "additionalProperties": false
         }
       },
@@ -56,7 +56,30 @@
               "description": "The filter value."
             }
           },
-          "required": ["operator", "column", "value"],
+          "required": ["column", "operator", "value"],
+          "additionalProperties": false
+        }
+      },
+      "boolean_filters": {
+        "type": [
+          "array",
+          "null"
+        ],
+        "description": "A list of boolean filters to apply to the current query. Each boolean filter requires a column and a value.",
+        "items": {
+          "type": "object",
+          "description": "A boolean filter clause.",
+          "properties": {
+            "column": {
+              "type": "string",
+              "description": "The column to apply filter for. Choose an appropriate column name based on user input from boolean_filterable_columns list."
+            },
+            "value": {
+              "type": "boolean",
+              "description": "The filter value."
+            }
+          },
+          "required": ["column", "value"],
           "additionalProperties": false
         }
       },
@@ -216,6 +239,7 @@
     "required": [
       "string_filters",
       "number_filters",
+      "boolean_filters",
       "relative_date_filters",
       "aggregations",
       "breakouts",

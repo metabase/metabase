@@ -142,6 +142,9 @@
                               [:column :string]
                               [:operator [:enum "=" "!=" ">" "<" ">=" "<="]]
                               [:value number?]]]]
+   [:boolean-filters [:vector [:map
+                               [:column :string]
+                               [:value :boolean]]]]
    [:relative-date-filters [:vector [:map
                                      [:column :string]
                                      [:direction [:enum "last" "current" "next"]]

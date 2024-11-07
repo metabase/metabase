@@ -10,6 +10,7 @@
 (mu/defmethod metabot-v3.tools.interface/*invoke-tool* :metabot.tool/change-query
   [_tool-name {:keys [string-filters
                       number-filters
+                      boolean-filters
                       relative-date-filters
                       aggregations
                       breakouts
@@ -18,6 +19,7 @@
   {:reactions [{:type                  :metabot.reaction/change-query
                 :string-filters        (or string-filters [])
                 :number-filters        (or number-filters [])
+                :boolean-filters       (or boolean-filters [])
                 :relative-date-filters (or relative-date-filters [])
                 :aggregations          (or aggregations [])
                 :breakouts             (or breakouts [])

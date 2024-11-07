@@ -3,6 +3,7 @@ import { getQuestion } from "metabase/query_builder/selectors";
 import * as Lib from "metabase-lib";
 import type {
   MetabotAggregateQueryDetails,
+  MetabotBooleanFilterDetails,
   MetabotBreakoutQueryDetails,
   MetabotChangeQueryReaction,
   MetabotLimitQueryDetails,
@@ -56,6 +57,28 @@ function addNumberFilter(
   const newClause = Lib.numberFilterClause({
     column: selectedColumn,
     operator: details.operator,
+    values: [details.value],
+  });
+  return Lib.filter(query, STAGE_INDEX, newClause);
+}
+
+function addBooleanFilter(
+  query: Lib.Query,
+  details: MetabotBooleanFilterDetails,
+) {
+  const availableColumns = Lib.filterableColumns(query, STAGE_INDEX);
+  const selectedColumn = availableColumns.find(
+    column =>
+      Lib.displayInfo(query, STAGE_INDEX, column).displayName ===
+      details.column,
+  );
+  if (!selectedColumn) {
+    return query;
+  }
+
+  const newClause = Lib.booleanFilterClause({
+    column: selectedColumn,
+    operator: "=",
     values: [details.value],
   });
   return Lib.filter(query, STAGE_INDEX, newClause);
@@ -169,6 +192,7 @@ export const changeQuery: ReactionHandler<MetabotChangeQueryReaction> =
     let query = question.query();
     query = reaction.string_filters.reduce(addStringFilter, query);
     query = reaction.number_filters.reduce(addNumberFilter, query);
+    query = reaction.boolean_filters.reduce(addBooleanFilter, query);
     query = reaction.relative_date_filters.reduce(addRelativeDateFilter, query);
     query = reaction.aggregations.reduce(addAggregation, query);
     query = reaction.breakouts.reduce(addBreakout, query);

@@ -95,6 +95,11 @@ export type MetabotNumberFilterDetails = {
   value: number;
 };
 
+export type MetabotBooleanFilterDetails = {
+  column: string;
+  value: boolean;
+};
+
 export type MetabotRelativeDateFilterDetails = {
   column: string;
   direction: "last" | "current" | "next";
@@ -124,6 +129,7 @@ export type MetabotChangeQueryReaction = {
   type: "metabot.reaction/change-query";
   string_filters: MetabotStringFilterDetails[];
   number_filters: MetabotNumberFilterDetails[];
+  boolean_filters: MetabotBooleanFilterDetails[];
   relative_date_filters: MetabotRelativeDateFilterDetails[];
   aggregations: MetabotAggregateQueryDetails[];
   breakouts: MetabotBreakoutQueryDetails[];
