@@ -165,6 +165,23 @@ describe("command palette", () => {
     cy.location("hash").should("contain", "#start-of-week");
   });
 
+  it("settings pages should not be present if you don't have access to those pages", () => {
+    cy.signInAsNormalUser();
+    cy.visit("/");
+    cy.findByRole("button", { name: /Search/ }).click();
+
+    commandPalette().within(() => {
+      commandPaletteInput().type("Settings");
+      cy.findByRole("option", { name: "No results for “Settings”" }).should(
+        "exist",
+      );
+      commandPaletteInput().clear().type("Performance");
+      cy.findByRole("option", {
+        name: "No results for “Performance”",
+      }).should("exist");
+    });
+  });
+
   it("should not be accessible when doing full app embedding", () => {
     visitFullAppEmbeddingUrl({
       url: "/",
