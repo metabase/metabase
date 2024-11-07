@@ -9530,6 +9530,16 @@ databaseChangeLog:
                   defaultValueBoolean: false
                   constraints:
                     nullable: false
+  - changeSet:
+    id: v58.2024-11-07T10:00:00
+    author: jordigiam
+    comment: Allow null values in isExample column in report_card
+    changes:
+      - dropNotNullConstraint:
+          tableName: report_card
+          columnName: isExample
+          columnDataType: boolean
+
 
   
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
