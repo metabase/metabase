@@ -131,3 +131,21 @@
   [:map
    [:type [:= :metabot.reaction/writeback]]
    [:message :string]])
+
+(defreaction :metabot.reaction/aggregate-query
+  [:map
+   [:operator :string]
+   [:column :string]])
+
+(defreaction :metabot.reaction/breakout-query
+  [:map
+   [:column :string]])
+
+(defreaction :metabot.reaction/sort-query
+  [:map
+   [:column :string]
+   [:direction [:enum "asc" "desc"]]])
+
+(defreaction :metabot.reaction/limit-query
+  [:map
+   [:limit integer?]])

@@ -1,0 +1,19 @@
+{
+  "name": "aggregate-query",
+  "description": "Aggregates the results of the current query. The operator is required and should be selected first based on the user input. When the operator is selected, find the corresponding columns in aggregation_operators and choose the column based on the user input.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "operator": {
+        "type": "string",
+        "description": "Available aggregation operators are in aggregation_operators list. For each operator there is list of columns it can be used with. If the list of columns is not empty, the column is required and must be selected from this list. If the list of columns is empty, it means that the column is optional and can be passed as an empty string."
+      },
+      "column": {
+        "type": "string",
+        "description": "Optional column name. Must be selected from the column list for the selected operator. If the list of operator columns is empty, it means that the column is optional and can be passed as an empty string."
+      }
+    },
+    "additionalProperties": false,
+    "required": ["operator", "column"]
+  }
+}

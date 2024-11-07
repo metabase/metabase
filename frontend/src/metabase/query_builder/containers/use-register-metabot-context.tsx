@@ -27,6 +27,7 @@ export const useRegisterMetabotContext = () => {
 
     return {
       current_question_id: question?.id() || null,
+      current_query: question?.datasetQuery(),
       current_visualization_settings: {
         current_display_type: question?.display(),
         ...(visible_columns.length ? { visible_columns } : {}),

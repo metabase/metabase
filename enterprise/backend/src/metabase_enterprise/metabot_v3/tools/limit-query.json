@@ -1,0 +1,15 @@
+{
+  "name": "limit-query",
+  "description": "Sets the row limit for the current query. Example: show top 10 records.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "limit": {
+        "type": "number",
+        "description": "Row limit for th query."
+      }
+    },
+    "additionalProperties": false,
+    "required": ["limit"]
+  }
+}
