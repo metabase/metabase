@@ -377,15 +377,15 @@
       (testing "throttle based on the number of recipients"
         (testing "with 3 separate emails"
           (with-redefs [email/email-throttler (#'email/make-email-throttler 3)]
-           (testing "ok if there is no recipient"
-             (is (some? (send-email {}))))
-           (is (some? (send-email {:to ["1@metabase.com"]})))
-           (is (some? (send-email {:bcc ["2@metabase.com"]})))
-           (is (some? (send-email {:to ["3@metabase.com"]})))
-           (is (thrown-with-msg?
-                Exception
-                #"Too many attempts!.*"
-                (send-email {:to ["4@metabase.com"]}))))
+            (testing "ok if there is no recipient"
+              (is (some? (send-email {}))))
+            (is (some? (send-email {:to ["1@metabase.com"]})))
+            (is (some? (send-email {:bcc ["2@metabase.com"]})))
+            (is (some? (send-email {:to ["3@metabase.com"]})))
+            (is (thrown-with-msg?
+                 Exception
+                 #"Too many attempts!.*"
+                 (send-email {:to ["4@metabase.com"]}))))
 
           (testing "with 1 small then 1 big event"
             (with-redefs [email/email-throttler (#'email/make-email-throttler 3)]
@@ -432,8 +432,8 @@
                #"Too many attempts!.*"
                (send-email {:to ["4@metabase.com"]})))
           (is (some? (u/poll {:thunk       (fn [] (try (send-email {:to ["4@metabase.com"]})
-                                                    (catch Exception _
-                                                      nil)))
+                                                       (catch Exception _
+                                                         nil)))
                               :done?       some?
                               :timeout-ms  200
                               :interval-ms 10}))))))))
