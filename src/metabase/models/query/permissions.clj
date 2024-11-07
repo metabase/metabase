@@ -94,11 +94,13 @@
              {:native? true})
 
            (m :guard (every-pred map? #(pos-int? (:source-table %))))
-           (if-let [source-card-id (:qp/stage-is-from-source-card m)]
-             {:card-ids #{source-card-id}}
-             (merge-with merge-source-ids
-                         {:table-ids #{(:source-table m)}}
-                         (query->source-ids (dissoc m :source-table)))))))
+           (merge-with merge-source-ids
+                       {:table-ids #{(:source-table m)}}
+                       ;; If there's a source card associated with a table ID, include it so that we can ensure that
+                       ;; ad-hoc queries don't access cards with no collection perms
+                       (when-let [source-card-id (:qp/stage-is-from-source-card m)]
+                         {:card-ids #{source-card-id}})
+                       (query->source-ids (dissoc m :source-table))))))
 
 (mu/defn query->source-table-ids
   "Returns a sequence of all :source-table IDs referenced by a query. Convenience wrapper around `query->source-ids` if
