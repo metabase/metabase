@@ -94,18 +94,19 @@ export const DashboardPickerModal = ({
   const [dashboardsPath, setDashboardsPath] =
     useState<DashboardPickerStatePath>();
 
-  const handleDashboardsPathChange = useCallback(function (
-    newPath: DashboardPickerStatePath,
-  ) {
-    setDashboardsPath(newPath);
-    const last = newPath?.[newPath.length - 1];
-    if (
-      last &&
-      canSelectItem(last?.selectedItem ?? null, canSelectCollection)
-    ) {
-      setSelectedItem(last.selectedItem);
-    }
-  }, []);
+  const handleDashboardsPathChange = useCallback(
+    function (newPath: DashboardPickerStatePath) {
+      setDashboardsPath(newPath);
+      const last = newPath?.[newPath.length - 1];
+      if (
+        last &&
+        canSelectItem(last?.selectedItem ?? null, canSelectCollection)
+      ) {
+        setSelectedItem(last.selectedItem);
+      }
+    },
+    [canSelectCollection],
+  );
 
   const { tryLogRecentItem } = useLogRecentItem();
 
