@@ -1739,8 +1739,6 @@
   {:model        :model/Collection
    :attrs        {:collection-id :id
                   :creator-id    false
-                  :database-id   false
-                  :table-id      false
                   :archived      true
                   :created-at    true
                   :updated-at    false}
@@ -1751,7 +1749,9 @@
                   :collection_authority_level :authority_level
                   :collection_name            :name
                   :collection_type            :type
-                  :location                   true}
+                  :database-id                false
+                  :location                   true
+                  :table-id                   false}
    :where        [:= :namespace nil]
    ;; depends on the current user, used for rendering and ranking
    ;; TODO not sure this is what it'll look like

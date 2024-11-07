@@ -25,16 +25,13 @@
 (def ^:private explicit-attrs
   "These attributes must be explicitly defined, omitting them could be a source of bugs."
   [:archived
-   :collection-id
-   :database-id
-   :table-id])
+   :collection-id])
 
 (def ^:private optional-attrs
   "These attributes may be omitted (for now) in the interest of brevity in the definitions."
   [:id
    :created-at
    :creator-id
-   :dataset-query
    :last-edited-at
    :last-editor-id
    :pinned

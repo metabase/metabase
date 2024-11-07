@@ -1014,9 +1014,6 @@
    :attrs        {:archived       true
                   :collection-id  :collection_id
                   :creator-id     true
-                  :database-id    false
-                  :dataset-query  true
-                  :table-id       false
                   :last-edited-at :r.timestamp
                   :last-editor-id :r.user_id
                   :pinned         [:> [:coalesce :collection_position [:inline 0]] [:inline 0]]
@@ -1031,6 +1028,9 @@
                   ;; This is used for legacy ranking, in future it will be replaced by :pinned
                   :collection-position        true
                   :collection-type            :collection.type
+                  :database-id                false
+                  :table-id                   false
+                  :dataset-query              true
                   ;; This field can become stale, unless we change to calculate it just-in-time.
                   :dashboardcard-count        {:select [:%count.*]
                                                :from   [:report_dashboardcard]

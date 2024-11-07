@@ -188,8 +188,6 @@
    :attrs        {:id            :model_pk
                   :collection-id :collection.id
                   :creator-id    false
-                  :database-id   :model.database_id
-                  :table-id      false
                   ;; this seems wrong, I'd expect it to track whether the model is archived.
                   :archived      false
                   :created-at    false
@@ -197,6 +195,8 @@
    :search-terms [:name]
    :render-terms {:collection-name :collection.name
                   :collection-type :collection.type
+                  :database-id     :model.database_id
+                  :table-id        false
                   :model-id        :model.id
                   :model-name      :model.name
                   :pk-ref          :model_index.pk_ref

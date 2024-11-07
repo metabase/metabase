@@ -304,8 +304,6 @@
   {:model        :model/Table
    :attrs        {:collection-id false
                   :creator-id    false
-                  :database-id   :db_id
-                  :table-id      :id
                   ;; legacy search uses :active for this, but then has a rule to only ever show active tables
                   ;; so we moved that to the where clause
                   :archived      false
@@ -313,10 +311,12 @@
                   :updated-at    true}
    :search-terms [:name :description :display_name]
    :render-terms {:initial-sync-status true
+                  :database-id   :db_id
+                  :database-name       :db.name
                   :table-description   :description
+                  :table-id      :id
                   :table-name          :name
-                  :table-schema        :schema
-                  :database-name       :db.name}
+                  :table-schema        :schema}
    :where        [:and
                   :active
                   [:= :visibility_type nil]
