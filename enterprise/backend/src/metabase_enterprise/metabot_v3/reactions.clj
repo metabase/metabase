@@ -183,3 +183,10 @@
   [:map
    [:type [:= :metabot.reaction/change-stacking-settings]]
    [:stack_type {:optional true} [:maybe [:enum "stacked" "normalized"]]]])
+
+(defreaction :metabot.reaction/change-goal-line
+  [:map
+   [:type [:= :metabot.reaction/change-goal-line]]
+   [:goal_value {:optional true} [:maybe number?]]
+   [:show_goal {:optional true} [:maybe boolean?]]
+   [:goal_label {:optional true} [:maybe :string]]])

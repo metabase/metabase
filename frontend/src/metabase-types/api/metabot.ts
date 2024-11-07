@@ -104,7 +104,15 @@ export type MetabotChangeStackingSettingsReaction = {
   stack_type: "stacked" | "normalized" | null;
 };
 
+export type MetabotChangeGoalLineReaction = {
+  type: "metabot.reaction/change-goal-line";
+  "graph.goal_value": number | null;
+  "graph.show_goal": boolean | null;
+  "graph.goal_label": string | null;
+};
+
 export type MetabotReaction =
+  | MetabotChangeGoalLineReaction
   | MetabotChangeColumnSettingsReaction
   | MetabotChangeSeriesSettingsReaction
   | MetabotChangeAxesLabelsReaction

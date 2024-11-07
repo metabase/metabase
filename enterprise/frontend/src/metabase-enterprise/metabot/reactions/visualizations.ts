@@ -13,6 +13,7 @@ import type {
   MetabotChangeAxesLabelsReaction,
   MetabotChangeColumnSettingsReaction,
   MetabotChangeDisplayTypeReaction,
+  MetabotChangeGoalLineReaction,
   MetabotChangeSeriesSettingsReaction,
   MetabotChangeStackingSettingsReaction,
   MetabotChangeVisiualizationSettingsReaction,
@@ -148,4 +149,14 @@ export const changeStackingSettings: ReactionHandler<
   ({ type, ...payload }) =>
   async ({ dispatch }) => {
     await dispatch(onUpdateVisualizationSettings(payload));
+  };
+
+export const changeGoalLine: ReactionHandler<MetabotChangeGoalLineReaction> =
+  ({ type, ...payload }) =>
+  async ({ dispatch }) => {
+    const goalLineSettings = Object.fromEntries(
+      Object.entries(payload).filter(([_, value]) => value !== null),
+    );
+
+    await dispatch(onUpdateVisualizationSettings(goalLineSettings));
   };

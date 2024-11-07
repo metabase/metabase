@@ -8,6 +8,7 @@ import {
   changeAxesLabels,
   changeColumnSettings,
   changeDisplayType,
+  changeGoalLine,
   changeSeriesSettings,
   changeStackingSettings,
   changeTableVisualizationSettings,
@@ -22,6 +23,7 @@ type ReactionHandlers = {
 };
 
 export const reactionHandlers: ReactionHandlers = {
+  "metabot.reaction/change-goal-line": changeGoalLine,
   "metabot.reaction/change-stacking-settings": changeStackingSettings,
   "metabot.reaction/change-column-settings": changeColumnSettings,
   "metabot.reaction/change-series-settings": changeSeriesSettings,
