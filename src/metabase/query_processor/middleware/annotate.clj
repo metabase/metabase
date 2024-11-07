@@ -594,7 +594,7 @@
        (deduplicate-cols-names)
        (map lib.temporal-bucket/ensure-temporal-unit-in-display-name)
        ;; tmp resolves some failures -- but this is prone to produce even more failures! embedding-linked-filters.cy.spec.js
-       (map #(m/update-existing % :display_name (fn [display-name]
+       #_(map #(m/update-existing % :display_name (fn [display-name]
                                                   (if (and (string? display-name)
                                                            (= display-name (u/lower-case-en display-name)))
                                                     (str/capitalize display-name)
