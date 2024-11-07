@@ -137,3 +137,18 @@
    [:type [:= :metabot.reaction/change-axes-labels]]
    [:x_axis_label [:maybe :string]]
    [:y_axis_label [:maybe :string]]])
+
+(defreaction :metabot.reaction/change-series-settings
+  [:map
+   [:type [:= :metabot.reaction/change-series-settings]]
+   [:series_settings [:vector [:map
+                              [:key :string]
+                              [:title {:optional true} [:maybe :string]]
+                              [:color {:optional true} [:maybe :string]]
+                              [:show_series_values {:optional true} [:maybe boolean?]]
+                              [:line.size {:optional true} [:maybe [:enum "S" "M" "L"]]]
+                              [:line.style {:optional true} [:maybe [:enum "solid" "dashed" "dotted"]]]
+                              [:line.interpolate {:optional true} [:maybe [:enum "linear" "cardinal" "step-after"]]]
+                              [:line.marker_enabled {:optional true} [:maybe boolean?]]
+                              [:line.missing {:optional true} [:maybe [:enum "none" "zero" "interpolate"]]]
+                              [:axis {:optional true} [:maybe [:enum "left" "right"]]]]]]])

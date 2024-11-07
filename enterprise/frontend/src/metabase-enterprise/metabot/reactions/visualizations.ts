@@ -11,6 +11,7 @@ import * as Lib from "metabase-lib";
 import type {
   MetabotChangeAxesLabelsReaction,
   MetabotChangeDisplayTypeReaction,
+  MetabotChangeSeriesSettingsReaction,
   MetabotChangeVisiualizationSettingsReaction,
 } from "metabase-types/api";
 
@@ -83,4 +84,30 @@ export const changeAxesLabels: ReactionHandler<
     }
 
     await dispatch(onUpdateVisualizationSettings(settings));
+  };
+
+export const changeSeriesSettings: ReactionHandler<
+  MetabotChangeSeriesSettingsReaction
+> =
+  reaction =>
+  async ({ dispatch, getState }) => {
+    const seriesSettings =
+      getQuestion(getState())?.settings().series_settings ?? {};
+
+    const newSeriesSettings = { ...seriesSettings };
+
+    reaction.series_settings.forEach(settings => {
+      const onlyIncludedSettings = Object.fromEntries(
+        Object.entries(settings).filter(([_, value]) => value !== null),
+      );
+
+      newSeriesSettings[settings.key] = {
+        ...newSeriesSettings[settings.key],
+        ...onlyIncludedSettings,
+      };
+    });
+
+    await dispatch(
+      onUpdateVisualizationSettings({ series_settings: newSeriesSettings }),
+    );
   };
