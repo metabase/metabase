@@ -141,7 +141,8 @@
   [:map
    [:column :string]
    [:value [:or [:enum "current"] integer?]]
-   [:unit [:enum "day", "week", "month", "quarter", "year"]]])
+   [:unit [:enum "day", "week", "month", "quarter", "year"]]
+   [:include_current :boolean]])
 
 (defreaction :metabot.reaction/aggregate-query
   [:map

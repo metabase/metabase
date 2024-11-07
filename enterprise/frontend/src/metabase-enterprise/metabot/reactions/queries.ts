@@ -72,7 +72,7 @@ export const relativeDateFilterQuery: ReactionHandler<
       bucket: reaction.unit,
       offsetValue: null,
       offsetBucket: null,
-      options: {},
+      options: { "include-current": reaction.include_current },
     });
     const newQuery = Lib.filter(query, stageIndex, newClause);
     const newQuestion = question.setQuery(newQuery);
