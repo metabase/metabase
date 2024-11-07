@@ -473,7 +473,8 @@
     (merge
      (with-current-user-fetch-user-for-id ~`api/*current-user-id*)
      {:is-superuser? true
-      :permissions-set #{"/"}})
+      :permissions-set #{"/"}
+      :user-locale i18n/*user-locale*})
     (fn [] ~@body)))
 
 (defmacro with-current-user
