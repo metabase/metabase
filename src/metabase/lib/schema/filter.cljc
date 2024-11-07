@@ -137,7 +137,9 @@
 (mr/def ::operator
   [:map
    [:lib/type [:= :operator/filter]]
-   [:short [:enum := :!= :inside :between :< :> :<= :>= :is-null :not-null :is-empty :not-empty :contains :does-not-contain :starts-with :ends-with]]
+   [:short [:enum
+            := :!= :inside :between :< :> :<= :>= :is-null :not-null :is-empty :not-empty
+            :contains :does-not-contain :starts-with :ends-with :time-interval :relative-time-interval]]
    ;; this is used for display name and it depends on the arguments to the filter clause itself... e.g.
    ;;
    ;; number_a < number_b

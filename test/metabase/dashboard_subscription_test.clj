@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.channel.impl.slack :as channel.slack]
+   [metabase.channel.render.body :as body]
    [metabase.email.result-attachment :as email.result-attachment]
    [metabase.models
     :refer [Card
@@ -18,8 +19,8 @@
             User]]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.permissions-group :as perms-group]
+   [metabase.notification.test-util :as notification.tu]
    [metabase.public-settings :as public-settings]
-   [metabase.pulse.render.body :as body]
    [metabase.pulse.send :as pulse.send]
    [metabase.pulse.test-util :as pulse.test-util]
    [metabase.test :as mt]
@@ -231,6 +232,8 @@
 ;;; |                                                     Tests                                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(def execute-dashboard (requiring-resolve 'metabase.notification.payload.execute/execute-dashboard))
+
 (deftest ^:parallel execute-dashboard-test
   (testing "it runs for each non-virtual card"
     (mt/with-temp [Card          {card-id-1 :id} {:dataset_query (mt/mbql-query venues)}
@@ -239,7 +242,7 @@
                    DashboardCard _ {:dashboard_id dashboard-id :card_id card-id-1}
                    DashboardCard _ {:dashboard_id dashboard-id :card_id card-id-2}
                    User {user-id :id} {}]
-      (let [result (#'pulse.send/execute-dashboard {:creator_id user-id} dashboard)]
+      (let [result (execute-dashboard (:id dashboard) user-id nil)]
         (is (malli= [:sequential
                      {:min 2, :max 2}
                      [:map
@@ -261,7 +264,7 @@
                    DashboardCard _ {:dashboard_id dashboard-id :card_id card-id-3}
                    DashboardCard _ {:dashboard_id dashboard-id :card_id card-id-4}
                    User {user-id :id} {}]
-      (let [result (#'pulse.send/execute-dashboard {:creator_id user-id} dashboard)]
+      (let [result (execute-dashboard (:id dashboard) user-id nil)]
         (is (= 3 (count result)))))))
 
 (deftest ^:parallel execute-dashboard-test-3
@@ -274,7 +277,7 @@
                    DashboardCard _ {:dashboard_id dashboard-id :card_id card-id-2 :row 0 :col 1}
                    DashboardCard _ {:dashboard_id dashboard-id :card_id card-id-3 :row 0 :col 0}
                    User {user-id :id} {}]
-      (let [result (#'pulse.send/execute-dashboard {:creator_id user-id} dashboard)]
+      (let [result (execute-dashboard (:id dashboard) user-id nil)]
         (is (= [card-id-3 card-id-2 card-id-1]
                (map #(-> % :card :id) result)))))))
 
@@ -287,7 +290,7 @@
                                     :visualization_settings {:virtual_card {}, :text "test"}}
                    User {user-id :id} {}]
       (is (= [{:virtual_card {} :text "test" :type :text}]
-             (#'pulse.send/execute-dashboard {:creator_id user-id} dashboard))))))
+             (execute-dashboard (:id dashboard) user-id nil))))))
 
 (deftest basic-table-test
   (tests!
@@ -655,7 +658,7 @@
                                                                 :target       [:dimension [:field (mt/id :products :category) nil]]}]
                                           :card_id            mbql-card-id
                                           :dashboard_id       dashboard-id}]
-            (let [[mbql-results] (map :result (#'pulse.send/execute-dashboard {:creator_id (mt/user->id :rasta)} dashboard))]
+            (let [[mbql-results] (map :result (execute-dashboard (:id dashboard) (mt/user->id :rasta) (:parameters dashboard)))]
               (is (= [[2 "Small Marble Shoes"        "Doohickey"]
                       [3 "Synergistic Granite Chair" "Doohickey"]]
                      (mt/rows mbql-results))))))
@@ -682,7 +685,7 @@
                                                                 :target       [:dimension [:template-tag "category"]]}]
                                           :card_id            sql-card-id
                                           :dashboard_id       dashboard-id}]
-            (let [[results] (map :result (#'pulse.send/execute-dashboard {:creator_id (mt/user->id :rasta)} dashboard))]
+            (let [[results] (map :result (execute-dashboard (:id dashboard) (mt/user->id :rasta) (:parameters dashboard)))]
               (is (= [[1  "Rustic Paper Wallet"   "Gizmo"]
                       [10 "Mediocre Wooden Table" "Gizmo"]]
                      (mt/rows results))))))))))
@@ -700,7 +703,7 @@
                                     :dashboard_id       dashboard-id
                                     :visualization_settings {:text "{{foo}}"}}]
       (is (= [{:text "Doohickey and Gizmo" :type :text}]
-             (#'pulse.send/execute-dashboard {:creator_id (mt/user->id :rasta)} dashboard))))))
+             (execute-dashboard (:id dashboard) (mt/user->id :rasta) (:parameters dashboard)))))))
 
 (deftest no-native-perms-test
   (testing "A native query on a dashboard executes succesfully even if the subscription creator does not have native
@@ -714,7 +717,7 @@
                                       :card_id      card-id}]
         (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :no)
         (is (= [[1 "Red Medicine" 4 10.0646 -165.374 3]]
-               (-> (#'pulse.send/execute-dashboard {:creator_id (mt/user->id :rasta)} dashboard)
+               (-> (execute-dashboard (:id dashboard) (mt/user->id :rasta) nil)
                    first :result :data :rows)))))))
 
 (deftest actions-are-skipped-test
@@ -734,7 +737,7 @@
                                         :row                    3}]
       (is (=? [{:text "Markdown"}
                {:text "### [https://metabase.com](https://metabase.com)"}]
-              (#'pulse.send/execute-dashboard {:creator_id (mt/user->id :rasta)} dashboard)))))
+              (execute-dashboard (:id dashboard) (mt/user->id :rasta) nil)))))
 
   (testing "Link cards are returned and info should be newly fetched"
     (t2.with-temp/with-temp [Dashboard dashboard {:name "Test Dashboard"}]
@@ -761,13 +764,12 @@
                      {:text (format "### [New Card name](%s/question/%d)\nLinked card desc" site-url card-id)}
                      {:text (format "### [New Card name](%s/question/%d)\nLinked model desc" site-url model-id)}
                      {:text (format "### [https://metabase.com](https://metabase.com)")}]
-                    (#'pulse.send/execute-dashboard {:creator_id collection-owner-id} dashboard))))
-
+                    (execute-dashboard (:id dashboard) collection-owner-id nil))))
           (testing "it should filter out models that current users does not have permission to read"
             (is (=? [{:text (format "### [New Database name](%s/browse/%d)\nLinked database desc" site-url database-id)}
                      {:text (format "### [Linked table dname](%s/question?db=%d&table=%d)\nLinked table desc" site-url database-id table-id)}
                      {:text (format "### [https://metabase.com](https://metabase.com)")}]
-                    (#'pulse.send/execute-dashboard {:creator_id (mt/user->id :lucky)} dashboard)))))))))
+                    (execute-dashboard (:id dashboard) (mt/user->id :lucky) nil)))))))))
 
 (deftest iframe-cards-are-skipped-test
   (testing "iframe cards should be filtered out"
@@ -786,7 +788,7 @@
                                         :row                    3}]
       (is (=? [{:text "Markdown"}
                {:text "### [https://metabase.com](https://metabase.com)"}]
-              (#'pulse.send/execute-dashboard {:creator_id (mt/user->id :rasta)} dashboard)))))
+              (execute-dashboard (:id dashboard) (mt/user->id :rasta) nil)))))
 
   (testing "Link cards are returned and info should be newly fetched"
     (t2.with-temp/with-temp [Dashboard dashboard {:name "Test Dashboard"}]
@@ -813,13 +815,13 @@
                      {:text (format "### [New Card name](%s/question/%d)\nLinked card desc" site-url card-id)}
                      {:text (format "### [New Card name](%s/question/%d)\nLinked model desc" site-url model-id)}
                      {:text (format "### [https://metabase.com](https://metabase.com)")}]
-                    (#'pulse.send/execute-dashboard {:creator_id collection-owner-id} dashboard))))
+                    (execute-dashboard (:id dashboard) collection-owner-id nil))))
 
           (testing "it should filter out models that current users does not have permission to read"
             (is (=? [{:text (format "### [New Database name](%s/browse/%d)\nLinked database desc" site-url database-id)}
                      {:text (format "### [Linked table dname](%s/question?db=%d&table=%d)\nLinked table desc" site-url database-id table-id)}
                      {:text (format "### [https://metabase.com](https://metabase.com)")}]
-                    (#'pulse.send/execute-dashboard {:creator_id (mt/user->id :lucky)} dashboard)))))))))
+                    (execute-dashboard (:id dashboard) (mt/user->id :lucky) nil)))))))))
 
 (deftest execute-dashboard-with-tabs-test
   (t2.with-temp/with-temp
@@ -854,7 +856,7 @@
               {:text "The second tab", :type :tab-title}
               {:text "Card 1 tab-2", :type :text}
               {:text "Card 2 tab-2", :type :text}]
-             (#'pulse.send/execute-dashboard {:creator_id (mt/user->id :rasta)} dashboard))))))
+             (execute-dashboard (:id dashboard) (mt/user->id :rasta) nil))))))
 
 (deftest execute-dashboard-with-empty-tabs-test
   (testing "Dashboard with one tab."
@@ -878,7 +880,7 @@
       (testing "Tab title is omitted (#45123)"
         (is (= [{:text "Card 1 tab-1", :type :text}
                 {:text "Card 2 tab-1", :type :text}]
-               (#'pulse.send/execute-dashboard {:creator_id (mt/user->id :rasta)} dashboard))))))
+               (execute-dashboard (:id dashboard) (mt/user->id :rasta) nil))))))
   (testing "Dashboard with multiple tabs"
     (t2.with-temp/with-temp
       [Dashboard           {dashboard-id :id
@@ -900,7 +902,7 @@
       (testing "Tab title is omitted when only 1 tab contains cards."
         (is (= [{:text "Card 1 tab-1", :type :text}
                 {:text "Card 2 tab-1", :type :text}]
-               (#'pulse.send/execute-dashboard {:creator_id (mt/user->id :rasta)} dashboard)))))))
+               (execute-dashboard (:id dashboard) (mt/user->id :rasta) nil)))))))
 
 (deftest render-dashboard-with-tabs-test
   (tests!
@@ -1001,37 +1003,38 @@
 (deftest dashboard-subscription-attachments-test
   (testing "Dashboard subscription attachments respect dashcard viz settings."
     (mt/with-fake-inbox
-      (mt/with-temp [Card {card-id :id :as c} (pulse.test-util/checkins-query-card {:breakout [!day.date]})
-                     Dashboard     {dash-id :id} {:name "just dash"}]
-        (let [;; with the helper `metadata->field-ref` we turn column metadata into column field refs
-              ;; with an additional key `:enabled`. Here the 1st col is enabled, and the 2nd is disabled
-              viz {:table.columns (mapv metadata->field-ref (:result_metadata c) [true false])}]
-          (mt/with-temp [DashboardCard {dash-card-id :id} {:dashboard_id           dash-id
-                                                           :card_id                card-id
-                                                           :visualization_settings viz}
-                         Pulse         {pulse-id :id, :as pulse}  {:name         "just pulse"
-                                                                   :dashboard_id dash-id}
-                         PulseCard     _ {:pulse_id          pulse-id
-                                          :card_id           card-id
-                                          :position          0
-                                          :dashboard_card_id dash-card-id
-                                          :include_csv       true}
-                         PulseChannel  {pc-id :id} {:pulse_id pulse-id}
-                         PulseChannelRecipient _ {:user_id          (pulse.test-util/rasta-id)
-                                                  :pulse_channel_id pc-id}]
-            (with-redefs [email.result-attachment/result-attachment result-attachment]
-              (pulse.send/send-pulse! pulse)
-              (is (= 1
-                     (-> @mt/inbox
-                         (get (:email (mt/fetch-user :rasta)))
-                         last
-                         :body
-                         last
-                         :content
-                         str/split-lines
-                         (->> (mapv #(str/split % #",")))
-                         first
-                         count))))))))))
+      (notification.tu/with-notification-testing-setup
+        (mt/with-temp [Card {card-id :id :as c} (pulse.test-util/checkins-query-card {:breakout [!day.date]})
+                       Dashboard     {dash-id :id} {:name "just dash"}]
+          (let [;; with the helper `metadata->field-ref` we turn column metadata into column field refs
+                ;; with an additional key `:enabled`. Here the 1st col is enabled, and the 2nd is disabled
+                viz {:table.columns (mapv metadata->field-ref (:result_metadata c) [true false])}]
+            (mt/with-temp [DashboardCard {dash-card-id :id} {:dashboard_id           dash-id
+                                                             :card_id                card-id
+                                                             :visualization_settings viz}
+                           Pulse         {pulse-id :id, :as pulse}  {:name         "just pulse"
+                                                                     :dashboard_id dash-id}
+                           PulseCard     _ {:pulse_id          pulse-id
+                                            :card_id           card-id
+                                            :position          0
+                                            :dashboard_card_id dash-card-id
+                                            :include_csv       true}
+                           PulseChannel  {pc-id :id} {:pulse_id pulse-id}
+                           PulseChannelRecipient _ {:user_id          (pulse.test-util/rasta-id)
+                                                    :pulse_channel_id pc-id}]
+              (with-redefs [email.result-attachment/result-attachment result-attachment]
+                (pulse.send/send-pulse! pulse)
+                (is (= 1
+                       (-> @mt/inbox
+                           (get (:email (mt/fetch-user :rasta)))
+                           last
+                           :body
+                           last
+                           :content
+                           str/split-lines
+                           (->> (mapv #(str/split % #",")))
+                           first
+                           count)))))))))))
 
 (deftest attachment-filenames-stay-readable-test
   (testing "Filenames remain human-readable (#41669)"

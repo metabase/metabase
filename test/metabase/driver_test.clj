@@ -211,9 +211,10 @@
 (defn- describe-fields-for-table [db table]
   (sort-by :database-position
            (if (driver/database-supports? driver/*driver* :describe-fields db)
-             (vec (driver/describe-fields driver/*driver* db
-                                          :schema-names [(:schema table)]
-                                          :table-names [(:name table)]))
+             (mapv #(dissoc % :table-name :table-schema)
+                   (driver/describe-fields driver/*driver* db
+                                           :schema-names [(:schema table)]
+                                           :table-names [(:name table)]))
              (:fields (driver/describe-table driver/*driver* db table)))))
 
 (deftest ^:parallel describe-fields-or-table-test

@@ -4,7 +4,10 @@
    [clojure.test :refer [deftest is testing]]
    [metabase.lib.breakout :as lib.breakout]
    [metabase.lib.core :as lib]
+   [metabase.lib.equality :as lib.equality]
    [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util.generators.filters :as gen.filters]
+   [metabase.lib.test-util.generators.util :as gen.u]
    [metabase.util :as u]))
 
 ;; NOTE: Being able to *execute* these queries and grok the results would actually be really powerful, if we can
@@ -77,14 +80,6 @@
   (swap! step-kinds assoc kind step-def))
 
 ;; Helpers =======================================================================================
-(defn- choose
-  "Uniformly chooses among a seq of options.
-
-  Returns nil if the list is empty! This is handy for choose-and-do vs. do-nothing while writing the next steps."
-  [xs]
-  (when-not (empty? xs)
-    (rand-nth xs)))
-
 (defn- choose-stage
   "Chooses a stage to operator on. 80% act on -1, 20% chooses a stage by index (which might be the last stage)."
   [query]
@@ -117,9 +112,9 @@
 ;; TODO: If exhaustion is a goal, we should think about making these into generators or otherwise reifying the choices.
 (defmethod next-steps* :aggregate [query _aggregate]
   (let [stage-number (choose-stage query)
-        operator     (choose (lib/available-aggregation-operators query stage-number))
+        operator     (gen.u/choose (lib/available-aggregation-operators query stage-number))
         agg          (if (:requires-column? operator)
-                       (lib/aggregation-clause operator (choose (:columns operator)))
+                       (lib/aggregation-clause operator (gen.u/choose (:columns operator)))
                        (lib/aggregation-clause operator))]
     [:aggregate stage-number agg]))
 
@@ -128,11 +123,11 @@
 
 (defmethod next-steps* :breakout [query _breakout]
   (let [stage-number (choose-stage query)
-        column       (choose (lib/breakoutable-columns query stage-number))
+        column       (gen.u/choose (lib/breakoutable-columns query stage-number))
         ;; If this is a temporal column, we need to choose a unit for it. Nil if it's not temporal.
         ;; TODO: Don't always bucket/bin! We should sometimes choose the "Don't bin" option etc.
-        bucket       (choose (lib/available-temporal-buckets query stage-number column))
-        binning      (choose (lib/available-binning-strategies query stage-number column))
+        bucket       (gen.u/choose (lib/available-temporal-buckets query stage-number column))
+        binning      (gen.u/choose (lib/available-binning-strategies query stage-number column))
         brk-column   (cond-> column
                        bucket  (lib/with-temporal-bucket bucket)
                        binning (lib/with-binning binning))]
@@ -166,6 +161,38 @@
         (testing "duplicate breakout columns are blocked"
           (is (= (count after-breakouts)
                  (count before-breakouts))))))))
+
+;; Filters =======================================================================================
+(add-step {:kind :filter})
+
+(defmethod next-steps* :filter [query _filter]
+  (let [stage-number (choose-stage query)]
+    [:filter stage-number (gen.filters/gen-filter (lib/filterable-columns query stage-number))]))
+
+(defmethod run-step* :filter [query [_filter stage-number filter-clause]]
+  (lib/filter query stage-number filter-clause))
+
+(defmethod before-and-after :filter [before after [_filter stage-number filter-clause]]
+  (let [before-filters (lib/filters before stage-number)
+        after-filters  (lib/filters after  stage-number)]
+    (testing (str ":filter stage " stage-number
+                  "\n\nBefore query\n" (u/pprint-to-str before)
+                  "\n\nAfter query\n" (u/pprint-to-str after)
+                  "\n\nwith filter clause\n" (u/pprint-to-str filter-clause)
+                  "\n")
+      (if (some #(lib.equality/= % filter-clause) before-filters)
+        (testing "with an existing, equivalent filter"
+          (testing "does not add a new one"
+            (is (= (count before-filters)
+                   (count after-filters)))))
+        (testing "with a new filter"
+          (testing "adds it to the end of the list"
+            (is (= (count after-filters)
+                   (inc (count before-filters))))
+            (is (=? filter-clause (last after-filters))))
+          (testing (str `lib/filter-operator " returns the right op")
+            (is (= (first filter-clause)
+                   (:short (lib/filter-operator after stage-number (last after-filters)))))))))))
 
 ;; Generator internals ===========================================================================
 (defn- run-step

@@ -6,7 +6,7 @@ title: Embedded analytics SDK - authentication
 
 {% include beta-blockquote.html %}
 
-{% include plans-blockquote.html feature="Embedded analytics SDK" %}
+{% include plans-blockquote.html feature="Embedded analytics SDK" sdk=true %}
 
 Notes on handling authentication when working with the SDK.
 
@@ -23,7 +23,7 @@ This example sets up an endpoint in an app, `/sso/metabase`, that creates a toke
 ```typescript
 const express = require("express");
 const cors = require("cors");
-const session = require("express-session")
+const session = require("express-session");
 const jwt = require("jsonwebtoken");
 const fetch = require("node-fetch");
 

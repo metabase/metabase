@@ -6,7 +6,7 @@ title: "Embedded analytics SDK - components"
 
 {% include beta-blockquote.html %}
 
-{% include plans-blockquote.html feature="Embedded analytics SDK" %}
+{% include plans-blockquote.html feature="Embedded analytics SDK" sdk=true %}
 
 There are different ways you can embed questions:
 
@@ -70,7 +70,7 @@ export default function App() {
 ## Question props
 
 | Prop               | Type                                               | Description                                                                                                                                                                                                                                                                                                        |
-|--------------------|----------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| ------------------ | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | questionId         | `number \| string`                                 | (required) The ID of the question. This is either:<br>- The numerical ID when accessing a question link, e.g., `http://localhost:3000/question/1-my-question` where the ID is `1`.<br>- The `entity_id` key of the question object. You can find a question's entity ID in the info panel when viewing a question. |
 | plugins            | `{ mapQuestionClickActions: Function } \| null`    | Additional mapper function to override or add drill-down menu.                                                                                                                                                                                                                                                     |
 | height             | `number \| string`                                 | (optional) A number or string specifying a CSS size value that specifies the height of the component                                                                                                                                                                                                               |
