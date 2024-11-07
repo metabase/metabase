@@ -6,6 +6,7 @@ import { writeBack } from "./metabot";
 import { changeQuery } from "./queries";
 import type { ReactionHandler } from "./types";
 import {
+  changeAxesLabels,
   changeDisplayType,
   changeTableVisualizationSettings,
 } from "./visualizations";
@@ -19,6 +20,7 @@ type ReactionHandlers = {
 };
 
 export const reactionHandlers: ReactionHandlers = {
+  "metabot.reaction/change-axes-labels": changeAxesLabels,
   "metabot.reaction/change-display-type": changeDisplayType,
   "metabot.reaction/change-table-visualization-settings":
     changeTableVisualizationSettings,

@@ -144,7 +144,14 @@ export type MetabotChangeQueryReaction = {
   limits: MetabotLimitQueryDetails[];
 };
 
+export type MetabotChangeAxesLabelsReaction = {
+  type: "metabot.reaction/change-axes-labels";
+  x_axis_label: string | null;
+  y_axis_label: string | null;
+};
+
 export type MetabotReaction =
+  | MetabotChangeAxesLabelsReaction
   | MetabotMessageReaction
   | MetabotChangeDisplayTypeReaction
   | MetabotChangeVisiualizationSettingsReaction

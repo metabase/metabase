@@ -9,6 +9,7 @@ import { setQuestionDisplayType } from "metabase/query_builder/components/chart-
 import { getQueryResults, getQuestion } from "metabase/query_builder/selectors";
 import * as Lib from "metabase-lib";
 import type {
+  MetabotChangeAxesLabelsReaction,
   MetabotChangeDisplayTypeReaction,
   MetabotChangeVisiualizationSettingsReaction,
 } from "metabase-types/api";
@@ -66,4 +67,20 @@ export const changeDisplayType: ReactionHandler<
       );
       dispatch(setUIControls({ isShowingRawTable: false }));
     }
+  };
+
+export const changeAxesLabels: ReactionHandler<
+  MetabotChangeAxesLabelsReaction
+> =
+  reaction =>
+  async ({ dispatch }) => {
+    const settings: Record<string, string | undefined> = {};
+    if (reaction.x_axis_label) {
+      settings["graph.x_axis.title_text"] = reaction.x_axis_label;
+    }
+    if (reaction.y_axis_label) {
+      settings["graph.y_axis.title_text"] = reaction.y_axis_label;
+    }
+
+    await dispatch(onUpdateVisualizationSettings(settings));
   };
