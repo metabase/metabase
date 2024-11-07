@@ -79,7 +79,7 @@
   io.github.eerohele/pp                     {:git/tag "2024-01-04.60"           ; super fast pretty-printing library
                                              :git/sha "a428751"
                                              :git/url "https://github.com/eerohele/pp"}
-  io.github.metabase/macaw                  {:mvn/version "0.2.20"}             ; Parse native SQL queries
+  io.github.metabase/macaw                  {:mvn/version "0.2.24"}             ; Parse native SQL queries
   ;; The 2.X line of Resilience4j requires Java 17, so we cannot upgrade this dependency until that is our minimum JVM version
   io.github.resilience4j/resilience4j-retry {:mvn/version "1.7.1" #_"must be 1.7.1"} ; Support for retrying operations
   io.prometheus/simpleclient_hotspot        {:mvn/version "0.16.0"}             ; prometheus jvm collector
@@ -262,6 +262,7 @@
    :jvm-opts    ["-Dmb.run.mode=dev"
                  "-Dmb.field.filter.operators.enabled=true"
                  "-Dmb.test.env.setting=ABCDEFG"
+                 "-Dmacaw.run.mode=dev"
                  "-Duser.timezone=UTC"
                  "-Dfile.encoding=UTF-8"
                  "-Duser.language=en"
@@ -292,6 +293,7 @@
   {:extra-paths ["test_config"]
    :exec-fn     metabase.test-runner/find-and-run-tests-cli
    :jvm-opts    ["-Dmb.run.mode=test"
+                 "-Dmacaw.run.mode=test"
                  "-Dmb.db.in.memory=true"
                  "-Dmb.jetty.join=false"
                  "-Dmb.field.filter.operators.enabled=true"
@@ -307,6 +309,7 @@
   :run
   {:main-opts ["-m" "metabase.bootstrap"]
    :jvm-opts  ["-Dmb.run.mode=dev"
+               "-Dmacaw.run.mode=dev"
                "-Djava.awt.headless=true"]}                   ; prevent Java icon from randomly popping up in macOS dock
 
   ;; alias for CI-specific options.
@@ -576,7 +579,7 @@
                                    "frontend/test/metabase/lib/urls\\.unit\\.spec\\.js$"
                                    "frontend/test/metabase/lib/formatting\\.unit\\.spec\\.js$"
                                    "src/metabase/util/currency\\.cljc$"
-                                   "test/metabase/pulse/render/png_test.clj"
+                                   "test/metabase/channel/render/png_test.clj"
                                    "#.+#$"
                                    "\\.transit\\.json$"]}}
 

@@ -11,10 +11,15 @@
    [hickory.select :as hik.s]
    [metabase.email :as email]
    [metabase.models :refer [Card Collection Dashboard DashboardCard Pulse PulseCard PulseChannel PulseChannelRecipient]]
+   [metabase.notification.test-util :as notification.tu]
    [metabase.pulse.send :as pulse.send]
    [metabase.pulse.test-util :as pulse.test-util]
    [metabase.test :as mt]
    [metabase.util :as u]))
+
+(use-fixtures :each (fn [thunk]
+                      (notification.tu/with-send-notification-sync
+                        (thunk))))
 
 (defmacro with-metadata-data-cards
   "Provide a fixture that includes:
@@ -911,17 +916,18 @@
 
 (deftest empty-dashboard-test
   (testing "A completely empty dashboard should still send an email"
-    (mt/dataset test-data
-      (mt/with-temp [Dashboard {dash-id :id} {:name "Completely empty dashboard"}
-                     Pulse {pulse-id :id :as pulse} {:name         "Test Pulse"
-                                                     :dashboard_id dash-id}
-                     PulseChannel {pulse-channel-id :id} {:channel_type :email
-                                                          :pulse_id     pulse-id
-                                                          :enabled      true}
-                     PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
-                                              :user_id          (mt/user->id :rasta)}]
-        (mt/with-fake-inbox
-          (with-redefs [email/bcc-enabled? (constantly false)]
-            (mt/with-test-user nil
-              (pulse.send/send-pulse! pulse)))
-          (is (string? (get-in @mt/inbox ["rasta@metabase.com" 0 :body 0 :content]))))))))
+    (notification.tu/with-notification-testing-setup
+      (mt/dataset test-data
+        (mt/with-temp [Dashboard {dash-id :id} {:name "Completely empty dashboard"}
+                       Pulse {pulse-id :id :as pulse} {:name         "Test Pulse"
+                                                       :dashboard_id dash-id}
+                       PulseChannel {pulse-channel-id :id} {:channel_type :email
+                                                            :pulse_id     pulse-id
+                                                            :enabled      true}
+                       PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
+                                                :user_id          (mt/user->id :rasta)}]
+          (mt/with-fake-inbox
+            (with-redefs [email/bcc-enabled? (constantly false)]
+              (mt/with-test-user nil
+                (pulse.send/send-pulse! pulse)))
+            (is (string? (get-in @mt/inbox ["rasta@metabase.com" 0 :body 0 :content])))))))))

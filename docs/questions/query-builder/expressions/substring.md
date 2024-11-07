@@ -8,10 +8,10 @@ title: Substring
 
 For example, `substring` should work well on strings like SKU numbers, ISO codes, and standardized email addresses.
 
-| Syntax                                                                                           | Example                               |
-|--------------------------------------------------------------------------------------------------|---------------------------------------|
-| `substring(text, position, length)`                                                              | `substring("user_id@email.com", 1, 7)`|
-| Extracts part of the text given a starting point (position) and a length (number of characters). | "user_id"                             |
+| Syntax                                                                                           | Example                                |
+| ------------------------------------------------------------------------------------------------ | -------------------------------------- |
+| `substring(text, position, length)`                                                              | `substring("user_id@email.com", 1, 7)` |
+| Extracts part of the text given a starting point (position) and a length (number of characters). | "user_id"                              |
 
 ## Parameters
 
@@ -21,7 +21,7 @@ For example, `substring` should work well on strings like SKU numbers, ISO codes
 ## Getting a substring from the left
 
 | Mission ID  | Agent |
-|-------------|-------|
+| ----------- | ----- |
 | 19951113006 | 006   |
 | 20061114007 | 007   |
 | 19640917008 | 008   |
@@ -43,7 +43,7 @@ Instead of using a number for the position, you'll use the formula
 where `position_from_right` is the number of characters you want to count from right to left.
 
 | Mission ID  | Agent |
-|-------------|-------|
+| ----------- | ----- |
 | 19951113006 | 006   |
 | 20061114007 | 007   |
 | 19640917008 | 008   |
@@ -56,13 +56,13 @@ substring([Mission ID], (1 + length([Mission ID]) - 3), 3)
 
 ## Accepted data types
 
-| [Data type](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview#examples-of-data-types) | Works with `substring`  |
-| ----------------------- | -------------------- |
-| String                  | ✅                   |
-| Number                  | ❌                   |
-| Timestamp               | ❌                   |
-| Boolean                 | ❌                   |
-| JSON                    | ❌                   |
+| [Data type](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview#examples-of-data-types) | Works with `substring` |
+| ------------------------------------------------------------------------------------------------------------------------------ | ---------------------- |
+| String                                                                                                                         | ✅                     |
+| Number                                                                                                                         | ❌                     |
+| Timestamp                                                                                                                      | ❌                     |
+| Boolean                                                                                                                        | ❌                     |
+| JSON                                                                                                                           | ❌                     |
 
 ## Limitations
 

@@ -1,22 +1,26 @@
 (ns metabase.channel.http-test
   (:require
-   [cheshire.core :as json]
    [clj-http.client :as http]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [compojure.core :as compojure]
-   [medley.core :as m]
    [metabase.channel.core :as channel]
+   [metabase.notification.test-util :as notification.tu]
+   [metabase.server.handler :as server.handler]
    [metabase.task.send-pulses :as task.send-pulses]
    [metabase.test :as mt]
    [metabase.util.i18n :refer [deferred-tru]]
    [ring.adapter.jetty :as jetty]
+   [ring.middleware.json :refer [wrap-json-body wrap-json-response]]
    [ring.middleware.params :refer [wrap-params]]
    [toucan2.core :as t2])
   (:import
    (org.eclipse.jetty.server Server)))
 
 (set! *warn-on-reflection* true)
+
+(comment
+  server.handler/keepme)
 
 (defn do-with-captured-http-requests
   [f]
@@ -44,13 +48,9 @@
    handler
    middlewares))
 
-(defn- json-mw [handler]
-  (fn [req]
-    (-> req
-        (m/update-existing :body #(-> % slurp (json/parse-string true)))
-        handler)))
-
-(def middlewares [json-mw wrap-params])
+(def middlewares [#(wrap-json-body % {:keywords? true})
+                  wrap-json-response
+                  wrap-params])
 
 (defn do-with-server
   [route+handlers f]
@@ -316,31 +316,32 @@
                                      (fn [res]
                                        (reset! received-message res)
                                        {:status 200}))]
-    (with-server [url [receive-route]]
-      (mt/with-temp
-        [:model/Card         {card-id :id
-                              :as card}     {:dataset_query (mt/mbql-query checkins {:aggregation [:count]})}
-         :model/Pulse        {pulse-id :id
-                              :as pulse}    {:alert_condition "rows"}
-         :model/PulseCard    _              {:pulse_id        pulse-id
-                                             :card_id         card-id
-                                             :position        0}
-         :model/Channel      {chn-id :id}  {:type    :channel/http
-                                            :details {:url         (str url (:path receive-route))
-                                                      :auth-method "none"}}
-         :model/PulseChannel {pc-id :id}   {:pulse_id     pulse-id
-                                            :channel_type "http"
-                                            :channel_id   chn-id}]
-        (#'task.send-pulses/send-pulse!* pulse-id [pc-id])
-        (is (=? {:body {:type               "alert"
-                        :alert_id           pulse-id
-                        :alert_creator_id   (mt/malli=? int?)
-                        :alert_creator_name (t2/select-one-fn :common_name :model/User (:creator_id pulse))
-                        :data               {:type          "question"
-                                             :question_id   card-id
-                                             :question_name (:name card)
-                                             :question_url  (mt/malli=? [:fn #(str/ends-with? % (str card-id))])
-                                             :visualization (mt/malli=? [:fn #(str/starts-with? % "data:image/png;base64")])
-                                             :raw_data      {:cols ["count"] :rows [[1000]]}}
-                        :sent_at            (mt/malli=? :any)}}
-                @received-message))))))
+    (notification.tu/with-send-notification-sync
+      (with-server [url [receive-route]]
+        (mt/with-temp
+          [:model/Card         {card-id :id
+                                :as card}     {:dataset_query (mt/mbql-query checkins {:aggregation [:count]})}
+           :model/Pulse        {pulse-id :id
+                                :as pulse}    {:alert_condition "rows"}
+           :model/PulseCard    _              {:pulse_id        pulse-id
+                                               :card_id         card-id
+                                               :position        0}
+           :model/Channel      {chn-id :id}  {:type    :channel/http
+                                              :details {:url         (str url (:path receive-route))
+                                                        :auth-method "none"}}
+           :model/PulseChannel {pc-id :id}   {:pulse_id     pulse-id
+                                              :channel_type "http"
+                                              :channel_id   chn-id}]
+          (#'task.send-pulses/send-pulse!* pulse-id [pc-id])
+          (is (=? {:body {:type               "alert"
+                          :alert_id           pulse-id
+                          :alert_creator_id   (mt/malli=? int?)
+                          :alert_creator_name (t2/select-one-fn :common_name :model/User (:creator_id pulse))
+                          :data               {:type          "question"
+                                               :question_id   card-id
+                                               :question_name (:name card)
+                                               :question_url  (mt/malli=? [:fn #(str/ends-with? % (str card-id))])
+                                               :visualization (mt/malli=? [:fn #(str/starts-with? % "data:image/png;base64")])
+                                               :raw_data      {:cols ["count"] :rows [[1000]]}}
+                          :sent_at            (mt/malli=? :any)}}
+                  @received-message)))))))

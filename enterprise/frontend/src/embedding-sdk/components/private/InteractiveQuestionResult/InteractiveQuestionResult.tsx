@@ -63,10 +63,11 @@ export const InteractiveQuestionResult = ({
     question,
     queryResults,
     isQuestionLoading,
-    isSaveEnabled,
     originalQuestion,
     onCreate,
     onSave,
+    isSaveEnabled,
+    saveToCollectionId,
   } = useInteractiveQuestionContext();
 
   const [isChartSelectorOpen, { toggle: toggleChartTypeSelector }] =
@@ -115,6 +116,7 @@ export const InteractiveQuestionResult = ({
               )
             }
           />
+
           {isSaveEnabled && !isSaveModalOpen && (
             <InteractiveQuestion.SaveButton onClick={openSaveModal} />
           )}
@@ -163,7 +165,7 @@ export const InteractiveQuestionResult = ({
       </Box>
 
       {/* Refer to the SaveQuestionProvider for context on why we have to do it like this */}
-      {isSaveModalOpen && question && (
+      {isSaveEnabled && isSaveModalOpen && question && (
         <SaveQuestionModal
           question={question}
           originalQuestion={originalQuestion ?? null}
@@ -172,6 +174,7 @@ export const InteractiveQuestionResult = ({
           onClose={closeSaveModal}
           onCreate={onCreate}
           onSave={onSave}
+          saveToCollectionId={saveToCollectionId}
         />
       )}
     </FlexibleSizeComponent>

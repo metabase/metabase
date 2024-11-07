@@ -7,14 +7,13 @@
    [buddy.core.codecs :as codecs]
    [cheshire.core :as json]
    [clojure.core.cache :as cache]
-   [hiccup.core :refer [html]]
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase.channel.render.core :as channel.render]
    [metabase.config :as config]
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.email :as email]
-   [metabase.email.result-attachment :as email.result-attachment]
    [metabase.lib.util :as lib.util]
    [metabase.models.collection :as collection]
    [metabase.models.data-permissions :as data-perms]
@@ -22,7 +21,6 @@
    [metabase.models.user :refer [User]]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
-   [metabase.pulse.core :as pulse]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
@@ -30,7 +28,6 @@
    [metabase.util.i18n :as i18n :refer [trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.markdown :as markdown]
    [metabase.util.urls :as urls]
    [stencil.core :as stencil]
    [stencil.loader :as stencil-loader]
@@ -62,19 +59,9 @@
 
       :else nil)))
       ;; NOTE: disabling whitelabeled URLs for now since some email clients don't render them correctly
-      ;; We need to extract them and embed as attachments like we do in metabase.pulse.render.image-bundle
+      ;; We need to extract them and embed as attachments like we do in metabase.channel.render.image-bundle
       ;; (data-uri-svg? url)               (themed-image-url url color)
       ;; :else                             url
-
-(defn- icon-bundle
-  "Bundle an icon.
-
-  The available icons are defined in [[js-svg/icon-paths]]."
-  [icon-name]
-  (let [color     (pulse/primary-color)
-        png-bytes (pulse/icon icon-name color)]
-    (-> (pulse/make-image-bundle :attachment png-bytes)
-        (pulse/image-bundle->attachment))))
 
 (defn button-style
   "Return a CSS style string for a button with the given color."
@@ -97,12 +84,12 @@
   "Context that is used across multiple email templates, and that is the same for all emails"
   []
   {:applicationName           (public-settings/application-name)
-   :applicationColor          (pulse/primary-color)
+   :applicationColor          (channel.render/primary-color)
    :applicationLogoUrl        (logo-url)
-   :buttonStyle               (button-style (pulse/primary-color))
-   :colorTextLight            pulse/color-text-light
-   :colorTextMedium           pulse/color-text-medium
-   :colorTextDark             pulse/color-text-dark
+   :buttonStyle               (button-style (channel.render/primary-color))
+   :colorTextLight            channel.render/color-text-light
+   :colorTextMedium           channel.render/color-text-medium
+   :colorTextDark             channel.render/color-text-dark
    :siteUrl                   (public-settings/site-url)})
 
 ;;; ### Public Interface
@@ -288,18 +275,6 @@
                  :message      (stencil/render-file "metabase/email/creator_sentiment_email" context)}]
     (email/send-message! message)))
 
-(defn- make-message-attachment [[content-id url]]
-  {:type         :inline
-   :content-id   content-id
-   :content-type "image/png"
-   :content      url})
-
-(defn- pulse-link-context
-  [{:keys [cards dashboard_id]}]
-  (when-let [dashboard-id (or dashboard_id
-                              (some :dashboard_id cards))]
-    {:pulseLink (urls/dashboard-url dashboard-id)}))
-
 (defn generate-pulse-unsubscribe-hash
   "Generates hash to allow for non-users to unsubscribe from pulses/subscriptions."
   [pulse-id email]
@@ -308,121 +283,6 @@
     (json/generate-string {:salt     (public-settings/site-uuid-for-unsubscribing-url)
                            :email    email
                            :pulse-id pulse-id}))))
-
-(defn- pulse-context [pulse dashboard non-user-email]
-  (let [dashboard-id (:id dashboard)]
-    (merge (common-context)
-           {:emailType                 "pulse"
-            :title                     (:name dashboard)
-            :titleUrl                  (pulse/dashboard-url dashboard-id (pulse/parameters pulse dashboard))
-            :dashboardDescription      (markdown/process-markdown (:description dashboard) :html)
-           ;; There are legacy pulses that exist without being tied to a dashboard
-            :dashboardHasTabs          (when dashboard-id
-                                         (boolean (seq (t2/hydrate dashboard :tabs))))
-            :creator                   (-> pulse :creator :common_name)
-            :sectionStyle              (pulse/style (pulse/section-style))
-            :notificationText          (if (nil? non-user-email)
-                                         "Manage your subscriptions"
-                                         "Unsubscribe")
-            :notificationManagementUrl (if (nil? non-user-email)
-                                         (urls/notification-management-url)
-                                         (str (urls/unsubscribe-url)
-                                              "?hash=" (generate-pulse-unsubscribe-hash (:id pulse) non-user-email)
-                                              "&email=" non-user-email
-                                              "&pulse-id=" (:id pulse)))}
-           (pulse-link-context pulse))))
-
-(defn- part-attachments [parts]
-  (filter some? (mapcat email.result-attachment/result-attachment parts)))
-
-(defn- render-part
-  [timezone part options]
-  (case (:type part)
-    :card
-    (pulse/render-pulse-section timezone part options)
-
-    :text
-    {:content (markdown/process-markdown (:text part) :html)}
-
-    :tab-title
-    {:content (markdown/process-markdown (format "# %s\n---" (:text part)) :html)}))
-
-(defn- render-filters
-  [notification dashboard]
-  (let [filters (pulse/parameters notification dashboard)
-        cells   (map
-                 (fn [filter]
-                   [:td {:class "filter-cell"
-                         :style (pulse/style {:width "50%"
-                                              :padding "0px"
-                                              :vertical-align "baseline"})}
-                    [:table {:cellpadding "0"
-                             :cellspacing "0"
-                             :width "100%"
-                             :height "100%"}
-                     [:tr
-                      [:td
-                       {:style (pulse/style {:color pulse/color-text-medium
-                                             :min-width "100px"
-                                             :width "50%"
-                                             :padding "4px 4px 4px 0"
-                                             :vertical-align "baseline"})}
-                       (:name filter)]
-                      [:td
-                       {:style (pulse/style {:color pulse/color-text-dark
-                                             :min-width "100px"
-                                             :width "50%"
-                                             :padding "4px 16px 4px 8px"
-                                             :vertical-align "baseline"})}
-                       (pulse/value-string filter)]]]])
-                 filters)
-        rows    (partition 2 2 nil cells)]
-    (html
-     [:table {:style (pulse/style {:table-layout :fixed
-                                   :border-collapse :collapse
-                                   :cellpadding "0"
-                                   :cellspacing "0"
-                                   :width "100%"
-                                   :font-size  "12px"
-                                   :font-weight 700
-                                   :margin-top "8px"})}
-      (for [row rows]
-        [:tr {} row])])))
-
-(defn- render-message-body
-  [notification message-type message-context timezone dashboard parts]
-  (let [rendered-cards  (mapv #(render-part timezone % {:pulse/include-title? true}) parts)
-        icon-name       (case message-type
-                          :alert :bell
-                          :pulse :dashboard)
-        icon-attachment (first (map make-message-attachment (icon-bundle icon-name)))
-        filters         (when dashboard
-                          (render-filters notification dashboard))
-        message-body    (assoc message-context :pulse (html (vec (cons :div (map :content rendered-cards))))
-                               :filters filters
-                               :iconCid (:content-id icon-attachment))
-        attachments     (apply merge (map :attachments rendered-cards))]
-    (vec (concat [{:type "text/html; charset=utf-8" :content (stencil/render-file "metabase/email/pulse" message-body)}]
-                 (map make-message-attachment attachments)
-                 [icon-attachment]
-                 (part-attachments parts)))))
-
-(defn- assoc-attachment-booleans [pulse results]
-  (for [{{result-card-id :id} :card :as result} results
-        :let [pulse-card (m/find-first #(= (:id %) result-card-id) (:cards pulse))]]
-    (if result-card-id
-      (update result :card merge (select-keys pulse-card [:include_csv :include_xls :format_rows :pivot_results]))
-      result)))
-
-(defn render-pulse-email
-  "Take a pulse object and list of results, returns an array of attachment objects for an email"
-  [timezone pulse dashboard parts non-user-email]
-  (render-message-body pulse
-                       :pulse
-                       (pulse-context pulse dashboard non-user-email)
-                       timezone
-                       dashboard
-                       (assoc-attachment-booleans pulse parts)))
 
 (defn pulse->alert-condition-kwd
   "Given an `alert` return a keyword representing what kind of goal needs to be met."
@@ -451,7 +311,7 @@
             {:emailType                 "alert"
              :questionName              card-name
              :questionURL               (urls/card-url card-id)
-             :sectionStyle              (pulse/section-style)}
+             :sectionStyle              (channel.render/section-style)}
             (when alert-condition-map
               {:alertCondition (get alert-condition-map (pulse->alert-condition-kwd alert))})))))
 
@@ -475,7 +335,7 @@
   []
   (or (driver/report-timezone) "UTC"))
 
-(defn- alert-schedule-text
+(defn alert-schedule-text
   "Returns a string that describes the run schedule of an alert (i.e. how often results are checked),
   for inclusion in the email template. Not translated, since emails in general are not currently translated."
   [channel]
@@ -493,41 +353,6 @@
             (schedule-day-text channel)
             (schedule-hour-text channel)
             (schedule-timezone))))
-
-(defn- alert-context
-  "Context that is applicable only to the actual alert template (not alert management templates)"
-  [alert channel non-user-email]
-  (let [{card-id :id card-name :name} (first-card alert)]
-    {:title                     card-name
-     :titleUrl                  (urls/card-url card-id)
-     :alertSchedule             (alert-schedule-text channel)
-     :notificationText          (if (nil? non-user-email)
-                                  "Manage your subscriptions"
-                                  "Unsubscribe")
-     :notificationManagementUrl (if (nil? non-user-email)
-                                  (urls/notification-management-url)
-                                  (str (urls/unsubscribe-url)
-                                       "?hash=" (generate-pulse-unsubscribe-hash (:id alert) non-user-email)
-                                       "&email=" non-user-email
-                                       "&pulse-id=" (:id alert)))
-     :creator                   (-> alert :creator :common_name)}))
-
-(defn- alert-results-condition-text [goal-value]
-  {:meets (format "This question has reached its goal of %s." goal-value)
-   :below (format "This question has gone below its goal of %s." goal-value)})
-
-(defn render-alert-email
-  "Take a pulse object and list of results, returns an array of attachment objects for an email"
-  [timezone {:keys [alert_first_only] :as alert} channel results goal-value non-user-email]
-  (let [message-ctx  (merge
-                      (common-alert-context alert (alert-results-condition-text goal-value))
-                      (alert-context alert channel non-user-email))]
-    (render-message-body alert
-                         :alert
-                         (assoc message-ctx :firstRunOnly? alert_first_only)
-                         timezone
-                         nil
-                         (assoc-attachment-booleans alert results))))
 
 (def alert-condition-text
   "A map of alert conditions to their corresponding text."

@@ -57,6 +57,7 @@
    [dev.explain :as dev.explain]
    [dev.migrate :as dev.migrate]
    [dev.model-tracking :as model-tracking]
+   [dev.render-png :as render-png]
    [hashp.core :as hashp]
    [honey.sql :as sql]
    [java-time.api :as t]
@@ -108,6 +109,10 @@
   migrate!
   rollback!
   migration-sql-by-id]
+ [render-png
+  open-html
+  open-png-bytes
+  open-hiccup-as-html]
  [model-tracking
   track!
   untrack!
@@ -238,8 +243,8 @@
      [:sqlserver 'time-test-data]
      [\"SELECT * FROM dbo.users WHERE dbo.users.last_login_time > ?\" (java-time/offset-time \"16:00Z\")])"
   {:arglists '([driver sql]            [[driver dataset] sql]
-               [driver honeysql-form]  [[driver dataset] honeysql-form]
-               [driver [sql & params]] [[driver dataset] [sql & params]])}
+                                       [driver honeysql-form]  [[driver dataset] honeysql-form]
+                                       [driver [sql & params]] [[driver dataset] [sql & params]])}
   [driver-or-driver+dataset sql-args]
   (let [[driver dataset] (u/one-or-many driver-or-driver+dataset)
         [sql & params]   (if (map? sql-args)
@@ -337,8 +342,8 @@
         (let [res (maybe-realize (next-method model strategy k instances))]
           ;; only throws an exception if the simple hydration makes a DB call
           (when (pos-int? (call-count))
-              (throw (ex-info (format "N+1 hydration detected!!! Model %s, key %s]" (pr-str model) k)
-                              {:model model :strategy strategy :k k :items-count (count instances) :db-calls (call-count)})))
+            (throw (ex-info (format "N+1 hydration detected!!! Model %s, key %s]" (pr-str model) k)
+                            {:model model :strategy strategy :k k :items-count (count instances) :db-calls (call-count)})))
           res)))))
 
 (defn app-db-as-data-warehouse
@@ -400,7 +405,6 @@
         (when (failed?)
           (throw (ex-info (format "Test failed after running: `%s`" test)
                           {:test test})))))))
-
 
 (defn setup-email!
   "Set up email settings for sending emails from Metabase. This is useful for testing email sending in the REPL."
