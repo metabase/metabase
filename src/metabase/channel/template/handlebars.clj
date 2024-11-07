@@ -34,10 +34,9 @@
 (defn- wrap-context
   [context]
   (walk/postwalk
-   #(cond
-     (map? %) (java.util.HashMap. ^java.util.Map %)
-     (keyword? %) (u/qualified-name %)
-     :else %) context))
+   #(if (keyword? %)
+      (u/qualified-name %)
+      %) context))
 
 (defn render
   "Render a template with a context."
