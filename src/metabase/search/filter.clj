@@ -95,7 +95,7 @@
            (set (keys (methods where-clause*))))
         "All filters have been implemented.")
 
-(defn where-clause
+(defn with-filters
   "Return a HoneySQL clause corresponding to all the optional search filters."
   [search-context qry]
   (as-> qry qry

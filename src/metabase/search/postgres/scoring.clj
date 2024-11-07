@@ -1,7 +1,7 @@
 (ns metabase.search.postgres.scoring
-  (:require [honey.sql :as sql]
-            [honey.sql.helpers :as sql.helpers]
-            [metabase.search.config :as search.config]))
+  (:require
+   [honey.sql.helpers :as sql.helpers]
+   [metabase.search.config :as search.config]))
 
 (def ^:private seconds-in-a-day 86400)
 
@@ -10,12 +10,12 @@
   [column]
   [:coalesce [:cast column :integer] [:inline 0]])
 
-(defn- fraction
-  "Prefer items whose value is closer to achieving some saturation point. Items beyond that point are equivalent."
+(defn- size
+  "Prefer items whose value is larger, up to some saturation point. Items beyond that point are equivalent."
   [column ceiling]
   [:least [:/ [:coalesce column [:inline 0]] [:inline (double ceiling)]] [:inline 1]])
 
-(defn- duration-fraction
+(defn- inverse-duration
   "Score at item based on the duration between two dates, where less is better."
   [from-column to-column ceiling-in-days]
   (let [ceiling [:inline ceiling-in-days]]
@@ -44,10 +44,7 @@
     [:inline 1]))
 
 (defn- weighted-score [[column-alias expr]]
-  ;; this repetition of the form sucks
-  [:* [:inline (search.config/weights column-alias 0)]
-   #_(keyword (str (name column-alias) "_score"))
-   expr])
+  [:* [:inline (search.config/weights column-alias 0)] expr])
 
 (defn- select-items [scorers]
   (concat
@@ -56,32 +53,18 @@
    [[(sum-columns (map weighted-score scorers))
      :total_score]]))
 
-(defn- scorers [{:keys [stale-time-in-days dashboard-count-ceiling model-count]}]
+(def ^:private scorers
+  ;; TODO bookmarked (user specific)
   {:text      [:ts_rank :search_vector :query]
    :pinned    (truthy :pinned)
-   ;; :bookmarked user specific join
-   :recency   (duration-fraction :model_updated_at [:now] stale-time-in-days)
-   :dashboard (fraction :dashboardcard_count dashboard-count-ceiling)
-   :model     (idx-rank :model_rank model-count)})
+   :recency   (inverse-duration :model_updated_at [:now] search.config/stale-time-in-days)
+   :dashboard (size :dashboardcard_count search.config/dashboard-count-ceiling)
+   :model     (idx-rank :model_rank (count search.config/all-models))})
 
-(def ^:private select-items-4real
-  (select-items (scorers {:stale-time-in-days      search.config/stale-time-in-days
-                          :dashboard-count-ceiling search.config/dashboard-count-ceiling
-                          :model-count             (count search.config/all-models)})))
+(def ^:private precalculated-select-items (select-items scorers))
 
-(defn ranking-clause
-  "Add a bunch of selects for the individual and total scores"
+(defn with-scores
+  "Add a bunch of SELECT columns for the individual and total scores, and a corresponding ORDER BY."
   [qry]
-  (apply sql.helpers/select qry select-items-4real))
-
-(comment
-  (sql/format
-   (apply sql.helpers/select {:from :a} (select-items {})))
-
-  (sql/format
-   (apply sql.helpers/select {:from :a}
-          (select-items {:a (truthy :pinned)
-                         :b (duration-fraction [:now] :updated_at search.config/stale-time-in-days)}))))
-
-(sql/format
- (apply sql.helpers/select {:from :search_index} select-items-4real))
+  (-> (apply sql.helpers/select qry precalculated-select-items)
+      (sql.helpers/order-by [:total_score :desc])))

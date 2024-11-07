@@ -55,7 +55,7 @@
   (testing "We leave the query alone if there are no filters"
     (is (= {:select [:some :stuff]
             :from   :somewhere}
-           (search.filter/where-clause {} {:select [:some :stuff], :from :somewhere}))))
+           (search.filter/with-filters {} {:select [:some :stuff], :from :somewhere}))))
   (testing "We can insert appropriate constraints for all the filters"
     (is (= {:select [:some :stuff]
             :from   :somewhere
@@ -73,5 +73,5 @@
                       [:< [:cast :search_index.last_edited_at :date] #t"2024-10-03"]
                       [:in :search_index.last_editor_id [321]]
                       [:inline [:= 0 1]]}}
-           (-> (search.filter/where-clause kitchen-sink-filter-context {:select [:some :stuff], :from :somewhere})
+           (-> (search.filter/with-filters kitchen-sink-filter-context {:select [:some :stuff], :from :somewhere})
                (update :where set))))))

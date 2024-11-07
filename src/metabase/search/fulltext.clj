@@ -4,11 +4,8 @@
    [metabase.search.api :as search.api]
    [metabase.search.postgres.core :as search.postgres]))
 
-;; We have a bunch of experimental flavors!
-(doseq [flavor [:search.engine/hybrid
-                :search.engine/hybrid-multi
-                :search.engine/minimal
-                :search.engine/minimal-with-perms]]
+;; We have a bunch of experimental flavors! (well, not really anymore)
+(doseq [flavor [:search.engine/hybrid]]
   (derive flavor :search.engine/fulltext))
 
 (defmulti supported-db? "Does the app db support fulltext search?" identity)
