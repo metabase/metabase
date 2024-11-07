@@ -52,7 +52,7 @@ export const DwhUploadCSV = () => {
     trackDWHUploadCSVClicked();
     const file = event.target.files?.[0];
 
-    if (file !== undefined) {
+    if (file) {
       setUploadedFile(file);
       openModelUploadModal();
 
