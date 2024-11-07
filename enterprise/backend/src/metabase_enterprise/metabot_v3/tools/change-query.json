@@ -4,6 +4,26 @@
   "parameters": {
     "type": "object",
     "properties": {
+      "aggregations": {
+        "type": "array",
+        "description": "A list of aggregation clauses to add to the current query. Each clause adds an aggregation using one operator and optionally a column.",
+        "items": {
+          "type": "object",
+          "description": "Aggregation clause.",
+          "properties": {
+            "operator": {
+              "type": "string",
+              "description": "The aggregation operator name. Choose an appropriate aggregation operator based on user input from aggregation_operators list."
+            },
+            "column": {
+              "type": "string",
+              "description": "The column to apply aggregation for. Choose an appropriate column name based on user input from breakoutable_columns list."
+            }
+          },
+          "required": ["operator", "column"],
+          "additionalProperties": false
+        }
+      },
       "breakouts": {
         "type": "array",
         "description": "A list of grouping clauses to add to the current query. Each clause adds grouping by one column.",
@@ -58,7 +78,7 @@
         }
       }
     },
-    "required": ["breakouts","order_bys", "limits"],
+    "required": ["aggregations", "breakouts","order_bys", "limits"],
     "additionalProperties": false
   }
 }

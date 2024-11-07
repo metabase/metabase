@@ -77,6 +77,11 @@ export type MetabotApiCallReaction = {
   };
 };
 
+export type MetabotAggregateQueryDetails = {
+  operator: string;
+  column: string | null;
+};
+
 export type MetabotBreakoutQueryDetails = {
   column: string;
 };
@@ -92,6 +97,7 @@ export type MetabotLimitQueryDetails = {
 
 export type MetabotChangeQueryReaction = {
   type: "metabot.reaction/change-query";
+  aggregations: MetabotAggregateQueryDetails[] | null;
   breakouts: MetabotBreakoutQueryDetails[] | null;
   order_bys: MetabotOrderByQueryDetails[] | null;
   limits: MetabotLimitQueryDetails[] | null;

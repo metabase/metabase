@@ -60,7 +60,9 @@
            (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (:database query))
                  query (lib/query metadata-provider query)]
              {:current_query
-              {:breakoutable_columns (mapv #(lib/display-name query %)
+              {:aggregation_operators (mapv #(lib/display-name query %)
+                                            (lib/available-aggregation-operators query))
+               :breakoutable_columns (mapv #(lib/display-name query %)
                                         (lib/breakoutable-columns query))
                :orderable_columns    (mapv #(lib/display-name query %)
                                            (lib/orderable-columns query))}}))))

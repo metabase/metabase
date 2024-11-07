@@ -16,37 +16,78 @@ export const changeQuery: ReactionHandler<MetabotChangeQueryReaction> =
     const query = question.query();
     const stageIndex = -1;
 
+    const aggregationDetails = reaction.aggregations ?? [];
+    const queryWithAggregations = aggregationDetails.reduce(
+      (newQuery, details) => {
+        const availableOperators = Lib.availableAggregationOperators(
+          query,
+          stageIndex,
+        );
+        const selectedOperator = availableOperators.find(
+          operator =>
+            Lib.displayInfo(query, stageIndex, operator).displayName ===
+            details.operator,
+        );
+        if (!selectedOperator) {
+          return newQuery;
+        }
+
+        const availableColumns =
+          Lib.aggregationOperatorColumns(selectedOperator);
+        const selectedColumn = availableColumns.find(
+          column =>
+            Lib.displayInfo(query, stageIndex, column).displayName ===
+            details.column,
+        );
+        const selectedOperatorInfo = Lib.displayInfo(
+          query,
+          stageIndex,
+          selectedOperator,
+        );
+        if (selectedOperatorInfo.requiresColumn && !selectedColumn) {
+          return newQuery;
+        }
+
+        const newClause = Lib.aggregationClause(
+          selectedOperator,
+          selectedColumn,
+        );
+        return Lib.aggregate(query, stageIndex, newClause);
+      },
+      query,
+    );
+
     const breakoutDetails = reaction.breakouts ?? [];
     const queryWithBreakouts = breakoutDetails.reduce((newQuery, details) => {
-      const columns = Lib.breakoutableColumns(newQuery, stageIndex);
-      const column = columns.find(
+      const availableColumns = Lib.breakoutableColumns(newQuery, stageIndex);
+      const selectedColumn = availableColumns.find(
         column =>
           Lib.displayInfo(newQuery, stageIndex, column).displayName ===
           details.column,
       );
-      if (!column) {
+      if (!selectedColumn) {
         return newQuery;
       }
 
       return Lib.breakout(
         newQuery,
         stageIndex,
-        Lib.withDefaultBucket(newQuery, stageIndex, column),
+        Lib.withDefaultBucket(newQuery, stageIndex, selectedColumn),
       );
-    }, query);
+    }, queryWithAggregations);
 
     const orderByDetails = reaction.order_bys ?? [];
     const queryWithOrderBy = orderByDetails.reduce((newQuery, details) => {
-      const columns = Lib.orderableColumns(newQuery, stageIndex);
-      const column = columns.find(
+      const availableColumns = Lib.orderableColumns(newQuery, stageIndex);
+      const selectedColumn = availableColumns.find(
         column =>
           Lib.displayInfo(newQuery, stageIndex, column).displayName ===
           details.column,
       );
-      if (!column) {
+      if (!selectedColumn) {
         return newQuery;
       }
-      return Lib.orderBy(newQuery, stageIndex, column);
+      return Lib.orderBy(newQuery, stageIndex, selectedColumn);
     }, queryWithBreakouts);
 
     const limitDetails = reaction.limits ?? [];
