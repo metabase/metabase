@@ -1022,6 +1022,13 @@ describe("issue 49525", { tags: "@external" }, () => {
       ],
     },
     display: "pivot",
+    visualization_settings: {
+      "pivot_table.column_split": {
+        rows: ["CREATED_AT"],
+        columns: ["CATEGORY"],
+        values: ["COUNT"],
+      },
+    },
   };
 
   beforeEach(() => {
@@ -1057,30 +1064,25 @@ describe("issue 49525", { tags: "@external" }, () => {
     cy.findByText("Questions to attach").click();
 
     sendEmailAndAssert(email => {
-      // Get the CSV attachment
+      // Get the CSV attachment data
       const csvAttachment = email.attachments.find(
         attachment => attachment.contentType === "text/csv",
       );
 
       expect(csvAttachment).to.exist;
 
-      // Make a request to Maildev's API to get the attachment content
+      // get the csv attachment file's contents
       cy.request({
         method: "GET",
         url: `http://localhost:${WEB_PORT}/email/${email.id}/attachment/${csvAttachment.fileName}`,
         encoding: "utf8",
       }).then(response => {
         const csvContent = response.body;
-        // Parse CSV content
         const rows = csvContent.split("\n");
         const headers = rows[0];
-
-        // Verify we have data
         expect(headers).to.equal(
-          "Created At, Doohickey, Gadget, Gizmo, Widget, Row totals\r",
+          "Created At,Doohickey,Gadget,Gizmo,Widget,Row totals\r",
         );
-
-        // You can add more specific assertions here based on your pivot table structure
       });
     });
   });
