@@ -11,6 +11,7 @@
   [_tool-name {:keys [string-filters
                       number-filters
                       boolean-filters
+                      specific-date-filters
                       relative-date-filters
                       aggregations
                       breakouts
@@ -20,6 +21,7 @@
                 :string-filters        (or string-filters [])
                 :number-filters        (or number-filters [])
                 :boolean-filters       (or boolean-filters [])
+                :specific-date-filters (or specific-date-filters [])
                 :relative-date-filters (or relative-date-filters [])
                 :aggregations          (or aggregations [])
                 :breakouts             (or breakouts [])

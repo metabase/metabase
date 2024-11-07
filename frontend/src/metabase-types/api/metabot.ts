@@ -100,6 +100,12 @@ export type MetabotBooleanFilterDetails = {
   value: boolean;
 };
 
+export type MetabotSpecificDateFilterDetails = {
+  column: string;
+  operator: "=" | ">" | "<";
+  value: string;
+};
+
 export type MetabotRelativeDateFilterDetails = {
   column: string;
   direction: "last" | "current" | "next";
@@ -130,6 +136,7 @@ export type MetabotChangeQueryReaction = {
   string_filters: MetabotStringFilterDetails[];
   number_filters: MetabotNumberFilterDetails[];
   boolean_filters: MetabotBooleanFilterDetails[];
+  specific_date_filters: MetabotSpecificDateFilterDetails[];
   relative_date_filters: MetabotRelativeDateFilterDetails[];
   aggregations: MetabotAggregateQueryDetails[];
   breakouts: MetabotBreakoutQueryDetails[];

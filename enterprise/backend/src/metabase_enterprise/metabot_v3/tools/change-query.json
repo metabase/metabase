@@ -83,6 +83,34 @@
           "additionalProperties": false
         }
       },
+      "specific_date_filters": {
+        "type": [
+          "array",
+          "null"
+        ],
+        "description": "A list of specific date filters to apply to the current query. Specific date filters allow to filter by exact dates. Each date filter requires a column, an operator, and a value.",
+        "items": {
+          "type": "object",
+          "description": "A specific date filter clause.",
+          "properties": {
+            "column": {
+              "type": "string",
+              "description": "The column to apply filter for. Choose an appropriate column name based on user input from date_filterable_columns list."
+            },
+            "operator": {
+              "type": "string",
+              "description": "Date filter operator.",
+              "enum": ["=", ">", "<"]
+            },
+            "value": {
+              "type": "string",
+              "description": "The filter value. Should be encoded as a ISO 8601 date string."
+            }
+          },
+          "required": ["column", "operator", "value"],
+          "additionalProperties": false
+        }
+      },
       "relative_date_filters": {
         "type": [
           "array",
@@ -240,6 +268,7 @@
       "string_filters",
       "number_filters",
       "boolean_filters",
+      "specific_date_filters",
       "relative_date_filters",
       "aggregations",
       "breakouts",

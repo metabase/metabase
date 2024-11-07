@@ -145,6 +145,10 @@
    [:boolean-filters [:vector [:map
                                [:column :string]
                                [:value :boolean]]]]
+   [:specific-date-filters [:vector [:map
+                                     [:column :string]
+                                     [:operator [:enum "=" ">" "<"]]
+                                     [:value :string]]]]
    [:relative-date-filters [:vector [:map
                                      [:column :string]
                                      [:direction [:enum "last" "current" "next"]]

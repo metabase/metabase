@@ -1,3 +1,5 @@
+import dayjs from "dayjs";
+
 import { updateQuestion } from "metabase/query_builder/actions";
 import { getQuestion } from "metabase/query_builder/selectors";
 import * as Lib from "metabase-lib";
@@ -10,6 +12,7 @@ import type {
   MetabotNumberFilterDetails,
   MetabotOrderByQueryDetails,
   MetabotRelativeDateFilterDetails,
+  MetabotSpecificDateFilterDetails,
   MetabotStringFilterDetails,
 } from "metabase-types/api";
 
@@ -80,6 +83,33 @@ function addBooleanFilter(
     column: selectedColumn,
     operator: "=",
     values: [details.value],
+  });
+  return Lib.filter(query, STAGE_INDEX, newClause);
+}
+
+function addSpecificDateFilter(
+  query: Lib.Query,
+  details: MetabotSpecificDateFilterDetails,
+) {
+  const availableColumns = Lib.filterableColumns(query, STAGE_INDEX);
+  const selectedColumn = availableColumns.find(
+    column =>
+      Lib.displayInfo(query, STAGE_INDEX, column).displayName ===
+      details.column,
+  );
+  if (!selectedColumn) {
+    return query;
+  }
+  const value = dayjs(details.value);
+  if (!value.isValid()) {
+    return query;
+  }
+
+  const newClause = Lib.specificDateFilterClause(query, STAGE_INDEX, {
+    column: selectedColumn,
+    operator: details.operator,
+    values: [value.toDate()],
+    hasTime: false,
   });
   return Lib.filter(query, STAGE_INDEX, newClause);
 }
@@ -193,6 +223,7 @@ export const changeQuery: ReactionHandler<MetabotChangeQueryReaction> =
     query = reaction.string_filters.reduce(addStringFilter, query);
     query = reaction.number_filters.reduce(addNumberFilter, query);
     query = reaction.boolean_filters.reduce(addBooleanFilter, query);
+    query = reaction.specific_date_filters.reduce(addSpecificDateFilter, query);
     query = reaction.relative_date_filters.reduce(addRelativeDateFilter, query);
     query = reaction.aggregations.reduce(addAggregation, query);
     query = reaction.breakouts.reduce(addBreakout, query);
