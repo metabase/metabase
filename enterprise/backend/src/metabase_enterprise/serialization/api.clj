@@ -125,13 +125,16 @@
                                                     {:additive *additive-logging*})]
                    (try                 ; try/catch inside logging to log errors
                      (log/infof "Serdes import, size %s" size)
-                     (let [cnt  (u.compress/untgz file dst)
+                     (let [cnt  (try (u.compress/untgz file dst)
+                                     (catch Exception e
+                                       (throw (ex-info "Cannot unpack archive" {:status 422} e))))
                            path (find-serialization-dir dst)]
                        (when-not path
                          (throw (ex-info "No source dir detected. Please make sure the serialization files are in the top level dir."
-                                         {:dst   (.getPath dst)
-                                          :count cnt
-                                          :files (.listFiles dst)})))
+                                         {:status 400
+                                          :dst    (.getPath dst)
+                                          :count  cnt
+                                          :files  (.listFiles dst)})))
                        (log/infof "In total %s entries unpacked, detected source dir: %s" cnt (.getName path))
                        (serdes/with-cache
                          (-> (v2.ingest/ingest-yaml (.getPath path))
@@ -142,6 +145,7 @@
                          (log/error e "Error during serialization")
                          (log/error (u/strip-error e "Error during serialization"))))))]
     {:log-file      log-file
+     :status        (:status (ex-data @err))
      :error-message (when @err
                       (u/strip-error @err nil))
      :report        report
@@ -253,6 +257,7 @@
   (try
     (let [start              (System/nanoTime)
           {:keys [log-file
+                  status
                   error-message
                   report
                   callback]} (unpack&import (:tempfile file)
@@ -271,9 +276,13 @@
                               :error_count   (count (:errors report))
                               :success       (not error-message)
                               :error_message error-message})
-      {:status  200
-       :headers {"Content-Type" "text/plain"}
-       :body    (on-response! log-file callback)})
+      (if error-message
+        {:status  (or status 500)
+         :headers {"Content-Type" "text/plain"}
+         :body    (on-response! log-file callback)}
+        {:status  200
+         :headers {"Content-Type" "text/plain"}
+         :body    (on-response! log-file callback)}))
     (finally
       (io/delete-file (:tempfile file)))))
 

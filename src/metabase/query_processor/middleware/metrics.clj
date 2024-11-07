@@ -251,7 +251,7 @@
    2. Metric source cards can reference themselves.
       A query built from a `:source-card` of `:type :metric` can reference itself."
   [query]
-  (if-not (find-first-metric query)
+  (if-not (find-first-metric (:stages query))
     query
     (do
       (prometheus/inc! :metabase-query-processor/metrics-adjust)
@@ -263,7 +263,7 @@
                          (update stage-or-join :stages #(adjust-metric-stages query path %)))))]
           (u/prog1
             (update query :stages #(adjust-metric-stages query nil %))
-            (when-let [metric (find-first-metric <>)]
+            (when-let [metric (find-first-metric (:stages <>))]
               (throw (ex-info "Failed to replace metric" {:metric metric})))))
         (catch Throwable e
           (prometheus/inc! :metabase-query-processor/metrics-adjust-errors)

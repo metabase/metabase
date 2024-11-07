@@ -89,6 +89,9 @@
   --mb-color-background-inverse: var(--mb-color-bg-black);
   --mb-color-background-brand: var(--mb-base-color-brand-40);
   --mb-color-icon-primary: var(--mb-base-color-brand-40);
+  --mb-color-icon-primary-disabled: var(--mb-base-color-gray-30);
+  --mb-color-icon-secondary: var(--mb-base-color-brand-20);
+  --mb-color-icon-secondary-disabled: var(--mb-base-color-gray-10);
 
   /**
     * Base colors

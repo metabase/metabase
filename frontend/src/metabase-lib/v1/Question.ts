@@ -50,7 +50,7 @@ import type {
   LastEditInfo,
   ParameterId,
   Parameter as ParameterObject,
-  ParameterValues,
+  ParameterValuesMap,
   TableId,
   UserInfo,
   VisualizationSettings,
@@ -64,7 +64,7 @@ export type QuestionCreatorOpts = {
   tableId?: TableId;
   collectionId?: CollectionId;
   metadata?: Metadata;
-  parameterValues?: ParameterValues;
+  parameterValues?: ParameterValuesMap;
   type?: "query" | "native";
   name?: string;
   display?: CardDisplayType;
@@ -93,7 +93,7 @@ class Question {
    * Parameter values mean either the current values of dashboard filters or SQL editor template parameters.
    * They are in the grey area between UI state and question state, but having them in Question wrapper is convenient.
    */
-  _parameterValues: ParameterValues;
+  _parameterValues: ParameterValuesMap;
 
   private __mlv2Query: Lib.Query | undefined;
 
@@ -105,7 +105,7 @@ class Question {
   constructor(
     card: any,
     metadata?: Metadata,
-    parameterValues?: ParameterValues,
+    parameterValues?: ParameterValuesMap,
   ) {
     this._card = card;
     this._metadata =

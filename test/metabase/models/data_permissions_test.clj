@@ -614,34 +614,34 @@
                                                       :group_id  group-id
                                                       :table_id  table-id
                                                       :perm_type :perms/create-queries))]
-      (mt/with-restored-data-perms-for-group! group-id
-        (testing "New table inherits DB-level permission if set"
-          (data-perms/set-table-permission! group-id table-id-1 :perms/create-queries :query-builder)
-          (data-perms/set-table-permission! group-id table-id-2 :perms/create-queries :query-builder)
-          (data-perms/set-table-permission! group-id table-id-3 :perms/create-queries :query-builder)
-          (mt/with-temp [:model/Table {table-id-4 :id} {:db_id db-id :schema "PUBLIC"}]
-            (is (= :query-builder (perm-value nil)))
-            (is (nil? (perm-value table-id-4)))))
+      (testing "New table inherits DB-level permission if set"
+        (data-perms/set-table-permission! group-id table-id-1 :perms/create-queries :query-builder)
+        (data-perms/set-table-permission! group-id table-id-2 :perms/create-queries :query-builder)
+        (data-perms/set-table-permission! group-id table-id-3 :perms/create-queries :query-builder)
+        (mt/with-temp [:model/Table {table-id-4 :id} {:db_id db-id :schema "PUBLIC"}]
+          ;; nil table ID is passed to check DB-level value
+          (is (= :query-builder (perm-value nil)))
+          (is (nil? (perm-value table-id-4)))))
 
-        (testing "New table inherits uniform permission value from schema"
-          (data-perms/set-table-permission! group-id table-id-1 :perms/create-queries :query-builder)
-          (data-perms/set-table-permission! group-id table-id-2 :perms/create-queries :query-builder)
-          (data-perms/set-table-permission! group-id table-id-3 :perms/create-queries :no)
-          (mt/with-temp [:model/Table {table-id-4 :id} {:db_id db-id :schema "PUBLIC"}]
-            (is (= :query-builder (perm-value table-id-4))))
+      (testing "New table inherits uniform permission value from schema"
+        (data-perms/set-table-permission! group-id table-id-1 :perms/create-queries :query-builder)
+        (data-perms/set-table-permission! group-id table-id-2 :perms/create-queries :query-builder)
+        (data-perms/set-table-permission! group-id table-id-3 :perms/create-queries :no)
+        (mt/with-temp [:model/Table {table-id-4 :id} {:db_id db-id :schema "PUBLIC"}]
+          (is (= :query-builder (perm-value table-id-4))))
 
-          (data-perms/set-table-permission! group-id table-id-1 :perms/create-queries :no)
-          (data-perms/set-table-permission! group-id table-id-2 :perms/create-queries :no)
-          (data-perms/set-table-permission! group-id table-id-3 :perms/create-queries :query-builder)
-          (mt/with-temp [:model/Table {table-id-4 :id} {:db_id db-id :schema "PUBLIC"}]
-            (is (= :no (perm-value table-id-4)))))
+        (data-perms/set-table-permission! group-id table-id-1 :perms/create-queries :no)
+        (data-perms/set-table-permission! group-id table-id-2 :perms/create-queries :no)
+        (data-perms/set-table-permission! group-id table-id-3 :perms/create-queries :query-builder)
+        (mt/with-temp [:model/Table {table-id-4 :id} {:db_id db-id :schema "PUBLIC"}]
+          (is (= :no (perm-value table-id-4)))))
 
-        (testing "New table uses default value when schema permissions are not uniform"
-          (data-perms/set-table-permission! group-id table-id-1 :perms/create-queries :query-builder)
-          (data-perms/set-table-permission! group-id table-id-2 :perms/create-queries :no)
-          (data-perms/set-table-permission! group-id table-id-3 :perms/create-queries :no)
-          (mt/with-temp [:model/Table {table-id-4 :id} {:db_id db-id :schema "PUBLIC"}]
-            (is (= :no (perm-value table-id-4)))))))))
+      (testing "New table uses default value when schema permissions are not uniform"
+        (data-perms/set-table-permission! group-id table-id-1 :perms/create-queries :query-builder)
+        (data-perms/set-table-permission! group-id table-id-2 :perms/create-queries :no)
+        (data-perms/set-table-permission! group-id table-id-3 :perms/create-queries :no)
+        (mt/with-temp [:model/Table {table-id-4 :id} {:db_id db-id :schema "PUBLIC"}]
+          (is (= :no (perm-value table-id-4))))))))
 
 (deftest additional-table-permissions-works
   (mt/with-temp [:model/PermissionsGroup           {group-id :id} {}

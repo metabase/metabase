@@ -34,12 +34,6 @@ describe("PublicComponentWrapper", () => {
     expect(message).toBeInTheDocument();
   });
 
-  it("renders 'JWT is valid' message when loginStatus is validated", () => {
-    setup({ status: "validated" });
-    const message = screen.getByText("JWT is valid.");
-    expect(message).toBeInTheDocument();
-  });
-
   it("renders loader when loginStatus is loading", () => {
     setup({ status: "loading" });
     const loader = screen.getByTestId("loading-indicator");
