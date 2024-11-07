@@ -54,7 +54,7 @@ export const useValidatedEntityId = <
   );
 
   return useMemo(() => {
-    if (!isEntityId) {
+    if (isNumber(id)) {
       // no need to translate anything if the id is already not a entity id
       return {
         id: id as TReturnedId,
@@ -64,11 +64,19 @@ export const useValidatedEntityId = <
     }
 
     if (isLoading) {
-      return { id: null, isLoading: true, isError: false } as const;
+      return {
+        id: null,
+        isLoading: true,
+        isError: false,
+      } as const;
     }
 
-    if (isError) {
-      return { id: null, isLoading: false, isError: true } as const;
+    if (!isEntityId || isError) {
+      return {
+        id: null,
+        isLoading: false,
+        isError: true,
+      } as const;
     }
 
     if (entity_ids && entity_ids[id]?.status === "ok") {
@@ -83,3 +91,7 @@ export const useValidatedEntityId = <
     return { id: null, isLoading: false, isError: true } as const;
   }, [isEntityId, isLoading, isError, entity_ids, id]);
 };
+
+function isNumber(num: unknown): num is number {
+  return typeof num === "number" && Number.isFinite(num) && !Number.isNaN(num);
+}
