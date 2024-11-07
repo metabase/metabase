@@ -83,10 +83,20 @@ export type MetabotAggregateQueryReaction = {
   column: string;
 };
 
+export type MetabotBreakoutQueryReaction = {
+  type: "metabot.reaction/breakout-query";
+  column: string;
+};
+
 export type MetabotSortQueryReaction = {
   type: "metabot.reaction/sort-query";
   column: string;
   direction: "asc" | "desc";
+};
+
+export type MetabotLimitQueryReaction = {
+  type: "metabot.reaction/limit-query";
+  limit: number;
 };
 
 export type MetabotReaction =
@@ -97,7 +107,9 @@ export type MetabotReaction =
   | MetabotWriteBackReaction
   | MetabotApiCallReaction
   | MetabotAggregateQueryReaction
-  | MetabotSortQueryReaction;
+  | MetabotBreakoutQueryReaction
+  | MetabotSortQueryReaction
+  | MetabotLimitQueryReaction;
 
 /* Metabot v3 - API Request Types */
 
