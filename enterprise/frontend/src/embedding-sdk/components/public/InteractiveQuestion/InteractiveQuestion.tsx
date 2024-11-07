@@ -10,7 +10,6 @@ import {
   FilterBar,
   FilterButton,
   QuestionResetButton,
-  QuestionSetting,
   QuestionSettings,
   QuestionVisualization,
   SaveButton,
@@ -19,10 +18,6 @@ import {
   SummarizeButton,
   Title,
 } from "embedding-sdk/components/private/InteractiveQuestion/components";
-import {
-  type QuestionSettingKey,
-  VisualizationSettingsDisplayNames,
-} from "embedding-sdk/components/private/InteractiveQuestion/components/QuestionSetting/viz-key-translation";
 import {
   InteractiveQuestionProvider,
   type InteractiveQuestionProviderProps,
@@ -106,19 +101,7 @@ const InteractiveQuestion = withPublicComponentWrapper(
   ChartTypeSelector: typeof ChartTypeSelector;
   EditorViewControl: typeof EditorViewControl;
   QuestionSettings: typeof QuestionSettings;
-} & {
-  [key in QuestionSettingKey]: () => JSX.Element;
 };
-
-const isVisualizationSettingsKey = (key: string): key is QuestionSettingKey =>
-  key in VisualizationSettingsDisplayNames;
-
-Object.keys(VisualizationSettingsDisplayNames).forEach(key => {
-  if (!isVisualizationSettingsKey(key)) {
-    throw new Error("key not found in VisualizationSettingsDisplayNames");
-  }
-  InteractiveQuestion[key] = () => <QuestionSetting settingKey={key} />;
-});
 
 InteractiveQuestion.BackButton = BackButton;
 InteractiveQuestion.FilterBar = FilterBar;
