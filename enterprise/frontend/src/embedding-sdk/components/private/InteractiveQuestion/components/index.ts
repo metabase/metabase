@@ -12,4 +12,4 @@ export * from "./Summarize";
 export * from "./SummarizeButton";
 export * from "./Title";
 export * from "./Visualization";
-export * from "./QuestionSetting/QuestionSetting";
+export * from "./QuestionSetting";

@@ -11,6 +11,7 @@ import {
   FilterButton,
   QuestionResetButton,
   QuestionSetting,
+  QuestionSettings,
   QuestionVisualization,
   SaveButton,
   SdkSaveQuestionForm,
@@ -104,6 +105,7 @@ const InteractiveQuestion = withPublicComponentWrapper(
   SaveButton: typeof SaveButton;
   ChartTypeSelector: typeof ChartTypeSelector;
   EditorViewControl: typeof EditorViewControl;
+  QuestionSettings: typeof QuestionSettings;
 } & {
   [key in QuestionSettingKey]: () => JSX.Element;
 };
@@ -137,5 +139,6 @@ InteractiveQuestion.SaveQuestionForm = SdkSaveQuestionForm;
 InteractiveQuestion.SaveButton = SaveButton;
 InteractiveQuestion.ChartTypeSelector = ChartTypeSelector;
 InteractiveQuestion.EditorViewControl = EditorViewControl;
+InteractiveQuestion.QuestionSettings = QuestionSettings;
 
 export { InteractiveQuestion };
