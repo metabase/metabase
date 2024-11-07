@@ -178,3 +178,8 @@
                              [:show_mini_bar {:optional true} [:maybe boolean?]]
                              [:suffix {:optional true} [:maybe :string]]
                              [:view_as {:optional true} [:maybe [:enum "link" "email_link" "image" "auto"]]]]]]])
+
+(defreaction :metabot.reaction/change-stacking-settings
+  [:map
+   [:type [:= :metabot.reaction/change-stacking-settings]]
+   [:stack_type {:optional true} [:maybe [:enum "stacked" "normalized"]]]])

@@ -8,18 +8,19 @@ import {
 import { setQuestionDisplayType } from "metabase/query_builder/components/chart-type-selector";
 import { getQueryResults, getQuestion } from "metabase/query_builder/selectors";
 import * as Lib from "metabase-lib";
+import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import type {
   MetabotChangeAxesLabelsReaction,
   MetabotChangeColumnSettingsReaction,
   MetabotChangeDisplayTypeReaction,
   MetabotChangeSeriesSettingsReaction,
+  MetabotChangeStackingSettingsReaction,
   MetabotChangeVisiualizationSettingsReaction,
 } from "metabase-types/api";
 
 import { stopProcessingAndNotify } from "../state";
 
 import type { ReactionHandler } from "./types";
-import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 
 export const changeTableVisualizationSettings: ReactionHandler<
   MetabotChangeVisiualizationSettingsReaction
@@ -139,4 +140,12 @@ export const changeColumnSettings: ReactionHandler<
     await dispatch(
       onUpdateVisualizationSettings({ column_settings: newColumnSettings }),
     );
+  };
+
+export const changeStackingSettings: ReactionHandler<
+  MetabotChangeStackingSettingsReaction
+> =
+  ({ type, ...payload }) =>
+  async ({ dispatch }) => {
+    await dispatch(onUpdateVisualizationSettings(payload));
   };

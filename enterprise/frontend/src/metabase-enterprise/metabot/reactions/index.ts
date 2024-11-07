@@ -9,6 +9,7 @@ import {
   changeColumnSettings,
   changeDisplayType,
   changeSeriesSettings,
+  changeStackingSettings,
   changeTableVisualizationSettings,
 } from "./visualizations";
 
@@ -21,6 +22,7 @@ type ReactionHandlers = {
 };
 
 export const reactionHandlers: ReactionHandlers = {
+  "metabot.reaction/change-stacking-settings": changeStackingSettings,
   "metabot.reaction/change-column-settings": changeColumnSettings,
   "metabot.reaction/change-series-settings": changeSeriesSettings,
   "metabot.reaction/change-axes-labels": changeAxesLabels,

@@ -99,10 +99,16 @@ export type MetabotChangeColumnSettingsReaction = {
   column_settings: ColumnSettingsEntry[];
 };
 
+export type MetabotChangeStackingSettingsReaction = {
+  type: "metabot.reaction/change-stacking-settings";
+  stack_type: "stacked" | "normalized" | null;
+};
+
 export type MetabotReaction =
   | MetabotChangeColumnSettingsReaction
   | MetabotChangeSeriesSettingsReaction
   | MetabotChangeAxesLabelsReaction
+  | MetabotChangeStackingSettingsReaction
   | MetabotMessageReaction
   | MetabotChangeDisplayTypeReaction
   | MetabotChangeVisiualizationSettingsReaction
