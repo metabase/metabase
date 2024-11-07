@@ -1,5 +1,7 @@
 import type { CardDisplayType } from "./visualization";
 
+import type { SeriesSettings } from ".";
+
 export type MetabotFeedbackType =
   | "great"
   | "wrong_data"
@@ -150,7 +152,15 @@ export type MetabotChangeAxesLabelsReaction = {
   y_axis_label: string | null;
 };
 
+type SeriesSettingsEntry = SeriesSettings & { key: string };
+
+export type MetabotChangeSeriesSettingsReaction = {
+  type: "metabot.reaction/change-series-settings";
+  series_settings: SeriesSettingsEntry[];
+};
+
 export type MetabotReaction =
+  | MetabotChangeSeriesSettingsReaction
   | MetabotChangeAxesLabelsReaction
   | MetabotMessageReaction
   | MetabotChangeDisplayTypeReaction

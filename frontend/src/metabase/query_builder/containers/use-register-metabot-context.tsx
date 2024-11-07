@@ -1,5 +1,6 @@
 import _ from "underscore";
 
+import { getAccentColors } from "metabase/lib/colors/groups";
 import { useRegisterMetabotContextProvider } from "metabase/metabot";
 import { getVisualizationMetabotContext } from "metabase/metabot-v3/selectors";
 
@@ -27,6 +28,7 @@ export const useRegisterMetabotContext = () => {
     );
 
     return {
+      colorPalette: getAccentColors(),
       current_question_id: question?.id() || null,
       current_query: question?.datasetQuery(),
       current_visualization_settings: {
