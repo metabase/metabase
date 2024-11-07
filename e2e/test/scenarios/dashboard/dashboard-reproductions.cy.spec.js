@@ -12,6 +12,7 @@ import {
   appBar,
   assertDatasetReqIsSandboxed,
   assertQueryBuilderRowCount,
+  assertTabSelected,
   cartesianChartCircle,
   closeDashboardInfoSidebar,
   closeDashboardSettingsSidebar,
@@ -326,119 +327,120 @@ describe("issue 16559", () => {
     restore();
     cy.signInAsAdmin();
 
-    cy.createDashboard(dashboardDetails).then(
-      ({ body: { id: dashboardId } }) => {
-        visitDashboard(dashboardId);
-      },
-    );
+    createDashboard(dashboardDetails).then(response => {
+      visitDashboard(response.body.id);
+    });
+
+    cy.intercept("GET", "/api/collection/tree?*").as("getCollections");
+    cy.intercept("PUT", "/api/dashboard/*").as("saveDashboard");
+    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
   });
 
-  it(
-    "should always show the most recent revision (metabase#16559)",
-    { tags: "@flaky" },
-    () => {
-      openDashboardInfoSidebar();
-      sidesheet().within(() => {
-        cy.findByRole("tab", { name: "History" }).click();
-        cy.log("Dashboard creation");
-        cy.findByTestId("dashboard-history-list")
-          .findAllByRole("listitem")
-          .eq(0)
-          .findByText("You created this.")
-          .should("be.visible");
-      });
-      closeDashboardInfoSidebar();
+  it("should always show the most recent revision (metabase#16559)", () => {
+    openDashboardInfoSidebar();
+    sidesheet().within(() => {
+      cy.findByRole("tab", { name: "History" }).click();
+      cy.log("Dashboard creation");
+      cy.findByTestId("dashboard-history-list")
+        .findAllByRole("listitem")
+        .eq(0)
+        .findByText("You created this.")
+        .should("be.visible");
+    });
+    closeDashboardInfoSidebar();
 
-      cy.log("Edit dashboard");
-      editDashboard();
-      openQuestionsSidebar();
-      sidebar().findByText("Orders, Count").click();
-      cy.button("Save").click();
+    cy.log("Edit dashboard");
+    editDashboard();
+    openQuestionsSidebar();
+    sidebar().findByText("Orders, Count").click();
+    cy.wait("@cardQuery");
+    cy.button("Save").click();
+    cy.wait("@saveDashboard");
 
-      openDashboardInfoSidebar();
-      sidesheet().within(() => {
-        cy.findByRole("tab", { name: "History" }).click();
-        cy.findByTestId("dashboard-history-list")
-          .findAllByRole("listitem")
-          .eq(0)
-          .findByText("You added a card.")
-          .should("be.visible");
-      });
-      closeDashboardInfoSidebar();
+    openDashboardInfoSidebar();
+    sidesheet().within(() => {
+      cy.findByRole("tab", { name: "History" }).click();
+      cy.findByTestId("dashboard-history-list")
+        .findAllByRole("listitem")
+        .eq(0)
+        .findByText("You added a card.")
+        .should("be.visible");
+    });
+    closeDashboardInfoSidebar();
 
-      cy.log("Change dashboard name");
-      cy.findByTestId("dashboard-name-heading")
+    cy.log("Change dashboard name");
+    cy.findByTestId("dashboard-name-heading").click().type(" modified").blur();
+    cy.wait("@saveDashboard");
+
+    openDashboardInfoSidebar();
+    sidesheet().within(() => {
+      cy.findByRole("tab", { name: "History" }).click();
+
+      cy.findByTestId("dashboard-history-list")
+        .findAllByRole("listitem")
+        .eq(0)
+        .findByText(
+          'You renamed this Dashboard from "16559 Dashboard" to "16559 Dashboard modified".',
+        )
+        .should("be.visible");
+
+      cy.log("Add description");
+      cy.findByRole("tab", { name: "Overview" }).click();
+
+      cy.findByPlaceholderText("Add description")
         .click()
-        .type(" modified")
+        .type("16559 description")
         .blur();
+      cy.wait("@saveDashboard");
 
-      openDashboardInfoSidebar();
-      sidesheet().within(() => {
-        cy.findByRole("tab", { name: "History" }).click();
+      cy.findByRole("tab", { name: "History" }).click();
 
-        cy.findByTestId("dashboard-history-list")
-          .findAllByRole("listitem")
-          .eq(0)
-          .findByText(
-            'You renamed this Dashboard from "16559 Dashboard" to "16559 Dashboard modified".',
-          )
-          .should("be.visible");
+      cy.findByTestId("dashboard-history-list")
+        .findAllByRole("listitem")
+        .eq(0)
+        .findByText("You added a description.")
+        .should("be.visible");
 
-        cy.log("Add description");
-        cy.findByRole("tab", { name: "Overview" }).click();
+      cy.log("Toggle auto-apply filters");
+    });
+    closeDashboardInfoSidebar();
 
-        cy.findByPlaceholderText("Add description")
-          .click()
-          .type("16559 description")
-          .blur();
+    openDashboardSettingsSidebar();
+    sidesheet().findByText("Auto-apply filters").click();
+    cy.wait("@saveDashboard");
+    closeDashboardSettingsSidebar();
 
-        cy.findByRole("tab", { name: "History" }).click();
+    openDashboardInfoSidebar();
+    sidesheet().within(() => {
+      cy.findByRole("tab", { name: "History" }).click();
 
-        cy.findByTestId("dashboard-history-list")
-          .findAllByRole("listitem")
-          .eq(0)
-          .findByText("You added a description.")
-          .should("be.visible");
+      cy.findByTestId("dashboard-history-list")
+        .findAllByRole("listitem")
+        .eq(0)
+        .findByText("You set auto apply filters to false.")
+        .should("be.visible");
+    });
+    closeDashboardInfoSidebar();
 
-        cy.log("Toggle auto-apply filters");
-      });
-      closeDashboardInfoSidebar();
+    cy.log("Move dashboard to another collection");
+    dashboardHeader().icon("ellipsis").click();
+    popover().findByText("Move").click();
+    entityPickerModal().within(() => {
+      cy.findByText("First collection").click();
+      cy.button("Move").click();
+      cy.wait(["@saveDashboard", "@getCollections"]);
+    });
 
-      openDashboardSettingsSidebar();
-      sidesheet().findByText("Auto-apply filters").click();
-      closeDashboardSettingsSidebar();
-
-      openDashboardInfoSidebar();
-      sidesheet().within(() => {
-        cy.findByRole("tab", { name: "History" }).click();
-
-        cy.findByTestId("dashboard-history-list")
-          .findAllByRole("listitem")
-          .eq(0)
-          .findByText("You set auto apply filters to false.")
-          .should("be.visible");
-      });
-      closeDashboardInfoSidebar();
-
-      cy.log("Move dashboard to another collection");
-      dashboardHeader().icon("ellipsis").click();
-      popover().findByText("Move").click();
-      entityPickerModal().within(() => {
-        cy.findByText("First collection").click();
-        cy.button("Move").click();
-      });
-
-      openDashboardInfoSidebar();
-      sidesheet().within(() => {
-        cy.findByRole("tab", { name: "History" }).click();
-        cy.findByTestId("dashboard-history-list")
-          .findAllByRole("listitem")
-          .eq(0)
-          .findByText("You moved this Dashboard to First collection.")
-          .should("be.visible");
-      });
-    },
-  );
+    openDashboardInfoSidebar();
+    sidesheet().within(() => {
+      cy.findByRole("tab", { name: "History" }).click();
+      cy.findByTestId("dashboard-history-list")
+        .findAllByRole("listitem")
+        .eq(0)
+        .findByText("You moved this Dashboard to First collection.")
+        .should("be.visible");
+    });
+  });
 });
 
 describe("issue 17879", () => {
@@ -736,7 +738,7 @@ describe("issue 31274", () => {
         size_x: 2,
         size_y: 2,
         row: (length - index - 1) * 2,
-        text: `Text card ${index + 1}`,
+        text: `Text ${index + 1}`,
       });
     });
   };
@@ -745,47 +747,39 @@ describe("issue 31274", () => {
     return cy.findAllByTestId("dashboardcard-actions-panel").filter(":visible");
   }
 
-  function secondTextCard() {
-    return cy.findAllByTestId("editing-dashboard-text-preview").eq(1).parent();
-  }
-
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
   });
 
-  // cypress automatically scrolls to the element, but we don't need it in this test
-  it(
-    "should not clip dashcard actions (metabase#31274)",
-    { tags: "@flaky" },
-    () => {
-      cy.createDashboard().then(({ body: dashboard }) => {
-        const dashcards = createTextCards(3);
-        cy.request("PUT", `/api/dashboard/${dashboard.id}`, {
-          dashcards,
-        });
-
-        visitDashboard(dashboard.id);
-        editDashboard(dashboard.id);
-
-        secondTextCard().realHover();
-
-        visibleActionsPanel().should("have.length", 1);
-
-        cy.log(
-          "Make sure cypress can click the element, which means it is not covered by another",
-        );
-
-        visibleActionsPanel().within(() => {
-          cy.icon("close").click({
-            position: "top",
-          });
-        });
-
-        cy.findAllByTestId("dashcard").should("have.length", 2);
+  it("should not clip dashcard actions (metabase#31274)", () => {
+    cy.createDashboard().then(({ body: dashboard }) => {
+      const dashcards = createTextCards(3);
+      cy.request("PUT", `/api/dashboard/${dashboard.id}`, {
+        dashcards,
       });
-    },
-  );
+
+      visitDashboard(dashboard.id);
+      editDashboard(dashboard.id);
+
+      assertTabSelected("Tab 1");
+
+      getDashboardCard(1).realHover({
+        scrollBehavior: false, // prevents flaky tests
+      });
+
+      cy.log(
+        "Make sure cypress can click the element, which means it is not covered by another",
+      );
+
+      visibleActionsPanel().should("have.length", 1).icon("close").click({
+        position: "top",
+        scrollBehavior: false, // prevents flaky tests
+      });
+
+      cy.findAllByTestId("dashcard").should("have.length", 2);
+    });
+  });
 
   it("renders cross icon on the link card without clipping", () => {
     cy.createDashboard().then(({ body: dashboard }) => {

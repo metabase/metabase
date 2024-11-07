@@ -17,7 +17,7 @@ Let's unpack the log:
 - **Namespace:**. `middleware.log`. You can tweak your logging level to get more or less information from this namespace.
 - **Method:** `POST`. The HTTP method verb, like POST, PUT, GET, DELETE.
 - **Path:** `/api/dataset`. The handling URL. Note that URL parameters aren't included, which can make debugging certain issues a little tricky.
-- **Code:**  `202`. The HTTP status code.
+- **Code:** `202`. The HTTP status code.
 - **ASYNC:** `[ASYNC: completed]`. Whether Metabase could deliver the results to the browser. If Metabase couldn't deliver the results, for example if someone starts a query and closes their browser before the query finishes, the ASYNC status will say "cancelled".
 - **Response time:** `46.9 ms`. The time Metabase takes to handle the request (from when Metabase receives the request until it's returned results back to the browser).
 - **Database calls:** `(17 DB calls)`. The number of query statements used, which in addition to calls to the queried data source(s), includes calls to the Metabase application database.

@@ -78,15 +78,14 @@
       (begin! [_ {{:keys [ordered-cols results_timezone format-rows? pivot-export-options pivot?]
                    :or   {format-rows? true
                           pivot?       false}} :data} viz-settings]
-        (let [opts               (when (and pivot? pivot-export-options)
+        (let [col-names          (vec (common/column-titles ordered-cols (::mb.viz/column-settings viz-settings) format-rows?))
+              opts               (when (and pivot? pivot-export-options)
                                    (-> (merge {:pivot-rows []
                                                :pivot-cols []}
                                               pivot-export-options)
-                                       (assoc :column-titles (mapv :display_name ordered-cols))
+                                       (assoc :column-titles col-names)
                                        (qp.pivot.postprocess/add-totals-settings viz-settings)
                                        qp.pivot.postprocess/add-pivot-measures))
-              ;; col-names are created later when exporting a pivot table, so only create them if there are no pivot options
-              col-names          (when-not opts (common/column-titles ordered-cols (::mb.viz/column-settings viz-settings) format-rows?))
               pivot-grouping-key (qp.pivot.postprocess/pivot-grouping-key col-names)]
 
           ;; initialize the pivot-data
@@ -101,7 +100,7 @@
                    (mapv #(formatter/create-formatter results_timezone % viz-settings format-rows?) ordered-cols))
 
           ;; write the column names for non-pivot tables
-          (when col-names
+          (when (not opts)
             (let [header (m/remove-nth (or pivot-grouping-key (inc (count col-names))) col-names)]
               (write-csv writer [header])
               (.flush writer)))))

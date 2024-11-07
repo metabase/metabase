@@ -207,7 +207,7 @@ be-tests-postgres-latest-ee:
   runs-on: ubuntu-22.04
   timeout-minutes: 60
   env:
-    CI: 'true'
+    CI: "true"
     DRIVERS: postgres
     MB_DB_TYPE: postgres
     MB_DB_PORT: 5432
@@ -217,7 +217,7 @@ be-tests-postgres-latest-ee:
     MB_POSTGRESQL_TEST_USER: circle_test
     MB_POSTGRES_SSL_TEST_SSL: true
     MB_POSTGRES_SSL_TEST_SSL_MODE: verify-full
-    MB_POSTGRES_SSL_TEST_SSL_ROOT_CERT_PATH: 'test-resources/certificates/us-east-2-bundle.pem'
+    MB_POSTGRES_SSL_TEST_SSL_ROOT_CERT_PATH: "test-resources/certificates/us-east-2-bundle.pem"
   services:
     postgres:
       image: circleci/postgres:latest
@@ -228,11 +228,11 @@ be-tests-postgres-latest-ee:
         POSTGRES_DB: circle_test
         POSTGRES_HOST_AUTH_METHOD: trust
   steps:
-  - uses: actions/checkout@v4
-  - name: Test Postgres driver (latest)
-    uses: ./.github/actions/test-driver
-    with:
-      junit-name: 'be-tests-postgres-latest-ee'
+    - uses: actions/checkout@v4
+    - name: Test Postgres driver (latest)
+      uses: ./.github/actions/test-driver
+      with:
+        junit-name: "be-tests-postgres-latest-ee"
 ```
 
 For more on what it is you're doing here and how all this works, see [Workflow syntax for GitHub Actions](https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions).

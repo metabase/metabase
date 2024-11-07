@@ -1,9 +1,24 @@
 /* NOTE: DO NOT ADD COLORS WITHOUT EXTREMELY GOOD REASON AND DESIGN REVIEW
  * NOTE: KEEP SYNCRONIZED WITH:
  * frontend/src/metabase/ui/utils/colors.ts
+ * frontend/src/metabase/lib/colors/palette.ts
  * frontend/src/metabase/styled-components/containers/GlobalStyles/GlobalStyles.tsx
  * frontend/src/metabase/styled-components/theme/css-variables.ts
  */
+
+/* This file contains two types of colors
+ *
+ * 1. Semantic colors
+ * 2. Base colors
+ *
+ * Semantic colors are the colors that are used in the application. They are derived
+ * from the base colors.
+ *
+ * Base colors are the colors that should never change and never be used outside this file,
+ * or in any components or CSS properties. They should only be used to define the semantic
+ * colors in this file.
+*/
+
 :root {
   /* Semantic colors */
   --mb-color-brand: var(--mb-base-color-blue-40);
@@ -74,32 +89,16 @@
   --mb-color-background-inverse: var(--mb-color-bg-black);
   --mb-color-background-brand: var(--mb-base-color-brand-40);
   --mb-color-icon-primary: var(--mb-base-color-brand-40);
+  --mb-color-icon-primary-disabled: var(--mb-base-color-gray-30);
+  --mb-color-icon-secondary: var(--mb-base-color-brand-20);
+  --mb-color-icon-secondary-disabled: var(--mb-base-color-gray-10);
 
   /**
     * Base colors
     *
     * @see https://www.figma.com/design/YxiDXi1DzmXJCTMCuqXaaY/Applying-the-updated-colors?node-id=4001-16486&node-type=FRAME&t=Iwv4nAfH8QF1J5QG-0
-    *
-    * These are the base colors that should never change and never be used
-    * directly in any components or CSS properties. They should only be used
-    * to define the other semantic colors in this file.
-    *
-    * For example. This is how you should use the base color ✅
-    *
-    * .darkTheme {
-    *   --mb-color-border: var(--mb-base-color-some-gray);
-    * }
-    *
-    * This is NOT how you should use the base color ❌
-    *
-    * .someClass {
-    *   color: var(--mb-base-color-white);
-    * }
-    *
-    * or
-    *
-    * <Component someColorProp="var(--mb-base-color-white)" />
-    */
+  */
+
   --mb-base-color-white: #fff;
 
   /* Brand */
@@ -131,7 +130,7 @@
     white 90%
   );
 
-  /* Blue */
+  /* @deprecated Blue */
   --mb-base-color-blue-100: #00172b;
   --mb-base-color-blue-90: #042746;
   --mb-base-color-blue-80: #0a3b67;
@@ -144,7 +143,7 @@
   --mb-base-color-blue-10: #eef6fd; /* baby blue */
   --mb-base-color-blue-5: #f8fbfe;
 
-  /* Gray */
+  /* @deprecated Gray */
   --mb-base-color-gray-100: #121619; /* bg-black */
   --mb-base-color-gray-90: #20272b;
   --mb-base-color-gray-80: #313b42;
@@ -158,17 +157,134 @@
   --mb-base-color-gray-5: #fafbfc;
 
   /* Orion */
-  --mb-base-color-orion-100: #071722;
-  --mb-base-color-orion-90: #182731;
-  --mb-base-color-orion-80: #2f3c45;
-  --mb-base-color-orion-70: #47535b;
-  --mb-base-color-orion-60: #656f76;
-  --mb-base-color-orion-50: #81898e;
-  --mb-base-color-orion-40: #92999e;
-  --mb-base-color-orion-30: #b7bcbf;
-  --mb-base-color-orion-20: #dcdfe0; /* accent-gray-dark */
-  --mb-base-color-orion-10: #f3f3f4; /* accent-gray */
-  --mb-base-color-orion-5: #fafafb; /* accent-gray-light */
+  --mb-base-color-orion-100: hsla(204, 66%, 8%, 1);
+  --mb-base-color-orion-90: hsla(204, 34%, 14%, 1);
+  --mb-base-color-orion-80: hsla(205, 19%, 23%, 1);
+  --mb-base-color-orion-70: hsla(204, 12%, 32%, 1);
+  --mb-base-color-orion-60: hsla(205, 8%, 43%, 1);
+  --mb-base-color-orion-50: hsla(203, 5%, 53%, 1);
+  --mb-base-color-orion-40: hsla(205, 6%, 60%, 1);
+  --mb-base-color-orion-30: hsla(203, 6%, 73%, 1);
+  --mb-base-color-orion-20: hsla(195, 6%, 87%, 1);
+  --mb-base-color-orion-10: hsla(240, 4%, 95%, 1);
+  --mb-base-color-orion-5: hsla(240, 11%, 98%, 1);
+
+  /* Orion Alpha */
+  --mb-base-color-orion-alpha-100: hsla(205, 68%, 8%, 1);
+  --mb-base-color-orion-alpha-90: hsla(204, 66%, 8%, 0.93);
+  --mb-base-color-orion-alpha-80: hsla(204, 66%, 8%, 0.84);
+  --mb-base-color-orion-alpha-70: hsla(204, 66%, 8%, 0.74);
+  --mb-base-color-orion-alpha-60: hsla(204, 66%, 8%, 0.62);
+  --mb-base-color-orion-alpha-50: hsla(204, 66%, 8%, 0.51);
+  --mb-base-color-orion-alpha-40: hsla(204, 66%, 8%, 0.44);
+  --mb-base-color-orion-alpha-30: hsla(204, 66%, 8%, 0.44);
+  --mb-base-color-orion-alpha-20: hsla(204, 66%, 8%, 0.44);
+  --mb-base-color-orion-alpha-10: hsla(204, 66%, 8%, 0.44);
+  --mb-base-color-orion-alpha-5: hsla(204, 66%, 8%, 0.44);
+
+  /* Ocean */
+  --mb-base-color-ocean-100: hsla(208, 100%, 9%, 1);
+  --mb-base-color-ocean-90: hsla(208, 89%, 15%, 1);
+  --mb-base-color-ocean-80: hsla(208, 82%, 22%, 1);
+  --mb-base-color-ocean-70: hsla(208, 80%, 31%, 1);
+  --mb-base-color-ocean-60: hsla(208, 78%, 42%, 1);
+  --mb-base-color-ocean-50: hsla(208, 68%, 53%, 1);
+  --mb-base-color-ocean-40: hsla(208, 72%, 60%, 1);
+  --mb-base-color-ocean-30: hsla(208, 73%, 74%, 1);
+  --mb-base-color-ocean-20: hsla(209, 73%, 88%, 1);
+  --mb-base-color-ocean-10: hsla(208, 79%, 96%, 1);
+  --mb-base-color-ocean-5: hsla(208, 75%, 98%, 1);
+
+  /* Lobster */
+  --mb-base-color-lobster-100: hsla(0, 81%, 11%, 1);
+  --mb-base-color-lobster-90: hsla(1, 75%, 17%, 1);
+  --mb-base-color-lobster-80: hsla(1, 71%, 26%, 1);
+  --mb-base-color-lobster-70: hsla(1, 69%, 37%, 1);
+  --mb-base-color-lobster-60: hsla(1, 67%, 49%, 1);
+  --mb-base-color-lobster-50: hsla(358, 71%, 62%, 1);
+  --mb-base-color-lobster-40: hsla(1, 84%, 69%, 1);
+  --mb-base-color-lobster-30: hsla(1, 85%, 81%, 1);
+  --mb-base-color-lobster-20: hsla(2, 67%, 90%, 1);
+  --mb-base-color-lobster-10: hsla(0, 76%, 97%, 1);
+  --mb-base-color-lobster-5: hsla(0, 100%, 99%, 1);
+
+  /* Flamingo */
+  --mb-base-color-flamingo-100: hsla(334, 75%, 10%, 1);
+  --mb-base-color-flamingo-90: hsla(334, 79%, 17%, 1);
+  --mb-base-color-flamingo-80: hsla(334, 72%, 26%, 1);
+  --mb-base-color-flamingo-70: hsla(334, 71%, 36%, 1);
+  --mb-base-color-flamingo-60: hsla(334, 69%, 48%, 1);
+  --mb-base-color-flamingo-50: hsla(334, 67%, 60%, 1);
+  --mb-base-color-flamingo-40: hsla(334, 80%, 68%, 1);
+  --mb-base-color-flamingo-30: hsla(334, 79%, 80%, 1);
+  --mb-base-color-flamingo-20: hsla(335, 79%, 91%, 1);
+  --mb-base-color-flamingo-10: hsla(335, 67%, 96%, 1);
+  --mb-base-color-flamingo-5: hsla(330, 67%, 99%, 1);
+
+  /* Mango */
+  --mb-base-color-mango-100: hsla(26, 89%, 7%, 1);
+  --mb-base-color-mango-90: hsla(26, 79%, 13%, 1);
+  --mb-base-color-mango-80: hsla(25, 73%, 20%, 1);
+  --mb-base-color-mango-70: hsla(26, 70%, 29%, 1);
+  --mb-base-color-mango-60: hsla(26, 69%, 39%, 1);
+  --mb-base-color-mango-50: hsla(26, 68%, 48%, 1);
+  --mb-base-color-mango-40: hsla(26, 79%, 54%, 1);
+  --mb-base-color-mango-30: hsla(26, 84%, 70%, 1);
+  --mb-base-color-mango-20: hsla(26, 88%, 87%, 1);
+  --mb-base-color-mango-10: hsla(25, 100%, 95%, 1);
+  --mb-base-color-mango-5: hsla(30, 100%, 98%, 1);
+
+  /* Dubloon */
+  --mb-base-color-dubloon-100: hsla(30, 100%, 98%, 1);
+  --mb-base-color-dubloon-90: hsla(46, 88%, 10%, 1);
+  --mb-base-color-dubloon-80: hsla(46, 82%, 15%, 1);
+  --mb-base-color-dubloon-70: hsla(46, 79%, 22%, 1);
+  --mb-base-color-dubloon-60: hsla(46, 76%, 30%, 1);
+  --mb-base-color-dubloon-50: hsla(46, 76%, 37%, 1);
+  --mb-base-color-dubloon-40: hsla(46, 75%, 44%, 1);
+  --mb-base-color-dubloon-30: hsla(46, 81%, 52%, 1);
+  --mb-base-color-dubloon-20: hsla(46, 94%, 74%, 1);
+  --mb-base-color-dubloon-10: hsla(46, 96%, 90%, 1);
+  --mb-base-color-dubloon-5: hsla(46, 96%, 90%, 1);
+
+  /* Palm */
+  --mb-base-color-palm-100: hsla(94, 85%, 5%, 1);
+  --mb-base-color-palm-90: hsla(92, 62%, 10%, 1);
+  --mb-base-color-palm-80: hsla(89, 54%, 16%, 1);
+  --mb-base-color-palm-70: hsla(89, 50%, 24%, 1);
+  --mb-base-color-palm-60: hsla(89, 48%, 32%, 1);
+  --mb-base-color-palm-50: hsla(89, 48%, 40%, 1);
+  --mb-base-color-palm-40: hsla(89, 47%, 45%, 1);
+  --mb-base-color-palm-30: hsla(90, 47%, 60%, 1);
+  --mb-base-color-palm-20: hsla(91, 51%, 81%, 1);
+  --mb-base-color-palm-10: hsla(92, 65%, 92%, 1);
+  --mb-base-color-palm-5: hsla(93, 73%, 97%, 1);
+
+  /* Seafoam */
+  --mb-base-color-seafoam-100: hsla(180, 84%, 5%, 1);
+  --mb-base-color-seafoam-90: hsla(180, 34%, 12%, 1);
+  --mb-base-color-seafoam-80: hsla(180, 80%, 14%, 1);
+  --mb-base-color-seafoam-70: hsla(180, 70%, 21%, 1);
+  --mb-base-color-seafoam-60: hsla(180, 44%, 33%, 1);
+  --mb-base-color-seafoam-50: hsla(180, 74%, 34%, 1);
+  --mb-base-color-seafoam-40: hsla(180, 42%, 46%, 1);
+  --mb-base-color-seafoam-30: hsla(180, 47%, 60%, 1);
+  --mb-base-color-seafoam-20: hsla(180, 55%, 81%, 1);
+  --mb-base-color-seafoam-10: hsla(180, 68%, 93%, 1);
+  --mb-base-color-seafoam-5: hsla(180, 69%, 97%, 1);
+
+  /* Octopus */
+  --mb-base-color-octopus-100: hsla(240, 7%, 9%, 1);
+  --mb-base-color-octopus-90: hsla(240, 7%, 9%, 1);
+  --mb-base-color-octopus-80: hsla(240, 43%, 33%, 1);
+  --mb-base-color-octopus-70: hsla(240, 40%, 46%, 1);
+  --mb-base-color-octopus-60: hsla(240, 46%, 58%, 1);
+  --mb-base-color-octopus-50: hsla(240, 65%, 69%, 1);
+  --mb-base-color-octopus-40: hsla(240, 69%, 74%, 1);
+  --mb-base-color-octopus-30: hsla(240, 49%, 81%, 1);
+  --mb-base-color-octopus-20: hsla(240, 66%, 92%, 1);
+  --mb-base-color-octopus-10: hsla(240, 100%, 97%, 1);
+  --mb-base-color-octopus-5: hsla(240, 100%, 99%, 1);
 }
 
 .textDefault {

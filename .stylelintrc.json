@@ -4,6 +4,7 @@
     "alpha-value-notation": null,
     "color-function-notation": null,
     "custom-property-pattern": null,
+    "hue-degree-notation": null,
     "import-notation": "string",
     "media-feature-range-notation": "prefix",
     "no-descending-specificity": null,
