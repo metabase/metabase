@@ -3,7 +3,6 @@
    [malli.core :as mc]
    [metabase.analytics.prometheus :as prometheus]
    [metabase.models.setting :as setting :refer [defsetting]]
-   [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -128,25 +127,21 @@
   [email]
   (when email-throttler
     (when-some [recipients (into #{} (mapcat email) [:to :bcc])]
-      (let [throttle-threshold (.attempts-threshold ^Throttler email-throttler)
-            throttle-check!    (fn [ignore-if-not-breached?]
-                                 ;; check the the first time to see if we have breached the rate limit
-                                 (throttle/check email-throttler true)
-                                 (let [check-the-rest! (fn []
-                                                            ;; dec because we already checked once above
-                                                           (dotimes [_ (dec (count recipients))]
-                                                             (throttle/check email-throttler true)))]
-                                   (if ignore-if-not-breached?
-                                     (do
-                                      (log/warn "Email throttling is enabled and the number of recipients exceeds the rate limit per second. Skip throttling."
-                                                {:email-subject  (:subject email)
-                                                 :recipients     (count recipients)
-                                                 :max-recipients throttle-threshold})
-                                      (u/ignore-exceptions (check-the-rest!)))
-                                     (check-the-rest!))))]
-        (if (> (count recipients) throttle-threshold)
-          (throttle-check! true)
-          (throttle-check! false))))))
+      (let [throttle-threshold          (.attempts-threshold ^Throttler email-throttler)
+            check-one!                  #(throttle/check email-throttler true)
+            recipients-more-than-limit? (> (count recipients) throttle-threshold)]
+        (check-one!)
+        (try
+          (dotimes [_ (dec (count recipients))]
+            (throttle/check email-throttler true))
+          (catch Exception e
+            (if recipients-more-than-limit?
+              ;; suppress the exception
+              (log/warn "Email throttling is enabled and the number of recipients exceeds the rate limit per second. Skip throttling."
+                        {:email-subject  (:subject email)
+                         :recipients     (count recipients)
+                         :max-recipients throttle-threshold})
+              (throw e))))))))
 
 ;; ## PUBLIC INTERFACE
 
