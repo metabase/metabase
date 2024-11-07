@@ -223,7 +223,8 @@
                                                  (mt/mbql-query checkins
                                                    {:aggregation [[:sum $id]]
                                                     :breakout    [$user_id]}))]
-      (is (= {:perms/view-data      {(mt/id :users) :unrestricted
+      (is (= {:card-ids             #{card-id}
+              :perms/view-data      {(mt/id :users) :unrestricted
                                      (mt/id :checkins) :unrestricted}
               :perms/create-queries {(mt/id :users) :query-builder
                                      (mt/id :checkins) :query-builder}}
@@ -237,6 +238,7 @@
                                          [:field "USER_ID" {:base-type :type/Integer, :join-alias "__alias__"}]]}]
                  :limit 10})
               :throw-exceptions? true)))
+
       (is (= {:perms/view-data      {(mt/id :users) :unrestricted
                                      (mt/id :checkins) :unrestricted}
               :perms/create-queries {(mt/id :users) :query-builder
