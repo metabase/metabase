@@ -8,10 +8,16 @@ import {
 import { setQuestionDisplayType } from "metabase/query_builder/components/chart-type-selector";
 import { getQueryResults, getQuestion } from "metabase/query_builder/selectors";
 import * as Lib from "metabase-lib";
+import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import type {
   MetabotChangeAxesLabelsReaction,
+  MetabotChangeColumnSettingsReaction,
   MetabotChangeDisplayTypeReaction,
+  MetabotChangeGoalLineReaction,
+  MetabotChangeSeriesSettingsReaction,
+  MetabotChangeStackingSettingsReaction,
   MetabotChangeVisiualizationSettingsReaction,
+  MetabotChangeYAxisRangeReaction,
 } from "metabase-types/api";
 
 import { stopProcessingAndNotify } from "../state";
@@ -83,4 +89,87 @@ export const changeAxesLabels: ReactionHandler<
     }
 
     await dispatch(onUpdateVisualizationSettings(settings));
+  };
+
+export const changeSeriesSettings: ReactionHandler<
+  MetabotChangeSeriesSettingsReaction
+> =
+  reaction =>
+  async ({ dispatch, getState }) => {
+    const seriesSettings =
+      getQuestion(getState())?.settings().series_settings ?? {};
+
+    const newSeriesSettings = { ...seriesSettings };
+
+    reaction.series_settings.forEach(settings => {
+      const onlyIncludedSettings = Object.fromEntries(
+        Object.entries(settings).filter(([_, value]) => value !== null),
+      );
+
+      newSeriesSettings[settings.key] = {
+        ...newSeriesSettings[settings.key],
+        ...onlyIncludedSettings,
+      };
+    });
+
+    await dispatch(
+      onUpdateVisualizationSettings({ series_settings: newSeriesSettings }),
+    );
+  };
+
+export const changeColumnSettings: ReactionHandler<
+  MetabotChangeColumnSettingsReaction
+> =
+  reaction =>
+  async ({ dispatch, getState }) => {
+    const columnSettings =
+      getQuestion(getState())?.settings().column_settings ?? {};
+
+    const newColumnSettings = { ...columnSettings };
+
+    reaction.column_settings.forEach(settings => {
+      const columnKey = getColumnKey({ name: settings.key });
+      const onlyIncludedSettings = Object.fromEntries(
+        Object.entries(settings).filter(([_, value]) => value !== null),
+      );
+
+      newColumnSettings[columnKey] = {
+        ...newColumnSettings[columnKey],
+        ...onlyIncludedSettings,
+      };
+    });
+
+    await dispatch(
+      onUpdateVisualizationSettings({ column_settings: newColumnSettings }),
+    );
+  };
+
+export const changeStackingSettings: ReactionHandler<
+  MetabotChangeStackingSettingsReaction
+> =
+  ({ type, ...payload }) =>
+  async ({ dispatch }) => {
+    await dispatch(onUpdateVisualizationSettings(payload));
+  };
+
+export const changeGoalLine: ReactionHandler<MetabotChangeGoalLineReaction> =
+  ({ type, ...payload }) =>
+  async ({ dispatch }) => {
+    const goalLineSettings = Object.fromEntries(
+      Object.entries(payload).filter(([_, value]) => value !== null),
+    );
+
+    await dispatch(onUpdateVisualizationSettings(goalLineSettings));
+  };
+
+export const changeYAxisRange: ReactionHandler<
+  MetabotChangeYAxisRangeReaction
+> =
+  ({ type, ...payload }) =>
+  async ({ dispatch }) => {
+    const yAxisSettings = Object.fromEntries(
+      Object.entries(payload).filter(([_, value]) => value !== null),
+    );
+
+    await dispatch(onUpdateVisualizationSettings(yAxisSettings));
   };

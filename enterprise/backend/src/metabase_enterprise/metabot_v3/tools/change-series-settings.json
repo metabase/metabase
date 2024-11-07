@@ -1,0 +1,87 @@
+{
+  "name": "change-series-settings",
+  "description": "Change visualization settings for series on cartesian charts. Make sure that the visualization type is `line`, `bar`, `area`, or `combo` before calling this tool.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "series_settings": {
+        "type": "array",
+        "description": "Settings for series. Only include for series which you want to change. Every object in the array should have a key property that matches the series key in series_settings map. You must not include properties that should not be changed.",
+        "items": {
+          "type": "object",
+          "properties": {
+            "key": {
+              "type": "string",
+              "description": "The series key in series_settings map."
+            },
+            "title": {
+              "type": "string",
+              "description": "The title of the series.",
+              "nullable": true
+            },
+            "color": {
+              "type": "string",
+              "description": "The color of the series. You must use colors from the color palette only. If asked for a specific color, you must use a color from the palette only and select the closest match. When there are multiple series, you should try to use different colors for each series.",
+              "nullable": true
+            },
+            "show_series_values": {
+              "type": "boolean",
+              "description": "Whether to show the series values.",
+              "nullable": true
+            },
+            "axis": {
+              "type": "string",
+              "enum": ["left", "right"],
+              "description": "Set the Y-axis of the series to left or right.",
+              "nullable": true
+            },
+            "line.size": {
+              "type": "string",
+              "enum": ["S", "M", "L"],
+              "description": "Set the thickness of a line series.",
+              "nullable": true
+            },
+            "line.style": {
+              "type": "string",
+              "enum": ["solid", "dashed", "dotted"],
+              "description": "Set the style of the line.",
+              "nullable": true
+            },
+            "line.interpolate": {
+              "type": "string",
+              "enum": ["linear", "cardinal", "step-after"],
+              "description": "Set the interpolation method for the lines and areas only.",
+              "nullable": true
+            },
+            "line.marker_enabled": {
+              "type": "boolean",
+              "description": "Set whether to show the marker on the line and area series.",
+              "nullable": true
+            },
+            "line.missing": {
+              "type": "string",
+              "enum": ["none", "zero", "interpolate"],
+              "description": "Set the value how to handle missing data points.",
+              "nullable": true
+            }
+          },
+          "required": [
+            "key",
+            "title",
+            "color",
+            "show_series_values",
+            "axis",
+            "line.size",
+            "line.style",
+            "line.interpolate",
+            "line.marker_enabled",
+            "line.missing"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    "required": ["series_settings"],
+    "additionalProperties": false
+  }
+}

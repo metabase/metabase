@@ -1,0 +1,26 @@
+{
+  "name": "change-y-axis-range",
+  "description": "Change the Y-axis range settings for a chart. You can control whether the range is automatic or set custom min/max values. Make sure that the visualization type is `line`, `bar`, `area`, `combo`, `scatter` or `waterfall` before calling this tool.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "auto_range": {
+        "type": ["boolean", "null"],
+        "description": "Whether to automatically determine the Y-axis range.",
+        "nullable": true
+      },
+      "min": {
+        "type": ["number", "null"],
+        "description": "The minimum value for the Y-axis. Only applied when auto_range is false.",
+        "nullable": true
+      },
+      "max": {
+        "type": ["number", "null"],
+        "description": "The maximum value for the Y-axis. Only applied when auto_range is false.",
+        "nullable": true
+      }
+    },
+    "required": ["auto_range", "min", "max"],
+    "additionalProperties": false
+  }
+}

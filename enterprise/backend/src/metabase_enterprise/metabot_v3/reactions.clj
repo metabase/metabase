@@ -170,3 +170,63 @@
    [:type [:= :metabot.reaction/change-axes-labels]]
    [:x_axis_label [:maybe :string]]
    [:y_axis_label [:maybe :string]]])
+
+(defreaction :metabot.reaction/change-series-settings
+  [:map
+   [:type [:= :metabot.reaction/change-series-settings]]
+   [:series_settings [:vector [:map
+                              [:key :string]
+                              [:title {:optional true} [:maybe :string]]
+                              [:color {:optional true} [:maybe :string]]
+                              [:show_series_values {:optional true} [:maybe boolean?]]
+                              [:line.size {:optional true} [:maybe [:enum "S" "M" "L"]]]
+                              [:line.style {:optional true} [:maybe [:enum "solid" "dashed" "dotted"]]]
+                              [:line.interpolate {:optional true} [:maybe [:enum "linear" "cardinal" "step-after"]]]
+                              [:line.marker_enabled {:optional true} [:maybe boolean?]]
+                              [:line.missing {:optional true} [:maybe [:enum "none" "zero" "interpolate"]]]
+                              [:axis {:optional true} [:maybe [:enum "left" "right"]]]]]]])
+
+(defreaction :metabot.reaction/change-column-settings
+  [:map
+   [:type [:= :metabot.reaction/change-column-settings]]
+   [:column_settings [:vector [:map
+                             [:key :string]
+                             [:column_title {:optional true} [:maybe :string]]
+                             [:date_abbreviate {:optional true} [:maybe boolean?]]
+                             [:date_format {:optional true} [:maybe :string]]
+                             [:date_separator {:optional true} [:maybe [:enum "/" "-" "."]]]
+                             [:date_style {:optional true} [:maybe [:enum
+                                                                  "MMMM D, YYYY"
+                                                                  "D MMMM, YYYY"
+                                                                  "dddd, MMMM D, YYYY"
+                                                                  "M/D/YYYY"
+                                                                  "D/M/YYYY"
+                                                                  "YYYY/M/D"]]]
+                             [:decimals {:optional true} [:maybe :int]]
+                             [:link_text {:optional true} [:maybe :string]]
+                             [:link_url {:optional true} [:maybe :string]]
+                             [:number_separators {:optional true} [:maybe :string]]
+                             [:number_style {:optional true} [:maybe :string]]
+                             [:prefix {:optional true} [:maybe :string]]
+                             [:show_mini_bar {:optional true} [:maybe boolean?]]
+                             [:suffix {:optional true} [:maybe :string]]
+                             [:view_as {:optional true} [:maybe [:enum "link" "email_link" "image" "auto"]]]]]]])
+
+(defreaction :metabot.reaction/change-stacking-settings
+  [:map
+   [:type [:= :metabot.reaction/change-stacking-settings]]
+   [:stack_type {:optional true} [:maybe [:enum "stacked" "normalized"]]]])
+
+(defreaction :metabot.reaction/change-goal-line
+  [:map
+   [:type [:= :metabot.reaction/change-goal-line]]
+   [:goal_value {:optional true} [:maybe number?]]
+   [:show_goal {:optional true} [:maybe boolean?]]
+   [:goal_label {:optional true} [:maybe :string]]])
+
+(defreaction :metabot.reaction/change-y-axis-range
+  [:map
+   [:type [:= :metabot.reaction/change-y-axis-range]]
+   ["graph.y_axis.auto_range" {:optional true} [:maybe boolean?]]
+   ["graph.y_axis.min" {:optional true} [:maybe number?]]
+   ["graph.y_axis.max" {:optional true} [:maybe number?]]])
