@@ -4,6 +4,34 @@
   "parameters": {
     "type": "object",
     "properties": {
+      "string_filters": {
+        "type": [
+          "array",
+          "null"
+        ],
+        "description": "A list of string filters to apply to the current query. Each string filter requires a column, an operator, and a value.",
+        "items": {
+          "type": "object",
+          "description": "A numeric filter clause.",
+          "properties": {
+            "column": {
+              "type": "string",
+              "description": "The column to apply filter for. Choose an appropriate column name based on user input from string_filterable_columns list."
+            },
+            "operator": {
+              "type": "string",
+              "description": "String filter operator.",
+              "enum": ["=", "!=", "contains", "does-not-contain", "starts-with", "ends-with"]
+            },
+            "value": {
+              "type": "string",
+              "description": "The filter value."
+            }
+          },
+          "required": ["operator", "column", "value"],
+          "additionalProperties": false
+        }
+      },
       "number_filters": {
         "type": [
           "array",
@@ -186,6 +214,7 @@
       }
     },
     "required": [
+      "string_filters",
       "number_filters",
       "relative_date_filters",
       "aggregations",

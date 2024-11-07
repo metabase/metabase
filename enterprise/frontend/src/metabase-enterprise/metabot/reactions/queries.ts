@@ -9,11 +9,35 @@ import type {
   MetabotNumberFilterDetails,
   MetabotOrderByQueryDetails,
   MetabotRelativeDateFilterDetails,
+  MetabotStringFilterDetails,
 } from "metabase-types/api";
 
 import type { ReactionHandler } from "./types";
 
 const STAGE_INDEX = -1;
+
+function addStringFilter(
+  query: Lib.Query,
+  details: MetabotStringFilterDetails,
+) {
+  const availableColumns = Lib.filterableColumns(query, STAGE_INDEX);
+  const selectedColumn = availableColumns.find(
+    column =>
+      Lib.displayInfo(query, STAGE_INDEX, column).displayName ===
+      details.column,
+  );
+  if (!selectedColumn) {
+    return query;
+  }
+
+  const newClause = Lib.stringFilterClause({
+    column: selectedColumn,
+    operator: details.operator,
+    values: [details.value],
+    options: {},
+  });
+  return Lib.filter(query, STAGE_INDEX, newClause);
+}
 
 function addNumberFilter(
   query: Lib.Query,
@@ -143,6 +167,7 @@ export const changeQuery: ReactionHandler<MetabotChangeQueryReaction> =
     }
 
     let query = question.query();
+    query = reaction.string_filters.reduce(addStringFilter, query);
     query = reaction.number_filters.reduce(addNumberFilter, query);
     query = reaction.relative_date_filters.reduce(addRelativeDateFilter, query);
     query = reaction.aggregations.reduce(addAggregation, query);

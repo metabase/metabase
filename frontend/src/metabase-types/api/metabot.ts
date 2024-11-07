@@ -77,6 +77,18 @@ export type MetabotApiCallReaction = {
   };
 };
 
+export type MetabotStringFilterDetails = {
+  column: string;
+  operator:
+    | "="
+    | "!="
+    | "contains"
+    | "does-not-contain"
+    | "starts-with"
+    | "ends-with";
+  value: string;
+};
+
 export type MetabotNumberFilterDetails = {
   column: string;
   operator: "=" | "!=" | ">" | "<" | ">=" | "<=";
@@ -110,6 +122,7 @@ export type MetabotLimitQueryDetails = {
 
 export type MetabotChangeQueryReaction = {
   type: "metabot.reaction/change-query";
+  string_filters: MetabotStringFilterDetails[];
   number_filters: MetabotNumberFilterDetails[];
   relative_date_filters: MetabotRelativeDateFilterDetails[];
   aggregations: MetabotAggregateQueryDetails[];

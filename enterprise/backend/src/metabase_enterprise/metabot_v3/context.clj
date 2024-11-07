@@ -62,7 +62,11 @@
                  query              (lib/query metadata-provider query)
                  filterable-columns (lib/filterable-columns query)]
              {:current_query
-              {:number_filterable_columns (into []
+              {:string_filterable_columns (into []
+                                              (comp (filter lib.types.isa/string?)
+                                                    (map #(lib/display-name query %)))
+                                              filterable-columns)
+               :number_filterable_columns (into []
                                               (comp (filter lib.types.isa/numeric?)
                                                     (map #(lib/display-name query %)))
                                               filterable-columns)

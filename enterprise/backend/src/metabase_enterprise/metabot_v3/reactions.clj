@@ -134,6 +134,10 @@
 
 (defreaction :metabot.reaction/change-query
   [:map
+   [:string-filters [:vector [:map
+                              [:column :string]
+                              [:operator [:enum "=" "!=" "contains" "does-not-contain" "starts-with" "ends-with"]]
+                              [:value :string]]]]
    [:number-filters [:vector [:map
                               [:column :string]
                               [:operator [:enum "=" "!=" ">" "<" ">=" "<="]]
