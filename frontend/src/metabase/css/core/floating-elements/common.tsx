@@ -13,6 +13,7 @@ import {
   type ButtonProps,
   Flex,
   Group,
+  HoverCard,
   Icon,
   Menu as MantineMenu,
   Modal as MantineModal,
@@ -47,35 +48,45 @@ const _Launchers = ({
   setEntityPickerCount: Dispatch<SetStateAction<number>>;
   setCommandPaletteCount: Dispatch<SetStateAction<number>>;
 }) => {
-  const titleSuffix = nested ? " (nested)" : "";
+  const note = nested ? " (nested)" : "";
   return (
     <Group>
-      <MantineTooltip withinPortal label={"Tooltip content" + titleSuffix}>
-        <Button w="20rem">Mantine tooltip target {titleSuffix}</Button>
+      <MantineTooltip withinPortal label={"Tooltip content" + note}>
+        <Button w="20rem">Mantine tooltip target {note}</Button>
       </MantineTooltip>
       <MantinePopover withinPortal>
         <MantinePopover.Target>
-          <Button w="20rem">Mantine popover target {titleSuffix}</Button>
+          <Button w="20rem">Mantine popover target {note}</Button>
         </MantinePopover.Target>
         <MantinePopover.Dropdown>
-          <Paper p="md">Popover content {titleSuffix}</Paper>
+          <Paper p="md">Popover content {note}</Paper>
         </MantinePopover.Dropdown>
       </MantinePopover>
       <MantineMenu>
         <MantineMenu.Target>
-          Mantine Menu target {titleSuffix}
+          <Button>Mantine Menu target {note}</Button>
         </MantineMenu.Target>
         <MantineMenu.Dropdown>
-          Mantine Menu dropdown content {titleSuffix}
+          <MantineMenu.Item>Item 1</MantineMenu.Item>
+          <MantineMenu.Item>Item 2</MantineMenu.Item>
+          <MantineMenu.Divider />
+          <MantineMenu.Item>Item 3</MantineMenu.Item>
+          <MantineMenu.Item>Item 4</MantineMenu.Item>
         </MantineMenu.Dropdown>
       </MantineMenu>
-      <TippyTooltip tooltip={"Tooltip content" + titleSuffix}>
-        <Button w="20rem">Legacy tooltip target {titleSuffix}</Button>
+      <HoverCard>
+        <HoverCard.Target>
+          <Button>HoverCard target {note}</Button>
+        </HoverCard.Target>
+        <HoverCard.Dropdown>
+          <Paper p="md">HoverCard dropdown content {note}</Paper>
+        </HoverCard.Dropdown>
+      </HoverCard>
+      <TippyTooltip tooltip={"Tooltip content" + note}>
+        <Button w="20rem">Legacy tooltip target {note}</Button>
       </TippyTooltip>
-      <TippyPopover
-        content={<Paper p="md">Popover content {titleSuffix}</Paper>}
-      >
-        <Button w="20rem">Legacy popover target {titleSuffix} </Button>
+      <TippyPopover content={<Paper p="md">Popover content {note}</Paper>}>
+        <Button w="20rem">Legacy popover target {note} </Button>
       </TippyPopover>
       <Button onClick={() => setLegacyModalCount(c => c + 1)}>
         Legacy modal
