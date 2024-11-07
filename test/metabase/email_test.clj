@@ -12,7 +12,9 @@
    [metabase.util :as u :refer [prog1]]
    [metabase.util.retry :as retry]
    [metabase.util.retry-test :as rt]
-   [postal.message :as message])
+   [postal.core :as postal]
+   [postal.message :as message]
+   [throttle.core :as throttle])
   (:import
    (java.io File)
    (javax.activation MimeType)))
@@ -359,3 +361,81 @@
               (is (re-find
                    #"(?s)Content-Disposition: attachment.+filename=.+this-is-quite-[\-\s?=0-9a-zA-Z]+-characters.csv"
                    (m/mapply email/send-message! params-with-problematic-file))))))))))
+
+(deftest throttle-test
+  (let [send-email (fn [recipients]
+                     (with-redefs [postal/send-message (fn [& args] (last args))]
+                       (email/send-email!
+                        {}
+                        (merge {:from    "awesome@metabase.com"
+                                :subject "101 Reasons to use Metabase"
+                                :body    "101. Metabase will make you a better person"}
+                               recipients))))]
+    (tu/with-temporary-setting-values
+      [email-smtp-host "fake_smtp_host"
+       email-smtp-port 587]
+      (testing "throttle based on the number of recipients"
+        (testing "with 3 separate emails"
+          (with-redefs [email/email-throttler (#'email/make-email-throttler 3)]
+            (testing "ok if there is no recipient"
+              (is (some? (send-email {}))))
+            (is (some? (send-email {:to ["1@metabase.com"]})))
+            (is (some? (send-email {:bcc ["2@metabase.com"]})))
+            (is (some? (send-email {:to ["3@metabase.com"]})))
+            (is (thrown-with-msg?
+                 Exception
+                 #"Too many attempts!.*"
+                 (send-email {:to ["4@metabase.com"]})))
+            (testing "still ok if there is no recipient"
+              (is (some? (send-email {})))))
+
+          (testing "with 1 small then 1 big event"
+            (with-redefs [email/email-throttler (#'email/make-email-throttler 3)]
+              (is (some? (send-email {:to ["1@metabase.com"]})))
+              (is (some? (send-email {:bcc ["2@metabase.com"]
+                                      :to ["3@metabase.com"]})))
+              (is (thrown-with-msg?
+                   Exception
+                   #"Too many attempts!.*"
+                   (send-email {:to ["4@metabase.com"]})))))))
+
+      (testing "if an email has # of recipients greater than the limit"
+        (testing "we skip throttle check if we haven't reached the limit"
+          (with-redefs [email/email-throttler (#'email/make-email-throttler 3)]
+            (is (some? (send-email {:to ["1@metabase.com"]})))
+            ;; this one got through because we haven't reached the limit
+            (is (some? (send-email {:to ["2@metabase.com" "3@metabase.com"]
+                                    :bcc ["4@metabase.com" "5@metabase.com"]})))
+            (testing "senidng another will fail because we maxed-out the limit"
+              (is (thrown-with-msg?
+                   Exception
+                   #"Too many attempts!.*"
+                   (send-email {:to ["6@metabase.com"]}))))))
+
+        (testing "still throttle if we already at limit"
+          (with-redefs [email/email-throttler (#'email/make-email-throttler 3)]
+            ;; mx otu the limit
+            (is (some? (send-email {:to ["1@metabase.com" "2@metabase.com" "3@metabase.com"]})))
+            (testing "but still max-out the limit"
+              (is (thrown-with-msg?
+                   Exception
+                   #"Too many attempts!.*"
+                   (send-email {:to ["4@metabase.com" "5@metabase.com" "6@metabase.com" "7@metabase.com"]})))))))
+
+      (testing "keep retrying will eventually send the email"
+        (with-redefs [email/email-throttler (throttle/make-throttler
+                                             :email
+                                             :attempt-ttl-ms     100
+                                             :initial-delay-ms   100
+                                             :attempts-threshold 3)]
+          (is (some? (send-email {:to ["1@metabase.com" "2@metabase.com" "3@metabase.com"]})))
+          (is (thrown-with-msg?
+               Exception
+               #"Too many attempts!.*"
+               (send-email {:to ["4@metabase.com"]})))
+          (is (some? (u/poll {:thunk       (fn [] (try (send-email {:to ["4@metabase.com"]})
+                                                       (catch Exception _
+                                                         nil)))
+                              :done?       some?
+                              :timeout-ms  200
+                              :interval-ms 10}))))))))
