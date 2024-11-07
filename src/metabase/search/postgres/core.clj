@@ -93,7 +93,7 @@
 (defn- rehydrate [index-row]
   (-> (merge
        (json/parse-string (:legacy_input index-row) keyword)
-       (select-keys #p index-row [:total_score :pinned]))
+       (select-keys index-row [:total_score :pinned]))
       (update :created_at parse-datetime)
       (update :updated_at parse-datetime)
       (update :last_edited_at parse-datetime)))
