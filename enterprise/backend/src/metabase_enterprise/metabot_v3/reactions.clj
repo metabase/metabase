@@ -135,7 +135,7 @@
 (defreaction :metabot.reaction/string-filter-query
   [:map
    [:column :string]
-   [:operator [:enum "=" "!=" "contains" "does-not-contain" "starts-with" "ends-with"]]
+   [:operator [:enum "is-empty" "not-empty" "=" "!=" "contains" "does-not-contain" "starts-with" "ends-with"]]
    [:values [:vector :string]]])
 
 (defreaction :metabot.reaction/boolean-filter-query
@@ -147,8 +147,7 @@
   [:map
    [:column :string]
    [:value [:or [:enum "current"] integer?]]
-   [:unit [:enum "day", "week", "month", "quarter", "year"]]
-   [:include_current :boolean]])
+   [:unit [:enum "day", "week", "month", "quarter", "year"]]])
 
 (defreaction :metabot.reaction/aggregate-query
   [:map

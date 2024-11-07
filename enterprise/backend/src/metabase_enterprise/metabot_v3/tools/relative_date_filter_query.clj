@@ -8,13 +8,12 @@
   (some? (:current_query context)))
 
 (mu/defmethod metabot-v3.tools.interface/*invoke-tool* :metabot.tool/relative-date-filter-query
-  [_tool-name {:keys [column direction value unit include_current], :as _argument-map}]
+  [_tool-name {:keys [column direction value unit], :as _argument-map}]
   {:reactions [{:type :metabot.reaction/relative-date-filter-query
                 :column column
                 :value (condp = direction
                          "current" "current"
                          "last"   (- (abs value))
                          "next"   (abs value))
-                :unit  unit
-                :include_current include_current}]
+                :unit  unit}]
    :output "success"})

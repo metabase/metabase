@@ -101,7 +101,6 @@ export type MetabotRelativeDateFilterQueryReaction = {
   column: string;
   value: number | "current";
   unit: "day" | "week" | "month" | "quarter" | "year";
-  include_current: boolean;
 };
 
 export type MetabotAggregateQueryReaction = {

@@ -10,16 +10,15 @@
       },
       "operator": {
         "type": "string",
-        "description": "The filter operator. '=' means equals to. '!=' means not equals to.",
-        "enum": ["=", "!=", "contains", "does-not-contain", "starts-with", "ends-with"]
+        "description": "The filter operator. '=' means equals to. '!=' means not equals to. For 'is-empty' and 'not-empty' operators set an empty values array. Other operators support multiple values and require a least 1 value to be set.",
+        "enum": ["is-empty", "not-empty","=", "!=", "contains", "does-not-contain", "starts-with", "ends-with"]
       },
       "values": {
         "type": "array",
         "description": "Filter values.",
         "items": {
           "type": "string"
-        },
-        "minItems": 1
+        }
       }
     },
     "additionalProperties": false,
