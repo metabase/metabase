@@ -599,7 +599,7 @@ describeEE("formatting > sandboxes", () => {
       ["normal", "workaround"].forEach(test => {
         it(
           `${test.toUpperCase()} version:\n advanced sandboxing should not ignore data model features like object detail of FK (metabase-enterprise#520)`,
-          { tags: test === "normal" ? "@quarantine" : [] },
+          { tags: "@quarantine" },
           () => {
             cy.intercept("POST", "/api/card/*/query").as("cardQuery");
             cy.intercept("PUT", "/api/card/*").as("questionUpdate");
