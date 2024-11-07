@@ -77,6 +77,12 @@ export type MetabotApiCallReaction = {
   };
 };
 
+export type MetabotNumberFilterDetails = {
+  column: string;
+  operator: "=" | "!=" | ">" | "<" | ">=" | "<=";
+  value: number;
+};
+
 export type MetabotRelativeDateFilterDetails = {
   column: string;
   direction: "last" | "current" | "next";
@@ -104,6 +110,7 @@ export type MetabotLimitQueryDetails = {
 
 export type MetabotChangeQueryReaction = {
   type: "metabot.reaction/change-query";
+  number_filter_details: MetabotNumberFilterDetails[] | null;
   relative_date_filters: MetabotRelativeDateFilterDetails[] | null;
   aggregations: MetabotAggregateQueryDetails[] | null;
   breakouts: MetabotBreakoutQueryDetails[] | null;

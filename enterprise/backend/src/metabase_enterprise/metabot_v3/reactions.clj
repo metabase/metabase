@@ -134,6 +134,10 @@
 
 (defreaction :metabot.reaction/change-query
   [:map
+   [:number-filters [:maybe [:vector [:map
+                                      [:column :string]
+                                      [:operator [:enum "=" "!=" ">" "<" ">=" "<="]]
+                                      [:value number?]]]]]
    [:relative-date-filters [:maybe [:vector [:map
                                              [:column :string]
                                              [:direction [:enum "last" "current" "next"]]

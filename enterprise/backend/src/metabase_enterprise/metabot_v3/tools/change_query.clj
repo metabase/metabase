@@ -8,8 +8,14 @@
   (some? (:current_query context)))
 
 (mu/defmethod metabot-v3.tools.interface/*invoke-tool* :metabot.tool/change-query
-  [_tool-name {:keys [relative-date-filters aggregations breakouts order-bys limits], :as _argument-map}]
+  [_tool-name {:keys [number-filters
+                      relative-date-filters
+                      aggregations
+                      breakouts
+                      order-bys
+                      limits], :as _argument-map}]
   {:reactions [{:type                  :metabot.reaction/change-query
+                :number-filters        number-filters
                 :relative-date-filters relative-date-filters
                 :aggregations          aggregations
                 :breakouts             breakouts

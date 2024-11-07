@@ -62,13 +62,17 @@
                  query              (lib/query metadata-provider query)
                  filterable-columns (lib/filterable-columns query)]
              {:current_query
-              {:date_filterable_columns (into []
-                                              (comp (filter lib.types.isa/date-or-datetime?)
+              {:number_filterable_columns (into []
+                                              (comp (filter lib.types.isa/numeric?)
                                                     (map #(lib/display-name query %)))
                                               filterable-columns)
-               :aggregation_operators   (mapv #(lib/display-name query %)
-                                              (lib/available-aggregation-operators query))
-               :breakoutable_columns    (mapv #(lib/display-name query %)
-                                              (lib/breakoutable-columns query))
-               :orderable_columns       (mapv #(lib/display-name query %)
-                                              (lib/orderable-columns query))}}))))
+               :date_filterable_columns   (into []
+                                                (comp (filter lib.types.isa/date-or-datetime?)
+                                                      (map #(lib/display-name query %)))
+                                                filterable-columns)
+               :aggregation_operators     (mapv #(lib/display-name query %)
+                                                (lib/available-aggregation-operators query))
+               :breakoutable_columns      (mapv #(lib/display-name query %)
+                                                (lib/breakoutable-columns query))
+               :orderable_columns         (mapv #(lib/display-name query %)
+                                                (lib/orderable-columns query))}}))))
