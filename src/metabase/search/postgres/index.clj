@@ -75,12 +75,15 @@
 
       ;; TODO I strongly suspect that there are more indexes that would help performance, we should examine EXPLAIN.
 
-      (let [idx_prefix (str/replace (str (name active-table) "_" (random-uuid)) #"-" "_")
+      (let [idx-prefix (str/replace (str (name active-table) "_" (random-uuid)) #"-" "_")
             table-name (name pending-table)]
-        (t2/query
-         (format "CREATE UNIQUE INDEX IF NOT EXISTS %s_identity_idx ON %s (model, model_id)" idx_prefix table-name))
-        (t2/query
-         (format "CREATE INDEX IF NOT EXISTS %s_tsvector_idx ON %s USING gin (search_vector)" idx_prefix table-name))))
+        (doseq [stmt ["CREATE UNIQUE INDEX IF NOT EXISTS %s_identity_idx ON %s (model, model_id)"
+                      "CREATE INDEX IF NOT EXISTS %s_tsvector_idx ON %s USING gin (search_vector)"
+                      ;; Spam all the indexes for now, let's see if they get used on Stats / Ephemeral envs.
+                      "CREATE INDEX IF NOT EXISTS %s_model_idx ON %s (model)"
+                      "CREATE INDEX IF NOT EXISTS %s_model_archived_idx ON %s (model, archived)"
+                      "CREATE INDEX IF NOT EXISTS %s_archived_idx ON %s (archived)"]]
+          (t2/query (format stmt idx-prefix table-name)))))
 
     (reset! reindexing? true)))
 
