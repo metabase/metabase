@@ -51,10 +51,10 @@
 
 (defn- select-items [scorers]
   (concat
-        (for [[column-alias expr] scorers]
-          [expr column-alias])
-        [[(sum-columns (map weighted-score scorers))
-          :total_score]] ))
+   (for [[column-alias expr] scorers]
+     [expr column-alias])
+   [[(sum-columns (map weighted-score scorers))
+     :total_score]]))
 
 (defn- scorers [{:keys [stale-time-in-days dashboard-count-ceiling model-count]}]
   {:text      [:ts_rank :search_vector :query]
@@ -81,8 +81,7 @@
   (sql/format
    (apply sql.helpers/select {:from :a}
           (select-items {:a (truthy :pinned)
-                         :b (duration-fraction [:now] :updated_at search.config/stale-time-in-days)})))
+                         :b (duration-fraction [:now] :updated_at search.config/stale-time-in-days)}))))
 
-  )
 (sql/format
  (apply sql.helpers/select {:from :search_index} select-items-4real))
