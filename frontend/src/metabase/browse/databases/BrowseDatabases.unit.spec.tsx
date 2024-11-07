@@ -60,5 +60,12 @@ describe("BrowseDatabases", () => {
 
       expect(screen.getByText("Add a database")).toBeInTheDocument();
     });
+
+    it("should render when no databases exist", async () => {
+      renderBrowseDatabases(0, { isAdmin: true });
+      await waitForLoaderToBeRemoved();
+
+      expect(screen.getByText("Add a database")).toBeInTheDocument();
+    });
   });
 });

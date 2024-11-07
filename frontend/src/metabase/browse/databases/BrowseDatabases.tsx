@@ -47,7 +47,7 @@ export const BrowseDatabases = () => {
     return <LoadingAndErrorWrapper loading />;
   }
 
-  if (!databases?.length) {
+  if (!databases?.length && !isAdmin) {
     return (
       <CenteredEmptyState
         title={<Box mb=".5rem">{t`No databases here yet`}</Box>}
@@ -66,19 +66,22 @@ export const BrowseDatabases = () => {
       <BrowseMain>
         <BrowseSection>
           <BrowseGrid data-testid="database-browser">
-            {databases.map(database => (
-              <Link to={Urls.browseDatabase(database)} key={database.id}>
-                <DatabaseCard
-                  bg="bg-white"
-                  className={cx(CS.rounded, CS.bordered, DB.dbCard)}
-                >
-                  <Icon name="database" color={color("accent2")} size={32} />
-                  <Title order={2} size="md" lh="md" color="inherit">
-                    {database.name}
-                  </Title>
-                </DatabaseCard>
-              </Link>
-            ))}
+            {databases &&
+              databases.length > 0 &&
+              databases.map(database => (
+                <Link to={Urls.browseDatabase(database)} key={database.id}>
+                  <DatabaseCard
+                    bg="bg-white"
+                    className={cx(CS.rounded, CS.bordered, DB.dbCard)}
+                  >
+                    <Icon name="database" color={color("accent2")} size={32} />
+                    <Title order={2} size="md" lh="md" color="inherit">
+                      {database.name}
+                    </Title>
+                  </DatabaseCard>
+                </Link>
+              ))}
+
             {isAdmin && (
               <Link to={newDatabase()}>
                 <DatabaseCard
