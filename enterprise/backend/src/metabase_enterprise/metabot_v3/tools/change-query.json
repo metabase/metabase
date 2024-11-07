@@ -16,7 +16,7 @@
               "description": "The aggregation operator name. Choose an appropriate aggregation operator based on user input from aggregation_operators list."
             },
             "column": {
-              "type": "string",
+              "type": ["string", "null"],
               "description": "The column to apply aggregation for. Choose an appropriate column name based on user input from breakoutable_columns list."
             }
           },
@@ -52,7 +52,7 @@
               "description": "The column to apply sorting for. Choose an appropriate column name based on user input from orderable_columns list."
             },
             "direction": {
-              "type": "string",
+              "type": ["string", "null"],
               "description": "Optional direction of sorting. Can be ascending or descending",
               "enum": ["asc", "desc"]
             }
