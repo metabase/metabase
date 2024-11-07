@@ -31,8 +31,15 @@ export function createVisualizerColumnReference(
   column: DatasetColumn,
   otherReferencedColumns: VisualizerReferencedColumn[],
 ): VisualizerReferencedColumn {
-  let name = column.name;
+  const alreadyReferenced = otherReferencedColumns.find(
+    ref =>
+      ref.sourceId === dataSource.id && ref.columnKey === getColumnKey(column),
+  );
+  if (alreadyReferenced) {
+    return alreadyReferenced;
+  }
 
+  let name = column.name;
   const hasDuplicate = otherReferencedColumns.some(ref => ref.name === name);
   if (hasDuplicate) {
     name = `${dataSource.name} - ${name}`;
