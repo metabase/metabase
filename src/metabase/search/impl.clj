@@ -381,7 +381,7 @@
   "Builds a search query that includes all the searchable entities, and runs it."
   [search-ctx :- search.config/SearchContext]
   (let [reducible-results (search.api/results search-ctx)
-        scoring-ctx       (select-keys search-ctx [:search-string :search-native-query])
+        scoring-ctx       (select-keys search-ctx [:search-engine :search-string :search-native-query])
         xf                (comp
                            (take search.config/*db-max-results*)
                            (map normalize-result)
