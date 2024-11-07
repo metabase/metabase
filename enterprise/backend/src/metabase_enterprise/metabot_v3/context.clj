@@ -75,6 +75,7 @@
                                                               (map #(lib/display-name query %)))
                                                         filterable-columns))
                                                 {:string  lib.types.isa/string?
+                                                 :number  lib.types.isa/numeric?
                                                  :boolean lib.types.isa/boolean?
                                                  :date    lib.types.isa/date-or-datetime?})
                :breakoutable_columns  (mapv #(lib/display-name query %)
