@@ -23,8 +23,7 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.markdown :as markdown]
    [metabase.util.urls :as urls]
-   [ring.util.codec :as codec]
-   [stencil.core :as stencil]))
+   [ring.util.codec :as codec]))
 
 (def ^:private EmailMessage
   [:map
@@ -82,10 +81,10 @@
   (case (keyword (:type details))
     :email/handlebars-resource
     (handlebars/render (:path details) payload)
-    #_(stencil/render-file (:path details) payload)
+
     :email/handlebars-text
     (handlebars/render-string (:body details) payload)
-    #_(stencil/render-string (:body details) payload)
+
     (do
       (log/warnf "Unknown email template type: %s" (:type details))
       nil)))
