@@ -126,7 +126,7 @@
   We need a) to to avoid creating regression bugs due to the new throttling mechanism."
   [email]
   (when email-throttler
-    (when-some [recipients (into #{} (mapcat email) [:to :bcc])]
+    (when-let [recipients (not-empty (into #{} (mapcat email) [:to :bcc]))]
       (let [throttle-threshold (.attempts-threshold ^Throttler email-throttler)
             check-one!         #(throttle/check email-throttler true)]
         (check-one!)
