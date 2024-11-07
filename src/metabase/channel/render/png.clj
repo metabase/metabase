@@ -9,8 +9,8 @@
   (:require
    [clojure.walk :as walk]
    [hiccup.core :refer [html]]
+   [metabase.channel.render.body :as body]
    [metabase.channel.render.style :as style]
-   [metabase.formatter :as formatter]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu])
   (:import
@@ -123,7 +123,7 @@
 
 (mu/defn render-html-to-png :- bytes?
   "Render the Hiccup HTML `content` of a Pulse to a PNG image, returning a byte array."
-  ^bytes [{:keys [content]} :- formatter/RenderedPulseCard
+  ^bytes [{:keys [content]} :- body/RenderedPartCard
           width]
   (try
     (let [html (html [:html

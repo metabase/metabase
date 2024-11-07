@@ -1,14 +1,18 @@
 (ns metabase.notification.payload.core
-  #_{:clj-kondo/ignore [:metabase/ns-module-checker]}
   (:require
-   [metabase.channel.render.style :as style]
+   [metabase.channel.render.core :as channel.render]
    [metabase.models.notification :as models.notification]
    [metabase.notification.payload.execute :as notification.payload.execute]
    [metabase.public-settings :as public-settings]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [potemkin :as p]
    [toucan2.core :as t2]))
+
+(p/import-vars
+ [notification.payload.execute
+  process-virtual-dashcard])
 
 (def Notification
   "Schema for the notification."
@@ -95,8 +99,7 @@
                  [:alert     :map]]]]]
     [:notification/testing   :map]]])
 
-;; TODO: from metabase.email.messages
-(defn logo-url
+(defn- logo-url
   "Return the URL for the application logo. If the logo is the default, return a URL to the Metabase logo."
   []
   (let [url (public-settings/application-logo-url)]
@@ -107,8 +110,7 @@
       ;; (data-uri-svg? url)               (themed-image-url url color)
       :else nil)))
 
-;; TODO: from metabase.email.messages
-(defn button-style
+(defn- button-style
   "Return a CSS style string for a button with the given color."
   [color]
   (str "display: inline-block; "
@@ -132,7 +134,7 @@
    :site_name            (public-settings/site-name)
    :site_url             (public-settings/site-url)
    :admin_email          (public-settings/admin-email)
-   :style                {:button (button-style (style/primary-color))}})
+   :style                {:button (button-style (channel.render/primary-color))}})
 
 (defmulti payload
   "Given a notification info, return the notification payload."

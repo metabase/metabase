@@ -3,7 +3,6 @@
    [clojure.string :as str]
    [metabase.channel.core :as channel]
    [metabase.channel.render.core :as channel.render]
-   [metabase.channel.shared :as channel.shared]
    ;; TODO: integrations.slack should be migrated to channel.slack
    [metabase.integrations.slack :as slack]
    [metabase.models.params.shared :as shared.params]
@@ -41,7 +40,7 @@
           {card-id :id card-name :name :as card} card]
       {:title           (or (-> dashcard :visualization_settings :card.title)
                             card-name)
-       :rendered-info   (channel.render/render-pulse-card :inline (channel.shared/defaulted-timezone card) card dashcard result)
+       :rendered-info   (channel.render/render-pulse-card :inline (channel.render/defaulted-timezone card) card dashcard result)
        :title_link      (urls/card-url card-id)
        :attachment-name "image.png"
        :channel-id      channel-id

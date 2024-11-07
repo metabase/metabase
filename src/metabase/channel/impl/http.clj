@@ -89,7 +89,7 @@
                                            :question_url  (urls/card-url (:id card))
                                            :visualization (let [{:keys [card dashcard result]} card_part]
                                                             (channel.render/render-pulse-card-to-base64
-                                                             (channel.shared/defaulted-timezone card) card dashcard result image-width))
+                                                             (channel.render/defaulted-timezone card) card dashcard result image-width))
                                            :raw_data      (qp-result->raw-data (:result card_part))}
                       :sent_at            (t/offset-date-time)}]
     [{:body request-body}]))

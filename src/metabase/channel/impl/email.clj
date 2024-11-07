@@ -7,8 +7,6 @@
    [metabase.channel.core :as channel]
    [metabase.channel.params :as channel.params]
    [metabase.channel.render.core :as channel.render]
-   [metabase.channel.render.js-svg :as render.js-svg]
-   [metabase.channel.shared :as channel.shared]
    [metabase.email :as email]
    [metabase.email.messages :as messages]
    [metabase.email.result-attachment :as email.result-attachment]
@@ -116,10 +114,10 @@
 (defn- icon-bundle
   "Bundle an icon.
 
-  The available icons are defined in [[js-svg/icon-paths]]."
+  The available icons are defined in [[render.js.svg/icon-paths]]."
   [icon-name]
   (let [color     (channel.render/primary-color)
-        png-bytes (render.js-svg/icon icon-name color)]
+        png-bytes (channel.render/icon icon-name color)]
     (-> (channel.render/make-image-bundle :attachment png-bytes)
         (channel.render/image-bundle->attachment))))
 
@@ -180,7 +178,7 @@
   (let [{:keys [card_part
                 alert
                 card]}     payload
-        timezone           (channel.shared/defaulted-timezone card)
+        timezone           (channel.render/defaulted-timezone card)
         rendered-card      (render-part timezone card_part {:channel.render/include-title? true})
         icon-attachment    (apply make-message-attachment (icon-bundle :bell))
         attachments        (concat [icon-attachment]
@@ -256,7 +254,7 @@
                 dashboard_subscription
                 parameters
                 dashboard]} payload
-        timezone            (some->> dashboard_parts (some :card) channel.shared/defaulted-timezone)
+        timezone            (some->> dashboard_parts (some :card) channel.render/defaulted-timezone)
         rendered-cards      (mapv #(render-part timezone % {:channel.render/include-title? true}) dashboard_parts)
         icon-attachment     (apply make-message-attachment (icon-bundle :dashboard))
         attachments         (concat

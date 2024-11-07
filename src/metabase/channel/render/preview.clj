@@ -8,11 +8,10 @@
    [hickory.core :as hik]
    [hickory.render :as hik.r]
    [hickory.zip :as hik.z]
-   [metabase.channel.render.core :as render]
+   [metabase.channel.render.card :as render.card]
    [metabase.channel.render.image-bundle :as img]
    [metabase.channel.render.png :as png]
    [metabase.channel.render.style :as style]
-   [metabase.channel.shared :as channel.shared]
    [metabase.email.result-attachment :as email.result-attachment]
    [metabase.util.markdown :as markdown]
    [toucan2.core :as t2]))
@@ -53,7 +52,7 @@
             [:td {:style (style/style (merge table-style-map {:max-width "400px"}))}
              content])]
     (if card
-      (let [base-render (render/render-pulse-card :inline (channel.shared/defaulted-timezone card) card dashcard result)
+      (let [base-render (render.card/render-pulse-card :inline (render.card/defaulted-timezone card) card dashcard result)
             html-src    (-> base-render :content)
             img-src     (-> base-render
                             (png/render-html-to-png 1200)
@@ -78,7 +77,7 @@
 
 (def ^:private execute-dashboard (requiring-resolve 'metabase.notification.payload.execute/execute-dashboard))
 
-(defn render-dashboard-to-hiccup
+(defn- render-dashboard-to-hiccup
   "Given a dashboard ID, renders all of the dashcards to hiccup datastructure."
   [dashboard-id]
   (let [user              (t2/select-one :model/User)
