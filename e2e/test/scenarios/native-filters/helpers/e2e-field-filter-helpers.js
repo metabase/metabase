@@ -82,8 +82,8 @@ export function applyFilterByType(
  *
  * @param {string} value
  */
-export function addDefaultStringFilter(value) {
-  enterDefaultValue(value, "Update filter");
+export function addDefaultStringFilter(value, buttonLabel = "Update filter") {
+  enterDefaultValue(value, buttonLabel);
 }
 
 // FIELD FILTER NUMBER FILTERS

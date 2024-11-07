@@ -1074,7 +1074,7 @@ describe("issue 31606", { tags: "@external" }, () => {
       .should("have.value", "ID")
       .should("be.disabled");
 
-    FieldFilter.addDefaultStringFilter("2");
+    FieldFilter.addDefaultStringFilter("2", "Add filter");
 
     cy.findByTestId("sidebar-content").within(() => {
       cy.findByText("Enter a default value…").should("not.exist");
