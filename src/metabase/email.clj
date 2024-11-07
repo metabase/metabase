@@ -122,9 +122,8 @@
   We will allow multi-recipient emails to broach the limit, as long as the limit has not been reached yet.
 
   We want two properties:
-  
-  1) All emails eventually get sent.
-  2) Lowering the threshold must never cause more overflow.
+    1. All emails eventually get sent.
+    2. Lowering the threshold must never cause more overflow."
   [email]
   (when email-throttler
     (when-let [recipients (not-empty (into #{} (mapcat email) [:to :bcc]))]
