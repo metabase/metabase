@@ -84,7 +84,7 @@ export const HomeLayout = () => {
           .map((card: any) => ({
             id: `card__${card.id}`,
             model_schema: (card.result_metadata || []).map((metadata: any) => {
-              const { field_ref, ...rest } = metadata; 
+              const { field_ref, visibility_type, coercion_strategy, settings, ...rest } = metadata; 
               return rest;
             }),
             name: card.name,
