@@ -99,10 +99,32 @@ export type MetabotChangeColumnSettingsReaction = {
   column_settings: ColumnSettingsEntry[];
 };
 
+export type MetabotChangeStackingSettingsReaction = {
+  type: "metabot.reaction/change-stacking-settings";
+  stack_type: "stacked" | "normalized" | null;
+};
+
+export type MetabotChangeGoalLineReaction = {
+  type: "metabot.reaction/change-goal-line";
+  "graph.goal_value": number | null;
+  "graph.show_goal": boolean | null;
+  "graph.goal_label": string | null;
+};
+
+export type MetabotChangeYAxisRangeReaction = {
+  type: "metabot.reaction/change-y-axis-range";
+  "graph.y_axis.auto_range": boolean | null;
+  "graph.y_axis.min": number | null;
+  "graph.y_axis.max": number | null;
+};
+
 export type MetabotReaction =
+  | MetabotChangeYAxisRangeReaction
+  | MetabotChangeGoalLineReaction
   | MetabotChangeColumnSettingsReaction
   | MetabotChangeSeriesSettingsReaction
   | MetabotChangeAxesLabelsReaction
+  | MetabotChangeStackingSettingsReaction
   | MetabotMessageReaction
   | MetabotChangeDisplayTypeReaction
   | MetabotChangeVisiualizationSettingsReaction

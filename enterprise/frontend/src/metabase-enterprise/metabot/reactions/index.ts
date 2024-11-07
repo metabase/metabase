@@ -8,8 +8,11 @@ import {
   changeAxesLabels,
   changeColumnSettings,
   changeDisplayType,
+  changeGoalLine,
   changeSeriesSettings,
+  changeStackingSettings,
   changeTableVisualizationSettings,
+  changeYAxisRange,
 } from "./visualizations";
 
 export * from "./errors";
@@ -21,6 +24,8 @@ type ReactionHandlers = {
 };
 
 export const reactionHandlers: ReactionHandlers = {
+  "metabot.reaction/change-goal-line": changeGoalLine,
+  "metabot.reaction/change-stacking-settings": changeStackingSettings,
   "metabot.reaction/change-column-settings": changeColumnSettings,
   "metabot.reaction/change-series-settings": changeSeriesSettings,
   "metabot.reaction/change-axes-labels": changeAxesLabels,
@@ -31,4 +36,5 @@ export const reactionHandlers: ReactionHandlers = {
   "metabot.reaction/message": showMessage,
   "metabot.reaction/api-call": apiCall,
   "metabot.reaction/writeback": writeBack,
+  "metabot.reaction/change-y-axis-range": changeYAxisRange,
 };
