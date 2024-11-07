@@ -1,5 +1,7 @@
 (ns metabase.search.postgres.scoring
-  (:require [metabase.search.config :as search.config]))
+  (:require [honey.sql :as sql]
+            [honey.sql.helpers :as sql.helpers]
+            [metabase.search.config :as search.config]))
 
 (def ^:private seconds-in-a-day 86400)
 
@@ -54,31 +56,33 @@
         [[(sum-columns (map weighted-score scorers))
           :total_score]] ))
 
-(defn scorers [{:keys [stale-time-in-days dashboard-count-ceiling model-count]}]
-  {:pinned    (truthy :pinned)
+(defn- scorers [{:keys [stale-time-in-days dashboard-count-ceiling model-count]}]
+  {:text      [:ts_rank :search_vector :query]
+   :pinned    (truthy :pinned)
    ;; :bookmarked user specific join
    :recency   (duration-fraction :model_updated_at [:now] stale-time-in-days)
    :dashboard (fraction :dashboardcard_count dashboard-count-ceiling)
    :model     (idx-rank :model_rank model-count)})
 
-(def select-items-4real
+(def ^:private select-items-4real
   (select-items (scorers {:stale-time-in-days      search.config/stale-time-in-days
                           :dashboard-count-ceiling search.config/dashboard-count-ceiling
                           :model-count             (count search.config/all-models)})))
 
-(defn ranking-clause [qry]
-  (apply honey.sql.helpers/select qry select-items-4real))
+(defn ranking-clause
+  "Add a bunch of selects for the individual and total scores"
+  [qry]
+  (apply sql.helpers/select qry select-items-4real))
 
 (comment
-  (honey.sql/format
-   (apply honey.sql.helpers/select {:from :a} (select-items {})))
+  (sql/format
+   (apply sql.helpers/select {:from :a} (select-items {})))
 
-  (honey.sql/format
-   (apply honey.sql.helpers/select {:from :a}
+  (sql/format
+   (apply sql.helpers/select {:from :a}
           (select-items {:a (truthy :pinned)
                          :b (duration-fraction [:now] :updated_at search.config/stale-time-in-days)})))
 
   )
-(prn
- (honey.sql/format
-  (apply honey.sql.helpers/select {:from :search_index} select-items-4real)))
+(sql/format
+ (apply sql.helpers/select {:from :search_index} select-items-4real))

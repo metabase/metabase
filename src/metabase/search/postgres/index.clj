@@ -227,13 +227,14 @@
    (search-query search-term [:model_id :model]))
   ([search-term select-items]
    {:select select-items
-    :from   [active-table]
+    :from   [active-table [[:raw "to_tsquery('"
+                            tsv-language "', "
+                            [:lift (to-tsquery-expr search-term)] ")"]
+                           :query]]
     :where  (if-not search-term
               [:= [:inline 1] [:inline 1]]
               [:raw
-               "search_vector @@ to_tsquery('"
-               tsv-language "', "
-               [:lift (to-tsquery-expr search-term)] ")"])}))
+               "search_vector @@ query"])}))
 
 (defn search
   "Use the index table to search for records."

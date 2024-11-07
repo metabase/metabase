@@ -10,6 +10,7 @@
    [metabase.search.permissions :as search.permissions]
    [metabase.search.postgres.index :as search.index]
    [metabase.search.postgres.ingestion :as search.ingestion]
+   [metabase.search.postgres.scoring :as search.scoring]
    [toucan2.core :as t2])
   (:import
    (java.time OffsetDateTime)))
@@ -97,8 +98,9 @@
       (update :updated_at parse-datetime)
       (update :last_edited_at parse-datetime)))
 
-(defn prrn [x] (prn x) x)
+;(defn- prrn [x] (prn x) x)
 
+;; TODO this is not minimal anymore, but i'm so tired of forking for now
 (defn- minimal
   "Search via index, and return potentially stale information, without restricting to collections we have access to."
   [search-term & {:as search-ctx}]
@@ -106,13 +108,12 @@
     (throw (ex-info "Search index is not initialized. Use [[init!]] to ensure it exists."
                     {:search-engine :postgres})))
   (->> (search.index/search-query search-term [:legacy_input])
+       (search.scoring/ranking-clause)
        (search.filter/where-clause search-ctx)
-       (metabase.search.postgres.scoring/ranking-clause)
+       (#(sql.helpers/order-by % [:total_score :desc]))
 
-       (#(honey.sql.helpers/order-by % [:total_score :desc]))
-
-       (honey.sql/format)
-       prrn
+        ;(sql/format)
+        ;prrn
 
        (t2/query)
        (map rehydrate)))
@@ -125,8 +126,9 @@
                     {:search-engine :postgres})))
   (->> (let [base-query (search.index/search-query search-term [:legacy_input])]
          (search.permissions/add-collection-join-and-where-clauses base-query nil search-ctx))
+       (search.scoring/ranking-clause)
        (search.filter/where-clause search-ctx)
-       (#(apply sql.helpers/select % metabase.search.postgres.scoring/select-items-4real))
+       (#(sql.helpers/order-by % [:total_score :desc]))
        (t2/query)
        (map rehydrate)))
 
