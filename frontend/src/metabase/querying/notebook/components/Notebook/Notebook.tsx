@@ -1,12 +1,12 @@
-import { t } from "ttag";
+import { useState } from "react";
 
 import type { DataPickerValue } from "metabase/common/components/DataPicker";
 import { useDispatch } from "metabase/lib/redux";
 import { setUIControls } from "metabase/query_builder/actions";
-import { Box, Button } from "metabase/ui";
-import * as Lib from "metabase-lib";
+import { Box, Flex } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 
+import { NotebookFooter } from "../NotebookFooter";
 import { NotebookStepList } from "../NotebookStepList";
 
 import { NotebookProvider } from "./context";
@@ -33,64 +33,48 @@ export const Notebook = ({
   isDirty,
   isRunnable,
   isResultDirty,
-  hasVisualizeButton = true,
   runQuestionQuery,
-  setQueryBuilderMode,
   modelsFilterList,
 }: NotebookProps) => {
   const dispatch = useDispatch();
+  const [liveUpdate, setLiveUpdate] = useState(false);
 
-  async function cleanupQuestion() {
-    // Converting a query to MLv2 and back performs a clean-up
-    let cleanQuestion = question.setQuery(
-      Lib.dropEmptyStages(question.query()),
-    );
-
-    if (cleanQuestion.display() === "table") {
-      cleanQuestion = cleanQuestion.setDefaultDisplay();
-    }
-
-    await updateQuestion(cleanQuestion);
-  }
-
-  // visualize switches the view to the question's visualization.
-  async function visualize() {
-    // Only cleanup the question if it's dirty, otherwise Metabase
-    // will incorrectly display the Save button, even though there are no changes to save.
-    if (isDirty) {
-      cleanupQuestion();
-    }
-    // switch mode before running otherwise URL update may cause it to switch back to notebook mode
-    await setQueryBuilderMode?.("view");
-    if (isResultDirty) {
+  const handleUpdateQuestion = async (question: Question): Promise<void> => {
+    dispatch(setUIControls({ isModifiedFromNotebook: true }));
+    await updateQuestion(question);
+    if (liveUpdate) {
       await runQuestionQuery();
     }
-  }
+  };
 
-  const handleUpdateQuestion = (question: Question): Promise<void> => {
-    dispatch(setUIControls({ isModifiedFromNotebook: true }));
-    return updateQuestion(question);
+  const handleLiveUpdateChange = (liveUpdate: boolean) => {
+    setLiveUpdate(liveUpdate);
+    if (liveUpdate) {
+      runQuestionQuery();
+    }
   };
 
   return (
     <NotebookProvider modelsFilterList={modelsFilterList}>
-      <Box pos="relative" p={{ base: "1rem", sm: "2rem" }}>
-        <NotebookStepList
-          updateQuestion={handleUpdateQuestion}
+      <Flex direction="column">
+        <Box pos="relative" w="100%" p={{ base: "1rem", sm: "2rem" }}>
+          <NotebookStepList
+            updateQuestion={handleUpdateQuestion}
+            question={question}
+            reportTimezone={reportTimezone}
+            readOnly={readOnly}
+          />
+        </Box>
+        <NotebookFooter
+          liveUpdate={liveUpdate}
+          onLiveUpdateChange={handleLiveUpdateChange}
           question={question}
-          reportTimezone={reportTimezone}
-          readOnly={readOnly}
+          runQuestionQuery={runQuestionQuery}
+          isRunnable={isRunnable}
+          isResultDirty={isResultDirty}
+          isDirty={isDirty}
         />
-        {hasVisualizeButton && isRunnable && (
-          <Button
-            variant="filled"
-            style={{ minWidth: 220 }}
-            onClick={visualize}
-          >
-            {t`Visualize`}
-          </Button>
-        )}
-      </Box>
+      </Flex>
     </NotebookProvider>
   );
 };
