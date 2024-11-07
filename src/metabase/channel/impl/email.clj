@@ -7,6 +7,7 @@
    [metabase.channel.core :as channel]
    [metabase.channel.params :as channel.params]
    [metabase.channel.render.core :as channel.render]
+   [metabase.channel.template.handlebars :as handlebars]
    [metabase.email :as email]
    [metabase.email.messages :as messages]
    [metabase.email.result-attachment :as email.result-attachment]
@@ -80,9 +81,11 @@
   [{:keys [details] :as _template} payload]
   (case (keyword (:type details))
     :email/mustache-resource
-    (stencil/render-file (:path details) payload)
+    (handlebars/render (:path details) payload)
+    #_(stencil/render-file (:path details) payload)
     :email/mustache-text
-    (stencil/render-string (:body details) payload)
+    (handlebars/render-string (:body details) payload)
+    #_(stencil/render-string (:body details) payload)
     (do
       (log/warnf "Unknown email template type: %s" (:type details))
       nil)))
