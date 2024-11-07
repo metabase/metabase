@@ -1,4 +1,6 @@
 (ns metabase.models
+  ;; metabase.search.postgres.ingestion has not been exposed publicly yet, it needs a higher level API
+  #_{:clj-kondo/ignore [:metabase/ns-module-checker]}
   (:require
    [metabase.models.action :as action]
    [metabase.models.application-permissions-revision :as a-perm-revision]
@@ -53,10 +55,14 @@
    [metabase.models.user :as user]
    [metabase.models.view-log :as view-log]
    [metabase.plugins.classloader :as classloader]
+   [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :refer [defenterprise]]
+   [metabase.search :as search]
+   [metabase.search.postgres.ingestion :as search.ingestion]
    [metabase.util :as u]
    [methodical.core :as methodical]
    [potemkin :as p]
+   [toucan2.core :as t2]
    [toucan2.model :as t2.model]))
 
 ;; Fool the linter
@@ -192,3 +198,22 @@
        (when (isa? metabase-models-keyword :metabase/model)
          metabase-models-keyword)))
    (next-method symb)))
+
+(t2/define-after-insert :metabase/model
+  [instance]
+  (when (search/supports-index?)
+    (search.ingestion/update-index! instance))
+  instance)
+
+(t2/define-after-update :metabase/model
+  [instance]
+  (when (and (search/supports-index?) (public-settings/experimental-search-index-realtime-updates))
+    (search.ingestion/update-index! instance))
+  instance)
+
+;; Too much of a performance risk.
+#_(t2/define-before-delete :metabase/model
+    [instance]
+    (when (search/supports-index?)
+      (search.ingestion/update-index! instance))
+    instance)

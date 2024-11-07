@@ -1049,6 +1049,13 @@ See [fonts](../configuring-metabase/fonts.md).")
   :default    false
   :type       :boolean)
 
+(defsetting experimental-search-index-realtime-updates
+  (deferred-tru "May cause performance issues for now")
+  :visibility :internal
+  :export?    false
+  :default    false
+  :type       :boolean)
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Deprecated uploads settings begin
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
