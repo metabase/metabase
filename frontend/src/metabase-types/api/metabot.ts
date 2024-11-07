@@ -81,6 +81,8 @@ export type MetabotStringFilterQueryReaction = {
   type: "metabot.reaction/string-filter-query";
   column: string;
   operator:
+    | "is-empty"
+    | "not-empty"
     | "="
     | "!="
     | "contains"
@@ -88,6 +90,22 @@ export type MetabotStringFilterQueryReaction = {
     | "starts-with"
     | "ends-with";
   values: string[];
+};
+
+export type MetabotNumberFilterQueryReaction = {
+  type: "metabot.reaction/number-filter-query";
+  column: string;
+  operator:
+    | "is-null"
+    | "not-null"
+    | "="
+    | "!="
+    | "<"
+    | "<="
+    | ">"
+    | ">="
+    | "between";
+  values: number[];
 };
 
 export type MetabotBooleanFilterQueryReaction = {
@@ -133,6 +151,7 @@ export type MetabotReaction =
   | MetabotWriteBackReaction
   | MetabotApiCallReaction
   | MetabotStringFilterQueryReaction
+  | MetabotNumberFilterQueryReaction
   | MetabotBooleanFilterQueryReaction
   | MetabotRelativeDateFilterQueryReaction
   | MetabotAggregateQueryReaction

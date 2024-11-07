@@ -12,6 +12,7 @@
    [metabase-enterprise.metabot-v3.tools.confirm-invite-user]
    [metabase-enterprise.metabot-v3.tools.interface :as metabot-v3.tools.interface]
    [metabase-enterprise.metabot-v3.tools.limit-query]
+   [metabase-enterprise.metabot-v3.tools.number-filter-query]
    [metabase-enterprise.metabot-v3.tools.relative-date-filter-query]
    [metabase-enterprise.metabot-v3.tools.sort-query]
    [metabase-enterprise.metabot-v3.tools.string-filter-query]
@@ -34,6 +35,7 @@
   metabase-enterprise.metabot-v3.tools.confirm-invite-user/keep-me
   metabase-enterprise.metabot-v3.tools.change-display-type/keep-me
   metabase-enterprise.metabot-v3.tools.change-table-visualization-settings/keep-me
+  metabase-enterprise.metabot-v3.tools.number-filter-query/keep-me
   metabase-enterprise.metabot-v3.tools.relative-date-filter-query/keep-me
   metabase-enterprise.metabot-v3.tools.limit-query/keep-me
   metabase-enterprise.metabot-v3.tools.sort-query/keep-me

@@ -1,0 +1,27 @@
+{
+  "name": "number-filter-query",
+  "description": "Filters based on a number column. Requires a column, an operator, and a list of values.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "column": {
+        "type": "string",
+        "description": "The column to apply filter for. Choose an appropriate column name based on user input from filterable_columns.number list."
+      },
+      "operator": {
+        "type": "string",
+        "description": "The filter operator. 'is-null' means empty, 'not-null' means not empty, '=' means equal to, '!=' means not equal to, '<' means less than, '<=' means less than or equal to, '>' means greater then, '>=' means greater than or equal to. For 'is-null' and 'not-null' operators set an empty values array. '=', '!=' operators support multiple values, with 1 value being required. '<', '<=', '>', '>=' operators support 1 value only. 'between' operator requires 2 values, where the first value is the start of the interval and the second value is the end of the interval.",
+        "enum": ["is-null", "not-null", "=", "!=", ">", ">=", "<", "<=", "between"]
+      },
+      "values": {
+        "type": "array",
+        "description": "Filter values.",
+        "items": {
+          "type": "number"
+        }
+      }
+    },
+    "additionalProperties": false,
+    "required": ["column", "operator", "values"]
+  }
+}

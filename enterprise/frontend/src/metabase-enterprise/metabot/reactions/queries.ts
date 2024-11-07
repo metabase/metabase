@@ -6,6 +6,7 @@ import type {
   MetabotBooleanFilterQueryReaction,
   MetabotBreakoutQueryReaction,
   MetabotLimitQueryReaction,
+  MetabotNumberFilterQueryReaction,
   MetabotRelativeDateFilterQueryReaction,
   MetabotSortQueryReaction,
   MetabotStringFilterQueryReaction,
@@ -40,6 +41,38 @@ export const stringFilterQuery: ReactionHandler<
       operator: reaction.operator,
       values: reaction.values,
       options: {},
+    });
+    const newQuery = Lib.filter(query, stageIndex, newClause);
+    const newQuestion = question.setQuery(newQuery);
+    await dispatch(updateQuestion(newQuestion, { run: true }));
+  };
+
+export const numberFilterQuery: ReactionHandler<
+  MetabotNumberFilterQueryReaction
+> =
+  reaction =>
+  async ({ dispatch, getState }) => {
+    const question = getQuestion(getState());
+    if (!question) {
+      return;
+    }
+
+    const query = question.query();
+    const stageIndex = -1;
+    const columns = Lib.filterableColumns(query, stageIndex);
+    const column = columns.find(
+      column =>
+        Lib.displayInfo(query, stageIndex, column).displayName ===
+        reaction.column,
+    );
+    if (!column) {
+      return;
+    }
+
+    const newClause = Lib.numberFilterClause({
+      column,
+      operator: reaction.operator,
+      values: reaction.values,
     });
     const newQuery = Lib.filter(query, stageIndex, newClause);
     const newQuestion = question.setQuery(newQuery);

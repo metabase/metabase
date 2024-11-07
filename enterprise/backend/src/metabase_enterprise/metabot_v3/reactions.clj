@@ -138,6 +138,12 @@
    [:operator [:enum "is-empty" "not-empty" "=" "!=" "contains" "does-not-contain" "starts-with" "ends-with"]]
    [:values [:vector :string]]])
 
+(defreaction :metabot.reaction/number-filter-query
+  [:map
+   [:column :string]
+   [:operator [:enum "is-null" "not-null" "=" "!=" "<" "<=" ">" ">=" "between"]]
+   [:values [:vector number?]]])
+
 (defreaction :metabot.reaction/boolean-filter-query
   [:map
    [:column :string]
