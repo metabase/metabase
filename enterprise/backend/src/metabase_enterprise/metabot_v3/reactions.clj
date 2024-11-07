@@ -134,13 +134,18 @@
 
 (defreaction :metabot.reaction/change-query
   [:map
+   [:relative-date-filters [:maybe [:vector [:map
+                                             [:column :string]
+                                             [:direction [:enum "last" "current" "next"]]
+                                             [:value integer?]
+                                             [:unit [:enum "day", "week", "month", "quarter", "year"]]]]]]
    [:aggregations [:maybe [:vector [:map
                                     [:operator :string]
                                     [:column [:maybe :string]]]]]]
    [:breakouts [:maybe [:vector [:map
                                  [:column :string]]]]]
-   [:order_bys [:maybe [:vector [:map
+   [:order-bys [:maybe [:vector [:map
                                  [:column :string]
-                                 [:direction [:maybe [:enum :asc :desc]]]]]]]
+                                 [:direction [:maybe [:enum "asc" "desc"]]]]]]]
    [:limits [:maybe [:vector [:map
                               [:limit integer?]]]]]])

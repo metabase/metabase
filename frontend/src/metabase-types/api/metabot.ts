@@ -77,6 +77,13 @@ export type MetabotApiCallReaction = {
   };
 };
 
+export type MetabotRelativeDateFilterDetails = {
+  column: string;
+  direction: "last" | "current" | "next";
+  value: number;
+  unit: "day" | "week" | "month" | "quarter" | "year";
+};
+
 export type MetabotAggregateQueryDetails = {
   operator: string;
   column: string | null;
@@ -97,6 +104,7 @@ export type MetabotLimitQueryDetails = {
 
 export type MetabotChangeQueryReaction = {
   type: "metabot.reaction/change-query";
+  relative_date_filters: MetabotRelativeDateFilterDetails[] | null;
   aggregations: MetabotAggregateQueryDetails[] | null;
   breakouts: MetabotBreakoutQueryDetails[] | null;
   order_bys: MetabotOrderByQueryDetails[] | null;

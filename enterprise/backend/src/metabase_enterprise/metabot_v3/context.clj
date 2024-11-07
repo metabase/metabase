@@ -5,6 +5,7 @@
    [metabase.config :as config]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib.types.isa :as lib.types.isa]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
@@ -57,12 +58,17 @@
   [{query :current_query :as context}]
   (merge context
          (when query
-           (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (:database query))
-                 query (lib/query metadata-provider query)]
+           (let [metadata-provider  (lib.metadata.jvm/application-database-metadata-provider (:database query))
+                 query              (lib/query metadata-provider query)
+                 filterable-columns (lib/filterable-columns query)]
              {:current_query
-              {:aggregation_operators (mapv #(lib/display-name query %)
-                                            (lib/available-aggregation-operators query))
-               :breakoutable_columns (mapv #(lib/display-name query %)
-                                           (lib/breakoutable-columns query))
-               :orderable_columns    (mapv #(lib/display-name query %)
-                                           (lib/orderable-columns query))}}))))
+              {:date_filterable_columns (into []
+                                              (comp (filter lib.types.isa/date-or-datetime?)
+                                                    (map #(lib/display-name query %)))
+                                              filterable-columns)
+               :aggregation_operators   (mapv #(lib/display-name query %)
+                                              (lib/available-aggregation-operators query))
+               :breakoutable_columns    (mapv #(lib/display-name query %)
+                                              (lib/breakoutable-columns query))
+               :orderable_columns       (mapv #(lib/display-name query %)
+                                              (lib/orderable-columns query))}}))))

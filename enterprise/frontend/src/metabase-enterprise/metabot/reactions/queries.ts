@@ -16,6 +16,34 @@ export const changeQuery: ReactionHandler<MetabotChangeQueryReaction> =
     const query = question.query();
     const stageIndex = -1;
 
+    const relativeDateFilterDetails = reaction.relative_date_filters ?? [];
+    const queryWithRelativeDateFilters = relativeDateFilterDetails.reduce(
+      (newQuery, details) => {
+        const availableColumns = Lib.filterableColumns(query, stageIndex);
+        const selectedColumn = availableColumns.find(
+          column =>
+            Lib.displayInfo(query, stageIndex, column).displayName ===
+            details.column,
+        );
+        if (!selectedColumn) {
+          return newQuery;
+        }
+
+        const sign = details.direction === "last" ? -1 : 1;
+        const newClause = Lib.relativeDateFilterClause({
+          column: selectedColumn,
+          value:
+            details.direction === "current" ? "current" : details.value * sign,
+          bucket: details.unit,
+          offsetValue: null,
+          offsetBucket: null,
+          options: {},
+        });
+        return Lib.filter(newQuery, stageIndex, newClause);
+      },
+      query,
+    );
+
     const aggregationDetails = reaction.aggregations ?? [];
     const queryWithAggregations = aggregationDetails.reduce(
       (newQuery, details) => {
@@ -54,7 +82,7 @@ export const changeQuery: ReactionHandler<MetabotChangeQueryReaction> =
         );
         return Lib.aggregate(query, stageIndex, newClause);
       },
-      query,
+      queryWithRelativeDateFilters,
     );
 
     const breakoutDetails = reaction.breakouts ?? [];
