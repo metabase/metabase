@@ -77,26 +77,19 @@ export type MetabotApiCallReaction = {
   };
 };
 
-export type MetabotAggregateQueryReaction = {
-  type: "metabot.reaction/aggregate-query";
-  operator: string;
+export type OrderByQueryDetails = {
   column: string;
+  direction: "asc" | "desc" | null;
 };
 
-export type MetabotBreakoutQueryReaction = {
-  type: "metabot.reaction/breakout-query";
-  column: string;
-};
-
-export type MetabotSortQueryReaction = {
-  type: "metabot.reaction/sort-query";
-  column: string;
-  direction: "asc" | "desc";
-};
-
-export type MetabotLimitQueryReaction = {
-  type: "metabot.reaction/limit-query";
+export type LimitQueryDetails = {
   limit: number;
+};
+
+export type MetabotChangeQueryReaction = {
+  type: "metabot.reaction/change-query";
+  order_bys: OrderByQueryDetails[] | null;
+  limits: LimitQueryDetails[] | null;
 };
 
 export type MetabotReaction =
@@ -106,10 +99,7 @@ export type MetabotReaction =
   | MetabotConfirmationReaction
   | MetabotWriteBackReaction
   | MetabotApiCallReaction
-  | MetabotAggregateQueryReaction
-  | MetabotBreakoutQueryReaction
-  | MetabotSortQueryReaction
-  | MetabotLimitQueryReaction;
+  | MetabotChangeQueryReaction;
 
 /* Metabot v3 - API Request Types */
 

@@ -1,0 +1,48 @@
+{
+  "name": "change-query",
+  "description": "Updates the current query.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "order_bys": {
+        "type": "array",
+        "description": "A list of sorting clauses to add to the current query. Each clause adds sorting by one column.",
+        "items": {
+          "type": "object",
+          "description": "Order by clause.",
+          "properties": {
+            "column": {
+              "type": "string",
+              "description": "The column to apply sorting for. Choose an appropriate column name based on user input from orderable_columns list."
+            },
+            "direction": {
+              "type": "string",
+              "description": "Optional direction of sorting. Can be ascending or descending",
+              "enum": ["asc", "desc"]
+            }
+          },
+          "required": ["column", "direction"],
+          "additionalProperties": false
+        }
+      },
+      "limits": {
+        "type": "array",
+        "description": "Sets the row limit for the current query. If no row limit should be set, leave it as an empty array.",
+        "items": {
+          "type": "object",
+          "description": "",
+          "properties": {
+            "limit": {
+              "type": "number",
+              "description": "Row limit for the query."
+            }
+          },
+          "required": ["limit"],
+          "additionalProperties": false
+        }
+      }
+    },
+    "required": ["order_bys", "limits"],
+    "additionalProperties": false
+  }
+}

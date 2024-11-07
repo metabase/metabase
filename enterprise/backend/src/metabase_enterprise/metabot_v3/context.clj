@@ -58,15 +58,7 @@
   (merge context
          (when query
            (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (:database query))
-                 query (lib/query metadata-provider query)
-                 aggregation-operators (lib/available-aggregation-operators query)]
+                 query (lib/query metadata-provider query)]
              {:current_query
-              {:aggregation_operators (mapv (fn [operator]
-                                              {:operator (lib/display-name query operator)
-                                               :columns (mapv #(lib/display-name query %)
-                                                              (lib/aggregation-operator-columns operator))})
-                                            aggregation-operators)
-               :breakoutable_columns  (mapv #(lib/display-name query %)
-                                            (lib/breakoutable-columns query))
-               :orderable_columns     (mapv #(lib/display-name query %)
-                                            (lib/orderable-columns query))}}))))
+              {:orderable_columns (mapv #(lib/display-name query %)
+                                        (lib/orderable-columns query))}}))))

@@ -132,20 +132,10 @@
    [:type [:= :metabot.reaction/writeback]]
    [:message :string]])
 
-(defreaction :metabot.reaction/aggregate-query
+(defreaction :metabot.reaction/change-query
   [:map
-   [:operator :string]
-   [:column :string]])
-
-(defreaction :metabot.reaction/breakout-query
-  [:map
-   [:column :string]])
-
-(defreaction :metabot.reaction/sort-query
-  [:map
-   [:column :string]
-   [:direction [:enum "asc" "desc"]]])
-
-(defreaction :metabot.reaction/limit-query
-  [:map
-   [:limit integer?]])
+   [:order_bys [:maybe [:vector [:map
+                                 [:column :string]
+                                 [:direction [:maybe [:enum :asc :desc]]]]]]]
+   [:limits [:maybe [:vector [:map
+                              [:limit integer?]]]]]])
