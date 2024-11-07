@@ -469,9 +469,8 @@ const cartesianDropHandler: DropHandler = (state, { active, over }) => {
   if (over.id === DROPPABLE_ID.X_AXIS_WELL) {
     const dimension = getVisualizerDimensionColumn({ visualizer: state });
     if (dimension.column) {
-      state.columns[dimension.index] = mergeIntoVisualizerColumn(
-        dimension.column,
-        column,
+      state.columns[dimension.index] = connectToVisualizerColumn(
+        cloneColumnProperties(dimension.column, column),
         columnRef.name,
       );
       state.referencedColumns.push(columnRef);
@@ -481,9 +480,8 @@ const cartesianDropHandler: DropHandler = (state, { active, over }) => {
   if (over.id === DROPPABLE_ID.Y_AXIS_WELL) {
     const metric = getVisualizerMetricColumn({ visualizer: state });
     if (metric.column) {
-      state.columns[metric.index] = mergeIntoVisualizerColumn(
-        metric.column,
-        column,
+      state.columns[metric.index] = connectToVisualizerColumn(
+        cloneColumnProperties(metric.column, column),
         columnRef.name,
       );
       state.referencedColumns.push(columnRef);
@@ -569,17 +567,15 @@ function connectToVisualizerColumn(
   };
 }
 
-function mergeIntoVisualizerColumn(
+function cloneColumnProperties(
   visualizerColumn: VisualizerDatasetColumn,
   column: DatasetColumn,
-  columnRef: string,
 ) {
   const nextColumn = {
     ...visualizerColumn,
     base_type: column.base_type,
     effective_type: column.effective_type,
     display_name: column.display_name,
-    values: [columnRef],
   };
 
   // TODO Remove manual MBQL manipulation
