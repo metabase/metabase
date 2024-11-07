@@ -137,6 +137,10 @@
    [:operator :string]
    [:column :string]])
 
+(defreaction :metabot.reaction/breakout-query
+  [:map
+   [:column :string]])
+
 (defreaction :metabot.reaction/sort-query
   [:map
    [:column :string]

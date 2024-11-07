@@ -5,6 +5,7 @@
    [malli.core :as mc]
    [malli.transform :as mtx]
    [metabase-enterprise.metabot-v3.tools.aggregate-query]
+   [metabase-enterprise.metabot-v3.tools.breakout-query]
    [metabase-enterprise.metabot-v3.tools.change-display-type]
    [metabase-enterprise.metabot-v3.tools.change-table-visualization-settings]
    [metabase-enterprise.metabot-v3.tools.confirm-invite-user]
@@ -25,6 +26,7 @@
 
 (comment
   metabase-enterprise.metabot-v3.tools.aggregate-query/keep-me
+  metabase-enterprise.metabot-v3.tools.breakout-query/keep-me
   metabase-enterprise.metabot-v3.tools.confirm-invite-user/keep-me
   metabase-enterprise.metabot-v3.tools.change-display-type/keep-me
   metabase-enterprise.metabot-v3.tools.change-table-visualization-settings/keep-me
