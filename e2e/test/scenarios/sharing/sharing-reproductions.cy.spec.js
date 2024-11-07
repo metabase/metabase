@@ -1056,7 +1056,6 @@ describe("issue 49525", { tags: "@external" }, () => {
     // Click this just to close the popover that is blocking the "Send email now" button
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("To:").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.get('[aria-label="Attach results"]').click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Keep data pivoted").click();
