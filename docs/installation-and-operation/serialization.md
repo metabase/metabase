@@ -380,7 +380,7 @@ See [How export works](#how-export-works), [How import works](#how-import-works)
 To export the contents of a Metabase instance, change into the directory where you're running the Metabase JAR and run:
 
 ```
-java -jar metabase.jar export dir_name
+java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar export dir_name
 ```
 
 Where `dir_name` can be whatever you want to call the directory.
@@ -390,7 +390,7 @@ Where `dir_name` can be whatever you want to call the directory.
 To view a list of `export` options, use the `help` command:
 
 ```
-java -jar metabase.jar help export
+java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar help export
 ```
 
 Which will run and then print something like:
@@ -416,7 +416,7 @@ The `--collection` flag (alias `-c`) lets you specify by ID one or more collecti
 If you want to specify multiple collections, separate the IDs with commas. E.g.,
 
 ```
-java -jar metabase.jar export export_name --collection 1,2,3
+java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar export export_name --collection 1,2,3
 ```
 
 #### `--no-collections`
@@ -444,7 +444,7 @@ The `--include-database-secrets` flag (alias `-s`) tells Metabase to include con
 To import exported artifacts into a Metabase instance, go to the directory where you're running your target Metabase (the Metabase you want to import into) and use the following command, where `path_to_export` is the path to the export that you want to import:
 
 ```
-java -jar metabase.jar import path_to_export
+java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar import path_to_export
 ```
 
 Currently, you can only import exported artifacts into a Metabase instance that was created from the same version of Metabase.
@@ -454,7 +454,7 @@ Currently, you can only import exported artifacts into a Metabase instance that 
 Most options are defined when exporting data from a Metabase. To view a list of import flags, run:
 
 ```
-java -jar metabase.jar help import
+java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar help import
 ```
 
 Which prints out:
