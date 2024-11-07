@@ -149,11 +149,6 @@ export function MainNavbarView({
     state => getSetting(state, "uploads-settings")?.db_id,
   );
 
-  /**
-   * the user must have:
-   *   - "write" permissions for the root collection AND
-   *   - "upload" permissions for the attached DWH
-   */
   const rootCollection = collections.find(
     c => c.id === "root" || c.id === null,
   );
@@ -162,6 +157,11 @@ export function MainNavbarView({
     ?.find(db => db.id === uploadDbId)
     ?.canUpload();
 
+  /**
+   * the user must have:
+   *   - "write" permissions for the root collection AND
+   *   - "upload" permissions for the attached DWH
+   */
   const canUpload = canCurateRootCollection && canUploadToDatabase;
   const showUploadCSVButton = hasAttachedDWHFeature && canUpload;
 
