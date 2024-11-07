@@ -201,4 +201,4 @@
 (t2/define-after-insert :metabase/model
   [model]
   (when search/supports-index?
-   (search.ingestion/update-index! model)))
+    (search.ingestion/update-index! model)))
