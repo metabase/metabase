@@ -8,6 +8,8 @@
    [metabase-enterprise.metabot-v3.client.schema :as metabot-v3.client.schema]
    [metabase-enterprise.metabot-v3.context :as metabot-v3.context]
    [metabase-enterprise.metabot-v3.tools :as metabot-v3.tools]
+   [metabase.analytics.snowplow :as snowplow]
+   [metabase.api.common :as api]
    [metabase.models.setting :refer [defsetting]]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
@@ -31,8 +33,12 @@
 
 (mu/defn- ^:dynamic *instance-info* :- ::metabot-v3.client.schema/request.instance-info
   []
-  {:token     (premium-features/premium-embedding-token)
-   :site-uuid (public-settings/site-uuid-for-premium-features-token-checks)})
+  {:token            (premium-features/premium-embedding-token)
+   :site-uuid        (public-settings/site-uuid-for-premium-features-token-checks)
+   :created-at       (snowplow/instance-creation)
+   :analytics-uuid   (snowplow/analytics-uuid)
+   :metabase-version (public-settings/version)
+   :user-id          api/*current-user-id*})
 
 (defn- encode-request-body [body]
   (mc/encode ::metabot-v3.client.schema/request body (mtx/transformer

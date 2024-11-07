@@ -11,23 +11,7 @@ export const notifyUnknownReaction: ReactionHandler<
 > = reaction => {
   return ({ dispatch }) => {
     console.error("Unknown reaction recieved", reaction);
-
     dispatch(clearUserMessages());
-    dispatch(
-      addUserMessage(
-        t`Oops! I'm unable to finish this task. Please contact support.`,
-      ),
-    );
-  };
-};
-
-export const notifyUnkownError: ReactionHandler<void> = () => {
-  return ({ dispatch }) => {
-    dispatch(clearUserMessages());
-    dispatch(
-      addUserMessage(
-        t`Oops! Something went wrong, I won't be able to fulfill that request.`,
-      ),
-    );
+    dispatch(addUserMessage(t`Whoops, I actually can’t do this. Sorry.`));
   };
 };

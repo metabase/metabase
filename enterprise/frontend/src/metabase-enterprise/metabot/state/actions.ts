@@ -10,11 +10,7 @@ import {
 import type { MetabotChatContext, MetabotReaction } from "metabase-types/api";
 import type { Dispatch } from "metabase-types/store";
 
-import {
-  notifyUnknownReaction,
-  notifyUnkownError,
-  reactionHandlers,
-} from "../reactions";
+import { notifyUnknownReaction, reactionHandlers } from "../reactions";
 
 import { metabot } from "./reducer";
 import {
@@ -73,14 +69,15 @@ export const sendMessageRequest = createAsyncThunk(
   "metabase-enterprise/metabot/sendMessageRequest",
   async (
     data: { message: string; context: MetabotChatContext; history: any[] },
-    { dispatch, getState },
+    { dispatch },
   ) => {
     const result = await dispatch(
       metabotAgent.initiate(data, { fixedCacheKey: METABOT_TAG }),
     );
 
     if (result.error) {
-      notifyUnkownError()({ dispatch, getState });
+      dispatch(clearUserMessages());
+      dispatch(addUserMessage(t`I can’t do that, unfortunately.`));
     } else {
       const reactions = result.data?.reactions || [];
       await dispatch(processMetabotReactions(reactions));
@@ -147,7 +144,7 @@ export const processMetabotReactions = createAsyncThunk(
         await reactionHandler(reaction as any)({ dispatch, getState });
       } catch (error: any) {
         console.error("Halting processing of reactions.", error);
-        notifyUnkownError()({ dispatch, getState });
+        dispatch(stopProcessingAndNotify());
         break;
       }
 
@@ -166,8 +163,8 @@ export const processMetabotReactions = createAsyncThunk(
 );
 
 export const stopProcessingAndNotify =
-  (message: string) => (dispatch: Dispatch) => {
+  (message?: string) => (dispatch: Dispatch) => {
     dispatch(setIsProcessing(false));
     dispatch(clearUserMessages());
-    dispatch(addUserMessage(message));
+    dispatch(addUserMessage(message || t`I can’t do that, unfortunately.`));
   };
