@@ -101,7 +101,7 @@
 ;;
 ;;  <hr />
 
-(ns metabase.search.scoring
+(ns metabase.search.in-place.scoring
   "Computes a relevancy score for search results using the weighted average of various scorers. Scores are determined by
   various ways of comparing the text of the search string and the item's title or description, as well as by
   Metabase-specific features such as how many dashboards a card appears in or whether an item is pinned.

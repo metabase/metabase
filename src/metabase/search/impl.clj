@@ -18,7 +18,7 @@
     :refer [SearchableModel SearchContext]]
    [metabase.search.filter :as search.filter]
    [metabase.search.fulltext :as search.fulltext]
-   [metabase.search.scoring :as scoring]
+   [metabase.search.in-place.scoring :as scoring]
    [metabase.util.i18n :refer [tru deferred-tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]

@@ -667,7 +667,7 @@
     metabase.search.filter                                        search.filter
     metabase.search.in-place.filter                               search.in-place.filter
     metabase.search.util                                          search.util
-    metabase.search.scoring                                       scoring
+    metabase.search.in-place.scoring                              scoring
     metabase.server.middleware.auth                               mw.auth
     metabase.server.middleware.browser-cookie                     mw.browser-cookie
     metabase.server.middleware.exceptions                         mw.exceptions

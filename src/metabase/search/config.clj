@@ -76,7 +76,7 @@
 (assert (= all-models (set models-search-order)) "The models search order has to include all models")
 
 (def weights
-  "Strength of the various scorers. Copied from metabase.search.scoring, but allowing divergence."
+  "Strength of the various scorers. Copied from metabase.search.in-place.scoring, but allowing divergence."
   {:pinned              2                                   ;; simple field
    :bookmarked          2                                   ;; join with multi-table entity
    :recency             1.5                                 ;; date formula

@@ -12,8 +12,8 @@
     :as search.config
     :refer [SearchContext SearchableModel]]
    [metabase.search.in-place.filter :as search.in-place.filter]
+   [metabase.search.in-place.scoring :as scoring]
    [metabase.search.permissions :as search.permissions]
-   [metabase.search.scoring :as scoring]
    [metabase.search.util :as search.util]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
