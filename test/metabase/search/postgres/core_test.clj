@@ -54,18 +54,15 @@
                (not-any? #{"Some Collection"}))))))
 
 (defn- normalize* [xs]
-  (into #{}
-        (map (comp #(dissoc % :bookmark :pinned :total_score)
-                   u/strip-nils
-                   #(update % :archived boolean)))
-        xs))
+  (map (comp #(dissoc % :bookmark :pinned :total_score)
+             u/strip-nils
+             #(update % :archived boolean)) xs))
 
 (deftest fulltext-test
   (with-setup
     (testing "consistent results with index-based implementations\n"
       (doseq [term (take 1 example-terms)]
         (testing term
-          ;; there is no ranking, so order is non-deterministic
           (is (= (normalize* (hybrid term))
                  (normalize* (#'search.postgres/fulltext
                               term
