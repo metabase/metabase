@@ -12,6 +12,7 @@
    [metabase.util :as u :refer [prog1]]
    [metabase.util.retry :as retry]
    [metabase.util.retry-test :as rt]
+   [postal.core :as postal]
    [postal.message :as message]
    [throttle.core :as throttle])
   (:import
@@ -363,12 +364,13 @@
 
 (deftest throttle-test
   (let [send-email (fn [recipients]
-                     (email/send-email!
-                      {}
-                      (merge {:from    "awesome@metabase.com"
-                              :subject "101 Reasons to use Metabase"
-                              :body    "101. Metabase will make you a better person"}
-                             recipients)))]
+                     (with-redefs [postal/send-message (fn [& args] (last args))]
+                       (email/send-email!
+                        {}
+                        (merge {:from    "awesome@metabase.com"
+                                :subject "101 Reasons to use Metabase"
+                                :body    "101. Metabase will make you a better person"}
+                               recipients))))]
     (tu/with-temporary-setting-values
       [email-smtp-host "fake_smtp_host"
        email-smtp-port 587]
