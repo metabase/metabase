@@ -4,6 +4,22 @@
   "parameters": {
     "type": "object",
     "properties": {
+      "breakouts": {
+        "type": "array",
+        "description": "A list of grouping clauses to add to the current query. Each clause adds grouping by one column.",
+        "items": {
+          "type": "object",
+          "description": "Group by clause.",
+          "properties": {
+            "column": {
+              "type": "string",
+              "description": "The column to apply grouping for. Choose an appropriate column name based on user input from breakoutable_columns list."
+            }
+          },
+          "required": ["column"],
+          "additionalProperties": false
+        }
+      },
       "order_bys": {
         "type": "array",
         "description": "A list of sorting clauses to add to the current query. Each clause adds sorting by one column.",
@@ -42,7 +58,7 @@
         }
       }
     },
-    "required": ["order_bys", "limits"],
+    "required": ["breakouts","order_bys", "limits"],
     "additionalProperties": false
   }
 }

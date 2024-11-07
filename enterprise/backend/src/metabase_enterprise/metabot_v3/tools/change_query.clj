@@ -8,8 +8,9 @@
   (some? (:current_query context)))
 
 (mu/defmethod metabot-v3.tools.interface/*invoke-tool* :metabot.tool/change-query
-  [_tool-name {:keys [order_bys limits], :as _argument-map}]
+  [_tool-name {:keys [breakouts order_bys limits], :as _argument-map}]
   {:reactions [{:type      :metabot.reaction/change-query
+                :breakouts breakouts
                 :order_bys order_bys
                 :limits    limits}]
    :output "success"})

@@ -77,19 +77,24 @@ export type MetabotApiCallReaction = {
   };
 };
 
-export type OrderByQueryDetails = {
+export type MetabotBreakoutQueryDetails = {
+  column: string;
+};
+
+export type MetabotOrderByQueryDetails = {
   column: string;
   direction: "asc" | "desc" | null;
 };
 
-export type LimitQueryDetails = {
+export type MetabotLimitQueryDetails = {
   limit: number;
 };
 
 export type MetabotChangeQueryReaction = {
   type: "metabot.reaction/change-query";
-  order_bys: OrderByQueryDetails[] | null;
-  limits: LimitQueryDetails[] | null;
+  breakouts: MetabotBreakoutQueryDetails[] | null;
+  order_bys: MetabotOrderByQueryDetails[] | null;
+  limits: MetabotLimitQueryDetails[] | null;
 };
 
 export type MetabotReaction =

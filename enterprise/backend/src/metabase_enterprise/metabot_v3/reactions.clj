@@ -134,6 +134,8 @@
 
 (defreaction :metabot.reaction/change-query
   [:map
+   [:breakouts [:maybe [:vector [:map
+                                 [:column :string]]]]]
    [:order_bys [:maybe [:vector [:map
                                  [:column :string]
                                  [:direction [:maybe [:enum :asc :desc]]]]]]]

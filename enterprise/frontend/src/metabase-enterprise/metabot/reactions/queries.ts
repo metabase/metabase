@@ -15,24 +15,43 @@ export const changeQuery: ReactionHandler<MetabotChangeQueryReaction> =
 
     const query = question.query();
     const stageIndex = -1;
-    const orderBys = reaction.order_bys ?? [];
-    const limits = reaction.limits ?? [];
 
-    const queryWithOrderBy = orderBys.reduce((newQuery, details) => {
-      const columns = Lib.orderableColumns(query, stageIndex);
+    const breakoutDetails = reaction.breakouts ?? [];
+    const queryWithBreakouts = breakoutDetails.reduce((newQuery, details) => {
+      const columns = Lib.breakoutableColumns(newQuery, stageIndex);
       const column = columns.find(
         column =>
-          Lib.displayInfo(query, stageIndex, column).displayName ===
+          Lib.displayInfo(newQuery, stageIndex, column).displayName ===
+          details.column,
+      );
+      if (!column) {
+        return newQuery;
+      }
+
+      return Lib.breakout(
+        newQuery,
+        stageIndex,
+        Lib.withDefaultBucket(newQuery, stageIndex, column),
+      );
+    }, query);
+
+    const orderByDetails = reaction.order_bys ?? [];
+    const queryWithOrderBy = orderByDetails.reduce((newQuery, details) => {
+      const columns = Lib.orderableColumns(newQuery, stageIndex);
+      const column = columns.find(
+        column =>
+          Lib.displayInfo(newQuery, stageIndex, column).displayName ===
           details.column,
       );
       if (!column) {
         return newQuery;
       }
       return Lib.orderBy(newQuery, stageIndex, column);
-    }, query);
+    }, queryWithBreakouts);
 
-    const queryWithLimit = limits.reduce((newQuery, details) => {
-      return Lib.limit(query, stageIndex, details.limit);
+    const limitDetails = reaction.limits ?? [];
+    const queryWithLimit = limitDetails.reduce((newQuery, details) => {
+      return Lib.limit(newQuery, stageIndex, details.limit);
     }, queryWithOrderBy);
 
     const newQuestion = question.setQuery(queryWithLimit);
