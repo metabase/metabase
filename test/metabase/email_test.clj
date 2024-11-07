@@ -385,7 +385,9 @@
             (is (thrown-with-msg?
                  Exception
                  #"Too many attempts!.*"
-                 (send-email {:to ["4@metabase.com"]}))))
+                 (send-email {:to ["4@metabase.com"]})))
+            (testing "still ok if there is no recipient"
+              (is (some? (send-email {})))))
 
           (testing "with 1 small then 1 big event"
             (with-redefs [email/email-throttler (#'email/make-email-throttler 3)]
