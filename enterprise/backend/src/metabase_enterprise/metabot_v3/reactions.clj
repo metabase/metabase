@@ -131,3 +131,9 @@
   [:map
    [:type [:= :metabot.reaction/writeback]]
    [:message :string]])
+
+(defreaction :metabot.reaction/change-axes-labels
+  [:map
+   [:type [:= :metabot.reaction/change-axes-labels]]
+   [:x_axis_label [:maybe :string]]
+   [:y_axis_label [:maybe :string]]])
