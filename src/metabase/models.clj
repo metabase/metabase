@@ -1,4 +1,6 @@
 (ns metabase.models
+  ;; For metabase.search.postgres.index - need to think about what the public interface for this would look like.
+  #_{:clj-kondo/ignore [:metabase/ns-module-checker]}
   (:require
    [metabase.models.action :as action]
    [metabase.models.application-permissions-revision :as a-perm-revision]
@@ -54,6 +56,7 @@
    [metabase.models.view-log :as view-log]
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings.premium-features :refer [defenterprise]]
+   [metabase.search :as search]
    [metabase.search.postgres.ingestion :as search.ingestion]
    [metabase.util :as u]
    [methodical.core :as methodical]
@@ -197,4 +200,5 @@
 
 (t2/define-after-insert :metabase/model
   [model]
-  (search.ingestion/update-index! model))
+  (when search/supports-index?
+   (search.ingestion/update-index! model)))
