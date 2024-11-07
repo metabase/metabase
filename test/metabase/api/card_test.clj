@@ -2602,72 +2602,72 @@
                                      :status              "verified"
                                      :text                "lookin good"}]))
          ~@body))]
-   (letfn [(verified? [card]
-             (-> card (t2/hydrate [:moderation_reviews :moderator_details])
-                 :moderation_reviews first :status #{"verified"} boolean))
-           (reviews [card]
-             (t2/select ModerationReview
-                        :moderated_item_type "card"
-                        :moderated_item_id (u/the-id card)
-                        {:order-by [[:id :desc]]}))
-           (update-card [card diff]
-             (mt/user-http-request :crowberto :put 200 (str "card/" (u/the-id card)) (merge card diff)))]
-     (testing "Changing core attributes un-verifies the card"
-       (with-card :verified
-         (is (verified? card))
-         (update-card card (update-in card [:dataset_query :query :source-table] inc))
-         (is (not (verified? card)))
-         (testing "The unverification edit has explanatory text"
-           (is (= "Unverified due to edit"
-                  (-> (reviews card) first :text))))))
-     (testing "Changing some attributes does not unverify"
-       (tools.macro/macrolet [(remains-verified [& body]
-                                `(~'with-card :verified
-                                              (is (~'verified? ~'card) "Not verified initially")
-                                              ~@body
-                                              (is (~'verified? ~'card) "Not verified after action")))]
-         (testing "changing collection"
-           (remains-verified
-            (update-card card {:collection_id (u/the-id collection2)})))
-         (testing "pinning"
-           (remains-verified
-            (update-card card {:collection_position 1})))
-         (testing "making public"
-           (remains-verified
-            (update-card card {:made_public_by_id (mt/user->id :rasta)
-                               :public_uuid (random-uuid)})))
-         (testing "Changing description"
-           (remains-verified
-            (update-card card {:description "foo"})))
-         (testing "Changing name"
-           (remains-verified
-            (update-card card {:name "foo"})))
-         (testing "Changing archived"
-           (remains-verified
-            (update-card card {:archived true})))
-         (testing "Changing display"
-           (remains-verified
-            (update-card card {:display :line})))
-         (testing "Changing visualization settings"
-           (remains-verified
-            (update-card card {:visualization_settings {:table.cell_column "FOO"}})))))
-     (testing "Does not add a new nil moderation review when not verified"
-       (with-card :not-verified
-         (is (empty? (reviews card)))
-         (update-card card {:description "a new description"})
-         (is (empty? (reviews card)))))
-     (testing "Does not add nil moderation reviews when there are reviews but not verified"
+    (letfn [(verified? [card]
+              (-> card (t2/hydrate [:moderation_reviews :moderator_details])
+                  :moderation_reviews first :status #{"verified"} boolean))
+            (reviews [card]
+              (t2/select ModerationReview
+                         :moderated_item_type "card"
+                         :moderated_item_id (u/the-id card)
+                         {:order-by [[:id :desc]]}))
+            (update-card [card diff]
+              (mt/user-http-request :crowberto :put 200 (str "card/" (u/the-id card)) (merge card diff)))]
+      (testing "Changing core attributes un-verifies the card"
+        (with-card :verified
+          (is (verified? card))
+          (update-card card (update-in card [:dataset_query :query :source-table] inc))
+          (is (not (verified? card)))
+          (testing "The unverification edit has explanatory text"
+            (is (= "Unverified due to edit"
+                   (-> (reviews card) first :text))))))
+      (testing "Changing some attributes does not unverify"
+        (tools.macro/macrolet [(remains-verified [& body]
+                                 `(~'with-card :verified
+                                               (is (~'verified? ~'card) "Not verified initially")
+                                               ~@body
+                                               (is (~'verified? ~'card) "Not verified after action")))]
+          (testing "changing collection"
+            (remains-verified
+             (update-card card {:collection_id (u/the-id collection2)})))
+          (testing "pinning"
+            (remains-verified
+             (update-card card {:collection_position 1})))
+          (testing "making public"
+            (remains-verified
+             (update-card card {:made_public_by_id (mt/user->id :rasta)
+                                :public_uuid (random-uuid)})))
+          (testing "Changing description"
+            (remains-verified
+             (update-card card {:description "foo"})))
+          (testing "Changing name"
+            (remains-verified
+             (update-card card {:name "foo"})))
+          (testing "Changing archived"
+            (remains-verified
+             (update-card card {:archived true})))
+          (testing "Changing display"
+            (remains-verified
+             (update-card card {:display :line})))
+          (testing "Changing visualization settings"
+            (remains-verified
+             (update-card card {:visualization_settings {:table.cell_column "FOO"}})))))
+      (testing "Does not add a new nil moderation review when not verified"
+        (with-card :not-verified
+          (is (empty? (reviews card)))
+          (update-card card {:description "a new description"})
+          (is (empty? (reviews card)))))
+      (testing "Does not add nil moderation reviews when there are reviews but not verified"
        ;; testing that we aren't just adding a nil moderation each time we update a card
-       (with-card :verified
-         (is (verified? card))
-         (moderation-review/create-review! {:moderated_item_id   (u/the-id card)
-                                            :moderated_item_type "card"
-                                            :moderator_id        (mt/user->id :rasta)
-                                            :status              nil})
-         (is (not (verified? card)))
-         (is (= 2 (count (reviews card))))
-         (update-card card {:description "a new description"})
-         (is (= 2 (count (reviews card)))))))))
+        (with-card :verified
+          (is (verified? card))
+          (moderation-review/create-review! {:moderated_item_id   (u/the-id card)
+                                             :moderated_item_type "card"
+                                             :moderator_id        (mt/user->id :rasta)
+                                             :status              nil})
+          (is (not (verified? card)))
+          (is (= 2 (count (reviews card))))
+          (update-card card {:description "a new description"})
+          (is (= 2 (count (reviews card)))))))))
 
 (deftest test-that-we-can-bulk-move-some-cards-with-no-collection-into-a-collection
   (mt/with-temp [Collection  collection {:name "Pog Collection"}

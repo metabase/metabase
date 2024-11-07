@@ -370,23 +370,23 @@
             ;; Grant read permissions for Collection 2 but not Collection 1
             (perms/grant-collection-read-permissions! (perms-group/all-users) collection-2-id)
             (doseq [[card-1-query-type card-1-query] {"MBQL"   (mt/mbql-query venues
-                                                                              {:order-by [[:asc $id]], :limit 2})
+                                                                 {:order-by [[:asc $id]], :limit 2})
                                                       "native" (mt/native-query
-                                                                {:query (str "SELECT id, name, category_id, latitude, longitude, price "
-                                                                             "FROM venues "
-                                                                             "ORDER BY id ASC "
-                                                                             "LIMIT 2")})}]
+                                                                 {:query (str "SELECT id, name, category_id, latitude, longitude, price "
+                                                                              "FROM venues "
+                                                                              "ORDER BY id ASC "
+                                                                              "LIMIT 2")})}]
               (testing (format "\nCard 1 is a %s query" card-1-query-type)
                 (t2.with-temp/with-temp [:model/Card {card-1-id :id, :as card-1} {:collection_id collection-1-id
                                                                                   :dataset_query card-1-query}]
                   (doseq [[card-2-query-type card-2-query] {"MBQL"   (mt/mbql-query nil
-                                                                                    {:source-table (format "card__%d" card-1-id)})
+                                                                       {:source-table (format "card__%d" card-1-id)})
                                                             "native" (mt/native-query
-                                                                      {:query         "SELECT * FROM {{card}}"
-                                                                       :template-tags {"card" {:name         "card"
-                                                                                               :display-name "card"
-                                                                                               :type         :card
-                                                                                               :card-id      card-1-id}}})}]
+                                                                       {:query         "SELECT * FROM {{card}}"
+                                                                        :template-tags {"card" {:name         "card"
+                                                                                                :display-name "card"
+                                                                                                :type         :card
+                                                                                                :card-id      card-1-id}}})}]
                     (testing (format "\nCard 2 is a %s query" card-2-query-type)
                       (t2.with-temp/with-temp [:model/Card card-2 {:collection_id collection-2-id
                                                                    :dataset_query card-2-query}]
@@ -413,7 +413,7 @@
                                    #"You do not have permissions to view Card"
                                    (mt/rows
                                     (qp/process-query (mt/mbql-query nil
-                                                                     {:source-table (format "card__%d" card-1-id)}))))))
+                                                        {:source-table (format "card__%d" card-1-id)}))))))
 
                             (testing "Should be able to run ad-hoc query with Card 2 as source query [Ad-hoc -> Card 2 -> Card 1 -> Source Query]"
                               (is (= expected
@@ -421,7 +421,7 @@
                                       (qp/process-query
                                        (qp/userland-query
                                         (mt/mbql-query nil
-                                                       {:source-table (format "card__%d" (u/the-id card-2))})))))))))))))))))))))
+                                          {:source-table (format "card__%d" (u/the-id card-2))})))))))))))))))))))))
 
 (deftest e2e-ignore-user-supplied-card-ids-test
   (testing "You shouldn't be able to bypass security restrictions by passing `[:info :card-id]` in the query."
