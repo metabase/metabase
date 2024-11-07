@@ -1,5 +1,5 @@
 import { type ChangeEvent, useCallback, useRef, useState } from "react";
-import { t } from "ttag";
+import { c } from "ttag";
 
 import {
   type CollectionOrTableIdProps,
@@ -76,7 +76,7 @@ export const DwhUploadCSV = () => {
         radius="xl"
         variant="outline"
       >
-        {t`Upload CSV`}
+        {c("Text for a button that lets you upload a CSV file").t`Upload CSV`}
       </Button>
       <UploadInput
         id="dwh-upload-csv-input"
