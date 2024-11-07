@@ -8,6 +8,8 @@ permissions:
 
 jobs:
   close-stale-prs:
+    # don't run this workflow on a cron for forks
+    if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/stale@v6

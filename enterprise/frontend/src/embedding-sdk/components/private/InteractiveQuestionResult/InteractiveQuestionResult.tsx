@@ -8,6 +8,7 @@ import {
   SdkError,
   SdkLoader,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
+import { SaveQuestionModal } from "metabase/containers/SaveQuestionModal";
 import { Box, Button, Group, Icon } from "metabase/ui";
 
 import { InteractiveQuestion } from "../../public/InteractiveQuestion";
@@ -25,7 +26,7 @@ export interface InteractiveQuestionResultProps {
   customTitle?: ReactNode;
 }
 
-type QuestionView = "notebook" | "filter" | "summarize" | "visualization";
+type QuestionView = "editor" | "filter" | "summarize" | "visualization";
 
 const ContentView = ({
   questionView,
@@ -41,8 +42,8 @@ const ContentView = ({
     .with("summarize", () => (
       <InteractiveQuestion.Summarize onClose={onReturnToVisualization} />
     ))
-    .with("notebook", () => (
-      <InteractiveQuestion.Notebook onApply={onReturnToVisualization} />
+    .with("editor", () => (
+      <InteractiveQuestion.Editor onApply={onReturnToVisualization} />
     ))
     .otherwise(() => <InteractiveQuestion.QuestionVisualization />);
 
@@ -58,10 +59,20 @@ export const InteractiveQuestionResult = ({
   const [questionView, setQuestionView] =
     useState<QuestionView>("visualization");
 
-  const { question, queryResults, isQuestionLoading } =
-    useInteractiveQuestionContext();
+  const {
+    question,
+    queryResults,
+    isQuestionLoading,
+    isSaveEnabled,
+    originalQuestion,
+    onCreate,
+    onSave,
+  } = useInteractiveQuestionContext();
 
   const [isChartSelectorOpen, { toggle: toggleChartTypeSelector }] =
+    useDisclosure(false);
+
+  const [isSaveModalOpen, { open: openSaveModal, close: closeSaveModal }] =
     useDisclosure(false);
 
   if (isQuestionLoading) {
@@ -96,14 +107,17 @@ export const InteractiveQuestionResult = ({
             onClose={() => setQuestionView("visualization")}
             isOpen={questionView === "summarize"}
           />
-          <InteractiveQuestion.NotebookButton
-            isOpen={questionView === "notebook"}
+          <InteractiveQuestion.EditorButton
+            isOpen={questionView === "editor"}
             onClick={() =>
               setQuestionView(
-                questionView === "notebook" ? "visualization" : "notebook",
+                questionView === "editor" ? "visualization" : "editor",
               )
             }
           />
+          {isSaveEnabled && !isSaveModalOpen && (
+            <InteractiveQuestion.SaveButton onClick={openSaveModal} />
+          )}
         </Group>
       </Group>
 
@@ -147,6 +161,19 @@ export const InteractiveQuestionResult = ({
           />
         </Box>
       </Box>
+
+      {/* Refer to the SaveQuestionProvider for context on why we have to do it like this */}
+      {isSaveModalOpen && question && (
+        <SaveQuestionModal
+          question={question}
+          originalQuestion={originalQuestion ?? null}
+          opened
+          closeOnSuccess
+          onClose={closeSaveModal}
+          onCreate={onCreate}
+          onSave={onSave}
+        />
+      )}
     </FlexibleSizeComponent>
   );
 };

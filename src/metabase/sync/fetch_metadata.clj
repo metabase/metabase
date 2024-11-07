@@ -29,6 +29,14 @@
   (log-if-error "db-metadata"
     (driver/describe-database (driver.u/database->driver database) database)))
 
+(defn include-nested-fields-for-table
+  "Add nested-field-columns for table to set of fields."
+  [fields database table]
+  (let [driver (driver.u/database->driver database)]
+    (cond-> fields
+      (driver.u/supports? driver :nested-field-columns database)
+      (set/union (sql-jdbc.sync/describe-nested-field-columns driver database table)))))
+
 (mu/defn table-fields-metadata :- [:set i/TableMetadataField]
   "Fetch metadata about Fields belonging to a given `table` directly from an external database by calling its driver's
   implementation of [[driver/describe-table]], or [[driver/describe-fields]] if implemented. Also includes nested field
@@ -43,12 +51,7 @@
                                                 :table-names [(:name table)]
                                                 :schema-names [(:schema table)]))
                    (:fields (driver/describe-table driver database table)))]
-      (cond-> result
-        (driver.u/supports? driver :nested-field-columns database)
-        ;; TODO: decouple nested field columns sync from field sync. This will allow
-        ;; describe-fields to be used for field sync for databases with nested field columns
-        ;; Also this should be a driver method, not a sql-jdbc.sync method
-        (set/union (sql-jdbc.sync/describe-nested-field-columns driver database table))))))
+      result)))
 
 (defn- describe-fields-using-describe-table
   "Replaces [[metabase.driver/describe-fields]] for drivers that haven't implemented it. Uses [[driver/describe-table]]

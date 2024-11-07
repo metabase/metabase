@@ -97,7 +97,7 @@
     "react-grid-layout": "^1.2.5",
     "react-innertext": "^1.1.5",
     "react-is": "^18.2.0",
-    "react-markdown": "^8.0.4",
+    "react-markdown": "^8.0.7",
     "react-redux": "^9.1.2",
     "react-resizable": "^3.0.5",
     "react-router": "3",
@@ -463,6 +463,9 @@
     "**/*.{clj,cljc,cljs,bb}": [
       "clj-kondo --config ./.clj-kondo/config.edn --config-dir ./.clj-kondo --parallel --lint",
       "./bin/whitespace_lint_staged.sh"
+    ],
+    "enterprise/frontend/src/embedding-sdk/README.md": [
+      "prettier --write"
     ]
   },
   "browserslist": [

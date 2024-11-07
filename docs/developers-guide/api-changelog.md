@@ -4,6 +4,10 @@ title: API changelog
 
 # Breaking changes to the API interface
 
+## Metabase 0.52.0
+
+- `POST /api/user/:id/send_invite` has been removed.
+
 ## Metabase 0.51.0
 
 - `GET /api/dashboard/:id/query_metadata`
@@ -19,6 +23,9 @@ title: API changelog
 - `/api/legacy-metric`
 
    The `/api/legacy-metric` endpoints have been removed.
+
+- `POST /api/session/pulse/unsubscribe` and `POST /api/session/pulse/unsubscribe/undo` have been moved to `POST
+  /api/pulse/unsubscribe` and `POST /api/pulse/unsubscribe/undo` respectively.
 
 ## Metabase 0.50.0
 
@@ -50,6 +57,8 @@ title: API changelog
 
 - `GET /api/transform/:db-id/:schema/:transform-name`, which hasn't been used internally by Metabase for ages, has
   been removed.
+
+- `POST /api/user/:id/send_invite` is deprecated and will be removed in the next version.
 
 ## Metabase 0.49.5
 NOTE: These endpoint changes were added in 0.49.3, and a bug in `GET /api/embed/card/:token/query/:export-format` was fixed in 0.49.5.

@@ -1,5 +1,4 @@
-import { useSetting } from "metabase/common/hooks";
-import { getPlan } from "metabase/common/utils/plan";
+import { useUrlWithUtm } from "metabase/common/hooks";
 
 interface UpsellLinkProps {
   /* The URL we're sending them to */
@@ -14,14 +13,10 @@ interface UpsellLinkProps {
  * We need to add extra anonymous information to upsell links to know where the user came from
  */
 export const useUpsellLink = ({ url, campaign, source }: UpsellLinkProps) => {
-  const plan = getPlan(useSetting("token-features"));
-
-  const queryString = new URLSearchParams({
+  return useUrlWithUtm(url, {
     utm_source: "product",
     utm_medium: "upsell",
     utm_campaign: campaign,
     utm_content: source,
-    source_plan: plan,
-  }).toString();
-  return `${url}?${queryString}`;
+  });
 };

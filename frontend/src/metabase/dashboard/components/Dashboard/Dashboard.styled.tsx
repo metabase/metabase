@@ -44,6 +44,7 @@ export const DashboardLoadingAndErrorWrapper = styled(
 
 export const DashboardStyled = styled.div`
   display: flex;
+  flex: 1 0 auto;
   flex-direction: column;
   min-height: 100%;
   width: 100%;
