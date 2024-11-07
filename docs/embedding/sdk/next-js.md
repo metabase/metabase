@@ -4,6 +4,10 @@ title: Embedded analytics SDK - Using the SDK with Next.js
 
 # Embedded analytics SDK - Using the SDK with Next.js
 
+{% include beta-blockquote.html %}
+
+{% include plans-blockquote.html feature="Embedded analytics SDK" sdk=true %}
+
 Some notes on using the Embedded analytics SDK with [Next.js](https://nextjs.org/).
 
 ## Using App Router
@@ -63,6 +67,7 @@ const DynamicAnalytics = dynamic(
   },
 );
 ```
+
 ## Handling authentication
 
 If you authenticate with Metabase using JWT, you can create a Route handler that signs people in to Metabase.

@@ -650,8 +650,8 @@ describe("scenarios > dashboard", () => {
           visitDashboard(dashboard_id);
         });
 
-        getDashboardCards().eq(0).contains("top");
-        getDashboardCards().eq(1).contains("bottom");
+        getDashboardCard(0).contains("top");
+        getDashboardCard(1).contains("bottom");
       },
     );
   });
@@ -1212,7 +1212,7 @@ describeWithSnowplow("scenarios > dashboard", () => {
       addIFrameWhileEditing("https://example.com");
       cy.findByTestId("dashboardcard-actions-panel").should("not.exist");
       cy.button("Done").click();
-      getDashboardCards().eq(0).realHover();
+      getDashboardCard(0).realHover();
       cy.findByTestId("dashboardcard-actions-panel").should("be.visible");
       validateIFrame("https://example.com");
       saveDashboard();

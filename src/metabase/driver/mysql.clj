@@ -58,6 +58,8 @@
                               ;; server and the columns themselves. Since this isn't something we can really change in
                               ;; the query itself don't present the option to the users in the UI
                               :case-sensitivity-string-filter-options false
+                              :describe-fields                        true
+                              :describe-fks                           true
                               :convert-timezone                       true
                               :datetime-diff                          true
                               :full-join                              false
@@ -917,3 +919,57 @@
                   (when-let [privileges (not-empty (set/union all-table-privileges (get table-privileges table-name)))]
                     [table-name privileges])))
           table-names)))
+
+;; Describe the Fields present in a `table`. This just hands off to the normal SQL driver implementation of the same
+;; name, but coerces boolean fields since mysql returns them as 0/1 integers
+(defmethod driver/describe-fields :mysql
+  [driver database & args]
+  (eduction
+   (map (fn [col]
+          (-> col
+              (update :pk? pos?)
+              (update :database-position int) ;; Comes in as biginteger
+              (update :database-required pos?)
+              (update :database-is-auto-increment pos?))))
+   (apply (get-method driver/describe-fields :sql-jdbc) driver database args)))
+
+(defmethod sql-jdbc.sync/describe-fields-sql :mysql
+  [driver & {:keys [table-names details]}]
+  (sql/format {:select [[:c.column_name :name]
+                        [[:- :c.ordinal_position 1] :database-position]
+                        [nil :table-schema]
+                        [:c.table_name :table-name]
+                        (if (some-> details :additional-options (str/includes? "tinyInt1isBit=false"))
+                          [[:upper :c.data_type] :database-type]
+                          [[:if [:= :column_type [:inline "tinyint(1)"]] [:inline "BIT"] [:upper :c.data_type]] :database-type])
+                        [[:= :c.extra [:inline "auto_increment"]] :database-is-auto-increment]
+                        [[:and
+                          [:or [:= :column_default nil] [:= [:lower :column_default] [:inline "null"]]]
+                          [:= :is_nullable [:inline "NO"]]
+                          [:not [:= :c.extra [:inline "auto_increment"]]]]
+                         :database-required]
+                        [[:= :c.column_key [:inline "PRI"]] :pk?]
+                        [[:nullif :c.column_comment [:inline ""]] :field-comment]]
+               :from [[:information_schema.columns :c]]
+               :where
+               [:and [:raw "c.table_schema not in ('information_schema','performance_schema','sys','mysql')"]
+                [:raw "c.table_name not in ('innodb_table_stats', 'innodb_index_stats')"]
+                (when (:db details) [:= :c.table_schema (:db details)])
+                (when (seq table-names) [:in [:lower :c.table_name] (map u/lower-case-en table-names)])]}
+              :dialect (sql.qp/quote-style driver)))
+
+(defmethod sql-jdbc.sync/describe-fks-sql :mysql
+  [driver & {:keys [table-names]}]
+  (sql/format {:select [[nil :pk-table-schema]
+                        [:a.referenced_table_name :pk-table-name]
+                        [:a.referenced_column_name :pk-column-name]
+                        [nil :fk-table-schema]
+                        [:a.table_name :fk-table-name]
+                        [:a.column_name :fk-column-name]]
+               :from [[:information_schema.key_column_usage :a]]
+               :join [[:information_schema.table_constraints :b] [:using :constraint_schema :constraint_name :table_name]]
+               :where [:and [:= :b.constraint_type [:inline "FOREIGN KEY"]]
+                       [:!= :a.referenced_table_schema nil]
+                       (when (seq table-names) [:in :a.table_name table-names])]
+               :order-by [:a.table_name]}
+              :dialect (sql.qp/quote-style driver)))

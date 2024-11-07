@@ -20,7 +20,6 @@
    [potemkin.types :as p.types])
   (:import
    (java.math RoundingMode)
-   (java.net URL)
    (java.text DecimalFormat DecimalFormatSymbols)))
 
 (set! *warn-on-reflection* true)
@@ -32,13 +31,6 @@
  [datetime
   format-temporal-str
   temporal-string?])
-
-(def RenderedPulseCard
-  "Schema used for functions that operate on pulse card contents and their attachments"
-  [:map
-   [:attachments [:maybe [:map-of :string (ms/InstanceOfClass URL)]]]
-   [:content     [:sequential :any]]
-   [:render/text {:optional true} [:maybe :string]]])
 
 (p.types/defrecord+ NumericWrapper [^String num-str ^Number num-value]
   hiccup.util/ToString

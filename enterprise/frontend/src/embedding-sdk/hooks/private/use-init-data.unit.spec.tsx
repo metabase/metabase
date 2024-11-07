@@ -17,7 +17,7 @@ import {
   useSdkDispatch,
   useSdkSelector,
 } from "embedding-sdk/store";
-import { refreshTokenAsync } from "embedding-sdk/store/reducer";
+import { refreshTokenAsync } from "embedding-sdk/store/auth";
 import { getIsLoggedIn, getLoginStatus } from "embedding-sdk/store/selectors";
 import type { LoginStatusError } from "embedding-sdk/store/types";
 import { createMockJwtConfig } from "embedding-sdk/test/mocks/config";
@@ -191,7 +191,7 @@ describe("useInitData hook", () => {
 
       expect(screen.getByTestId("test-component")).toHaveAttribute(
         "data-error-message",
-        "Could not authenticate: invalid JWT URI or JWT provider did not return a valid JWT token",
+        "Failed to fetch the user, the session might be invalid.",
       );
     });
 
@@ -209,7 +209,10 @@ describe("useInitData hook", () => {
     });
 
     it("should use a custom fetchRefreshToken function when specified", async () => {
-      let fetchRequestToken = jest.fn(async () => ({ id: "foo", exp: 10 }));
+      let fetchRequestToken = jest.fn(async () => ({
+        id: "foo",
+        exp: Number.MAX_SAFE_INTEGER,
+      }));
 
       const { rerender } = setup({ isValidConfig: true, fetchRequestToken });
 
@@ -218,7 +221,10 @@ describe("useInitData hook", () => {
 
       // Pass in a new fetchRequestToken function
       // We expect the new function to be called when the "Refresh Token" button is clicked
-      fetchRequestToken = jest.fn(async () => ({ id: "bar", exp: 10 }));
+      fetchRequestToken = jest.fn(async () => ({
+        id: "bar",
+        exp: Number.MAX_SAFE_INTEGER,
+      }));
 
       const config = createMockJwtConfig({
         jwtProviderUri: "http://TEST_URI/sso/metabase",

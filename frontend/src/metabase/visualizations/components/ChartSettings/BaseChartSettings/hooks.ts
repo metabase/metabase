@@ -35,22 +35,26 @@ export const useChartSettingsSections = ({
     return sectionObj;
   }, [widgets]);
 
-  const sectionNames = Object.keys(sections);
-
   // This sorts the section radio buttons.
-  const sectionSortOrder = [
-    "data",
-    "display",
-    "axes",
-    // include all section names so any forgotten sections are sorted to the end
-    ...sectionNames.map(x => x.toLowerCase()),
-  ];
-  sectionNames.sort((a, b) => {
-    const [aIdx, bIdx] = [a, b].map(x =>
-      sectionSortOrder.indexOf(x.toLowerCase()),
-    );
-    return aIdx - bIdx;
-  });
+  const sectionNames = useMemo(() => {
+    const names = Object.keys(sections);
+
+    const sectionSortOrder = [
+      "data",
+      "display",
+      "axes",
+      // include all section names so any forgotten sections are sorted to the end
+      ...names.map(x => x.toLowerCase()),
+    ];
+    names.sort((a, b) => {
+      const [aIdx, bIdx] = [a, b].map(x =>
+        sectionSortOrder.indexOf(x.toLowerCase()),
+      );
+      return aIdx - bIdx;
+    });
+
+    return names;
+  }, [sections]);
 
   const chartSettingCurrentSection = useMemo(
     () =>
@@ -61,22 +65,30 @@ export const useChartSettingsSections = ({
     [currentSection, sectionNames, sections],
   );
 
-  const visibleWidgets = sections[chartSettingCurrentSection] || [];
-
-  const currentSectionHasColumnSettings = visibleWidgets.some(
-    (widget: Widget) => widget.id === "column_settings",
+  const visibleWidgets = useMemo(
+    () => sections[chartSettingCurrentSection] || [],
+    [chartSettingCurrentSection, sections],
   );
 
-  const showSectionPicker =
-    // don't show section tabs for a single section
-    sectionNames.length > 1 &&
-    // hide the section picker if the only widget is column_settings
-    !(
-      visibleWidgets.length === 1 &&
-      visibleWidgets[0].id === "column_settings" &&
-      // and this section doesn't have that as a direct child
-      !currentSectionHasColumnSettings
-    );
+  const currentSectionHasColumnSettings = useMemo(
+    () =>
+      visibleWidgets.some((widget: Widget) => widget.id === "column_settings"),
+    [visibleWidgets],
+  );
+
+  const showSectionPicker = useMemo(
+    () =>
+      // don't show section tabs for a single section
+      sectionNames.length > 1 &&
+      // hide the section picker if the only widget is column_settings
+      !(
+        visibleWidgets.length === 1 &&
+        visibleWidgets[0].id === "column_settings" &&
+        // and this section doesn't have that as a direct child
+        !currentSectionHasColumnSettings
+      ),
+    [currentSectionHasColumnSettings, sectionNames.length, visibleWidgets],
+  );
 
   return {
     sectionNames,

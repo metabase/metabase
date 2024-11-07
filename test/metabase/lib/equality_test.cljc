@@ -677,3 +677,16 @@
               (lib.equality/find-matching-ref (first columns) column-refs)))
       (is (=? [:field {} "CREATED_AT_2"]
               (lib.equality/find-matching-ref (second columns) column-refs))))))
+
+(deftest ^:parallel find-matching-column-multiple-implicit-joins-test
+  (testing "when there are multiple implicit joins for the same column, matches correctly"
+    (let [base      (lib/query meta/metadata-provider (meta/table-metadata :ic/reports))
+          columns   (lib.metadata.calculation/visible-columns base)
+          by-id     (group-by :id columns)
+          name-cols (by-id (meta/id :ic/accounts :name))]
+      (is (= 2 (count name-cols)))
+      (doseq [col name-cols
+              :let [query (lib/filter base (lib/= col "foo"))
+                    cols  (lib.metadata.calculation/visible-columns query)
+                    [_op _opts filter-col] (first (lib/filters query))]]
+        (is (=? col (lib.equality/find-matching-column query -1 filter-col cols)))))))

@@ -35,7 +35,11 @@ export type InteractiveQuestionProps = PropsWithChildren<{
 }> &
   Pick<
     InteractiveQuestionProviderProps,
-    "onBeforeSave" | "onSave" | "isSaveEnabled" | "entityTypeFilter"
+    | "onBeforeSave"
+    | "onSave"
+    | "entityTypeFilter"
+    | "isSaveEnabled"
+    | "saveToCollectionId"
   >;
 
 export const _InteractiveQuestion = ({
@@ -51,8 +55,9 @@ export const _InteractiveQuestion = ({
   children = null,
   onBeforeSave,
   onSave,
-  isSaveEnabled,
   entityTypeFilter,
+  isSaveEnabled,
+  saveToCollectionId,
 }: InteractiveQuestionProps &
   InteractiveQuestionResultProps &
   FlexibleSizeProps): JSX.Element | null => (
@@ -61,8 +66,9 @@ export const _InteractiveQuestion = ({
     componentPlugins={plugins}
     onBeforeSave={onBeforeSave}
     onSave={onSave}
-    isSaveEnabled={isSaveEnabled}
     entityTypeFilter={entityTypeFilter}
+    isSaveEnabled={isSaveEnabled}
+    saveToCollectionId={saveToCollectionId}
   >
     {children ?? (
       <InteractiveQuestionResult

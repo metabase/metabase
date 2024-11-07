@@ -253,5 +253,17 @@ module.exports = {
       extends: ["plugin:jest-formatting/recommended"],
       files: ["*.cy.spec.ts", "*.cy.spec.js"],
     },
+    {
+      files: ["frontend/src/**/*"],
+      rules: {
+        "no-restricted-syntax": [
+        "error",
+        {
+          selector: "Literal[value=/mb-base-color-/]",
+          message: "You may not use base colors in the application, use semantic colors instead. (see colors.module.css)",
+        }
+      ],
+      },
+    },
   ],
 };

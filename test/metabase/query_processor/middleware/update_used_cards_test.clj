@@ -1,8 +1,10 @@
 (ns metabase.query-processor.middleware.update-used-cards-test
+  #_{:clj-kondo/ignore [:deprecated-namespace]}
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.dashboard-subscription-test :as dashboard-subscription-test]
+   [metabase.notification.test-util :as notification.tu]
    [metabase.pulse.core :as pulse]
    [metabase.pulse.send-test :as pulse.send-test]
    [metabase.query-processor :as qp]
@@ -17,9 +19,10 @@
 (defmacro with-used-cards-setup!
   [& body]
   `(mt/test-helpers-set-global-values!
-     (binding [qp.pipeline/*execute*    (fn [_driver# _query# respond#] (respond# {} []))
-               qp.util/*execute-async?* false]
-       ~@body)))
+     (notification.tu/with-send-notification-sync
+       (binding [qp.pipeline/*execute*    (fn [_driver# _query# respond#] (respond# {} []))
+                 qp.util/*execute-async?* false]
+         ~@body))))
 
 (defn- card-last-used-at
   [card-id]
