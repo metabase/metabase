@@ -248,24 +248,13 @@
         display-name       (if join-display-name
                              (str join-display-name " → " field-display-name)
                              field-display-name)
-        temporal-format    (fn [display-name]
-                             ;; the modification here is temporary hack
-                             ;; currently the problem is that temporal unit is slapped onto display_name multiple
-                             ;; times.
-                             ;; Eg. field ref -> column meta -> field ref -> column meta by multiple calls to display-name-method,
-                             ;; for every column meta this
-                             ;; function adds that again!
-                             ;; TODO: why that is not the case for year?
-                             (if (lib.temporal-bucket/ends-with-temporal-unit? display-name temporal-unit)
-                               display-name
-                               (lib.util/format "%s: %s" display-name (-> (name temporal-unit)
-                                                                          (str/replace \- \space)
-                                                                          u/capitalize-en))))
+        temporal-format    #(lib.temporal-bucket/ensure-ends-with-temporal-unit % temporal-unit)
         bin-format         (fn [display-name]
                              (lib.util/format "%s: %s" display-name (lib.binning/binning-display-name binning field-metadata)))]
     ;; temporal unit and binning formatting are only applied if they haven't been applied yet
     (cond
       (and (not= style :long) hide-bin-bucket?) display-name
+      ;; lbrdnk TODO: Why the following condition is based on `display-name` and `humanized-name`?
       (and temporal-unit (not= display-name (temporal-format humanized-name))) (temporal-format display-name)
       (and binning       (not= display-name (bin-format humanized-name)))      (bin-format display-name)
       :else                                                                    display-name)))
