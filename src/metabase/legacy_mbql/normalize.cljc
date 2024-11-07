@@ -94,6 +94,7 @@
       (:base-type opts)      (update :base-type keyword)
       (:effective-type opts) (update :effective-type keyword)
       (:temporal-unit opts)  (update :temporal-unit keyword)
+      (:inherent-temporal-unit opts)  (update :inherent-temporal-unit keyword)
       (:binning opts)        (update :binning (fn [binning]
                                                 (cond-> binning
                                                   (:strategy binning) (update :strategy keyword)))))))

@@ -242,7 +242,10 @@
   [[_tag x y]]
   (let [[id-or-name options] (if (map? x)
                                [y x]
-                               [x y])]
+                               [x y])
+        options (cond-> options
+                  (some? (:inherent-temporal-unit options))
+                  (set/rename-keys {:inherent-temporal-unit :metabase.lib.field/inherent-temporal-unit}))]
     (lib.options/ensure-uuid [:field options id-or-name])))
 
 (defmethod ->pMBQL :value
@@ -370,7 +373,8 @@
                        :metabase.lib.query/transformation-added-base-type
                        :base-type)
                m))
-       (m/assoc-some :original-temporal-unit (:metabase.lib.field/original-temporal-unit m)))))
+       (m/assoc-some :original-temporal-unit (:metabase.lib.field/original-temporal-unit m))
+       (m/assoc-some :inherent-temporal-unit (:metabase.lib.field/inherent-temporal-unit m)))))
 
 (defmulti ^:private aggregation->legacy-MBQL
   {:arglists '([aggregation-clause])}

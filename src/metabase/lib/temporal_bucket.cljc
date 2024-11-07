@@ -247,8 +247,12 @@
         fallback-unit (if (isa? column-type :type/Time)
                         :hour
                         :month)
-        default-unit  (or default-unit fallback-unit)]
+        default-unit  (case default-unit
+                        :just-dont-do-that nil
+                        (or default-unit fallback-unit))]
+    ;; lbrdnk TODO: "Unhairify"
     (cond-> options
+      (nil? default-unit) (->> (mapv #(dissoc % :default)))
       default-unit  (mark-unit :default  default-unit)
       selected-unit (mark-unit :selected selected-unit))))
 
@@ -291,7 +295,9 @@
                                       (assoc :temporal-unit unit
                                              :effective-type new-effective-type
                                              :metabase.lib.field/original-effective-type original-effective-type)
-                                      (m/assoc-some :metabase.lib.field/original-temporal-unit original-temporal-unit))]
+                                      (m/assoc-some :metabase.lib.field/original-temporal-unit original-temporal-unit)
+                                      ;; lbrdnk TODO: Following should happen only if new unit is coarser.
+                                      (m/assoc-some :metabase.lib.field/inherent-temporal-unit unit))]
       [tag options id-or-name])
     ;; `unit` is `nil`: remove the temporal bucket and remember it :metabase.lib.field/original-temporal-unit.
     (let [original-effective-type (:metabase.lib.field/original-effective-type options)
@@ -374,3 +380,11 @@
                                 column-metadata)]
           (update column-metadata :display_name (partial lib.util/format "%s: %s") temporal-unit-for-humans))))
     column-metadata))
+
+;; lbrdnk TODO: Test.
+(defn coarser-truncation-unit
+  "Decide whether `u1` is coarser than `u2`."
+  [u1 u2]
+  (let [u1-index (or (lib.schema.temporal-bucketing/datetime-truncation-unit->order u1) -1)
+        u2-index (or (lib.schema.temporal-bucketing/datetime-truncation-unit->order u2) -1)]
+    (> u1-index  u2-index)))
