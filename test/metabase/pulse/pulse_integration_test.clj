@@ -69,7 +69,7 @@
                            (with-redefs [email/bcc-enabled? (constantly false)]
                              (mt/with-test-user nil
                                (pulse.send/send-pulse! pulse))))
-        html-body  #p (-> channel-messages :channel/email first :message first :content)
+        html-body  (-> channel-messages :channel/email first :message first :content)
         doc        (-> html-body hik/parse hik/as-hickory)
         data-tables (hik.s/select
                      (hik.s/class "pulse-body")
