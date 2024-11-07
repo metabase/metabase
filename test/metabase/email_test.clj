@@ -396,24 +396,24 @@
 
       (testing "if an email has # of recipients greater than the limit"
         (testing "we skip throttle check if we haven't reached the limit"
-          (with-redefs [email/email-throttler (#'email/make-email-throttler 2)]
-            (send-email {:to ["1@metabase.com"]})
+          (with-redefs [email/email-throttler (#'email/make-email-throttler 3)]
+            (is (some? (send-email {:to ["1@metabase.com"]})))
             ;; this one got through because we haven't reached the limit
-            (send-email {:to ["2@metabase.com"
-                              "3@metabase.com"]
-                         :bcc ["4@metabase.com"]})
+            (is (some? (send-email {:to ["2@metabase.com"]
+                                    :bcc ["4@metabase.com"]})))
             (testing "senidng another will fail because we maxed-out the limit"
               (is (thrown-with-msg?
                    Exception
                    #"Too many attempts!.*"
-                   (send-email {:to ["5@metabase.com"]}))))))
+                   (send-email {:to ["4@metabase.com"]}))))))
 
         (testing "still throttle if we already at limit"
           (testing "we skip throttle check if we haven't reached the limit"
-            (with-redefs [email/email-throttler (#'email/make-email-throttler 2)]
+            (with-redefs [email/email-throttler (#'email/make-email-throttler 3)]
               ;; sending is fine even tho the the limit is 2
-              (send-email {:to ["1@metabase.com"]})
-              (send-email {:to ["2@metabase.com"]})
+              (is (some? (send-email {:to ["1@metabase.com"
+                                           "2@metabase.com"]})))
+              (is (some? (send-email {:to ["3@metabase.com"]})))
               (testing "but still max-out the limit"
                 (is (thrown-with-msg?
                      Exception
@@ -425,13 +425,13 @@
                                              :email
                                              :attempt-ttl-ms     100
                                              :initial-delay-ms   100
-                                             :attempts-threshold 2)]
-          (is (some? (send-email {:to ["1@metabase.com" "2@metabase.com"]})))
+                                             :attempts-threshold 3)]
+          (is (some? (send-email {:to ["1@metabase.com" "2@metabase.com" "3@metabase.com"]})))
           (is (thrown-with-msg?
                Exception
                #"Too many attempts!.*"
-               (send-email {:to ["3@metabase.com"]})))
-          (is (some? (u/poll {:thunk       (fn [] (try (send-email {:to ["3@metabase.com"]})
+               (send-email {:to ["4@metabase.com"]})))
+          (is (some? (u/poll {:thunk       (fn [] (try (send-email {:to ["4@metabase.com"]})
                                                     (catch Exception _
                                                       nil)))
                               :done?       some?
