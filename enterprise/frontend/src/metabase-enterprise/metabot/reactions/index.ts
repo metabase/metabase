@@ -3,12 +3,7 @@ import type { MetabotReaction } from "metabase-types/api";
 import { apiCall } from "./api";
 import { requireUserConfirmation, showMessage } from "./messages";
 import { writeBack } from "./metabot";
-import {
-  aggregateQuery,
-  breakoutQuery,
-  limitQuery,
-  sortQuery,
-} from "./queries";
+import { changeQuery } from "./queries";
 import type { ReactionHandler } from "./types";
 import {
   changeDisplayType,
@@ -31,8 +26,5 @@ export const reactionHandlers: ReactionHandlers = {
   "metabot.reaction/message": showMessage,
   "metabot.reaction/api-call": apiCall,
   "metabot.reaction/writeback": writeBack,
-  "metabot.reaction/aggregate-query": aggregateQuery,
-  "metabot.reaction/breakout-query": breakoutQuery,
-  "metabot.reaction/sort-query": sortQuery,
-  "metabot.reaction/limit-query": limitQuery,
+  "metabot.reaction/change-query": changeQuery,
 };

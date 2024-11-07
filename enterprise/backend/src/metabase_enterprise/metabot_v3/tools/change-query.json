@@ -1,0 +1,280 @@
+{
+  "name": "change-query",
+  "description": "Updates the current query.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "string_filters": {
+        "type": [
+          "array",
+          "null"
+        ],
+        "description": "A list of string filters to apply to the current query. Each string filter requires a column, an operator, and a value.",
+        "items": {
+          "type": "object",
+          "description": "A numeric filter clause.",
+          "properties": {
+            "column": {
+              "type": "string",
+              "description": "The column to apply filter for. Choose an appropriate column name based on user input from string_filterable_columns list."
+            },
+            "operator": {
+              "type": "string",
+              "description": "String filter operator.",
+              "enum": ["=", "!=", "contains", "does-not-contain", "starts-with", "ends-with"]
+            },
+            "value": {
+              "type": "string",
+              "description": "The filter value."
+            }
+          },
+          "required": ["column", "operator", "value"],
+          "additionalProperties": false
+        }
+      },
+      "number_filters": {
+        "type": [
+          "array",
+          "null"
+        ],
+        "description": "A list of numeric filters to apply to the current query. Each numeric filter requires a column, an operator, and a value.",
+        "items": {
+          "type": "object",
+          "description": "A numeric filter clause.",
+          "properties": {
+            "column": {
+              "type": "string",
+              "description": "The column to apply filter for. Choose an appropriate column name based on user input from number_filterable_columns list."
+            },
+            "operator": {
+              "type": "string",
+              "description": "Numeric filter operator.",
+              "enum": ["=", "!=", ">", "<", ">=", "<="]
+            },
+            "value": {
+              "type": "number",
+              "description": "The filter value."
+            }
+          },
+          "required": ["column", "operator", "value"],
+          "additionalProperties": false
+        }
+      },
+      "boolean_filters": {
+        "type": [
+          "array",
+          "null"
+        ],
+        "description": "A list of boolean filters to apply to the current query. Each boolean filter requires a column and a value.",
+        "items": {
+          "type": "object",
+          "description": "A boolean filter clause.",
+          "properties": {
+            "column": {
+              "type": "string",
+              "description": "The column to apply filter for. Choose an appropriate column name based on user input from boolean_filterable_columns list."
+            },
+            "value": {
+              "type": "boolean",
+              "description": "The filter value."
+            }
+          },
+          "required": ["column", "value"],
+          "additionalProperties": false
+        }
+      },
+      "specific_date_filters": {
+        "type": [
+          "array",
+          "null"
+        ],
+        "description": "A list of specific date filters to apply to the current query. Specific date filters allow to filter by exact dates. Each date filter requires a column, an operator, and a value.",
+        "items": {
+          "type": "object",
+          "description": "A specific date filter clause.",
+          "properties": {
+            "column": {
+              "type": "string",
+              "description": "The column to apply filter for. Choose an appropriate column name based on user input from date_filterable_columns list."
+            },
+            "operator": {
+              "type": "string",
+              "description": "Date filter operator.",
+              "enum": ["=", ">", "<"]
+            },
+            "value": {
+              "type": "string",
+              "description": "The filter value. Should be encoded as a ISO 8601 date string."
+            }
+          },
+          "required": ["column", "operator", "value"],
+          "additionalProperties": false
+        }
+      },
+      "relative_date_filters": {
+        "type": [
+          "array",
+          "null"
+        ],
+        "description": "A list of relative date filters to apply to the current query. This filter is relative to the current moment of time. Examples are last 2 months, this year, next 5 weeks.",
+        "items": {
+          "type": "object",
+          "description": "A relative date filter clause.",
+          "properties": {
+            "column": {
+              "type": "string",
+              "description": "The column to apply filter for. Choose an appropriate column name based on user input from date_filterable_columns list."
+            },
+            "direction": {
+              "type": "string",
+              "description": "The direction of the date interval. Possible values are last, current, next. Last means intervals in the past, like last 30 days. Current means intervals including this moment, like this week. Next means intervals in the future, like next 2 months.",
+              "enum": [
+                "last",
+                "current",
+                "next"
+              ]
+            },
+            "value": {
+              "type": "number",
+              "description": "How long the date range is, in units of time. Example: for 'last 5 weeks' the value is 5, for 'next 3 years' the value is 3. For current intervals there is no value and it should be set to zero."
+            },
+            "unit": {
+              "type": "string",
+              "description": "Unit of time used for the date interval.",
+              "enum": [
+                "day",
+                "week",
+                "month",
+                "quarter",
+                "year"
+              ]
+            }
+          },
+          "required": [
+            "column",
+            "direction",
+            "value",
+            "unit"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "aggregations": {
+        "type": [
+          "array",
+          "null"
+        ],
+        "description": "A list of aggregation clauses to add to the current query. Each clause adds an aggregation using one operator and optionally a column.",
+        "items": {
+          "type": "object",
+          "description": "Aggregation clause.",
+          "properties": {
+            "operator": {
+              "type": "string",
+              "description": "The aggregation operator name. Choose an appropriate aggregation operator based on user input from aggregation_operators list."
+            },
+            "column": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "The column to apply aggregation for. Choose an appropriate column name based on user input from breakoutable_columns list."
+            }
+          },
+          "required": [
+            "operator",
+            "column"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "breakouts": {
+        "type": [
+          "array",
+          "null"
+        ],
+        "description": "A list of grouping clauses to add to the current query. Each clause adds grouping by one column.",
+        "items": {
+          "type": "object",
+          "description": "Group by clause.",
+          "properties": {
+            "column": {
+              "type": "string",
+              "description": "The column to apply grouping for. Choose an appropriate column name based on user input from breakoutable_columns list."
+            }
+          },
+          "required": [
+            "column"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "order_bys": {
+        "type": [
+          "array",
+          "null"
+        ],
+        "description": "A list of sorting clauses to add to the current query. Each clause adds sorting by one column.",
+        "items": {
+          "type": "object",
+          "description": "Order by clause.",
+          "properties": {
+            "column": {
+              "type": "string",
+              "description": "The column to apply sorting for. Choose an appropriate column name based on user input from orderable_columns list."
+            },
+            "direction": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "Optional direction of sorting. Can be ascending or descending",
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            }
+          },
+          "required": [
+            "column",
+            "direction"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "limits": {
+        "type": [
+          "array",
+          "null"
+        ],
+        "description": "Sets the row limit for the current query. If no row limit should be set, leave it as an empty array.",
+        "items": {
+          "type": "object",
+          "description": "",
+          "properties": {
+            "limit": {
+              "type": "number",
+              "description": "Row limit for the query."
+            }
+          },
+          "required": [
+            "limit"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    "required": [
+      "string_filters",
+      "number_filters",
+      "boolean_filters",
+      "specific_date_filters",
+      "relative_date_filters",
+      "aggregations",
+      "breakouts",
+      "order_bys",
+      "limits"
+    ],
+    "additionalProperties": false
+  }
+}

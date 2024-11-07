@@ -132,20 +132,35 @@
    [:type [:= :metabot.reaction/writeback]]
    [:message :string]])
 
-(defreaction :metabot.reaction/aggregate-query
+(defreaction :metabot.reaction/change-query
   [:map
-   [:operator :string]
-   [:column :string]])
-
-(defreaction :metabot.reaction/breakout-query
-  [:map
-   [:column :string]])
-
-(defreaction :metabot.reaction/sort-query
-  [:map
-   [:column :string]
-   [:direction [:enum "asc" "desc"]]])
-
-(defreaction :metabot.reaction/limit-query
-  [:map
-   [:limit integer?]])
+   [:string-filters [:vector [:map
+                              [:column :string]
+                              [:operator [:enum "=" "!=" "contains" "does-not-contain" "starts-with" "ends-with"]]
+                              [:value :string]]]]
+   [:number-filters [:vector [:map
+                              [:column :string]
+                              [:operator [:enum "=" "!=" ">" "<" ">=" "<="]]
+                              [:value number?]]]]
+   [:boolean-filters [:vector [:map
+                               [:column :string]
+                               [:value :boolean]]]]
+   [:specific-date-filters [:vector [:map
+                                     [:column :string]
+                                     [:operator [:enum "=" ">" "<"]]
+                                     [:value :string]]]]
+   [:relative-date-filters [:vector [:map
+                                     [:column :string]
+                                     [:direction [:enum "last" "current" "next"]]
+                                     [:value integer?]
+                                     [:unit [:enum "day", "week", "month", "quarter", "year"]]]]]
+   [:aggregations [:vector [:map
+                            [:operator :string]
+                            [:column [:maybe :string]]]]]
+   [:breakouts [:vector [:map
+                         [:column :string]]]]
+   [:order-bys [:vector [:map
+                         [:column :string]
+                         [:direction [:maybe [:enum "asc" "desc"]]]]]]
+   [:limits [:vector [:map
+                      [:limit integer?]]]]])
