@@ -102,9 +102,7 @@ export const getInitialValues = (
       : question.dashboardId();
 
   const collectionId =
-    question.collectionId() === undefined ||
-    isReadonly ||
-    dashboardId === initialDashboardId
+    question.collectionId() === undefined || isReadonly
       ? initialCollectionId
       : question.collectionId();
 
