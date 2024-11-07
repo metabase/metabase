@@ -8,6 +8,7 @@
    [metabase-enterprise.metabot-v3.tools.change-display-type]
    [metabase-enterprise.metabot-v3.tools.change-table-visualization-settings]
    [metabase-enterprise.metabot-v3.tools.change-series-settings]
+   [metabase-enterprise.metabot-v3.tools.change-column-settings]
    [metabase-enterprise.metabot-v3.tools.confirm-invite-user]
    [metabase-enterprise.metabot-v3.tools.interface :as metabot-v3.tools.interface]
    [metabase-enterprise.metabot-v3.tools.who-is-your-favorite]
@@ -28,6 +29,7 @@
   metabase-enterprise.metabot-v3.tools.change-axes-labels/keep-me
   metabase-enterprise.metabot-v3.tools.change-table-visualization-settings/keep-me
   metabase-enterprise.metabot-v3.tools.change-series-settings/keep-me
+  metabase-enterprise.metabot-v3.tools.change-column-settings/keep-me
   metabase-enterprise.metabot-v3.tools.who-is-your-favorite/keep-me)
 
 (mu/defn- reducible-tool-metadata-file-paths :- (lib.schema.common/instance-of-class clojure.lang.IReduceInit)

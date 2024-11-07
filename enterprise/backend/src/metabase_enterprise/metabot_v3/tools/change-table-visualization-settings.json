@@ -1,22 +1,18 @@
 {
-    "name": "change-table-visualization-settings",
-    "description": "Use this tool to change viz settings in a table (e.g. show or hide columns). Make sure that the visualization type is `table` before calling this tool.",
-    "parameters": {
-        "type": "object",
-        "properties": {
-            "visible_columns": {
-                "type": [
-                    "array"
-                ],
-                "description": "List of columns to show in the table. To hide columns, include all but the ones you want to hide in the list.",
-                "items": {
-                    "type": "string"
-                }
-            }
-        },
-        "required": [
-            "visible_columns"
-        ],
-        "additionalProperties": false
-    }
+  "name": "change-table-visualization-settings",
+  "description": "Use this tool only to show or hide columns in a table. Make sure that the visualization type is `table` before calling this tool. Do not ever rename columns. Renaming columns is done with the change-column-settings tool.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "visible_columns": {
+        "type": ["array"],
+        "description": "List of columns to show in the table. To hide columns, include all but the ones you want to hide in the list.",
+        "items": {
+          "type": "string"
+        }
+      }
+    },
+    "required": ["visible_columns"],
+    "additionalProperties": false
+  }
 }

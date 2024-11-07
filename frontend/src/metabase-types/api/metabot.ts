@@ -1,6 +1,6 @@
 import type { CardDisplayType } from "./visualization";
 
-import type { SeriesSettings } from ".";
+import type { ColumnSettings, SeriesSettings } from ".";
 
 export type MetabotFeedbackType =
   | "great"
@@ -92,7 +92,15 @@ export type MetabotChangeSeriesSettingsReaction = {
   series_settings: SeriesSettingsEntry[];
 };
 
+type ColumnSettingsEntry = ColumnSettings & { key: string };
+
+export type MetabotChangeColumnSettingsReaction = {
+  type: "metabot.reaction/change-column-settings";
+  column_settings: ColumnSettingsEntry[];
+};
+
 export type MetabotReaction =
+  | MetabotChangeColumnSettingsReaction
   | MetabotChangeSeriesSettingsReaction
   | MetabotChangeAxesLabelsReaction
   | MetabotMessageReaction
