@@ -445,7 +445,7 @@
                                    :alias        "v"
                                    :source-query {:native "SELECT * from orders"}
                                    :condition    [:= true true]
-                                                ;; Make sure we can't just pass in this key and join to arbitrary SQL!
+                                   ;; Make sure we can't just pass in this key and join to arbitrary SQL!
                                    :qp/stage-is-from-source-card card-id}]
                        :order-by [[:asc $id]]
                        :limit    2})]

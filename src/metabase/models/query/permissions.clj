@@ -63,16 +63,25 @@
 (defn- merge-source-ids
   "Merge function which takes the union of two sets of IDs, if they are both sets"
   [val1 val2]
-  (if (and (set? val1) (set? val2))
+  (cond
+    ;; Merge sets of table or card IDs
+    (and (set? val1) (set? val2))
     (set/union val1 val2)
-    val2))
+
+    ;; Booleans should only ever be `:native? true`, but make sure we propogate truthy values
+    (and (boolean? val1) (boolean? val2))
+    (or val1 val2)
+
+    ;; Safeguard; should not be hit
+    :else (throw (ex-info "Don't know how to merge values!"
+                          {:val1 val1 :val2 val2}))))
 
 (mu/defn query->source-ids :- [:maybe
                                [:map
                                 [:table-ids {:optional true} [:set ::lib.schema.id/table]]
                                 [:card-ids  {:optional true} [:set ::lib.schema.id/card]]
                                 [:native?   {:optional true} :boolean]]]
-  "Return a map containing of table IDs and/or card IDs referenced by `query`, and/or the :native? boolean flag
+  "Return a map containing table IDs and/or card IDs referenced by `query`, and/or the :native? boolean flag
   indicating a native query or subquery. Intended to be used in the context of permissions enforcement."
   [query :- :map]
   (apply merge-with merge-source-ids
@@ -85,9 +94,11 @@
              {:native? true})
 
            (m :guard (every-pred map? #(pos-int? (:source-table %))))
-           (merge-with merge-source-ids
-                       {:table-ids #{(:source-table m)}}
-                       (query->source-ids (dissoc m :source-table))))))
+           (if-let [source-card-id (:qp/stage-is-from-source-card m)]
+             {:card-ids #{source-card-id}}
+             (merge-with merge-source-ids
+                         {:table-ids #{(:source-table m)}}
+                         (query->source-ids (dissoc m :source-table)))))))
 
 (mu/defn query->source-table-ids
   "Returns a sequence of all :source-table IDs referenced by a query. Convenience wrapper around `query->source-ids` if
@@ -300,9 +311,18 @@
 
 (mu/defn can-run-query?
   "Return `true` if the current user has sufficient permissions to run `query`, and `false` otherwise."
-  [query]
-  (let [required-perms (required-perms-for-query query)]
-    (check-data-perms query required-perms :throw-exceptions? false)))
+  [{database-id :database :as query}]
+  (try
+    (let [required-perms (required-perms-for-query query)]
+      (check-data-perms query required-perms)
+
+      ;; Check card read permissions for any cards referenced in subqueries!
+      (doseq [card-id (:card-ids required-perms)]
+        (check-card-read-perms database-id card-id))
+
+      true)
+    (catch clojure.lang.ExceptionInfo _e
+      false)))
 
 (defn can-query-table?
   "Does the current user have permissions to run an ad-hoc query against the Table with `table-id`?"
