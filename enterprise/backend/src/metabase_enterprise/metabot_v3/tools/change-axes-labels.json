@@ -1,0 +1,21 @@
+{
+  "name": "change-axes-labels",
+  "description": "Change X and Y axes labels. Make sure that the visualization type is `line`, `bar`, `area`, `combo`, `scatter`, `waterfall`, or `row` before calling this tool.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "x_axis_label": {
+        "type": ["string", "null"],
+        "description": "The new label for the X axis. Set to `null` if should not be changed.",
+        "nullable": true
+      },
+      "y_axis_label": {
+        "type": ["string", "null"],
+        "description": "The new label for the Y axis. Set to `null` if should not be changed.",
+        "nullable": true
+      }
+    },
+    "required": ["x_axis_label", "y_axis_label"],
+    "additionalProperties": false
+  }
+}
