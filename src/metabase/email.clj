@@ -98,8 +98,8 @@
                 (setting/set-value-of-type! :keyword :email-smtp-security new-value)))
 
 (defsetting email-max-recipients-per-second
-  (deferred-tru "The maximum number of recipients, across emails, that can be sent per second.
-                In case an email has total number of recipients exceeding this limit, the throttling mechanism will be maxed-out but the exception will be silenced.")
+  (deferred-tru "The maximum number of recipients, summed across emails, that can be sent per second.
+                Note that the final email sent before reaching the limit is able to exceed it, if it has multiple recipients.")
   :export?    true
   :type       :integer
   :visibility :settings-manager
@@ -119,11 +119,12 @@
 (defn check-email-throttle
   "Check if the email throttler is enabled and if so, throttle the email sending based on the total number of recipients.
 
-  If an email has # of recipients greater than the rate limit:
-    a) Skip the throttle check if we haven't breached the rate limit yet.
-    b) If we have breached the rate limit, throttle like a normal email
+  We will allow multi-recipient emails to broach the limit, as long as the limit has not been reached yet.
 
-  We need a) to to avoid creating regression bugs due to the new throttling mechanism."
+  We want two properties:
+  
+  1) All emails eventually get sent.
+  2) Lowering the threshold must never cause more overflow.
   [email]
   (when email-throttler
     (when-let [recipients (not-empty (into #{} (mapcat email) [:to :bcc]))]
