@@ -49,7 +49,7 @@
    :ids                 [1 2 3 4]
    :models              (disj search.config/all-models "dataset")})
 
-(deftest where-clause-test
+(deftest with-filters-test
   (testing "The kitchen sink context is complete"
     (is (empty? (remove kitchen-sink-filter-context (filter-keys)))))
   (testing "We leave the query alone if there are no filters"
