@@ -11,8 +11,9 @@ import type { VisualizationSettings } from "metabase-types/api";
 import {
   type InteractiveQuestionContextType,
   useInteractiveQuestionContext,
-} from "../../context";
-export const QuestionSettingsInner = ({
+} from "../context";
+
+export const QuestionSettingsContent = ({
   question,
   queryResults,
   updateQuestion,
@@ -21,17 +22,15 @@ export const QuestionSettingsInner = ({
   queryResults?: any[];
   updateQuestion: InteractiveQuestionContextType["updateQuestion"];
 }) => {
-  const card = question.card();
-  const result = useMemo(() => queryResults?.[0] ?? {}, [queryResults]);
-
   const series = useMemo(() => {
+    const result = queryResults?.[0] ?? {};
     return [
       {
         ...result,
-        card,
+        card: question.card(),
       },
     ];
-  }, [card, result]);
+  }, [queryResults, question]);
 
   const onChange = async (settings: VisualizationSettings) => {
     await updateQuestion(question.updateSettings(settings).lockDisplay());
@@ -72,7 +71,7 @@ export const QuestionSettings = () => {
   }
 
   return (
-    <QuestionSettingsInner
+    <QuestionSettingsContent
       question={question}
       queryResults={queryResults}
       updateQuestion={updateQuestion}
