@@ -80,10 +80,10 @@
 (defn- render-body
   [{:keys [details] :as _template} payload]
   (case (keyword (:type details))
-    :email/mustache-resource
+    :email/handlebars-resource
     (handlebars/render (:path details) payload)
     #_(stencil/render-file (:path details) payload)
-    :email/mustache-text
+    :email/handlebars-text
     (handlebars/render-string (:body details) payload)
     #_(stencil/render-string (:body details) payload)
     (do
@@ -267,18 +267,18 @@
                                                                dashboard_parts)))
         message-context-fn  (fn [non-user-email]
                               (-> notification-payload
-                                  (assoc :computed {:dashboard_content   (html (vec (cons :div (map :content rendered-cards))))
-                                                    :icon_cid            (:content-id icon-attachment)
-                                                    :dashboard_url       (urls/dashboard-url (:id dashboard) parameters)
-                                                    :dashboard_has_tabs? (some-> dashboard :tabs seq)
-                                                    :management_text     (if (nil? non-user-email)
-                                                                           "Manage your subscriptions"
-                                                                           "Unsubscribe")
-                                                    :management_url      (if (nil? non-user-email)
-                                                                           (urls/notification-management-url)
-                                                                           (unsubscribe-url-for-non-user (:id dashboard_subscription) non-user-email))
-                                                    :filters            (when parameters
-                                                                          (render-filters parameters))})
+                                  (assoc :computed {:dashboard_content  (html (vec (cons :div (map :content rendered-cards))))
+                                                    :icon_cid           (:content-id icon-attachment)
+                                                    :dashboard_url      (urls/dashboard-url (:id dashboard) parameters)
+                                                    :dashboard_has_tabs (some-> dashboard :tabs seq)
+                                                    :management_text    (if (nil? non-user-email)
+                                                                          "Manage your subscriptions"
+                                                                          "Unsubscribe")
+                                                    :management_url     (if (nil? non-user-email)
+                                                                          (urls/notification-management-url)
+                                                                          (unsubscribe-url-for-non-user (:id dashboard_subscription) non-user-email))
+                                                    :filters           (when parameters
+                                                                         (render-filters parameters))})
                                   (m/update-existing-in [:payload :dashboard :description] #(markdown/process-markdown % :html))))]
     (construct-emails template message-context-fn attachments recipients)))
 

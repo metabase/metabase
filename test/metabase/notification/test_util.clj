@@ -49,8 +49,8 @@
       (with-redefs
        [channel/send! (fn [channel message]
                         (swap! channel-messages update (:type channel) u/conjv message))]
-        (thunk)
-        @channel-messages))))
+       (thunk)
+       @channel-messages))))
 
 (defmacro with-captured-channel-send!
   "Macro that captures all messages sent to channels in the body of the macro.
@@ -102,9 +102,9 @@
                  :return-value true}
    :active      true})
 
-(def channel-template-email-with-mustache-body
-  "A :model/ChannelTemplate for email channels that has a :event/mustache-text template."
+(def channel-template-email-with-handlebars-body
+  "A :model/ChannelTemplate for email channels that has a :event/handlebars-text template."
   {:channel_type :channel/email
-   :details      {:type    :email/mustache-text
+   :details      {:type    :email/handlebars-text
                   :subject "Welcome {{payload.event_info.object.first_name}} to {{context.site_name}}"
                   :body    "Hello {{payload.event_info.object.first_name}}! Welcome to {{context.site_name}}!"}})

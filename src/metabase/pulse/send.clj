@@ -49,13 +49,13 @@
   (case [channel-type payload-type]
     [:channel/email :notification/dashboard-subscription]
     {:channel_type :channel/email
-     :details      {:type    :email/mustache-resource
+     :details      {:type    :email/handlebars-resource
                     :subject "{{payload.dashboard.name}}"
                     :path    "metabase/email/dashboard_subscription"}}
 
     [:channel/email :notification/alert]
     {:channel_type :channel/email
-     :details      {:type    :email/mustache-resource
+     :details      {:type    :email/handlebars-resource
                     :subject "{{computed.subject}}"
                     :path    "metabase/email/alert"}}
     nil))

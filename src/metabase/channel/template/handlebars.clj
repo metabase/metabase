@@ -28,7 +28,7 @@
   (CompositeTemplateLoader. (into-array TemplateLoader loaders)))
 
 (def ^:private handlebars
-  (doto (Handlebars. (composite-loaders (AppDBLoader.) (ClassPathTemplateLoader. "/" ".mustache")))
+  (doto (Handlebars. (composite-loaders (AppDBLoader.) (ClassPathTemplateLoader. "/" ".hbs")))
     (.with (ConcurrentMapTemplateCache.))))
 
 (defn- wrap-context
@@ -40,6 +40,7 @@
      :else %) context))
 
 (defn render
+  "Render a template with a context."
   ([template-name context]
    (render handlebars template-name context))
   ([req template-name ctx]
@@ -47,6 +48,7 @@
      (.apply template (wrap-context ctx)))))
 
 (defn render-string
+  "Render a template string with a context."
   ([template context]
    (render-string handlebars template context))
   ([req template ctx]
@@ -55,10 +57,10 @@
 
 (comment
   (render-string "Hello {{name}}" {:name "Ngoc"})
-  (render "/metabase/email/_header" {:name "Ngoc"}))
+  (render-string "Hello {{#unless hide_name}}{{name}}{{/unless}}" {:name "Ngoc" :hide_name false})
+  (render "/metabase/email/_header" {}))
 
 (defmacro defhelper
   [name argvec & body]
   (let [argvec (into [] (concat [(gensym)] argvec))]
     `(def ~name (reify Helper (apply ~argvec ~@body)))))
-
