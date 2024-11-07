@@ -283,7 +283,7 @@ const ChatAssistant = ({ metabase_id_back, client, clientSmith, selectedMessages
             const route = `/question/${cardData.id}`;
             window.open(route, "_blank"); // Opens the route in a new tab
         } else {
-            const route = `/question/${cardData.hash}`;
+            const route = `/question#${cardData.hash}`;
             window.open(route, "_blank"); // Opens the route in a new tab
         }
     };
