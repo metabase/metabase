@@ -17,6 +17,7 @@ import type {
   MetabotChangeSeriesSettingsReaction,
   MetabotChangeStackingSettingsReaction,
   MetabotChangeVisiualizationSettingsReaction,
+  MetabotChangeYAxisRangeReaction,
 } from "metabase-types/api";
 
 import { stopProcessingAndNotify } from "../state";
@@ -159,4 +160,16 @@ export const changeGoalLine: ReactionHandler<MetabotChangeGoalLineReaction> =
     );
 
     await dispatch(onUpdateVisualizationSettings(goalLineSettings));
+  };
+
+export const changeYAxisRange: ReactionHandler<
+  MetabotChangeYAxisRangeReaction
+> =
+  ({ type, ...payload }) =>
+  async ({ dispatch }) => {
+    const yAxisSettings = Object.fromEntries(
+      Object.entries(payload).filter(([_, value]) => value !== null),
+    );
+
+    await dispatch(onUpdateVisualizationSettings(yAxisSettings));
   };

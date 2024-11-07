@@ -12,6 +12,7 @@ import {
   changeSeriesSettings,
   changeStackingSettings,
   changeTableVisualizationSettings,
+  changeYAxisRange,
 } from "./visualizations";
 
 export * from "./errors";
@@ -35,4 +36,5 @@ export const reactionHandlers: ReactionHandlers = {
   "metabot.reaction/message": showMessage,
   "metabot.reaction/api-call": apiCall,
   "metabot.reaction/writeback": writeBack,
+  "metabot.reaction/change-y-axis-range": changeYAxisRange,
 };
