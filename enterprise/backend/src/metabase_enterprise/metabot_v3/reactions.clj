@@ -190,3 +190,10 @@
    [:goal_value {:optional true} [:maybe number?]]
    [:show_goal {:optional true} [:maybe boolean?]]
    [:goal_label {:optional true} [:maybe :string]]])
+
+(defreaction :metabot.reaction/change-y-axis-range
+  [:map
+   [:type [:= :metabot.reaction/change-y-axis-range]]
+   ["graph.y_axis.auto_range" {:optional true} [:maybe boolean?]]
+   ["graph.y_axis.min" {:optional true} [:maybe number?]]
+   ["graph.y_axis.max" {:optional true} [:maybe number?]]])

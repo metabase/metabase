@@ -111,7 +111,15 @@ export type MetabotChangeGoalLineReaction = {
   "graph.goal_label": string | null;
 };
 
+export type MetabotChangeYAxisRangeReaction = {
+  type: "metabot.reaction/change-y-axis-range";
+  "graph.y_axis.auto_range": boolean | null;
+  "graph.y_axis.min": number | null;
+  "graph.y_axis.max": number | null;
+};
+
 export type MetabotReaction =
+  | MetabotChangeYAxisRangeReaction
   | MetabotChangeGoalLineReaction
   | MetabotChangeColumnSettingsReaction
   | MetabotChangeSeriesSettingsReaction

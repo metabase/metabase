@@ -8,6 +8,7 @@
    [metabase-enterprise.metabot-v3.tools.change-display-type]
    [metabase-enterprise.metabot-v3.tools.change-table-visualization-settings]
    [metabase-enterprise.metabot-v3.tools.change-series-settings]
+   [metabase-enterprise.metabot-v3.tools.change-y-axis-range]
    [metabase-enterprise.metabot-v3.tools.change-column-settings]
    [metabase-enterprise.metabot-v3.tools.change-stacking-settings]
    [metabase-enterprise.metabot-v3.tools.change-goal-line]
@@ -29,6 +30,7 @@
   metabase-enterprise.metabot-v3.tools.confirm-invite-user/keep-me
   metabase-enterprise.metabot-v3.tools.change-display-type/keep-me
   metabase-enterprise.metabot-v3.tools.change-axes-labels/keep-me
+  metabase-enterprise.metabot-v3.tools.change-y-axis-range/keep-me
   metabase-enterprise.metabot-v3.tools.change-table-visualization-settings/keep-me
   metabase-enterprise.metabot-v3.tools.change-series-settings/keep-me
   metabase-enterprise.metabot-v3.tools.change-column-settings/keep-me
