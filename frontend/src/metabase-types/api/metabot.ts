@@ -77,26 +77,71 @@ export type MetabotApiCallReaction = {
   };
 };
 
-export type MetabotAggregateQueryReaction = {
-  type: "metabot.reaction/aggregate-query";
+export type MetabotStringFilterDetails = {
+  column: string;
+  operator:
+    | "="
+    | "!="
+    | "contains"
+    | "does-not-contain"
+    | "starts-with"
+    | "ends-with";
+  value: string;
+};
+
+export type MetabotNumberFilterDetails = {
+  column: string;
+  operator: "=" | "!=" | ">" | "<" | ">=" | "<=";
+  value: number;
+};
+
+export type MetabotBooleanFilterDetails = {
+  column: string;
+  value: boolean;
+};
+
+export type MetabotSpecificDateFilterDetails = {
+  column: string;
+  operator: "=" | ">" | "<";
+  value: string;
+};
+
+export type MetabotRelativeDateFilterDetails = {
+  column: string;
+  direction: "last" | "current" | "next";
+  value: number;
+  unit: "day" | "week" | "month" | "quarter" | "year";
+};
+
+export type MetabotAggregateQueryDetails = {
   operator: string;
+  column: string | null;
+};
+
+export type MetabotBreakoutQueryDetails = {
   column: string;
 };
 
-export type MetabotBreakoutQueryReaction = {
-  type: "metabot.reaction/breakout-query";
+export type MetabotOrderByQueryDetails = {
   column: string;
+  direction: "asc" | "desc" | null;
 };
 
-export type MetabotSortQueryReaction = {
-  type: "metabot.reaction/sort-query";
-  column: string;
-  direction: "asc" | "desc";
-};
-
-export type MetabotLimitQueryReaction = {
-  type: "metabot.reaction/limit-query";
+export type MetabotLimitQueryDetails = {
   limit: number;
+};
+
+export type MetabotChangeQueryReaction = {
+  type: "metabot.reaction/change-query";
+  string_filters: MetabotStringFilterDetails[];
+  number_filters: MetabotNumberFilterDetails[];
+  boolean_filters: MetabotBooleanFilterDetails[];
+  specific_date_filters: MetabotSpecificDateFilterDetails[];
+  relative_date_filters: MetabotRelativeDateFilterDetails[];
+  aggregations: MetabotAggregateQueryDetails[];
+  breakouts: MetabotBreakoutQueryDetails[];
+  order_bys: MetabotOrderByQueryDetails[];
+  limits: MetabotLimitQueryDetails[];
 };
 
 export type MetabotReaction =
@@ -106,10 +151,7 @@ export type MetabotReaction =
   | MetabotConfirmationReaction
   | MetabotWriteBackReaction
   | MetabotApiCallReaction
-  | MetabotAggregateQueryReaction
-  | MetabotBreakoutQueryReaction
-  | MetabotSortQueryReaction
-  | MetabotLimitQueryReaction;
+  | MetabotChangeQueryReaction;
 
 /* Metabot v3 - API Request Types */
 
