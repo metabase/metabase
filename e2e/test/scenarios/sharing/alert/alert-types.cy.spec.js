@@ -93,6 +93,8 @@ describe("scenarios > alert > types", { tags: "@external" }, () => {
       cy.findByTestId("chart-container").should("contain", "Goal");
 
       openSharingMenu("Create alert");
+      cy.wait("@channel");
+
       cy.findByTestId("alert-create").within(() => {
         cy.findByText("Reaches the goal line").click();
         cy.findByText("The first time").click();
@@ -111,14 +113,17 @@ describe("scenarios > alert > types", { tags: "@external" }, () => {
       cy.createQuestion(multiSeriesQuestionWithGoal, { visitQuestion: true });
 
       openSharingMenu("Create alert");
+      cy.wait("@channel");
 
       // *** The warning below is not showing when we try to make an alert (Issue #???)
       // cy.contains(
       //   "Goal-based alerts aren't yet supported for charts with more than one line",
       // );
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Done").click();
+      modal().within(() => {
+        cy.findByText("Let's set up your alert").should("be.visible");
+        cy.findByText("Done").click();
+      });
 
       // The alert condition should fall back to rows
       cy.wait("@savedAlert").then(({ response: { body } }) => {
