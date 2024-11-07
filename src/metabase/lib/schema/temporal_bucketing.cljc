@@ -78,14 +78,6 @@
   bucketing expressions."
   (set ordered-time-truncation-units))
 
-(def ordered-datetime-truncation-units
-  "TBD"
-  (into ordered-time-truncation-units ordered-date-truncation-units))
-
-(def datetime-truncation-unit->order
-  "TBD"
-  (zipmap ordered-datetime-truncation-units (range)))
-
 (mr/def ::unit.time.truncate
   (into [:enum {:error/message    "Valid time truncation unit"
                 :decode/normalize common/normalize-keyword}]
@@ -113,6 +105,10 @@
   (into []
         (distinct)
         (concat ordered-time-truncation-units ordered-date-truncation-units)))
+
+(def datetime-truncation-unit->order
+  "TBD"
+  (zipmap ordered-datetime-truncation-units (range)))
 
 (def ordered-datetime-bucketing-units
   "Valid datetime bucketing units for either truncation or extraction operations.
