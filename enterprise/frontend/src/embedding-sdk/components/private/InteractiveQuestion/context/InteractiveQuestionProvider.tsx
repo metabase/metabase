@@ -56,7 +56,11 @@ export const InteractiveQuestionProvider = ({
   saveToCollectionId,
   initialSqlParameters,
 }: InteractiveQuestionProviderProps) => {
-  const { id: cardId, isLoading: isLoadingValidatedId } = useValidatedEntityId({
+  const {
+    id: cardId,
+    isLoading: isLoadingValidatedId,
+    isError: isEntityIdError,
+  } = useValidatedEntityId({
     type: "card",
     id: initId,
   });
@@ -126,6 +130,7 @@ export const InteractiveQuestionProvider = ({
   }, [question, combinedPlugins]);
 
   const questionContext: InteractiveQuestionContextType = {
+    originalId: initId,
     isQuestionLoading: isQuestionLoading || isLoadingValidatedId,
     isQueryRunning,
     resetQuestion: loadQuestion,
@@ -148,8 +153,11 @@ export const InteractiveQuestionProvider = ({
   };
 
   useEffect(() => {
+    if (isEntityIdError || isLoadingValidatedId) {
+      return;
+    }
     loadQuestion();
-  }, [loadQuestion]);
+  }, [isEntityIdError, isLoadingValidatedId, loadQuestion]);
 
   return (
     <InteractiveQuestionContext.Provider value={questionContext}>
