@@ -104,11 +104,15 @@ export const Notebook = ({
                 "var(--border-size) var(--border-style) var(--mb-color-border)",
             }}
           >
-            <Button variant="filled"
-              radius="xl" size="sm"
+            <Button
+              variant="filled"
+              radius="xl"
+              size="sm"
               pt={7}
               pb={7}
-              miw={190} onClick={visualize}>
+              miw={190}
+              onClick={visualize}
+            >
               {t`Visualize`}
             </Button>
           </Flex>
