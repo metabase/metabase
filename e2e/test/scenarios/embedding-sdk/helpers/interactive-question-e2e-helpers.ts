@@ -20,6 +20,9 @@ export function signInAsAdminAndEnableEmbeddingSdk() {
   });
 }
 
+export const getSdkRoot = () =>
+  cy.get("#metabase-sdk-root").should("be.visible");
+
 /** Get storybook args in the format of as "key:value;key:value" */
 export function getStorybookArgs(props: Record<string, string>): string {
   const params = new URLSearchParams(props);

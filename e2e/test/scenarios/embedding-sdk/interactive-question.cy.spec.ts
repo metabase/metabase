@@ -12,6 +12,7 @@ import {
 } from "e2e/support/helpers";
 import { describeSDK } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import {
+  getSdkRoot,
   signInAsAdminAndEnableEmbeddingSdk,
   visitInteractiveQuestionStory,
 } from "e2e/test/scenarios/embedding-sdk/helpers/interactive-question-e2e-helpers";
@@ -43,12 +44,10 @@ describeSDK("scenarios > embedding-sdk > interactive-question", () => {
   it("should show question content", () => {
     visitInteractiveQuestionStory();
 
-    cy.get("#metabase-sdk-root")
-      .should("be.visible")
-      .within(() => {
-        cy.findByText("Product ID").should("be.visible");
-        cy.findByText("Max of Quantity").should("be.visible");
-      });
+    getSdkRoot().within(() => {
+      cy.findByText("Product ID").should("be.visible");
+      cy.findByText("Max of Quantity").should("be.visible");
+    });
   });
 
   it("should not fail on aggregated question drill", () => {
@@ -143,6 +142,18 @@ describeSDK("scenarios > embedding-sdk > interactive-question", () => {
     visitInteractiveQuestionStory({
       storyId:
         "embeddingsdk-interactivequestion-filterpicker--picker-in-popover",
+    });
+
+    getSdkRoot().within(() => {
+      cy.findByText("Filter").click();
+
+      popover().within(() => {
+        cy.findByText("User ID").click();
+        cy.findByPlaceholderText("Enter an ID").type("12");
+        cy.findByText("Add filter").click();
+      });
+
+      cy.contains("User ID is 12");
     });
   });
 });
