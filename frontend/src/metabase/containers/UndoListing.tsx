@@ -3,6 +3,7 @@ import { useMount } from "react-use";
 import { t } from "ttag";
 
 import { Ellipsified } from "metabase/core/components/Ellipsified";
+import ZIndex from "metabase/css/core/z-index.module.css";
 import { capitalize, inflect } from "metabase/lib/formatting";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
@@ -11,7 +12,7 @@ import {
   performUndo,
   resumeUndo,
 } from "metabase/redux/undo";
-import { Progress, Transition } from "metabase/ui";
+import { Portal, Progress, Transition } from "metabase/ui";
 import type { Undo } from "metabase-types/store/undo";
 
 import CS from "./UndoListing.module.css";
@@ -174,8 +175,14 @@ export function UndoListing() {
 
 export const FloatingUndoList = ({ children }: { children: ReactNode }) => {
   return (
-    <UndoList data-testid="undo-list" aria-label="undo-list">
-      {children}
-    </UndoList>
+    <Portal>
+      <UndoList
+        data-testid="undo-list"
+        aria-label="undo-list"
+        className={ZIndex.FloatingElement}
+      >
+        {children}
+      </UndoList>
+    </Portal>
   );
 };
