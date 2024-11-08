@@ -21,7 +21,7 @@ export const PickerInPopover = {
       <Box p="lg">
         <InteractiveQuestion questionId={QUESTION_ID}>
           <Box>
-            <Popover width={300} position="bottom-start">
+            <Popover position="bottom-start">
               <Popover.Target>
                 <Button>Filter</Button>
               </Popover.Target>
