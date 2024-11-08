@@ -1,12 +1,13 @@
-import { useDroppable } from "@dnd-kit/core";
+import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { useMemo } from "react";
 
 import { useSelector } from "metabase/lib/redux";
 import { isNotNull } from "metabase/lib/types";
 import { Flex, type FlexProps, Text } from "metabase/ui";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
-import { DROPPABLE_ID } from "metabase/visualizer/constants";
+import { DRAGGABLE_ID, DROPPABLE_ID } from "metabase/visualizer/constants";
 import { getVisualizerDatasetColumns } from "metabase/visualizer/visualizer.slice";
+import type { DatasetColumn } from "metabase-types/api";
 
 import { WellItem } from "../WellItem";
 
@@ -54,10 +55,34 @@ export function CartesianHorizontalWell({
       ref={setNodeRef}
     >
       {dimensions.map(dimension => (
-        <WellItem key={dimension.name}>
-          <Text truncate>{dimension.display_name}</Text>
-        </WellItem>
+        <DimensionWellItem key={dimension.name} dimension={dimension} />
       ))}
     </Flex>
+  );
+}
+
+interface DimensionWellItemProps {
+  dimension: DatasetColumn;
+}
+
+function DimensionWellItem({ dimension }: DimensionWellItemProps) {
+  const { attributes, listeners, isDragging, setNodeRef } = useDraggable({
+    id: `${DROPPABLE_ID.X_AXIS_WELL}:${DRAGGABLE_ID.WELL_ITEM}:${dimension.name}`,
+    data: {
+      type: DRAGGABLE_ID.WELL_ITEM,
+      wellId: DROPPABLE_ID.X_AXIS_WELL,
+      column: dimension,
+    },
+  });
+
+  return (
+    <WellItem
+      {...attributes}
+      {...listeners}
+      style={{ visibility: isDragging ? "hidden" : "visible" }}
+      ref={setNodeRef}
+    >
+      <Text truncate>{dimension.display_name}</Text>
+    </WellItem>
   );
 }

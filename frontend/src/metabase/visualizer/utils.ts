@@ -5,6 +5,7 @@ import type { DatasetColumn } from "metabase-types/api";
 import type {
   DraggedColumn,
   DraggedItem,
+  DraggedWellItem,
   VisualizerDataSource,
   VisualizerDataSourceId,
   VisualizerDataSourceType,
@@ -71,6 +72,10 @@ export function isDraggedColumnItem(item: DndItem): item is DraggedColumn {
   return item.data?.current?.type === DRAGGABLE_ID.COLUMN;
 }
 
+export function isDraggedWellItem(item: DndItem): item is DraggedWellItem {
+  return item.data?.current?.type === DRAGGABLE_ID.WELL_ITEM;
+}
+
 export function isValidDraggedItem(item: DndItem): item is DraggedItem {
-  return isDraggedColumnItem(item);
+  return isDraggedColumnItem(item) || isDraggedWellItem(item);
 }

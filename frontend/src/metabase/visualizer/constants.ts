@@ -1,5 +1,6 @@
 export const DRAGGABLE_ID = {
   COLUMN: "COLUMN",
+  WELL_ITEM: "WELL_ITEM",
 };
 
 export const DROPPABLE_ID = {

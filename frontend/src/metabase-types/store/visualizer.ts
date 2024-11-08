@@ -40,7 +40,13 @@ export type DraggedColumn = BaseDraggedItem<{
   dataSource: VisualizerDataSource;
 }>;
 
-export type DraggedItem = DraggedColumn;
+export type DraggedWellItem = BaseDraggedItem<{
+  type: "WELL_ITEM";
+  wellId: string;
+  column: VisualizerDatasetColumn;
+}>;
+
+export type DraggedItem = DraggedColumn | DraggedWellItem;
 
 export interface VisualizerState {
   display: VisualizationDisplay | null;

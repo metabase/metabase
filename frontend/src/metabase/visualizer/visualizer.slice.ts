@@ -8,6 +8,7 @@ import _ from "underscore";
 
 import { cardApi } from "metabase/api";
 import { createAsyncThunk } from "metabase/lib/redux";
+import { isNotNull } from "metabase/lib/types";
 import { isCartesianChart } from "metabase/visualizations";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import { getColumnNameFromKey } from "metabase-lib/v1/queries/utils/column-key";
@@ -39,6 +40,7 @@ import {
   getDataSourceIdFromNameRef,
   isDataSourceNameRef,
   isDraggedColumnItem,
+  isDraggedWellItem,
 } from "./utils";
 
 const initialState: VisualizerState = {
@@ -461,7 +463,58 @@ export const getVisualizerComputedSettings = createSelector(
 type DropHandler = (state: VisualizerState, event: DragEndEvent) => void;
 
 const cartesianDropHandler: DropHandler = (state, { active, over }) => {
-  if (!over || !isDraggedColumnItem(active)) {
+  if (!over) {
+    return;
+  }
+
+  if (over.id === DROPPABLE_ID.CANVAS_MAIN && isDraggedWellItem(active)) {
+    const { wellId, column } = active.data.current;
+    const [connectedColumnRef] = column.values;
+
+    if (wellId === DROPPABLE_ID.X_AXIS_WELL) {
+      const dimensions = state.settings["graph.dimensions"] ?? [];
+      state.columns = state.columns
+        .map(col => {
+          const nextValues = col.values.filter(value => value !== column.name);
+          if (nextValues.length > 0) {
+            return { ...col, values: nextValues };
+          }
+          return null;
+        })
+        .filter(isNotNull);
+      state.referencedColumns = state.referencedColumns.filter(
+        ref => ref.name !== connectedColumnRef,
+      );
+      state.settings = {
+        ...state.settings,
+        "graph.dimensions": dimensions.filter(
+          dimension => dimension !== column.name,
+        ),
+      };
+    }
+
+    if (wellId === DROPPABLE_ID.Y_AXIS_WELL) {
+      const metrics = state.settings["graph.metrics"] ?? [];
+      state.columns = state.columns
+        .map(col => {
+          const nextValues = col.values.filter(value => value !== column.name);
+          if (nextValues.length > 0) {
+            return { ...col, values: nextValues };
+          }
+          return null;
+        })
+        .filter(isNotNull);
+      state.referencedColumns = state.referencedColumns.filter(
+        ref => ref.name !== connectedColumnRef,
+      );
+      state.settings = {
+        ...state.settings,
+        "graph.metrics": metrics.filter(metric => metric !== column.name),
+      };
+    }
+  }
+
+  if (!isDraggedColumnItem(active)) {
     return;
   }
 
