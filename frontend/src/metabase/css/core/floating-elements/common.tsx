@@ -4,6 +4,7 @@ import { EntityPickerModal } from "metabase/common/components/EntityPicker";
 import { Sidesheet } from "metabase/common/components/Sidesheet";
 import LegacyModal from "metabase/components/Modal";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
+import Toaster from "metabase/components/Toaster";
 import { FloatingUndoList, UndoToast } from "metabase/containers/UndoListing";
 import TippyTooltip from "metabase/core/components/Tooltip";
 import { PaletteCard } from "metabase/palette/components/Palette";
@@ -21,15 +22,15 @@ import {
   Tooltip as MantineTooltip,
   type ModalProps,
   Paper,
+  type PaperProps,
   Select,
   Stack,
   Text,
   Title,
-  type PaperProps,
 } from "metabase/ui";
 import { createMockUndo } from "metabase-types/api/mocks";
 
-import { BulkActionBarInner } from "../../../components/BulkActionBar/BulkActionBar";
+import { BulkActionBarPortal } from "../../../components/BulkActionBar/BulkActionBar";
 
 const LauncherGroup = ({
   title,
@@ -48,6 +49,7 @@ const _Launchers = ({
   nested,
   setUndoCount,
   setToastCount,
+  setActionToastCount,
   setLegacyModalCount,
   setMantineModalCount,
   setSidesheetCount,
@@ -57,6 +59,7 @@ const _Launchers = ({
   nested?: boolean;
   setUndoCount: Dispatch<SetStateAction<number>>;
   setToastCount: Dispatch<SetStateAction<number>>;
+  setActionToastCount: Dispatch<SetStateAction<number>>;
   setLegacyModalCount: Dispatch<SetStateAction<number>>;
   setMantineModalCount: Dispatch<SetStateAction<number>>;
   setSidesheetCount: Dispatch<SetStateAction<number>>;
@@ -164,6 +167,7 @@ export const FloatingElementsDemo = ({
   const Launchers = ({ nested }: { nested?: boolean }) => (
     <_Launchers
       setToastCount={setToastCount}
+      setActionToastCount={setActionToastCount}
       setUndoCount={setUndoCount}
       setLegacyModalCount={setLegacyModalCount}
       setMantineModalCount={setMantineModalCount}
@@ -182,20 +186,37 @@ export const FloatingElementsDemo = ({
           <UndoToasts undoCount={undoCount} setUndoCount={setUndoCount} />
         </FloatingUndoList>
       )}
-      {Array.from({ length: toastCount }).map((_, index) => (
-        <BulkActionBarInner
+      {Array.from({ length: actionToastCount }).map((_, index) => (
+        <BulkActionBarPortal
           key={`simple-bulk-action-bar-${index}`}
           opened
           message="Toast message"
           isNavbarOpen={false}
+          p="lg"
         >
           <CloseButton
-            onClick={() => setToastCount(c => c - 1)}
+            onClick={() => setActionToastCount(c => c - 1)}
             c="#fff"
             bg="transparent"
           />
           {enableNesting && <Launchers nested />}
-        </BulkActionBarInner>
+        </BulkActionBarPortal>
+      ))}
+      {Array.from({ length: toastCount }).map((_, index) => (
+        <Toaster
+          key={`toaster-${index}`}
+          message="Toaster-style toast content"
+          confirmText="Confirm"
+          isShown={true}
+          onDismiss={() => {
+            setToastCount(c => c - 1);
+          }}
+          onConfirm={() => {
+            setToastCount(c => c - 1);
+          }}
+          className=""
+          fixed
+        />
       ))}
       {Array.from({ length: legacyModalCount }).map((_, index) => (
         <LegacyModal isOpen key={`legacy-modal-${index}`}>
