@@ -80,10 +80,9 @@ const initialState: SdkState = {
 };
 
 export const sdk = createReducer(initialState, builder => {
-  builder.addCase(refreshTokenAsync.pending, state => ({
-    ...state,
-    token: { ...state.token, loading: true },
-  }));
+  builder.addCase(refreshTokenAsync.pending, state => {
+    state.token = { ...state.token, loading: true };
+  });
 
   builder.addCase(refreshTokenAsync.fulfilled, (state, action) => {
     state.token = {
@@ -111,38 +110,34 @@ export const sdk = createReducer(initialState, builder => {
     state.loginStatus = { status: "error", error };
   });
 
-  builder.addCase(setLoaderComponent, (state, action) => ({
-    ...state,
-    loaderComponent: action.payload,
-  }));
+  builder.addCase(setLoaderComponent, (state, action) => {
+    state.loaderComponent = action.payload;
+  });
 
-  builder.addCase(setPlugins, (state, action) => ({
-    ...state,
-    plugins: action.payload,
-  }));
+  builder.addCase(setPlugins, (state, action) => {
+    // At the time of writing, doing `this.state.plugins = action.payload` causes
+    // `Type instantiation is excessively deep and possibly infinite.` for
+    // this specific action, but it fixes the others.
+    return { ...state, plugins: action.payload };
+  });
 
-  builder.addCase(setEventHandlers, (state, action) => ({
-    ...state,
-    eventHandlers: action.payload,
-  }));
+  builder.addCase(setEventHandlers, (state, action) => {
+    state.eventHandlers = action.payload;
+  });
 
-  builder.addCase(setErrorComponent, (state, action) => ({
-    ...state,
-    errorComponent: action.payload,
-  }));
+  builder.addCase(setErrorComponent, (state, action) => {
+    state.errorComponent = action.payload;
+  });
 
-  builder.addCase(setMetabaseClientUrl, (state, action) => ({
-    ...state,
-    metabaseInstanceUrl: action.payload,
-  }));
+  builder.addCase(setMetabaseClientUrl, (state, action) => {
+    state.metabaseInstanceUrl = action.payload;
+  });
 
-  builder.addCase(setFetchRefreshTokenFn, (state, action) => ({
-    ...state,
-    fetchRefreshTokenFn: action.payload,
-  }));
+  builder.addCase(setFetchRefreshTokenFn, (state, action) => {
+    state.fetchRefreshTokenFn = action.payload;
+  });
 
-  builder.addCase(setUsageProblem, (state, action) => ({
-    ...state,
-    usageProblem: action.payload,
-  }));
+  builder.addCase(setUsageProblem, (state, action) => {
+    state.usageProblem = action.payload;
+  });
 });

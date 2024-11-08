@@ -60,6 +60,8 @@ We recommend [PostgreSQL](#postgresql), but you can also use [MySQL](https://www
 
 The minimum recommended version is MySQL 8.0.17 or MariaDB 10.2.2. The `utf8mb4` character set is required.
 
+We don't support ApsaraDB MySQL. You can instead use ApsaraDB PostgreSQL.
+
 You can change the application database to use MySQL using environment variables like so:
 
 ```sh
