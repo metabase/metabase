@@ -10,10 +10,11 @@
 
 (set! *warn-on-reflection* true)
 
-(def custom-hbs (doto (handlebars/registry (handlebars/classpath-loader "/" ""))
-                  (.registerHelper "uppercase" (reify Helper
-                                                 (apply [_this arg _options]
-                                                   (u/upper-case-en arg))))))
+(def custom-hbs
+  (doto (handlebars/registry (handlebars/classpath-loader "/" ""))
+    (.registerHelper "uppercase" (reify Helper
+                                   (apply [_this arg _options]
+                                     (u/upper-case-en arg))))))
 
 (defn do-with-temp-template
   [filename content thunk]

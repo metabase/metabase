@@ -1,4 +1,4 @@
-{{> metabase/email/_header }}
+{{> metabase/email/_header.hbs }}
 <style>
   strong: {
     font-weight: 600;
@@ -28,9 +28,9 @@
 
   <p>The following groups currently have their <strong>View data</strong> access set to <strong>No self-service (deprecated)</strong></p>
   <ul>
-   {{#groups}}
+   {{#if groups}}
       <li><a href="{{instanceURL}}/admin/permissions/data/group/{{id}}" style="color: #336699;">{{name}}</a></li>
-   {{/groups}}
+   {{/if}}
   </ul>
 
   <p>If the group's <strong>View data</strong> access is set to "Granular" for a database, be sure to check the <strong>View data</strong> access for individual schemas and tables.</p>
@@ -50,4 +50,4 @@
 
   <p>- The Metabase Team</p>
 </div>
-{{> metabase/email/_footer }}
+{{> metabase/email/_footer.hbs }}
