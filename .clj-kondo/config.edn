@@ -750,6 +750,7 @@
   metabase.dashboard-subscription-test/with-dashboard-sub-for-card                      clojure.core/let
   metabase.channel.http-test/with-captured-http-requests                                clojure.core/fn
   metabase.channel.http-test/with-server                                                clojure.core/let
+  metabase.channel.template.handlebars-test/with-temp-template                          clojure.core/let
   metabase.db.custom-migrations/define-migration                                        clj-kondo.lint-as/def-catch-all
   metabase.db.custom-migrations/define-reversible-migration                             clj-kondo.lint-as/def-catch-all
   metabase.db.data-migrations/defmigration                                              clojure.core/def
