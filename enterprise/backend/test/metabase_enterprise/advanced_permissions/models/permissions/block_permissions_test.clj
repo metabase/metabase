@@ -243,7 +243,7 @@
               (is (true? (mt/with-current-user user-id
                            (#'qp.perms/check-block-permissions query)))))))))))
 
-(deftest nested-query-permissions-test
+(deftest nested-query-full-block-permissions-test
   (mt/with-premium-features #{:advanced-permissions}
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp [:model/Collection disallowed-collection {}
@@ -288,6 +288,54 @@
                 (mt/with-restored-data-perms!
                   (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
                   (rasta-view-data-perm= :unrestricted)
+                  (is (= [[1] [2]] (mt/rows (process-query-for-card child-card)))
+                      "view-data = unrestricted is sufficient to allow running the query"))))))))))
+
+;; Similar to the above test, but with table-level block in place for the nested query
+(deftest nested-query-table-level-block-permissions-test
+  (mt/with-premium-features #{:advanced-permissions}
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection collection {}
+                     :model/Card       parent-card           {:dataset_query {:database (mt/id)
+                                                                              :type     :native
+                                                                              :native   {:query "SELECT id FROM venues ORDER BY id ASC LIMIT 2;"}}
+                                                              :database_id   (mt/id)
+                                                              :collection_id (u/the-id collection)}
+                     :model/Card       child-card            {:dataset_query {:database (mt/id)
+                                                                              :type     :query
+                                                                              :query    {:source-table (format "card__%d" (u/the-id parent-card))}}
+                                                              :collection_id (u/the-id collection)}]
+        (letfn [(rasta-view-data-perm= [perm] (is (= perm
+                                                     (get-in (data-perms/permissions-for-user (mt/user->id :rasta))
+                                                             [(mt/id) :perms/view-data (mt/id :venues)]))
+                                                  "rasta should be blocked for this table."))]
+          (mt/with-full-data-perms-for-all-users!
+            (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/view-data :blocked)
+            (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
+            (letfn [(process-query-for-card [card]
+                      (mt/user-http-request :rasta :post (format "card/%d/query" (u/the-id card))))]
+              (mt/with-test-user :rasta
+                (rasta-view-data-perm= :blocked)
+                (testing "Should not be able to run the parent Card due to Block permissions"
+                    (is (mi/can-read? parent-card))
+                    (is (thrown-with-msg?
+                         clojure.lang.ExceptionInfo
+                         #"You do not have permissions to run this query"
+                         (mt/rows (process-query-for-card child-card)))))
+
+                (testing "Should not be able to run the child Card due to Block permissions"
+                  (mt/with-test-user :rasta
+                    (is (mi/can-read? parent-card))
+                    (is (mi/can-read? collection))
+                    (is (mi/can-read? child-card)))
+                  (is (thrown-with-msg?
+                       clojure.lang.ExceptionInfo
+                       #"You do not have permissions to run this query"
+                       (mt/rows (process-query-for-card child-card)))
+                      "Even if the user has can-write? on a Card, they should not be able to run it because they are blocked on Card's db"))
+
+                (testing "view-data = unrestricted is required to allow running the query"
+                  (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues)  :perms/view-data :unrestricted)
                   (is (= [[1] [2]] (mt/rows (process-query-for-card child-card)))
                       "view-data = unrestricted is sufficient to allow running the query"))))))))))
 

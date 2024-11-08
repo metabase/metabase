@@ -107,12 +107,17 @@
     (check-query-does-not-access-inactive-tables outer-query)
     (let [card-id         (or *card-id* (:qp/source-card-id outer-query))
           required-perms  (query-perms/required-perms-for-query outer-query :already-preprocessed? true)
-          source-card-ids (:card-ids required-perms)]
+          source-card-ids (set/difference (:card-ids required-perms) (:card-ids gtap-perms))]
       (cond
         card-id
         (do
           (query-perms/check-card-read-perms database-id card-id)
-          (check-block-permissions outer-query))
+          (check-block-permissions outer-query)
+          ;; Recursively check *data* permissions for any source Cards. We're not binding *card-id* here since read
+          ;; permissions to the top-level Card are sufficient.
+          (doseq [card-id source-card-ids]
+            (let [{query :dataset-query} (lib.metadata.protocols/card (qp.store/metadata-provider) card-id)]
+              (check-query-permissions* query))))
 
         ;; set when querying for field values of dashboard filters, which only require
         ;; collection perms for the dashboard and not ad-hoc query perms
@@ -120,17 +125,18 @@
         (when-not (query-perms/has-perm-for-query? outer-query :perms/view-data required-perms)
           (throw (query-perms/perms-exception required-perms)))
 
+        ;; Ad-hoc query (not a saved question)
         :else
         (do
           (query-perms/check-data-perms outer-query required-perms :throw-exceptions? true)
 
-          ;; Check read perms for any source cards referenced by this query. Exclude any card IDs in the :gtaps key
-          ;; which have been temporarily granted permissions to power sandboxing
-          (when-let [card-ids (set/difference source-card-ids (:card-ids gtap-perms))]
-            (doseq [card-id card-ids]
-              (query-perms/check-card-read-perms database-id card-id)))
+          ;; Recursively check permissions for any source Cards
+          (doseq [card-id source-card-ids]
+            (let [{query :dataset-query} (lib.metadata.protocols/card (qp.store/metadata-provider) card-id)]
+              (binding [*card-id* card-id]
+                (check-query-permissions* query))))
 
-          ;; recursively check perms for any Cards referenced by this query via template tags (if it is a native query)
+          ;; Recursively check permissions for any Cards referenced by this query via template tags
           (doseq [{query :dataset-query} (lib/template-tags-referenced-cards
                                           (lib/query (qp.store/metadata-provider) outer-query))]
             (check-query-permissions* query)))))))
