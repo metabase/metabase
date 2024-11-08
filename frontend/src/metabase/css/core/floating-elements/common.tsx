@@ -190,8 +190,8 @@ export const FloatingElementsDemo = ({
         <BulkActionBarPortal
           key={`simple-bulk-action-bar-${index}`}
           opened
-          message="Toast message"
           isNavbarOpen={false}
+          message="Action-style toast message"
           p="lg"
         >
           <CloseButton
