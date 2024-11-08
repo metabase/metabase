@@ -24,10 +24,25 @@ import {
   Select,
   Stack,
   Text,
+  Title,
+  type PaperProps,
 } from "metabase/ui";
 import { createMockUndo } from "metabase-types/api/mocks";
 
 import { BulkActionBarInner } from "../../../components/BulkActionBar/BulkActionBar";
+
+const LauncherGroup = ({
+  title,
+  children,
+  ...props
+}: { title: string } & PaperProps) => (
+  <Paper {...props} p="md">
+    <Stack spacing="md">
+      <Title order={3}>{title}</Title>
+      <Group noWrap={false}>{children}</Group>
+    </Stack>
+  </Paper>
+);
 
 const _Launchers = ({
   nested,
@@ -51,73 +66,84 @@ const _Launchers = ({
   const note = nested ? " (nested)" : "";
   return (
     <Group>
-      <MantineTooltip label={"Tooltip content" + note}>
-        <Button w="20rem">Mantine tooltip target {note}</Button>
-      </MantineTooltip>
-      <MantinePopover>
-        <MantinePopover.Target>
-          <Button w="20rem">Mantine popover target {note}</Button>
-        </MantinePopover.Target>
-        <MantinePopover.Dropdown>
-          <Paper p="md">Popover content {note}</Paper>
-        </MantinePopover.Dropdown>
-      </MantinePopover>
-      <MantineMenu>
-        <MantineMenu.Target>
-          <Button>Mantine Menu target {note}</Button>
-        </MantineMenu.Target>
-        <MantineMenu.Dropdown>
-          <MantineMenu.Item>Item 1</MantineMenu.Item>
-          <MantineMenu.Item>Item 2</MantineMenu.Item>
-          <MantineMenu.Divider />
-          <MantineMenu.Item>Item 3</MantineMenu.Item>
-          <MantineMenu.Item>Item 4</MantineMenu.Item>
-        </MantineMenu.Dropdown>
-      </MantineMenu>
-      <HoverCard>
-        <HoverCard.Target>
-          <Button>HoverCard target {note}</Button>
-        </HoverCard.Target>
-        <HoverCard.Dropdown>
-          <Paper p="md">HoverCard dropdown content {note}</Paper>
-        </HoverCard.Dropdown>
-      </HoverCard>
-      <TippyTooltip tooltip={"Tooltip content" + note}>
-        <Button w="20rem">Legacy tooltip target {note}</Button>
-      </TippyTooltip>
-      <TippyPopover content={<Paper p="md">Popover content {note}</Paper>}>
-        <Button w="20rem">Legacy popover target {note} </Button>
-      </TippyPopover>
-      <Button onClick={() => setLegacyModalCount(c => c + 1)}>
-        Legacy modal
-      </Button>
-      <Select
-        data={[
-          {
-            label: "Mantine Select option 1",
-            value: "1",
-          },
-          {
-            label: "Mantine Select option 2",
-            value: "2",
-          },
-        ]}
-        defaultValue={"1"}
-      />
-      <Button onClick={() => setUndoCount(c => c + 1)}>Undo-style toast</Button>
-      <Button onClick={() => setToastCount(c => c + 1)}>Toast</Button>
-      <Button onClick={() => setMantineModalCount(c => c + 1)}>
-        Mantine modal
-      </Button>
-      <Button onClick={() => setSidesheetCount(c => c + 1)}>Sidesheet</Button>
-      <Button onClick={() => setEntityPickerCount(c => c + 1)}>
-        Entity Picker
-      </Button>
-      {!nested && (
+      <LauncherGroup title="Small floating elements">
+        <MantineTooltip label={"Tooltip content" + note}>
+          <Button w="20rem">Mantine Tooltip {note}</Button>
+        </MantineTooltip>
+        <MantinePopover>
+          <MantinePopover.Target>
+            <Button w="20rem">Mantine Popover {note}</Button>
+          </MantinePopover.Target>
+          <MantinePopover.Dropdown>
+            <Paper p="md">Popover content {note}</Paper>
+          </MantinePopover.Dropdown>
+        </MantinePopover>
+        <MantineMenu>
+          <MantineMenu.Target>
+            <Button>Mantine Menu {note}</Button>
+          </MantineMenu.Target>
+          <MantineMenu.Dropdown>
+            <MantineMenu.Item>Item 1</MantineMenu.Item>
+            <MantineMenu.Item>Item 2</MantineMenu.Item>
+            <MantineMenu.Divider />
+            <MantineMenu.Item>Item 3</MantineMenu.Item>
+            <MantineMenu.Item>Item 4</MantineMenu.Item>
+          </MantineMenu.Dropdown>
+        </MantineMenu>
+        <HoverCard>
+          <HoverCard.Target>
+            <Button>Mantine HoverCard {note}</Button>
+          </HoverCard.Target>
+          <HoverCard.Dropdown>
+            <Paper p="md">HoverCard content {note}</Paper>
+          </HoverCard.Dropdown>
+        </HoverCard>
+        <TippyTooltip tooltip={"Tooltip content" + note}>
+          <Button w="20rem">Legacy Tooltip {note}</Button>
+        </TippyTooltip>
+        <TippyPopover content={<Paper p="md">Popover content {note}</Paper>}>
+          <Button w="20rem">Legacy popover {note} </Button>
+        </TippyPopover>
+        <Select
+          data={[
+            {
+              label: "Mantine Select option 1",
+              value: "1",
+            },
+            {
+              label: "Mantine Select option 2",
+              value: "2",
+            },
+          ]}
+          defaultValue={"1"}
+        />
+      </LauncherGroup>
+      <LauncherGroup title="Toasts">
+        <Button onClick={() => setUndoCount(c => c + 1)}>
+          Undo-style toast
+        </Button>
+        <Button onClick={() => setActionToastCount(c => c + 1)}>
+          Action-style toast
+        </Button>
+        <Button onClick={() => setToastCount(c => c + 1)}>
+          Toaster-style Toast
+        </Button>
+      </LauncherGroup>
+      <LauncherGroup title="Modals">
+        <Button onClick={() => setMantineModalCount(c => c + 1)}>
+          Mantine modal
+        </Button>
+        <Button onClick={() => setLegacyModalCount(c => c + 1)}>
+          Legacy modal
+        </Button>
+        <Button onClick={() => setSidesheetCount(c => c + 1)}>Sidesheet</Button>
+        <Button onClick={() => setEntityPickerCount(c => c + 1)}>
+          Entity Picker
+        </Button>
         <Button onClick={() => setCommandPaletteCount(c => c + 1)}>
           Command Palette Modal
         </Button>
-      )}
+      </LauncherGroup>
     </Group>
   );
 };
@@ -130,6 +156,7 @@ export const FloatingElementsDemo = ({
   const [legacyModalCount, setLegacyModalCount] = useState(0);
   const [mantineModalCount, setMantineModalCount] = useState(0);
   const [toastCount, setToastCount] = useState(0);
+  const [actionToastCount, setActionToastCount] = useState(0);
   const [sidesheetCount, setSidesheetCount] = useState(0);
   const [entityPickerCount, setEntityPickerCount] = useState(0);
   const [commandPaletteCount, setCommandPaletteCount] = useState(0);
