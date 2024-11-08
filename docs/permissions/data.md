@@ -40,7 +40,7 @@ You can set the following types of permissions on a database, schema, or table:
 
 {% include plans-blockquote.html feature="View data permissions" %}
 
-The **View data** permission determines what data people can see.
+The **View data** permission determines what data people can see when viewing questions, dashboards, models, and metrics. View data permissions also determine whether a group can view the models and metrics browsers in the sidebar. To [browse databases](../exploration-and-organization/exploration.md#browse-your-databases), a group will also need [Create queries](#create-queries-permissions) permissions for the relevant data.
 
 Permission levels include:
 
@@ -64,8 +64,8 @@ View data permission settings apply to different levels in your database:
 
 In the free, open-source version of Metabase, the **View data** setting defaults to "Can view". Since the setting's options aren't available in the OSS version, Metabase will only display this **View data** setting in the Pro/Enterprise version.
 
-For which questions, models, and dashboards a group can view, instead see [collection permissions](collections.md).
-
+For _which_ questions, models, and dashboards a group can view, instead see [collection permissions](collections.md).
+_
 ### Can view data permission
 
 {% include plans-blockquote.html feature="Can view data permission" %}
@@ -112,7 +112,7 @@ If a person in a Blocked group belongs to _another_ group that has its View data
 
 ## Create queries permissions
 
-Specifies whether people can create new questions based on the data source. Creating queries includes the ability to drill-through and filter questions, or anything that involves changing the results.
+Specifies whether a group can create new questions based on the data source. Creating queries includes the ability to drill-through and filter questions, or anything that involves changing the results. This permission also determines whether a group will get access to the [database browser](../exploration-and-organization/exploration.md#browse-your-databases) to explore that data source.
 
 To enable Create queries permissions for a group, that group must be able to view the data source ("Can view" permission.)
 
