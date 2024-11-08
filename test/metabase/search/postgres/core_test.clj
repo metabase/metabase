@@ -53,41 +53,18 @@
                (map :name)
                (not-any? #{"Some Collection"}))))))
 
-(deftest hybrid-multi-test
-  (with-setup
-    (testing "consistent results between both hybrid implementations\n"
-      (doseq [term example-terms]
-        (testing term
-          ;; ... expected the order to be the same here. perhaps there is a tie between scoring.
-          (is (= (set (hybrid term))
-                 (set (#'search.postgres/hybrid-multi term)))))))))
-
 (defn- normalize* [xs]
-  (into #{}
-        (map (comp #(dissoc % :bookmark :pinned)
-                   u/strip-nils
-                   #(update % :archived boolean)))
-        xs))
+  (map (comp #(dissoc % :bookmark :pinned :total_score)
+             u/strip-nils
+             #(update % :archived boolean)) xs))
 
-(deftest minimal-test
+(deftest fulltext-test
   (with-setup
-    (testing "consistent results with minimal implementations\n"
-      (doseq [term example-terms]
-        (testing term
-          ;; there is no ranking, so order is non-deterministic.
-          ;; since we are not applying permissions, there may be extra results
-          (let [hybrid-set  (normalize* (hybrid term))
-                minimal-set (normalize* (#'search.postgres/minimal term))]
-            (is (every? minimal-set hybrid-set))))))))
-
-(deftest minimal-with-perms-test
-  (with-setup
-    (testing "consistent results with minimal implementations\n"
+    (testing "consistent results with index-based implementations\n"
       (doseq [term (take 1 example-terms)]
         (testing term
-          ;; there is no ranking, so order is non-deterministic
           (is (= (normalize* (hybrid term))
-                 (normalize* (#'search.postgres/minimal-with-perms
+                 (normalize* (#'search.postgres/fulltext
                               term
                               {:current-user-id    (mt/user->id :crowberto)
                                :is-superuser?      true

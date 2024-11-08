@@ -17,7 +17,7 @@
 
 (defonce ^:private reindexing? (atom false))
 
-(def ^:private tsv-language "english")
+(def ^:private tsv-language "simple")
 
 (defn- exists? [table-name]
   (t2/exists? :information_schema.tables :table_name (name table-name)))
@@ -50,8 +50,10 @@
              [:display_data :text :not-null]
              [:legacy_input :text :not-null]
              ;; scoring related
+             [:dashboardcard_count :int]
              [:model_rank :int :not-null]
              [:pinned :boolean]
+             [:verified :boolean]
              ;; permission related entities
              [:collection_id :int]
              [:database_id :int]
@@ -65,7 +67,6 @@
              [:last_editor_id :int]
              [:model_created_at :timestamp]
              [:model_updated_at :timestamp]
-             [:verified :boolean]
              ;; useful for tracking the speed and age of the index
              [:created_at :timestamp
               [:default [:raw "CURRENT_TIMESTAMP"]]
@@ -74,12 +75,15 @@
 
       ;; TODO I strongly suspect that there are more indexes that would help performance, we should examine EXPLAIN.
 
-      (let [idx_prefix (str/replace (str (name active-table) "_" (random-uuid)) #"-" "_")
+      (let [idx-prefix (str/replace (str (name active-table) "_" (random-uuid)) #"-" "_")
             table-name (name pending-table)]
-        (t2/query
-         (format "CREATE UNIQUE INDEX IF NOT EXISTS %s_identity_idx ON %s (model, model_id)" idx_prefix table-name))
-        (t2/query
-         (format "CREATE INDEX IF NOT EXISTS %s_tsvector_idx ON %s USING gin (search_vector)" idx_prefix table-name))))
+        (doseq [stmt ["CREATE UNIQUE INDEX IF NOT EXISTS %s_identity_idx ON %s (model, model_id)"
+                      "CREATE INDEX IF NOT EXISTS %s_tsvector_idx ON %s USING gin (search_vector)"
+                      ;; Spam all the indexes for now, let's see if they get used on Stats / Ephemeral envs.
+                      "CREATE INDEX IF NOT EXISTS %s_model_idx ON %s (model)"
+                      "CREATE INDEX IF NOT EXISTS %s_model_archived_idx ON %s (model, archived)"
+                      "CREATE INDEX IF NOT EXISTS %s_archived_idx ON %s (archived)"]]
+          (t2/query (format stmt idx-prefix table-name)))))
 
     (reset! reindexing? true)))
 
@@ -196,17 +200,19 @@
 (defn- to-tsquery-expr
   "Given the user input, construct a query in the Postgres tsvector query language."
   [input]
-  (let [trimmed        (str/trim input)
-        complete?      (not (str/ends-with? trimmed "\""))
-        ;; TODO also only complete if search-typeahead-enabled and the context is the search palette
-        maybe-complete (if complete? complete-last-word identity)]
-    (->> (split-preserving-quotes trimmed)
-         (remove str/blank?)
-         (partition-by #{"or"})
-         (remove #(= (first %) "or"))
-         (map process-clause)
-         (str/join " | ")
-         maybe-complete)))
+  (str
+   (when input
+     (let [trimmed        (str/trim input)
+           complete?      (not (str/ends-with? trimmed "\""))
+           ;; TODO also only complete if search-typeahead-enabled and the context is the search palette
+           maybe-complete (if complete? complete-last-word identity)]
+       (->> (split-preserving-quotes trimmed)
+            (remove str/blank?)
+            (partition-by #{"or"})
+            (remove #(= (first %) "or"))
+            (map process-clause)
+            (str/join " | ")
+            maybe-complete)))))
 
 (defn batch-update!
   "Create the given search index entries in bulk"
@@ -222,14 +228,17 @@
   ([search-term]
    (search-query search-term [:model_id :model]))
   ([search-term select-items]
-   {:select select-items
-    :from   [active-table]
-    :where  (if-not search-term
-              [:= [:inline 1] [:inline 1]]
-              [:raw
-               "search_vector @@ to_tsquery('"
-               tsv-language "', "
-               [:lift (to-tsquery-expr search-term)] ")"])}))
+   {:select    select-items
+    :from      [active-table]
+    ;; Using a join allows us to share the query expression between our SELECT and WHERE clauses.
+    :join      [[[:raw "to_tsquery('"
+                  tsv-language "', "
+                  [:lift (to-tsquery-expr search-term)] ")"]
+                 :query] [:= 1 1]]
+    :where     (if-not search-term
+                 [:= [:inline 1] [:inline 1]]
+                 [:raw
+                  "search_vector @@ query"])}))
 
 (defn search
   "Use the index table to search for records."

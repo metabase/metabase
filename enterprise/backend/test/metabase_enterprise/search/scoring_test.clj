@@ -7,7 +7,7 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase-enterprise.search.scoring :as ee-scoring]
-   [metabase.search.scoring :as scoring]
+   [metabase.search.in-place.scoring :as scoring]
    [metabase.test :as mt]))
 
 (deftest ^:parallel verified-score-test

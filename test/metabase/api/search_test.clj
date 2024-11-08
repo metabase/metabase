@@ -23,7 +23,7 @@
    [metabase.search :as search]
    [metabase.search.config :as search.config]
    [metabase.search.fulltext :as search.fulltext]
-   [metabase.search.scoring :as scoring]
+   [metabase.search.in-place.scoring :as scoring]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]

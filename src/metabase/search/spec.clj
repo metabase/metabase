@@ -35,6 +35,7 @@
    :created-at
    :creator-id
    :dataset-query
+   :dashboardcard-count
    :last-edited-at
    :last-editor-id
    :pinned

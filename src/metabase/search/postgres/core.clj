@@ -10,6 +10,7 @@
    [metabase.search.permissions :as search.permissions]
    [metabase.search.postgres.index :as search.index]
    [metabase.search.postgres.ingestion :as search.ingestion]
+   [metabase.search.postgres.scoring :as search.scoring]
    [toucan2.core :as t2])
   (:import
    (java.time OffsetDateTime)))
@@ -66,71 +67,40 @@
       (sql/format {:quoted true})
       t2/reducible-query))
 
-(defn- hybrid-multi
-  "Perform multiple legacy searches to see if its faster. Perverse!"
-  [search-term & {:as search-ctx}]
-  (when-not @#'search.index/initialized?
-    (throw (ex-info "Search index is not initialized. Use [[init!]] to ensure it exists."
-                    {:search-engine :postgres})))
-  (->> (search.index/search-query search-term)
-       t2/query
-       (group-by :model)
-       (mapcat (fn [[model results]]
-                 (let [ids (map :model_id results)]
-                   ;; Something is very wrong here, this also returns items with other ids.
-                   (as-> search-ctx <>
-                     (assoc <> :models #{model} :ids ids)
-                     (dissoc <> :search-string)
-                     (in-place-query <>)
-                     (t2/query <>)
-                     (filter (comp (set ids) :id) <>)))))))
-
 (defn- parse-datetime [s]
   (when s
     (OffsetDateTime/parse s)))
 
-(defn- minimal
-  "Search via index, and return potentially stale information, without restricting to collections we have access to."
-  [search-term & {:as search-ctx}]
-  (when-not @#'search.index/initialized?
-    (throw (ex-info "Search index is not initialized. Use [[init!]] to ensure it exists."
-                    {:search-engine :postgres})))
-  (->> (search.index/search-query search-term [:legacy_input])
-       (search.filter/where-clause search-ctx)
-       (t2/query)
-       (map :legacy_input)
-       (map #(json/parse-string % keyword))
-       (map #(-> %
-                 (update :created_at parse-datetime)
-                 (update :updated_at parse-datetime)
-                 (update :last_edited_at parse-datetime)))))
+(defn- rehydrate [index-row]
+  (-> (merge
+       (json/parse-string (:legacy_input index-row) keyword)
+       (select-keys index-row [:total_score :pinned]))
+      (update :created_at parse-datetime)
+      (update :updated_at parse-datetime)
+      (update :last_edited_at parse-datetime)))
 
-(defn- minimal-with-perms
-  "Search via index, and return potentially stale information, but applying permissions. Does not perform ranking."
+;(defn- prrn [x] (prn x) x)
+
+(defn- fulltext
+  "Search purely using the index."
   [search-term & {:as search-ctx}]
   (when-not @#'search.index/initialized?
     (throw (ex-info "Search index is not initialized. Use [[init!]] to ensure it exists."
                     {:search-engine :postgres})))
   (->> (let [base-query (search.index/search-query search-term [:legacy_input])]
          (search.permissions/add-collection-join-and-where-clauses base-query nil search-ctx))
-       (search.filter/where-clause search-ctx)
+       (search.scoring/with-scores)
+       (search.filter/with-filters search-ctx)
+       ;sql/format prrn
        (t2/query)
-       (map :legacy_input)
-       (map #(json/parse-string % keyword))
-       (map #(-> %
-                 (update :created_at parse-datetime)
-                 (update :updated_at parse-datetime)
-                 (update :last_edited_at parse-datetime)))))
+       (map rehydrate)))
 
-(def ^:private default-engine hybrid-multi)
+(def ^:private default-engine fulltext)
 
 (defn- search-fn [search-engine]
   (case search-engine
     :search.engine/hybrid             hybrid
-    :search.engine/hybrid-multi       hybrid-multi
-    :search.engine/minimal            minimal
-    :search.engine/minimal-with-perms minimal-with-perms
-    :search.engine/fulltext           default-engine
+    :search.engine/fulltext           fulltext
     default-engine))
 
 (defn search
@@ -157,7 +127,7 @@
 (defn no-scoring
   "Do no scoring, whatsoever"
   [result _scoring-ctx]
-  {:score  1
+  {:score  (:total_score result 1)
    :result (assoc result :all-scores [] :relevant-scores [])})
 
 (defn init!

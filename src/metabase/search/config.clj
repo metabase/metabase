@@ -75,6 +75,18 @@
 
 (assert (= all-models (set models-search-order)) "The models search order has to include all models")
 
+(def weights
+  "Strength of the various scorers. Copied from metabase.search.in-place.scoring, but allowing divergence."
+  {:pinned              2                                   ;; simple field
+   :bookmarked          2                                   ;; join with multi-table entity
+   :recency             1.5                                 ;; date formula
+   :dashboard           1                                   ;; simple field
+   :model               0.5                                 ;; simple field
+   :official-collection 2                                   ;; a field we can calculate
+   :verified            2                                   ;; a simple field
+   :text                10                                  ;; strength of text-scores-weight previously
+   })
+
 (defn model->alias
   "Given a model string returns the model alias"
   [model]
