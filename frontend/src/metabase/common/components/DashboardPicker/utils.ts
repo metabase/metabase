@@ -110,7 +110,7 @@ export const getCollectionId = (
     item.model === "dashboard" &&
     item.collection_id !== undefined
   ) {
-    return item.collection_id;
+    return item.collection_id ?? "root";
   }
 
   if (item.model === "collection") {
