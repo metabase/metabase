@@ -100,6 +100,9 @@ describe("scenarios > home > homepage", () => {
 
       cy.visit("/");
       cy.wait("@getXrayCandidates");
+      cy.findByTestId("home-page")
+        .findByTestId("loading-indicator")
+        .should("not.exist");
 
       repeatAssertion(() =>
         cy
