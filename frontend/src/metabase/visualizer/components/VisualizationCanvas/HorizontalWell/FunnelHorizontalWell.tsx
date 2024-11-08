@@ -10,25 +10,20 @@ import {
 } from "@dnd-kit/sortable";
 
 import { Sortable } from "metabase/core/components/Sortable";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Box, Flex, type FlexProps, Text } from "metabase/ui";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import { DROPPABLE_ID } from "metabase/visualizer/constants";
-import type { VisualizationSettings } from "metabase-types/api";
+import {
+  getSettings,
+  updateSettings,
+} from "metabase/visualizer/visualizer.slice";
 
 import { WellItem, type WellItemProps } from "../WellItem";
 
-interface FunnelHorizontalWellProps extends FlexProps {
-  settings: ComputedVisualizationSettings;
-  onChangeSettings: (settings: VisualizationSettings) => void;
-}
+export function FunnelHorizontalWell({ style, ...props }: FlexProps) {
+  const settings = useSelector(getSettings);
+  const dispatch = useDispatch();
 
-export function FunnelHorizontalWell({
-  display,
-  settings,
-  style,
-  onChangeSettings,
-  ...props
-}: FunnelHorizontalWellProps) {
   const { active, setNodeRef, isOver } = useDroppable({
     id: DROPPABLE_ID.X_AXIS_WELL,
   });
@@ -44,11 +39,13 @@ export function FunnelHorizontalWell({
     const dimension = settings["funnel.dimension"];
     const orderDimension = settings["funnel.order_dimension"] ?? dimension;
 
-    onChangeSettings({
-      "funnel.dimension": dimension,
-      "funnel.order_dimension": orderDimension,
-      "funnel.rows": nextRows,
-    });
+    dispatch(
+      updateSettings({
+        "funnel.dimension": dimension,
+        "funnel.order_dimension": orderDimension,
+        "funnel.rows": nextRows,
+      }),
+    );
   };
 
   const borderStyle = rows.length > 0 ? "solid" : "dashed";

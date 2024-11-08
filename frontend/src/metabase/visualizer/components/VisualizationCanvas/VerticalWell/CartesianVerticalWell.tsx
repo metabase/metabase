@@ -4,22 +4,19 @@ import { useMemo } from "react";
 import { useSelector } from "metabase/lib/redux";
 import { isNotNull } from "metabase/lib/types";
 import { Flex, Text } from "metabase/ui";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import { DRAGGABLE_ID, DROPPABLE_ID } from "metabase/visualizer/constants";
-import { getVisualizerDatasetColumns } from "metabase/visualizer/visualizer.slice";
+import {
+  getSettings,
+  getVisualizerDatasetColumns,
+} from "metabase/visualizer/visualizer.slice";
 import type { DatasetColumn } from "metabase-types/api";
 
 import { WellItem } from "../WellItem";
 
 import { SimpleVerticalWell } from "./SimpleVerticalWell";
 
-interface CartesianVerticalWellProps {
-  settings: ComputedVisualizationSettings;
-}
-
-export function CartesianVerticalWell({
-  settings,
-}: CartesianVerticalWellProps) {
+export function CartesianVerticalWell() {
+  const settings = useSelector(getSettings);
   const columns = useSelector(getVisualizerDatasetColumns);
 
   const metrics = useMemo(() => {

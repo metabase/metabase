@@ -4,22 +4,17 @@ import { useMemo } from "react";
 import { useSelector } from "metabase/lib/redux";
 import { isNotNull } from "metabase/lib/types";
 import { Flex, type FlexProps, Text } from "metabase/ui";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import { DRAGGABLE_ID, DROPPABLE_ID } from "metabase/visualizer/constants";
-import { getVisualizerDatasetColumns } from "metabase/visualizer/visualizer.slice";
+import {
+  getSettings,
+  getVisualizerDatasetColumns,
+} from "metabase/visualizer/visualizer.slice";
 import type { DatasetColumn } from "metabase-types/api";
 
 import { WellItem } from "../WellItem";
 
-interface CartesianHorizontalWellProps extends FlexProps {
-  settings: ComputedVisualizationSettings;
-}
-
-export function CartesianHorizontalWell({
-  settings,
-  style,
-  ...props
-}: CartesianHorizontalWellProps) {
+export function CartesianHorizontalWell({ style, ...props }: FlexProps) {
+  const settings = useSelector(getSettings);
   const columns = useSelector(getVisualizerDatasetColumns);
 
   const { active, setNodeRef, isOver } = useDroppable({

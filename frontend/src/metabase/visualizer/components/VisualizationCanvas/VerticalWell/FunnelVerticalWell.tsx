@@ -1,17 +1,16 @@
 import { useSelector } from "metabase/lib/redux";
 import { Text } from "metabase/ui";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
-import { getVisualizerDatasetColumns } from "metabase/visualizer/visualizer.slice";
+import {
+  getSettings,
+  getVisualizerDatasetColumns,
+} from "metabase/visualizer/visualizer.slice";
 
 import { WellItem } from "../WellItem";
 
 import { SimpleVerticalWell } from "./SimpleVerticalWell";
 
-interface FunnelVerticalWellProps {
-  settings: ComputedVisualizationSettings;
-}
-
-export function FunnelVerticalWell({ settings }: FunnelVerticalWellProps) {
+export function FunnelVerticalWell() {
+  const settings = useSelector(getSettings);
   const columns = useSelector(getVisualizerDatasetColumns);
 
   const metric = columns.find(
