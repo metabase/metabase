@@ -1047,20 +1047,20 @@ describe("issue 49525", { tags: "@external" }, () => {
   it("Subscriptions with 'Keep data pivoted' checked should work (metabase#49525)", () => {
     // Send a test email subscription
     openSharingMenu("Subscriptions");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Email it").click();
+    sidebar().within(() => {
+      cy.findByText("Email it").click();
+      cy.findByPlaceholderText("Enter user names or email addresses").click();
+    });
 
-    cy.findByPlaceholderText("Enter user names or email addresses").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(`${first_name} ${last_name}`).click();
-    // Click this just to close the popover that is blocking the "Send email now" button
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("To:").click();
-    cy.get('[aria-label="Attach results"]').click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Keep data pivoted").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Questions to attach").click();
+    popover().findByText(`${first_name} ${last_name}`).click();
+
+    sidebar().within(() => {
+      // Click this just to close the popover that is blocking the "Send email now" button
+      cy.findByText("To:").click();
+      cy.findByLabelText("Attach results").click();
+      cy.findByText("Keep data pivoted").click();
+      cy.findByText("Questions to attach").click();
+    });
 
     sendEmailAndAssert(email => {
       // Get the CSV attachment data
