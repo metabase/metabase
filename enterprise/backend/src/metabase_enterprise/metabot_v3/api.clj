@@ -38,16 +38,19 @@
 
 (api/defendpoint POST "/agent"
   "Send a chat message to the LLM via the AI Proxy."
-  [:as {{:keys [message context history] :as _body} :body}]
+  [:as {{:keys [message context history session_id] :as _body} :body}]
   {message ms/NonBlankString
    context [:map-of :keyword :any]
-   history [:maybe [:sequential :map]]}
+   history [:maybe [:sequential :map]]
+   session_id [:maybe :string]}
   (metabot-v3.context/log _body :llm.log/fe->be)
   (let [context (mc/decode ::metabot-v3.context/context
                            context (mtx/transformer {:name :api-request}))
         history (mc/decode [:maybe ::metabot-v3.client.schema/messages]
                            history (mtx/transformer {:name :api-request}))]
-    (doto (request message context history)
+    (doto (assoc
+           (request message context history)
+           :session_id (or session_id (u/generate-nano-id)))
       (metabot-v3.context/log :llm.log/be->fe))))
 
 (api/define-routes)
