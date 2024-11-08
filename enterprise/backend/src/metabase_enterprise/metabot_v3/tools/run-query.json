@@ -11,6 +11,28 @@
           "anyOf": [
             {
               "type": "object",
+              "description": "Sort the query results.",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "description": "The type of the order by step.",
+                  "enum": [
+                    "order_by"
+                  ]
+                },
+                "column_name": {
+                  "type": "string",
+                  "description": "The name of the column to apply sorting for."
+                }
+              },
+              "required": [
+                "type",
+                "column_name"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
               "description": "Set the row limit for the query.",
               "properties": {
                 "type": {

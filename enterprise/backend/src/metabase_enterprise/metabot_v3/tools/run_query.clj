@@ -1,5 +1,7 @@
 (ns metabase-enterprise.metabot-v3.tools.run-query
   (:require
+   [clojure.string :as str]
+   [medley.core :as m]
    [metabase-enterprise.metabot-v3.tools.interface :as metabot-v3.tools.interface]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
@@ -16,9 +18,19 @@
 
 (defmethod apply-step :limit
   [query {:keys [limit]}]
-  (if (neg-int? limit)
-    (throw (ex-info "Row limit must be a non-negative number." {}))
-    (lib/limit query limit)))
+  (if (not (neg-int? limit))
+    (lib/limit query limit)
+    (throw (ex-info "Row limit must be a non-negative number." {:limit limit}))))
+
+(defmethod apply-step :order_by
+  [query {:keys [column-name]}]
+  (let [columns (lib/orderable-columns query)
+        column  (m/find-first #(= (lib/display-name query %) column-name) columns)]
+    (if (some? column)
+      (lib/order-by query column)
+      (throw (ex-info (format "column_name for the order_by step is not correct. Correct column names are: %s"
+                           (str/join ", " (map #(lib/display-name query %) columns)))
+                      {:column-name column-name})))))
 
 (defn- apply-steps
   [query steps]
@@ -36,7 +48,7 @@
        :output "success"}
       (catch ExceptionInfo e
         {:reactions [{:type    :metabot.reaction/writeback
-                      :message (ex-message e)}]
+                      :message (format "<system message>%s</system message>" (ex-message e))}]
          :output "failure"}))))
 
 (mu/defmethod metabot-v3.tools.interface/*tool-applicable?* :metabot.tool/run-query
