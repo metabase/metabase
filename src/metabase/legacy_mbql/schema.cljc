@@ -253,7 +253,7 @@
     [:base-type {:optional true} [:maybe ::lib.schema.common/base-type]]
 
     ;; lbrdnk TODO: Add description.
-    [:inherent-temporal-unit {:optional true} [:maybe ::DateTimeUnit]]
+    [:inherited-temporal-unit {:optional true} [:maybe ::DateTimeUnit]]
 
     [:source-field
      {:optional true
