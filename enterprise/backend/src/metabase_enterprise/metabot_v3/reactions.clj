@@ -165,12 +165,6 @@
    [:limits [:vector [:map
                       [:limit integer?]]]]])
 
-(defreaction :metabot.reaction/change-axes-labels
-  [:map
-   [:type [:= :metabot.reaction/change-axes-labels]]
-   [:x_axis_label [:maybe :string]]
-   [:y_axis_label [:maybe :string]]])
-
 (defreaction :metabot.reaction/change-series-settings
   [:map
    [:type [:= :metabot.reaction/change-series-settings]]
@@ -211,13 +205,6 @@
                              [:show_mini_bar {:optional true} [:maybe boolean?]]
                              [:suffix {:optional true} [:maybe :string]]
                              [:view_as {:optional true} [:maybe [:enum "link" "email_link" "image" "auto"]]]]]]])
-
-(defreaction :metabot.reaction/change-y-axis-range
-  [:map
-   [:type [:= :metabot.reaction/change-y-axis-range]]
-   ["graph.y_axis.auto_range" {:optional true} [:maybe boolean?]]
-   ["graph.y_axis.min" {:optional true} [:maybe number?]]
-   ["graph.y_axis.max" {:optional true} [:maybe number?]]])
 
 (defreaction :metabot.reaction/change-chart-appearance
   [:map

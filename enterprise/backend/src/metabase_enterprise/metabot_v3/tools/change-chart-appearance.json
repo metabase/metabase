@@ -78,6 +78,49 @@
         "type": ["number", "string", "null"],
         "description": "Allowed only when `current_display_type` is `bar` and `graph.dimensions` array has two elements. Keeps only the top N series. Use it when you want to limit the number of series to N. If no limit modification is requested, set this parameter to `null`. If you want to show all series,remove the limit, set this parameter to `all`.",
         "nullable": true
+      },
+      "axes_labels": {
+        "type": ["object", "null"],
+        "description": "Allowed only when `current_display_type` is `line`, `bar`, `area`, `combo`, `scatter`, `waterfall`, or `row`. Settings for the axes labels. If no axes labels modification is requested, or not allowed by `current_display_type`, set this parameter to `null`.",
+        "nullable": true,
+        "properties": {
+          "x_axis_label": {
+            "type": ["string", "null"],
+            "description": "The new label for the X axis. Set to `null` if should not be changed.",
+            "nullable": true
+          },
+          "y_axis_label": {
+            "type": ["string", "null"],
+            "description": "The new label for the Y axis. Set to `null` if should not be changed.",
+            "nullable": true
+          }
+        },
+        "required": ["x_axis_label", "y_axis_label"],
+        "additionalProperties": false
+      },
+      "y_axis_range": {
+        "type": ["object", "null"],
+        "description": "Allowed only when `current_display_type` is `line`, `bar`, `area`, `combo`, `scatter`, `waterfall`, or `row`. Settings for the Y-axis range. If no Y-axis range modification is requested, or not allowed by `current_display_type`, set this parameter to `null`.",
+        "nullable": true,
+        "properties": {
+          "auto_range": {
+            "type": ["boolean", "null"],
+            "description": "Whether to automatically determine the Y-axis range.",
+            "nullable": true
+          },
+          "min": {
+            "type": ["number", "null"],
+            "description": "The minimum value for the Y-axis. Only applied when auto_range is false.",
+            "nullable": true
+          },
+          "max": {
+            "type": ["number", "null"],
+            "description": "The maximum value for the Y-axis. Only applied when auto_range is false.",
+            "nullable": true
+          }
+        },
+        "required": ["auto_range", "min", "max"],
+        "additionalProperties": false
       }
     },
     "required": [
@@ -86,7 +129,9 @@
       "data_labels",
       "total",
       "stack_type",
-      "max_series_count"
+      "max_series_count",
+      "axes_labels",
+      "y_axis_range"
     ],
     "additionalProperties": false
   }

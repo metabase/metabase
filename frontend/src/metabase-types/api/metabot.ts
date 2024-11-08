@@ -146,12 +146,6 @@ export type MetabotChangeQueryReaction = {
   limits: MetabotLimitQueryDetails[];
 };
 
-export type MetabotChangeAxesLabelsReaction = {
-  type: "metabot.reaction/change-axes-labels";
-  x_axis_label: string | null;
-  y_axis_label: string | null;
-};
-
 type SeriesSettingsEntry = SeriesSettings & { key: string };
 
 export type MetabotChangeSeriesSettingsReaction = {
@@ -164,13 +158,6 @@ type ColumnSettingsEntry = ColumnSettings & { key: string };
 export type MetabotChangeColumnSettingsReaction = {
   type: "metabot.reaction/change-column-settings";
   column_settings: ColumnSettingsEntry[];
-};
-
-export type MetabotChangeYAxisRangeReaction = {
-  type: "metabot.reaction/change-y-axis-range";
-  "graph.y_axis.auto_range": boolean | null;
-  "graph.y_axis.min": number | null;
-  "graph.y_axis.max": number | null;
 };
 
 export type MetabotChangeChartAppearanceReaction = {
@@ -189,14 +176,21 @@ export type MetabotChangeChartAppearanceReaction = {
   total: boolean | null;
   stack_type: "stacked" | "normalized" | "none" | null;
   max_series_count: number | "all" | null;
+  axes_labels: {
+    x_axis_label: string | null;
+    y_axis_label: string | null;
+  } | null;
+  y_axis_range: {
+    auto_range: boolean | null;
+    min: number | null;
+    max: number | null;
+  } | null;
 };
 
 export type MetabotReaction =
   | MetabotChangeChartAppearanceReaction
-  | MetabotChangeYAxisRangeReaction
   | MetabotChangeColumnSettingsReaction
   | MetabotChangeSeriesSettingsReaction
-  | MetabotChangeAxesLabelsReaction
   | MetabotMessageReaction
   | MetabotChangeDisplayTypeReaction
   | MetabotChangeVisiualizationSettingsReaction
