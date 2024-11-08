@@ -17,6 +17,7 @@ import type {
   CardId,
   Dataset,
   DatasetColumn,
+  DatasetData,
   RawSeries,
   RowValues,
   VisualizationDisplay,
@@ -371,7 +372,7 @@ const getVisualizerDatasetData = createSelector(
     getReferencedColumns,
     getVisualizationColumns,
   ],
-  (usedDataSources, datasets, referencedColumns, cols): Dataset => {
+  (usedDataSources, datasets, referencedColumns, cols): DatasetData => {
     const referencedColumnValuesMap: Record<string, RowValues> = {};
     referencedColumns.forEach(ref => {
       const dataset = datasets[ref.sourceId];
