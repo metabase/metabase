@@ -4,9 +4,9 @@
 
 /** @see floating-elements.stories.tsx */
 .FloatingElement {
-  &:not([data-specificity-hack]) {
-    z-index: var(--mb-floating-element-z-index);
-  }
+  /* !important is needed to override the z-index that Mantine applies. The
+   * specificity hack doesn't work. */
+  z-index: var(--mb-floating-element-z-index) !important;
 }
 
 .z1 {
