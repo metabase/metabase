@@ -4,7 +4,7 @@ title: Tables
 
 # Tables
 
-The **Table** option is good for looking at tabular data (duh), or for lists of things like users or orders. The visualization options for tables allow you to add, hide, or rearrange fields in the table you're looking at, as well as modify their formatting. Check out [Everything you can do with the table visualization](https://www.metabase.com/learn/basics/visualizing-data/table.html).
+The **Table** option is good for looking at tabular data (duh), or for lists of things like users or orders. The visualization options for tables allow you to add, hide, or rearrange fields in the table you're looking at, as well as modify their formatting. Check out [Everything you can do with the table visualization](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/visualization/table).
 
 ## Rearranging, adding, and removing columns
 
