@@ -2,9 +2,7 @@ import type { ReactNode } from "react";
 import { useState } from "react";
 import { t } from "ttag";
 
-import { Tooltip } from "metabase/ui";
-// FIXME: seeing if importing directly from Mantine removes the problem
-import { Popover } from "@mantine/core";
+import { Popover, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { AggregationPicker } from "../SummarizeSidebar.styled";
@@ -50,7 +48,6 @@ export function AddAggregationButton({
         )}
       </Popover.Target>
       <Popover.Dropdown>
-        this popover dropdown isn't getting its top and left set properly
         <AggregationPicker
           query={query}
           stageIndex={stageIndex}
