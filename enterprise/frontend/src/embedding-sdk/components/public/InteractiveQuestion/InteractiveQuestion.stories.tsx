@@ -39,7 +39,8 @@ export const WithFilterPicker = {
     return (
       <InteractiveQuestion {...args}>
         <div>
-          <InteractiveQuestion.FilterPicker />
+          <InteractiveQuestion.FilterPicker withIcon />
+          <InteractiveQuestion.QuestionVisualization />
         </div>
       </InteractiveQuestion>
     );
