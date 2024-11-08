@@ -492,8 +492,7 @@ export function FieldValuesWidgetInner({
       fields,
       disableSearch,
       options,
-    }) ||
-    (isSingleValueSearch && options.length > 0);
+    }) || isSingleValueSearch;
 
   const valueForLabel = (label: string | number) => {
     const value = fieldValues.byLabel.get(label?.toString());
@@ -587,7 +586,7 @@ export function FieldValuesWidgetInner({
         maw={maxWidth ?? undefined}
         miw={minWidth ?? undefined}
       >
-        {isListMode && isLoading ? (
+        {isListMode && multi && isLoading ? (
           <LoadingState />
         ) : isListMode && hasListValues && multi ? (
           <ListField
@@ -604,9 +603,11 @@ export function FieldValuesWidgetInner({
             placeholder={tokenFieldPlaceholder}
             value={value.filter(v => v != null)}
             onChange={onChange}
+            onSearchChange={onInputChange}
             options={options}
             optionRenderer={optionRenderer}
             checkedColor={checkedColor}
+            isLoading={isLoading}
           />
         ) : !isSimpleInput ? (
           <Box pr="1rem">

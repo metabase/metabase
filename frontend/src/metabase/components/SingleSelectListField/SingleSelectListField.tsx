@@ -4,10 +4,12 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import EmptyState from "metabase/components/EmptyState";
+import LoadingSpinner from "metabase/components/LoadingSpinner";
 import { waitTimeContext } from "metabase/context/wait-time";
 import type { InputProps } from "metabase/core/components/Input";
 import Input from "metabase/core/components/Input";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
+import { Flex } from "metabase/ui";
 import type { RowValue } from "metabase-types/api";
 
 import {
@@ -36,7 +38,9 @@ const SingleSelectListField = ({
   options,
   optionRenderer,
   placeholder = t`Find...`,
+  onSearchChange,
   isDashboardFilter,
+  isLoading,
   checkedColor,
 }: SingleSelectListFieldProps) => {
   const [selectedValue, setSelectedValue] = useState(value?.[0]);
@@ -92,7 +96,7 @@ const SingleSelectListField = ({
   }, [augmentedOptions, debouncedFilter, sortedOptions]);
 
   const shouldShowEmptyState =
-    augmentedOptions.length > 0 && filteredOptions.length === 0;
+    filter.length > 0 && !isLoading && filteredOptions.length === 0;
 
   const onClickOption = (option: any) => {
     if (selectedValue !== option) {
@@ -110,8 +114,16 @@ const SingleSelectListField = ({
     }
   };
 
-  const handleFilterChange: InputProps["onChange"] = e =>
-    setFilter(e.target.value);
+  const handleFilterChange: InputProps["onChange"] = evt => {
+    const value = evt.target.value;
+    setFilter(value);
+    onSearchChange(value);
+  };
+
+  const handleResetClick = () => {
+    setFilter("");
+    onSearchChange("");
+  };
 
   return (
     <>
@@ -123,7 +135,7 @@ const SingleSelectListField = ({
           value={filter}
           onChange={handleFilterChange}
           onKeyDown={handleKeyDown}
-          onResetClick={() => setFilter("")}
+          onResetClick={handleResetClick}
         />
       </FilterInputContainer>
 
@@ -133,25 +145,33 @@ const SingleSelectListField = ({
         </EmptyStateContainer>
       )}
 
-      <OptionsList isDashboardFilter={isDashboardFilter}>
-        {filteredOptions.map(option => (
-          <OptionContainer key={option[0]}>
-            <OptionItem
-              data-testid={`${option[0]}-filter-value`}
-              selectedColor={
-                (checkedColor ?? isDashboardFilter)
-                  ? "var(--mb-color-background-selected)"
-                  : "var(--mb-color-filter)"
-              }
-              selected={selectedValue === option[0]}
-              onClick={() => onClickOption(option[0])}
-              onMouseDown={e => e.preventDefault()}
-            >
-              {optionRenderer(option)}
-            </OptionItem>
-          </OptionContainer>
-        ))}
-      </OptionsList>
+      {isLoading && (
+        <Flex p="md" align="center" justify="center">
+          <LoadingSpinner size={24} />
+        </Flex>
+      )}
+
+      {!isLoading && (
+        <OptionsList isDashboardFilter={isDashboardFilter}>
+          {filteredOptions.map(option => (
+            <OptionContainer key={option[0]}>
+              <OptionItem
+                data-testid={`${option[0]}-filter-value`}
+                selectedColor={
+                  (checkedColor ?? isDashboardFilter)
+                    ? "var(--mb-color-background-selected)"
+                    : "var(--mb-color-filter)"
+                }
+                selected={selectedValue === option[0]}
+                onClick={() => onClickOption(option[0])}
+                onMouseDown={e => e.preventDefault()}
+              >
+                {optionRenderer(option)}
+              </OptionItem>
+            </OptionContainer>
+          ))}
+        </OptionsList>
+      )}
     </>
   );
 };
