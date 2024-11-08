@@ -8,6 +8,7 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util.generators.filters :as gen.filters]
    [metabase.lib.test-util.generators.util :as gen.u]
+   [metabase.lib.types.isa :as lib.types.isa]
    [metabase.util :as u]))
 
 ;; NOTE: Being able to *execute* these queries and grok the results would actually be really powerful, if we can
@@ -76,8 +77,11 @@
 
 (def ^:private step-kinds (atom {}))
 
+(def ^:private step-defaults
+  {:weight 100})
+
 (defn- add-step [{:keys [kind] :as step-def}]
-  (swap! step-kinds assoc kind step-def))
+  (swap! step-kinds assoc kind (merge step-defaults step-def)))
 
 ;; Helpers =======================================================================================
 (defn- choose-stage
@@ -194,6 +198,89 @@
             (is (= (first filter-clause)
                    (:short (lib/filter-operator after stage-number (last after-filters)))))))))))
 
+;; Expressions ===================================================================================
+;; We only support a few basic expressions for now. It would be good to exercise all the expression types eventually,
+;; but the main objective here is to generate *some* expressions so they can be consumed by filters, aggregations, etc.
+;; since that's a major bug source.
+(add-step {:kind :expression})
+
+(defn- gen-expression:number [column]
+  (lib/+ column 1))
+
+(defn- gen-expression:string [column]
+  (lib/concat column "__concat"))
+
+(defn- gen-expression [columns]
+  (let [numbers (map #(vector gen-expression:number %) (filter lib.types.isa/number? columns))
+        strings (map #(vector gen-expression:string %) (filter lib.types.isa/string? columns))
+        [f col] (gen.u/choose (concat numbers strings))]
+    (f col)))
+
+(def ^:private identifier-chars-initial
+  (str "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+       "abcdefghijklmnopqrstuvwxyz"
+       "_"))
+
+(def ^:private identifier-chars
+  (str identifier-chars-initial "0123456789"))
+
+(def ^:private expr-name-chars
+  (str identifier-chars " []<>+!@$%&*^()"))
+
+(defn- gen-expression-name []
+  (let [len (gen.u/choose (range 3 30))]
+    (apply str (repeatedly len #(gen.u/choose expr-name-chars)))))
+
+(defmethod next-steps* :expression [query _expression]
+  (let [stage-number (choose-stage query)
+        ;; Always adding at the end for now. Editing will come later.
+        expr-pos     (count (lib/expressions query stage-number))]
+    (when-let [expr-clause (gen-expression (lib/expressionable-columns query stage-number expr-pos))]
+      [:expression stage-number (gen-expression-name) expr-clause])))
+
+(defmethod run-step* :expression [query [_expression stage-number expr-name expr-clause]]
+  (lib/expression query stage-number expr-name expr-clause))
+
+(defmethod before-and-after :expression [before after [_expression stage-number expr-name _expr-clause]]
+  (let [before-exprs (lib/expressions before stage-number)
+        after-exprs  (lib/expressions after stage-number)]
+    (testing "adding an expression"
+      (testing "adds it to the expressions list"
+        (is (= (inc (count before-exprs))
+               (count after-exprs))))
+      (testing "adds it to visible columns"
+        (is (=? [{:lib/type   :metadata/column
+                  :lib/source :source/expressions
+                  :name       expr-name
+                  :id         (symbol "nil #_\"key is not present.\"")}]
+                (filter #(= (:name %) expr-name) (lib/visible-columns after stage-number))))))))
+
+;; Order by ======================================================================================
+(add-step {:kind   :order-by
+           ;; Lower weight than the default 100 - this is a rare operation.
+           :weight 30})
+
+(defmethod next-steps* :order-by [query _order-by]
+  (let [stage-number (choose-stage query)]
+    (when-let [columns (->> (lib/orderable-columns query stage-number)
+                            (remove :order-by-position) ; Drop those which already have an order.
+                            not-empty)]
+      [:order-by stage-number (lib/ref (gen.u/choose columns)) (gen.u/choose [:asc :desc])])))
+
+(defmethod run-step* :order-by [query [_order-by stage-number orderable direction]]
+  (lib/order-by query stage-number orderable direction))
+
+(defmethod before-and-after :order-by [before after [_order-by stage-number orderable direction]]
+  (let [before-orders (lib/order-bys before stage-number)
+        after-orders  (lib/order-bys after stage-number)]
+    ;; TODO: No duplicates! The new ref should never collide with one in `before` - except for the FK ambiguity.
+    ;; I don't want to introduce a flake, but once that issue is fixed there should be a test here.
+    (testing "new order-by clauses are added at the end of the sort order"
+      (is (= (inc (count before-orders))
+             (count after-orders)))
+      (is (lib.equality/= (lib/order-by-clause orderable direction)
+                          (last after-orders))))))
+
 ;; Generator internals ===========================================================================
 (defn- run-step
   "Applies a step, returning the updated context."
@@ -266,6 +353,9 @@
 
 (def ^:dynamic *step-control* step-control:default)
 
+(defn- choose-step [kinds]
+  (gen.u/weighted-choice (map (juxt :kind :weight) (vals kinds))))
+
 (defn- gen-step
   "Given a query, choose the next step, apply and test it, and return the new context.
 
@@ -281,7 +371,7 @@
     :pop   (recur (or previous ctx))
     ;; Uniformly choose a step-key from those registered, generate that step, and run it.
     ;; Return the new context.
-    :step  (let [step-kind (rand-nth (keys @step-kinds))]
+    :step  (let [step-kind (choose-step @step-kinds)]
              (if-let [step (next-steps* query step-kind)]
                (test-step ctx step)
                (recur ctx)))))
