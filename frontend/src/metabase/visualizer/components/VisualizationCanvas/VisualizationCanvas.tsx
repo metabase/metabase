@@ -12,6 +12,7 @@ import {
 } from "metabase/visualizer/visualizer.slice";
 
 import { HorizontalWell } from "./HorizontalWell";
+import { ScatterFloatingWell } from "./ScatterFloatingWell";
 import { StartFromViz } from "./StartFromViz";
 import { VerticalWell } from "./VerticalWell";
 
@@ -41,7 +42,7 @@ export function VisualizationCanvas() {
   }
 
   return (
-    <Flex w="100%" h="100%" ref={setNodeRef}>
+    <Flex w="100%" h="100%" pos="relative" ref={setNodeRef}>
       <VerticalWell display={display} />
       <Flex direction="column" style={{ flex: 1 }}>
         <Visualization rawSeries={rawSeries} />
@@ -51,6 +52,7 @@ export function VisualizationCanvas() {
           style={{ alignSelf: "center" }}
         />
       </Flex>
+      {display === "scatter" && <ScatterFloatingWell />}
     </Flex>
   );
 }

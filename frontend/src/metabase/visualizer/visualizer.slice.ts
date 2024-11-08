@@ -141,6 +141,10 @@ const visualizerSlice = createSlice({
         const dimension = createDimensionColumn();
         state.columns = [metric, dimension];
 
+        if (display === "scatter") {
+          state.columns.push(createMetricColumn({ name: "BUBBLE_SIZE" }));
+        }
+
         if (display === "funnel") {
           state.settings = {
             "funnel.metric": metric.name,
@@ -151,6 +155,10 @@ const visualizerSlice = createSlice({
             "graph.metrics": [metric.name],
             "graph.dimensions": [dimension.name],
           };
+
+          if (display === "scatter") {
+            state.settings["scatter.bubble"] = "BUBBLE_SIZE";
+          }
         }
       }
     },
@@ -596,6 +604,19 @@ const cartesianDropHandler: DropHandler = (state, { active, over }) => {
         "graph.metrics": [...metrics, newMetric.name],
       };
     }
+  }
+
+  if (over.id === DROPPABLE_ID.SCATTER_BUBBLE_SIZE_WELL) {
+    state.columns = state.columns.map(col => {
+      if (col.name !== "BUBBLE_SIZE") {
+        return col;
+      }
+      return {
+        ...col,
+        values: [columnRef.name],
+      };
+    });
+    state.referencedColumns.push(columnRef);
   }
 };
 
