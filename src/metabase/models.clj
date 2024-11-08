@@ -197,8 +197,3 @@
        (when (isa? metabase-models-keyword :metabase/model)
          metabase-models-keyword)))
    (next-method symb)))
-
-(t2/define-after-insert :metabase/model
-  [model]
-  (when search/supports-index?
-    (search.ingestion/update-index! model)))
