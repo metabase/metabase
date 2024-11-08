@@ -11,7 +11,7 @@ export const Guard = <
 >(
   props: T,
 ) => {
-  const { withinPortal = true, opened, children } = props;
+  const { withinPortal = true, opened = true, children } = props;
   if (withinPortal && !opened) {
     return null;
   }
