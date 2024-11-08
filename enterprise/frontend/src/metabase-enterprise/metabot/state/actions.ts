@@ -1,8 +1,8 @@
-import { nanoid } from "@reduxjs/toolkit";
 import { t } from "ttag";
 import _ from "underscore";
 
 import { createAsyncThunk } from "metabase/lib/redux";
+import { uuid } from "metabase/lib/uuid";
 import {
   EnterpriseApi,
   METABOT_TAG,
@@ -82,7 +82,7 @@ export const sendMessageRequest = createAsyncThunk(
       console.warn(
         "Metabot has no session id while open, this should never happen",
       );
-      sessionId = nanoid();
+      sessionId = uuid();
       dispatch(setSessionId(sessionId));
     }
 

@@ -1,5 +1,6 @@
-import { type PayloadAction, createSlice, nanoid } from "@reduxjs/toolkit";
+import { type PayloadAction, createSlice } from "@reduxjs/toolkit";
 
+import { uuid } from "metabase/lib/uuid";
 import type {
   MetabotChatContext,
   MetabotHistory,
@@ -58,7 +59,7 @@ export const metabot = createSlice({
         state.lastHistoryValue = undefined;
         state.sessionId = undefined;
       } else {
-        state.sessionId = nanoid();
+        state.sessionId = uuid();
       }
     },
     setConfirmationOptions: (

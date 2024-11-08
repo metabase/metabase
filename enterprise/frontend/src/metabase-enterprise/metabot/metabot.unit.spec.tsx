@@ -1,4 +1,4 @@
-import { combineReducers, nanoid } from "@reduxjs/toolkit";
+import { combineReducers } from "@reduxjs/toolkit";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import { P, isMatching } from "ts-pattern";
@@ -6,6 +6,7 @@ import { P, isMatching } from "ts-pattern";
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
+import { isUuid, uuid } from "metabase/lib/uuid";
 import { useRegisterMetabotContextProvider } from "metabase/metabot";
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
@@ -39,7 +40,7 @@ function setup(
     ui = <Metabot />,
     metabotPluginInitialState = {
       ...metabotInitialState,
-      sessionId: nanoid(),
+      sessionId: uuid(),
       visible: true,
     },
   } = options || {};
@@ -117,15 +118,13 @@ describe("metabot", () => {
       showMetabot(store.dispatch);
       await enterChatMessage("Who is your favorite?");
       const firstSessionId = (await lastReqBody())?.session_id;
-      expect(typeof firstSessionId).toBe("string");
-      expect(firstSessionId.length).toBeGreaterThan(0);
+      expect(isUuid(firstSessionId)).toBeTruthy();
       hideMetabot(store.dispatch);
 
       showMetabot(store.dispatch);
       await enterChatMessage("Who is your favorite?");
       const secondSessionId = (await lastReqBody())?.session_id;
-      expect(typeof secondSessionId).toBe("string");
-      expect(secondSessionId.length).toBeGreaterThan(0);
+      expect(isUuid(secondSessionId)).toBeTruthy();
 
       expect(secondSessionId).not.toBe(firstSessionId);
     });
@@ -157,7 +156,6 @@ describe("metabot", () => {
       act(() => jest.advanceTimersByTime(METABOT_AUTO_CLOSE_DURATION_MS));
       await assertNotVisible();
 
-      // TODO: move order above once api requests are canceled when metabot is closed
       // does not auto-close if metabot is loading
       showMetabot(store.dispatch);
       fetchMock.post(
