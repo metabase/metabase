@@ -9,8 +9,6 @@ export const getMenuOverrides = (): MantineThemeOverride["components"] => ({
       radius: "sm",
       shadow: "md",
       withinPortal: true,
-      // FIXME: Do I need this here?
-      // zIndex: "var(--mb-floating-element-z-index)",
     },
     classNames: { dropdown: ZIndex.FloatingElement },
     styles: theme => ({
