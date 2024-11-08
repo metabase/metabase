@@ -1,3 +1,13 @@
+:root {
+  --mb-floating-element-z-index: 200;
+}
+
+.FloatingElement {
+  &:not([data-specificity-hack]) {
+    z-index: var(--mb-floating-element-z-index);
+  }
+}
+
 .z1 {
   z-index: 1;
 }
