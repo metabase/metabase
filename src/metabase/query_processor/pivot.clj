@@ -389,7 +389,6 @@
     (-> (or (:column_settings viz-settings)
             (::mb.viz/column-settings viz-settings))
         (update-keys (fn [k]
-                       (println "K" k)
                        (if (string? k)
                          (-> k json/parse-string last index-in-breakouts)
                          (->> k ::mb.viz/column-name index-in-breakouts))))
