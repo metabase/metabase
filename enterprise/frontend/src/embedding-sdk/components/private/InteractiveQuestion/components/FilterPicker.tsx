@@ -1,16 +1,11 @@
-import { getColumnIcon } from "metabase/common/utils/columns";
-import { getGroupItems } from "metabase/querying/filters/hooks/use-filter-modal/utils";
-import {
-  Accordion,
-  Box,
-  Group,
-  Icon,
-  Stack,
-  Text,
-  TextInput,
-} from "metabase/ui";
+import cx from "classnames";
+
+import { FilterColumnPicker } from "metabase/querying/filters/components/FilterPicker/FilterColumnPicker";
+import { Box } from "metabase/ui";
 
 import { useInteractiveQuestionContext } from "../context";
+
+import S from "./FilterPicker.module.css";
 
 interface Props {
   className?: string;
@@ -21,36 +16,24 @@ export const FilterPicker = ({ className, withIcon = false }: Props) => {
   const { question } = useInteractiveQuestionContext();
 
   const query = question?.query();
-  const groups = query ? getGroupItems(query) : [];
+
+  if (!query) {
+    return null;
+  }
 
   return (
-    <Box p="sm" className={className}>
-      <TextInput
-        placeholder="Search..."
-        icon={<Icon size={16} name="search" />}
-        mb="md"
+    <Box className={cx(S.PickerContainer, className)}>
+      <FilterColumnPicker
+        query={query}
+        stageIndex={0}
+        checkItemIsSelected={() => false}
+        onColumnSelect={() => {}}
+        onSegmentSelect={() => {}}
+        onExpressionSelect={() => {}}
+        withCustomExpression={false}
+        withColumnGroupIcon={false}
+        withColumnItemIcon={withIcon}
       />
-
-      <Accordion>
-        {groups.map(group => (
-          <Accordion.Item key={group.key} value={group.displayName}>
-            <Accordion.Control>{group.displayName}</Accordion.Control>
-            <Accordion.Panel>
-              <Stack spacing="xs">
-                {group.columnItems.map((columnItem, index) => (
-                  <Group key={index} spacing="xs">
-                    {withIcon && (
-                      <Icon size={16} name={getColumnIcon(columnItem.column)} />
-                    )}
-
-                    <Text>{columnItem.displayName}</Text>
-                  </Group>
-                ))}
-              </Stack>
-            </Accordion.Panel>
-          </Accordion.Item>
-        ))}
-      </Accordion>
     </Box>
   );
 };
