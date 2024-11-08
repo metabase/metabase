@@ -30,7 +30,7 @@ import {
 } from "metabase/ui";
 import { createMockUndo } from "metabase-types/api/mocks";
 
-import { BulkActionBarInner } from "../../../components/BulkActionBar/BulkActionBar";
+import { BulkActionBarPortal } from "../../../components/BulkActionBar/BulkActionBar";
 
 const LauncherGroup = ({
   title,
@@ -187,7 +187,7 @@ export const FloatingElementsDemo = ({
         </FloatingUndoList>
       )}
       {Array.from({ length: actionToastCount }).map((_, index) => (
-        <BulkActionBarInner
+        <BulkActionBarPortal
           key={`simple-bulk-action-bar-${index}`}
           opened
           message="Toast message"
@@ -200,7 +200,7 @@ export const FloatingElementsDemo = ({
             bg="transparent"
           />
           {enableNesting && <Launchers nested />}
-        </BulkActionBarInner>
+        </BulkActionBarPortal>
       ))}
       {Array.from({ length: toastCount }).map((_, index) => (
         <Toaster
