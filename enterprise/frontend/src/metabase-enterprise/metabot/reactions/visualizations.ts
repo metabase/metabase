@@ -10,13 +10,11 @@ import { getQueryResults, getQuestion } from "metabase/query_builder/selectors";
 import * as Lib from "metabase-lib";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import type {
-  MetabotChangeAxesLabelsReaction,
   MetabotChangeChartAppearanceReaction,
   MetabotChangeColumnSettingsReaction,
   MetabotChangeDisplayTypeReaction,
   MetabotChangeSeriesSettingsReaction,
   MetabotChangeVisiualizationSettingsReaction,
-  MetabotChangeYAxisRangeReaction,
   VisualizationSettings,
 } from "metabase-types/api";
 
@@ -75,22 +73,6 @@ export const changeDisplayType: ReactionHandler<
     }
   };
 
-export const changeAxesLabels: ReactionHandler<
-  MetabotChangeAxesLabelsReaction
-> =
-  reaction =>
-  async ({ dispatch }) => {
-    const settings: Record<string, string | undefined> = {};
-    if (reaction.x_axis_label) {
-      settings["graph.x_axis.title_text"] = reaction.x_axis_label;
-    }
-    if (reaction.y_axis_label) {
-      settings["graph.y_axis.title_text"] = reaction.y_axis_label;
-    }
-
-    await dispatch(onUpdateVisualizationSettings(settings));
-  };
-
 export const changeSeriesSettings: ReactionHandler<
   MetabotChangeSeriesSettingsReaction
 > =
@@ -142,18 +124,6 @@ export const changeColumnSettings: ReactionHandler<
     await dispatch(
       onUpdateVisualizationSettings({ column_settings: newColumnSettings }),
     );
-  };
-
-export const changeYAxisRange: ReactionHandler<
-  MetabotChangeYAxisRangeReaction
-> =
-  ({ type, ...payload }) =>
-  async ({ dispatch }) => {
-    const yAxisSettings = Object.fromEntries(
-      Object.entries(payload).filter(([_, value]) => value !== null),
-    );
-
-    await dispatch(onUpdateVisualizationSettings(yAxisSettings));
   };
 
 export const changeChartAppearance: ReactionHandler<
@@ -215,6 +185,30 @@ export const changeChartAppearance: ReactionHandler<
         settingsUpdate["graph.max_categories_enabled"] = true;
       } else if (payload.max_series_count === "all") {
         settingsUpdate["graph.max_categories_enabled"] = false;
+      }
+    }
+
+    if (payload.y_axis_range != null) {
+      if (payload.y_axis_range.auto_range != null) {
+        settingsUpdate["graph.y_axis.auto_range"] =
+          payload.y_axis_range.auto_range;
+      }
+      if (payload.y_axis_range.min != null) {
+        settingsUpdate["graph.y_axis.min"] = payload.y_axis_range.min;
+      }
+      if (payload.y_axis_range.max != null) {
+        settingsUpdate["graph.y_axis.max"] = payload.y_axis_range.max;
+      }
+    }
+
+    if (payload.axes_labels != null) {
+      if (payload.axes_labels.x_axis_label != null) {
+        settingsUpdate["graph.x_axis.title_text"] =
+          payload.axes_labels.x_axis_label;
+      }
+      if (payload.axes_labels.y_axis_label != null) {
+        settingsUpdate["graph.y_axis.title_text"] =
+          payload.axes_labels.y_axis_label;
       }
     }
 
