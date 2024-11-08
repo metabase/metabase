@@ -186,10 +186,7 @@ export const BaseChartSettings = ({
     onChangeSeriesColor: handleChangeSeriesColor,
   };
 
-  // console.log({ chartSettingCurrentSection })
-  const isChartPicker = chartSettingCurrentSection === "Chart";
-  // console.log({ isChartPicker })
-  // we need to show chartTypeSettings inside chartSettingsListContainer
+  const isChartPicker = chartSettingCurrentSection.toLowerCase() === "chart";
 
   return (
     <>

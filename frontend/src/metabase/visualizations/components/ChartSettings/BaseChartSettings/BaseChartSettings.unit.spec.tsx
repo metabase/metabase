@@ -39,7 +39,7 @@ const setup = (props: SetupOpts) => {
   );
 };
 
-describe("ChartSettings", () => {
+describe("BaseChartSettings", () => {
   it("should not crash if there are no widgets", () => {
     expect(() => setup({ widgets: [] })).not.toThrow();
   });
