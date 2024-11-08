@@ -1,12 +1,15 @@
 import { useInteractiveQuestionContext } from "embedding-sdk/components/private/InteractiveQuestion/context";
-import { QuestionFiltersHeader } from "metabase/query_builder/components/view/ViewHeader/components";
+import {
+  FilterPanel,
+  shouldRender as shouldRenderFilterPanel,
+} from "metabase/querying/filters/components/FilterPanel";
 
 export const FilterBar = () => {
   const { question, updateQuestion } = useInteractiveQuestionContext();
 
   const shouldRender =
     question &&
-    QuestionFiltersHeader.shouldRender({
+    shouldRenderFilterPanel({
       question,
       isObjectDetail: false,
 
@@ -18,11 +21,5 @@ export const FilterBar = () => {
     return null;
   }
 
-  return (
-    <QuestionFiltersHeader
-      expanded
-      question={question}
-      updateQuestion={updateQuestion}
-    />
-  );
+  return <FilterPanel question={question} updateQuestion={updateQuestion} />;
 };

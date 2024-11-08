@@ -15,7 +15,7 @@ import {
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
-import { QuestionFiltersHeader } from "./QuestionFiltersHeader";
+import { FilterPanel } from "./FilterPanel";
 
 const metadata = createMockMetadata({
   databases: [createSampleDatabase()],
@@ -23,12 +23,10 @@ const metadata = createMockMetadata({
 
 type SetupOpts = {
   query?: Lib.Query;
-  isExpanded?: boolean;
 };
 
 function setup({
   query: initialQuery = TEST_MULTISTAGE_QUERY,
-  isExpanded = true,
 }: SetupOpts = {}) {
   const onChange = jest.fn();
 
@@ -49,11 +47,7 @@ function setup({
 
     return (
       <div data-testid="TEST_CONTAINER">
-        <QuestionFiltersHeader
-          question={question}
-          expanded={isExpanded}
-          updateQuestion={handleQueryChange}
-        />
+        <FilterPanel question={question} updateQuestion={handleQueryChange} />
       </div>
     );
   }
@@ -76,12 +70,7 @@ function setup({
   return { getNextQuery, getFilterColumnNameForStage };
 }
 
-describe("QuestionFiltersHeader", () => {
-  it("should not render if expanded is false", () => {
-    setup({ isExpanded: false });
-    expect(screen.queryByTestId("TEST_CONTAINER")).toBeEmptyDOMElement();
-  });
-
+describe("FilterPanel", () => {
   it("should render filters from all stages", () => {
     setup();
     expect(screen.getAllByTestId("filter-pill")).toHaveLength(3);

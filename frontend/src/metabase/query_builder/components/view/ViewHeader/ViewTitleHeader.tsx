@@ -4,6 +4,10 @@ import { usePrevious } from "react-use";
 
 import { useToggle } from "metabase/hooks/use-toggle";
 import type { QueryModalType } from "metabase/query_builder/constants";
+import {
+  FilterPanel,
+  shouldRender as shouldRenderFilterPanel,
+} from "metabase/querying/filters/components/FilterPanel";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { Dataset } from "metabase-types/api";
@@ -13,7 +17,6 @@ import { ViewHeaderContainer } from "./ViewTitleHeader.styled";
 import {
   AdHocQuestionLeftSide,
   DashboardBackButton,
-  QuestionFiltersHeader,
   SavedQuestionLeftSide,
   ViewTitleHeaderRightSide,
 } from "./components";
@@ -67,7 +70,12 @@ interface ViewTitleHeaderProps {
   onCloseQuestionInfo: () => void;
   onModelPersistenceChange: () => void;
 
-  updateQuestion: (question: Question, opts: { run: boolean }) => void;
+  updateQuestion: (
+    question: Question,
+    opts: {
+      run: boolean;
+    },
+  ) => void;
 
   className?: string;
   style?: React.CSSProperties;
@@ -207,17 +215,14 @@ export function ViewTitleHeader({
         />
       </ViewHeaderContainer>
 
-      {QuestionFiltersHeader.shouldRender({
+      {shouldRenderFilterPanel({
         question,
         queryBuilderMode,
         isObjectDetail,
-      }) && (
-        <QuestionFiltersHeader
-          expanded={areFiltersExpanded}
-          question={question}
-          updateQuestion={updateQuestion}
-        />
-      )}
+      }) &&
+        areFiltersExpanded && (
+          <FilterPanel question={question} updateQuestion={updateQuestion} />
+        )}
     </>
   );
 }

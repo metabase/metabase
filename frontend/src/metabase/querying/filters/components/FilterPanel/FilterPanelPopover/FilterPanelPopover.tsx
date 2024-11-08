@@ -1,7 +1,7 @@
-import { useMemo, useState } from "react";
+import { useDisclosure } from "@mantine/hooks";
 
 import { Popover } from "metabase/ui";
-import * as Lib from "metabase-lib";
+import type * as Lib from "metabase-lib";
 
 import { FilterPicker } from "../../FilterPicker";
 import { FilterPill } from "../FilterPill";
@@ -10,30 +10,29 @@ interface FilterPanelPopoverProps {
   query: Lib.Query;
   stageIndex: number;
   filter: Lib.FilterClause;
-  onChange: (query: Lib.Query) => void;
+  longDisplayName: Lib.ClauseDisplayInfo["longDisplayName"];
+  handleChange: (filter: Lib.Filterable) => void;
+  handleRemove: () => void;
 }
 
 export function FilterPanelPopover({
   query,
   stageIndex,
   filter,
-  onChange,
+  longDisplayName,
+  handleChange,
+  handleRemove,
 }: FilterPanelPopoverProps) {
-  const [isOpened, setIsOpened] = useState(false);
+  const [isOpened, { open, close, toggle }] = useDisclosure();
 
-  const filterInfo = useMemo(
-    () => Lib.displayInfo(query, stageIndex, filter),
-    [query, stageIndex, filter],
-  );
-
-  const handleChange = (newFilter: Lib.Clause | Lib.SegmentMetadata) => {
-    onChange(Lib.replaceClause(query, stageIndex, filter, newFilter));
-    setIsOpened(false);
+  const onRemove = () => {
+    handleRemove();
+    close();
   };
 
-  const handleRemove = () => {
-    onChange(Lib.removeClause(query, stageIndex, filter));
-    setIsOpened(false);
+  const onChange = (filter: Lib.Filterable) => {
+    handleChange(filter);
+    close();
   };
 
   return (
@@ -41,14 +40,11 @@ export function FilterPanelPopover({
       opened={isOpened}
       position="bottom-start"
       transitionProps={{ duration: 0 }}
-      onChange={setIsOpened}
+      onChange={toggle}
     >
       <Popover.Target>
-        <FilterPill
-          onClick={() => setIsOpened(isOpened => !isOpened)}
-          onRemoveClick={handleRemove}
-        >
-          {filterInfo.longDisplayName}
+        <FilterPill onClick={open} onRemoveClick={onRemove}>
+          {longDisplayName}
         </FilterPill>
       </Popover.Target>
       <Popover.Dropdown>
@@ -56,7 +52,7 @@ export function FilterPanelPopover({
           query={query}
           stageIndex={stageIndex}
           filter={filter}
-          onSelect={handleChange}
+          onSelect={onChange}
         />
       </Popover.Dropdown>
     </Popover>
