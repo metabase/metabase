@@ -11,9 +11,7 @@ export const getPopoverOverrides = (): MantineThemeOverride["components"] => ({
       withinPortal: true,
       middlewares: { shift: true, flip: true, size: true },
       transitionProps: { duration: 0 },
-      zIndex: "var(--mb-floating-element-z-index)",
     },
-    // FIXME: This class might not be doing anything
     classNames: { dropdown: ZIndex.FloatingElement },
     styles: () => ({
       dropdown: {
