@@ -54,7 +54,7 @@
    messages :- [:maybe ::metabot-v3.client.schema/messages]]
   (encode-request-body
    {:messages      messages
-    :context       (metabot-v3.context/hydrate-context (or context {}))
+    :context       {}
     :tools         (metabot-v3.tools/applicable-tools (metabot-v3.tools/*tools-metadata*) context)
     :instance-info (*instance-info*)}))
 

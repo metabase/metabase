@@ -73,3 +73,13 @@
   [:map
    [:type    [:= :metabot.reaction/message]]
    [:message :string]])
+
+(defreaction :metabot.reaction/writeback
+  [:map
+   [:type [:= :metabot.reaction/writeback]]
+   [:message :string]])
+
+(defreaction :metabot.reaction/run-query
+             [:map
+              [:type [:= :metabot.reaction/run-query]]
+              [:query :map]])

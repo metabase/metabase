@@ -1,25 +1,28 @@
 {
   "name": "run-query",
-  "description": "Runs the query",
+  "description": "Executes a query in Metabase. A query is composed from multiple steps",
   "parameters": {
     "type": "object",
     "properties": {
-      "operations": {
+      "steps": {
         "type": "array",
-        "description": "List of operations.",
+        "description": "List of query steps.",
         "items": {
-          "oneOf": [
+          "anyOf": [
             {
               "type": "object",
+              "description": "Set the row limit for the query.",
               "properties": {
                 "type": {
                   "type": "string",
+                  "description": "The type of the row limit step.",
                   "enum": [
                     "limit"
                   ]
                 },
                 "limit": {
-                  "type": "number"
+                  "type": "number",
+                  "description": "Row limit."
                 }
               },
               "required": [
@@ -33,7 +36,7 @@
       }
     },
     "required": [
-      "operations"
+      "steps"
     ],
     "additionalProperties": false
   }

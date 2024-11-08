@@ -57,6 +57,8 @@ export const metabot = createSlice({
       state,
       action: PayloadAction<Record<string, MetabotReaction[]> | undefined>,
     ) => {
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-expect-error
       state.confirmationOptions = action.payload;
     },
   },
