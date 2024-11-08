@@ -25,6 +25,7 @@ export const useChartSettingsSections = ({
         sectionObj[widget.section].push(widget);
       }
     }
+    sectionObj[t`Chart`] = [];
 
     // Move settings from the "undefined" section in the first tab
     if (sectionObj["undefined"] && Object.values(sectionObj).length > 1) {
@@ -32,6 +33,7 @@ export const useChartSettingsSections = ({
       delete sectionObj["undefined"];
       Object.values(sectionObj)[0].unshift(...extra);
     }
+
     return sectionObj;
   }, [widgets]);
 
@@ -40,6 +42,7 @@ export const useChartSettingsSections = ({
     const names = Object.keys(sections);
 
     const sectionSortOrder = [
+      "chart",
       "data",
       "display",
       "axes",

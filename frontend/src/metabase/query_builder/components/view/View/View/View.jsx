@@ -208,6 +208,7 @@ const ViewInner = props => {
             />
           )}
           <ViewSidebar side="left" isOpen={showLeftSidebar}>
+            {/* TODO: most of the passed props can be removed */}
             <ViewLeftSidebarContainer
               question={question}
               result={result}

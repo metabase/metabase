@@ -1,6 +1,8 @@
 import { useMemo } from "react";
 
+import { ChartTypeSidebar } from "metabase/query_builder/components/view/sidebars/ChartTypeSidebar";
 import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/settings/visualization";
+import type { Dataset } from "metabase-types/api";
 
 import { BaseChartSettings } from "../BaseChartSettings";
 import { ChartSettingsRoot } from "../ChartSettings.styled";
@@ -15,7 +17,8 @@ export const QuestionChartSettings = ({
   onChange,
   computedSettings,
   initial,
-}: QuestionChartSettingsProps) => {
+  result,
+}: QuestionChartSettingsProps & { result?: Dataset }) => {
   const { chartSettings, handleChangeSettings, transformedSeries } =
     useChartSettingsState({ series, onChange });
 
@@ -41,6 +44,11 @@ export const QuestionChartSettings = ({
         chartSettings={chartSettings}
         transformedSeries={transformedSeries}
         widgets={widgets}
+        chartTypeSettings={
+          result ? (
+            <ChartTypeSidebar question={question} result={result} />
+          ) : null
+        }
       />
     </ChartSettingsRoot>
   );

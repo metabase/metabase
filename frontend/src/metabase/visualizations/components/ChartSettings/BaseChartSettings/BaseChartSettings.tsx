@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { type ReactNode, useCallback, useMemo, useState } from "react";
 import _ from "underscore";
 
 import Radio from "metabase/core/components/Radio";
@@ -34,7 +34,8 @@ export const BaseChartSettings = ({
   widgets,
   chartSettings,
   transformedSeries,
-}: BaseChartSettingsProps) => {
+  chartTypeSettings,
+}: BaseChartSettingsProps & { chartTypeSettings?: ReactNode }) => {
   const {
     chartSettingCurrentSection,
     currentSectionHasColumnSettings,
@@ -185,6 +186,11 @@ export const BaseChartSettings = ({
     onChangeSeriesColor: handleChangeSeriesColor,
   };
 
+  // console.log({ chartSettingCurrentSection })
+  const isChartPicker = chartSettingCurrentSection === "Chart";
+  // console.log({ isChartPicker })
+  // we need to show chartTypeSettings inside chartSettingsListContainer
+
   return (
     <>
       <ChartSettingsMenu data-testid="chartsettings-sidebar">
@@ -202,10 +208,14 @@ export const BaseChartSettings = ({
           </SectionContainer>
         )}
         <ChartSettingsListContainer className={CS.scrollShow}>
-          <ChartSettingsWidgetList
-            widgets={visibleWidgets}
-            extraWidgetProps={extraWidgetProps}
-          />
+          {isChartPicker ? (
+            chartTypeSettings
+          ) : (
+            <ChartSettingsWidgetList
+              widgets={visibleWidgets}
+              extraWidgetProps={extraWidgetProps}
+            />
+          )}
         </ChartSettingsListContainer>
       </ChartSettingsMenu>
       <ChartSettingsWidgetPopover

@@ -1,11 +1,10 @@
-import { memo, useCallback, useMemo } from "react";
+import { memo, useMemo } from "react";
 import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import CS from "metabase/css/core/index.css";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
-  onCloseChartSettings,
   onOpenChartType,
   onReplaceAllVisualizationSettings,
 } from "metabase/query_builder/actions";
@@ -17,11 +16,7 @@ import {
 import visualizations from "metabase/visualizations";
 import { QuestionChartSettings } from "metabase/visualizations/components/ChartSettings";
 import type Question from "metabase-lib/v1/Question";
-import type { CardDisplayType, Dataset, VisualizationSettings } from "metabase-types/api";
-
-import { ChartTypeSettings, useChartTypeVisualizations } from "../../chart-type-selector";
-import { useDispatch } from "metabase/lib/redux";
-
+import type { Dataset, VisualizationSettings } from "metabase-types/api";
 
 interface ChartSettingsSidebarProps {
   question: Question;
@@ -40,14 +35,14 @@ function ChartSettingsSidebarInner({
 
   const sidebarContentProps = showSidebarTitle
     ? {
-      title: t`${visualizations.get(question.display())?.uiName} options`,
-      onBack: () => dispatch(onOpenChartType()),
-    }
+        title: t`${visualizations.get(question.display())?.uiName} options`,
+        onBack: () => dispatch(onOpenChartType()),
+      }
     : {};
 
-  const handleClose = useCallback(() => {
-    dispatch(onCloseChartSettings());
-  }, [dispatch]);
+  // const handleClose = useCallback(() => {
+  //   dispatch(onCloseChartSettings());
+  // }, [dispatch]);
 
   const card = question.card();
   const series = useMemo(() => {
@@ -76,9 +71,10 @@ function ChartSettingsSidebarInner({
             onChange={onChange}
             initial={initialChartSetting}
             computedSettings={visualizationSettings}
+            result={result}
           />
-        </ErrorBoundary >
-      </SidebarContent >
+        </ErrorBoundary>
+      </SidebarContent>
     )
   );
 }
