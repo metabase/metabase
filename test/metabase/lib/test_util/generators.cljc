@@ -77,8 +77,11 @@
 
 (def ^:private step-kinds (atom {}))
 
+(def ^:private step-defaults
+  {:weight 100})
+
 (defn- add-step [{:keys [kind] :as step-def}]
-  (swap! step-kinds assoc kind step-def))
+  (swap! step-kinds assoc kind (merge step-defaults step-def)))
 
 ;; Helpers =======================================================================================
 (defn- choose-stage
@@ -252,6 +255,32 @@
                   :id         (symbol "nil #_\"key is not present.\"")}]
                 (filter #(= (:name %) expr-name) (lib/visible-columns after stage-number))))))))
 
+;; Order by ======================================================================================
+(add-step {:kind   :order-by
+           ;; Lower weight than the default 100 - this is a rare operation.
+           :weight 30})
+
+(defmethod next-steps* :order-by [query _order-by]
+  (let [stage-number (choose-stage query)]
+    (when-let [columns (->> (lib/orderable-columns query stage-number)
+                            (remove :order-by-position) ; Drop those which already have an order.
+                            not-empty)]
+      [:order-by stage-number (lib/ref (gen.u/choose columns)) (gen.u/choose [:asc :desc])])))
+
+(defmethod run-step* :order-by [query [_order-by stage-number orderable direction]]
+  (lib/order-by query stage-number orderable direction))
+
+(defmethod before-and-after :order-by [before after [_order-by stage-number orderable direction]]
+  (let [before-orders (lib/order-bys before stage-number)
+        after-orders  (lib/order-bys after stage-number)]
+    ;; TODO: No duplicates! The new ref should never collide with one in `before` - except for the FK ambiguity.
+    ;; I don't want to introduce a flake, but once that issue is fixed there should be a test here.
+    (testing "new order-by clauses are added at the end of the sort order"
+      (is (= (inc (count before-orders))
+             (count after-orders)))
+      (is (lib.equality/= (lib/order-by-clause orderable direction)
+                          (last after-orders))))))
+
 ;; Generator internals ===========================================================================
 (defn- run-step
   "Applies a step, returning the updated context."
@@ -324,6 +353,9 @@
 
 (def ^:dynamic *step-control* step-control:default)
 
+(defn- choose-step [kinds]
+  (gen.u/weighted-choice (map (juxt :kind :weight) (vals kinds))))
+
 (defn- gen-step
   "Given a query, choose the next step, apply and test it, and return the new context.
 
@@ -339,7 +371,7 @@
     :pop   (recur (or previous ctx))
     ;; Uniformly choose a step-key from those registered, generate that step, and run it.
     ;; Return the new context.
-    :step  (let [step-kind (rand-nth (keys @step-kinds))]
+    :step  (let [step-kind (choose-step @step-kinds)]
              (if-let [step (next-steps* query step-kind)]
                (test-step ctx step)
                (recur ctx)))))
