@@ -23,7 +23,7 @@ import { AnalyticsContext } from "./analytics-provider"
 ${imports}
 
 export const AnalyticsDashboard = () => {
-  const {email} = useContext(AnalyticsContext)
+  const {email, themeKey} = useContext(AnalyticsContext)
   const [dashboardId, setDashboardId] = useState(DASHBOARDS[0].id)
 
   const [isCreateQuestion, toggleCreateQuestion] = useReducer((s) => !s, false)
@@ -31,45 +31,47 @@ export const AnalyticsDashboard = () => {
   const isDashboard = !isCreateQuestion
 
   return (
-    <div className="analytics-container">
-      <div className="analytics-header">
-        <div>
-          ${userSwitcherEnabled ? "<UserSwitcher />" : ""}
+    <div className={\`analytics-root theme-\${themeKey}\`}>
+      <div className="analytics-container">
+        <div className="analytics-header">
+          <div>
+            ${userSwitcherEnabled ? "<UserSwitcher />" : ""}
+          </div>
+
+          <div className="analytics-header-right">
+            {isDashboard && (
+              <select
+                className="dashboard-select"
+                onChange={(e) => setDashboardId(e.target.value)}
+              >
+                {DASHBOARDS.map((dashboard) => (
+                  <option key={dashboard.id} value={dashboard.id}>
+                    {dashboard.name}
+                  </option>
+                ))}
+              </select>
+            )}
+
+            <a href="#!" onClick={toggleCreateQuestion}>
+              {isCreateQuestion ? 'Back to dashboard' : 'Create Question'}
+            </a>
+
+            <ThemeSwitcher />
+          </div>
         </div>
 
-        <div className="analytics-header-right">
-          {isDashboard && (
-            <select
-              className="dashboard-select"
-              onChange={(e) => setDashboardId(e.target.value)}
-            >
-              {DASHBOARDS.map((dashboard) => (
-                <option key={dashboard.id} value={dashboard.id}>
-                  {dashboard.name}
-                </option>
-              ))}
-            </select>
-          )}
+        {/** Reload the dashboard when user changes with the key prop */}
+        {isDashboard && (
+          <InteractiveDashboard
+            dashboardId={dashboardId}
+            withTitle
+            withDownloads
+            key={email}
+          />
+        )}
 
-          <a href="#!" onClick={toggleCreateQuestion}>
-            {isCreateQuestion ? 'Back to dashboard' : 'Create Question'}
-          </a>
-
-          <ThemeSwitcher />
-        </div>
+        {isCreateQuestion && <CreateQuestion />}
       </div>
-
-      {/** Reload the dashboard when user changes with the key prop */}
-      {isDashboard && (
-        <InteractiveDashboard
-          dashboardId={dashboardId}
-          withTitle
-          withDownloads
-          key={email}
-        />
-      )}
-
-      {isCreateQuestion && <CreateQuestion />}
     </div>
   )
 }
