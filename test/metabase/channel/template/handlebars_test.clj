@@ -47,7 +47,7 @@
     (with-temp-template [tmpl-name "tmpl.hbs" "Hello {{name}}"]
       (is (= "Hello Ngoc" (handlebars/render tmpl-name {:name "Ngoc"}))))
     (with-temp-template [tmpl-name "tmpl.handlebars" "Hello {{name}}"]
-      (is (= "Hello Ngoc"(handlebars/render tmpl-name {:name "Ngoc"})))))
+      (is (= "Hello Ngoc" (handlebars/render tmpl-name {:name "Ngoc"})))))
 
   (testing "with custom req"
     (with-temp-template [tmpl-name "tmpl.hbs" "Hello {{uppercase name}}"]

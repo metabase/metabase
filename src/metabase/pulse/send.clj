@@ -51,13 +51,13 @@
     {:channel_type :channel/email
      :details      {:type    :email/handlebars-resource
                     :subject "{{payload.dashboard.name}}"
-                    :path    "metabase/email/dashboard_subscription"}}
+                    :path    "metabase/email/dashboard_subscription.hbs"}}
 
     [:channel/email :notification/alert]
     {:channel_type :channel/email
      :details      {:type    :email/handlebars-resource
                     :subject "{{computed.subject}}"
-                    :path    "metabase/email/alert"}}
+                    :path    "metabase/email/alert.hbs"}}
     nil))
 
 (defn- get-notification-handler
