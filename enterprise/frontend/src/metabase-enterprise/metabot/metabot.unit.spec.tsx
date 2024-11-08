@@ -194,6 +194,12 @@ describe("metabot", () => {
       await userEvent.type(await input(), "Some incomplete user prompt");
       act(() => window.history?.pushState(null, "", "/3"));
       await assertVisible();
+
+      // should not close if the user navigates within the base path segment
+      act(() => window.history?.pushState(null, "", "/3/sub-path"));
+      await assertVisible();
+      act(() => window.history?.pushState(null, "", "/3"));
+      await assertVisible();
     });
   });
 
