@@ -30,8 +30,10 @@ import type {
   SuccessfulFetchDashboardResult,
 } from "metabase/dashboard/types";
 import { type DispatchFn, useDispatch } from "metabase/lib/redux";
+import { LocaleProvider } from "metabase/public/LocaleProvider";
 import type { PublicOrEmbeddedDashboardEventHandlersProps } from "metabase/public/containers/PublicOrEmbeddedDashboard/types";
 import { useDashboardLoadHandlers } from "metabase/public/containers/PublicOrEmbeddedDashboard/use-dashboard-load-handlers";
+import type { EmbeddingAdditionalHashOptions } from "metabase/public/lib/types";
 import { setErrorPage } from "metabase/redux/app";
 import type { DashboardId } from "metabase-types/api";
 import type { State } from "metabase-types/store";
@@ -72,7 +74,8 @@ type OwnProps = {
 type PublicOrEmbeddedDashboardProps = OwnProps &
   ReduxProps &
   DashboardDisplayOptionControls &
-  EmbedDisplayParams;
+  EmbedDisplayParams &
+  Pick<EmbeddingAdditionalHashOptions, "locale">;
 
 const initializeData = async ({
   dashboardId,
@@ -146,6 +149,7 @@ const PublicOrEmbeddedDashboardInner = ({
   setParameterValueToDefault,
   setParameterValue,
   fetchDashboardCardData,
+  locale,
 }: PublicOrEmbeddedDashboardProps) => {
   const dispatch = useDispatch();
   const didMountRef = useRef(false);
@@ -208,33 +212,35 @@ const PublicOrEmbeddedDashboardInner = ({
   });
 
   return (
-    <PublicOrEmbeddedDashboardView
-      dashboard={dashboard}
-      hasNightModeToggle={hasNightModeToggle}
-      isFullscreen={isFullscreen}
-      isNightMode={isNightMode}
-      onFullscreenChange={onFullscreenChange}
-      onNightModeChange={onNightModeChange}
-      onRefreshPeriodChange={onRefreshPeriodChange}
-      refreshPeriod={refreshPeriod}
-      setRefreshElapsedHook={setRefreshElapsedHook}
-      selectedTabId={selectedTabId}
-      parameters={parameters}
-      parameterValues={parameterValues}
-      draftParameterValues={draftParameterValues}
-      setParameterValue={setParameterValue}
-      setParameterValueToDefault={setParameterValueToDefault}
-      dashboardId={dashboardId}
-      background={background}
-      bordered={bordered}
-      titled={titled}
-      theme={theme}
-      hideParameters={hideParameters}
-      navigateToNewCardFromDashboard={navigateToNewCardFromDashboard}
-      slowCards={slowCards}
-      cardTitled={cardTitled}
-      downloadsEnabled={downloadsEnabled}
-    />
+    <LocaleProvider locale={locale}>
+      <PublicOrEmbeddedDashboardView
+        dashboard={dashboard}
+        hasNightModeToggle={hasNightModeToggle}
+        isFullscreen={isFullscreen}
+        isNightMode={isNightMode}
+        onFullscreenChange={onFullscreenChange}
+        onNightModeChange={onNightModeChange}
+        onRefreshPeriodChange={onRefreshPeriodChange}
+        refreshPeriod={refreshPeriod}
+        setRefreshElapsedHook={setRefreshElapsedHook}
+        selectedTabId={selectedTabId}
+        parameters={parameters}
+        parameterValues={parameterValues}
+        draftParameterValues={draftParameterValues}
+        setParameterValue={setParameterValue}
+        setParameterValueToDefault={setParameterValueToDefault}
+        dashboardId={dashboardId}
+        background={background}
+        bordered={bordered}
+        titled={titled}
+        theme={theme}
+        hideParameters={hideParameters}
+        navigateToNewCardFromDashboard={navigateToNewCardFromDashboard}
+        slowCards={slowCards}
+        cardTitled={cardTitled}
+        downloadsEnabled={downloadsEnabled}
+      />
+    </LocaleProvider>
   );
 };
 

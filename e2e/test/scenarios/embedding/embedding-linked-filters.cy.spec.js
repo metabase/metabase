@@ -239,7 +239,9 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
         visitEmbeddedPage(payload, {
           setFilters: { state: "AK" },
-          hideFilters: ["state"],
+          additionalHashOptions: {
+            hideFilters: ["state"],
+          },
         });
       });
 
@@ -438,7 +440,9 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
         };
 
         visitEmbeddedPage(payload, {
-          hideFilters: ["id_filter"],
+          additionalHashOptions: {
+            hideFilters: ["id_filter"],
+          },
         });
       });
 
