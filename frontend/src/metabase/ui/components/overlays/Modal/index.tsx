@@ -1,18 +1,22 @@
 import { Modal as MantineModal, type ModalProps } from "@mantine/core";
 import type { ModalRootProps } from "@mantine/core/lib/Modal/ModalRoot/ModalRoot";
 
-import { withLazyPortal } from "../utils";
+import { Guard } from "../Guard";
 export type { ModalProps } from "@mantine/core";
 
 export * from "./Modal.styled";
 
-export function Modal(props: ModalProps) {
-  return <MantineModal {...withLazyPortal(props)} />;
-}
+export const Modal = (props: ModalProps) => (
+  <Guard {...props}>
+    <MantineModal {...props} />
+  </Guard>
+);
 
-const ModalRoot = (props: ModalRootProps) => {
-  return <MantineModal.Root {...withLazyPortal(props)} />;
-};
+const ModalRoot = (props: ModalRootProps) => (
+  <Guard>
+    <MantineModal.Root {...props} />
+  </Guard>
+);
 
 Modal.Root = ModalRoot;
 Modal.Overlay = MantineModal.Overlay;

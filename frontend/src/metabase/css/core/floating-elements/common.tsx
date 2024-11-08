@@ -270,7 +270,13 @@ export const FloatingElementsDemo = ({
           onConfirm={() => {
             setEntityPickerCount(c => c - 1);
           }}
-        />
+        >
+          {enableNesting && (
+            <Box p="lg">
+              <Launchers nested />
+            </Box>
+          )}
+        </EntityPickerModal>
       ))}
       {Array.from({ length: commandPaletteCount }).map((_, index) => (
         <PaletteCard

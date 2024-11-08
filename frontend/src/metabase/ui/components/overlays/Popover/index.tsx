@@ -6,7 +6,7 @@ import { useEffect } from "react";
 import ZIndex from "metabase/css/core/z-index.module.css";
 import useSequencedContentCloseHandler from "metabase/hooks/use-sequenced-content-close-handler";
 
-import { withLazyPortal } from "../utils";
+import { Guard } from "../Guard";
 
 export type { PopoverBaseProps, PopoverProps } from "@mantine/core";
 export { getPopoverOverrides } from "./Popover.styled";
@@ -19,9 +19,7 @@ type ExtendedPopoverDropdownProps = PopoverDropdownProps & {
   setupSequencedCloseHandler?: boolean;
 };
 
-const Popover = (props: PopoverProps) => (
-  <MantinePopover {...withLazyPortal(props)} />
-);
+const Popover = (props: PopoverProps) => <MantinePopover {...props} />;
 
 const PopoverDropdown = function PopoverDropdown(
   props: ExtendedPopoverDropdownProps,
@@ -38,11 +36,13 @@ const PopoverDropdown = function PopoverDropdown(
   }, [setupCloseHandler, removeCloseHandler, props.setupSequencedCloseHandler]);
 
   return (
-    <MantinePopoverDropdown
-      {...props}
-      className={cx(props.className, ZIndex.FloatingElement)}
-      data-element-id="mantine-popover"
-    />
+    <Guard {...props}>
+      <MantinePopoverDropdown
+        {...props}
+        className={cx(props.className, ZIndex.FloatingElement)}
+        data-element-id="mantine-popover"
+      />
+    </Guard>
   );
 };
 PopoverDropdown.displayName = MantinePopoverDropdown.displayName;

@@ -1,12 +1,17 @@
 import type { MenuProps } from "@mantine/core";
 import { Menu as MantineMenu } from "@mantine/core";
 
+import { Guard } from "../Guard";
+
 import { MenuDropdown } from "./MenuDropdown";
 import { MenuItem } from "./MenuItem";
-import { withLazyPortal } from "../utils";
 
 export function Menu(props: MenuProps) {
-  return <MantineMenu {...withLazyPortal(props)} />;
+  return (
+    <Guard {...props}>
+      <MantineMenu {...props} />
+    </Guard>
+  );
 }
 
 Menu.Target = MantineMenu.Target;

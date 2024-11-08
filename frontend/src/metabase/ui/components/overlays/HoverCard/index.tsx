@@ -1,13 +1,20 @@
 import {
+  type HoverCardDropdownProps,
   type HoverCardProps,
   HoverCard as MantineHoverCard,
 } from "@mantine/core";
 
-import { withLazyPortal } from "../utils";
+import { Guard } from "../Guard";
 export { getHoverCardOverrides } from "./HoverCard.styled";
 
 export const HoverCard = (props: HoverCardProps) => {
-  return <MantineHoverCard {...withLazyPortal(props)} />;
+  return <MantineHoverCard {...props} />;
 };
 HoverCard.Target = MantineHoverCard.Target;
-HoverCard.Dropdown = MantineHoverCard.Dropdown;
+HoverCard.Dropdown = function Dropdown(props: HoverCardDropdownProps) {
+  return (
+    <Guard {...props}>
+      <MantineHoverCard.Dropdown {...props} />
+    </Guard>
+  );
+};
