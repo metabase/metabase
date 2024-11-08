@@ -2,6 +2,7 @@ import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   openNativeEditor,
+  openVizType,
   popover,
   restore,
   visitQuestionAdhoc,
@@ -24,8 +25,7 @@ describe("scenarios > visualizations > maps", () => {
     cy.findByTestId("native-query-editor-container").icon("play").click();
 
     // switch to a pin map visualization
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Visualization").click();
+    openVizType();
     cy.icon("pinmap").click();
     cy.findByTestId("Map-container").within(() => {
       cy.icon("gear").click();
@@ -76,7 +76,7 @@ describe("scenarios > visualizations > maps", () => {
       { visitQuestion: true },
     );
 
-    cy.findByTestId("viz-type-button").click();
+    openVizType(null);
     cy.findByTestId("display-options-sensible").as("sensibleOptions");
 
     cy.get("@sensibleOptions").within(() => {
@@ -206,7 +206,7 @@ describe("scenarios > visualizations > maps", () => {
     // Ensure chart is rendered
     cy.get(".leaflet-interactive");
 
-    cy.findByTestId("viz-type-button").click();
+    openVizType(null);
 
     // Ensure the Map visualization is sensible
     cy.findByTestId("display-options-sensible").as("sensibleOptions");

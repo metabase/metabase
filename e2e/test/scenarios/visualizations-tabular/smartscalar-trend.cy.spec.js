@@ -5,6 +5,7 @@ import {
   cartesianChartCircle,
   createNativeQuestion,
   menu,
+  openVizType,
   popover,
   queryBuilderMain,
   restore,
@@ -487,8 +488,9 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
       cy.findByText("V").should("be.visible");
     });
 
+    cy.findByLabelText("Switch to visualization").click();
     // check that we can switch visualizations and no longer have the error show
-    cy.findByTestId("viz-type-button").click();
+    openVizType();
     cy.findByTestId("Line-button").click();
     cy.icon("warning").should("not.exist");
     cartesianChartCircle().should("have.length", 3);

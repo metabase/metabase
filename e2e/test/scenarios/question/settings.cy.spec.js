@@ -7,6 +7,7 @@ import {
   moveDnDKitElement,
   openNavigationSidebar,
   openOrdersTable,
+  openVizType,
   popover,
   restore,
   sidebar,
@@ -30,7 +31,7 @@ describe("scenarios > question > settings", () => {
       cy.viewport(1600, 800);
 
       openOrdersTable();
-      cy.findByTestId("viz-settings-button").click();
+      openVizType("Columns");
 
       // wait for settings sidebar to open
       cy.findByTestId("sidebar-left").invoke("width").should("be.gt", 350);
@@ -97,7 +98,7 @@ describe("scenarios > question > settings", () => {
           type: "query",
         },
       });
-      cy.findByTestId("viz-settings-button").click();
+      openVizType("Columns");
 
       cy.findByTestId("Subtotal-hide-button").click();
       cy.findByTestId("Tax-hide-button").click();
@@ -165,7 +166,7 @@ describe("scenarios > question > settings", () => {
         display: "table",
       });
 
-      cy.findByTestId("viz-settings-button").click();
+      openVizType("Columns");
 
       getSidebarColumns()
         .eq("12")
@@ -235,7 +236,7 @@ describe("scenarios > question > settings", () => {
         display: "table",
       });
 
-      cy.findByTestId("viz-settings-button").click();
+      openVizType("Columns");
 
       cy.findByRole("button", { name: "Add or remove columns" }).click();
       cy.findByLabelText("Name").should("not.be.checked").click();
@@ -311,14 +312,15 @@ describe("scenarios > question > settings", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(newColumnTitle);
 
-      cy.findByTestId("viz-settings-button").click();
+      openVizType("Columns");
 
       sidebar().findByText(newColumnTitle);
     });
 
     it("should respect symbol settings for all currencies", () => {
       openOrdersTable();
-      cy.findByTestId("viz-settings-button").click();
+
+      openVizType("Columns");
 
       getSidebarColumns()
         .eq("4")

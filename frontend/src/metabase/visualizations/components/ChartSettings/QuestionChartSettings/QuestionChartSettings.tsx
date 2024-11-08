@@ -21,7 +21,7 @@ export const QuestionChartSettings = ({
   showSidebarTitle = false,
 }: QuestionChartSettingsProps & {
   result?: Dataset;
-  showSidebarTitle: boolean;
+  showSidebarTitle?: boolean;
 }) => {
   const { chartSettings, handleChangeSettings, transformedSeries } =
     useChartSettingsState({ series, onChange });

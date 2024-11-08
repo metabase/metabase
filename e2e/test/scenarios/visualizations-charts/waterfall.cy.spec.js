@@ -9,6 +9,7 @@ import {
   leftSidebar,
   openNativeEditor,
   openOrdersTable,
+  openVizType,
   popover,
   restore,
   summarize,
@@ -42,8 +43,8 @@ describe("scenarios > visualizations > waterfall", () => {
       "select 'A' as product, 10 as profit union select 'B' as product, -4 as profit",
     );
     cy.findByTestId("native-query-editor-container").icon("play").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Visualization").click();
+
+    openVizType();
     cy.icon("waterfall").click();
 
     verifyWaterfallRendering("PRODUCT", "PROFIT");
@@ -55,8 +56,8 @@ describe("scenarios > visualizations > waterfall", () => {
     );
 
     cy.findByTestId("native-query-editor-container").icon("play").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Visualization").click();
+
+    openVizType();
     switchToWaterfallDisplay();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -82,8 +83,8 @@ describe("scenarios > visualizations > waterfall", () => {
       "select 1 as X, 10 as Y union select 2 as X, -2 as Y",
     );
     cy.findByTestId("native-query-editor-container").icon("play").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Visualization").click();
+
+    openVizType();
     switchToWaterfallDisplay();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -116,8 +117,7 @@ describe("scenarios > visualizations > waterfall", () => {
 
     visualize();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Visualization").click();
+    openVizType();
     switchToWaterfallDisplay();
 
     verifyWaterfallRendering("Created At", "Count");
@@ -135,8 +135,7 @@ describe("scenarios > visualizations > waterfall", () => {
 
     visualize();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Visualization").click();
+    openVizType();
     switchToWaterfallDisplay();
 
     echartsContainer().get("text").contains("Total").should("not.exist");
@@ -154,7 +153,7 @@ describe("scenarios > visualizations > waterfall", () => {
     };
 
     function testSwitchingToWaterfall() {
-      cy.findByTestId("viz-type-button").click();
+      openVizType();
       switchToWaterfallDisplay();
 
       echartsContainer().within(() => {
@@ -234,7 +233,7 @@ describe("scenarios > visualizations > waterfall", () => {
       display: "line",
     });
 
-    cy.findByTestId("viz-type-button").click();
+    openVizType();
     switchToWaterfallDisplay();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -262,7 +261,7 @@ describe("scenarios > visualizations > waterfall", () => {
       },
     });
 
-    cy.findByTestId("viz-type-button").click();
+    openVizType();
     cy.icon("waterfall").click({ force: true });
     chartPathWithFillColor("#88BF4D").should("be.visible");
   });
@@ -418,8 +417,8 @@ describe("scenarios > visualizations > waterfall", () => {
 
       openNativeEditor().type("select 'A' as X, -4.56 as Y");
       cy.findByTestId("native-query-editor-container").icon("play").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains("Visualization").click();
+
+      openVizType();
       switchToWaterfallDisplay();
     });
 

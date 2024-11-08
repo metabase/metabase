@@ -16,5 +16,7 @@ export function openSeriesSettings(field, isBreakout = false) {
 
 export function openVizType(tabName = "Chart") {
   cy.findByTestId("viz-settings-button").click();
-  cy.findByTestId("chartsettings-sidebar").findByText(tabName).click();
+  if (tabName) {
+    cy.findByTestId("chartsettings-sidebar").findByText(tabName).click();
+  }
 }

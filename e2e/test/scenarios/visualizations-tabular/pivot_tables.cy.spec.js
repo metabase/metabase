@@ -23,6 +23,8 @@ import {
 } from "e2e/support/helpers";
 import { PIVOT_TABLE_BODY_LABEL } from "metabase/visualizations/visualizations/PivotTable/constants";
 
+import { openVizType } from "../../../support/helpers/e2e-viz-settings-helpers";
+
 const {
   ORDERS,
   ORDERS_ID,
@@ -54,7 +56,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Count by Users? → Source and Products? → Category/); // ad-hoc title
 
-    cy.findByTestId("viz-settings-button").click();
+    openVizType("Columns");
     assertOnPivotSettings();
     cy.findByTestId("query-visualization-root").within(() => {
       assertOnPivotFields();
@@ -68,7 +70,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     });
 
     // Open Pivot table side-bar
-    cy.findByTestId("viz-settings-button").click();
+    openVizType("Columns");
 
     assertOnPivotSettings();
   });
@@ -77,7 +79,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     createTestQuestion();
 
     // Switch to "ordinary" table
-    cy.findByTestId("viz-type-button").click();
+    openVizType();
     sidebar().icon("table2").should("be.visible").click();
 
     cy.findByTestId("app-bar").within(() => {
@@ -144,7 +146,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     createTestQuestion();
 
     // Open Pivot table side-bar
-    cy.findByTestId("viz-settings-button").click();
+    openVizType("Columns");
 
     // Give it some time to open the side-bar fully before we start dragging
     assertOnPivotSettings();
@@ -326,7 +328,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     cy.findByText("3,520"); // check for one of the subtotals
 
     // open settings
-    cy.findByTestId("viz-settings-button").click();
+    openVizType("Columns");
     assertOnPivotSettings();
 
     // Confirm that Product -> Category doesn't have the option to hide subtotals
@@ -360,7 +362,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     cy.findByText("3,520"); // affiliate subtotal is visible
 
     // open settings
-    cy.findByTestId("viz-settings-button").click();
+    openVizType("Columns");
 
     // turn off subtotals for User -> Source
     openColumnSettings(/Users? → Source/);
@@ -379,7 +381,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Count by Users? → Source and Products? → Category/); // ad-hoc title
 
-    cy.findByTestId("viz-settings-button").click();
+    openVizType("Columns");
     assertOnPivotSettings();
     openColumnSettings(/Users? → Source/);
 
@@ -402,7 +404,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Count by Users? → Source and Products? → Category/); // ad-hoc title
 
-    cy.findByTestId("viz-settings-button").click();
+    openVizType("Columns");
     assertOnPivotSettings();
     openColumnSettings(/Count/);
 
@@ -432,7 +434,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Count by Users? → Source and Products? → Category/); // ad-hoc title
 
-    cy.findByTestId("viz-settings-button").click();
+    openVizType("Columns");
     assertOnPivotSettings();
     openColumnSettings(/Count/);
 
@@ -464,7 +466,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     });
 
     // open settings and expand Total column settings
-    cy.findByTestId("viz-settings-button").click();
+    openVizType("Columns");
 
     sortColumnResults("Total", "descending");
     cy.findAllByTestId("pivot-table").within(() => {
@@ -798,7 +800,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
       display: "line",
     });
 
-    cy.findByTestId("viz-type-button").click();
+    openVizType();
     leftSidebar().within(() => {
       // This part is still failing. Uncomment when fixed.
       // cy.findByText("Pivot Table")
@@ -935,7 +937,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
       },
     });
 
-    cy.findByTestId("viz-settings-button").click();
+    openVizType("Columns");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Conditional Formatting").click();
 
@@ -1251,7 +1253,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     it("does not allow users with no table access to update pivot questions (metabase#37380)", () => {
       cy.signInAsNormalUser();
       visitQuestion("@questionId");
-      cy.findByTestId("viz-settings-button").click();
+      openVizType("Columns");
       cy.findByLabelText("Show row totals").click();
 
       cy.findByTestId("qb-save-button").should("have.attr", "data-disabled");
@@ -1357,7 +1359,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
 
     cy.log("Set the visualization to pivot table using the UI");
     cy.intercept("POST", "/api/dataset/pivot").as("pivotDataset");
-    cy.findByTestId("viz-type-button").click();
+    openVizType();
     cy.findByTestId("Pivot Table-button").click();
     cy.wait("@pivotDataset");
     cy.findByTestId("pivot-table")

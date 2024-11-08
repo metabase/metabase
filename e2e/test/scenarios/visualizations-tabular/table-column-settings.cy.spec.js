@@ -3,6 +3,7 @@ import _ from "underscore";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   openNotebook,
+  openVizType,
   popover,
   restore,
   tableHeaderClick,
@@ -818,7 +819,7 @@ const hideColumn = column => {
 };
 
 const openSettings = () => {
-  cy.findByTestId("viz-settings-button").click();
+  openVizType("Columns");
 };
 
 const visualization = () => {

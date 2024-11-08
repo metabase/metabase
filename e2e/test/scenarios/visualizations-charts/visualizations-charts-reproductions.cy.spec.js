@@ -16,6 +16,7 @@ import {
   leftSidebar,
   openNotebook,
   openSeriesSettings,
+  openVizType,
   popover,
   queryBuilderHeader,
   queryBuilderMain,
@@ -408,7 +409,10 @@ describe("issue 18063", () => {
     cy.createNativeQuestion(questionDetails, { visitQuestion: true });
 
     // Select a Pin map
-    cy.findByTestId("viz-settings-button").click();
+    openVizType(null);
+    cy.findByTestId("chartsettings-sidebar").within(() => {
+      cy.icon("pinmap").click();
+    });
     cy.findAllByTestId("select-button").contains("Region map").click();
 
     popover().contains("Pin map").click();
@@ -462,7 +466,7 @@ describe("issue 18776", () => {
   it("should not freeze when opening a timeseries chart with sparse data and without the X-axis", () => {
     visitQuestionAdhoc(questionDetails);
 
-    cy.findByTestId("viz-type-button").should("be.visible");
+    cy.findByTestId("viz-settings-button").should("be.visible");
   });
 });
 

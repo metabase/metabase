@@ -9,6 +9,7 @@ import {
   getXYTransform,
   modal,
   openSeriesSettings,
+  openVizType,
   popover,
   queryBuilderMain,
   restore,
@@ -122,11 +123,11 @@ describe("scenarios > visualizations > line chart", () => {
       display: "area",
     });
 
-    cy.findByTestId("viz-settings-button").click();
+    openVizType("Data");
     openSeriesSettings("Count");
     cy.icon("bar").click();
 
-    cy.findByTestId("viz-type-button").click();
+    cy.findByTestId("chartsettings-sidebar").findByText("Chart").click();
 
     cy.icon("line").click();
 
@@ -154,7 +155,7 @@ describe("scenarios > visualizations > line chart", () => {
       },
     });
 
-    cy.findByTestId("viz-type-button").click();
+    openVizType();
 
     cy.icon("line").click();
 
