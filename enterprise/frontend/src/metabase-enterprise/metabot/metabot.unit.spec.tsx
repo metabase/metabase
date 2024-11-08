@@ -170,6 +170,31 @@ describe("metabot", () => {
 
       jest.useRealTimers();
     });
+
+    // eslint-disable-next-line jest/expect-expect
+    it("should properly auto-close metabot if route changes", async () => {
+      const { store } = setup();
+
+      // should close on normal route change
+      await assertVisible();
+      act(() => window.history?.pushState(null, "", "/1"));
+      await assertNotVisible();
+
+      // should not close on route change if metabot is processing
+      showMetabot(store.dispatch);
+      act(() => store.dispatch(setIsProcessing(true)));
+      act(() => window.history?.pushState(null, "", "/2"));
+      await assertVisible();
+      act(() => store.dispatch(setIsProcessing(false)));
+      hideMetabot(store.dispatch);
+      await assertNotVisible();
+
+      // should not close if user has value in the input
+      showMetabot(store.dispatch);
+      await userEvent.type(await input(), "Some incomplete user prompt");
+      act(() => window.history?.pushState(null, "", "/3"));
+      await assertVisible();
+    });
   });
 
   describe("message", () => {

@@ -34,7 +34,9 @@ export const useMetabotAgent = () => {
   });
 
   return {
-    visible: useSelector(getMetabotVisisble as any),
+    visible: useSelector(getMetabotVisisble as any) as ReturnType<
+      typeof getMetabotVisisble
+    >,
     setVisible: useCallback(
       (isVisible: boolean) => dispatch(setVisible(isVisible)),
       [dispatch],
@@ -48,7 +50,6 @@ export const useMetabotAgent = () => {
       const history = sendMessageReq.data?.history || [];
       await dispatch(submitInput({ message, context, history }));
     },
-    isLoading: sendMessageReq.isLoading,
-    isProcessing,
+    isDoingScience: sendMessageReq.isLoading || isProcessing,
   };
 };

@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { Box, Flex, Icon, Textarea, UnstyledButton } from "metabase/ui";
@@ -8,18 +8,17 @@ import { useMetabotAgent } from "../../hooks";
 import { MetabotIcon } from "../MetabotIcon";
 
 import Styles from "./MetabotChat.module.css";
+import { useAutoCloseMetabot } from "./useAutoCloseMetabot";
 
 const MIN_INPUT_HEIGHT = 42;
 const ANIMATION_DURATION_MS = 300;
-export const METABOT_AUTO_CLOSE_DURATION_MS = 30 * 1000;
 
 export const MetabotChat = ({ onClose }: { onClose: () => void }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const [message, setMessage] = useState("");
+  const [input, setMessage] = useState("");
 
   const metabot = useMetabotAgent();
-  const isDoingScience = metabot.isLoading || metabot.isProcessing;
 
   const resetInput = useCallback(() => {
     setMessage("");
@@ -27,13 +26,13 @@ export const MetabotChat = ({ onClose }: { onClose: () => void }) => {
   }, []);
 
   const handleSend = () => {
-    const trimmedMessage = message.trim();
-    if (!trimmedMessage.length || isDoingScience) {
+    const trimmedInput = input.trim();
+    if (!trimmedInput.length || metabot.isDoingScience) {
       return;
     }
     resetInput();
     metabot
-      .submitInput(trimmedMessage)
+      .submitInput(trimmedInput)
       .catch(err => console.error(err))
       .finally(() => textareaRef.current?.focus());
   };
@@ -43,13 +42,7 @@ export const MetabotChat = ({ onClose }: { onClose: () => void }) => {
     onClose();
   }, [resetInput, onClose]);
 
-  // auto-close the input after it's inactive and unused
-  useEffect(() => {
-    if (!message && !isDoingScience) {
-      const timer = setTimeout(handleClose, METABOT_AUTO_CLOSE_DURATION_MS);
-      return () => clearTimeout(timer);
-    }
-  }, [message, isDoingScience, handleClose]);
+  useAutoCloseMetabot(!!input);
 
   const [inputExpanded, setInputExpanded] = useState(false);
   const handleMaybeExpandInput = () => {
@@ -73,7 +66,9 @@ export const MetabotChat = ({ onClose }: { onClose: () => void }) => {
   const inputPlaceholder = metabot.confirmationOptions
     ? Object.keys(metabot.confirmationOptions).join(" or ")
     : t`Tell me to do something, or ask a question`;
-  const placeholder = isDoingScience ? t`Doing science...` : inputPlaceholder;
+  const placeholder = metabot.isDoingScience
+    ? t`Doing science...`
+    : inputPlaceholder;
 
   return (
     <Box
@@ -103,13 +98,13 @@ export const MetabotChat = ({ onClose }: { onClose: () => void }) => {
       <Flex
         className={cx(
           Styles.innerContainer,
-          isDoingScience && Styles.innerContainerLoading,
+          metabot.isDoingScience && Styles.innerContainerLoading,
           inputExpanded && Styles.innerContainerExpanded,
         )}
         gap="sm"
       >
         <Box w="33px" h="24px">
-          <MetabotIcon isLoading={isDoingScience} />
+          <MetabotIcon isLoading={metabot.isDoingScience} />
         </Box>
         <Textarea
           data-testid="metabot-chat-input"
@@ -119,12 +114,12 @@ export const MetabotChat = ({ onClose }: { onClose: () => void }) => {
           maxRows={4}
           ref={textareaRef}
           autoFocus
-          value={message}
-          disabled={isDoingScience}
+          value={input}
+          disabled={metabot.isDoingScience}
           className={cx(
             Styles.textarea,
             inputExpanded && Styles.textareaExpanded,
-            isDoingScience && Styles.textareaLoading,
+            metabot.isDoingScience && Styles.textareaLoading,
           )}
           placeholder={placeholder}
           onChange={e => handleInputChange(e.target.value)}
