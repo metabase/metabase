@@ -1155,7 +1155,7 @@ describe("notifications", { tags: "@external" }, () => {
       cy.request(
         "DELETE",
         `${WEBHOOK_TEST_HOST}/api/session/${WEBHOOK_TEST_SESSION_ID}/requests`,
-        { failOnStatusCode: false },
+        { failOnStatusCode: false, retryOnStatusCodeFailure: false },
       );
     });
 
