@@ -15,20 +15,17 @@ describeWithSnowplow(
   "better onboarding via sidebar",
   { tags: "@external" },
   () => {
-    beforeEach(() => {
-      resetSnowplow();
-      cy.signInAsAdmin();
-      enableTracking();
-    });
-
     afterEach(() => {
       expectNoBadSnowplowEvents();
     });
 
     describe("Upload CSV for DWH", () => {
       beforeEach(() => {
+        resetSnowplow();
         restore("postgres-12");
+
         cy.signInAsAdmin();
+        enableTracking();
         enableUploads("postgres");
         mockSessionPropertiesTokenFeatures({ attached_dwh: true });
       });
@@ -58,8 +55,11 @@ describeWithSnowplow(
 
     describe("Add initial database", () => {
       beforeEach(() => {
+        resetSnowplow();
         restore();
+
         cy.signInAsAdmin();
+        enableTracking();
       });
 
       it("should track the button click", () => {
