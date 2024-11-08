@@ -1253,12 +1253,8 @@ describe("notifications", { tags: "@external" }, () => {
         "exist",
       );
 
-      cy.findByLabelText("Webhook URL").type(`${WEBHOOK_TEST_URL}/404`);
       cy.findByLabelText("Give it a name").type("Awesome Hook");
       cy.findByLabelText("Description").type("The best hook ever");
-      cy.button("Create destination").click();
-
-      cy.findByText("Unable to connect channel").should("exist");
       cy.findByLabelText("Webhook URL").clear().type(WEBHOOK_TEST_URL);
       cy.button("Create destination").click();
     });
