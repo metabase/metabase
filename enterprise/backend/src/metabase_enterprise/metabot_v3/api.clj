@@ -34,7 +34,8 @@
               (metabot-v3.envelope/create context history)
               message))]
     {:reactions (encode-reactions (metabot-v3.envelope/reactions env))
-     :history (metabot-v3.envelope/history env)}))
+     :history (metabot-v3.envelope/history env)
+     :tool-calls (metabot-v3.envelope/tool-calls env)}))
 
 (api/defendpoint POST "/agent"
   "Send a chat message to the LLM via the AI Proxy."

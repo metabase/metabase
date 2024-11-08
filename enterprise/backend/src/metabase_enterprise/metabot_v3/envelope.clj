@@ -3,7 +3,9 @@
 
   The 'envelope' holds the context for our conversation with the LLM. Specifically, it bundles up the history, the
   reactions, and the context into one convenient location, with a simple API for querying and modifying."
-  (:require [metabase.util :as u]))
+  (:require [metabase-enterprise.metabot-v3.tools :as tools]
+            [metabase-enterprise.metabot-v3.tools.registry :as tools.registry]
+            [metabase.util :as u]))
 
 (def ^:constant max-round-trips
   "The maximum number of times we'll make a request to the LLM before responding to the user. Currently we'll just throw
@@ -78,12 +80,9 @@
 
 (defn add-tool-response
   "Given an output string and a collection of reactions, adds them to the envelope."
-  [e tool-call-id output reactions]
-  (-> e
-      (add-message {:role :tool
-                    :tool-call-id tool-call-id
-                    :content output})
-      (add-reactions reactions)))
+  [e tool-call-id output]
+  (cond-> e
+    output (add-message {:role :tool :tool-call-id tool-call-id :content output})))
 
 (defn is-tool-call?
   "Is this message a tool call?"
@@ -96,11 +95,6 @@
   (and (= role :tool)
        tool-call-id))
 
-(defn requires-tool-invocation?
-  "Does this envelope require tool call invocation?"
-  [e]
-  (->> e history peek is-tool-call?))
-
 (defn is-user-message?
   "Is this message from the user?"
   [{:keys [role]}]
@@ -112,35 +106,35 @@
   (= role :assistant))
 
 (defn requires-llm-response?
-  "Does this envelope require a new response from the LLM?"
+  "Does this envelope require a new response from the LLM?
+
+  True in two cases:
+  - one, we've responded to all tool calls in the previous LLM response
+  - two, we have a message from the user"
   [e]
-  (let [last-message (->> e history peek)]
-    (or (is-tool-call-response? last-message)
+  (let [tool-call-responses (->> e history reverse (take-while is-tool-call-response?))
+        all-tool-calls-handled? (and
+                                 (seq tool-call-responses)
+                                 (= (map :tool-call-id tool-call-responses)
+                                    (map :id (:tool-calls (->> e history reverse (take-while is-assistant-message?))))))
+        last-message (peek (history e))]
+    (or all-tool-calls-handled?
         (is-user-message? last-message))))
 
 (defn tool-calls-requiring-invocation
-  "Gets a list of all the tool calls in the chat history that have not yet been responded to."
+  "Gets a list of all the tool calls in the chat history that have not yet been invoked."
   [e]
-  (let [tool-call-id->response (->> e
-                                    history
-                                    (filter is-tool-call-response?)
-                                    (map :tool-call-id)
-                                    (into #{}))]
+  (let [last-msg (peek (history e))]
+    (when (is-tool-call? last-msg)
+      (filter tools/requires-invocation? (:tool-calls last-msg)))))
 
-    (->> (history e)
-         (filter is-tool-call?)
-         (mapcat :tool-calls)
-         (remove #(tool-call-id->response (:id %))))))
-
-(defn last-assistant-message->reaction
-  "This is a bit hacky. Right now we only respond to the user with reactions. So we take the last assistant message and
-  turn it into a reaction."
+(defn tool-calls
+  "Get a list of all tool calls still requiring invocation. Intended to be sent to the FE."
   [e]
-  {:type :metabot.reaction/message
-   :repl/message-color :green
-   :repl/message-emoji "🤖"
-   :message (->> e
-                 history
-                 (filter is-assistant-message?)
-                 last
-                 :content)})
+  (->> (tool-calls-requiring-invocation e)
+       (map #(assoc % :tool-info (tools.registry/resolve-tool (:name %))))))
+
+(defn requires-tool-invocation?
+  "Does the env require tool invocation?"
+  [e]
+  (seq (tool-calls-requiring-invocation e)))
