@@ -1149,7 +1149,7 @@
                                                                  :values  ["count"]}
                                                                 :column_settings
                                                                 {"[\"name\",\"count\"]" {:column_title "Count Renamed"}}}}]
-        (let [expected-header   ["Created At" "Category" "Count"]
+        (let [expected-header   ["Created At: Year" "Category" "Count"]
               formatted-results (all-downloads card {:export-format :csv :format-rows false :pivot true})]
           (is (= {:unsaved-card-download    expected-header
                   :card-download            expected-header
@@ -1158,7 +1158,7 @@
                   :public-dashcard-download expected-header}
                  (update-vals formatted-results first))))
         (testing "The column title changes are used when format-rows is true"
-          (let [expected-header   ["Created At" "Category" "Count Renamed"]
+          (let [expected-header   ["Created At: Year" "Category" "Count Renamed"]
                 formatted-results (all-downloads card {:export-format :csv :format-rows true :pivot true})]
             (is (= {:unsaved-card-download    expected-header
                     :card-download            expected-header
