@@ -18,7 +18,11 @@ export const QuestionChartSettings = ({
   computedSettings,
   initial,
   result,
-}: QuestionChartSettingsProps & { result?: Dataset }) => {
+  showSidebarTitle = false,
+}: QuestionChartSettingsProps & {
+  result?: Dataset;
+  showSidebarTitle: boolean;
+}) => {
   const { chartSettings, handleChangeSettings, transformedSeries } =
     useChartSettingsState({ series, onChange });
 
@@ -45,7 +49,7 @@ export const QuestionChartSettings = ({
         transformedSeries={transformedSeries}
         widgets={widgets}
         chartTypeSettings={
-          result ? (
+          result && !showSidebarTitle ? (
             <ChartTypeSidebar question={question} result={result} />
           ) : null
         }

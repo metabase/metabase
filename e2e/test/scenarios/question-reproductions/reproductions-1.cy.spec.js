@@ -25,6 +25,7 @@ import {
   openOrdersTable,
   openProductsTable,
   openTable,
+  openVizType,
   popover,
   questionInfoButton,
   restore,
@@ -133,7 +134,7 @@ describe("issue 6239", () => {
     visualize();
 
     // Line chart renders initially. Switch to the table view.
-    cy.icon("table2").click();
+    cy.findByLabelText("Switch to data").click();
 
     cy.get("[data-testid=cell-data]")
       .eq(1)
@@ -151,6 +152,9 @@ describe("issue 6239", () => {
     cy.icon("arrow_down");
 
     visualize();
+
+    // TODO: this is what Maz asked about - should we always show viz when we click "Visualize" button?
+    cy.findByLabelText("Switch to data").click();
 
     cy.get("[data-testid=cell-data]")
       .eq(1)
@@ -596,7 +600,7 @@ describe("issue 17514", () => {
     beforeEach(() => {
       cy.createQuestion(questionDetails, { visitQuestion: true });
 
-      cy.findByTestId("viz-settings-button").click();
+      openVizType("Columns");
 
       moveColumnToTop("Subtotal");
 
@@ -847,7 +851,7 @@ describe("issue 18207", () => {
 
     // Why is it not a table?
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Visualization").click();
+    openVizType();
     leftSidebar().within(() => {
       cy.icon("table2").click();
       cy.findByTestId("Table-button").realHover();
@@ -938,7 +942,7 @@ describe("issues 11914, 18978, 18977, 23857", () => {
     assertIsNotAdHoc();
 
     cy.log("Make sure user can change visualization but not save the question");
-    cy.findByTestId("viz-type-button").click();
+    openVizType();
     cy.findByTestId("Number-button").click();
     cy.findByTestId("scalar-value").should("exist");
     assertSaveIsDisabled();

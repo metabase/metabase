@@ -9,6 +9,7 @@ import {
   getBinningButtonForDimension,
   getNotebookStep,
   openOrdersTable,
+  openVizType,
   popover,
   restore,
   rightSidebar,
@@ -227,15 +228,15 @@ describe("binning related reproductions", () => {
     cy.createQuestion(questionDetails, { visitQuestion: true });
 
     // Open settings through viz type picker to ensure "Table Options" is in the sidebar.
-    cy.findByTestId("viz-type-button").click();
+    openVizType();
     cy.findByTestId("sidebar-left").within(() => {
       cy.findByTestId("Table-button").click();
       cy.findByTextEnsureVisible("Table options");
       cy.findByText("Created At: Month")
         .siblings("[data-testid$=hide-button]")
         .click();
-      cy.button("Done").click();
     });
+    cy.button("Done").click();
 
     summarize();
 

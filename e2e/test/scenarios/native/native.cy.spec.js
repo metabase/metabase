@@ -12,6 +12,7 @@ import {
   filterField,
   openNativeEditor,
   openQuestionActions,
+  openVizType,
   popover,
   restore,
   rightSidebar,
@@ -212,7 +213,7 @@ describe("scenarios > question > native", () => {
       .as("runQuery")
       .click();
 
-    cy.findByTestId("viz-settings-button").click();
+    openVizType("Columns");
     cy.findByTestId("sidebar-left")
       .as("sidebar")
       .contains(/hidden/i)

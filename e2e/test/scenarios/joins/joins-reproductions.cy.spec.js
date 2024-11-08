@@ -20,6 +20,7 @@ import {
   openNotebook,
   openOrdersTable,
   openProductsTable,
+  openVizType,
   popover,
   queryBuilderHeader,
   queryBuilderMain,
@@ -817,7 +818,7 @@ describe("issue 23293", () => {
   it("should retain the filter when drilling through the dashboard card with implicitly added column (metabase#23293)", () => {
     openOrdersTable();
 
-    cy.findByTestId("viz-settings-button").click();
+    openVizType("Columns");
     modifyColumn("Product ID", "remove");
     modifyColumn("Category", "add");
     cy.wait("@dataset");
@@ -1226,7 +1227,7 @@ describe.skip("issue 27521", () => {
     assertTableHeader(1, "Q1 → ID");
     assertTableHeader(2, "Q1 → Orders → ID");
 
-    cy.findByTestId("viz-settings-button").click();
+    openVizType("Columns");
     cy.findByTestId("chartsettings-sidebar").within(() => {
       cy.findAllByText("ID").should("have.length", 1);
       cy.findAllByText("Q1 → ID").should("have.length", 1);

@@ -19,6 +19,7 @@ import {
   openNotebook,
   openOrdersTable,
   openQuestionActions,
+  openVizType,
   popover,
   queryBuilderHeader,
   restore,
@@ -643,7 +644,7 @@ describe("issue 35290", () => {
       createQuestion(questionDetails, { visitQuestion: true });
     });
 
-    cy.findByTestId("viz-settings-button").click();
+    openVizType("Columns");
     cy.findByTestId("chartsettings-sidebar")
       // verify panel is shown
       .should("contain", "Add or remove columns")
@@ -810,6 +811,6 @@ function saveModifiedQuestion() {
 }
 
 function goToExpressionSidebarVisualizationSettings() {
-  cy.findByTestId("viz-settings-button").click();
+  openVizType("Columns");
   cy.findByTestId(`${EXPRESSION_NAME}-settings-button`).click();
 }

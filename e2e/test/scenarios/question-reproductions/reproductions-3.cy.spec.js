@@ -30,6 +30,7 @@ import {
   openOrdersTable,
   openProductsTable,
   openTable,
+  openVizType,
   popover,
   queryBuilderFooter,
   queryBuilderHeader,
@@ -479,7 +480,7 @@ describe("issue 39795", () => {
         type: "query",
       },
     });
-    cy.findByTestId("viz-settings-button").click();
+    openVizType("Columns");
     moveColumnDown(getDraggableElements().first(), 2);
 
     // We are not able to re-order because the dataset will also contain values a column for Product ID
@@ -552,7 +553,7 @@ describe("issue 40435", () => {
     });
     getNotebookStep("data").button("Pick columns").click();
     visualize();
-    cy.findByTestId("viz-settings-button").click();
+    openVizType("Columns");
     cy.findByTestId("sidebar-left").within(() => {
       cy.findByTestId("ID-hide-button").click();
       cy.findByTestId("ID-show-button").click();
@@ -1068,15 +1069,17 @@ describe("issue 37374", () => {
     cy.intercept("POST", "/api/card/pivot/*/query").as("cardPivotQuery");
 
     cy.log("changing the viz type to pivot table and running the query works");
-    cy.findByTestId("viz-type-button").click();
-    cy.findByTestId("chart-type-sidebar")
+    openVizType();
+    cy.findByTestId("chartsettings-sidebar")
       .findByTestId("Pivot Table-button")
       .click();
     cy.wait("@cardPivotQuery");
     cy.findByTestId("pivot-table").should("be.visible");
 
     cy.log("changing the viz type back to table and running the query works");
-    cy.findByTestId("chart-type-sidebar").findByTestId("Table-button").click();
+    cy.findByTestId("chartsettings-sidebar")
+      .findByTestId("Table-button")
+      .click();
     cy.wait("@cardQuery");
     tableInteractive().should("be.visible");
   });
@@ -1273,6 +1276,9 @@ describe("issue 43294", () => {
       cy.findByText("Created At: Month").click();
       cy.findByText("Year").click();
     });
+
+    // TODO: double check with Maz
+    cy.findByLabelText("Switch to data").click();
 
     cy.log("combine action");
     cy.button("Add column").click();
@@ -1500,7 +1506,7 @@ describe("issue 44637", () => {
 
     assertQueryBuilderRowCount(0);
     queryBuilderMain().findByText("No results!").should("exist");
-    cy.findByTestId("viz-type-button").click();
+    openVizType();
     leftSidebar().icon("bar").click();
     queryBuilderMain().within(() => {
       cy.findByText("No results!").should("exist");
@@ -2124,7 +2130,7 @@ describe("issue 41612", () => {
       { visitQuestion: true },
     );
 
-    queryBuilderMain().findByLabelText("Switch to data").click();
+    cy.findByLabelText("Switch to data").click();
     queryBuilderHeader().button("Save").click();
     modal().button("Save").click();
 

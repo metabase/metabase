@@ -18,6 +18,7 @@ import {
   onlyOnEE,
   openQuestionActions,
   openSharingMenu,
+  openVizType,
   popover,
   restore,
   setTokenFeatures,
@@ -305,11 +306,13 @@ describe("UI elements that make no sense for users without data permissions (met
 
     visitQuestion(ORDERS_QUESTION_ID);
 
-    cy.findByTestId("viz-settings-button");
-    cy.findByTestId("viz-type-button").click();
+    openVizType();
 
     cy.findByTestId("display-options-sensible");
     cy.icon("line").click();
+    // for some reason click opens line settings right away, so we need to make
+    // sure we have correct settings opened by clicking on Chart
+    cy.findByTestId("chartsettings-sidebar").findByText("Chart").click();
     cy.findByTestId("Line-button").realHover();
     cy.findByTestId("Line-container").within(() => {
       cy.icon("gear").click();

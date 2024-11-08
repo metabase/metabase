@@ -64,6 +64,7 @@ function ChartSettingsSidebarInner({
             initial={initialChartSetting}
             computedSettings={visualizationSettings}
             result={result}
+            showSidebarTitle={showSidebarTitle}
           />
         </ErrorBoundary>
       </SidebarContent>

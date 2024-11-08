@@ -5,6 +5,7 @@ import { getQuestion, getUiControls } from "metabase/query_builder/selectors";
 
 import QuestionDisplayToggle from "../QuestionDisplayToggle";
 
+// TODO: not used, remove
 export const CenterViewFooterButtonGroup = () => {
   const dispatch = useDispatch();
   const question = useSelector(getQuestion);

@@ -12,6 +12,7 @@ import {
 } from "metabase/query_builder/actions";
 import {
   getIsShowingRawTable,
+  getIsVisualized,
   getUiControls,
 } from "metabase/query_builder/selectors";
 import { Button, Flex, Icon, Tooltip } from "metabase/ui";
@@ -37,6 +38,7 @@ export const LeftViewFooterButtonGroup = ({
   });
 
   const dispatch = useDispatch();
+  const isVisualized = useSelector(getIsVisualized);
 
   const data = useMemo(
     () => [
@@ -55,9 +57,11 @@ export const LeftViewFooterButtonGroup = ({
       },
       {
         value: "table",
+        disabled: !isVisualized,
         label: (
           <Tooltip label={t`Results`}>
             <Icon
+              aria-label={t`Switch to data`}
               name="table2"
               onClick={() => {
                 dispatch(setUIControls({ isShowingRawTable: true }));
@@ -68,10 +72,12 @@ export const LeftViewFooterButtonGroup = ({
       },
       {
         value: "visualization",
+        disabled: !isVisualized,
         // TODO: also we need to add a spinner :boom:
         label: (
           <Tooltip label={t`Visualization`}>
             <Icon
+              aria-label={t`Switch to visualization`}
               name={vizIcon}
               onClick={() => {
                 dispatch(setUIControls({ isShowingRawTable: false }));
@@ -81,7 +87,7 @@ export const LeftViewFooterButtonGroup = ({
         ),
       },
     ],
-    [dispatch, vizIcon],
+    [dispatch, isVisualized, vizIcon],
   );
 
   return (

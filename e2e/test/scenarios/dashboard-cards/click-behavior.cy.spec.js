@@ -23,6 +23,7 @@ import {
   multiAutocompleteInput,
   openNotebook,
   openStaticEmbeddingModal,
+  openVizType,
   popover,
   queryBuilderHeader,
   removeMultiAutocompleteValue,
@@ -2643,9 +2644,9 @@ function customizeLinkText(text) {
 }
 
 function verifyVizTypeIsLine() {
-  cy.findByTestId("viz-type-button").click();
+  openVizType();
   cy.findByTestId("sidebar-content")
     .findByTestId("Line-container")
     .should("have.attr", "aria-selected", "true");
-  cy.findByTestId("viz-type-button").click();
+  cy.button("Done").click();
 }
