@@ -73,9 +73,21 @@
         "description": "Allowed only when `current_display_type` is `bar` or `area`. The stacking setting. If no stacking modification is requested, or not allowed by `current_display_type`, set this parameter to `null`.",
         "enum": ["stacked", "normalized", "none", null],
         "nullable": true
+      },
+      "max_series_count": {
+        "type": ["number", "string", "null"],
+        "description": "Allowed only when `current_display_type` is `bar` and `graph.dimensions` array has two elements. Keeps only the top N series. Use it when you want to limit the number of series to N. If no limit modification is requested, set this parameter to `null`. If you want to show all series,remove the limit, set this parameter to `all`.",
+        "nullable": true
       }
     },
-    "required": ["goal", "trend_line", "data_labels", "total", "stack_type"],
+    "required": [
+      "goal",
+      "trend_line",
+      "data_labels",
+      "total",
+      "stack_type",
+      "max_series_count"
+    ],
     "additionalProperties": false
   }
 }

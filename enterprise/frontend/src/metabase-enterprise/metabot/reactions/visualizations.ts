@@ -209,5 +209,14 @@ export const changeChartAppearance: ReactionHandler<
         payload.stack_type === "none" ? null : payload.stack_type;
     }
 
+    if (payload.max_series_count != null) {
+      if (typeof payload.max_series_count === "number") {
+        settingsUpdate["graph.max_categories"] = payload.max_series_count;
+        settingsUpdate["graph.max_categories_enabled"] = true;
+      } else if (payload.max_series_count === "all") {
+        settingsUpdate["graph.max_categories_enabled"] = false;
+      }
+    }
+
     await dispatch(onUpdateVisualizationSettings(settingsUpdate));
   };

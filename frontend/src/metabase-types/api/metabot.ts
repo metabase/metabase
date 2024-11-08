@@ -188,6 +188,7 @@ export type MetabotChangeChartAppearanceReaction = {
   };
   total: boolean | null;
   stack_type: "stacked" | "normalized" | "none" | null;
+  max_series_count: number | "all" | null;
 };
 
 export type MetabotReaction =
