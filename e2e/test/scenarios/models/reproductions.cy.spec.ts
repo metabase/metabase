@@ -980,7 +980,7 @@ describe("issue 34574", () => {
     createQuestion(modelDetails).then(({ body: { id: modelId } }) =>
       visitModel(modelId),
     );
-    cy.wait(["@rootCollection", "@card", "@metadata", "@dataset"]);
+    cy.wait(["@card", "@metadata", "@dataset"]);
 
     cy.findByTestId("qb-header-action-panel").within(() => {
       // make sure the model fully loaded
@@ -994,7 +994,7 @@ describe("issue 34574", () => {
         "# Hello{enter}## World{enter}This is an **important** description!",
       );
       cy.realPress("Tab");
-      cy.wait(["@rootCollection", "@metadata", "@updateCard"]);
+      cy.wait(["@metadata", "@updateCard"]);
 
       cy.log("Make sure we immediately render the proper markdown");
       cy.findByTestId("editable-text").get("textarea").should("not.exist");

@@ -32,6 +32,8 @@ export async function loadLocalization(locale) {
           },
         };
   setLocalization(translationsObject);
+
+  return translationsObject;
 }
 
 // Tell moment.js to use the value of the start-of-week Setting for its current locale
@@ -189,4 +191,16 @@ if (window.MetabaseSiteLocalization) {
 // set the initial localization to user locale
 if (window.MetabaseUserLocalization) {
   setLocalization(window.MetabaseUserLocalization);
+}
+
+/**
+ * In static embeddings/public links, there is no user locale, since there is no user in static embeddings/public links.
+ * But we reset the locale to the site locale when `withInstanceLanguage` is called. This breaks static embeddings/public links
+ * since they don't have a user locale. So this function is for them to set the locale from a URL hash as the user locale,
+ * then the translation on some part of FE still works even after `withInstanceLanguage` is called.
+ *
+ * @param {object} translationsObject A translated object with the same structure as the one produced in `loadLocalization` function.
+ */
+export function setUserLocale(translationsObject) {
+  window.MetabaseUserLocalization = translationsObject;
 }
