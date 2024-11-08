@@ -5,7 +5,10 @@ import { ExpressionWidget } from "metabase/query_builder/components/expressions/
 import { ExpressionWidgetHeader } from "metabase/query_builder/components/expressions/ExpressionWidgetHeader";
 import * as Lib from "metabase-lib";
 
-import { FilterColumnPicker } from "./FilterColumnPicker";
+import {
+  FilterColumnPicker,
+  type FilterColumnPickerProps,
+} from "./FilterColumnPicker";
 import { FilterPickerBody } from "./FilterPickerBody";
 import type { ColumnListItem, SegmentListItem } from "./types";
 
@@ -17,6 +20,11 @@ export interface FilterPickerProps {
 
   onSelect: (filter: Lib.Filterable) => void;
   onClose?: () => void;
+
+  columnPickerProps?: Pick<
+    FilterColumnPickerProps,
+    "withColumnItemIcon" | "withColumnGroupIcon" | "withCustomExpression"
+  >;
 }
 
 export function FilterPicker({
@@ -26,6 +34,7 @@ export function FilterPicker({
   filterIndex,
   onSelect,
   onClose,
+  columnPickerProps,
 }: FilterPickerProps) {
   const [filter, setFilter] = useState(initialFilter);
 
@@ -96,6 +105,7 @@ export function FilterPicker({
         onColumnSelect={handleColumnSelect}
         onSegmentSelect={handleChange}
         onExpressionSelect={openExpressionEditor}
+        {...columnPickerProps}
       />
     );
   }
