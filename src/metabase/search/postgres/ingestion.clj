@@ -102,7 +102,6 @@
   "Given a new or updated instance, create or update all the corresponding search entries if needed."
   [instance]
   (when-let [updates (seq (search.spec/search-models-to-update instance))]
-    #p updates
     (run-on-thread
      (Thread/sleep 100)
      (->> (for [[search-model where-clause] updates]
