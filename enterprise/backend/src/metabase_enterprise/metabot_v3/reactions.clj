@@ -212,21 +212,13 @@
                              [:suffix {:optional true} [:maybe :string]]
                              [:view_as {:optional true} [:maybe [:enum "link" "email_link" "image" "auto"]]]]]]])
 
-(defreaction :metabot.reaction/change-stacking-settings
-  [:map
-   [:type [:= :metabot.reaction/change-stacking-settings]]
-   [:stack_type {:optional true} [:maybe [:enum "stacked" "normalized"]]]])
-
-(defreaction :metabot.reaction/change-goal-line
-  [:map
-   [:type [:= :metabot.reaction/change-goal-line]]
-   [:goal_value {:optional true} [:maybe number?]]
-   [:show_goal {:optional true} [:maybe boolean?]]
-   [:goal_label {:optional true} [:maybe :string]]])
-
 (defreaction :metabot.reaction/change-y-axis-range
   [:map
    [:type [:= :metabot.reaction/change-y-axis-range]]
    ["graph.y_axis.auto_range" {:optional true} [:maybe boolean?]]
    ["graph.y_axis.min" {:optional true} [:maybe number?]]
    ["graph.y_axis.max" {:optional true} [:maybe number?]]])
+
+(defreaction :metabot.reaction/change-chart-appearance
+  [:map
+   [:type [:= :metabot.reaction/change-chart-appearance]]])

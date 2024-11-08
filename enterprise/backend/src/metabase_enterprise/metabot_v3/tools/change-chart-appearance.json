@@ -1,0 +1,81 @@
+{
+  "name": "change-chart-appearance",
+  "description": "Changes the appearance settings for a chart: goal, trend line, data labels, stacking, and pie chart total. Make sure that the `current_display_type` is `line`, `bar`, `area`, `combo`, `scatter`, `waterfall`, `row`, or `pie` before calling this tool.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "goal": {
+        "type": ["object", "null"],
+        "description": "Allowed only when `current_display_type` is `line`, `bar`, `area`, `combo`, `scatter`, `waterfall`, or `row`. The goal settings for the chart. To remove the goal line you should return an object with only `show_goal` set to `false`. Set to null only if no goal settings modification is requested, or not allowed by `current_display_type`.",
+        "nullable": true,
+        "properties": {
+          "goal_value": {
+            "type": ["number", "null"],
+            "description": "The goal value.",
+            "nullable": true
+          },
+          "show_goal": {
+            "type": ["boolean", "null"],
+            "description": "Whether to show the goal line.",
+            "nullable": true
+          },
+          "goal_label": {
+            "type": ["string", "null"],
+            "description": "The goal line label.",
+            "nullable": true
+          }
+        },
+        "required": ["goal_value", "show_goal", "goal_label"],
+        "additionalProperties": false
+      },
+      "trend_line": {
+        "type": ["boolean", "null"],
+        "description": "Allowed only when `current_display_type` is `line`, `bar`, `area`, `combo` or `scatter`. Whether to show the trend lines. If no trend line modification is requested, or not allowed by `current_display_type`, set this parameter to `null`.",
+        "nullable": true
+      },
+      "data_labels": {
+        "type": ["object", "null"],
+        "description": "Allowed only when `current_display_type` is `line`, `bar`, `area`, `combo`, `scatter`, `waterfall`, or `row`. Settings for data labels that are shown right on the chart. If no data label modification is requested, or not allowed by `current_display_type`, set this parameter to `null`.",
+        "nullable": true,
+        "properties": {
+          "show_data_labels": {
+            "type": ["boolean", "null"],
+            "description": "Global setting to show or hide data labels. If not allowed or should not be changed, set this parameter to `null`.",
+            "nullable": true
+          },
+          "data_label_format": {
+            "type": ["string", "null"],
+            "description": "Allowed only when `current_display_type` is `line`, `bar`, `area`, `combo`, `scatter`, `waterfall`, or `row`. The format of the data labels. If not allowed by `current_display_type` or should not be changed, set this parameter to `null`.",
+            "nullable": true,
+            "enum": ["auto", "compact", "full", null]
+          },
+          "pie_chart_percent_visibility": {
+            "type": ["string", "null"],
+            "description": "Allowed only when `current_display_type` is `pie`. The visibility of percentages on pie chart slices. If not allowed by `current_display_type` or should not be changed, set this parameter to `null`.",
+            "nullable": true,
+            "enum": ["off", "legend", "inside", "both", null]
+          }
+        },
+        "required": [
+          "show_data_labels",
+          "pie_chart_percent_visibility",
+          "data_label_format"
+        ],
+        "additionalProperties": false
+      },
+      "total": {
+        "type": ["boolean", "null"],
+        "description": "Allowed only when `current_display_type` is `pie`. Whether to show the total value on pie charts only. If no total modification is requested, or not allowed by `current_display_type`, set this parameter to `null`.",
+        "nullable": true
+      },
+      "stack_type": {
+        "type": ["string", "null"],
+        "description": "Allowed only when `current_display_type` is `bar` or `area`. The stacking setting. If no stacking modification is requested, or not allowed by `current_display_type`, set this parameter to `null`.",
+        "enum": ["stacked", "normalized", "none", null],
+        "nullable": true
+      }
+    },
+    "required": ["goal", "trend_line", "data_labels", "total", "stack_type"],
+    "additionalProperties": false
+  }
+}
