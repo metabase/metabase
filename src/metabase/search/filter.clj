@@ -22,9 +22,11 @@
    :table-db-id         :database-id
    :verified            :verified})
 
+(def remaps {:created-at :model-created-at})
+
 (def ^:private attr->index-key
   (into {} (for [k (vals context-key->attr)]
-             [k (keyword (str "search_index." (u/->snake_case_en (name k))))])))
+             [k (keyword (str "search_index." (u/->snake_case_en (name (remaps k k)))))])))
 
 (defn- remove-if-falsey [m k]
   (if (m k) m (dissoc m k)))
