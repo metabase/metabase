@@ -33,20 +33,3 @@ export const Default = {
     saveToCollectionId: undefined,
   },
 };
-
-export const WithFilterPicker = {
-  render(args: InteractiveQuestionComponentProps) {
-    return (
-      <InteractiveQuestion {...args}>
-        <div>
-          <InteractiveQuestion.FilterPicker withIcon />
-          <InteractiveQuestion.QuestionVisualization />
-        </div>
-      </InteractiveQuestion>
-    );
-  },
-
-  args: {
-    questionId: QUESTION_ID,
-  },
-};
