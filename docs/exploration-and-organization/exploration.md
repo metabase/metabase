@@ -45,7 +45,9 @@ You can search by:
 - **Search the contents of native queries**: search through the SQL/native code in questions.
 - **Search items in trash**: include the depths of oblivion in your search.
 
-## Browse your data
+## Browse your databases
+
+> Whether a group has access to the database browser depends on the group's [Create queries permission](../permissions/data.md#create-queries-permissions).
 
 ![Browse databases](./images/browse-data.png)
 
@@ -53,7 +55,7 @@ The left sidebar lists your databases, [models](../data-modeling/models.md), and
 
 [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans include the ability to filter for [verified models and metrics](#verified-items).
 
-The data browser will list all the databases connected to your Metabase. Hover over a table and click on the **bolt** icon to [X-ray](x-rays.md) the table, or click on the **book** icon to view more info about the table: its fields and their descriptions (if any), what questions are based on that table, and more.
+The database browser will list all the databases connected to your Metabase. Hover over a table and click on the **bolt** icon to [X-ray](x-rays.md) the table, or click on the **book** icon to view more info about the table: its fields and their descriptions (if any), what questions are based on that table, and more.
 
 To learn more, see [Exploring data with Metabase's data browser](https://www.metabase.com/learn/basics/questions/data-browser.html).
 

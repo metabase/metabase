@@ -12,6 +12,7 @@ import {
   appBar,
   assertDatasetReqIsSandboxed,
   assertQueryBuilderRowCount,
+  assertTabSelected,
   cartesianChartCircle,
   closeDashboardInfoSidebar,
   closeDashboardSettingsSidebar,
@@ -737,7 +738,7 @@ describe("issue 31274", () => {
         size_x: 2,
         size_y: 2,
         row: (length - index - 1) * 2,
-        text: `Text card ${index + 1}`,
+        text: `Text ${index + 1}`,
       });
     });
   };
@@ -746,47 +747,39 @@ describe("issue 31274", () => {
     return cy.findAllByTestId("dashboardcard-actions-panel").filter(":visible");
   }
 
-  function secondTextCard() {
-    return cy.findAllByTestId("editing-dashboard-text-preview").eq(1).parent();
-  }
-
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
   });
 
-  // cypress automatically scrolls to the element, but we don't need it in this test
-  it(
-    "should not clip dashcard actions (metabase#31274)",
-    { tags: "@flaky" },
-    () => {
-      cy.createDashboard().then(({ body: dashboard }) => {
-        const dashcards = createTextCards(3);
-        cy.request("PUT", `/api/dashboard/${dashboard.id}`, {
-          dashcards,
-        });
-
-        visitDashboard(dashboard.id);
-        editDashboard(dashboard.id);
-
-        secondTextCard().realHover();
-
-        visibleActionsPanel().should("have.length", 1);
-
-        cy.log(
-          "Make sure cypress can click the element, which means it is not covered by another",
-        );
-
-        visibleActionsPanel().within(() => {
-          cy.icon("close").click({
-            position: "top",
-          });
-        });
-
-        cy.findAllByTestId("dashcard").should("have.length", 2);
+  it("should not clip dashcard actions (metabase#31274)", () => {
+    cy.createDashboard().then(({ body: dashboard }) => {
+      const dashcards = createTextCards(3);
+      cy.request("PUT", `/api/dashboard/${dashboard.id}`, {
+        dashcards,
       });
-    },
-  );
+
+      visitDashboard(dashboard.id);
+      editDashboard(dashboard.id);
+
+      assertTabSelected("Tab 1");
+
+      getDashboardCard(1).realHover({
+        scrollBehavior: false, // prevents flaky tests
+      });
+
+      cy.log(
+        "Make sure cypress can click the element, which means it is not covered by another",
+      );
+
+      visibleActionsPanel().should("have.length", 1).icon("close").click({
+        position: "top",
+        scrollBehavior: false, // prevents flaky tests
+      });
+
+      cy.findAllByTestId("dashcard").should("have.length", 2);
+    });
+  });
 
   it("renders cross icon on the link card without clipping", () => {
     cy.createDashboard().then(({ body: dashboard }) => {

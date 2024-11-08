@@ -41,6 +41,7 @@ export const PublicOrEmbeddedDashboardPage = (props: WithRouterProps) => {
     theme,
     titled,
     font,
+    locale,
   } = useDashboardUrlParams({ location, onRefresh: refreshDashboard });
 
   const dashboard = useSelector(getDashboardComplete);
@@ -67,6 +68,7 @@ export const PublicOrEmbeddedDashboardPage = (props: WithRouterProps) => {
         font={font}
         parameterQueryParams={parameterQueryParams}
         cardTitled={true}
+        locale={locale}
       />
     </>
   );
