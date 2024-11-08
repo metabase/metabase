@@ -2,6 +2,7 @@ import { connect } from "react-redux";
 import { c, t } from "ttag";
 import _ from "underscore";
 
+import type { MoveCollectionDestination } from "metabase/collections/types";
 import { MoveModal } from "metabase/containers/MoveModal";
 import Collection, { ROOT_COLLECTION } from "metabase/entities/collections";
 import Dashboards from "metabase/entities/dashboards";
@@ -36,7 +37,7 @@ function DashboardMoveModal({
       onClose={onClose}
       initialCollectionId={dashboard.collection_id ?? "root"}
       canMoveToDashboard={false}
-      onMove={async destination => {
+      onMove={async (destination: MoveCollectionDestination) => {
         await setDashboardCollection({ id: dashboard.id }, destination, {
           notify: {
             message: (

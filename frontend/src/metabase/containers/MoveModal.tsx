@@ -17,10 +17,10 @@ import type {
   SearchResult,
 } from "metabase-types/api";
 
-interface MoveModalProps {
+interface MoveModalProps<DestinationType> {
   title: string;
   onClose: () => void;
-  onMove: OnMoveWithOneItem;
+  onMove: OnMoveWithOneItem<DestinationType>;
   initialCollectionId: CollectionId;
   movingCollectionId?: CollectionId;
   canMoveToDashboard?: boolean;
@@ -44,14 +44,14 @@ const makeSearchResultFilter = (
     );
 };
 
-export const MoveModal = ({
+export const MoveModal = <DestinationType,>({
   title,
   onClose,
   onMove,
   initialCollectionId,
   movingCollectionId,
   canMoveToDashboard = true,
-}: MoveModalProps) => {
+}: MoveModalProps<DestinationType>) => {
   // if we are moving a collection, we can't move it into itself or any of its children
   const shouldDisableItem = movingCollectionId
     ? (item: CollectionPickerItem) =>
