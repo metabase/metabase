@@ -144,16 +144,14 @@ describeSDK("scenarios > embedding-sdk > interactive-question", () => {
         "embeddingsdk-interactivequestion-filterpicker--picker-in-popover",
     });
 
-    getSdkRoot().within(() => {
-      cy.findByText("Filter").click();
+    getSdkRoot().findByText("Filter").click();
 
-      popover().within(() => {
-        cy.findByText("User ID").click();
-        cy.findByPlaceholderText("Enter an ID").type("12");
-        cy.findByText("Add filter").click();
-      });
-
-      cy.contains("User ID is 12");
+    popover().within(() => {
+      cy.findByText("User ID").click();
+      cy.findByPlaceholderText("Enter an ID").type("12");
+      cy.findByText("Add filter").click();
     });
+
+    getSdkRoot().contains("User ID is 12");
   });
 });
