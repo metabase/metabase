@@ -472,7 +472,6 @@ function applyBoxFilter({
   right: number;
   bottom: number;
 }) {
-  ensureEchartsContainerHasSvg();
   cy.wait(100); // wait to avoid grabbing the svg before the chart redraws
 
   cy.findByTestId("visualization-root")
