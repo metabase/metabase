@@ -453,6 +453,7 @@ describe("scenarios > question > native query drill", () => {
 
 function applyBrushFilter({ left, right }: { left: number; right: number }) {
   ensureEchartsContainerHasSvg();
+  cy.wait(100); // wait to avoid grabbing the svg before the chart redraws
 
   echartsContainer()
     .trigger("mousedown", left, 100)
@@ -472,6 +473,7 @@ function applyBoxFilter({
   bottom: number;
 }) {
   ensureEchartsContainerHasSvg();
+  cy.wait(100); // wait to avoid grabbing the svg before the chart redraws
 
   cy.findByTestId("visualization-root")
     .realMouseDown({ x: left, y: top })
