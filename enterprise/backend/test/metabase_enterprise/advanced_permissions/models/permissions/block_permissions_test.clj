@@ -317,11 +317,11 @@
               (mt/with-test-user :rasta
                 (rasta-view-data-perm= :blocked)
                 (testing "Should not be able to run the parent Card due to Block permissions"
-                    (is (mi/can-read? parent-card))
-                    (is (thrown-with-msg?
-                         clojure.lang.ExceptionInfo
-                         #"You do not have permissions to run this query"
-                         (mt/rows (process-query-for-card child-card)))))
+                  (is (mi/can-read? parent-card))
+                  (is (thrown-with-msg?
+                       clojure.lang.ExceptionInfo
+                       #"You do not have permissions to run this query"
+                       (mt/rows (process-query-for-card child-card)))))
 
                 (testing "Should not be able to run the child Card due to Block permissions"
                   (mt/with-test-user :rasta
