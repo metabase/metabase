@@ -24,7 +24,7 @@
   (ClassPathTemplateLoader. prefix postfix))
 
 (def ^:private default-hbs
-  (registry (classpath-loader "/" ".hbs")))
+  (registry (classpath-loader "/" "")))
 
 (defn- wrap-context
   [context]

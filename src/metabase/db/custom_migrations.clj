@@ -1602,7 +1602,7 @@
                       :channel_type "channel/email"
                       :details      (json/generate-string {:type           "email/handlebars-resource"
                                                            :subject        "{{payload.custom.user_invited_email_subject}}"
-                                                           :path           "metabase/email/new_user_invite"
+                                                           :path           "metabase/email/new_user_invite.hbs"
                                                            :recipient-type :cc})
                       :created_at   :%now
                       :updated_at   :%now})]
@@ -1623,7 +1623,7 @@
                       :channel_type "channel/email"
                       :details      (json/generate-string {:type           "email/handlebars-resource"
                                                            :subject        "You set up an alert"
-                                                           :path           "metabase/email/alert_new_confirmation"
+                                                           :path           "metabase/email/alert_new_confirmation.hbs"
                                                            :recipient-type :cc})
                       :created_at   :%now
                       :updated_at   :%now})]
@@ -1644,7 +1644,7 @@
                       :channel_type "channel/email"
                       :details      (json/generate-string {:type           "email/handlebars-resource"
                                                            :subject        "Your Slack connection stopped working"
-                                                           :path           "metabase/email/slack_token_error"
+                                                           :path           "metabase/email/slack_token_error.hbs"
                                                            :recipient-type :cc})
                       :created_at   :%now
                       :updated_at   :%now})]
