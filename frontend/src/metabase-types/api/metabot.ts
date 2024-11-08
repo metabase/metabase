@@ -166,18 +166,6 @@ export type MetabotChangeColumnSettingsReaction = {
   column_settings: ColumnSettingsEntry[];
 };
 
-export type MetabotChangeStackingSettingsReaction = {
-  type: "metabot.reaction/change-stacking-settings";
-  stack_type: "stacked" | "normalized" | null;
-};
-
-export type MetabotChangeGoalLineReaction = {
-  type: "metabot.reaction/change-goal-line";
-  "graph.goal_value": number | null;
-  "graph.show_goal": boolean | null;
-  "graph.goal_label": string | null;
-};
-
 export type MetabotChangeYAxisRangeReaction = {
   type: "metabot.reaction/change-y-axis-range";
   "graph.y_axis.auto_range": boolean | null;
@@ -185,13 +173,29 @@ export type MetabotChangeYAxisRangeReaction = {
   "graph.y_axis.max": number | null;
 };
 
+export type MetabotChangeChartAppearanceReaction = {
+  type: "metabot.reaction/change-chart-appearance";
+  goal: {
+    goal_value: number | null;
+    show_goal: boolean | null;
+    goal_label: string | null;
+  } | null;
+  trend_line: boolean | null;
+  data_labels: {
+    show_data_labels: boolean | null;
+    data_label_format: "auto" | "compact" | "full" | null;
+    pie_chart_percent_visibility: "off" | "legend" | "inside" | "both" | null;
+  };
+  total: boolean | null;
+  stack_type: "stacked" | "normalized" | "none" | null;
+};
+
 export type MetabotReaction =
+  | MetabotChangeChartAppearanceReaction
   | MetabotChangeYAxisRangeReaction
-  | MetabotChangeGoalLineReaction
   | MetabotChangeColumnSettingsReaction
   | MetabotChangeSeriesSettingsReaction
   | MetabotChangeAxesLabelsReaction
-  | MetabotChangeStackingSettingsReaction
   | MetabotMessageReaction
   | MetabotChangeDisplayTypeReaction
   | MetabotChangeVisiualizationSettingsReaction

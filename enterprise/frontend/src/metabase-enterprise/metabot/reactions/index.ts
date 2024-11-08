@@ -7,11 +7,10 @@ import { changeQuery } from "./queries";
 import type { ReactionHandler } from "./types";
 import {
   changeAxesLabels,
+  changeChartAppearance,
   changeColumnSettings,
   changeDisplayType,
-  changeGoalLine,
   changeSeriesSettings,
-  changeStackingSettings,
   changeTableVisualizationSettings,
   changeYAxisRange,
 } from "./visualizations";
@@ -25,8 +24,7 @@ type ReactionHandlers = {
 };
 
 export const reactionHandlers: ReactionHandlers = {
-  "metabot.reaction/change-goal-line": changeGoalLine,
-  "metabot.reaction/change-stacking-settings": changeStackingSettings,
+  "metabot.reaction/change-chart-appearance": changeChartAppearance,
   "metabot.reaction/change-column-settings": changeColumnSettings,
   "metabot.reaction/change-series-settings": changeSeriesSettings,
   "metabot.reaction/change-axes-labels": changeAxesLabels,

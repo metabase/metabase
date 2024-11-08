@@ -11,13 +11,13 @@ import * as Lib from "metabase-lib";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import type {
   MetabotChangeAxesLabelsReaction,
+  MetabotChangeChartAppearanceReaction,
   MetabotChangeColumnSettingsReaction,
   MetabotChangeDisplayTypeReaction,
-  MetabotChangeGoalLineReaction,
   MetabotChangeSeriesSettingsReaction,
-  MetabotChangeStackingSettingsReaction,
   MetabotChangeVisiualizationSettingsReaction,
   MetabotChangeYAxisRangeReaction,
+  VisualizationSettings,
 } from "metabase-types/api";
 
 import { stopProcessingAndNotify } from "../state";
@@ -144,24 +144,6 @@ export const changeColumnSettings: ReactionHandler<
     );
   };
 
-export const changeStackingSettings: ReactionHandler<
-  MetabotChangeStackingSettingsReaction
-> =
-  ({ type, ...payload }) =>
-  async ({ dispatch }) => {
-    await dispatch(onUpdateVisualizationSettings(payload));
-  };
-
-export const changeGoalLine: ReactionHandler<MetabotChangeGoalLineReaction> =
-  ({ type, ...payload }) =>
-  async ({ dispatch }) => {
-    const goalLineSettings = Object.fromEntries(
-      Object.entries(payload).filter(([_, value]) => value !== null),
-    );
-
-    await dispatch(onUpdateVisualizationSettings(goalLineSettings));
-  };
-
 export const changeYAxisRange: ReactionHandler<
   MetabotChangeYAxisRangeReaction
 > =
@@ -172,4 +154,60 @@ export const changeYAxisRange: ReactionHandler<
     );
 
     await dispatch(onUpdateVisualizationSettings(yAxisSettings));
+  };
+
+export const changeChartAppearance: ReactionHandler<
+  MetabotChangeChartAppearanceReaction
+> =
+  ({ type, ...payload }) =>
+  async ({ dispatch }) => {
+    const settingsUpdate: Partial<VisualizationSettings> = {};
+
+    if (payload.goal != null) {
+      const { goal_value, show_goal, goal_label } = payload.goal;
+
+      if (goal_value != null) {
+        settingsUpdate["graph.goal_value"] = goal_value;
+      }
+      if (show_goal != null) {
+        settingsUpdate["graph.show_goal"] = show_goal;
+      }
+      if (goal_label != null) {
+        settingsUpdate["graph.goal_label"] = goal_label;
+      }
+    }
+
+    if (payload.trend_line != null) {
+      settingsUpdate["graph.show_trendline"] = payload.trend_line;
+    }
+
+    if (payload.data_labels != null) {
+      const {
+        show_data_labels,
+        data_label_format,
+        pie_chart_percent_visibility,
+      } = payload.data_labels;
+
+      if (show_data_labels != null) {
+        settingsUpdate["graph.show_values"] = show_data_labels;
+      }
+      if (data_label_format != null) {
+        settingsUpdate["graph.label_value_formatting"] = data_label_format;
+      }
+      if (pie_chart_percent_visibility != null) {
+        settingsUpdate["pie.percent_visibility"] = pie_chart_percent_visibility;
+      }
+    }
+
+    if (payload.total != null) {
+      settingsUpdate["pie.show_total"] = payload.total;
+    }
+
+    if (payload.stack_type != null) {
+      // Metabase expects "none" to be null in the settings object
+      settingsUpdate["stackable.stack_type"] =
+        payload.stack_type === "none" ? null : payload.stack_type;
+    }
+
+    await dispatch(onUpdateVisualizationSettings(settingsUpdate));
   };
