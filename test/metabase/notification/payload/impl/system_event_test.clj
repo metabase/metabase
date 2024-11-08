@@ -64,7 +64,7 @@
       (mt/with-temp [:model/ChannelTemplate tmpl {:channel_type :channel/email
                                                   :details      {:type    :email/handlebars-resource
                                                                  :subject "Welcome {{payload.event_info.object.first_name}} to {{context.site_name}}"
-                                                                 :path    "notification/channel_template/hello_world"}}
+                                                                 :path    "notification/channel_template/hello_world.hbs"}}
                      :model/User             {user-id :id} {:email "ngoc@metabase.com"}
                      :model/PermissionsGroup {group-id :id} {:name "Avengers"}
                      :model/PermissionsGroupMembership _ {:group_id group-id
