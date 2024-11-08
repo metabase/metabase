@@ -1,0 +1,40 @@
+{
+  "name": "run-query",
+  "description": "Runs the query",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "operations": {
+        "type": "array",
+        "description": "List of operations.",
+        "items": {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "limit"
+                  ]
+                },
+                "limit": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "type",
+                "limit"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        }
+      }
+    },
+    "required": [
+      "operations"
+    ],
+    "additionalProperties": false
+  }
+}
