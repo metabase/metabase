@@ -11,6 +11,7 @@ import * as Lib from "metabase-lib";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import type {
   MetabotChangeAxesLabelsReaction,
+  MetabotChangeChartAppearanceReaction,
   MetabotChangeColumnSettingsReaction,
   MetabotChangeDisplayTypeReaction,
   MetabotChangeGoalLineReaction,
@@ -172,4 +173,13 @@ export const changeYAxisRange: ReactionHandler<
     );
 
     await dispatch(onUpdateVisualizationSettings(yAxisSettings));
+  };
+
+export const changeChartAppearance: ReactionHandler<
+  MetabotChangeChartAppearanceReaction
+> =
+  ({ type, ...payload }) =>
+  async ({ dispatch }) => {
+    console.log(">>>changeChartAppearance", payload);
+    // await dispatch(onUpdateVisualizationSettings(payload));
   };
