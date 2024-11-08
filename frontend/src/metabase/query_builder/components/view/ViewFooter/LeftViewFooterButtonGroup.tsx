@@ -109,6 +109,7 @@ export const LeftViewFooterButtonGroup = ({
           }}
           /* TODO: mah is a hack for 32px height button */
           mah="xl"
+          data-testid="viz-settings-button"
           onClick={
             isShowingChartSettingsSidebar
               ? () => dispatch(onCloseChartSettings())

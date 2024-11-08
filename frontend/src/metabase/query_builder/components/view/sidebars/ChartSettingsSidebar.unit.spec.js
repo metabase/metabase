@@ -71,6 +71,8 @@ describe("ChartSettingsSidebar", () => {
       },
     );
 
+    fireEvent.click(screen.getByText("Formatting"));
+
     // see header with formatting fields
     expect(screen.getByText("Number options")).toBeInTheDocument();
     expect(screen.getByText("Style")).toBeInTheDocument();

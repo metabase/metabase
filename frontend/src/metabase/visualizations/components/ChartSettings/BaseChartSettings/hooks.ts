@@ -12,7 +12,10 @@ const DEFAULT_TAB_PRIORITY = [t`Data`];
 export const useChartSettingsSections = ({
   initial,
   widgets,
-}: Pick<BaseChartSettingsProps, "initial" | "widgets">) => {
+  shouldShowChartTypeSelector = false,
+}: Pick<BaseChartSettingsProps, "initial" | "widgets"> & {
+  shouldShowChartTypeSelector: boolean;
+}) => {
   const [currentSection, setCurrentSection] = useState<string | null>(
     initial?.section ?? null,
   );
@@ -25,7 +28,9 @@ export const useChartSettingsSections = ({
         sectionObj[widget.section].push(widget);
       }
     }
-    sectionObj[t`Chart`] = [];
+    if (shouldShowChartTypeSelector) {
+      sectionObj[t`Chart`] = [];
+    }
 
     // Move settings from the "undefined" section in the first tab
     if (sectionObj["undefined"] && Object.values(sectionObj).length > 1) {
@@ -35,7 +40,7 @@ export const useChartSettingsSections = ({
     }
 
     return sectionObj;
-  }, [widgets]);
+  }, [shouldShowChartTypeSelector, widgets]);
 
   // This sorts the section radio buttons.
   const sectionNames = useMemo(() => {

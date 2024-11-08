@@ -46,6 +46,7 @@ export const BaseChartSettings = ({
   } = useChartSettingsSections({
     initial,
     widgets,
+    shouldShowChartTypeSelector: !!chartTypeSettings,
   });
   const [currentWidget, setCurrentWidget] = useState<Widget | null>(
     initial?.widget ?? null,
@@ -186,7 +187,7 @@ export const BaseChartSettings = ({
     onChangeSeriesColor: handleChangeSeriesColor,
   };
 
-  const isChartPicker = chartSettingCurrentSection.toLowerCase() === "chart";
+  const isChartPicker = chartSettingCurrentSection?.toLowerCase() === "chart";
 
   return (
     <>

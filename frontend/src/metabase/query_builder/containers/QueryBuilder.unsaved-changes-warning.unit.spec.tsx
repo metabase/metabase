@@ -591,8 +591,10 @@ describe("QueryBuilder - unsaved changes warning", () => {
         initialRoute: `/question/${TEST_NATIVE_CARD.id}`,
       });
 
-      await userEvent.click(screen.getByTestId("viz-type-button"));
+      await userEvent.click(screen.getByTestId("viz-settings-button"));
+      await userEvent.click(screen.getByText("Chart"));
       await userEvent.click(screen.getByTestId("Detail-button"));
+
       await waitForSaveToBeEnabled();
 
       act(() => {
