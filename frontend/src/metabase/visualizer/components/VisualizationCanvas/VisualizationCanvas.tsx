@@ -55,7 +55,7 @@ export function VisualizationCanvas() {
 
   return (
     <Flex w="100%" h="100%" ref={setNodeRef}>
-      <VerticalWell display={display} />
+      <VerticalWell display={display} settings={settings} />
       <Flex direction="column" style={{ flex: 1 }}>
         <Visualization rawSeries={rawSeries} />
         <HorizontalWell

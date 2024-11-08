@@ -1,10 +1,12 @@
 import { useDroppable } from "@dnd-kit/core";
+import { useMemo } from "react";
 
 import { useSelector } from "metabase/lib/redux";
+import { isNotNull } from "metabase/lib/types";
 import { Flex, type FlexProps, Text } from "metabase/ui";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import { DROPPABLE_ID } from "metabase/visualizer/constants";
-import { getVisualizerDimensionColumn } from "metabase/visualizer/visualizer.slice";
+import { getVisualizerDatasetColumns } from "metabase/visualizer/visualizer.slice";
 
 import { WellItem } from "../WellItem";
 
@@ -17,11 +19,18 @@ export function CartesianHorizontalWell({
   style,
   ...props
 }: CartesianHorizontalWellProps) {
-  const dimension = useSelector(getVisualizerDimensionColumn);
+  const columns = useSelector(getVisualizerDatasetColumns);
 
   const { active, setNodeRef, isOver } = useDroppable({
     id: DROPPABLE_ID.X_AXIS_WELL,
   });
+
+  const dimensions = useMemo(() => {
+    const dimensionNames = settings["graph.dimensions"] ?? [];
+    return dimensionNames
+      .map(name => columns.find(column => column.name === name))
+      .filter(isNotNull);
+  }, [columns, settings]);
 
   return (
     <Flex
@@ -43,9 +52,11 @@ export function CartesianHorizontalWell({
       maw="80%"
       ref={setNodeRef}
     >
-      <WellItem>
-        <Text truncate>{dimension.column.display_name}</Text>
-      </WellItem>
+      {dimensions.map(dimension => (
+        <WellItem key={dimension.name}>
+          <Text truncate>{dimension.display_name}</Text>
+        </WellItem>
+      ))}
     </Flex>
   );
 }

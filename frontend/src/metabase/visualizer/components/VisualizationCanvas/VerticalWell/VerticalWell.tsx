@@ -1,22 +1,21 @@
-import { useSelector } from "metabase/lib/redux";
 import { isCartesianChart } from "metabase/visualizations";
-import { getVisualizerMetricColumn } from "metabase/visualizer/visualizer.slice";
+import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type { VisualizationDisplay } from "metabase-types/api";
 
-import { SimpleVerticalWell } from "./SimpleVerticalWell";
+import { CartesianVerticalWell } from "./CartesianVerticalWell";
+import { FunnelVerticalWell } from "./FunnelVerticalWell";
 
 interface VerticalWellProps {
   display: VisualizationDisplay;
+  settings: ComputedVisualizationSettings;
 }
 
-export function VerticalWell({ display }: VerticalWellProps) {
-  const metric = useSelector(getVisualizerMetricColumn);
-  const name = metric?.column?.display_name ?? "Metric";
+export function VerticalWell({ display, settings }: VerticalWellProps) {
   if (isCartesianChart(display)) {
-    return <SimpleVerticalWell name={name} />;
+    return <CartesianVerticalWell settings={settings} />;
   }
   if (display === "funnel") {
-    return <SimpleVerticalWell name={name} />;
+    return <FunnelVerticalWell settings={settings} />;
   }
   return null;
 }

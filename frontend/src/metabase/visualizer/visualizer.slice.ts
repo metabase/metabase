@@ -414,6 +414,11 @@ const getVisualizerDatasetData = createSelector(
   },
 );
 
+export const getVisualizerDatasetColumns = createSelector(
+  [getVisualizerDatasetData],
+  data => data.cols,
+);
+
 export const getSettings = createSelector(
   [getVisualizationType, getRawSettings],
   (display, settings) => {

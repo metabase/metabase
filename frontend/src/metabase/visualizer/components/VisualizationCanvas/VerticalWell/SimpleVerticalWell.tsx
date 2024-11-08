@@ -1,20 +1,23 @@
 import { useDroppable } from "@dnd-kit/core";
+import type { ReactNode } from "react";
 
-import { Flex, Text } from "metabase/ui";
+import { Flex } from "metabase/ui";
 import { DROPPABLE_ID } from "metabase/visualizer/constants";
 
-import { WellItem } from "../WellItem";
-
 interface SimpleVerticalWellProps {
-  name?: string;
+  hasValues: boolean;
+  children: ReactNode;
 }
 
-export function SimpleVerticalWell({ name }: SimpleVerticalWellProps) {
+export function SimpleVerticalWell({
+  hasValues,
+  children,
+}: SimpleVerticalWellProps) {
   const { active, isOver, setNodeRef } = useDroppable({
     id: DROPPABLE_ID.Y_AXIS_WELL,
   });
 
-  const borderStyle = name ? "solid" : "dashed";
+  const borderStyle = hasValues ? "solid" : "dashed";
   const borderColor = active ? "var(--mb-color-brand)" : "var(--border-color)";
 
   return (
@@ -36,9 +39,7 @@ export function SimpleVerticalWell({ name }: SimpleVerticalWellProps) {
       }}
       ref={setNodeRef}
     >
-      <WellItem style={{ position: "absolute", transform: "rotate(-90deg)" }}>
-        <Text truncate>{name ?? "Metric"}</Text>
-      </WellItem>
+      {children}
     </Flex>
   );
 }
