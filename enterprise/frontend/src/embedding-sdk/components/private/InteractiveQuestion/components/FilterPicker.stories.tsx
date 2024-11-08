@@ -26,7 +26,9 @@ export const PickerInPopover = {
         <InteractiveQuestion questionId={QUESTION_ID}>
           <Box>
             <Flex justify="space-between" w="100%">
-              <InteractiveQuestion.FilterBar />
+              <Box>
+                <InteractiveQuestion.FilterBar />
+              </Box>
 
               <Popover position="bottom-end" opened={isOpen} onClose={close}>
                 <Popover.Target>
