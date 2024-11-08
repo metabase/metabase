@@ -7,6 +7,7 @@ import {
   createNativeQuestion,
   createNativeQuestionAndDashboard,
   echartsContainer,
+  ensureEchartsContainerHasSvg,
   getDashboardCard,
   modal,
   popover,
@@ -451,6 +452,7 @@ describe("scenarios > question > native query drill", () => {
 });
 
 function applyBrushFilter({ left, right }: { left: number; right: number }) {
+  ensureEchartsContainerHasSvg();
   cy.wait(100); // wait to avoid grabbing the svg before the chart redraws
 
   echartsContainer()
@@ -470,6 +472,7 @@ function applyBoxFilter({
   right: number;
   bottom: number;
 }) {
+  ensureEchartsContainerHasSvg();
   cy.wait(100); // wait to avoid grabbing the svg before the chart redraws
 
   cy.findByTestId("visualization-root")
