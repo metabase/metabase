@@ -21,7 +21,7 @@
         (set
          (map (partial data-perms/table-permission-for-user api/*current-user-id* :perms/view-data database-id)
               table-ids))))
-   (throw (ex-info (tru "Blocked: you are not allowed to run queries against Database {0}." database-id)
+   (throw (ex-info (tru "You do not have permissions to run this query.")
                    {:type               qp.error-type/missing-required-permissions
                     :actual-permissions @api/*current-user-permissions-set*
                     :permissions-error? true}))))

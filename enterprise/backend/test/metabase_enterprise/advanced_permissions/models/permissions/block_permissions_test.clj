@@ -208,11 +208,11 @@
                 (testing "disallow running the query"
                   (is (thrown-with-msg?
                        clojure.lang.ExceptionInfo
-                       #"Blocked: you are not allowed to run queries against Database \d+"
+                       #"You do not have permissions to run this query"
                        (check-block-perms)))
                   (is (thrown-with-msg?
                        clojure.lang.ExceptionInfo
-                       #"Blocked: you are not allowed to run queries against Database \d+"
+                       #"You do not have permissions to run this query"
                        (run-saved-question))))))))))))
 
 (deftest legacy-no-self-service-test
@@ -233,7 +233,7 @@
               (data-perms/set-database-permission! group-id (mt/id) :perms/create-queries :no)
               (is (thrown-with-msg?
                    clojure.lang.ExceptionInfo
-                   #"Blocked: you are not allowed to run queries against Database \d+"
+                   #"You do not have permissions to run this query"
                    (mt/with-current-user user-id
                      (#'qp.perms/check-block-permissions query)))))
 
@@ -281,7 +281,7 @@
                   (testing "Data perms prohibit running queries"
                     (is (thrown-with-msg?
                          clojure.lang.ExceptionInfo
-                         #"Blocked: you are not allowed to run queries"
+                         #"You do not have permissions to run this query"
                          (mt/rows (process-query-for-card child-card)))
                         "Even if the user has can-write? on a Card, they should not be able to run it because they are blocked on Card's db"))))
               (testing "view-data = unrestricted is required to allow running the query (#15131)"
@@ -314,7 +314,7 @@
               (perms/grant-collection-read-permissions! (perms-group/all-users) allowed-collection)
               (is (thrown-with-msg?
                    clojure.lang.ExceptionInfo
-                   #"Blocked: you are not allowed to run queries"
+                   #"You do not have permissions to run this query"
                    (mt/rows (process-query-for-card child-card)))
                   "Someone with `:blocked` permissions on ANY table in the database cannot run ANY card with native queries, including as a source for another card.")))
           ;; update collection perms in place:
@@ -326,7 +326,7 @@
               (perms/grant-collection-read-permissions! (perms-group/all-users) allowed-collection)
               (is (thrown-with-msg?
                    clojure.lang.ExceptionInfo
-                   #"Blocked: you are not allowed to run queries"
+                   #"You do not have permissions to run this query"
                    (mt/rows (process-query-for-card child-card)))
                   "Someone with `:blocked` permissions on ANY table in the database cannot run ANY card with native queries, including as a source for another card."))))))))
 
@@ -346,5 +346,5 @@
           (data-perms/set-table-permissions! (perms-group/all-users) :perms/view-data {table-id :blocked}))
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #"Blocked: you are not allowed to run queries"
+             #"You do not have permissions to run this query"
              (mt/rows (mt/user-http-request :rasta :post (format "card/%d/query" card-id)))))))))
