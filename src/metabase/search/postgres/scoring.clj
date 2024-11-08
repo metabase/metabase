@@ -1,6 +1,7 @@
 (ns metabase.search.postgres.scoring
   (:require
    [honey.sql.helpers :as sql.helpers]
+   [metabase.api.common :as api]
    [metabase.search.config :as search.config]))
 
 (def ^:private seconds-in-a-day 86400)
@@ -74,7 +75,7 @@
   (-> (apply sql.helpers/select qry precalculated-select-items)
       ;; todo: must join only on current user
       (sql.helpers/left-join
-       :card_bookmark [:and [:= :model [:inline "card"]] [:= :model_id :card_id]]
-       :collection_bookmark [:and [:= :model [:inline "collection"]] [:= :model_id :collection_bookmark.collection_id]]
-       :dashboard_bookmark [:and [:= :model [:inline "dashboard"]] [:= :model_id :dashboard_id]])
+       :card_bookmark [:and [:= :model [:inline "card"]] [:and [:= api/*current-user-id* :card_bookmark.user_id] [:= :model_id :card_id]]]
+       :collection_bookmark [:and [:= :model [:inline "collection"]] [:and [:= api/*current-user-id* :collection_bookmark.user_id] [:= :model_id :collection_bookmark.collection_id]]]
+       :dashboard_bookmark [:and [:= :model [:inline "dashboard"]] [:and [:= api/*current-user-id* :dashboard_bookmark.user_id] [:= :model_id :dashboard_id]]])
       (sql.helpers/order-by [:total_score :desc])))

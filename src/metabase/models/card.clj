@@ -1051,7 +1051,10 @@
                   :mr         [:model/ModerationReview [:and
                                                         [:= :mr.moderated_item_type "card"]
                                                         [:= :mr.moderated_item_id :this.id]
-                                                        [:= :mr.most_recent true]]]}})
+                                                        [:= :mr.most_recent true]]]
+                  ;; workaround for dataflow :((((((
+                  :dashcard [:model/DashboardCard [:= :dashcard.card_id :this.id]]
+                  }})
 
 (search/define-spec "card"
   (-> base-search-spec (sql.helpers/where [:= :this.type "question"])))

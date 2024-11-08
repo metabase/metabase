@@ -9,6 +9,8 @@
    [toucan2.core :as t2]
    [toucan2.realize :as t2.realize]))
 
+(set! *warn-on-reflection* true)
+
 (def ^:private insert-batch-size 50)
 
 (def ^:private model-rankings
@@ -90,15 +92,23 @@
   []
   (batch-update! (search-items-reducible)))
 
+(defmacro ^:private run-on-thread [& body]
+  `(doto (Thread. ^Runnable (fn [] ~@body))
+     (.start)))
+
 (defn update-index!
   "Given a new or updated instance, create or update all the corresponding search entries if needed."
   [instance]
   (when-let [updates (seq (search.spec/search-models-to-update instance))]
-    (->> (for [[search-model where-clause] updates]
-           (spec-index-reducible search-model where-clause))
-         ;; init collection is only for clj-kondo, as we know that the list is non-empty
-         (reduce u/rconcat [])
-         (batch-update!))))
+    #p updates
+    (run-on-thread
+     (Thread/sleep 100)
+     (->> (for [[search-model where-clause] updates]
+            (spec-index-reducible search-model where-clause))
+          ;; init collection is only for clj-kondo, as we know that the list is non-empty
+          (reduce u/rconcat [])
+          (batch-update!)))
+    nil))
 
 ;; TODO think about how we're going to handle cascading deletes.
 ;; Ideas:

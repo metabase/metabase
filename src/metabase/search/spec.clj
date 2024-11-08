@@ -32,6 +32,7 @@
 (def ^:private optional-attrs
   "These attributes may be omitted (for now) in the interest of brevity in the definitions."
   [:id
+   :name
    :created-at
    :creator-id
    :dataset-query
@@ -43,7 +44,8 @@
    :updated-at])
 
 (def ^:private default-attrs
-  {:id true})
+  {:id   true
+   :name true})
 
 (def ^:private attr-keys
   "Keys of a search-model that correspond to concrete columns in the index"
@@ -260,6 +262,9 @@
         (keep
          (fn [{:keys [search-model fields where]}]
            ;; If there are no changes, treat it as if everything has changed.
-           (when (some fields (keys (or (t2/changes instance) instance)))
+           ;; Likewise if there are no field dependencies, always do it.
+           (when (or (not fields) (some fields (keys (or (t2/changes instance) instance))))
+             ;(let [update [(t2/model instance) :=> search-model (insert-values where :updated instance)]]
+             ;  #p update)
              [search-model (insert-values where :updated instance)])))
         (get (model-hooks) (t2/model instance))))
