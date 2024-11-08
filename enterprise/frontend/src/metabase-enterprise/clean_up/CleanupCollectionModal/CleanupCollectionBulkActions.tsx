@@ -7,6 +7,7 @@ import {
   BulkActionButton,
 } from "metabase/components/BulkActionBar";
 import { UndoToast } from "metabase/containers/UndoListing";
+import { Portal } from "metabase/ui";
 import type { CollectionItem } from "metabase-types/api";
 import type { Undo } from "metabase-types/store/undo";
 
@@ -78,13 +79,13 @@ export const CleanupCollectionBulkActions = ({
   return (
     <>
       {undo && (
-        <div className={CS.undoContainer} data-testid="undo-list">
+        <Portal data-testid="undo-list">
           <UndoToast
             undo={undo}
             onUndo={() => undo.actions?.[0]()}
             onDismiss={() => setUndo(undefined)}
           />
-        </div>
+        </Portal>
       )}
 
       <BulkActionBar
