@@ -30,17 +30,16 @@
   [[filename-binding content] & body]
   `(do-with-temp-template ~content (fn [~filename-binding] ~@body)))
 
-
 (deftest render-string-test
   (testing "Render a template string with a context."
     (are [expected template context]
          (= expected (handlebars/render-string template context))
 
-         "Hello Ngoc" "Hello {{name}}"                                 {:name "Ngoc"}
-         "Hello Ngoc" "Hello {{name}}"                                 {"name" "Ngoc"}
-         "Hello Ngoc" "Hello {{who.name}}"                             {:who {:name "Ngoc"}}
-         "Hello "     "Hello {{#unless hide_name}}{{name}}{{/unless}}" {:name "Ngoc" :hide_name true}
-         "" "" {})
+      "Hello Ngoc" "Hello {{name}}"                                 {:name "Ngoc"}
+      "Hello Ngoc" "Hello {{name}}"                                 {"name" "Ngoc"}
+      "Hello Ngoc" "Hello {{who.name}}"                             {:who {:name "Ngoc"}}
+      "Hello "     "Hello {{#unless hide_name}}{{name}}{{/unless}}" {:name "Ngoc" :hide_name true}
+      "" "" {})
 
     (testing "with custom reqistry"
       (is (= "NGOC" (handlebars/render-string custom-hbs "{{uppercase name}}" {:name "Ngoc"}))))))

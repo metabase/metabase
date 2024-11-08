@@ -5,10 +5,10 @@
   (:import
    (com.github.jknack.handlebars
     Handlebars Template)
-   (com.github.jknack.handlebars.io
-    ClassPathTemplateLoader)
    (com.github.jknack.handlebars.cache
-    ConcurrentMapTemplateCache)))
+    ConcurrentMapTemplateCache)
+   (com.github.jknack.handlebars.io
+    ClassPathTemplateLoader)))
 
 (set! *warn-on-reflection* true)
 
