@@ -272,6 +272,8 @@ export interface ModerationReview {
   most_recent?: boolean;
 }
 
+export type VisualizationSettingKey = keyof VisualizationSettings;
+
 export type CardId = number;
 export type CardEntityId = BaseEntityId;
 export type ModerationReviewStatus = "verified" | null;

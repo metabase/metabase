@@ -137,7 +137,7 @@ To customize the layout, use namespaced components within the `InteractiveQuesti
 These components are available via the `InteractiveQuestion` namespace (e.g., `<InteractiveQuestion.Filter />`).
 
 | Component               | Info                                                                                                                         |
-| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+|-------------------------|------------------------------------------------------------------------------------------------------------------------------|
 | `BackButton`            | The back button, which provides `back` functionality for the InteractiveDashboard                                            |
 | `FilterBar`             | The row of badges that contains the current filters that are applied to the question                                         |
 | `Filter`                | The Filter pane containing all possible filters                                                                              |
@@ -150,6 +150,7 @@ These components are available via the `InteractiveQuestion` namespace (e.g., `<
 | `Notebook`              | The Notebook editor that allows for more filter, aggregation, and custom steps                                               |
 | `NotebookButton`        | The button used in the default layout to open the Notebook editor. You can replace this button with your own implementation. |
 | `QuestionVisualization` | The chart visualization for the question                                                                                     |
+| `QuestionSettings`      | The settings for the current visualization                                                                                   |
 
 ## Interactive question plugins
 
