@@ -70,7 +70,7 @@ You'll import the client's private key into the keystore (rather than a root CA 
 -Djavax.net.ssl.keyStorePassword=<keyStorePassword>
 ```
 
-You can define these with `JAVA_OPTS` environment variable, like so:
+You can define these with the `JAVA_OPTS` environment variable, like so:
 
 ```sh
 JAVA_OPTS: "-Djavax.net.ssl.keyStore=/scripts/keystore.jks -Djavax.net.ssl.keyStoreType=JKS -Djavax.net.ssl.keyStorePassword=<keyStorePassword>"
