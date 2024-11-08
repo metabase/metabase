@@ -87,7 +87,7 @@
   (dissoc query ::query-perms/perms))
 
 (defn remove-source-card-keys
-  "Pre-processing middlewre. Removes any instances of the `:qp/stage-is-from-source-card` key which is added by the
+  "Pre-processing middleware. Removes any instances of the `:qp/stage-is-from-source-card` key which is added by the
   fetch-source-query middleware when source cards are resolved in a query. Since we rely on this for permission enforcement,
   we want to disallow users from passing it in themselves (like `remove-permissions-key` above)."
   [query]
@@ -112,12 +112,7 @@
         card-id
         (do
           (query-perms/check-card-read-perms database-id card-id)
-          (check-block-permissions outer-query)
-          ;; Recursively check *data* permissions for any source Cards. We're not binding *card-id* here since read
-          ;; permissions to the top-level Card are sufficient.
-          (doseq [card-id source-card-ids]
-            (let [{query :dataset-query} (lib.metadata.protocols/card (qp.store/metadata-provider) card-id)]
-              (check-query-permissions* query))))
+          (check-block-permissions outer-query))
 
         ;; set when querying for field values of dashboard filters, which only require
         ;; collection perms for the dashboard and not ad-hoc query perms
