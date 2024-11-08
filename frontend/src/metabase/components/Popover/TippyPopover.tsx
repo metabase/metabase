@@ -4,9 +4,9 @@ import { merge } from "icepick";
 import { useCallback, useMemo, useState } from "react";
 import type * as tippy from "tippy.js";
 
-import { EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID } from "embedding-sdk/config";
+import { getPortalRootElement } from "embedding-sdk/config";
 import EventSandbox from "metabase/components/EventSandbox";
-import { DEFAULT_Z_INDEX } from "metabase/components/Popover/constants";
+import ZIndex from "metabase/css/core/z-index.module.css";
 import { isCypressActive } from "metabase/env";
 import useSequencedContentCloseHandler from "metabase/hooks/use-sequenced-content-close-handler";
 import { isReducedMotionPreferred } from "metabase/lib/dom";
@@ -28,13 +28,6 @@ export interface ITippyPopoverProps extends TippyProps {
 }
 
 const OFFSET: [number, number] = [0, 5];
-
-function appendTo() {
-  return (
-    document.getElementById(EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID) ||
-    document.body
-  );
-}
 
 function getPopperOptions({
   flip,
@@ -87,7 +80,6 @@ function TippyPopover({
   const isControlled = props.visible != null;
 
   const theme = useMantineTheme();
-  const { zIndex = DEFAULT_Z_INDEX } = theme.other.popover ?? {};
 
   const { setupCloseHandler, removeCloseHandler } =
     useSequencedContentCloseHandler();
@@ -134,14 +126,23 @@ function TippyPopover({
     [flip, sizeToFit, popperOptions],
   );
 
+  const zIndex =
+    theme.other.popover?.zIndex ||
+    ("var(--mb-floating-element-z-index)" as unknown as number);
+
   return (
     <TippyComponent
-      className={cx("popover", className)}
+      className={cx(
+        "popover",
+        // FIXME: Is the theme popover zindex respected here?
+        ZIndex.FloatingElement,
+        className,
+      )}
       theme="popover"
       zIndex={zIndex}
       arrow={false}
       offset={OFFSET}
-      appendTo={appendTo}
+      appendTo={getPortalRootElement}
       plugins={plugins}
       {...props}
       popperOptions={computedPopperOptions}
@@ -151,7 +152,11 @@ function TippyPopover({
       content={
         shouldShowContent ? (
           <EventSandbox disabled={disableContentSandbox}>
+            {/*
+            FIXME: removing this div for now
+            <div style={{ zIndex: zIndex }}>*/}
             {content}
+            {/*</div>*/}
           </EventSandbox>
         ) : null
       }
