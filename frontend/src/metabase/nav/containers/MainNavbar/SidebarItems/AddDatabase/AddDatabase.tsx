@@ -8,7 +8,7 @@ import { trackAddDatabaseSidebar } from "./analytics";
 
 export const AddDatabase = () => {
   return (
-    <Link to={Urls.newDatabase()}>
+    <Link to={Urls.newDatabase()} data-testid="add-database-link">
       <Box px="md">
         <Button
           color="brand"
