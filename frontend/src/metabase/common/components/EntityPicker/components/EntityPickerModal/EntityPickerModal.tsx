@@ -5,7 +5,6 @@ import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { useListRecentsQuery, useSearchQuery } from "metabase/api";
-import { BULK_ACTIONS_Z_INDEX } from "metabase/components/BulkActionBar";
 import { useModalOpen } from "metabase/hooks/use-modal-open";
 import { Box, Flex, Icon, Modal, Skeleton, TextInput } from "metabase/ui";
 import { Repeat } from "metabase/ui/components/feedback/Skeleton/Repeat";
@@ -60,9 +59,6 @@ export const defaultOptions: EntityPickerModalOptions = {
   hasConfirmButtons: true,
   hasRecents: true,
 };
-
-// needs to be above popovers and bulk actions
-export const ENTITY_PICKER_Z_INDEX = BULK_ACTIONS_Z_INDEX;
 
 export const DEFAULT_RECENTS_CONTEXT: RecentContexts[] = [
   "selections",
@@ -355,7 +351,6 @@ export function EntityPickerModal<
       closeOnEscape={false} // we're doing this manually in useWindowEvent
       xOffset="10vw"
       yOffset="10dvh"
-      zIndex={ENTITY_PICKER_Z_INDEX} // needs to be above popovers and bulk actions
     >
       <Modal.Overlay />
       <ModalContent h="100%">

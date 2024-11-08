@@ -33,7 +33,6 @@ export interface FormCollectionPickerProps
   initialOpenCollectionId?: CollectionId;
   onOpenCollectionChange?: (collectionId: CollectionId) => void;
   filterPersonalCollections?: FilterItemsInPersonalCollection;
-  zIndex?: number;
   collectionPickerModalProps?: Partial<CollectionPickerModalProps>;
 }
 
