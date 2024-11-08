@@ -22,11 +22,12 @@
    :table-db-id         :database-id
    :verified            :verified})
 
-(def remaps {:created-at :model-created-at})
+;; TODO dry this alias up with the index hydration code
+(def ^:private field-alias {:created-at :model-created-at})
 
 (def ^:private attr->index-key
   (into {} (for [k (vals context-key->attr)]
-             [k (keyword (str "search_index." (u/->snake_case_en (name (remaps k k)))))])))
+             [k (keyword (str "search_index." (u/->snake_case_en (name (field-alias k k)))))])))
 
 (defn- remove-if-falsey [m k]
   (if (m k) m (dissoc m k)))
