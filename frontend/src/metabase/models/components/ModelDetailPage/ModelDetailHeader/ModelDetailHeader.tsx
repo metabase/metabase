@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import type { MoveDestination } from "metabase/collections/types";
+import type { MoveCollectionDestination } from "metabase/collections/types";
 import EntityMenu from "metabase/components/EntityMenu";
 import Modal from "metabase/components/Modal";
 import { MoveModal } from "metabase/containers/MoveModal";
@@ -22,7 +22,7 @@ interface Props {
   model: Question;
   hasEditDefinitionLink: boolean;
   onChangeName: (name?: string) => void;
-  onChangeCollection: (destination: MoveDestination) => void;
+  onChangeCollection: (destination: MoveCollectionDestination) => void;
 }
 
 type HeaderModal = "move" | "archive";
@@ -59,7 +59,7 @@ function ModelDetailHeader({
   const handleCloseModal = useCallback(() => setModal(null), []);
 
   const handleCollectionChange = useCallback(
-    (collection: MoveDestination) => {
+    (collection: MoveCollectionDestination) => {
       onChangeCollection(collection);
       handleCloseModal();
     },
