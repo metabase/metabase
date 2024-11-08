@@ -11,9 +11,14 @@ import S from "./FilterPicker.module.css";
 interface Props {
   className?: string;
   withIcon?: boolean;
+  onClose?: () => void;
 }
 
-export const FilterPicker = ({ className, withIcon = false }: Props) => {
+export const FilterPicker = ({
+  className,
+  withIcon = false,
+  onClose,
+}: Props) => {
   const { question, updateQuestion } = useInteractiveQuestionContext();
 
   const query = question?.query();
@@ -32,11 +37,13 @@ export const FilterPicker = ({ className, withIcon = false }: Props) => {
           withColumnGroupIcon: false,
           withColumnItemIcon: withIcon,
         }}
+        onClose={onClose}
         onSelect={filter => {
           const nextQuery = Lib.filter(query, -1, filter);
 
           if (question) {
             updateQuestion(question.setQuery(nextQuery), { run: true });
+            onClose?.();
           }
         }}
       />

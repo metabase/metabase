@@ -1,6 +1,8 @@
+import { useDisclosure } from "@mantine/hooks";
+
 import { InteractiveQuestion } from "embedding-sdk";
 import { CommonSdkStoryWrapper } from "embedding-sdk/test/CommonSdkStoryWrapper";
-import { Box, Button, Popover } from "metabase/ui";
+import { Box, Button, Flex, Popover } from "metabase/ui";
 
 import { FilterPicker } from "./FilterPicker";
 
@@ -17,19 +19,25 @@ export default {
 
 export const PickerInPopover = {
   render() {
+    const [isOpen, { close, toggle }] = useDisclosure();
+
     return (
       <Box p="lg">
         <InteractiveQuestion questionId={QUESTION_ID}>
           <Box>
-            <Popover position="bottom-start">
-              <Popover.Target>
-                <Button>Filter</Button>
-              </Popover.Target>
+            <Flex justify="space-between" w="100%">
+              <InteractiveQuestion.FilterBar />
 
-              <Popover.Dropdown>
-                <InteractiveQuestion.FilterPicker withIcon />
-              </Popover.Dropdown>
-            </Popover>
+              <Popover position="bottom-end" opened={isOpen} onClose={close}>
+                <Popover.Target>
+                  <Button onClick={toggle}>Filter</Button>
+                </Popover.Target>
+
+                <Popover.Dropdown>
+                  <InteractiveQuestion.FilterPicker onClose={close} withIcon />
+                </Popover.Dropdown>
+              </Popover>
+            </Flex>
 
             <InteractiveQuestion.QuestionVisualization />
           </Box>
