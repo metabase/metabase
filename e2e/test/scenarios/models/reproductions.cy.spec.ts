@@ -766,7 +766,9 @@ describe("issue 25885", () => {
     cy.findByLabelText("Display name")
       .should("have.value", oldName)
       .clear()
-      .type(newName);
+      .type(newName)
+      .blur();
+    tableInteractive().findByTextEnsureVisible(newName);
   }
 
   function verifyColumnName(name: string) {
