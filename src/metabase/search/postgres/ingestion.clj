@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
+   [medley.core :as m]
    [metabase.search.config :as search.config]
    [metabase.search.postgres.index :as search.index]
    [metabase.search.spec :as search.spec]
@@ -11,7 +12,7 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private insert-batch-size 50)
+(def ^:private insert-batch-size 150)
 
 (def ^:private model-rankings
   (zipmap search.config/models-search-order (range)))
@@ -84,6 +85,7 @@
         (comp
          (map t2.realize/realize)
          (map ->entry)
+         (m/distinct-by (juxt :id :model))
          (partition-all insert-batch-size)))
        (run! search.index/batch-update!)))
 

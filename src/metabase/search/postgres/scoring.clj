@@ -55,8 +55,8 @@
      :total_score]]))
 
 (def ^:private scorers
-  ;; TODO bookmarked (user specific)
-  {:text      [:ts_rank :search_vector :query]
+  ;; ts_rank 1: divides rank by log(len(doc))
+  {:text      [:ts_rank :search_vector :query [:inline 1]]
    :pinned    (truthy :pinned)
    :bookmarked [:case
                 [:and [:= :model "card"] [:!= nil :card_bookmark.card_id]] [:inline 1]
