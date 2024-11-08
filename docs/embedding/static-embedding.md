@@ -175,5 +175,5 @@ You can propagate filter values into the external URL, unless the filter is lock
 - [Parameters for static embeds](./static-embedding-parameters.md).
 - [Reference apps repo](https://github.com/metabase/embedding-reference-apps).
 - [Strategies for delivering customer-facing analytics](https://www.metabase.com/learn/metabase-basics/embedding/overview).
-- [Publishing data visualizations to the web](https://www.metabase.com/learn/metabase-basics/embeddingembedding-charts-and-dashboards).
+- [Publishing data visualizations to the web](https://www.metabase.com/learn/metabase-basics/embedding/charts-and-dashboards).
 - [Customizing Metabase's appearance](../configuring-metabase/appearance.md).
