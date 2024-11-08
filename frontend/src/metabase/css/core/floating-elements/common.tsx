@@ -219,7 +219,12 @@ export const FloatingElementsDemo = ({
         />
       ))}
       {Array.from({ length: legacyModalCount }).map((_, index) => (
-        <LegacyModal isOpen key={`legacy-modal-${index}`}>
+        <LegacyModal
+          isOpen
+          key={`legacy-modal-${index}`}
+          closeOnClickOutside
+          onClose={() => setLegacyModalCount(c => c - 1)}
+        >
           <Group style={{ position: "relative" }}>
             <Stack spacing="md" p="md">
               <Box p="1rem 0">Legacy modal content</Box>
