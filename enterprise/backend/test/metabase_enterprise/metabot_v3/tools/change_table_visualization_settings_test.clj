@@ -6,14 +6,14 @@
   (is (= {:output "success",
           :reactions [{:visible-columns ["meow" "mix"]
                        :type :metabot.reaction/change-table-visualization-settings}]}
-         (tools.interface/*invoke-tool* :metabot.tool/change-table-visualization-settings {:visible-columns ["meow" "mix"]}))))
+         (tools.interface/*invoke-tool* {} :metabot.tool/change-table-visualization-settings {:visible-columns ["meow" "mix"]}))))
 
 (deftest it-is-only-applicable-for-tables
-  (is (tools.interface/*tool-applicable?* :metabot.tool/change-table-visualization-settings
+  (is (tools.interface/*tool-applicable?* {} :metabot.tool/change-table-visualization-settings
                                           {:current_visualization_settings {:current_display_type "table"}}))
-  (is (not (tools.interface/*tool-applicable?* :metabot.tool/change-table-visualization-settings
+  (is (not (tools.interface/*tool-applicable?* {} :metabot.tool/change-table-visualization-settings
                                                {:current_visualization_settings {:current_display_type "bar"}})))
-  (is (not (tools.interface/*tool-applicable?* :metabot.tool/change-table-visualization-settings
+  (is (not (tools.interface/*tool-applicable?* {} :metabot.tool/change-table-visualization-settings
                                                {:current_visualization_settings nil})))
-  (is (not (tools.interface/*tool-applicable?* :metabot.tool/change-table-visualization-settings
+  (is (not (tools.interface/*tool-applicable?* {} :metabot.tool/change-table-visualization-settings
                                                nil))))
