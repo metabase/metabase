@@ -420,6 +420,9 @@ describe("issue 28106", () => {
     cy.signInAsAdmin();
 
     resyncDatabase({ dbId: WRITABLE_DB_ID });
+
+    cy.intercept("GET", "/api/collection/root").as("getRootCollection");
+    cy.intercept("GET", "/api/collection/tree**").as("getTree");
   });
 
   it(
@@ -427,6 +430,8 @@ describe("issue 28106", () => {
     { tags: "@external" },
     () => {
       startNewQuestion();
+      cy.wait(["@getRootCollection", "@getTree"]);
+
       entityPickerModal().within(() => {
         entityPickerModalTab("Tables").click();
         cy.findByText("Writable Postgres12").click();
