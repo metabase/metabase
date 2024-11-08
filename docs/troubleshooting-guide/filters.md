@@ -60,7 +60,7 @@ For example, let's say we want to create a filter named "Select Product ID" link
 
 To debug dashboard and question filters that involve timestamps, UUIDs, or numeric data:
 
-1. Find the [data type](https://www.metabase.com/learn/databases/data-types-overview) of the column that you want to filter on. You can find this info from:
+1. Find the [data type](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview) of the column that you want to filter on. You can find this info from:
    - the [Data reference](../exploration-and-organization/data-model-reference.md),
    - the [Table Metadata page](../data-modeling/metadata-editing.md) (admins only), or
    - directly from the database.

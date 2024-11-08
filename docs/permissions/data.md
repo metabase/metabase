@@ -65,7 +65,8 @@ View data permission settings apply to different levels in your database:
 In the free, open-source version of Metabase, the **View data** setting defaults to "Can view". Since the setting's options aren't available in the OSS version, Metabase will only display this **View data** setting in the Pro/Enterprise version.
 
 For _which_ questions, models, and dashboards a group can view, instead see [collection permissions](collections.md).
-_
+\_
+
 ### Can view data permission
 
 {% include plans-blockquote.html feature="Can view data permission" %}
@@ -177,7 +178,7 @@ See [Upload permissions](../databases/uploads.md#add-people-to-a-group-with-data
 
 - [Permissions introduction](./introduction.md)
 - [Impersonation](./impersonation.md)
-- [Learn permissions](https://www.metabase.com/learn/permissions)
+- [Learn permissions](https://www.metabase.com/learn/metabase-basics/administration/permissions)
 - [Troubleshooting permissions](../troubleshooting-guide/permissions.md)
 - [Data sandboxing: setting row-level permissions][sandbox-rows]
 - [Advanced data sandboxing: limiting access to columns][sandbox-columns]
@@ -187,6 +188,6 @@ See [Upload permissions](../databases/uploads.md#add-people-to-a-group-with-data
 [dashboard-subscriptions]: ../dashboards/subscriptions.md
 [data-sandboxing]: ./data-sandboxes.md
 [permissions-overview]: ./introduction.md
-[sandbox-columns]: https://www.metabase.com/learn/permissions/data-sandboxing-column-permissions.html
-[sandbox-rows]: https://www.metabase.com/learn/permissions/data-sandboxing-row-permissions.html
+[sandbox-columns]: https://www.metabase.com/learn/metabase-basics/administration/permissions/data-sandboxing-column-permissions.html
+[sandbox-rows]: https://www.metabase.com/learn/metabase-basics/administration/permissions/data-sandboxing-row-permissions.html
 [sql-snippet-folders]: ../questions/native-editor/sql-snippets.md
