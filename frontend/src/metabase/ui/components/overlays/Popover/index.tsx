@@ -1,11 +1,15 @@
-import type { PopoverDropdownProps } from "@mantine/core";
+import type { PopoverDropdownProps, PopoverProps } from "@mantine/core";
 import { Popover as MantinePopover } from "@mantine/core";
+import cx from "classnames";
 import { useEffect } from "react";
+
+import ZIndex from "metabase/css/core/z-index.module.css";
+import useSequencedContentCloseHandler from "metabase/hooks/use-sequenced-content-close-handler";
+
+import { withLazyPortal } from "../utils";
 
 export type { PopoverBaseProps, PopoverProps } from "@mantine/core";
 export { getPopoverOverrides } from "./Popover.styled";
-
-import useSequencedContentCloseHandler from "metabase/hooks/use-sequenced-content-close-handler";
 
 const MantinePopoverDropdown = MantinePopover.Dropdown;
 
@@ -14,6 +18,10 @@ type ExtendedPopoverDropdownProps = PopoverDropdownProps & {
   // TODO: remove when TippyPopover is no longer used
   setupSequencedCloseHandler?: boolean;
 };
+
+const Popover = (props: PopoverProps) => (
+  <MantinePopover {...withLazyPortal(props)} />
+);
 
 const PopoverDropdown = function PopoverDropdown(
   props: ExtendedPopoverDropdownProps,
@@ -30,15 +38,15 @@ const PopoverDropdown = function PopoverDropdown(
   }, [setupCloseHandler, removeCloseHandler, props.setupSequencedCloseHandler]);
 
   return (
-    <MantinePopoverDropdown {...props} data-element-id="mantine-popover" />
+    <MantinePopoverDropdown
+      {...props}
+      className={cx(props.className, ZIndex.FloatingElement)}
+      data-element-id="mantine-popover"
+    />
   );
 };
 PopoverDropdown.displayName = MantinePopoverDropdown.displayName;
-MantinePopover.Dropdown = PopoverDropdown;
-
-const Popover: typeof MantinePopover & {
-  Dropdown: typeof PopoverDropdown;
-} = MantinePopover;
+Popover.Dropdown = PopoverDropdown;
+Popover.Target = MantinePopover.Target;
 
 export { Popover };
-export { DEFAULT_POPOVER_Z_INDEX } from "./Popover.styled";
