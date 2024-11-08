@@ -2,7 +2,7 @@ import { useMemo } from "react";
 
 import { useSelector } from "metabase/lib/redux";
 import { isNotNull } from "metabase/lib/types";
-import { Text } from "metabase/ui";
+import { Flex, Text } from "metabase/ui";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import { getVisualizerDatasetColumns } from "metabase/visualizer/visualizer.slice";
 
@@ -28,14 +28,19 @@ export function CartesianVerticalWell({
 
   return (
     <SimpleVerticalWell hasValues={metrics.length > 1}>
-      {metrics.map(metric => (
-        <WellItem
-          key={metric.name}
-          style={{ position: "absolute", transform: "rotate(-90deg)" }}
-        >
-          <Text truncate>{metric.display_name}</Text>
-        </WellItem>
-      ))}
+      <Flex
+        align="center"
+        justify="center"
+        pos="relative"
+        gap="sm"
+        style={{ transform: "rotate(-90deg)" }}
+      >
+        {metrics.map(metric => (
+          <WellItem key={metric.name}>
+            <Text truncate>{metric.display_name}</Text>
+          </WellItem>
+        ))}
+      </Flex>
     </SimpleVerticalWell>
   );
 }

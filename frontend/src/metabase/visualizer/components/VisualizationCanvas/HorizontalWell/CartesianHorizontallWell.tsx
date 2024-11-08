@@ -38,6 +38,7 @@ export function CartesianHorizontalWell({
       bg={active ? "var(--mb-color-brand-light)" : "bg-light"}
       p="sm"
       wrap="nowrap"
+      gap="sm"
       style={{
         ...style,
         overflowX: "auto",

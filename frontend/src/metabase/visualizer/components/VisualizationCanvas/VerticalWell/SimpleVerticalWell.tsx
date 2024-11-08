@@ -23,7 +23,7 @@ export function SimpleVerticalWell({
   return (
     <Flex
       h="100%"
-      pos="relative"
+      w="42px"
       align="center"
       justify="center"
       bg={active ? "var(--mb-color-brand-light)" : "bg-light"}

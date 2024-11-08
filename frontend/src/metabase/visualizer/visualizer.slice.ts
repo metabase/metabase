@@ -473,24 +473,76 @@ const cartesianDropHandler: DropHandler = (state, { active, over }) => {
   );
 
   if (over.id === DROPPABLE_ID.X_AXIS_WELL) {
-    const dimension = getVisualizerDimensionColumn({ visualizer: state });
-    if (dimension.column) {
-      state.columns[dimension.index] = connectToVisualizerColumn(
-        cloneColumnProperties(dimension.column, column),
+    const dimensions = state.settings["graph.dimensions"] ?? [];
+
+    const isInUse = state.columns.some(col =>
+      col.values.includes(columnRef.name),
+    );
+    if (isInUse) {
+      return;
+    }
+
+    const index = state.columns.findIndex(col => col.name === dimensions[0]);
+    const dimension = state.columns[index];
+
+    if (dimensions.length === 1 && dimension && !dimension.values.length) {
+      state.columns[index] = connectToVisualizerColumn(
+        cloneColumnProperties(dimension, column),
         columnRef.name,
       );
       state.referencedColumns.push(columnRef);
+    } else {
+      const nameIndex = dimensions.length + 1;
+      const newDimension = cloneColumnProperties(
+        createDimensionColumn({
+          name: `${VISUALIZER_DIMENSION_COL_NAME}_${nameIndex}`,
+          values: [columnRef.name],
+        }),
+        column,
+      );
+      state.columns.push(newDimension);
+      state.referencedColumns.push(columnRef);
+      state.settings = {
+        ...state.settings,
+        "graph.dimensions": [...dimensions, newDimension.name],
+      };
     }
   }
 
   if (over.id === DROPPABLE_ID.Y_AXIS_WELL) {
-    const metric = getVisualizerMetricColumn({ visualizer: state });
-    if (metric.column) {
-      state.columns[metric.index] = connectToVisualizerColumn(
-        cloneColumnProperties(metric.column, column),
+    const metrics = state.settings["graph.metrics"] ?? [];
+
+    const isInUse = state.columns.some(col =>
+      col.values.includes(columnRef.name),
+    );
+    if (isInUse) {
+      return;
+    }
+
+    const index = state.columns.findIndex(col => col.name === metrics[0]);
+    const metric = state.columns[index];
+
+    if (metrics.length === 1 && metric && !metric.values.length) {
+      state.columns[index] = connectToVisualizerColumn(
+        cloneColumnProperties(metric, column),
         columnRef.name,
       );
       state.referencedColumns.push(columnRef);
+    } else {
+      const nameIndex = metrics.length + 1;
+      const newMetric = cloneColumnProperties(
+        createMetricColumn({
+          name: `${VISUALIZER_METRIC_COL_NAME}_${nameIndex}`,
+          values: [columnRef.name],
+        }),
+        column,
+      );
+      state.columns.push(newMetric);
+      state.referencedColumns.push(columnRef);
+      state.settings = {
+        ...state.settings,
+        "graph.metrics": [...metrics, newMetric.name],
+      };
     }
   }
 };
@@ -527,37 +579,38 @@ const funnelDropHandler: DropHandler = (state, { active, over }) => {
 const VISUALIZER_METRIC_COL_NAME = "METRIC";
 const VISUALIZER_DIMENSION_COL_NAME = "DIMENSION";
 
-function createMetricColumn(): VisualizerDatasetColumn {
+type CreateColumnOpts = {
+  name?: string;
+  values?: string[];
+};
+
+function createMetricColumn({
+  name = VISUALIZER_METRIC_COL_NAME,
+  values = [],
+}: CreateColumnOpts = {}): VisualizerDatasetColumn {
   return {
+    name,
+    display_name: name,
     base_type: "type/Integer",
     effective_type: "type/Integer",
-    display_name: "METRIC",
-    field_ref: [
-      "field",
-      VISUALIZER_METRIC_COL_NAME,
-      { "base-type": "type/Integer" },
-    ],
-    name: VISUALIZER_METRIC_COL_NAME,
+    field_ref: ["field", name, { "base-type": "type/Integer" }],
     source: "artificial",
-
-    values: [],
+    values,
   };
 }
 
-function createDimensionColumn(): VisualizerDatasetColumn {
+function createDimensionColumn({
+  name = VISUALIZER_DIMENSION_COL_NAME,
+  values = [],
+}: CreateColumnOpts = {}): VisualizerDatasetColumn {
   return {
+    name,
+    display_name: name,
     base_type: "type/Text",
     effective_type: "type/Text",
-    display_name: "DIMENSION",
-    field_ref: [
-      "field",
-      VISUALIZER_DIMENSION_COL_NAME,
-      { "base-type": "type/Text" },
-    ],
-    name: VISUALIZER_DIMENSION_COL_NAME,
+    field_ref: ["field", name, { "base-type": "type/Text" }],
     source: "artificial",
-
-    values: [],
+    values,
   };
 }
 
