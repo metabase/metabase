@@ -1,13 +1,18 @@
 import type { MantineThemeOverride } from "@mantine/core";
 import { getStylesRef, px, rem } from "@mantine/core";
 
+import ZIndex from "metabase/css/core/z-index.module.css";
+
 export const getMenuOverrides = (): MantineThemeOverride["components"] => ({
   Menu: {
     defaultProps: {
       radius: "sm",
       shadow: "md",
       withinPortal: true,
+      // FIXME: Do I need this here?
+      // zIndex: "var(--mb-floating-element-z-index)",
     },
+    classNames: { dropdown: ZIndex.FloatingElement },
     styles: theme => ({
       dropdown: {
         padding: "0.75rem !important",

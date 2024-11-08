@@ -3,9 +3,10 @@ import { Menu as MantineMenu } from "@mantine/core";
 
 import { MenuDropdown } from "./MenuDropdown";
 import { MenuItem } from "./MenuItem";
+import { withLazyPortal } from "../utils";
 
 export function Menu(props: MenuProps) {
-  return <MantineMenu {...props} />;
+  return <MantineMenu {...withLazyPortal(props)} />;
 }
 
 Menu.Target = MantineMenu.Target;

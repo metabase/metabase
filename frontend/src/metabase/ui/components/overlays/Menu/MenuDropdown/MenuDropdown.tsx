@@ -9,7 +9,7 @@ import useSequencedContentCloseHandler from "metabase/hooks/use-sequenced-conten
 // remove when TippyPopover is no longer used
 export function MenuDropdown({ children, ...props }: MenuDropdownProps) {
   return (
-    <Menu.Dropdown {...props}>
+    <Menu.Dropdown {...props} data-element-id="mantine-menu">
       <MenuDropdownContent>{children}</MenuDropdownContent>
     </Menu.Dropdown>
   );
