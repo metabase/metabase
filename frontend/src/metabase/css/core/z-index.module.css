@@ -1,7 +1,3 @@
-:root {
-  --mb-floating-element-z-index: 200;
-}
-
 /** @see floating-elements.stories.tsx */
 .FloatingElement {
   /* !important is needed to override the z-index that Mantine applies. The

@@ -88,6 +88,9 @@ export const DEFAULT_METABASE_COMPONENT_THEME: MetabaseComponentTheme = {
       label: { fontSize: FONT_SIZES.goalLabel.px },
     },
   },
+  popover: {
+    zIndex: 200,
+  },
 };
 
 /**
@@ -132,9 +135,7 @@ export const DEFAULT_EMBEDDED_COMPONENT_THEME: MetabaseComponentTheme = merge<
 // To be sure to not slow down typescript I left the check commented.
 // If you change any of the default props please verify that the types are correct
 
-export function getEmbeddingComponentOverrides(
-  theme?: DeepPartial<MetabaseComponentTheme>,
-): MantineThemeOverride["components"] {
+export function getEmbeddingComponentOverrides(): MantineThemeOverride["components"] {
   return {
     HoverCard: {
       defaultProps: {
@@ -142,8 +143,6 @@ export function getEmbeddingComponentOverrides(
         portalProps: {
           target: `#${EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID}`,
         },
-
-        ...(theme?.popover?.zIndex && { zIndex: theme.popover.zIndex }),
       },
     },
     ModalRoot: {
