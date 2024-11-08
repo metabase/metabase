@@ -1,7 +1,13 @@
-// various Metabase-specific "scoping" functions like inside popover/modal/navbar/main/sidebar content area
+// Functions that get key elements in the app
+
 export const POPOVER_ELEMENT =
   ".popover[data-state~='visible'],[data-element-id=mantine-popover]";
 
+/** The currently visible popover dropdown
+ *
+ * Note: This function finds Mantine <Popover> dropdowns as well as Mantine <Menu>
+ * dropdowns (which also have the attribute data-element-id="mantine-popover")
+ * */
 export function popover() {
   cy.get(POPOVER_ELEMENT).should("be.visible");
   return cy.get(POPOVER_ELEMENT);
