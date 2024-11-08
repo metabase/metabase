@@ -17,6 +17,7 @@
    (jakarta.servlet AsyncContext)
    (jakarta.servlet.http HttpServletResponse)
    (java.io BufferedWriter OutputStream OutputStreamWriter)
+   (java.nio ByteBuffer)
    (java.nio.channels ClosedChannelException SocketChannel)
    (java.nio.charset StandardCharsets)
    (java.util.zip GZIPOutputStream)
@@ -168,14 +169,22 @@
     (swap! *reported-types conj transport-type)))
 
 (defn- canceled?
-  "Check whether the HTTP request has been canceled by the client. This function uses `HttpEndpoint.isOpen` method which
-  is not guaranteed to return false in case the client closes the connection, but it's the best heuristic we have."
+  "Check whether the HTTP request has been canceled by the client.
+
+  This function attempts to read a single byte from the underlying TCP socket; if the request is canceled, `.read`
+  will return `-1`. Otherwise, since the entire request has already been read, `.read` *should* probably complete
+  immediately, returning `0`."
   [^Request request]
   (try
-    (let [endpoint (.. request getHttpChannel getEndPoint)
-          is-open  (.isOpen endpoint)]
-      (log/tracef "Check cancelation status: .isOpen returned %s" is-open)
-      (not is-open))
+    (let [transport (.. request getHttpChannel getEndPoint getTransport)]
+      (if-let [channel (get-channel transport)]
+        (let [buf        (ByteBuffer/allocate 1)
+              status     (.read channel buf)]
+          (log/tracef "Check cancelation status: .read returned %d" status)
+          (neg? status))
+        (do
+          (log-unexpected-transport! transport)
+          false)))
     (catch InterruptedException _ false)
     (catch ClosedChannelException _ true)
     (catch Throwable e
