@@ -1,38 +1,29 @@
-import { useDroppable } from "@dnd-kit/core";
-
-import { Flex, Text } from "metabase/ui";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
-import { DROPPABLE_ID } from "metabase/visualizer/dnd/constants";
+import { useSelector } from "metabase/lib/redux";
+import { Text } from "metabase/ui";
+import {
+  getSettings,
+  getVisualizerDatasetColumns,
+} from "metabase/visualizer/visualizer.slice";
 
 import { WellItem } from "../WellItem";
 
-interface FunnelVerticalWellProps {
-  settings: ComputedVisualizationSettings;
-}
+import { SimpleVerticalWell } from "./SimpleVerticalWell";
 
-export function FunnelVerticalWell({ settings }: FunnelVerticalWellProps) {
-  const { setNodeRef } = useDroppable({ id: DROPPABLE_ID.Y_AXIS_WELL });
+export function FunnelVerticalWell() {
+  const settings = useSelector(getSettings);
+  const columns = useSelector(getVisualizerDatasetColumns);
 
-  const metric = settings["funnel.metric"];
+  const metric = columns.find(
+    column => column.name === settings["funnel.metric"],
+  );
 
   return (
-    <Flex
-      h="100%"
-      pos="relative"
-      align="center"
-      justify="center"
-      bg="var(--mb-color-bg-light)"
-      p="md"
-      wrap="nowrap"
-      style={{
-        borderRadius: "var(--border-radius-xl)",
-        border: `1px solid var(--mb-color-border)`,
-      }}
-      ref={setNodeRef}
-    >
-      <WellItem style={{ position: "absolute", transform: "rotate(-90deg)" }}>
-        <Text truncate>{metric}</Text>
-      </WellItem>
-    </Flex>
+    <SimpleVerticalWell hasValues={!!metric}>
+      {!!metric && (
+        <WellItem style={{ position: "absolute", transform: "rotate(-90deg)" }}>
+          <Text truncate>{metric.display_name}</Text>
+        </WellItem>
+      )}
+    </SimpleVerticalWell>
   );
 }

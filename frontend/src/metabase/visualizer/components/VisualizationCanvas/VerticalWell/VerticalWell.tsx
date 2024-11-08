@@ -1,16 +1,19 @@
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import { isCartesianChart } from "metabase/visualizations";
 import type { VisualizationDisplay } from "metabase-types/api";
 
+import { CartesianVerticalWell } from "./CartesianVerticalWell";
 import { FunnelVerticalWell } from "./FunnelVerticalWell";
 
 interface VerticalWellProps {
   display: VisualizationDisplay;
-  settings: ComputedVisualizationSettings;
 }
 
-export function VerticalWell({ display, ...props }: VerticalWellProps) {
+export function VerticalWell({ display }: VerticalWellProps) {
+  if (isCartesianChart(display)) {
+    return <CartesianVerticalWell />;
+  }
   if (display === "funnel") {
-    return <FunnelVerticalWell {...props} />;
+    return <FunnelVerticalWell />;
   }
   return null;
 }

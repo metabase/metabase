@@ -1,3 +1,4 @@
+import type { DragEndEvent } from "@dnd-kit/core";
 import {
   type PayloadAction,
   createSelector,
@@ -7,14 +8,16 @@ import _ from "underscore";
 
 import { cardApi } from "metabase/api";
 import { createAsyncThunk } from "metabase/lib/redux";
+import { isCartesianChart } from "metabase/visualizations";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import { getColumnNameFromKey } from "metabase-lib/v1/queries/utils/column-key";
-import { isNumeric } from "metabase-lib/v1/types/utils/isa";
+import { isDate, isNumeric } from "metabase-lib/v1/types/utils/isa";
 import type {
   Card,
   CardId,
   Dataset,
   DatasetColumn,
+  DatasetData,
   RawSeries,
   RowValues,
   VisualizationDisplay,
@@ -28,12 +31,15 @@ import type {
   VisualizerState,
 } from "metabase-types/store/visualizer";
 
+import { DROPPABLE_ID } from "./constants";
 import {
   createDataSource,
   createDataSourceNameRef,
   createVisualizerColumnReference,
   getDataSourceIdFromNameRef,
   isDataSourceNameRef,
+  isDraggedColumnItem,
+  isDraggedWellItem,
 } from "./utils";
 
 const initialState: VisualizerState = {
@@ -93,54 +99,67 @@ const visualizerSlice = createSlice({
   name: "visualizer",
   initialState,
   reducers: {
-    importColumn: (
-      state,
-      action: PayloadAction<{
-        column: DatasetColumn;
-        dataSource: VisualizerDataSource;
-      }>,
-    ) => {
-      const { column, dataSource } = action.payload;
+    handleDrop: (state, action: PayloadAction<DragEndEvent>) => {
+      state.draggedItem = null;
 
-      const columnRef = createVisualizerColumnReference(
-        dataSource,
-        column,
-        state.referencedColumns,
-      );
+      if (!state.display) {
+        return;
+      }
 
-      state.referencedColumns.push(columnRef);
+      const event = action.payload;
 
-      if (state.display === "funnel" && isNumeric(column)) {
-        const metric = getVisualizerMetricColumn({ visualizer: state });
-        const dimension = getVisualizerDimensionColumn({ visualizer: state });
-        if (metric.column && dimension.column) {
-          state.columns[metric.index] = connectToVisualizerColumn(
-            metric.column,
-            columnRef.name,
-          );
-          state.columns[dimension.index] = connectToVisualizerColumn(
-            dimension.column,
-            createDataSourceNameRef(dataSource.id),
-          );
-        }
+      if (isCartesianChart(state.display)) {
+        cartesianDropHandler(state, event);
+      } else if (state.display === "funnel") {
+        funnelDropHandler(state, event);
       }
     },
     setDisplay: (state, action: PayloadAction<VisualizationDisplay | null>) => {
       const display = action.payload;
+
+      if (
+        display &&
+        state.display &&
+        isCartesianChart(display) &&
+        isCartesianChart(state.display)
+      ) {
+        state.display = display;
+        return;
+      }
 
       state.display = display;
       state.settings = {};
       state.columns = [];
       state.referencedColumns = [];
 
-      if (display === "funnel") {
+      if (!display) {
+        return;
+      }
+
+      if (isCartesianChart(display) || display === "funnel") {
         const metric = createMetricColumn();
         const dimension = createDimensionColumn();
         state.columns = [metric, dimension];
-        state.settings = {
-          "funnel.metric": metric.name,
-          "funnel.dimension": dimension.name,
-        };
+
+        if (display === "scatter") {
+          state.columns.push(createMetricColumn({ name: "BUBBLE_SIZE" }));
+        }
+
+        if (display === "funnel") {
+          state.settings = {
+            "funnel.metric": metric.name,
+            "funnel.dimension": dimension.name,
+          };
+        } else {
+          state.settings = {
+            "graph.metrics": [metric.name],
+            "graph.dimensions": [dimension.name],
+          };
+
+          if (display === "scatter") {
+            state.settings["scatter.bubble"] = "BUBBLE_SIZE";
+          }
+        }
       }
     },
     updateSettings: (state, action: PayloadAction<VisualizationSettings>) => {
@@ -277,7 +296,7 @@ const visualizerSlice = createSlice({
 });
 
 export const {
-  importColumn,
+  handleDrop,
   setDisplay,
   updateSettings,
   removeDataSource,
@@ -288,7 +307,7 @@ export const {
 
 export const { reducer } = visualizerSlice;
 
-export const getSettings = (state: { visualizer: VisualizerState }) =>
+const getRawSettings = (state: { visualizer: VisualizerState }) =>
   state.visualizer.settings;
 
 export const getVisualizationType = (state: { visualizer: VisualizerState }) =>
@@ -312,7 +331,9 @@ const getCards = (state: { visualizer: VisualizerState }) =>
 const getVisualizationColumns = (state: { visualizer: VisualizerState }) =>
   state.visualizer.columns;
 
-const getVisualizerMetricColumn = (state: { visualizer: VisualizerState }) => {
+export const getVisualizerMetricColumn = (state: {
+  visualizer: VisualizerState;
+}) => {
   const columns = getVisualizationColumns(state);
   const index = columns.findIndex(
     column => column.name === VISUALIZER_METRIC_COL_NAME,
@@ -320,7 +341,7 @@ const getVisualizerMetricColumn = (state: { visualizer: VisualizerState }) => {
   return { column: columns[index], index };
 };
 
-const getVisualizerDimensionColumn = (state: {
+export const getVisualizerDimensionColumn = (state: {
   visualizer: VisualizerState;
 }) => {
   const columns = getVisualizationColumns(state);
@@ -360,12 +381,7 @@ const getVisualizerDatasetData = createSelector(
     getReferencedColumns,
     getVisualizationColumns,
   ],
-  (usedDataSources, datasets, referencedColumns, cols): Dataset => {
-    if (usedDataSources.length === 1) {
-      const [source] = usedDataSources;
-      return datasets[source.id]?.data;
-    }
-
+  (usedDataSources, datasets, referencedColumns, cols): DatasetData => {
     const referencedColumnValuesMap: Record<string, RowValues> = {};
     referencedColumns.forEach(ref => {
       const dataset = datasets[ref.sourceId];
@@ -407,6 +423,26 @@ const getVisualizerDatasetData = createSelector(
   },
 );
 
+export const getVisualizerDatasetColumns = createSelector(
+  [getVisualizerDatasetData],
+  data => data.cols,
+);
+
+export const getSettings = createSelector(
+  [getVisualizationType, getRawSettings],
+  (display, settings) => {
+    if (display && isCartesianChart(display)) {
+      // Visualizer wells display labels
+      return {
+        ...settings,
+        "graph.x_axis.labels_enabled": false,
+        "graph.y_axis.labels_enabled": false,
+      };
+    }
+    return settings;
+  },
+);
+
 export const getVisualizerRawSeries = createSelector(
   [getVisualizationType, getSettings, getVisualizerDatasetData],
   (display, settings, data): RawSeries => {
@@ -431,40 +467,223 @@ export const getVisualizerComputedSettings = createSelector(
     rawSeries.length > 0 ? getComputedSettingsForSeries(rawSeries) : {},
 );
 
+type DropHandler = (state: VisualizerState, event: DragEndEvent) => void;
+
+const cartesianDropHandler: DropHandler = (state, { active, over }) => {
+  if (!over) {
+    return;
+  }
+
+  if (over.id === DROPPABLE_ID.CANVAS_MAIN && isDraggedWellItem(active)) {
+    const { wellId, column } = active.data.current;
+    const [connectedColumnRef] = column.values;
+
+    if (wellId === DROPPABLE_ID.X_AXIS_WELL) {
+      const dimensions = state.settings["graph.dimensions"] ?? [];
+      const nextDimensions = dimensions.filter(
+        dimension => dimension !== column.name,
+      );
+
+      state.columns = state.columns.filter(col => col.name !== column.name);
+      if (nextDimensions.length === 0) {
+        const newDimension = createDimensionColumn();
+        state.columns.push(newDimension);
+        nextDimensions.push(newDimension.name);
+      }
+
+      state.referencedColumns = state.referencedColumns.filter(
+        ref => ref.name !== connectedColumnRef,
+      );
+      state.settings = {
+        ...state.settings,
+        "graph.dimensions": nextDimensions,
+      };
+    }
+
+    if (wellId === DROPPABLE_ID.Y_AXIS_WELL) {
+      const metrics = state.settings["graph.metrics"] ?? [];
+      const nextMetrics = metrics.filter(metric => metric !== column.name);
+
+      state.columns = state.columns.filter(col => col.name !== column.name);
+      if (nextMetrics.length === 0) {
+        const newMetric = createMetricColumn();
+        state.columns.push(newMetric);
+        nextMetrics.push(newMetric.name);
+      }
+
+      state.referencedColumns = state.referencedColumns.filter(
+        ref => ref.name !== connectedColumnRef,
+      );
+      state.settings = {
+        ...state.settings,
+        "graph.metrics": nextMetrics,
+      };
+    }
+  }
+
+  if (!isDraggedColumnItem(active)) {
+    return;
+  }
+
+  const { column, dataSource } = active.data.current;
+  const columnRef = createVisualizerColumnReference(
+    dataSource,
+    column,
+    state.referencedColumns,
+  );
+
+  if (over.id === DROPPABLE_ID.X_AXIS_WELL) {
+    const dimensions = state.settings["graph.dimensions"] ?? [];
+
+    const isInUse = state.columns.some(col =>
+      col.values.includes(columnRef.name),
+    );
+    if (isInUse) {
+      return;
+    }
+
+    const index = state.columns.findIndex(col => col.name === dimensions[0]);
+    const dimension = state.columns[index];
+
+    if (dimensions.length === 1 && dimension && !dimension.values.length) {
+      state.columns[index] = connectToVisualizerColumn(
+        cloneColumnProperties(dimension, column),
+        columnRef.name,
+      );
+      state.referencedColumns.push(columnRef);
+    } else {
+      const nameIndex = dimensions.length + 1;
+      const newDimension = cloneColumnProperties(
+        createDimensionColumn({
+          name: `${VISUALIZER_DIMENSION_COL_NAME}_${nameIndex}`,
+          values: [columnRef.name],
+        }),
+        column,
+      );
+      state.columns.push(newDimension);
+      state.referencedColumns.push(columnRef);
+      state.settings = {
+        ...state.settings,
+        "graph.dimensions": [...dimensions, newDimension.name],
+      };
+    }
+  }
+
+  if (over.id === DROPPABLE_ID.Y_AXIS_WELL) {
+    const metrics = state.settings["graph.metrics"] ?? [];
+
+    const isInUse = state.columns.some(col =>
+      col.values.includes(columnRef.name),
+    );
+    if (isInUse) {
+      return;
+    }
+
+    const index = state.columns.findIndex(col => col.name === metrics[0]);
+    const metric = state.columns[index];
+
+    if (metrics.length === 1 && metric && !metric.values.length) {
+      state.columns[index] = connectToVisualizerColumn(
+        cloneColumnProperties(metric, column),
+        columnRef.name,
+      );
+      state.referencedColumns.push(columnRef);
+    } else {
+      const nameIndex = metrics.length + 1;
+      const newMetric = cloneColumnProperties(
+        createMetricColumn({
+          name: `${VISUALIZER_METRIC_COL_NAME}_${nameIndex}`,
+          values: [columnRef.name],
+        }),
+        column,
+      );
+      state.columns.push(newMetric);
+      state.referencedColumns.push(columnRef);
+      state.settings = {
+        ...state.settings,
+        "graph.metrics": [...metrics, newMetric.name],
+      };
+    }
+  }
+
+  if (over.id === DROPPABLE_ID.SCATTER_BUBBLE_SIZE_WELL) {
+    state.columns = state.columns.map(col => {
+      if (col.name !== "BUBBLE_SIZE") {
+        return col;
+      }
+      return {
+        ...col,
+        values: [columnRef.name],
+      };
+    });
+    state.referencedColumns.push(columnRef);
+  }
+};
+
+const funnelDropHandler: DropHandler = (state, { active, over }) => {
+  if (!over || !isDraggedColumnItem(active)) {
+    return;
+  }
+
+  const { column, dataSource } = active.data.current;
+  const columnRef = createVisualizerColumnReference(
+    dataSource,
+    column,
+    state.referencedColumns,
+  );
+
+  if (over.id === DROPPABLE_ID.CANVAS_MAIN && isNumeric(column)) {
+    const metric = getVisualizerMetricColumn({ visualizer: state });
+    const dimension = getVisualizerDimensionColumn({ visualizer: state });
+    if (metric.column && dimension.column) {
+      state.columns[metric.index] = connectToVisualizerColumn(
+        metric.column,
+        columnRef.name,
+      );
+      state.columns[dimension.index] = connectToVisualizerColumn(
+        dimension.column,
+        createDataSourceNameRef(dataSource.id),
+      );
+      state.referencedColumns.push(columnRef);
+    }
+  }
+};
+
 const VISUALIZER_METRIC_COL_NAME = "METRIC";
 const VISUALIZER_DIMENSION_COL_NAME = "DIMENSION";
 
-function createMetricColumn(): VisualizerDatasetColumn {
+type CreateColumnOpts = {
+  name?: string;
+  values?: string[];
+};
+
+function createMetricColumn({
+  name = VISUALIZER_METRIC_COL_NAME,
+  values = [],
+}: CreateColumnOpts = {}): VisualizerDatasetColumn {
   return {
+    name,
+    display_name: name,
     base_type: "type/Integer",
     effective_type: "type/Integer",
-    display_name: "METRIC",
-    field_ref: [
-      "field",
-      VISUALIZER_METRIC_COL_NAME,
-      { "base-type": "type/Integer" },
-    ],
-    name: VISUALIZER_METRIC_COL_NAME,
+    field_ref: ["field", name, { "base-type": "type/Integer" }],
     source: "artificial",
-
-    values: [],
+    values,
   };
 }
 
-function createDimensionColumn(): VisualizerDatasetColumn {
+function createDimensionColumn({
+  name = VISUALIZER_DIMENSION_COL_NAME,
+  values = [],
+}: CreateColumnOpts = {}): VisualizerDatasetColumn {
   return {
+    name,
+    display_name: name,
     base_type: "type/Text",
     effective_type: "type/Text",
-    display_name: "DIMENSION",
-    field_ref: [
-      "field",
-      VISUALIZER_DIMENSION_COL_NAME,
-      { "base-type": "type/Text" },
-    ],
-    name: VISUALIZER_DIMENSION_COL_NAME,
+    field_ref: ["field", name, { "base-type": "type/Text" }],
     source: "artificial",
-
-    values: [],
+    values,
   };
 }
 
@@ -478,4 +697,39 @@ function connectToVisualizerColumn(
       ? [...column.values, ref]
       : column.values,
   };
+}
+
+function cloneColumnProperties(
+  visualizerColumn: VisualizerDatasetColumn,
+  column: DatasetColumn,
+) {
+  const nextColumn = {
+    ...visualizerColumn,
+    base_type: column.base_type,
+    effective_type: column.effective_type,
+    display_name: column.display_name,
+  };
+
+  // TODO Remove manual MBQL manipulation
+  if (isDate(column)) {
+    const opts = { "base-type": column.base_type };
+    const temporalUnit = maybeGetTemporalUnit(column);
+    if (temporalUnit) {
+      opts["temporal-unit"] = temporalUnit;
+    }
+    nextColumn.field_ref = [
+      visualizerColumn?.field_ref?.[0] ?? "field",
+      visualizerColumn?.field_ref?.[1] ?? nextColumn.name,
+      opts,
+    ];
+  }
+
+  return nextColumn;
+}
+
+function maybeGetTemporalUnit(col: DatasetColumn) {
+  const maybeOpts = col.field_ref?.[2];
+  if (maybeOpts && "temporal-unit" in maybeOpts) {
+    return maybeOpts["temporal-unit"];
+  }
 }

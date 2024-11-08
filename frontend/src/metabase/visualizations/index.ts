@@ -132,6 +132,15 @@ export function getDefaultSize(display: VisualizationDisplay) {
   return visualization?.defaultSize;
 }
 
+export function isCartesianChart(display: VisualizationDisplay) {
+  const visualization = visualizations.get(display);
+  const settingNames = Object.keys(visualization?.settings ?? {});
+  return (
+    settingNames.includes("graph.dimensions") &&
+    settingNames.includes("graph.metrics")
+  );
+}
+
 // removes columns with `remapped_from` property and adds a `remapping` to the appropriate column
 export const extractRemappedColumns = (data: DatasetData) => {
   const cols: RemappingHydratedDatasetColumn[] = data.cols.map(col => ({
