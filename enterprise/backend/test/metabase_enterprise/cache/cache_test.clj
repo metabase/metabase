@@ -149,24 +149,24 @@
 
           (mt/with-all-users-data-perms-graph! {db-id {:details :no}}
             (mt/with-non-admin-groups-no-collection-perms collection-id
-             (doseq [[model id] [["question" card-id]
-                                 #_["database" db-id]
-                                 #_["dashboard" dashboard-id]]]
-               (testing (format "\nTesting cache config for %s %d" model id)
-                 (mt/user-http-request :rasta :get 403 "cache/"
-                                       :model model
-                                       :id id)
+              (doseq [[model id] [["question" card-id]
+                                  #_["database" db-id]
+                                  #_["dashboard" dashboard-id]]]
+                (testing (format "\nTesting cache config for %s %d" model id)
+                  (mt/user-http-request :rasta :get 403 "cache/"
+                                        :model model
+                                        :id id)
 
-                 (mt/user-http-request :rasta :put 403 "cache/"
-                                       {:model    model
-                                        :model_id id
-                                        :strategy {:type "nocache" :name "card1"}})
-                 (mt/user-http-request :rasta :post 403 "cache/invalidate"
-                                       (keyword model) [id])
+                  (mt/user-http-request :rasta :put 403 "cache/"
+                                        {:model    model
+                                         :model_id id
+                                         :strategy {:type "nocache" :name "card1"}})
+                  (mt/user-http-request :rasta :post 403 "cache/invalidate"
+                                        (keyword model) [id])
 
-                 (mt/user-http-request :rasta :delete 403 "cache/"
-                                       {:model    model
-                                        :model_id id}))))))))))
+                  (mt/user-http-request :rasta :delete 403 "cache/"
+                                        {:model    model
+                                         :model_id id}))))))))))
 
 (deftest invalidation-test
   (mt/with-model-cleanup [:model/CacheConfig
