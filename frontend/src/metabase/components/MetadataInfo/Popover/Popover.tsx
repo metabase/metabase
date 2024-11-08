@@ -87,7 +87,7 @@ export function Popover({
       >
         {/* HACK: adds an element between the target and the card */}
         {/* to avoid the card from disappearing */}
-        <HackyInvisibleTargetFiller />
+        {/*<HackyInvisibleTargetFiller />*/}
         <WidthBound
           width={width}
           ref={node => {

@@ -352,6 +352,7 @@ export function AggregationPicker({
 
   return (
     <Box className={className} c="summarize">
+      hi
       <AccordionList
         sections={sections}
         onChange={handleChange}
