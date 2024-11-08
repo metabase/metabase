@@ -230,6 +230,7 @@
   ([search-term select-items]
    {:select    select-items
     :from      [active-table]
+    ;; Using a join allows us to share the query expression between our SELECT and WHERE clauses.
     :join      [[[:raw "to_tsquery('"
                   tsv-language "', "
                   [:lift (to-tsquery-expr search-term)] ")"]
