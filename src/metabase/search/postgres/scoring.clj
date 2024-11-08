@@ -1,7 +1,6 @@
 (ns metabase.search.postgres.scoring
   (:require
    [honey.sql.helpers :as sql.helpers]
-   [metabase.api.common :as api]
    [metabase.search.config :as search.config]))
 
 (def ^:private seconds-in-a-day 86400)
@@ -89,8 +88,7 @@
 
 (defn with-scores
   "Add a bunch of SELECT columns for the individual and total scores, and a corresponding ORDER BY."
-  [qry]
+  [search-ctx qry]
   (-> (apply sql.helpers/select qry precalculated-select-items)
-      ;; TODO use the user id from search-ctx instead
-      (join-bookmarks api/*current-user-id*)
+      (join-bookmarks (:current-user-id search-ctx))
       (sql.helpers/order-by [:total_score :desc])))

@@ -89,7 +89,7 @@
                     {:search-engine :postgres})))
   (->> (let [base-query (search.index/search-query search-term [:legacy_input])]
          (search.permissions/add-collection-join-and-where-clauses base-query "search-index" search-ctx))
-       (search.scoring/with-scores)
+       (search.scoring/with-scores search-ctx)
        (search.filter/with-filters search-ctx)
        ;sql/format prrn
        (t2/query)
