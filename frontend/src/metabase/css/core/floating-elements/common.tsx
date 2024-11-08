@@ -51,10 +51,10 @@ const _Launchers = ({
   const note = nested ? " (nested)" : "";
   return (
     <Group>
-      <MantineTooltip withinPortal label={"Tooltip content" + note}>
+      <MantineTooltip label={"Tooltip content" + note}>
         <Button w="20rem">Mantine tooltip target {note}</Button>
       </MantineTooltip>
-      <MantinePopover withinPortal>
+      <MantinePopover>
         <MantinePopover.Target>
           <Button w="20rem">Mantine popover target {note}</Button>
         </MantinePopover.Target>
