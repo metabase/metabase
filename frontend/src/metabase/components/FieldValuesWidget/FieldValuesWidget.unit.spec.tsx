@@ -176,9 +176,7 @@ describe("FieldValuesWidget", () => {
         await setup({
           fields: [metadata.field(LISTABLE_PK_FIELD_ID)],
         });
-        expect(
-          screen.getByPlaceholderText("Search the list"),
-        ).toBeInTheDocument();
+        expect(screen.getByPlaceholderText("Enter an ID")).toBeInTheDocument();
       });
     });
 
@@ -222,10 +220,10 @@ describe("FieldValuesWidget", () => {
       await setup({ fields: [categoryField, sourceField] });
 
       expect(
-        screen.getByPlaceholderText("Search the list"),
+        screen.getByPlaceholderText("Enter some text"),
       ).toBeInTheDocument();
-      expect(screen.getByText("Doohickey")).toBeInTheDocument();
-      expect(screen.getByText("Affiliate")).toBeInTheDocument();
+      expect(await screen.findByText("Doohickey")).toBeInTheDocument();
+      expect(await screen.findByText("Affiliate")).toBeInTheDocument();
     });
 
     it("search if any field is a search", async () => {
@@ -280,7 +278,9 @@ describe("FieldValuesWidget", () => {
         fields: [valuesField, expressionField],
       });
 
-      expect(screen.getByText(LISTABLE_PK_FIELD_VALUE)).toBeInTheDocument();
+      expect(
+        await screen.findByText(LISTABLE_PK_FIELD_VALUE),
+      ).toBeInTheDocument();
       expect(fetchFieldValues).toHaveBeenCalledWith(
         expect.objectContaining({
           id: LISTABLE_PK_FIELD_ID,
