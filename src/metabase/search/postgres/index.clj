@@ -200,17 +200,19 @@
 (defn- to-tsquery-expr
   "Given the user input, construct a query in the Postgres tsvector query language."
   [input]
-  (let [trimmed        (str/trim input)
-        complete?      (not (str/ends-with? trimmed "\""))
-        ;; TODO also only complete if search-typeahead-enabled and the context is the search palette
-        maybe-complete (if complete? complete-last-word identity)]
-    (->> (split-preserving-quotes trimmed)
-         (remove str/blank?)
-         (partition-by #{"or"})
-         (remove #(= (first %) "or"))
-         (map process-clause)
-         (str/join " | ")
-         maybe-complete)))
+  (str
+   (when input
+     (let [trimmed        (str/trim input)
+           complete?      (not (str/ends-with? trimmed "\""))
+           ;; TODO also only complete if search-typeahead-enabled and the context is the search palette
+           maybe-complete (if complete? complete-last-word identity)]
+       (->> (split-preserving-quotes trimmed)
+            (remove str/blank?)
+            (partition-by #{"or"})
+            (remove #(= (first %) "or"))
+            (map process-clause)
+            (str/join " | ")
+            maybe-complete)))))
 
 (defn batch-update!
   "Create the given search index entries in bulk"
