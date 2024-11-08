@@ -456,9 +456,10 @@ describe("issue 28106", () => {
   );
 
   // The list is virtualized and the scrollbar height changes during scrolling (metabase#44966)
-  // that's why we need to scroll multiple times.
+  // that's why we need to scroll and wait multiple times.
   function scrollAllTheWayDown() {
     cy.get("@schemasList").realMouseWheel({ deltaY: 100 });
+    cy.wait(100);
 
     cy.get("@schemasList").then($element => {
       const list = $element[0];
