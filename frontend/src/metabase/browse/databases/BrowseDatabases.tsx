@@ -32,6 +32,7 @@ import {
 import { BrowseDataHeader } from "../components/BrowseDataHeader";
 
 import DB from "./BrowseDatabases.module.css";
+import { trackAddDatabaseDBList } from "./analytics";
 
 export const BrowseDatabases = () => {
   const isAdmin = useSelector(getUserIsAdmin);
@@ -83,7 +84,7 @@ export const BrowseDatabases = () => {
               ))}
 
             {isAdmin && (
-              <Link to={newDatabase()}>
+              <Link to={newDatabase()} onClick={() => trackAddDatabaseDBList()}>
                 <DatabaseCard
                   className={cx(CS.rounded, CS.bordered, DB.addCard)}
                 >
