@@ -40,10 +40,6 @@ function ChartSettingsSidebarInner({
       }
     : {};
 
-  // const handleClose = useCallback(() => {
-  //   dispatch(onCloseChartSettings());
-  // }, [dispatch]);
-
   const card = question.card();
   const series = useMemo(() => {
     return [
@@ -59,11 +55,7 @@ function ChartSettingsSidebarInner({
 
   return (
     result && (
-      <SidebarContent
-        className={CS.fullHeight}
-        // onDone={handleClose}
-        {...sidebarContentProps}
-      >
+      <SidebarContent className={CS.fullHeight} {...sidebarContentProps}>
         <ErrorBoundary>
           <QuestionChartSettings
             question={question}

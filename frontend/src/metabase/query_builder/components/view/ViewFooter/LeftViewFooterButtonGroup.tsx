@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { useUnmount } from "react-use";
 import { t } from "ttag";
 
 import { EditorViewControl } from "embedding-sdk/components/private/EditorViewControl";
@@ -9,8 +10,6 @@ import {
   setQueryBuilderMode,
   setUIControls,
 } from "metabase/query_builder/actions";
-// import ViewButton from "metabase/query_builder/components/view/ViewButton";
-// import { FooterButtonGroup } from "metabase/query_builder/components/view/ViewFooter.styled";
 import {
   getIsShowingRawTable,
   getUiControls,
@@ -29,10 +28,15 @@ export const LeftViewFooterButtonGroup = ({
 }: LeftViewFooterButtonGroupProps) => {
   const { isShowingChartSettingsSidebar }: QueryBuilderUIControls =
     useSelector(getUiControls);
-
-  const dispatch = useDispatch();
   const isShowingRawTable = useSelector(getIsShowingRawTable);
   const vizIcon = getIconForVisualizationType(question.display());
+
+  useUnmount(() => {
+    // reset showing raw table, so new mount will default to viz
+    dispatch(setUIControls({ isShowingRawTable: false }));
+  });
+
+  const dispatch = useDispatch();
 
   const data = useMemo(
     () => [
@@ -64,7 +68,7 @@ export const LeftViewFooterButtonGroup = ({
       },
       {
         value: "visualization",
-        // also we need to add a spinner :boom:
+        // TODO: also we need to add a spinner :boom:
         label: (
           <Tooltip label={t`Visualization`}>
             <Icon
@@ -86,34 +90,6 @@ export const LeftViewFooterButtonGroup = ({
         value={isShowingRawTable ? "table" : "visualization"}
         data={data}
       />
-      {/* <ViewButton
-            medium
-            labelBreakpoint="sm"
-            data-testid="viz-type-button"
-            active={isShowingChartTypeSidebar}
-            onClick={
-              isShowingChartTypeSidebar
-                ? () => dispatch(onCloseChartType())
-                : () => dispatch(onOpenChartType())
-            }
-          >
-            {t`Visualization type`}
-          </ViewButton> */}
-      {/* <ViewButton
-            active={isShowingChartSettingsSidebar}
-            icon="gear"
-            iconSize={16}
-            medium
-            iconWithText
-            labelBreakpoint="sm"
-            data-testid="viz-settings-button"
-            onClick={
-              isShowingChartSettingsSidebar
-                ? () => dispatch(onCloseChartSettings())
-                : () => dispatch(onOpenChartSettings())
-            }
-          >{isShowingChartSettingsSidebar ? t`Done` : t`Settings`}</ViewButton> */}
-      {/* TODO: mah is a hack for 32px height button */}
       {!isShowingRawTable && (
         <Button
           radius="xl"
@@ -131,6 +107,7 @@ export const LeftViewFooterButtonGroup = ({
               },
             }),
           }}
+          /* TODO: mah is a hack for 32px height button */
           mah="xl"
           onClick={
             isShowingChartSettingsSidebar

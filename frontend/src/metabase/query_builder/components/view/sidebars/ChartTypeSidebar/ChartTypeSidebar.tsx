@@ -67,11 +67,6 @@ export const ChartTypeSidebar = ({
   };
 
   return (
-    // <SidebarContent
-    //   className={cx(CS.fullHeight, CS.px1)}
-    //   onDone={() => dispatch(onCloseChartType())}
-    //   data-testid="chart-type-sidebar"
-    // >
     <ChartTypeSettings
       selectedVisualization={selectedVisualization}
       onSelectVisualization={handleSelectVisualization}
@@ -82,6 +77,5 @@ export const ChartTypeSidebar = ({
       w="100%"
       p="lg"
     />
-    // </SidebarContent>
   );
 };
