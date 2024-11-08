@@ -1,3 +1,5 @@
+import { useCallback } from "react";
+
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { useMetabotContext } from "metabase/metabot";
 import { METABOT_TAG, useMetabotAgentMutation } from "metabase-enterprise/api";
@@ -33,7 +35,10 @@ export const useMetabotAgent = () => {
 
   return {
     visible: useSelector(getMetabotVisisble as any),
-    setVisible: (isVisible: boolean) => dispatch(setVisible(isVisible)),
+    setVisible: useCallback(
+      (isVisible: boolean) => dispatch(setVisible(isVisible)),
+      [dispatch],
+    ),
     userMessages,
     confirmationOptions,
     dismissUserMessage: (messageIndex: number) =>
