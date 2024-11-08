@@ -37,6 +37,7 @@ import {
   extractReferencedColumns,
   getDataSourceIdFromNameRef,
 } from "./utils";
+
 import { cartesianDropHandler } from "./visualizations/cartesian";
 import { funnelDropHandler } from "./visualizations/funnel";
 import { pivotDropHandler } from "./visualizations/pivot";
