@@ -16,26 +16,31 @@
   (fn [_query step]
     (-> step :type keyword)))
 
-(defmethod apply-step :limit
-  [query {:keys [limit]}]
-  (if (not (neg-int? limit))
-    (lib/limit query limit)
-    (throw (ex-info "Row limit must be a non-negative number." {:limit limit}))))
-
 (defn- column-display-name
   [query column]
   (:long-display-name (lib/display-info query column)))
 
-(defmethod apply-step :order_by
-  [query {column-name :column}]
-  (let [columns (lib/orderable-columns query)
-        column  (m/find-first #(= (column-display-name query %) column-name) columns)]
-    (if (some? column)
-      (lib/order-by query column)
-      (throw (ex-info (format "%s is not a correct column for the order_by step. Correct column are: %s"
-                              column-name
-                              (str/join ", " (map #(column-display-name query %) columns)))
-                      {:column column-name})))))
+(defmethod apply-step :aggregation
+  [query {operator-name :operator, column-name :column}]
+  (let [operators (lib/available-aggregation-operators query)
+        operator  (m/find-first #(= (lib/display-name query %) operator-name) operators)]
+    (if (some? operator)
+      (if (:requires-column? operator)
+        (let [columns (lib/aggregation-operator-columns operator)
+              column  (m/find-first #(= (column-display-name query %) column-name) columns)]
+          (if (some? column)
+            (lib/aggregate query (lib/aggregation-clause operator column))
+            (throw (ex-info (format "%s is not a correct column for %s operator the aggregate step. Correct column are: %s"
+                                    column-name
+                                    operator-name
+                                    (str/join ", " (map #(column-display-name query %) columns)))
+                            {:operator operator-name
+                             :column   column-name}))))
+        (lib/aggregate query (lib/aggregation-clause operator)))
+      (throw (ex-info (format "%s is not a correct operator for the aggregation step. Correct operators are: %s"
+                              operator
+                              (str/join ", " (map #(lib/display-name query %) operators)))
+                      {:operator operator-name})))))
 
 (defmethod apply-step :breakout
   [query {column-name :column}]
@@ -51,6 +56,23 @@
                               column-name
                               (str/join ", " (map #(column-display-name query %) columns)))
                       {:column column-name})))))
+
+(defmethod apply-step :order_by
+  [query {column-name :column}]
+  (let [columns (lib/orderable-columns query)
+        column  (m/find-first #(= (column-display-name query %) column-name) columns)]
+    (if (some? column)
+      (lib/order-by query column)
+      (throw (ex-info (format "%s is not a correct column for the order_by step. Correct column are: %s"
+                              column-name
+                              (str/join ", " (map #(column-display-name query %) columns)))
+                      {:column column-name})))))
+
+(defmethod apply-step :limit
+  [query {:keys [limit]}]
+  (if (not (neg-int? limit))
+    (lib/limit query limit)
+    (throw (ex-info "Row limit must be a non-negative number." {:limit limit}))))
 
 (defn- apply-steps
   [query steps]
