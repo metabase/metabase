@@ -530,8 +530,7 @@
     (a/go
       (when (a/<! canceled-chan)
         (log/debug "Query canceled, calling Statement.cancel()")
-        (u/ignore-exceptions
-          (.cancel stmt))))))
+        (.cancel stmt)))))
 
 (defn- prepared-statement*
   ^PreparedStatement [driver conn sql params canceled-chan]
