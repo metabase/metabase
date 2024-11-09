@@ -1,14 +1,16 @@
 import type { MantineThemeOverride } from "@mantine/core";
 import { t } from "ttag";
 import Animation from "metabase/css/core/animation.module.css";
+import ZIndex from "metabase/css/core/z-index.module.css";
+import cx from "classnames";
 
 const DEFAULT_MODAL_SPACING = "lg";
 
 export const getModalOverrides = (): MantineThemeOverride["components"] => ({
   Modal: {
     classNames: {
-      overlay: Animation.fadeIn,
-      content: Animation.popInFromBottom,
+      overlay: cx(ZIndex.FloatingElement, Animation.fadeIn),
+      content: cx(ZIndex.FloatingElement, Animation.popInFromBottom),
     },
     defaultProps: {
       padding: DEFAULT_MODAL_SPACING,
@@ -37,7 +39,6 @@ export const getModalOverrides = (): MantineThemeOverride["components"] => ({
       radius: "sm",
       // NOTE: frontend/src/metabase/ui/components/overlays/Modal/index.tsx assumes that withinPortal is true by default
       withinPortal: true,
-      zIndex: "var(--mb-floating-element-z-index)",
     },
   },
   ModalHeader: {
