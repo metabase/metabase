@@ -27,15 +27,15 @@
   (:long-display-name (lib/display-info query column)))
 
 (defmethod apply-step :order_by
-  [query {:keys [column_name]}]
+  [query {column-name :column}]
   (let [columns (lib/orderable-columns query)
-        column  (m/find-first #(= (column-display-name query %) column_name) columns)]
+        column  (m/find-first #(= (column-display-name query %) column-name) columns)]
     (if (some? column)
       (lib/order-by query column)
-      (throw (ex-info (format "%s is not a correct column_name for the order_by step. Correct column names are: %s"
-                              column_name
+      (throw (ex-info (format "%s is not a correct column for the order_by step. Correct column are: %s"
+                              column-name
                               (str/join ", " (map #(column-display-name query %) columns)))
-                      {:column-name column_name})))))
+                      {:column column-name})))))
 
 (defn- apply-steps
   [query steps]

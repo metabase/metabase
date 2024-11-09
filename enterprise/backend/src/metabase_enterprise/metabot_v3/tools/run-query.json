@@ -20,14 +20,14 @@
                     "order_by"
                   ]
                 },
-                "column_name": {
+                "column": {
                   "type": "string",
                   "description": "The name of the column to apply sorting for."
-                }
+                },
               },
               "required": [
                 "type",
-                "column_name"
+                "column"
               ],
               "additionalProperties": false
             },
