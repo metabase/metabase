@@ -11,6 +11,47 @@
           "anyOf": [
             {
               "type": "object",
+              "description": "Aggregate query results.",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "description": "The type of the aggregation step.",
+                  "enum": [
+                    "aggregation"
+                  ]
+                },
+                "operator": {
+                  "type": "string",
+                  "description": "The aggregation operator.",
+                  "enum": [
+                    "count",
+                    "sum",
+                    "avg",
+                    "distinct",
+                    "cum-sum",
+                    "cum-count",
+                    "stddev",
+                    "min",
+                    "max"
+                  ]
+                },
+                "column": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "Optional column name for the selected aggregation operator. If not specified, set it to null."
+                }
+              },
+              "required": [
+                "type",
+                "operator",
+                "column"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
               "description": "Group by, or breakout, query results.",
               "properties": {
                 "type": {

@@ -20,26 +20,30 @@
   [query column]
   (:long-display-name (lib/display-info query column)))
 
+(defn- operator-display-name
+  [operator]
+  (-> operator :short name))
+
 (defmethod apply-step :aggregation
   [query {operator-name :operator, column-name :column}]
   (let [operators (lib/available-aggregation-operators query)
-        operator  (m/find-first #(= (lib/display-name query %) operator-name) operators)]
+        operator  (m/find-first #(= (operator-display-name %) operator-name) operators)]
     (if (some? operator)
       (if (:requires-column? operator)
         (let [columns (lib/aggregation-operator-columns operator)
               column  (m/find-first #(= (column-display-name query %) column-name) columns)]
           (if (some? column)
             (lib/aggregate query (lib/aggregation-clause operator column))
-            (throw (ex-info (format "%s is not a correct column for %s operator the aggregate step. Correct column are: %s"
+            (throw (ex-info (format "%s is not a correct column for %s operator the aggregate step. Choose a column based on the user input from this list: %s"
                                     column-name
                                     operator-name
                                     (str/join ", " (map #(column-display-name query %) columns)))
                             {:operator operator-name
                              :column   column-name}))))
         (lib/aggregate query (lib/aggregation-clause operator)))
-      (throw (ex-info (format "%s is not a correct operator for the aggregation step. Correct operators are: %s"
-                              operator
-                              (str/join ", " (map #(lib/display-name query %) operators)))
+      (throw (ex-info (format "%s is not a correct operator for the aggregation step. Choose an operator based on the user input from this list: %s"
+                              operator-name
+                              (str/join ", " (map operator-display-name operators)))
                       {:operator operator-name})))))
 
 (defmethod apply-step :breakout
@@ -52,7 +56,7 @@
         (lib/breakout query (cond-> column
                               bucket  (lib/with-temporal-bucket bucket)
                               binning (lib/with-binning binning))))
-      (throw (ex-info (format "%s is not a correct column for the breakout step. Correct column are: %s"
+      (throw (ex-info (format "%s is not a correct column for the breakout step. Choose a column based on the user input from this list: %s"
                               column-name
                               (str/join ", " (map #(column-display-name query %) columns)))
                       {:column column-name})))))
@@ -63,7 +67,7 @@
         column  (m/find-first #(= (column-display-name query %) column-name) columns)]
     (if (some? column)
       (lib/order-by query column)
-      (throw (ex-info (format "%s is not a correct column for the order_by step. Correct column are: %s"
+      (throw (ex-info (format "%s is not a correct column for the order_by step. Choose a column based on the user input from this list: %s"
                               column-name
                               (str/join ", " (map #(column-display-name query %) columns)))
                       {:column column-name})))))
