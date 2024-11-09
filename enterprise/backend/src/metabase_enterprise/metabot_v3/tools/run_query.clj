@@ -37,6 +37,21 @@
                               (str/join ", " (map #(column-display-name query %) columns)))
                       {:column column-name})))))
 
+(defmethod apply-step :breakout
+  [query {column-name :column}]
+  (let [columns (lib/breakoutable-columns query)
+        column  (m/find-first #(= (column-display-name query %) column-name) columns)]
+    (if (some? column)
+      (let [bucket  (m/find-first :default (lib/available-temporal-buckets query column))
+            binning (m/find-first :default (lib/available-binning-strategies query column))]
+        (lib/breakout query (cond-> column
+                              bucket  (lib/with-temporal-bucket bucket)
+                              binning (lib/with-binning binning))))
+      (throw (ex-info (format "%s is not a correct column for the breakout step. Correct column are: %s"
+                              column-name
+                              (str/join ", " (map #(column-display-name query %) columns)))
+                      {:column column-name})))))
+
 (defn- apply-steps
   [query steps]
   (reduce apply-step query steps))

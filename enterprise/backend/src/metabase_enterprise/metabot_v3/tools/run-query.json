@@ -11,6 +11,28 @@
           "anyOf": [
             {
               "type": "object",
+              "description": "Group by, or breakout, query results.",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "description": "The type of the breakout step.",
+                  "enum": [
+                    "breakout"
+                  ]
+                },
+                "column": {
+                  "type": "string",
+                  "description": "The name of the column to apply grouping for."
+                }
+              },
+              "required": [
+                "type",
+                "column"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
               "description": "Sort the query results.",
               "properties": {
                 "type": {
