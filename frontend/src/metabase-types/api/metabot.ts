@@ -1,6 +1,11 @@
 import type { CardDisplayType } from "./visualization";
 
-import type { ColumnSettings, DatasetQuery, SeriesSettings } from ".";
+import type {
+  ColumnSettings,
+  ConditionalFormattingOperator,
+  DatasetQuery,
+  SeriesSettings,
+} from ".";
 
 export type MetabotFeedbackType =
   | "great"
@@ -125,7 +130,33 @@ export type MetabotChangeChartAppearanceReaction = {
   } | null;
 };
 
+export type SingleColorCellStyleEntry = {
+  columns: string[];
+  operator: ConditionalFormattingOperator;
+  value: string | number;
+  highlight_row: boolean;
+  color: string;
+};
+
+export type GradientCellStyleEntry = {
+  columns: string[];
+  min_type: "custom" | null;
+  max_type: "custom" | null;
+  min_value: number | null;
+  max_value: number | null;
+  color: string;
+  gradient_direction: "ascending" | "descending";
+};
+
+export type MetabotChangeTableCellsStyleReaction = {
+  type: "metabot.reaction/change-table-cells-style";
+  single_color_cell_styles: SingleColorCellStyleEntry[];
+  numeric_gradient_cell_styles: GradientCellStyleEntry[];
+  removed_styles: number[];
+};
+
 export type MetabotReaction =
+  | MetabotChangeTableCellsStyleReaction
   | MetabotChangeChartAppearanceReaction
   | MetabotChangeColumnSettingsReaction
   | MetabotChangeSeriesSettingsReaction

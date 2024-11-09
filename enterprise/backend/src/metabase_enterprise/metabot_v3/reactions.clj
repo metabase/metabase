@@ -181,3 +181,8 @@
 (defreaction :metabot.reaction/change-chart-appearance
   [:map
    [:type [:= :metabot.reaction/change-chart-appearance]]])
+
+(defreaction :metabot.reaction/change-table-cells-style
+  [:map
+   [:type [:= :metabot.reaction/change-table-cells-style]]
+   [:single_color_cell_styles [:sequential [:map-of :keyword :any]]]])

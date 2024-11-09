@@ -10,6 +10,7 @@ import {
   changeColumnSettings,
   changeDisplayType,
   changeSeriesSettings,
+  changeTableCellsStyle,
   changeTableVisualizationSettings,
 } from "./visualizations";
 
@@ -22,6 +23,7 @@ type ReactionHandlers = {
 };
 
 export const reactionHandlers: ReactionHandlers = {
+  "metabot.reaction/change-table-cells-style": changeTableCellsStyle,
   "metabot.reaction/change-chart-appearance": changeChartAppearance,
   "metabot.reaction/change-column-settings": changeColumnSettings,
   "metabot.reaction/change-series-settings": changeSeriesSettings,
