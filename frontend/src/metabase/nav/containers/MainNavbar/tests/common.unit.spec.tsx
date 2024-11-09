@@ -319,4 +319,44 @@ describe("nav > containers > MainNavbar", () => {
       ).toHaveAttribute("aria-selected", "false");
     });
   });
+
+  describe("add database button", () => {
+    it("should render for admins if they haven't added a database yet", async () => {
+      await setup({
+        user: createMockUser({ is_superuser: true }),
+        withAdditionalDatabase: false,
+      });
+
+      const sidebar = screen.getByTestId("main-navbar-root");
+      expect(within(sidebar).getByText("Add database")).toBeInTheDocument();
+      expect(within(sidebar).getByTestId("add-database-link")).toHaveAttribute(
+        "href",
+        "/admin/databases/create",
+      );
+    });
+
+    it("should not render for admins if they previously added a database", async () => {
+      await setup({
+        user: createMockUser({ is_superuser: true }),
+        withAdditionalDatabase: true,
+      });
+
+      const sidebar = screen.getByTestId("main-navbar-root");
+      expect(
+        within(sidebar).queryByText("Add database"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should not render for regular users", async () => {
+      await setup({
+        user: createMockUser({ is_superuser: false }),
+        withAdditionalDatabase: false,
+      });
+
+      const sidebar = screen.getByTestId("main-navbar-root");
+      expect(
+        within(sidebar).queryByText("Add database"),
+      ).not.toBeInTheDocument();
+    });
+  });
 });

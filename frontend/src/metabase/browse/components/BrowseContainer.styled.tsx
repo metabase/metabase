@@ -53,6 +53,14 @@ export const BrowseGrid = styled(Grid)`
   }
 `;
 
+export const BrowseDatabaseGrid = styled(Grid)`
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr));
+  gap: 1rem;
+  margin: 0;
+  width: 100%;
+`;
+
 export const CenteredEmptyState = styled(EmptyState)`
   display: flex;
   flex: 1;

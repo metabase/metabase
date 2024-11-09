@@ -21,6 +21,7 @@ import { isSmallScreen } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { WhatsNewNotification } from "metabase/nav/components/WhatsNewNotification";
+import { getHasOwnDatabase } from "metabase/selectors/data";
 import { getIsEmbedded } from "metabase/selectors/embed";
 import { getSetting } from "metabase/selectors/settings";
 import { getIsWhiteLabeling } from "metabase/selectors/whitelabel";
@@ -39,6 +40,7 @@ import {
   SidebarSection,
 } from "../MainNavbar.styled";
 import { SidebarCollectionLink, SidebarLink } from "../SidebarItems";
+import { AddDatabase } from "../SidebarItems/AddDatabase";
 import { DwhUploadCSV } from "../SidebarItems/DwhUploadCSV/DwhUploadCSV";
 import { trackOnboardingChecklistOpened } from "../analytics";
 import type { SelectedItem } from "../types";
@@ -160,6 +162,9 @@ export function MainNavbarView({
   const canUpload = canCurateRootCollection && canUploadToDatabase;
   const showUploadCSVButton = hasAttachedDWHFeature && canUpload;
 
+  const isAdditionalDatabaseAdded = getHasOwnDatabase(databases);
+  const showAddDatabaseButton = isAdmin && !isAdditionalDatabaseAdded;
+
   return (
     <ErrorBoundary>
       <SidebarContentRoot>
@@ -228,6 +233,13 @@ export function MainNavbarView({
               />
             </ErrorBoundary>
           </SidebarSection>
+          {showAddDatabaseButton && (
+            <SidebarSection>
+              <ErrorBoundary>
+                <AddDatabase />
+              </ErrorBoundary>
+            </SidebarSection>
+          )}
         </div>
         <WhatsNewNotification />
       </SidebarContentRoot>
