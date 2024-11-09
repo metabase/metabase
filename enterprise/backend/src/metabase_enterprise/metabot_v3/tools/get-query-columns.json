@@ -1,0 +1,10 @@
+{
+  "name": "get-query-columns",
+  "description": "List columns that can be used in query steps. Can be used to validate and coerce user input.",
+  "parameters": {
+    "type": "object",
+    "properties": {},
+    "required": [],
+    "additionalProperties": false
+  }
+}

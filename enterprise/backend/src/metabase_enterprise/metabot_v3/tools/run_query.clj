@@ -18,7 +18,7 @@
 
 (defn- column-display-name
   [query column]
-  (:long-display-name (lib/display-info query column)))
+  (->> column (lib/display-info query) :long-display-name))
 
 (defn- operator-display-name
   [operator]
