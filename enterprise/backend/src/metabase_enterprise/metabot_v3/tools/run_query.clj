@@ -34,14 +34,14 @@
               column  (m/find-first #(= (column-display-name query %) column-name) columns)]
           (if (some? column)
             (lib/aggregate query (lib/aggregation-clause operator column))
-            (throw (ex-info (format "%s is not a correct column for %s operator the aggregate step. Choose a column based on the user input from this list: %s"
+            (throw (ex-info (format "%s is not a correct column for %s operator the aggregate step. Correct columns are: %s"
                                     column-name
                                     operator-name
                                     (str/join ", " (map #(column-display-name query %) columns)))
                             {:operator operator-name
                              :column   column-name}))))
         (lib/aggregate query (lib/aggregation-clause operator)))
-      (throw (ex-info (format "%s is not a correct operator for the aggregation step. Choose an operator based on the user input from this list: %s"
+      (throw (ex-info (format "%s is not a correct operator for the aggregation step. Correct operators are: %s"
                               operator-name
                               (str/join ", " (map operator-display-name operators)))
                       {:operator operator-name})))))
@@ -56,7 +56,7 @@
         (lib/breakout query (cond-> column
                               bucket  (lib/with-temporal-bucket bucket)
                               binning (lib/with-binning binning))))
-      (throw (ex-info (format "%s is not a correct column for the breakout step. Choose a column based on the user input from this list: %s"
+      (throw (ex-info (format "%s is not a correct column for the breakout step. Correct columns are: %s"
                               column-name
                               (str/join ", " (map #(column-display-name query %) columns)))
                       {:column column-name})))))
