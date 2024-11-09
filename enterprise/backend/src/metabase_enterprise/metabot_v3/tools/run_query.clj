@@ -22,15 +22,20 @@
     (lib/limit query limit)
     (throw (ex-info "Row limit must be a non-negative number." {:limit limit}))))
 
+(defn- column-display-name
+  [query column]
+  (:long-display-name (lib/display-info query column)))
+
 (defmethod apply-step :order_by
-  [query {:keys [column-name]}]
+  [query {:keys [column_name]}]
   (let [columns (lib/orderable-columns query)
-        column  (m/find-first #(= (lib/display-name query %) column-name) columns)]
+        column  (m/find-first #(= (column-display-name query %) column_name) columns)]
     (if (some? column)
       (lib/order-by query column)
-      (throw (ex-info (format "column_name for the order_by step is not correct. Correct column names are: %s"
-                           (str/join ", " (map #(lib/display-name query %) columns)))
-                      {:column-name column-name})))))
+      (throw (ex-info (format "%s is not a correct column_name for the order_by step. Correct column names are: %s"
+                              column_name
+                              (str/join ", " (map #(column-display-name query %) columns)))
+                      {:column-name column_name})))))
 
 (defn- apply-steps
   [query steps]
@@ -47,9 +52,7 @@
                                lib.query/->legacy-MBQL)}]
        :output "success"}
       (catch ExceptionInfo e
-        {:reactions [{:type    :metabot.reaction/writeback
-                      :message (format "<system message>%s</system message>" (ex-message e))}]
-         :output "failure"}))))
+        {:output (ex-message e)}))))
 
 (mu/defmethod metabot-v3.tools.interface/*tool-applicable?* :metabot.tool/run-query
   [_tool-name {:keys [dataset_query]}]
