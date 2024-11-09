@@ -4,8 +4,10 @@
    [medley.core :as m]
    [metabase-enterprise.metabot-v3.tools.interface :as metabot-v3.tools.interface]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.query :as lib.query]
+   [metabase.lib.util :as lib.util]
    [metabase.util.malli :as mu])
   (:import
     (clojure.lang ExceptionInfo)))
@@ -78,6 +80,12 @@
     (lib/limit query limit)
     (throw (ex-info "Row limit must be a non-negative number." {:limit limit}))))
 
+(defn- raw-query
+  [query]
+  (lib/query (lib.metadata/->metadata-provider query)
+             (or (some->> query lib.util/source-table-id (lib.metadata/table query))
+                 (some->> query lib.util/source-card-id (lib.metadata/card query)))))
+
 (defn- apply-steps
   [query steps]
   (reduce apply-step query steps))
@@ -88,7 +96,7 @@
         query             (lib/query metadata-provider dataset_query)]
     (try
       {:reactions [{:type  :metabot.reaction/run-query
-                    :query (-> query
+                    :query (-> (raw-query query)
                                (apply-steps steps)
                                lib.query/->legacy-MBQL)}]
        :output "success"}
