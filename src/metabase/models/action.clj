@@ -6,6 +6,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.query :as query]
    [metabase.models.serialization :as serdes]
+   [metabase.search :as search]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [methodical.core :as methodical]
@@ -396,3 +397,25 @@
 (defmethod serdes/storage-path "Action" [action _ctx]
   (let [{:keys [id label]} (-> action serdes/path last)]
     ["actions" (serdes/storage-leaf-file-name id label)]))
+
+;;;; ------------------------------------------------- Search ----------------------------------------------------------
+
+(search/define-spec "action"
+  {:model        :model/Action
+   :attrs        {:archived       true
+                  :collection-id  :model.collection_id
+                  :creator-id     true
+                  :database-id    :query_action.database_id
+                  :native-query   :query_action.dataset_query
+                  ;; workaround for actions not having revisions (yet)
+                  :last-edited-at :updated_at
+                  :table-id       false
+                  :created-at     true
+                  :updated-at     true}
+   :search-terms [:name :description]
+   :render-terms {:model-id   :model.id
+                  :model-name :model.name}
+   :where        [:= :collection.namespace nil]
+   :joins        {:model        [:model/Card [:= :model.id :this.model_id]]
+                  :query_action [:model/QueryAction [:= :query_action.action_id :this.id]]
+                  :collection   [:model/Collection [:= :collection.id :model.collection_id]]}})

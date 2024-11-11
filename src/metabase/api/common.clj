@@ -734,6 +734,8 @@
          (map #(dissoc % ::model)))))
 
 (def model->db-model
+  ;; NOTE search is decoupling itself from this mapping, favoring a self-contained spec in search.spec/define-spec
+  ;; Once search.legacy is gone, this dependency should be gone as well.
   "A mapping from the name of a model used in the API to information about it. This is reused in search, and entity_id
   translation."
   {"action"            {:db-model :model/Action             :alias :action}
