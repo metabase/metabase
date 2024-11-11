@@ -12,7 +12,6 @@ There are different ways you can embed questions:
 
 - [`StaticQuestion`](#embedding-a-static-question). Embeds a chart. Clicking on the chart doesn't do anything.
 - [`InteractiveQuestion`](#embedding-an-interactive-question). Clicking on the chart gives you the drill-through menu.
-- [`CreateQuestion`]()
 
 ## Embedding a static question
 
