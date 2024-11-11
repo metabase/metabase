@@ -114,6 +114,8 @@ Fetch a publicly-accessible Card and return query results in the specified forma
 
 -  **`format_rows`** nullable boolean.
 
+-  **`pivot_results`** nullable boolean.
+
 ## `GET /api/public/dashboard/:uuid`
 
 Fetch a publicly-accessible Dashboard. Does not require auth credentials. Public sharing must be enabled.
@@ -285,6 +287,10 @@ Fetch the results of running a publicly-accessible Card belonging to a Dashboard
 -  **`parameters`** nullable value must be a valid JSON string.
 
 -  **`export-format`** enum of csv, api, xlsx, json.
+
+-  **`format_rows`** nullable value must be a valid boolean string ('true' or 'false').
+
+-  **`pivot_results`** nullable value must be a valid boolean string ('true' or 'false').
 
 ## `POST /api/public/dashboard/:uuid/dashcard/:dashcard-id/execute`
 
