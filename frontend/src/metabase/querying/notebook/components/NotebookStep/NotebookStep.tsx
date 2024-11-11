@@ -7,7 +7,6 @@ import CS from "metabase/css/core/index.css";
 import { useToggle } from "metabase/hooks/use-toggle";
 import { color as c } from "metabase/lib/colors";
 import type { Query } from "metabase-lib";
-import * as Lib from "metabase-lib";
 
 import type {
   NotebookStep as INotebookStep,
@@ -53,37 +52,38 @@ export function NotebookStep({
     useToggle(false);
 
   const actionButtons = useMemo(() => {
-    const { query, stageIndex } = step;
-    const hasAggregations = Lib.aggregations(query, stageIndex).length > 0;
-    const hasBreakouts = Lib.breakouts(query, stageIndex).length > 0;
-
+    const actions = [];
     const hasLargeActionButtons =
-      isLastStep &&
-      !(hasAggregations && !hasBreakouts) &&
-      step.actions.some(hasLargeButton);
+      isLastStep && step.actions.some(hasLargeButton);
 
-    const actions = step.actions.map(action => {
-      const stepUi = getStepConfig(action.type);
-      const title = stepUi.title;
+    actions.push(
+      ...step.actions.map(action => {
+        const stepUi = getStepConfig(action.type);
+        const title = stepUi.title;
+        return {
+          priority: stepUi.priority,
+          button: (
+            <NotebookActionButton
+              key={`actionButton_${title}`}
+              className={cx({
+                [cx(CS.mr2, CS.mt2)]: isLastStep,
+                [CS.mr1]: !isLastStep,
+              })}
+              large={hasLargeActionButtons}
+              {...stepUi}
+              title={title}
+              aria-label={title}
+              onClick={() => action.action({ openStep })}
+            />
+          ),
+        };
+      }),
+    );
 
-      return (
-        <NotebookActionButton
-          key={`actionButton_${title}`}
-          className={cx({
-            [cx(CS.mr2, CS.mt2)]: isLastStep,
-            [CS.mr1]: !isLastStep,
-          })}
-          large={hasLargeActionButtons}
-          {...stepUi}
-          title={title}
-          aria-label={title}
-          onClick={() => action.action({ openStep })}
-        />
-      );
-    });
+    actions.sort((a, b) => (b.priority || 0) - (a.priority || 0));
 
-    return actions;
-  }, [step, isLastStep, openStep]);
+    return actions.map(action => action.button);
+  }, [step.actions, isLastStep, openStep]);
 
   const handleClickRevert = useCallback(() => {
     if (step.revert) {
@@ -135,7 +135,7 @@ export function NotebookStep({
             <StepButtonContainer>
               <PreviewButton
                 as={NotebookActionButton}
-                icon="eye"
+                icon="play"
                 title={t`Preview`}
                 color={c("text-light")}
                 transparent
