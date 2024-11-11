@@ -1,11 +1,14 @@
 (ns ^:mb/driver-tests metabase.api.notify-test
   (:require
+   [clj-http.client :as http]
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [metabase.driver.postgres-test :as postgres-test]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.http-client :as client]
    [metabase.models.database :as database :refer [Database]]
+   [metabase.server.middleware.auth :as mw.auth]
+   [metabase.server.request.util :as req.util]
    [metabase.sync :as sync]
    [metabase.sync.sync-metadata]
    [metabase.test :as mt]
@@ -17,24 +20,48 @@
 
 (deftest authentication-test
   (testing "POST /api/notify/db/:id"
+    (testing "endpoint requires MB_API_KEY set"
+      (mt/with-temporary-setting-values [api-key nil]
+        (is (= (-> mw.auth/key-not-set-response :body str)
+               (client/client :post 403 "notify/db/100")))))
     (testing "endpoint requires authentication"
-      (is (= "Unauthenticated"
-             (client/client :post 401 "notify/db/100"))))))
+      (mt/with-temporary-setting-values [api-key "test-api-key"] ;; set in :test but not in :dev
+        (is (= (get req.util/response-forbidden :body)
+               (client/client :post 403 "notify/db/100")))))))
+
+(def ^:private api-headers {:headers {"x-metabase-apikey" "test-api-key"
+                                      "content-type"      "application/json"}})
 
 (deftest not-found-test
   (mt/with-temporary-setting-values [api-key "test-api-key"]
     (testing "POST /api/notify/db/:id"
       (testing "database must exist or we get a 404"
-        (is (= "Not found."
-               (mt/user-http-request :rasta :post 404 (format "notify/db/%d" Integer/MAX_VALUE)))))
+        (is (= {:status 404
+                :body   "Not found."}
+               (try (http/post (client/build-url (format "notify/db/%d" Integer/MAX_VALUE) {})
+                               (merge {:accept :json} api-headers))
+                    (catch clojure.lang.ExceptionInfo e
+                      (select-keys (ex-data e) [:status :body]))))))
       (testing "table ID must exist or we get a 404"
-        (is (= "Not found."
-               (mt/user-http-request :rasta :post (format "notify/db/%d" (:id (mt/db)))
-                                     {:table_id Integer/MAX_VALUE}))))
+        (is (= {:status 404
+                :body   "Not found."}
+               (try (http/post (client/build-url (format "notify/db/%d" (:id (mt/db))) {})
+                               (merge {:accept       :json
+                                       :content-type :json
+                                       :form-params  {:table_id Integer/MAX_VALUE}}
+                                      api-headers))
+                    (catch clojure.lang.ExceptionInfo e
+                      (select-keys (ex-data e) [:status :body]))))))
       (testing "table name must exist or we get a 404"
-        (is (= "Not found."
-               (mt/user-http-request :rasta :post (format "notify/db/%d" (:id (mt/db)))
-                                     {:table_name "IncorrectToucanFact"})))))))
+        (is (= {:status 404
+                :body   "Not found."}
+               (try (http/post (client/build-url (format "notify/db/%d" (:id (mt/db))) {})
+                               (merge {:accept       :json
+                                       :content-type :json
+                                       :form-params  {:table_name "IncorrectToucanFact"}}
+                                      api-headers))
+                    (catch clojure.lang.ExceptionInfo e
+                      (select-keys (ex-data e) [:status :body])))))))))
 
 (deftest post-db-id-test
   (mt/test-drivers (mt/normal-drivers)
@@ -42,8 +69,11 @@
           post       (fn post-api
                        ([payload] (post-api payload 200))
                        ([payload expected-code]
-                        (mt/user-http-request :rasta :post expected-code (format "notify/db/%d" (u/the-id (mt/db)))
-                                              (merge {:synchronous? true} payload))))]
+                        (mt/with-temporary-setting-values [api-key "test-api-key"]
+                          (mt/client :post expected-code (format "notify/db/%d" (u/the-id (mt/db)))
+                                     {:request-options api-headers}
+                                     (merge {:synchronous? true}
+                                            payload)))))]
       (testing "sync just table when table is provided"
         (let [long-sync-called? (promise), short-sync-called? (promise)]
           (with-redefs [sync/sync-table!                                 (fn [_table] (deliver long-sync-called? true))
@@ -88,8 +118,12 @@
                 post     (fn post-api
                            ([payload] (post-api payload 200))
                            ([payload expected-code]
-                            (mt/user-http-request :rasta :post expected-code (format "notify/db/%d/new-table" (:id database))
-                                                  (merge {:synchronous? true} payload))))
+                            (mt/with-temporary-setting-values [api-key "test-api-key"]
+                              (mt/client-full-response
+                               :post expected-code (format "notify/db/%d/new-table" (:id database))
+                               {:request-options api-headers}
+                               (merge {:synchronous? true}
+                                      payload)))))
                 sync!    #(sync/sync-database! database)]
             ;; Create the initial table and sync it.
             (exec! spec ["CREATE TABLE public.FOO (val bigint NOT NULL);"])
@@ -97,14 +131,14 @@
             (let [tables (tableset database)]
               (is (= #{"public.foo"} tables)))
             ;; We can't add an existing table
-            (is (post {:schema_name "public" :table_name "foo"} 400))
+            (is (= 400 (:status (post {:schema_name "public" :table_name "foo"} 400))))
             ;; We can't add a nonexistent table
-            (is (post {:schema_name "public" :table_name "bar"} 404))
+            (is (= 404 (:status (post {:schema_name "public" :table_name "bar"} 404))))
             ;; Create two more tables that are not yet synced
             (exec! spec ["CREATE TABLE public.BAR (val bigint NOT NULL);"
                          "CREATE TABLE public.FERN (val bigint NOT NULL);"])
             ;; This will add bar to metabase (but not fern).
-            (is (post {:schema_name "public" :table_name "bar"} 200))
+            (is (= 200 (:status (post {:schema_name "public" :table_name "bar"}))))
             ;; Assert that only the synced tables are present.
             (let [tables (tableset database)]
               (is (= #{"public.foo" "public.bar"} tables))

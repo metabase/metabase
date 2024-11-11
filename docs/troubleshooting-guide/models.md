@@ -13,7 +13,6 @@ If you don't see [the model button][model-button-image] (three squares):
 1. Check if you're using a Metabase version that's 0.42.0 or greater by going to the top right of the screen and clicking on the **gear** icon > **About Metabase**.
 2. Clear your browser cache.
 3. Ask your Metabase admin to clear the proxy cache (if you're using one).
-4. Ask your Metabase admin if [nested queries are enabled][nested-query-settings-docs] under **Admin** > **Settings** > **General**.
 
 ## Can't edit or save changes to a model
 

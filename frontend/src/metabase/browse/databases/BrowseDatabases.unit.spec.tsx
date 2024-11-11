@@ -1,13 +1,25 @@
 import { setupDatabasesEndpoints } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
-import { createMockDatabase } from "metabase-types/api/mocks";
+import {
+  renderWithProviders,
+  screen,
+  waitForLoaderToBeRemoved,
+} from "__support__/ui";
+import { createMockDatabase, createMockUser } from "metabase-types/api/mocks";
+import { createMockState } from "metabase-types/store/mocks";
 
 import { BrowseDatabases } from "./BrowseDatabases";
 
-const renderBrowseDatabases = (modelCount: number) => {
+type setupOpts = {
+  isAdmin?: boolean;
+};
+
+const renderBrowseDatabases = (modelCount: number, config?: setupOpts) => {
   const databases = mockDatabases.slice(0, modelCount);
   setupDatabasesEndpoints(databases);
-  return renderWithProviders(<BrowseDatabases />);
+
+  const user = createMockUser({ is_superuser: config?.isAdmin });
+  const state = createMockState({ currentUser: user });
+  return renderWithProviders(<BrowseDatabases />, { storeInitialState: state });
 };
 
 const mockDatabases = [...Array(100)].map((_, index) =>
@@ -27,5 +39,33 @@ describe("BrowseDatabases", () => {
     expect(
       await screen.findByText("No databases here yet"),
     ).toBeInTheDocument();
+  });
+
+  describe("Add database card", () => {
+    it("should not render for regular users", async () => {
+      const modelCount = 2;
+
+      renderBrowseDatabases(modelCount, { isAdmin: false });
+      await waitForLoaderToBeRemoved();
+
+      for (let i = 0; i < modelCount; i++) {
+        expect(await screen.findByText(`Database ${i}`)).toBeInTheDocument();
+      }
+      expect(screen.queryByText("Add a database")).not.toBeInTheDocument();
+    });
+
+    it("should render for admins", async () => {
+      renderBrowseDatabases(2, { isAdmin: true });
+      await waitForLoaderToBeRemoved();
+
+      expect(screen.getByText("Add a database")).toBeInTheDocument();
+    });
+
+    it("should render when no databases exist", async () => {
+      renderBrowseDatabases(0, { isAdmin: true });
+      await waitForLoaderToBeRemoved();
+
+      expect(screen.getByText("Add a database")).toBeInTheDocument();
+    });
   });
 });
