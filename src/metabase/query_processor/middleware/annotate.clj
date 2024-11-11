@@ -162,6 +162,9 @@
     (number? expression)
     {:base_type :type/Number}
 
+    (boolean? expression)
+    {:base_type :type/Boolean}
+
     (mbql.u/is-clause? :field expression)
     (col-info-for-field-clause {} expression)
 
@@ -205,6 +208,9 @@
 
     (mbql.u/is-clause? mbql.s/numeric-functions expression)
     {:base_type :type/Float}
+
+    (mbql.u/is-clause? mbql.s/boolean-functions expression)
+    {:base_type :type/Boolean}
 
     :else
     {:base_type :type/*}))

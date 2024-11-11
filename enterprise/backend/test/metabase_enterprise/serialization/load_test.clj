@@ -160,8 +160,8 @@
             pivot   (:pivot_table.column_split vs)
             vecs    (concat (:columns pivot) (:rows pivot))]
         (is (some? vecs))
-        (doseq [[_ field-id _] vecs]
-          (is (integer? field-id) "fieldRef within pivot table was properly serialized and loaded"))))))
+        (doseq [column-name vecs]
+          (is (string? column-name) "column names within pivot table was properly serialized and loaded"))))))
 
 (defmethod assert-loaded-entity Card
   [{card-name :name :as card} {:keys [query-results collections]}]

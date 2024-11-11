@@ -10,6 +10,7 @@ import {
   createNativeQuestion,
   createQuestion,
   echartsContainer,
+  editDashboard,
   enterCustomColumnDetails,
   entityPickerModal,
   entityPickerModalTab,
@@ -20,6 +21,7 @@ import {
   getTable,
   join,
   leftSidebar,
+  main,
   modal,
   moveColumnDown,
   newButton,
@@ -36,8 +38,11 @@ import {
   restore,
   resyncDatabase,
   rightSidebar,
+  saveDashboard,
   saveQuestion,
   setModelMetadata,
+  showDashboardCardActions,
+  sidebar,
   sidesheet,
   startNewQuestion,
   summarize,
@@ -2232,3 +2237,98 @@ function expectNoScrollbarContainer(element) {
 
   expect(hasScrollbarContainer).to.be.false;
 }
+
+describe("issue 48829", () => {
+  const questionDetails = {
+    name: "Issue 48829",
+    query: {
+      "source-table": PRODUCTS_ID,
+    },
+  };
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should not show the unsaved changes warning when switching back to chill mode from the notebook editor after adding a filter from headers (metabase#48829)", () => {
+    createQuestion(questionDetails, { visitQuestion: true });
+
+    tableHeaderClick("Category");
+    popover().findByText("Filter by this column").click();
+    popover().within(() => {
+      cy.findByText("Doohickey").click();
+      cy.findByText("Add filter").click();
+    });
+
+    queryBuilderHeader().button("Show Editor").click();
+    getNotebookStep("filter")
+      .findAllByTestId("notebook-cell-item")
+      .icon("close")
+      .should("be.visible")
+      .click();
+
+    visualize();
+
+    modal().should("not.exist");
+  });
+
+  it("should not show the unsaved changes warning when switching back to chill mode from the notebook editor after adding a filter via the filter modal (metabase#48829)", () => {
+    createQuestion(questionDetails, { visitQuestion: true });
+
+    queryBuilderHeader().button("Filter").click();
+    modal().within(() => {
+      cy.findByText("Doohickey").click();
+      cy.button("Apply filters").click();
+    });
+
+    queryBuilderHeader().button("Show Editor").click();
+    getNotebookStep("filter")
+      .findAllByTestId("notebook-cell-item")
+      .icon("close")
+      .should("be.visible")
+      .click();
+
+    visualize();
+
+    modal().should("not.exist");
+  });
+
+  it("should not show the unsaved changes warning when switching back to chill mode from the notebook editor after visiting a filtered question from a dashboard click action (metabase#48829)", () => {
+    // Set up dashboard
+    cy.createDashboardWithQuestions({ questions: [questionDetails] }).then(
+      ({ dashboard }) => {
+        visitDashboard(dashboard.id);
+      },
+    );
+
+    showDashboardCardActions();
+    editDashboard();
+    getDashboardCard().findByLabelText("Click behavior").click();
+
+    sidebar().within(() => {
+      cy.findByText("Title").click();
+      cy.findByText("Go to a custom destination").click();
+      cy.findByText("Saved question").click();
+    });
+
+    entityPickerModal().findByText(questionDetails.name).click();
+    sidebar().findByTestId("click-mappings").findByText("Title").click();
+    popover().findByText("Title").click();
+    saveDashboard();
+
+    // Navigate to question using click action in dashboard
+    main().findByText("Rustic Paper Wallet").click();
+
+    queryBuilderHeader().button("Show Editor").click();
+    getNotebookStep("filter")
+      .findAllByTestId("notebook-cell-item")
+      .icon("close")
+      .should("be.visible")
+      .click();
+
+    visualize();
+
+    modal().should("not.exist");
+  });
+});

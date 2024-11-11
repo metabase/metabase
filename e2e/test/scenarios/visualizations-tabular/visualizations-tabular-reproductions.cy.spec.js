@@ -457,13 +457,9 @@ describe("issue 23076", () => {
     display: "pivot",
     visualization_settings: {
       "pivot_table.column_split": {
-        rows: [
-          ["field", PRODUCTS.TITLE, { "source-field": ORDERS.PRODUCT_ID }],
-          ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
-          ["field", PEOPLE.ID, { "source-field": ORDERS.USER_ID }],
-        ],
+        rows: ["TITLE", "CREATED_AT", "ID"],
         columns: [],
-        values: [["aggregation", 0]],
+        values: ["distinct"],
       },
     },
   };
@@ -652,24 +648,9 @@ describe("issue 37726", () => {
     },
     visualization_settings: {
       "pivot_table.column_split": {
-        rows: [
-          [
-            "field",
-            ORDERS.TOTAL,
-            {
-              "base-type": "type/Float",
-              binnig: {
-                strategy: "num-bins",
-                "min-value": 0,
-                "max-value": 160,
-                "num-bins": 8,
-                "bin-width": 20,
-              },
-            },
-          ],
-        ],
+        rows: ["TOTAL"],
         columns: [],
-        values: [["aggregation", 0]],
+        values: ["distinct"],
       },
       "pivot_table.column_widths": {
         leftHeaderWidths: [80],
@@ -821,24 +802,9 @@ describe("issue 42697", () => {
     },
     visualization_settings: {
       "pivot_table.column_split": {
-        rows: [
-          [
-            "field",
-            ORDERS.CREATED_AT,
-            { "base-type": "type/DateTime", "temporal-unit": "year" },
-          ],
-        ],
-        columns: [
-          [
-            "field",
-            PEOPLE.STATE,
-            { "base-type": "type/Text", "source-field": ORDERS.USER_ID },
-          ],
-        ],
-        values: [
-          ["aggregation", 0],
-          ["aggregation", 1],
-        ],
+        rows: ["CREATED_AT"],
+        columns: ["STATE"],
+        values: ["count", "sum"],
       },
       "pivot_table.column_widths": {
         leftHeaderWidths: [156],

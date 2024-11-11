@@ -1,8 +1,8 @@
-// these tests use ChartSettings directly, but logic we're testing logic in ChartSettingFieldPicker
+// these tests use QuestionChartSettings directly, but logic we're testing logic in ChartSettingFieldPicker
 import { within } from "@testing-library/react";
 
 import { renderWithProviders, screen } from "__support__/ui";
-import { ChartSettings } from "metabase/visualizations/components/ChartSettings";
+import { QuestionChartSettings } from "metabase/visualizations/components/ChartSettings";
 import registerVisualizations from "metabase/visualizations/register";
 
 registerVisualizations();
@@ -47,7 +47,7 @@ function getSeries(metricColumnProps) {
 const setup = seriesDisplay => {
   const series = getSeries(seriesDisplay);
   return renderWithProviders(
-    <ChartSettings series={series} initial={{ section: "Data" }} />,
+    <QuestionChartSettings series={series} initial={{ section: "Data" }} />,
   );
 };
 

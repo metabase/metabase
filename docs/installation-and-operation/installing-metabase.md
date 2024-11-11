@@ -14,7 +14,7 @@ The easiest way to run Metabase. All you need to do is [sign up for a free trial
 
 ## Self-hosting Metabase
 
-For an overview on how to self-host Metabase, check out [how to run Metabase in production](https://www.metabase.com/learn/administration/metabase-in-production).
+For an overview on how to self-host Metabase, check out [how to run Metabase in production](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation//metabase-in-production).
 
 ### [Running the Jar File](running-the-metabase-jar-file.md)
 

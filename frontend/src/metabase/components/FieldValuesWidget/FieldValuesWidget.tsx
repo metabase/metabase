@@ -163,10 +163,16 @@ export function FieldValuesWidgetInner({
   const [isExpanded, setIsExpanded] = useState(false);
   const dispatch = useDispatch();
 
+  const isSingleValueSearch =
+    valuesMode === "search" && !multi && !disableSearch;
+  const isListMode =
+    !disableList &&
+    (shouldList({ parameter, fields, disableSearch }) || isSingleValueSearch);
+
   const previousWidth = usePrevious(width);
 
   useMount(() => {
-    if (shouldList({ parameter, fields, disableSearch })) {
+    if (isListMode) {
       fetchValues();
     }
   });
@@ -479,17 +485,15 @@ export function FieldValuesWidgetInner({
     valuesMode,
   });
 
-  const isListMode =
-    !disableList &&
-    shouldList({ parameter, fields, disableSearch }) &&
-    valuesMode === "list";
   const isLoading = loadingState !== "LOADED";
-  const hasListValues = hasList({
-    parameter,
-    fields,
-    disableSearch,
-    options,
-  });
+  const hasListValues =
+    hasList({
+      parameter,
+      fields,
+      disableSearch,
+      options,
+    }) ||
+    (isSingleValueSearch && options.length > 0);
 
   const valueForLabel = (label: string | number) => {
     const value = fieldValues.byLabel.get(label?.toString());
@@ -605,20 +609,22 @@ export function FieldValuesWidgetInner({
             checkedColor={checkedColor}
           />
         ) : !isSimpleInput ? (
-          <MultiAutocomplete
-            data-testid="field-values-multi-autocomplete"
-            onSearchChange={onInputChange}
-            onChange={values => onChange(values.map(parseFreeformValue))}
-            value={value
-              .map(value => value?.toString())
-              .filter((v): v is string => v !== null && v !== undefined)}
-            data={options.concat(valueOptions).map(renderStringOption)}
-            placeholder={tokenFieldPlaceholder}
-            shouldCreate={shouldCreate}
-            autoFocus={autoFocus}
-            icon={prefix && <span data-testid="input-prefix">{prefix}</span>}
-            itemComponent={CustomItemComponent}
-          />
+          <Box pr="1rem">
+            <MultiAutocomplete
+              data-testid="field-values-multi-autocomplete"
+              onSearchChange={onInputChange}
+              onChange={values => onChange(values.map(parseFreeformValue))}
+              value={value
+                .map(value => value?.toString())
+                .filter((v): v is string => v !== null && v !== undefined)}
+              data={options.concat(valueOptions).map(renderStringOption)}
+              placeholder={tokenFieldPlaceholder}
+              shouldCreate={shouldCreate}
+              autoFocus={autoFocus}
+              icon={prefix && <span data-testid="input-prefix">{prefix}</span>}
+              itemComponent={CustomItemComponent}
+            />
+          </Box>
         ) : (
           <TokenField
             prefix={prefix}
