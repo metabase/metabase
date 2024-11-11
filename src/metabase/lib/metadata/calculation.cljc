@@ -473,7 +473,9 @@
   and column's metadata is generated under `returned-columns` call.
 
   Point is, that `:inherited-temporal-unit` should be added only to column metadata that's generated for use on next
-  stages. The value is used in [[resolve-field-metadata]]."
+  stages.
+
+  The value is used in [[metabase.lib.field/resolve-field-metadata]]."
   false)
 
 (mu/defn returned-columns :- [:maybe ColumnsWithUniqueAliases]
