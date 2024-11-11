@@ -1,13 +1,9 @@
-import { AggregationItemList } from "metabase/query_builder/components/view/sidebars/SummarizeSidebar/SummarizeContent";
+import { BreakoutColumnList } from "metabase/query_builder/components/view/sidebars/SummarizeSidebar/BreakoutColumnList";
 import type * as Lib from "metabase-lib";
 
 import { useInteractiveQuestionContext } from "../context";
 
-/*type SummarizeProps = {
-  onClose: () => void;
-};*/
-
-export const Summarize = () => {
+export const Breakout = () => {
   const { question, updateQuestion } = useInteractiveQuestionContext();
 
   const onQueryChange = (query: Lib.Query) => {
@@ -21,7 +17,7 @@ export const Summarize = () => {
   }
 
   return (
-    <AggregationItemList
+    <BreakoutColumnList
       query={question.query()}
       onQueryChange={onQueryChange}
     />

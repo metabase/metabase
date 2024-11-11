@@ -3,6 +3,7 @@ import type { PropsWithChildren } from "react";
 import { EditorViewControl } from "embedding-sdk/components/private/EditorViewControl";
 import {
   BackButton,
+  Breakout,
   ChartTypeSelector,
   Editor,
   EditorButton,
@@ -107,6 +108,7 @@ const InteractiveQuestion = withPublicComponentWrapper(
   ChartTypeSelector: typeof ChartTypeSelector;
   EditorViewControl: typeof EditorViewControl;
   QuestionSettings: typeof QuestionSettings;
+  Breakout: typeof Breakout;
 };
 
 InteractiveQuestion.BackButton = BackButton;
@@ -129,5 +131,6 @@ InteractiveQuestion.SaveButton = SaveButton;
 InteractiveQuestion.ChartTypeSelector = ChartTypeSelector;
 InteractiveQuestion.EditorViewControl = EditorViewControl;
 InteractiveQuestion.QuestionSettings = QuestionSettings;
+InteractiveQuestion.Breakout = Breakout;
 
 export { InteractiveQuestion };

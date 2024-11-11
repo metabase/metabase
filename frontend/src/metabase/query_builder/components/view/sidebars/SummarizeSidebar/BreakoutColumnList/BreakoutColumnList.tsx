@@ -4,6 +4,10 @@ import { t } from "ttag";
 import Input from "metabase/core/components/Input";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
+import {
+  type UseSummarizeQueryProps,
+  useBreakoutQuery,
+} from "metabase/query_builder/components/view/sidebars/SummarizeSidebar/SummarizeContent";
 import { DelayGroup } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
@@ -23,13 +27,21 @@ export interface BreakoutColumnListProps {
 }
 
 export function BreakoutColumnList({
-  query,
-  stageIndex,
-  onAddBreakout,
-  onUpdateBreakout,
-  onRemoveBreakout,
-  onReplaceBreakouts,
-}: BreakoutColumnListProps) {
+  query: initialQuery,
+  onQueryChange,
+}: UseSummarizeQueryProps) {
+  const {
+    handleAddBreakout: onAddBreakout,
+    handleRemoveBreakout: onRemoveBreakout,
+    handleReplaceBreakouts: onReplaceBreakouts,
+    handleUpdateBreakout: onUpdateBreakout,
+    query,
+    stageIndex,
+  } = useBreakoutQuery({
+    query: initialQuery,
+    onQueryChange,
+  });
+
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearchQuery = useDebouncedValue(
     searchQuery,

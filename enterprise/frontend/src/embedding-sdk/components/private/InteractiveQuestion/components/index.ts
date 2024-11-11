@@ -1,4 +1,5 @@
 export * from "./BackButton";
+export * from "./Breakout";
 export * from "./ChartTypeSelector";
 export * from "./Filter";
 export * from "./FilterBar";

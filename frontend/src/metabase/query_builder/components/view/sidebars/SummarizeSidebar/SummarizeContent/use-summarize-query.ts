@@ -4,12 +4,12 @@ import * as Lib from "metabase-lib";
 
 const STAGE_INDEX = -1;
 
-interface UseSummarizeQueryProps {
+export type UseSummarizeQueryProps = {
   query: Lib.Query;
   onQueryChange: (nextQuery: Lib.Query) => void;
-}
+};
 
-export const useSummarizeQuery = ({
+export const useQueryAggregations = ({
   query: initialQuery,
   onQueryChange,
 }: UseSummarizeQueryProps) => {
@@ -31,12 +31,12 @@ export const useSummarizeQuery = ({
   const handleChange = useCallback(
     (nextQuery: Lib.Query) => {
       setHasDefaultAggregation(false);
-      onQueryChange(nextQuery);
+      onQueryChange?.(nextQuery);
     },
     [onQueryChange],
   );
 
-  const handleQueryChange = useCallback(
+  const handleAggregationChange = useCallback(
     (nextQuery: Lib.Query) => {
       const newAggregations = Lib.aggregations(nextQuery, STAGE_INDEX);
       if (hasDefaultAggregation && newAggregations.length === 0) {
@@ -47,6 +47,25 @@ export const useSummarizeQuery = ({
     },
     [handleChange, hasDefaultAggregation],
   );
+
+  return {
+    query,
+    aggregations,
+    hasAggregations,
+    handleChange,
+    handleAggregationChange,
+  };
+};
+
+export const useBreakoutQuery = ({
+  query: initialQuery,
+  onQueryChange,
+}: UseSummarizeQueryProps) => {
+  const { query, aggregations, hasAggregations, handleChange } =
+    useQueryAggregations({
+      query: initialQuery,
+      onQueryChange: onQueryChange,
+    });
 
   const handleAddBreakout = useCallback(
     (column: Lib.ColumnMetadata) => {
@@ -79,16 +98,35 @@ export const useSummarizeQuery = ({
     },
     [query, handleChange],
   );
+
   return {
     query,
     stageIndex: STAGE_INDEX,
     aggregations,
     hasAggregations,
-    handleQueryChange,
     handleAddBreakout,
     handleUpdateBreakout,
     handleRemoveBreakout,
     handleReplaceBreakouts,
+  };
+};
+
+export const useSummarizeQuery = ({
+  query: initialQuery,
+  onQueryChange,
+}: UseSummarizeQueryProps) => {
+  const { aggregations, handleAggregationChange, hasAggregations, query } =
+    useQueryAggregations({
+      query: initialQuery,
+      onQueryChange,
+    });
+
+  return {
+    query,
+    stageIndex: STAGE_INDEX,
+    aggregations,
+    hasAggregations,
+    handleAggregationChange,
   };
 };
 

@@ -2,24 +2,28 @@ import type { ReactNode } from "react";
 import { useState } from "react";
 import { t } from "ttag";
 
+import { AggregationPicker } from "metabase/common/components/AggregationPicker";
 import { Popover, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
-import { AggregationPicker } from "../SummarizeSidebar.styled";
+import { useSummarizeQuery } from "../SummarizeContent";
 
 import { AddAggregationButtonRoot } from "./AddAggregationButton.styled";
 
 interface AddAggregationButtonProps {
   query: Lib.Query;
-  stageIndex: number;
   onQueryChange: (query: Lib.Query) => void;
 }
 
 export function AddAggregationButton({
-  query,
-  stageIndex,
+  query: initialQuery,
   onQueryChange,
 }: AddAggregationButtonProps) {
+  const { query, stageIndex, handleAggregationChange } = useSummarizeQuery({
+    query: initialQuery,
+    onQueryChange,
+  });
+
   const [isOpened, setIsOpened] = useState(false);
   const hasAggregations = Lib.aggregations(query, stageIndex).length > 0;
   const operators = Lib.availableAggregationOperators(query, stageIndex);
@@ -54,7 +58,7 @@ export function AddAggregationButton({
           operators={operators}
           allowTemporalComparisons
           onQueryChange={query => {
-            onQueryChange(query);
+            handleAggregationChange(query);
             setIsOpened(false);
           }}
         />

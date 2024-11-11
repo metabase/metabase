@@ -1,46 +1,37 @@
 import { t } from "ttag";
 
-import { Stack, type StackProps } from "metabase/ui";
+import { Box, Stack, Title } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 
 import { BreakoutColumnList } from "../BreakoutColumnList";
-import { SectionTitle } from "../SummarizeSidebar.styled";
+
+import { useBreakoutQuery } from "./use-summarize-query";
 
 type SummarizeBreakoutColumnListProps = {
   query: Lib.Query;
-  stageIndex: number;
-  onAddBreakout: (column: Lib.ColumnMetadata) => void;
-  onUpdateBreakout: (
-    clause: Lib.BreakoutClause,
-    column: Lib.ColumnMetadata,
-  ) => void;
-  onRemoveBreakout: (clause: Lib.BreakoutClause) => void;
-  onReplaceBreakouts: (column: Lib.ColumnMetadata) => void;
-} & StackProps;
+  onQueryChange: (query: Lib.Query) => void;
+};
 
 export const SummarizeBreakoutColumnList = ({
-  query,
-  stageIndex,
-  onAddBreakout,
-  onUpdateBreakout,
-  onRemoveBreakout,
-  onReplaceBreakouts,
-  ...containerProps
-}: SummarizeBreakoutColumnListProps) => (
-  <Stack
-    data-testid="summarize-breakout-column-list"
-    h="100%"
-    spacing="0"
-    {...containerProps}
-  >
-    <SectionTitle>{t`Group by`}</SectionTitle>
-    <BreakoutColumnList
-      query={query}
-      stageIndex={stageIndex}
-      onAddBreakout={onAddBreakout}
-      onUpdateBreakout={onUpdateBreakout}
-      onRemoveBreakout={onRemoveBreakout}
-      onReplaceBreakouts={onReplaceBreakouts}
-    />
-  </Stack>
-);
+  query: initialQuery,
+  onQueryChange,
+}: SummarizeBreakoutColumnListProps) => {
+  const { hasAggregations } = useBreakoutQuery({
+    query: initialQuery,
+    onQueryChange,
+  });
+
+  return (
+    hasAggregations && (
+      <Stack data-testid="summarize-breakout-column-list" spacing="0" px="lg">
+        <Title order={5}>{t`Group by`}</Title>
+        <Box style={{ border: "1px solid blue" }}>
+          <BreakoutColumnList
+            query={initialQuery}
+            onQueryChange={onQueryChange}
+          />
+        </Box>
+      </Stack>
+    )
+  );
+};

@@ -1,5 +1,4 @@
 import { useCallback } from "react";
-import { t } from "ttag";
 
 import { color } from "metabase/lib/colors";
 import { Divider } from "metabase/ui";
@@ -8,7 +7,6 @@ import type * as Lib from "metabase-lib";
 import {
   SummarizeAggregationItemList,
   SummarizeBreakoutColumnList,
-  useSummarizeQuery,
 } from "./SummarizeContent";
 import { SidebarView } from "./SummarizeSidebar.styled";
 
@@ -21,26 +19,13 @@ interface SummarizeSidebarProps {
 
 export function SummarizeSidebar({
   className,
-  query: initialQuery,
+  query,
   onQueryChange,
   onClose,
 }: SummarizeSidebarProps) {
-  const {
-    query,
-    stageIndex,
-    aggregations,
-    hasAggregations,
-    handleQueryChange,
-    handleAddBreakout,
-    handleUpdateBreakout,
-    handleRemoveBreakout,
-    handleReplaceBreakouts,
-  } = useSummarizeQuery({
-    query: initialQuery,
-    onQueryChange,
-  });
-
   const handleDoneClick = useCallback(() => {
+    // query is updated every time `onQueryChange` is called so this just
+    // reruns the query. do we need this?
     onQueryChange(query);
     onClose();
   }, [query, onQueryChange, onClose]);
@@ -48,29 +33,18 @@ export function SummarizeSidebar({
   return (
     <SidebarView
       className={className}
-      title={t`Summarize by`}
       color={color("summarize")}
       onDone={handleDoneClick}
     >
       <SummarizeAggregationItemList
-        px="lg"
         query={query}
-        stageIndex={stageIndex}
-        aggregations={aggregations}
-        onQueryChange={handleQueryChange}
+        onQueryChange={onQueryChange}
       />
       <Divider my="lg" />
-      {hasAggregations && (
-        <SummarizeBreakoutColumnList
-          px="lg"
-          query={query}
-          stageIndex={stageIndex}
-          onAddBreakout={handleAddBreakout}
-          onUpdateBreakout={handleUpdateBreakout}
-          onRemoveBreakout={handleRemoveBreakout}
-          onReplaceBreakouts={handleReplaceBreakouts}
-        />
-      )}
+      <SummarizeBreakoutColumnList
+        query={query}
+        onQueryChange={onQueryChange}
+      />
     </SidebarView>
   );
 }
