@@ -1,4 +1,4 @@
-(ns metabase.search.spec-test
+(ns ^:mb/once metabase.search.spec-test
   (:require
    [clojure.test :refer :all]
    [metabase.models]
@@ -86,7 +86,10 @@
                                       :where        [:and
                                                      [:= :updated.moderated_item_type "card"]
                                                      [:= :updated.moderated_item_id :this.id]
-                                                     [:= :updated.most_recent true]]}}}
+                                                     [:= :updated.most_recent true]]}}
+                 :DashboardCard    #{{:search-model "card"
+                                      :fields       nil
+                                      :where        [:= :updated.card_id :this.id]}}}
          (#'search.spec/search-model-hooks (search.spec/spec "card"))))
 
   (is (= #:model{:Table      #{{:search-model "segment",

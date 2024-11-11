@@ -1,4 +1,4 @@
-(ns metabase.search.filter
+(ns ^:mb/once metabase.search.filter
   (:require
    [honey.sql.helpers :as sql.helpers]
    [metabase.driver.common.parameters.dates :as params.dates]
