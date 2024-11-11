@@ -130,7 +130,7 @@
               column  (m/find-first #(= (column-display-name query %) column-name) columns)]
           (if (some? column)
             (lib/aggregate query (lib/aggregation-clause operator column))
-            (throw (ex-info (format "%s is not a correct column for %s operator the aggregate step. Correct columns are: %s"
+            (throw (ex-info (format "%s is not a correct column for %s operator for the aggregate step. Correct columns are: %s"
                                     column-name
                                     operator-name
                                     (str/join ", " (map #(column-display-name query %) columns)))
