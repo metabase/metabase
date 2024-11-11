@@ -9,6 +9,7 @@
    [metabase.lib.query :as lib.query]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu])
   (:import
     (clojure.lang ExceptionInfo)))
@@ -32,7 +33,7 @@
    step
    type-fn
    expression-fn]
-  (let [{step-type :type, column-name :column, operator-name :operator, value :value} step
+  (let [{:keys [value], step-type :type, column-name :column, operator-name :operator} step
         columns (into [] (filter type-fn) (lib/filterable-columns query))
         column  (m/find-first #(= (column-display-name query %) column-name) columns)]
     (if (some? column)
@@ -90,7 +91,7 @@
                        (condp = operator
                          :=  (lib/= column value)))))
 
-(defmethod apply-step :date-filter
+(defmethod apply-step :specific-date-filter
   [query step]
   (apply-filter-step query
                      step
@@ -100,6 +101,24 @@
                          :=  (lib/= column value)
                          :>  (lib/> column value)
                          :<  (lib/< column value)))))
+
+(defmethod apply-step :relative-date-filter
+  [query {:keys [direction unit value], column-name :column}]
+  (let [columns   (into [] (filter lib.types.isa/date-or-datetime?) (lib/filterable-columns query))
+        column    (m/find-first #(= (column-display-name query %) column-name) columns)
+        direction (keyword direction)
+        unit      (keyword unit)]
+    (if (some? column)
+      (lib/filter query (lib/time-interval column
+                                           (condp = direction
+                                             :last    (- value)
+                                             :current :current
+                                             :next    value)
+                                           unit))
+      (throw (ex-info (format "%s is not a correct column for the relative-date-filter step. Correct columns are: %s"
+                              column-name
+                              (str/join ", " (map #(column-display-name query %) columns)))
+                      {:column column-name})))))
 
 (defmethod apply-step :aggregation
   [query {operator-name :operator, column-name :column}]
@@ -176,6 +195,7 @@
                                lib.query/->legacy-MBQL)}]
        :output "success"}
       (catch ExceptionInfo e
+        (log/debug e "Error creating a query in run-query tool")
         {:output (ex-message e)}))))
 
 (mu/defmethod metabot-v3.tools.interface/*tool-applicable?* :metabot.tool/run-query
