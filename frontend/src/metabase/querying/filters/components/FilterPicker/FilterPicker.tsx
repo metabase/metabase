@@ -12,7 +12,7 @@ import {
 import { FilterPickerBody } from "./FilterPickerBody";
 import type { ColumnListItem, SegmentListItem } from "./types";
 
-export interface FilterPickerProps {
+export type FilterPickerProps = {
   query: Lib.Query;
   stageIndex: number;
   filter?: Lib.FilterClause;
@@ -20,12 +20,10 @@ export interface FilterPickerProps {
 
   onSelect: (filter: Lib.Filterable) => void;
   onClose?: () => void;
-
-  columnPickerProps?: Pick<
-    FilterColumnPickerProps,
-    "withColumnItemIcon" | "withColumnGroupIcon" | "withCustomExpression"
-  >;
-}
+} & Pick<
+  FilterColumnPickerProps,
+  "withColumnItemIcon" | "withColumnGroupIcon" | "withCustomExpression"
+>;
 
 export function FilterPicker({
   query,
@@ -34,7 +32,9 @@ export function FilterPicker({
   filterIndex,
   onSelect,
   onClose,
-  columnPickerProps,
+  withColumnItemIcon,
+  withColumnGroupIcon,
+  withCustomExpression,
 }: FilterPickerProps) {
   const [filter, setFilter] = useState(initialFilter);
 
@@ -105,7 +105,9 @@ export function FilterPicker({
         onColumnSelect={handleColumnSelect}
         onSegmentSelect={handleChange}
         onExpressionSelect={openExpressionEditor}
-        {...columnPickerProps}
+        withColumnGroupIcon={withColumnGroupIcon}
+        withColumnItemIcon={withColumnItemIcon}
+        withCustomExpression={withCustomExpression}
       />
     );
   }

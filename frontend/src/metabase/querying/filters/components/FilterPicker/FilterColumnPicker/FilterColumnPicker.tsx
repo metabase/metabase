@@ -124,7 +124,9 @@ export function FilterColumnPicker({
         renderItemWrapper={renderItemWrapper}
         renderItemName={renderItemName}
         renderItemDescription={omitItemDescription}
-        renderItemIcon={withColumnItemIcon ? renderItemIcon : undefined}
+        renderItemIcon={(item: ColumnListItem | SegmentListItem) =>
+          withColumnItemIcon ? renderItemIcon(item) : null
+        }
         // disable scrollbars inside the list
         style={{ overflow: "visible" }}
         maxHeight={Infinity}
