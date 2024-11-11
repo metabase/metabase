@@ -57,7 +57,7 @@
   (with-index
     (testing "The index is updated when models change"
      ;; Has a second entry is "Revenue Project(ions)", when using English dictionary
-      (is (= 1 #_2 (count #p (search.index/search "Projected Revenue"))))
+      (is (= 1 #_2 (count (search.index/search "Projected Revenue"))))
       (is (= 0 (count (search.index/search "Protected Avenue"))))
 
       (t2/update! :model/Card {:name "Projected Revenue"} {:name "Protected Avenue"})
