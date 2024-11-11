@@ -69,7 +69,7 @@
                       [:< [:cast :search_index.model_created_at :date] #t"2024-10-02"]
                       ;; depends on whether :content-verification is enabled
                       #_[:= :search_index.verified true]
-                      [:= 1 1]
+                      [:inline [:= 1 1]]
                       [:in :search_index.creator_id [123]]
                       [:= :search_index.database_id 231]
                       [:>= [:cast :search_index.last_edited_at :date] #t"2024-10-02"]
