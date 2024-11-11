@@ -46,6 +46,7 @@ export function LimitStep({
       <LimitInput
         className={CS.mb1}
         type="number"
+        min={1}
         value={value}
         placeholder={t`Enter a limit`}
         small
