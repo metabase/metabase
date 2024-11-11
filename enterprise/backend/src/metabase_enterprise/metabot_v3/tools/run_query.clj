@@ -190,9 +190,9 @@
         query             (lib/query metadata-provider dataset_query)]
     (try
       {:reactions [{:type  :metabot.reaction/run-query
-                    :query (-> (raw-query query)
-                               (apply-steps steps)
-                               lib.query/->legacy-MBQL)}]
+                    :dataset_query (-> (raw-query query)
+                                       (apply-steps steps)
+                                       lib.query/->legacy-MBQL)}]
        :output "success"}
       (catch ExceptionInfo e
         (log/debug e "Error creating a query in run-query tool")

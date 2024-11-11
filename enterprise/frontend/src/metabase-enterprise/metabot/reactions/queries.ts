@@ -12,6 +12,6 @@ export const runQuery: ReactionHandler<MetabotRunQueryReaction> =
       return;
     }
 
-    const newQuestion = question.setDatasetQuery(reaction.query);
+    const newQuestion = question.setDatasetQuery(reaction.dataset_query);
     await dispatch(updateQuestion(newQuestion, { run: true }));
   };

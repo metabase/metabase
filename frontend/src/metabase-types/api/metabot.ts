@@ -81,7 +81,7 @@ export type MetabotApiCallReaction = {
 
 export type MetabotRunQueryReaction = {
   type: "metabot.reaction/run-query";
-  query: DatasetQuery;
+  dataset_query: DatasetQuery;
 };
 
 type SeriesSettingsEntry = SeriesSettings & { key: string };
