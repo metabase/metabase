@@ -37,8 +37,7 @@
    :site-uuid        (public-settings/site-uuid-for-premium-features-token-checks)
    :created-at       (snowplow/instance-creation)
    :analytics-uuid   (snowplow/analytics-uuid)
-   :metabase-version (public-settings/version)
-   :user-id          api/*current-user-id*})
+   :metabase-version (public-settings/version)})
 
 (defn- encode-request-body [body]
   (mc/encode ::metabot-v3.client.schema/request body (mtx/transformer
@@ -56,7 +55,8 @@
    {:messages      messages
     :context       (metabot-v3.context/hydrate-context (or context {}))
     :tools         (metabot-v3.tools/applicable-tools (metabot-v3.tools/*tools-metadata*) context)
-    :instance-info (*instance-info*)}))
+    :instance-info (*instance-info*)
+    :user-id       api/*current-user-id*}))
 
 (defn- ->json-bytes ^bytes [x]
   (with-open [os (java.io.ByteArrayOutputStream.)
