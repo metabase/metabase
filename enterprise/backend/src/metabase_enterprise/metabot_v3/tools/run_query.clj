@@ -77,10 +77,10 @@
                        (condp = operator
                          :=  (lib/= column value)
                          :!= (lib/!= column value)
-                         :>  (lib/contains column value)
-                         :>= (lib/does-not-contain column value)
-                         :<  (lib/starts-with column value)
-                         :<= (lib/ends-with column value)))))
+                         :>  (lib/> column value)
+                         :>= (lib/>= column value)
+                         :<  (lib/< column value)
+                         :<= (lib/<= column value)))))
 
 (defmethod apply-step :boolean-filter
   [query step]
