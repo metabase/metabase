@@ -1,3 +1,25 @@
+## [1.51.3](https://github.com/metabase/metabase/compare/embedding-sdk-1.51.2...embedding-sdk-1.51.3) (2024-11-06)
+
+
+### Bug Fixes
+
+* **sdk:** ability to save questions in interactive question ([#48866](https://github.com/metabase/metabase/issues/48866)) ([#49134](https://github.com/metabase/metabase/issues/49134)) ([4721f20](https://github.com/metabase/metabase/commit/4721f204b3656b1ebc37abfe688c879b09b197f3))
+* **sdk:** Editable dashboard should not overlap content below it ([#49293](https://github.com/metabase/metabase/issues/49293)) ([#49351](https://github.com/metabase/metabase/issues/49351)) ([713b55e](https://github.com/metabase/metabase/commit/713b55ecac2d2fa2464dec88f3e23ff7fe686d1f))
+* **sdk:** Improve InteractiveQuestion chart selector ([#48837](https://github.com/metabase/metabase/issues/48837)) ([#49269](https://github.com/metabase/metabase/issues/49269)) ([9f6bbc9](https://github.com/metabase/metabase/commit/9f6bbc9cb8332a3f52465237727a8b752857c12b))
+* **sdk:** pin iframe-resizer version to avoid excess logs for sdk cli ([#49312](https://github.com/metabase/metabase/issues/49312)) ([#49408](https://github.com/metabase/metabase/issues/49408)) ([0e09f60](https://github.com/metabase/metabase/commit/0e09f60b816c1e07b729bb9626024bb470562adc))
+* **sdk:** remove runtime error on aggregated question drill ([#49064](https://github.com/metabase/metabase/issues/49064)) ([#49104](https://github.com/metabase/metabase/issues/49104)) ([c98118b](https://github.com/metabase/metabase/commit/c98118b996a1c1dfbfba5d3b03a96ce57d4fc039))
+* **sdk:** static question should cancel requests on component unmount ([#48808](https://github.com/metabase/metabase/issues/48808)) ([#49138](https://github.com/metabase/metabase/issues/49138)) ([b7651d7](https://github.com/metabase/metabase/commit/b7651d7e5dcae7887fbde1b395fe48db93621862))
+* **sdk:** support hiding columns in InteractiveQuestion ([#49013](https://github.com/metabase/metabase/issues/49013)) ([#49158](https://github.com/metabase/metabase/issues/49158)) ([3f4c56c](https://github.com/metabase/metabase/commit/3f4c56c68378fb35fdfa9b2e0df6ec65c9d2db9d))
+
+
+### Features
+
+* **sdk:** ability to enforce the destination collection to save to and hide the collection picker ([#49251](https://github.com/metabase/metabase/issues/49251)) ([#49479](https://github.com/metabase/metabase/issues/49479)) ([a6943f7](https://github.com/metabase/metabase/commit/a6943f7433ad1de424cc3db58233a0e06ae6df7f))
+* **sdk:** Add `isOpen` prop to control CreateDashboardModal visibility ([#49452](https://github.com/metabase/metabase/issues/49452)) ([#49535](https://github.com/metabase/metabase/issues/49535)) ([de1dbd8](https://github.com/metabase/metabase/commit/de1dbd871f227382fa13a3b07199871e5c56b5bf))
+* **sdk:** refactor the auth code to provide better error messages ([#49214](https://github.com/metabase/metabase/issues/49214)) ([#49579](https://github.com/metabase/metabase/issues/49579)) ([5018207](https://github.com/metabase/metabase/commit/5018207fcf61395fbf0e22c44453f0dac71706ac)), closes [#49492](https://github.com/metabase/metabase/issues/49492)
+
+
+
 ## [1.51.2](https://github.com/metabase/metabase/compare/embedding-sdk-0.1.40...embedding-sdk-1.51.2) (2024-10-24)
 
 

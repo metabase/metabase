@@ -945,6 +945,8 @@ describeEE("scenarios > dashboard > dashboard cards > click behavior", () => {
       ]);
 
       cy.go("back");
+      cy.log("return to the dashboard");
+      cy.go("back");
       testChangingBackToDefaultBehavior();
     });
 

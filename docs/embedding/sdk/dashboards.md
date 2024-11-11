@@ -6,7 +6,7 @@ title: "Embedded analytics SDK - dashboards"
 
 {% include beta-blockquote.html %}
 
-{% include plans-blockquote.html feature="Embedded analytics SDK" %}
+{% include plans-blockquote.html feature="Embedded analytics SDK" sdk=true %}
 
 You can embed an interactive, editable, or static dashboard.
 
@@ -34,6 +34,18 @@ You can embed a dashboard using the one of the dashboard components:
 | onLoadWithoutCards     | `(dashboard: Dashboard \| null) => void`        | Event handler that triggers after dashboard loads, but without its cards - at this stage dashboard title, tabs and cards grid is rendered, but cards content is not yet loaded.                                                                                                                                                  |
 
 _\* Not available for `StaticDashboard`._
+
+By default, dashboard components take full page height (100vh). You can override this with custom styles passed via `style` or `className` props.
+
+```tsx
+<EditableDashboard
+  style={{
+    height: 800,
+    minHeight: "auto",
+  }}
+  dashboardId={dashboardId}
+/>
+```
 
 ## Example embedded dashboard with `InteractiveDashboard` component
 

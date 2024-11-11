@@ -188,8 +188,8 @@ See [Model persistence](./model-persistence.md)
 - [Troubleshooting models][troubleshooting-models].
 
 [column-type]: ./field-types.md
-[cte]: https://www.metabase.com/learn/sql-questions/sql-cte
-[measures-dimensions]: https://www.metabase.com/learn/databases/dimensions-and-measures
+[cte]: https://www.metabase.com/learn/grow-your-data-skills/learn-sql/working-with-sql/sql-cte
+[measures-dimensions]: https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/dimensions-and-measures
 [question]: ../questions/start.md
-[learn-models]: https://www.metabase.com/learn/getting-started/models
+[learn-models]: https://www.metabase.com/learn/metabase-basics/getting-started/models
 [troubleshooting-models]: ../troubleshooting-guide/models.md

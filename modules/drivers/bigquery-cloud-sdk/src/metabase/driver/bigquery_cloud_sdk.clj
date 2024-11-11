@@ -216,6 +216,7 @@
                         (str/starts-with? raw-data-type "STRUCT") "RECORD" ;; STRUCT<INT64, FLOAT64>
                         (str/starts-with? raw-data-type "INT") "INTEGER" ;; INT64
                         (str/starts-with? raw-data-type "FLOAT") "FLOAT" ;; FLOAT 64
+                        (str/starts-with? raw-data-type "STRING") "STRING" ;; STRING(255)
                         (= raw-data-type "BOOL") "BOOLEAN"
                         :else raw-data-type)]
     [database-type (database-type->base-type database-type)]))

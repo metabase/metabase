@@ -48,3 +48,5 @@ export const CLI_SHOWN_DB_FIELDS = [
   "conn-uri",
   "authdb",
 ];
+
+export const SAMPLE_DB_ID = 1;

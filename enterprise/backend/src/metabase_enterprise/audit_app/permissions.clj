@@ -44,12 +44,12 @@
   (when (= query-type :native)
     (throw (ex-info (tru "Native queries are not allowed on the audit database")
                     outer-query)))
-  (let [table-ids-or-native-kw (query-perms/query->source-table-ids query)]
+  (let [{:keys [table-ids native?]} (query-perms/query->source-ids query)]
+    (when native?
+      (throw (ex-info (tru "Native queries are not allowed on the audit database")
+                      outer-query)))
     (qp.store/with-metadata-provider database-id
-      (doseq [table-id table-ids-or-native-kw]
-        (when (= table-id ::query-perms/native)
-          (throw (ex-info (tru "Native queries are not allowed on the audit database")
-                          outer-query)))
+      (doseq [table-id table-ids]
         (when-not (audit-db-view-names
                    (u/lower-case-en (:name (lib.metadata/table (qp.store/metadata-provider) table-id))))
           (throw (ex-info (tru "Audit queries are only allowed on audit views")
