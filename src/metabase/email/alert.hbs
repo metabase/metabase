@@ -1,4 +1,4 @@
-{{> metabase/email/_dashsub_alert_header }}
+{{> metabase/email/_dashsub_alert_header.hbs }}
   <body style="padding: 0px">
     <table class="background" width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #F9F9F9; padding: 20px; table-layout: fixed;">
       <tr>
@@ -10,21 +10,19 @@
                   <img class="icon" style="padding-top: 4px; padding-right: 16px; width: 100%; height: auto; max-width: 20px" src="cid:{{computed.icon_cid}}"/>
                 </td>
                 <td>
-                  <a class="title" href="{{computed.dashboard_url}}" style="font-size: 20px; font-weight: 700; padding-bottom: 4px;">
-                    {{payload.dashboard.name}}
+                  <a class="title" href="{{{computed.card_url}}}" style="font-size: 20px; font-weight: 700; padding-bottom: 4px;">
+                    {{payload.card.name}}
                   </a>
                 </td>
               </tr>
-              {{#payload.dashboard.description}}
-                <tr>
-                  <td>&#8202;</td>
-                  <td>
-                    <div class="description" style="color: {{payload.style.color_text_dark}}; font-size: 14px">
-                      {{{payload.dashboard.description}}}
-                    </div>
-                  </td>
-                </tr>
-              {{/payload.dashboard.description}}
+              <tr>
+                <td>&#8202;</td>
+                <td>
+                  <div style="color: {{payload.style.color_text_dark}}; font-size: 14px">
+                    {{computed.alert_schedule}}
+                  </div>
+                </td>
+              </tr>
               <tr>
                 <td>&#8202;</td>
                 <td>
@@ -33,19 +31,16 @@
                   </div>
                 </td>
               </tr>
-              {{#computed.filters}}
-                <tr>
-                  <td>&#8202;</td>
-                  <td>
-                    {{{computed.filters}}}
-                  </td>
-                </tr>
-              {{/computed.filters}}
             </table>
-            {{^computed.dashboard_has_tabs?}}
-              <hr>
-            {{/computed.dashboard_has_tabs?}}
-            {{{computed.dashboard_content}}}
+            {{{computed.alert_content}}}
+            <p style="color: {{payload.style.color_text_medium}}; font-size: 12px; font-weight: 400">
+            {{computed.alert_condition}}
+            </p>
+            {{#if payload.alert.alert_first_only}}
+              <p style="color: {{payload.style.color_text_medium}}; font-size: 12px; font-weight: 400">
+              We’ll stop sending you alerts about this question now.
+              </p>
+            {{/if}}
             <hr>
             <div class="footer" style="font-size: 11px; width: max-content; margin: 0 auto">
               Sent from <a href="{{context.site_url}}" style="color: {{context.application_color}}">{{context.site_url}}</a>.
@@ -57,4 +52,3 @@
     </table>
   </body>
 </html>
-

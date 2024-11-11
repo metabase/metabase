@@ -15,8 +15,9 @@ import { openSharingMenu } from "./e2e-sharing-helpers";
  * {@link QuestionResource} or {@link DashboardResource}
  * @property {object} params
  *
- * @typedef {object} HiddenFilters
- * @property {string} hide_parameters
+ * @typedef {import("metabase/public/lib/types").EmbeddingAdditionalHashOptions} EmbeddingAdditionalHashOptions
+ *
+ * @typedef {EmbeddingAdditionalHashOptions['hide_parameters']} HiddenFilters
  *
  * @typedef {object} PageStyle
  * @property {boolean} [bordered]
@@ -29,10 +30,12 @@ import { openSharingMenu } from "./e2e-sharing-helpers";
  * Programmatically generate token and visit the embedded page for a question or a dashboard
  *
  * @param {EmbedPayload} payload - The {@link EmbedPayload} we pass to this function
- * @param {*} options
+ * @param {object} options
  * @param {object} [options.setFilters]
  * @param {PageStyle} options.pageStyle
- * @param {string[]} [options.hideFilters]
+ * @param {object} options.additionalHashOptions
+ * @param {string} [options.additionalHashOptions.locale]
+ * @param {string[]} [options.additionalHashOptions.hideFilters]
  * @param {object} [options.qs]
  *
  * @example
@@ -44,7 +47,13 @@ import { openSharingMenu } from "./e2e-sharing-helpers";
  */
 export function visitEmbeddedPage(
   payload,
-  { setFilters = {}, hideFilters = [], pageStyle = {}, onBeforeLoad, qs } = {},
+  {
+    setFilters = {},
+    additionalHashOptions: { hideFilters = [], locale } = {},
+    pageStyle = {},
+    onBeforeLoad,
+    qs,
+  } = {},
 ) {
   const jwtSignLocation = "e2e/support/external/e2e-jwt-sign.js";
 
@@ -60,7 +69,13 @@ export function visitEmbeddedPage(
     const embeddableObject = getEmbeddableObject(payload);
     const hiddenFilters = getHiddenFilters(hideFilters);
     const urlRoot = `/embed/${embeddableObject}/${tokenizedQuery}`;
-    const urlHash = getHash(pageStyle, hiddenFilters);
+    const urlHash = getHash(
+      {
+        ...pageStyle,
+        locale,
+      },
+      hiddenFilters,
+    );
 
     // Always visit embedded page logged out
     cy.signOut();
@@ -91,13 +106,13 @@ export function visitEmbeddedPage(
   /**
    * Get the URL hash from the page style and/or hidden filters parameters
    *
-   * @param {PageStyle} pageStyle
+   * @param {PageStyle & EmbeddingAdditionalHashOptions['locale']} hashOptions
    * @param {HiddenFilters} hiddenFilters
    *
    * @returns string
    */
-  function getHash(pageStyle, hiddenFilters) {
-    return new URLSearchParams({ ...pageStyle, ...hiddenFilters }).toString();
+  function getHash(hashOptions, hiddenFilters) {
+    return new URLSearchParams({ ...hashOptions, ...hiddenFilters }).toString();
   }
 
   /**
