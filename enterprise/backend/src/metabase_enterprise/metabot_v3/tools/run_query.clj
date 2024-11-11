@@ -12,7 +12,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu])
   (:import
-    (clojure.lang ExceptionInfo)))
+   (clojure.lang ExceptionInfo)))
 
 (defmulti apply-step
   "Applies a query step."
