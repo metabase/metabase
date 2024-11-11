@@ -674,6 +674,7 @@
                   :last-edited-at :r.timestamp
                   :pinned         [:> [:coalesce :collection_position [:inline 0]] [:inline 0]]
                   :table-id       false
+                  :view-count     true
                   :created-at     true
                   :updated-at     true}
    :search-terms [:name :description]
