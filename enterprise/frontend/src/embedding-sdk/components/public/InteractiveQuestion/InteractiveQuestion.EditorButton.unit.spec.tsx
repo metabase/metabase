@@ -9,7 +9,7 @@ import {
   setupTableEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
-import { createMockJwtConfig } from "embedding-sdk/test/mocks/config";
+import { createMockAuthProviderUriConfig } from "embedding-sdk/test/mocks/config";
 import { setupSdkState } from "embedding-sdk/test/server-mocks/sdk-init";
 import { QuestionNotebookButton } from "metabase/query_builder/components/view/ViewHeader/components";
 import {
@@ -84,8 +84,8 @@ const setup = ({
     {
       mode: "sdk",
       sdkProviderProps: {
-        config: createMockJwtConfig({
-          jwtProviderUri: "http://TEST_URI/sso/metabase",
+        config: createMockAuthProviderUriConfig({
+          authProviderUri: "http://TEST_URI/sso/metabase",
         }),
       },
       storeInitialState: state,

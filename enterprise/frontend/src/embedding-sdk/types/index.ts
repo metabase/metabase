@@ -18,14 +18,14 @@ type BaseSDKConfig = {
   allowConsoleLog?: boolean;
 };
 
-export type SDKConfigWithJWT = BaseSDKConfig & {
-  jwtProviderUri: string;
+export type SDKConfigWithAuthProviderUri = BaseSDKConfig & {
+  authProviderUri: string;
   apiKey?: never;
 };
 
 export type SDKConfigWithApiKey = BaseSDKConfig & {
   apiKey: string;
-  jwtProviderUri?: never;
+  authProviderUri?: never;
 };
 
-export type SDKConfig = SDKConfigWithJWT | SDKConfigWithApiKey;
+export type SDKConfig = SDKConfigWithAuthProviderUri | SDKConfigWithApiKey;

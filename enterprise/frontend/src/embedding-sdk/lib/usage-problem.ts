@@ -36,10 +36,10 @@ export function getSdkUsageProblem(
   const {
     isEnabled,
     hasTokenFeature,
-    config: { jwtProviderUri, apiKey },
+    config: { authProviderUri, apiKey },
   } = options;
 
-  const isSSO = !!jwtProviderUri;
+  const isSSO = !!authProviderUri;
   const isApiKey = !!apiKey;
   const isLocalhost = getIsLocalhost();
 

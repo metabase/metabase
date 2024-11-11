@@ -29,7 +29,7 @@ const AUTH_PROVIDER_URL = "http://auth-provider/metabase-sso";
 
 const defaultJwtConfig = defineEmbeddingSdkConfig({
   metabaseInstanceUrl: METABASE_INSTANCE_URL,
-  jwtProviderUri: AUTH_PROVIDER_URL,
+  authProviderUri: AUTH_PROVIDER_URL,
 });
 
 const MOCK_CARD = createMockCard({ id: 1 });

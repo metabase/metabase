@@ -18,21 +18,21 @@ export const initAuth = createAsyncThunk(
   async (sdkConfig: SDKConfig, { dispatch }) => {
     // Setup JWT or API key
     const isValidJwtConfig =
-      sdkConfig.jwtProviderUri && sdkConfig.jwtProviderUri?.length > 0;
+      sdkConfig.authProviderUri && sdkConfig.authProviderUri?.length > 0;
     const isValidApiKeyConfig = sdkConfig.apiKey && getIsLocalhost();
 
     if (isValidJwtConfig) {
       // JWT setup
       api.onBeforeRequest = async () => {
         const session = await dispatch(
-          getOrRefreshSession(sdkConfig.jwtProviderUri!),
+          getOrRefreshSession(sdkConfig.authProviderUri!),
         ).unwrap();
         if (session?.id) {
           api.sessionToken = session.id;
         }
       };
       // verify that the session is actually valid before proceeding
-      await dispatch(getOrRefreshSession(sdkConfig.jwtProviderUri!)).unwrap();
+      await dispatch(getOrRefreshSession(sdkConfig.authProviderUri!)).unwrap();
     } else if (isValidApiKeyConfig) {
       // API key setup
       api.apiKey = sdkConfig.apiKey;

@@ -9,7 +9,7 @@ import { renderWithProviders, screen, within } from "__support__/ui";
 import * as IsLocalhostModule from "embedding-sdk/lib/is-localhost";
 import {
   createMockApiKeyConfig,
-  createMockJwtConfig,
+  createMockAuthProviderUriConfig,
 } from "embedding-sdk/test/mocks/config";
 import { createMockSdkState } from "embedding-sdk/test/mocks/state";
 import type { SDKConfig } from "embedding-sdk/types";
@@ -57,7 +57,10 @@ const PROBLEM_INDICATOR_TEST_ID = "sdk-usage-problem-indicator";
 
 describe("SdkUsageProblemDisplay", () => {
   it("does not show an error when JWT is provided with a license", () => {
-    setup({ config: createMockJwtConfig(), hasEmbeddingFeature: true });
+    setup({
+      config: createMockAuthProviderUriConfig(),
+      hasEmbeddingFeature: true,
+    });
 
     expect(
       screen.queryByTestId(PROBLEM_INDICATOR_TEST_ID),
@@ -65,7 +68,10 @@ describe("SdkUsageProblemDisplay", () => {
   });
 
   it("shows an error when JWT is used without a license", async () => {
-    setup({ config: createMockJwtConfig(), hasEmbeddingFeature: false });
+    setup({
+      config: createMockAuthProviderUriConfig(),
+      hasEmbeddingFeature: false,
+    });
 
     await userEvent.click(screen.getByTestId(PROBLEM_INDICATOR_TEST_ID));
 
@@ -141,7 +147,7 @@ describe("SdkUsageProblemDisplay", () => {
       config: {
         apiKey: "TEST_API_KEY",
         metabaseInstanceUrl: "http://localhost",
-        jwtProviderUri: "http://TEST_URI/sso/metabase",
+        authProviderUri: "http://TEST_URI/sso/metabase",
       },
     });
 
