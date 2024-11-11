@@ -2,6 +2,7 @@ import cx from "classnames";
 import { isValidElement, useMemo } from "react";
 
 import CS from "metabase/css/core/index.css";
+import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 import type {
   ComputedVisualizationSettings,
   DataPoint,
@@ -119,7 +120,7 @@ const getRows = (hovered: HoveredObject) => {
 
 export const getRowFromDataPoint = (data: DataPoint) => ({
   ...data,
-  key: data.key || data?.col?.display_name,
+  key: data.key || (data?.col?.display_name ?? NULL_DISPLAY_VALUE),
 });
 
 const getRowFromDimension = ({ column, value }: HoveredDimension) => ({
