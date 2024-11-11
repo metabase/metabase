@@ -154,10 +154,11 @@ These components are available via the `InteractiveQuestion` namespace (e.g., `<
 
 ## Interactive question plugins
 
+You can use plugins to add custom functionality to your questions.
+
 ### `mapQuestionClickActions`
 
-This plugin allows you to add custom actions to
-the click-through menu of an interactive question. You can add and
+This plugin allows you to add custom actions to the click-through menu of an interactive question. You can add and
 customize the appearance and behavior of the custom actions.
 
 ```typescript
@@ -216,28 +217,9 @@ return (
 );
 ```
 
-## Embedding the query builder
+## Embedding an editable interactive question
 
-With the `CreateQuestion` component, you can create a new question from scratch with Metabase's query builder.
-
-```tsx
-import React from "react";
-import {MetabaseProvider, CreateQuestion} from "@metabase/embedding-sdk-react";
-
-const config = {...}
-
-export default function App() {
-    return (
-        <MetabaseProvider config={config}>
-            <CreateQuestion/>
-        </MetabaseProvider>
-    );
-}
-```
-
-## Embedding an editable question
-
-You can edit an existing question using the query builder by using the `isSaveEnabled` prop on the `InteractiveQuestion` component.
+You can edit an existing question using the query builder by passing the `isSaveEnabled` prop on the `InteractiveQuestion` component.
 
 ```tsx
 import React from "react";
@@ -249,6 +231,25 @@ export default function App() {
     return (
         <MetabaseProvider config={config}>
             <InteractiveQuestion questionId={1} isSaveEnabled />
+        </MetabaseProvider>
+    );
+}
+```
+
+## Embedding the query builder
+
+With the `CreateQuestion` component, you can embed the query builder without a pre-defined question.
+
+```tsx
+import React from "react";
+import {MetabaseProvider, CreateQuestion} from "@metabase/embedding-sdk-react";
+
+const config = {...}
+
+export default function App() {
+    return (
+        <MetabaseProvider config={config}>
+            <CreateQuestion/>
         </MetabaseProvider>
     );
 }
