@@ -34,13 +34,14 @@
       (let [operators (lib/filterable-column-operators column)
             operator  (m/find-first #(= (operator-display-name %) operator-name) operators)]
         (if (some? operator)
-          (condp = (:short operator)
-            :=                (lib/filter query (lib/= column value))
-            :!=               (lib/filter query (lib/!= column value))
-            :contains         (lib/filter query (lib/contains column value))
-            :does-not-contain (lib/filter query (lib/does-not-contain column value))
-            :starts-with      (lib/filter query (lib/starts-with column value))
-            :ends-with        (lib/filter query (lib/ends-with column value)))
+          (->> (condp = (:short operator)
+                 :=                (lib/= column value)
+                 :!=               (lib/!= column value)
+                 :contains         (lib/contains column value)
+                 :does-not-contain (lib/does-not-contain column value)
+                 :starts-with      (lib/starts-with column value)
+                 :ends-with        (lib/ends-with column value))
+               (lib/filter query))
           (throw (ex-info (format "%s is not a correct filter operator for %s column. Correct operators are: %s"
                                   operator-name
                                   column-name
