@@ -8,6 +8,8 @@ import type {
 } from "metabase-types/api";
 
 import { sendMessageRequest } from "./actions";
+import { WritableDraft } from "immer/dist/types/types-external";
+import { logout } from "metabase/auth/actions";
 
 export interface MetabotState {
   confirmationOptions: Record<string, MetabotReaction[]> | undefined;
@@ -27,6 +29,16 @@ export const metabotInitialState: MetabotState = {
   sessionId: undefined,
   userMessages: [],
   visible: false,
+};
+
+const hideMetabot = (state: WritableDraft<MetabotState>) => {
+  state.visible = false;
+  state.isProcessing = false;
+  state.userMessages = [];
+  state.confirmationOptions = undefined;
+  state.lastSentContext = undefined;
+  state.lastHistoryValue = undefined;
+  state.sessionId = undefined;
 };
 
 export const metabot = createSlice({
@@ -49,17 +61,11 @@ export const metabot = createSlice({
       state.sessionId = action.payload;
     },
     setVisible: (state, { payload: visible }: PayloadAction<boolean>) => {
-      state.visible = visible;
-
-      if (!visible) {
-        state.isProcessing = false;
-        state.userMessages = [];
-        state.confirmationOptions = undefined;
-        state.lastSentContext = undefined;
-        state.lastHistoryValue = undefined;
-        state.sessionId = undefined;
-      } else {
+      if (visible) {
+        state.visible = true;
         state.sessionId = uuid();
+      } else {
+        hideMetabot(state);
       }
     },
     setConfirmationOptions: (
@@ -77,6 +83,9 @@ export const metabot = createSlice({
       })
       .addCase(sendMessageRequest.fulfilled, (state, action) => {
         state.lastHistoryValue = action.payload?.data?.history;
+      })
+      .addCase(logout.pending, state => {
+        hideMetabot(state);
       });
   },
 });
