@@ -10,7 +10,7 @@ redirect_from:
 
 Data sandboxes let you give granular permissions to rows and columns for different groups of people. You can sandbox what data a group [can view](./data.md#can-view-data-permission), as well as what data a group [can query](./data.md#create-queries-permissions) with the query builder.
 
-You can use sandboxes to set up [self-service analytics](https://www.metabase.com/learn/customer-facing-analytics/multi-tenant-self-service-analytics), so that each of your customers only views the rows that match their customer ID. For example, if you have an Accounts table with information about your customers, you can sandbox that table so that each customer only sees the data relevant to them.
+You can use sandboxes to set up [self-service analytics](https://www.metabase.com/learn/metabase-basics/embedding/multi-tenant-self-service-analytics), so that each of your customers only views the rows that match their customer ID. For example, if you have an Accounts table with information about your customers, you can sandbox that table so that each customer only sees the data relevant to them.
 
 ## Data sandbox examples
 
@@ -269,6 +269,6 @@ Metabase can only create a data sandbox using the group membership or user attri
 ## Further reading
 
 - [Data sandbox examples](./data-sandbox-examples.md)
-- [Permissions strategies](https://www.metabase.com/learn/permissions/strategy)
-- [Configuring permissions for different customer schemas](https://www.metabase.com/learn/permissions/multi-tenant-permissions)
-- [Securing embedded Metabase](https://www.metabase.com/learn/customer-facing-analytics/securing-embeds)
+- [Permissions strategies](https://www.metabase.com/learn/metabase-basics/administration/permissions/strategy)
+- [Configuring permissions for different customer schemas](https://www.metabase.com/learn/metabase-basics/administration/permissions/multi-tenant-permissions)
+- [Securing embedded Metabase](https://www.metabase.com/learn/metabase-basics/embedding/securing-embeds)

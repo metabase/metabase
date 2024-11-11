@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - "master"
+      - metabot-v3-second-try
     paths-ignore:
       # config files
       - ".**"
@@ -56,7 +57,7 @@ jobs:
     strategy:
       matrix:
         edition: [ee, oss]
-        java-version: [11, 17]
+        java-version: [11, 17, 21]
     steps:
     - name: Prepare JRE (Java Run-time Environment)
       uses: actions/setup-java@v4
@@ -149,9 +150,15 @@ jobs:
       with:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_TOKEN }}
+
     - name: Retag and push images if master (ee)
       if: ${{ (github.ref_name == 'master') && matrix.edition == 'ee' }}
       run: docker tag localhost:5000/metabase-dev:${{ steps.extract_branch.outputs.branch }}-ee ${{ github.repository_owner }}/metabase-enterprise-head:latest && docker push ${{ github.repository_owner }}/metabase-enterprise-head:latest
+
+    # TODO: remove when we're done testing metabot
+    - name: Retag and push images if metabot-v3-second-try (ee)
+      if: ${{ (github.ref_name == 'metabot-v3-second-try') && matrix.edition == 'ee' }}
+      run: docker tag localhost:5000/metabase-dev:${{ steps.extract_branch.outputs.branch }}-ee ${{ github.repository_owner }}/metabase-enterprise-head:metabot && docker push ${{ github.repository_owner }}/metabase-enterprise-head:metabot
 
     - name: Retag and push images if master (oss)
       if: ${{ (github.ref_name == 'master') && matrix.edition == 'oss' }}

@@ -1042,7 +1042,7 @@
   (testing "Check that moving a dashboard to another collection will fixup both collections"
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp [Collection collection-1 {}
-                     Collection collection-2] {}
+                     Collection collection-2 {}]
         (api.card-test/with-ordered-items collection-1 [Dashboard a
                                                         Card      b
                                                         Card      c
