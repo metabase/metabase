@@ -1,5 +1,7 @@
 import { type PayloadAction, createSlice } from "@reduxjs/toolkit";
+import type { WritableDraft } from "immer/dist/types/types-external";
 
+import { logout } from "metabase/auth/actions";
 import { uuid } from "metabase/lib/uuid";
 import type {
   MetabotChatContext,
@@ -8,8 +10,6 @@ import type {
 } from "metabase-types/api";
 
 import { sendMessageRequest } from "./actions";
-import { WritableDraft } from "immer/dist/types/types-external";
-import { logout } from "metabase/auth/actions";
 
 export interface MetabotState {
   confirmationOptions: Record<string, MetabotReaction[]> | undefined;

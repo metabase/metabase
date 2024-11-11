@@ -2,12 +2,12 @@ import { useCallback, useEffect } from "react";
 import { tinykeys } from "tinykeys";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
+import { getCurrentUser } from "metabase/admin/datamodel/selectors";
+import { useSelector } from "metabase/lib/redux";
 
 import { useMetabotAgent } from "../hooks";
 
 import { MetabotChat } from "./MetabotChat";
-import { useSelector } from "metabase/lib/redux";
-import { getCurrentUser } from "metabase/admin/datamodel/selectors";
 
 export const Metabot = () => {
   const currentUser = useSelector(getCurrentUser);
@@ -17,7 +17,9 @@ export const Metabot = () => {
   const onClose = useCallback(() => setVisible(false), [setVisible]);
 
   useEffect(() => {
-    if (!currentUser) return () => {};
+    if (!currentUser) {
+      return () => {};
+    }
 
     return tinykeys(window, {
       "$mod+b": e => {

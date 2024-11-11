@@ -1,6 +1,7 @@
 import { t } from "ttag";
 import _ from "underscore";
 
+import { getCurrentUser } from "metabase/admin/datamodel/selectors";
 import { createAsyncThunk } from "metabase/lib/redux";
 import { uuid } from "metabase/lib/uuid";
 import {
@@ -21,7 +22,6 @@ import {
   getLastSentContext,
   getMetabotSessionId,
 } from "./selectors";
-import { getCurrentUser } from "metabase/admin/datamodel/selectors";
 
 export const {
   addUserMessage,
