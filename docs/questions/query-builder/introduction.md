@@ -69,7 +69,7 @@ Filtering just means narrowing things down based on certain criteria. You're pro
 
 ![Filtering](../images/filter-step.png)
 
-When you add a filter step, you can select one or more columns to filter on. Depending on the [data type](https://www.metabase.com/learn/databases/data-types-overview) of the column you pick, you'll get different [filter types](#filter-types), like a calendar for date columns.
+When you add a filter step, you can select one or more columns to filter on. Depending on the [data type](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview) of the column you pick, you'll get different [filter types](#filter-types), like a calendar for date columns.
 
 You can add subsequent filter steps after each summarize step. This lets you do things like summarize by the count of rows per month, and then add a filter on the `count` column to only include rows where the count is greater than 100. (This is basically like a SQL `HAVING` clause.)
 
@@ -189,7 +189,7 @@ When viewing a chart, you can also click through questions to explore the data i
 
 ![Drill-through menu](../images/drill-through-menu.png)
 
-The drill-through menu will present different options depending on what you click on. You can then optionally save any exploration as a new question. Full drill-through menu is only available for questions built using the query builder. Questions build with SQL/native queries will have only have [limited drill-through actions](../native-editor/writing-sql.md#drill-though-in-sql-questions). For more on how drill-through works, check out [Creating interactive charts](https://www.metabase.com/learn/questions/drill-through).
+The drill-through menu will present different options depending on what you click on. You can then optionally save any exploration as a new question. Full drill-through menu is only available for questions built using the query builder. Questions build with SQL/native queries will have only have [limited drill-through actions](../native-editor/writing-sql.md#drill-though-in-sql-questions). For more on how drill-through works, check out [Creating interactive charts](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through).
 
 ## Column heading drill-through
 
@@ -276,4 +276,4 @@ See [History](../../exploration-and-organization/history.md).
 
 - [Visualize results](../sharing/visualizing-results.md).
 - [Sharing answers](../sharing/answers.md).
-- [Asking questions](https://www.metabase.com/learn/questions)
+- [Asking questions](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions)

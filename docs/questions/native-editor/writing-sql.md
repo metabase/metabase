@@ -101,14 +101,14 @@ See [Caching question policies](../../configuring-metabase/caching.md#question-c
 
 ## Learn more
 
-- [Best practices for writing SQL queries](https://www.metabase.com/learn/sql-questions/sql-best-practices.html)
+- [Best practices for writing SQL queries](https://www.metabase.com/learn/grow-your-data-skills/learn-sql/working-with-sql/sql-best-practices)
 - [SQL troubleshooting guide][troubleshooting-sql].
 
 [asking-questions]: ../query-builder/introduction.md#creating-a-new-question-with-the-query-builder
-[learn-sql]: https://www.metabase.com/learn/sql-questions
+[learn-sql]: https://www.metabase.com/learn/grow-your-data-skills/learn-sql/working-with-sql
 [ref-models]: ./referencing-saved-questions-in-queries.md
 [sample-database-gloss]: https://www.metabase.com/glossary/sample_database
 [sql-gloss]: https://www.metabase.com/glossary/sql
 [troubleshooting-sql]: ../../troubleshooting-guide/sql.md
 [variable-gloss]: https://www.metabase.com/glossary/variable
-[drill-through]: https://www.metabase.com/learn/questions/drill-through
+[drill-through]: https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through

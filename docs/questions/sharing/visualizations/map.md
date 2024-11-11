@@ -36,4 +36,4 @@ Metabase also allows administrators to add [custom maps via GeoJSON files](../..
 
 ## Further reading
 
-- [Visualizing data with maps](https://www.metabase.com/learn/basics/visualizing-data/maps).
+- [Visualizing data with maps](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/visualization/maps).
