@@ -53,18 +53,43 @@
    [[(sum-columns (map weighted-score scorers))
      :total_score]]))
 
+;; Divides rank by log(len(doc))
+;; See https://www.postgresql.org/docs/current/textsearch-controls.html#TEXTSEARCH-RANKING
+(def ^:private ts-rank-normalization 1)
+
+;; TODO move these to the spec definitions
+(def ^:private bookmarked-models [:card :collection :dashboard])
+
+(def ^:private bookmark-score-expr
+  (let [match-clause (fn [m] [[:and [:= :model m] [:!= nil (keyword (str m "_bookmark." m "_id"))]]
+                              [:inline 1]])]
+    (into [:case] (concat (mapcat (comp match-clause name) bookmarked-models) [:else [:inline 0]]))))
+
 (def ^:private scorers
-  ;; TODO bookmarked (user specific)
-  {:text      [:ts_rank :search_vector :query]
-   :pinned    (truthy :pinned)
-   :recency   (inverse-duration :model_updated_at [:now] search.config/stale-time-in-days)
-   :dashboard (size :dashboardcard_count search.config/dashboard-count-ceiling)
-   :model     (idx-rank :model_rank (count search.config/all-models))})
+  {:text       [:ts_rank :search_vector :query [:inline ts-rank-normalization]]
+   :pinned     (truthy :pinned)
+   :bookmarked bookmark-score-expr
+   :recency    (inverse-duration :model_updated_at [:now] search.config/stale-time-in-days)
+   :dashboard  (size :dashboardcard_count search.config/dashboard-count-ceiling)
+   :model      (idx-rank :model_rank (count search.config/all-models))})
 
 (def ^:private precalculated-select-items (select-items scorers))
 
+(defn- bookmark-join [model user-id]
+  (let [model-name (name model)
+        table-name (str model-name "_bookmark")]
+    [(keyword table-name)
+     [:and
+      [:= :model [:inline model-name]]
+      [:= (keyword (str table-name ".user_id")) user-id]
+      [:= :search_index.model_id (keyword (str table-name "." model-name "_id"))]]]))
+
+(defn- join-bookmarks [qry user-id]
+  (apply sql.helpers/left-join qry (mapcat #(bookmark-join % user-id) bookmarked-models)))
+
 (defn with-scores
   "Add a bunch of SELECT columns for the individual and total scores, and a corresponding ORDER BY."
-  [qry]
+  [search-ctx qry]
   (-> (apply sql.helpers/select qry precalculated-select-items)
+      (join-bookmarks (:current-user-id search-ctx))
       (sql.helpers/order-by [:total_score :desc])))

@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
+   [medley.core :as m]
    [metabase.search.config :as search.config]
    [metabase.search.postgres.index :as search.index]
    [metabase.search.spec :as search.spec]
@@ -9,7 +10,9 @@
    [toucan2.core :as t2]
    [toucan2.realize :as t2.realize]))
 
-(def ^:private insert-batch-size 50)
+(set! *warn-on-reflection* true)
+
+(def ^:private insert-batch-size 150)
 
 (def ^:private model-rankings
   (zipmap search.config/models-search-order (range)))
@@ -81,6 +84,9 @@
        (eduction
         (comp
          (map t2.realize/realize)
+         ;; It's possible to get redundant entries from the indexed-entities table.
+         ;; We remove duplicates to avoid creating invalid insert statements.
+         (m/distinct-by (juxt :id :model))
          (map ->entry)
          (partition-all insert-batch-size)))
        (run! search.index/batch-update!)))
@@ -90,15 +96,30 @@
   []
   (batch-update! (search-items-reducible)))
 
+(def ^:dynamic *force-sync*
+  "Force ingestion to happen immediately, on the same thread."
+  false)
+
+(defmacro ^:private run-on-thread [& body]
+  `(if *force-sync*
+     (do ~@body)
+     (doto (Thread. ^Runnable (fn [] ~@body))
+       (.start))))
+
 (defn update-index!
   "Given a new or updated instance, create or update all the corresponding search entries if needed."
   [instance]
   (when-let [updates (seq (search.spec/search-models-to-update instance))]
-    (->> (for [[search-model where-clause] updates]
-           (spec-index-reducible search-model where-clause))
-         ;; init collection is only for clj-kondo, as we know that the list is non-empty
-         (reduce u/rconcat [])
-         (batch-update!))))
+    ;; We need to delay execution to handle deletes, which alert us *before* updating the database.
+    ;; TODO It's dangerous to simply unleash threads on the world, this should use a queue in future.
+    (run-on-thread
+     (Thread/sleep 100)
+     (->> (for [[search-model where-clause] updates]
+            (spec-index-reducible search-model where-clause))
+          ;; init collection is only for clj-kondo, as we know that the list is non-empty
+          (reduce u/rconcat [])
+          (batch-update!)))
+    nil))
 
 ;; TODO think about how we're going to handle cascading deletes.
 ;; Ideas:

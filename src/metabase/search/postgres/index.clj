@@ -44,6 +44,7 @@
              ;; entity
              [:model_id :int :not-null]
              [:model [:varchar 254] :not-null] ;; TODO We could shrink this to just what we need.
+             [:name :text]
              ;; search
              [:search_vector :tsvector :not-null]
              ;; results
@@ -70,7 +71,8 @@
              ;; useful for tracking the speed and age of the index
              [:created_at :timestamp
               [:default [:raw "CURRENT_TIMESTAMP"]]
-              :not-null]])
+              :not-null]
+             [:updated_at :timestamp :not-null]])
           t2/query)
 
       ;; TODO I strongly suspect that there are more indexes that would help performance, we should examine EXPLAIN.
@@ -80,7 +82,6 @@
         (doseq [stmt ["CREATE UNIQUE INDEX IF NOT EXISTS %s_identity_idx ON %s (model, model_id)"
                       "CREATE INDEX IF NOT EXISTS %s_tsvector_idx ON %s USING gin (search_vector)"
                       ;; Spam all the indexes for now, let's see if they get used on Stats / Ephemeral envs.
-                      "CREATE INDEX IF NOT EXISTS %s_model_idx ON %s (model)"
                       "CREATE INDEX IF NOT EXISTS %s_model_archived_idx ON %s (model, archived)"
                       "CREATE INDEX IF NOT EXISTS %s_archived_idx ON %s (archived)"]]
           (t2/query (format stmt idx-prefix table-name)))))
@@ -111,14 +112,19 @@
       (update :display_data json/generate-string)
       (update :legacy_input json/generate-string)
       (assoc
+       :updated_at       :%now
        :model_id         (:id entity)
        :model_created_at (:created_at entity)
        :model_updated_at (:updated_at entity)
-       :search_vector    [:to_tsvector
-                          [:inline tsv-language]
-                          [:cast
-                           (:searchable_text entity)
-                           :text]])))
+       :search_vector [:||
+                       [:setweight [:to_tsvector [:inline tsv-language] [:cast (:name entity) :text]]
+                        [:inline "A"]]
+                       [:setweight [:to_tsvector
+                                    [:inline tsv-language]
+                                    [:cast
+                                     (:searchable_text entity)
+                                     :text]]
+                        [:inline "B"]]])))
 
 (defn- upsert! [table entry]
   (t2/query
