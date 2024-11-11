@@ -310,10 +310,12 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       filterWidget().click();
       popover().findByText("Quarter").click();
       getDashboardCard().within(() => {
-        cy.findByText("Created At: Quarter").should("be.visible");
+        cy.findByText("Created At: Month: Quarter").should("be.visible");
         cy.findByText(multiStageQuestionDetails.name).click();
       });
-      queryBuilderMain().findByText("Created At: Quarter").should("be.visible");
+      queryBuilderMain()
+        .findByText("Created At: Month: Quarter")
+        .should("be.visible");
       backToDashboard();
       editDashboard();
       removeQuestion();
