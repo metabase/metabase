@@ -406,7 +406,7 @@
                   :collection-id  :model.collection_id
                   :creator-id     true
                   :database-id    :query_action.database_id
-                  :dataset-query  :query_action.dataset_query
+                  :native-query   :query_action.dataset_query
                   ;; workaround for actions not having revisions (yet)
                   :last-edited-at :updated_at
                   :table-id       false

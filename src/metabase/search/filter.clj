@@ -11,6 +11,15 @@
   (:import
    (java.time LocalDate)))
 
+(def ^:private filter->type
+  {:archived?      ::single-value
+   :created-at     ::date-range
+   :created-by     ::list
+   :last-edited-at ::date-range
+   :last-edited-by ::list
+   :table-db-id    ::single-value
+   :verified       ::verified})
+
 (def ^:private context-key->attr
   {:archived?           :archived
    :created-at          :created-at
@@ -74,19 +83,13 @@
 
 (defmulti ^:private where-clause* (fn [context-key _column _v] context-key))
 
-(defmethod where-clause* :archived? [_ k v] [:= k v])
+(defmethod where-clause* ::single-value [_ k v] [:= k v])
 
-(defmethod where-clause* :created-at [_ k v] (date-range-filter-clause k v))
+(defmethod where-clause* ::date-range [_ k v] (date-range-filter-clause k v))
 
-(defmethod where-clause* :created-by [_ k v] [:in k v])
+(defmethod where-clause* ::list [_ k v] [:in k v])
 
-(defmethod where-clause* :last-edited-at [_ k v] (date-range-filter-clause k v))
-
-(defmethod where-clause* :last-edited-by [_ k v] [:in k v])
-
-(defmethod where-clause* :table-db-id [_ k v] [:= k v])
-
-(defmethod where-clause* :verified [_ k v]
+(defmethod where-clause* ::verified [_ k v]
   (assert (true? v) "filter for non-verified cards is not supported")
   (when (premium-features/has-feature? :content-verification)
     [:= k v]))
@@ -95,7 +98,7 @@
   [:inline [:= 0 1]])
 
 (assert (= (disj (set (keys context-key->attr)) :search-native-query)
-           (set (keys (methods where-clause*))))
+           (set (keys filter->type)))
         "All filters have been implemented.")
 
 (defn with-filters
@@ -113,7 +116,9 @@
     (reduce (fn [qry [ctx-key attr-key]]
               (let [v (get search-context ctx-key)]
                 (if (some? v)
-                  (sql.helpers/where qry (or (where-clause* ctx-key (attr->index-key attr-key) v) false-clause))
+                  (sql.helpers/where qry (or (where-clause* (filter->type ctx-key)
+                                                            (attr->index-key attr-key) v)
+                                             false-clause))
                   qry)))
             qry
             (dissoc context-key->attr :search-native-query))))

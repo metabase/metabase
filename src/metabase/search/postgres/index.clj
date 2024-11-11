@@ -47,6 +47,7 @@
              [:name :text]
              ;; search
              [:search_vector :tsvector :not-null]
+             [:with_native_query_vector :tsvector :not-null]
              ;; results
              [:display_data :text :not-null]
              [:legacy_input :text :not-null]
@@ -58,8 +59,6 @@
              ;; permission related entities
              [:collection_id :int]
              [:database_id :int]
-             ;; leaving as just text for now, but perhaps we want it to be JSON, and have a tsvector field too
-             [:dataset_query :text]
              [:table_id :int]
              ;; filter related
              [:archived :boolean :not-null [:default false]]
@@ -81,6 +80,7 @@
             table-name (name pending-table)]
         (doseq [stmt ["CREATE UNIQUE INDEX IF NOT EXISTS %s_identity_idx ON %s (model, model_id)"
                       "CREATE INDEX IF NOT EXISTS %s_tsvector_idx ON %s USING gin (search_vector)"
+                      "CREATE INDEX IF NOT EXISTS %s_native_tsvector_idx ON %s USING gin (with_native_query_vector)"
                       ;; Spam all the indexes for now, let's see if they get used on Stats / Ephemeral envs.
                       "CREATE INDEX IF NOT EXISTS %s_model_archived_idx ON %s (model, archived)"
                       "CREATE INDEX IF NOT EXISTS %s_archived_idx ON %s (archived)"]]
@@ -105,7 +105,7 @@
   (-> entity
       (select-keys
        ;; remove attrs that get aliased
-       (remove #{:id :created_at :updated_at}
+       (remove #{:id :created_at :updated_at :native_query}
                (conj search.spec/attr-columns
                      :model :model_rank
                      :display_data :legacy_input)))
@@ -122,9 +122,18 @@
                        [:setweight [:to_tsvector
                                     [:inline tsv-language]
                                     [:cast
-                                     (:searchable_text entity)
+                                     (:searchable_text entity "")
                                      :text]]
-                        [:inline "B"]]])))
+                        [:inline "B"]]]
+       :with_native_query_vector [:||
+                                  [:setweight [:to_tsvector [:inline tsv-language] [:cast (:name entity) :text]]
+                                   [:inline "A"]]
+                                  [:setweight [:to_tsvector
+                                               [:inline tsv-language]
+                                               [:cast
+                                                (str (:searchable_text entity) " " (:native_query entity))
+                                                :text]]
+                                   [:inline "B"]]])))
 
 (defn- upsert! [table entry]
   (t2/query
@@ -231,9 +240,9 @@
 
 (defn search-query
   "Query fragment for all models corresponding to a query parameter `:search-term`."
-  ([search-term]
-   (search-query search-term [:model_id :model]))
-  ([search-term select-items]
+  ([search-term search-ctx]
+   (search-query search-term search-ctx [:model_id :model]))
+  ([search-term search-ctx select-items]
    {:select    select-items
     :from      [active-table]
     ;; Using a join allows us to share the query expression between our SELECT and WHERE clauses.
@@ -244,13 +253,17 @@
     :where     (if (str/blank? search-term)
                  [:= [:inline 1] [:inline 1]]
                  [:raw
-                  "search_vector @@ query"])}))
+                  (str
+                   (if (:search-native-query search-ctx)
+                     "with_native_query_vector"
+                     "search_vector")
+                   " @@ query")])}))
 
 (defn search
   "Use the index table to search for records."
-  [search-term]
+  [search-term & [search-ctx]]
   (map (juxt :model_id :model)
-       (t2/query (search-query search-term))))
+       (t2/query (search-query search-term search-ctx))))
 
 (defn reset-index!
   "Ensure we have a blank slate; in case the table schema or stored data format has changed."
