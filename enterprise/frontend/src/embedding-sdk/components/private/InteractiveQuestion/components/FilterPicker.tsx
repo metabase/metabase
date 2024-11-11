@@ -32,11 +32,6 @@ export const FilterPicker = ({
       <InnerFilterPicker
         query={query}
         stageIndex={-1}
-        columnPickerProps={{
-          withCustomExpression: false,
-          withColumnGroupIcon: false,
-          withColumnItemIcon: withIcon,
-        }}
         onClose={onClose}
         onSelect={filter => {
           const nextQuery = Lib.filter(query, -1, filter);
@@ -46,6 +41,9 @@ export const FilterPicker = ({
             onClose?.();
           }
         }}
+        withCustomExpression={false}
+        withColumnGroupIcon={false}
+        withColumnItemIcon={withIcon}
       />
     </Box>
   );
