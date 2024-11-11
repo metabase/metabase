@@ -15,7 +15,7 @@
               "properties": {
                 "type": {
                   "type": "string",
-                  "description": "The type of the string filter step.",
+                  "description": "Type of the string filter step.",
                   "enum": [
                     "string-filter"
                   ]
@@ -25,11 +25,11 @@
                     "string",
                     "null"
                   ],
-                  "description": "The name of the string column to apply filter for."
+                  "description": "Name of the string column to apply filter for."
                 },
                 "operator": {
                   "type": "string",
-                  "description": "The string filter operator.",
+                  "description": "String filter operator.",
                   "enum": [
                     "=",
                     "!=",
@@ -41,7 +41,50 @@
                 },
                 "value": {
                   "type": "string",
-                  "description": "The filter value."
+                  "description": "String filter value."
+                }
+              },
+              "required": [
+                "type",
+                "column",
+                "operator",
+                "value"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "description": "Filter query results by a numeric column and value.",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "description": "Type of the number filter step.",
+                  "enum": [
+                    "number-filter"
+                  ]
+                },
+                "column": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "Name of the numeric column to apply filter for."
+                },
+                "operator": {
+                  "type": "string",
+                  "description": "Numeric filter operator.",
+                  "enum": [
+                    "=",
+                    "!=",
+                    ">",
+                    ">=",
+                    "<",
+                    "<="
+                  ]
+                },
+                "value": {
+                  "type": "number",
+                  "description": "Numeric filter value."
                 }
               },
               "required": [
@@ -58,14 +101,14 @@
               "properties": {
                 "type": {
                   "type": "string",
-                  "description": "The type of the aggregation step.",
+                  "description": "Type of the aggregation step.",
                   "enum": [
                     "aggregation"
                   ]
                 },
                 "operator": {
                   "type": "string",
-                  "description": "The aggregation operator.",
+                  "description": "Aggregation operator.",
                   "enum": [
                     "count",
                     "sum",
@@ -99,14 +142,14 @@
               "properties": {
                 "type": {
                   "type": "string",
-                  "description": "The type of the breakout step.",
+                  "description": "Type of the breakout step.",
                   "enum": [
                     "breakout"
                   ]
                 },
                 "column": {
                   "type": "string",
-                  "description": "The name of the column to apply grouping for."
+                  "description": "Name of the column to apply grouping for."
                 }
               },
               "required": [
@@ -121,14 +164,14 @@
               "properties": {
                 "type": {
                   "type": "string",
-                  "description": "The type of the order by step.",
+                  "description": "Type of the order by step.",
                   "enum": [
                     "order_by"
                   ]
                 },
                 "column": {
                   "type": "string",
-                  "description": "The name of the column to apply sorting for."
+                  "description": "Name of the column to apply sorting for."
                 }
               },
               "required": [
@@ -143,7 +186,7 @@
               "properties": {
                 "type": {
                   "type": "string",
-                  "description": "The type of the row limit step.",
+                  "description": "Type of the row limit step.",
                   "enum": [
                     "limit"
                   ]

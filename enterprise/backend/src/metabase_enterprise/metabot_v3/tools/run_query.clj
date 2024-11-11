@@ -7,6 +7,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.query :as lib.query]
+   [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.util.malli :as mu])
   (:import
@@ -28,7 +29,7 @@
 
 (defmethod apply-step :string-filter
   [query {column-name :column operator-name :operator value :value}]
-  (let [columns (lib/filterable-columns query)
+  (let [columns (into [] (filter lib.types.isa/string-or-string-like?) (lib/filterable-columns query))
         column  (m/find-first #(= (column-display-name query %) column-name) columns)]
     (if (some? column)
       (let [operators (lib/filterable-column-operators column)
@@ -42,13 +43,40 @@
                  :starts-with      (lib/starts-with column value)
                  :ends-with        (lib/ends-with column value))
                (lib/filter query))
-          (throw (ex-info (format "%s is not a correct filter operator for %s column. Correct operators are: %s"
+          (throw (ex-info (format "%s is not a correct string filter operator for %s column. Correct operators are: %s"
                                   operator-name
                                   column-name
                                   (str/join ", " (map operator-display-name operators)))
                           {:column   column-name
                            :operator operator-name}))))
       (throw (ex-info (format "%s is not a correct column for the string filter step. Correct columns are: %s"
+                              column-name
+                              (str/join ", " (map #(column-display-name query %) columns)))
+                      {:column column-name})))))
+
+(defmethod apply-step :number-filter
+  [query {column-name :column operator-name :operator value :value}]
+  (let [columns (into [] (filter lib.types.isa/numeric?) (lib/filterable-columns query))
+        column  (m/find-first #(= (column-display-name query %) column-name) columns)]
+    (if (and (some? column) (lib.types.isa/numeric? column))
+      (let [operators (lib/filterable-column-operators column)
+            operator  (m/find-first #(= (operator-display-name %) operator-name) operators)]
+        (if (some? operator)
+          (->> (condp = (:short operator)
+                 :=  (lib/= column value)
+                 :!= (lib/!= column value)
+                 :>  (lib/> column value)
+                 :>= (lib/>= column value)
+                 :<  (lib/< column value)
+                 :<= (lib/<= column value))
+               (lib/filter query))
+          (throw (ex-info (format "%s is not a correct number filter operator for %s column. Correct operators are: %s"
+                                  operator-name
+                                  column-name
+                                  (str/join ", " (map operator-display-name operators)))
+                          {:column   column-name
+                           :operator operator-name}))))
+      (throw (ex-info (format "%s is not a correct column for the number filter step. Correct columns are: %s"
                               column-name
                               (str/join ", " (map #(column-display-name query %) columns)))
                       {:column column-name})))))
