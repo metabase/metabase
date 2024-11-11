@@ -15,14 +15,10 @@
   [column ceiling]
   [:least [:/ [:coalesce column [:inline 0]] [:inline (double ceiling)]] [:inline 1]])
 
-(defn- log-normalized-size
+(defn- atan-size
   "Prefer items whose value is larger, up to some saturation point. Items beyond that point are equivalent."
-  [column ceiling]
-  [:least
-   [:inline 1]
-   [:/
-    [:ln [:+ 1 [:coalesce column [:inline 0]]]]
-    [:ln [:inline (inc ceiling)]]]])
+  [column scaling]
+  [:* [:atan [:/ [:cast [:coalesce column [:inline 0.0]] :float] [:inline scaling]]] [:/ [:inline 2] [:pi]]])
 
 (defn- inverse-duration
   "Score at item based on the duration between two dates, where less is better."
@@ -76,7 +72,7 @@
 
 (def ^:private scorers
   {:text       [:ts_rank :search_vector :query [:inline ts-rank-normalization]]
-   :view-count (log-normalized-size :view_count search.config/view-count-count-ceiling)
+   :view-count (atan-size :view_count search.config/view-count-scaling)
    :pinned     (truthy :pinned)
    :bookmarked bookmark-score-expr
    :recency    (inverse-duration :model_updated_at [:now] search.config/stale-time-in-days)

@@ -39,8 +39,8 @@
   "Results in more dashboards than this are all considered to be equally popular."
   10)
 
-(def ^:const view-count-count-ceiling
-  "Results with more views than this are all considered to be equally popular."
+(def ^:const view-count-scaling
+  "The larger this value, the longer it will take for the score to approach 1.0. It will never quite reach it."
   50)
 
 (def ^:const surrounding-match-context
