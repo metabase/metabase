@@ -117,7 +117,7 @@
                              [:= :type collection/trash-collection-type] 1
                              :else 2]] :asc]
                           [:%lower.name :asc]]})
-    exclude-other-user-collections (remove-other-users-personal-subcollections api/*current-user-id*)))
+   exclude-other-user-collections (remove-other-users-personal-subcollections api/*current-user-id*)))
 
 (api/defendpoint GET "/"
   "Fetch a list of all Collections that the current user has read permissions for (`:can_write` is returned as an
@@ -411,8 +411,8 @@
                     [:u.last_name :last_edit_last_name]
                     [:r.timestamp :last_edit_timestamp]
                     [:mr.status :moderated_status]]
-                    (#{:question :model} card-type)
-                    (conj :c.database_id))
+                   (#{:question :model} card-type)
+                   (conj :c.database_id))
        :from      [[:report_card :c]]
        :left-join [[:revision :r] [:and
                                    [:= :r.model_id :c.id]
@@ -1228,7 +1228,7 @@
   "Map describing permissions for 1 or more groups.
   Revision # is used for consistency"
   [:map
-   [:revision int?]
+   [:revision {:optional true} [:maybe int?]]
    [:groups [:map-of GroupID GroupPermissionsGraph]]])
 
 (def ^:private graph-decoder
@@ -1241,26 +1241,32 @@
 
 (defn- update-graph!
   "Handles updating the graph for a given namespace."
-  [namespace graph skip_graph]
-  (graph/update-graph! namespace graph)
-  (if skip_graph
+  [namespace graph skip-graph force?]
+  (graph/update-graph! namespace graph force?)
+  (if skip-graph
     {:revision (c-perm-revision/latest-id)}
     (graph/graph namespace)))
 
 (api/defendpoint PUT "/graph"
-  "Do a batch update of Collections Permissions by passing in a modified graph.
-  Will overwrite parts of the graph that are present in the request, and leave the rest unchanged.
+  "Do a batch update of Collections Permissions by passing in a modified graph. Will overwrite parts of the graph that
+  are present in the request, and leave the rest unchanged.
 
-  If the `skip_graph` query parameter is true, it will only return the current revision"
-  [:as {{:keys [namespace revision groups skip_graph]} :body}]
-  {namespace [:maybe ms/NonBlankString]
-   revision  ms/Int
-   groups :map
-   skip_graph [:maybe ms/BooleanValue]}
+  If the `force` query parameter is `true`, a `revision` number is not required. The provided graph will be persisted
+  as-is, and has the potential to clobber other writes that happened since the last read.
+
+  If the `skip_graph` query parameter is `true`, it will only return the current revision, not the entire permissions
+  graph."
+  [:as {{:keys [namespace revision groups]} :body
+        {:keys [skip-graph force]} :params}]
+  {namespace  [:maybe ms/NonBlankString]
+   revision   [:maybe ms/Int]
+   groups     :map
+   force      [:maybe ms/BooleanValue]
+   skip-graph [:maybe ms/BooleanValue]}
   (api/check-superuser)
-  (update-graph!
-   namespace
-   (decode-graph {:revision revision :groups groups})
-   skip_graph))
+  (update-graph! namespace
+                 (decode-graph {:revision revision :groups groups})
+                 skip-graph
+                 force))
 
 (api/define-routes)
