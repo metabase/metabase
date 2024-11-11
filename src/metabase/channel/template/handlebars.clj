@@ -52,4 +52,4 @@
 (comment
   (render-string "Hello {{name}}" {:name "Ngoc"})
   (render-string "Hello {{#unless hide_name}}{{name}}{{/unless}}" {:name "Ngoc" :hide_name false})
-  (render "/metabase/email/_header" {}))
+  (render "/metabase/email/_header.hbs" {}))

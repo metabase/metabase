@@ -1,10 +1,10 @@
-{{> metabase/email/_header }}
+{{> metabase/email/_header.hbs }}
   <div class="card-container" style="color: {{colorTextMedium}};">
-    {{#self-hosted}}
+    {{#if self-hosted}}
     <p style="font-weight: 500; font-size: 0.875em; line-height: 1.375em; color: {{colorTextMedium}};">
       <i>(This email is sent directly from {{self-hosted}}, it doesn't go through any external services)</i>
     </p>
-    {{/self-hosted}}
+    {{/if}}
 
     <p style="font-weight: 500; line-height: 1.375em; color: {{colorTextMedium}};">
       Hi {{first-name}},
@@ -20,7 +20,7 @@
 
     <div style="text-align: center;">
       <a
-        href="{{link}}"
+        href="{{{link}}}"
         style="display: inline-block; padding: 0.75rem 1.125em; background-color: {{applicationColor}}; color: #FFF; border-radius: 6px; font-size: 0.875em; font-weight: 700; text-decoration: none;"
       >
         Answer Now
@@ -35,4 +35,4 @@
       - The Metabase Product Team
     </p>
   </div>
-{{> metabase/email/_footer }}
+{{> metabase/email/_footer.hbs }}
