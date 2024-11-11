@@ -67,7 +67,9 @@
                       [:= :search_index.archived true]
                       [:>= [:cast :search_index.model_created_at :date] #t"2024-10-01"]
                       [:< [:cast :search_index.model_created_at :date] #t"2024-10-02"]
-                      [:= :search_index.verified true]
+                      ;; depends on whether :content-verification is enabled
+                      #_[:= :search_index.verified true]
+                      [:= 1 1]
                       [:in :search_index.creator_id [123]]
                       [:= :search_index.database_id 231]
                       [:>= [:cast :search_index.last_edited_at :date] #t"2024-10-02"]

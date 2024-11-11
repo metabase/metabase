@@ -94,8 +94,8 @@
   (when (premium-features/has-feature? :content-verification)
     [:= k v]))
 
-(def ^:private false-clause
-  [:inline [:= 0 1]])
+(def ^:private true-clause
+  [:inline [:= 1 1]])
 
 (assert (= (disj (set (keys context-key->attr)) :search-native-query)
            (set (keys filter->type)))
@@ -118,7 +118,7 @@
                 (if (some? v)
                   (sql.helpers/where qry (or (where-clause* (filter->type ctx-key)
                                                             (attr->index-key attr-key) v)
-                                             false-clause))
+                                             true-clause))
                   qry)))
             qry
             (dissoc context-key->attr :search-native-query))))
