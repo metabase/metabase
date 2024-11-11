@@ -6,7 +6,7 @@ title: Syncing and scanning databases
 
 Metabase runs different types of queries to stay up to date with your database.
 
-- [Syncs](#how-database-syncs-work) get updated schemas to display in the [Data Browser](https://www.metabase.com/learn/getting-started/data-browser).
+- [Syncs](#how-database-syncs-work) get updated schemas to display in the [Data Browser](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/data-browser).
 - [Scans](#how-database-scans-work) take samples of column values to populate filter dropdown menus and suggest helpful visualizations. Metabase does not store _complete_ tables from your database.
 - [Fingerprinting](#how-database-fingerprinting-works) takes an additional sample of column values to help with smart behavior, such as auto-binning for bar charts.
 
@@ -86,10 +86,10 @@ To prevent Metabase from running syncs and scans against a specific table, chang
 
 ## Syncing and scanning using the API
 
-Metabase syncs and scans regularly, but if the database administrator has just changed the database schema, or if a lot of data is added automatically at specific times, you may want to write a script that uses the [Metabase API](https://www.metabase.com/learn/administration/metabase-api) to force a sync or scan. [Our API](../api-documentation.md) provides two ways to initiate a sync or scan of a database:
+Metabase syncs and scans regularly, but if the database administrator has just changed the database schema, or if a lot of data is added automatically at specific times, you may want to write a script that uses the [Metabase API](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation//metabase-api) to force a sync or scan. [Our API](../api-documentation.md) provides two ways to initiate a sync or scan of a database:
 
 1. Using a session token: the `/api/database/:id/sync_schema` or `api/database/:id/rescan_values` endpoints. These endpoints do the same things as going to the database in the Admin Panel and choosing **Sync database schema now** or **Re-scan field values now** respectively. To use these endpoints, you have to authenticate with a user ID and pass a session token in the header of your request.
-2. Using an API key: `/api/notify/db/:id`. We created this endpoint so that people could notify their Metabase to sync after an [ETL operation](https://www.metabase.com/learn/analytics/etl-landscape) finishes. To use this endpoint, you must pass an API key by defining the `MB_API_KEY` environment variable.
+2. Using an API key: `/api/notify/db/:id`. We created this endpoint so that people could notify their Metabase to sync after an [ETL operation](https://www.metabase.com/learn/grow-your-data-skills/data-landscape/etl-landscape) finishes. To use this endpoint, you must pass an API key by defining the `MB_API_KEY` environment variable.
 
 ## How database syncs work
 

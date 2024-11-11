@@ -463,7 +463,7 @@
   [_driver upload-type]
   (case upload-type
     ::upload/varchar-255              [[:varchar 255]]
-    ::upload/text                     [:text]
+    ::upload/text                     [[:varchar 65535]]
     ::upload/int                      [:bigint]
     ;; identity(1, 1) defines an auto-increment column starting from 1
     ::upload/auto-incrementing-int-pk [:bigint [:identity 1 1]]

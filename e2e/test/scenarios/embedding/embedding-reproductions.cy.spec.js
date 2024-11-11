@@ -1,6 +1,7 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   addOrUpdateDashboardCard,
+  createDashboardWithQuestions,
   createNativeQuestion,
   createQuestionAndDashboard,
   describeEE,
@@ -1022,5 +1023,102 @@ describe.skip("issue 49142", () => {
       .its("0.contentDocument.body")
       .should("be.visible")
       .and("contain", "Embeddable dashboard");
+  });
+});
+
+describe("issue 8490", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+
+    createDashboardWithQuestions({
+      dashboardDetails: {
+        name: "Dashboard to test locale",
+        enable_embedding: true,
+      },
+      questions: [
+        {
+          name: "Line chart",
+          query: {
+            "source-table": PRODUCTS_ID,
+            aggregation: [["count"]],
+            breakout: [
+              ["field", PRODUCTS.CATEGORY, { "base-type": "type/Text" }],
+              [
+                "field",
+                PRODUCTS.CREATED_AT,
+                { "base-type": "type/DateTime", "temporal-unit": "month" },
+              ],
+            ],
+          },
+          visualization_settings: {
+            "graph.dimensions": ["CREATED_AT", "CATEGORY"],
+            "graph.metrics": ["count"],
+          },
+          display: "bar",
+          enable_embedding: true,
+        },
+      ],
+    }).then(({ dashboard, questions: [question] }) => {
+      cy.wrap(dashboard.id).as("dashboardId");
+      cy.wrap(question.id).as("questionId");
+    });
+  });
+
+  it("static embeddings should respect `#locale` hash in the URL (metabase#8490)", () => {
+    cy.log("test a static embedded dashboard");
+    cy.get("@dashboardId").then(dashboardId => {
+      visitEmbeddedPage(
+        {
+          resource: { dashboard: dashboardId },
+          params: {},
+        },
+        {
+          additionalHashOptions: {
+            locale: "ko",
+          },
+        },
+      );
+    });
+
+    cy.findByTestId("embed-frame").within(() => {
+      // X-axis labels: Jan 2023
+      cy.findByText("1월 2023").should("be.visible");
+
+      // PDF export
+      cy.findByText("PDF로 내보내기").should("be.visible");
+
+      // Powered by
+      cy.findByText("제공:").should("be.visible");
+
+      // Aggregation "count"
+      cy.findByText("카운트").should("be.visible");
+    });
+
+    cy.log("test a static embedded question");
+    cy.get("@questionId").then(questionId => {
+      visitEmbeddedPage(
+        {
+          resource: { question: questionId },
+          params: {},
+        },
+        {
+          additionalHashOptions: {
+            locale: "ko",
+          },
+        },
+      );
+    });
+
+    cy.findByTestId("embed-frame").within(() => {
+      // X-axis labels: Jan 2023
+      cy.findByText("4월 2022").should("be.visible");
+
+      // Powered by
+      cy.findByText("제공:").should("be.visible");
+
+      // Aggregation "count"
+      cy.findByText("카운트").should("be.visible");
+    });
   });
 });

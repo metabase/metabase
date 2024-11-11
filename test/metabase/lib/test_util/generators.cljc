@@ -2,13 +2,17 @@
   (:require
    #?@(:cljs (metabase.test-runner.assert-exprs.approximately-equal))
    [clojure.test :refer [deftest is testing]]
+   [medley.core :as m]
    [metabase.lib.breakout :as lib.breakout]
    [metabase.lib.core :as lib]
    [metabase.lib.equality :as lib.equality]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util.generators.filters :as gen.filters]
    [metabase.lib.test-util.generators.util :as gen.u]
-   [metabase.util :as u]))
+   [metabase.lib.types.isa :as lib.types.isa]
+   [metabase.util :as u]
+   [metabase.util.malli :as mu]))
 
 ;; NOTE: Being able to *execute* these queries and grok the results would actually be really powerful, if we can
 ;; achieve it with moderate cost. I think we can, at least for most queries. Some temporal stuff is a huge PITA,
@@ -76,8 +80,11 @@
 
 (def ^:private step-kinds (atom {}))
 
+(def ^:private step-defaults
+  {:weight 100})
+
 (defn- add-step [{:keys [kind] :as step-def}]
-  (swap! step-kinds assoc kind step-def))
+  (swap! step-kinds assoc kind (merge step-defaults step-def)))
 
 ;; Helpers =======================================================================================
 (defn- choose-stage
@@ -86,6 +93,32 @@
   (if (< (rand) 0.8)
     -1
     (rand-int (count (:stages query)))))
+
+(def ^:private ^:dynamic *safe-for-old-refs*
+  "Controls whether the generators will construct queries with things like multiple joins to the same table, which
+  create ambiguous refs in classic pMBQL.
+
+  Default to true, ie. safe for the current library.
+
+  Set to false when generating only for new `:column` refs by `:ident`, and you want to exercise them properly."
+  true)
+
+(defn- only-safe-columns
+  "Given a column list, filters out any that have properties we cannot (currently) support.
+
+  - We cannot implicitly join a column if its FK is ambiguous: current MBQL uses only the ID of the FK and that isn't
+    unique in the event of a double- or self-join."
+  [columns]
+  (if-not *safe-for-old-refs*
+    columns
+    (let [ambiguous-columns (->> columns
+                                 (map :id)
+                                 frequencies
+                                 (m/filter-vals #(> % 1)))]
+      (remove (fn [col]
+                (and (= (:lib/source col) :source/implicitly-joinable)
+                     (ambiguous-columns (:fk-field-id col))))
+              columns))))
 
 ;; Aggregations ==================================================================================
 ;; TODO: Add a schema for the step `[vectors ...]`?
@@ -123,7 +156,7 @@
 
 (defmethod next-steps* :breakout [query _breakout]
   (let [stage-number (choose-stage query)
-        column       (gen.u/choose (lib/breakoutable-columns query stage-number))
+        column       (gen.u/choose (only-safe-columns (lib/breakoutable-columns query stage-number)))
         ;; If this is a temporal column, we need to choose a unit for it. Nil if it's not temporal.
         ;; TODO: Don't always bucket/bin! We should sometimes choose the "Don't bin" option etc.
         bucket       (gen.u/choose (lib/available-temporal-buckets query stage-number column))
@@ -167,7 +200,7 @@
 
 (defmethod next-steps* :filter [query _filter]
   (let [stage-number (choose-stage query)]
-    [:filter stage-number (gen.filters/gen-filter (lib/filterable-columns query stage-number))]))
+    [:filter stage-number (gen.filters/gen-filter (only-safe-columns (lib/filterable-columns query stage-number)))]))
 
 (defmethod run-step* :filter [query [_filter stage-number filter-clause]]
   (lib/filter query stage-number filter-clause))
@@ -191,8 +224,131 @@
                    (inc (count before-filters))))
             (is (=? filter-clause (last after-filters))))
           (testing (str `lib/filter-operator " returns the right op")
-            (is (= (first filter-clause)
-                   (:short (lib/filter-operator after stage-number (last after-filters)))))))))))
+            ;; TODO: The generator will happily build multiple joins
+            (when-let [op (mu/disable-enforcement
+                            (lib/filter-operator after stage-number (last after-filters)))]
+              (is (= (first filter-clause)
+                     (:short op))))))))))
+
+;; Expressions ===================================================================================
+;; We only support a few basic expressions for now. It would be good to exercise all the expression types eventually,
+;; but the main objective here is to generate *some* expressions so they can be consumed by filters, aggregations, etc.
+;; since that's a major bug source.
+(add-step {:kind :expression})
+
+(defn- gen-expression:number [column]
+  (lib/+ column 1))
+
+(defn- gen-expression:string [column]
+  (lib/concat column "__concat"))
+
+(defn- gen-expression [columns]
+  (let [numbers (map #(vector gen-expression:number %) (filter lib.types.isa/number? columns))
+        strings (map #(vector gen-expression:string %) (filter lib.types.isa/string? columns))
+        [f col] (gen.u/choose (concat numbers strings))]
+    (f col)))
+
+(def ^:private identifier-chars-initial
+  (str "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+       "abcdefghijklmnopqrstuvwxyz"
+       "_"))
+
+(def ^:private identifier-chars
+  (str identifier-chars-initial "0123456789"))
+
+(def ^:private expr-name-chars
+  (str identifier-chars " []<>+!@$%&*^()"))
+
+(defn- gen-expression-name []
+  (let [len (gen.u/choose (range 3 30))]
+    (apply str (repeatedly len #(gen.u/choose expr-name-chars)))))
+
+(defmethod next-steps* :expression [query _expression]
+  (let [stage-number (choose-stage query)
+        ;; Always adding at the end for now. Editing will come later.
+        expr-pos     (count (lib/expressions query stage-number))]
+    (when-let [expr-clause (gen-expression (only-safe-columns (lib/expressionable-columns query stage-number expr-pos)))]
+      [:expression stage-number (gen-expression-name) expr-clause])))
+
+(defmethod run-step* :expression [query [_expression stage-number expr-name expr-clause]]
+  (lib/expression query stage-number expr-name expr-clause))
+
+(defmethod before-and-after :expression [before after [_expression stage-number expr-name _expr-clause]]
+  (let [before-exprs (lib/expressions before stage-number)
+        after-exprs  (lib/expressions after stage-number)]
+    (testing "adding an expression"
+      (testing "adds it to the expressions list"
+        (is (= (inc (count before-exprs))
+               (count after-exprs))))
+      (testing "adds it to visible columns"
+        (is (=? [{:lib/type   :metadata/column
+                  :lib/source :source/expressions
+                  :name       expr-name
+                  :id         (symbol "nil #_\"key is not present.\"")}]
+                (filter #(= (:name %) expr-name) (lib/visible-columns after stage-number))))))))
+
+;; Order by ======================================================================================
+(add-step {:kind   :order-by
+           ;; Lower weight than the default 100 - this is a rare operation.
+           :weight 30})
+
+(defmethod next-steps* :order-by [query _order-by]
+  (let [stage-number (choose-stage query)]
+    (when-let [columns (->> (lib/orderable-columns query stage-number)
+                            (remove :order-by-position) ; Drop those which already have an order.
+                            only-safe-columns
+                            not-empty)]
+      [:order-by stage-number (lib/ref (gen.u/choose columns)) (gen.u/choose [:asc :desc])])))
+
+(defmethod run-step* :order-by [query [_order-by stage-number orderable direction]]
+  (lib/order-by query stage-number orderable direction))
+
+(defmethod before-and-after :order-by [before after [_order-by stage-number orderable direction]]
+  (let [before-orders (lib/order-bys before stage-number)
+        after-orders  (lib/order-bys after stage-number)]
+    ;; TODO: No duplicates! The new ref should never collide with one in `before` - except for the FK ambiguity.
+    ;; I don't want to introduce a flake, but once that issue is fixed there should be a test here.
+    (testing "new order-by clauses are added at the end of the sort order"
+      (is (= (inc (count before-orders))
+             (count after-orders)))
+      (is (lib.equality/= (lib/order-by-clause orderable direction)
+                          (last after-orders))))))
+
+;; Explicit join =================================================================================
+(add-step {:kind   :join
+           :weight 30})
+
+(defmethod next-steps* :join [query _join]
+  (let [stage-number        (choose-stage query)
+        ;; TODO: Explicit joins against cards are possible, but we don't have cards yet.
+        [target conditions] (rand-nth (for [table (lib.metadata/tables query)
+                                            :let [conditions (lib/suggested-join-conditions query stage-number table)]
+                                            :when (seq conditions)]
+                                        [table conditions]))
+        strategy            (gen.u/weighted-choice {:left-join  80
+                                                    :inner-join 10
+                                                    :right-join 5
+                                                    :full-join  5})]
+    [:join stage-number target (rand-nth conditions) strategy]))
+
+(defmethod run-step* :join [query [_join stage-number target condition strategy]]
+  (lib/join query stage-number (lib/join-clause target [condition] strategy)))
+
+(defmethod before-and-after :join [before after [_join stage-number target condition strategy]]
+  (let [before-joins (lib/joins before stage-number)
+        after-joins  (lib/joins after stage-number)]
+    (testing "adding a new explicit join"
+      (testing "creates a new clause"
+        (is (= (inc (count before-joins))
+               (count after-joins)))
+        (testing "at the end"
+          (is (=? {:lib/type   :mbql/join
+                   :strategy   strategy
+                   :alias      string?
+                   :fields     :all
+                   :stages     [{:source-table (:id target)}]
+                   :conditions [condition]}
+                  (last after-joins))))))))
 
 ;; Generator internals ===========================================================================
 (defn- run-step
@@ -266,6 +422,9 @@
 
 (def ^:dynamic *step-control* step-control:default)
 
+(defn- choose-step [kinds]
+  (gen.u/weighted-choice (map (juxt :kind :weight) (vals kinds))))
+
 (defn- gen-step
   "Given a query, choose the next step, apply and test it, and return the new context.
 
@@ -281,7 +440,7 @@
     :pop   (recur (or previous ctx))
     ;; Uniformly choose a step-key from those registered, generate that step, and run it.
     ;; Return the new context.
-    :step  (let [step-kind (rand-nth (keys @step-kinds))]
+    :step  (let [step-kind (choose-step @step-kinds)]
              (if-let [step (next-steps* query step-kind)]
                (test-step ctx step)
                (recur ctx)))))

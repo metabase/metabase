@@ -13,7 +13,6 @@ There are different ways you can embed questions:
 - [`StaticQuestion`](#embedding-a-static-question). Embeds a chart. Clicking on the chart doesn't do anything.
 - [`InteractiveQuestion`](#embedding-an-interactive-question). Clicking on the chart gives you the drill-through menu.
 - [`CreateQuestion`]()
-- [`ModifyQuestion`](#embedding-an-editable-question). Embeds the interactive question and the query builder.
 
 ## Embedding a static question
 
@@ -138,7 +137,7 @@ To customize the layout, use namespaced components within the `InteractiveQuesti
 These components are available via the `InteractiveQuestion` namespace (e.g., `<InteractiveQuestion.Filter />`).
 
 | Component               | Info                                                                                                                         |
-| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+|-------------------------|------------------------------------------------------------------------------------------------------------------------------|
 | `BackButton`            | The back button, which provides `back` functionality for the InteractiveDashboard                                            |
 | `FilterBar`             | The row of badges that contains the current filters that are applied to the question                                         |
 | `Filter`                | The Filter pane containing all possible filters                                                                              |
@@ -151,6 +150,7 @@ These components are available via the `InteractiveQuestion` namespace (e.g., `<
 | `Notebook`              | The Notebook editor that allows for more filter, aggregation, and custom steps                                               |
 | `NotebookButton`        | The button used in the default layout to open the Notebook editor. You can replace this button with your own implementation. |
 | `QuestionVisualization` | The chart visualization for the question                                                                                     |
+| `QuestionSettings`      | The settings for the current visualization                                                                                   |
 
 ## Interactive question plugins
 
@@ -237,18 +237,18 @@ export default function App() {
 
 ## Embedding an editable question
 
-With the `ModifyQuestion` component, you can edit an existing question using the query builder by passing the question's ID.
+You can edit an existing question using the query builder by using the `isSaveEnabled` prop on the `InteractiveQuestion` component.
 
 ```tsx
 import React from "react";
-import {MetabaseProvider, ModifyQuestion} from "@metabase/embedding-sdk-react";
+import {MetabaseProvider, InteractiveQuestion} from "@metabase/embedding-sdk-react";
 
 const config = {...}
 
 export default function App() {
     return (
         <MetabaseProvider config={config}>
-            <ModifyQuestion questionId={1}/>
+            <InteractiveQuestion questionId={1} isSaveEnabled />
         </MetabaseProvider>
     );
 }
