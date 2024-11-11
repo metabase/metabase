@@ -9,6 +9,8 @@
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (defn legacy-results
   "Use the source tables directly to search for records."
   [search-term & {:as opts}]
@@ -54,21 +56,23 @@
 (deftest incremental-update-test
   (with-index
     (testing "The index is updated when models change"
-     ;; The second entry is "Revenue Project(ions)"
-      (is (= 2 (count (search.index/search "Projected Revenue"))))
+     ;; Has a second entry is "Revenue Project(ions)", when using English dictionary
+      (is (= 1 #_2 (count #p (search.index/search "Projected Revenue"))))
       (is (= 0 (count (search.index/search "Protected Avenue"))))
 
       (t2/update! :model/Card {:name "Projected Revenue"} {:name "Protected Avenue"})
      ;; TODO wire up an actual hook
       (search.ingestion/update-index! (t2/select-one :model/Card :name "Protected Avenue"))
 
-      (is (= 1 (count (search.index/search "Projected Revenue"))))
+      ;; wait for the background thread
+      (Thread/sleep 200)
+      (is (= 0 #_1 (count (search.index/search "Projected Revenue"))))
       (is (= 1 (count (search.index/search "Protected Avenue"))))
 
      ;; TODO wire up the actual hook, and actually delete it
       (search.ingestion/delete-model! (t2/select-one :model/Card :name "Protected Avenue"))
 
-      (is (= 1 (count (search.index/search "Projected Revenue"))))
+      (is (= 0 #_1 (count (search.index/search "Projected Revenue"))))
       (is (= 0 (count (search.index/search "Protected Avenue")))))))
 
 (deftest related-update-test
@@ -87,6 +91,8 @@
         ;; TODO wire up an actual hook
         (search.ingestion/update-index! (t2/select-one :model/Database :id db-id))
 
+        ;; wait for the background thread
+        (Thread/sleep 200)
         (is (= alternate-name (db-name-fn)))))))
 
 (deftest consistent-subset-test
@@ -105,7 +111,8 @@
              ;; but this one does
              (legacy-hits "venue"))))
 
-    (testing "Unless their lexemes are matching"
+    ;; no longer works without english dictionary
+    #_(testing "Unless their lexemes are matching"
       (doseq [[a b] [["revenue" "revenues"]
                      ["collect" "collection"]]]
         (is (= (search.index/search a)
@@ -134,7 +141,8 @@
       (is (<= 1 (index-hits "user"))))
     (testing "But stop words are skipped"
       (is (= 0 (index-hits "or")))
-      (is (= 3 (index-hits "its the satisfaction of it"))))
+      ;; stop words depend on a dictionary
+      (is (= 0 #_3 (index-hits "its the satisfaction of it"))))
     (testing "We can combine the individual results"
       (is (= (+ (index-hits "satisfaction")
                 (index-hits "user"))
@@ -150,9 +158,10 @@
 
 (deftest phrase-test
   (with-index
-    (is (= 3 (index-hits "projected")))
+    ;; Less matches without an english dictionary
+    (is (= 2 #_3 (index-hits "projected")))
     (is (= 2 (index-hits "revenue")))
-    (is (= 2 (index-hits "projected revenue")))
+    (is (= 1 #_2 (index-hits "projected revenue")))
     (testing "only sometimes do these occur sequentially in a phrase"
       (is (= 1 (index-hits "\"projected revenue\""))))
     (testing "legacy search has a bunch of results"
