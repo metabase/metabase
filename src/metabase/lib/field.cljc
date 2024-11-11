@@ -367,7 +367,8 @@
   (lib.temporal-bucket/available-temporal-buckets-for-type
    ((some-fn :effective-type :base-type) field-metadata)
    ;; lbrdnk TODO: "Unhairify" following!
-   (if-not (some? (:inherited-temporal-unit field-metadata))
+   (if-not (and (some? (:inherited-temporal-unit field-metadata))
+                (not= :default (:inherited-temporal-unit field-metadata)))
      (or (some-> field-metadata :fingerprint fingerprint-based-default-unit)
          :month)
      :just-dont-do-that)
