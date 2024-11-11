@@ -35,7 +35,7 @@
    :name
    :created-at
    :creator-id
-   :dataset-query
+   :native-query
    :dashboardcard-count
    :last-edited-at
    :last-editor-id
