@@ -112,6 +112,8 @@ const visualizerSlice = createSlice({
         cartesianDropHandler(state, event);
       } else if (state.display === "funnel") {
         funnelDropHandler(state, event);
+      } else if (state.display === "pivot") {
+        pivotDropHandler(state, event);
       }
     },
     setDisplay: (state, action: PayloadAction<VisualizationDisplay | null>) => {
@@ -160,6 +162,21 @@ const visualizerSlice = createSlice({
             state.settings["scatter.bubble"] = "BUBBLE_SIZE";
           }
         }
+      }
+
+      if (display === "pivot") {
+        state.columns = [
+          {
+            name: "pivot-grouping",
+            display_name: "pivot-grouping",
+            expression_name: "pivot-grouping",
+            field_ref: ["expression", "pivot-grouping"],
+            base_type: "type/Integer",
+            effective_type: "type/Integer",
+            source: "artificial",
+            values: [],
+          },
+        ];
       }
     },
     updateSettings: (state, action: PayloadAction<VisualizationSettings>) => {
@@ -397,6 +414,17 @@ const getVisualizerDatasetData = createSelector(
         referencedColumnValuesMap[ref.name] = values;
       }
     });
+
+    const hasPivotGrouping = cols.some(col => col.name === "pivot-grouping");
+    if (hasPivotGrouping) {
+      const rowLengths = Object.values(referencedColumnValuesMap).map(
+        values => values.length,
+      );
+      const maxLength = rowLengths.length > 0 ? Math.max(...rowLengths) : 0;
+      referencedColumnValuesMap["pivot-grouping"] = new Array(maxLength).fill(
+        0,
+      );
+    }
 
     const unzippedRows = cols.map(column =>
       column.values
@@ -645,6 +673,130 @@ const funnelDropHandler: DropHandler = (state, { active, over }) => {
         createDataSourceNameRef(dataSource.id),
       );
       state.referencedColumns.push(columnRef);
+    }
+  }
+};
+
+const pivotDropHandler: DropHandler = (state, { active, over }) => {
+  if (over && isDraggedColumnItem(active)) {
+    let shouldAddColumn = false;
+
+    const { column, dataSource } = active.data.current;
+    const columnRef = createVisualizerColumnReference(
+      dataSource,
+      column,
+      state.referencedColumns,
+    );
+
+    if (over.id === DROPPABLE_ID.PIVOT_COLUMNS_WELL) {
+      const columns = state.settings["pivot_table.column_split"]?.columns ?? [];
+      if (!columns.includes(columnRef.name)) {
+        state.settings = {
+          ...state.settings,
+          "pivot_table.column_split": {
+            ...(state.settings["pivot_table.column_split"] ?? {
+              rows: [],
+              values: [],
+            }),
+            columns: [...columns, columnRef.name],
+          },
+        };
+        shouldAddColumn = true;
+      }
+    } else if (over.id === DROPPABLE_ID.PIVOT_ROWS_WELL) {
+      const rows = state.settings["pivot_table.column_split"]?.rows ?? [];
+      if (!rows.includes(columnRef.name)) {
+        state.settings = {
+          ...state.settings,
+          "pivot_table.column_split": {
+            ...(state.settings["pivot_table.column_split"] ?? {
+              columns: [],
+              values: [],
+            }),
+            rows: [...rows, columnRef.name],
+          },
+        };
+        shouldAddColumn = true;
+      }
+    } else if (over.id === DROPPABLE_ID.PIVOT_VALUES_WELL) {
+      const values = state.settings["pivot_table.column_split"]?.values ?? [];
+      if (!values.includes(columnRef.name)) {
+        state.settings = {
+          ...state.settings,
+          "pivot_table.column_split": {
+            ...(state.settings["pivot_table.column_split"] ?? {
+              columns: [],
+              rows: [],
+            }),
+            values: [...values, columnRef.name],
+          },
+        };
+        shouldAddColumn = true;
+      }
+    }
+
+    if (shouldAddColumn) {
+      state.referencedColumns.push(columnRef);
+      state.columns.push({
+        ...column,
+        name: columnRef.name,
+        values: [column.name],
+        source: column.source === "breakout" ? "breakout" : "artificial",
+      });
+    }
+  }
+
+  if (
+    isDraggedWellItem(active) &&
+    (!over || over.id === DROPPABLE_ID.CANVAS_MAIN)
+  ) {
+    const { column, wellId } = active.data.current;
+
+    if (wellId === DROPPABLE_ID.PIVOT_COLUMNS_WELL) {
+      const columns = state.settings["pivot_table.column_split"]?.columns ?? [];
+      state.settings = {
+        ...state.settings,
+        "pivot_table.column_split": {
+          ...(state.settings["pivot_table.column_split"] ?? {
+            rows: [],
+            values: [],
+          }),
+          columns: columns.filter(col => col !== column.name),
+        },
+      };
+      state.referencedColumns = state.referencedColumns.filter(
+        ref => ref.name !== column.name,
+      );
+    } else if (wellId === DROPPABLE_ID.PIVOT_ROWS_WELL) {
+      const rows = state.settings["pivot_table.column_split"]?.rows ?? [];
+      state.settings = {
+        ...state.settings,
+        "pivot_table.column_split": {
+          ...(state.settings["pivot_table.column_split"] ?? {
+            columns: [],
+            values: [],
+          }),
+          rows: rows.filter(col => col !== column.name),
+        },
+      };
+      state.referencedColumns = state.referencedColumns.filter(
+        ref => ref.name !== column.name,
+      );
+    } else if (wellId === DROPPABLE_ID.PIVOT_VALUES_WELL) {
+      const values = state.settings["pivot_table.column_split"]?.values ?? [];
+      state.settings = {
+        ...state.settings,
+        "pivot_table.column_split": {
+          ...(state.settings["pivot_table.column_split"] ?? {
+            columns: [],
+            rows: [],
+          }),
+          values: values.filter(col => col !== column.name),
+        },
+      };
+      state.referencedColumns = state.referencedColumns.filter(
+        ref => ref.name !== column.name,
+      );
     }
   }
 };
