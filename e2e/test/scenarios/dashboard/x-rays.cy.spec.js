@@ -381,13 +381,13 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
       .should("exist"); // not asserting a value as it's dynamic
     getDashcardByTitle("Average quantity per month").within(() => {
       cy.findByText("Average of Quantity").should("exist");
-      cy.findByText("Created At").should("exist");
+      cy.findByText("Created At: Month").should("exist");
     });
     getDashcardByTitle("Sales per source").within(() => {
       cy.findByText("Organic").should("exist");
       cy.findByText("Affiliate").should("exist");
       cy.findByText("Count").should("exist");
-      cy.findByText("Created At").should("exist");
+      cy.findByText("Created At: Month").should("exist");
     });
     getDashcardByTitle("Sales per product").within(() => {
       cy.findByText("Product → Title").should("exist");
