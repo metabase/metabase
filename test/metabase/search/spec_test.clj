@@ -68,6 +68,7 @@
                                                       :dataset_query
                                                       :display
                                                       :name
+                                                      :query_type
                                                       :type
                                                       :created_at
                                                       :updated_at},

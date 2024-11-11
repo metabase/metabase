@@ -26,7 +26,7 @@
    :created-by          :creator-id
    :last-edited-at      :last-edited-at
    :last-edited-by      :last-editor-id
-   :search-native-query :dataset-query
+   :search-native-query :native-query
    ;; this actually has nothing to do with tables anymore, as we also filter cards.
    :table-db-id         :database-id
    :verified            :verified})

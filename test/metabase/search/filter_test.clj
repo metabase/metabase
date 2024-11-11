@@ -67,11 +67,11 @@
                       [:= :search_index.archived true]
                       [:>= [:cast :search_index.model_created_at :date] #t"2024-10-01"]
                       [:< [:cast :search_index.model_created_at :date] #t"2024-10-02"]
+                      [:= :search_index.verified true]
                       [:in :search_index.creator_id [123]]
                       [:= :search_index.database_id 231]
                       [:>= [:cast :search_index.last_edited_at :date] #t"2024-10-02"]
                       [:< [:cast :search_index.last_edited_at :date] #t"2024-10-03"]
-                      [:in :search_index.last_editor_id [321]]
-                      [:inline [:= 0 1]]}}
+                      [:in :search_index.last_editor_id [321]]}}
            (-> (search.filter/with-filters kitchen-sink-filter-context {:select [:some :stuff], :from :somewhere})
                (update :where set))))))

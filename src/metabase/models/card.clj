@@ -1015,7 +1015,7 @@
                   :collection-id       :collection_id
                   :creator-id          true
                   :database-id         false
-                  :native-query        [:case [:= "native" :query_type] :dataset_query :else nil]
+                  :native-query        [:case [:= "native" :query_type] :dataset_query]
                   :dashboardcard-count {:select [:%count.*]
                                         :from   [:report_dashboardcard]
                                         :where  [:= :report_dashboardcard.card_id :this.id]}
