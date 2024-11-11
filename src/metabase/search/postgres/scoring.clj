@@ -18,7 +18,10 @@
 (defn- atan-size
   "Prefer items whose value is larger, with diminishing gains."
   [column scaling]
-  [:* [:atan [:/ [:cast [:coalesce column [:inline 0.0]] :float] [:inline scaling]]] [:/ [:inline 2] [:pi]]])
+  ;; 2/PI * tan^-1 (x/N)
+  [:*
+   [:/ [:inline 2] [:pi]]
+   [:atan [:/ [:cast [:coalesce column [:inline 0.0]] :float] [:inline scaling]]]])
 
 (defn- inverse-duration
   "Score at item based on the duration between two dates, where less is better."
