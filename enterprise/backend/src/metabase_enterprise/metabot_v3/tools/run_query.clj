@@ -90,6 +90,17 @@
                        (condp = operator
                          :=  (lib/= column value)))))
 
+(defmethod apply-step :date-filter
+  [query step]
+  (apply-filter-step query
+                     step
+                     lib.types.isa/date-or-datetime?
+                     (fn [operator column value]
+                       (condp = operator
+                         :=  (lib/= column value)
+                         :>  (lib/> column value)
+                         :<  (lib/< column value)))))
+
 (defmethod apply-step :aggregation
   [query {operator-name :operator, column-name :column}]
   (let [operators (lib/available-aggregation-operators query)

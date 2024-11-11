@@ -135,6 +135,46 @@
             },
             {
               "type": "object",
+              "description": "Filter query results by a date column and value.",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "description": "Type of the date filter step.",
+                  "enum": [
+                    "date-filter"
+                  ]
+                },
+                "column": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "Name of the date column to apply filter for."
+                },
+                "operator": {
+                  "type": "string",
+                  "description": "Date filter operator.",
+                  "enum": [
+                    "=",
+                    ">",
+                    "<"
+                  ]
+                },
+                "value": {
+                  "type": "string",
+                  "description": "Date filter value. Must be a date in ISO 8601 format."
+                }
+              },
+              "required": [
+                "type",
+                "column",
+                "operator",
+                "value"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
               "description": "Aggregate query results.",
               "properties": {
                 "type": {
