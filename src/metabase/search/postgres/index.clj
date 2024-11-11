@@ -241,7 +241,7 @@
                   tsv-language "', "
                   [:lift (to-tsquery-expr search-term)] ")"]
                  :query] [:= 1 1]]
-    :where     (if-not search-term
+    :where     (if (str/blank? search-term)
                  [:= [:inline 1] [:inline 1]]
                  [:raw
                   "search_vector @@ query"])}))
