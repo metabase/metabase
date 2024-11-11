@@ -16,7 +16,7 @@
   [:least [:/ [:coalesce column [:inline 0]] [:inline (double ceiling)]] [:inline 1]])
 
 (defn- atan-size
-  "Prefer items whose value is larger, up to some saturation point. Items beyond that point are equivalent."
+  "Prefer items whose value is larger, with diminishing gains."
   [column scaling]
   [:* [:atan [:/ [:cast [:coalesce column [:inline 0.0]] :float] [:inline scaling]]] [:/ [:inline 2] [:pi]]])
 
