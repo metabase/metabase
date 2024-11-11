@@ -34,7 +34,7 @@
   "Ensure a clean, small index."
   [& body]
   `(when (= :postgres (mdb/db-type))
-     (binding [search.ingest]
+     (binding [search.ingestion/*force-sync* true]
        (mt/dataset ~(symbol "test-data")
          (mt/with-temp [:model/Card     {}           {:name "Customer Satisfaction" :collection_id 1}
                         :model/Card     {}           {:name "The Latest Revenue Projections" :collection_id 1}

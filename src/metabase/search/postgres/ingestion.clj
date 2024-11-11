@@ -84,8 +84,10 @@
        (eduction
         (comp
          (map t2.realize/realize)
-         (map ->entry)
+         ;; It's possible to get redundant entries from the indexed-entities table.
+         ;; We remove duplicates to avoid creating invalid insert statements.
          (m/distinct-by (juxt :id :model))
+         (map ->entry)
          (partition-all insert-batch-size)))
        (run! search.index/batch-update!)))
 

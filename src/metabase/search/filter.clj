@@ -27,7 +27,7 @@
 
 (def ^:private attr->index-key
   (into {} (for [k (vals context-key->attr)]
-             [k (keyword (str "search_index." (u/->snake_case_en (name (field-alias k k)))))])))
+             [k (keyword (str "search_index." (u/->snake_case_en (name (get field-alias k k)))))])))
 
 (defn- remove-if-falsey [m k]
   (if (m k) m (dissoc m k)))

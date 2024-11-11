@@ -57,6 +57,7 @@
 ;; See https://www.postgresql.org/docs/current/textsearch-controls.html#TEXTSEARCH-RANKING
 (def ^:private ts-rank-normalization 1)
 
+;; TODO move these to the spec definitions
 (def ^:private bookmarked-models [:card :collection :dashboard])
 
 (def ^:private bookmark-score-expr
