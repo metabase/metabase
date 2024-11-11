@@ -16,12 +16,20 @@ import { getFetchRefreshTokenFn } from "./selectors";
 export const initAuth = createAsyncThunk(
   "sdk/token/INIT_AUTH",
   async (sdkConfig: SDKConfig, { dispatch }) => {
+    if ("jwtProviderUri" in sdkConfig) {
+      const error = new Error(
+        "The jwtProviderUri config property has been deprecated. Replace it with authProviderUri.",
+      );
+      console.error(error);
+      throw error;
+    }
+
     // Setup JWT or API key
-    const isValidJwtConfig =
+    const isValidAuthProviderUri =
       sdkConfig.authProviderUri && sdkConfig.authProviderUri?.length > 0;
     const isValidApiKeyConfig = sdkConfig.apiKey && getIsLocalhost();
 
-    if (isValidJwtConfig) {
+    if (isValidAuthProviderUri) {
       // JWT setup
       api.onBeforeRequest = async () => {
         const session = await dispatch(
@@ -80,7 +88,7 @@ export const refreshTokenAsync = createAsyncThunk(
       const session = await getRefreshToken(url);
       const source = customGetRefreshToken
         ? '"fetchRequestToken"'
-        : "jwtProvider endpoint";
+        : "authProvider endpoint";
 
       if (!session || typeof session !== "object") {
         throw new Error(
