@@ -248,11 +248,6 @@ module.exports = {
       },
     },
     {
-      // Enable jest formatting for cypress tests too, the plugin logic just works
-      extends: ["plugin:jest-formatting/recommended"],
-      files: ["*.cy.spec.ts", "*.cy.spec.js"],
-    },
-    {
       files: ["frontend/src/**/*"],
       rules: {
         "no-restricted-syntax": [
