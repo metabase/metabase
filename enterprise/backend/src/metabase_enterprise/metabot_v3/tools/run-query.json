@@ -97,6 +97,44 @@
             },
             {
               "type": "object",
+              "description": "Filter query results by a boolean column and value.",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "description": "Type of the boolean filter step.",
+                  "enum": [
+                    "boolean-filter"
+                  ]
+                },
+                "column": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "Name of the boolean column to apply filter for."
+                },
+                "operator": {
+                  "type": "string",
+                  "description": "Boolean filter operator.",
+                  "enum": [
+                    "="
+                  ]
+                },
+                "value": {
+                  "type": "boolean",
+                  "description": "Boolean filter value."
+                }
+              },
+              "required": [
+                "type",
+                "column",
+                "operator",
+                "value"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
               "description": "Aggregate query results.",
               "properties": {
                 "type": {

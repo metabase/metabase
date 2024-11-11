@@ -27,59 +27,68 @@
   [operator]
   (-> operator :short name))
 
-(defmethod apply-step :string-filter
-  [query {column-name :column operator-name :operator value :value}]
-  (let [columns (into [] (filter lib.types.isa/string-or-string-like?) (lib/filterable-columns query))
+(defn- apply-filter-step
+  [query
+   step
+   type-fn
+   expression-fn]
+  (let [{step-type :type, column-name :column, operator-name :operator, value :value} step
+        columns (into [] (filter type-fn) (lib/filterable-columns query))
         column  (m/find-first #(= (column-display-name query %) column-name) columns)]
     (if (some? column)
       (let [operators (lib/filterable-column-operators column)
             operator  (m/find-first #(= (operator-display-name %) operator-name) operators)]
         (if (some? operator)
-          (->> (condp = (:short operator)
-                 :=                (lib/= column value)
-                 :!=               (lib/!= column value)
-                 :contains         (lib/contains column value)
-                 :does-not-contain (lib/does-not-contain column value)
-                 :starts-with      (lib/starts-with column value)
-                 :ends-with        (lib/ends-with column value))
-               (lib/filter query))
-          (throw (ex-info (format "%s is not a correct string filter operator for %s column. Correct operators are: %s"
+          (lib/filter query (expression-fn (:short operator) column value))
+          (throw (ex-info (format "%s is not a correct %s operator for %s column. Correct operators are: %s"
                                   operator-name
+                                  step-type
                                   column-name
                                   (str/join ", " (map operator-display-name operators)))
                           {:column   column-name
                            :operator operator-name}))))
-      (throw (ex-info (format "%s is not a correct column for the string filter step. Correct columns are: %s"
+      (throw (ex-info (format "%s is not a correct column for the %s step. Correct columns are: %s"
                               column-name
+                              step-type
                               (str/join ", " (map #(column-display-name query %) columns)))
                       {:column column-name})))))
 
+(defmethod apply-step :string-filter
+  [query step]
+  (apply-filter-step query
+                     step
+                     lib.types.isa/string-or-string-like?
+                     (fn [operator column value]
+                       (condp = operator
+                         :=                (lib/= column value)
+                         :!=               (lib/!= column value)
+                         :contains         (lib/contains column value)
+                         :does-not-contain (lib/does-not-contain column value)
+                         :starts-with      (lib/starts-with column value)
+                         :ends-with        (lib/ends-with column value)))))
+
 (defmethod apply-step :number-filter
-  [query {column-name :column operator-name :operator value :value}]
-  (let [columns (into [] (filter lib.types.isa/numeric?) (lib/filterable-columns query))
-        column  (m/find-first #(= (column-display-name query %) column-name) columns)]
-    (if (and (some? column) (lib.types.isa/numeric? column))
-      (let [operators (lib/filterable-column-operators column)
-            operator  (m/find-first #(= (operator-display-name %) operator-name) operators)]
-        (if (some? operator)
-          (->> (condp = (:short operator)
-                 :=  (lib/= column value)
-                 :!= (lib/!= column value)
-                 :>  (lib/> column value)
-                 :>= (lib/>= column value)
-                 :<  (lib/< column value)
-                 :<= (lib/<= column value))
-               (lib/filter query))
-          (throw (ex-info (format "%s is not a correct number filter operator for %s column. Correct operators are: %s"
-                                  operator-name
-                                  column-name
-                                  (str/join ", " (map operator-display-name operators)))
-                          {:column   column-name
-                           :operator operator-name}))))
-      (throw (ex-info (format "%s is not a correct column for the number filter step. Correct columns are: %s"
-                              column-name
-                              (str/join ", " (map #(column-display-name query %) columns)))
-                      {:column column-name})))))
+  [query step]
+  (apply-filter-step query
+                     step
+                     lib.types.isa/numeric?
+                     (fn [operator column value]
+                       (condp = operator
+                         :=  (lib/= column value)
+                         :!= (lib/!= column value)
+                         :>  (lib/contains column value)
+                         :>= (lib/does-not-contain column value)
+                         :<  (lib/starts-with column value)
+                         :<= (lib/ends-with column value)))))
+
+(defmethod apply-step :boolean-filter
+  [query step]
+  (apply-filter-step query
+                     step
+                     lib.types.isa/boolean?
+                     (fn [operator column value]
+                       (condp = operator
+                         :=  (lib/= column value)))))
 
 (defmethod apply-step :aggregation
   [query {operator-name :operator, column-name :column}]
