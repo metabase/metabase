@@ -10,7 +10,6 @@
    [metabase-enterprise.sso.integrations.saml]
    [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
    [metabase.api.common :as api]
-   [metabase.channel.template.core :as channel.template]
    [metabase.server.middleware.session :as mw.session]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -19,6 +18,7 @@
    [metabase.util.urls :as urls]
    [saml20-clj.core :as saml]
    [saml20-clj.encode-decode :as encode-decode]
+   [stencil.core :as stencil]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -41,7 +41,7 @@
   [^Throwable e log-direction :- [:enum :in :out]]
   {:status  (get (ex-data e) :status-code 500)
    :headers {"Content-Type" "text/html"}
-   :body    (channel.template/render "metabase_enterprise/sandbox/api/error_page"
+   :body    (stencil/render-file "metabase_enterprise/sandbox/api/error_page"
                                  (let [message    (.getMessage e)
                                        data       (u/pprint-to-str (ex-data e))]
                                    {:logDirection   (name log-direction)
