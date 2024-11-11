@@ -37,7 +37,7 @@
 
 (def ^:const dashboard-count-ceiling
   "Results in more dashboards than this are all considered to be equally popular."
-  50)
+  10)
 
 (def ^:const surrounding-match-context
   "Show this many words of context before/after matches in long search results"
