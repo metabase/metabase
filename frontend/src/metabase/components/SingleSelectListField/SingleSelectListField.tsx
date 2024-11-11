@@ -1,11 +1,10 @@
 import type * as React from "react";
-import { useContext, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
 import EmptyState from "metabase/components/EmptyState";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
-import { waitTimeContext } from "metabase/context/wait-time";
 import type { InputProps } from "metabase/core/components/Input";
 import Input from "metabase/core/components/Input";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
@@ -21,6 +20,8 @@ import {
 } from "./SingleSelectListField.styled";
 import type { Option, SingleSelectListFieldProps } from "./types";
 import { isValidOptionItem } from "./utils";
+
+const DEBOUNCE_FILTER_TIME = 100;
 
 function createOptionsFromValuesWithoutOptions(
   values: RowValue[],
@@ -67,8 +68,7 @@ const SingleSelectListField = ({
   }, [augmentedOptions.length]);
 
   const [filter, setFilter] = useState("");
-  const waitTime = useContext(waitTimeContext);
-  const debouncedFilter = useDebouncedValue(filter, waitTime);
+  const debouncedFilter = useDebouncedValue(filter, DEBOUNCE_FILTER_TIME);
 
   const filteredOptions = useMemo(() => {
     const formattedFilter = debouncedFilter.trim().toLowerCase();
@@ -101,6 +101,7 @@ const SingleSelectListField = ({
   const onClickOption = (option: any) => {
     if (selectedValue !== option) {
       setSelectedValue(option);
+      setFilter(option);
       onChange?.([option]);
     }
   };
@@ -117,11 +118,15 @@ const SingleSelectListField = ({
   const handleFilterChange: InputProps["onChange"] = evt => {
     const value = evt.target.value;
     setFilter(value);
+    onChange([]);
+    setSelectedValue(null);
     onSearchChange(value);
   };
 
   const handleResetClick = () => {
     setFilter("");
+    onChange([]);
+    setSelectedValue(null);
     onSearchChange("");
   };
 
