@@ -418,7 +418,7 @@
      :recipients (distinct (map :email [pulse-creator dashboard-creator]))
      :message-type :html
      :message (channel.template/render
-               "metabase/email/broken_subscription_notification.mustache"
+               "metabase/email/broken_subscription_notification.hbs"
                (merge context
                       {:dashboardName            dashboard-name
                        :badParameters            (map

@@ -32,12 +32,12 @@
         Filter Value
       </td>
     </tr>
-    {{#if badParameters}}
+    {{#each badParameters}}
       <tr>
-        <td style="text-align: left;">{{name}}</td>
-        <td style="text-align: left;">{{value}}</td>
+        <td style="text-align: left;">{{this.name}}</td>
+        <td style="text-align: left;">{{this.value}}</td>
       </tr>
-    {{/if}}
+    {{/each}}
     <tr />
     <tr>
       <td
@@ -56,13 +56,13 @@
         Role
       </td>
     </tr>
-    {{#if affectedUsers}}
+    {{#each affectedUsers}}
       <tr>
-        <td>{{notification-type}}</td>
-        <td>{{recipient}}</td>
-        <td>{{role}}</td>
+        <td>{{this.notification-type}}</td>
+        <td>{{this.recipient}}</td>
+        <td>{{this.role}}</td>
       </tr>
-    {{/if}}
+    {{/each}}
   </table>
 
   <div style="text-align: center;">
