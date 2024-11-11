@@ -11,6 +11,49 @@
           "anyOf": [
             {
               "type": "object",
+              "description": "Filter query results by a string column and value.",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "description": "The type of the string filter step.",
+                  "enum": [
+                    "string-filter"
+                  ]
+                },
+                "column": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "The name of the string column to apply filter for."
+                },
+                "operator": {
+                  "type": "string",
+                  "description": "The string filter operator.",
+                  "enum": [
+                    "=",
+                    "!=",
+                    "contains",
+                    "does-not-contain",
+                    "starts-with",
+                    "ends-with"
+                  ]
+                },
+                "value": {
+                  "type": "string",
+                  "description": "The filter value."
+                }
+              },
+              "required": [
+                "type",
+                "column",
+                "operator",
+                "value"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
               "description": "Aggregate query results.",
               "properties": {
                 "type": {

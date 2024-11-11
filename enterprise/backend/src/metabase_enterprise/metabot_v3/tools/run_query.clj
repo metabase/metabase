@@ -26,6 +26,32 @@
   [operator]
   (-> operator :short name))
 
+(defmethod apply-step :string-filter
+  [query {column-name :column operator-name :operator value :value}]
+  (let [columns (lib/filterable-columns query)
+        column  (m/find-first #(= (column-display-name query %) column-name) columns)]
+    (if (some? column)
+      (let [operators (lib/filterable-column-operators column)
+            operator  (m/find-first #(= (operator-display-name %) operator-name) operators)]
+        (if (some? operator)
+          (condp = (:short operator)
+            :=                (lib/filter query (lib/= column value))
+            :!=               (lib/filter query (lib/!= column value))
+            :contains         (lib/filter query (lib/contains column value))
+            :does-not-contain (lib/filter query (lib/does-not-contain column value))
+            :starts-with      (lib/filter query (lib/starts-with column value))
+            :ends-with        (lib/filter query (lib/ends-with column value)))
+          (throw (ex-info (format "%s is not a correct filter operator for %s column. Correct operators are: %s"
+                                  operator-name
+                                  column-name
+                                  (str/join ", " (map operator-display-name operators)))
+                          {:column   column-name
+                           :operator operator-name}))))
+      (throw (ex-info (format "%s is not a correct column for the string filter step. Correct columns are: %s"
+                              column-name
+                              (str/join ", " (map #(column-display-name query %) columns)))
+                      {:column column-name})))))
+
 (defmethod apply-step :aggregation
   [query {operator-name :operator, column-name :column}]
   (let [operators (lib/available-aggregation-operators query)
