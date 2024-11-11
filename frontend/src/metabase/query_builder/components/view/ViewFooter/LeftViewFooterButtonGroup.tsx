@@ -4,6 +4,7 @@ import { t } from "ttag";
 
 import { EditorViewControl } from "embedding-sdk/components/private/EditorViewControl";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { isNotNull } from "metabase/lib/types";
 import {
   onCloseChartSettings,
   onOpenChartSettings,
@@ -17,6 +18,7 @@ import {
 } from "metabase/query_builder/selectors";
 import { Button, Flex, Icon, Tooltip } from "metabase/ui";
 import { getIconForVisualizationType } from "metabase/visualizations";
+import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { QueryBuilderUIControls } from "metabase-types/store";
 
@@ -31,6 +33,7 @@ export const LeftViewFooterButtonGroup = ({
     useSelector(getUiControls);
   const isShowingRawTable = useSelector(getIsShowingRawTable);
   const vizIcon = getIconForVisualizationType(question.display());
+  const isNative = question && Lib.queryDisplayInfo(question.query()).isNative;
 
   useUnmount(() => {
     // reset showing raw table, so new mount will default to viz
@@ -41,62 +44,65 @@ export const LeftViewFooterButtonGroup = ({
   const isVisualized = useSelector(getIsVisualized);
 
   const data = useMemo(
-    () => [
-      {
-        value: "editor",
-        label: (
-          <Tooltip label={t`Editor`}>
-            <Icon
-              name="notebook"
-              onClick={() => {
-                dispatch(setQueryBuilderMode("notebook"));
-              }}
-            />
-          </Tooltip>
-        ),
-      },
-      {
-        value: "table",
-        disabled: !isVisualized,
-        label: (
-          <Tooltip label={t`Results`}>
-            <Icon
-              aria-label={t`Switch to data`}
-              name="table2"
-              onClick={() => {
-                dispatch(setUIControls({ isShowingRawTable: true }));
-              }}
-            />
-          </Tooltip>
-        ),
-      },
-      {
-        value: "visualization",
-        disabled: !isVisualized,
-        // TODO: also we need to add a spinner :boom:
-        label: (
-          <Tooltip label={t`Visualization`}>
-            <Icon
-              aria-label={t`Switch to visualization`}
-              name={vizIcon}
-              onClick={() => {
-                dispatch(setUIControls({ isShowingRawTable: false }));
-              }}
-            />
-          </Tooltip>
-        ),
-      },
-    ],
-    [dispatch, isVisualized, vizIcon],
+    () =>
+      [
+        isNative
+          ? null
+          : {
+              value: "editor",
+              label: (
+                <Tooltip label={t`Editor`}>
+                  <Icon
+                    name="notebook"
+                    onClick={() => {
+                      dispatch(setQueryBuilderMode("notebook"));
+                    }}
+                  />
+                </Tooltip>
+              ),
+            },
+        {
+          value: "table",
+          label: (
+            <Tooltip label={t`Results`}>
+              <Icon
+                aria-label={t`Switch to data`}
+                name="table2"
+                onClick={() => {
+                  dispatch(setUIControls({ isShowingRawTable: true }));
+                }}
+              />
+            </Tooltip>
+          ),
+        },
+        {
+          value: "visualization",
+          // TODO: also we need to add a spinner :boom:
+          label: (
+            <Tooltip label={t`Visualization`}>
+              <Icon
+                aria-label={t`Switch to visualization`}
+                name={vizIcon}
+                onClick={() => {
+                  dispatch(setUIControls({ isShowingRawTable: false }));
+                }}
+              />
+            </Tooltip>
+          ),
+        },
+      ].filter(isNotNull),
+    [dispatch, isNative, vizIcon],
   );
 
   return (
     <Flex gap="0.75rem">
-      <EditorViewControl
-        value={isShowingRawTable ? "table" : "visualization"}
-        data={data}
-      />
-      {!isShowingRawTable && (
+      {isVisualized && (
+        <EditorViewControl
+          value={isShowingRawTable ? "table" : "visualization"}
+          data={data}
+        />
+      )}
+      {(!isShowingRawTable || isVisualized) && (
         <Button
           radius="xl"
           variant={isShowingChartSettingsSidebar ? "filled" : "default"}

@@ -5,7 +5,7 @@ import ErrorBoundary from "metabase/ErrorBoundary";
 import CS from "metabase/css/core/index.css";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
-  onOpenChartType,
+  onOpenChartSettings,
   onReplaceAllVisualizationSettings,
 } from "metabase/query_builder/actions";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
@@ -36,7 +36,15 @@ function ChartSettingsSidebarInner({
   const sidebarContentProps = showSidebarTitle
     ? {
         title: t`${visualizations.get(question.display())?.uiName} options`,
-        onBack: () => dispatch(onOpenChartType()),
+        onBack: () => {
+          dispatch(
+            onOpenChartSettings({
+              initialChartSetting: {
+                section: t`Chart`,
+              },
+            }),
+          );
+        },
       }
     : {};
 

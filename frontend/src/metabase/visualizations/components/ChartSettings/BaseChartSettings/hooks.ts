@@ -64,14 +64,13 @@ export const useChartSettingsSections = ({
     return names;
   }, [sections]);
 
-  const chartSettingCurrentSection = useMemo(
-    () =>
-      currentSection && sections[currentSection]
-        ? currentSection
-        : _.find(DEFAULT_TAB_PRIORITY, name => name in sections) ||
-          sectionNames[0],
-    [currentSection, sectionNames, sections],
-  );
+  const chartSettingCurrentSection = useMemo(() => {
+    const calculatedCurrentSection = currentSection ?? initial?.section;
+    return calculatedCurrentSection && sections[calculatedCurrentSection]
+      ? calculatedCurrentSection
+      : _.find(DEFAULT_TAB_PRIORITY, name => name in sections) ||
+          sectionNames[0];
+  }, [currentSection, initial?.section, sectionNames, sections]);
 
   const visibleWidgets = useMemo(
     () => sections[chartSettingCurrentSection] || [],
