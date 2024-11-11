@@ -159,8 +159,8 @@ describe("useInitData hook", () => {
     });
   });
 
-  describe("JWT authentication", () => {
-    it("start loading data if JWT URI and auth type are valid", async () => {
+  describe("authProviderUri authentication", () => {
+    it("start loading data if authProviderUri and auth type are valid", async () => {
       setup({ isValidConfig: true });
       expect(screen.getByTestId("test-component")).toHaveAttribute(
         "data-login-status",

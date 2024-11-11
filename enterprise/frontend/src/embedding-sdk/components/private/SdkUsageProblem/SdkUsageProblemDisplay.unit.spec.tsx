@@ -126,7 +126,7 @@ describe("SdkUsageProblemDisplay", () => {
     mock.mockRestore();
   });
 
-  it("shows an error when neither JWT or API keys are provided", async () => {
+  it("shows an error when neither an Auth Provider URI or API keys are provided", async () => {
     setup({
       // @ts-expect-error - we're intentionally passing neither to simulate bad usage
       config: { metabaseInstanceUrl: "http://localhost" },
@@ -136,12 +136,12 @@ describe("SdkUsageProblemDisplay", () => {
 
     expect(
       within(screen.getByTestId(PROBLEM_CARD_TEST_ID)).getByText(
-        /must provide either a JWT URI or an API key for authentication/,
+        /must provide either an Auth Provider URI or an API key for authentication/,
       ),
     ).toBeInTheDocument();
   });
 
-  it("shows an error when both JWT and API keys are provided", async () => {
+  it("shows an error when both an Auth Provider URI and API keys are provided", async () => {
     setup({
       // @ts-expect-error - we're intentionally passing both to simulate bad usage
       config: {
@@ -155,7 +155,7 @@ describe("SdkUsageProblemDisplay", () => {
 
     expect(
       within(screen.getByTestId(PROBLEM_CARD_TEST_ID)).getByText(
-        /cannot use both JWT and API key authentication at the same time/,
+        /cannot use both an Auth Provider URI and API key authentication at the same time/,
       ),
     ).toBeInTheDocument();
   });

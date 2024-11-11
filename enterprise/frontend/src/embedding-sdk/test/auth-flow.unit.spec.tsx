@@ -104,8 +104,8 @@ describe("SDK auth flow", () => {
     ).toBeInTheDocument();
   });
 
-  describe("when using jwtProvider", () => {
-    it("should retrieve the session from the jwtProvider and send it as 'X-Metabase-Session' header", async () => {
+  describe("when using authProviderUri", () => {
+    it("should retrieve the session from the authProviderUri and send it as 'X-Metabase-Session' header", async () => {
       const sdkConfig = defineEmbeddingSdkConfig({
         metabaseInstanceUrl: METABASE_INSTANCE_URL,
         authProviderUri: AUTH_PROVIDER_URL,

@@ -88,7 +88,7 @@ export const refreshTokenAsync = createAsyncThunk(
       const session = await getRefreshToken(url);
       const source = customGetRefreshToken
         ? '"fetchRequestToken"'
-        : "authProvider endpoint";
+        : "authProviderUri endpoint";
 
       if (!session || typeof session !== "object") {
         throw new Error(
