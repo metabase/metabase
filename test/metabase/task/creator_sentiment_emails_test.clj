@@ -68,16 +68,16 @@
                                        "num_models"     2}}
                           decoded)))))))))
 
-   (testing "Make sure external services message is included when is self hosted"
-     (doseq [hosted? [true false]]
-       (mt/reset-inbox!)
-       (with-redefs [creator-sentiment-emails/fetch-creators (fn [_] [{:email "a@metabase.com"}])
+    (testing "Make sure external services message is included when is self hosted"
+      (doseq [hosted? [true false]]
+        (mt/reset-inbox!)
+        (with-redefs [creator-sentiment-emails/fetch-creators (fn [_] [{:email "a@metabase.com"}])
                      ;; can't use mt/with-temporary-setting-values because of a custom :getter
-                     premium-features/is-hosted?             (constantly hosted?)
-                     public-settings/site-url                (constantly "http://metabase.com")]
-         (#'creator-sentiment-emails/send-creator-sentiment-emails! 45)
-         (is (= (if hosted? 0 1)
-                (count (et/regex-email-bodies #"external services")))))))))
+                      premium-features/is-hosted?             (constantly hosted?)
+                      public-settings/site-url                (constantly "http://metabase.com")]
+          (#'creator-sentiment-emails/send-creator-sentiment-emails! 45)
+          (is (= (if hosted? 0 1)
+                 (count (et/regex-email-bodies #"external services")))))))))
 
 (deftest fetch-creators-test
   (let [creator-id 33

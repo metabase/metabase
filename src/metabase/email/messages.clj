@@ -108,14 +108,14 @@
       :recipients   recipients
       :message-type :html
       :message      (channel.template/render "metabase/email/user_joined_notification.hbs"
-                                         (merge (common-context)
-                                                {:logoHeader        true
-                                                 :joinedUserName    (or (:first_name new-user) (:email new-user))
-                                                 :joinedViaSSO      google-auth?
-                                                 :joinedUserEmail   (:email new-user)
-                                                 :joinedDate        (t/format "EEEE, MMMM d" (t/zoned-date-time)) ; e.g. "Wednesday, July 13".
-                                                 :adminEmail        (first recipients)
-                                                 :joinedUserEditUrl (str (public-settings/site-url) "/admin/people")}))})))
+                                             (merge (common-context)
+                                                    {:logoHeader        true
+                                                     :joinedUserName    (or (:first_name new-user) (:email new-user))
+                                                     :joinedViaSSO      google-auth?
+                                                     :joinedUserEmail   (:email new-user)
+                                                     :joinedDate        (t/format "EEEE, MMMM d" (t/zoned-date-time)) ; e.g. "Wednesday, July 13".
+                                                     :adminEmail        (first recipients)
+                                                     :joinedUserEditUrl (str (public-settings/site-url) "/admin/people")}))})))
 
 (defn send-password-reset-email!
   "Format and send an email informing the user how to reset their password."
