@@ -53,6 +53,7 @@ import {
   visitQuestion,
 } from "e2e/support/helpers";
 import { DASHBOARD_SLOW_TIMEOUT } from "metabase/dashboard/constants";
+import { capitalize } from "metabase/lib/formatting";
 import {
   createMockDashboardCard,
   createMockParameter,
@@ -506,9 +507,7 @@ describe("issue 17879", () => {
 
       popover().within(() => {
         cy.findByText(
-          "Created At: " +
-            sourceDateUnit[0].toUpperCase() +
-            sourceDateUnit.slice(1),
+          "Created At: " + capitalize(sourceDateUnit.replace(/-/g, " ")),
         ).click();
       });
 
