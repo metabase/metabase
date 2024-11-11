@@ -1,5 +1,4 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-// import { DateTimeField, BinnedField } from "frontend/src/metabase-types/api/query.ts";
 import {
   type DashboardDetails,
   type StructuredQuestionDetails,
@@ -1098,18 +1097,14 @@ describe("scenarios > question > multiple column breakouts", () => {
             .findByTestId("breakout-step")
             .findByText("Pick a column to group by")
             .click();
-          popover().within(() => {
-            cy.findByText(column1Name).click();
-          });
+          popover().findByText(column1Name).click();
 
           cy.log("add a breakout for the second breakout column");
           getNotebookStep("summarize", { stage: 1 })
             .findByTestId("breakout-step")
             .icon("add")
             .click();
-          popover().within(() => {
-            cy.findByText(column2Name).click();
-          });
+          popover().findByText(column2Name).click();
 
           cy.log("assert query results");
           visualize();
