@@ -850,7 +850,6 @@ describe("issue 18207", () => {
     visualize();
 
     // Why is it not a table?
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     openVizType();
     leftSidebar().within(() => {
       cy.icon("table2").click();
