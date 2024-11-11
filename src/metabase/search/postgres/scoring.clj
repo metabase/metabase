@@ -15,6 +15,15 @@
   [column ceiling]
   [:least [:/ [:coalesce column [:inline 0]] [:inline (double ceiling)]] [:inline 1]])
 
+(defn- log-normalized-size
+  "Prefer items whose value is larger, up to some saturation point. Items beyond that point are equivalent."
+  [column ceiling]
+  [:least
+   [:inline 1]
+   [:/
+    [:ln [:+ 1 [:coalesce column [:inline 0]]]]
+    [:ln [:inline (inc ceiling)]]]])
+
 (defn- inverse-duration
   "Score at item based on the duration between two dates, where less is better."
   [from-column to-column ceiling-in-days]
@@ -67,6 +76,7 @@
 
 (def ^:private scorers
   {:text       [:ts_rank :search_vector :query [:inline ts-rank-normalization]]
+   :view-count (log-normalized-size :view_count search.config/view-count-count-ceiling)
    :pinned     (truthy :pinned)
    :bookmarked bookmark-score-expr
    :recency    (inverse-duration :model_updated_at [:now] search.config/stale-time-in-days)

@@ -39,6 +39,10 @@
   "Results in more dashboards than this are all considered to be equally popular."
   10)
 
+(def ^:const view-count-count-ceiling
+  "Results with more views than this are all considered to be equally popular."
+  10)
+
 (def ^:const surrounding-match-context
   "Show this many words of context before/after matches in long search results"
   2)
@@ -77,15 +81,15 @@
 
 (def weights
   "Strength of the various scorers. Copied from metabase.search.in-place.scoring, but allowing divergence."
-  {:pinned              2                                   ;; simple field
-   :bookmarked          2                                   ;; join with multi-table entity
-   :recency             1.5                                 ;; date formula
-   :dashboard           1                                   ;; simple field
-   :model               0.5                                 ;; simple field
-   :official-collection 2                                   ;; a field we can calculate
-   :verified            2                                   ;; a simple field
-   :text                10                                  ;; strength of text-scores-weight previously
-   })
+  {:pinned              2
+   :bookmarked          2
+   :recency             1.5
+   :dashboard           1
+   :model               0.5
+   :official-collection 2
+   :verified            2
+   :view-count          2
+   :text                10})
 
 (defn model->alias
   "Given a model string returns the model alias"

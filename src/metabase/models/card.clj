@@ -1024,6 +1024,7 @@
                   :last-editor-id      :r.user_id
                   :pinned              [:> [:coalesce :collection_position [:inline 0]] [:inline 0]]
                   :verified            [:= "verified" :mr.status]
+                  :view-count          true
                   :created-at          true
                   :updated-at          true}
    :search-terms [:name :description]

@@ -41,6 +41,7 @@
    :last-editor-id
    :pinned
    :verified
+   :view-count
    :updated-at])
 
 (def ^:private default-attrs
