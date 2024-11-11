@@ -79,8 +79,6 @@
       (update :updated_at parse-datetime)
       (update :last_edited_at parse-datetime)))
 
-;(defn- prrn [x] (prn x) x)
-
 (defn- fulltext
   "Search purely using the index."
   [search-term & {:as search-ctx}]
@@ -91,7 +89,6 @@
          (search.permissions/add-collection-join-and-where-clauses base-query "search-index" search-ctx))
        (search.scoring/with-scores search-ctx)
        (search.filter/with-filters search-ctx)
-       ;sql/format prrn
        (t2/query)
        (map rehydrate)))
 
@@ -111,18 +108,15 @@
        (dissoc search-ctx :search-string))))
 
 (defn model-set
-  "Return a set of the models which have at least one result for the given query.
-  TODO: consider filters and permissions."
+  "Return a set of the models which have at least one result for the given query."
   [search-ctx]
-  (set
-   (filter
-    ;; TODO use a single query
-    (fn [m]
-      (t2/exists? :search_index
-                  (-> (search.index/search-query (:search-string search-ctx))
-                      (sql.helpers/where [:= :model m]))))
-    ;; regardless of :models in search-ctx, search across all of them.
-    search.config/all-models)))
+  ;; We ignore any current models filter
+  (let [search-ctx (assoc search-ctx :models search.config/all-models)]
+    (->> (-> (search.index/search-query (:search-string search-ctx) search-ctx [[[:distinct :model] :model]])
+             (search.permissions/add-collection-join-and-where-clauses "search-index" search-ctx))
+         (search.filter/with-filters search-ctx)
+         t2/query
+         (into #{} (map :model)))))
 
 (defn no-scoring
   "Do no scoring, whatsoever"
