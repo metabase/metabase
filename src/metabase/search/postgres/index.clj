@@ -54,6 +54,7 @@
              ;; scoring related
              [:dashboardcard_count :int]
              [:model_rank :int :not-null]
+             [:official_collection :boolean]
              [:pinned :boolean]
              [:verified :boolean]
              [:view_count :int]

@@ -1014,12 +1014,11 @@
    :attrs        {:archived            true
                   :collection-id       :collection_id
                   :creator-id          true
-                  :database-id         false
-                  :native-query        [:case [:= "native" :query_type] :dataset_query]
                   :dashboardcard-count {:select [:%count.*]
                                         :from   [:report_dashboardcard]
                                         :where  [:= :report_dashboardcard.card_id :this.id]}
-                  :table-id            false
+                  :native-query        [:case [:= "native" :query_type] :dataset_query]
+                  :official-collection [:= "official" :collection.authority_level]
                   :last-edited-at      :r.timestamp
                   :last-editor-id      :r.user_id
                   :pinned              [:> [:coalesce :collection_position [:inline 0]] [:inline 0]]
@@ -1029,15 +1028,16 @@
                   :updated-at          true}
    :search-terms [:name :description]
    :render-terms {:archived-directly          true
-                  :collection-authority_level :collection.authority_level
                   :collection-location        :collection.location
                   :collection-name            :collection.name
                   ;; This is used for legacy ranking, in future it will be replaced by :pinned
                   :collection-position        true
                   :collection-type            :collection.type
+                  :database-id                false
                   ;; This field can become stale, unless we change to calculate it just-in-time.
                   :display                    true
-                  :moderated-status           :mr.status}
+                  :moderated-status           :mr.status
+                  :table-id                   false}
    :bookmark     [:model/CardBookmark [:and
                                        [:= :bookmark.card_id :this.id]
                                        [:= :bookmark.user_id :current_user/id]]]
@@ -1054,7 +1054,7 @@
                                                         [:= :mr.moderated_item_id :this.id]
                                                         [:= :mr.most_recent true]]]
                   ;; workaround for dataflow :((((((
-                  :dashcard [:model/DashboardCard [:= :dashcard.card_id :this.id]]}})
+                  :dashcard   [:model/DashboardCard [:= :dashcard.card_id :this.id]]}})
 
 (search/define-spec "card"
   (-> base-search-spec (sql.helpers/where [:= :this.type "question"])))

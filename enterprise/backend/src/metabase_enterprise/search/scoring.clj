@@ -2,7 +2,30 @@
   ;; TODO -- move to `metabase-enterprise.<feature>.*`
   (:require
    [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
-   [metabase.search.in-place.scoring :as scoring]))
+   [metabase.search.config :as search.config]
+   [metabase.search.in-place.scoring :as scoring]
+   [metabase.search.postgres.scoring :as fulltext.scoring]))
+
+(def ^:private enterprise-scorers
+  {:official-collection (fulltext.scoring/truthy :official_collection)
+   :verified            (fulltext.scoring/truthy :verified)})
+
+(defn- additional-scorers []
+  (cond-> (list)
+    (premium-features/has-feature? :official-collections)
+    (conj :official-collection)
+
+    (premium-features/has-feature? :content-verification)
+    (conj :verified)))
+
+(defenterprise scorers
+  "Return the select-item expressions used to calculate the score for each search result."
+  :feature :none
+  []
+  (merge fulltext.scoring/base-scorers
+         (select-keys enterprise-scorers (additional-scorers))))
+
+;; ------------ LEGACY ----------
 
 (defn- official-collection-score
   "A scorer for items in official collections"
@@ -18,16 +41,25 @@
     1
     0))
 
+(def ^:private legacy-scorers
+  {:official-collection official-collection-score
+   :verified            verified-score})
+
+(defn- legacy-name [k]
+  (if (= k :official-collection)
+    "official collection score"
+    (name k)))
+
+(defn- legacy-score-result [k result]
+  {:name   (legacy-name k)
+   :score  (let [f (get legacy-scorers k)]
+             (f result))
+   :weight (search.config/weights k)})
+
 (defenterprise score-result
   "Scoring implementation that adds score for items in official collections."
   :feature :none
   [result]
-  (cond-> (scoring/weights-and-scores result)
-    (premium-features/has-feature? :official-collections)
-    (conj {:weight 2
-           :score  (official-collection-score result)
-           :name   "official collection score"})
-    (premium-features/has-feature? :content-verification)
-    (conj {:weight 2
-           :score  (verified-score result)
-           :name   "verified"})))
+  (into (scoring/weights-and-scores result)
+        (map #(legacy-score-result % result))
+        (additional-scorers)))

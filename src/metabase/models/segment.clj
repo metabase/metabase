@@ -193,14 +193,14 @@
   {:model        :model/Segment
    :attrs        {:collection-id :id
                   :creator-id    false
-                  :database-id   :table.db_id
-                  :table-id      :table_id
                   :archived      true
                   ;; Matching legacy behavior, where this cannot be filtered on.
                   ;:created-at    true
                   :updated-at    true}
    :search-terms [:name :description]
-   :render-terms {:table_description :table.description
+   :render-terms {:database-id   :table.db_id
+                  :table-id      :table_id
+                  :table_description :table.description
                   :table_name        :table.name
                   :table_schema      :table.schema}
    :joins        {:table [:model/Table [:= :table.id :this.table_id]]}})

@@ -405,16 +405,16 @@
    :attrs        {:archived       true
                   :collection-id  :model.collection_id
                   :creator-id     true
-                  :database-id    :query_action.database_id
                   :native-query   :query_action.dataset_query
                   ;; workaround for actions not having revisions (yet)
                   :last-edited-at :updated_at
-                  :table-id       false
                   :created-at     true
                   :updated-at     true}
    :search-terms [:name :description]
    :render-terms {:model-id   :model.id
-                  :model-name :model.name}
+                  :model-name :model.name
+                  :database-id    :query_action.database_id
+                  :table-id       false}
    :where        [:= :collection.namespace nil]
    :joins        {:model        [:model/Card [:= :model.id :this.model_id]]
                   :query_action [:model/QueryAction [:= :query_action.action_id :this.id]]
