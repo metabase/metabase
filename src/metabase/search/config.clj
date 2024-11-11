@@ -41,7 +41,7 @@
 
 (def ^:const view-count-count-ceiling
   "Results with more views than this are all considered to be equally popular."
-  10)
+  50)
 
 (def ^:const surrounding-match-context
   "Show this many words of context before/after matches in long search results"
