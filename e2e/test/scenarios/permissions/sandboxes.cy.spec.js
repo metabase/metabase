@@ -34,6 +34,7 @@ import {
   visitDashboard,
   visitQuestion,
   visualize,
+  openVizType,
 } from "e2e/support/helpers";
 
 const {
@@ -928,7 +929,7 @@ describeEE("formatting > sandboxes", () => {
       cy.signInAsSandboxedUser();
       createJoinedQuestion("14841", { visitQuestion: true });
 
-      cy.findByTestId("viz-settings-button").click();
+      openVizType("Columns");
       cy.findByTestId("sidebar-left")
         .should("be.visible")
         .within(() => {
