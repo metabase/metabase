@@ -56,6 +56,7 @@
              [:model_rank :int :not-null]
              [:pinned :boolean]
              [:verified :boolean]
+             [:view_count :int]
              ;; permission related entities
              [:collection_id :int]
              [:database_id :int]

@@ -309,6 +309,7 @@
                   ;; legacy search uses :active for this, but then has a rule to only ever show active tables
                   ;; so we moved that to the where clause
                   :archived      false
+                  :view-count    true
                   :created-at    true
                   :updated-at    true}
    :search-terms [:name :description :display_name]

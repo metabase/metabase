@@ -70,6 +70,7 @@
                                                       :name
                                                       :query_type
                                                       :type
+                                                      :view_count
                                                       :created_at
                                                       :updated_at},
                                       :where        [:= :updated.id :this.id]}},
@@ -99,7 +100,7 @@
                                {:search-model "table",
                                 :fields
                                 #{:active :description :schema :name :id :db_id :initial_sync_status :display_name
-                                  :visibility_type :created_at :updated_at}
+                                  :visibility_type :view_count :created_at :updated_at}
                                 :where        [:= :updated.id :this.id]}},
                  :Database   #{{:search-model "table", :fields #{:name}, :where [:= :updated.id :this.db_id]}}
                  :Segment    #{{:search-model "segment"
