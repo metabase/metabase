@@ -94,9 +94,15 @@
   []
   (batch-update! (search-items-reducible)))
 
+(def ^:dynamic *force-sync*
+  "Force ingestion to happen immediately, on the same thread."
+  false)
+
 (defmacro ^:private run-on-thread [& body]
-  `(doto (Thread. ^Runnable (fn [] ~@body))
-     (.start)))
+  `(if *force-sync*
+     (do ~@body)
+     (doto (Thread. ^Runnable (fn [] ~@body))
+       (.start))))
 
 (defn update-index!
   "Given a new or updated instance, create or update all the corresponding search entries if needed."

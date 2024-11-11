@@ -34,17 +34,18 @@
   "Ensure a clean, small index."
   [& body]
   `(when (= :postgres (mdb/db-type))
-     (mt/dataset ~(symbol "test-data")
-       (mt/with-temp [:model/Card     {}           {:name "Customer Satisfaction" :collection_id 1}
-                      :model/Card     {}           {:name "The Latest Revenue Projections" :collection_id 1}
-                      :model/Card     {}           {:name "Projected Revenue" :collection_id 1}
-                      :model/Card     {}           {:name "Employee Satisfaction" :collection_id 1}
-                      :model/Card     {}           {:name "Projected Satisfaction" :collection_id 1}
-                      :model/Database {db-id# :id} {:name "Indexed Database"}
-                      :model/Table    {}           {:name "Indexed Table", :db_id db-id#}]
-         (search.index/reset-index!)
-         (search.ingestion/populate-index!)
-         ~@body))))
+     (binding [search.ingest]
+       (mt/dataset ~(symbol "test-data")
+         (mt/with-temp [:model/Card     {}           {:name "Customer Satisfaction" :collection_id 1}
+                        :model/Card     {}           {:name "The Latest Revenue Projections" :collection_id 1}
+                        :model/Card     {}           {:name "Projected Revenue" :collection_id 1}
+                        :model/Card     {}           {:name "Employee Satisfaction" :collection_id 1}
+                        :model/Card     {}           {:name "Projected Satisfaction" :collection_id 1}
+                        :model/Database {db-id# :id} {:name "Indexed Database"}
+                        :model/Table    {}           {:name "Indexed Table", :db_id db-id#}]
+           (search.index/reset-index!)
+           (search.ingestion/populate-index!)
+           ~@body)))))
 
 (deftest idempotent-test
   (with-index
@@ -65,7 +66,6 @@
       (search.ingestion/update-index! (t2/select-one :model/Card :name "Protected Avenue"))
 
       ;; wait for the background thread
-      (Thread/sleep 200)
       (is (= 0 #_1 (count (search.index/search "Projected Revenue"))))
       (is (= 1 (count (search.index/search "Protected Avenue"))))
 
@@ -91,8 +91,6 @@
         ;; TODO wire up an actual hook
         (search.ingestion/update-index! (t2/select-one :model/Database :id db-id))
 
-        ;; wait for the background thread
-        (Thread/sleep 200)
         (is (= alternate-name (db-name-fn)))))))
 
 (deftest consistent-subset-test
