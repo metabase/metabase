@@ -27,6 +27,7 @@ parameters:
   id: ab0252fc
   isMultiSelect: false
   name: User Group
+  required: true
   sectionId: string
   slug: user_group
   type: string/=
