@@ -54,7 +54,8 @@
     (letfn [(update-stages [stages]
               (let [stages        (fix-mongodb-first-stage stages)
                     stages        (for [stage stages]
-                                    ;; this is for detecting circular refs below.
+                                    ;; This is for detecting circular refs below, and is later used as part of
+                                    ;; permissions enforcement
                                     (assoc stage :qp/stage-is-from-source-card card-id))
                     card-metadata (into [] (remove :remapped-from)
                                         (lib.card/card-metadata-columns metadata-providerable card))

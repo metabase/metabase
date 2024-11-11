@@ -93,7 +93,7 @@
                           (select-keys (-> pulse :cards first) [:include_xls :include_csv :pivot_results :format_rows]))
      :handlers     [(get-notification-handler pulse-channel :notification/alert)]}))
 
-(def ^:private send-notification! (requiring-resolve 'metabase.notification.core/*send-notification!*))
+(def ^:private send-notification! (requiring-resolve 'metabase.notification.core/send-notification!))
 
 (defn- send-pulse!*
   [{:keys [channels channel-ids] :as pulse} dashboard]
