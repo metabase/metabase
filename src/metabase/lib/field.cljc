@@ -96,8 +96,18 @@
                     {::original-effective-type original-effective-type})
                   (when-let [original-temporal-unit (::original-temporal-unit opts)]
                     {::original-temporal-unit original-temporal-unit})
-                  (when-let [inherited-temporal-unit (:inherited-temporal-unit opts)]
-                    {:inherited-temporal-unit inherited-temporal-unit})
+                  ;; `:inherited-temporal-unit` is transfered from `:temoral-unit` ref option only when
+                  ;; the [[lib.metadata.calculation/*propagate-inherited-temoral-unit*]] is thruthy, ie. bound. Intent
+                  ;; is to pass it from ref to column only during [[returned-columns]] call. Otherwise eg.
+                  ;; [[visible-columns]] would contain that too. That could be problematic, because original ref that
+                  ;; contained `:temporal-unit` contains no `:inherent-temporal-unit`. If the column like this was used
+                  ;; to generate ref for eg. order by it would contain the `:inherent-temporal-unit`, while
+                  ;; the original column would not.
+                  (let [inherited-temporal-unit-keys (cond-> (list :inherited-temporal-unit)
+                                                       lib.metadata.calculation/*propagate-inherited-temoral-unit*
+                                                       (conj :temporal-unit))]
+                    (when-some [inherited-temporal-unit (some opts inherited-temporal-unit-keys)]
+                      {:inherited-temporal-unit inherited-temporal-unit}))
                   ;; TODO -- some of the other stuff in `opts` probably ought to be merged in here as well. Also, if
                   ;; the Field is temporally bucketed, the base-type/effective-type would probably be affected, right?
                   ;; We should probably be taking that into consideration?
@@ -331,11 +341,7 @@
       (-> metadata
           (assoc ::temporal-unit unit
                  ::original-effective-type original-effective-type)
-          (m/assoc-some ::original-temporal-unit original-temporal-unit)
-          ;; lbrdnk TODO: "Unhairify".
-          (cond->
-           (lib.temporal-bucket/coarser-truncation-unit unit original-temporal-unit)
-            (assoc :inherited-temporal-unit unit)))
+          (m/assoc-some ::original-temporal-unit original-temporal-unit))
       (cond-> (dissoc metadata ::temporal-unit ::original-effective-type)
         original-effective-type (assoc :effective-type original-effective-type)
         original-temporal-unit  (assoc ::original-temporal-unit original-temporal-unit)))))
