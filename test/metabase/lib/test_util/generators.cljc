@@ -1,6 +1,7 @@
 (ns metabase.lib.test-util.generators
   (:require
    #?@(:cljs (metabase.test-runner.assert-exprs.approximately-equal))
+   [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [medley.core :as m]
    [metabase.lib.breakout :as lib.breakout]
@@ -154,6 +155,10 @@
 ;; Breakouts =====================================================================================
 (add-step {:kind :breakout})
 
+(defn- breakout-exists? [query stage-number column]
+  (boolean (lib.breakout/breakout-column? query stage-number column {:same-binning-strategy? true
+                                                                     :same-temporal-bucket?  true})))
+
 (defmethod next-steps* :breakout [query _breakout]
   (let [stage-number (choose-stage query)
         column       (gen.u/choose (only-safe-columns (lib/breakoutable-columns query stage-number)))
@@ -164,7 +169,8 @@
         brk-column   (cond-> column
                        bucket  (lib/with-temporal-bucket bucket)
                        binning (lib/with-binning binning))]
-    [:breakout stage-number (lib/ref brk-column) brk-column]))
+    (when (breakout-exists? query stage-number brk-column)
+      [:breakout stage-number (lib/ref brk-column) brk-column])))
 
 (defmethod run-step* :breakout [query [_breakout stage-number brk-clause _column]]
   (lib/breakout query stage-number brk-clause))
@@ -173,9 +179,7 @@
   ;; Duplicate breakouts are not allowed! So we want to check that logic.
   (let [before-breakouts (lib/breakouts before stage-number)
         after-breakouts  (lib/breakouts after  stage-number)
-        opts             {:same-binning-strategy? true
-                          :same-temporal-bucket?  true}
-        fresh?           (empty? (lib.breakout/existing-breakouts before stage-number column opts))]
+        fresh?           (not (breakout-exists? before stage-number column))]
     (testing (str ":breakout stage " stage-number
                   "\n\nBefore query\n" (u/pprint-to-str before)
                   "\n\nwith column\n" (u/pprint-to-str column)
@@ -183,9 +187,9 @@
                   "\n")
       (if fresh?
         (testing "freshly added breakout columns"
-          (is (= false (boolean (lib.breakout/breakout-column? before stage-number column opts)))
+          (is (= false (breakout-exists? before stage-number column))
               "are not present before")
-          (is (= true  (boolean (lib.breakout/breakout-column? after  stage-number column opts)))
+          (is (= true  (breakout-exists? after  stage-number column))
               "are present after")
           (testing "go at the end of the list"
             (is (= (count after-breakouts)
@@ -246,7 +250,8 @@
   (let [numbers (map #(vector gen-expression:number %) (filter lib.types.isa/number? columns))
         strings (map #(vector gen-expression:string %) (filter lib.types.isa/string? columns))
         [f col] (gen.u/choose (concat numbers strings))]
-    (f col)))
+    (when (and f col)
+      (f col))))
 
 (def ^:private identifier-chars-initial
   (str "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -308,11 +313,16 @@
         after-orders  (lib/order-bys after stage-number)]
     ;; TODO: No duplicates! The new ref should never collide with one in `before` - except for the FK ambiguity.
     ;; I don't want to introduce a flake, but once that issue is fixed there should be a test here.
-    (testing "new order-by clauses are added at the end of the sort order"
-      (is (= (inc (count before-orders))
-             (count after-orders)))
-      (is (lib.equality/= (lib/order-by-clause orderable direction)
-                          (last after-orders))))))
+    (testing (str "\n\nNew order-by"
+                  "\n\nBefore query\n" (u/pprint-to-str before)
+                  "\n\nAfter query\n" (u/pprint-to-str after)
+                  "\n\nsorting " direction " on \n" (u/pprint-to-str orderable)
+                  "\n")
+      (testing "new order-by clauses are added at the end of the sort order"
+        (is (= (inc (count before-orders))
+               (count after-orders)))
+        (is (lib.equality/= (lib/order-by-clause orderable direction)
+                            (last after-orders)))))))
 
 ;; Explicit join =================================================================================
 (add-step {:kind   :join
@@ -320,16 +330,18 @@
 
 (defmethod next-steps* :join [query _join]
   (let [stage-number        (choose-stage query)
-        ;; TODO: Explicit joins against cards are possible, but we don't have cards yet.
-        [target conditions] (rand-nth (for [table (lib.metadata/tables query)
-                                            :let [conditions (lib/suggested-join-conditions query stage-number table)]
-                                            :when (seq conditions)]
-                                        [table conditions]))
         strategy            (gen.u/weighted-choice {:left-join  80
                                                     :inner-join 10
                                                     :right-join 5
-                                                    :full-join  5})]
-    [:join stage-number target (rand-nth conditions) strategy]))
+                                                    :full-join  5})
+        ;; TODO: Explicit joins against cards are possible, but we don't have cards yet.
+        condition-space     (for [table (lib.metadata/tables query)
+                                  :let [conditions (lib/suggested-join-conditions query stage-number table)]
+                                  :when (seq conditions)]
+                              [table conditions])]
+    (when-let [[target conditions] (and (seq condition-space)
+                                        (rand-nth condition-space))]
+      [:join stage-number target (rand-nth conditions) strategy])))
 
 (defmethod run-step* :join [query [_join stage-number target condition strategy]]
   (lib/join query stage-number (lib/join-clause target [condition] strategy)))
@@ -349,6 +361,34 @@
                    :stages     [{:source-table (:id target)}]
                    :conditions [condition]}
                   (last after-joins))))))))
+
+;; Append stage ==================================================================================
+(add-step {:kind   :append-stage
+           ;; Rare but it happens.
+           :weight 5})
+
+(defn- all-stage-parts [query stage-number]
+  (mapcat #(% query stage-number)
+          [lib/joins lib/aggregations lib/breakouts lib/expressions lib/filters lib/order-bys]))
+
+(defmethod next-steps* :append-stage [query _append-stage]
+  ;; Appending a stage is allowed when there's at least one breakout or aggregation.
+  ;; TODO: Is there a way to be more flexible here? The QP uses more nesting than the UI allows.
+  (when (or (seq (lib/aggregations query -1))
+            (seq (lib/breakouts query -1)))
+    [:append-stage]))
+
+(defmethod run-step* :append-stage [query [_append-stage]]
+  (lib/append-stage query))
+
+(defmethod before-and-after :append-stage [before after _step]
+  (testing "appending a stage"
+    (testing "increments the stage-count"
+      (is (= (inc (lib/stage-count before))
+             (lib/stage-count after))))
+
+    (testing "adds a new, empty stage"
+      (is (empty? (all-stage-parts after -1))))))
 
 ;; Generator internals ===========================================================================
 (defn- run-step
@@ -466,18 +506,57 @@
    (for [{:keys [query] :as ctx} (random-queries-from* (context-for starting-query) limit)]
      (vary-meta query assoc ::context (dissoc ctx :query)))))
 
+(defn- expected-total [step-kind]
+  (fn [steps]
+    (->> steps
+         (filter (comp #{step-kind} first))
+         count)))
+
+(defn- expected-order-bys [steps]
+  ;; Each :order-by adds one, but the first `:aggregate` or `:breakout` we see drops any from that stage.
+  (->> steps
+       (reduce (fn [{:keys [aggregated stages] :as m} [step stage-number]]
+                 (let [stage (if (= stage-number -1)
+                               (dec stages)
+                               stage-number)]
+                   (case step
+                     (:aggregate :breakout) (if (aggregated stage)
+                                              m
+                                              ;; If this stage was not previously aggregated, discount its orders and
+                                              ;; flag it as aggregated.
+                                              (-> m
+                                                  (assoc-in [:aggregated stage] true)
+                                                  (assoc-in [:orders stage] 0)
+                                                  ;; AND all stages
+                                                  ))
+                     :order-by              (update-in m [:orders stage] (fnil inc 0))
+                     :append-stage          (update m :stages inc)
+                     m)))
+               {:aggregated {}
+                :orders     {}
+                :stages     1})
+       :orders
+       vals
+       (reduce + 0)))
+
 (deftest ^:parallel query-generator-test
   (doseq [table (meta/tables)
           q     (-> (lib/query meta/metadata-provider (meta/table-metadata table))
                     (random-queries-from 100))]
-    (is (= (->> (lib/stage-count q)
-                range
-                (map (comp count #(lib/aggregations q %)))
-                (reduce +))
-           (->> (query->context q)
-                step-seq
-                (filter (comp #{:aggregate} first))
-                count)))))
+    (doseq [[item act-fn exp-fn] [["aggregations" lib/aggregations (expected-total :aggregate)]
+                                  ["breakouts"    lib/breakouts    (expected-total :breakout)]
+                                  ["joins"        lib/joins        (expected-total :join)]
+                                  ["order bys"    lib/order-bys    expected-order-bys]]]
+      (let [ctx   (query->context q)
+            steps (step-seq ctx)]
+        (testing (str "\n\nwith generated query\n" (u/pprint-to-str q)
+                      "\n\nwith steps\n" (str/join "\n" (map pr-str steps)))
+          (testing (str "\n\n" item " line up")
+            (is (= (exp-fn steps)
+                   (->> (lib/stage-count q)
+                        range
+                        (map (comp count #(act-fn q %)))
+                        (reduce +))))))))))
 
 (comment
   ;; Produces a map of {p-reset {p-pop {depth count}}} after generating 100 queries with those settings.
