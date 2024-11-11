@@ -149,14 +149,10 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
     const toleranceDelta = 0.5;
 
     const borderWidth = 1;
-    const sidebarMargin = 4;
     const minNotebookWidth = 640;
     const minSidebarWidth = 428 - borderWidth;
     const maxSidebarWidth =
-      Cypress.config("viewportWidth") -
-      minNotebookWidth -
-      borderWidth -
-      sidebarMargin;
+      Cypress.config("viewportWidth") - minNotebookWidth - borderWidth;
 
     cy.intercept("POST", "/api/dataset/query_metadata").as("metadata");
     cy.intercept("GET", "/api/session/properties").as("sessionProperties");

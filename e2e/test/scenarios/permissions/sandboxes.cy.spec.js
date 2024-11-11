@@ -21,6 +21,7 @@ import {
   openPeopleTable,
   openReviewsTable,
   openSharingMenu,
+  openVizType,
   popover,
   remapDisplayValueToFK,
   restore,
@@ -34,7 +35,6 @@ import {
   visitDashboard,
   visitQuestion,
   visualize,
-  openVizType,
 } from "e2e/support/helpers";
 
 const {
