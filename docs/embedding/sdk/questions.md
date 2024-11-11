@@ -10,8 +10,9 @@ title: "Embedded analytics SDK - components"
 
 There are different ways you can embed questions:
 
-- [`StaticQuestion`](#embedding-a-static-question). Embeds a chart. Clicking on the chart doesn't do anything.
-- [`InteractiveQuestion`](#embedding-an-interactive-question). Clicking on the chart gives you the drill-through menu.
+- [Static question](#embedding-a-static-question). Embeds a chart. Clicking on the chart doesn't do anything.
+- [Interactive question](#embedding-an-interactive-question). Clicking on the chart gives you the drill-through menu.
+- [Query builder](#embedding-the-query-builder). Embeds the graphical query builder without a pre-defined query.
 
 ## Embedding a static question
 
@@ -215,7 +216,7 @@ return (
 );
 ```
 
-## Creating a question
+## Embedding the query builder
 
 With the `CreateQuestion` component, you can create a new question from scratch with Metabase's query builder.
 
