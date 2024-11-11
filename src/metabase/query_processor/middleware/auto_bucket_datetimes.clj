@@ -134,7 +134,7 @@
     :do-not-bucket-reason/field-with-bucketing-or-binning
 
     (and (vector? x)
-         (get-in x [1 :metabase.lib.field/inherent-temporal-unit]))
+         (get-in x [1 :inherited-temporal-unit]))
     :do-not-bucket-reason/bucketed-in-previous-stages))
 
 (mu/defn- date-or-datetime-clause?
