@@ -54,9 +54,11 @@
                (not-any? #{"Some Collection"}))))))
 
 (defn- normalize* [xs]
-  (map (comp #(dissoc % :bookmark :pinned :total_score)
-             u/strip-nils
-             #(update % :archived boolean)) xs))
+  (into #{}
+        (map (comp #(dissoc % :bookmark :pinned :total_score)
+                   u/strip-nils
+                   #(update % :archived boolean)))
+        xs))
 
 (deftest fulltext-test
   (with-setup
