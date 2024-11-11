@@ -10,20 +10,20 @@
   {:official-collection (fulltext.scoring/truthy :official_collection)
    :verified            (fulltext.scoring/truthy :verified)})
 
-(defn- additional-scorers []
-  (cond-> (list)
-    (premium-features/has-feature? :official-collections)
-    (conj :official-collection)
+(def ^:private scorers-enabled
+  {:official-collection #(premium-features/has-feature? :official-collection)
+   :verified            #(premium-features/has-feature? :content-verification)})
 
-    (premium-features/has-feature? :content-verification)
-    (conj :verified)))
+(defn- additional-scorers
+  "Which additional scorers are active?"
+  []
+  (into [] (comp (filter (fn [[_ pred]] (pred))) (map first)) scorers-enabled))
 
 (defenterprise scorers
   "Return the select-item expressions used to calculate the score for each search result."
   :feature :none
   []
-  (merge fulltext.scoring/base-scorers
-         (select-keys enterprise-scorers (additional-scorers))))
+  (merge fulltext.scoring/base-scorers (select-keys enterprise-scorers (additional-scorers))))
 
 ;; ------------ LEGACY ----------
 
