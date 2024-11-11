@@ -1023,46 +1023,18 @@ describe("scenarios > question > multiple column breakouts", () => {
           createQuestion(questionDetails, { visitQuestion: true });
           openNotebook();
 
-          // const field: BinnedField | DateTimeField = questionDetails?.query?.breakout?.[0]
-          // const istemporalUnitSet =  !! field?.[2]?.["temporal-unit"]
-
           cy.log("add an aggregation for the first column");
           getNotebookStep("summarize").button("Summarize").click();
           popover().within(() => {
             cy.findByText("Minimum of ...").click();
-            // if (istemporalUnitSet) {
-            //   cy.findByText(column1Name)
-            //     .realHover()
-            //     .closest("[data-testid=dimension-list-item]")
-            //     .findByTestId("dimension-list-item-binning")
-            //     .click();
-            //   // lbrdnk: If we aggregate bucketed column in a next stage, QB provides option to bucket again. I believe
-            //   //         we should allow only coarser buckets. That's not the case at the time of writing.
-            //   //
-            //   //         Also the already bucketed column is bucketed again by default by month. I believe the already
-            //   //         bucketed column should have `don't bin` bucketting set by default.
-            //   cy.contains("More…").click()
-            //   cy.contains("Don't bin").click()
-            // } else {
             cy.findByText(column1Name).click();
-            // }
           });
 
           cy.log("add an aggregation for the second column");
           getNotebookStep("summarize", { stage: 1 }).icon("add").click();
           popover().within(() => {
             cy.findByText("Maximum of ...").click();
-            // if (istemporalUnitSet) {
-            //   cy.findByText(column2Name)
-            //     .realHover()
-            //     .closest("[data-testid=dimension-list-item]")
-            //     .findByTestId("dimension-list-item-binning")
-            //     .click();
-            //   cy.contains("More…").click()
-            //   cy.contains("Don't bin").click()
-            // } else {
             cy.findByText(column2Name).click();
-            // }
           });
 
           cy.log("assert query results");
@@ -1117,9 +1089,6 @@ describe("scenarios > question > multiple column breakouts", () => {
           createQuestion(questionDetails, { visitQuestion: true });
           openNotebook();
 
-          // const field: BinnedField | DateTimeField = questionDetails?.query?.breakout?.[0]
-          // const istemporalUnitSet =  !! field?.[2]?.["temporal-unit"]
-
           cy.log("add an aggregation");
           getNotebookStep("summarize").button("Summarize").click();
           popover().findByText("Count of rows").click();
@@ -1130,17 +1099,7 @@ describe("scenarios > question > multiple column breakouts", () => {
             .findByText("Pick a column to group by")
             .click();
           popover().within(() => {
-            // if (false /*istemporalUnitSet*/) {
-            //   cy.findByText(column1Name)
-            //     .realHover()
-            //     .closest("[data-testid=dimension-list-item]")
-            //     .findByTestId("dimension-list-item-binning")
-            //     .click();
-            //   cy.contains("More…").click()
-            //   cy.contains("Don't bin").click()
-            // } else {
             cy.findByText(column1Name).click();
-            // }
           });
 
           cy.log("add a breakout for the second breakout column");
@@ -1149,17 +1108,7 @@ describe("scenarios > question > multiple column breakouts", () => {
             .icon("add")
             .click();
           popover().within(() => {
-            // if (false /*istemporalUnitSet*/) {
-            // cy.findByText(column2Name)
-            //   .realHover()
-            //   .closest("[data-testid=dimension-list-item]")
-            //   .findByTestId("dimension-list-item-binning")
-            //   .click();
-            // cy.contains("More…").click();
-            // cy.contains("Don't bin").click();
-            // } else {
             cy.findByText(column2Name).click();
-            // }
           });
 
           cy.log("assert query results");
