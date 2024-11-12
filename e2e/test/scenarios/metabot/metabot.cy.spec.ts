@@ -5,6 +5,7 @@ import {
   describeEE,
   metabotChatInput,
   mockMetabotResponse,
+  mockSessionPropertiesTokenFeatures,
   openMetabotViaNewMenu,
   openMetabotViaShortcutKey,
   popover,
@@ -42,6 +43,8 @@ describe("Metabot UI", () => {
   describeEE("EE", () => {
     beforeEach(() => {
       setTokenFeatures("all");
+      // TODO: remove once cypress has the feature enabled
+      mockSessionPropertiesTokenFeatures({ metabot_v3: true });
       cy.visit("/");
       cy.wait("@sessionProperties");
     });
