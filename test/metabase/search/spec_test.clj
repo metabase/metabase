@@ -124,3 +124,15 @@
   (is (= #{["segment" [:= 321 :this.table_id]]
            ["table" [:= 321 :this.id]]}
          (search.spec/search-models-to-update (t2/instance :model/Table {:id 321 :name "turn-tables"})))))
+
+(deftest search-index-model-test
+  (testing "All the required models descend from :hook/update-search-index\n"
+    (let [expected-models (keys (search.spec/model-hooks))
+          ;; Some models have submodels, so absorb those too
+          expected-models (into (set expected-models) (mapcat descendants) expected-models)
+          actual-models   (set (descendants :hook/update-search-index))]
+      (doseq [em (sort-by name expected-models)]
+        (testing (str "- " em "\n")
+          (is (actual-models em))))
+      (testing "... and nothing else does"
+        (is (empty? (sort-by name (remove expected-models actual-models))))))))
