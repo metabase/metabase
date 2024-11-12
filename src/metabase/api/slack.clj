@@ -20,8 +20,8 @@
         system-info (get-in diagnostic-info [:bugReportDetails :system-info])
         version-info (get-in diagnostic-info [:bugReportDetails :metabase-info :version])
         file-url (if (string? file-info)
-                  file-info
-                  (get file-info :url_private))]
+                   file-info
+                   (get file-info :url_private))]
     [{:type "section"
       :text {:type "mrkdwn"
              :text "A new bug report has been submitted. Please check it out!"}}
@@ -30,39 +30,39 @@
                 :text (str "*URL:*\n" (get diagnostic-info :url "N/A"))}
                {:type "mrkdwn"
                 :text (str "*App database:*\n"
-                         (get metabase-info :application-database "N/A"))}
+                           (get metabase-info :application-database "N/A"))}
                {:type "mrkdwn"
                 :text (str "*Java Runtime:*\n"
-                         (get system-info :java.runtime.name "N/A"))}
+                           (get system-info :java.runtime.name "N/A"))}
                {:type "mrkdwn"
                 :text (str "*Java Version:*\n"
-                         (get system-info :java.runtime.version "N/A"))}
+                           (get system-info :java.runtime.version "N/A"))}
                {:type "mrkdwn"
                 :text (str "*OS Name:*\n"
-                         (get system-info :os.name "N/A"))}
+                           (get system-info :os.name "N/A"))}
                {:type "mrkdwn"
                 :text (str "*OS Version:*\n"
-                         (get system-info :os.version "N/A"))}
+                           (get system-info :os.version "N/A"))}
                {:type "mrkdwn"
                 :text (str "*Version info:*\n```"
-                         (json/generate-string version-info {:pretty true})
-                         "```")}]}
+                           (json/generate-string version-info {:pretty true})
+                           "```")}]}
      {:type "divider"}
      {:type "actions"
       :elements [{:type "button"
-                 :text {:type "plain_text"
-                       :text "Jump to debugger"
-                       :emoji true}
-                 :url (str "https://metabase-debugger.vercel.app/?fileId="
-                          (if (string? file-info)
-                            (last (str/split file-info #"/"))  ; Extract file ID from URL
-                            (get file-info :id)))
-                 :style "primary"}
-                {:type "button"
-                 :text {:type "plain_text"
-                       :text "Download the report"
-                       :emoji true}
-                 :url file-url}]}]))
+                  :text {:type "plain_text"
+                         :text "Jump to debugger"
+                         :emoji true}
+                  :url (str "https://metabase-debugger.vercel.app/?fileId="
+                            (if (string? file-info)
+                              (last (str/split file-info #"/"))  ; Extract file ID from URL
+                              (get file-info :id)))
+                  :style "primary"}
+                 {:type "button"
+                  :text {:type "plain_text"
+                         :text "Download the report"
+                         :emoji true}
+                  :url file-url}]}]))
 
 (api/defendpoint PUT "/settings"
   "Update Slack related settings. You must be a superuser to do this. Also updates the slack-cache.
@@ -76,6 +76,14 @@
    slack-bug-report-channel [:maybe ms/NonBlankString]}
   (validation/check-has-application-permission :setting)
   (try
+    ;; Clear settings if no values are provided
+    (when (nil? slack-app-token)
+      (slack/slack-app-token! nil)
+      (slack/clear-channel-cache!))
+
+    (when (nil? slack-files-channel)
+      (slack/slack-files-channel! "metabase_files"))
+
     (when (and slack-app-token
                (not config/is-test?)
                (not (slack/valid-token? slack-app-token)))
@@ -101,14 +109,14 @@
           (slack/slack-app-token! nil)
           (slack/clear-channel-cache!)
           (throw (ex-info (tru "Slack channel not found.")
-                         {:errors {:slack-files-channel (tru "channel not found")}})))
+                          {:errors {:slack-files-channel (tru "channel not found")}})))
         (slack/slack-files-channel! processed-files-channel)))
 
     (when slack-bug-report-channel
       (let [processed-bug-channel (slack/process-files-channel-name slack-bug-report-channel)]
         (when (not (slack/channel-exists? processed-bug-channel))
           (throw (ex-info (tru "Slack channel not found.")
-                         {:errors {:slack-bug-report-channel (tru "channel not found")}})))
+                          {:errors {:slack-bug-report-channel (tru "channel not found")}})))
         (slack/slack-bug-report-channel! processed-bug-channel)))
 
     {:ok true}
@@ -134,8 +142,8 @@
           bug-report-channel (slack/bug-report-channel)
           file-content (.getBytes (json/generate-string diagnosticInfo {:pretty true}))
           file-info (slack/upload-file! file-content
-                                     "diagnostic-info.json"
-                                     files-channel)]
+                                        "diagnostic-info.json"
+                                        files-channel)]
 
       (let [blocks (create-slack-message-blocks diagnosticInfo file-info)]
 

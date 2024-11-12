@@ -322,10 +322,10 @@
     (if (channel-exists? channel-name)
       channel-name
       (let [message (str (tru "Slack channel named `{0}` is missing!" channel-name)
-                        " "
-                        (tru "Please create or unarchive the channel in order to complete the Slack integration.")
-                        " "
-                        (tru "The channel is used for storing bug reports."))]
+                         " "
+                         (tru "Please create or unarchive the channel in order to complete the Slack integration.")
+                         " "
+                         (tru "The channel is used for storing bug reports."))]
         (log/error (u/format-color 'red message))
         (throw (ex-info message {:status-code 400}))))))
 
@@ -439,20 +439,20 @@
    & [attachments-or-blocks]]
   ;; TODO: it would be nice to have an emoji or icon image to use here
   (let [params (cond-> {:channel     channel-id
-                       :username    "MetaBot"
-                       :icon_url    "http://static.metabase.com/metabot_slack_avatar_whitebg.png"
-                       :text        text-or-nil}
+                        :username    "MetaBot"
+                        :icon_url    "http://static.metabase.com/metabot_slack_avatar_whitebg.png"
+                        :text        text-or-nil}
                 ;; If it's a vector of blocks, convert to JSON string
-                (vector? attachments-or-blocks)
-                (assoc :blocks (json/generate-string attachments-or-blocks))
+                 (vector? attachments-or-blocks)
+                 (assoc :blocks (json/generate-string attachments-or-blocks))
 
                 ;; If it's a map with blocks, extract and convert blocks to JSON string
-                (:blocks attachments-or-blocks)
-                (assoc :blocks (json/generate-string (:blocks attachments-or-blocks)))
+                 (:blocks attachments-or-blocks)
+                 (assoc :blocks (json/generate-string (:blocks attachments-or-blocks)))
 
                 ;; If it's attachments, convert to JSON string
-                (and (seq attachments-or-blocks)
-                     (not (vector? attachments-or-blocks))
-                     (not (:blocks attachments-or-blocks)))
-                (assoc :attachments (json/generate-string attachments-or-blocks)))]
+                 (and (seq attachments-or-blocks)
+                      (not (vector? attachments-or-blocks))
+                      (not (:blocks attachments-or-blocks)))
+                 (assoc :attachments (json/generate-string attachments-or-blocks)))]
     (POST "chat.postMessage" {:form-params params})))

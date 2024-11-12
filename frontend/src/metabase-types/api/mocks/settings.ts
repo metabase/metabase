@@ -232,6 +232,7 @@ export const createMockSettings = (
   "setup-token": null,
   "session-cookies": null,
   "session-cookie-samesite": "lax",
+  "slack-bug-report-channel": null,
   "snowplow-enabled": false,
   "show-database-syncing-modal": false,
   "show-homepage-data": false,
