@@ -28,26 +28,29 @@
               {:name :api-response}
               (mtx/key-transformer {:encode u/->snake_case_en}))))
 
-(defn- request [message context history]
+(defn- request [message context history session-id]
   (let [env (metabot-v3.handle-envelope/handle-envelope
              (metabot-v3.envelope/add-user-message
-              (metabot-v3.envelope/create context history)
+              (metabot-v3.envelope/create context history session-id)
               message))]
     {:reactions (encode-reactions (metabot-v3.envelope/reactions env))
      :history (metabot-v3.envelope/history env)}))
 
 (api/defendpoint POST "/agent"
   "Send a chat message to the LLM via the AI Proxy."
-  [:as {{:keys [message context history] :as _body} :body}]
+  [:as {{:keys [message context history session_id] :as _body} :body}]
   {message ms/NonBlankString
    context [:map-of :keyword :any]
-   history [:maybe [:sequential :map]]}
+   history [:maybe [:sequential :map]]
+   session_id ms/UUIDString}
   (metabot-v3.context/log _body :llm.log/fe->be)
   (let [context (mc/decode ::metabot-v3.context/context
                            context (mtx/transformer {:name :api-request}))
         history (mc/decode [:maybe ::metabot-v3.client.schema/messages]
                            history (mtx/transformer {:name :api-request}))]
-    (doto (request message context history)
+    (doto (assoc
+           (request message context history session_id)
+           :session_id session_id)
       (metabot-v3.context/log :llm.log/be->fe))))
 
 (api/define-routes)

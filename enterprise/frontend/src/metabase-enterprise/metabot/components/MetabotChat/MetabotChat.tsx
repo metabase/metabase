@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { Box, Flex, Icon, Textarea, UnstyledButton } from "metabase/ui";
@@ -11,6 +11,7 @@ import Styles from "./MetabotChat.module.css";
 
 const MIN_INPUT_HEIGHT = 42;
 const ANIMATION_DURATION_MS = 300;
+export const METABOT_AUTO_CLOSE_DURATION_MS = 30 * 1000;
 
 export const MetabotChat = ({ onClose }: { onClose: () => void }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -20,10 +21,10 @@ export const MetabotChat = ({ onClose }: { onClose: () => void }) => {
   const metabot = useMetabotAgent();
   const isDoingScience = metabot.isLoading || metabot.isProcessing;
 
-  const resetInput = () => {
+  const resetInput = useCallback(() => {
     setMessage("");
     setInputExpanded(false);
-  };
+  }, []);
 
   const handleSend = () => {
     const trimmedMessage = message.trim();
@@ -37,19 +38,18 @@ export const MetabotChat = ({ onClose }: { onClose: () => void }) => {
       .finally(() => textareaRef.current?.focus());
   };
 
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     resetInput();
     onClose();
-  };
+  }, [resetInput, onClose]);
 
-  // auto-focus once animation in completes
-  // doing it too early will cause the page to shift down
+  // auto-close the input after it's inactive and unused
   useEffect(() => {
-    const timeout = setTimeout(() => {
-      textareaRef.current?.focus();
-    }, ANIMATION_DURATION_MS);
-    return () => clearTimeout(timeout);
-  }, []);
+    if (!message && !isDoingScience) {
+      const timer = setTimeout(handleClose, METABOT_AUTO_CLOSE_DURATION_MS);
+      return () => clearTimeout(timer);
+    }
+  }, [message, isDoingScience, handleClose]);
 
   const [inputExpanded, setInputExpanded] = useState(false);
   const handleMaybeExpandInput = () => {
@@ -118,6 +118,7 @@ export const MetabotChat = ({ onClose }: { onClose: () => void }) => {
           minRows={1}
           maxRows={4}
           ref={textareaRef}
+          autoFocus
           value={message}
           disabled={isDoingScience}
           className={cx(
