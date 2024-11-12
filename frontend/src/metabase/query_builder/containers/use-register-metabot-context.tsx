@@ -30,7 +30,7 @@ export const useRegisterMetabotContext = () => {
     return {
       colorPalette: getAccentColors(),
       current_question_id: question?.id() || null,
-      current_query: question?.datasetQuery(),
+      dataset_query: question?.datasetQuery(),
       current_visualization_settings: {
         ...vizSettings,
         current_display_type: question?.display(),

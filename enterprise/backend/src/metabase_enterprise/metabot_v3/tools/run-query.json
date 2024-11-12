@@ -1,0 +1,344 @@
+{
+  "name": "run-query",
+  "description": "Executes a query in Metabase. A query is composed from multiple steps. Use get-query-columns tool to list available columns.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "steps": {
+        "type": "array",
+        "description": "List of query steps.",
+        "items": {
+          "anyOf": [
+            {
+              "type": "object",
+              "description": "Filter query results by a string column and value.",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "description": "Type of the string filter step.",
+                  "enum": [
+                    "string-filter"
+                  ]
+                },
+                "column": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "Name of the string column to apply filter for."
+                },
+                "operator": {
+                  "type": "string",
+                  "description": "String filter operator.",
+                  "enum": [
+                    "=",
+                    "!=",
+                    "contains",
+                    "does-not-contain",
+                    "starts-with",
+                    "ends-with"
+                  ]
+                },
+                "value": {
+                  "type": "string",
+                  "description": "String filter value."
+                }
+              },
+              "required": [
+                "type",
+                "column",
+                "operator",
+                "value"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "description": "Filter query results by a numeric column and value.",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "description": "Type of the number filter step.",
+                  "enum": [
+                    "number-filter"
+                  ]
+                },
+                "column": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "Name of the numeric column to apply filter for."
+                },
+                "operator": {
+                  "type": "string",
+                  "description": "Numeric filter operator.",
+                  "enum": [
+                    "=",
+                    "!=",
+                    ">",
+                    ">=",
+                    "<",
+                    "<="
+                  ]
+                },
+                "value": {
+                  "type": "number",
+                  "description": "Numeric filter value."
+                }
+              },
+              "required": [
+                "type",
+                "column",
+                "operator",
+                "value"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "description": "Filter query results by a boolean column and value.",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "description": "Type of the boolean filter step.",
+                  "enum": [
+                    "boolean-filter"
+                  ]
+                },
+                "column": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "Name of the boolean column to apply filter for."
+                },
+                "operator": {
+                  "type": "string",
+                  "description": "Boolean filter operator.",
+                  "enum": [
+                    "="
+                  ]
+                },
+                "value": {
+                  "type": "boolean",
+                  "description": "Boolean filter value."
+                }
+              },
+              "required": [
+                "type",
+                "column",
+                "operator",
+                "value"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "description": "Filter query results by a date column and value. The date value must be a specific date.",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "description": "Type of the date filter step.",
+                  "enum": [
+                    "specific-date-filter"
+                  ]
+                },
+                "column": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "Name of the date column to apply filter for."
+                },
+                "operator": {
+                  "type": "string",
+                  "description": "Date filter operator.",
+                  "enum": [
+                    "=",
+                    ">",
+                    "<"
+                  ]
+                },
+                "value": {
+                  "type": "string",
+                  "description": "Date filter value. Must be a date in ISO 8601 format."
+                }
+              },
+              "required": [
+                "type",
+                "column",
+                "operator",
+                "value"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "description": "Filter query results by a date column and value. Unlike date-filter step, the filter range here is a relative to current time. Examples: '1 year ago', 'this week', 'next 3 days'.",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "description": "Type of the relative date filter step.",
+                  "enum": [
+                    "relative-date-filter"
+                  ]
+                },
+                "column": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "Name of the date column to apply filter for."
+                },
+                "direction": {
+                  "type": "string",
+                  "description": "Direction of the date interval. Possible values are last, current, next. Last means intervals in the past, like last 30 days. Current means intervals including this moment, like this week. Next means intervals in the future, like next 2 months.",
+                  "enum": [
+                    "last",
+                    "current",
+                    "next"
+                  ]
+                },
+                "value": {
+                  "type": "number",
+                  "description": "How long the date range is, in units of time. Example: for 'last 5 weeks' the value is 5, for 'next 3 years' the value is 3. For current intervals there is no value and it should be set to zero."
+                },
+                "unit": {
+                  "type": "string",
+                  "description": "Unit of time used for the date interval.",
+                  "enum": [
+                    "day",
+                    "week",
+                    "month",
+                    "quarter",
+                    "year"
+                  ]
+                }
+              },
+              "required": [
+                "type",
+                "column",
+                "direction",
+                "value",
+                "unit"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "description": "Aggregate query results.",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "description": "Type of the aggregation step.",
+                  "enum": [
+                    "aggregation"
+                  ]
+                },
+                "operator": {
+                  "type": "string",
+                  "description": "Aggregation operator.",
+                  "enum": [
+                    "count",
+                    "sum",
+                    "avg",
+                    "distinct",
+                    "cum-sum",
+                    "cum-count",
+                    "stddev",
+                    "min",
+                    "max"
+                  ]
+                },
+                "column": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "Optional column name for the selected aggregation operator. If not specified, set it to null."
+                }
+              },
+              "required": [
+                "type",
+                "operator",
+                "column"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "description": "Group by, or breakout, query results.",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "description": "Type of the breakout step.",
+                  "enum": [
+                    "breakout"
+                  ]
+                },
+                "column": {
+                  "type": "string",
+                  "description": "Name of the column to apply grouping for."
+                }
+              },
+              "required": [
+                "type",
+                "column"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "description": "Sort the query results.",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "description": "Type of the order by step.",
+                  "enum": [
+                    "order_by"
+                  ]
+                },
+                "column": {
+                  "type": "string",
+                  "description": "Name of the column to apply sorting for."
+                }
+              },
+              "required": [
+                "type",
+                "column"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "description": "Set the row limit for the query.",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "description": "Type of the row limit step.",
+                  "enum": [
+                    "limit"
+                  ]
+                },
+                "limit": {
+                  "type": "number",
+                  "description": "Row limit."
+                }
+              },
+              "required": [
+                "type",
+                "limit"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        }
+      }
+    },
+    "required": [
+      "steps"
+    ],
+    "additionalProperties": false
+  }
+}

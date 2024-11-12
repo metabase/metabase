@@ -1,6 +1,6 @@
 import type { CardDisplayType } from "./visualization";
 
-import type { ColumnSettings, SeriesSettings } from ".";
+import type { ColumnSettings, DatasetQuery, SeriesSettings } from ".";
 
 export type MetabotFeedbackType =
   | "great"
@@ -79,71 +79,9 @@ export type MetabotApiCallReaction = {
   };
 };
 
-export type MetabotStringFilterDetails = {
-  column: string;
-  operator:
-    | "="
-    | "!="
-    | "contains"
-    | "does-not-contain"
-    | "starts-with"
-    | "ends-with";
-  value: string;
-};
-
-export type MetabotNumberFilterDetails = {
-  column: string;
-  operator: "=" | "!=" | ">" | "<" | ">=" | "<=";
-  value: number;
-};
-
-export type MetabotBooleanFilterDetails = {
-  column: string;
-  value: boolean;
-};
-
-export type MetabotSpecificDateFilterDetails = {
-  column: string;
-  operator: "=" | ">" | "<";
-  value: string;
-};
-
-export type MetabotRelativeDateFilterDetails = {
-  column: string;
-  direction: "last" | "current" | "next";
-  value: number;
-  unit: "day" | "week" | "month" | "quarter" | "year";
-};
-
-export type MetabotAggregateQueryDetails = {
-  operator: string;
-  column: string | null;
-};
-
-export type MetabotBreakoutQueryDetails = {
-  column: string;
-};
-
-export type MetabotOrderByQueryDetails = {
-  column: string;
-  direction: "asc" | "desc" | null;
-};
-
-export type MetabotLimitQueryDetails = {
-  limit: number;
-};
-
-export type MetabotChangeQueryReaction = {
-  type: "metabot.reaction/change-query";
-  string_filters: MetabotStringFilterDetails[];
-  number_filters: MetabotNumberFilterDetails[];
-  boolean_filters: MetabotBooleanFilterDetails[];
-  specific_date_filters: MetabotSpecificDateFilterDetails[];
-  relative_date_filters: MetabotRelativeDateFilterDetails[];
-  aggregations: MetabotAggregateQueryDetails[];
-  breakouts: MetabotBreakoutQueryDetails[];
-  order_bys: MetabotOrderByQueryDetails[];
-  limits: MetabotLimitQueryDetails[];
+export type MetabotRunQueryReaction = {
+  type: "metabot.reaction/run-query";
+  dataset_query: DatasetQuery;
 };
 
 type SeriesSettingsEntry = SeriesSettings & { key: string };
@@ -197,7 +135,7 @@ export type MetabotReaction =
   | MetabotConfirmationReaction
   | MetabotWriteBackReaction
   | MetabotApiCallReaction
-  | MetabotChangeQueryReaction;
+  | MetabotRunQueryReaction;
 
 /* Metabot v3 - API Request Types */
 

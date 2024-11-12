@@ -6,7 +6,7 @@
 (mu/defmethod metabot-v3.tools.interface/*tool-applicable?* :metabot.tool/change-series-settings
   [_tool-name context]
   (contains? #{"line" "bar" "area" "combo"}
-              (some-> context :current_visualization_settings :current_display_type)))
+             (some-> context :current_visualization_settings :current_display_type)))
 
 (mu/defmethod metabot-v3.tools.interface/*invoke-tool* :metabot.tool/change-series-settings
   [_tool-name {:keys [series-settings], :as _argument-map}]
