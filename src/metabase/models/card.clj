@@ -1028,6 +1028,7 @@
                   :updated-at          true}
    :search-terms [:name :description]
    :render-terms {:archived-directly          true
+                  :collection-authority_level :collection.authority_level
                   :collection-location        :collection.location
                   :collection-name            :collection.name
                   ;; This is used for legacy ranking, in future it will be replaced by :pinned
