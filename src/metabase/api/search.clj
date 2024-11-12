@@ -1,10 +1,14 @@
 (ns metabase.api.search
+  ;; Allowing search.config to be accessed for developer API to set weights
+  #_{:clj-kondo/ignore [:metabase/ns-module-checker]}
   (:require
+   [clojure.string :as str]
    [compojure.core :refer [GET]]
    [java-time.api :as t]
    [metabase.api.common :as api]
    [metabase.public-settings :as public-settings]
    [metabase.search :as search]
+   [metabase.search.config :as search.config]
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
    [metabase.task :as task]
    [metabase.task.search-index :as task.search-index]
@@ -57,6 +61,22 @@
 
     :else
     {:status-code 501, :message "Search index is not supported for this installation."}))
+
+(api/defendpoint GET "/weights"
+  "Return the current weights being used to rank the search results"
+  []
+  @search.config/weights)
+
+(api/defendpoint PUT "/weights"
+  "Return the current weights being used to rank the search results"
+  [:as {weights :body}]
+  (api/check-superuser)
+  (let [allowed-key? (set (keys @search.config/weights))]
+    (if-let [unknown-weights (seq (remove allowed-key? (keys weights)))]
+      {:status 400 :message (str "Unknown weights: " (str/join ", " (map name (sort unknown-weights))))}
+      (do
+        (swap! search.config/weights merge weights)
+        {:status 200 :new-weights @search.config/weights}))))
 
 (api/defendpoint GET "/"
   "Search for items in Metabase.

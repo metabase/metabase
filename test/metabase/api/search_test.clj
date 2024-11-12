@@ -1589,3 +1589,14 @@
                 (when (pos? attempts-left)
                   (Thread/sleep 200)
                   (recur (dec attempts-left))))))))))
+
+(deftest weights-test
+  (let [original-weights @search.config/weights]
+    (try
+      (is (= original-weights (mt/user-http-request :crowberto :get 200 "search/weights")))
+      (is (mt/user-http-request :rasta :put 500 "search/weights"))
+      (is (= original-weights (:new-weights (mt/user-http-request :crowberto :put 200 "search/weights"))))
+      (is (= (assoc original-weights :recency 4 :text 20)
+             (:new-weights (mt/user-http-request :crowberto :put 200 "search/weights" {:recency 4, :text 20}))))
+      (finally
+        (reset! search.config/weights original-weights)))))

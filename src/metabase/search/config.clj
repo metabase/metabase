@@ -79,8 +79,7 @@
 
 (assert (= all-models (set models-search-order)) "The models search order has to include all models")
 
-(def weights
-  "Strength of the various scorers. Copied from metabase.search.in-place.scoring, but allowing divergence."
+(def ^:private default-weights
   {:pinned              2
    :bookmarked          2
    :recency             1.5
@@ -90,6 +89,15 @@
    :verified            2
    :view-count          2
    :text                10})
+
+(def weights
+  "Strength of the various scorers. Copied from metabase.search.in-place.scoring, but allowing divergence."
+  (atom default-weights))
+
+(defn weight
+  "The relative strength the corresponding score has in influencing the total score."
+  [scorer-key]
+  (get @weights scorer-key 0))
 
 (defn model->alias
   "Given a model string returns the model alias"
