@@ -237,11 +237,11 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Enable Pull request auto-merge (using GitHub Metabase Automation account)
-        run: |
-          gh pr merge --auto --squash
-        env:
-          GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+      # - name: Enable Pull request auto-merge (using GitHub Metabase Automation account)
+      #   run: |
+      #     gh pr merge --auto --squash
+      #   env:
+      #     GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
 
       - name: Retrieve build SDK package artifact
         uses: actions/download-artifact@v4
@@ -254,13 +254,14 @@ jobs:
         run: |
           echo //registry.npmjs.org/:_authToken=${{ secrets.NPM_RELEASE_TOKEN }} > .npmrc
           # Please keep the value in sync with `inputs.branch`'s release branch
-          npm publish --tag ${{fromJson('{"master": "nightly", "release-x.51.x": "51-stable"}')[inputs.branch]}}
+          npm publish --dry-run --tag ${{fromJson('{"master": "nightly", "release-x.51.x": "51-stable"}')[inputs.branch]}}
 
       - name: Add `latest` tag to the latest release branch (`release-x.51.x`) deployment
         if: ${{ inputs.branch == 'release-x.51.x' }}
         working-directory: sdk
         run: |
-          npm dist-tag add @metabase/embedding-sdk-react@${{ env.sdk_version }} latest
+          # npm dist-tag add @metabase/embedding-sdk-react@${{ env.sdk_version }} latest
+          echo set latest tag to @metabase/embedding-sdk-react@${{ env.sdk_version }}
 
   git-tag:
     needs: [publish-npm, determine-version]
@@ -277,9 +278,10 @@ jobs:
       # Lightweight tags don't need committer name and email
       - name: Create a new git tag
         run: |
-          git tag ${{ env.tag }}
+          echo ${{ env.tag }}
+          # git tag ${{ env.tag }}
 
-      - name: Push the new tag
-        id: push-tag
-        run: |
-          git push origin ${{ env.tag }}
+      # - name: Push the new tag
+      #   id: push-tag
+      #   run: |
+      #     git push origin ${{ env.tag }}
