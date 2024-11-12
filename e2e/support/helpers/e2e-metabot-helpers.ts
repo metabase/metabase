@@ -13,7 +13,7 @@ export function openMetabotViaShortcutKey(assertVisibility = true) {
     assertChatVisibility("not.visible");
   }
 
-  cy.get("body").type("{meta}b");
+  cy.get("body").focus().type("{meta}b");
 
   if (assertVisibility) {
     assertChatVisibility("visible");
