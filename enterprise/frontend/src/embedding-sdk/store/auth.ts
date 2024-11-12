@@ -16,14 +16,6 @@ import { getFetchRefreshTokenFn } from "./selectors";
 export const initAuth = createAsyncThunk(
   "sdk/token/INIT_AUTH",
   async (sdkConfig: SDKConfig, { dispatch }) => {
-    if ("jwtProviderUri" in sdkConfig) {
-      const error = new Error(
-        "The jwtProviderUri config property has been deprecated. Replace it with authProviderUri.",
-      );
-      console.error(error);
-      throw error;
-    }
-
     // Setup JWT or API key
     const isValidAuthProviderUri =
       sdkConfig.authProviderUri && sdkConfig.authProviderUri?.length > 0;
