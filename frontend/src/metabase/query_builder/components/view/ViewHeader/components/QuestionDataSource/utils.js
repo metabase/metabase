@@ -153,6 +153,9 @@ function QuestionTableBadges({ tables, subHead, hasLink, isLast }) {
 }
 
 function getTableURL(table) {
+  if (!table) {
+    return "";
+  }
   if (isVirtualCardId(table.id)) {
     const cardId = getQuestionIdFromVirtualTableId(table.id);
     return Urls.question({ id: cardId, name: table.displayName() });

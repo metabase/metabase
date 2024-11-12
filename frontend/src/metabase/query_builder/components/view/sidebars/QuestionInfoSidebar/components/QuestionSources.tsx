@@ -13,7 +13,6 @@ import type { QuestionSource } from "./types";
 import { getIconPropsForSource } from "./utils";
 
 export const QuestionSources = () => {
-  /** Retrieve current question from the Redux store */
   const questionWithParameters = useSelector(getQuestionWithParameters);
 
   const sourcesWithIcons: QuestionSource[] = useMemo(() => {
@@ -23,12 +22,20 @@ export const QuestionSources = () => {
           subHead: false,
           isObjectDetail: true,
           formatTableAsComponent: false,
-        }) as QuestionSource[])
+        }) as QuestionSource[] | QuestionSource)
       : [];
-    return sources.map(source => ({
-      ...source,
-      iconProps: getIconPropsForSource(source),
-    }));
+
+    const sourceArray = Array.isArray(sources) ? sources : [sources];
+
+    return (
+      sourceArray
+        // we can't get a table for native questions in v51
+        .filter(source => "href" in source)
+        .map(source => ({
+          ...source,
+          iconProps: getIconPropsForSource(source as QuestionSource),
+        }))
+    );
   }, [questionWithParameters]);
 
   if (!questionWithParameters || !sourcesWithIcons.length) {
