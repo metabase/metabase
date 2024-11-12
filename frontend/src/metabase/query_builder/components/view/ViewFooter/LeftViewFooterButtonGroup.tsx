@@ -119,7 +119,7 @@ export const LeftViewFooterButtonGroup = ({
               },
             }),
           }}
-          /* TODO: mah is a hack for 32px height button */
+          /* mah is a hack for 32px height button, we don't have it atm */
           mah="xl"
           data-testid="viz-settings-button"
           onClick={
