@@ -41,7 +41,7 @@ createdb --encoding=UTF8 -e metabase
 If you have additional parameters, Metabase also supports providing a full JDBC connection string:
 
 ```sh
-export MB_DB_CONNECTION_URI="jdbc:postgresql://localhost:5432/metabase?user=<username>&password=<password>"
+export MB_DB_CONNECTION_URI="postgresql://localhost:5432/metabase?user=<username>&password=<password>"
 java -jar metabase.jar
 ```
 
