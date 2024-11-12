@@ -519,7 +519,7 @@
   :default    true)
 
 (defsetting browse-filter-only-verified-metrics
-  (deferred-tru "User preference for whether the 'Browse metrics' page should be filtered to show only verified metrics.")
+  (deferred-tru "User preference for whether the 'Browse metrics' page should be filtered to show only verified metrics. HI.")
   :user-local :only
   :export?    false
   :visibility :authenticated
