@@ -2,6 +2,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { createAsyncThunk } from "metabase/lib/redux";
+import { uuid } from "metabase/lib/uuid";
 import {
   EnterpriseApi,
   METABOT_TAG,
@@ -18,6 +19,7 @@ import {
   getIsProcessing,
   getLastHistoryValue,
   getLastSentContext,
+  getMetabotSessionId,
 } from "./selectors";
 
 export const {
@@ -26,6 +28,7 @@ export const {
   clearUserMessages,
   setIsProcessing,
   setConfirmationOptions,
+  setSessionId,
 } = metabot.actions;
 
 export const setVisible = (isVisible: boolean) => (dispatch: Dispatch) => {
@@ -69,10 +72,25 @@ export const sendMessageRequest = createAsyncThunk(
   "metabase-enterprise/metabot/sendMessageRequest",
   async (
     data: { message: string; context: MetabotChatContext; history: any[] },
-    { dispatch },
+    { dispatch, getState },
   ) => {
+    // TODO: make enterprise store
+    let sessionId = getMetabotSessionId(getState() as any);
+
+    // should not be needed, but just in case the value got unset
+    if (!sessionId) {
+      console.warn(
+        "Metabot has no session id while open, this should never happen",
+      );
+      sessionId = uuid();
+      dispatch(setSessionId(sessionId));
+    }
+
     const result = await dispatch(
-      metabotAgent.initiate(data, { fixedCacheKey: METABOT_TAG }),
+      metabotAgent.initiate(
+        { ...data, session_id: sessionId },
+        { fixedCacheKey: METABOT_TAG },
+      ),
     );
 
     if (result.error) {

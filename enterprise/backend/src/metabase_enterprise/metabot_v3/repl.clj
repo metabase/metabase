@@ -39,9 +39,9 @@
 (defn user-repl
   "REPL for interacting with MetaBot."
   ([]
-   (user-repl []))
+   (user-repl [] (str (random-uuid))))
 
-  ([history]
+  ([history session-id]
    (when-let [history' (try
                          (when-let [input (try
                                             #_{:clj-kondo/ignore [:discouraged-var]}
@@ -60,7 +60,7 @@
                                                                              :hidden_columns [{:name "Customer Id"}, {:name "Customer Name"}, {:name "Customer Email"}]}}
                                    env (metabot-v3.handle-envelope/handle-envelope
                                         (metabot-v3.envelope/add-user-message
-                                         (metabot-v3.envelope/create context history)
+                                         (metabot-v3.envelope/create context history session-id)
                                          input))]
                                (handle-reactions (metabot-v3.envelope/reactions env))
                                (metabot-v3.envelope/history env))))
@@ -68,7 +68,7 @@
                            #_{:clj-kondo/ignore [:discouraged-var]}
                            (println (u/pprint-to-str :red e))
                            history))]
-     (recur history'))))
+     (recur history' session-id))))
 
 (defn user-repl-cli
   "CLI entrypoint for using the MetaBot REPL.

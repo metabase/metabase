@@ -6,22 +6,25 @@ import { P, isMatching } from "ts-pattern";
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
+import { isUuid, uuid } from "metabase/lib/uuid";
 import { useRegisterMetabotContextProvider } from "metabase/metabot";
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 
 import { Metabot } from "./components/Metabot";
+import { METABOT_AUTO_CLOSE_DURATION_MS } from "./components/MetabotChat";
 import { MetabotProvider } from "./context";
 import {
   type MetabotState,
   metabotInitialState,
   metabotReducer,
+  setIsProcessing,
   setVisible,
 } from "./state";
 
 function setup(
   options: {
-    ui: React.ReactElement;
+    ui?: React.ReactElement;
     metabotPluginInitialState?: MetabotState;
   } | void,
 ) {
@@ -35,7 +38,11 @@ function setup(
 
   const {
     ui = <Metabot />,
-    metabotPluginInitialState = { ...metabotInitialState, visible: true },
+    metabotPluginInitialState = {
+      ...metabotInitialState,
+      sessionId: uuid(),
+      visible: true,
+    },
   } = options || {};
 
   return renderWithProviders(<MetabotProvider>{ui}</MetabotProvider>, {
@@ -59,11 +66,16 @@ const enterChatMessage = async (message: string, send = true) =>
   userEvent.type(await input(), `${message}${send ? "{Enter}" : ""}`);
 const closeChatButton = () => screen.findByTestId("metabot-close-chat");
 
+const assertVisible = async () =>
+  expect(await screen.findByTestId("metabot-chat")).toBeInTheDocument();
+const assertNotVisible = async () =>
+  await waitFor(() => {
+    expect(screen.queryByTestId("metabot-chat")).not.toBeInTheDocument();
+  });
+
 // NOTE: for some reason the keyboard shortcuts won't work with tinykeys while testing, using redux for now...
-const hideMetabot = (dispatch: any) =>
-  act(() => dispatch(setVisible(false) as any));
-const showMetabot = (dispatch: any) =>
-  act(() => dispatch(setVisible(true) as any));
+const hideMetabot = (dispatch: any) => act(() => dispatch(setVisible(false)));
+const showMetabot = (dispatch: any) => act(() => dispatch(setVisible(true)));
 
 const lastReqBody = async () => {
   const lastCall = fetchMock.lastCall();
@@ -73,27 +85,90 @@ const lastReqBody = async () => {
 
 describe("metabot", () => {
   describe("ui", () => {
+    // eslint-disable-next-line jest/expect-expect
     it("should be able to render metabot", async () => {
       setup();
-      expect(await screen.findByTestId("metabot-chat")).toBeInTheDocument();
+      await assertVisible();
     });
 
     it("should be able to toggle visibility", async () => {
       const { store } = setup();
       expect(await chat()).toBeInTheDocument();
+      await assertVisible();
 
       hideMetabot(store.dispatch);
-      await waitFor(() => {
-        expect(screen.queryByTestId("metabot-chat")).not.toBeInTheDocument();
-      });
+      await assertNotVisible();
 
       showMetabot(store.dispatch);
       expect(await chat()).toBeInTheDocument();
 
       await userEvent.click(await closeChatButton());
-      await waitFor(() => {
-        expect(screen.queryByTestId("metabot-chat")).not.toBeInTheDocument();
+      await assertNotVisible();
+    });
+
+    it("should start a new session each time metabot is opened", async () => {
+      const { store } = setup({
+        metabotPluginInitialState: metabotInitialState,
       });
+      fetchMock.post(
+        `path:/api/ee/metabot-v3/agent`,
+        whoIsYourFavoriteResponse,
+      );
+
+      showMetabot(store.dispatch);
+      await enterChatMessage("Who is your favorite?");
+      const firstSessionId = (await lastReqBody())?.session_id;
+      expect(isUuid(firstSessionId)).toBeTruthy();
+      hideMetabot(store.dispatch);
+
+      showMetabot(store.dispatch);
+      await enterChatMessage("Who is your favorite?");
+      const secondSessionId = (await lastReqBody())?.session_id;
+      expect(isUuid(secondSessionId)).toBeTruthy();
+
+      expect(secondSessionId).not.toBe(firstSessionId);
+    });
+
+    // eslint-disable-next-line jest/expect-expect
+    it("should auto-close metabot if inactive with no user input", async () => {
+      jest.useFakeTimers({ advanceTimers: true });
+
+      const { store } = setup();
+
+      // auto-hides
+      await assertVisible();
+      act(() => jest.advanceTimersByTime(METABOT_AUTO_CLOSE_DURATION_MS));
+      await assertNotVisible();
+
+      // does not auto-hide if there's user input
+      showMetabot(store.dispatch);
+      await userEvent.type(await input(), "Testing");
+      act(() => jest.advanceTimersByTime(METABOT_AUTO_CLOSE_DURATION_MS));
+      await assertVisible();
+      hideMetabot(store.dispatch);
+
+      // does not auto-close if metabot is processing a response
+      showMetabot(store.dispatch);
+      act(() => store.dispatch(setIsProcessing(true)));
+      act(() => jest.advanceTimersByTime(METABOT_AUTO_CLOSE_DURATION_MS));
+      await assertVisible();
+      act(() => store.dispatch(setIsProcessing(false)));
+      act(() => jest.advanceTimersByTime(METABOT_AUTO_CLOSE_DURATION_MS));
+      await assertNotVisible();
+
+      // does not auto-close if metabot is loading
+      showMetabot(store.dispatch);
+      fetchMock.post(
+        `path:/api/ee/metabot-v3/agent`,
+        whoIsYourFavoriteResponse,
+        { delay: METABOT_AUTO_CLOSE_DURATION_MS + 1000 }, // load longer than delay
+      );
+      await enterChatMessage("Who is your favorite?");
+      act(() => jest.advanceTimersByTime(METABOT_AUTO_CLOSE_DURATION_MS));
+      await assertVisible();
+      hideMetabot(store.dispatch);
+
+      jest.useRealTimers();
     });
   });
 

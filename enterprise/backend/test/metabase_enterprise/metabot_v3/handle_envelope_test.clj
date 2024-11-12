@@ -7,7 +7,7 @@
    [metabase-enterprise.metabot-v3.tools.interface :as metabot-v3.tools.interface]))
 
 (defn- create-env [& responses]
-  (envelope/create {} (into [] responses)))
+  (envelope/create {} (into [] responses) (random-uuid)))
 
 (deftest ^:parallel single-reaction-test
   (let [response {:content    "Sorry I don't understand that."

@@ -1,5 +1,6 @@
 import { type PayloadAction, createSlice } from "@reduxjs/toolkit";
 
+import { uuid } from "metabase/lib/uuid";
 import type {
   MetabotChatContext,
   MetabotHistory,
@@ -9,20 +10,22 @@ import type {
 import { sendMessageRequest } from "./actions";
 
 export interface MetabotState {
-  isProcessing: boolean;
-  userMessages: string[];
   confirmationOptions: Record<string, MetabotReaction[]> | undefined;
+  isProcessing: boolean;
   lastSentContext: MetabotChatContext | undefined;
   lastHistoryValue: MetabotHistory | undefined;
+  sessionId: string | undefined;
+  userMessages: string[];
   visible: boolean;
 }
 
 export const metabotInitialState: MetabotState = {
-  isProcessing: false,
-  userMessages: [],
   confirmationOptions: undefined,
+  isProcessing: false,
   lastSentContext: undefined,
   lastHistoryValue: undefined,
+  sessionId: undefined,
+  userMessages: [],
   visible: false,
 };
 
@@ -42,6 +45,9 @@ export const metabot = createSlice({
     setIsProcessing: (state, action: PayloadAction<boolean>) => {
       state.isProcessing = action.payload;
     },
+    setSessionId: (state, action: PayloadAction<string | undefined>) => {
+      state.sessionId = action.payload;
+    },
     setVisible: (state, { payload: visible }: PayloadAction<boolean>) => {
       state.visible = visible;
 
@@ -51,14 +57,15 @@ export const metabot = createSlice({
         state.confirmationOptions = undefined;
         state.lastSentContext = undefined;
         state.lastHistoryValue = undefined;
+        state.sessionId = undefined;
+      } else {
+        state.sessionId = uuid();
       }
     },
     setConfirmationOptions: (
       state,
       action: PayloadAction<Record<string, MetabotReaction[]> | undefined>,
     ) => {
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-expect-error
       state.confirmationOptions = action.payload;
     },
   },
