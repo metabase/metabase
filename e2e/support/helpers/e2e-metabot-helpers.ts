@@ -13,15 +13,7 @@ export function openMetabotViaShortcutKey(assertVisibility = true) {
     assertChatVisibility("not.visible");
   }
 
-  cy.window().then(win => {
-    const event = new win.KeyboardEvent("keydown", {
-      key: "b",
-      metaKey: true, // `metaKey: true` for Command (macOS) or Windows key
-      bubbles: true,
-      cancelable: true,
-    });
-    win.document.dispatchEvent(event);
-  });
+  cy.realPress(["Meta", "b"]);
 
   if (assertVisibility) {
     assertChatVisibility("visible");
@@ -33,15 +25,7 @@ export function closeMetabotViaShortcutKey(assertVisibility = true) {
     assertChatVisibility("visible");
   }
 
-  cy.window().then(win => {
-    const event = new win.KeyboardEvent("keydown", {
-      key: "b",
-      metaKey: true, // `metaKey: true` for Command (macOS) or Windows key
-      bubbles: true,
-      cancelable: true,
-    });
-    win.document.dispatchEvent(event);
-  });
+  cy.realPress(["Meta", "b"]);
 
   if (assertVisibility) {
     assertChatVisibility("not.visible");
