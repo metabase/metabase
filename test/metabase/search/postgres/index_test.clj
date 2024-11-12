@@ -58,13 +58,14 @@
   (with-index
     (mt/with-temporary-setting-values [experimental-search-index-realtime-updates true]
       (testing "The index is updated when models change"
-       ;; The second entry is "Revenue Project(ions)"
+        ;; Has a second entry is "Revenue Project(ions)", when using English dictionary
         (is (= 1 #_2 (count (search.index/search "Projected Revenue"))))
         (is (= 0 (count (search.index/search "Protected Avenue"))))
         (t2/update! :model/Card {:name "Projected Revenue"} {:name "Protected Avenue"})
         (is (= 0 #_1 (count (search.index/search "Projected Revenue"))))
         (is (= 1 (count (search.index/search "Protected Avenue"))))
-       ;(t2/delete! :model/Card :name "Protected Avenue")
+        ;; Delete hooks are disabled, for now, over performance concerns.
+        ;(t2/delete! :model/Card :name "Protected Avenue")
         (search.ingestion/delete-model! (t2/select-one :model/Card :name "Protected Avenue"))
         (is (= 0 #_1 (count (search.index/search "Projected Revenue"))))
         (is (= 0 (count (search.index/search "Protected Avenue"))))))))
