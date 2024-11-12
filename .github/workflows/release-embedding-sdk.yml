@@ -7,9 +7,9 @@ on:
         description: "Branch we want to release the SDK from"
         type: choice
         required: true
-        default: "49881-prevent-sdk-from-being-upgraded-unintentionally"
+        default: "master"
         options:
-          - 49881-prevent-sdk-from-being-upgraded-unintentionally
+          - master
           - release-x.51.x
 
 concurrency:
@@ -254,7 +254,7 @@ jobs:
         run: |
           echo //registry.npmjs.org/:_authToken=${{ secrets.NPM_RELEASE_TOKEN }} > .npmrc
           # Please keep the value in sync with `inputs.branch`'s release branch
-          npm publish --dry-run --tag ${{fromJson('{"49881-prevent-sdk-from-being-upgraded-unintentionally": "nightly", "release-x.51.x": "51-stable"}')[inputs.branch]}}
+          npm publish --dry-run --tag ${{fromJson('{"master": "nightly", "release-x.51.x": "51-stable"}')[inputs.branch]}}
 
       - name: Add `latest` tag to the latest release branch (`release-x.51.x`) deployment
         if: ${{ inputs.branch == 'release-x.51.x' }}
