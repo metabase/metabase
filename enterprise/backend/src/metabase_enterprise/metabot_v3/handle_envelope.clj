@@ -20,7 +20,8 @@
 
 (defn- request-llm-response [e]
   (let [new-response-message (:message (metabot-v3.client/*request* (envelope/context e)
-                                                                    (envelope/history e)))]
+                                                                    (envelope/history e)
+                                                                    (:session-id e)))]
     (-> e
         envelope/decrement-round-trips
         (envelope/add-message new-response-message))))
