@@ -16,6 +16,7 @@
   {:session-id session-id
    :history history
    :context context
+   :session-id (random-uuid)
    :reactions []
    :max-round-trips max-round-trips
    :round-trips-remaining max-round-trips})

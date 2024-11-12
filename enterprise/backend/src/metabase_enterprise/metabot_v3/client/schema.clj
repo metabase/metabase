@@ -55,7 +55,8 @@
    [:messages      ::messages]
    [:tools         ::request.tools]
    [:context       {:default {}} ::metabot-v3.context/context]
-   [:instance-info ::request.instance-info]])
+   [:instance-info ::request.instance-info]
+   [:user-id       integer?]])
 
 (mr/def ::ai-proxy.response
   "Shape of the response we get back from the AI Proxy."

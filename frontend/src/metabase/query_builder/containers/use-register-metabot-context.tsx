@@ -1,6 +1,8 @@
 import _ from "underscore";
 
+import { getAccentColors } from "metabase/lib/colors/groups";
 import { useRegisterMetabotContextProvider } from "metabase/metabot";
+import { getVisualizationMetabotContext } from "metabase/metabot-v3/selectors";
 
 import { getQueryResults, getQuestion } from "../selectors";
 
@@ -15,7 +17,7 @@ export const useRegisterMetabotContext = () => {
       ...(col.description && { description: col.description }),
     }));
 
-    const vizSettings = question?.card()?.visualization_settings || {};
+    const vizSettings = getVisualizationMetabotContext(state);
     const columnSettings = vizSettings["table.columns"] || [];
     const disabledColumnNames = new Set(
       columnSettings.filter(col => !col.enabled).map(c => c.name),
@@ -26,8 +28,11 @@ export const useRegisterMetabotContext = () => {
     );
 
     return {
+      colorPalette: getAccentColors(),
       current_question_id: question?.id() || null,
+      dataset_query: question?.datasetQuery(),
       current_visualization_settings: {
+        ...vizSettings,
         current_display_type: question?.display(),
         ...(visible_columns.length ? { visible_columns } : {}),
         ...(hidden_columns.length ? { hidden_columns } : {}),

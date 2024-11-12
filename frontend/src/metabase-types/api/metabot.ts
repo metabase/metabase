@@ -1,5 +1,7 @@
 import type { CardDisplayType } from "./visualization";
 
+import type { ColumnSettings, DatasetQuery, SeriesSettings } from ".";
+
 export type MetabotFeedbackType =
   | "great"
   | "wrong_data"
@@ -77,13 +79,63 @@ export type MetabotApiCallReaction = {
   };
 };
 
+export type MetabotRunQueryReaction = {
+  type: "metabot.reaction/run-query";
+  dataset_query: DatasetQuery;
+};
+
+type SeriesSettingsEntry = SeriesSettings & { key: string };
+
+export type MetabotChangeSeriesSettingsReaction = {
+  type: "metabot.reaction/change-series-settings";
+  series_settings: SeriesSettingsEntry[];
+};
+
+type ColumnSettingsEntry = ColumnSettings & { key: string };
+
+export type MetabotChangeColumnSettingsReaction = {
+  type: "metabot.reaction/change-column-settings";
+  column_settings: ColumnSettingsEntry[];
+};
+
+export type MetabotChangeChartAppearanceReaction = {
+  type: "metabot.reaction/change-chart-appearance";
+  goal: {
+    goal_value: number | null;
+    show_goal: boolean | null;
+    goal_label: string | null;
+  } | null;
+  trend_line: boolean | null;
+  data_labels: {
+    show_data_labels: boolean | null;
+    data_label_format: "auto" | "compact" | "full" | null;
+    pie_chart_percent_visibility: "off" | "legend" | "inside" | "both" | null;
+  };
+  total: boolean | null;
+  stack_type: "stacked" | "normalized" | "none" | null;
+  max_series_count: number | "all" | null;
+  axes_labels: {
+    x_axis_label: string | null;
+    y_axis_label: string | null;
+  } | null;
+  y_axis_range: {
+    auto_range: boolean | null;
+    min: number | null;
+    max: number | null;
+  } | null;
+};
+
 export type MetabotReaction =
+  | MetabotChangeChartAppearanceReaction
+  | MetabotChangeColumnSettingsReaction
+  | MetabotChangeSeriesSettingsReaction
   | MetabotMessageReaction
   | MetabotChangeDisplayTypeReaction
   | MetabotChangeVisiualizationSettingsReaction
   | MetabotConfirmationReaction
   | MetabotWriteBackReaction
-  | MetabotApiCallReaction;
+  | MetabotApiCallReaction
+  | MetabotRunQueryReaction;
 
 /* Metabot v3 - API Request Types */
 

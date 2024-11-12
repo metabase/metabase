@@ -52,6 +52,5 @@
 
   This should be a 'sparse' hydration rather than `SELECT * FROM dashboard WHERE id = 1` -- we should only include
   information needed for the LLM to do its thing rather than everything in the world."
-  [context :- ::context]
-  ;; TODO
-  context)
+  [_context]
+  {})

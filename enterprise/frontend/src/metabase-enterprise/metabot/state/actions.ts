@@ -97,7 +97,7 @@ export const sendMessageRequest = createAsyncThunk(
       console.error("Metabot request returned error: ", result.error);
       dispatch(clearUserMessages());
       const message =
-        (result.error as any).status === 500
+        (result.error as any).status >= 500
           ? t`I'm currently offline, try again later.`
           : undefined;
       dispatch(stopProcessingAndNotify(message));

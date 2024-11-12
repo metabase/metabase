@@ -3,9 +3,13 @@ import type { MetabotReaction } from "metabase-types/api";
 import { apiCall } from "./api";
 import { requireUserConfirmation, showMessage } from "./messages";
 import { writeBack } from "./metabot";
+import { runQuery } from "./queries";
 import type { ReactionHandler } from "./types";
 import {
+  changeChartAppearance,
+  changeColumnSettings,
   changeDisplayType,
+  changeSeriesSettings,
   changeTableVisualizationSettings,
 } from "./visualizations";
 
@@ -18,6 +22,9 @@ type ReactionHandlers = {
 };
 
 export const reactionHandlers: ReactionHandlers = {
+  "metabot.reaction/change-chart-appearance": changeChartAppearance,
+  "metabot.reaction/change-column-settings": changeColumnSettings,
+  "metabot.reaction/change-series-settings": changeSeriesSettings,
   "metabot.reaction/change-display-type": changeDisplayType,
   "metabot.reaction/change-table-visualization-settings":
     changeTableVisualizationSettings,
@@ -25,4 +32,5 @@ export const reactionHandlers: ReactionHandlers = {
   "metabot.reaction/message": showMessage,
   "metabot.reaction/api-call": apiCall,
   "metabot.reaction/writeback": writeBack,
+  "metabot.reaction/run-query": runQuery,
 };

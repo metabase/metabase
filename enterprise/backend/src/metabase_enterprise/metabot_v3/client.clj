@@ -32,8 +32,11 @@
 
 (mu/defn- ^:dynamic *instance-info* :- ::metabot-v3.client.schema/request.instance-info
   []
-  {:token     (premium-features/premium-embedding-token)
-   :site-uuid (public-settings/site-uuid-for-premium-features-token-checks)})
+  {:token            (premium-features/premium-embedding-token)
+   :site-uuid        (public-settings/site-uuid-for-premium-features-token-checks)
+   :created-at       (snowplow/instance-creation)
+   :analytics-uuid   (snowplow/analytics-uuid)
+   :metabase-version (public-settings/version)})
 
 (defn- encode-request-body [body]
   (mc/encode ::metabot-v3.client.schema/request body (mtx/transformer
@@ -50,12 +53,11 @@
    session-id :- :string]
   (encode-request-body
    {:messages      messages
-    :context       (metabot-v3.context/hydrate-context (or context {}))
+    :context       {}
     :tools         (metabot-v3.tools/applicable-tools (metabot-v3.tools/*tools-metadata*) context)
     :session-id    session-id
     :user-id       api/*current-user-id*
     :instance-info (*instance-info*)}))
-
 
 (defn- ->json-bytes ^bytes [x]
   (with-open [os (java.io.ByteArrayOutputStream.)

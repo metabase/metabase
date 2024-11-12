@@ -6,6 +6,7 @@ import {
   assertDescendantNotOverflowsContainer,
   assertIsEllipsified,
   assertIsNotEllipsified,
+  createNativeQuestionAndDashboard,
   createQuestion,
   cypressWaitAll,
   echartsContainer,
@@ -1871,4 +1872,82 @@ describe("issue 48878", () => {
     });
     cy.wait("@fetchCard");
   }
+});
+
+describe("issue 46318", () => {
+  const query = `SELECT 'group_1' AS main_group, 'sub_group_1' AS sub_group, 111 AS value_sum, 'group_1__sub_group_1' AS group_name
+UNION ALL
+SELECT 'group_1', 'sub_group_2', 68, 'group_1__sub_group_2'
+UNION ALL
+SELECT 'group_2', 'sub_group_1', 79, 'group_2__sub_group_1'
+UNION ALL
+SELECT 'group_2', 'sub_group_2', 52, 'group_2__sub_group_2';
+`;
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+
+    createNativeQuestionAndDashboard({
+      questionDetails: {
+        name: "46318",
+        native: { query },
+        display: "row",
+        visualization_settings: {
+          "graph.dimensions": ["MAIN_GROUP", "SUB_GROUP"],
+          "graph.series_order_dimension": null,
+          "graph.series_order": null,
+          "graph.metrics": ["VALUE_SUM"],
+        },
+      },
+    }).then(response => {
+      visitDashboard(response.body.dashboard_id);
+    });
+
+    editDashboard();
+    getDashboardCard().realHover().icon("click").click();
+    cy.get("aside").within(() => {
+      cy.findByText("Go to a custom destination").click();
+      cy.findByText("URL").click();
+    });
+    modal().within(() => {
+      cy.findByPlaceholderText("e.g. http://acme.com/id/{{user_id}}").type(
+        "http://localhost:4000/?q={{group_name}}",
+        { parseSpecialCharSequences: false },
+      );
+      cy.button("Done").click();
+    });
+    saveDashboard();
+  });
+
+  it("passes values from unused columns of row visualization to click behavior (metabase#46318)", () => {
+    cy.findAllByRole("graphics-symbol").eq(0).click();
+    cy.location("href").should(
+      "eq",
+      "http://localhost:4000/?q=group_1__sub_group_1",
+    );
+
+    cy.go("back");
+
+    cy.findAllByRole("graphics-symbol").eq(2).click(); // intentionally eq(2), not eq(1) - that's how row viz works
+    cy.location("href").should(
+      "eq",
+      "http://localhost:4000/?q=group_1__sub_group_2",
+    );
+
+    cy.go("back");
+
+    cy.findAllByRole("graphics-symbol").eq(1).click(); // intentionally eq(1), not eq(2) - that's how row viz works
+    cy.location("href").should(
+      "eq",
+      "http://localhost:4000/?q=group_2__sub_group_1",
+    );
+    cy.go("back");
+
+    cy.findAllByRole("graphics-symbol").eq(3).click();
+    cy.location("href").should(
+      "eq",
+      "http://localhost:4000/?q=group_2__sub_group_2",
+    );
+  });
 });
