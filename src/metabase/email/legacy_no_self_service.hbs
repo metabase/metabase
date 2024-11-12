@@ -28,9 +28,9 @@
 
   <p>The following groups currently have their <strong>View data</strong> access set to <strong>No self-service (deprecated)</strong></p>
   <ul>
-   {{#if groups}}
-      <li><a href="{{instanceURL}}/admin/permissions/data/group/{{id}}" style="color: #336699;">{{name}}</a></li>
-   {{/if}}
+   {{#each groups}}
+      <li><a href="{{instanceURL}}/admin/permissions/data/group/{{this.id}}" style="color: #336699;">{{this.name}}</a></li>
+   {{/each}}
   </ul>
 
   <p>If the group's <strong>View data</strong> access is set to "Granular" for a database, be sure to check the <strong>View data</strong> access for individual schemas and tables.</p>

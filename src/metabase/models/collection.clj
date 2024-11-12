@@ -1740,7 +1740,6 @@
    :attrs        {:collection-id :id
                   :creator-id    false
                   :database-id   false
-                  :table-id      false
                   :archived      true
                   :created-at    true
                   ;; intentionally not tracked
