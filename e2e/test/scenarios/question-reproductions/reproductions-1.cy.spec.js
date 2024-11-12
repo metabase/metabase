@@ -857,8 +857,8 @@ describe("issue 18207", () => {
       cy.findByTestId("Table-button").realHover();
       cy.icon("gear").click();
     });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Done").click();
+
+    cy.button("Done").click();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Zemlak-Wiegand");

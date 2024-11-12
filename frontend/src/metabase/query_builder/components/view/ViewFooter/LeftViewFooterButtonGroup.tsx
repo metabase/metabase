@@ -98,13 +98,18 @@ export const LeftViewFooterButtonGroup = ({
     [dispatch, isVisualized, shouldShowEditorButton, vizIcon],
   );
 
+  function getSelectedControlValue() {
+    if (data.length === 1) {
+      return "editor";
+    }
+
+    return isShowingRawTable ? "table" : "visualization";
+  }
+
   return (
     <Flex gap="0.75rem">
       {(isVisualized || shouldShowEditorButton) && (
-        <EditorViewControl
-          value={isShowingRawTable ? "table" : "visualization"}
-          data={data}
-        />
+        <EditorViewControl value={getSelectedControlValue()} data={data} />
       )}
       {shouldShowChartSettingsButton && (
         <Button
