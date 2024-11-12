@@ -20,6 +20,7 @@ const SLACK_SCHEMA = Yup.object({
     .lowercase(),
   "slack-bug-report-channel": Yup.string()
     .nullable()
+    .default(null)
     .transform((value, originalValue) => (originalValue === "" ? null : value))
     .lowercase(),
 });
@@ -36,7 +37,8 @@ const SlackForm = ({
   onSubmit = () => undefined,
 }: SlackFormProps): JSX.Element => {
   const handleSubmit = useCallback(
-    (values: SlackSettings) => onSubmit(SLACK_SCHEMA.cast(values)),
+    (values: SlackSettings) =>
+      onSubmit(SLACK_SCHEMA.cast(values) as SlackSettings),
     [onSubmit],
   );
 
