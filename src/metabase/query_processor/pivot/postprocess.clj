@@ -317,7 +317,7 @@
             col-combos
             pivot-measures
             totals
-            row-totals?
+            false #_row-totals?
             ordered-formatters pivot-rows))])))
 
 (defn build-pivot-output

@@ -443,12 +443,13 @@
   [query        :- [:map
                     [:database ::lib.schema.id/database]]
    viz-settings :- [:maybe :map]]
-  (let [{:keys [rows columns]} (:pivot_table.column_split viz-settings)]
-    (merge
-     (if (and (every? string? rows) (every? string? columns))
-       (column-name-pivot-options query viz-settings)
-       (field-ref-pivot-options query viz-settings))
-     {:column-sort-order (column-sort-order query viz-settings)})))
+  (when viz-settings
+    (let [{:keys [rows columns]} (:pivot_table.column_split viz-settings)]
+      (merge
+       (if (and (every? string? rows) (every? string? columns))
+         (column-name-pivot-options query viz-settings)
+         (field-ref-pivot-options query viz-settings))
+       {:column-sort-order (column-sort-order query viz-settings)}))))
 
 (mu/defn- column-mapping-for-subquery :- ::pivot-column-mapping
   [num-canonical-cols            :- ::lib.schema.common/int-greater-than-or-equal-to-zero
