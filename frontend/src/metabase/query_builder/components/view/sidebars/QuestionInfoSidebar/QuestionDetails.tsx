@@ -2,6 +2,7 @@ import cx from "classnames";
 import { useState } from "react";
 import { c, t } from "ttag";
 
+import ErrorBoundary from "metabase/ErrorBoundary";
 import { getCollectionName } from "metabase/collections/utils";
 import { SidesheetCardSection } from "metabase/common/components/Sidesheet";
 import DateTime from "metabase/components/DateTime";
@@ -71,7 +72,9 @@ export const QuestionDetails = ({ question }: { question: Question }) => {
         </Flex>
       </SidesheetCardSection>
       <SharingDisplay question={question} />
-      <QuestionSources question={question} />
+      <ErrorBoundary>
+        <QuestionSources />
+      </ErrorBoundary>
     </>
   );
 };

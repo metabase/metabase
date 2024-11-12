@@ -3,30 +3,42 @@ import { c } from "ttag";
 
 import { SidesheetCardSection } from "metabase/common/components/Sidesheet";
 import Link from "metabase/core/components/Link";
+import { useSelector } from "metabase/lib/redux";
+import { getQuestionWithParameters } from "metabase/query_builder/selectors";
 import { Flex, FixedSizeIcon as Icon } from "metabase/ui";
-import type Question from "metabase-lib/v1/Question";
 
 import { getDataSourceParts } from "../../../ViewHeader/components/QuestionDataSource/utils";
 
 import type { QuestionSource } from "./types";
 import { getIconPropsForSource } from "./utils";
 
-export const QuestionSources = ({ question }: { question: Question }) => {
-  const sources = getDataSourceParts({
-    question,
-    subHead: false,
-    isObjectDetail: true,
-    formatTableAsComponent: false,
-  }) as unknown as QuestionSource[];
+export const QuestionSources = () => {
+  const questionWithParameters = useSelector(getQuestionWithParameters);
 
   const sourcesWithIcons: QuestionSource[] = useMemo(() => {
-    return sources.map(source => ({
-      ...source,
-      iconProps: getIconPropsForSource(source),
-    }));
-  }, [sources]);
+    const sources = questionWithParameters
+      ? (getDataSourceParts({
+          question: questionWithParameters,
+          subHead: false,
+          isObjectDetail: true,
+          formatTableAsComponent: false,
+        }) as QuestionSource[] | QuestionSource)
+      : [];
 
-  if (!sources.length) {
+    const sourceArray = Array.isArray(sources) ? sources : [sources];
+
+    return (
+      sourceArray
+        // we can't get a table for native questions in v51
+        .filter(source => "href" in source)
+        .map(source => ({
+          ...source,
+          iconProps: getIconPropsForSource(source as QuestionSource),
+        }))
+    );
+  }, [questionWithParameters]);
+
+  if (!questionWithParameters || !sourcesWithIcons.length) {
     return null;
   }
 
@@ -47,7 +59,9 @@ export const QuestionSources = ({ question }: { question: Question }) => {
                 {name}
               </Flex>
             </Link>
-            {index < sources.length - 1 && <Flex lh="1.25rem">{"/"}</Flex>}
+            {index < sourcesWithIcons.length - 1 && (
+              <Flex lh="1.25rem">{"/"}</Flex>
+            )}
           </Fragment>
         ))}
       </Flex>
