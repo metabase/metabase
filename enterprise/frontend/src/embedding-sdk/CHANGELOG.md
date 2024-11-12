@@ -1,3 +1,21 @@
+## [0.51.4](https://github.com/metabase/metabase/compare/embedding-sdk-1.51.3...embedding-sdk-0.51.4) (2024-11-12)
+
+
+### Bug Fixes
+
+* **sdk:** Fix interactive dashboard scroll in fullscreen mode ([#49366](https://github.com/metabase/metabase/issues/49366)) ([#49427](https://github.com/metabase/metabase/issues/49427)) ([d378dc3](https://github.com/metabase/metabase/commit/d378dc3a9967ddc0c21e8f88049fc8519d1de83c))
+* **sdk:** Fix visualization default size ([#49672](https://github.com/metabase/metabase/issues/49672)) ([#49680](https://github.com/metabase/metabase/issues/49680)) ([bb13c88](https://github.com/metabase/metabase/commit/bb13c8824d7ddadec5258006a5cfedca21b41791))
+* **sdk:** generated cli components has inconsistent styles after the style leak fix ([#49723](https://github.com/metabase/metabase/issues/49723)) ([#49775](https://github.com/metabase/metabase/issues/49775)) ([7fa7950](https://github.com/metabase/metabase/commit/7fa7950a20b5b00fa298300ee2556d99df79cdf2))
+* **sdk:** put a bandage on the flashing error on static question in strict mode ([#49659](https://github.com/metabase/metabase/issues/49659)) ([#49704](https://github.com/metabase/metabase/issues/49704)) ([9a94951](https://github.com/metabase/metabase/commit/9a949510c28bbac7cca6cf14af7a12d6cdd05595))
+
+
+### Features
+
+* **sdk:** deprecate the ModifyQuestion component ([#49747](https://github.com/metabase/metabase/issues/49747)) ([#49757](https://github.com/metabase/metabase/issues/49757)) ([530f050](https://github.com/metabase/metabase/commit/530f050fb5fc74778332e99f954e0cec0f5d5ae2))
+* **sdk:** small usability improvements for embedding cli ([#49591](https://github.com/metabase/metabase/issues/49591)) ([#49617](https://github.com/metabase/metabase/issues/49617)) ([6624143](https://github.com/metabase/metabase/commit/66241437e64b0c753f2a90d4308cbcc7cd547334))
+
+
+
 ## [1.51.3](https://github.com/metabase/metabase/compare/embedding-sdk-1.51.2...embedding-sdk-1.51.3) (2024-11-06)
 
 
