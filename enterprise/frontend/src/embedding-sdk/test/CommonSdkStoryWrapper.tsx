@@ -16,7 +16,7 @@ const secret = new TextEncoder().encode(METABASE_JWT_SHARED_SECRET);
  */
 export const storybookSdkDefaultConfig: SDKConfig = {
   metabaseInstanceUrl: METABASE_INSTANCE_URL,
-  jwtProviderUri: `${METABASE_INSTANCE_URL}/sso/metabase`,
+  authProviderUri: `${METABASE_INSTANCE_URL}/sso/metabase`,
   fetchRequestToken: async () => {
     try {
       const signedUserData = await new jose.SignJWT({

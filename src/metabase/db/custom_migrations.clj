@@ -1600,9 +1600,9 @@
                      :channel_template
                      {:name         "User joined Email template"
                       :channel_type "channel/email"
-                      :details      (json/generate-string {:type           "email/mustache-resource"
+                      :details      (json/generate-string {:type           "email/handlebars-resource"
                                                            :subject        "{{payload.custom.user_invited_email_subject}}"
-                                                           :path           "metabase/email/new_user_invite.mustache"
+                                                           :path           "metabase/email/new_user_invite.hbs"
                                                            :recipient-type :cc})
                       :created_at   :%now
                       :updated_at   :%now})]
@@ -1621,9 +1621,9 @@
                      :channel_template
                      {:name         "Alert Created Email template"
                       :channel_type "channel/email"
-                      :details      (json/generate-string {:type           "email/mustache-resource"
+                      :details      (json/generate-string {:type           "email/handlebars-resource"
                                                            :subject        "You set up an alert"
-                                                           :path           "metabase/email/alert_new_confirmation.mustache"
+                                                           :path           "metabase/email/alert_new_confirmation.hbs"
                                                            :recipient-type :cc})
                       :created_at   :%now
                       :updated_at   :%now})]
@@ -1642,9 +1642,9 @@
                      :channel_template
                      {:name         "Slack Token Error Email template"
                       :channel_type "channel/email"
-                      :details      (json/generate-string {:type           "email/mustache-resource"
+                      :details      (json/generate-string {:type           "email/handlebars-resource"
                                                            :subject        "Your Slack connection stopped working"
-                                                           :path           "metabase/email/slack_token_error.mustache"
+                                                           :path           "metabase/email/slack_token_error.hbs"
                                                            :recipient-type :cc})
                       :created_at   :%now
                       :updated_at   :%now})]

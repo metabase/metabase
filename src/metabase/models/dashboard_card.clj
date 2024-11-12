@@ -27,7 +27,9 @@
   (derive ::mi/read-policy.full-perms-for-perms-set)
   (derive ::mi/write-policy.full-perms-for-perms-set)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id))
+  (derive :hook/entity-id)
+  ;; Disabled for performance reasons, see update-dashboard-card!-call-count-test
+  #_(derive :hook/search-index))
 
 (t2/deftransforms :model/DashboardCard
   {:parameter_mappings     mi/transform-parameters-list
