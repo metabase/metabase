@@ -2,13 +2,13 @@ import { useCallback } from "react";
 import { t } from "ttag";
 
 import { color } from "metabase/lib/colors";
+import { useDefaultQueryAggregation } from "metabase/query_builder/hooks/use-default-query-aggregation";
 import { Divider } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 
 import {
   SummarizeAggregationItemList,
   SummarizeBreakoutColumnList,
-  useSummarizeQuery,
 } from "./SummarizeContent";
 import { SidebarView } from "./SummarizeSidebar.styled";
 
@@ -25,20 +25,11 @@ export function SummarizeSidebar({
   onQueryChange,
   onClose,
 }: SummarizeSidebarProps) {
-  const {
-    query,
-    stageIndex,
-    aggregations,
-    hasAggregations,
-    handleQueryChange,
-    handleAddBreakout,
-    handleUpdateBreakout,
-    handleRemoveBreakout,
-    handleReplaceBreakouts,
-  } = useSummarizeQuery({
-    query: initialQuery,
-    onQueryChange,
-  });
+  const { query, handleUpdateQuery, handleAggregationChange, hasAggregations } =
+    useDefaultQueryAggregation({
+      query: initialQuery,
+      onQueryChange,
+    });
 
   const handleDoneClick = useCallback(() => {
     onQueryChange(query);
@@ -55,20 +46,14 @@ export function SummarizeSidebar({
       <SummarizeAggregationItemList
         px="lg"
         query={query}
-        stageIndex={stageIndex}
-        aggregations={aggregations}
-        onQueryChange={handleQueryChange}
+        onQueryChange={handleAggregationChange}
       />
       <Divider my="lg" />
       {hasAggregations && (
         <SummarizeBreakoutColumnList
           px="lg"
           query={query}
-          stageIndex={stageIndex}
-          onAddBreakout={handleAddBreakout}
-          onUpdateBreakout={handleUpdateBreakout}
-          onRemoveBreakout={handleRemoveBreakout}
-          onReplaceBreakouts={handleReplaceBreakouts}
+          onQueryChange={handleUpdateQuery}
         />
       )}
     </SidebarView>

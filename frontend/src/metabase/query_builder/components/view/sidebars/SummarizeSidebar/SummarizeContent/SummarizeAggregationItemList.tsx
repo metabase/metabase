@@ -1,43 +1,55 @@
+import type { UpdateQueryHookProps } from "metabase/query_builder/hooks/types";
+import { useQueryAggregations } from "metabase/query_builder/hooks/use-query-aggregations";
 import { Group, type GroupProps } from "metabase/ui";
-import type * as Lib from "metabase-lib";
 
 import { AddAggregationButton } from "../AddAggregationButton";
 import { AggregationItem } from "../AggregationItem";
 
-type SummarizeAggregationItemListProps = {
-  query: Lib.Query;
-  stageIndex: number;
-  aggregations: Lib.AggregationClause[];
-  onQueryChange: (query: Lib.Query) => void;
-} & GroupProps;
+type SummarizeAggregationItemListProps = UpdateQueryHookProps & GroupProps;
 
 export const SummarizeAggregationItemList = ({
   query,
-  stageIndex,
-  aggregations,
   onQueryChange,
   ...containerProps
-}: SummarizeAggregationItemListProps) => (
-  <Group
-    data-testid="summarize-aggregation-item-list"
-    spacing="sm"
-    align="flex-start"
-    {...containerProps}
-  >
-    {aggregations.map((aggregation, aggregationIndex) => (
-      <AggregationItem
-        key={aggregationIndex}
+}: SummarizeAggregationItemListProps) => {
+  const { aggregationData, stageIndex } = useQueryAggregations({
+    query,
+    onQueryChange,
+  });
+
+  return (
+    <Group
+      data-testid="summarize-aggregation-item-list"
+      spacing="sm"
+      align="flex-start"
+      {...containerProps}
+    >
+      {aggregationData.map(
+        ({
+          aggregation,
+          displayName,
+          aggregationIndex,
+          operators,
+          handleRemove,
+        }) => (
+          <AggregationItem
+            key={aggregationIndex}
+            query={query}
+            stageIndex={stageIndex}
+            aggregation={aggregation}
+            aggregationIndex={aggregationIndex}
+            onQueryChange={onQueryChange}
+            displayName={displayName}
+            handleRemove={handleRemove}
+            operators={operators}
+          />
+        ),
+      )}
+      <AddAggregationButton
         query={query}
         stageIndex={stageIndex}
-        aggregation={aggregation}
-        aggregationIndex={aggregationIndex}
         onQueryChange={onQueryChange}
       />
-    ))}
-    <AddAggregationButton
-      query={query}
-      stageIndex={stageIndex}
-      onQueryChange={onQueryChange}
-    />
-  </Group>
-);
+    </Group>
+  );
+};

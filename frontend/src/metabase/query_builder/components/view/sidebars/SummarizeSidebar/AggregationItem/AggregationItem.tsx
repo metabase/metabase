@@ -1,17 +1,20 @@
-import { useCallback, useState } from "react";
+import { useDisclosure } from "@mantine/hooks";
 
 import { AggregationPicker } from "metabase/common/components/AggregationPicker";
 import { Popover } from "metabase/ui";
-import * as Lib from "metabase-lib";
+import type * as Lib from "metabase-lib";
 
 import { AggregationName, RemoveIcon, Root } from "./AggregationItem.styled";
 
 interface AggregationItemProps {
   query: Lib.Query;
+  onQueryChange: (query: Lib.Query) => void;
   stageIndex: number;
   aggregation: Lib.AggregationClause;
   aggregationIndex: number;
-  onQueryChange: (query: Lib.Query) => void;
+  displayName: string;
+  handleRemove: () => void;
+  operators: Lib.AggregationOperator[];
 }
 
 export function AggregationItem({
@@ -20,27 +23,19 @@ export function AggregationItem({
   aggregation,
   aggregationIndex,
   onQueryChange,
+  displayName,
+  handleRemove,
+  operators,
 }: AggregationItemProps) {
-  const [isOpened, setIsOpened] = useState(false);
-  const { displayName } = Lib.displayInfo(query, stageIndex, aggregation);
-
-  const operators = Lib.selectedAggregationOperators(
-    Lib.availableAggregationOperators(query, stageIndex),
-    aggregation,
-  );
-
-  const handleRemove = useCallback(() => {
-    const nextQuery = Lib.removeClause(query, stageIndex, aggregation);
-    onQueryChange(nextQuery);
-  }, [query, stageIndex, aggregation, onQueryChange]);
+  const [isOpened, { toggle }] = useDisclosure(false);
 
   return (
-    <Popover opened={isOpened} onChange={setIsOpened}>
+    <Popover opened={isOpened} onChange={toggle}>
       <Popover.Target>
         <Root
           aria-label={displayName}
           data-testid="aggregation-item"
-          onClick={() => setIsOpened(!isOpened)}
+          onClick={toggle}
         >
           <AggregationName>{displayName}</AggregationName>
           <RemoveIcon name="close" onClick={handleRemove} />
