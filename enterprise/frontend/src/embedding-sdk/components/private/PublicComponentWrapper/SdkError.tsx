@@ -1,9 +1,8 @@
-import { t } from "ttag";
-
 import { useSdkSelector } from "embedding-sdk/store";
 import { getErrorComponent } from "embedding-sdk/store/selectors";
 import type { SdkErrorComponentProps } from "embedding-sdk/store/types";
-import { Center } from "metabase/ui";
+import Alert from "metabase/core/components/Alert";
+import { Box, Center } from "metabase/ui";
 
 export const SdkError = ({ message }: SdkErrorComponentProps) => {
   const CustomError = useSdkSelector(getErrorComponent);
@@ -18,8 +17,9 @@ export const SdkError = ({ message }: SdkErrorComponentProps) => {
 };
 
 const DefaultErrorMessage = ({ message }: SdkErrorComponentProps) => (
-  <div>
-    <div>{t`Error`}</div>
-    <div>{message}</div>
-  </div>
+  <Box p="sm">
+    <Alert variant="error" icon="warning">
+      {message}
+    </Alert>
+  </Box>
 );
