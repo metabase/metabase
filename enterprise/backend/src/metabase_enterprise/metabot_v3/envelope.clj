@@ -12,9 +12,8 @@
 
 (defn create
   "Create a fresh envelope from a context and history. This envelope should be used for the lifetime of the request."
-  [context history session-id]
-  {:session-id session-id
-   :history history
+  [context history]
+  {:history history
    :context context
    :session-id (random-uuid)
    :reactions []

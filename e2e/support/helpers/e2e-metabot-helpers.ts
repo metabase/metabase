@@ -5,7 +5,6 @@ import { newButton } from "./e2e-ui-elements-helpers";
 export function assertChatVisibility(visiblility: "visible" | "not.visible") {
   cy.findByTestId("metabot-chat").should(
     visiblility === "visible" ? "be.visible" : "not.exist",
-
   );
 }
 

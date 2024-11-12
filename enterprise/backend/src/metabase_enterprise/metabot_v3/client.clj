@@ -8,6 +8,7 @@
    [metabase-enterprise.metabot-v3.client.schema :as metabot-v3.client.schema]
    [metabase-enterprise.metabot-v3.context :as metabot-v3.context]
    [metabase-enterprise.metabot-v3.tools :as metabot-v3.tools]
+   [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
    [metabase.models.setting :refer [defsetting]]
    [metabase.public-settings :as public-settings]
