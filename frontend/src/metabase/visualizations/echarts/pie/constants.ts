@@ -36,7 +36,7 @@ export const OTHER_SLICE_MIN_PERCENTAGE = 0.005;
 
 export const OTHER_SLICE_KEY = `${NULL_CHAR}___OTHER___`;
 
-export const getSliceName = () => t`Other`;
+export const getOtherSliceName = () => t`Other`;
 
 export const getTotalText = () => t`Total`.toUpperCase();
 
