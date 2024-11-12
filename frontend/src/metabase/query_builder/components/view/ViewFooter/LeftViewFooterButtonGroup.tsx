@@ -4,7 +4,6 @@ import { t } from "ttag";
 
 import { EditorViewControl } from "embedding-sdk/components/private/EditorViewControl";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { isNotNull } from "metabase/lib/types";
 import {
   onCloseChartSettings,
   onOpenChartSettings,
@@ -52,21 +51,20 @@ export const LeftViewFooterButtonGroup = ({
   const data = useMemo(
     () =>
       [
-        shouldShowEditorButton
-          ? {
-              value: "editor",
-              label: (
-                <Tooltip label={t`Editor`}>
-                  <Icon
-                    name="notebook"
-                    onClick={() => {
-                      dispatch(setQueryBuilderMode("notebook"));
-                    }}
-                  />
-                </Tooltip>
-              ),
-            }
-          : null,
+        shouldShowEditorButton && {
+          value: "editor",
+          label: (
+            <Tooltip label={t`Editor`}>
+              <Icon
+                aria-label={t`Switch to editor`}
+                name="notebook"
+                onClick={() => {
+                  dispatch(setQueryBuilderMode("notebook"));
+                }}
+              />
+            </Tooltip>
+          ),
+        },
         isVisualized && {
           value: "table",
           label: (
@@ -96,7 +94,7 @@ export const LeftViewFooterButtonGroup = ({
             </Tooltip>
           ),
         },
-      ].filter(isNotNull),
+      ].filter(Boolean),
     [dispatch, isVisualized, shouldShowEditorButton, vizIcon],
   );
 
