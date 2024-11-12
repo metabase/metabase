@@ -50,13 +50,15 @@
 
 (mu/defn- build-request-body
   [context :- [:maybe ::metabot-v3.context/context]
-   messages :- [:maybe ::metabot-v3.client.schema/messages]]
+   messages :- [:maybe ::metabot-v3.client.schema/messages]
+   session-id :- uuid?]
   (encode-request-body
    {:messages      messages
     :context       {}
     :tools         (metabot-v3.tools/applicable-tools (metabot-v3.tools/*tools-metadata*) context)
     :instance-info (*instance-info*)
-    :user-id       api/*current-user-id*}))
+    :user-id       api/*current-user-id*
+    :session-id    session-id}))
 
 (defn- ->json-bytes ^bytes [x]
   (with-open [os (java.io.ByteArrayOutputStream.)
@@ -108,13 +110,14 @@
 (mu/defn ^:dynamic *request* :- ::metabot-v3.client.schema/ai-proxy.response
   "Make a request to the AI Proxy."
   [context :- [:maybe ::metabot-v3.context/context]
-   messages :- [:maybe ::metabot-v3.client.schema/messages]]
+   messages :- [:maybe ::metabot-v3.client.schema/messages]
+   session-id :- uuid?]
   ;; TODO -- when `:metabot-v3` code goes live remove this check and check for the `:metabot-v3` feature specifically.
   (assert (premium-features/has-any-features?) (i18n/tru "You must have a valid enterprise token to use MetaBot."))
   #_(premium-features/assert-has-feature :metabot-v3 "MetaBot")
   (try
     (let [url      (agent-endpoint-url)
-          body     (doto (build-request-body context messages)
+          body     (doto (build-request-body context messages session-id)
                      (metabot-v3.context/log :llm.log/be->llm))
           _        (log/debugf "Request to AI Proxy:\n%s" (u/pprint-to-str body))
           options  (build-request-options body)
@@ -138,7 +141,7 @@
 (comment
   ;; request 1
   (let [message-1  "Send an email to Cam"
-        response-1 (*request* {} [(str->message message-1)])]
+        response-1 (*request* {} [(str->message message-1)] (random-uuid))]
     ;; response 1 looks something like:
     (comment {:message {:content "Sorry I don't understand that. Could you please clarify what you would like to include in the email to Cam?"
                         :role :assistant
@@ -147,7 +150,7 @@
     (let [history   [(str->message message-1)
                      (:message response-1)
                      (str->message "Cam's email is cam@metabase.com")]
-          response-2 (*request* {} history)]
+          response-2 (*request* {} history (random-uuid))]
       ;; response 2 looks like:
       (comment {:message
                 {:content "",
@@ -157,7 +160,7 @@
       (let [history (conj (vec history)
                           (:message response-2)
                           (str->message "Thank you!"))]
-        (*request* {} history)))))
+        (*request* {} history (random-uuid))))))
 
 #_#_(*request* "Send an invite to Cam at cam@metabase.com" {} [])
   (*request* "" {}
