@@ -24,16 +24,20 @@ import type { QueryBuilderUIControls } from "metabase-types/store";
 
 interface LeftViewFooterButtonGroupProps {
   question: Question;
+  hideChartSettings?: boolean;
 }
 
 export const LeftViewFooterButtonGroup = ({
   question,
+  hideChartSettings = false,
 }: LeftViewFooterButtonGroupProps) => {
   const { isShowingChartSettingsSidebar }: QueryBuilderUIControls =
     useSelector(getUiControls);
   const isShowingRawTable = useSelector(getIsShowingRawTable);
   const vizIcon = getIconForVisualizationType(question.display());
-  const isNative = question && Lib.queryDisplayInfo(question.query()).isNative;
+  const { isNative, isEditable } = Lib.queryDisplayInfo(question.query());
+  const shouldShowEditorButton =
+    !isNative && isEditable && !question.isArchived();
 
   useUnmount(() => {
     // reset showing raw table, so new mount will default to viz
@@ -42,13 +46,14 @@ export const LeftViewFooterButtonGroup = ({
 
   const dispatch = useDispatch();
   const isVisualized = useSelector(getIsVisualized);
+  const shouldShowChartSettingsButton =
+    !hideChartSettings && (!isShowingRawTable || isVisualized);
 
   const data = useMemo(
     () =>
       [
-        isNative
-          ? null
-          : {
+        shouldShowEditorButton
+          ? {
               value: "editor",
               label: (
                 <Tooltip label={t`Editor`}>
@@ -60,8 +65,9 @@ export const LeftViewFooterButtonGroup = ({
                   />
                 </Tooltip>
               ),
-            },
-        {
+            }
+          : null,
+        isVisualized && {
           value: "table",
           label: (
             <Tooltip label={t`Results`}>
@@ -75,7 +81,7 @@ export const LeftViewFooterButtonGroup = ({
             </Tooltip>
           ),
         },
-        {
+        isVisualized && {
           value: "visualization",
           // TODO: also we need to add a spinner :boom:
           label: (
@@ -91,18 +97,18 @@ export const LeftViewFooterButtonGroup = ({
           ),
         },
       ].filter(isNotNull),
-    [dispatch, isNative, vizIcon],
+    [dispatch, isVisualized, shouldShowEditorButton, vizIcon],
   );
 
   return (
     <Flex gap="0.75rem">
-      {isVisualized && (
+      {(isVisualized || shouldShowEditorButton) && (
         <EditorViewControl
           value={isShowingRawTable ? "table" : "visualization"}
           data={data}
         />
       )}
-      {(!isShowingRawTable || isVisualized) && (
+      {shouldShowChartSettingsButton && (
         <Button
           radius="xl"
           variant={isShowingChartSettingsSidebar ? "filled" : "default"}
