@@ -14,17 +14,19 @@
                                                                                               :description "A valid email address of the user to invite"}}
                                                               :required              [:email]
                                                               :additional-properties false}}])]
-    (is (= {:messages      [{:role :user, :content "Hello"}]
-            :context       {}
-            :tools         [{:name        "invite_user"
-                             :description "Invite a user to Metabase. Requires a valid email address."
-                             :parameters  {:type       :object
-                                           :properties {"email" {:type :string
-                                                                 :description "A valid email address of the user to invite"}}
-                                           :required   ["email"]
-                                           :additionalProperties false}}]
-            :instance_info {}}
-           (#'metabot-v3.client/build-request-body {} [{:role :user :content "Hello"}])))))
+    (let [session-id (random-uuid)]
+      (is (=? {:messages      [{:role :user, :content "Hello"}]
+               :context       {}
+               :tools         [{:name        "invite_user"
+                                :description "Invite a user to Metabase. Requires a valid email address."
+                                :parameters  {:type       :object
+                                              :properties {"email" {:type :string
+                                                                    :description "A valid email address of the user to invite"}}
+                                              :required   ["email"]
+                                              :additionalProperties false}}]
+               :instance_info {}
+               :session_id    session-id}
+              (#'metabot-v3.client/build-request-body {} [{:role :user :content "Hello"}] session-id))))))
 
 (deftest ^:parallel encode-request-body-test
   (is (= {:messages [{:content    nil
