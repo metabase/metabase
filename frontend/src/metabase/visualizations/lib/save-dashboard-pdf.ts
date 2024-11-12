@@ -9,7 +9,9 @@ export const saveDashboardPdf = async (
   dashboardName: string,
 ) => {
   const fileName = `${dashboardName}.pdf`;
-  const node = document.querySelector(selector);
+  const node = document
+    .querySelector(selector)
+    ?.querySelector(".react-grid-layout");
 
   if (!node || !(node instanceof HTMLElement)) {
     console.warn("No node found for selector", selector);
@@ -25,6 +27,7 @@ export const saveDashboardPdf = async (
       title.innerHTML = dashboardName;
       title.style["borderBottom"] = "1px solid var(--mb-color-border)";
       title.style["padding"] = "2rem 1rem 1rem 1rem";
+      title.style["marginBottom"] = "1rem";
       node.insertBefore(title, node.firstChild);
     },
   });
