@@ -1036,8 +1036,7 @@
                   :collection-type            :collection.type
                   ;; This field can become stale, unless we change to calculate it just-in-time.
                   :display                    true
-                  :moderated-status           :mr.status
-                  :table-id                   false}
+                  :moderated-status           :mr.status}
    :bookmark     [:model/CardBookmark [:and
                                        [:= :bookmark.card_id :this.id]
                                        [:= :bookmark.user_id :current_user/id]]]
