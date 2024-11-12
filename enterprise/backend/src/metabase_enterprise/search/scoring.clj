@@ -7,17 +7,19 @@
    [metabase.search.postgres.scoring :as fulltext.scoring]))
 
 (def ^:private enterprise-scorers
-  {:official-collection (fulltext.scoring/truthy :official_collection)
-   :verified            (fulltext.scoring/truthy :verified)})
-
-(def ^:private scorers-enabled
-  {:official-collection #(premium-features/has-feature? :official-collection)
-   :verified            #(premium-features/has-feature? :content-verification)})
+  {:official-collection {:expr (fulltext.scoring/truthy :official_collection)
+                         :pred #(premium-features/has-feature? :official-collections)}
+   :verified            {:expr (fulltext.scoring/truthy :verified)
+                         :pred #(premium-features/has-feature? :content-verification)}})
 
 (defn- additional-scorers
   "Which additional scorers are active?"
   []
-  (into [] (comp (filter (fn [[_ pred]] (pred))) (map first)) scorers-enabled))
+  (into {}
+        (keep (fn [[k {:keys [expr pred]}]]
+                (when (pred)
+                  [k expr])))
+        enterprise-scorers))
 
 (defenterprise scorers
   "Return the select-item expressions used to calculate the score for each search result."
@@ -62,4 +64,4 @@
   [result]
   (into (scoring/weights-and-scores result)
         (map #(legacy-score-result % result))
-        (additional-scorers)))
+        (keys (additional-scorers))))
