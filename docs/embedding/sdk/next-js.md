@@ -122,7 +122,7 @@ Pass this `config` to `MetabaseProvider`
 import { defineEmbeddingSdkConfig } from "@metabase/embedding-sdk-react";
 const config = defineEmbeddingSdkConfig({
   metabaseInstanceUrl: "https://metabase.example.com", // Required: Your Metabase instance URL
-  jwtProviderUri: "/sso/metabase", // Required: An endpoint in your app that signs people in and returns a token.
+  authProviderUri: "/sso/metabase", // Required: An endpoint in your app that signs people in and returns a token.
 });
 ```
 
@@ -181,6 +181,6 @@ And pass this `config` to `MetabaseProvider`
 import { defineEmbeddingSdkConfig } from "@metabase/embedding-sdk-react";
 const config = defineEmbeddingSdkConfig({
   metabaseInstanceUrl: "https://metabase.example.com", // Required: Your Metabase instance URL
-  jwtProviderUri: "/api/sso/metabase", // Required: An endpoint in your app that returns signs the user in and delivers a token
+  authProviderUri: "/api/sso/metabase", // Required: An endpoint in your app that returns signs the user in and delivers a token
 });
 ```
