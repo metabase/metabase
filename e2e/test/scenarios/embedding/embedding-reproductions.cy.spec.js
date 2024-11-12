@@ -1,6 +1,7 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   addOrUpdateDashboardCard,
+  assertEChartsTooltip,
   createDashboardWithQuestions,
   createNativeQuestion,
   createQuestionAndDashboard,
@@ -10,6 +11,7 @@ import {
   getIframeBody,
   modal,
   openStaticEmbeddingModal,
+  otherSeriesChartPaths,
   popover,
   queryBuilderMain,
   restore,
@@ -1050,10 +1052,19 @@ describe("issue 8490", () => {
                 { "base-type": "type/DateTime", "temporal-unit": "month" },
               ],
             ],
+            filter: [
+              "time-interval",
+              ["field", PRODUCTS.CREATED_AT, { "base-type": "type/DateTime" }],
+              -12,
+              "month",
+            ],
           },
+          limit: 100,
           visualization_settings: {
             "graph.dimensions": ["CREATED_AT", "CATEGORY"],
             "graph.metrics": ["count"],
+            "graph.max_categories_enabled": true,
+            "graph.max_categories": 2,
           },
           display: "bar",
           enable_embedding: true,
@@ -1150,12 +1161,33 @@ describe("issue 8490", () => {
 
       cy.log("assert the line chart");
       getDashboardCard(0).within(() => {
-        // X-axis labels: Jan 2023
-        cy.findByText("1월 2023").should("be.visible");
+        // X-axis labels: Jan 2024
+        cy.findByText("1월 2024").should("be.visible");
         // Aggregation "count"
         cy.findByText("카운트").should("be.visible");
+        // "Other" bar tooltip
+        otherSeriesChartPaths().first().realHover();
       });
+    });
 
+    assertEChartsTooltip({
+      rows: [
+        {
+          name: "Gizmo",
+          value: "4",
+        },
+        {
+          name: "Widget",
+          value: "2",
+        },
+        {
+          name: "합계",
+          value: "6",
+        },
+      ],
+    });
+
+    cy.findByTestId("embed-frame").within(() => {
       cy.log("assert the trend chart");
       getDashboardCard(2).within(() => {
         // N/A
@@ -1192,7 +1224,7 @@ describe("issue 8490", () => {
 
     cy.findByTestId("embed-frame").within(() => {
       // X-axis labels: Jan 2023
-      cy.findByText("4월 2022").should("be.visible");
+      cy.findByText("11월 2023").should("be.visible");
       // Powered by
       cy.findByText("제공:").should("be.visible");
       // Aggregation "count"
