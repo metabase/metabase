@@ -89,7 +89,8 @@
                                                      [:= :updated.moderated_item_type "card"]
                                                      [:= :updated.moderated_item_id :this.id]
                                                      [:= :updated.most_recent true]]}}
-                 :DashboardCard    #{{:search-model "card"
+                 ;; Disabled for performance reasons, see spec for :model/Card
+                 #_#_:DashboardCard    #{{:search-model "card"
                                       :fields       nil
                                       :where        [:= :updated.card_id :this.id]}}}
          (#'search.spec/search-model-hooks (search.spec/spec "card"))))
