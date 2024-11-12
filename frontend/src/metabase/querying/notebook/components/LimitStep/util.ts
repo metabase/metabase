@@ -1,5 +1,5 @@
 export function isLimitValid(number: number) {
-  return !Number.isNaN(number) && number > 0;
+  return !Number.isNaN(number) && Number.isInteger(number) && number > 0;
 }
 
 export function parseLimit(value: string) {
