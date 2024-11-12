@@ -79,8 +79,8 @@ export type MetabotApiCallReaction = {
   };
 };
 
-export type MetabotRunQueryReaction = {
-  type: "metabot.reaction/run-query";
+export type MetabotChangeQueryReaction = {
+  type: "metabot.reaction/change-query";
   dataset_query: DatasetQuery;
 };
 
@@ -135,7 +135,7 @@ export type MetabotReaction =
   | MetabotConfirmationReaction
   | MetabotWriteBackReaction
   | MetabotApiCallReaction
-  | MetabotRunQueryReaction;
+  | MetabotChangeQueryReaction;
 
 /* Metabot v3 - API Request Types */
 

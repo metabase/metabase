@@ -1,14 +1,12 @@
-(ns metabase-enterprise.metabot-v3.tools.run-query
+(ns metabase-enterprise.metabot-v3.tools.change-query
   (:require
    [clojure.string :as str]
    [medley.core :as m]
    [metabase-enterprise.metabot-v3.tools.interface :as metabot-v3.tools.interface]
    [metabase.lib.core :as lib]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.query :as lib.query]
    [metabase.lib.types.isa :as lib.types.isa]
-   [metabase.lib.util :as lib.util]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu])
   (:import
@@ -165,30 +163,23 @@
     (lib/limit query limit)
     (throw (limit-error limit))))
 
-(defn- raw-query
-  [query]
-  (lib/query (lib.metadata/->metadata-provider query)
-             (or (some->> query lib.util/source-table-id (lib.metadata/table query))
-                 (some->> query lib.util/source-card-id (lib.metadata/card query)))))
-
 (defn- apply-steps
   [query steps]
   (reduce apply-step query steps))
 
-(mu/defmethod metabot-v3.tools.interface/*invoke-tool* :metabot.tool/run-query
+(mu/defmethod metabot-v3.tools.interface/*invoke-tool* :metabot.tool/change-query
   [_tool-name {:keys [steps]} {:keys [dataset_query]}]
   (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (:database dataset_query))
         query             (lib/query metadata-provider dataset_query)]
     (try
-      {:reactions [{:type  :metabot.reaction/run-query
-                    :dataset_query (-> (raw-query query)
-                                       (apply-steps steps)
+      {:reactions [{:type  :metabot.reaction/change-query
+                    :dataset_query (-> (apply-steps query steps)
                                        lib.query/->legacy-MBQL)}]
        :output "success"}
       (catch ExceptionInfo e
-        (log/debug e "Error creating a query in run-query tool")
+        (log/debug e "Error creating a query in change-query tool")
         {:output (ex-message e)}))))
 
-(mu/defmethod metabot-v3.tools.interface/*tool-applicable?* :metabot.tool/run-query
+(mu/defmethod metabot-v3.tools.interface/*tool-applicable?* :metabot.tool/change-query
   [_tool-name {:keys [dataset_query]}]
   (some? dataset_query))
