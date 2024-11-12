@@ -58,10 +58,10 @@ describe("NotebookStepList", () => {
     setup();
 
     assertActionButtonsOrder([
-      "Join data",
-      "Custom column",
       "Filter",
       "Summarize",
+      "Join data",
+      "Custom column",
       "Sort",
       "Row limit",
     ]);
@@ -90,10 +90,10 @@ describe("NotebookStepList", () => {
     setup({}, queryWithJoin);
 
     assertActionButtonsOrder([
-      "Join data",
-      "Custom column",
       "Filter",
       "Summarize",
+      "Join data",
+      "Custom column",
       "Sort",
       "Row limit",
     ]);
@@ -139,12 +139,12 @@ describe("NotebookStepList", () => {
     setup({}, query);
 
     assertActionButtonsOrder([
-      "Sort",
-      "Row limit",
-      "Join data",
-      "Custom column",
       "Filter",
       "Summarize",
+      "Join data",
+      "Sort",
+      "Row limit",
+      "Custom column",
     ]);
   });
 
