@@ -14,12 +14,6 @@
   (:import
    (clojure.lang ExceptionInfo)))
 
-(defmulti apply-step
-  "Applies a query step."
-  {:arglists '([query step])}
-  (fn [_query step]
-    (-> step :type keyword)))
-
 (defn- column-display-name
   [query column]
   (->> column (lib/display-info query) :long-display-name))
@@ -28,151 +22,148 @@
   [operator]
   (-> operator :short name))
 
-(defn- apply-filter-step
-  [query
-   step
-   type-fn
-   expression-fn]
-  (let [{:keys [value], step-type :type, column-name :column, operator-name :operator} step
-        columns (into [] (filter type-fn) (lib/filterable-columns query))
-        column  (m/find-first #(= (column-display-name query %) column-name) columns)]
-    (if (some? column)
-      (let [operators (lib/filterable-column-operators column)
-            operator  (m/find-first #(= (operator-display-name %) operator-name) operators)]
-        (if (some? operator)
-          (lib/filter query (expression-fn (:short operator) column value))
-          (throw (ex-info (format "%s is not a correct %s operator for %s column. Correct operators are: %s"
-                                  operator-name
-                                  step-type
-                                  column-name
-                                  (str/join ", " (map operator-display-name operators)))
-                          {:column   column-name
-                           :operator operator-name}))))
-      (throw (ex-info (format "%s is not a correct column for the %s step. Correct columns are: %s"
-                              column-name
-                              step-type
-                              (str/join ", " (map #(column-display-name query %) columns)))
-                      {:column column-name})))))
+(defn- find-column
+  [query columns column-name]
+  (m/find-first #(= (column-display-name query %) column-name) columns))
+
+(defn- column-error
+  [query columns column-name step-type]
+  (ex-info (format "%s is not a correct column for the %s step. Correct columns are: %s"
+                   column-name
+                   step-type
+                   (str/join ", " (map #(column-display-name query %) columns)))
+           {:column column-name}))
+
+(defn- find-operator
+  [operators operator-name]
+  (m/find-first #(= (operator-display-name %) operator-name) operators))
+
+(defn- operator-error
+  [operators operator-name step-type]
+  (ex-info (format "%s is not a correct operator for the %s step. Correct operators are: %s"
+                   operator-name
+                   step-type
+                   (str/join ", " (map operator-display-name operators)))
+           {:operator operator-name}))
+
+(defn- limit-error
+  [limit]
+  (ex-info "Row limit must be a non-negative number." {:limit limit}))
+
+(defmulti apply-step
+  "Applies a query step."
+  {:arglists '([query step])}
+  (fn [_query step]
+    (-> step :type keyword)))
 
 (defmethod apply-step :string-filter
-  [query step]
-  (apply-filter-step query
-                     step
-                     lib.types.isa/string-or-string-like?
-                     (fn [operator column value]
-                       (condp = operator
-                         :=                (lib/= column value)
-                         :!=               (lib/!= column value)
-                         :contains         (lib/contains column value)
-                         :does-not-contain (lib/does-not-contain column value)
-                         :starts-with      (lib/starts-with column value)
-                         :ends-with        (lib/ends-with column value)))))
+  [query {:keys [value], step-type :type, column-name :column, operator-name :operator}]
+  (let [columns   (into [] (filter lib.types.isa/string-or-string-like?) (lib/filterable-columns query))
+        column    (or (find-column query columns column-name)
+                      (throw (column-error query columns column-name step-type)))
+        operators (lib/filterable-column-operators column)
+        operator  (or (find-operator operators operator-name)
+                      (throw (operator-error operators operator-name step-type)))
+        clause    (condp = (:short operator)
+                    :=                (lib/= column value)
+                    :!=               (lib/!= column value)
+                    :contains         (lib/contains column value)
+                    :does-not-contain (lib/does-not-contain column value)
+                    :starts-with      (lib/starts-with column value)
+                    :ends-with        (lib/ends-with column value))]
+    (lib/filter query clause)))
 
 (defmethod apply-step :number-filter
-  [query step]
-  (apply-filter-step query
-                     step
-                     lib.types.isa/numeric?
-                     (fn [operator column value]
-                       (condp = operator
-                         :=  (lib/= column value)
-                         :!= (lib/!= column value)
-                         :>  (lib/> column value)
-                         :>= (lib/>= column value)
-                         :<  (lib/< column value)
-                         :<= (lib/<= column value)))))
+  [query {:keys [value], step-type :type, column-name :column, operator-name :operator}]
+  (let [columns   (into [] (filter lib.types.isa/numeric?) (lib/filterable-columns query))
+        column    (or (find-column query columns column-name)
+                      (throw (column-error query columns column-name step-type)))
+        operators (lib/filterable-column-operators column)
+        operator  (or (find-operator operators operator-name)
+                      (throw (operator-error operators operator-name step-type)))
+        clause    (condp = (:short operator)
+                    :=  (lib/= column value)
+                    :!= (lib/!= column value)
+                    :>  (lib/> column value)
+                    :>= (lib/>= column value)
+                    :<  (lib/< column value)
+                    :<= (lib/<= column value))]
+    (lib/filter query clause)))
 
 (defmethod apply-step :boolean-filter
-  [query step]
-  (apply-filter-step query
-                     step
-                     lib.types.isa/boolean?
-                     (fn [operator column value]
-                       (condp = operator
-                         :=  (lib/= column value)))))
+  [query {:keys [value], step-type :type, column-name :column, operator-name :operator}]
+  (let [columns   (into [] (filter lib.types.isa/boolean?) (lib/filterable-columns query))
+        column    (or (find-column query columns column-name)
+                      (throw (column-error query columns column-name step-type)))
+        operators (lib/filterable-column-operators column)
+        operator  (or (find-operator operators operator-name)
+                      (throw (operator-error operators operator-name step-type)))
+        clause    (condp = operator
+                    :=  (lib/= column value))]
+    (lib/filter query clause)))
 
 (defmethod apply-step :specific-date-filter
-  [query step]
-  (apply-filter-step query
-                     step
-                     lib.types.isa/date-or-datetime?
-                     (fn [operator column value]
-                       (condp = operator
-                         :=  (lib/= column value)
-                         :>  (lib/> column value)
-                         :<  (lib/< column value)))))
+  [query {:keys [value], step-type :type, column-name :column, operator-name :operator}]
+  (let [columns   (into [] (filter lib.types.isa/date-or-datetime?) (lib/filterable-columns query))
+        column    (or (find-column query columns column-name)
+                      (throw (column-error query columns column-name step-type)))
+        operators (lib/filterable-column-operators column)
+        operator  (or (find-operator operators operator-name)
+                      (throw (operator-error operators operator-name step-type)))
+        clause    (condp = (:short operator)
+                    :=  (lib/= column value)
+                    :>  (lib/> column value)
+                    :<  (lib/< column value))]
+    (lib/filter query clause)))
 
 (defmethod apply-step :relative-date-filter
-  [query {:keys [direction unit value], column-name :column}]
+  [query {:keys [direction unit value], step-type :type, column-name :column}]
   (let [columns   (into [] (filter lib.types.isa/date-or-datetime?) (lib/filterable-columns query))
-        column    (m/find-first #(= (column-display-name query %) column-name) columns)
+        column    (or (find-column query columns column-name)
+                      (throw (column-error query columns column-name step-type)))
         direction (keyword direction)
         unit      (keyword unit)]
-    (if (some? column)
-      (lib/filter query (lib/time-interval column
-                                           (condp = direction
-                                             :last    (- value)
-                                             :current :current
-                                             :next    value)
-                                           unit))
-      (throw (ex-info (format "%s is not a correct column for the relative-date-filter step. Correct columns are: %s"
-                              column-name
-                              (str/join ", " (map #(column-display-name query %) columns)))
-                      {:column column-name})))))
-
+    (lib/filter query (lib/time-interval column
+                                         (condp = direction
+                                           :last    (- value)
+                                           :current :current
+                                           :next    value)
+                                         unit))))
 (defmethod apply-step :aggregation
-  [query {operator-name :operator, column-name :column}]
+  [query {step-type :type, operator-name :operator, column-name :column}]
   (let [operators (lib/available-aggregation-operators query)
-        operator  (m/find-first #(= (operator-display-name %) operator-name) operators)]
-    (if (some? operator)
-      (if (:requires-column? operator)
+        operator  (or (find-operator operators operator-name)
+                      (throw (operator-error operators operator-name step-type)))]
+    (if (:requires-column? operator)
         (let [columns (lib/aggregation-operator-columns operator)
-              column  (m/find-first #(= (column-display-name query %) column-name) columns)]
-          (if (some? column)
-            (lib/aggregate query (lib/aggregation-clause operator column))
-            (throw (ex-info (format "%s is not a correct column for %s operator for the aggregate step. Correct columns are: %s"
-                                    column-name
-                                    operator-name
-                                    (str/join ", " (map #(column-display-name query %) columns)))
-                            {:operator operator-name
-                             :column   column-name}))))
-        (lib/aggregate query (lib/aggregation-clause operator)))
-      (throw (ex-info (format "%s is not a correct operator for the aggregation step. Correct operators are: %s"
-                              operator-name
-                              (str/join ", " (map operator-display-name operators)))
-                      {:operator operator-name})))))
+              column  (or (find-column query columns column-name)
+                          (throw (column-error query columns column-name step-type)))]
+          (lib/aggregate query (lib/aggregation-clause operator column)))
+      (lib/aggregate query (lib/aggregation-clause operator)))))
 
 (defmethod apply-step :breakout
-  [query {column-name :column}]
+  [query {step-type :type, column-name :column}]
   (let [columns (lib/breakoutable-columns query)
-        column  (m/find-first #(= (column-display-name query %) column-name) columns)]
-    (if (some? column)
-      (let [bucket  (m/find-first :default (lib/available-temporal-buckets query column))
-            binning (m/find-first :default (lib/available-binning-strategies query column))]
-        (lib/breakout query (cond-> column
-                              bucket  (lib/with-temporal-bucket bucket)
-                              binning (lib/with-binning binning))))
-      (throw (ex-info (format "%s is not a correct column for the breakout step. Correct columns are: %s"
-                              column-name
-                              (str/join ", " (map #(column-display-name query %) columns)))
-                      {:column column-name})))))
+        column  (or (find-column query columns column-name)
+                    (throw (column-error query columns column-name step-type)))
+        bucket  (m/find-first :default (lib/available-temporal-buckets query column))
+        binning (m/find-first :default (lib/available-binning-strategies query column))]
+    (lib/breakout query (cond-> column
+                          bucket  (lib/with-temporal-bucket bucket)
+                          binning (lib/with-binning binning)))))
 
 (defmethod apply-step :order_by
-  [query {column-name :column}]
+  [query {step-type :type, column-name :column}]
   (let [columns (lib/orderable-columns query)
-        column  (m/find-first #(= (column-display-name query %) column-name) columns)]
-    (if (some? column)
-      (lib/order-by query column)
-      (throw (ex-info (format "%s is not a correct column for the order_by step. Choose a column based on the user input from this list: %s"
-                              column-name
-                              (str/join ", " (map #(column-display-name query %) columns)))
-                      {:column column-name})))))
+        column  (or (find-column query columns column-name)
+                    (throw (column-error query columns column-name step-type)))]
+    (lib/order-by query column)))
 
 (defmethod apply-step :limit
   [query {:keys [limit]}]
   (if (not (neg-int? limit))
     (lib/limit query limit)
-    (throw (ex-info "Row limit must be a non-negative number." {:limit limit}))))
+    (throw (limit-error limit))))
 
 (defn- raw-query
   [query]
