@@ -63,6 +63,7 @@
     {:status-code 501, :message "Search index is not supported for this installation."}))
 
 (defn- set-weights! [overrides]
+  (api/check-superuser)
   (let [allowed-key? (set (keys @#'search.config/default-weights))]
     (if-let [unknown-weights (seq (remove allowed-key? (keys overrides)))]
       {:status 400 :message (str "Unknown weights: " (str/join ", " (map name (sort unknown-weights))))}
@@ -76,14 +77,13 @@
   [:as {overrides :params}]
   ;; remove cookie
   (let [overrides (dissoc overrides :search_engine)]
-    (when (seq overrides)
-      (api/check-superuser))
-    (set-weights! (update-vals overrides parse-double))))
+    (if (seq overrides)
+      (set-weights! overrides)
+      (search.config/weights))))
 
 (api/defendpoint PUT "/weights"
   "Return the current weights being used to rank the search results"
   [:as {overrides :body}]
-  (api/check-superuser)
   (set-weights! overrides))
 
 (api/defendpoint GET "/"
