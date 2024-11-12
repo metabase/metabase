@@ -3,6 +3,7 @@
   #_{:clj-kondo/ignore [:metabase/ns-module-checker]}
   (:require
    [environ.core :as env]
+   [metabase.config :as config]
    [metabase.models.action :as action]
    [metabase.models.application-permissions-revision :as a-perm-revision]
    [metabase.models.bookmark :as bookmark]
@@ -212,7 +213,7 @@
 
 ;; Hidden behind an obscure environment variable, as it may cause performance problems.
 ;; See https://github.com/camsaul/toucan2/issues/195
-(when (:mb-experimental-search-index-realtime-updates env/env)
+(when (or (:mb-experimental-search-index-realtime-updates env/env) config/is-test?)
   (t2/define-after-update :hook/search-index
     [instance]
     (when (search/supports-index?)
