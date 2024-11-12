@@ -2,6 +2,7 @@ import {
   ANALYTICS_PAGE_SNIPPET,
   ANALYTICS_PROVIDER_SNIPPET_MINIMAL,
   ANALYTICS_PROVIDER_SNIPPET_WITH_USER_SWITCHER,
+  CREATE_QUESTION_SNIPPET,
   THEME_SWITCHER_SNIPPET,
   getAnalyticsDashboardSnippet,
   getEmbeddingProviderSnippet,
@@ -46,6 +47,10 @@ export function getComponentSnippets(options: Options) {
     {
       name: "analytics-page",
       content: ANALYTICS_PAGE_SNIPPET.trim(),
+    },
+    {
+      name: "create-question",
+      content: CREATE_QUESTION_SNIPPET.trim(),
     },
   ];
 

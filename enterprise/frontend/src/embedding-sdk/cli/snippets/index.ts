@@ -5,3 +5,4 @@ export * from "./analytics-page-snippet";
 export * from "./theme-switcher-snippet";
 export * from "./user-switcher-snippet";
 export * from "./express-server-snippet";
+export * from "./create-question-snippet";
