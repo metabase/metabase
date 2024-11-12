@@ -90,9 +90,10 @@
    :view-count          2
    :text                10})
 
-(def weights
+(defn weights
   "Strength of the various scorers. Copied from metabase.search.in-place.scoring, but allowing divergence."
-  (atom default-weights))
+  []
+  (merge default-weights (public-settings/experimental-search-weight-overrides)))
 
 (defn weight
   "The relative strength the corresponding score has in influencing the total score."

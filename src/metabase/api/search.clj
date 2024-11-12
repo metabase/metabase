@@ -62,21 +62,29 @@
     :else
     {:status-code 501, :message "Search index is not supported for this installation."}))
 
+(defn- set-weights! [overrides]
+  (let [allowed-key? (set (keys @#'search.config/default-weights))]
+    (if-let [unknown-weights (seq (remove allowed-key? (keys overrides)))]
+      {:status 400 :message (str "Unknown weights: " (str/join ", " (map name (sort unknown-weights))))}
+      (do
+        (public-settings/experimental-search-weight-overrides!
+         (merge (public-settings/experimental-search-weight-overrides) overrides))
+        (search.config/weights)))))
+
 (api/defendpoint GET "/weights"
   "Return the current weights being used to rank the search results"
-  []
-  @search.config/weights)
+  [:as {overrides :params}]
+  ;; remove cookie
+  (let [overrides (dissoc overrides :search_engine)]
+    (when (seq #p overrides)
+      (api/check-superuser))
+    (set-weights! (update-vals overrides parse-double))))
 
 (api/defendpoint PUT "/weights"
   "Return the current weights being used to rank the search results"
-  [:as {weights :body}]
+  [:as {overrides :body}]
   (api/check-superuser)
-  (let [allowed-key? (set (keys @search.config/weights))]
-    (if-let [unknown-weights (seq (remove allowed-key? (keys weights)))]
-      {:status 400 :message (str "Unknown weights: " (str/join ", " (map name (sort unknown-weights))))}
-      (do
-        (swap! search.config/weights merge weights)
-        {:status 200 :new-weights @search.config/weights}))))
+  (set-weights! overrides))
 
 (api/defendpoint GET "/"
   "Search for items in Metabase.
