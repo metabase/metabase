@@ -132,79 +132,51 @@
    [:type [:= :metabot.reaction/writeback]]
    [:message :string]])
 
-(defreaction :metabot.reaction/change-query
+(defreaction :metabot.reaction/run-query
   [:map
-   [:string-filters [:vector [:map
-                              [:column :string]
-                              [:operator [:enum "=" "!=" "contains" "does-not-contain" "starts-with" "ends-with"]]
-                              [:value :string]]]]
-   [:number-filters [:vector [:map
-                              [:column :string]
-                              [:operator [:enum "=" "!=" ">" "<" ">=" "<="]]
-                              [:value number?]]]]
-   [:boolean-filters [:vector [:map
-                               [:column :string]
-                               [:value :boolean]]]]
-   [:specific-date-filters [:vector [:map
-                                     [:column :string]
-                                     [:operator [:enum "=" ">" "<"]]
-                                     [:value :string]]]]
-   [:relative-date-filters [:vector [:map
-                                     [:column :string]
-                                     [:direction [:enum "last" "current" "next"]]
-                                     [:value integer?]
-                                     [:unit [:enum "day", "week", "month", "quarter", "year"]]]]]
-   [:aggregations [:vector [:map
-                            [:operator :string]
-                            [:column [:maybe :string]]]]]
-   [:breakouts [:vector [:map
-                         [:column :string]]]]
-   [:order-bys [:vector [:map
-                         [:column :string]
-                         [:direction [:maybe [:enum "asc" "desc"]]]]]]
-   [:limits [:vector [:map
-                      [:limit integer?]]]]])
+   [:type [:= :metabot.reaction/run-query]]
+   [:dataset_query :map]])
 
 (defreaction :metabot.reaction/change-series-settings
   [:map
    [:type [:= :metabot.reaction/change-series-settings]]
    [:series_settings [:vector [:map
-                              [:key :string]
-                              [:title {:optional true} [:maybe :string]]
-                              [:color {:optional true} [:maybe :string]]
-                              [:show_series_values {:optional true} [:maybe boolean?]]
-                              [:line.size {:optional true} [:maybe [:enum "S" "M" "L"]]]
-                              [:line.style {:optional true} [:maybe [:enum "solid" "dashed" "dotted"]]]
-                              [:line.interpolate {:optional true} [:maybe [:enum "linear" "cardinal" "step-after"]]]
-                              [:line.marker_enabled {:optional true} [:maybe boolean?]]
-                              [:line.missing {:optional true} [:maybe [:enum "none" "zero" "interpolate"]]]
-                              [:axis {:optional true} [:maybe [:enum "left" "right"]]]]]]])
+                               [:key :string]
+                               [:title {:optional true} [:maybe :string]]
+                               [:color {:optional true} [:maybe :string]]
+                               [:show_series_values {:optional true} [:maybe boolean?]]
+                               [:line.size {:optional true} [:maybe [:enum "S" "M" "L"]]]
+                               [:line.style {:optional true} [:maybe [:enum "solid" "dashed" "dotted"]]]
+                               [:line.interpolate {:optional true} [:maybe [:enum "linear" "cardinal" "step-after"]]]
+                               [:line.marker_enabled {:optional true} [:maybe boolean?]]
+                               [:line.missing {:optional true} [:maybe [:enum "none" "zero" "interpolate"]]]
+                               [:axis {:optional true} [:maybe [:enum "left" "right"]]]]]]])
 
 (defreaction :metabot.reaction/change-column-settings
   [:map
    [:type [:= :metabot.reaction/change-column-settings]]
    [:column_settings [:vector [:map
-                             [:key :string]
-                             [:column_title {:optional true} [:maybe :string]]
-                             [:date_abbreviate {:optional true} [:maybe boolean?]]
-                             [:date_format {:optional true} [:maybe :string]]
-                             [:date_separator {:optional true} [:maybe [:enum "/" "-" "."]]]
-                             [:date_style {:optional true} [:maybe [:enum
-                                                                  "MMMM D, YYYY"
-                                                                  "D MMMM, YYYY"
-                                                                  "dddd, MMMM D, YYYY"
-                                                                  "M/D/YYYY"
-                                                                  "D/M/YYYY"
-                                                                  "YYYY/M/D"]]]
-                             [:decimals {:optional true} [:maybe :int]]
-                             [:link_text {:optional true} [:maybe :string]]
-                             [:link_url {:optional true} [:maybe :string]]
-                             [:number_separators {:optional true} [:maybe :string]]
-                             [:number_style {:optional true} [:maybe :string]]
-                             [:prefix {:optional true} [:maybe :string]]
-                             [:show_mini_bar {:optional true} [:maybe boolean?]]
-                             [:suffix {:optional true} [:maybe :string]]
-                             [:view_as {:optional true} [:maybe [:enum "link" "email_link" "image" "auto"]]]]]]])
+                               [:key :string]
+                               [:column_title {:optional true} [:maybe :string]]
+                               [:date_abbreviate {:optional true} [:maybe boolean?]]
+                               [:date_format {:optional true} [:maybe :string]]
+                               [:date_separator {:optional true} [:maybe [:enum "/" "-" "."]]]
+                               [:date_style {:optional true} [:maybe [:enum
+                                                                      "MMMM D, YYYY"
+                                                                      "D MMMM, YYYY"
+                                                                      "dddd, MMMM D, YYYY"
+                                                                      "M/D/YYYY"
+                                                                      "D/M/YYYY"
+                                                                      "YYYY/M/D"]]]
+                               [:decimals {:optional true} [:maybe :int]]
+                               [:link_text {:optional true} [:maybe :string]]
+                               [:link_url {:optional true} [:maybe :string]]
+                               [:number_separators {:optional true} [:maybe :string]]
+                               [:number_style {:optional true} [:maybe :string]]
+                               [:prefix {:optional true} [:maybe :string]]
+                               [:show_mini_bar {:optional true} [:maybe boolean?]]
+                               [:suffix {:optional true} [:maybe :string]]
+                               [:view_as {:optional true} [:maybe [:enum "link" "email_link" "image" "auto"]]]]]]])
 
 (defreaction :metabot.reaction/change-chart-appearance
   [:map
