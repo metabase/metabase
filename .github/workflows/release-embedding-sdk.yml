@@ -227,7 +227,7 @@ jobs:
 
       - name: Edit PR adding useful information (using Metabase bot app)
         run: |
-          gh pr edit --add-reviewer @metabase/embedding --add-label no-backport
+          gh pr edit --add-reviewer @metabase/embedding,albertoperdomo --add-label no-backport
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
 
