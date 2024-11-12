@@ -1,6 +1,6 @@
 {
-  "name": "run-query",
-  "description": "Executes a query in Metabase. A query is composed from multiple steps. Use get-query-columns tool to list available columns.",
+  "name": "change-query",
+  "description": "Executes a query in Metabase. A query is composed from multiple steps. Use `query_columns` for the list of available columns.",
   "parameters": {
     "type": "object",
     "properties": {

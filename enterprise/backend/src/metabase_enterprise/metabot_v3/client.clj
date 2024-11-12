@@ -54,7 +54,7 @@
    session-id :- uuid?]
   (encode-request-body
    {:messages      messages
-    :context       {}
+    :context       (metabot-v3.context/hydrate-context (or context {}))
     :tools         (metabot-v3.tools/applicable-tools (metabot-v3.tools/*tools-metadata*) context)
     :instance-info (*instance-info*)
     :user-id       api/*current-user-id*

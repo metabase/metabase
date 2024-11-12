@@ -6,7 +6,6 @@
    [malli.transform :as mtx]
    [metabase-enterprise.metabot-v3.tools.change-display-type]
    [metabase-enterprise.metabot-v3.tools.change-query]
-   [metabase-enterprise.metabot-v3.tools.get-query-columns]
    [metabase-enterprise.metabot-v3.tools.interface :as metabot-v3.tools.interface]
    [metabase-enterprise.metabot-v3.tools.who-is-your-favorite]
    [metabase.config :as config]
@@ -23,7 +22,6 @@
 (comment
   metabase-enterprise.metabot-v3.tools.change-display-type/keep-me
   metabase-enterprise.metabot-v3.tools.change-query/keep-me
-  metabase-enterprise.metabot-v3.tools.get-query-columns/keep-me
   metabase-enterprise.metabot-v3.tools.who-is-your-favorite/keep-me)
 
 (mu/defn- reducible-tool-metadata-file-paths :- (lib.schema.common/instance-of-class clojure.lang.IReduceInit)
