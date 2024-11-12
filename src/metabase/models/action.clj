@@ -39,7 +39,7 @@
 (doseq [model action-sub-models]
   (derive model :metabase/model))
 
-(derive :model/QueryAction :hook/update-search-index)
+(derive :model/QueryAction :hook/search-index)
 
 (methodical/defmethod t2/primary-keys :model/QueryAction    [_model] [:action_id])
 (methodical/defmethod t2/primary-keys :model/HTTPAction     [_model] [:action_id])

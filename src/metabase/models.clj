@@ -199,24 +199,22 @@
          metabase-models-keyword)))
    (next-method symb)))
 
-;; Models must derive from :hook/update-search-index if their state can influence the contents of the Search Index.
+;; Models must derive from :hook/search-index if their state can influence the contents of the Search Index.
 ;; Note that it might not be the model itself that depends on it, for example, Dashcards are used in Card entries.
 ;; Don't worry about whether you've added it in the right place, we have tests to ensure that it is derived if, and only
 ;; if, it is required.
 
-;; TODO rename to :hook/update-search-index
-
-(t2/define-after-insert :hook/update-search-index
+(t2/define-after-insert :hook/search-index
   [instance]
   (when (search/supports-index?)
-    (search.ingestion/update-index! instance))
+    (search.ingestion/update-index! instance true))
   instance)
 
-(t2/define-after-update :hook/update-search-index
+(t2/define-after-update :hook/search-index
   [instance]
   (when (and (search/supports-index?) (public-settings/experimental-search-index-realtime-updates))
     (search.ingestion/update-index! instance))
-  instance)
+  nil)
 
 ;; Too much of a performance risk.
 #_(t2/define-before-delete :metabase/model
