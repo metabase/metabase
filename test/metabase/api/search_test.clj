@@ -1598,5 +1598,6 @@
       (is (= original-weights (:new-weights (mt/user-http-request :crowberto :put 200 "search/weights"))))
       (is (= (assoc original-weights :recency 4 :text 20)
              (:new-weights (mt/user-http-request :crowberto :put 200 "search/weights" {:recency 4, :text 20}))))
+      (is (mt/user-http-request :crowberto :put 400 "search/weights" {:bad-spelling 2}))
       (finally
         (reset! search.config/weights original-weights)))))
