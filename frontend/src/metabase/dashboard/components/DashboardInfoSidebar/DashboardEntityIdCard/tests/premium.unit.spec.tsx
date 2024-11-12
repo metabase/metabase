@@ -18,7 +18,7 @@ const setup = ({
 } & RenderWithProvidersOptions = {}) => {
   return baseSetup({
     dashboard,
-    withFeatures: ["serialization"],
+    enableSerialization: true,
     ...renderOptions,
   });
 };

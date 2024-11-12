@@ -53,7 +53,7 @@ If instead you want to give a group SQL access to some, but not all, of the sche
 
 Connection impersonation doesn't apply to people in the Metabase admins group, as their more permissive privileges take precedence.
 
-For more about how to set this up, check out [Use Impersonation to get row-level permissions with both GUI and SQL queries](https://www.metabase.com/learn/permissions/impersonation).
+For more about how to set this up, check out [Use Impersonation to get row-level permissions with both GUI and SQL queries](https://www.metabase.com/learn/metabase-basics/administration/permissions/impersonation).
 
 ## Metabase gives people the most permissive access to data across all of their groups
 
@@ -66,4 +66,4 @@ Red group's more permissive access would override the impersonated access.
 
 ## Further reading
 
-- [Use Impersonation to get row-level permissions with both GUI and SQL queries](https://www.metabase.com/learn/permissions/impersonation)
+- [Use Impersonation to get row-level permissions with both GUI and SQL queries](https://www.metabase.com/learn/metabase-basics/administration/permissions/impersonation)

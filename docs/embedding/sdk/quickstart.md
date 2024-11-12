@@ -39,7 +39,7 @@ Let's go.
 
 ## Install Metabase Enterprise Edition
 
-You can run Metabase Pro on a Cloud plan (with a free trial)](https://www.metabase.com/pricing).
+You can run Metabase Pro on a Cloud plan with a [free trial](https://www.metabase.com/pricing).
 
 Or run it locally. Here's a docker one-liner:
 
@@ -198,4 +198,4 @@ In your app, you'll see an embedded `InteractiveQuestion` component.
 
 ![Embedded Metabase components](../images/embedded-components.png)
 
-Try changing some of the `theme` options in the [client app](https://github.com/metabase/metabase-nodejs-react-sdk-embedding-sample/blob/main/client/src/App.js) to style the components.
+Try changing some of the `theme` options in the [client app](https://github.com/metabase/metabase-nodejs-react-sdk-embedding-sample/blob/main/client/src/App.jsx) to style the components.

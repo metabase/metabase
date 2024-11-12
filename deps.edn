@@ -38,6 +38,7 @@
   com.draines/postal                        {:mvn/version "2.0.5"}              ; SMTP library
   ; Detect the charset in uploaded CSV files
   com.github.albfernandez/juniversalchardet {:mvn/version "2.5.0"}
+  com.github.jknack/handlebars              {:mvn/version "4.3.1"} ^{:antq/exclude "4.4.0"} ; templating engine. 4.4 requires Java 17+
   com.github.seancorfield/honeysql          {:mvn/version "2.6.1203"}           ; Honey SQL 2. SQL generation from Clojure data maps
   com.github.seancorfield/next.jdbc         {:mvn/version "1.3.925"}            ; Talk to JDBC DBs
   com.github.steffan-westcott/clj-otel-api  {:mvn/version "0.2.6"}              ; Telemetry library

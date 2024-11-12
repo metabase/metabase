@@ -9,6 +9,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
+   [metabase.logger :as logger]
    [metabase.models.interface :as mi]
    [metabase.models.setting :as setting]
    [metabase.query-processor.pipeline :as qp.pipeline]
@@ -22,7 +23,8 @@
    [toucan2.core :as t2])
   (:import
    (com.mchange.v2.c3p0 DataSources)
-   (javax.sql DataSource)))
+   (javax.sql DataSource)
+   (org.apache.logging.log4j Level)))
 
 (set! *warn-on-reflection* true)
 
@@ -103,6 +105,19 @@ For setting the maximum, see [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_ap
                     (long (/ qp.pipeline/*query-timeout-ms* 1000))))
   :setter     :none)
 
+(setting/defsetting jdbc-data-warehouse-debug-unreturned-connection-stack-traces
+  "Tell c3p0 to log a stack trace for any connections killed due to exceeding the timeout specified in
+  [[jdbc-data-warehouse-unreturned-connection-timeout-seconds]].
+
+  Note: You also need to update the com.mchange log level to INFO or higher in the log4j configs in order to see the
+  stack traces in the logs."
+  :visibility :internal
+  :type       :boolean
+  :default    false
+  :export?    false
+  :setter     :none
+  :doc        false) ; This setting is documented in other-env-vars.md.
+
 (defmethod data-warehouse-connection-pool-properties :default
   [driver database]
   {;; only fetch one new connection at a time, rather than batching fetches (default = 3 at a time). This is done in
@@ -137,10 +152,36 @@ For setting the maximum, see [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_ap
    ;;
    ;; Kill idle connections above the minPoolSize after 5 minutes.
    "maxIdleTimeExcessConnections" (* 5 60)
-   ;; kill connections after this amount of time if they haven't been returned -- this should be the same as the query
-   ;; timeout. This theoretically shouldn't happen since the QP should kill things after a certain timeout but it's
-   ;; better to be safe than sorry -- it seems like in practice some connections disappear into the ether
+   ;; [From dox] Seconds. If set, if an application checks out but then fails to check-in [i.e. close()] a Connection
+   ;; within the specified period of time, the pool will unceremoniously destroy() the Connection. This permits
+   ;; applications with occasional Connection leaks to survive, rather than eventually exhausting the Connection
+   ;; pool. And that's a shame. Zero means no timeout, applications are expected to close() their own
+   ;; Connections. Obviously, if a non-zero value is set, it should be to a value longer than any Connection should
+   ;; reasonably be checked-out. Otherwise, the pool will occasionally kill Connections in active use, which is bad.
+   ;;
+   ;; This should be the same as the query timeout. This theoretically shouldn't happen since the QP should kill
+   ;; things after a certain timeout but it's better to be safe than sorry -- it seems like in practice some
+   ;; connections disappear into the ether
    "unreturnedConnectionTimeout"  (jdbc-data-warehouse-unreturned-connection-timeout-seconds)
+   ;; [From dox] If true, and if unreturnedConnectionTimeout is set to a positive value, then the pool will capture
+   ;; the stack trace (via an Exception) of all Connection checkouts, and the stack traces will be printed when
+   ;; unreturned checked-out Connections timeout. This is intended to debug applications with Connection leaks, that
+   ;; is applications that occasionally fail to return Connections, leading to pool growth, and eventually
+   ;; exhaustion (when the pool hits maxPoolSize with all Connections checked-out and lost). This parameter should
+   ;; only be set while debugging, as capturing the stack trace will slow down every Connection check-out.
+   ;;
+   ;; As noted in the C3P0 docs, this does add some overhead to create the Exception at Connection checkout.
+   ;; criterium/quick-bench indicates this is ~600ns of overhead per Exception created on my laptop, which is small
+   ;; compared to the overhead added by testConnectionCheckout, above. The memory usage will depend on the size of the
+   ;; stack trace, but clj-memory-meter reports ~800 bytes for a fresh Exception created at the REPL (which presumably
+   ;; has a smaller-than-average stack).
+   "debugUnreturnedConnectionStackTraces" (u/prog1 (jdbc-data-warehouse-debug-unreturned-connection-stack-traces)
+                                            (when (and <> (not (logger/level-enabled? 'com.mchange Level/INFO)))
+                                              (log/warn "jdbc-data-warehouse-debug-unreturned-connection-stack-traces"
+                                                        "is enabled, but INFO logging is not enabled for the"
+                                                        "com.mchange namespace. You must raise the log level for"
+                                                        "com.mchange to INFO via a custom log4j config in order to"
+                                                        "see stacktraces in the logs.")))
    ;; Set the data source name so that the c3p0 JMX bean has a useful identifier, which incorporates the DB ID, driver,
    ;; and name from the details
    "dataSourceName"               (format "db-%d-%s-%s"
