@@ -2,6 +2,7 @@
   ;; metabase.search.postgres.ingestion has not been exposed publicly yet, it needs a higher level API
   #_{:clj-kondo/ignore [:metabase/ns-module-checker]}
   (:require
+   [environ.core :as env]
    [metabase.models.action :as action]
    [metabase.models.application-permissions-revision :as a-perm-revision]
    [metabase.models.bookmark :as bookmark]
@@ -55,7 +56,6 @@
    [metabase.models.user :as user]
    [metabase.models.view-log :as view-log]
    [metabase.plugins.classloader :as classloader]
-   [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.search :as search]
    [metabase.search.postgres.ingestion :as search.ingestion]
@@ -210,11 +210,14 @@
     (search.ingestion/update-index! instance true))
   instance)
 
-(t2/define-after-update :hook/search-index
-  [instance]
-  (when (and (search/supports-index?) (public-settings/experimental-search-index-realtime-updates))
-    (search.ingestion/update-index! instance))
-  nil)
+;; Hidden behind an obscure environment variable, as it may cause performance problems.
+;; See https://github.com/camsaul/toucan2/issues/195
+(when (:mb-experimental-search-index-realtime-updates env/env)
+  (t2/define-after-update :hook/search-index
+    [instance]
+    (when (search/supports-index?)
+      (search.ingestion/update-index! instance))
+    nil))
 
 ;; Too much of a performance risk.
 #_(t2/define-before-delete :metabase/model
