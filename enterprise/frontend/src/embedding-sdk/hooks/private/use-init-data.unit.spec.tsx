@@ -25,10 +25,7 @@ import {
   createMockLoginStatusState,
   createMockSdkState,
 } from "embedding-sdk/test/mocks/state";
-import type {
-  SDKConfig,
-  SDKConfigWithAuthProviderUri,
-} from "embedding-sdk/types";
+import type { SDKConfig, SDKConfigWithAuthProvider } from "embedding-sdk/types";
 import { GET } from "metabase/lib/api";
 import {
   createMockSettings,
@@ -82,7 +79,7 @@ const setup = ({
 }: {
   isValidConfig?: boolean;
   isValidUser?: boolean;
-} & Partial<SDKConfigWithAuthProviderUri>) => {
+} & Partial<SDKConfigWithAuthProvider>) => {
   fetchMock.get("http://TEST_URI/sso/metabase", {
     id: "TEST_JWT_TOKEN",
     exp: 1965805007,

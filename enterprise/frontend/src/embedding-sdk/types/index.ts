@@ -18,7 +18,7 @@ type BaseSDKConfig = {
   allowConsoleLog?: boolean;
 };
 
-export type SDKConfigWithAuthProviderUri = BaseSDKConfig & {
+export type SDKConfigWithAuthProvider = BaseSDKConfig & {
   authProviderUri: string;
   apiKey?: never;
 };
@@ -28,4 +28,4 @@ export type SDKConfigWithApiKey = BaseSDKConfig & {
   authProviderUri?: never;
 };
 
-export type SDKConfig = SDKConfigWithAuthProviderUri | SDKConfigWithApiKey;
+export type SDKConfig = SDKConfigWithAuthProvider | SDKConfigWithApiKey;
