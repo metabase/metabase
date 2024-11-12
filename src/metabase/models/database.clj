@@ -509,7 +509,6 @@
                   :creator-id    false
                   ;; not sure if this is another bug
                   :database-id   false
-                  :table-id      false
                   :created-at    true
                   :updated-at    true}
    :search-terms [:name :description]

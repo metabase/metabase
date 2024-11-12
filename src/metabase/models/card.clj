@@ -1014,12 +1014,11 @@
    :attrs        {:archived            true
                   :collection-id       :collection_id
                   :creator-id          true
-                  :database-id         false
-                  :native-query        [:case [:= "native" :query_type] :dataset_query]
                   :dashboardcard-count {:select [:%count.*]
                                         :from   [:report_dashboardcard]
                                         :where  [:= :report_dashboardcard.card_id :this.id]}
-                  :table-id            false
+                  :native-query        [:case [:= "native" :query_type] :dataset_query]
+                  :official-collection [:= "official" :collection.authority_level]
                   :last-edited-at      :r.timestamp
                   :last-editor-id      :r.user_id
                   :pinned              [:> [:coalesce :collection_position [:inline 0]] [:inline 0]]
@@ -1054,7 +1053,7 @@
                                                         [:= :mr.moderated_item_id :this.id]
                                                         [:= :mr.most_recent true]]]
                   ;; workaround for dataflow :((((((
-                  :dashcard [:model/DashboardCard [:= :dashcard.card_id :this.id]]}})
+                  :dashcard   [:model/DashboardCard [:= :dashcard.card_id :this.id]]}})
 
 (search/define-spec "card"
   (-> base-search-spec (sql.helpers/where [:= :this.type "question"])))

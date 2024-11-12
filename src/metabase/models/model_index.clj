@@ -188,10 +188,9 @@
    :attrs        {:id            :model_pk
                   :collection-id :collection.id
                   :creator-id    false
-                  :database-id   :model.database_id
-                  :table-id      false
                   ;; this seems wrong, I'd expect it to track whether the model is archived.
                   :archived      false
+                  :database-id   :model.database_id
                   :created-at    false
                   :updated-at    false}
    :search-terms [:name]

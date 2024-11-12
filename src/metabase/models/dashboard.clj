@@ -673,21 +673,20 @@
                   :last-editor-id :r.user_id
                   :last-edited-at :r.timestamp
                   :pinned         [:> [:coalesce :collection_position [:inline 0]] [:inline 0]]
-                  :table-id       false
                   :view-count     true
                   :created-at     true
                   :updated-at     true}
    :search-terms [:name :description]
-   :render-terms {:collection-name            :collection.name
-                  :collection-type            :collection.type
+   :render-terms {:archived-directly          true
                   :collection-authority_level :collection.authority_level
-                  :archived-directly          true
+                  :collection-name            :collection.name
                   ;; This is used for legacy ranking, in future it will be replaced by :pinned
-                  :collection-position        true}
+                  :collection-position        true
+                  :collection-type            :collection.type}
    :where        []
    :bookmark     [:model/DashboardBookmark [:and
                                             [:= :bookmark.dashboard_id :this.id]
-                                             ;; a magical alias, or perhaps this clause can be implicit
+                                            ;; a magical alias, or perhaps this clause can be implicit
                                             [:= :bookmark.user_id :current_user/id]]]
    :joins        {:collection [:model/Collection [:= :collection.id :this.collection_id]]
                   :r          [:model/Revision [:and

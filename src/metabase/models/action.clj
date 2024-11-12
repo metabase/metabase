@@ -409,7 +409,6 @@
                   :native-query   :query_action.dataset_query
                   ;; workaround for actions not having revisions (yet)
                   :last-edited-at :updated_at
-                  :table-id       false
                   :created-at     true
                   :updated-at     true}
    :search-terms [:name :description]
