@@ -76,8 +76,13 @@ export const sendMessageRequest = createAsyncThunk(
     );
 
     if (result.error) {
+      console.error("Metabot request returned error: ", result.error);
       dispatch(clearUserMessages());
-      dispatch(addUserMessage(t`I can’t do that, unfortunately.`));
+      const message =
+        (result.error as any).status >= 500
+          ? t`I'm currently offline, try again later.`
+          : undefined;
+      dispatch(stopProcessingAndNotify(message));
     } else {
       const reactions = result.data?.reactions || [];
       await dispatch(processMetabotReactions(reactions));
