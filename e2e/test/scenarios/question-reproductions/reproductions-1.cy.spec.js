@@ -19,6 +19,7 @@ import {
   mockSessionProperty,
   modal,
   navigationSidebar,
+  notebookButton,
   openNativeEditor,
   openNavigationSidebar,
   openNotebook,
@@ -919,7 +920,7 @@ describe("issues 11914, 18978, 18977, 23857", () => {
       cy.icon("refresh").should("be.visible");
       cy.icon("bookmark").should("be.visible");
       // querying
-      cy.findByTestId("notebook-button").should("not.exist");
+      notebookButton().should("not.exist");
       cy.findByText("Filter").should("not.exist");
       cy.findByText("Summarize").should("not.exist");
       cy.button("Save").should("not.exist");
