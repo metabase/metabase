@@ -78,7 +78,7 @@ describe("Metabot UI", () => {
       sendMetabotMessage("Who is your favorite?");
       userMessages()
         .should("exist")
-        .should("have.text", "II can’t do that, unfortunately.");
+        .should("have.text", "I'm currently offline, try again later.");
     });
   });
 });

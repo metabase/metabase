@@ -1,10 +1,10 @@
 import type { StaticResponse } from "cypress/types/net-stubbing";
 
-import { popover } from "./e2e-ui-elements-helpers";
+import { newButton } from "./e2e-ui-elements-helpers";
 
 export function assertChatVisibility(visiblility: "visible" | "not.visible") {
   cy.findByTestId("metabot-chat").should(
-    visiblility === "visible" ? "exist" : "not.exist",
+    visiblility === "visible" ? "be.visible" : "not.exist",
   );
 }
 
@@ -37,10 +37,7 @@ export function openMetabotViaNewMenu(assertVisibility = true) {
     assertChatVisibility("not.visible");
   }
 
-  cy.findByLabelText("Navigation bar").within(() => {
-    cy.findByText("New").click();
-  });
-  popover().findByText("Metabot request").click();
+  newButton("Metabot request").click();
 
   if (assertVisibility) {
     assertChatVisibility("visible");
