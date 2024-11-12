@@ -302,18 +302,18 @@
 
 (search/define-spec "table"
   {:model        :model/Table
-   :attrs        {:collection-id false
-                  :creator-id    false
-                  :database-id   :db_id
-                  :table-id      :id
-                  ;; legacy search uses :active for this, but then has a rule to only ever show active tables
+   :attrs        {;; legacy search uses :active for this, but then has a rule to only ever show active tables
                   ;; so we moved that to the where clause
                   :archived      false
+                  :collection-id false
+                  :creator-id    false
+                  :database-id   :db_id
                   :view-count    true
                   :created-at    true
                   :updated-at    true}
    :search-terms [:name :description :display_name]
    :render-terms {:initial-sync-status true
+                  :table-id            :id
                   :table-description   :description
                   :table-name          :name
                   :table-schema        :schema

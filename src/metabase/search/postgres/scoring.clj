@@ -1,21 +1,22 @@
 (ns metabase.search.postgres.scoring
   (:require
    [honey.sql.helpers :as sql.helpers]
+   [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.search.config :as search.config]))
 
 (def ^:private seconds-in-a-day 86400)
 
-(defn- truthy
+(defn truthy
   "Prefer it when a (potentially nullable) boolean is true."
   [column]
   [:coalesce [:cast column :integer] [:inline 0]])
 
-(defn- size
+(defn size
   "Prefer items whose value is larger, up to some saturation point. Items beyond that point are equivalent."
   [column ceiling]
   [:least [:/ [:coalesce column [:inline 0]] [:inline (double ceiling)]] [:inline 1]])
 
-(defn- atan-size
+(defn atan-size
   "Prefer items whose value is larger, with diminishing gains."
   [column scaling]
   ;; 2/PI * tan^-1 (x/N)
@@ -23,7 +24,7 @@
    [:/ [:inline 2] [:pi]]
    [:atan [:/ [:cast [:coalesce column [:inline 0.0]] :float] [:inline scaling]]]])
 
-(defn- inverse-duration
+(defn inverse-duration
   "Score at item based on the duration between two dates, where less is better."
   [from-column to-column ceiling-in-days]
   (let [ceiling [:inline ceiling-in-days]]
@@ -37,7 +38,7 @@
       [:inline 0]]
      ceiling]))
 
-(defn- idx-rank
+(defn idx-rank
   "Prefer items whose value is earlier in some list."
   [idx-col len]
   (if (pos? len)
@@ -73,7 +74,8 @@
                               [:inline 1]])]
     (into [:case] (concat (mapcat (comp match-clause name) bookmarked-models) [:else [:inline 0]]))))
 
-(def ^:private scorers
+(def base-scorers
+  "The default constituents of the search ranking scores."
   {:text       [:ts_rank :search_vector :query [:inline ts-rank-normalization]]
    :view-count (atan-size :view_count search.config/view-count-scaling)
    :pinned     (truthy :pinned)
@@ -82,7 +84,13 @@
    :dashboard  (size :dashboardcard_count search.config/dashboard-count-ceiling)
    :model      (idx-rank :model_rank (count search.config/all-models))})
 
-(def ^:private precalculated-select-items (select-items scorers))
+(defenterprise scorers
+  "Return the select-item expressions used to calculate the score for each search result."
+  metabase-enterprise.search.scoring
+  []
+  base-scorers)
+
+(defn- scorer-select-items [] (select-items (scorers)))
 
 (defn- bookmark-join [model user-id]
   (let [model-name (name model)
@@ -99,6 +107,6 @@
 (defn with-scores
   "Add a bunch of SELECT columns for the individual and total scores, and a corresponding ORDER BY."
   [search-ctx qry]
-  (-> (apply sql.helpers/select qry precalculated-select-items)
+  (-> (apply sql.helpers/select qry (scorer-select-items))
       (join-bookmarks (:current-user-id search-ctx))
       (sql.helpers/order-by [:total_score :desc])))

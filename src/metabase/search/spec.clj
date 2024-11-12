@@ -25,9 +25,7 @@
 (def ^:private explicit-attrs
   "These attributes must be explicitly defined, omitting them could be a source of bugs."
   [:archived
-   :collection-id
-   :database-id
-   :table-id])
+   :collection-id])
 
 (def ^:private optional-attrs
   "These attributes may be omitted (for now) in the interest of brevity in the definitions."
@@ -35,7 +33,9 @@
    :name
    :created-at
    :creator-id
+   :database-id
    :native-query
+   :official-collection
    :dashboardcard-count
    :last-edited-at
    :last-editor-id
