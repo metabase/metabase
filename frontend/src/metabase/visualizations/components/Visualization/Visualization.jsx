@@ -395,7 +395,7 @@ class Visualization extends PureComponent {
               />
             );
           } else if (e instanceof MinRowsError) {
-            noResults = true;
+            // noResults = true;
           }
         }
       }
