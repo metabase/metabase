@@ -247,5 +247,17 @@ module.exports = {
         "jest/valid-title": ["error", { ignoreTypeOfDescribeName: true }],
       },
     },
+    {
+      files: ["frontend/src/**/*"],
+      rules: {
+        "no-restricted-syntax": [
+        "error",
+        {
+          selector: "Literal[value=/mb-base-color-/]",
+          message: "You may not use base colors in the application, use semantic colors instead. (see colors.module.css)",
+        }
+      ],
+      },
+    },
   ],
 };
