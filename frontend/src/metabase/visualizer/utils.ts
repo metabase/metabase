@@ -9,7 +9,6 @@ import type {
   VisualizerDataSource,
   VisualizerDataSourceId,
   VisualizerDataSourceType,
-  VisualizerDatasetColumn,
   VisualizerReferencedColumn,
 } from "metabase-types/store/visualizer";
 
@@ -83,13 +82,11 @@ export function isValidDraggedItem(item: DndItem): item is DraggedItem {
 
 type CreateColumnOpts = {
   name?: string;
-  values?: string[];
 };
 
 export function createMetricColumn({
   name = "METRIC_1",
-  values = [],
-}: CreateColumnOpts = {}): VisualizerDatasetColumn {
+}: CreateColumnOpts = {}): DatasetColumn {
   return {
     name,
     display_name: name,
@@ -97,14 +94,12 @@ export function createMetricColumn({
     effective_type: "type/Integer",
     field_ref: ["field", name, { "base-type": "type/Integer" }],
     source: "artificial",
-    values,
   };
 }
 
 export function createDimensionColumn({
   name = "DIMENSION_1",
-  values = [],
-}: CreateColumnOpts = {}): VisualizerDatasetColumn {
+}: CreateColumnOpts = {}): DatasetColumn {
   return {
     name,
     display_name: name,
@@ -112,6 +107,5 @@ export function createDimensionColumn({
     effective_type: "type/Text",
     field_ref: ["field", name, { "base-type": "type/Text" }],
     source: "artificial",
-    values,
   };
 }
