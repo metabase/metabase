@@ -20,6 +20,8 @@
    [metabase.public-settings.premium-features
     :as premium-features
     :refer [defenterprise]]
+   ;; Trying to use metabase.search would cause a circular reference ;_;
+   [metabase.search.spec :as search.spec]
    [metabase.sync.schedules :as sync.schedules]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -497,3 +499,18 @@
    (fn [table-id]
      {:pre [(integer? table-id)]}
      (t2/select-one-fn :db_id :model/Table, :id table-id))))
+
+;;;; ------------------------------------------------- Search ----------------------------------------------------------
+
+(search.spec/define-spec "database"
+  {:model        :model/Database
+   :attrs        {:archived      false
+                  :collection-id false
+                  :creator-id    false
+                  ;; not sure if this is another bug
+                  :database-id   false
+                  :table-id      false
+                  :created-at    true
+                  :updated-at    true}
+   :search-terms [:name :description]
+   :render-terms {:initial-sync-status true}})

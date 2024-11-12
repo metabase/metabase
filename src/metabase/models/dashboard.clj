@@ -26,6 +26,7 @@
    [metabase.moderation :as moderation]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor.metadata :as qp.metadata]
+   [metabase.search :as search]
    [metabase.util :as u]
    [metabase.util.embed :refer [maybe-populate-initially-published-at]]
    [metabase.util.honey-sql-2 :as h2x]
@@ -660,3 +661,38 @@
                                    (assoc :card_id card_id))))))
 
     {}))
+
+;;;; ------------------------------------------------- Search ----------------------------------------------------------
+
+(search/define-spec "dashboard"
+  {:model        :model/Dashboard
+   :attrs        {:archived       true
+                  :collection-id  true
+                  :creator-id     true
+                  :database-id    false
+                  :last-editor-id :r.user_id
+                  :last-edited-at :r.timestamp
+                  :pinned         [:> [:coalesce :collection_position [:inline 0]] [:inline 0]]
+                  :table-id       false
+                  :view-count     true
+                  :created-at     true
+                  :updated-at     true}
+   :search-terms [:name :description]
+   :render-terms {:collection-name            :collection.name
+                  :collection-type            :collection.type
+                  :collection-authority_level :collection.authority_level
+                  :archived-directly          true
+                  ;; This is used for legacy ranking, in future it will be replaced by :pinned
+                  :collection-position        true}
+   :where        []
+   :bookmark     [:model/DashboardBookmark [:and
+                                            [:= :bookmark.dashboard_id :this.id]
+                                             ;; a magical alias, or perhaps this clause can be implicit
+                                            [:= :bookmark.user_id :current_user/id]]]
+   :joins        {:collection [:model/Collection [:= :collection.id :this.collection_id]]
+                  :r          [:model/Revision [:and
+                                                [:= :r.model_id :this.id]
+                                                ;; Interesting for inversion, another condition on whether to update.
+                                                ;; For now, let's just swallow the extra update (2x amplification)
+                                                [:= :r.most_recent true]
+                                                [:= :r.model "Dashboard"]]]}})

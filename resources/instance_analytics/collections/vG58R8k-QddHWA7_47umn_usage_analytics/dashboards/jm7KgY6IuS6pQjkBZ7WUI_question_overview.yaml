@@ -33,6 +33,15 @@ parameters:
   sectionId: date
   slug: date_filter
   type: date/all-options
+- default:
+  - All Users
+  id: 66ce4bc6
+  isMultiSelect: false
+  name: Group name
+  required: true
+  sectionId: string
+  slug: group_name
+  type: string/=
 serdes/meta:
 - id: jm7KgY6IuS6pQjkBZ7WUI
   label: question_overview
@@ -119,6 +128,17 @@ dashcards:
         - v_view_log
         - timestamp
       - base-type: type/DateTimeWithLocalTZ
+  - card_id: 613VT_7b325t9FBAJZcU8
+    parameter_id: 66ce4bc6
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_group_members
+        - group_name
+      - base-type: type/Text
+        join-alias: Group Members - User
   series: []
   visualization_settings:
     column_settings: null
@@ -260,6 +280,17 @@ dashcards:
         - v_view_log
         - timestamp
       - base-type: type/DateTimeWithLocalTZ
+  - card_id: y-_5bBl0fXY9XlEbpJkrj
+    parameter_id: 66ce4bc6
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_group_members
+        - group_name
+      - base-type: type/Text
+        join-alias: Group Members - User
   series: []
   visualization_settings:
     column_settings: null
