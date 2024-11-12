@@ -246,7 +246,7 @@
                    (assoc :name ~search-model)
                    (update :attrs #(merge ~default-attrs %)))]
      (validate-spec! spec#)
-     (derive (:model spec#) :hook/update-search-index )
+     (derive (:model spec#) :hook/update-search-index)
      (defmethod spec ~search-model [~'_] spec#)))
 
 ;; TODO we should memoize this for production (based on spec values)
