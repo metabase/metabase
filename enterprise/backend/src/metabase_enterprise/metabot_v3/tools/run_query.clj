@@ -135,10 +135,10 @@
         operator  (or (find-operator operators operator-name)
                       (throw (operator-error operators operator-name step-type)))]
     (if (:requires-column? operator)
-        (let [columns (lib/aggregation-operator-columns operator)
-              column  (or (find-column query columns column-name)
-                          (throw (column-error query columns column-name step-type)))]
-          (lib/aggregate query (lib/aggregation-clause operator column)))
+      (let [columns (lib/aggregation-operator-columns operator)
+            column  (or (find-column query columns column-name)
+                        (throw (column-error query columns column-name step-type)))]
+        (lib/aggregate query (lib/aggregation-clause operator column)))
       (lib/aggregate query (lib/aggregation-clause operator)))))
 
 (defmethod apply-step :breakout
