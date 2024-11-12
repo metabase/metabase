@@ -8,6 +8,7 @@
    [metabase-enterprise.metabot-v3.client.schema :as metabot-v3.client.schema]
    [metabase-enterprise.metabot-v3.context :as metabot-v3.context]
    [metabase-enterprise.metabot-v3.tools :as metabot-v3.tools]
+   [metabase.api.common :as api]
    [metabase.models.setting :refer [defsetting]]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
@@ -52,7 +53,9 @@
     :context       (metabot-v3.context/hydrate-context (or context {}))
     :tools         (metabot-v3.tools/applicable-tools (metabot-v3.tools/*tools-metadata*) context)
     :session-id    session-id
+    :user-id       api/*current-user-id*
     :instance-info (*instance-info*)}))
+
 
 (defn- ->json-bytes ^bytes [x]
   (with-open [os (java.io.ByteArrayOutputStream.)
@@ -106,6 +109,7 @@
   [context :- [:maybe ::metabot-v3.context/context]
    messages :- [:maybe ::metabot-v3.client.schema/messages]
    session-id :- :string]
+
   ;; TODO -- when `:metabot-v3` code goes live remove this check and check for the `:metabot-v3` feature specifically.
   (assert (premium-features/has-any-features?) (i18n/tru "You must have a valid enterprise token to use MetaBot."))
   #_(premium-features/assert-has-feature :metabot-v3 "MetaBot")
