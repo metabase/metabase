@@ -263,8 +263,6 @@
   (into #{}
         (keep
          (fn [{:keys [search-model fields where]}]
-           ;; If there are no changes, treat it as if everything has changed.
-           ;; Likewise, if there are no field dependencies, always do it - this is a hack for dashcards to cards.
            (when (or always? (and fields (some fields (keys (or (t2/changes instance) instance)))))
              [search-model (insert-values where :updated instance)])))
         (get (model-hooks) (t2/model instance))))
