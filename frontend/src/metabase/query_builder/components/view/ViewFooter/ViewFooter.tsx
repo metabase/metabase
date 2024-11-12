@@ -4,7 +4,6 @@ import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
 import {
   getFirstQueryResult,
-  // getIsVisualized,
   getQuestion,
 } from "metabase/query_builder/selectors";
 import { Group } from "metabase/ui";
@@ -18,7 +17,6 @@ import { RightViewFooterButtonGroup } from "./RightViewFooterButtonGroup";
 type ViewFooterProps = { className?: string };
 
 export const ViewFooter = ({ className }: ViewFooterProps) => {
-  // const isVisualized = useSelector(getIsVisualized);
   const question = useSelector(getQuestion);
   const result = useSelector(getFirstQueryResult);
 
@@ -36,7 +34,6 @@ export const ViewFooter = ({ className }: ViewFooterProps) => {
       data-testid="view-footer"
     >
       <Group position="apart" pos="relative" noWrap w="100%">
-        {/* TODO: should we check on isVirtualized? */}
         {!hideChartSettings && (
           <LeftViewFooterButtonGroup question={question} />
         )}

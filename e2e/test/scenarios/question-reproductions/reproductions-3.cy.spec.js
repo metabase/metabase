@@ -1277,7 +1277,6 @@ describe("issue 43294", () => {
       cy.findByText("Year").click();
     });
 
-    // TODO: double check with Maz
     cy.findByLabelText("Switch to data").click();
 
     cy.log("combine action");

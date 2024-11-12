@@ -1,14 +1,12 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-// import CS from "metabase/css/core/index.css";
 import { useDispatch } from "metabase/lib/redux";
 import {
   onOpenChartSettings,
   setUIControls,
   updateQuestion,
 } from "metabase/query_builder/actions";
-// import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import {
   ChartTypeSettings,
   type GetSensibleVisualizationsProps,
