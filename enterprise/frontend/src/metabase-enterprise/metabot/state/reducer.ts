@@ -17,7 +17,7 @@ export interface MetabotState {
   visible: boolean;
 }
 
-const initialState: MetabotState = {
+export const metabotInitialState: MetabotState = {
   isProcessing: false,
   userMessages: [],
   confirmationOptions: undefined,
@@ -28,7 +28,7 @@ const initialState: MetabotState = {
 
 export const metabot = createSlice({
   name: "metabase-enterprise/metabot",
-  initialState,
+  initialState: metabotInitialState,
   reducers: {
     addUserMessage: (state, action: PayloadAction<string>) => {
       state.userMessages.push(action.payload);

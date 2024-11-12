@@ -79,11 +79,16 @@ export const MetabotChat = ({ onClose }: { onClose: () => void }) => {
     <Box
       className={Styles.container}
       style={{ animationDuration: `${ANIMATION_DURATION_MS}ms` }}
+      data-testid="metabot-chat"
     >
       {metabot.userMessages.length > 0 && (
-        <Box className={Styles.responses}>
+        <Box className={Styles.responses} data-testid="metabot-chat-messages">
           {metabot.userMessages.map((msg, index) => (
-            <Box className={Styles.response} key={msg}>
+            <Box
+              className={Styles.response}
+              key={msg}
+              data-testid="metabot-chat-message"
+            >
               <Box>{msg}</Box>
               <UnstyledButton
                 className={Styles.responseDismissBtn}
@@ -107,6 +112,7 @@ export const MetabotChat = ({ onClose }: { onClose: () => void }) => {
           <MetabotIcon isLoading={isDoingScience} />
         </Box>
         <Textarea
+          data-testid="metabot-chat-input"
           w="100%"
           autosize
           minRows={1}
@@ -132,7 +138,11 @@ export const MetabotChat = ({ onClose }: { onClose: () => void }) => {
             }
           }}
         />
-        <UnstyledButton h="1rem" onClick={handleClose}>
+        <UnstyledButton
+          h="1rem"
+          onClick={handleClose}
+          data-testid="metabot-close-chat"
+        >
           <Icon name="close" c="text-light" size="1rem" />
         </UnstyledButton>
       </Flex>
