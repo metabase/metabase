@@ -586,9 +586,7 @@ export function FieldValuesWidgetInner({
         maw={maxWidth ?? undefined}
         miw={minWidth ?? undefined}
       >
-        {isListMode && multi && isLoading ? (
-          <LoadingState />
-        ) : isListMode && hasListValues && multi ? (
+        {isListMode && hasListValues && multi ? (
           <ListField
             isDashboardFilter={!!parameter}
             placeholder={tokenFieldPlaceholder}
@@ -596,6 +594,7 @@ export function FieldValuesWidgetInner({
             onChange={onChange}
             options={options}
             optionRenderer={optionRenderer}
+            isLoading={isLoading}
           />
         ) : isListMode && hasListValues && !multi ? (
           <SingleSelectListField
