@@ -91,8 +91,8 @@
                                                      [:= :updated.most_recent true]]}}
                  ;; Disabled for performance reasons, see spec for :model/Card
                  #_#_:DashboardCard    #{{:search-model "card"
-                                      :fields       nil
-                                      :where        [:= :updated.card_id :this.id]}}}
+                                          :fields       nil
+                                          :where        [:= :updated.card_id :this.id]}}}
          (#'search.spec/search-model-hooks (search.spec/spec "card"))))
 
   (is (= #:model{:Table      #{{:search-model "segment",
