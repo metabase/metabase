@@ -77,7 +77,7 @@ describe("LimitStep", () => {
     expect(Lib.currentLimit(getNextQuery(), 0)).toBe(1000);
   });
 
-  it("should update the limit when not focused (eg. when clicking the arrows)", () => {
+  it("should update the limit when not focused (eg. when clicking the arrows) (metabase#49587)", () => {
     const step = createMockNotebookStep({ query: QUERY_WITH_LIMIT });
     const { getNextQuery } = setup(step);
 
