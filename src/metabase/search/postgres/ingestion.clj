@@ -101,9 +101,6 @@
   "Force ingestion to happen immediately, on the same thread."
   false)
 
-;; TODO put item on a delay queue
-;; TODO have a worker (task?) that pull items off the queue, groups them and bulk executes
-
 (defn- bulk-ingest! [updates]
   (->> (for [[search-model where-clauses] (u/group-by first second updates)]
          (spec-index-reducible search-model (into [:or (distinct where-clauses)])))
