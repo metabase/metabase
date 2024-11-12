@@ -26,7 +26,8 @@
   :encryption :when-encryption-key-set
   :visibility :settings-manager
   :doc        false
-  :audit      :never)
+  :audit      :never
+  :export?    false)
 
 (defsetting slack-app-token
   (deferred-tru
@@ -63,7 +64,8 @@
   :visibility :internal
   :type       :json
   :doc        false
-  :audit      :never)
+  :audit      :never
+  :export?    false)
 
 (def ^:private zoned-time-epoch (t/zoned-date-time 1970 1 1 0))
 
@@ -74,7 +76,8 @@
   :type       :timestamp
   :default    zoned-time-epoch
   :doc        false
-  :audit      :never)
+  :audit      :never
+  :export?    false)
 
 (defsetting slack-files-channel
   (deferred-tru "The name of the channel to which Metabase files should be initially uploaded")
@@ -84,6 +87,16 @@
   :audit      :getter
   :setter (fn [channel-name]
             (setting/set-value-of-type! :string :slack-files-channel (process-files-channel-name channel-name))))
+
+(defsetting slack-bug-report-channel
+  (deferred-tru "The name of the channel where bug reports should be posted")
+  :default "metabase-bugs"
+  :encryption :no
+  :visibility :settings-manager
+  :audit      :getter
+  :export?    false
+  :setter (fn [channel-name]
+            (setting/set-value-of-type! :string :slack-bug-report-channel (process-files-channel-name channel-name))))
 
 (defn slack-configured?
   "Is Slack integration configured?"
@@ -300,6 +313,22 @@
         (log/error (u/format-color 'red message))
         (throw (ex-info message {:status-code 400}))))))
 
+(defn bug-report-channel
+  "Looks in [[slack-cached-channels-and-usernames]] to check whether a channel exists with the expected name from the
+  [[slack-bug-report-channel]] setting with an # prefix. If it does, returns the channel details as a map. If it doesn't,
+  throws an error that advices an admin to create it."
+  []
+  (let [channel-name (slack-bug-report-channel)]
+    (if (channel-exists? channel-name)
+      channel-name
+      (let [message (str (tru "Slack channel named `{0}` is missing!" channel-name)
+                        " "
+                        (tru "Please create or unarchive the channel in order to complete the Slack integration.")
+                        " "
+                        (tru "The channel is used for storing bug reports."))]
+        (log/error (u/format-color 'red message))
+        (throw (ex-info message {:status-code 400}))))))
+
 (def ^:private NonEmptyByteArray
   [:and
    (ms/InstanceOfClass (Class/forName "[B"))
@@ -403,17 +432,27 @@
       (log/debug "Uploaded image" <>))))
 
 (mu/defn post-chat-message!
-  "Calls Slack API `chat.postMessage` endpoint and posts a message to a channel. `attachments` should be serialized
-  JSON."
+  "Calls Slack API `chat.postMessage` endpoint and posts a message to a channel.
+   Can accept either `attachments` (as serialized JSON) or `blocks` (as an array)."
   [channel-id  :- ms/NonBlankString
    text-or-nil :- [:maybe :string]
-   & [attachments]]
+   & [attachments-or-blocks]]
   ;; TODO: it would be nice to have an emoji or icon image to use here
-  (POST "chat.postMessage"
-    {:form-params
-     {:channel     channel-id
-      :username    "MetaBot"
-      :icon_url    "http://static.metabase.com/metabot_slack_avatar_whitebg.png"
-      :text        text-or-nil
-      :attachments (when (seq attachments)
-                     (json/generate-string attachments))}}))
+  (let [params (cond-> {:channel     channel-id
+                       :username    "MetaBot"
+                       :icon_url    "http://static.metabase.com/metabot_slack_avatar_whitebg.png"
+                       :text        text-or-nil}
+                ;; If it's a vector of blocks, convert to JSON string
+                (vector? attachments-or-blocks)
+                (assoc :blocks (json/generate-string attachments-or-blocks))
+
+                ;; If it's a map with blocks, extract and convert blocks to JSON string
+                (:blocks attachments-or-blocks)
+                (assoc :blocks (json/generate-string (:blocks attachments-or-blocks)))
+
+                ;; If it's attachments, convert to JSON string
+                (and (seq attachments-or-blocks)
+                     (not (vector? attachments-or-blocks))
+                     (not (:blocks attachments-or-blocks)))
+                (assoc :attachments (json/generate-string attachments-or-blocks)))]
+    (POST "chat.postMessage" {:form-params params})))
