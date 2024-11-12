@@ -18,7 +18,10 @@ const SLACK_SCHEMA = Yup.object({
     .ensure()
     .required(Errors.required)
     .lowercase(),
-  "slack-bug-report-channel": Yup.string().ensure().lowercase(),
+  "slack-bug-report-channel": Yup.string()
+    .nullable()
+    .transform((value, originalValue) => (originalValue === "" ? null : value))
+    .lowercase(),
 });
 
 export interface SlackFormProps {

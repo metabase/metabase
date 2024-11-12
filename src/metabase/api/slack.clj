@@ -73,7 +73,7 @@
   [:as {{slack-app-token :slack-app-token, slack-files-channel :slack-files-channel, slack-bug-report-channel :slack-bug-report-channel} :body}]
   {slack-app-token     [:maybe ms/NonBlankString]
    slack-files-channel    [:maybe ms/NonBlankString]
-   slack-bug-report-channel [:maybe ms/NonBlankString]}
+   slack-bug-report-channel [:maybe [:or nil? :string]]}
   (validation/check-has-application-permission :setting)
   (try
     ;; Clear settings if no values are provided
