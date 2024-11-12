@@ -132,7 +132,7 @@
           expected-models (into (set expected-models) (mapcat descendants) expected-models)
           actual-models   (set (descendants :hook/search-index))]
       (doseq [em (sort-by name expected-models)]
-        (testing (str "- " em "\n")
+        (testing (str "- " em)
           (is (actual-models em))))
       (testing "... and nothing else does"
         (is (empty? (sort-by name (remove expected-models actual-models))))))))
