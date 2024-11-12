@@ -12,8 +12,7 @@
 (methodical/defmethod t2/table-name :model/DashboardCardSeries [_model] :dashboardcard_series)
 
 (doto :model/DashboardCardSeries
-  (derive :metabase/model)
-  (derive :hook/update-search-index))
+  (derive :metabase/model))
 
 ;; Serialization
 
