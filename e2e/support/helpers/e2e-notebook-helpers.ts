@@ -9,7 +9,7 @@ import type { NotebookStepType } from "metabase/query_builder/components/noteboo
 import type { IconName } from "metabase/ui";
 
 export function notebookButton() {
-  return cy.findByTestId("view-footer").findByLabelText("Switch to editor");
+  return cy.findByLabelText("Switch to editor");
 }
 
 export function startSort() {
