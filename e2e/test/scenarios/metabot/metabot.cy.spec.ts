@@ -50,10 +50,10 @@ describe("Metabot UI", () => {
     });
 
     it("should be able to be opened and closed", () => {
-      openMetabotViaShortcutKey();
-      closeMetabotViaShortcutKey();
       openMetabotViaNewMenu();
       closeMetabotViaCloseButton();
+      openMetabotViaShortcutKey();
+      closeMetabotViaShortcutKey();
     });
 
     it("should allow a user to send a message to the agent and handle successful or failed responses", () => {
