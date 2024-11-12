@@ -98,7 +98,7 @@
 (defn weight
   "The relative strength the corresponding score has in influencing the total score."
   [scorer-key]
-  (get @weights scorer-key 0))
+  (get (weights) scorer-key 0))
 
 (defn model->alias
   "Given a model string returns the model alias"
