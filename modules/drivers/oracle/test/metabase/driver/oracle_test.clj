@@ -505,7 +505,7 @@
                  (is (= (t/zoned-date-time (u.date/parse test-date) report-tz)
                         (ffirst (mt/rows (qp/process-query query))))))))))))))
 
-(mt/defdataset date-cols-with-datetime-values
+(mt/defdataset date-cols-with-datetime
   [["dates_with_time" [{:field-name "date_with_time"
                         :base-type {:native "DATE"}}]
     [[(t/offset-date-time 2024 11 5 12 12 12)]
@@ -515,7 +515,7 @@
   (mt/test-driver
     :oracle
     (mt/dataset
-      date-cols-with-datetime-values
+      date-cols-with-datetime
       (testing "Oracle's DATE columns are mapped to type/DateTime (#49440)"
         (testing "Synced field is correctly mapped"
           (let [date-field (t2/select-one :model/Field
