@@ -33,6 +33,7 @@
    :name
    :created-at
    :creator-id
+   :database-id
    :native-query
    :official-collection
    :dashboardcard-count

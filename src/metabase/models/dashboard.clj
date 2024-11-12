@@ -669,6 +669,7 @@
    :attrs        {:archived       true
                   :collection-id  true
                   :creator-id     true
+                  :database-id    false
                   :last-editor-id :r.user_id
                   :last-edited-at :r.timestamp
                   :pinned         [:> [:coalesce :collection_position [:inline 0]] [:inline 0]]
@@ -681,9 +682,7 @@
                   :collection-name            :collection.name
                   ;; This is used for legacy ranking, in future it will be replaced by :pinned
                   :collection-position        true
-                  :collection-type            :collection.type
-                  :database-id                false
-                  :table-id                   false}
+                  :collection-type            :collection.type}
    :where        []
    :bookmark     [:model/DashboardBookmark [:and
                                             [:= :bookmark.dashboard_id :this.id]

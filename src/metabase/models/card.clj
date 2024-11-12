@@ -1033,7 +1033,6 @@
                   ;; This is used for legacy ranking, in future it will be replaced by :pinned
                   :collection-position        true
                   :collection-type            :collection.type
-                  :database-id                false
                   ;; This field can become stale, unless we change to calculate it just-in-time.
                   :display                    true
                   :moderated-status           :mr.status
