@@ -73,7 +73,7 @@ export const QuestionDetails = ({ question }: { question: Question }) => {
       </SidesheetCardSection>
       <SharingDisplay question={question} />
       <ErrorBoundary>
-        <QuestionSources question={question} />
+        <QuestionSources />
       </ErrorBoundary>
     </>
   );
