@@ -1571,9 +1571,12 @@ describe("issue 44665", () => {
     });
 
     sidebar().last().findByText("Enter a default value…").click();
-    popover()
-      .findByPlaceholderText("Enter a default value…")
-      .should("be.visible");
+    popover().within(() => {
+      cy.findByPlaceholderText("Enter a default value…").should("be.visible");
+      cy.findByText("foo").should("be.visible");
+      cy.findByText("bar").should("be.visible");
+      cy.findByText("baz").should("be.visible");
+    });
 
     sidebar()
       .last()
