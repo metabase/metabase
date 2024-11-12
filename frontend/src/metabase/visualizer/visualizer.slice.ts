@@ -35,6 +35,8 @@ import { DROPPABLE_ID } from "./constants";
 import {
   createDataSource,
   createDataSourceNameRef,
+  createDimensionColumn,
+  createMetricColumn,
   createVisualizerColumnReference,
   getDataSourceIdFromNameRef,
   isDataSourceNameRef,
@@ -352,9 +354,7 @@ export const getVisualizerMetricColumn = (state: {
   visualizer: VisualizerState;
 }) => {
   const columns = getVisualizationColumns(state);
-  const index = columns.findIndex(
-    column => column.name === VISUALIZER_METRIC_COL_NAME,
-  );
+  const index = columns.findIndex(column => column.name === "METRIC_1");
   return { column: columns[index], index };
 };
 
@@ -362,9 +362,7 @@ export const getVisualizerDimensionColumn = (state: {
   visualizer: VisualizerState;
 }) => {
   const columns = getVisualizationColumns(state);
-  const index = columns.findIndex(
-    column => column.name === VISUALIZER_DIMENSION_COL_NAME,
-  );
+  const index = columns.findIndex(column => column.name === "DIMENSION_1");
   return { column: columns[index], index };
 };
 
@@ -583,7 +581,7 @@ const cartesianDropHandler: DropHandler = (state, { active, over }) => {
       const nameIndex = dimensions.length + 1;
       const newDimension = cloneColumnProperties(
         createDimensionColumn({
-          name: `${VISUALIZER_DIMENSION_COL_NAME}_${nameIndex}`,
+          name: `DIMENSION_${nameIndex}`,
           values: [columnRef.name],
         }),
         column,
@@ -620,7 +618,7 @@ const cartesianDropHandler: DropHandler = (state, { active, over }) => {
       const nameIndex = metrics.length + 1;
       const newMetric = cloneColumnProperties(
         createMetricColumn({
-          name: `${VISUALIZER_METRIC_COL_NAME}_${nameIndex}`,
+          name: `METRIC_${nameIndex}`,
           values: [columnRef.name],
         }),
         column,
@@ -800,44 +798,6 @@ const pivotDropHandler: DropHandler = (state, { active, over }) => {
     }
   }
 };
-
-const VISUALIZER_METRIC_COL_NAME = "METRIC";
-const VISUALIZER_DIMENSION_COL_NAME = "DIMENSION";
-
-type CreateColumnOpts = {
-  name?: string;
-  values?: string[];
-};
-
-function createMetricColumn({
-  name = VISUALIZER_METRIC_COL_NAME,
-  values = [],
-}: CreateColumnOpts = {}): VisualizerDatasetColumn {
-  return {
-    name,
-    display_name: name,
-    base_type: "type/Integer",
-    effective_type: "type/Integer",
-    field_ref: ["field", name, { "base-type": "type/Integer" }],
-    source: "artificial",
-    values,
-  };
-}
-
-function createDimensionColumn({
-  name = VISUALIZER_DIMENSION_COL_NAME,
-  values = [],
-}: CreateColumnOpts = {}): VisualizerDatasetColumn {
-  return {
-    name,
-    display_name: name,
-    base_type: "type/Text",
-    effective_type: "type/Text",
-    field_ref: ["field", name, { "base-type": "type/Text" }],
-    source: "artificial",
-    values,
-  };
-}
 
 function connectToVisualizerColumn(
   column: VisualizerDatasetColumn,
