@@ -56,42 +56,35 @@
 
 (deftest incremental-update-test
   (with-index
-    (testing "The index is updated when models change"
-     ;; Has a second entry is "Revenue Project(ions)", when using English dictionary
-      (is (= 1 #_2 (count (search.index/search "Projected Revenue"))))
-      (is (= 0 (count (search.index/search "Protected Avenue"))))
-
-      (t2/update! :model/Card {:name "Projected Revenue"} {:name "Protected Avenue"})
-     ;; TODO wire up an actual hook
-      (search.ingestion/update-index! (t2/select-one :model/Card :name "Protected Avenue"))
-
-      ;; wait for the background thread
-      (is (= 0 #_1 (count (search.index/search "Projected Revenue"))))
-      (is (= 1 (count (search.index/search "Protected Avenue"))))
-
-     ;; TODO wire up the actual hook, and actually delete it
-      (search.ingestion/delete-model! (t2/select-one :model/Card :name "Protected Avenue"))
-
-      (is (= 0 #_1 (count (search.index/search "Projected Revenue"))))
-      (is (= 0 (count (search.index/search "Protected Avenue")))))))
+    (mt/with-temporary-setting-values [experimental-search-index-realtime-updates true]
+      (testing "The index is updated when models change"
+        ;; Has a second entry is "Revenue Project(ions)", when using English dictionary
+        (is (= 1 #_2 (count (search.index/search "Projected Revenue"))))
+        (is (= 0 (count (search.index/search "Protected Avenue"))))
+        (t2/update! :model/Card {:name "Projected Revenue"} {:name "Protected Avenue"})
+        (is (= 0 #_1 (count (search.index/search "Projected Revenue"))))
+        (is (= 1 (count (search.index/search "Protected Avenue"))))
+        ;; Delete hooks are disabled, for now, over performance concerns.
+        ;(t2/delete! :model/Card :name "Protected Avenue")
+        (search.ingestion/delete-model! (t2/select-one :model/Card :name "Protected Avenue"))
+        (is (= 0 #_1 (count (search.index/search "Projected Revenue"))))
+        (is (= 0 (count (search.index/search "Protected Avenue"))))))))
 
 (deftest related-update-test
   (with-index
-    (testing "The index is updated when model dependencies change"
-      (let [index-table    @#'search.index/active-table
-            table-id       (t2/select-one-pk :model/Table :name "Indexed Table")
-            legacy-input   #(-> (t2/select-one [index-table :legacy_input] :model "table" :model_id table-id)
-                                :legacy_input
-                                (json/parse-string true))
-            db-id          (t2/select-one-fn :db_id :model/Table table-id)
-            db-name-fn     (comp :database_name legacy-input)
-            alternate-name (str (random-uuid))]
-
-        (t2/update! :model/Database db-id {:name alternate-name})
-        ;; TODO wire up an actual hook
-        (search.ingestion/update-index! (t2/select-one :model/Database :id db-id))
-
-        (is (= alternate-name (db-name-fn)))))))
+    (mt/with-temporary-setting-values [experimental-search-index-realtime-updates true]
+      (testing "The index is updated when model dependencies change"
+        (let [index-table    @#'search.index/active-table
+              table-id       (t2/select-one-pk :model/Table :name "Indexed Table")
+              legacy-input   #(-> (t2/select-one [index-table :legacy_input] :model "table" :model_id table-id)
+                                  :legacy_input
+                                  (json/parse-string true))
+              db-id          (t2/select-one-fn :db_id :model/Table table-id)
+              db-name-fn     (comp :database_name legacy-input)
+              alternate-name (str (random-uuid))]
+          (is (= "Indexed Database" (db-name-fn)))
+          (t2/update! :model/Database db-id {:name alternate-name})
+          (is (= alternate-name (db-name-fn))))))))
 
 (deftest consistent-subset-test
   (with-index

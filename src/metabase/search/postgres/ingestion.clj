@@ -108,8 +108,8 @@
 
 (defn update-index!
   "Given a new or updated instance, create or update all the corresponding search entries if needed."
-  [instance]
-  (when-let [updates (seq (search.spec/search-models-to-update instance))]
+  [instance & [always?]]
+  (when-let [updates (seq (search.spec/search-models-to-update instance always?))]
     ;; We need to delay execution to handle deletes, which alert us *before* updating the database.
     ;; TODO It's dangerous to simply unleash threads on the world, this should use a queue in future.
     (run-on-thread
