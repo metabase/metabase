@@ -238,7 +238,7 @@ export default function App() {
 
 ## Embedding the query builder
 
-With the `CreateQuestion` component, you can embed the query builder without a pre-defined question.
+You can embed the query builder without a pre-defined question by using the `InteractiveQuestion` component without the `questionId`.
 
 ```tsx
 import React from "react";
@@ -247,10 +247,68 @@ import {MetabaseProvider, CreateQuestion} from "@metabase/embedding-sdk-react";
 const config = {...}
 
 export default function App() {
+    // The questionId is undefined at first.
+    // Once the question is saved, we set the questionId to the saved question's id.
+    const [questionId, setQuestionId] = useState(undefined)
+
+    const [isVisualizationView, setIsVisualizationView] = useState(false)
+    const [isSaveModalOpen, setSaveModalOpen] = useState(false)
+
     return (
         <MetabaseProvider config={config}>
-            <CreateQuestion/>
+            <InteractiveQuestion
+                questionId={questionId}
+                onSave={(question) => {
+                    setQuestionId(question.id())
+                    setSaveModalOpen(false)
+                }}
+                isSaveEnabled
+            >
+                <div>
+                    <div
+                        style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            width: "100%",
+                        }}
+                    >
+                        <div style={{ display: "flex" }}>
+                            <InteractiveQuestion.Title />
+                        </div>
+
+                        <div style={{ display: "flex" }}>
+                            <button
+                                onClick={() => setIsVisualizationView(!isVisualizationView)}
+                            >
+                                Show {isVisualizationView ? "editor" : "visualization"}
+                            </button>
+
+                            <button onClick={() => setSaveModalOpen(true)}>Save</button>
+                        </div>
+                    </div>
+
+                    {isVisualizationView && (
+                        <div style={{ height: "500px" }}>
+                            <InteractiveQuestion.QuestionVisualization />
+                        </div>
+                    )}
+
+                    {!isVisualizationView && (
+                        <InteractiveQuestion.Editor
+                            onApply={() => setIsVisualizationView(true)}
+                        />
+                    )}
+
+                    {isSaveModalOpen && (
+                        <div className="modal">
+                            <InteractiveQuestion.SaveQuestionForm
+                                onClose={() => setSaveModalOpen(false)}
+                            />
+                        </div>
+                    )}
+                </div>
+            </InteractiveQuestion>
         </MetabaseProvider>
-    );
+    )
 }
 ```
