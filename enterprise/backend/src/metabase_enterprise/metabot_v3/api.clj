@@ -42,7 +42,7 @@
   {message ms/NonBlankString
    context [:map-of :keyword :any]
    history [:maybe [:sequential :map]]
-   session_id [:maybe :string]}
+   session_id ms/UUIDString}
   (metabot-v3.context/log _body :llm.log/fe->be)
   (let [context (mc/decode ::metabot-v3.context/context
                            context (mtx/transformer {:name :api-request}))
@@ -50,7 +50,7 @@
                            history (mtx/transformer {:name :api-request}))]
     (doto (assoc
            (request message context history session_id)
-           :session_id (or session_id (str (random-uuid))))
+           :session_id session_id)
       (metabot-v3.context/log :llm.log/be->fe))))
 
 (api/define-routes)
