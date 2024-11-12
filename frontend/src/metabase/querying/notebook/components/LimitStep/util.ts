@@ -3,5 +3,5 @@ export function isLimitValid(number: number) {
 }
 
 export function parseLimit(value: string) {
-  return parseInt(value, 0);
+  return parseInt(value, 10);
 }
