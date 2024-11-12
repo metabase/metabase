@@ -73,7 +73,7 @@
 
 (defn- rehydrate [index-row]
   ;; Useful for debugging scoring
-  #_ (dissoc index-row :legacy_input :created_at :updated_at :last_edited_at)
+  #_(dissoc index-row :legacy_input :created_at :updated_at :last_edited_at)
   (-> (merge
        (json/parse-string (:legacy_input index-row) keyword)
        (select-keys index-row [:total_score :pinned]))
