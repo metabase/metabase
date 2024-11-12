@@ -51,7 +51,7 @@ export type MetabotMessageReaction = {
 
 export type MetabotChangeDisplayTypeReaction = {
   type: "metabot.reaction/change-display-type";
-  display_type: CardDisplayType;
+  display: CardDisplayType;
 };
 
 export type MetabotChangeVisiualizationSettingsReaction = {

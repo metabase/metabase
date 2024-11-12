@@ -28,9 +28,12 @@ export const useRegisterMetabotContext = () => {
     );
 
     return {
+      display: question?.display(),
+      dataset_query: question?.datasetQuery(),
+
+      // global context is deprecated
       colorPalette: getAccentColors(),
       current_question_id: question?.id() || null,
-      dataset_query: question?.datasetQuery(),
       current_visualization_settings: {
         ...vizSettings,
         current_display_type: question?.display(),
