@@ -60,8 +60,6 @@
              [:view_count :int]
              ;; permission related entities
              [:collection_id :int]
-             [:database_id :int]
-             [:table_id :int]
              ;; filter related
              [:archived :boolean :not-null [:default false]]
              [:creator_id :int]
