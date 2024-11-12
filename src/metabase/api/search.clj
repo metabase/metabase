@@ -76,7 +76,7 @@
   [:as {overrides :params}]
   ;; remove cookie
   (let [overrides (dissoc overrides :search_engine)]
-    (when (seq #p overrides)
+    (when (seq overrides)
       (api/check-superuser))
     (set-weights! (update-vals overrides parse-double))))
 
