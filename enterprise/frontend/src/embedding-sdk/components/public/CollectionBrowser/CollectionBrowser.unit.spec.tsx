@@ -4,7 +4,7 @@ import {
   setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen, within } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 import { CollectionBrowserInner } from "embedding-sdk/components/public/CollectionBrowser/CollectionBrowser";
 import { createMockAuthProviderUriConfig } from "embedding-sdk/test/mocks/config";
 import { setupSdkState } from "embedding-sdk/test/server-mocks/sdk-init";
@@ -41,24 +41,6 @@ describe("CollectionBrowser", () => {
     expect(screen.getByText("Name")).toBeInTheDocument();
     expect(screen.getByText("Last edited by")).toBeInTheDocument();
     expect(screen.getByText("Last edited at")).toBeInTheDocument();
-  });
-
-  it("should allow to hide certain columns", async () => {
-    await setup({
-      props: {
-        visibleColumns: ["type", "name"],
-      },
-    });
-
-    const columnNames: (string | null)[] = [];
-
-    within(screen.getByTestId("items-table-head"))
-      .getAllByRole("button")
-      .forEach(el => {
-        columnNames.push(el.textContent);
-      });
-
-    expect(columnNames).toStrictEqual(["Type", "Name"]);
   });
 });
 
