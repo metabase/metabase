@@ -132,31 +132,27 @@
                        (mt/user-http-request :rasta :get 200 "cache/"
                                              :model model
                                              :id id)))
-
                 (is (mt/user-http-request :rasta :put 200 "cache/"
                                           {:model    model
                                            :model_id id
                                            :strategy {:type "nocache" :name "card1"}}))
-
-                (is (=?
-                     {:count 1}
-                     (mt/user-http-request :rasta :post 200 "cache/invalidate"
-                                           (keyword model) [id])))
-
+                (is (=? {:count 1}
+                        (mt/user-http-request :rasta :post 200 "cache/invalidate"
+                                              (keyword model) [id])))
                 (is (nil? (mt/user-http-request :rasta :delete 204 "cache/"
                                                 {:model    model
-                                                 :model_id id}))))))
+                                                 :model_id id})))))))
 
+        (testing "Non-admins cannot access cache config if they do not have write access to the model"
           (mt/with-all-users-data-perms-graph! {db-id {:details :no}}
             (mt/with-non-admin-groups-no-collection-perms collection-id
               (doseq [[model id] [["question" card-id]
-                                  #_["database" db-id]
-                                  #_["dashboard" dashboard-id]]]
+                                  ["database" db-id]
+                                  ["dashboard" dashboard-id]]]
                 (testing (format "\nTesting cache config for %s %d" model id)
                   (mt/user-http-request :rasta :get 403 "cache/"
                                         :model model
                                         :id id)
-
                   (mt/user-http-request :rasta :put 403 "cache/"
                                         {:model    model
                                          :model_id id
