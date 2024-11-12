@@ -25,7 +25,6 @@ import type { DatasetEditorTab, QueryBuilderMode } from "metabase-types/store";
 import { ExploreResultsLink } from "../ExploreResultsLink";
 import { FilterHeaderButton } from "../FilterHeaderButton";
 import { QuestionActions } from "../QuestionActions";
-import { QuestionNotebookButton } from "../QuestionNotebookButton";
 import { QuestionSummarizeWidget } from "../QuestionSummarizeWidget";
 import { ToggleNativeQueryPreview } from "../ToggleNativeQueryPreview";
 
@@ -143,7 +142,6 @@ export function ViewTitleHeaderRightSide({
 
   const canSave = Lib.canSave(question.query(), question.type());
   const isSaveDisabled = !canSave;
-  const isBrandNew = !isSaved && !result && queryBuilderMode === "notebook";
   const disabledSaveTooltip = getDisabledSaveTooltip(isEditable);
 
   return (
@@ -174,16 +172,6 @@ export function ViewTitleHeaderRightSide({
           isShowingSummarySidebar={isShowingSummarySidebar}
           onEditSummary={onEditSummary}
           onCloseSummary={onCloseSummary}
-        />
-      )}
-      {QuestionNotebookButton.shouldRender({
-        question,
-        isActionListVisible,
-        isBrandNew,
-      }) && (
-        <QuestionNotebookButton
-          isShowingNotebook={isShowingNotebook}
-          setQueryBuilderMode={setQueryBuilderMode}
         />
       )}
       {ToggleNativeQueryPreview.shouldRender({
