@@ -1580,8 +1580,8 @@ describe("scenarios > dashboard > filters > query stages", () => {
             visitPublicDashboard(dashboardId),
           );
           waitForPublicDashboardData();
-          // TODO: https://github.com/metabase/metabase/issues/49282
-          // We should use apply2ndStageBreakoutFilter() instead of the next 4 lines:
+          // We're not using apply2ndStageBreakoutFilter() here because in public dashboards
+          // there are no field values to choose from. We need to search for those values manually.
           filterWidget().eq(0).click();
           popover().within(() => {
             cy.findByPlaceholderText("Enter some text").type("Gadget");
@@ -1610,8 +1610,8 @@ describe("scenarios > dashboard > filters > query stages", () => {
             });
           });
           waitForEmbeddedDashboardData();
-          // TODO: https://github.com/metabase/metabase/issues/49282
-          // We should use apply2ndStageBreakoutFilter() instead of the next 4 lines:
+          // We're not using apply2ndStageBreakoutFilter() here because in public dashboards
+          // there are no field values to choose from. We need to search for those values manually.
           filterWidget().eq(0).click();
           popover().within(() => {
             cy.findByPlaceholderText("Enter some text").type("Gadget");
