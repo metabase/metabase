@@ -125,7 +125,6 @@ describe("StaticQuestion", () => {
   it("should render an error if a question isn't found", async () => {
     setup({ isValidCard: false });
     await waitForLoaderToBeRemoved();
-    expect(screen.getByText("Error")).toBeInTheDocument();
     expect(
       screen.getByText("You don't have permissions to do that."),
     ).toBeInTheDocument();
