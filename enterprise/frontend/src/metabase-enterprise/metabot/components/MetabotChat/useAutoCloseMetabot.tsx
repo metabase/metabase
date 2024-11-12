@@ -9,7 +9,11 @@ function basePathSegment(pathname: string) {
   return pathname.split("/")?.[1] ?? "";
 }
 
-export function useAutoCloseMetabot(hasUserInput: boolean) {
+export function useAutoCloseMetabot({
+  hasUserInput,
+}: {
+  hasUserInput: boolean;
+}) {
   const { visible, setVisible, isDoingScience } = useMetabotAgent();
 
   const location = useLocation();

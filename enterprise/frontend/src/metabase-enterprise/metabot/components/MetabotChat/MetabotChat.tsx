@@ -42,7 +42,9 @@ export const MetabotChat = ({ onClose }: { onClose: () => void }) => {
     onClose();
   }, [resetInput, onClose]);
 
-  useAutoCloseMetabot(!!input);
+  useAutoCloseMetabot({
+    hasUserInput: !!input,
+  });
 
   const [inputExpanded, setInputExpanded] = useState(false);
   const handleMaybeExpandInput = () => {

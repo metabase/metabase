@@ -173,32 +173,47 @@ describe("metabot", () => {
 
     // eslint-disable-next-line jest/expect-expect
     it("should properly auto-close metabot if route changes", async () => {
+      setup();
+
+      await assertVisible();
+      act(() => window.history?.pushState(null, "", "/some-route"));
+      await assertNotVisible();
+    });
+
+    // eslint-disable-next-line jest/expect-expect
+    it("should not close on route change if metabot is processing", async () => {
       const { store } = setup();
 
-      // should close on normal route change
-      await assertVisible();
-      act(() => window.history?.pushState(null, "", "/1"));
-      await assertNotVisible();
-
-      // should not close on route change if metabot is processing
       showMetabot(store.dispatch);
       act(() => store.dispatch(setIsProcessing(true)));
-      act(() => window.history?.pushState(null, "", "/2"));
+      act(() => window.history?.pushState(null, "", "/some-route"));
       await assertVisible();
       act(() => store.dispatch(setIsProcessing(false)));
       hideMetabot(store.dispatch);
       await assertNotVisible();
+    });
+
+    // eslint-disable-next-line jest/expect-expect
+    it("should not close on route change if there is user input", async () => {
+      const { store } = setup();
 
       // should not close if user has value in the input
       showMetabot(store.dispatch);
       await userEvent.type(await input(), "Some incomplete user prompt");
-      act(() => window.history?.pushState(null, "", "/3"));
+      act(() => window.history?.pushState(null, "", "/some-route"));
       await assertVisible();
+    });
 
-      // should not close if the user navigates within the base path segment
-      act(() => window.history?.pushState(null, "", "/3/sub-path"));
+    // eslint-disable-next-line jest/expect-expect
+    it("should not close on route change if new location shares base bath segement", async () => {
+      const { store } = setup();
+
+      act(() => window.history?.pushState(null, "", "/base-path"));
+      showMetabot(store.dispatch);
       await assertVisible();
-      act(() => window.history?.pushState(null, "", "/3"));
+      act(() => window.history?.pushState(null, "", "/base-path/sub-path"));
+      await assertVisible();
+      act(() => window.history?.pushState(null, "", "/base-path"));
       await assertVisible();
     });
   });
