@@ -91,7 +91,7 @@ export type MetabotAgentRequest = {
   message: string;
   context: MetabotChatContext;
   history: MetabotHistory[];
-  session_id: string;
+  session_id: string; // uuid
 };
 
 export type MetabotAgentResponse = {
