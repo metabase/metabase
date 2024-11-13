@@ -2178,6 +2178,10 @@
                      :visualization_settings
                      (json/parse-string keyword-except-column-key)))))))))
 
+(defn- insert-returning-pk!
+  [table record]
+  (first (t2/insert-returning-pks! table record)))
+
 (defn- insert-stage-number-data!
   []
   (let [single-stage-query {:source-table 29, :filter [:> [:field 288 nil] "2015-01-01"]},
@@ -2190,21 +2194,21 @@
                             :filter [:starts-with [:field 275 {:source-field 290}] "F"]},
                            :filter [:> [:field "count" {:base-type :type/Integer}] 5]}
         native-query {:query "SELECT ID, NAME, CATEGORY_ID FROM VENUES ORDER BY ID DESC LIMIT 2"}
-        user-id (t2/insert-returning-pks! (t2/table-name :model/User)
-                                          {:first_name  "Howard"
-                                           :last_name   "Hughes"
-                                           :email       "howard@aircraft.com"
-                                           :password    "superstrong"
-                                           :date_joined :%now})
-        database-id (t2/insert-returning-pks! (t2/table-name :model/Database)
-                                              {:name       "DB"
-                                               :engine     "h2"
-                                               :created_at :%now
-                                               :updated_at :%now
-                                               :details    "{}"})
-        dashboard-id (t2/insert-returning-pks! :model/Dashboard {:name                "My Dashboard"
-                                                                 :creator_id          user-id
-                                                                 :parameters          []})
+        user-id (insert-returning-pk! (t2/table-name :model/User)
+                                      {:first_name  "Howard"
+                                       :last_name   "Hughes"
+                                       :email       "howard@aircraft.com"
+                                       :password    "superstrong"
+                                       :date_joined :%now})
+        database-id (insert-returning-pk! (t2/table-name :model/Database)
+                                          {:name       "DB"
+                                           :engine     "h2"
+                                           :created_at :%now
+                                           :updated_at :%now
+                                           :details    "{}"})
+        dashboard-id (insert-returning-pk! :model/Dashboard {:name                "My Dashboard"
+                                                             :creator_id          user-id
+                                                             :parameters          []})
         single-stage-dataset-query (json/generate-string {:type "query"
                                                           :database database-id
                                                           :query single-stage-query})
@@ -2214,50 +2218,50 @@
         native-dataset-query (json/generate-string {:type "native"
                                                     :database database-id
                                                     :native native-query})
-        single-stage-question-id (t2/insert-returning-pks! (t2/table-name :model/Card)
-                                                           {:name                   "Single-stage Question"
-                                                            :created_at             :%now
-                                                            :updated_at             :%now
-                                                            :creator_id             user-id
-                                                            :type                   "question"
-                                                            :display                "table"
-                                                            :dataset_query          single-stage-dataset-query
-                                                            :visualization_settings "{}"
-                                                            :database_id            database-id
-                                                            :collection_id          nil})
-        native-question-id (t2/insert-returning-pks! (t2/table-name :model/Card)
-                                                     {:name                   "Native Question"
-                                                      :created_at             :%now
-                                                      :updated_at             :%now
-                                                      :creator_id             user-id
-                                                      :type                   "question"
-                                                      :display                "table"
-                                                      :dataset_query          native-dataset-query
-                                                      :visualization_settings "{}"
-                                                      :database_id            database-id
-                                                      :collection_id          nil})
-        multi-stage-question-id (t2/insert-returning-pks! (t2/table-name :model/Card)
-                                                          {:name                    "Multi-stage Question"
-                                                           :created_at             :%now
-                                                           :updated_at             :%now
-                                                           :creator_id             user-id
-                                                           :type                   "question"
-                                                           :display                "table"
-                                                           :dataset_query          multi-stage-dataset-query
-                                                           :visualization_settings "{}"
-                                                           :database_id            database-id
-                                                           :collection_id          nil})
-        multi-stage-model-id (t2/insert-returning-pks! (t2/table-name :model/Card)
-                                                       {:name                   "Single Stage Question"
+        single-stage-question-id (insert-returning-pk! (t2/table-name :model/Card)
+                                                       {:name                   "Single-stage Question"
                                                         :created_at             :%now
                                                         :updated_at             :%now
                                                         :creator_id             user-id
-                                                        :type                   "model"
+                                                        :type                   "question"
                                                         :display                "table"
-                                                        :dataset_query          multi-stage-dataset-query
+                                                        :dataset_query          single-stage-dataset-query
                                                         :visualization_settings "{}"
                                                         :database_id            database-id
-                                                        :collection_id          nil})]
+                                                        :collection_id          nil})
+        native-question-id (insert-returning-pk! (t2/table-name :model/Card)
+                                                 {:name                   "Native Question"
+                                                  :created_at             :%now
+                                                  :updated_at             :%now
+                                                  :creator_id             user-id
+                                                  :type                   "question"
+                                                  :display                "table"
+                                                  :dataset_query          native-dataset-query
+                                                  :visualization_settings "{}"
+                                                  :database_id            database-id
+                                                  :collection_id          nil})
+        multi-stage-question-id (insert-returning-pk! (t2/table-name :model/Card)
+                                                      {:name                    "Multi-stage Question"
+                                                       :created_at             :%now
+                                                       :updated_at             :%now
+                                                       :creator_id             user-id
+                                                       :type                   "question"
+                                                       :display                "table"
+                                                       :dataset_query          multi-stage-dataset-query
+                                                       :visualization_settings "{}"
+                                                       :database_id            database-id
+                                                       :collection_id          nil})
+        multi-stage-model-id (insert-returning-pk! (t2/table-name :model/Card)
+                                                   {:name                   "Single Stage Question"
+                                                    :created_at             :%now
+                                                    :updated_at             :%now
+                                                    :creator_id             user-id
+                                                    :type                   "model"
+                                                    :display                "table"
+                                                    :dataset_query          multi-stage-dataset-query
+                                                    :visualization_settings "{}"
+                                                    :database_id            database-id
+                                                    :collection_id          nil})]
     {:user-id                  user-id
      :database-id              database-id
      :dashboard-id             dashboard-id
@@ -2291,15 +2295,15 @@
             create-dashcard (fn create-dashcard
                               ([card-id] (create-dashcard card-id (parameter-mappings-without-stage-numbers card-id)))
                               ([card-id pmappings]
-                               (t2/insert-returning-pks! :model/DashboardCard
-                                                         {:dashboard_id dashboard-id
-                                                          :parameter_mappings pmappings
-                                                          :visualization_settings "{}"
-                                                          :card_id card-id
-                                                          :size_x  4
-                                                          :size_y  4
-                                                          :col     1
-                                                          :row     1})))
+                               (insert-returning-pk! :model/DashboardCard
+                                                     {:dashboard_id dashboard-id
+                                                      :parameter_mappings pmappings
+                                                      :visualization_settings "{}"
+                                                      :card_id card-id
+                                                      :size_x  4
+                                                      :size_y  4
+                                                      :col     1
+                                                      :row     1})))
             single-stage-dashcard-id      (create-dashcard single-stage-question-id)
             native-dashcard-id            (create-dashcard native-question-id)
             multi-stage-dashcard1-id      (create-dashcard multi-stage-question-id)
@@ -2377,111 +2381,126 @@
             (insert-stage-number-data!)
 
             viz-settings-without-stage-numbers
-            {:table.cell_column "model_id",
-             :table.columns
-             [{:enabled true, :fieldRef ["field" 146 {:base-type "type/Text", :join-alias "People - User"}], :name "full_name"}
-              {:enabled false, :fieldRef ["field" 191 {:base-type "type/Integer"}], :name "user_id"}
-              {:enabled true, :fieldRef ["aggregation" 0], :name "count"}],
-             :table.pivot_column "end_timestamp",
-             :column_settings
-             {:name0
-              {:click_behavior
-               {:targetId "target-id0"
-                :parameterMapping
-                {:key0
-                 {:source {:type "column"
-                           :id "0"
-                           :name "0"}
-                  :target {:type "dimension",
-                           :id ["[\"dimension\",[\"field\",200,null]]"]
-                           :dimension ["dimension" ["field" 200 nil]]}
-                  :id ["[\"dimension\",[\"field\",200,null]]"]}
-                 :key1
-                 {:source {:type "column"
-                           :id "0"
-                           :name "0"}
-                  :target {:type "dimension",
-                           :id ["[\"dimension\",[\"field\",201,null]]"]
-                           :dimension ["dimension" ["field" 201 nil]]}
-                  :id ["[\"dimension\",[\"field\",201,null]]"]}}
-                :linkType "question"
-                :type "link"}}
-              :name1
-              {:click_behavior
-               {:targetId "target-id1"
+            (fn [[target-id0 target-id1 target-id2]]
+              {:table.cell_column "model_id",
+               :table.columns
+               [{:enabled true
+                 :fieldRef ["field" 146 {:base-type "type/Text", :join-alias "People - User"}]
+                 :name "full_name"}
+                {:enabled false
+                 :fieldRef ["field" 191 {:base-type "type/Integer"}]
+                 :name "user_id"}
+                {:enabled true
+                 :fieldRef ["aggregation" 0]
+                 :name "count"}],
+               :table.pivot_column "end_timestamp",
+               :column_settings
+               {:name0
+                {:click_behavior
+                 {:targetId target-id0
+                  :parameterMapping
+                  {:key0
+                   {:source {:type "column"
+                             :id "0"
+                             :name "0"}
+                    :target {:type "dimension",
+                             :id ["[\"dimension\",[\"field\",200,null]]"]
+                             :dimension ["dimension" ["field" 200 nil]]}
+                    :id ["[\"dimension\",[\"field\",200,null]]"]}
+                   :key1
+                   {:source {:type "column"
+                             :id "0"
+                             :name "0"}
+                    :target {:type "dimension",
+                             :id ["[\"dimension\",[\"field\",201,null]]"]
+                             :dimension ["dimension" ["field" 201 nil]]}
+                    :id ["[\"dimension\",[\"field\",201,null]]"]}}
+                  :linkType "question"
+                  :type "link"}}
+                :name1
+                {:click_behavior
+                 {:targetId target-id1
+                  :parameterMapping
+                  {:key2
+                   {:source {:type "column"
+                             :id "0"
+                             :name "0"}
+                    :target {:type "dimension",
+                             :id ["[\"dimension\",[\"field\",202,null]]"]
+                             :dimension ["dimension" ["field" 202 nil]]}
+                    :id ["[\"dimension\",[\"field\",202,null]]"]}}
+                  :linkType "dashboard"
+                  :type "link"}}}
+               :click_behavior
+               {:targetId target-id2
                 :parameterMapping
                 {:key2
                  {:source {:type "column"
                            :id "0"
                            :name "0"}
                   :target {:type "dimension",
-                           :id ["[\"dimension\",[\"field\",202,null]]"]
-                           :dimension ["dimension" ["field" 202 nil]]}
-                  :id ["[\"dimension\",[\"field\",202,null]]"]}}
+                           :id ["[\"dimension\",[\"field\",203,null]]"]
+                           :dimension ["dimension" ["field" 203 nil]]}
+                  :id ["[\"dimension\",[\"field\",203,null]]"]}}
                 :linkType "question"
-                :type "link"}}}}
+                :type "link"}})
 
             viz-settings-with-stage-numbers
-            (fn [stage-number]
-              (reduce #(assoc-in %1 %2 stage-number)
-                      viz-settings-without-stage-numbers
-                      [[:column_settings :name0 :click_behavior
-                        :parameterMapping :key0
-                        :target :dimension 2 :stage-number]
-                       [:column_settings :name0 :click_behavior
-                        :parameterMapping :key1
-                        :target :dimension 2 :stage-number]
-                       [:column_settings :name1 :click_behavior
-                        :parameterMapping :key2
-                        :target :dimension 2 :stage-number]]))
+            (fn [target-ids stage-numbers]
+              (->> (map vector
+                        [[:column_settings :name0 :click_behavior
+                          :parameterMapping :key0
+                          :target :dimension 2 :stage-number]
+                         [:column_settings :name0 :click_behavior
+                          :parameterMapping :key1
+                          :target :dimension 2 :stage-number]
+                         [:click_behavior
+                          :parameterMapping :key2
+                          :target :dimension 2 :stage-number]]
+                        stage-numbers)
+                   (reduce (fn [viz-settings [path stage-number]]
+                             (assoc-in viz-settings path stage-number))
+                           (viz-settings-without-stage-numbers target-ids))))
 
             create-dashcard (fn create-dashcard
-                              ([card-id] (create-dashcard card-id viz-settings-without-stage-numbers))
-                              ([card-id viz-settings]
-                               (t2/insert-returning-pks! :model/DashboardCard
-                                                         {:dashboard_id dashboard-id
-                                                          :parameter_mappings []
-                                                          :visualization_settings viz-settings
-                                                          :card_id card-id
-                                                          :size_x  4
-                                                          :size_y  4
-                                                          :col     1
-                                                          :row     1})))
-            single-stage-dashcard-id      (create-dashcard single-stage-question-id)
-            native-dashcard-id            (create-dashcard native-question-id)
-            multi-stage-dashcard1-id      (create-dashcard multi-stage-question-id)
-            multi-stage-dashcard2-id      (create-dashcard multi-stage-question-id {})
-            multi-stage-dashcard3-id      (create-dashcard multi-stage-question-id)
-            multi-stage-model-dashcard-id (create-dashcard multi-stage-model-id)
-            stage-0-pattern (viz-settings-with-stage-numbers 0)
-            stage-2-pattern (viz-settings-with-stage-numbers 2)
-            no-stage-pattern viz-settings-without-stage-numbers
+                              [card-id targets-or-viz-settings]
+                              (insert-returning-pk! :model/DashboardCard
+                                                    {:dashboard_id dashboard-id
+                                                     :parameter_mappings []
+                                                     :visualization_settings
+                                                     (if (map? targets-or-viz-settings)
+                                                       targets-or-viz-settings
+                                                       (viz-settings-without-stage-numbers
+                                                        targets-or-viz-settings))
+                                                     :card_id card-id
+                                                     :size_x  4
+                                                     :size_y  4
+                                                     :col     1
+                                                     :row     1}))
+            single-stage-dashcard-id (create-dashcard single-stage-question-id
+                                                      [single-stage-question-id dashboard-id native-question-id])
+            multi-stage-dashcard-id  (create-dashcard single-stage-question-id
+                                                      [multi-stage-question-id dashboard-id multi-stage-model-id])
+            no-vs-dashcard-id        (create-dashcard multi-stage-question-id {})
             query-viz-settings (fn []
                                  (->> (t2/query {:select   [:visualization_settings]
                                                  :from     [:report_dashboardcard]
-                                                 :where    [:in :id [single-stage-dashcard-id        ; stage 0
-                                                                     native-dashcard-id              ; stage 0
-                                                                     multi-stage-dashcard1-id        ; stage 2
-                                                                     multi-stage-dashcard2-id        ; no params
-                                                                     multi-stage-dashcard3-id        ; stage 2
-                                                                     multi-stage-model-dashcard-id]] ; stage 0
+                                                 :where    [:in :id [single-stage-dashcard-id
+                                                                     multi-stage-dashcard-id
+                                                                     no-vs-dashcard-id]]
                                                  :order-by [:id]})
                                       (map #(-> % :visualization_settings (json/parse-string true)))))]
         (migrate!)
         (testing "After the migration, dimension parameterMappings have stage numbers"
-          (is (= [stage-0-pattern
-                  stage-0-pattern
-                  stage-2-pattern
-                  {}
-                  stage-2-pattern
-                  stage-0-pattern]
+          (is (= [(viz-settings-with-stage-numbers [single-stage-question-id dashboard-id native-question-id]
+                                                   [0 0 0])
+                  (viz-settings-with-stage-numbers [multi-stage-question-id dashboard-id multi-stage-model-id]
+                                                   [2 2 0])
+                  {}]
                  (query-viz-settings))))
         (migrate! :down 51)
         (testing "After reversing the migration, parameterMappings have no stage numbers"
-          (is (= [no-stage-pattern
-                  no-stage-pattern
-                  no-stage-pattern
-                  {}
-                  no-stage-pattern
-                  no-stage-pattern]
+          (is (= [(viz-settings-without-stage-numbers [single-stage-question-id dashboard-id native-question-id])
+                  (viz-settings-without-stage-numbers [multi-stage-question-id dashboard-id multi-stage-model-id])
+                  {}]
                  (query-viz-settings))))))))
