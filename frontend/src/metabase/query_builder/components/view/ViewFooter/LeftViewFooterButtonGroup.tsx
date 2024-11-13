@@ -11,6 +11,7 @@ import {
   setUIControls,
 } from "metabase/query_builder/actions";
 import {
+  getIsActionListVisible,
   getIsShowingRawTable,
   getIsVisualized,
   getUiControls,
@@ -32,11 +33,12 @@ export const LeftViewFooterButtonGroup = ({
 }: LeftViewFooterButtonGroupProps) => {
   const { isShowingChartSettingsSidebar }: QueryBuilderUIControls =
     useSelector(getUiControls);
+  const isActionListVisible = useSelector(getIsActionListVisible);
   const isShowingRawTable = useSelector(getIsShowingRawTable);
   const vizIcon = getIconForVisualizationType(question.display());
   const { isNative, isEditable } = Lib.queryDisplayInfo(question.query());
   const shouldShowEditorButton =
-    !isNative && isEditable && !question.isArchived();
+    !isNative && isEditable && !question.isArchived() && isActionListVisible;
 
   useUnmount(() => {
     // reset showing raw table, so new mount will default to viz

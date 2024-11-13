@@ -1122,7 +1122,9 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     });
   });
 
-  it("should not have to wait for data to show fields in summarisation (metabase#26467)", () => {
+  // There is no way to go to notebook editor while the question result is not loaded anymore,
+  // so we either need to show editor control anyway or remove this test
+  it.skip("should not have to wait for data to show fields in summarization (metabase#26467)", () => {
     cy.intercept("POST", "api/card/pivot/*/query", req => {
       req.on("response", res => {
         res.setDelay(20_000);
