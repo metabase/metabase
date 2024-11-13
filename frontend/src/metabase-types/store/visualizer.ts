@@ -16,15 +16,10 @@ export type VisualizerDataSource = {
   name: string;
 };
 
-export type VisualizerReferencedColumn = {
+export type VisualizerColumnReference = {
   sourceId: VisualizerDataSourceId;
-  columnKey: string; // in original dataset
   name: string; // in combined dataset
-};
-
-export type VisualizerDatasetColumn = DatasetColumn & {
-  values: string[];
-  source: "artificial";
+  originalName: string; // in original dataset
 };
 
 type BaseDraggedItem<T> = {
@@ -43,15 +38,23 @@ export type DraggedColumn = BaseDraggedItem<{
 export type DraggedWellItem = BaseDraggedItem<{
   type: "WELL_ITEM";
   wellId: string;
-  column: VisualizerDatasetColumn;
+  column: DatasetColumn;
 }>;
 
 export type DraggedItem = DraggedColumn | DraggedWellItem;
 
+// a way to use dataset's name as a value
+export type VisualizerDataSourceNameReference =
+  `$_${VisualizerDataSourceId}_name`;
+
+export type VisualizerColumnValueSource =
+  | VisualizerColumnReference
+  | VisualizerDataSourceNameReference;
+
 export interface VisualizerState {
   display: VisualizationDisplay | null;
-  columns: VisualizerDatasetColumn[];
-  referencedColumns: VisualizerReferencedColumn[];
+  columns: DatasetColumn[];
+  columnValuesMapping: Record<string, VisualizerColumnValueSource[]>;
   settings: VisualizationSettings;
   cards: Card[];
   datasets: Record<VisualizerDataSourceId, Dataset>;

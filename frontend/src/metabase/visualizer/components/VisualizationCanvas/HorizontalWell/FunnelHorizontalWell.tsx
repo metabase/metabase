@@ -13,10 +13,8 @@ import { Sortable } from "metabase/core/components/Sortable";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Box, Flex, type FlexProps, Text } from "metabase/ui";
 import { DROPPABLE_ID } from "metabase/visualizer/constants";
-import {
-  getSettings,
-  updateSettings,
-} from "metabase/visualizer/visualizer.slice";
+import { getSettings } from "metabase/visualizer/selectors";
+import { updateSettings } from "metabase/visualizer/visualizer.slice";
 
 import { WellItem, type WellItemProps } from "../WellItem";
 

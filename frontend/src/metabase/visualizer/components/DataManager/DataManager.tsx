@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import { useSelector } from "metabase/lib/redux";
 import { Box, Center, Flex, Text } from "metabase/ui";
-import { getDataSources } from "metabase/visualizer/visualizer.slice";
+import { getDataSources } from "metabase/visualizer/selectors";
 
 import { DatasetList } from "./DatasetList";
 

@@ -1,15 +1,17 @@
 import type { Active } from "@dnd-kit/core";
 
-import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
+import { isDate } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetColumn } from "metabase-types/api";
 import type {
   DraggedColumn,
   DraggedItem,
   DraggedWellItem,
+  VisualizerColumnReference,
+  VisualizerColumnValueSource,
   VisualizerDataSource,
   VisualizerDataSourceId,
+  VisualizerDataSourceNameReference,
   VisualizerDataSourceType,
-  VisualizerReferencedColumn,
 } from "metabase-types/store/visualizer";
 
 import { DRAGGABLE_ID } from "./constants";
@@ -27,17 +29,46 @@ export function createDataSource(
   };
 }
 
+export function isReferenceToColumn(
+  column: DatasetColumn,
+  dataSourceId: VisualizerDataSourceId,
+  ref: VisualizerColumnReference,
+) {
+  return dataSourceId === ref.sourceId && column.name === ref.originalName;
+}
+
+export function compareColumnReferences(
+  r1: VisualizerColumnReference,
+  r2: VisualizerColumnReference,
+) {
+  return r1.sourceId === r2.sourceId && r1.originalName === r2.originalName;
+}
+
+export function checkColumnMappingExists(
+  columnValueSources: VisualizerColumnValueSource[],
+  valueSource: VisualizerColumnValueSource,
+) {
+  if (typeof valueSource === "string") {
+    return columnValueSources.includes(valueSource);
+  }
+
+  return columnValueSources.some(
+    source =>
+      typeof source !== "string" &&
+      compareColumnReferences(source, valueSource),
+  );
+}
+
 export function createVisualizerColumnReference(
   dataSource: VisualizerDataSource,
   column: DatasetColumn,
-  otherReferencedColumns: VisualizerReferencedColumn[],
-): VisualizerReferencedColumn {
-  const alreadyReferenced = otherReferencedColumns.find(
-    ref =>
-      ref.sourceId === dataSource.id && ref.columnKey === getColumnKey(column),
+  otherReferencedColumns: VisualizerColumnReference[],
+): VisualizerColumnReference {
+  const existingRef = otherReferencedColumns.find(ref =>
+    isReferenceToColumn(column, dataSource.id, ref),
   );
-  if (alreadyReferenced) {
-    return alreadyReferenced;
+  if (existingRef) {
+    return existingRef;
   }
 
   let name = column.name;
@@ -48,17 +79,25 @@ export function createVisualizerColumnReference(
 
   return {
     sourceId: dataSource.id,
-    columnKey: getColumnKey(column),
+    originalName: column.name,
     name,
   };
 }
 
-export function createDataSourceNameRef(id: VisualizerDataSourceId) {
+export function createDataSourceNameRef(
+  id: VisualizerDataSourceId,
+): VisualizerDataSourceNameReference {
   return `$_${id}_name`;
 }
 
-export function isDataSourceNameRef(str: string) {
-  return str.startsWith("$_") && str.endsWith("_name");
+export function isDataSourceNameRef(
+  value: VisualizerColumnValueSource,
+): value is VisualizerDataSourceNameReference {
+  return (
+    typeof value === "string" &&
+    value.startsWith("$_") &&
+    value.endsWith("_name")
+  );
 }
 
 export function getDataSourceIdFromNameRef(str: string) {
@@ -78,4 +117,80 @@ export function isDraggedWellItem(item: DndItem): item is DraggedWellItem {
 
 export function isValidDraggedItem(item: DndItem): item is DraggedItem {
   return isDraggedColumnItem(item) || isDraggedWellItem(item);
+}
+
+type CreateColumnOpts = {
+  name?: string;
+};
+
+export function createMetricColumn({
+  name = "METRIC_1",
+}: CreateColumnOpts = {}): DatasetColumn {
+  return {
+    name,
+    display_name: name,
+    base_type: "type/Integer",
+    effective_type: "type/Integer",
+    field_ref: ["field", name, { "base-type": "type/Integer" }],
+    source: "artificial",
+  };
+}
+
+export function createDimensionColumn({
+  name = "DIMENSION_1",
+}: CreateColumnOpts = {}): DatasetColumn {
+  return {
+    name,
+    display_name: name,
+    base_type: "type/Text",
+    effective_type: "type/Text",
+    field_ref: ["field", name, { "base-type": "type/Text" }],
+    source: "artificial",
+  };
+}
+
+export function addColumnMapping(
+  mapping: VisualizerColumnValueSource[] | undefined,
+  source: VisualizerColumnValueSource,
+) {
+  const nextMapping = mapping ? [...mapping] : [];
+  if (!checkColumnMappingExists(nextMapping, source)) {
+    nextMapping.push(source);
+  }
+  return nextMapping;
+}
+
+export function cloneColumnProperties(
+  visualizerColumn: DatasetColumn,
+  column: DatasetColumn,
+) {
+  const nextColumn = {
+    ...visualizerColumn,
+    base_type: column.base_type,
+    effective_type: column.effective_type,
+    display_name: column.display_name,
+  };
+
+  // TODO Remove manual MBQL manipulation
+  if (isDate(column)) {
+    const opts = { "base-type": column.base_type };
+    const temporalUnit = maybeGetTemporalUnit(column);
+    if (temporalUnit) {
+      opts["temporal-unit"] = temporalUnit;
+    }
+    nextColumn.field_ref = [
+      visualizerColumn?.field_ref?.[0] ?? "field",
+      visualizerColumn?.field_ref?.[1] ?? nextColumn.name,
+      opts,
+    ];
+  }
+
+  return nextColumn;
+}
+
+function maybeGetTemporalUnit(col: DatasetColumn) {
+  const maybeOpts = col.field_ref?.[2];
+  if (maybeOpts && "temporal-unit" in maybeOpts) {
+    return maybeOpts["temporal-unit"];
+  }
 }
