@@ -74,7 +74,7 @@ export const SETTINGS_DEFINITIONS = {
     section: t`Display`,
     title: t`Edge color`,
     widget: "segmentedControl",
-    default: "gray",
+    default: "source",
     props: {
       options: [
         { name: t`Gray`, value: "gray" },
