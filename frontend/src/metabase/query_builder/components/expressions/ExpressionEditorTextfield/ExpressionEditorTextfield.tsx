@@ -420,6 +420,7 @@ class ExpressionEditorTextfield extends React.Component<
   handleArrowUp = () => {
     const { highlightedSuggestionIndex, suggestions } = this.state;
 
+    // Do not hijack up/down arrow keys for autocomplete suggestions navigation when there's only 1 suggestion
     if (suggestions.length > 1) {
       this.setState({
         highlightedSuggestionIndex:
@@ -434,6 +435,7 @@ class ExpressionEditorTextfield extends React.Component<
   handleArrowDown = () => {
     const { highlightedSuggestionIndex, suggestions } = this.state;
 
+    // Do not hijack up/down arrow keys for autocomplete suggestions navigation when there's only 1 suggestion
     if (suggestions.length > 1) {
       this.setState({
         highlightedSuggestionIndex:
