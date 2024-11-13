@@ -89,8 +89,8 @@
     (dotimes [_ 5]
       (queue/put-with-delay! q (+ 100 (* 100 (Math/random))) (System/nanoTime)))
     (is (empty? (queue/take-delayed-batch! q 3)))
-    (is (nil? (queue/take-delayed-batch! q 3 90)))
-    (is (< 0 (count (queue/take-delayed-batch! q 3 110))))
+    (is (nil? (queue/take-delayed-batch! q 3 90 0)))
+    (is (< 0 (count (queue/take-delayed-batch! q 3 110 0))))
     (is (> 4 (count (queue/take-delayed-batch! q 3))))
     (is (empty? (queue/take-delayed-batch! q 3))))
 
