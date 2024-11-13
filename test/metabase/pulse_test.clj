@@ -792,26 +792,26 @@
                                                  :details      {:channel "#general"}}]
       (pulse.test-util/slack-test-setup
        (let [[slack-data] (metabase.pulse/send-pulse! (pulse/retrieve-pulse pulse-id))]
-         (is (= {:channel-id "#general",
-                 :attachments
-                 [{:blocks
-                   [{:type "header", :text {:type "plain_text", :text "Pulse: Pulse Name", :emoji true}}
-                    {:type "section", :fields [{:type "mrkdwn", :text "Sent by Rasta Toucan"}]}]}
-                  {:title           pulse.test-util/card-name,
-                   :rendered-info   {:attachments false
-                                     :content     true}
-                   :title_link      (str "https://metabase.com/testmb/question/" card-id-1),
-                   :attachment-name "image.png",
-                   :channel-id      "FOO",
-                   :fallback        pulse.test-util/card-name}
-                  {:title           "Test card 2",
-                   :rendered-info   {:attachments false
-                                     :content     true}
-                   :title_link      (str "https://metabase.com/testmb/question/" card-id-2),
-                   :attachment-name "image.png",
-                   :channel-id      "FOO",
-                   :fallback        "Test card 2"}]}
-                (pulse.test-util/thunk->boolean slack-data)))
+         (is (= [{:channel-id "#general",
+                  :attachments
+                  [{:blocks
+                    [{:type "header", :text {:type "plain_text", :text "Pulse: Pulse Name", :emoji true}}
+                     {:type "section", :fields [{:type "mrkdwn", :text "Sent by Rasta Toucan"}]}]}
+                   {:title           pulse.test-util/card-name,
+                    :rendered-info   {:attachments false
+                                      :content     true}
+                    :title_link      (str "https://metabase.com/testmb/question/" card-id-1),
+                    :attachment-name "image.png",
+                    :channel-id      "FOO",
+                    :fallback        pulse.test-util/card-name}
+                   {:title           "Test card 2",
+                    :rendered-info   {:attachments false
+                                      :content     true}
+                    :title_link      (str "https://metabase.com/testmb/question/" card-id-2),
+                    :attachment-name "image.png",
+                    :channel-id      "FOO",
+                    :fallback        "Test card 2"}]}]
+                (map pulse.test-util/thunk->boolean slack-data)))
          (testing "attachments"
            (is (true? (every? produces-bytes? (rest (:attachments slack-data)))))))))))
 
@@ -975,6 +975,32 @@
           (mt/reset-inbox!)
           (#'metabase.pulse/send-notifications! nil [fake-email-notification])
           (is (= {:numberOfSuccessfulCallsWithRetryAttempt 1}
+                 (get-positive-retry-metrics test-retry)))
+          (is (= 1 (count @mt/inbox)))))))
+  (testing "retry individual emails"
+    (let [retry-config (assoc (#'retry/retry-configuration)
+                              :max-attempts 2
+                              :initial-interval-millis 1)
+          test-retry   (retry/random-exponential-backoff-retry "test-retry" retry-config)
+          works-after   (tu/works-after 1 mt/fake-inbox-email-fn)]
+      (with-redefs [email/send-email! (fn [crendentials email]
+                                        (if (= "should_retry" (:subject email))
+                                          (works-after crendentials email)
+                                          email))
+                    retry/decorate    (rt/test-retry-decorate-fn test-retry)]
+        (mt/with-temporary-setting-values [email-smtp-host "fake_smtp_host"
+                                           email-smtp-port 587]
+          (mt/reset-inbox!)
+          (#'metabase.pulse/send-notifications! nil [[{:subject      "should_retry"
+                                                       :recipients   ["whoever@example.com"]
+                                                       :message-type :text
+                                                       :message      "test message body"}
+                                                      {:subject      "should_not_retry"
+                                                       :recipients   ["whoever@example.com"]
+                                                       :message-type :text
+                                                       :message      "test message body"}]])
+          (is (= {:numberOfSuccessfulCallsWithRetryAttempt 1
+                  :numberOfSuccessfulCallsWithoutRetryAttempt 1}
                  (get-positive-retry-metrics test-retry)))
           (is (= 1 (count @mt/inbox))))))))
 
