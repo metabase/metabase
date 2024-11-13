@@ -4,6 +4,7 @@
    [metabase.driver.common.parameters.dates :as params.dates]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.search.in-place.filter :as search.in-place.filter]
+   [metabase.search.permissions :as search.permissions]
    [metabase.search.spec :as search.spec]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
@@ -41,6 +42,11 @@
 (defn- remove-if-falsey [m k]
   (if (m k) m (dissoc m k)))
 
+(defn- visible-to? [search-ctx {:keys [visibility] :as _spec}]
+  (case visibility
+    :all      true
+    :app-user (not (search.permissions/sandboxed-or-impersonated-user? search-ctx))))
+
 (defn search-context->applicable-models
   "Returns a set of models that are applicable given the search context.
 
@@ -54,7 +60,7 @@
             (remove nil?)
             (for [search-model (:models search-ctx)
                   :let [spec (search.spec/spec search-model)]]
-              (when (every? (:attrs spec) required)
+              (when (and (visible-to? search-ctx spec) (every? (:attrs spec) required))
                 (:name spec)))))))
 
 (defn- date-range-filter-clause
