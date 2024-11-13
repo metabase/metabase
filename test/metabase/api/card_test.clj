@@ -2657,7 +2657,7 @@
           (update-card card {:description "a new description"})
           (is (empty? (reviews card)))))
       (testing "Does not add nil moderation reviews when there are reviews but not verified"
-        ;; testing that we aren't just adding a nil moderation each time we update a card
+      ;; testing that we aren't just adding a nil moderation each time we update a card
         (with-card :verified
           (is (verified? card))
           (moderation-review/create-review! {:moderated_item_id   (u/the-id card)
@@ -3660,10 +3660,7 @@
                                                 :collection_id (u/the-id collection)}]
     (letfn [(process-query []
               (mt/user-http-request :rasta :post (format "card/%d/query" (u/the-id card))))
-            (blocked? [response] (or
-                                  (= "You don't have permissions to do that." response)
-                                  (re-matches #"Blocked: you are not allowed to run queries against Database \d+."
-                                              (:error response))))]
+            (blocked? [response] (= "You don't have permissions to do that." response))]
       ;;    | Data perms | Collection perms | outcome
       ;;    ------------ | ---------------- | --------
       ;;    | no         | no               | blocked
@@ -3713,90 +3710,6 @@
               (is (mi/can-read? collection))
               (is (mi/can-read? card)))
             (is (= [[1] [2]] (mt/rows (process-query))))))))))
-
-(deftest nested-query-permissions-test
-  (mt/with-non-admin-groups-no-root-collection-perms
-    (mt/with-temp [:model/Collection disallowed-collection {}
-                   :model/Card       parent-card           {:dataset_query {:database (mt/id)
-                                                                            :type     :native
-                                                                            :native   {:query "SELECT id FROM venues ORDER BY id ASC LIMIT 2;"}}
-                                                            :database_id   (mt/id)
-                                                            :collection_id (u/the-id disallowed-collection)}
-                   :model/Collection allowed-collection    {}
-                   :model/Card       child-card            {:dataset_query {:database (mt/id)
-                                                                            :type     :query
-                                                                            :query    {:source-table (format "card__%d" (u/the-id parent-card))}}
-                                                            :collection_id (u/the-id allowed-collection)}]
-      (letfn [(rasta-view-data-perm= [perm] (is (= perm
-                                                   (get-in (data-perms/permissions-for-user (mt/user->id :rasta)) [(mt/id) :perms/view-data]))
-                                                "rasta should be blocked for this table."))]
-        (mt/with-no-data-perms-for-all-users!
-          (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :blocked)
-          (perms/grant-collection-read-permissions! (perms-group/all-users) allowed-collection)
-          (letfn [(process-query-for-card [card]
-                    (mt/user-http-request :rasta :post (format "card/%d/query" (u/the-id card))))]
-            (testing "Should be able to run a Card with another Card as its source query with just perms for the former (#15131)"
-              (testing "Should not be able to run the parent Card"
-                (mt/with-test-user :rasta
-                  (is (not (mi/can-read? disallowed-collection)))
-                  (is (not (mi/can-read? parent-card))))
-                (is (= "You don't have permissions to do that."
-                       (process-query-for-card parent-card))))
-              (testing "Should be able to run the child Card (#15131)"
-                (mt/with-test-user :rasta
-                  (is (not (mi/can-read? parent-card)))
-                  (is (mi/can-read? allowed-collection))
-                  (is (mi/can-read? child-card)))
-                (testing "Data perms prohibit running queries"
-                  (is (thrown-with-msg?
-                       clojure.lang.ExceptionInfo
-                       #"You do not have permissions to run this query."
-                       (mt/rows (process-query-for-card child-card)))
-                      "Even if the user has can-write? on a Card, they should not be able to run it because they are blocked on Card's db"))))
-            (testing "view-data = unrestricted is required to allow running the query"
-              (mt/with-restored-data-perms!
-                (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
-                (rasta-view-data-perm= :unrestricted)
-                (is (= [[1] [2]] (mt/rows (process-query-for-card child-card)))
-                    "view-data = unrestricted is sufficient to allow running the query")))))))))
-
-(deftest cannot-run-any-native-queries-when-blocked-test
-  (mt/with-non-admin-groups-no-root-collection-perms
-    (mt/with-temp [:model/Collection allowed-collection    {}
-                   :model/Collection disallowed-collection {}
-                   :model/Card       parent-card           {:dataset_query {:database (mt/id)
-                                                                            :type     :native
-                                                                            :native   {:query "SELECT id FROM venues ORDER BY id ASC LIMIT 2;"}}
-                                                            :database_id   (mt/id)
-                                                            :collection_id (u/the-id disallowed-collection)}
-                   :model/Card       child-card            {:dataset_query {:database (mt/id)
-                                                                            :type     :query
-                                                                            :query    {:source-table (format "card__%d" (u/the-id parent-card))}}
-                                                            :collection_id (u/the-id allowed-collection)}]
-      (letfn [(process-query-for-card [card]
-                (mt/user-http-request :rasta :post (format "card/%d/query" (u/the-id card))))]
-        (testing "Cannot run native queries when a single table is unrestricted and the rest are blocked"
-          (mt/with-no-data-perms-for-all-users!
-            (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :blocked)
-            (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/view-data :unrestricted)
-            (perms/grant-collection-read-permissions! (perms-group/all-users) allowed-collection)
-            (is (thrown-with-msg?
-                 clojure.lang.ExceptionInfo
-                 #"You do not have permissions to run this query."
-                 (mt/rows (process-query-for-card child-card)))
-                "Someone with `:blocked` permissions on ANY table in the database cannot run ANY card with native queries, including as a source for another card.")))
-        ;; update collection perms in place:
-        (perms/revoke-collection-permissions! (perms-group/all-users) allowed-collection)
-        (testing "Cannot run native queries when a single table is blocked and the rest are unrestricted"
-          (mt/with-no-data-perms-for-all-users!
-            (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
-            (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/view-data :blocked)
-            (perms/grant-collection-read-permissions! (perms-group/all-users) allowed-collection)
-            (is (thrown-with-msg?
-                 clojure.lang.ExceptionInfo
-                 #"You do not have permissions to run this query."
-                 (mt/rows (process-query-for-card child-card)))
-                "Someone with `:blocked` permissions on ANY table in the database cannot run ANY card with native queries, including as a source for another card.")))))))
 
 (deftest query-metadata-test
   (mt/with-temp

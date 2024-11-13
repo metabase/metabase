@@ -15,7 +15,7 @@ import {
 import { setupDashcardQueryEndpoints } from "__support__/server-mocks/dashcard";
 import { renderWithProviders, screen } from "__support__/ui";
 import type { MetabaseProviderProps } from "embedding-sdk/components/public/MetabaseProvider";
-import { createMockJwtConfig } from "embedding-sdk/test/mocks/config";
+import { createMockAuthProviderUriConfig } from "embedding-sdk/test/mocks/config";
 import { setupSdkState } from "embedding-sdk/test/server-mocks/sdk-init";
 import {
   createMockCard,
@@ -127,8 +127,8 @@ const setup = async ({
       mode: "sdk",
       sdkProviderProps: {
         ...providerProps,
-        config: createMockJwtConfig({
-          jwtProviderUri: "http://TEST_URI/sso/metabase",
+        config: createMockAuthProviderUriConfig({
+          authProviderUri: "http://TEST_URI/sso/metabase",
         }),
       },
       storeInitialState: state,

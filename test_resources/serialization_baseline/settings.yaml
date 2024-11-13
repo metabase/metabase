@@ -1,4 +1,5 @@
 aggregated-query-row-limit: null
+allowed-iframe-hosts: null
 application-colors: null
 application-favicon-url: null
 application-font: null
@@ -13,6 +14,7 @@ custom-formatting: null
 custom-geojson: null
 custom-geojson-enabled: null
 default-maps-enabled: null
+email-max-recipients-per-second: null
 embedding-homepage: null
 enable-embedding: null
 enable-nested-queries: null
@@ -52,4 +54,3 @@ subscription-allowed-domains: null
 synchronous-batch-updates: null
 unaggregated-query-row-limit: null
 update-channel: null
-allowed-iframe-hosts: null

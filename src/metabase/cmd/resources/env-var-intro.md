@@ -28,7 +28,7 @@ $env:MB_SITE_NAME="Awesome Company"
 # Windows batch/cmd
 set MB_SITE_NAME="Awesome Company"
 
-java -jar metabase.jar
+java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar
 ```
 
 Or set it as Java property, which works the same across all systems:
@@ -42,6 +42,10 @@ Docker:
 ```
 docker run -d -p 3000:3000 -e MB_SITE_NAME="Awesome Company" --name metabase metabase/metabase
 ```
+
+## Environment variables on Metabase Cloud
+
+If you're running Metabase Cloud, you can [contact support](https://www.metabase.com/help/premium) to adjust environment variables for your Metabase.
 
 ---
 

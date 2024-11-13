@@ -28,7 +28,7 @@ $env:MB_SITE_NAME="Awesome Company"
 # Windows batch/cmd
 set MB_SITE_NAME="Awesome Company"
 
-java -jar metabase.jar
+java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar
 ```
 
 Or set it as Java property, which works the same across all systems:
@@ -1879,6 +1879,20 @@ This variable affects connections that are severed and undetected by Metabase (t
 
 Unless set otherwise, the default production value for `metabase.query-processor.query-timeout-ms` is used which is 1,200,000 ms (i.e. 1,200 seconds or 20 minutes).
 
+### `MB_JDBC_DATA_WAREHOUSE_DEBUG_UNRETURNED_CONNECTION_STACK_TRACES`
+
+Type: boolean<br>
+Default: `false`<br>
+Since: v51.3
+
+If `true`, log a stack trace for any connections killed due to exceeding the timeout specified in [MB_JDBC_DATA_WAREHOUSE_UNRETURNED_CONNECTION_TIMEOUT_SECONDS](#mb_jdbc_data_warehouse_unreturned_connection_timeout_seconds).
+
+Note: In addtion to enabling this variable, you need to update the com.mchange log level to INFO or higher via a custom log4j configuration in order to see the stack traces in the logs.
+
+See the [Metabase log configuration](./log-configuration.md) documentation for how to configure log levels.
+
+See [MB_JDBC_DATA_WAREHOUSE_UNRETURNED_CONNECTION_TIMEOUT_SECONDS](#mb_jdbc_data_warehouse_unreturned_connection_timeout_seconds) for setting the timeout after which connections will be killed.
+
 ### `MB_JETTY_ASYNC_RESPONSE_TIMEOUT`
 
 Type: integer<br>
@@ -2151,4 +2165,3 @@ Type: string<br>
 Default: `null`
 
 Base-64 encoded public key for this sites SSL certificate. Specify this to enable HTTP Public Key Pinning. Using HPKP is no longer recommended. See http://mzl.la/1EnfqBf for more information.
-

@@ -27,9 +27,9 @@ import {
 const METABASE_INSTANCE_URL = "path:";
 const AUTH_PROVIDER_URL = "http://auth-provider/metabase-sso";
 
-const defaultJwtConfig = defineEmbeddingSdkConfig({
+const defaultAuthUriConfig = defineEmbeddingSdkConfig({
   metabaseInstanceUrl: METABASE_INSTANCE_URL,
-  jwtProviderUri: AUTH_PROVIDER_URL,
+  authProviderUri: AUTH_PROVIDER_URL,
 });
 
 const MOCK_CARD = createMockCard({ id: 1 });
@@ -43,7 +43,7 @@ const setup = async (config: SDKConfig) => {
   await waitForLoaderToBeRemoved();
 };
 
-const mockJwtProviderResponse = (response: any) =>
+const mockAuthUriProviderResponse = (response: any) =>
   fetchMock.get(AUTH_PROVIDER_URL, response);
 const getLastAuthProviderApiCall = () => fetchMock.lastCall(AUTH_PROVIDER_URL);
 
@@ -97,24 +97,24 @@ describe("SDK auth errors", () => {
     jest.resetAllMocks();
   });
 
-  describe("jwt authentication", () => {
-    it("should show a message when the JWT provider didn't return a json object", async () => {
-      mockJwtProviderResponse({
+  describe("Auth Provider URI authentication", () => {
+    it("should show a message when the auth provider didn't return a json object", async () => {
+      mockAuthUriProviderResponse({
         body: "not a json object",
       });
 
-      await setup(defaultJwtConfig);
+      await setup(defaultAuthUriConfig);
 
       await waitForRequest(() => getLastAuthProviderApiCall());
 
       await expectErrorMessage(
-        `The jwtProvider endpoint must return an object with the shape {id:string, exp:number, iat:number, status:string}, got "not a json object" instead`,
+        `The authProviderUri endpoint must return an object with the shape {id:string, exp:number, iat:number, status:string}, got "not a json object" instead`,
       );
     });
 
     it("should show a message when fetchRequestToken doesn't return a json object", async () => {
       const config = defineEmbeddingSdkConfig({
-        ...defaultJwtConfig,
+        ...defaultAuthUriConfig,
         // @ts-expect-error -- testing error path
         fetchRequestToken: async () => "not a json object",
       });
@@ -126,12 +126,12 @@ describe("SDK auth errors", () => {
       );
     });
 
-    it("should show a useful message if the jwt provider returned an error code", async () => {
-      mockJwtProviderResponse(
+    it("should show a useful message if the authProviderUri returned an error code", async () => {
+      mockAuthUriProviderResponse(
         JSON.stringify({ status: "error-embedding-sdk-disabled" }),
       );
 
-      await setup(defaultJwtConfig);
+      await setup(defaultAuthUriConfig);
 
       await waitForRequest(() => getLastAuthProviderApiCall());
 
@@ -140,7 +140,7 @@ describe("SDK auth errors", () => {
 
     it("if a custom `fetchRequestToken` throws an error, it should display it", async () => {
       const config = defineEmbeddingSdkConfig({
-        ...defaultJwtConfig,
+        ...defaultAuthUriConfig,
         fetchRequestToken: async () => {
           throw new Error("Custom error message");
         },

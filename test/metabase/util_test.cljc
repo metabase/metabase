@@ -551,3 +551,26 @@
       (testing (pr-str (list `lib.util/truncate-string-to-byte-count s max-length))
         (is (= expected
                (truncate-string-to-byte-count s max-length)))))))
+
+(deftest ^:parallel rconcat-test
+  (is (= [2 4 6 18 16 14 12 10 8 6 4 2 0 50]
+         (transduce
+          (map (partial * 2))
+          conj
+          []
+          (u/rconcat
+           (u/rconcat
+            (eduction (map inc) (range 3))
+            (eduction (map dec) (range 10 0 -1)))
+           [25])))))
+
+(deftest ^:parallel run-count!-test
+  (testing "counts the things"
+    (is (zero? (u/run-count! inc nil)))
+    (is (zero? (u/run-count! inc [])))
+    (is (= 3 (u/run-count! inc (range 3))))
+    (is (= 3 (u/run-count! inc (eduction (map inc) (range 3))))))
+  (testing "does the stuff"
+    (let [acc (volatile! [])]
+      (u/run-count! #(vswap! acc conj %) (eduction (map inc) (range 3)))
+      (is (= [1 2 3] @acc)))))

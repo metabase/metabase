@@ -49,15 +49,15 @@
   (case [channel-type payload-type]
     [:channel/email :notification/dashboard-subscription]
     {:channel_type :channel/email
-     :details      {:type    :email/mustache-resource
+     :details      {:type    :email/handlebars-resource
                     :subject "{{payload.dashboard.name}}"
-                    :path    "metabase/email/dashboard_subscription"}}
+                    :path    "metabase/email/dashboard_subscription.hbs"}}
 
     [:channel/email :notification/alert]
     {:channel_type :channel/email
-     :details      {:type    :email/mustache-resource
+     :details      {:type    :email/handlebars-resource
                     :subject "{{computed.subject}}"
-                    :path    "metabase/email/alert"}}
+                    :path    "metabase/email/alert.hbs"}}
     nil))
 
 (defn- get-notification-handler
@@ -93,7 +93,7 @@
                           (select-keys (-> pulse :cards first) [:include_xls :include_csv :pivot_results :format_rows]))
      :handlers     [(get-notification-handler pulse-channel :notification/alert)]}))
 
-(def ^:private send-notification! (requiring-resolve 'metabase.notification.core/*send-notification!*))
+(def ^:private send-notification! (requiring-resolve 'metabase.notification.core/send-notification!))
 
 (defn- send-pulse!*
   [{:keys [channels channel-ids] :as pulse} dashboard]
