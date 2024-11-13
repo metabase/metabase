@@ -240,7 +240,8 @@
     (when @initialized?
       (batch-upsert! active-table entries))
     (when @reindexing?
-      (batch-upsert! pending-table entries))))
+      (batch-upsert! pending-table entries))
+    (count entries)))
 
 (defn search-query
   "Query fragment for all models corresponding to a query parameter `:search-term`."
