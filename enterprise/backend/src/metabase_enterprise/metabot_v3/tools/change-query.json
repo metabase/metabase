@@ -304,8 +304,14 @@
                   "description": "Name of the column to apply sorting for."
                 },
                 "direction": {
-                  "type": ["string", "null"],
-                  "enum": ["asc", "desc"],
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "enum": [
+                    "asc",
+                    "desc"
+                  ],
                   "description": "Optional sorting direction, either ascending or descending."
                 }
               },
@@ -335,6 +341,23 @@
               "required": [
                 "type",
                 "limit"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "description": "Removes the row limit from the query.",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "description": "Type of the remove-limit step.",
+                  "enum": [
+                    "remove-limit"
+                  ]
+                }
+              },
+              "required": [
+                "type"
               ],
               "additionalProperties": false
             }
