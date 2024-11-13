@@ -241,13 +241,12 @@
 
 (defmacro define-spec
   "Define a spec for a search model."
-  [search-model spec & [skip-hook?]]
+  [search-model spec]
   `(let [spec# (-> ~spec
                    (assoc :name ~search-model)
                    (update :attrs #(merge ~default-attrs %)))]
      (validate-spec! spec#)
-     (when-not ~skip-hook?
-       (derive (:model spec#) :hook/search-index))
+     (derive (:model spec#) :hook/search-index)
      (defmethod spec ~search-model [~'_] spec#)))
 
 ;; TODO we should memoize this for production (based on spec values)

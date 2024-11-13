@@ -204,6 +204,7 @@
                   :model-index-id  :model_index.id}
    :joins        {:model_index [:model/ModelIndex [:= :model_index.id :this.model_index_id]]
                   :model       [:model/Card [:= :model.id :model_index.model_id]]
-                  :collection  [:model/Collection [:= :collection.id :model.collection_id]]}}
-  ;; TODO resolve the need to skip this hook
-  ::skip-hook)
+                  :collection  [:model/Collection [:= :collection.id :model.collection_id]]}})
+
+;; TODO resolve the toucan2 issue preventing us from using this hook
+(underive :model/ModelIndexValue :hook/search-index)
