@@ -9,11 +9,13 @@ import { useUnmount } from "react-use";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Box, Flex } from "metabase/ui";
-import { isValidDraggedItem } from "metabase/visualizer/utils";
 import {
   getDatasets,
   getDraggedItem,
   getVisualizationType,
+} from "metabase/visualizer/selectors";
+import { isValidDraggedItem } from "metabase/visualizer/utils";
+import {
   handleDrop,
   resetVisualizer,
   setDisplay,

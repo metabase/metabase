@@ -5,9 +5,9 @@ import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Box, Flex, Icon, TextInput } from "metabase/ui";
+import { getDataSources } from "metabase/visualizer/selectors";
 import {
   addDataSource,
-  getDataSources,
   removeDataSource,
 } from "metabase/visualizer/visualizer.slice";
 import type { VisualizerDataSource } from "metabase-types/store/visualizer";

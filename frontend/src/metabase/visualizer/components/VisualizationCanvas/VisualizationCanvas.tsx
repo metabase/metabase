@@ -9,7 +9,7 @@ import {
   getDatasets,
   getVisualizationType,
   getVisualizerRawSeries,
-} from "metabase/visualizer/visualizer.slice";
+} from "metabase/visualizer/selectors";
 
 import { HorizontalWell } from "./HorizontalWell";
 import { ScatterFloatingWell } from "./ScatterFloatingWell";

@@ -4,12 +4,14 @@ import { t } from "ttag";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Box, Flex, Icon, Text } from "metabase/ui";
 import { DRAGGABLE_ID } from "metabase/visualizer/constants";
-import { isReferenceToColumn } from "metabase/visualizer/utils";
 import {
   getDataSources,
   getDatasets,
   getExpandedDataSources,
   getReferencedColumns,
+} from "metabase/visualizer/selectors";
+import { isReferenceToColumn } from "metabase/visualizer/utils";
+import {
   removeDataSource,
   toggleDataSourceExpanded,
 } from "metabase/visualizer/visualizer.slice";

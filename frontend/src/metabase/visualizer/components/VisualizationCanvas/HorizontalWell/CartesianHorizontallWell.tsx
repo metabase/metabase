@@ -8,7 +8,7 @@ import { DRAGGABLE_ID, DROPPABLE_ID } from "metabase/visualizer/constants";
 import {
   getSettings,
   getVisualizerDatasetColumns,
-} from "metabase/visualizer/visualizer.slice";
+} from "metabase/visualizer/selectors";
 import type { DatasetColumn } from "metabase-types/api";
 
 import { WellItem } from "../WellItem";

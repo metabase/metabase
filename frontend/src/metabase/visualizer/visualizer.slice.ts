@@ -1,31 +1,21 @@
 import type { DragEndEvent } from "@dnd-kit/core";
-import {
-  type PayloadAction,
-  createDraftSafeSelector,
-  createSelector,
-  createSlice,
-} from "@reduxjs/toolkit";
+import { type PayloadAction, createSlice } from "@reduxjs/toolkit";
 import _ from "underscore";
 
 import { cardApi } from "metabase/api";
 import { createAsyncThunk } from "metabase/lib/redux";
 import { isCartesianChart } from "metabase/visualizations";
-import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import { isDate, isNumeric } from "metabase-lib/v1/types/utils/isa";
 import type {
   Card,
   CardId,
   Dataset,
   DatasetColumn,
-  DatasetData,
-  RawSeries,
-  RowValues,
   VisualizationDisplay,
   VisualizationSettings,
 } from "metabase-types/api";
 import type {
   DraggedItem,
-  VisualizerColumnReference,
   VisualizerColumnValueSource,
   VisualizerDataSource,
   VisualizerDataSourceId,
@@ -33,6 +23,7 @@ import type {
 } from "metabase-types/store/visualizer";
 
 import { DROPPABLE_ID } from "./constants";
+import { getReferencedColumns } from "./selectors";
 import {
   checkColumnMappingExists,
   createDataSource,
@@ -41,7 +32,6 @@ import {
   createMetricColumn,
   createVisualizerColumnReference,
   getDataSourceIdFromNameRef,
-  isDataSourceNameRef,
   isDraggedColumnItem,
   isDraggedWellItem,
 } from "./utils";
@@ -318,174 +308,6 @@ export const {
 } = visualizerSlice.actions;
 
 export const { reducer } = visualizerSlice;
-
-const getRawSettings = (state: { visualizer: VisualizerState }) =>
-  state.visualizer.settings;
-
-export const getVisualizationType = (state: { visualizer: VisualizerState }) =>
-  state.visualizer.display;
-
-export const getDatasets = (state: { visualizer: VisualizerState }) =>
-  state.visualizer.datasets;
-
-export const getExpandedDataSources = (state: {
-  visualizer: VisualizerState;
-}) => state.visualizer.expandedDataSources;
-
-export const getDraggedItem = (state: { visualizer: VisualizerState }) =>
-  state.visualizer.draggedItem;
-
-// Must remain private
-const getCards = (state: { visualizer: VisualizerState }) =>
-  state.visualizer.cards;
-
-// Must remain private
-const getVisualizationColumns = (state: { visualizer: VisualizerState }) =>
-  state.visualizer.columns;
-
-// Must remain private
-const getVisualizerColumnValuesMapping = (state: {
-  visualizer: VisualizerState;
-}) => state.visualizer.columnValuesMapping;
-
-export const getReferencedColumns = createDraftSafeSelector(
-  [getVisualizerColumnValuesMapping],
-  (columnValuesMapping): VisualizerColumnReference[] => {
-    return Object.values(columnValuesMapping)
-      .filter(valueSource => typeof valueSource !== "string")
-      .flat();
-  },
-);
-
-export const getDataSources = createSelector([getCards], cards =>
-  cards.map(card => createDataSource("card", card.id, card.name)),
-);
-
-export const getUsedDataSources = createSelector(
-  [getDataSources, getReferencedColumns],
-  (dataSources, referencedColumns) => {
-    if (dataSources.length === 1) {
-      return dataSources;
-    }
-
-    const usedDataSourceIds = new Set(
-      referencedColumns.map(ref => ref.sourceId),
-    );
-    return dataSources.filter(dataSource =>
-      usedDataSourceIds.has(dataSource.id),
-    );
-  },
-);
-
-const getVisualizerDatasetData = createSelector(
-  [
-    getUsedDataSources,
-    getDatasets,
-    getReferencedColumns,
-    getVisualizationColumns,
-    getVisualizerColumnValuesMapping,
-  ],
-  (
-    usedDataSources,
-    datasets,
-    referencedColumns,
-    cols,
-    columnValuesMapping,
-  ): DatasetData => {
-    const referencedColumnValuesMap: Record<string, RowValues> = {};
-    referencedColumns.forEach(ref => {
-      const dataset = datasets[ref.sourceId];
-      if (!dataset) {
-        return;
-      }
-      const columnIndex = dataset.data.cols.findIndex(
-        col => col.name === ref.originalName,
-      );
-      if (columnIndex >= 0) {
-        const values = dataset.data.rows.map(row => row[columnIndex]);
-        referencedColumnValuesMap[ref.name] = values;
-      }
-    });
-
-    const hasPivotGrouping = cols.some(col => col.name === "pivot-grouping");
-    if (hasPivotGrouping) {
-      const rowLengths = Object.values(referencedColumnValuesMap).map(
-        values => values.length,
-      );
-      const maxLength = rowLengths.length > 0 ? Math.max(...rowLengths) : 0;
-      referencedColumnValuesMap["pivot-grouping"] = new Array(maxLength).fill(
-        0,
-      );
-    }
-
-    const unzippedRows = cols.map(column =>
-      (columnValuesMapping[column.name] ?? [])
-        .map(valueSource => {
-          if (isDataSourceNameRef(valueSource)) {
-            const id = getDataSourceIdFromNameRef(valueSource);
-            const dataSource = usedDataSources.find(source => source.id === id);
-            return dataSource?.name ? [dataSource.name] : [];
-          }
-          const values = referencedColumnValuesMap[valueSource.name];
-          if (!values) {
-            return [];
-          }
-          return values;
-        })
-        .flat(),
-    );
-
-    return {
-      cols,
-      rows: _.zip(...unzippedRows),
-      results_metadata: { columns: cols },
-    };
-  },
-);
-
-export const getVisualizerDatasetColumns = createSelector(
-  [getVisualizerDatasetData],
-  data => data.cols,
-);
-
-export const getSettings = createSelector(
-  [getVisualizationType, getRawSettings],
-  (display, settings) => {
-    if (display && isCartesianChart(display)) {
-      // Visualizer wells display labels
-      return {
-        ...settings,
-        "graph.x_axis.labels_enabled": false,
-        "graph.y_axis.labels_enabled": false,
-      };
-    }
-    return settings;
-  },
-);
-
-export const getVisualizerRawSeries = createSelector(
-  [getVisualizationType, getSettings, getVisualizerDatasetData],
-  (display, settings, data): RawSeries => {
-    if (!display) {
-      return [];
-    }
-    return [
-      {
-        card: {
-          display,
-          visualization_settings: settings,
-        },
-        data,
-      },
-    ];
-  },
-);
-
-export const getVisualizerComputedSettings = createSelector(
-  [getVisualizerRawSeries],
-  rawSeries =>
-    rawSeries.length > 0 ? getComputedSettingsForSeries(rawSeries) : {},
-);
 
 type DropHandler = (state: VisualizerState, event: DragEndEvent) => void;
 

@@ -3,7 +3,7 @@ import { Text } from "metabase/ui";
 import {
   getSettings,
   getVisualizerDatasetColumns,
-} from "metabase/visualizer/visualizer.slice";
+} from "metabase/visualizer/selectors";
 
 import { WellItem } from "../WellItem";
 
