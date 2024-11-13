@@ -132,6 +132,7 @@
      metabase.driver.sql-jdbc.execute/execute-prepared-statement!
      metabase.pulse.send/send-pulse!
      metabase.query-processor.store/store-database!
+     metabase.util/run-count!
      next.jdbc/execute!}}
 
   :metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests

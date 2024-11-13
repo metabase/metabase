@@ -179,6 +179,8 @@
 (defn- process-phrase [word-or-phrase]
   ;; a phrase is quoted even if the closing quotation mark has not been typed yet
   (cond
+    ;; trailing quotation mark
+    (= word-or-phrase "\"") nil
     ;; quoted phrases must be matched sequentially
     (str/starts-with? word-or-phrase "\"")
     (as-> word-or-phrase <>
@@ -206,6 +208,7 @@
   (->> words-and-phrases
        (remove #{"and"})
        (map process-phrase)
+       (remove str/blank?)
        (str/join " & ")))
 
 (defn- complete-last-word
@@ -237,7 +240,8 @@
     (when @initialized?
       (batch-upsert! active-table entries))
     (when @reindexing?
-      (batch-upsert! pending-table entries))))
+      (batch-upsert! pending-table entries))
+    (count entries)))
 
 (defn search-query
   "Query fragment for all models corresponding to a query parameter `:search-term`."
