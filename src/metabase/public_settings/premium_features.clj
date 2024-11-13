@@ -79,7 +79,7 @@
                 f
                 :ttl/threshold (u/minutes->ms active-users-count-cache-ttl))
       lock     (Object.)]
-  (defn cached-active-users-count'
+  (defn- cached-active-users-count'
     "Returns a count of users on the system, cached for 5 minutes."
     []
     (locking lock
