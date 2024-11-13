@@ -423,11 +423,11 @@
   (log/debug (u/format-color :cyan "Rendering Pulse (%s: %s) with %s Cards via Slack"
                              pulse-id (pr-str pulse-name) (parts->cards-count parts)))
   (let [dashboard (t2/select-one Dashboard :id dashboard-id)]
-    {:channel-id  channel-id
-     :attachments (remove nil?
-                          (flatten [(slack-dashboard-header pulse dashboard)
-                                    (create-slack-attachment-data parts)
-                                    (when dashboard (slack-dashboard-footer pulse dashboard))]))}))
+    [{:channel-id  channel-id
+      :attachments (remove nil?
+                           (flatten [(slack-dashboard-header pulse dashboard)
+                                     (create-slack-attachment-data parts)
+                                     (when dashboard (slack-dashboard-footer pulse dashboard))]))}]))
 
 (defmethod notification [:alert :email]
   [{:keys [id] :as pulse} parts channel]
@@ -453,12 +453,12 @@
 (defmethod notification [:alert :slack]
   [pulse parts {{channel-id :channel} :details}]
   (log/debug (u/format-color :cyan "Rendering Alert (%s: %s) via Slack" (:id pulse) (:name pulse)))
-  {:channel-id  channel-id
-   :attachments (cons {:blocks [{:type "header"
-                                 :text {:type "plain_text"
-                                        :text (str "🔔 " (first-question-name pulse))
-                                        :emoji true}}]}
-                      (create-slack-attachment-data parts))})
+  [{:channel-id  channel-id
+    :attachments (cons {:blocks [{:type "header"
+                                  :text {:type "plain_text"
+                                         :text (str "🔔 " (first-question-name pulse))
+                                         :emoji true}}]}
+                       (create-slack-attachment-data parts))}])
 
 (defmethod notification :default
   [_alert-or-pulse _parts {:keys [channel_type], :as _channel}]
@@ -522,22 +522,21 @@
           (throw e))))))
 
 (defmethod send-notification! :email
-  [emails]
-  (doseq [{:keys [subject recipients message-type message]} emails]
-    (email/send-message-or-throw! {:subject      subject
-                                   :recipients   recipients
-                                   :message-type message-type
-                                   :message      message
-                                   :bcc?         (email/bcc-enabled?)})))
+  [{:keys [subject recipients message-type message]}]
+  (email/send-message-or-throw! {:subject      subject
+                                 :recipients   recipients
+                                 :message-type message-type
+                                 :message      message
+                                 :bcc?         (email/bcc-enabled?)}))
 
 (defn- send-notification-retrying!
   "Like [[send-notification!]] but retries sending on errors according to the retry settings."
   [& args]
-  (let [f (fn [pulse-id notification]
-            (let [channel-name (name (slack-or-email notification))]
+  (let [f (fn [pulse-id message]
+            (let [channel-name (name (slack-or-email message))]
               (try
                 (log/debugf "[Pulse %d] Sending to %s channel" pulse-id channel-name)
-                (send-notification! notification)
+                (send-notification! message)
                 (catch Exception e
                   (log/warnf e "[Pulse %d] Error sending to %s channel. Retrying..." pulse-id channel-name)
                   (throw e)))))]
@@ -548,7 +547,8 @@
     ;; do a try-catch around each notification so if one fails, we'll still send the other ones for example, an Alert
     ;; set up to send over both Slack & email: if Slack fails, we still want to send the email (#7409)
     (try
-      (send-notification-retrying! pulse-id notification)
+      (doseq [message notification]
+        (send-notification-retrying! pulse-id message))
       (catch Throwable e
         (log/error e "Error sending notification!")))))
 
