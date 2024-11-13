@@ -71,7 +71,7 @@
   "Sync the attached datawarehouse. Can provide in the body:
   - sync_db: <boolean>: if this is true, schema sync the whole attached datawarehouse
   - table_name and schema_name: both strings. Will look for an existing table and sync it, otherwise will try to find a
-    new table with that name and sync it. If it cannot find a table it will thorw an error.
+    new table with that name and sync it. If it cannot find a table it will throw an error.
   - synchronous?: is a boolean value to indicate if this should block on the result."
   [:as {{:keys [table_name schema_name sync_db synchronous?]} :body}]
   {table_name   [:maybe ms/NonBlankString]
@@ -87,7 +87,8 @@
       (if-let [table (t2/select-one Table :db_id (:id database), :name table_name :schema schema_name)]
         (cond-> (future (sync-metadata/sync-table-metadata! table))
           synchronous? deref)
-        ;; find and sync is always synchronous
+        ;; find and sync is always synchronous. And we want it to be so since the "can't find this table" error is
+        ;; rather informative. If it's on a future we won't see it.
         (find-and-sync-new-table database table_name schema_name))))
   {:success true})
 

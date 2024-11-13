@@ -163,7 +163,7 @@
   (mt/test-driver :postgres
     (testing "Ensure we have the ability to add a single new table"
       (with-no-attached-data-warehouses
-        (let [db-name "attached_datawarehouse"]
+        (let [db-name (str (gensym "attached_datawarehouse"))]
           (try
             (postgres-test/drop-if-exists-and-create-db! db-name)
             (let [details (mt/dbdef->connection-details :postgres :db {:database-name db-name})]
@@ -181,11 +181,10 @@
                                      :post expected-code "notify/db/attached_datawarehouse"
                                      {:request-options api-headers}
                                      (merge {:synchronous? true}
-                                            payload)))))
-                      sync!    #(sync/sync-database! database)]
+                                            payload)))))]
                   ;; Create the initial table and sync it.
                   (exec! spec ["CREATE TABLE public.FOO (val bigint NOT NULL);"])
-                  (sync!)
+                  (sync/sync-database! database)
                   (let [tables (tableset database)]
                     (is (= #{"public.foo"} tables)))
                   (testing "We can sync an existing database"
@@ -206,6 +205,10 @@
                   ;; Assert that only the synced tables are present.
                   (let [tables (tableset database)]
                     (is (= #{"public.foo" "public.bar"} tables))
-                    (is (false? (contains? tables "public.fern")))))))
+                    (is (false? (contains? tables "public.fern"))))
+                  (testing "We can sync the whole database as well"
+                    (is (= 200 (:status (post {:sync_db true}))))
+                    (let [tables (tableset database)]
+                    (is (= #{"public.foo" "public.bar" "public.fern"} tables)))))))
             (finally
               (postgres-test/drop-if-exists-and-create-db! db-name :pg/just-drop))))))))
