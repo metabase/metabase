@@ -60,7 +60,10 @@
            (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (:database dataset_query))
                  query             (lib/query metadata-provider dataset_query)
                  columns           (lib/visible-columns query)]
-             {:query {:breakouts (mapv #(->> % (lib/display-info query) :display-name) (lib/breakouts query))}
+             {:query {:filters      (mapv #(lib/display-name query %) (lib/filters query))
+                      :aggregations (mapv #(lib/display-name query %) (lib/aggregations query))
+                      :breakouts    (mapv #(lib/display-name query %) (lib/breakouts query))
+                      :order-bys    (mapv #(lib/display-name query %) (lib/order-bys query))}
               :query-columns (mapv #(->> % (lib/display-info query) :long-display-name) columns)}))
          (when dataset_columns
            {:visualization-columns (mapv :display_name dataset_columns)})))

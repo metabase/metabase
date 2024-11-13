@@ -59,6 +59,13 @@
                    (str/join ", " (map #(clause-display-name query %) breakouts)))
            {:breakout breakout-name}))
 
+(defn- find-order-by-error
+  [query order-bys order-by-name]
+  (ex-info (format "%s sorting does not exist in the query. Available sorting clauses are: %s"
+                   order-by-name
+                   (str/join ", " (map #(clause-display-name query %) order-bys)))
+           {:order-by order-by-name}))
+
 (defn- limit-error
   [limit]
   (ex-info "Row limit must be a non-negative number." {:limit limit}))
@@ -179,6 +186,13 @@
                       (throw (find-column-error query columns column-name change-type)))
         direction (when direction-name (keyword direction-name))]
     (lib/order-by query column direction)))
+
+(defmethod apply-query-change :remove-order-by
+  [query {order-by-name :order-by-name}]
+  (let [order-bys (lib/order-bys query)
+        order-by  (or (find-clause query order-bys order-by-name)
+                      (find-order-by-error query order-bys order-by-name))]
+    (lib/remove-clause query order-by)))
 
 (defmethod apply-query-change :add-limit
   [query {:keys [limit]}]

@@ -346,6 +346,28 @@
             },
             {
               "type": "object",
+              "description": "Remove sorting from the query.",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "description": "Type of the remove-order-by step.",
+                  "enum": [
+                    "remove-order-by"
+                  ]
+                },
+                "order_by": {
+                  "type": "string",
+                  "description": "Sorting to remove. Use `query.order_bys` for the list of sorting clauses applied."
+                }
+              },
+              "required": [
+                "type",
+                "order_by"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
               "description": "Set the row limit for the query.",
               "properties": {
                 "type": {
