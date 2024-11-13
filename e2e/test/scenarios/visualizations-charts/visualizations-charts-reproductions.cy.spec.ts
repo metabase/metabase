@@ -6,6 +6,7 @@ import {
   getDraggableElements,
   modal,
   moveDnDKitElement,
+  openVizType,
   popover,
   restore,
   sidebar,
@@ -89,7 +90,7 @@ describe("issue 45255", () => {
   });
 
   it("should work on native queries with null dimension values (metabase#45255)", () => {
-    cy.findByTestId("viz-settings-button").click();
+    openVizType("Data");
 
     // Has (empty) in the settings sidebar
     sidebar().findByText("(empty)");
