@@ -302,6 +302,8 @@ jobs:
     steps:
     - uses: actions/checkout@v4
       with:
+        # checkout the commit that was tagged so we get the right dockerfile
+        ref: ${{ inputs.commit }}
         fetch-depth: 0  # IMPORTANT! to get all the tags
     - name: prepare release scripts
       run: cd release && yarn && yarn build
@@ -433,8 +435,6 @@ jobs:
     - name: Tag Release
       uses: actions/github-script@v7
       with:
-        # FIXME: there's a perms problem in my fork
-        github-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
         result-encoding: string
         script: | # js
           const { tagRelease } = require('${{ github.workspace }}/release/dist/index.cjs');
@@ -472,7 +472,7 @@ jobs:
         $GITHUB_WORKSPACE/release/reorder-tags.sh ${{ needs.check-version.outputs.ee }} ${{ inputs.commit }}
 
   trigger-docs-update:
-    if: false # FIXME FOR TESTING ${{ !inputs.auto }}
+    if: ${{ !inputs.auto }}
     needs:
       - push-tags
       - check-version
@@ -566,7 +566,6 @@ jobs:
             });
 
   trigger-ee-extra-pr:
-    if: false # FIXME FOR TESTING
     needs: verify-s3-download
     runs-on: ubuntu-22.04
     timeout-minutes: 10
