@@ -25,10 +25,10 @@
   (m/find-first #(= (column-display-name query %) column-name) columns))
 
 (defn- column-error
-  [query columns column-name step-type]
-  (ex-info (format "%s is not a correct column for the %s step. Available columns are: %s"
+  [query columns column-name change-type]
+  (ex-info (format "%s is not a correct column for the %s change. Available columns are: %s"
                    column-name
-                   step-type
+                   change-type
                    (str/join ", " (map #(column-display-name query %) columns)))
            {:column column-name}))
 
@@ -37,10 +37,10 @@
   (m/find-first #(= (operator-display-name %) operator-name) operators))
 
 (defn- operator-error
-  [operators operator-name step-type]
-  (ex-info (format "%s is not a correct operator for the %s step. Available operators are: %s"
+  [operators operator-name change-type]
+  (ex-info (format "%s is not a correct operator for the %s change. Available operators are: %s"
                    operator-name
-                   step-type
+                   change-type
                    (str/join ", " (map operator-display-name operators)))
            {:operator operator-name}))
 
@@ -55,13 +55,13 @@
     (-> change :type keyword)))
 
 (defmethod apply-query-change :add-string-filter
-  [query {:keys [value], step-type :type, column-name :column, operator-name :operator}]
+  [query {:keys [value], change-type :type, column-name :column, operator-name :operator}]
   (let [columns   (into [] (filter lib.types.isa/string-or-string-like?) (lib/filterable-columns query))
         column    (or (find-column query columns column-name)
-                      (throw (column-error query columns column-name step-type)))
+                      (throw (column-error query columns column-name change-type)))
         operators (lib/filterable-column-operators column)
         operator  (or (find-operator operators operator-name)
-                      (throw (operator-error operators operator-name step-type)))
+                      (throw (operator-error operators operator-name change-type)))
         clause    (condp = (:short operator)
                     :=                (lib/= column value)
                     :!=               (lib/!= column value)
@@ -72,13 +72,13 @@
     (lib/filter query clause)))
 
 (defmethod apply-query-change :add-number-filter
-  [query {:keys [value], step-type :type, column-name :column, operator-name :operator}]
+  [query {:keys [value], change-type :type, column-name :column, operator-name :operator}]
   (let [columns   (into [] (filter lib.types.isa/numeric?) (lib/filterable-columns query))
         column    (or (find-column query columns column-name)
-                      (throw (column-error query columns column-name step-type)))
+                      (throw (column-error query columns column-name change-type)))
         operators (lib/filterable-column-operators column)
         operator  (or (find-operator operators operator-name)
-                      (throw (operator-error operators operator-name step-type)))
+                      (throw (operator-error operators operator-name change-type)))
         clause    (condp = (:short operator)
                     :=  (lib/= column value)
                     :!= (lib/!= column value)
@@ -89,25 +89,25 @@
     (lib/filter query clause)))
 
 (defmethod apply-query-change :add-boolean-filter
-  [query {:keys [value], step-type :type, column-name :column, operator-name :operator}]
+  [query {:keys [value], change-type :type, column-name :column, operator-name :operator}]
   (let [columns   (into [] (filter lib.types.isa/boolean?) (lib/filterable-columns query))
         column    (or (find-column query columns column-name)
-                      (throw (column-error query columns column-name step-type)))
+                      (throw (column-error query columns column-name change-type)))
         operators (lib/filterable-column-operators column)
         operator  (or (find-operator operators operator-name)
-                      (throw (operator-error operators operator-name step-type)))
+                      (throw (operator-error operators operator-name change-type)))
         clause    (condp = operator
                     :=  (lib/= column value))]
     (lib/filter query clause)))
 
 (defmethod apply-query-change :add-specific-date-filter
-  [query {:keys [value], step-type :type, column-name :column, operator-name :operator}]
+  [query {:keys [value], change-type :type, column-name :column, operator-name :operator}]
   (let [columns   (into [] (filter lib.types.isa/date-or-datetime?) (lib/filterable-columns query))
         column    (or (find-column query columns column-name)
-                      (throw (column-error query columns column-name step-type)))
+                      (throw (column-error query columns column-name change-type)))
         operators (lib/filterable-column-operators column)
         operator  (or (find-operator operators operator-name)
-                      (throw (operator-error operators operator-name step-type)))
+                      (throw (operator-error operators operator-name change-type)))
         clause    (condp = (:short operator)
                     :=  (lib/= column value)
                     :>  (lib/> column value)
@@ -115,10 +115,10 @@
     (lib/filter query clause)))
 
 (defmethod apply-query-change :add-relative-date-filter
-  [query {:keys [direction unit value], step-type :type, column-name :column}]
+  [query {:keys [direction unit value], change-type :type, column-name :column}]
   (let [columns   (into [] (filter lib.types.isa/date-or-datetime?) (lib/filterable-columns query))
         column    (or (find-column query columns column-name)
-                      (throw (column-error query columns column-name step-type)))
+                      (throw (column-error query columns column-name change-type)))
         direction (keyword direction)
         unit      (keyword unit)]
     (lib/filter query (lib/time-interval column
@@ -128,22 +128,22 @@
                                            :next    value)
                                          unit))))
 (defmethod apply-query-change :add-aggregation
-  [query {step-type :type, operator-name :operator, column-name :column}]
+  [query {change-type :type, operator-name :operator, column-name :column}]
   (let [operators (lib/available-aggregation-operators query)
         operator  (or (find-operator operators operator-name)
-                      (throw (operator-error operators operator-name step-type)))]
+                      (throw (operator-error operators operator-name change-type)))]
     (if (:requires-column? operator)
       (let [columns (lib/aggregation-operator-columns operator)
             column  (or (find-column query columns column-name)
-                        (throw (column-error query columns column-name step-type)))]
+                        (throw (column-error query columns column-name change-type)))]
         (lib/aggregate query (lib/aggregation-clause operator column)))
       (lib/aggregate query (lib/aggregation-clause operator)))))
 
 (defmethod apply-query-change :add-breakout
-  [query {step-type :type, column-name :column}]
+  [query {change-type :type, column-name :column}]
   (let [columns (lib/breakoutable-columns query)
         column  (or (find-column query columns column-name)
-                    (throw (column-error query columns column-name step-type)))
+                    (throw (column-error query columns column-name change-type)))
         bucket  (m/find-first :default (lib/available-temporal-buckets query column))
         binning (m/find-first :default (lib/available-binning-strategies query column))]
     (lib/breakout query (cond-> column
@@ -151,10 +151,10 @@
                           binning (lib/with-binning binning)))))
 
 (defmethod apply-query-change :add-order-by
-  [query {step-type :type, column-name :column, direction-name :direction}]
+  [query {change-type :type, column-name :column, direction-name :direction}]
   (let [columns   (lib/orderable-columns query)
         column    (or (find-column query columns column-name)
-                      (throw (column-error query columns column-name step-type)))
+                      (throw (column-error query columns column-name change-type)))
         direction (when direction-name (keyword direction-name))]
     (lib/order-by query column direction)))
 
@@ -169,8 +169,8 @@
   (lib/limit query nil))
 
 (defn- apply-query-changes
-  [query steps]
-  (reduce apply-query-change query steps))
+  [query changes]
+  (reduce apply-query-change query changes))
 
 (mu/defmethod metabot-v3.tools.interface/*invoke-tool* :metabot.tool/change-query
   [_tool-name {:keys [changes]} {:keys [dataset_query]}]
