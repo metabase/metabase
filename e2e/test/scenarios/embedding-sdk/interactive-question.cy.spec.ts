@@ -7,28 +7,23 @@ import {
   createQuestion,
   popover,
   restore,
-  setTokenFeatures,
   tableHeaderClick,
   tableInteractive,
 } from "e2e/support/helpers";
 import { describeSDK } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
-import { setupJwt } from "e2e/support/helpers/e2e-jwt-helpers";
 import {
-  saveInteractiveQuestionAsNewQuestion,
+  getSdkRoot,
+  signInAsAdminAndEnableEmbeddingSdk,
   visitInteractiveQuestionStory,
-} from "e2e/test/scenarios/embedding-sdk/helpers/save-interactive-question-e2e-helpers";
+} from "e2e/test/scenarios/embedding-sdk/helpers/interactive-question-e2e-helpers";
+import { saveInteractiveQuestionAsNewQuestion } from "e2e/test/scenarios/embedding-sdk/helpers/save-interactive-question-e2e-helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 describeSDK("scenarios > embedding-sdk > interactive-question", () => {
   beforeEach(() => {
     restore();
-    cy.signInAsAdmin();
-    setTokenFeatures("all");
-    setupJwt();
-    cy.request("PUT", "/api/setting", {
-      "enable-embedding-sdk": true,
-    });
+    signInAsAdminAndEnableEmbeddingSdk();
 
     createQuestion(
       {
@@ -44,32 +39,20 @@ describeSDK("scenarios > embedding-sdk > interactive-question", () => {
     );
 
     cy.signOut();
-
-    cy.intercept("GET", "/api/card/*").as("getCard");
-    cy.intercept("GET", "/api/user/current").as("getUser");
-    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
-
-    visitInteractiveQuestionStory();
-
-    cy.wait("@getUser").then(({ response }) => {
-      expect(response?.statusCode).to.equal(200);
-    });
-
-    cy.wait("@getCard").then(({ response }) => {
-      expect(response?.statusCode).to.equal(200);
-    });
   });
 
   it("should show question content", () => {
-    cy.get("#metabase-sdk-root")
-      .should("be.visible")
-      .within(() => {
-        cy.findByText("Product ID").should("be.visible");
-        cy.findByText("Max of Quantity").should("be.visible");
-      });
+    visitInteractiveQuestionStory();
+
+    getSdkRoot().within(() => {
+      cy.findByText("Product ID").should("be.visible");
+      cy.findByText("Max of Quantity").should("be.visible");
+    });
   });
 
   it("should not fail on aggregated question drill", () => {
+    visitInteractiveQuestionStory();
+
     cy.wait("@cardQuery").then(({ response }) => {
       expect(response?.statusCode).to.equal(202);
     });
@@ -90,6 +73,8 @@ describeSDK("scenarios > embedding-sdk > interactive-question", () => {
   });
 
   it("should be able to hide columns from a table", () => {
+    visitInteractiveQuestionStory();
+
     cy.wait("@cardQuery").then(({ response }) => {
       expect(response?.statusCode).to.equal(202);
     });
@@ -106,6 +91,8 @@ describeSDK("scenarios > embedding-sdk > interactive-question", () => {
   });
 
   it("can save a question to a default collection", () => {
+    visitInteractiveQuestionStory();
+
     saveInteractiveQuestionAsNewQuestion({
       entityName: "Orders",
       questionName: "Sample Orders 1",
@@ -119,6 +106,8 @@ describeSDK("scenarios > embedding-sdk > interactive-question", () => {
   });
 
   it("can save a question to a selected collection", () => {
+    visitInteractiveQuestionStory();
+
     saveInteractiveQuestionAsNewQuestion({
       entityName: "Orders",
       questionName: "Sample Orders 2",
@@ -147,5 +136,22 @@ describeSDK("scenarios > embedding-sdk > interactive-question", () => {
       expect(response?.body.name).to.equal("Sample Orders 3");
       expect(response?.body.collection_id).to.equal(THIRD_COLLECTION_ID);
     });
+  });
+
+  it("can add a filter via the FilterPicker component", () => {
+    visitInteractiveQuestionStory({
+      storyId:
+        "embeddingsdk-interactivequestion-filterpicker--picker-in-popover",
+    });
+
+    getSdkRoot().findByText("Filter").click();
+
+    popover().within(() => {
+      cy.findByText("User ID").click();
+      cy.findByPlaceholderText("Enter an ID").type("12");
+      cy.findByText("Add filter").click();
+    });
+
+    getSdkRoot().contains("User ID is 12");
   });
 });

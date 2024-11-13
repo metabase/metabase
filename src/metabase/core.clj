@@ -219,5 +219,8 @@
   [& [cmd & args]]
   (maybe-enable-tracing)
   (if cmd
-    (run-cmd cmd init! args) ; run a command like `java -jar metabase.jar migrate release-locks` or `clojure -M:run migrate release-locks`
-    (start-normally))) ; with no command line args just start Metabase normally
+    ;; run a command like `java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar migrate release-locks` or
+    ;; `clojure -M:run migrate release-locks`
+    (run-cmd cmd init! args)
+    ;; with no command line args just start Metabase normally
+    (start-normally)))

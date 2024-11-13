@@ -287,7 +287,11 @@
                  ;; ignore options that aren't present in older versions of Java, like the one below:
                  "-XX:+IgnoreUnrecognizedVMOptions"
                  ;; include more details for debugging NPEs (Java 14+)
-                 "-XX:+ShowCodeDetailsInExceptionMessages"]}
+                 "-XX:+ShowCodeDetailsInExceptionMessages"
+                 ;; Support Snowflake in Java 17+. See https://github.com/metabase/metabase/pull/47997 and
+                 ;; https://community.snowflake.com/s/article/JDBC-Driver-Compatibility-Issue-With-JDK-16-and-Later
+                 "--add-opens"
+                 "java.base/java.nio=ALL-UNNAMED"]}
 
   ;; includes test code as source paths. Run tests with clojure -X:dev:test
   :test
@@ -743,7 +747,7 @@
   :h2
   {:extra-paths ["dev/src"]
    :exec-fn     dev.h2-shell/shell
-   :java-opts   ["-Dfile.encoding=UTF-8"]}
+   :jvm-opts    ["-Dfile.encoding=UTF-8"]}
 
   :generate-automagic-dashboards-pot
   {:main-opts ["-m" "metabase.xrays.automagic-dashboards.dashboard-templates"]}

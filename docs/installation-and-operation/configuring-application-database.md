@@ -29,7 +29,7 @@ export MB_DB_PORT=5432
 export MB_DB_USER=<username>
 export MB_DB_PASS=<password>
 export MB_DB_HOST=localhost
-java -jar metabase.jar
+java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar
 ```
 
 Metabase will not create a Postgres database for you. Example command to create the database:
@@ -42,7 +42,7 @@ If you have additional parameters, Metabase also supports providing a full JDBC 
 
 ```sh
 export MB_DB_CONNECTION_URI="jdbc:postgresql://localhost:5432/metabase?user=<username>&password=<password>"
-java -jar metabase.jar
+java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar
 ```
 
 If you want to pass the connection URI, user, and password credentials separately from the JDBC connection string (useful if the password contains special characters), you can use the `MB_DB_CONNECTION_URI` [environment variable](../configuring-metabase/environment-variables.md) in combination with `MB_DB_USER` and `MB_DB_PASS` variables:
@@ -51,7 +51,7 @@ If you want to pass the connection URI, user, and password credentials separatel
 export MB_DB_CONNECTION_URI="jdbc:postgresql://localhost:5432/metabase"
 export MB_DB_USER=<username>
 export MB_DB_PASS=<password>
-java -jar metabase.jar
+java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar
 ```
 
 ## MySQL or MariaDB
@@ -71,7 +71,7 @@ export MB_DB_PORT=3306
 export MB_DB_USER=<username>
 export MB_DB_PASS=<password>
 export MB_DB_HOST=localhost
-java -jar metabase.jar
+java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar
 ```
 
 Metabase won't create this database for you. Example SQL statement to create the database:
@@ -84,7 +84,7 @@ The following command will tell Metabase to look for its application database us
 
 ```sh
 export MB_DB_CONNECTION_URI="jdbc:mysql://localhost:3306/metabase?user=<username>&password=<password>"
-java -jar metabase.jar
+java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar
 ```
 
 As with Postgres, `MB_DB_CONNECTION_URI` can also be used in combination with `MB_DB_USER` and/or `MB_DB_PASS` if you
@@ -94,7 +94,7 @@ want to pass one or both separately from the rest of the JDBC connection string:
 export MB_DB_CONNECTION_URI="jdbc:mysql://localhost:5432/metabase"
 export MB_DB_USER=<username>
 export MB_DB_PASS=<password>
-java -jar metabase.jar
+java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar
 ```
 
 ## H2 application database
@@ -123,7 +123,7 @@ If you want to use an H2 database file in a particular directory, use the `MB_DB
 ```sh
 export MB_DB_TYPE=h2
 export MB_DB_FILE=/the/path/to/my/h2.db
-java -jar metabase.jar
+java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar
 ```
 
 Note that H2 automatically appends `.mv.db` or `.h2.db` to the path you specify; exclude those extensions in your path! In other words, `MB_DB_FILE` should be something like `/path/to/metabase.db`, rather than something like `/path/to/metabase.db.mv.db` (even though the latter is the file that Metabase will create).

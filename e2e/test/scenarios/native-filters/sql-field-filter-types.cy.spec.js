@@ -14,7 +14,7 @@ const dateFilters = Object.entries(DATE_FILTER_SUBTYPES);
 describe("scenarios > filters > sql filters > field filter > Date", () => {
   function openDateFilterPicker(isFilterRequired) {
     const selector = isFilterRequired
-      ? cy.findByPlaceholderText("Select a default value…")
+      ? cy.findByText("Select a default value…")
       : cy.get("fieldset");
 
     return selector.click();
@@ -24,6 +24,7 @@ describe("scenarios > filters > sql filters > field filter > Date", () => {
     filterType,
     filterValue,
     isFilterRequired = false,
+    buttonLabel = "Add filter",
   } = {}) {
     openDateFilterPicker(isFilterRequired);
 
@@ -38,12 +39,12 @@ describe("scenarios > filters > sql filters > field filter > Date", () => {
 
       case "Single Date":
         DateFilter.setSingleDate(filterValue);
-        cy.findByText("Add filter").click();
+        cy.findByText(buttonLabel).click();
         break;
 
       case "Date Range":
         DateFilter.setDateRange(filterValue);
-        cy.findByText("Add filter").click();
+        cy.findByText(buttonLabel).click();
         break;
 
       case "Relative Date":
@@ -51,7 +52,7 @@ describe("scenarios > filters > sql filters > field filter > Date", () => {
         break;
 
       case "All Options":
-        DateFilter.setAdHocFilter(filterValue);
+        DateFilter.setAdHocFilter(filterValue, buttonLabel);
         break;
 
       default:
@@ -107,6 +108,7 @@ describe("scenarios > filters > sql filters > field filter > Date", () => {
         filterType: subType,
         filterValue: value,
         isFilterRequired: true,
+        buttonLabel: "Update filter",
       });
 
       SQLFilter.runQuery();
@@ -165,7 +167,7 @@ describe("scenarios > filters > sql filters > field filter > Number", () => {
 
         FieldFilter.setWidgetType(subType);
 
-        FieldFilter.addDefaultNumberFilter(value);
+        FieldFilter.addDefaultNumberFilter(value, "Update filter");
 
         SQLFilter.runQuery();
 
@@ -235,7 +237,7 @@ describe("scenarios > filters > sql filters > field filter > String", () => {
         FieldFilter.setWidgetType(subType);
 
         searchTerm
-          ? FieldFilter.pickDefaultValue(searchTerm, value)
+          ? FieldFilter.pickDefaultValue(searchTerm, value, "Update filter")
           : FieldFilter.addDefaultStringFilter(value);
 
         SQLFilter.runQuery();

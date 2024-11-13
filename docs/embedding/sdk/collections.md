@@ -44,3 +44,12 @@ export default function App() {
   );
 }
 ```
+
+## Hide the collection picker and hard code the collection you want people to save stuff to
+
+With static questions, you set a specific collection as the collection people can save items to, so that they don't have bother picking a collection. To hard-code a collection:
+
+1. Set `isSaveEnabled` to true.
+2. Set `saveToCollectionId` to the collection ID you want people to save items to.
+
+For more options, see [Question props](./questions.md#question-props).
