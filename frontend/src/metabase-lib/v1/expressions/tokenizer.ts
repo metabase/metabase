@@ -113,17 +113,16 @@ export function tokenize(expression: string) {
 
   const scanOperator = () => {
     const start = index;
-    const operator = parseOperator(source, start);
+    const op = parseOperator(source, start);
 
-    if (!operator) {
+    if (!op) {
       return null;
     }
 
-    index += operator.length;
+    index += op.length;
 
     const type = TOKEN.Operator;
-    const end = start + operator.length;
-    const op = operator;
+    const end = index;
     const error = null;
     return { type, op, start, end, error };
   };
