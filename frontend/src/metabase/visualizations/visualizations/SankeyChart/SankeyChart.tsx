@@ -43,6 +43,7 @@ export const SankeyChart = ({
       tooltip: getTooltipOption(
         containerRef,
         chartModel.sankeyColumns.value.column,
+        chartModel.formatters,
       ),
     }),
     [chartModel, layout, settings, renderingContext],

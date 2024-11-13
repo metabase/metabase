@@ -7,28 +7,37 @@ import { getFriendlyName } from "metabase/visualizations/lib/utils";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import type { DatasetColumn } from "metabase-types/api";
 
+import type { SankeyFormatters } from "../model/types";
+
 interface ChartItemTooltipProps {
   metricColumnKey: string;
   metricColumnName: string;
+  formatters: SankeyFormatters;
   params: any;
 }
 
 const ChartItemTooltip = ({
-  params,
   metricColumnKey,
   metricColumnName,
+  formatters,
+  params,
 }: ChartItemTooltipProps) => {
   const data = params.data;
   let header = "";
   if (data.name) {
-    header = data.name;
+    header = formatters.node(data.name);
   } else if (data.source == null) {
-    header = data.target;
+    header = formatters.node(data.target);
   } else if (data.target == null) {
-    header = data.source;
+    header = formatters.node(data.source);
   } else {
-    header = `${data.source} → ${data.target}`;
+    header = `${formatters.node(data.source)} → ${formatters.node(data.target)}`;
   }
+
+  const value =
+    params.dataType === "node"
+      ? (data.columnValues[metricColumnKey] ?? 0)
+      : params.value;
 
   return (
     <EChartsTooltip
@@ -36,11 +45,7 @@ const ChartItemTooltip = ({
       rows={[
         {
           name: metricColumnName,
-          values: [
-            params.dataType === "node"
-              ? (data.columnValues[metricColumnKey] ?? 0)
-              : params.value,
-          ],
+          values: [formatters.value(value)],
         },
       ]}
     />
@@ -50,6 +55,7 @@ const ChartItemTooltip = ({
 export const getTooltipOption = (
   containerRef: React.RefObject<HTMLDivElement>,
   metricColumn: DatasetColumn,
+  formatters: SankeyFormatters,
 ): TooltipOption => {
   const metricColumnName = getFriendlyName(metricColumn);
   const metricColumnKey = getColumnKey(metricColumn);
@@ -67,6 +73,7 @@ export const getTooltipOption = (
           params={params}
           metricColumnName={metricColumnName}
           metricColumnKey={metricColumnKey}
+          formatters={formatters}
         />,
       );
     },
