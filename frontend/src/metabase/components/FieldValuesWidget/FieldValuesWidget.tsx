@@ -35,7 +35,7 @@ import {
 } from "metabase/parameters/actions";
 import { addRemappings } from "metabase/redux/metadata";
 import type { SelectItemProps } from "metabase/ui";
-import { Box, MultiAutocomplete } from "metabase/ui";
+import { Box, Flex, MultiAutocomplete } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type Field from "metabase-lib/v1/metadata/Field";
 import type {
@@ -485,7 +485,15 @@ export function FieldValuesWidgetInner({
     valuesMode,
   });
 
+  const [isInitiliazing, setIsInitiliazing] = useState(isListMode);
   const isLoading = loadingState !== "LOADED";
+
+  useEffect(() => {
+    if (!isListMode || !isLoading) {
+      setIsInitiliazing(false);
+    }
+  }, [isLoading, isListMode]);
+
   const hasListValues =
     hasList({
       parameter,
@@ -586,7 +594,11 @@ export function FieldValuesWidgetInner({
         maw={maxWidth ?? undefined}
         miw={minWidth ?? undefined}
       >
-        {isListMode && hasListValues && multi ? (
+        {isInitiliazing ? (
+          <Flex p="md" align="center" justify="center">
+            <LoadingSpinner size={24} />
+          </Flex>
+        ) : isListMode && hasListValues && multi ? (
           <ListField
             isDashboardFilter={!!parameter}
             placeholder={tokenFieldPlaceholder}

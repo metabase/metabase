@@ -176,7 +176,9 @@ describe("FieldValuesWidget", () => {
         await setup({
           fields: [metadata.field(LISTABLE_PK_FIELD_ID)],
         });
-        expect(screen.getByPlaceholderText("Enter an ID")).toBeInTheDocument();
+        expect(
+          screen.getByPlaceholderText("Search the list"),
+        ).toBeInTheDocument();
       });
     });
 
@@ -220,7 +222,7 @@ describe("FieldValuesWidget", () => {
       await setup({ fields: [categoryField, sourceField] });
 
       expect(
-        screen.getByPlaceholderText("Enter some text"),
+        screen.getByPlaceholderText("Search the list"),
       ).toBeInTheDocument();
       expect(await screen.findByText("Doohickey")).toBeInTheDocument();
       expect(await screen.findByText("Affiliate")).toBeInTheDocument();
