@@ -10,7 +10,6 @@ import { cardApi } from "metabase/api";
 import { createAsyncThunk } from "metabase/lib/redux";
 import { isCartesianChart } from "metabase/visualizations";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
-import { getColumnNameFromKey } from "metabase-lib/v1/queries/utils/column-key";
 import { isDate, isNumeric } from "metabase-lib/v1/types/utils/isa";
 import type {
   Card,
@@ -418,9 +417,8 @@ const getVisualizerDatasetData = createSelector(
       if (!dataset) {
         return;
       }
-      const columnName = getColumnNameFromKey(ref.columnKey);
       const columnIndex = dataset.data.cols.findIndex(
-        col => col.name === columnName,
+        col => col.name === ref.originalName,
       );
       if (columnIndex >= 0) {
         const values = dataset.data.rows.map(row => row[columnIndex]);

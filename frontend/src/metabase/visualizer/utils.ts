@@ -1,6 +1,5 @@
 import type { Active } from "@dnd-kit/core";
 
-import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import type { DatasetColumn } from "metabase-types/api";
 import type {
   DraggedColumn,
@@ -27,17 +26,24 @@ export function createDataSource(
   };
 }
 
+export function isReferenceToColumn(
+  column: DatasetColumn,
+  dataSourceId: VisualizerDataSourceId,
+  ref: VisualizerReferencedColumn,
+) {
+  return dataSourceId === ref.sourceId && column.name === ref.originalName;
+}
+
 export function createVisualizerColumnReference(
   dataSource: VisualizerDataSource,
   column: DatasetColumn,
   otherReferencedColumns: VisualizerReferencedColumn[],
 ): VisualizerReferencedColumn {
-  const alreadyReferenced = otherReferencedColumns.find(
-    ref =>
-      ref.sourceId === dataSource.id && ref.columnKey === getColumnKey(column),
+  const existingRef = otherReferencedColumns.find(ref =>
+    isReferenceToColumn(column, dataSource.id, ref),
   );
-  if (alreadyReferenced) {
-    return alreadyReferenced;
+  if (existingRef) {
+    return existingRef;
   }
 
   let name = column.name;
@@ -48,7 +54,7 @@ export function createVisualizerColumnReference(
 
   return {
     sourceId: dataSource.id,
-    columnKey: getColumnKey(column),
+    originalName: column.name,
     name,
   };
 }

@@ -4,6 +4,7 @@ import { t } from "ttag";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Box, Flex, Icon, Text } from "metabase/ui";
 import { DRAGGABLE_ID } from "metabase/visualizer/constants";
+import { isReferenceToColumn } from "metabase/visualizer/utils";
 import {
   getDataSources,
   getDatasets,
@@ -12,7 +13,6 @@ import {
   removeDataSource,
   toggleDataSourceExpanded,
 } from "metabase/visualizer/visualizer.slice";
-import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import type { VisualizerDataSource } from "metabase-types/store/visualizer";
 
 import { ColumnListItem, type ColumnListItemProps } from "./ColumnListItem";
@@ -70,10 +70,8 @@ export const DatasetList = () => {
                     key={column.name}
                     column={column}
                     dataSource={source}
-                    isSelected={referencedColumns.some(
-                      c =>
-                        c.sourceId === source.id &&
-                        c.columnKey === getColumnKey(column),
+                    isSelected={referencedColumns.some(ref =>
+                      isReferenceToColumn(column, source.id, ref),
                     )}
                   />
                 ))}

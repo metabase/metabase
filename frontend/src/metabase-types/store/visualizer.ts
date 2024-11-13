@@ -18,8 +18,8 @@ export type VisualizerDataSource = {
 
 export type VisualizerReferencedColumn = {
   sourceId: VisualizerDataSourceId;
-  columnKey: string; // in original dataset
   name: string; // in combined dataset
+  originalName: string; // in original dataset
 };
 
 type BaseDraggedItem<T> = {
