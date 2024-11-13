@@ -28,7 +28,7 @@ describe("tokenizer", () => {
       { type: TOKEN.Operator, op: ">", start: 13, end: 14 }, // >
       { type: TOKEN.Number, start: 15, end: 18 }, // 200
       { type: TOKEN.Operator, op: ",", start: 18, end: 19 }, // ,
-      { type: TOKEN.Identifier, start: 20, end: 23 }, // [To
+      { type: TOKEN.Identifier, start: 20, end: 23 }, // [To (that's the incomplete token)
       { type: TOKEN.Operator, op: ",", start: 23, end: 24 }, // ,
       { type: TOKEN.String, start: 25, end: 34, value: "Nothing" }, // "Nothing"
       { type: TOKEN.Operator, op: ")", start: 34, end: 35 }, // )
