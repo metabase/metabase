@@ -17,7 +17,7 @@ import {
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import type { ModelResult } from "metabase/browse/models";
+import type { ModelResult } from "metabase/browse/types";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import type { Card, Dashboard, DashboardId, User } from "metabase-types/api";
 import {

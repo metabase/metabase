@@ -5,11 +5,8 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-import {
-  useHasTokenFeature,
-  useSetting,
-  useUserSetting,
-} from "metabase/common/hooks";
+import { useSetting, useUserSetting } from "metabase/common/hooks";
+import { useHasTokenFeature } from "metabase/common/hooks/use-has-token-feature";
 import { useIsAtHomepageDashboard } from "metabase/common/hooks/use-is-at-homepage-dashboard";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import { Tree } from "metabase/components/tree";
