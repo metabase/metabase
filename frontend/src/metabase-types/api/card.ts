@@ -110,11 +110,31 @@ export type SeriesOrderSetting = {
   color?: string;
 };
 
+export type CommonOperator = "is-null" | "not-null";
+export type NumberOperator = "=" | "!=" | "<" | ">" | "<=" | ">=";
+export type StringOperator =
+  | "="
+  | "!="
+  | "contains"
+  | "does-not-contain"
+  | "starts-with"
+  | "ends-with";
+export type BooleanOperator = "is-true" | "is-false";
+export type ConditionalFormattingOperator =
+  | NumberOperator
+  | StringOperator
+  | BooleanOperator
+  | CommonOperator;
+
 export type ColumnFormattingSetting = {
   columns: string[]; // column names
   color?: string;
-  type?: string;
-  operator?: string;
+  type?: "range" | "single";
+  min_type?: "custom" | "all" | null;
+  max_type?: "custom" | "all" | null;
+  min_value?: number;
+  max_value?: number;
+  operator?: ConditionalFormattingOperator;
   value?: string | number;
   highlight_row?: boolean;
 };

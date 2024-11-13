@@ -1,5 +1,7 @@
 import { t } from "ttag";
+import { partition, pick } from "underscore";
 
+import { isNotNull } from "metabase/lib/types";
 import {
   onUpdateVisualizationSettings,
   setUIControls,
@@ -10,17 +12,21 @@ import { getQueryResults, getQuestion } from "metabase/query_builder/selectors";
 import * as Lib from "metabase-lib";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import type {
+  GradientCellStyleEntry,
   MetabotChangeChartAppearanceReaction,
   MetabotChangeColumnSettingsReaction,
   MetabotChangeDisplayTypeReaction,
   MetabotChangeSeriesSettingsReaction,
+  MetabotChangeTableCellsStyleReaction,
   MetabotChangeVisiualizationSettingsReaction,
+  SingleColorCellStyleEntry,
   VisualizationSettings,
 } from "metabase-types/api";
 
 import { stopProcessingAndNotify } from "../state";
 
 import type { ReactionHandler } from "./types";
+import { color } from "metabase/lib/colors";
 
 export const changeTableVisualizationSettings: ReactionHandler<
   MetabotChangeVisiualizationSettingsReaction
@@ -213,4 +219,46 @@ export const changeChartAppearance: ReactionHandler<
     }
 
     await dispatch(onUpdateVisualizationSettings(settingsUpdate));
+  };
+
+export const changeTableCellsStyle: ReactionHandler<
+  MetabotChangeTableCellsStyleReaction
+> =
+  ({ type, ...payload }) =>
+  async ({ dispatch, getState }) => {
+    const existingFormatting =
+      getQuestion(getState())?.settings()["table.column_formatting"] ?? [];
+
+    const newFormatting = existingFormatting.filter(
+      (_style, index) => !payload.removed_styles.includes(index),
+    );
+
+    newFormatting.push(
+      ...payload.single_color_cell_styles.map(entry => {
+        return {
+          ...entry,
+          type: "single" as const,
+        };
+      }),
+      ...payload.numeric_gradient_cell_styles.map(entry => {
+        const gradient = [color("white"), entry.color];
+        if (entry.gradient_direction === "descending") {
+          gradient.reverse();
+        }
+
+        return {
+          ...entry,
+          type: "range" as const,
+          colors: gradient,
+          min_value: entry.min_value ?? undefined,
+          max_value: entry.max_value ?? undefined,
+        };
+      }),
+    );
+
+    await dispatch(
+      onUpdateVisualizationSettings({
+        "table.column_formatting": newFormatting,
+      }),
+    );
   };

@@ -1,0 +1,138 @@
+{
+  "name": "change-table-cells-style",
+  "description": "Change the style of the table cells based on the column values aka column formatting (it does not change how the values are displayed in the table). Represents values in `table.column_formatting` array in the visualization settings. Allowed only when current_display_type is `table` or `pivot`.",
+  "parameters": {
+    "type": "object",
+    "required": [
+      "single_color_cell_styles",
+      "numeric_gradient_cell_styles",
+      "removed_styles"
+    ],
+    "additionalProperties": false,
+    "properties": {
+      "removed_styles": {
+        "type": "array",
+        "description": "Indices in table.column_formatting array to remove. When updating an existing style, include its index here and create a new entry with the updated values.",
+        "items": {
+          "type": "number"
+        }
+      },
+      "single_color_cell_styles": {
+        "type": "array",
+        "description": "Rules for applying a single background color to table cells that match conditions. If modifying an existing rule in table.column_formatting, add its index to removed_styles and create a new entry here with the updated values.",
+        "items": {
+          "type": "object",
+          "required": [
+            "columns",
+            "operator",
+            "value",
+            "color",
+            "highlight_row"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "color": {
+              "type": "string",
+              "description": "Background color for table cells. Must be a valid color from the predefined color palette, using the closest available match if a specific color is requested."
+            },
+            "columns": {
+              "type": "array",
+              "description": "Column names to apply the style to. Must be columns of the same type.",
+              "items": {
+                "type": "string",
+                "description": "Column name from table.columns"
+              }
+            },
+            "operator": {
+              "type": "string",
+              "enum": [
+                "=",
+                "!=",
+                "<",
+                ">",
+                "<=",
+                ">=",
+                "is-null",
+                "not-null",
+                "contains",
+                "does-not-contain",
+                "starts-with",
+                "ends-with",
+                "is-true",
+                "is-false"
+              ],
+              "description": "Comparison operator used to determine when to apply the cell style"
+            },
+            "value": {
+              "type": ["string", "number"],
+              "description": "Value to compare against column values when applying conditional formatting. Required for all operators except is-null, not-null, is-true, and is-false."
+            },
+            "highlight_row": {
+              "type": "boolean",
+              "description": "Set to true to highlight full row, false to highlight only the cell"
+            }
+          }
+        }
+      },
+      "numeric_gradient_cell_styles": {
+        "type": "array",
+        "description": "Rules for applying gradient colors to numeric table columns, stored in table.column_formatting. When modifying an existing rule, add its index to removed_styles and create a new entry here with the updated values.",
+        "additionalProperties": false,
+        "items": {
+          "type": "object",
+          "required": [
+            "columns",
+            "min_type",
+            "min_value",
+            "max_type",
+            "max_value",
+            "color",
+            "gradient_direction"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "color": {
+              "type": "string",
+              "description": "A color from the color palette to use for the gradient. If a specific color is requested, select the closest matching color from the palette."
+            },
+            "gradient_direction": {
+              "type": "string",
+              "enum": ["ascending", "descending"],
+              "description": "Direction of the gradient"
+            },
+            "columns": {
+              "type": "array",
+              "description": "Names of numeric columns to apply gradient styling, referenced from table.columns",
+              "items": {
+                "description": "Name of numeric column to apply gradient style",
+                "type": "string"
+              }
+            },
+            "min_type": {
+              "type": ["string", "null"],
+              "enum": ["custom", null],
+              "description": "Minimum value type. `null` uses column minimum, `custom` uses min_value. Unless explicitly asked for min value prefer `null`.",
+              "nullable": true
+            },
+            "max_type": {
+              "type": ["string", "null"],
+              "enum": ["custom", null],
+              "description": "Maximum value type. `null` uses column maximum, `custom` uses max_value. Unless explicitly asked for min value prefer `null`.",
+              "nullable": true
+            },
+            "min_value": {
+              "type": ["number", "null"],
+              "description": "Value for one end of the gradient spectrum. Use a number for custom value when explicitly asked for a specific value, or null to automatically use the column minimum.",
+              "nullable": true
+            },
+            "max_value": {
+              "type": ["number", "null"],
+              "description": "Value for the other end of the gradient spectrum. Use a number for custom value when explicitly asked for a specific value, or null to automatically use the column maximum.",
+              "nullable": true
+            }
+          }
+        }
+      }
+    }
+  }
+}
