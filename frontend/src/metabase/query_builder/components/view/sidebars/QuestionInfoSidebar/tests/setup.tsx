@@ -20,7 +20,10 @@ import {
   createMockUser,
 } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
-import { createMockState } from "metabase-types/store/mocks";
+import {
+  createMockQueryBuilderState,
+  createMockState,
+} from "metabase-types/store/mocks";
 
 import { QuestionInfoSidebar } from "../QuestionInfoSidebar";
 
@@ -45,6 +48,7 @@ export const setup = async ({
   const state = createMockState({
     currentUser,
     settings: mockSettings(settings),
+    qb: createMockQueryBuilderState({ card }),
     entities: createMockEntitiesState({
       databases: [createSampleDatabase()],
       questions: [card],
