@@ -124,8 +124,8 @@
     0))
 
 (defn- index-worker-exists? []
-  (task/job-exists? @(requiring-resolve 'metabase.task.search-index/job-key-full))
-  (task/job-exists? @(requiring-resolve 'metabase.task.search-index/job-key-incremental)))
+  (task/job-exists? @(requiring-resolve 'metabase.task.search-index/reindex-job-key))
+  (task/job-exists? @(requiring-resolve 'metabase.task.search-index/update-job-key)))
 
 (defn- ^:private ingest-maybe-async!
   "Update or create any search index entries related to the given updates.

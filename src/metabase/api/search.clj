@@ -53,8 +53,8 @@
     (throw (ex-info "Search index is not enabled." {:status-code 501}))
 
     (search/supports-index?)
-    (if (task/job-exists? task.search-index/job-key-full)
-      (do (task/trigger-now! task.search-index/job-key-full) {:message "task triggered"})
+    (if (task/job-exists? task.search-index/reindex-job-key)
+      (do (task/trigger-now! task.search-index/reindex-job-key) {:message "task triggered"})
       (do (search/reindex!) {:message "done"}))
 
     :else

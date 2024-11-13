@@ -10,24 +10,27 @@
    [metabase.task :as task]
    [metabase.util.log :as log])
   (:import
-   (org.quartz DisallowConcurrentExecution)))
+   (org.quartz DisallowConcurrentExecution JobDetail Trigger)))
 
 (set! *warn-on-reflection* true)
 
 ;; This is problematic multi-instance deployments, see below.
 (def ^:private recreated? (atom false))
 
-(def job-key-full
-  "Key used to define and trigger the search-index-full task."
-  (jobs/key "metabase.task.search-index-full.job"))
+(def ^:private reindex-stem "metabase.task.search-index.reindex")
+(def ^:private update-stem "metabase.task.search-index.update")
 
-(def job-key-incremental
-  "Key used to define and trigger the search-index-incremental task."
-  (jobs/key "metabase.task.search-index-incremental.job"))
+(def reindex-job-key
+  "Key used to define and trigger a job that rebuilds the entire index from scratch."
+  (jobs/key (str reindex-stem ".job")))
+
+(def update-job-key
+  "Key used to define and trigger a job that makes incremental updates to the search index."
+  (jobs/key (str update-stem ".job")))
 
 (jobs/defjob ^{DisallowConcurrentExecution true
                :doc                        "Populate Search Index"}
-  SearchIndexFull [_ctx]
+  SearchIndexReindex [_ctx]
   (when (search/supports-index?)
     (if (not @recreated?)
       (do (log/info "Recreating search index from the latest schema")
@@ -41,50 +44,50 @@
           (search/reindex!)))
     (log/info "Done indexing.")))
 
-(defmethod task/init! ::SearchIndexFull [_]
+(defn- force-scheduled-task! [^JobDetail job ^Trigger trigger]
+  ;; For some reason, using the schedule-task! with a non-durable job causes it to only fire on the first trigger.
+  #_(task/schedule-task! job trigger)
+  (task/delete-task! (.getKey job) (.getKey trigger))
+  (task/add-job! job)
+  (task/add-trigger! trigger))
+
+(defmethod task/init! ::SearchIndexReindex [_]
   (let [job         (jobs/build
-                     (jobs/of-type SearchIndexFull)
+                     (jobs/of-type SearchIndexReindex)
                      (jobs/store-durably)
-                     (jobs/with-identity job-key-full))
-        trigger-key (triggers/key "metabase.task.search-index-full.trigger")
+                     (jobs/with-identity reindex-job-key))
+        trigger-key (triggers/key (str reindex-stem ".trigger"))
         trigger     (triggers/build
                      (triggers/with-identity trigger-key)
+                     (triggers/for-job reindex-job-key)
                      (triggers/start-now)
                      (triggers/with-schedule
                       (simple/schedule (simple/with-interval-in-hours 1))))]
-    ;; For some reason, using the schedule-task! with a non-durable job causes it to only fire on the first trigger.
-    #_(task/schedule-task! job trigger)
-    (task/delete-task! job-key-incremental trigger-key)
-    (task/add-job! job)
-    (task/add-trigger! trigger)))
+    (force-scheduled-task! job trigger)))
 
 (jobs/defjob ^{DisallowConcurrentExecution true
                :doc                        "Keep Search Index updated"}
-  SearchIndexIncremental [_ctx]
+  SearchIndexUpdate [_ctx]
   (when (search/supports-index?)
     (while true
       (let [updated-entry-count (search.ingestion/process-next-batch Long/MAX_VALUE 100)]
         (when (pos? updated-entry-count)
           (log/infof "Updated %d search index entries" updated-entry-count))))))
 
-(defmethod task/init! ::SearchIndexIncremental [_]
+(defmethod task/init! ::SearchIndexUpdate [_]
   (let [job         (jobs/build
-                     (jobs/of-type SearchIndexIncremental)
+                     (jobs/of-type SearchIndexUpdate)
                      (jobs/store-durably)
-                     (jobs/with-identity job-key-incremental))
-        trigger-key (triggers/key "metabase.task.search-index-incremental.trigger")
+                     (jobs/with-identity update-job-key))
+        trigger-key (triggers/key (str update-stem ".trigger"))
         trigger     (triggers/build
                      (triggers/with-identity trigger-key)
-                     (triggers/for-job job-key-incremental)
+                     (triggers/for-job update-job-key)
                      (triggers/start-now)
                      ;; This schedule is only here to restart the task if it dies for some reason.
                      (triggers/with-schedule (simple/schedule (simple/with-interval-in-seconds 1))))]
-    ;; For some reason, using the schedule-task! with a non-durable job causes it to only fire on the first trigger.
-    #_(task/schedule-task! job trigger)
-    (task/delete-task! job-key-incremental trigger-key)
-    (task/add-job! job)
-    (task/add-trigger! trigger)))
+    (force-scheduled-task! job trigger)))
 
 (comment
-  (task/job-exists? job-key-full)
-  (task/job-exists? job-key-incremental))
+  (task/job-exists? reindex-job-key)
+  (task/job-exists? update-job-key))
