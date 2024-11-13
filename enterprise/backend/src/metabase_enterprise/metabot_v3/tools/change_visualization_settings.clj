@@ -23,14 +23,14 @@
         toggle-columns (fn [settings column-names enabled?]
                          (let [name->index (into {} (map-indexed (fn [i col] [(:name col) i])) settings)]
                            (reduce (fn [settings column-name]
-                                  (let [column (or (get name->column column-name)
-                                                   (throw (column-error columns column-name)))
-                                        index  (get name->index (:name column))]
-                                    (if (some? index)
-                                      (assoc settings index {:name (:name column), :enabled enabled?})
-                                      (into settings {:name (:name column), :enabled enabled?}))))
-                                settings
-                                (distinct column-names))))]
+                                     (let [column (or (get name->column column-name)
+                                                      (throw (column-error columns column-name)))
+                                           index  (get name->index (:name column))]
+                                       (if (some? index)
+                                         (assoc settings index {:name (:name column), :enabled enabled?})
+                                         (into settings {:name (:name column), :enabled enabled?}))))
+                                   settings
+                                   (distinct column-names))))]
     (assoc viz-settings
            :table.columns
            (cond-> (or (:table.columns viz-settings) [])
