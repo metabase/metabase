@@ -484,7 +484,7 @@ describe("issue 15444", () => {
     // This flow tests the ability to pick the filter from a dropdown when there are not too many results (easy to choose from).
     popover().within(() => {
       cy.findByText("Doohickey").click();
-      cy.button("Add filter").click();
+      cy.button("Update filter").click();
     });
 
     SQLFilter.runQuery();
@@ -1074,7 +1074,7 @@ describe("issue 31606", { tags: "@external" }, () => {
       .should("have.value", "ID")
       .should("be.disabled");
 
-    FieldFilter.addDefaultStringFilter("2");
+    FieldFilter.addDefaultStringFilter("2", "Add filter");
 
     cy.findByTestId("sidebar-content").within(() => {
       cy.findByText("Enter a default value…").should("not.exist");

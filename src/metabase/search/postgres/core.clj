@@ -5,9 +5,12 @@
    [honey.sql.helpers :as sql.helpers]
    [metabase.api.common :as api]
    [metabase.search.config :as search.config]
+   [metabase.search.filter :as search.filter]
    [metabase.search.legacy :as search.legacy]
+   [metabase.search.permissions :as search.permissions]
    [metabase.search.postgres.index :as search.index]
    [metabase.search.postgres.ingestion :as search.ingestion]
+   [metabase.search.postgres.scoring :as search.scoring]
    [toucan2.core :as t2])
   (:import
    (java.time OffsetDateTime)))
@@ -54,7 +57,7 @@
   (when-not @#'search.index/initialized?
     (throw (ex-info "Search index is not initialized. Use [[init!]] to ensure it exists."
                     {:search-engine :postgres})))
-  (-> (sql.helpers/with [:index-query (search.index/search-query search-term)]
+  (-> (sql.helpers/with [:index-query (search.index/search-query search-term search-ctx)]
                         [:source-query (in-place-query search-ctx)])
       (sql.helpers/select :sq.*)
       (sql.helpers/from [:source-query :sq])
@@ -64,80 +67,39 @@
       (sql/format {:quoted true})
       t2/reducible-query))
 
-(defn- hybrid-multi
-  "Perform multiple legacy searches to see if its faster. Perverse!"
-  [search-term & {:as search-ctx}]
-  (when-not @#'search.index/initialized?
-    (throw (ex-info "Search index is not initialized. Use [[init!]] to ensure it exists."
-                    {:search-engine :postgres})))
-  (->> (search.index/search-query search-term)
-       t2/query
-       (group-by :model)
-       (mapcat (fn [[model results]]
-                 (let [ids (map :model_id results)]
-                   ;; Something is very wrong here, this also returns items with other ids.
-                   (as-> search-ctx <>
-                     (assoc <> :models #{model} :ids ids)
-                     (dissoc <> :search-string)
-                     (in-place-query <>)
-                     (t2/query <>)
-                     (filter (comp (set ids) :id) <>)))))))
-
 (defn- parse-datetime [s]
   (when s
     (OffsetDateTime/parse s)))
 
-(defn- minimal
-  "Search via index, and return potentially stale information, without applying filters or
-  restricting to collections we have access to."
-  [search-term & {:as _search-ctx}]
-  (when-not @#'search.index/initialized?
-    (throw (ex-info "Search index is not initialized. Use [[init!]] to ensure it exists."
-                    {:search-engine :postgres})))
-  (->> (assoc (search.index/search-query search-term) :select [:legacy_input])
-       (t2/query)
-       (map :legacy_input)
-       (map #(json/parse-string % keyword))
-       (map #(-> %
-                 (update :created_at parse-datetime)
-                 (update :updated_at parse-datetime)
-                 (update :last_edited_at parse-datetime)))))
+(defn- rehydrate [index-row]
+  ;; Useful for debugging scoring
+  #_(dissoc index-row :legacy_input :created_at :updated_at :last_edited_at)
+  (-> (merge
+       (json/parse-string (:legacy_input index-row) keyword)
+       (select-keys index-row [:total_score :pinned]))
+      (update :created_at parse-datetime)
+      (update :updated_at parse-datetime)
+      (update :last_edited_at parse-datetime)))
 
-;; filters:
-;; - the obvious ones in the ui
-;; - db-id
-;; - personal collection (include / exclude), including sub
-
-(defn- minimal-with-perms
-  "Search via index, and return potentially stale information, without applying filters,
-  but applying permissions. Does not perform ranking."
+(defn- fulltext
+  "Search purely using the index."
   [search-term & {:as search-ctx}]
   (when-not @#'search.index/initialized?
     (throw (ex-info "Search index is not initialized. Use [[init!]] to ensure it exists."
                     {:search-engine :postgres})))
-  (->> (search.legacy/add-collection-join-and-where-clauses
-        (assoc (search.index/search-query search-term)
-               :select [:legacy_input])
-        ;; we just need this to not be "collection"
-        "__search_index__"
-        search-ctx)
+  (->> (let [base-query (search.index/search-query search-term search-ctx [:legacy_input])]
+         (search.permissions/add-collection-join-and-where-clauses base-query "search-index" search-ctx))
+       (search.scoring/with-scores search-ctx)
+       (search.filter/with-filters search-ctx)
        (t2/query)
-       (map :legacy_input)
-       (map #(json/parse-string % keyword))
-       (map #(-> %
-                 (update :created_at parse-datetime)
-                 (update :updated_at parse-datetime)
-                 (update :last_edited_at parse-datetime)))))
+       (map rehydrate)))
 
-(def ^:private default-engine hybrid-multi)
+(def ^:private default-engine fulltext)
 
 (defn- search-fn [search-engine]
   (case search-engine
     :search.engine/hybrid             hybrid
-    :search.engine/hybrid-multi       hybrid-multi
-    :search.engine/minimal            minimal
-    :search.engine/minimal-with-perms minimal-with-perms
-    :search.engine/fulltext           default-engine
+    :search.engine/fulltext           fulltext
     default-engine))
 
 (defn search
@@ -148,23 +110,20 @@
        (dissoc search-ctx :search-string))))
 
 (defn model-set
-  "Return a set of the models which have at least one result for the given query.
-  TODO: consider filters and permissions."
+  "Return a set of the models which have at least one result for the given query."
   [search-ctx]
-  (set
-   (filter
-    ;; TODO use a single query
-    (fn [m]
-      (t2/exists? :search_index
-                  (-> (search.index/search-query (:search-string search-ctx))
-                      (sql.helpers/where [:= :model m]))))
-    ;; TODO use only the models that apply to the given filters
-    (:models search-ctx search.config/all-models))))
+  ;; We ignore any current models filter
+  (let [search-ctx (assoc search-ctx :models search.config/all-models)]
+    (->> (-> (search.index/search-query (:search-string search-ctx) search-ctx [[[:distinct :model] :model]])
+             (search.permissions/add-collection-join-and-where-clauses "search-index" search-ctx))
+         (search.filter/with-filters search-ctx)
+         t2/query
+         (into #{} (map :model)))))
 
 (defn no-scoring
   "Do no scoring, whatsoever"
   [result _scoring-ctx]
-  {:score  1
+  {:score  (:total_score result 1)
    :result (assoc result :all-scores [] :relevant-scores [])})
 
 (defn init!

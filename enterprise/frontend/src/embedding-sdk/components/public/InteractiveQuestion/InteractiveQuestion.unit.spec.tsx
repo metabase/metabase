@@ -16,7 +16,7 @@ import {
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { InteractiveQuestionResult } from "embedding-sdk/components/private/InteractiveQuestionResult";
-import { createMockJwtConfig } from "embedding-sdk/test/mocks/config";
+import { createMockAuthProviderUriConfig } from "embedding-sdk/test/mocks/config";
 import { setupSdkState } from "embedding-sdk/test/server-mocks/sdk-init";
 import {
   createMockCard,
@@ -99,8 +99,8 @@ const setup = ({
     {
       mode: "sdk",
       sdkProviderProps: {
-        config: createMockJwtConfig({
-          jwtProviderUri: "http://TEST_URI/sso/metabase",
+        config: createMockAuthProviderUriConfig({
+          authProviderUri: "http://TEST_URI/sso/metabase",
         }),
       },
       storeInitialState: state,

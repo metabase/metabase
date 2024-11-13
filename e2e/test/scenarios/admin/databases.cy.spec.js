@@ -10,9 +10,13 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   createSegment,
+  describeWithSnowplow,
+  enableTracking,
+  expectGoodSnowplowEvent,
   isEE,
   modal,
   popover,
+  resetSnowplow,
   restore,
   setTokenFeatures,
   tooltip,
@@ -423,6 +427,8 @@ describe("admin > database > add", () => {
         /\/admin\/databases\?created=true&createdDbId=\d$/,
       );
 
+      cy.findByRole("status").findByText("Syncing…").should("be.visible");
+
       cy.findByRole("dialog").within(() => {
         cy.findByText(
           "Your database was added! Want to configure permissions?",
@@ -430,14 +436,9 @@ describe("admin > database > add", () => {
         cy.button("Maybe later").click();
       });
 
-      cy.findByRole("table").within(() => {
-        cy.findByText("QA MySQL8");
-      });
-
-      cy.findByRole("status").within(() => {
-        cy.findByText("Syncing…");
-        cy.findByText("Done!");
-      });
+      cy.findByRole("table").findByText("QA MySQL8").should("be.visible");
+      cy.findByRole("status").findByText("Syncing…").should("not.exist");
+      cy.findByRole("status").findByText("Done!").should("be.visible");
     });
   });
 
@@ -862,6 +863,31 @@ describe("scenarios > admin > databases > sample database", () => {
 
     cy.findByTestId("database-browser").within(() => {
       cy.findByText("Sample Database").should("exist");
+    });
+  });
+});
+
+describeWithSnowplow("add database card", () => {
+  beforeEach(() => {
+    resetSnowplow();
+    restore();
+    cy.signInAsAdmin();
+    enableTracking();
+  });
+
+  it("should track the click on the card", () => {
+    cy.visit("/browse/databases");
+
+    cy.findByTestId("database-browser")
+      .findAllByRole("link")
+      .last()
+      .as("addDatabaseCard");
+
+    cy.get("@addDatabaseCard").findByText("Add a database").click();
+    cy.location("pathname").should("eq", "/admin/databases/create");
+    expectGoodSnowplowEvent({
+      event: "database_add_clicked",
+      triggered_from: "db-list",
     });
   });
 });

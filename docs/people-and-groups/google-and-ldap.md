@@ -144,7 +144,7 @@ On Pro and Enterprise plans, you can require people to log in with SSO by disabl
 
 ## Further reading
 
-- [Using LDAP for authentication and access control](https://www.metabase.com/learn/permissions/ldap-auth-access-control).
+- [Using LDAP for authentication and access control](https://www.metabase.com/learn/metabase-basics/administration/permissions/ldap-auth-access-control).
 - [Permissions overview](../permissions/start.md).
 
 [data-sandboxing-docs]: ../permissions/data-sandboxes.md

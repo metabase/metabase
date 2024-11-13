@@ -18,7 +18,7 @@
     :refer [SearchableModel SearchContext]]
    [metabase.search.filter :as search.filter]
    [metabase.search.fulltext :as search.fulltext]
-   [metabase.search.scoring :as scoring]
+   [metabase.search.in-place.scoring :as scoring]
    [metabase.util.i18n :refer [tru deferred-tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -141,6 +141,10 @@
              (assoc search-result :effective_location nil)))
          search-results)))
 
+(def ^:private ^:const displayed-columns
+  "All the result components that by default are displayed by the frontend."
+  #{:name :display_name :collection_name :description})
+
 ;;; TODO OMG mix of kebab-case and snake_case here going to make me throw up, we should use all kebab-case in Clojure
 ;;; land and then convert the stuff that actually gets sent over the wire in the REST API to snake_case in the API
 ;;; endpoint itself, not in the search impl.
@@ -149,8 +153,8 @@
   [{:as result :keys [all-scores relevant-scores name display_name collection_id collection_name
                       collection_authority_level collection_type collection_effective_ancestors effective_parent
                       archived_directly model]}]
-  (let [matching-columns    (into #{} (remove nil? (map :column relevant-scores)))
-        match-context-thunk (first (keep :match-context-thunk relevant-scores))
+  (let [matching-columns    (into #{} (keep :column relevant-scores))
+        match-context-thunk (some :match-context-thunk relevant-scores)
         remove-thunks       (partial mapv #(dissoc % :match-context-thunk))]
     (-> result
         (assoc
@@ -159,7 +163,7 @@
                            name)
          :context        (when (and match-context-thunk
                                     (empty?
-                                     (remove matching-columns search.config/displayed-columns)))
+                                     (remove matching-columns displayed-columns)))
                            (match-context-thunk))
          :collection     (if (and archived_directly (not= "collection" model))
                            (select-keys (collection/trash-collection)
@@ -224,14 +228,20 @@
 
 ;; This forwarding is here for tests, we should clean those up.
 
+(defn- apply-default-engine [{:keys [search-engine] :as search-ctx}]
+  (when (= default-engine search-engine)
+    (throw (ex-info "Missing implementation for default search-engine" {:search-engine search-engine})))
+  (log/debugf "Missing implementation for %s so instead using %s" search-engine default-engine)
+  (assoc search-ctx :search-engine default-engine))
+
 (defmethod search.api/results :default [search-ctx]
-  (search.api/results (assoc search-ctx :search-engine default-engine)))
+  (search.api/results (apply-default-engine search-ctx)))
 
 (defmethod search.api/model-set :default [search-ctx]
-  (search.api/model-set (assoc search-ctx :search-engine default-engine)))
+  (search.api/model-set (apply-default-engine search-ctx)))
 
 (defmethod search.api/score :default [results search-ctx]
-  (search.api/score results (assoc search-ctx :search-engine default-engine)))
+  (search.api/score results (apply-default-engine search-ctx)))
 
 (mr/def ::search-context.input
   [:map {:closed true}
@@ -371,7 +381,7 @@
   "Builds a search query that includes all the searchable entities, and runs it."
   [search-ctx :- search.config/SearchContext]
   (let [reducible-results (search.api/results search-ctx)
-        scoring-ctx       (select-keys search-ctx [:search-string :search-native-query])
+        scoring-ctx       (select-keys search-ctx [:search-engine :search-string :search-native-query])
         xf                (comp
                            (take search.config/*db-max-results*)
                            (map normalize-result)

@@ -12,7 +12,7 @@ runs:
     - name: Prepare Java
       uses: actions/setup-java@v3
       with:
-        java-version: '17'
+        java-version: '21'
         distribution: 'temurin'
     - name: Reveal its original version.properties
       run: jar xf  ./bin/docker/metabase.jar version.properties && cat version.properties
@@ -106,7 +106,8 @@ runs:
       run: jar uf bin/docker/metabase.jar modules/*.jar
       shell: bash
     - name: Launch uberjar
-      run: java -jar ./bin/docker/metabase.jar &
+      run: >-
+        java --add-opens java.base/java.nio=ALL-UNNAMED -jar ./metabase.jar &
       shell: bash
     - name: Wait for Metabase to start
       run: while ! curl 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done

@@ -7,7 +7,7 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase-enterprise.search.scoring :as ee-scoring]
-   [metabase.search.scoring :as scoring]
+   [metabase.search.in-place.scoring :as scoring]
    [metabase.test :as mt]))
 
 (deftest ^:parallel verified-score-test
@@ -108,7 +108,7 @@
   {:pre [(> 10 (count values))]}
   (mapv vec (mapcat math.combo/permutations (math.combo/subsets values))))
 
-(defn test-corups [words]
+(defn test-corpus [words]
   (let [corpus (->> words
                     all-permutations-all-orders
                     (mapv #(str/join " " %))
@@ -126,9 +126,9 @@
                  :name))))))
 
 (deftest identical-results-result-in-identical-hits
-  (test-corups ["foo" "bar"])
-  (test-corups ["foo" "bar" "baz"])
-  (test-corups ["foo" "bar" "baz" "quux"]))
+  (test-corpus ["foo" "bar"])
+  (test-corpus ["foo" "bar" "baz"])
+  (test-corpus ["foo" "bar" "baz" "quux"]))
 
 (deftest score-result-test
   (let [score-result-names (fn [] (set (map :name (scoring/score-result {}))))]

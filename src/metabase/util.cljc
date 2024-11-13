@@ -2,7 +2,8 @@
   "Common utility functions useful throughout the codebase."
   (:refer-clojure :exclude [group-by])
   (:require
-   #?@(:clj ([clojure.math.numeric-tower :as math]
+   #?@(:clj ([clojure.core.protocols :as core.protocols]
+             [clojure.math.numeric-tower :as math]
              [me.flowthing.pp :as pp]
              [metabase.config :as config]
              #_{:clj-kondo/ignore [:discouraged-namespace]}
@@ -27,6 +28,7 @@
    [weavejester.dependency :as dep])
   #?(:clj (:import
            (clojure.lang Reflector)
+           (clojure.core.protocols CollReduce)
            (java.text Normalizer Normalizer$Form)
            (java.util Locale)
            (org.apache.commons.validator.routines RegexValidator UrlValidator)))
@@ -1118,3 +1120,28 @@
   "Return first item from Reducible"
   [reducible]
   (reduce (fn [_ fst] (reduced fst)) nil reducible))
+
+(defn rconcat
+  "Concatenate two Reducibles"
+  [r1 r2]
+  #?(:clj
+     (reify CollReduce
+       (coll-reduce [_ f]
+         #_{:clj-kondo/ignore [:reduce-without-init]}
+         (let [acc1 (reduce f r1)
+               acc2 (reduce f acc1 r2)]
+           acc2))
+       (coll-reduce [_ f init]
+         (let [acc1 (reduce f init r1)
+               acc2 (reduce f acc1 r2)]
+           acc2)))
+     :cljs
+     (reify IReduce
+       (-reduce [_ f]
+         (let [acc1 (reduce f r1)
+               acc2 (reduce f acc1 r2)]
+           acc2))
+       (-reduce [_ f init]
+         (let [acc1 (reduce f init r1)
+               acc2 (reduce f acc1 r2)]
+           acc2)))))

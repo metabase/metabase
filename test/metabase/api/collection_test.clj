@@ -2157,6 +2157,21 @@
               (is (= {"Currency A" "write", "Currency A -> B" "read"}
                      (nice-graph response))))))
 
+        (testing "Should require a `revision` parameter equal to the current graph's revision"
+          (is (= (str "Looks like someone else edited the permissions and your data is out of date. "
+                      "Please fetch new data and try again.")
+                 (mt/user-http-request :crowberto :put 409 "collection/graph"
+                                       (-> (graph/graph)
+                                           (update :revision dec))))))
+
+        (testing "Should be able to override the need for a `revision` parameter by passing `force=true`"
+          (let [response (mt/user-http-request :crowberto :put 200 "collection/graph?force=true"
+                                               (-> (graph/graph)
+                                                   (assoc :groups {group-id {default-ab :read}})
+                                                   (dissoc :revision)))]
+            (is (= {"Default A" "read", "Default A -> B" "read"}
+                   (nice-graph response)))))
+
         (testing "have to be a superuser"
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :put 403 "collection/graph"
@@ -2299,8 +2314,7 @@
   (is (malli= [:map {:closed true} [:revision :int]]
               (mt/user-http-request :crowberto
                                     :put 200
-                                    "collection/graph"
+                                    "collection/graph?skip-graph=true"
                                     {:revision (c-perm-revision/latest-id)
-                                     :groups {}
-                                     :skip_graph true}))
+                                     :groups {}}))
       "PUTs with skip_graph should not return the coll permission graph."))
