@@ -9,14 +9,14 @@
           "object",
           "null"
         ],
-        "description": "Shows or hides table columns. Use `result_columns` for the list of available columns.",
+        "description": "Shows or hides table columns. Use `visualization_columns` for the list of available columns.",
         "properties": {
           "show_columns": {
             "type": [
               "array",
               "null"
             ],
-            "description": "List of columns to show. Use `result_columns` for the list of available columns.",
+            "description": "List of columns to show. Use `visualization_columns` for the list of available columns.",
             "items": {
               "type": "string"
             }
@@ -26,7 +26,7 @@
               "array",
               "null"
             ],
-            "description": "List of columns to hide. Use `result_columns` for the list of available columns.",
+            "description": "List of columns to hide. Use `visualization_columns` for the list of available columns.",
             "items": {
               "type": "string"
             }

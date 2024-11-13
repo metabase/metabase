@@ -62,4 +62,4 @@
                  columns           (lib/visible-columns query)]
              {:query-columns (mapv #(->> % (lib/display-info query) :long-display-name) columns)}))
          (when dataset_columns
-           {:result-columns (mapv :display_name dataset_columns)})))
+           {:visualization-columns (mapv :display_name dataset_columns)})))
