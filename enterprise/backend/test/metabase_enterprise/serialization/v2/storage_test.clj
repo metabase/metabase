@@ -238,3 +238,19 @@
           (is (= #{["parent.yaml"]
                    ["parent.child.yaml"]}
                  (file-set (io/file dump-dir "databases" "mydb" "tables" "table" "fields")))))))))
+
+(deftest scientific-notation-test
+  (testing "strings that look like scientific notation are quoted by the YAML lib"
+    (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+      (mt/with-temp [:model/Card c {:name       "Card with parameters"
+                                    :parameters [{:id   "89e41117"
+                                                  :type :whatever}]}]
+        (-> [(serdes/extract-one "Card" {} c)]
+            (storage/store! dump-dir)))
+      (let [data (->> (file-seq (io/file dump-dir))
+                      (filter #(.isFile %))
+                      first
+                      slurp)]
+        (testing "that id should be in quotes, see #49880"
+          (is (= "- id: '89e41117'"
+                 (re-find #"- id:.*" data))))))))
