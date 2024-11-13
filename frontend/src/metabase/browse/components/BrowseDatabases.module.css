@@ -7,10 +7,10 @@
 }
 
 .addCard {
-  background-color: var(--mb-color-bg-medium);
+  background-color: var(--color-bg-medium);
 
   &:hover {
     background-color: var(--mb-color-brand);
-    color: var(--mb-color-text-white);
+    color: var(--color-text-white);
   }
 }
