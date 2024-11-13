@@ -18,6 +18,7 @@ import {
   getNotebookStep,
   modal,
   notebookButton,
+  openNativeEditor,
   openNotebook,
   openOrdersTable,
   openPeopleTable,
@@ -29,6 +30,7 @@ import {
   restore,
   resyncDatabase,
   selectFilterOperator,
+  sidebar,
   startNewQuestion,
   tableHeaderClick,
   visitQuestionAdhoc,
@@ -1544,6 +1546,52 @@ describe("issue 49321", () => {
         const { width } = $popover[0].getBoundingClientRect();
         expect(width).to.eq(initialWidth);
       });
+    });
+  });
+});
+
+describe("issue 44665", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should use the correct widget for the default value picker (metabase#44665)", () => {
+    openNativeEditor().type("select * from {{param");
+    sidebar()
+      .last()
+      .within(() => {
+        cy.findByText("Search box").click();
+        cy.findByText("Edit").click();
+      });
+
+    modal().within(() => {
+      cy.findByText("Custom list").click();
+      cy.findByRole("textbox").type("foo\nbar\nbaz");
+      cy.button("Done").click();
+    });
+
+    sidebar().last().findByText("Enter a default value…").click();
+    popover().within(() => {
+      cy.findByPlaceholderText("Enter a default value…").should("be.visible");
+      cy.findByText("foo").should("be.visible");
+      cy.findByText("bar").should("be.visible");
+      cy.findByText("baz").should("be.visible");
+    });
+
+    sidebar()
+      .last()
+      .within(() => {
+        cy.findByText("Enter a default value…").click();
+        cy.findByText("Dropdown list").click();
+        cy.findByText("Enter a default value…").click();
+      });
+
+    popover().within(() => {
+      cy.findByPlaceholderText("Enter a default value…").should("be.visible");
+      cy.findByText("foo").should("be.visible");
+      cy.findByText("bar").should("be.visible");
+      cy.findByText("baz").should("be.visible");
     });
   });
 });

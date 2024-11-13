@@ -220,13 +220,15 @@
       bigquery.common/service-account-json->service-account-credential
       (.getProjectId)))
 
-(defmacro with-numeric-types-table [[table-name-binding] & body]
+(defmacro with-bigquery-types-table [[table-name-binding] & body]
   `(do-with-temp-obj "table_%s"
-                     (fn [tbl-nm#] [(str "CREATE TABLE `%s.%s` AS SELECT "
-                                         "NUMERIC '%s' AS numeric_col, "
-                                         "DECIMAL '%s' AS decimal_col, "
-                                         "BIGNUMERIC '%s' AS bignumeric_col, "
-                                         "BIGDECIMAL '%s' AS bigdecimal_col")
+                     (fn [tbl-nm#] [(str "CREATE TABLE `%s.%s` "
+                                         "(numeric_col NUMERIC, "
+                                         " decimal_col DECIMAL, "
+                                         " bignumeric_col BIGNUMERIC, "
+                                         " bigdecimal_col BIGDECIMAL, "
+                                         " string255_col STRING(255)) "
+                                         "AS SELECT NUMERIC '%s', DECIMAL '%s', BIGNUMERIC '%s', BIGDECIMAL '%s', 'hello'")
                                     ~test-db-name
                                     tbl-nm#
                                     ~numeric-val
@@ -717,7 +719,7 @@
 
 (deftest bigquery-specific-types-test
   (testing "Table with decimal types"
-    (with-numeric-types-table [#_:clj-kondo/ignore tbl-nm]
+    (with-bigquery-types-table [#_:clj-kondo/ignore tbl-nm]
       (is (contains? (:tables (driver/describe-database :bigquery-cloud-sdk (mt/db)))
                      {:schema test-db-name :name tbl-nm :database_require_filter false})
           "`describe-database` should see the table")
@@ -748,7 +750,14 @@
                :database-partitioned false
                :database-position 3
                :database-type "BIGNUMERIC"
-               :name "bigdecimal_col"}]
+               :name "bigdecimal_col"}
+              {:name "string255_col",
+               :table-name tbl-nm
+               :table-schema test-db-name
+               :database-type "STRING",
+               :base-type :type/Text,
+               :database-partitioned false,
+               :database-position 4}]
              (driver/describe-fields :bigquery-cloud-sdk (mt/db) {:table-names [tbl-nm] :schema-names [test-db-name]}))
           "`describe-fields` should see the fields in the table")
       (sync/sync-database! (mt/db) {:scan :schema})

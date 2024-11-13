@@ -1,9 +1,5 @@
 import styled from "@emotion/styled";
 
-export const ColumnPickerContainer = styled.div`
-  min-width: 300px;
-`;
-
 export const ColumnPickerHeaderContainer = styled.div`
   display: flex;
   align-items: center;

@@ -116,7 +116,7 @@ export const NotebookNativePreview = (): JSX.Element => {
         )}
       </Box>
       {/* we need to match height with the notebook editor */}
-      <Box ta="end" pb="md" pt={rem(14)} pr="md">
+      <Box ta="end" pb="xs" pt="xs" pr="md">
         <Button
           variant="subtle"
           onClick={handleConvertClick}

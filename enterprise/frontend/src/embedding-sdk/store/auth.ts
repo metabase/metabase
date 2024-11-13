@@ -17,22 +17,22 @@ export const initAuth = createAsyncThunk(
   "sdk/token/INIT_AUTH",
   async (sdkConfig: SDKConfig, { dispatch }) => {
     // Setup JWT or API key
-    const isValidJwtConfig =
-      sdkConfig.jwtProviderUri && sdkConfig.jwtProviderUri?.length > 0;
+    const isValidAuthProviderUri =
+      sdkConfig.authProviderUri && sdkConfig.authProviderUri?.length > 0;
     const isValidApiKeyConfig = sdkConfig.apiKey && getIsLocalhost();
 
-    if (isValidJwtConfig) {
+    if (isValidAuthProviderUri) {
       // JWT setup
       api.onBeforeRequest = async () => {
         const session = await dispatch(
-          getOrRefreshSession(sdkConfig.jwtProviderUri!),
+          getOrRefreshSession(sdkConfig.authProviderUri!),
         ).unwrap();
         if (session?.id) {
           api.sessionToken = session.id;
         }
       };
       // verify that the session is actually valid before proceeding
-      await dispatch(getOrRefreshSession(sdkConfig.jwtProviderUri!)).unwrap();
+      await dispatch(getOrRefreshSession(sdkConfig.authProviderUri!)).unwrap();
     } else if (isValidApiKeyConfig) {
       // API key setup
       api.apiKey = sdkConfig.apiKey;
@@ -80,7 +80,7 @@ export const refreshTokenAsync = createAsyncThunk(
       const session = await getRefreshToken(url);
       const source = customGetRefreshToken
         ? '"fetchRequestToken"'
-        : "jwtProvider endpoint";
+        : "authProviderUri endpoint";
 
       if (!session || typeof session !== "object") {
         throw new Error(

@@ -96,8 +96,7 @@ export const Notebook = ({
         </Flex>
         {hasVisualizeButton && isRunnable && (
           <Flex
-            pt="sm"
-            pb="sm"
+            py="sm"
             pl="md"
             style={{
               borderTop:
@@ -107,9 +106,8 @@ export const Notebook = ({
             <Button
               variant="filled"
               radius="xl"
-              size="sm"
-              pt={7}
-              pb={7}
+              /* mah is a hack for 32px height button, we don't have it atm */
+              mah="xl"
               miw={190}
               onClick={visualize}
             >

@@ -308,7 +308,7 @@
   ;; make sure to use a version that store supports, and a dump for that version.
   #_(migration-dump-version! "v0.49.7")
   ;; make a new dump with any released metabase jar using the command below:
-  ;;   java -jar metabase.jar dump-to-h2 dump --dump-plaintext
+  ;;   java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar dump-to-h2 dump --dump-plaintext
   #_(migration-dump-file! "/path/to/dump.mv.db")
   ;; force migration with a smaller multipart threshold (~6mb is minimum)
   #_(def ^:private part-size 6e6)

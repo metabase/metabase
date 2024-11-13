@@ -1,10 +1,6 @@
 import _ from "underscore";
 
-import type {
-  SearchResponse,
-  SearchResult,
-  SearchScore,
-} from "metabase-types/api";
+import type { SearchResponse, SearchResult } from "metabase-types/api";
 
 import { createMockCollection } from "./collection";
 
@@ -40,7 +36,6 @@ export const createMockSearchResult = (
     initial_sync_status: null,
     dashboard_count: null,
     context: null,
-    scores: [createMockSearchScore()],
     created_at: "2022-01-01T00:00:00.000Z",
     creator_common_name: "Testy Tableton",
     creator_id: 2,
@@ -50,15 +45,6 @@ export const createMockSearchResult = (
     ...options,
   };
 };
-
-export const createMockSearchScore = (
-  options: Partial<SearchScore> = {},
-): SearchScore => ({
-  score: 1,
-  weight: 1,
-  name: "text-total-occurrences",
-  ...options,
-});
 
 export const createMockSearchResults = ({
   items = [createMockSearchResult()],
