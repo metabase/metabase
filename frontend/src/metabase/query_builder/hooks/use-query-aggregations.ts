@@ -1,39 +1,47 @@
+import { useMemo } from "react";
+
 import * as Lib from "metabase-lib";
 
-import { STAGE_INDEX } from "./constants";
 import type { UpdateQueryHookProps } from "./types";
 
 export const useQueryAggregations = ({
   query,
   onQueryChange,
+  stageIndex,
 }: UpdateQueryHookProps) => {
-  const aggregations = Lib.aggregations(query, STAGE_INDEX);
+  const aggregations = useMemo(
+    () => Lib.aggregations(query, stageIndex),
+    [query, stageIndex],
+  );
 
-  const aggregationData = aggregations.map((aggregation, aggregationIndex) => {
-    const { displayName } = Lib.displayInfo(query, STAGE_INDEX, aggregation);
+  const items = useMemo(
+    () =>
+      aggregations.map((aggregation, aggregationIndex) => {
+        const { displayName } = Lib.displayInfo(query, stageIndex, aggregation);
 
-    const operators = Lib.selectedAggregationOperators(
-      Lib.availableAggregationOperators(query, STAGE_INDEX),
-      aggregation,
-    );
+        const operators = Lib.selectedAggregationOperators(
+          Lib.availableAggregationOperators(query, stageIndex),
+          aggregation,
+        );
 
-    const handleRemove = () => {
-      const nextQuery = Lib.removeClause(query, STAGE_INDEX, aggregation);
-      onQueryChange(nextQuery);
-    };
+        const handleRemove = () => {
+          const nextQuery = Lib.removeClause(query, stageIndex, aggregation);
+          onQueryChange(nextQuery);
+        };
 
-    return {
-      aggregation,
-      aggregationIndex,
-      operators,
-      displayName,
-      handleRemove,
-    };
-  });
+        return {
+          aggregation,
+          aggregationIndex,
+          operators,
+          displayName,
+          handleRemove,
+        };
+      }),
+    [aggregations, onQueryChange, query, stageIndex],
+  );
 
   return {
-    stageIndex: STAGE_INDEX,
-    aggregationData: aggregationData,
-    handleQueryChange: onQueryChange,
+    items,
+    onQueryChange,
   };
 };

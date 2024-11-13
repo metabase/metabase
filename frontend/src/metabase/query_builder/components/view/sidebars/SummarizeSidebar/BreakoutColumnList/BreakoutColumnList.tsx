@@ -5,7 +5,7 @@ import Input from "metabase/core/components/Input";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import type { UpdateQueryHookProps } from "metabase/query_builder/hooks/types";
-import { useBreakoutQuery } from "metabase/query_builder/hooks/use-breakout-query";
+import { useBreakoutQueryHandlers } from "metabase/query_builder/hooks/use-breakout-query-handlers";
 import { DelayGroup } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
@@ -17,14 +17,14 @@ export type BreakoutColumnListProps = UpdateQueryHookProps;
 export function BreakoutColumnList({
   query,
   onQueryChange,
+  stageIndex = -1,
 }: BreakoutColumnListProps) {
   const {
-    stageIndex,
     handleAddBreakout: onAddBreakout,
     handleUpdateBreakout: onUpdateBreakout,
     handleRemoveBreakout: onRemoveBreakout,
     handleReplaceBreakouts: onReplaceBreakouts,
-  } = useBreakoutQuery({ query, onQueryChange });
+  } = useBreakoutQueryHandlers({ query, onQueryChange, stageIndex });
 
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearchQuery = useDebouncedValue(

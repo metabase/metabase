@@ -13,7 +13,7 @@ interface AggregationItemProps {
   aggregation: Lib.AggregationClause;
   aggregationIndex: number;
   displayName: string;
-  handleRemove: () => void;
+  onAggregationRemove: () => void;
   operators: Lib.AggregationOperator[];
 }
 
@@ -24,7 +24,7 @@ export function AggregationItem({
   aggregationIndex,
   onQueryChange,
   displayName,
-  handleRemove,
+  onAggregationRemove,
   operators,
 }: AggregationItemProps) {
   const [isOpened, { toggle }] = useDisclosure(false);
@@ -38,7 +38,7 @@ export function AggregationItem({
           onClick={toggle}
         >
           <AggregationName>{displayName}</AggregationName>
-          <RemoveIcon name="close" onClick={handleRemove} />
+          <RemoveIcon name="close" onClick={onAggregationRemove} />
         </Root>
       </Popover.Target>
       <Popover.Dropdown>

@@ -38,6 +38,9 @@ const SummarizeInner = ({
 
   const [currentQuery, setCurrentQuery] = useState<Lib.Query>(question.query());
 
+  // yeah we need to change this
+  const stageIndex = Lib.stageCount(currentQuery);
+
   const onApplyFilter = () => {
     if (currentQuery) {
       onQueryChange(currentQuery);
@@ -52,7 +55,7 @@ const SummarizeInner = ({
     onClose();
   };
 
-  const hasAggregations = Lib.aggregations(currentQuery, -1).length > 0;
+  const hasAggregations = Lib.aggregations(currentQuery, stageIndex).length > 0;
 
   return (
     <Stack className={CS.overflowHidden} h="100%" w="100%">
@@ -60,12 +63,14 @@ const SummarizeInner = ({
         <SummarizeAggregationItemList
           query={currentQuery}
           onQueryChange={setCurrentQuery}
+          stageIndex={stageIndex}
         />
         <Divider my="lg" />
         {hasAggregations && (
           <SummarizeBreakoutColumnList
             query={currentQuery}
             onQueryChange={setCurrentQuery}
+            stageIndex={stageIndex}
           />
         )}
       </Stack>

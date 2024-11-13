@@ -10,6 +10,7 @@ type SummarizeBreakoutColumnListProps = UpdateQueryHookProps & StackProps;
 export const SummarizeBreakoutColumnList = ({
   query,
   onQueryChange,
+  stageIndex,
   ...containerProps
 }: SummarizeBreakoutColumnListProps) => (
   <Stack
@@ -20,6 +21,10 @@ export const SummarizeBreakoutColumnList = ({
   >
     <Title order={5} fw={900}>{t`Group by`}</Title>
     <Space my="sm" />
-    <BreakoutColumnList query={query} onQueryChange={onQueryChange} />
+    <BreakoutColumnList
+      query={query}
+      onQueryChange={onQueryChange}
+      stageIndex={stageIndex}
+    />
   </Stack>
 );

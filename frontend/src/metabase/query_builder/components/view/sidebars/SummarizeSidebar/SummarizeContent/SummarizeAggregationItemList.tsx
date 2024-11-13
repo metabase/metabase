@@ -10,11 +10,13 @@ type SummarizeAggregationItemListProps = UpdateQueryHookProps & GroupProps;
 export const SummarizeAggregationItemList = ({
   query,
   onQueryChange,
+  stageIndex,
   ...containerProps
 }: SummarizeAggregationItemListProps) => {
-  const { aggregationData, stageIndex } = useQueryAggregations({
+  const { items } = useQueryAggregations({
     query,
     onQueryChange,
+    stageIndex,
   });
 
   return (
@@ -24,7 +26,7 @@ export const SummarizeAggregationItemList = ({
       align="flex-start"
       {...containerProps}
     >
-      {aggregationData.map(
+      {items.map(
         ({
           aggregation,
           displayName,
@@ -40,7 +42,7 @@ export const SummarizeAggregationItemList = ({
             aggregationIndex={aggregationIndex}
             onQueryChange={onQueryChange}
             displayName={displayName}
-            handleRemove={handleRemove}
+            onAggregationRemove={handleRemove}
             operators={operators}
           />
         ),

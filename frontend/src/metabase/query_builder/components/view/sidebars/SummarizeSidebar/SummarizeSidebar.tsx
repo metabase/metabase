@@ -2,9 +2,9 @@ import { useCallback } from "react";
 import { t } from "ttag";
 
 import { color } from "metabase/lib/colors";
+import type { UpdateQueryHookProps } from "metabase/query_builder/hooks/types";
 import { useDefaultQueryAggregation } from "metabase/query_builder/hooks/use-default-query-aggregation";
 import { Divider } from "metabase/ui";
-import type * as Lib from "metabase-lib";
 
 import {
   SummarizeAggregationItemList,
@@ -12,23 +12,23 @@ import {
 } from "./SummarizeContent";
 import { SidebarView } from "./SummarizeSidebar.styled";
 
-interface SummarizeSidebarProps {
+type SummarizeSidebarProps = {
   className?: string;
-  query: Lib.Query;
-  onQueryChange: (query: Lib.Query) => void;
   onClose: () => void;
-}
+} & UpdateQueryHookProps;
 
 export function SummarizeSidebar({
   className,
   query: initialQuery,
   onQueryChange,
   onClose,
+  stageIndex,
 }: SummarizeSidebarProps) {
   const { query, handleUpdateQuery, handleAggregationChange, hasAggregations } =
     useDefaultQueryAggregation({
       query: initialQuery,
       onQueryChange,
+      stageIndex,
     });
 
   const handleDoneClick = useCallback(() => {
@@ -47,6 +47,7 @@ export function SummarizeSidebar({
         px="lg"
         query={query}
         onQueryChange={handleAggregationChange}
+        stageIndex={stageIndex}
       />
       <Divider my="lg" />
       {hasAggregations && (
@@ -54,6 +55,7 @@ export function SummarizeSidebar({
           px="lg"
           query={query}
           onQueryChange={handleUpdateQuery}
+          stageIndex={stageIndex}
         />
       )}
     </SidebarView>

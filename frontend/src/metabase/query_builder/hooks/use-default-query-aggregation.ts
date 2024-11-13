@@ -1,41 +1,50 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import * as Lib from "metabase-lib";
 
-import { STAGE_INDEX } from "./constants";
 import type { UpdateQueryHookProps } from "./types";
 
 export const useDefaultQueryAggregation = ({
   query: initialQuery,
   onQueryChange,
+  stageIndex,
 }: UpdateQueryHookProps) => {
   const [hasDefaultAggregation, setHasDefaultAggregation] = useState(() =>
-    shouldAddDefaultAggregation(initialQuery),
+    shouldAddDefaultAggregation(initialQuery, stageIndex),
   );
 
   const query = useMemo(
     () =>
       hasDefaultAggregation
-        ? Lib.aggregateByCount(initialQuery, STAGE_INDEX)
+        ? Lib.aggregateByCount(initialQuery, stageIndex)
         : initialQuery,
-    [initialQuery, hasDefaultAggregation],
+    [hasDefaultAggregation, initialQuery, stageIndex],
   );
 
-  const hasAggregations = Lib.aggregations(query, STAGE_INDEX).length > 0;
+  const hasAggregations = useMemo(
+    () => Lib.aggregations(query, stageIndex).length > 0,
+    [query, stageIndex],
+  );
 
-  const handleUpdateQuery = (nextQuery: Lib.Query) => {
-    setHasDefaultAggregation(false);
-    onQueryChange(nextQuery);
-  };
-
-  const handleAggregationChange = (nextQuery: Lib.Query) => {
-    const newAggregations = Lib.aggregations(nextQuery, STAGE_INDEX);
-    setHasDefaultAggregation(false);
-
-    if (!hasDefaultAggregation || newAggregations.length !== 0) {
+  const handleUpdateQuery = useCallback(
+    (nextQuery: Lib.Query) => {
+      setHasDefaultAggregation(false);
       onQueryChange(nextQuery);
-    }
-  };
+    },
+    [onQueryChange],
+  );
+
+  const handleAggregationChange = useCallback(
+    (nextQuery: Lib.Query) => {
+      const newAggregations = Lib.aggregations(nextQuery, stageIndex);
+      setHasDefaultAggregation(false);
+
+      if (!hasDefaultAggregation || newAggregations.length !== 0) {
+        onQueryChange(nextQuery);
+      }
+    },
+    [hasDefaultAggregation, onQueryChange, stageIndex],
+  );
 
   return {
     query,
@@ -45,7 +54,10 @@ export const useDefaultQueryAggregation = ({
   };
 };
 
-function shouldAddDefaultAggregation(query: Lib.Query): boolean {
-  const aggregations = Lib.aggregations(query, STAGE_INDEX);
+function shouldAddDefaultAggregation(
+  query: Lib.Query,
+  stageIndex = -1,
+): boolean {
+  const aggregations = Lib.aggregations(query, stageIndex);
   return aggregations.length === 0;
 }
