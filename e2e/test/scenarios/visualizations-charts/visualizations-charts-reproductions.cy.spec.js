@@ -537,7 +537,7 @@ describe("issue 20548", () => {
     assertOnLegendItemFrequency("Count", 1);
     assertOnLegendItemFrequency("Sum of Price", 1);
 
-    cy.findByTestId("viz-settings-button").click();
+    openVizType("Data");
     // Implicit assertion - it would fail if it finds more than one "Count" in the sidebar
     sidebar().findAllByText("Count").should("have.length", 1);
   });
@@ -563,7 +563,7 @@ describe("issue 21452", () => {
 
     visitQuestionAdhoc(questionDetails);
 
-    cy.findByTestId("viz-settings-button").click();
+    openVizType("Data");
   });
 
   it("should not fire POST request after every character during display name change (metabase#21452)", () => {
@@ -614,7 +614,7 @@ describe("issue 21504", () => {
       display: "pie",
     });
 
-    cy.findByTestId("viz-settings-button").click();
+    openVizType("Data");
 
     leftSidebar().within(() => {
       cy.findByText("January 2025").should("be.visible");
@@ -1261,7 +1261,7 @@ describeEE("issue 49160", () => {
 
     echartsContainer().findByText("200").should("be.visible");
 
-    cy.findByTestId("viz-settings-button").click();
+    openVizType("Data");
 
     leftSidebar().findByText("Gizmo");
   });
