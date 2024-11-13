@@ -7,7 +7,7 @@ import type { Widget } from "../types";
 import type { BaseChartSettingsProps } from "./types";
 
 // section names are localized
-const DEFAULT_TAB_PRIORITY = [t`Data`];
+const DEFAULT_TAB_PRIORITY = [t`Chart`, t`Data`];
 
 export const useChartSettingsSections = ({
   initial,

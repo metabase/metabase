@@ -61,22 +61,12 @@ export const ChartTypeSidebar = ({
     updateQuestionVisualization(display);
   };
 
-  const onOpenVizSettings = () => {
-    dispatch(
-      onOpenChartSettings({
-        initialChartSettings: { section: t`Data` },
-        showSidebarTitle: true,
-      }),
-    );
-  };
-
   return (
     <ChartTypeSettings
       selectedVisualization={selectedVisualization}
       onSelectVisualization={handleSelectVisualization}
       sensibleVisualizations={sensibleVisualizations}
       nonSensibleVisualizations={nonSensibleVisualizations}
-      onOpenSettings={onOpenVizSettings}
       spacing={0}
       w="100%"
       p="lg"
