@@ -26,7 +26,7 @@ Metabase stores connection information for the various databases you add in the 
    ```
 3. Set the key as an environment variable and start Metabase as usual.
    ```
-   MB_ENCRYPTION_SECRET_KEY="IYqrSi5QDthvFWe4/WdAxhnra5DZC3RKx3ZSrOJDKsM=" java -jar metabase.jar
+   MB_ENCRYPTION_SECRET_KEY="IYqrSi5QDthvFWe4/WdAxhnra5DZC3RKx3ZSrOJDKsM=" java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar
    ```
 
 Once you set the `MB_ENCRYPTION_SECRET_KEY` value, Metabase will automatically encrypt and store the connection details for each new database that you add. To encrypt existing connections, see the next section.
@@ -48,7 +48,7 @@ If you added databases before setting the `MB_ENCRYPTION_SECRET_KEY` value, you 
 ### Example command for rotating a key
 
 ```
-MB_ENCRYPTION_SECRET_KEY=your-current-key java -jar metabase.jar rotate-encryption-key new-key
+MB_ENCRYPTION_SECRET_KEY=your-current-key java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar rotate-encryption-key new-key
 ```
 
 ## Disabling an encryption key
@@ -58,5 +58,5 @@ To disable an encryption key, follow the steps to [rotate an encryption key](#ro
 ### Example command for disabling a key
 
 ```
-MB_ENCRYPTION_SECRET_KEY="your-current-key" java -jar metabase.jar rotate-encryption-key ""
+MB_ENCRYPTION_SECRET_KEY="your-current-key" java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar rotate-encryption-key ""
 ```
