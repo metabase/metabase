@@ -9,7 +9,7 @@
    [metabase.models.card :refer [Card]]
    [metabase.models.interface :as mi]
    [metabase.query-processor :as qp]
-   [metabase.search :as search]
+   ;[metabase.search :as search]
    [metabase.sync.schedules :as sync.schedules]
    [metabase.util.cron :as u.cron]
    [metabase.util.log :as log]
@@ -36,8 +36,9 @@
 (derive :model/ModelIndexValue :metabase/model)
 
 (derive :model/ModelIndex :hook/created-at-timestamped?)
-(derive :model/ModelIndex :hook/search-index)
-(derive :model/ModelIndexValue :hook/search-index)
+;; TODO disabled due to issues having an update hook causes, seemingly due to a toucan2 bug
+;(derive :model/ModelIndex :hook/search-index)
+#_(derive :model/ModelIndexValue :hook/search-index)
 
 (t2/deftransforms ModelIndex
   {:pk_ref    mi/transform-field-ref
@@ -185,7 +186,8 @@
 
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------
 
-(search/define-spec "indexed-entity"
+;; TODO resolve issues with having an(y) update-hook on this model
+#_(search/define-spec "indexed-entity"
   {:model        :model/ModelIndexValue
    :attrs        {:id            :model_pk
                   :collection-id :collection.id
