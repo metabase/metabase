@@ -2,6 +2,9 @@ name: Build ee-extra
 description: Build Metabase Enterprise Edition with extra features
 
 inputs:
+  java-version:
+    required: true
+    default: '21'
   iam-role:
     description: "The IAM role to assume"
     required: true
@@ -12,10 +15,10 @@ runs:
     - name: Prepare Java
       uses: actions/setup-java@v3
       with:
-        java-version: '21'
+        java-version: ${{ inputs.java-version }}
         distribution: 'temurin'
     - name: Reveal its original version.properties
-      run: jar xf  ./bin/docker/metabase.jar version.properties && cat version.properties
+      run: jar xf ./bin/docker/metabase.jar version.properties && cat version.properties
       shell: bash
     - name: get major version
       id: major_version

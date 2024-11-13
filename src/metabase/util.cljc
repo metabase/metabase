@@ -1145,3 +1145,11 @@
          (let [acc1 (reduce f init r1)
                acc2 (reduce f acc1 r2)]
            acc2)))))
+
+(defn run-count!
+  "Runs the supplied procedure (via reduce), for purposes of side effects, on successive items. See [clojure.core/run!]
+   Returns the number of items processed."
+  [proc reducible]
+  (let [cnt (volatile! 0)]
+    (reduce (fn [_ item] (vswap! cnt inc) (proc item)) nil reducible)
+    @cnt))
