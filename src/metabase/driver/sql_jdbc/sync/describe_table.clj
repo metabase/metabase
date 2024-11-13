@@ -327,8 +327,8 @@
           (and table-names (empty? table-names)))
     []
     (eduction
-      (map (fn [col] (select-keys col [:table-schema :table-name :field-name])))
-      (sql-jdbc.execute/reducible-query db (describe-indexes-sql driver (assoc args :details (:details db)))))))
+     (map (fn [col] (select-keys col [:table-schema :table-name :field-name])))
+     (sql-jdbc.execute/reducible-query db (describe-indexes-sql driver (assoc args :details (:details db)))))))
 
 (defn- describe-table-fks*
   [_driver ^Connection conn {^String schema :schema, ^String table-name :name} & [^String db-name-or-nil]]

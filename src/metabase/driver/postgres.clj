@@ -374,7 +374,7 @@
                                 [:raw "n.nspname !~ '^information_schema|catalog_history|pg_'"]
                                 (when (seq schema-names) [:in :table-schema schema-names])
                                 (when (seq table-names) [:in :table-name table-names])]}
-                      :tmp]]
+                       :tmp]]
                ;; The only column or the first column in a composite index
                :where [:= :tmp.pos 1]}
               :dialect (sql.qp/quote-style driver)))

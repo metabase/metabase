@@ -64,7 +64,7 @@
   [database]
   (sync-util/with-error-handling "Error syncing Indexes"
     (let [indexes (fetch-metadata/log-if-error
-                    "index-metadata"
+                   "index-metadata"
                     (into [] (driver/describe-indexes (driver.u/database->driver database) database)))
           database-id (:id database)
           indexed-field-ids (all-indexes->field-ids database-id indexes)
