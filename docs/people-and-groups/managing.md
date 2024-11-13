@@ -95,7 +95,7 @@ If you're a Metabase admin and have access to the server console, you can get Me
 1.  Stop the running Metabase application.
 2.  Restart Metabase with `reset-password email@example.com`, where "email@example.com" is the email associated with the admin account:
     ```
-    java -jar metabase.jar reset-password email@example.com
+    java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar reset-password email@example.com
     ```
 3.  Metabase will print out a random token like this:
 

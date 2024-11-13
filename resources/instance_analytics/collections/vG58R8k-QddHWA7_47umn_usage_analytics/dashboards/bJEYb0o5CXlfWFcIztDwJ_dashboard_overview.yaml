@@ -42,6 +42,7 @@ parameters:
   id: 2ea1dae2
   isMultiSelect: false
   name: Group Name
+  required: true
   sectionId: string
   slug: group_name
   type: string/=

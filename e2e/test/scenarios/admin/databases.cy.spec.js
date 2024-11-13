@@ -427,6 +427,8 @@ describe("admin > database > add", () => {
         /\/admin\/databases\?created=true&createdDbId=\d$/,
       );
 
+      cy.findByRole("status").findByText("Syncing…").should("be.visible");
+
       cy.findByRole("dialog").within(() => {
         cy.findByText(
           "Your database was added! Want to configure permissions?",
@@ -434,14 +436,9 @@ describe("admin > database > add", () => {
         cy.button("Maybe later").click();
       });
 
-      cy.findByRole("table").within(() => {
-        cy.findByText("QA MySQL8");
-      });
-
-      cy.findByRole("status").within(() => {
-        cy.findByText("Syncing…");
-        cy.findByText("Done!");
-      });
+      cy.findByRole("table").findByText("QA MySQL8").should("be.visible");
+      cy.findByRole("status").findByText("Syncing…").should("not.exist");
+      cy.findByRole("status").findByText("Done!").should("be.visible");
     });
   });
 

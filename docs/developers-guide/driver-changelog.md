@@ -4,6 +4,21 @@ title: Driver interface changelog
 
 # Driver Interface Changelog
 
+## Metabase 0.52.0
+
+- The Docker image for Metabase 0.52.0 now uses Java 21 instead of Java 11. Please make sure to test your driver
+  against Java 21 and make sure it works as expected.
+
+  We have found several of our own drivers that run into issues with the security changes introduced in newer JVMs; as
+  such, we're currently setting the JVM flag
+
+  ```
+  --add-opens java.base/java.nio=ALL-UNNAMED
+  ```
+
+  when running Metabase to disable some of these new security checks. If your tests run into issues with Java 21
+  without the flag set, try running with it set -- this might fix the problems.
+
 ## Metabase 0.51.0
 
 - New optional method `metabase.driver/query-result-metadata` has been added for efficiently calculating metadata for

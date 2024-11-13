@@ -7,7 +7,7 @@ const METABASE_INSTANCE_URL =
 
 const DEFAULT_CONFIG: SDKConfig = {
   metabaseInstanceUrl: METABASE_INSTANCE_URL,
-  jwtProviderUri: `${METABASE_INSTANCE_URL}/sso/metabase`,
+  authProviderUri: `${METABASE_INSTANCE_URL}/sso/metabase`,
 };
 
 export const CommonSdkStoryCorsWrapper = (Story: Story) => (
