@@ -40,7 +40,7 @@
         (cond-> (future (if table
                           (table-sync-fn table)
                           (db-sync-fn database)))
-            synchronous? deref))))
+          synchronous? deref))))
   {:success true})
 
 (defn- without-stacktrace [^Throwable throwable]
