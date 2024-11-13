@@ -73,7 +73,6 @@ export const getTooltipBaseOption = (
         container.classList.add("echarts-tooltip-container");
         container.style.setProperty("overflow", "hidden");
         container.style.setProperty("height", "100%");
-        container.style.setProperty("position", "relative");
         container.style.setProperty("pointer-events", "none");
 
         document.body.append(container);
