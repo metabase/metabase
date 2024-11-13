@@ -209,6 +209,6 @@
                   (testing "We can sync the whole database as well"
                     (is (= 200 (:status (post {:sync_db true}))))
                     (let [tables (tableset database)]
-                    (is (= #{"public.foo" "public.bar" "public.fern"} tables)))))))
+                      (is (= #{"public.foo" "public.bar" "public.fern"} tables)))))))
             (finally
               (postgres-test/drop-if-exists-and-create-db! db-name :pg/just-drop))))))))
