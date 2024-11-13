@@ -85,7 +85,7 @@
       (cond-> (future (sync-metadata/sync-db-metadata! database))
         synchronous? deref)
       (if-let [table (t2/select-one Table :db_id (:id database), :name table_name :schema schema_name)]
-        (cond-> (sync-metadata/sync-table-metadata! table)
+        (cond-> (future (sync-metadata/sync-table-metadata! table))
           synchronous? deref)
         ;; find and sync is always synchronous
         (find-and-sync-new-table database table_name schema_name))))
