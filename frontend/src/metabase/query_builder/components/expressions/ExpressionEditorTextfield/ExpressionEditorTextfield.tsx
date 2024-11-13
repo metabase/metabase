@@ -420,7 +420,7 @@ class ExpressionEditorTextfield extends React.Component<
   handleArrowUp = () => {
     const { highlightedSuggestionIndex, suggestions } = this.state;
 
-    if (suggestions.length) {
+    if (suggestions.length > 1) {
       this.setState({
         highlightedSuggestionIndex:
           (highlightedSuggestionIndex + suggestions.length - 1) %
@@ -434,7 +434,7 @@ class ExpressionEditorTextfield extends React.Component<
   handleArrowDown = () => {
     const { highlightedSuggestionIndex, suggestions } = this.state;
 
-    if (suggestions.length) {
+    if (suggestions.length > 1) {
       this.setState({
         highlightedSuggestionIndex:
           (highlightedSuggestionIndex + suggestions.length + 1) %
