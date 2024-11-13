@@ -44,6 +44,7 @@ export const MoveQuestionModal = ({
     type: ConfirmationTypes;
     destination: MoveDestination;
     affectedDashboards?: any[];
+    isLoading?: boolean;
   } | null>(null);
   const [deleteOldDashcards, setDeleteOldDashcards] = useState<
     boolean | undefined
@@ -107,6 +108,11 @@ export const MoveQuestionModal = ({
       setConfirmMoveState({ type: "dashboard-to-dashboard", destination });
     } else if (!wasDq && isDq && dashCount > 0) {
       //Find out if any other dashboards will be affected
+      setConfirmMoveState({
+        type: "collection-to-dashboard",
+        destination,
+        isLoading: true,
+      });
       const dashboards = await getAffectedDashboardsFromMove(
         [question],
         destination,
@@ -118,6 +124,7 @@ export const MoveQuestionModal = ({
           type: "collection-to-dashboard",
           destination,
           affectedDashboards: dashboards,
+          isLoading: false,
         });
       } else {
         handleMove(destination);
@@ -200,7 +207,7 @@ export const MoveQuestionModal = ({
 
   if (
     confirmMoveState?.type === "collection-to-dashboard" &&
-    confirmMoveState.affectedDashboards
+    (confirmMoveState.affectedDashboards || confirmMoveState.isLoading)
   ) {
     return (
       <QuestionMoveConfirmModal
@@ -214,6 +221,7 @@ export const MoveQuestionModal = ({
         cardDashboards={confirmMoveState.affectedDashboards}
         onConfirm={() => handleMove(confirmMoveState.destination)}
         onClose={onClose}
+        isLoading={confirmMoveState.isLoading}
       />
     );
   }
