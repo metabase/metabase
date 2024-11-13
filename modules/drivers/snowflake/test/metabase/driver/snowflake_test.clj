@@ -115,8 +115,8 @@
               :base-type :type/Number
               :json-unfolding false
               :database-position 5}]
-    (sort-by :database-position
-             (into [] (driver/describe-fields :snowflake (mt/db) {:table-names ["venues"]})))))))
+            (sort-by :database-position
+                     (into [] (driver/describe-fields :snowflake (mt/db) {:table-names ["venues"]})))))))
 
 (deftest ^:parallel quote-name-test
   (is (nil? (#'driver.snowflake/quote-name nil)))
