@@ -50,7 +50,7 @@ docker run -d -p 3000:3000 --name metabase metabase/metabase-enterprise:latest
 You can also [download the JAR](https://downloads.metabase.com/enterprise/latest/metabase.jar), and run it like so:
 
 ```sh
-java -jar metabase.jar
+java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar
 ```
 
 By default, Metabase will run at `http://localhost:3000`.
@@ -118,13 +118,13 @@ cp .env.example .env
 
 In `.env`, make sure `REACT_APP_METABASE_INSTANCE_URL` and `METABASE_INSTANCE_URL` point to your Metabase instance URL, e.g., `http://localhost:3000`.
 
-You're `.env` will look something like:
+Your `.env` will look something like:
 
 ```txt
 # FRONTEND
 PORT=3100
 REACT_APP_METABASE_INSTANCE_URL="http://localhost:3000"
-REACT_APP_JWT_PROVIDER_URI="http://localhost:9090/sso/metabase"
+REACT_APP_AUTH_PROVIDER_URI="http://localhost:9090/sso/metabase"
 
 # BACKEND
 BACKEND_PORT=9090

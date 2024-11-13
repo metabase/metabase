@@ -70,7 +70,7 @@ Here's an example command for migrating to a Postgres database:
 ```
 export MB_DB_TYPE=postgres
 export MB_DB_CONNECTION_URI="jdbc:postgresql://<host>:5432/metabase?user=<username>&password=<password>"
-java -jar metabase.jar load-from-h2 /path/to/metabase.db # do not include .mv.db
+java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar load-from-h2 /path/to/metabase.db # do not include .mv.db
 ```
 
 Here's an example command for migrating to a MySQL database using Java parameter instead of environment variables:
@@ -90,7 +90,7 @@ Start your Metabase (with the db connection info, but without the `load-from-h2`
 ```
 export MB_DB_TYPE=postgres
 export MB_DB_CONNECTION_URI="jdbc:postgresql://<host>:5432/metabase?user=<username>&password=<password>"
-java -jar metabase.jar
+java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar
 ```
 
 You should, however, keep your old H2 file just for safe-keeping, or as a heirloom, or talisman, or whatever.
@@ -138,7 +138,7 @@ From the directory with your H2 file and your Metabase JAR, run the migration co
 ```
 export MB_DB_TYPE=postgres
 export MB_DB_CONNECTION_URI="jdbc:postgresql://<host>:5432/metabase?user=<username>&password=<password>"
-java -jar metabase.jar load-from-h2 /path/to/metabase.db # do not include .mv.db
+java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar load-from-h2 /path/to/metabase.db # do not include .mv.db
 ```
 
 Metabase will start up, perform the migration (meaning, it'll take the data from the H2 file and put it into your new app db, in this a Postgres db), and then exit.

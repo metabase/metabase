@@ -368,7 +368,9 @@ describeEE("scenarios > question > snippets (EE)", () => {
     });
 
     it("shouldn't update root permissions when changing permissions on a created folder (metabase#17268)", () => {
-      cy.intercept("PUT", "/api/collection/graph").as("updatePermissions");
+      cy.intercept("PUT", "/api/collection/graph?skip-graph=true").as(
+        "updatePermissions",
+      );
 
       openNativeEditor();
       cy.icon("snippet").click();
