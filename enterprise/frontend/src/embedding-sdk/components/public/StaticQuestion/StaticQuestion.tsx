@@ -1,5 +1,6 @@
+import { Code } from "@mantine/core";
 import cx from "classnames";
-import { t } from "ttag";
+import { jt, t } from "ttag";
 
 import {
   SdkError,
@@ -10,7 +11,10 @@ import { useLoadStaticQuestion } from "embedding-sdk/hooks/private/use-load-stat
 import { getDefaultVizHeight } from "embedding-sdk/lib/default-height";
 import CS from "metabase/css/core/index.css";
 import { useValidatedEntityId } from "metabase/lib/entity-id/hooks/use-validated-entity-id";
-import { getResponseErrorMessage } from "metabase/lib/errors";
+import {
+  getResponseErrorMessage,
+  isResourceNotFoundError,
+} from "metabase/lib/errors";
 import { useSelector } from "metabase/lib/redux";
 import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
 import {
@@ -82,6 +86,22 @@ const StaticQuestionInner = ({
     useLoadStaticQuestion(questionId, parameterValues);
 
   const isLoading = loading || (!result && !error) || isValidatingEntityId;
+
+  if (!questionId || isResourceNotFoundError(error)) {
+    return (
+      <SdkError
+        message={jt`Question ${(
+          <Code
+            bg="var(--mb-base-color-ocean-20)"
+            c="text-dark"
+            key="question-id"
+          >
+            {initId}
+          </Code>
+        )} not found`}
+      />
+    );
+  }
 
   if (error) {
     return (

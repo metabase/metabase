@@ -7,7 +7,7 @@ import { USERS } from "../../../../../e2e/support/cypress_data";
 const METABASE_INSTANCE_URL =
   (window as any).METABASE_INSTANCE_URL || "http://localhost:3000";
 const METABASE_JWT_SHARED_SECRET =
-  (window as any).JWT_SHARED_SECRET || "0".repeat(64);
+  (window as any).JWT_SHARED_SECRET || "f".repeat(64);
 
 const secret = new TextEncoder().encode(METABASE_JWT_SHARED_SECRET);
 

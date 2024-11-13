@@ -19,7 +19,7 @@ export const SdkError = ({ message }: SdkErrorComponentProps) => {
 
 const DefaultErrorMessage = ({ message }: SdkErrorComponentProps) => (
   <div>
-    <div>{t`Error`}</div>
+    <strong>{t`Error`}</strong>
     <div>{message}</div>
   </div>
 );

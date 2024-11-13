@@ -1,8 +1,9 @@
+import { Code } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
 import { type ReactElement, type ReactNode, useState } from "react";
 import { match } from "ts-pattern";
-import { t } from "ttag";
+import { jt } from "ttag";
 
 import {
   SdkError,
@@ -62,6 +63,7 @@ export const InteractiveQuestionResult = ({
     useState<QuestionView>("visualization");
 
   const {
+    originalId,
     question,
     queryResults,
     isQuestionLoading,
@@ -83,7 +85,19 @@ export const InteractiveQuestionResult = ({
   }
 
   if (!question || !queryResults) {
-    return <SdkError message={t`Question not found`} />;
+    return (
+      <SdkError
+        message={jt`Question ${(
+          <Code
+            bg="var(--mb-base-color-ocean-20)"
+            c="text-dark"
+            key="question-id"
+          >
+            {originalId}
+          </Code>
+        )} not found`}
+      />
+    );
   }
 
   return (
