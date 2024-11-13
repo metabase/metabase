@@ -281,21 +281,18 @@ const visualizerSlice = createSlice({
               getReferencedColumns({ visualizer: state }),
             );
 
-            const metric = getVisualizerMetricColumn({ visualizer: state });
-            const dimension = getVisualizerDimensionColumn({
-              visualizer: state,
-            });
+            const metricColumnName = state.settings["funnel.metric"];
+            const dimensionColumnName = state.settings["funnel.dimension"];
 
-            if (metric.column && dimension.column) {
-              state.columnValuesMapping[metric.column.name] = addColumnMapping(
-                state.columnValuesMapping[metric.column.name],
+            if (metricColumnName && dimensionColumnName) {
+              state.columnValuesMapping[metricColumnName] = addColumnMapping(
+                state.columnValuesMapping[metricColumnName],
                 columnRef,
               );
-              state.columnValuesMapping[dimension.column.name] =
-                addColumnMapping(
-                  state.columnValuesMapping[dimension.column.name],
-                  createDataSourceNameRef(dataSource.id),
-                );
+              state.columnValuesMapping[dimensionColumnName] = addColumnMapping(
+                state.columnValuesMapping[dimensionColumnName],
+                createDataSourceNameRef(dataSource.id),
+              );
             }
           }
         }
@@ -350,22 +347,6 @@ const getVisualizationColumns = (state: { visualizer: VisualizerState }) =>
 const getVisualizerColumnValuesMapping = (state: {
   visualizer: VisualizerState;
 }) => state.visualizer.columnValuesMapping;
-
-export const getVisualizerMetricColumn = (state: {
-  visualizer: VisualizerState;
-}) => {
-  const columns = getVisualizationColumns(state);
-  const index = columns.findIndex(column => column.name === "METRIC_1");
-  return { column: columns[index], index };
-};
-
-export const getVisualizerDimensionColumn = (state: {
-  visualizer: VisualizerState;
-}) => {
-  const columns = getVisualizationColumns(state);
-  const index = columns.findIndex(column => column.name === "DIMENSION_1");
-  return { column: columns[index], index };
-};
 
 export const getReferencedColumns = createDraftSafeSelector(
   [getVisualizerColumnValuesMapping],
@@ -659,15 +640,15 @@ const funnelDropHandler: DropHandler = (state, { active, over }) => {
   );
 
   if (over.id === DROPPABLE_ID.CANVAS_MAIN && isNumeric(column)) {
-    const metric = getVisualizerMetricColumn({ visualizer: state });
-    const dimension = getVisualizerDimensionColumn({ visualizer: state });
-    if (metric.column && dimension.column) {
-      state.columnValuesMapping[metric.column.name] = addColumnMapping(
-        state.columnValuesMapping[metric.column.name],
+    const metricColumnName = state.settings["funnel.metric"];
+    const dimensionColumnName = state.settings["funnel.dimension"];
+    if (metricColumnName && dimensionColumnName) {
+      state.columnValuesMapping[metricColumnName] = addColumnMapping(
+        state.columnValuesMapping[metricColumnName],
         columnRef,
       );
-      state.columnValuesMapping[dimension.column.name] = addColumnMapping(
-        state.columnValuesMapping[dimension.column.name],
+      state.columnValuesMapping[dimensionColumnName] = addColumnMapping(
+        state.columnValuesMapping[dimensionColumnName],
         createDataSourceNameRef(dataSource.id),
       );
     }
