@@ -36,6 +36,8 @@
 (derive :model/ModelIndexValue :metabase/model)
 
 (derive :model/ModelIndex :hook/created-at-timestamped?)
+(derive :model/ModelIndex :hook/search-index)
+(derive :model/ModelIndexValue :hook/search-index)
 
 (t2/deftransforms ModelIndex
   {:pk_ref    mi/transform-field-ref

@@ -87,10 +87,10 @@ jobs:
 
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
-      - name: Prepare JDK 11
+      - name: Prepare JDK 21
         uses: actions/setup-java@v4
         with:
-          java-version: 11
+          java-version: 21
           distribution: "temurin"
       - name: Prepare Cypress environment
         id: cypress-prep

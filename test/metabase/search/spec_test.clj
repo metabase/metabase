@@ -89,9 +89,10 @@
                                                      [:= :updated.moderated_item_type "card"]
                                                      [:= :updated.moderated_item_id :this.id]
                                                      [:= :updated.most_recent true]]}}
-                 :DashboardCard    #{{:search-model "card"
-                                      :fields       nil
-                                      :where        [:= :updated.card_id :this.id]}}}
+                 ;; Disabled for performance reasons, see spec for :model/Card
+                 #_#_:DashboardCard    #{{:search-model "card"
+                                          :fields       nil
+                                          :where        [:= :updated.card_id :this.id]}}}
          (#'search.spec/search-model-hooks (search.spec/spec "card"))))
 
   (is (= #:model{:Table      #{{:search-model "segment",
@@ -124,3 +125,15 @@
   (is (= #{["segment" [:= 321 :this.table_id]]
            ["table" [:= 321 :this.id]]}
          (search.spec/search-models-to-update (t2/instance :model/Table {:id 321 :name "turn-tables"})))))
+
+(deftest search-index-model-test
+  (testing "All the required models descend from :hook/search-index\n"
+    (let [expected-models (keys (search.spec/model-hooks))
+          ;; Some models have submodels, so absorb those too
+          expected-models (into (set expected-models) (mapcat descendants) expected-models)
+          actual-models   (set (descendants :hook/search-index))]
+      (doseq [em (sort-by name expected-models)]
+        (testing (str "- " em)
+          (is (actual-models em))))
+      (testing "... and nothing else does"
+        (is (empty? (sort-by name (remove expected-models actual-models))))))))
