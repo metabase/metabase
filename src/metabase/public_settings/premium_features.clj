@@ -61,7 +61,7 @@
 
 (def ^:private ^:const active-users-count-cache-ttl
   "Amount of time before we re-fetch the count of active users."
-  (u/hours->ms 24))
+  (u/minutes->ms 5))
 
 ;; let's prevent the DB from getting slammed with calls to get the active user count, we only really need one in flight
 ;; at a time.
