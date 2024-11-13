@@ -427,7 +427,7 @@ class ExpressionEditorTextfield extends React.Component<
           suggestions.length,
       });
     } else {
-      this.input.current?.editor.navigateLineEnd();
+      this.input.current?.editor.navigateUp();
     }
   };
 
@@ -441,7 +441,7 @@ class ExpressionEditorTextfield extends React.Component<
           suggestions.length,
       });
     } else {
-      this.input.current?.editor.navigateLineEnd();
+      this.input.current?.editor.navigateDown();
     }
   };
 
