@@ -1,12 +1,12 @@
 {
   "name": "change-query",
-  "description": "Executes a query in Metabase. A query is composed from multiple steps. Use `query_columns` for the list of available columns.",
+  "description": "Changes and executes a query in Metabase. Use `query_columns` for the list of available columns.",
   "parameters": {
     "type": "object",
     "properties": {
-      "steps": {
+      "changes": {
         "type": "array",
-        "description": "List of query steps.",
+        "description": "List of changes to apply to the query.",
         "items": {
           "anyOf": [
             {
@@ -15,9 +15,9 @@
               "properties": {
                 "type": {
                   "type": "string",
-                  "description": "Type of the string filter step.",
+                  "description": "Type of the add-string-filter step.",
                   "enum": [
-                    "string-filter"
+                    "add-string-filter"
                   ]
                 },
                 "column": {
@@ -58,9 +58,9 @@
               "properties": {
                 "type": {
                   "type": "string",
-                  "description": "Type of the number filter step.",
+                  "description": "Type of the add-number-filter step.",
                   "enum": [
-                    "number-filter"
+                    "add-number-filter"
                   ]
                 },
                 "column": {
@@ -101,9 +101,9 @@
               "properties": {
                 "type": {
                   "type": "string",
-                  "description": "Type of the boolean filter step.",
+                  "description": "Type of the add-boolean-filter step.",
                   "enum": [
-                    "boolean-filter"
+                    "add-boolean-filter"
                   ]
                 },
                 "column": {
@@ -139,9 +139,9 @@
               "properties": {
                 "type": {
                   "type": "string",
-                  "description": "Type of the date filter step.",
+                  "description": "Type of the add-specific-date-filter step.",
                   "enum": [
-                    "specific-date-filter"
+                    "add-specific-date-filter"
                   ]
                 },
                 "column": {
@@ -179,9 +179,9 @@
               "properties": {
                 "type": {
                   "type": "string",
-                  "description": "Type of the relative date filter step.",
+                  "description": "Type of the add-relative-date-filter step.",
                   "enum": [
-                    "relative-date-filter"
+                    "add-relative-date-filter"
                   ]
                 },
                 "column": {
@@ -231,9 +231,9 @@
               "properties": {
                 "type": {
                   "type": "string",
-                  "description": "Type of the aggregation step.",
+                  "description": "Type of the add-aggregation step.",
                   "enum": [
-                    "aggregation"
+                    "add-aggregation"
                   ]
                 },
                 "operator": {
@@ -272,9 +272,9 @@
               "properties": {
                 "type": {
                   "type": "string",
-                  "description": "Type of the breakout step.",
+                  "description": "Type of the add-breakout step.",
                   "enum": [
-                    "breakout"
+                    "add-breakout"
                   ]
                 },
                 "column": {
@@ -294,19 +294,25 @@
               "properties": {
                 "type": {
                   "type": "string",
-                  "description": "Type of the order by step.",
+                  "description": "Type of the add-order-by by step.",
                   "enum": [
-                    "order_by"
+                    "add-order-by"
                   ]
                 },
                 "column": {
                   "type": "string",
                   "description": "Name of the column to apply sorting for."
+                },
+                "direction": {
+                  "type": ["string", "null"],
+                  "enum": ["asc", "desc"],
+                  "description": "Optional sorting direction, either ascending or descending."
                 }
               },
               "required": [
                 "type",
-                "column"
+                "column",
+                "direction"
               ],
               "additionalProperties": false
             },
@@ -316,9 +322,9 @@
               "properties": {
                 "type": {
                   "type": "string",
-                  "description": "Type of the row limit step.",
+                  "description": "Type of the add-limit step.",
                   "enum": [
-                    "limit"
+                    "add-limit"
                   ]
                 },
                 "limit": {
@@ -337,7 +343,7 @@
       }
     },
     "required": [
-      "steps"
+      "changes"
     ],
     "additionalProperties": false
   }
