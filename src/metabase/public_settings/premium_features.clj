@@ -117,7 +117,7 @@
 
 (def ^:private ^:const token-status-cache-ttl
   "Amount of time to cache the status of a valid enterprise token before forcing a re-check."
-  (u/hours->ms 24))
+  (u/hours->ms 12))
 
 (def ^{:arglists '([token base-url site-uuid active-users-count])} fetch-token-and-parse-body*
   "Caches successful and 4XX API responses for 24 hours. 5XX errors, timeouts, etc. may be transient and will NOT be
