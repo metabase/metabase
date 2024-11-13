@@ -409,9 +409,10 @@ describe("issue 18063", () => {
     cy.createNativeQuestion(questionDetails, { visitQuestion: true });
 
     // Select a Pin map
-    openVizType(null);
+    openVizType();
     cy.findByTestId("chartsettings-sidebar").within(() => {
       cy.icon("pinmap").click();
+      cy.findByText("Options").click();
     });
     cy.findAllByTestId("select-button").contains("Region map").click();
 
