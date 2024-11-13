@@ -547,10 +547,15 @@ class ExpressionEditorTextfield extends React.Component<
   ) {
     this.setState({ suggestions });
 
-    // Correctly bind Tab depending on whether suggestions are available or not
+    const { highlightedSuggestionIndex } = this.state;
+
+    if (highlightedSuggestionIndex >= suggestions.length) {
+      this.setState({ highlightedSuggestionIndex: 0 });
+    }
+
     if (this.input.current) {
+      // Correctly bind Tab depending on whether suggestions are available or not
       const { editor } = this.input.current;
-      const { suggestions } = this.state;
       const tabBinding = editor.commands.commandKeyBinding.tab;
       if (suggestions.length > 0) {
         // Something to suggest? Tab is for choosing one of them
