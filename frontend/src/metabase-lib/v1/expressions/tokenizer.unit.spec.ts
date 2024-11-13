@@ -18,7 +18,7 @@ describe("tokenizer", () => {
     ]);
   });
 
-  it("takes commas into account when dealing with incomplete tokens", () => {
+  it("takes operators into account when dealing with incomplete bracket identifier tokens", () => {
     const { tokens } = tokenize('case([Total] > 200, [To, "Nothing")');
 
     expect(tokens).toEqual([

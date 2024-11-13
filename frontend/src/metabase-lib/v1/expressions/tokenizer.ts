@@ -29,6 +29,40 @@ export const OPERATOR = {
   False: "false",
 };
 
+const parseOperator = (expression: string, index: number) => {
+  const character = expression[index];
+
+  switch (character) {
+    case OPERATOR.OpenParenthesis:
+    case OPERATOR.CloseParenthesis:
+    case OPERATOR.Comma:
+    case OPERATOR.Plus:
+    case OPERATOR.Minus:
+    case OPERATOR.Star:
+    case OPERATOR.Slash:
+    case OPERATOR.Equal:
+      return expression.substring(index, index + 1);
+
+    case OPERATOR.LessThan:
+    case OPERATOR.GreaterThan:
+      if (expression[index + 1] === OPERATOR.Equal) {
+        // OPERATOR.LessThanEqual (<=) or
+        // OPERATOR.GreaterThanEqual (>=)
+        return expression.substring(index, index + 2);
+      }
+
+      return expression.substring(index, index + 1);
+
+    case "!":
+      if (expression[index + 1] === OPERATOR.Equal) {
+        // OPERATOR.NotEqual (!=)
+        return expression.substring(index, index + 2);
+      }
+  }
+
+  return undefined;
+};
+
 export function tokenize(expression: string) {
   const source = expression;
   const length = expression.length;
@@ -79,46 +113,17 @@ export function tokenize(expression: string) {
 
   const scanOperator = () => {
     const start = index;
-    const ch = source[start];
+    const operator = parseOperator(source, start);
 
-    switch (ch) {
-      case OPERATOR.OpenParenthesis:
-      case OPERATOR.CloseParenthesis:
-      case OPERATOR.Comma:
-      case OPERATOR.Plus:
-      case OPERATOR.Minus:
-      case OPERATOR.Star:
-      case OPERATOR.Slash:
-      case OPERATOR.Equal:
-        ++index;
-        break;
-
-      case OPERATOR.LessThan:
-      case OPERATOR.GreaterThan:
-        ++index;
-        if (source[index] === OPERATOR.Equal) {
-          // OPERATOR.LessThanEqual (<=) or
-          // OPERATOR.GreaterThanEqual (>=)
-          ++index;
-        }
-        break;
-
-      case "!":
-        if (source[start + 1] === OPERATOR.Equal) {
-          // OPERATOR.NotEqual (!=)
-          index += 2;
-        }
-        break;
-
-      default:
-        break;
-    }
-    if (index === start) {
+    if (!operator) {
       return null;
     }
+
+    index += operator.length;
+
     const type = TOKEN.Operator;
-    const end = index;
-    const op = source.slice(start, end);
+    const end = start + operator.length;
+    const op = operator;
     const error = null;
     return { type, op, start, end, error };
   };
@@ -257,6 +262,18 @@ export function tokenize(expression: string) {
       } else if (ch === "\\") {
         // ignore the next char, even if it's [ or ]
         index++;
+      } else {
+        const operator = parseOperator(source, index);
+
+        // if we hit an operator while scanning for bracket identifier, then we have
+        // an incomplete bracket identifier
+        if (operator) {
+          const type = TOKEN.Identifier;
+          const end = index;
+          const error = t`Missing a closing bracket`;
+
+          return { type, start, end, error };
+        }
       }
     }
     const type = TOKEN.Identifier;
