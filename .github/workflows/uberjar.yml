@@ -42,6 +42,9 @@ jobs:
       uses: ./.github/actions/prepare-backend
       with:
         m2-cache-key: uberjar
+        # Build with Java 11 so they compiled code doesn't try to use Java >11 classes... see
+        # https://metaboat.slack.com/archives/C5XHN8GLW/p1731517744549619?thread_ts=1731504670.951389&cid=C5XHN8GLW
+        java-version: 11
     - name: Build
       run: ./bin/build.sh
     - name: Prepare uberjar artifact
@@ -121,6 +124,9 @@ jobs:
       if: ${{ matrix.edition == 'ee-extra' }}
       uses: ./.github/actions/build-ee-extra
       with:
+        # Build with Java 11 so they compiled code doesn't try to use Java >11 classes... see
+        # https://metaboat.slack.com/archives/C5XHN8GLW/p1731517744549619?thread_ts=1731504670.951389&cid=C5XHN8GLW
+        java-version: 11
         iam-role: ${{ secrets.METABASE_EE_EXTRA_IAM_ROLE }}
     - name: Set up Docker Buildx
       id: buildx

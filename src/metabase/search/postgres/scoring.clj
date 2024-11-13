@@ -53,7 +53,7 @@
     [:inline 1]))
 
 (defn- weighted-score [[column-alias expr]]
-  [:* [:inline (search.config/weights column-alias 0)] expr])
+  [:* [:inline (search.config/weight column-alias)] expr])
 
 (defn- select-items [scorers]
   (concat
