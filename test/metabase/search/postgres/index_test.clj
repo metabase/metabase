@@ -1,5 +1,6 @@
 (ns metabase.search.postgres.index-test
   (:require
+   [cheshire.core :as json]
    [clojure.test :refer [deftest is testing]]
    [metabase.db :as mdb]
    [metabase.search.postgres.core :as search.postgres]
@@ -8,10 +9,14 @@
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (defn legacy-results
   "Use the source tables directly to search for records."
   [search-term & {:as opts}]
-  (t2/query (#'search.postgres/in-place-query (assoc opts :search-engine :search.engine/in-place :search-term search-term))))
+  (-> (assoc opts :search-engine :search.engine/in-place :search-term search-term)
+      (#'search.postgres/in-place-query)
+      t2/query))
 
 (def legacy-models
   "Just the identity of the matches"
@@ -23,20 +28,70 @@
 (defn- index-hits [term]
   (count (search.index/search term)))
 
+;; These helpers only mutate the temp local AppDb.
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defmacro with-index
   "Ensure a clean, small index."
   [& body]
   `(when (= :postgres (mdb/db-type))
-     (mt/dataset ~(symbol "test-data")
-       (mt/with-temp [:model/Card {} {:name "Customer Satisfaction" :collection_id 1}
-                      :model/Card {} {:name "The Latest Revenue Projections" :collection_id 1}
-                      :model/Card {} {:name "Projected Revenue" :collection_id 1}
-                      :model/Card {} {:name "Employee Satisfaction" :collection_id 1}
-                      :model/Card {} {:name "Projected Satisfaction" :collection_id 1}]
-         (search.index/reset-index!)
-         (search.ingestion/populate-index!)
-         ~@body))))
+     (binding [search.ingestion/*force-sync* true]
+       (mt/dataset ~(symbol "test-data")
+         (mt/with-temp [:model/Card     {}           {:name "Customer Satisfaction" :collection_id 1}
+                        :model/Card     {}           {:name "The Latest Revenue Projections" :collection_id 1}
+                        :model/Card     {}           {:name "Projected Revenue" :collection_id 1}
+                        :model/Card     {}           {:name "Employee Satisfaction" :collection_id 1}
+                        :model/Card     {}           {:name "Projected Satisfaction" :collection_id 1}
+                        :model/Database {db-id# :id} {:name "Indexed Database"}
+                        :model/Table    {}           {:name "Indexed Table", :db_id db-id#}]
+           (search.index/reset-index!)
+           (search.ingestion/populate-index!)
+           ~@body)))))
+
+(deftest idempotent-test
+  (with-index
+    (let [count-rows  (fn [] (t2/count @#'search.index/active-table))
+          rows-before (count-rows)]
+      (search.ingestion/populate-index!)
+      (is (= rows-before (count-rows))))))
+
+(deftest incremental-update-test
+  (with-index
+    (testing "The index is updated when models change"
+     ;; Has a second entry is "Revenue Project(ions)", when using English dictionary
+      (is (= 1 #_2 (count (search.index/search "Projected Revenue"))))
+      (is (= 0 (count (search.index/search "Protected Avenue"))))
+
+      (t2/update! :model/Card {:name "Projected Revenue"} {:name "Protected Avenue"})
+     ;; TODO wire up an actual hook
+      (search.ingestion/update-index! (t2/select-one :model/Card :name "Protected Avenue"))
+
+      ;; wait for the background thread
+      (is (= 0 #_1 (count (search.index/search "Projected Revenue"))))
+      (is (= 1 (count (search.index/search "Protected Avenue"))))
+
+     ;; TODO wire up the actual hook, and actually delete it
+      (search.ingestion/delete-model! (t2/select-one :model/Card :name "Protected Avenue"))
+
+      (is (= 0 #_1 (count (search.index/search "Projected Revenue"))))
+      (is (= 0 (count (search.index/search "Protected Avenue")))))))
+
+(deftest related-update-test
+  (with-index
+    (testing "The index is updated when model dependencies change"
+      (let [index-table    @#'search.index/active-table
+            table-id       (t2/select-one-pk :model/Table :name "Indexed Table")
+            legacy-input   #(-> (t2/select-one [index-table :legacy_input] :model "table" :model_id table-id)
+                                :legacy_input
+                                (json/parse-string true))
+            db-id          (t2/select-one-fn :db_id :model/Table table-id)
+            db-name-fn     (comp :database_name legacy-input)
+            alternate-name (str (random-uuid))]
+
+        (t2/update! :model/Database db-id {:name alternate-name})
+        ;; TODO wire up an actual hook
+        (search.ingestion/update-index! (t2/select-one :model/Database :id db-id))
+
+        (is (= alternate-name (db-name-fn)))))))
 
 (deftest consistent-subset-test
   (with-index
@@ -54,18 +109,20 @@
              ;; but this one does
              (legacy-hits "venue"))))
 
-    (testing "Unless their lexemes are matching"
-      (doseq [[a b] [["revenue" "revenues"]
-                     ["collect" "collection"]]]
-        (is (= (search.index/search a)
-               (search.index/search b)))))
+    ;; no longer works without english dictionary
+    #_(testing "Unless their lexemes are matching"
+        (doseq [[a b] [["revenue" "revenues"]
+                       ["collect" "collection"]]]
+          (is (= (search.index/search a)
+                 (search.index/search b)))))
 
     (testing "Or we match a completion of the final word"
-      (is (seq (search.index/search "ras")))
-      (is (seq (search.index/search "rasta coll")))
-      (is (seq (search.index/search "collection ras")))
-      (is (empty? (search.index/search "coll rasta")))
-      (is (empty? (search.index/search "ras collection"))))))
+      (is (seq (search.index/search "sat")))
+      (is (seq (search.index/search "satisf")))
+      (is (seq (search.index/search "employee sat")))
+      (is (seq (search.index/search "satisfaction empl")))
+      (is (empty? (search.index/search "sat employee")))
+      (is (empty? (search.index/search "emp satisfaction"))))))
 
 (deftest either-test
   (with-index
@@ -82,7 +139,8 @@
       (is (<= 1 (index-hits "user"))))
     (testing "But stop words are skipped"
       (is (= 0 (index-hits "or")))
-      (is (= 3 (index-hits "its the satisfaction of it"))))
+      ;; stop words depend on a dictionary
+      (is (= 0 #_3 (index-hits "its the satisfaction of it"))))
     (testing "We can combine the individual results"
       (is (= (+ (index-hits "satisfaction")
                 (index-hits "user"))
@@ -98,9 +156,10 @@
 
 (deftest phrase-test
   (with-index
-    (is (= 3 (index-hits "projected")))
+    ;; Less matches without an english dictionary
+    (is (= 2 #_3 (index-hits "projected")))
     (is (= 2 (index-hits "revenue")))
-    (is (= 2 (index-hits "projected revenue")))
+    (is (= 1 #_2 (index-hits "projected revenue")))
     (testing "only sometimes do these occur sequentially in a phrase"
       (is (= 1 (index-hits "\"projected revenue\""))))
     (testing "legacy search has a bunch of results"
@@ -112,29 +171,41 @@
 (def search-expr #'search.index/to-tsquery-expr)
 
 (deftest to-tsquery-expr-test
-  (is (= "a & b & c:*"
+  (is (= "'a' & 'b' & 'c':*"
          (search-expr "a b c")))
 
-  (is (= "a & b & c:*"
+  (is (= "'a' & 'b' & 'c':*"
          (search-expr "a AND b AND c")))
 
-  (is (= "a & b & c"
+  (is (= "'a' & 'b' & 'c'"
          (search-expr "a b \"c\"")))
 
-  (is (= "a & b | c:*"
+  (is (= "'a' & 'b' | 'c':*"
          (search-expr "a b or c")))
 
-  (is (= "this & !that:*"
+  (is (= "'this' & !'that':*"
          (search-expr "this -that")))
 
-  (is (= "a & b & c <-> d & e | b & e:*"
+  (is (= "'a' & 'b' & 'c' <-> 'd' & 'e' | 'b' & 'e':*"
          (search-expr "a b \" c d\" e or b e")))
 
-  (is  (= "ab <-> and <-> cde <-> f | !abc & def & ghi | jkl <-> mno <-> or <-> pqr"
+  (is  (= "'ab' <-> 'and' <-> 'cde' <-> 'f' | !'abc' & 'def' & 'ghi' | 'jkl' <-> 'mno' <-> 'or' <-> 'pqr'"
           (search-expr "\"ab and cde f\" or -abc def AND ghi OR \"jkl mno OR pqr\"")))
 
-  (is (= "big & data | business <-> intelligence | data & wrangling:*"
+  (is (= "'big' & 'data' | 'business' <-> 'intelligence' | 'data' & 'wrangling':*"
          (search-expr "Big Data oR \"Business Intelligence\" OR data and wrangling")))
 
-  (is (= "partial <-> quoted <-> and <-> or <-> -split:*"
-         (search-expr "\"partial quoted AND OR -split"))))
+  (testing "unbalanced quotes"
+    (is (= "'big' <-> 'data' & 'big' <-> 'mistake':*"
+           (search-expr "\"Big Data\" \"Big Mistake"))))
+
+  (is (= "'partial' <-> 'quoted' <-> 'and' <-> 'or' <-> '-split':*"
+         (search-expr "\"partial quoted AND OR -split")))
+
+  (testing "dangerous characters"
+    (is (= "'you' & '<-' & 'pointing':*"
+           (search-expr "you <- pointing"))))
+
+  (testing "single quotes"
+    (is (= "'you''re':*"
+           (search-expr "you're")))))
