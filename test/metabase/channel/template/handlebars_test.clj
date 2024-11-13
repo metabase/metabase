@@ -3,16 +3,12 @@
    [clojure.java.io :as io]
    [clojure.test :refer :all]
    [metabase.channel.template.handlebars :as handlebars]
-   [metabase.util :as u]
-   [metabase.util.files :as u.files]
-   [metabase.util.random :as u.random])
+   [metabase.util :as u])
   (:import
    (com.github.jknack.handlebars
     Parser Helper Template)
    (com.github.jknack.handlebars.io
-    TemplateSource
-    ClassPathTemplateLoader)))
-
+    TemplateSource)))
 
 (set! *warn-on-reflection* true)
 
@@ -69,22 +65,37 @@
       (spit (format "test_resources/%s" tmpl-name) "Hello {{name}} updated!")
       (is (= "Hello Ngoc updated!" (handlebars/render tmpl-name {:name "Ngoc"}))))))
 
-#_(deftest atom-template-cache-test
-    (binding [*warn-on-reflection* false]
-      (let [the-cache (fn [cache]
-                        (.cache cache))
-            parser    (reify Parser
-                        (parse [_this source]
-                          (reify Template
-                            (^String apply [_this _context]  ; Removed type hints that were causing issues
-                              (format "parsed %s" source)))))
-            get-cache (fn [cache source]
-                        (.get cache source parser))
-            template-source (fn [source]
-                              (reify TemplateSource
-                                (content [_ _] (format "content %s" source))
-                                (filename [_] source)
-                                (lastModified [_] 0)))]
-        (testing "reload=false should not reload template"
-          (let [cache (#'handlebars/make-atom-template-cache false)]
-            (is (= "parsed source" (get-cache cache (template-source "source")))))))))
+(deftest atom-template-cache-test
+  (let [parser-calls    (atom [])
+        parser          (reify Parser
+                          (parse [_ source]
+                            (swap! parser-calls conj (.filename source))
+                            Template/EMPTY))
+        get-cache       (fn [cache source]
+                          (.apply (.get cache source parser) {}))
+        template-source (fn [filename lastmodified]
+                          (reify TemplateSource
+                            (filename [_] filename)
+                            (lastModified [_] lastmodified)
+                            (content [_ _] (slurp filename))
+                            (equals [_ other] (= filename (.filename other)))))]
+    (testing "should reuse the template if it's loaded"
+      (let [cache (#'handlebars/make-atom-template-cache false)]
+        (reset! parser-calls [])
+        (get-cache cache (template-source "metabase" 0))
+        (get-cache cache (template-source "metabase" 0))
+        (testing "parser only called once for the same template"
+          (is (= ["metabase"] @parser-calls)))
+        (get-cache cache (template-source "metabase-2" 0))
+        (is (= ["metabase" "metabase-2"] @parser-calls))))
+
+    (testing "reload=false will not reload the template even though it's changed"
+      (let [cache (#'handlebars/make-atom-template-cache false)]
+        (reset! parser-calls [])
+        (get-cache cache (template-source "metabase" 0))
+        (get-cache cache (template-source "metabase" 1))
+        (is (= ["metabase"] @parser-calls))
+        (testing "reload=true will reload the template if it's changed"
+          (.setReload cache true)
+          (get-cache cache (template-source "metabase" 1))
+          (is (= ["metabase" "metabase"] @parser-calls)))))))

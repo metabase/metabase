@@ -25,7 +25,7 @@
    [toucan2.core :as t2])
   (:import
    (java.util TimeZone)
-   (org.quartz CronTrigger DisallowConcurrentExecution TriggerKey)))
+   (org.quartz CronTrigger TriggerKey)))
 
 (set! *warn-on-reflection* true)
 
@@ -97,7 +97,6 @@
       ;; See https://www.nurkiewicz.com/2012/04/quartz-scheduler-misfire-instructions.html for more info
       (cron/with-misfire-handling-instruction-fire-and-proceed)))
     (triggers/with-priority priority))))
-
 
 ; Clearing pulse channels is not done synchronously in order to support undoing feature.
 (defn- clear-pulse-channels-no-recipients!
