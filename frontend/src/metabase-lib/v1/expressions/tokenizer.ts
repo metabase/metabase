@@ -122,7 +122,7 @@ export function tokenize(expression: string) {
     index += op.length;
 
     const type = TOKEN.Operator;
-    const end = index;
+    const end = start + op.length;
     const error = null;
     return { type, op, start, end, error };
   };
