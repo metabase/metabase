@@ -1,6 +1,5 @@
 (ns metabase.search.appdb.index
   (:require
-   [cheshire.core :as json]
    [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
    [metabase.config :as config]
@@ -10,6 +9,7 @@
    [metabase.search.engine :as search.engine]
    [metabase.search.spec :as search.spec]
    [metabase.search.util :as search.util]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
@@ -67,7 +67,7 @@
 
 (defn- sync-metadata [_old-setting-raw new-setting-raw]
   ;; Oh dear, we get the raw setting. Save a little bit of overhead by no keywordizing the keys.
-  (let [new-setting                          (json/parse-string new-setting-raw)
+  (let [new-setting                          (json/decode new-setting-raw)
         this-index-metadata                  #(get-in % ["versions" *index-version-id*])
         {:strs [active-table pending-table]} (this-index-metadata new-setting)
         ;; implicitly clear the pending table if we just activated it
@@ -151,8 +151,8 @@
        ;; remove attrs that get aliased
        (remove #{:id :created_at :updated_at :native_query}
                (conj search.spec/attr-columns :model :display_data :legacy_input)))
-      (update :display_data json/generate-string)
-      (update :legacy_input json/generate-string)
+      (update :display_data json/encode)
+      (update :legacy_input json/encode)
       (assoc
        :updated_at       :%now
        :model_id         (:id entity)

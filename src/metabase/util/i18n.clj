@@ -1,10 +1,10 @@
 (ns metabase.util.i18n
   "i18n functionality."
   (:require
-   [cheshire.generate :as json.generate]
    [clojure.string :as str]
    [clojure.walk :as walk]
    [metabase.util.i18n.impl :as i18n.impl]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [net.cgrand.macrovich :as macros]
    [potemkin :as p]
@@ -96,13 +96,13 @@
 
 (defn- localized-to-json
   "Write a UserLocalizedString or SiteLocalizedString to the `json-generator`. This is intended for
-  `json.generate/add-encoder`. Ideally we'd implement those protocols directly as it's faster, but currently that doesn't
+  `json/add-encoder`. Ideally we'd implement those protocols directly as it's faster, but currently that doesn't
   work with Cheshire"
   [localized-string json-generator]
-  (json.generate/write-string json-generator (str localized-string)))
+  (json/write-string json-generator (str localized-string)))
 
-(json.generate/add-encoder UserLocalizedString localized-to-json)
-(json.generate/add-encoder SiteLocalizedString localized-to-json)
+(json/add-encoder UserLocalizedString localized-to-json)
+(json/add-encoder SiteLocalizedString localized-to-json)
 
 (def LocalizedString
   "Schema for user and system localized string instances"

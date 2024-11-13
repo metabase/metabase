@@ -1,6 +1,5 @@
 (ns metabase.search.appdb.core
   (:require
-   [cheshire.core :as json]
    [honey.sql.helpers :as sql.helpers]
    [metabase.db :as mdb]
    [metabase.public-settings :as public-settings]
@@ -13,6 +12,7 @@
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.permissions :as search.permissions]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [toucan2.core :as t2])
   (:import
    (java.time OffsetDateTime)))
@@ -32,7 +32,7 @@
 
 (defn- rehydrate [weights active-scorers index-row]
   (-> (merge
-       (json/parse-string (:legacy_input index-row) keyword)
+       (json/decode+kw (:legacy_input index-row))
        (select-keys index-row [:pinned]))
       (assoc
        :score      (:total_score index-row 1)
