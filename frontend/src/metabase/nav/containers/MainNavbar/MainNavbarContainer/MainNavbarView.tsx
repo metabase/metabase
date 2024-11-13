@@ -20,7 +20,6 @@ import { WhatsNewNotification } from "metabase/nav/components/WhatsNewNotificati
 import { getIsEmbedded } from "metabase/selectors/embed";
 import { getIsWhiteLabeling } from "metabase/selectors/whitelabel";
 import type { IconName, IconProps } from "metabase/ui";
-import type Database from "metabase-lib/v1/metadata/Database";
 import type { Bookmark, Collection, User } from "metabase-types/api";
 
 import {
@@ -34,8 +33,6 @@ import {
   SidebarSection,
 } from "../MainNavbar.styled";
 import { SidebarCollectionLink, SidebarLink } from "../SidebarItems";
-import { SidebarOnboardingSection } from "../SidebarItems/SidebarOnboardingSection";
-import { trackOnboardingChecklistOpened } from "../SidebarItems/SidebarOnboardingSection/analytics";
 import type { SelectedItem } from "../types";
 
 import BookmarkList from "./BookmarkList";
@@ -52,7 +49,6 @@ type Props = {
   bookmarks: Bookmark[];
   hasDataAccess: boolean;
   collections: CollectionTreeItem[];
-  databases: Database[];
   selectedItems: SelectedItem[];
   handleCloseNavbar: () => void;
   handleLogout: () => void;
@@ -73,7 +69,6 @@ export function MainNavbarView({
   currentUser,
   bookmarks,
   collections,
-  databases,
   selectedItems,
   hasDataAccess,
   reorderBookmarks,
@@ -200,12 +195,6 @@ export function MainNavbarView({
           </SidebarSection>
         </div>
         <WhatsNewNotification />
-        <SidebarOnboardingSection
-          collections={collections}
-          databases={databases}
-          hasDataAccess={hasDataAccess}
-          isAdmin={isAdmin}
-        />
       </SidebarContentRoot>
     </ErrorBoundary>
   );

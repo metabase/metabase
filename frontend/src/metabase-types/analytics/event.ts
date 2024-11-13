@@ -17,14 +17,6 @@ type ValidateEvent<
     Record<Exclude<keyof T, keyof SimpleEventSchema>, never>,
 > = T;
 
-type OnboardingCSVUploadClickedEvent = ValidateEvent<{
-  event: "data_add_via_csv_clicked";
-}>;
-
-type OnboardingDatabaseUploadClickedEvent = ValidateEvent<{
-  event: "data_add_via_db_clicked";
-}>;
-
 type OnboardingChecklistOpenedEvent = ValidateEvent<{
   event: "onboarding_checklist_opened";
 }>;
@@ -48,8 +40,6 @@ export type NewsletterToggleClickedEvent = ValidateEvent<{
 
 export type SimpleEvent =
   | NewsletterToggleClickedEvent
-  | OnboardingCSVUploadClickedEvent
-  | OnboardingDatabaseUploadClickedEvent
   | OnboardingChecklistOpenedEvent
   | OnboardingChecklistItemExpandedEvent
   | OnboardingChecklistItemCTAClickedEvent;
