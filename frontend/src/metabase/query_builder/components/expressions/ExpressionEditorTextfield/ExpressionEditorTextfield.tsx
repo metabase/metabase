@@ -396,7 +396,7 @@ class ExpressionEditorTextfield extends React.Component<
         // e.g. source is "isnull(A" and suggested is "isempty("
         // the result should be "isempty(A" and NOT "isempty((A"
         const openParen = _.last(suggested) === "(";
-        const alreadyOpenParen = _.first(postfix.trimLeft()) === "(";
+        const alreadyOpenParen = _.first(postfix.trimStart()) === "(";
         const extraTrim = openParen && alreadyOpenParen ? 1 : 0;
         const replacement = suggested.slice(0, suggested.length - extraTrim);
 
