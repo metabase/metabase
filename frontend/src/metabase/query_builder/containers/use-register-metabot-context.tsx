@@ -4,14 +4,18 @@ import { getAccentColors } from "metabase/lib/colors/groups";
 import { useRegisterMetabotContextProvider } from "metabase/metabot";
 import { getVisualizationMetabotContext } from "metabase/metabot-v3/selectors";
 
-import { getQueryResults, getQuestion } from "../selectors";
+import {
+  getFirstQueryResult,
+  getQuestion,
+  getVisualizationSettings,
+} from "../selectors";
 
 export const useRegisterMetabotContext = () => {
   useRegisterMetabotContextProvider(state => {
     const question = getQuestion(state);
-
-    const queryResults = getQueryResults(state);
-    const queryResultCols = queryResults?.[0]?.data?.cols ?? [];
+    const dataset = getFirstQueryResult(state);
+    const visualizationSettings = getVisualizationSettings(state);
+    const queryResultCols = dataset?.data?.cols ?? [];
     const columnNames = queryResultCols.map((col: any) => ({
       name: col.name,
       ...(col.description && { description: col.description }),
@@ -30,8 +34,10 @@ export const useRegisterMetabotContext = () => {
     return {
       display: question?.display(),
       dataset_query: question?.datasetQuery(),
+      dataset_columns: queryResultCols,
+      visualization_settings: visualizationSettings,
 
-      // global context is deprecated
+      // legacy context
       colorPalette: getAccentColors(),
       current_question_id: question?.id() || null,
       current_visualization_settings: {

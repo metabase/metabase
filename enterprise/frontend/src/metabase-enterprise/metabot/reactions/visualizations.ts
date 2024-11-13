@@ -12,6 +12,7 @@ import type {
   MetabotChangeDisplayTypeReaction,
   MetabotChangeSeriesSettingsReaction,
   MetabotChangeVisiualizationSettingsReaction,
+  MetabotChangeVisualizationSettingsReaction,
   VisualizationSettings,
 } from "metabase-types/api";
 
@@ -195,4 +196,14 @@ export const changeChartAppearance: ReactionHandler<
     }
 
     await dispatch(onUpdateVisualizationSettings(settingsUpdate));
+  };
+
+export const changeVisualizationSettings: ReactionHandler<
+  MetabotChangeVisualizationSettingsReaction
+> =
+  reaction =>
+  async ({ dispatch }) => {
+    await dispatch(
+      onUpdateVisualizationSettings(reaction.visualization_settings),
+    );
   };

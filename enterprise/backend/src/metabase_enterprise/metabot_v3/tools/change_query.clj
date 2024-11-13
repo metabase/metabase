@@ -26,7 +26,7 @@
 
 (defn- column-error
   [query columns column-name step-type]
-  (ex-info (format "%s is not a correct column for the %s step. Correct columns are: %s"
+  (ex-info (format "%s is not a correct column for the %s step. Available columns are: %s"
                    column-name
                    step-type
                    (str/join ", " (map #(column-display-name query %) columns)))
@@ -38,7 +38,7 @@
 
 (defn- operator-error
   [operators operator-name step-type]
-  (ex-info (format "%s is not a correct operator for the %s step. Correct operators are: %s"
+  (ex-info (format "%s is not a correct operator for the %s step. Available operators are: %s"
                    operator-name
                    step-type
                    (str/join ", " (map operator-display-name operators)))
@@ -172,12 +172,12 @@
   (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (:database dataset_query))
         query             (lib/query metadata-provider dataset_query)]
     (try
-      {:reactions [{:type  :metabot.reaction/change-query
+      {:output "success"
+       :reactions [{:type  :metabot.reaction/change-query
                     :dataset_query (-> (apply-steps query steps)
-                                       lib.query/->legacy-MBQL)}]
-       :output "success"}
+                                       lib.query/->legacy-MBQL)}]}
       (catch ExceptionInfo e
-        (log/debug e "Error creating a query in change-query tool")
+        (log/debug e "Error in change-query tool")
         {:output (ex-message e)}))))
 
 (mu/defmethod metabot-v3.tools.interface/*tool-applicable?* :metabot.tool/change-query
