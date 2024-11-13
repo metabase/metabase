@@ -50,33 +50,32 @@
   (api/check-superuser)
   (cond
     (not (public-settings/experimental-fulltext-search-enabled))
-    {:status-code 501, :message "Search index is not enabled."}
+    (throw (ex-info "Search index is not enabled." {:status-code 501}))
 
     (search/supports-index?)
-    (do
-      (if (task/job-exists? task.search-index/job-key)
-        (task/trigger-now! task.search-index/job-key)
-        (search/reindex!))
-      {:status-code 200})
+    (if (task/job-exists? task.search-index/job-key)
+      (do (task/trigger-now! task.search-index/job-key) {:message "task triggered"})
+      (do (search/reindex!) {:message "done"}))
 
     :else
-    {:status-code 501, :message "Search index is not supported for this installation."}))
+    (throw (ex-info "Search index is not supported for this installation." {:status-code 501}))))
 
 (defn- set-weights! [overrides]
   (api/check-superuser)
-  (let [allowed-key? (set (keys @#'search.config/default-weights))]
-    (if-let [unknown-weights (seq (remove allowed-key? (keys overrides)))]
-      {:status 400 :message (str "Unknown weights: " (str/join ", " (map name (sort unknown-weights))))}
-      (do
-        (public-settings/experimental-search-weight-overrides!
-         (merge (public-settings/experimental-search-weight-overrides) overrides))
-        (search.config/weights)))))
+  (let [allowed-key? (set (keys @#'search.config/default-weights))
+        unknown-weights (seq (remove allowed-key? (keys overrides)))]
+    (when unknown-weights
+      (throw (ex-info (str "Unknown weights: " (str/join ", " (map name (sort unknown-weights))))
+                      {:status-code 400})))
+    (public-settings/experimental-search-weight-overrides!
+     (merge (public-settings/experimental-search-weight-overrides) overrides))
+    (search.config/weights)))
 
 (api/defendpoint GET "/weights"
   "Return the current weights being used to rank the search results"
   [:as {overrides :params}]
   ;; remove cookie
-  (let [overrides (dissoc overrides :search_engine)]
+  (let [overrides (-> overrides (dissoc :search_engine) (update-vals parse-double))]
     (if (seq overrides)
       (set-weights! overrides)
       (search.config/weights))))
