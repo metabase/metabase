@@ -4,6 +4,7 @@ on:
   issues:
     types:
       - opened
+      - labeled
 jobs:
   on-issue-opened:
     runs-on: ubuntu-22.04
