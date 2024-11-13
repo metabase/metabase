@@ -56,7 +56,7 @@
   {:name   (legacy-name k)
    :score  (let [f (get legacy-scorers k)]
              (f result))
-   :weight (search.config/weights k)})
+   :weight (search.config/weight k)})
 
 (defenterprise score-result
   "Scoring implementation that adds score for items in official collections."
