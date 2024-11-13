@@ -1,5 +1,6 @@
 import type { Active } from "@dnd-kit/core";
 
+import { isDate } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetColumn } from "metabase-types/api";
 import type {
   DraggedColumn,
@@ -146,4 +147,50 @@ export function createDimensionColumn({
     field_ref: ["field", name, { "base-type": "type/Text" }],
     source: "artificial",
   };
+}
+
+export function addColumnMapping(
+  mapping: VisualizerColumnValueSource[] | undefined,
+  source: VisualizerColumnValueSource,
+) {
+  const nextMapping = mapping ? [...mapping] : [];
+  if (!checkColumnMappingExists(nextMapping, source)) {
+    nextMapping.push(source);
+  }
+  return nextMapping;
+}
+
+export function cloneColumnProperties(
+  visualizerColumn: DatasetColumn,
+  column: DatasetColumn,
+) {
+  const nextColumn = {
+    ...visualizerColumn,
+    base_type: column.base_type,
+    effective_type: column.effective_type,
+    display_name: column.display_name,
+  };
+
+  // TODO Remove manual MBQL manipulation
+  if (isDate(column)) {
+    const opts = { "base-type": column.base_type };
+    const temporalUnit = maybeGetTemporalUnit(column);
+    if (temporalUnit) {
+      opts["temporal-unit"] = temporalUnit;
+    }
+    nextColumn.field_ref = [
+      visualizerColumn?.field_ref?.[0] ?? "field",
+      visualizerColumn?.field_ref?.[1] ?? nextColumn.name,
+      opts,
+    ];
+  }
+
+  return nextColumn;
+}
+
+function maybeGetTemporalUnit(col: DatasetColumn) {
+  const maybeOpts = col.field_ref?.[2];
+  if (maybeOpts && "temporal-unit" in maybeOpts) {
+    return maybeOpts["temporal-unit"];
+  }
 }
