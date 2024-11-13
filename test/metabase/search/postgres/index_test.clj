@@ -190,7 +190,9 @@
 
   (testing "unbalanced quotes"
     (is (= "'big' <-> 'data' & 'big' <-> 'mistake':*"
-           (search-expr "\"Big Data\" \"Big Mistake"))))
+           (search-expr "\"Big Data\" \"Big Mistake")))
+    (is (= "'something'"
+           (search-expr "something \""))))
 
   (is (= "'partial' <-> 'quoted' <-> 'and' <-> 'or' <-> '-split':*"
          (search-expr "\"partial quoted AND OR -split")))
