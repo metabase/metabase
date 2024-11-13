@@ -1,4 +1,5 @@
 import { type ReactNode, useCallback, useMemo, useState } from "react";
+import { t } from "ttag";
 import _ from "underscore";
 
 import Radio from "metabase/core/components/Radio";
@@ -187,7 +188,7 @@ export const BaseChartSettings = ({
     onChangeSeriesColor: handleChangeSeriesColor,
   };
 
-  const isChartPicker = chartSettingCurrentSection?.toLowerCase() === "chart";
+  const isChartPicker = chartSettingCurrentSection === t`Chart`;
 
   return (
     <>

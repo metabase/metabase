@@ -104,8 +104,10 @@ export const LeftViewFooterButtonGroup = ({
       )}
       {(!isShowingRawTable || isVisualized) && (
         <Button
-          radius="xl"
           variant={isShowingChartSettingsSidebar ? "filled" : "default"}
+          radius="xl"
+          /* mah is a hack for 32px height button, we don't have it atm */
+          mah="xl"
           styles={{
             ...(!isShowingChartSettingsSidebar && {
               root: {
@@ -119,8 +121,6 @@ export const LeftViewFooterButtonGroup = ({
               },
             }),
           }}
-          /* mah is a hack for 32px height button, we don't have it atm */
-          mah="xl"
           data-testid="viz-settings-button"
           onClick={
             isShowingChartSettingsSidebar
