@@ -227,6 +227,28 @@
             },
             {
               "type": "object",
+              "description": "Remove filter from the query.",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "description": "Type of the remove-filter change.",
+                  "enum": [
+                    "remove-filter"
+                  ]
+                },
+                "filter": {
+                  "type": "string",
+                  "description": "Filter to remove. Use `query.filters` for the list of current filters."
+                }
+              },
+              "required": [
+                "type",
+                "filter"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
               "description": "Aggregate query results.",
               "properties": {
                 "type": {
