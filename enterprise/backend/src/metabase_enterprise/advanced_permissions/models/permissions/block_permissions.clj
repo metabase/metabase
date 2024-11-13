@@ -23,7 +23,7 @@
   [[metabase.models.collection]] for more details."
   :feature :advanced-permissions
   [{{gtap-perms :gtaps} ::query-perms/perms, database-id :database :as query}]
-  (let [{:keys [table-ids card-ids]} (query-perms/query->source-ids query)
+  (let [{:keys [table-ids card-ids native?]} (query-perms/query->source-ids query)
         table-permissions            (map (partial data-perms/table-permission-for-user api/*current-user-id*
                                                    :perms/view-data database-id)
                                           table-ids)]
@@ -32,7 +32,7 @@
      (not= :blocked (data-perms/full-db-permission-for-user api/*current-user-id* :perms/view-data database-id))
      (= #{:unrestricted} (set table-permissions))
      ;; Don't block a query if we have native access implicitly granted to power a sandbox
-     (= :query-builder-and-native (:perms/create-queries gtap-perms))
+     (and native? (= :query-builder-and-native (:perms/create-queries gtap-perms)))
      (throw-block-permissions-exception))
 
     ;; Recursively check block permissions for any Cards referenced by the query
