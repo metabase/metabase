@@ -148,6 +148,12 @@ export const Onboarding = () => {
     utm_content: "getting-started",
   };
 
+  const docsLink = useSelector(state =>
+    getDocsUrl(state, {
+      utm: utmTags,
+    }),
+  );
+
   const sqlParamsDocsLink = useSelector(state =>
     getDocsUrl(state, {
       page: "questions/native-editor/sql-parameters",
@@ -419,7 +425,7 @@ export const Onboarding = () => {
                         )
                       } and add text, link, and iframe cards.`}</li>
                       <li>{jt`Add ${(<b key="filters">{t`filters`}</b>)} to dashboards and connect them to fields on questions to narrow the results.`}</li>
-                      <li>{t`Drill-through charts on your dashboard, or set up custom destinations on click.`}</li>
+                      <li>{t`Drill-through charts on your dashboard to see different groupings or individual records.`}</li>
                     </ul>
                   </Text>
 
@@ -446,7 +452,7 @@ export const Onboarding = () => {
               data-testid="subscription-item"
             >
               <Accordion.Control icon={<Icon name="subscription" />}>
-                {t`Get dashboard results by email or Slack`}
+                {t`Subscribe to a dashboard by email or Slack`}
               </Accordion.Control>
               <Accordion.Panel>
                 <Stack spacing="lg">
@@ -612,7 +618,7 @@ export const Onboarding = () => {
                 <Text>
                   {t`${applicationName} can do a lot. To learn more—about ${applicationName}, data visualization, modeling, and other data topics—check out our `}
                   {jt`${(
-                    <ExternalLink href="https://www.metabase.com/docs/latest">{t`Docs`}</ExternalLink>
+                    <ExternalLink href={docsLink}>{t`Docs`}</ExternalLink>
                   )}`}
                   {t` and `}
                   {jt`${(
