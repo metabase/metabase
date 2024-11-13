@@ -52,6 +52,13 @@
   [query breakouts breakout-name]
   (m/find-first #(= (clause-display-name query %) breakout-name) breakouts))
 
+(defn- find-aggregation-error
+  [query aggregations aggregation-name]
+  (ex-info (format "%s aggregation does not exist in the query. Available aggregations are: %s"
+                   aggregation-name
+                   (str/join ", " (map #(clause-display-name query %) aggregations)))
+           {:aggregation aggregation-name}))
+
 (defn- find-breakout-error
   [query breakouts breakout-name]
   (ex-info (format "%s breakout does not exist in the query. Available breakouts are: %s"
@@ -149,6 +156,7 @@
                                            :current :current
                                            :next    value)
                                          unit))))
+
 (defmethod apply-query-change :add-aggregation
   [query {change-type :type, operator-name :operator, column-name :column}]
   (let [operators (lib/available-aggregation-operators query)
@@ -160,6 +168,13 @@
                         (throw (find-column-error query columns column-name change-type)))]
         (lib/aggregate query (lib/aggregation-clause operator column)))
       (lib/aggregate query (lib/aggregation-clause operator)))))
+
+(defmethod apply-query-change :remove-aggregation
+  [query {aggregation-name :aggregation}]
+  (let [aggregations (lib/aggregations query)
+        aggregation  (or (find-clause query aggregations aggregation-name)
+                         (throw (find-aggregation-error query aggregations aggregation-name)))]
+    (lib/remove-clause query aggregation)))
 
 (defmethod apply-query-change :add-breakout
   [query {change-type :type, column-name :column}]

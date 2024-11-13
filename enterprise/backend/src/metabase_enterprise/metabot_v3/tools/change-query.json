@@ -15,7 +15,7 @@
               "properties": {
                 "type": {
                   "type": "string",
-                  "description": "Type of the add-string-filter step.",
+                  "description": "Type of the add-string-filter change.",
                   "enum": [
                     "add-string-filter"
                   ]
@@ -58,7 +58,7 @@
               "properties": {
                 "type": {
                   "type": "string",
-                  "description": "Type of the add-number-filter step.",
+                  "description": "Type of the add-number-filter change.",
                   "enum": [
                     "add-number-filter"
                   ]
@@ -101,7 +101,7 @@
               "properties": {
                 "type": {
                   "type": "string",
-                  "description": "Type of the add-boolean-filter step.",
+                  "description": "Type of the add-boolean-filter change.",
                   "enum": [
                     "add-boolean-filter"
                   ]
@@ -139,7 +139,7 @@
               "properties": {
                 "type": {
                   "type": "string",
-                  "description": "Type of the add-specific-date-filter step.",
+                  "description": "Type of the add-specific-date-filter change.",
                   "enum": [
                     "add-specific-date-filter"
                   ]
@@ -175,11 +175,11 @@
             },
             {
               "type": "object",
-              "description": "Filter query results by a date column and value. Unlike date-filter step, the filter range here is a relative to current time. Examples: '1 year ago', 'this week', 'next 3 days'.",
+              "description": "Filter query results by a date column and value. Unlike specific-date-filter, the filter range here is a relative to current time. Examples: '1 year ago', 'this week', 'next 3 days'.",
               "properties": {
                 "type": {
                   "type": "string",
-                  "description": "Type of the add-relative-date-filter step.",
+                  "description": "Type of the add-relative-date-filter change.",
                   "enum": [
                     "add-relative-date-filter"
                   ]
@@ -231,7 +231,7 @@
               "properties": {
                 "type": {
                   "type": "string",
-                  "description": "Type of the add-aggregation step.",
+                  "description": "Type of the add-aggregation change.",
                   "enum": [
                     "add-aggregation"
                   ]
@@ -268,11 +268,33 @@
             },
             {
               "type": "object",
+              "description": "Remove aggregation from the query.",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "description": "Type of the remove-aggregation change.",
+                  "enum": [
+                    "remove-aggregation"
+                  ]
+                },
+                "aggregation": {
+                  "type": "string",
+                  "description": "Aggregation to remove. Use `query.aggregations` for the list of current aggregations."
+                }
+              },
+              "required": [
+                "type",
+                "aggregation"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
               "description": "Group by, or breakout, query results.",
               "properties": {
                 "type": {
                   "type": "string",
-                  "description": "Type of the add-breakout step.",
+                  "description": "Type of the add-breakout change.",
                   "enum": [
                     "add-breakout"
                   ]
@@ -294,7 +316,7 @@
               "properties": {
                 "type": {
                   "type": "string",
-                  "description": "Type of the remove-breakout step.",
+                  "description": "Type of the remove-breakout change.",
                   "enum": [
                     "remove-breakout"
                   ]
@@ -316,7 +338,7 @@
               "properties": {
                 "type": {
                   "type": "string",
-                  "description": "Type of the add-order-by by step.",
+                  "description": "Type of the add-order-by by change.",
                   "enum": [
                     "add-order-by"
                   ]
@@ -350,7 +372,7 @@
               "properties": {
                 "type": {
                   "type": "string",
-                  "description": "Type of the remove-order-by step.",
+                  "description": "Type of the remove-order-by change.",
                   "enum": [
                     "remove-order-by"
                   ]
@@ -372,7 +394,7 @@
               "properties": {
                 "type": {
                   "type": "string",
-                  "description": "Type of the add-limit step.",
+                  "description": "Type of the add-limit change.",
                   "enum": [
                     "add-limit"
                   ]
@@ -394,7 +416,7 @@
               "properties": {
                 "type": {
                   "type": "string",
-                  "description": "Type of the remove-limit step.",
+                  "description": "Type of the remove-limit change.",
                   "enum": [
                     "remove-limit"
                   ]
