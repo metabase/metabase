@@ -6,8 +6,10 @@ import type {
   DraggedItem,
   DraggedWellItem,
   VisualizerColumnReference,
+  VisualizerColumnValueSource,
   VisualizerDataSource,
   VisualizerDataSourceId,
+  VisualizerDataSourceNameReference,
   VisualizerDataSourceType,
 } from "metabase-types/store/visualizer";
 
@@ -32,6 +34,28 @@ export function isReferenceToColumn(
   ref: VisualizerColumnReference,
 ) {
   return dataSourceId === ref.sourceId && column.name === ref.originalName;
+}
+
+export function compareColumnReferences(
+  r1: VisualizerColumnReference,
+  r2: VisualizerColumnReference,
+) {
+  return r1.sourceId === r2.sourceId && r1.originalName === r2.originalName;
+}
+
+export function checkColumnMappingExists(
+  columnValueSources: VisualizerColumnValueSource[],
+  valueSource: VisualizerColumnValueSource,
+) {
+  if (typeof valueSource === "string") {
+    return columnValueSources.includes(valueSource);
+  }
+
+  return columnValueSources.some(
+    source =>
+      typeof source !== "string" &&
+      compareColumnReferences(source, valueSource),
+  );
 }
 
 export function createVisualizerColumnReference(
@@ -59,12 +83,20 @@ export function createVisualizerColumnReference(
   };
 }
 
-export function createDataSourceNameRef(id: VisualizerDataSourceId) {
+export function createDataSourceNameRef(
+  id: VisualizerDataSourceId,
+): VisualizerDataSourceNameReference {
   return `$_${id}_name`;
 }
 
-export function isDataSourceNameRef(str: string) {
-  return str.startsWith("$_") && str.endsWith("_name");
+export function isDataSourceNameRef(
+  value: VisualizerColumnValueSource,
+): value is VisualizerDataSourceNameReference {
+  return (
+    typeof value === "string" &&
+    value.startsWith("$_") &&
+    value.endsWith("_name")
+  );
 }
 
 export function getDataSourceIdFromNameRef(str: string) {

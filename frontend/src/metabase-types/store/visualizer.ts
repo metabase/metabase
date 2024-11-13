@@ -43,11 +43,18 @@ export type DraggedWellItem = BaseDraggedItem<{
 
 export type DraggedItem = DraggedColumn | DraggedWellItem;
 
+// a way to use dataset's name as a value
+export type VisualizerDataSourceNameReference =
+  `$_${VisualizerDataSourceId}_name`;
+
+export type VisualizerColumnValueSource =
+  | VisualizerColumnReference
+  | VisualizerDataSourceNameReference;
+
 export interface VisualizerState {
   display: VisualizationDisplay | null;
   columns: DatasetColumn[];
-  columnValuesMapping: Record<string, string[]>;
-  referencedColumns: VisualizerColumnReference[];
+  columnValuesMapping: Record<string, VisualizerColumnValueSource[]>;
   settings: VisualizationSettings;
   cards: Card[];
   datasets: Record<VisualizerDataSourceId, Dataset>;

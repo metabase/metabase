@@ -1,6 +1,7 @@
 import type { DragEndEvent } from "@dnd-kit/core";
 import {
   type PayloadAction,
+  createDraftSafeSelector,
   createSelector,
   createSlice,
 } from "@reduxjs/toolkit";
@@ -24,6 +25,8 @@ import type {
 } from "metabase-types/api";
 import type {
   DraggedItem,
+  VisualizerColumnReference,
+  VisualizerColumnValueSource,
   VisualizerDataSource,
   VisualizerDataSourceId,
   VisualizerState,
@@ -31,6 +34,7 @@ import type {
 
 import { DROPPABLE_ID } from "./constants";
 import {
+  checkColumnMappingExists,
   createDataSource,
   createDataSourceNameRef,
   createDimensionColumn,
@@ -46,7 +50,6 @@ const initialState: VisualizerState = {
   display: null,
   columns: [],
   columnValuesMapping: {},
-  referencedColumns: [],
   settings: {},
   cards: [],
   datasets: {},
@@ -134,7 +137,6 @@ const visualizerSlice = createSlice({
       state.settings = {};
       state.columns = [];
       state.columnValuesMapping = {};
-      state.referencedColumns = [];
 
       if (!display) {
         return;
@@ -198,25 +200,17 @@ const visualizerSlice = createSlice({
       delete state.datasets[source.id];
       delete state.loadingDatasets[source.id];
 
-      const [removedColumns, remainingColumns] = _.partition(
-        state.referencedColumns,
-        ref => ref.sourceId === source.id,
+      state.columnValuesMapping = _.mapObject(
+        state.columnValuesMapping,
+        valueSources =>
+          valueSources.filter(valueSource => {
+            if (typeof valueSource === "string") {
+              const dataSourceId = getDataSourceIdFromNameRef(valueSource);
+              return dataSourceId !== source.id;
+            }
+            return valueSource.sourceId !== source.id;
+          }),
       );
-      state.referencedColumns = remainingColumns;
-      const removedColumnsSet = new Set(removedColumns.map(c => c.name));
-
-      if (removedColumnsSet.size > 0) {
-        state.columnValuesMapping = _.mapObject(
-          state.columnValuesMapping,
-          values =>
-            values.filter(value => {
-              if (isDataSourceNameRef(value)) {
-                return getDataSourceIdFromNameRef(value) !== source.id;
-              }
-              return !removedColumnsSet.has(value);
-            }),
-        );
-      }
     },
     toggleDataSourceExpanded: (
       state,
@@ -280,10 +274,11 @@ const visualizerSlice = createSlice({
             dataset.data.rows?.length === 1
           ) {
             const dataSource = createDataSource("card", cardId, card.name);
+
             const columnRef = createVisualizerColumnReference(
               dataSource,
               dataset.data.cols[0],
-              state.referencedColumns,
+              getReferencedColumns({ visualizer: state }),
             );
 
             const metric = getVisualizerMetricColumn({ visualizer: state });
@@ -294,14 +289,13 @@ const visualizerSlice = createSlice({
             if (metric.column && dimension.column) {
               state.columnValuesMapping[metric.column.name] = addColumnMapping(
                 state.columnValuesMapping[metric.column.name],
-                columnRef.name,
+                columnRef,
               );
               state.columnValuesMapping[dimension.column.name] =
                 addColumnMapping(
                   state.columnValuesMapping[dimension.column.name],
                   createDataSourceNameRef(dataSource.id),
                 );
-              state.referencedColumns.push(columnRef);
             }
           }
         }
@@ -373,8 +367,14 @@ export const getVisualizerDimensionColumn = (state: {
   return { column: columns[index], index };
 };
 
-export const getReferencedColumns = (state: { visualizer: VisualizerState }) =>
-  state.visualizer.referencedColumns;
+export const getReferencedColumns = createDraftSafeSelector(
+  [getVisualizerColumnValuesMapping],
+  (columnValuesMapping): VisualizerColumnReference[] => {
+    return Object.values(columnValuesMapping)
+      .filter(valueSource => typeof valueSource !== "string")
+      .flat();
+  },
+);
 
 export const getDataSources = createSelector([getCards], cards =>
   cards.map(card => createDataSource("card", card.id, card.name)),
@@ -439,13 +439,13 @@ const getVisualizerDatasetData = createSelector(
 
     const unzippedRows = cols.map(column =>
       (columnValuesMapping[column.name] ?? [])
-        .map(value => {
-          if (isDataSourceNameRef(value)) {
-            const id = getDataSourceIdFromNameRef(value);
+        .map(valueSource => {
+          if (isDataSourceNameRef(valueSource)) {
+            const id = getDataSourceIdFromNameRef(valueSource);
             const dataSource = usedDataSources.find(source => source.id === id);
             return dataSource?.name ? [dataSource.name] : [];
           }
-          const values = referencedColumnValuesMap[value];
+          const values = referencedColumnValuesMap[valueSource.name];
           if (!values) {
             return [];
           }
@@ -515,7 +515,6 @@ const cartesianDropHandler: DropHandler = (state, { active, over }) => {
 
   if (over.id === DROPPABLE_ID.CANVAS_MAIN && isDraggedWellItem(active)) {
     const { wellId, column } = active.data.current;
-    const [connectedColumnRef] = state.columnValuesMapping[column.name] ?? [];
 
     if (wellId === DROPPABLE_ID.X_AXIS_WELL) {
       const dimensions = state.settings["graph.dimensions"] ?? [];
@@ -524,15 +523,14 @@ const cartesianDropHandler: DropHandler = (state, { active, over }) => {
       );
 
       state.columns = state.columns.filter(col => col.name !== column.name);
+      delete state.columnValuesMapping[column.name];
+
       if (nextDimensions.length === 0) {
         const newDimension = createDimensionColumn();
         state.columns.push(newDimension);
         nextDimensions.push(newDimension.name);
       }
 
-      state.referencedColumns = state.referencedColumns.filter(
-        ref => ref.name !== connectedColumnRef,
-      );
       state.settings = {
         ...state.settings,
         "graph.dimensions": nextDimensions,
@@ -544,15 +542,14 @@ const cartesianDropHandler: DropHandler = (state, { active, over }) => {
       const nextMetrics = metrics.filter(metric => metric !== column.name);
 
       state.columns = state.columns.filter(col => col.name !== column.name);
+      delete state.columnValuesMapping[column.name];
+
       if (nextMetrics.length === 0) {
         const newMetric = createMetricColumn();
         state.columns.push(newMetric);
         nextMetrics.push(newMetric.name);
       }
 
-      state.referencedColumns = state.referencedColumns.filter(
-        ref => ref.name !== connectedColumnRef,
-      );
       state.settings = {
         ...state.settings,
         "graph.metrics": nextMetrics,
@@ -565,17 +562,18 @@ const cartesianDropHandler: DropHandler = (state, { active, over }) => {
   }
 
   const { column, dataSource } = active.data.current;
+
   const columnRef = createVisualizerColumnReference(
     dataSource,
     column,
-    state.referencedColumns,
+    getReferencedColumns({ visualizer: state }),
   );
 
   if (over.id === DROPPABLE_ID.X_AXIS_WELL) {
     const dimensions = state.settings["graph.dimensions"] ?? [];
 
-    const isInUse = Object.values(state.columnValuesMapping).some(values =>
-      values.includes(columnRef.name),
+    const isInUse = Object.values(state.columnValuesMapping).some(
+      valueSources => checkColumnMappingExists(valueSources, columnRef),
     );
     if (isInUse) {
       return;
@@ -590,9 +588,8 @@ const cartesianDropHandler: DropHandler = (state, { active, over }) => {
       state.columns[index] = cloneColumnProperties(dimension, column);
       state.columnValuesMapping[dimension.name] = addColumnMapping(
         state.columnValuesMapping[dimension.name],
-        columnRef.name,
+        columnRef,
       );
-      state.referencedColumns.push(columnRef);
     } else {
       const nameIndex = dimensions.length + 1;
       const newDimension = cloneColumnProperties(
@@ -600,8 +597,7 @@ const cartesianDropHandler: DropHandler = (state, { active, over }) => {
         column,
       );
       state.columns.push(newDimension);
-      state.referencedColumns.push(columnRef);
-      state.columnValuesMapping[newDimension.name] = [columnRef.name];
+      state.columnValuesMapping[newDimension.name] = [columnRef];
       state.settings = {
         ...state.settings,
         "graph.dimensions": [...dimensions, newDimension.name],
@@ -612,8 +608,8 @@ const cartesianDropHandler: DropHandler = (state, { active, over }) => {
   if (over.id === DROPPABLE_ID.Y_AXIS_WELL) {
     const metrics = state.settings["graph.metrics"] ?? [];
 
-    const isInUse = Object.values(state.columnValuesMapping).some(values =>
-      values.includes(columnRef.name),
+    const isInUse = Object.values(state.columnValuesMapping).some(
+      valueSources => checkColumnMappingExists(valueSources, columnRef),
     );
     if (isInUse) {
       return;
@@ -628,9 +624,8 @@ const cartesianDropHandler: DropHandler = (state, { active, over }) => {
       state.columns[index] = cloneColumnProperties(metric, column);
       state.columnValuesMapping[metric.name] = addColumnMapping(
         state.columnValuesMapping[metric.name],
-        columnRef.name,
+        columnRef,
       );
-      state.referencedColumns.push(columnRef);
     } else {
       const nameIndex = metrics.length + 1;
       const newMetric = cloneColumnProperties(
@@ -638,8 +633,7 @@ const cartesianDropHandler: DropHandler = (state, { active, over }) => {
         column,
       );
       state.columns.push(newMetric);
-      state.referencedColumns.push(columnRef);
-      state.columnValuesMapping[newMetric.name] = [columnRef.name];
+      state.columnValuesMapping[newMetric.name] = [columnRef];
       state.settings = {
         ...state.settings,
         "graph.metrics": [...metrics, newMetric.name],
@@ -648,8 +642,7 @@ const cartesianDropHandler: DropHandler = (state, { active, over }) => {
   }
 
   if (over.id === DROPPABLE_ID.SCATTER_BUBBLE_SIZE_WELL) {
-    state.columnValuesMapping["BUBBLE_SIZE"] = [columnRef.name];
-    state.referencedColumns.push(columnRef);
+    state.columnValuesMapping["BUBBLE_SIZE"] = [columnRef];
   }
 };
 
@@ -662,7 +655,7 @@ const funnelDropHandler: DropHandler = (state, { active, over }) => {
   const columnRef = createVisualizerColumnReference(
     dataSource,
     column,
-    state.referencedColumns,
+    getReferencedColumns({ visualizer: state }),
   );
 
   if (over.id === DROPPABLE_ID.CANVAS_MAIN && isNumeric(column)) {
@@ -671,13 +664,12 @@ const funnelDropHandler: DropHandler = (state, { active, over }) => {
     if (metric.column && dimension.column) {
       state.columnValuesMapping[metric.column.name] = addColumnMapping(
         state.columnValuesMapping[metric.column.name],
-        columnRef.name,
+        columnRef,
       );
       state.columnValuesMapping[dimension.column.name] = addColumnMapping(
         state.columnValuesMapping[dimension.column.name],
         createDataSourceNameRef(dataSource.id),
       );
-      state.referencedColumns.push(columnRef);
     }
   }
 };
@@ -690,7 +682,7 @@ const pivotDropHandler: DropHandler = (state, { active, over }) => {
     const columnRef = createVisualizerColumnReference(
       dataSource,
       column,
-      state.referencedColumns,
+      getReferencedColumns({ visualizer: state }),
     );
 
     if (over.id === DROPPABLE_ID.PIVOT_COLUMNS_WELL) {
@@ -741,13 +733,12 @@ const pivotDropHandler: DropHandler = (state, { active, over }) => {
     }
 
     if (shouldAddColumn) {
-      state.referencedColumns.push(columnRef);
       state.columns.push({
         ...column,
         name: columnRef.name,
         source: column.source === "breakout" ? "breakout" : "artificial",
       });
-      state.columnValuesMapping[columnRef.name] = [columnRef.name];
+      state.columnValuesMapping[columnRef.name] = [columnRef];
     }
   }
 
@@ -769,9 +760,8 @@ const pivotDropHandler: DropHandler = (state, { active, over }) => {
           columns: columns.filter(col => col !== column.name),
         },
       };
-      state.referencedColumns = state.referencedColumns.filter(
-        ref => ref.name !== column.name,
-      );
+      state.columns = state.columns.filter(col => col.name !== column.name);
+      delete state.columnValuesMapping[column.name];
     } else if (wellId === DROPPABLE_ID.PIVOT_ROWS_WELL) {
       const rows = state.settings["pivot_table.column_split"]?.rows ?? [];
       state.settings = {
@@ -784,9 +774,8 @@ const pivotDropHandler: DropHandler = (state, { active, over }) => {
           rows: rows.filter(col => col !== column.name),
         },
       };
-      state.referencedColumns = state.referencedColumns.filter(
-        ref => ref.name !== column.name,
-      );
+      state.columns = state.columns.filter(col => col.name !== column.name);
+      delete state.columnValuesMapping[column.name];
     } else if (wellId === DROPPABLE_ID.PIVOT_VALUES_WELL) {
       const values = state.settings["pivot_table.column_split"]?.values ?? [];
       state.settings = {
@@ -799,17 +788,19 @@ const pivotDropHandler: DropHandler = (state, { active, over }) => {
           values: values.filter(col => col !== column.name),
         },
       };
-      state.referencedColumns = state.referencedColumns.filter(
-        ref => ref.name !== column.name,
-      );
+      state.columns = state.columns.filter(col => col.name !== column.name);
+      delete state.columnValuesMapping[column.name];
     }
   }
 };
 
-function addColumnMapping(mapping: string[] | undefined, value: string) {
+function addColumnMapping(
+  mapping: VisualizerColumnValueSource[] | undefined,
+  source: VisualizerColumnValueSource,
+) {
   const nextMapping = mapping ? [...mapping] : [];
-  if (!nextMapping.includes(value)) {
-    nextMapping.push(value);
+  if (!checkColumnMappingExists(nextMapping, source)) {
+    nextMapping.push(source);
   }
   return nextMapping;
 }
