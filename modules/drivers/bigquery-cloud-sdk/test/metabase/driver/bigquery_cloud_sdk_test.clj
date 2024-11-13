@@ -227,10 +227,20 @@
                                          " decimal_col DECIMAL, "
                                          " bignumeric_col BIGNUMERIC, "
                                          " bigdecimal_col BIGDECIMAL, "
-                                         " string255_col STRING(255)) "
-                                         "AS SELECT NUMERIC '%s', DECIMAL '%s', BIGNUMERIC '%s', BIGDECIMAL '%s', 'hello'")
+                                         " string255_col STRING(255), "
+                                         " bytes32_col BYTES(32), "
+                                         " numeric29_col NUMERIC(29), "
+                                         " decimal29_col DECIMAL(29), "
+                                         " bignumeric32_col BIGNUMERIC(32), "
+                                         " bigdecimal76_col BIGDECIMAL(76,38))"
+                                         "AS SELECT NUMERIC '%s', DECIMAL '%s', BIGNUMERIC '%s', BIGDECIMAL '%s', 'hello', "
+                                         "  B'mybytes', NUMERIC '%s', DECIMAL '%s', BIGNUMERIC '%s', BIGDECIMAL '%s'")
                                     ~test-db-name
                                     tbl-nm#
+                                    ~numeric-val
+                                    ~decimal-val
+                                    ~bignumeric-val
+                                    ~bigdecimal-val
                                     ~numeric-val
                                     ~decimal-val
                                     ~bignumeric-val
@@ -757,7 +767,42 @@
                :database-type "STRING",
                :base-type :type/Text,
                :database-partitioned false,
-               :database-position 4}]
+               :database-position 4}
+              {:name "bytes32_col",
+               :table-name tbl-nm,
+               :table-schema test-db-name,
+               :database-type "BYTES",
+               :base-type :type/*,
+               :database-partitioned false,
+               :database-position 5}
+              {:name "numeric29_col",
+               :table-name tbl-nm,
+               :table-schema test-db-name,
+               :database-type "NUMERIC",
+               :base-type :type/Decimal,
+               :database-partitioned false,
+               :database-position 6}
+              {:name "decimal29_col",
+               :table-name tbl-nm,
+               :table-schema test-db-name,
+               :database-type "NUMERIC",
+               :base-type :type/Decimal,
+               :database-partitioned false,
+               :database-position 7}
+              {:name "bignumeric32_col",
+               :table-name tbl-nm
+               :table-schema test-db-name
+               :database-type "BIGNUMERIC",
+               :base-type :type/Decimal,
+               :database-partitioned false,
+               :database-position 8}
+              {:name "bigdecimal76_col",
+               :table-name tbl-nm
+               :table-schema test-db-name
+               :database-type "BIGNUMERIC",
+               :base-type :type/Decimal,
+               :database-partitioned false,
+               :database-position 9}]
              (driver/describe-fields :bigquery-cloud-sdk (mt/db) {:table-names [tbl-nm] :schema-names [test-db-name]}))
           "`describe-fields` should see the fields in the table")
       (sync/sync-database! (mt/db) {:scan :schema})
