@@ -3,12 +3,16 @@
    [clojure.java.io :as io]
    [clojure.test :refer :all]
    [metabase.channel.template.handlebars :as handlebars]
-   [metabase.util :as u])
+   [metabase.util :as u]
+   [metabase.util.random :as u.random])
   (:import
    (com.github.jknack.handlebars
     Parser Helper Template)
    (com.github.jknack.handlebars.io
     TemplateSource)))
+
+(comment
+  u.random/keepme)
 
 (set! *warn-on-reflection* true)
 
