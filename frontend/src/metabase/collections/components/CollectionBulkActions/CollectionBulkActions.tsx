@@ -43,6 +43,7 @@ export const CollectionBulkActions = memo(
   }: CollectionBulkActionsProps) => {
     const dispatch = useDispatch();
     const [selectedCards, setSelectedCards] = useState<any[]>([]);
+    const [isLoading, setIsLoading] = useState(false);
     const [rememberedDestination, setRememberedDestination] =
       useState<Destination | null>(null);
 
@@ -108,17 +109,19 @@ export const CollectionBulkActions = memo(
 
           //Otherwise, get the names of the affected dashboards and display the modal
           else {
+            setSelectedAction(null);
+            setIsLoading(true);
             const cardDashboards = await getAffectedDashboardsFromMove(
               potentialConfirmCards,
               destination,
               dispatch,
             );
+            setIsLoading(false);
 
             // If after all the processing, we determine there are affected dashboards,
             // Set the state to show the info modal.
             if (cardDashboards.length > 0) {
               setSelectedCards(cardDashboards);
-              setSelectedAction(null);
               setRememberedDestination(destination);
             }
             //If no dashboards are actually affected, then do the move without a confirmation modal
@@ -186,6 +189,7 @@ export const CollectionBulkActions = memo(
           selectedItems={selectedItems || []}
           onConfirm={handleConfirmedBulkQuestionMove}
           onClose={handleCloseModal}
+          isLoading={isLoading}
         />
       </>
     );
