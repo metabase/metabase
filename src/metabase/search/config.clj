@@ -129,8 +129,8 @@
    [:current-user-id    pos-int?]
    [:is-superuser?      :boolean]
    ;; TODO only optional and maybe for tests, clean that up!
-   [:is-impersonated-user? {:optional true } [:maybe :boolean]]
-   [:is-sandboxed-user?    {:optional true } [:maybe :boolean]]
+   [:is-impersonated-user? {:optional true} [:maybe :boolean]]
+   [:is-sandboxed-user?    {:optional true} [:maybe :boolean]]
    [:current-user-perms [:set perms.u/PathSchema]]
 
    [:model-ancestors?   :boolean]
