@@ -190,18 +190,18 @@
 
      :slack
      (fn [{:keys [card-id]} [pulse-results]]
-       (is (= {:channel-id "#general"
-               :attachments
-               [{:blocks [{:type "header", :text {:type "plain_text", :text "Pulse: Pulse Name", :emoji true}}
-                          {:type "section", :fields [{:type "mrkdwn", :text "Sent by Rasta Toucan"}]}]}
-                {:title           pulse.test-util/card-name
-                 :rendered-info   {:attachments false
-                                   :content     true}
-                 :title_link      (str "https://metabase.com/testmb/question/" card-id)
-                 :attachment-name "image.png"
-                 :channel-id      "FOO"
-                 :fallback        pulse.test-util/card-name}]}
-              (pulse.test-util/thunk->boolean pulse-results))))}}))
+       (is (= [{:channel-id "#general"
+                :attachments
+                [{:blocks [{:type "header", :text {:type "plain_text", :text "Pulse: Pulse Name", :emoji true}}
+                           {:type "section", :fields [{:type "mrkdwn", :text "Sent by Rasta Toucan"}]}]}
+                 {:title           pulse.test-util/card-name
+                  :rendered-info   {:attachments false
+                                    :content     true}
+                  :title_link      (str "https://metabase.com/testmb/question/" card-id)
+                  :attachment-name "image.png"
+                  :channel-id      "FOO"
+                  :fallback        pulse.test-util/card-name}]}]
+              (map pulse.test-util/thunk->boolean pulse-results))))}}))
 
 (deftest basic-table-test
   (tests {:pulse {:skip_if_empty false} :display :table}
@@ -231,19 +231,19 @@
            (fn [{:keys [card-id]} [pulse-results]]
              (testing "\"more results in attachment\" text should not be present for Slack Pulses"
                (testing "Pulse results"
-                 (is (= {:channel-id "#general"
-                         :attachments
-                         [{:blocks
-                           [{:type "header", :text {:type "plain_text", :text "Pulse: Pulse Name", :emoji true}}
-                            {:type "section", :fields [{:type "mrkdwn", :text "Sent by Rasta Toucan"}]}]}
-                          {:title           pulse.test-util/card-name
-                           :rendered-info   {:attachments false
-                                             :content     true}
-                           :title_link      (str "https://metabase.com/testmb/question/" card-id)
-                           :attachment-name "image.png"
-                           :channel-id      "FOO"
-                           :fallback        pulse.test-util/card-name}]}
-                        (pulse.test-util/thunk->boolean pulse-results))))
+                 (is (= [{:channel-id "#general"
+                          :attachments
+                          [{:blocks
+                            [{:type "header", :text {:type "plain_text", :text "Pulse: Pulse Name", :emoji true}}
+                             {:type "section", :fields [{:type "mrkdwn", :text "Sent by Rasta Toucan"}]}]}
+                           {:title           pulse.test-util/card-name
+                            :rendered-info   {:attachments false
+                                              :content     true}
+                            :title_link      (str "https://metabase.com/testmb/question/" card-id)
+                            :attachment-name "image.png"
+                            :channel-id      "FOO"
+                            :fallback        pulse.test-util/card-name}]}]
+                        (map pulse.test-util/thunk->boolean pulse-results))))
                (testing "attached-results-text should be invoked exactly once"
                  (is (= 1
                         (count (pulse.test-util/input @#'body/attached-results-text)))))
@@ -470,16 +470,16 @@
 
              :slack
              (fn [{:keys [card-id]} [result]]
-               (is (= {:channel-id  "#general",
-                       :attachments [{:blocks [{:type "header", :text {:type "plain_text", :text "🔔 Test card", :emoji true}}]}
-                                     {:title           pulse.test-util/card-name
-                                      :rendered-info   {:attachments false
-                                                        :content     true}
-                                      :title_link      (str "https://metabase.com/testmb/question/" card-id)
-                                      :attachment-name "image.png"
-                                      :channel-id      "FOO"
-                                      :fallback        pulse.test-util/card-name}]}
-                      (pulse.test-util/thunk->boolean result)))
+               (is (= [{:channel-id  "#general",
+                        :attachments [{:blocks [{:type "header", :text {:type "plain_text", :text "🔔 Test card", :emoji true}}]}
+                                      {:title           pulse.test-util/card-name
+                                       :rendered-info   {:attachments false
+                                                         :content     true}
+                                       :title_link      (str "https://metabase.com/testmb/question/" card-id)
+                                       :attachment-name "image.png"
+                                       :channel-id      "FOO"
+                                       :fallback        pulse.test-util/card-name}]}]
+                      (map pulse.test-util/thunk->boolean result)))
                (is (every? produces-bytes? (rest (:attachments result)))))}}
 
            "with no data"
@@ -792,26 +792,26 @@
                                                  :details      {:channel "#general"}}]
       (pulse.test-util/slack-test-setup
        (let [[slack-data] (metabase.pulse/send-pulse! (pulse/retrieve-pulse pulse-id))]
-         (is (= {:channel-id "#general",
-                 :attachments
-                 [{:blocks
-                   [{:type "header", :text {:type "plain_text", :text "Pulse: Pulse Name", :emoji true}}
-                    {:type "section", :fields [{:type "mrkdwn", :text "Sent by Rasta Toucan"}]}]}
-                  {:title           pulse.test-util/card-name,
-                   :rendered-info   {:attachments false
-                                     :content     true}
-                   :title_link      (str "https://metabase.com/testmb/question/" card-id-1),
-                   :attachment-name "image.png",
-                   :channel-id      "FOO",
-                   :fallback        pulse.test-util/card-name}
-                  {:title           "Test card 2",
-                   :rendered-info   {:attachments false
-                                     :content     true}
-                   :title_link      (str "https://metabase.com/testmb/question/" card-id-2),
-                   :attachment-name "image.png",
-                   :channel-id      "FOO",
-                   :fallback        "Test card 2"}]}
-                (pulse.test-util/thunk->boolean slack-data)))
+         (is (= [{:channel-id "#general",
+                  :attachments
+                  [{:blocks
+                    [{:type "header", :text {:type "plain_text", :text "Pulse: Pulse Name", :emoji true}}
+                     {:type "section", :fields [{:type "mrkdwn", :text "Sent by Rasta Toucan"}]}]}
+                   {:title           pulse.test-util/card-name,
+                    :rendered-info   {:attachments false
+                                      :content     true}
+                    :title_link      (str "https://metabase.com/testmb/question/" card-id-1),
+                    :attachment-name "image.png",
+                    :channel-id      "FOO",
+                    :fallback        pulse.test-util/card-name}
+                   {:title           "Test card 2",
+                    :rendered-info   {:attachments false
+                                      :content     true}
+                    :title_link      (str "https://metabase.com/testmb/question/" card-id-2),
+                    :attachment-name "image.png",
+                    :channel-id      "FOO",
+                    :fallback        "Test card 2"}]}]
+                (map pulse.test-util/thunk->boolean slack-data)))
          (testing "attachments"
            (is (true? (every? produces-bytes? (rest (:attachments slack-data)))))))))))
 
@@ -866,9 +866,9 @@
                                                  :channel_type "slack"
                                                  :details      {:channel "#general"}}]
           (pulse.test-util/slack-test-setup
-           (let [pulse-data (metabase.pulse/send-pulse! (pulse/retrieve-pulse pulse-id))
-                 slack-data (m/find-first map? pulse-data)
-                 email-data (first (m/find-first seq? pulse-data))]
+           (let [pulse-data (flatten (metabase.pulse/send-pulse! (pulse/retrieve-pulse pulse-id)))
+                 slack-data (m/find-first (comp some? :channel-id) pulse-data)
+                 email-data (m/find-first (comp nil? :channel-id) pulse-data)]
              (is (= {:channel-id  "#general"
                      :attachments [{:blocks
                                     [{:type "header", :text {:type "plain_text", :text "Pulse: Pulse Name", :emoji true}}
@@ -976,12 +976,38 @@
           (#'metabase.pulse/send-notifications! nil [fake-email-notification])
           (is (= {:numberOfSuccessfulCallsWithRetryAttempt 1}
                  (get-positive-retry-metrics test-retry)))
+          (is (= 1 (count @mt/inbox)))))))
+  (testing "retry individual emails"
+    (let [retry-config (assoc (#'retry/retry-configuration)
+                              :max-attempts 2
+                              :initial-interval-millis 1)
+          test-retry   (retry/random-exponential-backoff-retry "test-retry" retry-config)
+          works-after   (tu/works-after 1 mt/fake-inbox-email-fn)]
+      (with-redefs [email/send-email! (fn [crendentials email]
+                                        (if (= "should_retry" (:subject email))
+                                          (works-after crendentials email)
+                                          email))
+                    retry/decorate    (rt/test-retry-decorate-fn test-retry)]
+        (mt/with-temporary-setting-values [email-smtp-host "fake_smtp_host"
+                                           email-smtp-port 587]
+          (mt/reset-inbox!)
+          (#'metabase.pulse/send-notifications! nil [[{:subject      "should_retry"
+                                                       :recipients   ["whoever@example.com"]
+                                                       :message-type :text
+                                                       :message      "test message body"}
+                                                      {:subject      "should_not_retry"
+                                                       :recipients   ["whoever@example.com"]
+                                                       :message-type :text
+                                                       :message      "test message body"}]])
+          (is (= {:numberOfSuccessfulCallsWithRetryAttempt 1
+                  :numberOfSuccessfulCallsWithoutRetryAttempt 1}
+                 (get-positive-retry-metrics test-retry)))
           (is (= 1 (count @mt/inbox))))))))
 
 (def ^:private fake-slack-notification
-  {:channel-id  "test-channel"
-   :message     "test message body"
-   :attachments []})
+  [{:channel-id  "test-channel"
+    :message     "test message body"
+    :attachments []}])
 
 (deftest slack-notification-retry-test
   (testing "post slack message succeeds w/o retry"
@@ -1067,6 +1093,6 @@
      :model/PulseChannel _              {:pulse_id pulse-id
                                          :channel_type "email"
                                          :details      {:emails ["foo@metabase.com"]}}]
-   (pulse.test-util/email-test-setup
-    (metabase.pulse/send-pulse! (pulse/retrieve-notification pulse-id))
-    (is (empty? @mt/inbox)))))
+    (pulse.test-util/email-test-setup
+     (metabase.pulse/send-pulse! (pulse/retrieve-notification pulse-id))
+     (is (empty? @mt/inbox)))))
