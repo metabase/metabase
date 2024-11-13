@@ -67,19 +67,21 @@
   [^DelayQueue queue delay-ms value]
   (.offer queue (->DelayValue value (.plus (Instant/now) (Duration/ofMillis delay-ms)))))
 
-(defn- take-delayed-batch* [^DelayQueue queue max-items acc]
+(defn- take-delayed-batch* [^DelayQueue queue max-items ^long poll-ms acc]
   (loop [acc acc]
     (if (>= (count acc) max-items)
       acc
-      (if-let [item (.poll queue)]
+      (if-let [item (if (pos? poll-ms)
+                      (.poll queue poll-ms TimeUnit/MILLISECONDS)
+                      (.poll queue))]
         (recur (conj acc (:value item)))
         (not-empty acc)))))
 
 (defn take-delayed-batch!
   "Get up to `max-items` of the ready items off a given delay queue."
   ([queue max-items]
-   (take-delayed-batch* queue max-items []))
-  ([^DelayQueue queue max-items ^long max-wait-ms]
-   (if-let [fst (.poll queue max-wait-ms TimeUnit/MILLISECONDS)]
-     (take-delayed-batch* queue max-items [(:value fst)])
+   (take-delayed-batch* queue max-items 0 []))
+  ([^DelayQueue queue max-items ^long max-first-ms ^long max-next-ms]
+   (if-let [fst (.poll queue max-first-ms TimeUnit/MILLISECONDS)]
+     (take-delayed-batch* queue max-items max-next-ms [(:value fst)])
      nil)))

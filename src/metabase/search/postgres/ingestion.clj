@@ -6,12 +6,19 @@
    [metabase.search.config :as search.config]
    [metabase.search.postgres.index :as search.index]
    [metabase.search.spec :as search.spec]
+   [metabase.task :as task]
    [metabase.util :as u]
    [metabase.util.queue :as queue]
    [toucan2.core :as t2]
    [toucan2.realize :as t2.realize]))
 
 (set! *warn-on-reflection* true)
+
+(defonce ^:private queue (queue/delay-queue))
+
+(def ^:private delay-ms 100)
+
+(def ^:private batch-max 50)
 
 (def ^:private insert-batch-size 150)
 
@@ -90,7 +97,7 @@
          (m/distinct-by (juxt :id :model))
          (map ->entry)
          (partition-all insert-batch-size)))
-       (run! search.index/batch-update!)))
+       (transduce (map search.index/batch-update!) + 0)))
 
 (defn populate-index!
   "Go over all searchable items and populate the index with them."
@@ -103,28 +110,34 @@
 
 (defn- bulk-ingest! [updates]
   (->> (for [[search-model where-clauses] (u/group-by first second updates)]
-         (spec-index-reducible search-model (into [:or (distinct where-clauses)])))
+         (spec-index-reducible search-model (into [:or] (distinct where-clauses))))
        ;; init collection is only for clj-kondo, as we know that the list is non-empty
        (reduce u/rconcat [])
        (batch-update!)))
 
-(defonce ^:private queue (queue/delay-queue))
+(defn process-next-batch
+  "Wait up to 'delay-ms' for a queued batch to become ready, and process the batch if we get one.
+  Returns the number of search index entries that get updated as a result."
+  [first-delay-ms next-delay-ms]
+  (if-let [queued-updates (queue/take-delayed-batch! queue batch-max first-delay-ms next-delay-ms)]
+    (bulk-ingest! queued-updates)
+    0))
 
-(def ^:private delay-ms 100)
+(defn- index-worker-exists? []
+  (task/job-exists? @(requiring-resolve 'metabase.task.search-index/job-key-full))
+  (task/job-exists? @(requiring-resolve 'metabase.task.search-index/job-key-incremental)))
 
-(def ^:private batch-max 50)
-
-(defn- ^:private ingest-maybe-async! [updates]
-  (if *force-sync*
-    (bulk-ingest! updates)
-    (do (doseq [update updates]
-          (queue/put-with-delay! queue delay-ms update))
-        ;; TODO create a worker task to do this instead
-        (doto (Thread. ^Runnable (fn []
-                                   ;; add buffer to the queue waiting time
-                                   (let [queued-updates (queue/take-delayed-batch! queue batch-max (+ delay-ms 50))]
-                                     (bulk-ingest! queued-updates))))
-          (.start)))))
+(defn- ^:private ingest-maybe-async!
+  "Update or create any search index entries related to the given updates.
+  Will be async if the worker exists, otherwise it will be done synchronously on the calling thread.
+  Can also be forced to be run synchronous for testing."
+  ([updates]
+   (ingest-maybe-async! updates (or *force-sync* (not (index-worker-exists?)))))
+  ([updates sync?]
+   (if sync?
+     (bulk-ingest! updates)
+     (doseq [update updates]
+       (queue/put-with-delay! queue delay-ms update)))))
 
 (defn update-index!
   "Given a new or updated instance, create or update all the corresponding search entries if needed."
