@@ -16,7 +16,7 @@ You can set the environment variable [`MAX_SESSION_AGE`](../configuring-metabase
 
 ```
 # Change session expiration to 24 hours
-MAX_SESSION_AGE=1440 java -jar metabase.jar
+MAX_SESSION_AGE=1440 java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar
 ```
 
 or set the Java system property:
@@ -44,7 +44,7 @@ Metabase also supports using [session cookies](https://developer.mozilla.org/en-
 You can tell Metabase to always use session cookies with the environment variable or Java system property `MB_SESSION_COOKIES`:
 
 ```
-MB_SESSION_COOKIES=true java -jar metabase.jar
+MB_SESSION_COOKIES=true java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar
 ```
 
 Setting this environment variable will override the behavior of the "Remember me" checkbox and enforce the use of session cookies for all users.

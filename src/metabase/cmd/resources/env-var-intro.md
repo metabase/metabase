@@ -28,7 +28,7 @@ $env:MB_SITE_NAME="Awesome Company"
 # Windows batch/cmd
 set MB_SITE_NAME="Awesome Company"
 
-java -jar metabase.jar
+java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar
 ```
 
 Or set it as Java property, which works the same across all systems:
