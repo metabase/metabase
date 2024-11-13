@@ -29,16 +29,12 @@ export const OPERATOR = {
   False: "false",
 };
 
-/**
- *
- * @param {string} expression
- */
-export function tokenize(expression) {
+export function tokenize(expression: string) {
   const source = expression;
   const length = expression.length;
   let index = 0;
 
-  const isWhiteSpace = cp =>
+  const isWhiteSpace = (cp: number) =>
     cp === 0x0009 || // tab
     cp === 0x000a || // line feed
     cp === 0x000b || // vertical tab
@@ -65,9 +61,9 @@ export function tokenize(expression) {
     cp === 0x205f || // four-eighteenths em space
     cp === 0x3000; // cjk language space
 
-  const isDigit = cp => cp >= 0x30 && cp <= 0x39; // 0..9
+  const isDigit = (cp: number) => cp >= 0x30 && cp <= 0x39; // 0..9
 
-  const isAlpha = cp =>
+  const isAlpha = (cp: number) =>
     (cp >= 0x41 && cp <= 0x5a) || // A..Z
     (cp >= 0x61 && cp <= 0x7a); // a..z
 
@@ -270,9 +266,9 @@ export function tokenize(expression) {
     return { type, start, end, error };
   };
 
-  const isIdentifierStart = cp => isAlpha(cp) || cp === 0x5f; // underscore;
+  const isIdentifierStart = (cp: number) => isAlpha(cp) || cp === 0x5f; // underscore;
 
-  const isIdentifierChar = cp =>
+  const isIdentifierChar = (cp: number) =>
     isAlpha(cp) ||
     isDigit(cp) ||
     cp === 0x2e || // dot
@@ -313,24 +309,22 @@ export function tokenize(expression) {
     return { type, start, end, error };
   };
 
+  const scanToken = () => {
+    return (
+      scanOperator() ??
+      scanNumericLiteral() ??
+      scanStringLiteral() ??
+      scanIdentifier() ??
+      scanBracketIdentifier()
+    );
+  };
+
   const main = () => {
     const tokens = [],
       errors = [];
     while (index < length) {
       skipWhitespaces();
-      let token = scanOperator();
-      if (!token) {
-        token = scanNumericLiteral();
-      }
-      if (!token) {
-        token = scanStringLiteral();
-      }
-      if (!token) {
-        token = scanIdentifier();
-      }
-      if (!token) {
-        token = scanBracketIdentifier();
-      }
+      const token = scanToken();
       if (token) {
         const { error, ...t } = token;
         tokens.push(t);
