@@ -28,8 +28,7 @@
       (is (= :search.engine/fulltext (#'search.impl/parse-engine "fulltext")))))
   (when (search/supports-index?)
     (testing "Subclasses"
-      (is (= :search.engine/hybrid (#'search.impl/parse-engine "hybrid")))
-      (is (= :search.engine/minimal (#'search.impl/parse-engine "minimal"))))))
+      (is (= :search.engine/hybrid (#'search.impl/parse-engine "hybrid"))))))
 
 (deftest ^:parallel order-clause-test
   (testing "it includes all columns and normalizes the query"

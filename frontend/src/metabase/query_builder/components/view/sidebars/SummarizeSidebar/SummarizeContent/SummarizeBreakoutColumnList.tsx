@@ -1,10 +1,9 @@
 import { t } from "ttag";
 
-import { Stack, type StackProps } from "metabase/ui";
+import { Space, Stack, type StackProps, Title } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 
 import { BreakoutColumnList } from "../BreakoutColumnList";
-import { SectionTitle } from "../SummarizeSidebar.styled";
 
 type SummarizeBreakoutColumnListProps = {
   query: Lib.Query;
@@ -33,7 +32,8 @@ export const SummarizeBreakoutColumnList = ({
     spacing="0"
     {...containerProps}
   >
-    <SectionTitle>{t`Group by`}</SectionTitle>
+    <Title order={5} fw={900}>{t`Group by`}</Title>
+    <Space my="sm" />
     <BreakoutColumnList
       query={query}
       stageIndex={stageIndex}

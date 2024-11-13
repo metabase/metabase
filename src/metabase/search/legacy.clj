@@ -1,17 +1,19 @@
 (ns metabase.search.legacy
   (:require
+   [clojure.string :as str]
+   [flatland.ordered.map :as ordered-map]
    [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
    [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
    [metabase.models.collection :as collection]
-   [metabase.models.permissions :as perms]
    [metabase.search.api :as search.api]
    [metabase.search.config
     :as search.config
     :refer [SearchContext SearchableModel]]
-   [metabase.search.filter :as search.filter]
-   [metabase.search.scoring :as scoring]
+   [metabase.search.in-place.filter :as search.in-place.filter]
+   [metabase.search.in-place.scoring :as scoring]
+   [metabase.search.permissions :as search.permissions]
    [metabase.search.util :as search.util]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -25,6 +27,14 @@
    :keyword
    [:tuple :any :keyword]])
 
+(defn search-model->revision-model
+  "Return the appropriate revision model given a search model."
+  [model]
+  (case model
+    "dataset" (recur "card")
+    "metric" (recur "card")
+    (str/capitalize model)))
+
 (mu/defn- ->column-alias :- keyword?
   "Returns the column name. If the column is aliased, i.e. [`:original_name` `:aliased_name`], return the aliased
   column name"
@@ -33,12 +43,74 @@
     (second column-or-aliased)
     column-or-aliased))
 
+(def all-search-columns
+  "All columns that will appear in the search results, and the types of those columns. The generated search query is a
+  `UNION ALL` of the queries for each different entity; it looks something like:
+
+    SELECT 'card' AS model, id, cast(NULL AS integer) AS table_id, ...
+    FROM report_card
+    UNION ALL
+    SELECT 'metric' as model, id, table_id, ...
+    FROM metric
+
+  Columns that aren't used in any individual query are replaced with `SELECT cast(NULL AS <type>)` statements. (These
+  are cast to the appropriate type because Postgres will assume `SELECT NULL` is `TEXT` by default and will refuse to
+  `UNION` two columns of two different types.)"
+  (ordered-map/ordered-map
+   ;; returned for all models. Important to be first for changing model for dataset
+   :model               :text
+   :id                  :integer
+   :name                :text
+   :display_name        :text
+   :description         :text
+   :archived            :boolean
+   ;; returned for Card, Dashboard, and Collection
+   :collection_id       :integer
+   :collection_name     :text
+   :collection_type     :text
+   :collection_location :text
+   :collection_authority_level :text
+   :archived_directly   :boolean
+   ;; returned for Card and Dashboard
+   :collection_position :integer
+   :creator_id          :integer
+   :created_at          :timestamp
+   :bookmark            :boolean
+   ;; returned for everything except Collection
+   :updated_at          :timestamp
+   ;; returned only for Collection
+   :location            :text
+   ;; returned for Card only, used for scoring and displays
+   :dashboardcard_count :integer
+   :last_edited_at      :timestamp
+   :last_editor_id      :integer
+   :moderated_status    :text
+   :display             :text
+   ;; returned for Metric and Segment
+   :table_id            :integer
+   :table_schema        :text
+   :table_name          :text
+   :table_description   :text
+   ;; returned for Metric, Segment, and Action
+   :database_id         :integer
+   ;; returned for Database and Table
+   :initial_sync_status :text
+   :database_name       :text
+   ;; returned for Action
+   :model_id            :integer
+   :model_name          :text
+   ;; returned for indexed-entity
+   :pk_ref              :text
+   :model_index_id      :integer
+   ;; returned for Card and Action
+   :dataset_query       :text))
+
 (mu/defn- canonical-columns :- [:sequential HoneySQLColumn]
   "Returns a seq of lists of canonical columns for the search query with the given `model` Will return column names
   prefixed with the `model` name so that it can be used in criteria. Projects a `nil` for columns the `model` doesn't
   have and doesn't modify aliases."
   [model :- SearchableModel, col-alias->honeysql-clause :- [:map-of :keyword HoneySQLColumn]]
-  (for [[search-col col-type] search.config/all-search-columns
+  (for [[search-col col-type] all-search-columns
         :let [maybe-aliased-col (get col-alias->honeysql-clause search-col)]]
     (cond
       (= search-col :model)
@@ -112,7 +184,7 @@
       (sql.helpers/left-join [:revision :r]
                              [:and [:= :r.model_id (search.config/column-with-model-alias model :id)]
                               [:= :r.most_recent true]
-                              [:= :r.model (search.config/search-model->revision-model model)]])))
+                              [:= :r.model (search-model->revision-model model)]])))
 
 (mu/defn- with-moderated-status :- :map
   [query :- :map
@@ -129,7 +201,7 @@
   "CASE expression that lets the results be ordered by whether they're an exact (non-fuzzy) match or not"
   [query]
   (let [match             (search.util/wildcard-match (search.util/normalize query))
-        columns-to-search (->> search.config/all-search-columns
+        columns-to-search (->> all-search-columns
                                (filter (fn [[_k v]] (= v :text)))
                                (map first)
                                (remove #{:collection_authority_level :moderated_status
@@ -147,12 +219,174 @@
   {:arglists '([model search-context])}
   (fn [model _] model))
 
+(defmulti searchable-columns
+  "The columns that can be searched for each model."
+  {:arglists '([model search-native-query])}
+  (fn [model _] model))
+
+(defmethod searchable-columns :default
+  [_ _]
+  [:name])
+
+(defmethod searchable-columns "action"
+  [_ search-native-query]
+  (cond-> [:name
+           :description]
+    search-native-query
+    (conj :dataset_query)))
+
+(defmethod searchable-columns "card"
+  [_ search-native-query]
+  (cond-> [:name
+           :description]
+    search-native-query
+    (conj :dataset_query)))
+
+(defmethod searchable-columns "dataset"
+  [_ search-native-query]
+  (searchable-columns "card" search-native-query))
+
+(defmethod searchable-columns "metric"
+  [_ search-native-query]
+  (searchable-columns "card" search-native-query))
+
+(defmethod searchable-columns "dashboard"
+  [_ _]
+  [:name
+   :description])
+
+(defmethod searchable-columns "page"
+  [_ search-native-query]
+  (searchable-columns "dashboard" search-native-query))
+
+(defmethod searchable-columns "database"
+  [_ _]
+  [:name
+   :description])
+
+(defmethod searchable-columns "table"
+  [_ _]
+  [:name
+   :display_name
+   :description])
+
+(defmethod searchable-columns "indexed-entity"
+  [_ _]
+  [:name])
+
+(def ^:private default-columns
+  "Columns returned for all models."
+  [:id :name :description :archived :created_at :updated_at])
+
+(def ^:private bookmark-col
+  "Case statement to return boolean values of `:bookmark` for Card, Collection and Dashboard."
+  [[:case [:not= :bookmark.id nil] true :else false] :bookmark])
+
+(def ^:private dashboardcard-count-col
+  "Subselect to get the count of associated DashboardCards"
+  [{:select [:%count.*]
+    :from   [:report_dashboardcard]
+    :where  [:= :report_dashboardcard.card_id :card.id]}
+   :dashboardcard_count])
+
+(def ^:private table-columns
+  "Columns containing information about the Table this model references. Returned for Metrics and Segments."
+  [:table_id
+   :created_at
+   [:table.db_id       :database_id]
+   [:table.schema      :table_schema]
+   [:table.name        :table_name]
+   [:table.description :table_description]])
+
+(defmulti columns-for-model
+  "The columns that will be returned by the query for `model`, excluding `:model`, which is added automatically.
+  This is not guaranteed to be the final list of columns, new columns can be added by calling [[api.search/replace-select]]"
+  {:arglists '([model])}
+  (fn [model] model))
+
+(defmethod columns-for-model "action"
+  [_]
+  (conj default-columns :model_id
+        :creator_id
+        [:model.collection_id        :collection_id]
+        [:model.id                   :model_id]
+        [:model.name                 :model_name]
+        [:query_action.database_id   :database_id]
+        [:query_action.dataset_query :dataset_query]))
+
+(defmethod columns-for-model "card"
+  [_]
+  (conj default-columns :collection_id :archived_directly :collection_position :dataset_query :display :creator_id
+        [:collection.name :collection_name]
+        [:collection.type :collection_type]
+        [:collection.location :collection_location]
+        [:collection.authority_level :collection_authority_level]
+        bookmark-col dashboardcard-count-col))
+
+(defmethod columns-for-model "indexed-entity" [_]
+  [[:model-index-value.name     :name]
+   [:model-index-value.model_pk :id]
+   [:model-index.pk_ref         :pk_ref]
+   [:model-index.id             :model_index_id]
+   [:collection.name            :collection_name]
+   [:collection.type            :collection_type]
+   [:model.collection_id        :collection_id]
+   [:model.id                   :model_id]
+   [:model.name                 :model_name]
+   [:model.database_id          :database_id]])
+
+(defmethod columns-for-model "dashboard"
+  [_]
+  (conj default-columns :archived_directly :collection_id :collection_position :creator_id bookmark-col
+        [:collection.name :collection_name]
+        [:collection.type :collection_type]
+        [:collection.authority_level :collection_authority_level]))
+
+(defmethod columns-for-model "database"
+  [_]
+  [:id :name :description :created_at :updated_at :initial_sync_status])
+
+(defmethod columns-for-model "collection"
+  [_]
+  (conj (remove #{:updated_at} default-columns)
+        [:collection.id :collection_id]
+        [:name :collection_name]
+        [:type :collection_type]
+        [:authority_level :collection_authority_level]
+        :archived_directly
+        :location
+        bookmark-col))
+
+(defmethod columns-for-model "segment"
+  [_]
+  (concat default-columns table-columns [:creator_id]))
+
+(defmethod columns-for-model "metric"
+  [_]
+  (concat default-columns table-columns [:creator_id]))
+
+(defmethod columns-for-model "table"
+  [_]
+  [[:table.id :id]
+   [:table.name :name]
+   [:table.created_at :created_at]
+   [:table.display_name :display_name]
+   [:table.description :description]
+   [:table.updated_at :updated_at]
+   [:table.initial_sync_status :initial_sync_status]
+   [:table.id :table_id]
+   [:table.db_id :database_id]
+   [:table.schema :table_schema]
+   [:table.name :table_name]
+   [:table.description :table_description]
+   [:metabase_database.name :database_name]])
+
 (mu/defn- select-clause-for-model :- [:sequential HoneySQLColumn]
   "The search query uses a `union-all` which requires that there be the same number of columns in each of the segments
   of the query. This function will take the columns for `model` and will inject constant `nil` values for any column
-  missing from `entity-columns` but found in `search.config/all-search-columns`."
+  missing from `entity-columns` but found in `all-search-columns`."
   [model :- SearchableModel]
-  (let [entity-columns                (search.config/columns-for-model model)
+  (let [entity-columns                (columns-for-model model)
         column-alias->honeysql-clause (m/index-by ->column-alias entity-columns)
         cols-or-nils                  (canonical-columns model column-alias->honeysql-clause)]
     cols-or-nils))
@@ -173,57 +407,7 @@
   [model :- SearchableModel context :- SearchContext]
   (-> {:select (select-clause-for-model model)
        :from   (from-clause-for-model model)}
-      (search.filter/build-filters model context)))
-
-(mu/defn add-collection-join-and-where-clauses
-  "Add a `WHERE` clause to the query to only return Collections the Current User has access to; join against Collection,
-  so we can return its `:name`."
-  [honeysql-query :- ms/Map
-   model :- :string
-   {:keys [filter-items-in-personal-collection
-           archived
-           current-user-id
-           is-superuser?]} :- SearchContext]
-  (let [collection-id-col        (if (= model "collection")
-                                   :collection.id
-                                   :collection_id)
-        collection-filter-clause (collection/visible-collection-filter-clause
-                                  collection-id-col
-                                  {:include-archived-items    :all
-                                   :include-trash-collection? true
-                                   :permission-level          (if archived
-                                                                :write
-                                                                :read)}
-                                  {:current-user-id current-user-id
-                                   :is-superuser?   is-superuser?})]
-    (cond-> honeysql-query
-      true
-      (sql.helpers/where collection-filter-clause (perms/audit-namespace-clause :collection.namespace nil))
-      ;; add a JOIN against Collection *unless* the source table is already Collection
-      (not= model "collection")
-      (sql.helpers/left-join [:collection :collection]
-                             [:= collection-id-col :collection.id])
-
-      (some? filter-items-in-personal-collection)
-      (sql.helpers/where
-       (case filter-items-in-personal-collection
-         "only"
-         (concat [:or]
-                 ;; sub personal collections
-                 (for [id (t2/select-pks-set :model/Collection :personal_owner_id [:not= nil])]
-                   [:like :collection.location (format "/%d/%%" id)])
-                 ;; top level personal collections
-                 [[:and
-                   [:= :collection.location "/"]
-                   [:not= :collection.personal_owner_id nil]]])
-
-         "exclude"
-         (conj [:or]
-               (into
-                [:and [:= :collection.personal_owner_id nil]]
-                (for [id (t2/select-pks-set :model/Collection :personal_owner_id [:not= nil])]
-                  [:not-like :collection.location (format "/%d/%%" id)]))
-               [:= collection-id-col nil]))))))
+      (search.in-place.filter/build-filters model context)))
 
 (mu/defn- shared-card-impl
   [model :- :metabase.models.card/type
@@ -234,7 +418,7 @@
                              [:and
                               [:= :bookmark.card_id :card.id]
                               [:= :bookmark.user_id (:current-user-id search-ctx)]])
-      (add-collection-join-and-where-clauses "card" search-ctx)
+      (search.permissions/add-collection-join-and-where-clauses "card" search-ctx)
       (add-card-db-id-clause (:table-db-id search-ctx))
       (with-last-editing-info "card")
       (with-moderated-status "card")))
@@ -246,7 +430,7 @@
                              [:= :model.id :action.model_id])
       (sql.helpers/left-join :query_action
                              [:= :query_action.action_id :action.id])
-      (add-collection-join-and-where-clauses model search-ctx)))
+      (search.permissions/add-collection-join-and-where-clauses model search-ctx)))
 
 (defmethod search-query-for-model "card"
   [_model search-ctx]
@@ -271,7 +455,7 @@
                              [:and
                               [:= :bookmark.collection_id :collection.id]
                               [:= :bookmark.user_id (:current-user-id search-ctx)]])
-      (add-collection-join-and-where-clauses model search-ctx)))
+      (search.permissions/add-collection-join-and-where-clauses model search-ctx)))
 
 (defmethod search-query-for-model "database"
   [model search-ctx]
@@ -285,7 +469,7 @@
                               [:= :bookmark.dashboard_id :dashboard.id]
                               [:= :bookmark.user_id (:current-user-id search-ctx)]])
       (with-moderated-status "dashboard")
-      (add-collection-join-and-where-clauses model search-ctx)
+      (search.permissions/add-collection-join-and-where-clauses model search-ctx)
       (with-last-editing-info "dashboard")))
 
 (defn- add-model-index-permissions-clause
@@ -321,7 +505,7 @@
 
 (defmethod search.api/model-set :search.engine/in-place
   [search-ctx]
-  (let [model-queries (for [model (search.filter/search-context->applicable-models
+  (let [model-queries (for [model (search.in-place.filter/search-context->applicable-models
                                    ;; It's unclear why we don't use the existing :models
                                    (assoc search-ctx :models search.config/all-models))]
                         {:nest (sql.helpers/limit (search-query-for-model model search-ctx) 1)})

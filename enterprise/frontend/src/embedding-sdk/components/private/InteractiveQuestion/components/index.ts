@@ -3,6 +3,7 @@ export * from "./ChartTypeSelector";
 export * from "./Filter";
 export * from "./FilterBar";
 export * from "./FilterButton";
+export * from "./FilterPicker";
 export * from "./Editor";
 export * from "./EditorButton";
 export * from "./ResetButton";
