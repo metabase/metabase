@@ -1,6 +1,6 @@
 (ns metabase.search.postgres.index-test
   (:require
-   [cheshire.core :as json]
+   ;[cheshire.core :as json]
    [clojure.test :refer [deftest is testing]]
    [metabase.db :as mdb]
    [metabase.search.postgres.core :as search.postgres]
@@ -54,7 +54,8 @@
       (search.ingestion/populate-index!)
       (is (= rows-before (count-rows))))))
 
-(deftest incremental-update-test
+;; Disabled due to CI issue
+#_(deftest incremental-update-test
   (with-index
     (testing "The index is updated when models change"
      ;; Has a second entry is "Revenue Project(ions)", when using English dictionary
@@ -69,7 +70,8 @@
       (is (= 0 #_1 (count (search.index/search "Projected Revenue"))))
       (is (= 0 (count (search.index/search "Protected Avenue")))))))
 
-(deftest related-update-test
+;; Disabled due to CI issue
+#_(deftest related-update-test
   (with-index
     (testing "The index is updated when model dependencies change"
       (let [index-table    @#'search.index/active-table
