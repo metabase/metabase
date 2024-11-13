@@ -5,10 +5,10 @@ import type {
   DraggedColumn,
   DraggedItem,
   DraggedWellItem,
+  VisualizerColumnReference,
   VisualizerDataSource,
   VisualizerDataSourceId,
   VisualizerDataSourceType,
-  VisualizerReferencedColumn,
 } from "metabase-types/store/visualizer";
 
 import { DRAGGABLE_ID } from "./constants";
@@ -29,7 +29,7 @@ export function createDataSource(
 export function isReferenceToColumn(
   column: DatasetColumn,
   dataSourceId: VisualizerDataSourceId,
-  ref: VisualizerReferencedColumn,
+  ref: VisualizerColumnReference,
 ) {
   return dataSourceId === ref.sourceId && column.name === ref.originalName;
 }
@@ -37,8 +37,8 @@ export function isReferenceToColumn(
 export function createVisualizerColumnReference(
   dataSource: VisualizerDataSource,
   column: DatasetColumn,
-  otherReferencedColumns: VisualizerReferencedColumn[],
-): VisualizerReferencedColumn {
+  otherReferencedColumns: VisualizerColumnReference[],
+): VisualizerColumnReference {
   const existingRef = otherReferencedColumns.find(ref =>
     isReferenceToColumn(column, dataSource.id, ref),
   );

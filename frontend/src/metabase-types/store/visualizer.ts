@@ -16,7 +16,7 @@ export type VisualizerDataSource = {
   name: string;
 };
 
-export type VisualizerReferencedColumn = {
+export type VisualizerColumnReference = {
   sourceId: VisualizerDataSourceId;
   name: string; // in combined dataset
   originalName: string; // in original dataset
@@ -47,7 +47,7 @@ export interface VisualizerState {
   display: VisualizationDisplay | null;
   columns: DatasetColumn[];
   columnValuesMapping: Record<string, string[]>;
-  referencedColumns: VisualizerReferencedColumn[];
+  referencedColumns: VisualizerColumnReference[];
   settings: VisualizationSettings;
   cards: Card[];
   datasets: Record<VisualizerDataSourceId, Dataset>;
