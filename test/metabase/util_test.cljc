@@ -551,3 +551,15 @@
       (testing (pr-str (list `lib.util/truncate-string-to-byte-count s max-length))
         (is (= expected
                (truncate-string-to-byte-count s max-length)))))))
+
+(deftest ^:parallel rconcat-test
+  (is (= [2 4 6 18 16 14 12 10 8 6 4 2 0 50]
+         (transduce
+          (map (partial * 2))
+          conj
+          []
+          (u/rconcat
+           (u/rconcat
+            (eduction (map inc) (range 3))
+            (eduction (map dec) (range 10 0 -1)))
+           [25])))))

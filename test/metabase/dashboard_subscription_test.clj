@@ -471,10 +471,10 @@
        (fn [_ [email]]
          (testing "Markdown cards are included in email subscriptions"
            (is (= (rasta-dashsub-message {:message [{"Aviary KPIs" true
-                                                     "<a class=\\\"title\\\" href=\\\"https://metabase.com/testmb/dashboard/\\d+\\?state=CA&amp;state=NY&amp;state=NJ&amp;quarter_and_year=Q1-2021\\\"" true}
+                                                     "<a class=\\\"title\\\" href=\\\"https://metabase.com/testmb/dashboard/\\d+\\?state=CA&state=NY&state=NJ&quarter_and_year=Q1-2021\\\"" true}
                                                     pulse.test-util/png-attachment]})
                   (mt/summarize-multipart-single-email email #"Aviary KPIs"
-                                                       #"<a class=\"title\" href=\"https://metabase.com/testmb/dashboard/\d+\?state=CA&amp;state=NY&amp;state=NJ&amp;quarter_and_year=Q1-2021\"")))))
+                                                       #"<a class=\"title\" href=\"https://metabase.com/testmb/dashboard/\d+\?state=CA&state=NY&state=NJ&quarter_and_year=Q1-2021\"")))))
 
        :slack
        (fn [{:keys [card-id dashboard-id]} [pulse-results]]
@@ -526,7 +526,7 @@
                                                      #"Linked database name"
                                                      #"Linked database desc"
 
-                                                     #"https://metabase\.com/testmb/question\?db=\d+&amp;table=\d+"
+                                                     #"https://metabase\.com/testmb/question\?db=\d+table=\d+"
                                                      #"Linked table dname"
                                                      #"Linked table desc"
 

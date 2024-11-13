@@ -100,7 +100,7 @@ jobs:
     strategy:
       matrix:
         edition: [oss, ee]
-        java-version: [11, 17]
+        java-version: [11, 17, 21]
     steps:
       - name: Prepare JRE (Java Run-time Environment)
         uses: actions/setup-java@v4
@@ -114,7 +114,8 @@ jobs:
         with:
           name: metabase-test-${{ matrix.edition }}-uberjar
       - name: Launch uberjar (and keep it running)
-        run: java -jar ./metabase.jar &
+        run: >-
+          java --add-opens java.base/java.nio=ALL-UNNAMED -jar ./metabase.jar &
       - name: Wait for Metabase to start
         run: while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
 
@@ -149,10 +150,10 @@ jobs:
           maildev: true
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
-      - name: Prepare JDK 11
+      - name: Prepare JDK 21
         uses: actions/setup-java@v4
         with:
-          java-version: 11
+          java-version: 21
           distribution: "temurin"
       - name: Prepare Cypress environment
         id: cypress-prep
@@ -219,11 +220,11 @@ jobs:
         run: mv metabase.jar bin/docker/.
       - name: Set up Docker Buildx
         id: buildx
-        uses: docker/setup-buildx-action@v2
+        uses: docker/setup-buildx-action@v3
         with:
           driver-opts: network=host
       - name: Build ${{ matrix.edition }} container
-        uses: docker/build-push-action@v3
+        uses: docker/build-push-action@v6
         with:
           context: bin/docker/.
           platforms: linux/amd64
@@ -240,7 +241,7 @@ jobs:
         timeout-minutes: 3
 
       - name: Login to Docker Hub
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_RELEASE_USERNAME }}
           password: ${{ secrets.DOCKERHUB_RELEASE_TOKEN }}
@@ -277,7 +278,7 @@ jobs:
       IMAGE_TAG: ${{ needs.containerize.outputs.image_tag }}
     steps:
       - name: Login to Docker Hub # authenticated, to avoid being rate-throttled
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_RELEASE_USERNAME }}
           password: ${{ secrets.DOCKERHUB_RELEASE_TOKEN }}

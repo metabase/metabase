@@ -84,7 +84,7 @@ Once you're done here simply follow the link to **Take me to Metabase**. And if 
 
 ## Getting started with Metabase
 
-For a tutorial on getting up and running with questions and dashboards, head over to [Learn Metabase](https://www.metabase.com/learn/getting-started/getting-started.html).
+For a tutorial on getting up and running with questions and dashboards, head over to [Learn Metabase](https://www.metabase.com/learn/metabase-basics/getting-started/).
 
 ---
 

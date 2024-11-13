@@ -15,7 +15,7 @@ You can open the data reference from:
 
 ## Browse data reference
 
-The data reference is a collection of pages organized by database, then tables in that database (the same structure you use to [pick data](../questions/query-builder/introduction.md#picking-data)). The data reference section is a great place to find information about the [data types](https://www.metabase.com/learn/databases/data-types-overview) of columns in your data.
+The data reference is a collection of pages organized by database, then tables in that database (the same structure you use to [pick data](../questions/query-builder/introduction.md#picking-data)). The data reference section is a great place to find information about the [data types](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview) of columns in your data.
 
 ## Data reference in the native editor
 

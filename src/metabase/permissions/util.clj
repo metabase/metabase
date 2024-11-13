@@ -28,11 +28,12 @@
   make sure people don't submit a new graph based on something out of date, which would otherwise stomp over changes
   made in the interim. Return a 409 (Conflict) if the numbers don't match up."
   [old-graph new-graph]
-  (when (not= (:revision old-graph) (:revision new-graph))
-    (throw (ex-info (tru
-                     (str "Looks like someone else edited the permissions and your data is out of date. "
-                          "Please fetch new data and try again."))
-                    {:status-code 409}))))
+  (when-not (:force new-graph)
+    (when (not= (:revision old-graph) (:revision new-graph))
+      (throw (ex-info (tru
+                       (str "Looks like someone else edited the permissions and your data is out of date. "
+                            "Please fetch new data and try again."))
+                      {:status-code 409})))))
 
 (defn save-perms-revision!
   "Save changes made to permission graph for logging/auditing purposes.

@@ -127,9 +127,11 @@
 
   If the skip-graph query param is truthy, then the graph will not be returned."
   [:as {body :body
-        {skip-graph :skip-graph} :params}]
+        {skip-graph :skip-graph
+         force      :force} :params}]
   {body :map
-   skip-graph [:maybe :boolean]}
+   skip-graph [:maybe ms/BooleanValue]
+   force      [:maybe ms/BooleanValue]}
   (api/check-superuser)
   (let [new-graph (mc/decode api.permission-graph/StrictApiPermissionsGraph
                              body
@@ -148,7 +150,7 @@
             old       (or old {})
             new       (or new {})]
         (perms.u/log-permissions-changes old new)
-        (perms.u/check-revision-numbers old-graph new-graph)
+        (when-not force (perms.u/check-revision-numbers old-graph new-graph))
         (data-perms.graph/update-data-perms-graph! {:groups new})
         (perms.u/save-perms-revision! :model/PermissionsRevision (:revision old-graph) old new)
         (let [sandbox-updates        (:sandboxes new-graph)
