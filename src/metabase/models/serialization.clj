@@ -447,7 +447,7 @@
     (catch Exception e
       (when-not (or (:skip (ex-data e))
                     (:continue-on-error opts))
-        (throw (ex-info (format "Exception extracting %s %s" model (:id instance))
+        (throw (ex-info (format "Error extracting %s %s" model (:id instance))
                         {:model     model
                          :table     (->> model (keyword "model") t2/table-name)
                          :id        (:id instance)
@@ -1603,7 +1603,7 @@
                               (->> (sort-by sorter data)
                                    (mapv #(extract-one model-name opts %)))
                               (catch Exception e
-                                (throw (ex-info (format "Error exporting nested %s" model)
+                                (throw (ex-info (format "Error extracting nested %s" model)
                                                 {:model     model
                                                  :parent-id (:id current)}
                                                 e)))))
