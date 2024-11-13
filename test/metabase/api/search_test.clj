@@ -19,6 +19,7 @@
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.revision :as revision]
+   [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.search :as search]
    [metabase.search.config :as search.config]
@@ -1589,3 +1590,20 @@
                 (when (pos? attempts-left)
                   (Thread/sleep 200)
                   (recur (dec attempts-left))))))))))
+
+(deftest weights-test
+  (let [original-weights   (search.config/weights)
+        original-overrides (public-settings/experimental-search-weight-overrides)]
+    (try
+      (is (= original-weights (mt/user-http-request :crowberto :get 200 "search/weights")))
+      (is (mt/user-http-request :rasta :put 403 "search/weights"))
+      (is (= original-weights (mt/user-http-request :crowberto :put 200 "search/weights")))
+      (is (= (assoc original-weights :recency 4 :text 20)
+             (mt/user-http-request :crowberto :put 200 "search/weights" {:recency 4, :text 20})))
+      (is (= (assoc original-weights :recency 4 :text 30.0)
+             (mt/user-http-request :crowberto :get 200 "search/weights?text=30")))
+      (is (mt/user-http-request :crowberto :put 400 "search/weights" {:bad-spelling 2}))
+      (is (= (assoc original-weights :recency 4 :text 30.0)
+             (mt/user-http-request :crowberto :get 200 "search/weights")))
+      (finally
+        (public-settings/experimental-search-weight-overrides! original-overrides)))))
