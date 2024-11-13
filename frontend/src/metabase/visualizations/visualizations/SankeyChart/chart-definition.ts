@@ -119,6 +119,13 @@ export const SANKEY_CHART_DEFINITION = {
       });
     }
 
+    if (sankeyColumns.source.index === sankeyColumns.target.index) {
+      throw new ChartSettingsError(
+        t`Select two different columns for source and target to create a flow.`,
+        { section: "Data" },
+      );
+    }
+
     if (
       hasCyclicFlow(
         rawSeries[0].data.rows,
@@ -127,7 +134,7 @@ export const SANKEY_CHART_DEFINITION = {
       )
     ) {
       throw new ChartSettingsError(
-        t`Sankey charts cannot contain cycles. Please check your data for circular references.`,
+        t`Selected columns create circular flows. Try picking different columns that flow in one direction.`,
         { section: "Data" },
       );
     }
