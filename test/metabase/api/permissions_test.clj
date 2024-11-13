@@ -237,7 +237,7 @@
               :create-queries :query-builder}
              (get-in (data-perms.graph/api-graph) [:groups (u/the-id group) db-id])))))))
 
-(deftest update-perms-graph-with-skip-graph-skips-graph-test
+(deftest update-perms-graph-with-skip-graph-test
   (testing "PUT /api/permissions/graph"
     (testing "permissions graph is not returned when skip-graph"
       (t2.with-temp/with-temp [:model/PermissionsGroup group       {}
@@ -263,6 +263,19 @@
             (is (not (perm-test-util/validate-graph-api-groups (:groups no-returned-g))))
             (is (mc/validate [:map {:closed true}
                               [:revision pos-int?]] no-returned-g))))))))
+
+(deftest update-perms-graph-force-test
+  (testing "PUT /api/permissions/graph"
+    (testing "permissions graph does not check revision number when force=true"
+      (let [do-perm-put    (fn [url status] (mt/user-http-request
+                                             :crowberto :put status url
+                                             (-> (data-perms.graph/api-graph)
+                                                 (update :revision dec))))]
+        (is (= (str "Looks like someone else edited the permissions and your data is out of date. "
+                    "Please fetch new data and try again.")
+               (do-perm-put "permissions/graph?force=false" 409)))
+
+        (do-perm-put "permissions/graph?force=true" 200)))))
 
 (deftest can-revoke-permsissions-via-graph-test
   (testing "PUT /api/permissions/graph"

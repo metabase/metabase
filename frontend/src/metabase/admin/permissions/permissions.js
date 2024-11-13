@@ -262,7 +262,6 @@ export const saveCollectionPermissions = createThunkAction(
       namespace,
       revision: collectionPermissionsRevision,
       groups: modifiedPermissions,
-      skip_graph: true,
     });
 
     return {
