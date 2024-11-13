@@ -12,4 +12,7 @@ export const SANKEY_CHART_STYLE = {
     x: 24,
     y: 24,
   },
+  edgeColor: {
+    gray: "#81898e", // --mb-base-color-orion-50
+  },
 };

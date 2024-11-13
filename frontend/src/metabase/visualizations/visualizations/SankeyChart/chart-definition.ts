@@ -70,6 +70,19 @@ export const SETTINGS_DEFINITIONS = {
     default: false,
     inline: true,
   },
+  "sankey.edge_color": {
+    section: t`Display`,
+    title: t`Edge color`,
+    widget: "segmentedControl",
+    default: "gray",
+    props: {
+      options: [
+        { name: t`Gray`, value: "gray" },
+        { name: t`Source`, value: "source" },
+        { name: t`Target`, value: "target" },
+      ],
+    },
+  },
 };
 
 export const SANKEY_CHART_DEFINITION = {

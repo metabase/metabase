@@ -32,6 +32,16 @@ export const getSankeyChartOption = (
     value: typeof link.value === "number" ? link.value : undefined,
   }));
 
+  const edgeColor =
+    settings["sankey.edge_color"] === "gray"
+      ? SANKEY_CHART_STYLE.edgeColor.gray
+      : settings["sankey.edge_color"];
+
+  const edgeLabelColor =
+    settings["sankey.edge_color"] === "gray"
+      ? renderingContext.getColor("text-dark")
+      : renderingContext.getColor("text-light");
+
   const series: SankeySeriesOption = {
     animation: false,
     type: "sankey",
@@ -49,7 +59,7 @@ export const getSankeyChartOption = (
       show: settings["sankey.show_edge_labels"],
       formatter: params =>
         typeof params.value === "number" ? formatters.value(params.value) : "",
-      color: renderingContext.getColor("text-light"),
+      color: edgeLabelColor,
       fontSize: SANKEY_CHART_STYLE.nodeLabels.size,
       fontFamily: renderingContext.fontFamily,
     },
@@ -60,7 +70,8 @@ export const getSankeyChartOption = (
     nodes,
     links,
     lineStyle: {
-      color: "gradient",
+      color: edgeColor,
+      opacity: 0.2,
       curveness: 0.5,
     },
     label: {
