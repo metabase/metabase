@@ -69,19 +69,16 @@
 
 (api/defendpoint POST "/db/attached_datawarehouse"
   "Sync the attached datawarehouse. Can provide in the body:
-  - sync_db: <boolean>: if this is true, schema sync the whole attached datawarehouse
   - table_name and schema_name: both strings. Will look for an existing table and sync it, otherwise will try to find a
-    new table with that name and sync it. If it cannot find a table it will throw an error.
+  new table with that name and sync it. If it cannot find a table it will throw an error. If table_name is empty or
+  blank, will sync the entire database.
   - synchronous?: is a boolean value to indicate if this should block on the result."
-  [:as {{:keys [table_name schema_name sync_db synchronous?]} :body}]
+  [:as {{:keys [table_name schema_name synchronous?]} :body}]
   {table_name   [:maybe ms/NonBlankString]
    schema_name  [:maybe string?]
-   sync_db      [:maybe ms/BooleanValue]
    synchronous? [:maybe ms/BooleanValue]}
-  (when (and (not sync_db) (str/blank? table_name))
-    (throw (ex-info (trs "Must provide `sync_db` or a `table_name` to sync") {:status-code 400})))
   (api/let-404 [database (t2/select-one :model/Database :is_attached_dwh true)]
-    (if sync_db
+    (if (str/blank? table_name)
       (cond-> (future (sync-metadata/sync-db-metadata! database))
         synchronous? deref)
       (if-let [table (t2/select-one Table :db_id (:id database), :name table_name :schema schema_name)]

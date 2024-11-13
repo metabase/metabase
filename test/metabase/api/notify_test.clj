@@ -161,7 +161,7 @@
 
 (deftest sync-data-warehouse-test
   (mt/test-driver :postgres
-    (testing "Ensure we have the ability to add a single new table"
+    (testing "Ensure we can interact with the attached datawarehouse db"
       (with-no-attached-data-warehouses
         (let [db-name (str (gensym "attached_datawarehouse"))]
           (try
@@ -207,7 +207,7 @@
                     (is (= #{"public.foo" "public.bar"} tables))
                     (is (false? (contains? tables "public.fern"))))
                   (testing "We can sync the whole database as well"
-                    (is (= 200 (:status (post {:sync_db true}))))
+                    (is (= 200 (:status (post {}))))
                     (let [tables (tableset database)]
                       (is (= #{"public.foo" "public.bar" "public.fern"} tables)))))))
             (finally
