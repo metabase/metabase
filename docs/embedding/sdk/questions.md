@@ -141,6 +141,7 @@ These components are available via the `InteractiveQuestion` namespace (e.g., `<
 | `BackButton`            | The back button, which provides `back` functionality for the InteractiveDashboard                                            |
 | `FilterBar`             | The row of badges that contains the current filters that are applied to the question                                         |
 | `Filter`                | The Filter pane containing all possible filters                                                                              |
+| `FilterPicker`          | Picker for adding a new filter to the question                                                                               |
 | `FilterButton`          | The button used in the default layout to open the Filter pane. You can replace this button with your own implementation.     |
 | `ResetButton`           | The button used to reset the question after the question has been modified with filters/aggregations/etc                     |
 | `Title`                 | The question's title                                                                                                         |
