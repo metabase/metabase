@@ -1600,7 +1600,7 @@ describe("issue 49642", () => {
     popover().within(() => cy.findByText(column).click());
   };
 });
-  
+
 describe("issue 44665", () => {
   beforeEach(() => {
     restore();
