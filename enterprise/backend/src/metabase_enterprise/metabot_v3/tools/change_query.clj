@@ -1,5 +1,6 @@
 (ns metabase-enterprise.metabot-v3.tools.change-query
   (:require
+   [cheshire.core :as json]
    [clojure.string :as str]
    [medley.core :as m]
    [metabase-enterprise.metabot-v3.tools.interface :as metabot-v3.tools.interface]
@@ -238,18 +239,13 @@
   (reduce apply-query-change query changes))
 
 (mu/defmethod metabot-v3.tools.interface/*invoke-tool* :metabot.tool/change-query
-  [_tool-name {:keys [changes]} {:keys [dataset_query]}]
-  (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (:database dataset_query))
-        query             (lib/query metadata-provider dataset_query)]
+  [_tool-name {:keys [query changes]} _context]
+  (let [query             (json/parse-string query true)
+        metadata-provider (lib.metadata.jvm/application-database-metadata-provider (:database query))
+        query             (lib/query metadata-provider query)]
     (try
-      {:output "success"
-       :reactions [{:type  :metabot.reaction/change-query
-                    :dataset_query (-> (apply-query-changes query changes)
-                                       lib.query/->legacy-MBQL)}]}
+      {:output (json/generate-string {:query (-> (apply-query-changes query changes)
+                                                 lib.query/->legacy-MBQL)})}
       (catch ExceptionInfo e
         (log/debug e "Error in change-query tool")
-        {:output (ex-message e)}))))
-
-(mu/defmethod metabot-v3.tools.interface/*tool-applicable?* :metabot.tool/change-query
-  [_tool-name {:keys [dataset_query]}]
-  (some? dataset_query))
+        {:output (json/generate-string {:error (ex-message e)})}))))

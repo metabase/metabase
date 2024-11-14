@@ -1,9 +1,13 @@
 {
   "name": "change-query",
-  "description": "Changes and executes a query in Metabase. Use `query_columns` for the list of available columns.",
+  "description": "Changes a query. Accepts a serialized query and outputs a serialized query. In case of error outputs an error message. The tool does not have any side effects. Use `run-query` tool to actually execute the modified query.",
   "parameters": {
     "type": "object",
     "properties": {
+      "query": {
+        "type": "string",
+        "description": "Serialized query. Should be treated as an opaque string."
+      },
       "changes": {
         "type": "array",
         "description": "List of changes to apply to the query.",
@@ -238,7 +242,7 @@
                 },
                 "filter": {
                   "type": "string",
-                  "description": "Filter to remove. Use `query.filters` for the list of current filters."
+                  "description": "Filter to remove."
                 }
               },
               "required": [
@@ -301,7 +305,7 @@
                 },
                 "aggregation": {
                   "type": "string",
-                  "description": "Aggregation to remove. Use `query.aggregations` for the list of current aggregations."
+                  "description": "Aggregation to remove."
                 }
               },
               "required": [
@@ -345,7 +349,7 @@
                 },
                 "breakout": {
                   "type": "string",
-                  "description": "Breakout to remove. Use `query.breakouts` for the list of current breakouts."
+                  "description": "Breakout to remove."
                 }
               },
               "required": [
@@ -401,7 +405,7 @@
                 },
                 "order_by": {
                   "type": "string",
-                  "description": "Sorting to remove. Use `query.order_bys` for the list of sorting clauses applied."
+                  "description": "Sorting to remove."
                 }
               },
               "required": [
@@ -454,6 +458,7 @@
       }
     },
     "required": [
+      "query",
       "changes"
     ],
     "additionalProperties": false

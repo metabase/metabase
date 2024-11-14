@@ -3,8 +3,6 @@
    [cheshire.core :as json]
    [clojure.java.io :as io]
    [metabase.config :as config]
-   [metabase.lib.core :as lib]
-   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
@@ -57,9 +55,4 @@
   [{:keys [dataset_query]}]
   (merge {}
          (when dataset_query
-           (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (:database dataset_query))
-                 query             (lib/query metadata-provider dataset_query)]
-             {:query {:filters      (mapv #(lib/display-name query %) (lib/filters query))
-                      :aggregations (mapv #(lib/display-name query %) (lib/aggregations query))
-                      :breakouts    (mapv #(lib/display-name query %) (lib/breakouts query))
-                      :order-bys    (mapv #(lib/display-name query %) (lib/order-bys query))}}))))
+           {:query (json/generate-string dataset_query)})))

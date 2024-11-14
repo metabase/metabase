@@ -132,9 +132,9 @@
    [:type [:= :metabot.reaction/writeback]]
    [:message :string]])
 
-(defreaction :metabot.reaction/change-query
+(defreaction :metabot.reaction/run-query
   [:map
-   [:type [:= :metabot.reaction/change-query]]
+   [:type [:= :metabot.reaction/run-query]]
    [:dataset_query :map]])
 
 (defreaction :metabot.reaction/change-visualization-settings

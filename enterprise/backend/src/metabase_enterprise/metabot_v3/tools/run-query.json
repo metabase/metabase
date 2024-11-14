@@ -1,0 +1,15 @@
+{
+  "name": "run-query",
+  "description": "Executes the query in Metabase. The current query is available in the system prompt as `query`. If the query needs to be modified, pass `query` in `change-query` tool and then pass the modified query here.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "query": {
+        "type": "string",
+        "description": "Serialized query to run."
+      }
+    },
+    "required": ["query"],
+    "additionalProperties": false
+  }
+}
