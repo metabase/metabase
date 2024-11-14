@@ -3,6 +3,7 @@
 
 ### Bug Fixes
 
+* **sdk:** Convert jwtProviderUri to authProviderUri ([#49876](https://github.com/metabase/metabase/issues/49876)) ([56e4152](https://github.com/metabase/metabase/commit/56e415225a8be13d534274e196183e2c45fb2810)), closes [#49843](https://github.com/metabase/metabase/issues/49843)
 * **sdk:** Fix interactive dashboard scroll in fullscreen mode ([#49366](https://github.com/metabase/metabase/issues/49366)) ([#49427](https://github.com/metabase/metabase/issues/49427)) ([d378dc3](https://github.com/metabase/metabase/commit/d378dc3a9967ddc0c21e8f88049fc8519d1de83c))
 * **sdk:** Fix visualization default size ([#49672](https://github.com/metabase/metabase/issues/49672)) ([#49680](https://github.com/metabase/metabase/issues/49680)) ([bb13c88](https://github.com/metabase/metabase/commit/bb13c8824d7ddadec5258006a5cfedca21b41791))
 * **sdk:** generated cli components has inconsistent styles after the style leak fix ([#49723](https://github.com/metabase/metabase/issues/49723)) ([#49775](https://github.com/metabase/metabase/issues/49775)) ([7fa7950](https://github.com/metabase/metabase/commit/7fa7950a20b5b00fa298300ee2556d99df79cdf2))
@@ -11,6 +12,7 @@
 
 ### Features
 
+* **sdk:** Add chart settings to `InteractiveQuestion` ([#49677](https://github.com/metabase/metabase/issues/49677)) ([e77487e](https://github.com/metabase/metabase/commit/e77487e011a2adf356f6983cc7907c83a0e4ed7d))
 * **sdk:** deprecate the ModifyQuestion component ([#49747](https://github.com/metabase/metabase/issues/49747)) ([#49757](https://github.com/metabase/metabase/issues/49757)) ([530f050](https://github.com/metabase/metabase/commit/530f050fb5fc74778332e99f954e0cec0f5d5ae2))
 * **sdk:** small usability improvements for embedding cli ([#49591](https://github.com/metabase/metabase/issues/49591)) ([#49617](https://github.com/metabase/metabase/issues/49617)) ([6624143](https://github.com/metabase/metabase/commit/66241437e64b0c753f2a90d4308cbcc7cd547334))
 
@@ -46,6 +48,7 @@
 * **sdk:** Change QuestionEditor tab name to 'Editor' ([#48821](https://github.com/metabase/metabase/issues/48821)) ([#48872](https://github.com/metabase/metabase/issues/48872)) ([b469405](https://github.com/metabase/metabase/commit/b469405f212499959ed98be51e70cdab00900d9f))
 * **sdk:** fix defaultProps react error ([#48764](https://github.com/metabase/metabase/issues/48764)) ([#48864](https://github.com/metabase/metabase/issues/48864)) ([4a1330a](https://github.com/metabase/metabase/commit/4a1330a112600ac052c3ef71c9d700140dae8225))
 * **sdk:** hide downloads by default ([#48755](https://github.com/metabase/metabase/issues/48755)) ([#48863](https://github.com/metabase/metabase/issues/48863)) ([361bf49](https://github.com/metabase/metabase/commit/361bf49d33ebdfdb8a80b847528d6834e92c5630))
+* **sdk:** reduce visual artifacts on PDF/PNG exports on custom sdk themes ([#48865](https://github.com/metabase/metabase/issues/48865)) ([cf09a81](https://github.com/metabase/metabase/commit/cf09a81241a296b70b0d1d4a61a4d7bfd77e9fbf)), closes [#48645](https://github.com/metabase/metabase/issues/48645)
 
 
 ### Features
