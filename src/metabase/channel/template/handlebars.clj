@@ -61,7 +61,7 @@
   "Create a new Handlebars instance with a template loader."
   ^Handlebars [loader & {:keys [reload?]}]
   (u/prog1 (doto (Handlebars. loader)
-             (.with (make-atom-template-cache false)))
+             (.with ^TemplateCache (make-atom-template-cache false)))
     (when reload?
       (.setReload (.getCache <>) true))))
 

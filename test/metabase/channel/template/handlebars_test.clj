@@ -25,8 +25,7 @@
 (defn do-with-temp-template!
   [filename content thunk]
   ;; create the channel_template folder if not exists
-  (let [filename  (format "channel_template/%s" filename)
-        temp-file (format "test_resources/%s" filename)]
+  (let [temp-file (format "test_resources/%s" filename)]
     (try
       (spit temp-file content)
       (thunk filename)
