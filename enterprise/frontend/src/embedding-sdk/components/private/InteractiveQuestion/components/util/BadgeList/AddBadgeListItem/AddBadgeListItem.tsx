@@ -11,7 +11,7 @@ type AddBadgeListItemProps = {
 export const AddBadgeListItem = ({ name, onClick }: AddBadgeListItemProps) => (
   <Badge
     classNames={{
-      root: CS.bgLightHover,
+      root: CS.bgLight,
       inner: CS.cursorPointer,
     }}
     tt="capitalize"
@@ -21,7 +21,7 @@ export const AddBadgeListItem = ({ name, onClick }: AddBadgeListItemProps) => (
     pr="sm"
     pl="xs"
     leftSection={
-      <ActionIcon radius="xl" size="sm" mr="xs">
+      <ActionIcon radius="xl" size="sm" className={CS.bgMediumHover}>
         <Icon name="add" c="var(--mb-color-text-brand)" size={10} />
       </ActionIcon>
     }

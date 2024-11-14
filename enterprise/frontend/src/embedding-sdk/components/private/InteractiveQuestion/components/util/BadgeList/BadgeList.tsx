@@ -3,14 +3,14 @@ import { Group, Paper } from "metabase/ui";
 import { AddBadgeListItem } from "./AddBadgeListItem";
 import { BadgeListItem } from "./BadgeListItem";
 
-type BadgeList<T> = {
+export type BadgeListProps<T> = {
   items: {
     name: string;
     item: T;
   }[];
-  onSelectItem?: (item?: T) => void;
+  onSelectItem?: (item?: T, index?: number) => void;
   onAddItem?: (item?: T) => void;
-  onRemoveItem?: (item?: T) => void;
+  onRemoveItem?: (item?: T, index?: number) => void;
   addButtonLabel?: string;
 };
 
@@ -20,14 +20,14 @@ export const BadgeList = <T,>({
   onAddItem,
   onRemoveItem,
   addButtonLabel,
-}: BadgeList<T>) => (
+}: BadgeListProps<T>) => (
   <Paper p="md" w="30rem">
     <Group spacing="sm">
-      {items.map(({ name, item }) => (
+      {items.map(({ name, item }, index) => (
         <BadgeListItem
-          key={name}
-          onSelectItem={() => onSelectItem?.(item)}
-          onRemoveItem={() => onRemoveItem?.(item)}
+          key={`${name}/${index}`}
+          onSelectItem={() => onSelectItem?.(item, index)}
+          onRemoveItem={() => onRemoveItem?.(item, index)}
           name={name}
         />
       ))}
