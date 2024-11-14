@@ -1103,3 +1103,54 @@ describe("issue 49342", () => {
     cy.button("Cancel").should("be.focused");
   });
 });
+
+describe("issue 49882", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should not eat up subsequent characters when applying a suggestion (metabase#49882)", () => {
+    openOrdersTable({ mode: "notebook" });
+    cy.findByLabelText("Custom column").click();
+    enterCustomColumnDetails({
+      formula:
+        'case([Total] > 200, , "X"){leftarrow}{leftarrow}{leftarrow}{leftarrow}{leftarrow}{leftarrow}[to{enter}',
+    });
+
+    // TODO: fix space after [Total]
+    cy.get(".ace_text-input")
+      .first()
+      .should("have.value", 'case([Total] > 200, [Total], "X")\n\n');
+  });
+
+  it("should allow moving cursor between wrapped lines with arrow up and arrow down keys (metabase#49882)", () => {
+    openOrdersTable({ mode: "notebook" });
+    cy.findByLabelText("Custom column").click();
+    enterCustomColumnDetails({
+      formula:
+        'case([Tax] > 1, case([Total] > 200, [Total], "Nothing"), [Tax]){leftarrow}{leftarrow}{uparrow}x{downarrow}y',
+    });
+
+    cy.get(".ace_text-input")
+      .first()
+      .should(
+        "have.value",
+        'case([Tax] > 1, xcase([Total] > 200, [Total], "Nothing"), [Tax]y)\n\n',
+      );
+  });
+
+  it("should update currently selected suggestion when moving cursor (metabase#49882)", () => {
+    openOrdersTable({ mode: "notebook" });
+    cy.findByLabelText("Custom column").click();
+    enterCustomColumnDetails({
+      formula:
+        "[Product{downarrow}{downarrow}{downarrow}{downarrow}{downarrow}{enter}{leftarrow}{leftarrow}",
+      blur: false,
+    });
+
+    cy.findByTestId("expression-suggestions-list-item")
+      .should("have.text", "Product → Vendor")
+      .and("have.css", "background-color", "rgb(80, 158, 227)");
+  });
+});
