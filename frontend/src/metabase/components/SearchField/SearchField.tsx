@@ -2,6 +2,7 @@ import classNames from "classnames";
 import {
   type FocusEvent,
   type ReactElement,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -56,6 +57,7 @@ export const SearchField = ({
 }: SearchFieldProps) => {
   const [query, setQuery] = useState("");
   const ref = useRef<HTMLUListElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const handleSearchChange = (query: string) => {
     setQuery(query);
@@ -113,9 +115,14 @@ export const SearchField = ({
   const shouldShowEmptyState =
     query.length > 0 && filteredOptions.length === 0 && !isLoading;
 
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, [value]);
+
   return (
-    <>
+    <div className={S.root}>
       <MultiAutocomplete
+        ref={inputRef}
         data-testid="field-values-multi-autocomplete"
         onSearchChange={handleSearchChange}
         onChange={onChange}
@@ -184,7 +191,7 @@ export const SearchField = ({
           })}
         </ul>
       )}
-    </>
+    </div>
   );
 };
 

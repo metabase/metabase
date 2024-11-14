@@ -19,7 +19,13 @@
 .wrapper .input {
   border-radius: 8px;
 
-  &:focus-within {
+  &:hover {
+    border-color: var(--mb-color-brand);
+  }
+
+  .root:focus-within &:focus-within,
+  .root:focus-within & {
+    border-color: var(--mb-color-brand);
     outline: 2px solid var(--mb-color-focus);
   }
 }
