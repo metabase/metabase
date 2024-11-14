@@ -22,10 +22,10 @@
 
 (def ^:private context-key->filter
   "Map the context keys to their corresponding filters"
-  ;; TODO remove special handling for the abnormal filters
   (reduce-kv (fn [m k {:keys [context-key]}]
                (assoc m context-key k))
              {}
+             ;; TODO remove special handling of :id
              (dissoc search.config/filters :id)))
 
 (defn search-context->applicable-models
