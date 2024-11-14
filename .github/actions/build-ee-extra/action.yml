@@ -4,7 +4,7 @@ description: Build Metabase Enterprise Edition with extra features
 inputs:
   java-version:
     required: true
-    default: '21'
+    default: '11'
   iam-role:
     description: "The IAM role to assume"
     required: true
