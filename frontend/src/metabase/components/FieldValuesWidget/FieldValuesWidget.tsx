@@ -589,7 +589,7 @@ export function FieldValuesWidgetInner({
             prefix={prefix}
             optionRenderer={optionRenderer}
             itemRenderer={renderItem}
-            isLoading={isLoading}
+            isLoading={loadingState === "LOADING"}
           />
         ) : (
           <TokenField

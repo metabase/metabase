@@ -10,8 +10,9 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import EmptyState from "metabase/components/EmptyState";
+import LoadingSpinner from "metabase/components/LoadingSpinner";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
-import { Box, MultiAutocomplete } from "metabase/ui";
+import { Box, Flex, MultiAutocomplete } from "metabase/ui";
 import type { FieldValue, RowValue } from "metabase-types/api";
 
 import S from "./SearchField.module.css";
@@ -58,7 +59,9 @@ export const SearchField = ({
 
   const handleSearchChange = (query: string) => {
     setQuery(query);
-    onInputChange(query);
+    if (query !== "") {
+      onInputChange(query);
+    }
   };
 
   function handleBlur(event: FocusEvent<HTMLInputElement>) {
@@ -139,38 +142,46 @@ export const SearchField = ({
         </Box>
       )}
 
-      <ul
-        ref={ref}
-        className={classNames(
-          S.options,
-          isDashboardFilter && S.dashboardFilter,
-        )}
-      >
-        {filteredOptions.map(function (option, index) {
-          const isSelected = value.includes(option[0]);
+      {isLoading && (
+        <Flex p="md" align="center" justify="center">
+          <LoadingSpinner size={24} />
+        </Flex>
+      )}
 
-          const handleClick = () => {
-            if (isSelected) {
-              setQuery("");
-              onChange(value.filter(value => value !== option[0]));
-            } else {
-              setQuery("");
-              onChange([...value, option[0]]);
-            }
-          };
+      {!isLoading && (
+        <ul
+          ref={ref}
+          className={classNames(
+            S.options,
+            isDashboardFilter && S.dashboardFilter,
+          )}
+        >
+          {filteredOptions.map(function (option, index) {
+            const isSelected = value.includes(option[0]);
 
-          return (
-            <li key={index}>
-              <button
-                onClick={handleClick}
-                className={classNames(S.option, isSelected && S.selected)}
-              >
-                {optionRenderer(option)}
-              </button>
-            </li>
-          );
-        })}
-      </ul>
+            const handleClick = () => {
+              if (isSelected) {
+                setQuery("");
+                onChange(value.filter(value => value !== option[0]));
+              } else {
+                setQuery("");
+                onChange([...value, option[0]]);
+              }
+            };
+
+            return (
+              <li key={index}>
+                <button
+                  onClick={handleClick}
+                  className={classNames(S.option, isSelected && S.selected)}
+                >
+                  {optionRenderer(option)}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </>
   );
 };
