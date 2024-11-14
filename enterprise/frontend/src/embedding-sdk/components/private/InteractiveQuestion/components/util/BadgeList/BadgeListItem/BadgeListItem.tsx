@@ -25,17 +25,18 @@ export const BadgeListItem = ({
       inner: CS.cursorPointer,
     }}
     onClick={onSelectItem}
-    pr="xs"
+    pr={0}
     pl="sm"
     rightSection={
       <ActionIcon
         radius="xl"
         size="sm"
-        ml="xs"
+        ml={0}
         onClick={e => {
           e.stopPropagation();
           onRemoveItem?.();
         }}
+        className={CS.bgMediumHover}
       >
         <Icon name="close" c="var(--mb-color-text-brand)" size={10} />
       </ActionIcon>
