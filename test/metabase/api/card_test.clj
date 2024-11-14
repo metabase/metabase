@@ -3772,6 +3772,42 @@
                (update :databases #(map (fn [x] (select-keys x [:id :engine])) %))
                (update :tables #(map (fn [x] (select-keys x [:id :name])) %))))))))
 
+(deftest card-query-metadata-with-archived-and-deleted-source-card-test
+  (testing "Don't throw an error if source card is deleted (#48461)"
+    (mt/with-temp
+      [Card {card-id-1 :id} {:dataset_query (mt/mbql-query products)
+                             :database_id (mt/id)}
+       Card {card-id-2 :id} {:dataset_query
+                             {:type     :query
+                              :query    {:source-table (str "card__" card-id-1)}
+                              :database (mt/id)}
+                             :database_id (mt/id)}]
+      (testing "Archive source card"
+        (is (=?
+             {:archived true
+              :can_delete true
+              :id card-id-1
+              :database_id (mt/id)
+              :table_id (mt/id :products)}
+             (-> (mt/user-http-request :crowberto :put 200 (str "card/" card-id-1) {:archived true})))))
+      (testing "Before delete"
+        (is (=?
+             {:fields empty?
+              :tables [{:id (str "card__" card-id-1)}]
+              :databases [{:id (mt/id) :engine string?}]}
+             (-> (mt/user-http-request :crowberto :get 200 (str "card/" card-id-2 "/query_metadata"))
+                 ;; The output is so large, these help debugging
+                 (update :fields #(map (fn [x] (select-keys x [:id])) %))
+                 (update :databases #(map (fn [x] (select-keys x [:id :engine])) %))
+                 (update :tables #(map (fn [x] (select-keys x [:id :name])) %))))))
+      (testing "Delete source card"
+        (is (nil? (mt/user-http-request :crowberto :delete 204 (str "card/" card-id-1)))))
+      (testing "After delete"
+        (is (= "Not found."
+               (mt/user-http-request :crowberto :get 404 (str "card/" card-id-1 "/query_metadata"))))
+        (is (= "Not found."
+               (mt/user-http-request :crowberto :get 404 (str "card/" card-id-2 "/query_metadata"))))))))
+
 (deftest card-query-metadata-no-tables-test
   (testing "Don't throw an error if users doesn't have access to any tables #44043"
     (let [original-can-read? mi/can-read?]
