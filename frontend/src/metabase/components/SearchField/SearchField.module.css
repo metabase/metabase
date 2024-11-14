@@ -8,6 +8,22 @@
   }
 }
 
+.dropdown {
+  display: none;
+}
+
+.wrapper {
+  overflow: visible !important;
+}
+
+.wrapper .input {
+  border-radius: 8px;
+
+  &:focus-within {
+    outline: 2px solid var(--mb-color-focus);
+  }
+}
+
 .option {
   border-radius: 4px;
   cursor: pointer;

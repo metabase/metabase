@@ -131,8 +131,10 @@ export const SearchField = ({
         withinPortal
         dropdownComponent={NoDropdown}
         onBlur={handleBlur}
-        styles={{
-          dropdown: { display: "none" },
+        classNames={{
+          wrapper: S.wrapper,
+          input: S.input,
+          dropdown: S.dropdown,
         }}
       />
 
