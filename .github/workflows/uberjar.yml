@@ -85,7 +85,7 @@ jobs:
     needs: check_jar_health
     strategy:
       matrix:
-        edition: [ee, oss, ee-extra]
+        edition: [ee, oss]
     services:
       registry:
         image: registry:2
