@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import _ from "underscore";
 
 import type { SdkPluginsConfig } from "embedding-sdk";
@@ -27,6 +27,7 @@ export type InteractiveDashboardProps = {
   plugins?: SdkPluginsConfig;
   className?: string;
   style?: CSSProperties;
+  questionView?: ReactNode;
 } & SdkDashboardDisplayProps &
   PublicOrEmbeddedDashboardEventHandlersProps;
 
@@ -43,6 +44,7 @@ const InteractiveDashboardInner = ({
   onLoadWithoutCards,
   className,
   style,
+  questionView,
 }: InteractiveDashboardProps) => {
   const {
     displayOptions,
@@ -81,7 +83,9 @@ const InteractiveDashboardInner = ({
           height={questionHeight}
           plugins={plugins}
           onNavigateBack={onNavigateBackToDashboard}
-        />
+        >
+          {questionView}
+        </InteractiveAdHocQuestion>
       ) : (
         <InteractiveDashboardProvider
           plugins={plugins}
