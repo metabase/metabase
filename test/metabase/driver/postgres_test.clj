@@ -96,17 +96,18 @@
 
 (defn drop-if-exists-and-create-db!
   "Drop a Postgres database named `db-name` if it already exists; then create a new empty one with that name."
-  [db-name]
+  [db-name & [just-drop]]
   (let [spec (sql-jdbc.conn/connection-details->spec :postgres (mt/dbdef->connection-details :postgres :server nil))]
     ;; kill any open connections
     (jdbc/query spec ["SELECT pg_terminate_backend(pg_stat_activity.pid)
                        FROM pg_stat_activity
                        WHERE pg_stat_activity.datname = ?;" db-name])
     ;; create the DB
-    (jdbc/execute! spec [(format "DROP DATABASE IF EXISTS \"%s\";
-                                  CREATE DATABASE \"%s\";"
-                                 db-name db-name)]
-                   {:transaction? false})))
+    (jdbc/execute! spec [(format "DROP DATABASE IF EXISTS \"%s\"" db-name)]
+                   {:transaction? false})
+    (when (not= just-drop :pg/just-drop)
+      (jdbc/execute! spec [(format "CREATE DATABASE \"%s\";" db-name)]
+                     {:transaction? false}))))
 
 (defn- exec!
   "Execute a sequence of statements against the database whose spec is passed as the first param."
