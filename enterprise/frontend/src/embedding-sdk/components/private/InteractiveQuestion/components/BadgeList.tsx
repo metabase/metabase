@@ -8,9 +8,9 @@ type BadgeList<T> = {
     name: string;
     item: T;
   }[];
-  onSelectItem?: (item?: T) => void;
-  onAddItem?: (item?: T) => void;
-  onRemoveItem?: (item?: T) => void;
+  onSelectItem?: (item?: T, index?: number) => void;
+  onAddItem?: () => void;
+  onRemoveItem?: (item?: T, index?: number) => void;
   addButtonLabel?: string;
 };
 
@@ -23,11 +23,11 @@ export const BadgeList = <T,>({
 }: BadgeList<T>) => (
   <Paper p="md" w="30rem">
     <Group spacing="sm">
-      {items.map(({ name, item }) => (
+      {items.map(({ name, item }, index) => (
         <BadgeListItem
           key={name}
-          onSelectItem={() => onSelectItem?.(item)}
-          onRemoveItem={() => onRemoveItem?.(item)}
+          onSelectItem={() => onSelectItem?.(item, index)}
+          onRemoveItem={() => onRemoveItem?.(item, index)}
           name={name}
         />
       ))}

@@ -169,7 +169,7 @@ type ListSection = {
   items: ListItem[];
 };
 
-function getBreakoutListItem(
+export function getBreakoutListItem(
   query: Lib.Query,
   stageIndex: number,
   breakout: Lib.BreakoutClause,
