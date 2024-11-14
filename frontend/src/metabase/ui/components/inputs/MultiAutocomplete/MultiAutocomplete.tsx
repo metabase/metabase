@@ -2,7 +2,7 @@ import type { MultiSelectProps, SelectItem } from "@mantine/core";
 import { MultiSelect, Tooltip } from "@mantine/core";
 import { useUncontrolled } from "@mantine/hooks";
 import type { ClipboardEvent, FocusEvent } from "react";
-import { useMemo, useState } from "react";
+import { forwardRef, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { color } from "metabase/lib/colors";
@@ -16,23 +16,29 @@ export type MultiAutocompleteProps = Omit<MultiSelectProps, "shouldCreate"> & {
   isSelectingItem?: (event: FocusEvent<HTMLInputElement>) => boolean;
 };
 
-export function MultiAutocomplete({
-  data,
-  value: controlledValue,
-  defaultValue,
-  searchValue: controlledSearchValue,
-  placeholder,
-  autoFocus,
-  shouldCreate = defaultShouldCreate,
-  showInfoIcon = true,
-  rightSection,
-  onChange,
-  onSearchChange,
-  onFocus,
-  onBlur,
-  isSelectingItem,
-  ...props
-}: MultiAutocompleteProps) {
+export const MultiAutocomplete = forwardRef<
+  HTMLInputElement,
+  MultiAutocompleteProps
+>(function MultiAutocomplete(
+  {
+    data,
+    value: controlledValue,
+    defaultValue,
+    searchValue: controlledSearchValue,
+    placeholder,
+    autoFocus,
+    shouldCreate = defaultShouldCreate,
+    showInfoIcon = true,
+    rightSection,
+    onChange,
+    onSearchChange,
+    onFocus,
+    onBlur,
+    isSelectingItem,
+    ...props
+  },
+  ref,
+) {
   const [selectedValues, setSelectedValues] = useUncontrolled({
     value: controlledValue,
     defaultValue,
@@ -177,6 +183,7 @@ export function MultiAutocomplete({
   return (
     <MultiSelect
       {...props}
+      ref={ref}
       data={items}
       value={visibleValues}
       searchValue={searchValue}
@@ -191,7 +198,7 @@ export function MultiAutocomplete({
       rightSection={rightSection ?? (showInfoIcon ? infoIcon : null)}
     />
   );
-}
+});
 
 function getSelectItem(item: string | SelectItem): SelectItem {
   if (typeof item === "string") {
