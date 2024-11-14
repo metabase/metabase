@@ -206,7 +206,7 @@ export const CollectionsApi = {
   getRoot: GET("/api/collection/root"),
   update: PUT("/api/collection/:id"),
   graph: GET("/api/collection/graph"),
-  updateGraph: PUT("/api/collection/graph"),
+  updateGraph: PUT("/api/collection/graph?skip-graph=true"),
 };
 
 const PIVOT_PUBLIC_PREFIX = "/api/public/pivot/";
