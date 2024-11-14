@@ -497,7 +497,7 @@ describe("scenarios > collection defaults", () => {
       });
 
       H.entityPickerModal().within(() => {
-        cy.findByRole("tab", { name: /Collections/ }).click();
+        H.entityPickerModalTab("Browse").click();
         cy.findByText("Bobby Tables's Personal Collection").click();
         cy.findByText(COLLECTION).click();
         cy.button("Move").should("not.be.disabled");
@@ -526,7 +526,7 @@ describe("scenarios > collection defaults", () => {
 
       H.entityPickerModal().within(() => {
         cy.findByTestId("loading-indicator").should("not.exist");
-        cy.findByRole("tab", { name: /Collections/ }).click();
+        cy.findByRole("tab", { name: /Browse/ }).click();
         cy.wait([
           "@getCollectionItems",
           "@getCollectionItems",
@@ -581,7 +581,7 @@ describe("scenarios > collection defaults", () => {
       H.popover().findByText("Move").click();
 
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Collections").click();
+        H.entityPickerModalTab("Browse").click();
         H.entityPickerModalItem(0, "Our analytics").click();
         cy.button("Move").click();
         cy.log("Entity picker should show an error message");
@@ -698,7 +698,7 @@ describe("scenarios > collection defaults", () => {
           H.popover().findByText("Move").click();
 
           H.entityPickerModal().within(() => {
-            cy.findByRole("tab", { name: /Collections/ }).click();
+            cy.findByRole("tab", { name: /Browse/ }).click();
             cy.log("parent collection should be selected");
             findPickerItem("First collection").should(
               "have.attr",
@@ -721,7 +721,7 @@ describe("scenarios > collection defaults", () => {
 
           H.entityPickerModal().within(() => {
             cy.log("parent collection should be selected");
-            cy.findByRole("tab", { name: /Collections/ }).click();
+            entityPickerModalTab("Collections").click();
             findPickerItem("Second collection").should(
               "have.attr",
               "data-active",

@@ -65,7 +65,7 @@ describe("issue 19737", () => {
     H.popover().findByText("Move").click();
 
     H.entityPickerModal().within(() => {
-      cy.findByRole("tab", { name: /Collections/ }).click();
+      cy.findByRole("tab", { name: /Browse/ }).click();
       cy.findByText(collectionName).click();
       cy.button("Move").click();
     });

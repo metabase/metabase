@@ -164,7 +164,7 @@ export const QuestionActions = ({
   }
 
   if (hasCollectionPermissions) {
-    if (!isDashboardQuestion) {
+    if (!isDashboardQuestion && !isModel) {
       extraButtons.push({
         title: t`Turn into a model`,
         icon: "model",

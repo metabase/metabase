@@ -457,7 +457,7 @@ describe("scenarios > native question > data reference sidebar", () => {
     H.popover().findByTestId("move-button").click();
 
     H.entityPickerModal().within(() => {
-      cy.findByRole("tab", { name: /Collections/ }).click();
+      cy.findByRole("tab", { name: /Browse/ }).click();
       cy.findByText("Bobby Tables's Personal Collection").click();
       cy.button("Move").click();
     });

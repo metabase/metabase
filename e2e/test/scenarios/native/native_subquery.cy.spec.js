@@ -67,7 +67,17 @@ describe("scenarios > question > native subquery", () => {
         type: "model",
         collection_id: ADMIN_PERSONAL_COLLECTION_ID,
       }).then(({ body: { id: questionId2 } }) => {
-        H.openNativeEditor();
+        // Move question 2 to personal collection
+        cy.visit(`/question/${questionId2}`);
+        H.openQuestionActions();
+        cy.findByTestId("move-button").click();
+        H.entityPickerModal().within(() => {
+          cy.findByRole("tab", { name: /Browse/ }).click();
+          cy.findByText("Bobby Tables's Personal Collection").click();
+          cy.button("Move").click();
+        });
+
+        openNativeEditor();
         cy.reload(); // Refresh the state, so previously created questions need to be loaded again.
         H.focusNativeEditor().realType(" {{#people");
 
