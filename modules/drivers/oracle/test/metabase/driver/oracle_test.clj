@@ -524,7 +524,7 @@
                                                    [:= :table_id (t2/select-one-fn :id :model/Table
                                                                                     {:where [:and
                                                                                              [:= :db_id (mt/id)]
-                                                                                             [:= :name "date_db_dtab"]]})]
+                                                                                             [:= :name "ora_date_db_dtab"]]})]
                                                    [:= :name "dcol"]]})]
             (are [key* expected-type] (= expected-type (key* date-field))
               :base_type :type/DateTime
