@@ -1141,7 +1141,7 @@
     [(:or :field "field") (fully-qualified-name :guard vector?)]
     [:field (*import-field-fk* fully-qualified-name)]
 
-;; source-field is also used within parameter mapping dimensions
+    ;; source-field is also used within parameter mapping dimensions
     ;; example relevant clause - [:field 2 {:source-field 1}]
     {:source-field (fully-qualified-name :guard vector?)}
     (assoc &match :source-field (*import-field-fk* fully-qualified-name))
@@ -1415,25 +1415,14 @@
 (defn- export-visualizations [entity]
   (lib.util.match/replace
     entity
-    ["field-id" (id :guard number?)]
-    ["field-id" (*export-field-fk* id)]
-    [:field-id (id :guard number?)]
-    [:field-id (*export-field-fk* id)]
-
-    ["field-id" (id :guard number?) tail]
-    ["field-id" (*export-field-fk* id) (export-visualizations tail)]
-    [:field-id (id :guard number?) tail]
-    [:field-id (*export-field-fk* id) (export-visualizations tail)]
-
-    ["field" (id :guard number?)]
-    ["field" (*export-field-fk* id)]
-    [:field (id :guard number?)]
-    [:field (*export-field-fk* id)]
-
-    ["field" (id :guard number?) tail]
-    ["field" (*export-field-fk* id) (export-visualizations tail)]
-    [:field (id :guard number?) tail]
-    [:field (*export-field-fk* id) (export-visualizations tail)]
+    ["field-id" (id :guard number?)]      ["field-id" (*export-field-fk* id)]
+    [:field-id  (id :guard number?)]      [:field-id  (*export-field-fk* id)]
+    ["field-id" (id :guard number?) tail] ["field-id" (*export-field-fk* id) (export-visualizations tail)]
+    [:field-id  (id :guard number?) tail] [:field-id  (*export-field-fk* id) (export-visualizations tail)]
+    ["field"    (id :guard number?)]      ["field"    (*export-field-fk* id)]
+    [:field     (id :guard number?)]      [:field     (*export-field-fk* id)]
+    ["field"    (id :guard number?) tail] ["field"    (*export-field-fk* id) (export-visualizations tail)]
+    [:field     (id :guard number?) tail] [:field     (*export-field-fk* id) (export-visualizations tail)]
 
     (_ :guard map?)
     (m/map-vals export-visualizations &match)
