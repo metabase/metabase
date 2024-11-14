@@ -108,19 +108,20 @@
    [:type             :keyword]
    [:field            :string]
    [:context-key      :keyword]
-   [:supported-value? :fn]
+   [:supported-value? ifn?]
    [:required-feature [:maybe :keyword]]])
 
-(mu/defn- build-filter
-  [{k :key t :type :keys [context-key field default-value supported-value? required-feature]} :- FilterDef] :- Filter
-  {:type             (keyword "metabase.search.filter" (name t))
+(mu/defn- build-filter :- Filter
+  [{k :key t :type :keys [context-key field supported-value? required-feature]} :- FilterDef]
+  {:key              k
+   :type             (keyword "metabase.search.filter" (name t))
    :field            (or field (u/->snake_case_en (name k)))
    :context-key      (or context-key k)
-   :default-value    default-value
    :supported-value? (or supported-value? (constantly true))
    :required-feature required-feature})
 
-(mu/defn- build-filters [m] :- [:map-of :keyword Filter]
+(mu/defn- build-filters :- [:map-of :keyword Filter]
+  [m]
   (-> (reduce #(assoc-in %1 [%2 :key] %2) m (keys m))
       (update-vals build-filter)))
 
