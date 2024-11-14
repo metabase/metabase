@@ -20,15 +20,15 @@ There are three permission levels for collections:
 - [View access](#view-access)
 - [No access](#no-access)
 
-| Action                             | Curate Access | View Access | No Access |
-| ---------------------------------- | ------------- | ----------- | --------- |
-| View items                         | ✅            | ✅          | ❌        |
-| Edit items' title and descriptions | ✅            | ❌          | ❌        |
-| Move items                         | ✅            | ❌          | ❌        |
-| Delete items                       | ✅            | ❌          | ❌        |
-| Pin items                          | ✅            | ❌          | ❌        |
-| View events and timelines          | ✅            | ✅          | ❌        |
-| Edit events and timelines          | ✅            | ❌          | ❌        |
+| Action                             | Curate Access                         | View Access                           | No Access                         |
+| ---------------------------------- | ------------------------------------- | ------------------------------------- | --------------------------------- |
+| View items                         | {% include svg-icons/checkmark.svg %} | {% include svg-icons/checkmark.svg %} | {% include svg-icons/cross.svg %} |
+| Edit items' title and descriptions | {% include svg-icons/checkmark.svg %} | {% include svg-icons/cross.svg %}     | {% include svg-icons/cross.svg %} |
+| Move items                         | {% include svg-icons/checkmark.svg %} | {% include svg-icons/cross.svg %}     | {% include svg-icons/cross.svg %} |
+| Delete items                       | {% include svg-icons/checkmark.svg %} | {% include svg-icons/cross.svg %}     | {% include svg-icons/cross.svg %} |
+| Pin items                          | {% include svg-icons/checkmark.svg %} | {% include svg-icons/cross.svg %}     | {% include svg-icons/cross.svg %} |
+| View events and timelines          | {% include svg-icons/checkmark.svg %} | {% include svg-icons/checkmark.svg %} | {% include svg-icons/cross.svg %} |
+| Edit events and timelines          | {% include svg-icons/checkmark.svg %} | {% include svg-icons/cross.svg %}     | {% include svg-icons/cross.svg %} |
 
 ### Curate access
 

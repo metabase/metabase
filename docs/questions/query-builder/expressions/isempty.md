@@ -53,13 +53,13 @@ case(isempty([Feedback]), "No feedback.", [Feedback])
 
 ## Accepted data types
 
-| [Data type][data-types] | Works with `isempty` |
-| ----------------------- | -------------------- |
-| String                  | ✅                   |
-| Number                  | ❌                   |
-| Timestamp               | ❌                   |
-| Boolean                 | ❌                   |
-| JSON                    | ❌                   |
+| [Data type][data-types] | Works with `isempty`                  |
+| ----------------------- | ------------------------------------- |
+| String                  | {% include svg-icons/checkmark.svg %} |
+| Number                  | {% include svg-icons/cross.svg %}     |
+| Timestamp               | {% include svg-icons/cross.svg %}     |
+| Boolean                 | {% include svg-icons/cross.svg %}     |
+| JSON                    | {% include svg-icons/cross.svg %}     |
 
 ## Limitations
 

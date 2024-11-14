@@ -109,13 +109,13 @@ To view those payments by month, set the **Group by** column to "Date Received: 
 
 ## Accepted data types
 
-| [Data type](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview#examples-of-data-types) | Works with `SumIf` |
-| ------------------------------------------------------------------------------------------------------------------------------ | ------------------ |
-| String                                                                                                                         | ❌                 |
-| Number                                                                                                                         | ✅                 |
-| Timestamp                                                                                                                      | ❌                 |
-| Boolean                                                                                                                        | ✅                 |
-| JSON                                                                                                                           | ❌                 |
+| [Data type](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview#examples-of-data-types) | Works with `SumIf`                    |
+| ------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------- |
+| String                                                                                                                         | {% include svg-icons/cross.svg %}     |
+| Number                                                                                                                         | {% include svg-icons/checkmark.svg %} |
+| Timestamp                                                                                                                      | {% include svg-icons/cross.svg %}     |
+| Boolean                                                                                                                        | {% include svg-icons/checkmark.svg %} |
+| JSON                                                                                                                           | {% include svg-icons/cross.svg %}     |
 
 See [parameters](#parameters).
 

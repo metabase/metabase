@@ -56,13 +56,13 @@ case(isnull([Feedback]), "Unknown feedback.", [Feedback])
 
 ## Accepted data types
 
-| [Data type][data-types] | Works with `isnull` |
-| ----------------------- | ------------------- |
-| String                  | ✅                  |
-| Number                  | ✅                  |
-| Timestamp               | ✅                  |
-| Boolean                 | ✅                  |
-| JSON                    | ✅                  |
+| [Data type][data-types] | Works with `isnull`                   |
+| ----------------------- | ------------------------------------- |
+| String                  | {% include svg-icons/checkmark.svg %} |
+| Number                  | {% include svg-icons/checkmark.svg %} |
+| Timestamp               | {% include svg-icons/checkmark.svg %} |
+| Boolean                 | {% include svg-icons/checkmark.svg %} |
+| JSON                    | {% include svg-icons/checkmark.svg %} |
 
 ## Limitations
 

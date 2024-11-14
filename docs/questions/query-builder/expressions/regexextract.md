@@ -43,13 +43,13 @@ Now, you can use **Campaign Name** in places where you need clean labels, such a
 
 ## Accepted data types
 
-| [Data type](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview#examples-of-data-types) | Works with `regexextract` |
-| ------------------------------------------------------------------------------------------------------------------------------ | ------------------------- |
-| String                                                                                                                         | ✅                        |
-| Number                                                                                                                         | ❌                        |
-| Timestamp                                                                                                                      | ❌                        |
-| Boolean                                                                                                                        | ❌                        |
-| JSON                                                                                                                           | ❌                        |
+| [Data type](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview#examples-of-data-types) | Works with `regexextract`             |
+| ------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------- |
+| String                                                                                                                         | {% include svg-icons/checkmark.svg %} |
+| Number                                                                                                                         | {% include svg-icons/cross.svg %}     |
+| Timestamp                                                                                                                      | {% include svg-icons/cross.svg %}     |
+| Boolean                                                                                                                        | {% include svg-icons/cross.svg %}     |
+| JSON                                                                                                                           | {% include svg-icons/cross.svg %}     |
 
 ## Limitations
 

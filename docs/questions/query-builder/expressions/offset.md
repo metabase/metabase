@@ -24,13 +24,13 @@ Because `Offset` refers to other rows, the order of the breakouts matters (the b
 
 The `Offset` function returns whatever value is in the offset row.
 
-| [Data type](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview#examples-of-data-types) | Returned by `Offset` |
-| ------------------------------------------------------------------------------------------------------------------------------ | -------------------- |
-| String                                                                                                                         | ✅                   |
-| Number                                                                                                                         | ✅                   |
-| Timestamp                                                                                                                      | ✅                   |
-| Boolean                                                                                                                        | ✅                   |
-| JSON                                                                                                                           | ✅                   |
+| [Data type](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview#examples-of-data-types) | Returned by `Offset`                  |
+| ------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------- |
+| String                                                                                                                         | {% include svg-icons/checkmark.svg %} |
+| Number                                                                                                                         | {% include svg-icons/checkmark.svg %} |
+| Timestamp                                                                                                                      | {% include svg-icons/checkmark.svg %} |
+| Boolean                                                                                                                        | {% include svg-icons/checkmark.svg %} |
+| JSON                                                                                                                           | {% include svg-icons/checkmark.svg %} |
 
 ## Example year-over-year (YoY) time series comparison using `Offset`
 
