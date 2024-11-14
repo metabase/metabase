@@ -1646,7 +1646,6 @@ describe("scenarios > question > multiple column breakouts", () => {
           column2Index: 0,
         });
         assertTableData({
-          // TODO QP bug, should be "Min of Created At: Year",  "Max of Created At: Month"
           columns: ["Min of Created At: Year", "Max of Created At: Month"],
           firstRows: [["January 1, 2022, 12:00 AM", "April 1, 2026, 12:00 AM"]],
         });
