@@ -39,8 +39,6 @@ describeSDK("scenarios > embedding-sdk > interactive-dashboard", () => {
       };
 
       cy.wrap(dashboard_id).as("dashboardId");
-      cy.log(`dashboard id = ${dashboard_id}`);
-
       updateDashboardCards({ dashboard_id, cards: [questionCard] });
       visitDashboard(dashboard_id);
     });
