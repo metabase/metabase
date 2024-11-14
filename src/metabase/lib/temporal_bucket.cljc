@@ -230,11 +230,11 @@
 
 (defn- mark-unit [options option-key unit]
   (cond->> options
-     (some #(= (:unit %) unit) options)
-     (mapv (fn [option]
-             (cond-> option
-               (contains? option option-key) (dissoc option option-key)
-               (= (:unit option) unit)       (assoc option-key true))))))
+    (some #(= (:unit %) unit) options)
+    (mapv (fn [option]
+            (cond-> option
+              (contains? option option-key) (dissoc option option-key)
+              (= (:unit option) unit)       (assoc option-key true))))))
 
 (defn available-temporal-buckets-for-type
   "Given the type of this column and nillable `default-unit` and `selected-unit`s, return the correct list of buckets."
