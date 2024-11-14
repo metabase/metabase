@@ -3,7 +3,9 @@ import type {
   FetchRequestTokenFn,
   SDKConfig,
 } from "embedding-sdk";
+import { getEmbeddingSdkVersion } from "embedding-sdk/config";
 import { getIsLocalhost } from "embedding-sdk/lib/is-localhost";
+import { isSdkVersionCompatibleWithMetabaseVersion } from "embedding-sdk/lib/version-utils";
 import type { SdkStoreState } from "embedding-sdk/store/types";
 import api from "metabase/lib/api";
 import { createAsyncThunk } from "metabase/lib/redux";
@@ -42,6 +44,24 @@ export const initAuth = createAsyncThunk(
       dispatch(refreshCurrentUser()),
       dispatch(refreshSiteSettings({})),
     ]);
+
+    const mbVersion = siteSettings.payload?.version?.tag;
+    const sdkVersion = getEmbeddingSdkVersion();
+
+    if (mbVersion && sdkVersion !== "unknown") {
+      if (
+        !isSdkVersionCompatibleWithMetabaseVersion({
+          mbVersion,
+          sdkVersion,
+        })
+      ) {
+        console.warn(
+          "%cDetected SDK compatibility issue\n",
+          "color: #FCF0A6; font-size: 16px; font-weight: bold;",
+          `SDK version ${sdkVersion} is not compatible with MB version ${mbVersion}, this might cause issues.`,
+        );
+      }
+    }
 
     if (!user.payload) {
       // The refresh user thunk just returns null if it fails to fetch the user, it doesn't throw
