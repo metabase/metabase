@@ -17,11 +17,7 @@ export const SummarizeAggregationItemList = ({
   ...containerProps
 }: SummarizeAggregationItemListProps) => {
   const aggregationItems = useMemo(
-    () =>
-      getAggregationItems({
-        query,
-        stageIndex,
-      }),
+    () => getAggregationItems({ query, stageIndex }),
     [query, stageIndex],
   );
 
