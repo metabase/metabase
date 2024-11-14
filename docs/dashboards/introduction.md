@@ -96,7 +96,7 @@ To add a link card to a dashboard, click the **pencil** icon to enter dashboard 
 
 ## Iframe cards
 
-[Iframes](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/iframe) allow you to nest one HTML page in another HTML page. With iframe cards in Metabase, you can embed a webpage in your dashboard. You can embe:
+[Iframes](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/iframe) allow you to nest one HTML page in another HTML page. With iframe cards in Metabase, you can embed a webpage in your dashboard. You can embed:
 
 - Spreadsheets or surveys for data entry or workflows
 - Videos or slides for contextualizing and storytelling on dashboards
