@@ -1110,21 +1110,49 @@ describe("issue 49882", () => {
     cy.signInAsNormalUser();
   });
 
-  it("should not eat up subsequent characters when applying a suggestion (metabase#49882)", () => {
+  it("should not eat up subsequent characters when applying a suggestion (metabase#49882-1)", () => {
     openOrdersTable({ mode: "notebook" });
     cy.findByLabelText("Custom column").click();
+
+    const moveCursorTo2ndCaseArgument = "{leftarrow}".repeat(6);
     enterCustomColumnDetails({
-      formula:
-        'case([Total] > 200, , "X"){leftarrow}{leftarrow}{leftarrow}{leftarrow}{leftarrow}{leftarrow}[to{enter}',
+      formula: `case([Total] > 200, , "X")${moveCursorTo2ndCaseArgument}[to{enter}`,
     });
 
     // TODO: fix space after [Total]
     cy.get(".ace_text-input")
       .first()
       .should("have.value", 'case([Total] > 200, [Total], "X")\n\n');
+    popover().findByText("Expecting a closing parenthesis").should("not.exist");
   });
 
-  it("should allow moving cursor between wrapped lines with arrow up and arrow down keys (metabase#49882)", () => {
+  it("does not clear expression input when expression is invalid (metabase#49882-2)", () => {
+    openOrdersTable({ mode: "notebook" });
+    cy.findByLabelText("Custom column").click();
+
+    const selectTax = `{leftarrow}${"{shift+leftarrow}".repeat(5)}`;
+    const moveCursorBefore2ndCase = "{leftarrow}".repeat(41);
+    enterCustomColumnDetails({
+      formula: `case([Tax] > 1, case([Total] > 200, [Total], "Nothing"), [Tax])${selectTax}`,
+    });
+    cy.get(".ace_text-input").first().focus().realPress(["Control", "X"]);
+    cy.get(".ace_text-input")
+      .first()
+      .focus()
+      .type(moveCursorBefore2ndCase)
+      .realPress(["Control", "V"]);
+    cy.get(".ace_text-input").first().focus().type(" ").blur();
+
+    cy.get(".ace_text-input")
+      .first()
+      .focus()
+      .should(
+        "have.value",
+        'case([Tax] > 1, [Tax] case([Total] > 200, [Total], "Nothing"), )',
+      );
+  });
+
+  it("should allow moving cursor between wrapped lines with arrow up and arrow down keys (metabase#49882-3)", () => {
     openOrdersTable({ mode: "notebook" });
     cy.findByLabelText("Custom column").click();
     enterCustomColumnDetails({
@@ -1140,12 +1168,13 @@ describe("issue 49882", () => {
       );
   });
 
-  it("should update currently selected suggestion when moving cursor (metabase#49882)", () => {
+  it("should update currently selected suggestion when suggestions list is updated (metabase#49882-4)", () => {
     openOrdersTable({ mode: "notebook" });
     cy.findByLabelText("Custom column").click();
+    const selectProductVendor =
+      "{downarrow}{downarrow}{downarrow}{downarrow}{downarrow}{enter}";
     enterCustomColumnDetails({
-      formula:
-        "[Product{downarrow}{downarrow}{downarrow}{downarrow}{downarrow}{enter}{leftarrow}{leftarrow}",
+      formula: `[Product${selectProductVendor}{leftarrow}{leftarrow}`,
       blur: false,
     });
 
