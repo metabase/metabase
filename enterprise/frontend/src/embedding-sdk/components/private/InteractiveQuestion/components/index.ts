@@ -14,3 +14,6 @@ export * from "./SummarizeButton";
 export * from "./Title";
 export * from "./Visualization";
 export * from "./QuestionSettings";
+export { BadgeList } from "embedding-sdk/components/private/InteractiveQuestion/components/BadgeList";
+export { AddBadgeListItem } from "embedding-sdk/components/private/InteractiveQuestion/components/AddBadgeListItem";
+export { BadgeListItem } from "embedding-sdk/components/private/InteractiveQuestion/components/BadgeListItem";

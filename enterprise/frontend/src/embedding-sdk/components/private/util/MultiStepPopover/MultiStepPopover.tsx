@@ -6,7 +6,7 @@ import {
   isValidElement,
 } from "react";
 
-import { Paper, Popover } from "metabase/ui";
+import { Paper, Popover, type PopoverProps } from "metabase/ui";
 
 const Step = ({ children }: StepProps) => {
   return <Paper className="p-4">{children}</Paper>;
@@ -34,9 +34,11 @@ const Target = ({ children }: MultiStepPopoverTargetProps) => {
 const MultiStepPopover = ({
   currentStep,
   children,
+  ...popoverProps
 }: PropsWithChildren<{
   currentStep: string | number;
-}>) => {
+}> &
+  PopoverProps) => {
   const getCurrentStepContent = () => {
     return (
       Children.toArray(children)
@@ -48,7 +50,7 @@ const MultiStepPopover = ({
   };
 
   return (
-    <Popover>
+    <Popover {...popoverProps} width={100}>
       <Popover.Target>
         {Children.toArray(children)
           .filter((child): child is ReactElement => isValidElement(child))
