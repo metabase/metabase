@@ -45,13 +45,8 @@ export const getSankeyChartOption = (
   const series: SankeySeriesOption = {
     animation: false,
     type: "sankey",
-    labelLayout: params => {
-      if (params.dataType === "edge") {
-        return {
-          hideOverlap: true,
-        };
-      }
-      return { hideOverlap: false };
+    labelLayout: {
+      hideOverlap: true,
     },
     ...layout.padding,
     nodeAlign: settings["sankey.node_align"],
