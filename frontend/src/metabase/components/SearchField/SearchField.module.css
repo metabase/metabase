@@ -1,0 +1,32 @@
+.options {
+  overflow: auto;
+  list-style: none;
+  padding: 0.5rem 0 0;
+
+  &.dashboardFilter {
+    max-height: 300px;
+  }
+}
+
+.option {
+  border-radius: 4px;
+  cursor: pointer;
+  display: inline-block;
+  margin: 0;
+  padding: 0.5rem 0.6rem;
+  width: 100%;
+  color: var(--mb-color-text-primary);
+  background-color: var(--mb-color-background);
+  text-align: inherit;
+
+  &:hover {
+    color: var(--mb-color-text-hover);
+    background-color: var(--mb-color-background-hover);
+  }
+
+  &.selected,
+  &.selected:hover {
+    color: var(--mb-color-text-selected);
+    background-color: var(--mb-color-background-selected);
+  }
+}

@@ -13,6 +13,7 @@ import { parseValues, unique } from "./utils";
 export type MultiAutocompleteProps = Omit<MultiSelectProps, "shouldCreate"> & {
   shouldCreate?: (query: string, selectedValues: string[]) => boolean;
   showInfoIcon?: boolean;
+  isSelectingItem?: (event: FocusEvent<HTMLInputElement>) => boolean;
 };
 
 export function MultiAutocomplete({
@@ -29,6 +30,7 @@ export function MultiAutocomplete({
   onSearchChange,
   onFocus,
   onBlur,
+  isSelectingItem,
   ...props
 }: MultiAutocompleteProps) {
   const [selectedValues, setSelectedValues] = useUncontrolled({
@@ -68,7 +70,13 @@ export function MultiAutocomplete({
   }
 
   const handleBlur = (event: FocusEvent<HTMLInputElement>) => {
-    setIsFocused(false);
+    onBlur?.(event);
+
+    if (event.isPropagationStopped()) {
+      setSelectedValues(lastSelectedValues);
+      setIsFocused(false);
+      return;
+    }
 
     const values = parseValues(searchValue);
     const validValues = values.filter(isValid);
@@ -82,8 +90,7 @@ export function MultiAutocomplete({
     } else {
       setSelectedValues(lastSelectedValues);
     }
-
-    onBlur?.(event);
+    setIsFocused(false);
   };
 
   const handlePaste = (event: ClipboardEvent<HTMLInputElement>) => {
