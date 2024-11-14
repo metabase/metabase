@@ -26,7 +26,7 @@ export const useDefaultQueryAggregation = ({
     [query, stageIndex],
   );
 
-  const handleUpdateQuery = useCallback(
+  const onUpdateQuery = useCallback(
     (nextQuery: Lib.Query) => {
       setHasDefaultAggregation(false);
       onQueryChange(nextQuery);
@@ -34,7 +34,7 @@ export const useDefaultQueryAggregation = ({
     [onQueryChange],
   );
 
-  const handleAggregationChange = useCallback(
+  const onAggregationChange = useCallback(
     (nextQuery: Lib.Query) => {
       const newAggregations = Lib.aggregations(nextQuery, stageIndex);
       setHasDefaultAggregation(false);
@@ -49,8 +49,8 @@ export const useDefaultQueryAggregation = ({
   return {
     query,
     hasAggregations,
-    handleUpdateQuery,
-    handleAggregationChange,
+    onUpdateQuery,
+    onAggregationChange,
   };
 };
 

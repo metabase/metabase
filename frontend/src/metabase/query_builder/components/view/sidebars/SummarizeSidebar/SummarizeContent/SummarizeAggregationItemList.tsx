@@ -1,6 +1,9 @@
+import { useMemo } from "react";
+
 import type { UpdateQueryHookProps } from "metabase/query_builder/hooks/types";
-import { useQueryAggregations } from "metabase/query_builder/hooks/use-query-aggregations";
+import { getAggregationItems } from "metabase/query_builder/utils/get-aggregation-items";
 import { Group, type GroupProps } from "metabase/ui";
+import * as Lib from "metabase-lib";
 
 import { AddAggregationButton } from "../AddAggregationButton";
 import { AggregationItem } from "../AggregationItem";
@@ -13,11 +16,19 @@ export const SummarizeAggregationItemList = ({
   stageIndex,
   ...containerProps
 }: SummarizeAggregationItemListProps) => {
-  const { items } = useQueryAggregations({
-    query,
-    onQueryChange,
-    stageIndex,
-  });
+  const aggregationItems = useMemo(
+    () =>
+      getAggregationItems({
+        query,
+        stageIndex,
+      }),
+    [query, stageIndex],
+  );
+
+  const handleRemove = (aggregation: Lib.AggregationClause) => {
+    const nextQuery = Lib.removeClause(query, stageIndex, aggregation);
+    onQueryChange(nextQuery);
+  };
 
   return (
     <Group
@@ -26,14 +37,8 @@ export const SummarizeAggregationItemList = ({
       align="flex-start"
       {...containerProps}
     >
-      {items.map(
-        ({
-          aggregation,
-          displayName,
-          aggregationIndex,
-          operators,
-          handleRemove,
-        }) => (
+      {aggregationItems.map(
+        ({ aggregation, displayName, aggregationIndex, operators }) => (
           <AggregationItem
             key={aggregationIndex}
             query={query}
@@ -42,7 +47,7 @@ export const SummarizeAggregationItemList = ({
             aggregationIndex={aggregationIndex}
             onQueryChange={onQueryChange}
             displayName={displayName}
-            onAggregationRemove={handleRemove}
+            onAggregationRemove={() => handleRemove(aggregation)}
             operators={operators}
           />
         ),

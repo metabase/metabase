@@ -20,10 +20,10 @@ export function BreakoutColumnList({
   stageIndex = -1,
 }: BreakoutColumnListProps) {
   const {
-    handleAddBreakout: onAddBreakout,
-    handleUpdateBreakout: onUpdateBreakout,
-    handleRemoveBreakout: onRemoveBreakout,
-    handleReplaceBreakouts: onReplaceBreakouts,
+    onAddBreakout,
+    onUpdateBreakout,
+    onRemoveBreakout,
+    onReplaceBreakouts,
   } = useBreakoutQueryHandlers({ query, onQueryChange, stageIndex });
 
   const [searchQuery, setSearchQuery] = useState("");

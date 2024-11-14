@@ -9,7 +9,7 @@ export const useBreakoutQueryHandlers = ({
   onQueryChange,
   stageIndex,
 }: UpdateQueryHookProps) => {
-  const handleAddBreakout = useCallback(
+  const onAddBreakout = useCallback(
     (column: Lib.ColumnMetadata) => {
       const nextQuery = Lib.breakout(query, stageIndex, column);
       onQueryChange(nextQuery);
@@ -17,7 +17,7 @@ export const useBreakoutQueryHandlers = ({
     [query, stageIndex, onQueryChange],
   );
 
-  const handleUpdateBreakout = useCallback(
+  const onUpdateBreakout = useCallback(
     (clause: Lib.BreakoutClause, column: Lib.ColumnMetadata) => {
       const nextQuery = Lib.replaceClause(query, stageIndex, clause, column);
       onQueryChange(nextQuery);
@@ -25,7 +25,7 @@ export const useBreakoutQueryHandlers = ({
     [query, stageIndex, onQueryChange],
   );
 
-  const handleRemoveBreakout = useCallback(
+  const onRemoveBreakout = useCallback(
     (clause: Lib.BreakoutClause) => {
       const nextQuery = Lib.removeClause(query, stageIndex, clause);
       onQueryChange(nextQuery);
@@ -33,7 +33,7 @@ export const useBreakoutQueryHandlers = ({
     [query, stageIndex, onQueryChange],
   );
 
-  const handleReplaceBreakouts = useCallback(
+  const onReplaceBreakouts = useCallback(
     (column: Lib.ColumnMetadata) => {
       const nextQuery = Lib.replaceBreakouts(query, stageIndex, column);
       onQueryChange(nextQuery);
@@ -42,9 +42,9 @@ export const useBreakoutQueryHandlers = ({
   );
 
   return {
-    handleAddBreakout,
-    handleUpdateBreakout,
-    handleRemoveBreakout,
-    handleReplaceBreakouts,
+    onAddBreakout,
+    onUpdateBreakout,
+    onRemoveBreakout,
+    onReplaceBreakouts,
   };
 };

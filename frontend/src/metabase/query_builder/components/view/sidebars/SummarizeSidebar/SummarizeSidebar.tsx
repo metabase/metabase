@@ -24,7 +24,7 @@ export function SummarizeSidebar({
   onClose,
   stageIndex,
 }: SummarizeSidebarProps) {
-  const { query, handleUpdateQuery, handleAggregationChange, hasAggregations } =
+  const { query, onUpdateQuery, onAggregationChange, hasAggregations } =
     useDefaultQueryAggregation({
       query: initialQuery,
       onQueryChange,
@@ -46,7 +46,7 @@ export function SummarizeSidebar({
       <SummarizeAggregationItemList
         px="lg"
         query={query}
-        onQueryChange={handleAggregationChange}
+        onQueryChange={onAggregationChange}
         stageIndex={stageIndex}
       />
       <Divider my="lg" />
@@ -54,7 +54,7 @@ export function SummarizeSidebar({
         <SummarizeBreakoutColumnList
           px="lg"
           query={query}
-          onQueryChange={handleUpdateQuery}
+          onQueryChange={onUpdateQuery}
           stageIndex={stageIndex}
         />
       )}
