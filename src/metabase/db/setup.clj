@@ -134,7 +134,7 @@
                        "\n\n"
                        (trs "Your metabase instance appears to have been downgraded without a corresponding database downgrade.")
                        "\n\n"
-                       (trs "You must run `java -jar metabase.jar migrate down` from version {0}." latest-applied)
+                       (trs "You must run `java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar migrate down` from version {0}." latest-applied)
                        "\n\n"
                        (trs "Once your database has been downgraded, try running the application again.")
                        "\n\n"

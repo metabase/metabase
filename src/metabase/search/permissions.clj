@@ -8,17 +8,28 @@
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
+(defn- assert-current-user! [missing-param]
+  (assert @@(requiring-resolve 'metabase.api.common/*current-user*)
+          (format "metabase.api.common/*current-user* must be bound if %s is missing from search-ctx" missing-param)))
+
+(defn- impersonated-user? [{:keys [is-impersonated-user?] :as _search-ctx}]
+  (or is-impersonated-user?
+      ;; TODO Make this parameter non-optional, and fix code paths that omit it. Then remove this fallback.
+      (when (nil? is-impersonated-user?)
+        (assert-current-user! :is-impersonated-user?)
+        (premium-features/impersonated-user?))))
+
+(defn- sandboxed-user? [{:keys [is-sandboxed-user?] :as _search-ctx}]
+  (or is-sandboxed-user?
+      ;; TODO Make this parameter non-optional, and fix code paths that omit it. Then remove this fallback.
+      (when (nil? is-sandboxed-user?)
+        (assert-current-user! :is-sandboxed-user?)
+        (premium-features/sandboxed-user?))))
+
 (defn sandboxed-or-impersonated-user?
   "Is the current user sandboxed or impersonated?"
-  ;; TODO take the current user as a parameter, and override the binding if necessary.
-  []
-  ;; TODO FIXME -- search actually currently still requires [[metabase.api.common/*current-user*]] to be bound,
-  ;; because [[metabase.public-settings.premium-features/sandboxed-or-impersonated-user?]] requires it to be bound.
-  ;; Since it's part of the search context it would be nice if we could run search without having to bind that stuff at
-  ;; all.
-  (assert @@(requiring-resolve 'metabase.api.common/*current-user*)
-          "metabase.api.common/*current-user* must be bound in order to use search for an indexed entity")
-  (premium-features/sandboxed-or-impersonated-user?))
+  [search-ctx]
+  (or (impersonated-user? search-ctx) (sandboxed-user? search-ctx)))
 
 (mu/defn add-collection-join-and-where-clauses
   "Add a `WHERE` clause to the query to only return Collections the Current User has access to; join against Collection,

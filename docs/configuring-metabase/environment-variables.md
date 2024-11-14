@@ -28,7 +28,7 @@ $env:MB_SITE_NAME="Awesome Company"
 # Windows batch/cmd
 set MB_SITE_NAME="Awesome Company"
 
-java -jar metabase.jar
+java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar
 ```
 
 Or set it as Java property, which works the same across all systems:
@@ -2165,4 +2165,3 @@ Type: string<br>
 Default: `null`
 
 Base-64 encoded public key for this sites SSL certificate. Specify this to enable HTTP Public Key Pinning. Using HPKP is no longer recommended. See http://mzl.la/1EnfqBf for more information.
-
