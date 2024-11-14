@@ -62,7 +62,7 @@ describe("scenarios > models > create", () => {
     });
   });
 
-  it("suggest the last viewed dashboard when saving a new structured query", () => {
+  it("suggest the last accessed collection when saving a new structured query model", () => {
     H.visitCollection(THIRD_COLLECTION_ID);
 
     navigateToNewModelPage("structured");
@@ -79,7 +79,7 @@ describe("scenarios > models > create", () => {
     cy.findByTestId("save-question-modal").within(() => {
       cy.findByLabelText(/Where do you want to save this/).should(
         "have.text",
-        "Orders in a dashboard",
+        "Third collection",
       );
     });
   });

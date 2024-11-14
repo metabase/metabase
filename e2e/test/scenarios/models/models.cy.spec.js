@@ -405,7 +405,7 @@ describe("scenarios > models", () => {
         cy.findByText("Save").click();
       });
 
-      cy.url().should("match", /\/dashboard\/\d+#add=\d+&edit/);
+      cy.url().should("match", /\/dashboard\/\d+#edit/);
     });
 
     it("should not display models if nested queries are disabled", () => {

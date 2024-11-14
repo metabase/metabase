@@ -329,18 +329,16 @@ export function saveQuestion(
     pickEntity({ ...pickEntityOptions, select: true });
   }
 
-  let wasSavedToCollection = true;
-
-  cy.findByTestId("save-question-modal").within(() => {
-    wasSavedToCollection = cy.$$(".Icon-dashboard").length === 0;
-    cy.findByText("Save").click();
-  });
+  cy.findByTestId("save-question-modal").button("Save").click();
 
   cy.wait("@saveQuestion").then(({ response: { body } }) => {
     if (wrapId) {
       cy.wrap(body.id).as(idAlias);
     }
-  });
+
+    // if this question is saved to a dashboard
+    // we don't need to worry about the add to dash modal
+    const wasSavedToCollection = !body.dashboard_id;
 
   if (wasSavedToCollection) {
     cy.get("#QuestionSavedModal").within(() => {
@@ -353,6 +351,7 @@ export function saveQuestion(
    		}
   	});
   }
+  });
 }
 
 export function saveQuestionToCollection(

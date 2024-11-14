@@ -79,7 +79,7 @@ export const moveOpenedCollectionTo = (newParent: string) => {
   popover().within(() => cy.findByText("Move").click());
 
   entityPickerModal().within(() => {
-    cy.findByRole("tab", { name: /Collections/ }).click();
+    cy.findByRole("tab", { name: /Browse/ }).click();
     cy.findByText(newParent).click();
     cy.button("Move").click();
   });

@@ -134,6 +134,7 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
     H.getDashboardCard(1).findByText("Text card").should("be.visible");
     H.getDashboardCard(2).findByText("Action card").should("be.visible");
 
+    // TODO: find out why cards-in-dashboards added another request
     cy.get("@dashboard.all").should("have.length", 1);
     cy.get("@dashcardQuery.all").should("have.length", 1);
 
