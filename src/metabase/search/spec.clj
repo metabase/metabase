@@ -6,6 +6,7 @@
    [malli.core :as mc]
    [malli.error :as me]
    [metabase.config :as config]
+   [metabase.search.config :as search.config]
    [metabase.util :as u]
    [toucan2.core :as t2]
    [toucan2.tools.transformed :as t2.transformed]))
@@ -30,20 +31,19 @@
 
 (def ^:private optional-attrs
   "These attributes may be omitted (for now) in the interest of brevity in the definitions."
-  [:id
-   :name
-   :created-at
-   :creator-id
-   :database-id
-   :native-query
-   :official-collection
-   :dashboardcard-count
-   :last-edited-at
-   :last-editor-id
-   :pinned
-   :verified
-   :view-count
-   :updated-at])
+  (->> (keys (apply dissoc search.config/filters explicit-attrs))
+       ;; identifiers and rankers
+       (into
+        [:id                                                ;;  in addition to being a filter, this is a key property
+         :name
+         :official-collection
+         :dashboardcard-count
+         :pinned
+         :verified                                          ;;  in addition to being a filter, this is also a ranker
+         :view-count
+         :updated-at])
+       distinct
+       vec))
 
 (def ^:private default-attrs
   {:id   true
