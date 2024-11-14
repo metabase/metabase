@@ -106,10 +106,6 @@
         (distinct)
         (concat ordered-time-truncation-units ordered-date-truncation-units)))
 
-(def datetime-truncation-unit->order
-  "TBD"
-  (zipmap ordered-datetime-truncation-units (range)))
-
 (def ordered-datetime-bucketing-units
   "Valid datetime bucketing units for either truncation or extraction operations.
   The front end shows the options in this order."
