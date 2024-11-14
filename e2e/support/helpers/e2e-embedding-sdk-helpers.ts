@@ -37,7 +37,7 @@ export const getSdkRoot = () =>
 export const visitSdkStory = ({
   storyId,
   args,
-  windowEnvs,
+  windowEnvs = {},
 }: {
   storyId: string;
   args?: Record<string, string>;
@@ -54,7 +54,7 @@ export const visitSdkStory = ({
       window.JWT_SHARED_SECRET = JWT_SHARED_SECRET;
       window.METABASE_INSTANCE_URL = Cypress.config().baseUrl;
 
-      for (const [key, value] of Object.entries(windowEnvs ?? {})) {
+      for (const [key, value] of Object.entries(windowEnvs)) {
         window[key] = value;
       }
     },
