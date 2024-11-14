@@ -4,9 +4,7 @@ import { render, screen } from "__support__/ui";
 
 import { BadgeList, type BadgeListProps } from "./BadgeList";
 
-const setup = ({
-  addButtonLabel = "Add new",
-}: Partial<BadgeListProps<{ id: number }>> = {}) => {
+const setup = (props: Partial<BadgeListProps<{ id: number }>> = {}) => {
   const items = [
     { name: "item1", item: { id: 1 } },
     { name: "item2", item: { id: 2 } },
@@ -14,6 +12,8 @@ const setup = ({
   const onSelectItem = jest.fn();
   const onAddItem = jest.fn();
   const onRemoveItem = jest.fn();
+  const addButtonLabel =
+    "addButtonLabel" in props ? props.addButtonLabel : "Add new";
 
   render(
     <BadgeList
@@ -52,14 +52,14 @@ describe("BadgeList", () => {
   it("calls onSelectItem with correct item when badge is clicked", async () => {
     const { onSelectItem } = setup();
     await userEvent.click(screen.getByText("item1"));
-    expect(onSelectItem).toHaveBeenCalledWith({ id: 1 });
+    expect(onSelectItem).toHaveBeenCalledWith({ id: 1 }, 0);
   });
 
   it("calls onRemoveItem with correct item when remove button is clicked", async () => {
     const { onRemoveItem } = setup();
     const removeButtons = screen.getAllByLabelText("close icon");
     await userEvent.click(removeButtons[0]);
-    expect(onRemoveItem).toHaveBeenCalledWith({ id: 1 });
+    expect(onRemoveItem).toHaveBeenCalledWith({ id: 1 }, 0);
   });
 
   it("calls onAddItem when add button is clicked", async () => {
