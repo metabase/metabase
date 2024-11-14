@@ -29,9 +29,10 @@
     [:binning                                    {:optional true} [:ref ::binning/binning]]
     [:metabase.lib.field/original-effective-type {:optional true} [:ref ::common/base-type]]
     [:metabase.lib.field/original-temporal-unit  {:optional true} [:ref ::temporal-bucketing/unit]]
-    ;; `inherited-temporal-unit` conveys the the last temporal unit that was applied last to some field. In multi-stage
-    ;; query, using truncating temporal unit in one stage, more of a trucation can happen on following stages.
-    ;; It makes sense to truncate only coarser units. Coarser units can be picked based on value of this option.
+    ;; Inherited temporal unit captures the last temporal unit that has been assigned to a field on some of previous
+    ;; stages. That field may have resulted in some column, column into field, etc., passing through query stages.
+    ;; This information is useful eg. for picking default temporal unit for a columnn. If column is a result of
+    ;; a bucketed field, default is don't bin.
     [:inherited-temporal-unit  {:optional true} [:ref ::temporal-bucketing/unit]]]])
 
 (mr/def ::field.literal.options
