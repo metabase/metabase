@@ -72,8 +72,6 @@ describe("scenarios > question > nested", () => {
     cy.contains("Count by Total: Auto binned");
     chartPathWithFillColor("#509EE3").should("have.length.of.at.least", 8);
 
-    // cy.findAllByAltText("asdfasdf")
-
     // Go back to the nested question and make sure Sum over time works
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Nested GUI").click();
