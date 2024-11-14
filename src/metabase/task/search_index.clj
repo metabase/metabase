@@ -55,10 +55,10 @@
 
 (defn- force-scheduled-task! [^JobDetail job ^Trigger trigger]
   ;; For some reason, using the schedule-task! with a non-durable job causes it to only fire on the first trigger.
-  #_(task/schedule-task! job trigger)
-  (task/delete-task! (.getKey job) (.getKey trigger))
-  (task/add-job! job)
-  (task/add-trigger! trigger))
+  (task/schedule-task! job trigger)
+  #_(task/delete-task! (.getKey job) (.getKey trigger))
+  #_(task/add-job! job)
+  #_(task/add-trigger! trigger))
 
 (jobs/defjob ^{DisallowConcurrentExecution true
                :doc                        "Populate Search Index"}
@@ -73,7 +73,7 @@
 (defmethod task/init! ::SearchIndexReindex [_]
   (let [job         (jobs/build
                      (jobs/of-type SearchIndexReindex)
-                     (jobs/store-durably)
+                     ;(jobs/store-durably)
                      (jobs/with-identity reindex-job-key))
         trigger-key (triggers/key (str reindex-stem ".trigger"))
         trigger     (triggers/build
@@ -87,7 +87,7 @@
 (defmethod task/init! ::SearchIndexUpdate [_]
   (let [job         (jobs/build
                      (jobs/of-type SearchIndexUpdate)
-                     (jobs/store-durably)
+                     ;(jobs/store-durably)
                      (jobs/with-identity update-job-key))
         trigger-key (triggers/key (str update-stem ".trigger"))
         trigger     (triggers/build
