@@ -7,7 +7,8 @@
    [malli.error :as me]
    [metabase.config :as config]
    [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.transformed :as t2.transformed]))
 
 (def ^:private SearchModel
   [:enum "dashboard" "table" "dataset" "segment" "collection" "database" "action" "indexed-entity" "metric" "card"])
@@ -259,15 +260,26 @@
    (for [[search-model spec-fn] (methods spec)]
      (search-model-hooks (spec-fn search-model)))))
 
+(defn- instance->db-values
+  "Given a transformed toucan map, get back a mapping to the raw db values that we can use in a query."
+  [instance]
+  (let [xforms (#'t2.transformed/in-transforms (t2/model instance))]
+    (reduce-kv
+     (fn [m k v]
+       (assoc m k (if-let [f (get xforms k)] (f v) v)))
+     {}
+     instance)))
+
 (defn search-models-to-update
   "Given an updated or created instance, return a description of which search-models to (re)index."
   [instance & [always?]]
-  (into #{}
-        (keep
-         (fn [{:keys [search-model fields where]}]
-           (when (or always? (and fields (some fields (keys (or (t2/changes instance) instance)))))
-             [search-model (insert-values where :updated instance)])))
-        (get (model-hooks) (t2/model instance))))
+  (let [raw-values (delay (instance->db-values instance))]
+    (into #{}
+          (keep
+           (fn [{:keys [search-model fields where]}]
+             (when (or always? (and fields (some fields (keys (or (t2/changes instance) instance)))))
+               [search-model (insert-values where :updated @raw-values)])))
+          (get (model-hooks) (t2/model instance)))))
 
 (comment
   (doseq [d (descendants :hook/search-index)]
