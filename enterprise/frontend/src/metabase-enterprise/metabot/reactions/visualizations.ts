@@ -50,7 +50,10 @@ export const changeDisplayType: ReactionHandler<
         return;
       }
 
-      const newQuestion = setQuestionDisplayType(question, reaction.display);
+      const newQuestion = setQuestionDisplayType(
+        question,
+        reaction.display_type,
+      );
       await dispatch(updateQuestion(newQuestion, { run: true }));
       dispatch(setUIControls({ isShowingRawTable: false }));
     }

@@ -106,7 +106,7 @@
 (defreaction :metabot.reaction/change-display-type
   [:map
    [:type [:= :metabot.reaction/change-display-type]]
-   [:display [:enum "pie" "table" "bar" "line" "row" "area" "scalar"]]])
+   [:display-type [:enum "pie" "table" "bar" "line" "row" "area" "scalar"]]])
 
 (defreaction :metabot.reaction/goto-question
   [:map
