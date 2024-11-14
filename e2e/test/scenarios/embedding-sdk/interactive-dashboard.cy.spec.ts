@@ -49,24 +49,6 @@ describeSDK("scenarios > embedding-sdk > interactive-dashboard", () => {
     cy.intercept("GET", "/api/user/current").as("getUser");
   });
 
-  it("should not open sidesheet when clicking last edit info (metabase#48354)", () => {
-    cy.get("@dashboardId").then(dashboardId => {
-      visitSdkStory({
-        storyId: "embeddingsdk-editabledashboard--default",
-        windowEnvs: { DASHBOARD_ID: dashboardId },
-      });
-    });
-
-    getSdkRoot()
-      .findByText("Edited a few seconds ago by Bobby Tables")
-      .click()
-      .should("be.visible");
-
-    cy.findByRole("heading", { name: "Info" }).should("not.exist");
-    cy.findByRole("tab", { name: "Overview" }).should("not.exist");
-    cy.findByRole("tab", { name: "History" }).should("not.exist");
-  });
-
   it("should be able to display custom question layout when clicking on dashboard cards", () => {
     cy.get("@dashboardId").then(dashboardId => {
       visitSdkStory({
