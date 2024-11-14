@@ -99,10 +99,10 @@
                   ;; `:inherited-temporal-unit` is transfered from `:temoral-unit` ref option only when
                   ;; the [[lib.metadata.calculation/*propagate-inherited-temoral-unit*]] is thruthy, ie. bound. Intent
                   ;; is to pass it from ref to column only during [[returned-columns]] call. Otherwise eg.
-                  ;; [[visible-columns]] would contain that too. That could be problematic, because original ref that
+                  ;; [[orderable-columns]] would contain that too. That could be problematic, because original ref that
                   ;; contained `:temporal-unit` contains no `:inherent-temporal-unit`. If the column like this was used
                   ;; to generate ref for eg. order by it would contain the `:inherent-temporal-unit`, while
-                  ;; the original column would not.
+                  ;; the original column (eg. in breakout) would not.
                   (let [inherited-temporal-unit-keys (cond-> (list :inherited-temporal-unit)
                                                        lib.metadata.calculation/*propagate-inherited-temoral-unit*
                                                        (conj :temporal-unit))]
@@ -264,7 +264,6 @@
     ;; temporal unit and binning formatting are only applied if they haven't been applied yet
     (cond
       (and (not= style :long) hide-bin-bucket?) display-name
-      ;; lbrdnk TODO: Why the following condition is based on `display-name` and `humanized-name`?
       (and temporal-unit (not= display-name (temporal-format humanized-name))) (temporal-format display-name)
       (and binning       (not= display-name (bin-format humanized-name)))      (bin-format display-name)
       :else                                                                    display-name)))
