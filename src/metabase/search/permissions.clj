@@ -31,6 +31,31 @@
   [search-ctx]
   (or (impersonated-user? search-ctx) (sandboxed-user? search-ctx)))
 
+(defn- personal-collections-where-clause
+  "Build a clause limiting the entries to those (not) within or within personal collections, if relevant.
+  WARNING: this method queries the appdb, and its approach will get very slow when there are many users!"
+  [collection-id-col filter-type]
+  (when filter-type
+    (let [parent-ids     (t2/select-pks-set :model/Collection :personal_owner_id [:not= nil])
+          child-patterns (for [id parent-ids] (format "/%d/%%" id))]
+      (case filter-type
+        "only"
+        `[:or
+          ;; top level personal collections
+          [:and [:not= :collection.personal_owner_id nil] [:= :collection.location "/"]]
+          ;; their sub-collections
+          ~@(for [p child-patterns] [:like :collection.location p])]
+
+        "exclude"
+        `[:or
+          ;; not in a collection
+          [:= ~collection-id-col nil]
+          [:and
+           ;; neither in a top-level personal collection
+           [:= :collection.personal_owner_id nil]
+           ;; nor within one of their sub-collections
+           ~@(for [p child-patterns] [:not-like :collection.location p])]]))))
+
 (mu/defn add-collection-join-and-where-clauses
   "Add a `WHERE` clause to the query to only return Collections the Current User has access to; join against Collection,
   so we can return its `:name`."
@@ -48,37 +73,17 @@
                                   collection-id-col
                                   {:include-archived-items    :all
                                    :include-trash-collection? true
-                                   :permission-level          (if archived
-                                                                :write
-                                                                :read)}
+                                   :permission-level          (if archived :write :read)}
                                   {:current-user-id current-user-id
                                    :is-superuser?   is-superuser?})]
     (cond-> honeysql-query
       true
       (sql.helpers/where collection-filter-clause (perms/audit-namespace-clause :collection.namespace nil))
+
       ;; add a JOIN against Collection *unless* the source table is already Collection
       (not= model "collection")
-      (sql.helpers/left-join [:collection :collection]
-                             [:= collection-id-col :collection.id])
+      (sql.helpers/left-join [:collection :collection] [:= collection-id-col :collection.id])
 
       ;; TODO This is not really about permissions, it should really be handled in search.filter
       (some? filter-items-in-personal-collection)
-      (sql.helpers/where
-       (case filter-items-in-personal-collection
-         "only"
-         (concat [:or]
-                 ;; sub personal collections
-                 (for [id (t2/select-pks-set :model/Collection :personal_owner_id [:not= nil])]
-                   [:like :collection.location (format "/%d/%%" id)])
-                 ;; top level personal collections
-                 [[:and
-                   [:= :collection.location "/"]
-                   [:not= :collection.personal_owner_id nil]]])
-
-         "exclude"
-         (conj [:or]
-               (into
-                [:and [:= :collection.personal_owner_id nil]]
-                (for [id (t2/select-pks-set :model/Collection :personal_owner_id [:not= nil])]
-                  [:not-like :collection.location (format "/%d/%%" id)]))
-               [:= collection-id-col nil]))))))
+      (sql.helpers/where (personal-collections-where-clause collection-id-col filter-items-in-personal-collection)))))
