@@ -1,18 +1,21 @@
 import { t } from "ttag";
 
 import { ActionIcon, Button, Flex, Icon, Tooltip } from "metabase/ui";
+import { useVisualizerHistory } from "metabase/visualizer/hooks/use-visualizer-history";
 
 export function Header() {
+  const { canUndo, canRedo, undo, redo } = useVisualizerHistory();
+
   return (
     <Flex p="md" pb="sm">
       <Flex align="center">
         <Tooltip label={t`Back`}>
-          <ActionIcon>
+          <ActionIcon disabled={!canUndo} onClick={undo}>
             <Icon name="chevronleft" />
           </ActionIcon>
         </Tooltip>
         <Tooltip label={t`Forward`}>
-          <ActionIcon>
+          <ActionIcon disabled={!canRedo} onClick={redo}>
             <Icon name="chevronright" />
           </ActionIcon>
         </Tooltip>

@@ -160,6 +160,16 @@ export function addColumnMapping(
   return nextMapping;
 }
 
+export function extractReferencedColumns(
+  mappings: Record<string, VisualizerColumnValueSource[]>,
+): VisualizerColumnReference[] {
+  const sources = Object.values(mappings).flat();
+  return sources.filter(
+    (valueSource): valueSource is VisualizerColumnReference =>
+      typeof valueSource !== "string",
+  );
+}
+
 export function cloneColumnProperties(
   visualizerColumn: DatasetColumn,
   column: DatasetColumn,

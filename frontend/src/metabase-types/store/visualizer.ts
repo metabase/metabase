@@ -51,11 +51,14 @@ export type VisualizerColumnValueSource =
   | VisualizerColumnReference
   | VisualizerDataSourceNameReference;
 
-export interface VisualizerState {
+export type VisualizerHistoryItem = {
   display: VisualizationDisplay | null;
   columns: DatasetColumn[];
   columnValuesMapping: Record<string, VisualizerColumnValueSource[]>;
   settings: VisualizationSettings;
+};
+
+export type VisualizerCommonState = {
   cards: Card[];
   datasets: Record<VisualizerDataSourceId, Dataset>;
   expandedDataSources: Record<VisualizerDataSourceId, boolean>;
@@ -63,4 +66,10 @@ export interface VisualizerState {
   loadingDatasets: Record<VisualizerDataSourceId, boolean>;
   error: string | null;
   draggedItem: DraggedItem | null;
+};
+
+export interface VisualizerState extends VisualizerCommonState {
+  past: VisualizerHistoryItem[];
+  present: VisualizerHistoryItem;
+  future: VisualizerHistoryItem[];
 }

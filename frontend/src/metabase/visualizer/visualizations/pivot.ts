@@ -1,16 +1,16 @@
 import type { DragEndEvent } from "@dnd-kit/core";
 
 import { DROPPABLE_ID } from "metabase/visualizer/constants";
-import { getReferencedColumns } from "metabase/visualizer/selectors";
 import {
   createVisualizerColumnReference,
+  extractReferencedColumns,
   isDraggedColumnItem,
   isDraggedWellItem,
 } from "metabase/visualizer/utils";
-import type { VisualizerState } from "metabase-types/store/visualizer";
+import type { VisualizerHistoryItem } from "metabase-types/store/visualizer";
 
 export const pivotDropHandler = (
-  state: VisualizerState,
+  state: VisualizerHistoryItem,
   { active, over }: DragEndEvent,
 ) => {
   if (over && isDraggedColumnItem(active)) {
@@ -20,7 +20,7 @@ export const pivotDropHandler = (
     const columnRef = createVisualizerColumnReference(
       dataSource,
       column,
-      getReferencedColumns({ visualizer: state }),
+      extractReferencedColumns(state.columnValuesMapping),
     );
 
     if (over.id === DROPPABLE_ID.PIVOT_COLUMNS_WELL) {

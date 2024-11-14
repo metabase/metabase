@@ -1,7 +1,6 @@
 import type { DragEndEvent } from "@dnd-kit/core";
 
 import { DROPPABLE_ID } from "metabase/visualizer/constants";
-import { getReferencedColumns } from "metabase/visualizer/selectors";
 import {
   addColumnMapping,
   checkColumnMappingExists,
@@ -9,13 +8,14 @@ import {
   createDimensionColumn,
   createMetricColumn,
   createVisualizerColumnReference,
+  extractReferencedColumns,
   isDraggedColumnItem,
   isDraggedWellItem,
 } from "metabase/visualizer/utils";
-import type { VisualizerState } from "metabase-types/store/visualizer";
+import type { VisualizerHistoryItem } from "metabase-types/store/visualizer";
 
 export const cartesianDropHandler = (
-  state: VisualizerState,
+  state: VisualizerHistoryItem,
   { active, over }: DragEndEvent,
 ) => {
   if (!over) {
@@ -75,7 +75,7 @@ export const cartesianDropHandler = (
   const columnRef = createVisualizerColumnReference(
     dataSource,
     column,
-    getReferencedColumns({ visualizer: state }),
+    extractReferencedColumns(state.columnValuesMapping),
   );
 
   if (over.id === DROPPABLE_ID.X_AXIS_WELL) {

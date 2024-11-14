@@ -5,10 +5,11 @@ import {
   type DragStartEvent,
 } from "@dnd-kit/core";
 import { useCallback } from "react";
-import { useUnmount } from "react-use";
+import { useKeyPressEvent, useUnmount } from "react-use";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Box, Flex } from "metabase/ui";
+import { useVisualizerHistory } from "metabase/visualizer/hooks/use-visualizer-history";
 import {
   getDatasets,
   getDraggedItem,
@@ -31,6 +32,8 @@ import { VisualizationCanvas } from "../VisualizationCanvas";
 import { VisualizationPicker } from "../VisualizationPicker";
 
 export const VisualizerPage = () => {
+  const { canUndo, canRedo, undo, redo } = useVisualizerHistory();
+
   const display = useSelector(getVisualizationType);
   const draggedItem = useSelector(getDraggedItem);
   const dispatch = useDispatch();
@@ -40,6 +43,19 @@ export const VisualizerPage = () => {
 
   useUnmount(() => {
     dispatch(resetVisualizer());
+  });
+
+  useKeyPressEvent("z", event => {
+    event.preventDefault();
+    if (event.ctrlKey || event.metaKey) {
+      if (event.shiftKey) {
+        if (canRedo) {
+          redo();
+        }
+      } else if (canUndo) {
+        undo();
+      }
+    }
   });
 
   const handleDragStart = useCallback(

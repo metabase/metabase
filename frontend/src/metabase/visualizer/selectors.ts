@@ -1,15 +1,13 @@
-import { createDraftSafeSelector, createSelector } from "@reduxjs/toolkit";
+import { createSelector } from "@reduxjs/toolkit";
 import _ from "underscore";
 
 import { isCartesianChart } from "metabase/visualizations";
 import type { DatasetData, RawSeries, RowValues } from "metabase-types/api";
-import type {
-  VisualizerColumnReference,
-  VisualizerState,
-} from "metabase-types/store/visualizer";
+import type { VisualizerState } from "metabase-types/store/visualizer";
 
 import {
   createDataSource,
+  extractReferencedColumns,
   getDataSourceIdFromNameRef,
   isDataSourceNameRef,
 } from "./utils";
@@ -18,18 +16,22 @@ type State = { visualizer: VisualizerState };
 
 // Private selectors
 
+const getCurrentHistoryItem = (state: State) => state.visualizer.present;
+
 const getCards = (state: State) => state.visualizer.cards;
 
-const getRawSettings = (state: State) => state.visualizer.settings;
+const getRawSettings = (state: State) => getCurrentHistoryItem(state).settings;
 
-const getVisualizationColumns = (state: State) => state.visualizer.columns;
+const getVisualizationColumns = (state: State) =>
+  getCurrentHistoryItem(state).columns;
 
 const getVisualizerColumnValuesMapping = (state: State) =>
-  state.visualizer.columnValuesMapping;
+  getCurrentHistoryItem(state).columnValuesMapping;
 
 // Public selectors
 
-export const getVisualizationType = (state: State) => state.visualizer.display;
+export const getVisualizationType = (state: State) =>
+  getCurrentHistoryItem(state).display;
 
 export const getDatasets = (state: State) => state.visualizer.datasets;
 
@@ -38,15 +40,12 @@ export const getExpandedDataSources = (state: State) =>
 
 export const getDraggedItem = (state: State) => state.visualizer.draggedItem;
 
-export const getReferencedColumns = createDraftSafeSelector(
+export const getCanUndo = (state: State) => state.visualizer.past.length > 0;
+export const getCanRedo = (state: State) => state.visualizer.future.length > 0;
+
+export const getReferencedColumns = createSelector(
   [getVisualizerColumnValuesMapping],
-  (columnValuesMapping): VisualizerColumnReference[] => {
-    const sources = Object.values(columnValuesMapping).flat();
-    return sources.filter(
-      (valueSource): valueSource is VisualizerColumnReference =>
-        typeof valueSource !== "string",
-    );
-  },
+  mappings => extractReferencedColumns(mappings),
 );
 
 export const getDataSources = createSelector([getCards], cards =>
